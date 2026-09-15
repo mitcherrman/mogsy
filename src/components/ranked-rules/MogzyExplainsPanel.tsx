@@ -22,25 +22,38 @@
  * mode learning what the other explains, but no other mode is converted by
  * this change and none should be converted speculatively.
  *
- * PLACEMENT. Bottom-right. The bottom-LEFT slot on this route is already owned
- * by the Community trigger (`FloatingFriendsButton`), and both top corners are
- * `GlobalHud`'s chips. Bottom-right was free on every route:
- * `FloatingThemeSwitcher`, the theme FAB that used to sit there outside the
- * League section, was deleted with the sitewide theme system (PT2E).
+ * PLACEMENT. Either bottom corner, chosen by the caller through `side`.
  *
- * It is no longer free, and no longer this component's to own. FB1-4 added a
- * question reporter that belongs in the same corner beside the same live
- * match, so the corner is now `MogzyDock` — one anchor with a panel stack and
- * a tab row, which sorts its occupants and keeps one panel open at a time.
- * This component PORTALS into it when it is mounted, and falls back to its
- * original private `fixed` anchor when it is not, so a panel rendered outside
- * the app shell (every test that renders one, for instance) is unchanged.
+ * It was bottom-right only, because both top corners are `GlobalHud`'s chips
+ * and the bottom-LEFT was the Community trigger's. FB1-4 then added a question
+ * reporter beside the same live match, and the two shared the right corner —
+ * which read as one crowded cluster rather than two controls with different
+ * jobs. They are now a mirrored PAIR: the reporter bottom-left, the mode's
+ * rules bottom-right, same insets and same tab treatment either side.
+ *
+ * `side` is the ONLY thing that differs. It flips three things and nothing
+ * else: which dock anchor the portals target, which way the panel's entrance
+ * slides, and which edge the undocked fallback pins to. Everything below —
+ * sizes, skin, focus contract, Escape, the collapse/close distinction — is
+ * identical on both sides, because a mirror that drifts is worse than no
+ * mirror at all.
+ *
+ * The corner itself is `MogzyDock`: two anchors, each with a panel stack and a
+ * tab row, sorting their occupants and keeping ONE panel open across both
+ * sides. This component PORTALS into it when it is mounted, and falls back to
+ * its original private `fixed` anchor when it is not, so a panel rendered
+ * outside the app shell (every test that renders one, for instance) is
+ * unchanged.
  */
 import { useCallback, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
-import { DOCK_ORDER, useMogzyDockSlot } from "@/components/mogzy-dock/MogzyDock";
+import {
+  DOCK_ORDER,
+  useMogzyDockSlot,
+  type MogzyDockSide,
+} from "@/components/mogzy-dock/MogzyDock";
 
 export interface MogzyExplainsPanelProps {
   /** Whether the scroll is currently unrolled. Owned by the caller. */
@@ -85,6 +98,15 @@ export interface MogzyExplainsPanelProps {
    */
   dockOrder?: number;
   /**
+   * Which bottom corner to anchor to. Defaults to "right", which is where the
+   * only pre-mirror caller (Ranked Rules) has always been and stays.
+   *
+   * A left-anchored panel expands rightward, inward across the viewport, so it
+   * cannot run off the edge it is pinned to — the same guarantee the right side
+   * has always had in the other direction.
+   */
+  side?: MogzyDockSide;
+  /**
    * The dock asked this panel to step aside because the player opened another
    * one. Defaults to `onClose`.
    *
@@ -99,6 +121,7 @@ export function MogzyExplainsPanel({
   open, onOpen, onClose, title, tabLabel, openLabel, children,
   prominent = false, testId = "mogzy-explains",
   dockOrder = DOCK_ORDER.rules, onCollapse, acknowledgeLabel = "Got it",
+  side = "right",
 }: MogzyExplainsPanelProps) {
   const headingId = useId();
   const tabRef = useRef<HTMLButtonElement | null>(null);
@@ -148,7 +171,7 @@ export function MogzyExplainsPanel({
     else onClose();
   }, [onCollapse, onClose]);
 
-  const { panelSlot, tabSlot } = useMogzyDockSlot({ id: testId, open, onCollapse: collapse });
+  const { panelSlot, tabSlot } = useMogzyDockSlot({ id: testId, side, open, onCollapse: collapse });
 
   /* Returning focus to the tab after a player-driven close. Without it a
      keyboard player is dropped at the top of the document every time they
@@ -167,14 +190,38 @@ export function MogzyExplainsPanel({
       data-testid={`${testId}-panel`}
       style={{ order: dockOrder }}
       /* Phone: an edge-to-edge sheet, clear of both screen edges. Desktop:
-         a column beside the arena. `max-h` + `overflow-y-auto` keeps the
-         sheet on one screen at 375px without the content having to be
-         shorter than the rules actually are. */
-      className="pointer-events-auto mogzy-scroll
+         a column beside the arena.
+ 
+         HEIGHT IS THE CONTENT'S, AND THE VIEWPORT IS ONLY A CEILING.
+         This was `max-h-[min(72vh,34rem)]`, and the 34rem half of that was a
+         flat cap that had nothing to do with the screen: on a 1800x800 desktop
+         it clamped the panel to 544px of a viewport with 688px to spare, so a
+         ~600px report form grew its OWN scrollbar inside a page that was not
+         scrolling. A parchment with a scrollbar down it at desktop height reads
+         as broken paper.
+ 
+         So the ceiling is now the space the dock actually leaves: the viewport
+         less this panel's own bottom inset, the tab row beneath it, and the gap
+         between them (~4.5rem), plus a margin so the parchment's top edge is
+         never flush against the HUD. Below that the panel is `h-auto` — it is
+         exactly as tall as its content, and `overflow-y: auto` (from
+         `.mogzy-scroll`) engages only on a genuinely short screen, which is the
+         one case where something has to give. `dvh` and not `vh`: on mobile the
+         difference is the browser's own collapsing chrome, and `vh` measures the
+         tallest state, which is the one where the panel does not fit.
+ 
+         The 44rem outer cap is a READABILITY limit, not a fit one — a 900px
+         column of parchment beside a live match is not a better explanation
+         than a 700px one. On any viewport short enough to matter, the
+         viewport-aware term is already the smaller of the two. */
+      className={`pointer-events-auto mogzy-scroll
         w-[calc(100vw-1.5rem)] max-w-[21rem] sm:w-[21rem]
-        max-h-[min(72vh,34rem)] overscroll-contain
+        max-h-[min(calc(100dvh-7rem),44rem)] overscroll-contain
         px-4 pb-4 pt-3 text-left shadow-2xl
-        motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
+        motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2
+        ${side === "left"
+          ? "motion-safe:slide-in-from-left-2"
+          : "motion-safe:slide-in-from-right-2"}`}
     >
       <header className="flex items-start gap-3">
         {/* Mogzy holds the scroll rather than standing over the arena: he
@@ -267,12 +314,19 @@ export function MogzyExplainsPanel({
     );
   }
 
-  /* Undocked fallback: the component's original private anchor, unchanged. */
+  /* Undocked fallback: the component's original private anchor, mirrored by
+     `side` so a panel rendered outside the app shell lands in the same corner
+     it would have docked into. The right-hand values are byte-for-byte the
+     originals, which is what keeps every pre-existing undocked caller and test
+     unchanged. */
   return (
     <div
       data-testid={`${testId}-dock`}
-      className="pointer-events-none fixed bottom-4 right-3 z-40 flex flex-col items-end
-        gap-2 sm:bottom-5 sm:right-4"
+      data-dock-side={side}
+      className={`pointer-events-none fixed bottom-4 z-40 flex flex-col gap-2 sm:bottom-5
+        ${side === "left"
+          ? "left-3 items-start sm:left-4"
+          : "right-3 items-end sm:right-4"}`}
     >
       {panel}
       {tab}

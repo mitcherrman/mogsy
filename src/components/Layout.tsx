@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { Suspense, useEffect, useLayoutEffect } from "react";
 import GlobalHud from "./hud/GlobalHud";
-import { MogzyDockProvider } from "./mogzy-dock/MogzyDock";
+import { MogzyDockProvider, useMogzyDockOccupied } from "./mogzy-dock/MogzyDock";
 import { QuestionReportScroll } from "./report/QuestionReportScroll";
 import { ReportableQuestionProvider } from "@/lib/feedback/reportable-question";
 import FloatingFriendsButton from "./FloatingFriendsButton";
@@ -146,9 +146,10 @@ export default function Layout() {
           a publish moves a subscribable store, NOT provider state — otherwise
           every question change in a live Ranked match would re-render the
           entire app below this point.
-        - MogzyDockProvider owns the bottom-right corner, which Ranked Rules
-          and the question reporter now share. It renders the dock anchor
-          itself, so no route can forget it or add a second one. */
+        - MogzyDockProvider owns BOTH bottom corners — the question reporter
+          bottom-left, Ranked Rules bottom-right, as a mirrored pair. It
+          renders the two anchors itself, so no route can forget one or add a
+          third. */
     <ReportableQuestionProvider>
     <MogzyDockProvider>
     <div
@@ -204,7 +205,7 @@ export default function Layout() {
       {/* Footer renders sitewide (incl. /lol) so trust/legal links and the
           Riot disclaimer stay visible; it self-hides on gameplay routes. */}
       <Footer />
-      {showFriendsDrawer && <FloatingFriendsButton />}
+      {showFriendsDrawer && <CommunityTrigger />}
       {/* COM1-2B: <FloatingScrollButton /> was here. It was a legacy Mogzy
           page-scroll control pinned to `fixed bottom-6 left-6 z-[60]` — the
           Community trigger's exact coordinates, one stacking layer above it —
@@ -239,4 +240,17 @@ export default function Layout() {
  */
 export function RouteLoader() {
   return <StartupSurface />;
+}
+
+/**
+ * The Community trigger, told whether it is standing in a dock tab's corner.
+ *
+ * A separate component and not an inline `useMogzyDockOccupied()` in `Layout`
+ * because the hook has to run INSIDE `MogzyDockProvider`, and `Layout` is the
+ * component that renders the provider — its own body is above it. The cost of
+ * the seam is also its point: occupancy re-renders this one button, not the
+ * whole shell and every route beneath it.
+ */
+function CommunityTrigger() {
+  return <FloatingFriendsButton lifted={useMogzyDockOccupied("left")} />;
 }

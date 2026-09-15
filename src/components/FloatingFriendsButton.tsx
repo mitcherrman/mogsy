@@ -156,7 +156,16 @@ function BlockedUsersList({
   );
 }
 
-export default function FloatingFriendsButton() {
+export interface FloatingFriendsButtonProps {
+  /**
+   * Raise the trigger clear of a Mogzy dock tab in the same bottom-left
+   * corner. Layout-only: nothing about the drawer, its contents or its state
+   * changes with it.
+   */
+  lifted?: boolean;
+}
+
+export default function FloatingFriendsButton({ lifted = false }: FloatingFriendsButtonProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
@@ -259,7 +268,15 @@ export default function FloatingFriendsButton() {
                these exact coordinates with a HIGHER z-index and cover this
                button on every scrollable desktop page — the slot is now this
                button's alone at every width. */
-            className="fixed bottom-6 left-6 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
+            /* `lifted` raises it clear of a left-docked Mogzy tab (the question
+               reporter), which occupies bottom-4/left-3 plus a 44px tab — 64px
+               of this exact corner. 5rem clears that with a visible gap, and
+               the transition is on `bottom` as well as colour so the button
+               slides rather than teleports when a question appears. It drops
+               back on its own the moment the reporter unmounts. */
+            className={`fixed left-6 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-[background-color,bottom] hover:bg-primary/90 ${
+              lifted ? "bottom-20" : "bottom-6"
+            }`}
           >
             <Users className="h-4 w-4" />
             {/* Purely decorative and absolutely positioned: it is out of flow,

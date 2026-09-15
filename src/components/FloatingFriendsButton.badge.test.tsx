@@ -171,7 +171,16 @@ describe("the rendered badge", () => {
     expect(badge.className).toMatch(/pointer-events-none/);
     // The trigger keeps its fixed corner geometry whatever the count is.
     const trigger = screen.getByTestId("friends-drawer-trigger");
-    expect(trigger.className).toMatch(/fixed bottom-6 left-6/);
+    /* Token-wise, not /fixed bottom-6 left-6/: RFB made the vertical inset
+       conditional (`lifted` raises it clear of the question reporter's dock
+       tab), so the tokens no longer appear in source order. `bottom-6` is
+       still asserted — it is the UNLIFTED default, which is what a trigger
+       rendered with no props must have. */
+    const tokens = trigger.className.split(/\s+/);
+    for (const token of ["fixed", "bottom-6", "left-6"]) {
+      expect(tokens).toContain(token);
+    }
+    expect(tokens).not.toContain("bottom-20");
     expect(trigger.className).toMatch(/\bh-9 w-9\b/);
   });
 

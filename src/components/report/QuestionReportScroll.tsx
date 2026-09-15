@@ -3,8 +3,9 @@
  *
  * WHERE IT LIVES, AND WHY IT CANNOT DISTURB A MATCH
  * ────────────────────────────────────────────────
- * The same shell as Ranked Rules (`MogzyExplainsPanel`), in the same shared
- * corner (`MogzyDock`), for the same reason: it is `position: fixed`, outside
+ * The same shell as Ranked Rules (`MogzyExplainsPanel`), in the mirrored half
+ * of the same dock (`MogzyDock`) — this one bottom-LEFT, Rules bottom-right —
+ * for the same reason: it is `position: fixed`, outside
  * `ArenaShell` and outside every mode's layout, so it covers no prompt, no
  * answer tablet, no clock and no score at any width. Nothing here pauses,
  * blocks, focus-traps or navigates. Submitting is an ordinary async insert on
@@ -30,7 +31,7 @@ import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
 import { MogzyExplainsPanel } from "@/components/ranked-rules/MogzyExplainsPanel";
-import { DOCK_ORDER } from "@/components/mogzy-dock/MogzyDock";
+import { DOCK_ORDER, DOCK_SIDE } from "@/components/mogzy-dock/MogzyDock";
 import { useAuth } from "@/hooks/useAuth";
 import { FeedbackRateLimitError } from "@/lib/feedback/client";
 import { FEEDBACK_LIMITS } from "@/lib/feedback/contract";
@@ -107,6 +108,11 @@ export function QuestionReportScroll() {
       onOpen={() => setOpen(true)}
       onClose={close}
       dockOrder={DOCK_ORDER.questionReport}
+      /* Bottom-LEFT, mirroring Ranked Rules on the right. The reporter is the
+         transient half of the pair — it exists only while a question is on
+         screen — so it takes the corner the player's eye is not already
+         trained on for the mode's standing explanation. */
+      side={DOCK_SIDE.questionReport}
       title="Report this question"
       tabLabel="Report"
       openLabel="Report a problem with this question"
