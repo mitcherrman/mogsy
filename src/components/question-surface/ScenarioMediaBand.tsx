@@ -94,8 +94,16 @@ export function ScenarioMediaBand({
         style={{
           containerType: "size",
           aspectRatio: BAND_ASPECT[aspect],
-          minHeight: bandMinHeight,
-          maxHeight: `var(--qs-media-max, ${bandMaxHeight})`,
+          // BOUNDED BY ITS BOX, not only by itself. `bandMinHeight` is a
+          // legibility floor for a band that would otherwise collapse on a
+          // narrow viewport — but as a bare `min-height` it also outranked the
+          // arena's reserved media region, and a 128px floor inside a region
+          // the lock had sized to 72px is exactly how the Ranked shell stayed
+          // a few pixels taller than the viewport no matter what the stage
+          // reserved. `min(…, 100%)` keeps the floor everywhere it was doing
+          // its job and stops it overruling the box that contains it.
+          minHeight: `min(${bandMinHeight}, 100%)`,
+          maxHeight: `min(var(--qs-media-max, ${bandMaxHeight}), 100%)`,
         }}
       >
         <ScenarioCard question={source} revealActive={revealActive} correctAnswer={correctAnswer} />

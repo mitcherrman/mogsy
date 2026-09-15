@@ -126,4 +126,80 @@ describe("the module-name face, and the sequence", () => {
     expect(stage()).toBe("module");
     expect(screen.getByTestId("central-module-title")).toHaveTextContent("Meta Reflex");
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RM1 — THE DISPLAY MAY TURN, BUT IT MAY NOT RESIZE.
+  //
+  // The three faces are three different shapes of text: one 48px clock line, a
+  // 30px verdict stacked on a 20px award, one 20px module name. Under the
+  // `min-height` this used to carry, the tallest of those set the strip's
+  // height and the others did not — so the Match Header grew the instant a
+  // round settled and shrank again when the clock returned. Brief, repeated
+  // every module, and exactly the jitter the arena felt.
+  // ─────────────────────────────────────────────────────────────────────────
+  describe("the outer slot is the same box on every face", () => {
+    const outer = () => screen.getByTestId("timer-display").className;
+    const face = () =>
+      screen.getByTestId("timer-display").querySelector(".ranked-stage-face")!.className;
+
+    it("reserves a FIXED height, not a minimum, on the display and the face", () => {
+      render(<CentralStage timer={timer()} result={null} moduleTitle={null} moduleEventId={1} />);
+      // `h-`, not `min-h-`: a minimum is what let a taller face win.
+      expect(outer()).toContain("h-[4.25rem]");
+      expect(outer()).not.toContain("min-h-[");
+      expect(face()).toContain("h-[3.25rem]");
+      expect(face()).toContain("justify-center");
+      // Stepped at 1500, where the clock itself steps up to `text-6xl`.
+      expect(outer()).toContain("min-[1500px]:h-[5rem]");
+      expect(face()).toContain("min-[1500px]:h-[4rem]");
+    });
+
+    it("keeps that box byte-for-byte across clock -> result -> title -> clock", () => {
+      const base = { timer: timer(), moduleTitle: "Champion Mastery" };
+      const { rerender } = render(
+        <CentralStage {...base} result={null} moduleEventId={1} />);
+      act(() => { vi.advanceTimersByTime(MODULE_TITLE_MS + 20); });
+      const [o, f] = [outer(), face()];
+
+      act(() => {
+        rerender(<CentralStage {...base} result={{ verdict: "CORRECT", points: "+2 POINTS" }}
+          moduleEventId={1} />);
+      });
+      expect(stage()).toBe("result");
+      expect(outer()).toBe(o);
+      expect(face()).toBe(f);
+
+      act(() => { rerender(<CentralStage {...base} result={null} moduleEventId={2} />); });
+      expect(stage()).toBe("module");
+      expect(outer()).toBe(o);
+      expect(face()).toBe(f);
+
+      act(() => { vi.advanceTimersByTime(MODULE_TITLE_MS + 20); });
+      expect(stage()).toBe("timer");
+      expect(outer()).toBe(o);
+      expect(face()).toBe(f);
+    });
+
+    it("keeps the timer's prominence — the box shrank, the clock did not", () => {
+      render(<CentralStage timer={timer()} result={null} moduleTitle={null} moduleEventId={1} />);
+      const digits = screen.getByTestId("timer-value").className;
+      expect(digits).toContain("text-4xl");
+      expect(digits).toContain("sm:text-5xl");
+      expect(digits).toContain("min-[1500px]:text-6xl");
+      expect(digits).toContain("leading-none");
+    });
+
+    it("keeps the prose line reserved on every face, so it cannot move either", () => {
+      const base = { timer: timer(), moduleTitle: "Items" };
+      const { rerender } = render(<CentralStage {...base} result={null} moduleEventId={1} />);
+      const note = () => screen.getByTestId("timer-display").lastElementChild!.className;
+      const n = note();
+      act(() => {
+        rerender(<CentralStage {...base} result={{ verdict: "CORRECT", points: "+2 POINTS" }}
+          moduleEventId={1} />);
+      });
+      expect(note()).toBe(n);
+      expect(n).toContain("min-h-[0.875rem]");
+    });
+  });
 });

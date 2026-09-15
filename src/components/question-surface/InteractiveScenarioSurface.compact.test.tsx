@@ -71,8 +71,16 @@ describe("compact media budget", () => {
     // which is exactly why it is asserted as the fallback rather than dropped.
     mount("competitive", SHORT_Q, ITEM_SCENARIO);
     const hero = screen.getByTestId("scenario-hero");
-    expect(hero.style.maxHeight).toBe("var(--qs-media-max, min(22rem, 34vh))");
-    expect(hero.style.minHeight).toBe("8rem");
+    // Bounded by the box it sits in as well as by itself: inside the locked
+    // Ranked stage the band must be able to scale down with its region, and a
+    // bare cap let the band outrank the region instead.
+    expect(hero.style.maxHeight).toBe("min(var(--qs-media-max, min(22rem, 34vh)), 100%)");
+    // `min(…, 100%)`, not a bare floor. The legibility floor still applies
+    // everywhere it was doing its job; what it may no longer do is outrank the
+    // box it sits in — inside the locked Ranked stage a bare 128px floor kept
+    // the whole shell taller than the viewport regardless of what the stage
+    // had reserved for the region.
+    expect(hero.style.minHeight).toBe("min(8rem, 100%)");
   });
 
   it("still caps compact well below the comfortable surface", () => {
@@ -81,14 +89,14 @@ describe("compact media budget", () => {
     mount("standard", SHORT_Q, ITEM_SCENARIO);
     const comfortable = screen.getAllByTestId("scenario-hero")[1].style.maxHeight;
     expect(compact).not.toBe(comfortable);
-    expect(comfortable).toBe("var(--qs-media-max, 30rem)");
+    expect(comfortable).toBe("min(var(--qs-media-max, 30rem), 100%)");
   });
 
   it("keeps the tall presentation for comfortable surfaces", () => {
     mount("standard", SHORT_Q, ITEM_SCENARIO);
     const hero = screen.getByTestId("scenario-hero");
-    expect(hero.style.maxHeight).toBe("var(--qs-media-max, 30rem)");
-    expect(hero.style.minHeight).toBe("12.5rem");
+    expect(hero.style.maxHeight).toBe("min(var(--qs-media-max, 30rem), 100%)");
+    expect(hero.style.minHeight).toBe("min(12.5rem, 100%)");
   });
 
   it("text-first questions get the short compact band, no hero reservation", () => {

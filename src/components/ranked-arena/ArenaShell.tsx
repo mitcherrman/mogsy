@@ -65,16 +65,18 @@ export function ArenaShell({
        already do; Layout is untouched, so every other route keeps the
        reservation (and with it the RA1 1.1 route-loading overflow fix).
 
-       From `lg` up the frame is also a flex column with
-       `min-h: --ranked-stage-h` — a FLOOR, deliberately not a cap. The stage
-       always fills the viewport, so the arena is as large as the screen
-       allows rather than as small as the current round needs; and content the
-       floor cannot seat GROWS the stage instead of being clipped or handed a
-       scrollbar of its own. An earlier draft capped the stage and gave the
-       question card `overflow-y-auto`; the content audit that followed showed
-       the trade was never necessary (prompts ≤108 chars, options ≤63), so the
-       floor seats real content whole and the pathological case pushes the
-       page, which is the browser's job.
+       From `lg` up the frame is a flex column of EXACTLY `--ranked-stage-h`.
+       That is a change of kind: it used to be a `min-h` floor, on the reasoning
+       that content the viewport could not seat should grow the page rather
+       than be clipped. In a Ranked match that reasoning is wrong — a match
+       that scrolls is a match whose Module Rail and banner points are off
+       screen while the player is answering, which is worse than art that
+       renders smaller. So the height is definite, and the arena spends it.
+
+       A definite height is also load-bearing for two things beyond the fit:
+       the percentage caps in `index.css` resolve against it, and the geometry
+       stops depending on what the current round contains — which is what the
+       arena's jitter actually was.
 
        Below `lg` neither applies: the arena stacks into one column whose
        natural height genuinely exceeds any phone or tablet viewport.
@@ -82,7 +84,7 @@ export function ArenaShell({
        NOT A THEME SYSTEM — see the note above about `.ranked-academy`. */
     <div className={`ranked-shell ranked-academy mx-auto flex w-full flex-col gap-2 px-4 pt-3 pb-3
       lg:-mt-[var(--app-header-h)] lg:gap-1 lg:pb-2 lg:pt-1
-      lg:min-h-[var(--ranked-stage-h)] ${
+      lg:h-[var(--ranked-stage-h)] ${
       size === "wide" ? "max-w-6xl xl:max-w-[76rem] min-[1500px]:max-w-[90rem]" : "max-w-3xl"}`}
       data-testid={testId}>
       {header}
@@ -92,7 +94,7 @@ export function ArenaShell({
           content — which is what would clip a question or force it to scroll.
           Without it the automatic minimum size holds, so an oversized round
           grows this box, grows the stage, and scrolls the PAGE. */}
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div className="flex flex-1 flex-col lg:min-h-0">{children}</div>
     </div>
   );
 }

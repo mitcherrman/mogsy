@@ -165,15 +165,19 @@ describe("the Ranked arena declares no internal scroll region", () => {
     expect(css).not.toContain("ranked-question-scroll");
   });
 
-  it("makes the stage a FLOOR, so oversized content grows the page", () => {
+  it("LOCKS the stage to the viewport, so a match never scrolls the page", () => {
     // ARENA1 Step 3: the frame is `ArenaShell` now. Same declaration, same
     // tokens, one directory over — every mode that reaches the arena inherits
     // it instead of only the route that used to write it.
     const src = sourceOf("src/components/ranked-arena/ArenaShell.tsx");
-    // `min-h`, never `h`: a cap is what forces content to be clipped or to
-    // scroll inside the card, and that is the design being retired here.
-    expect(src).toContain("lg:min-h-[var(--ranked-stage-h)]");
-    expect(src).not.toMatch(/lg:h-\[var\(--ranked-stage-h\)\]/);
+    // `h`, never `min-h`. This was the other way round while the arena's rule
+    // was "an oversized round grows the page rather than being clipped"; in a
+    // Ranked match that trade is wrong, because the page growing puts the
+    // Module Rail and the banner points off screen while the player answers.
+    // Nothing is clipped to buy it: the ART inside the stage yields, and the
+    // prompt and answers do not shrink at all.
+    expect(src).toContain("lg:h-[var(--ranked-stage-h)]");
+    expect(src).not.toContain("lg:min-h-[var(--ranked-stage-h)]");
     // `--app-viewport-h` subtracts a header band this route no longer sits
     // below (it reclaims it), so using it would leave the reclaimed strip
     // unspent. The two tokens describe two different pages.
@@ -181,13 +185,17 @@ describe("the Ranked arena declares no internal scroll region", () => {
     expect(css).toContain("--ranked-stage-h:");
   });
 
-  it("keeps the automatic minimum size in force on the flexing bands", () => {
+  it("releases the automatic minimum size on every flexing band", () => {
     // `min-h-0` is the switch that lets a flex child be SHORTER than its
-    // content. On the arena grid or the question card that is a clip; the
-    // whole no-scroll design depends on it not being there.
+    // content, and under the lock the whole no-scroll design depends on it
+    // BEING there: one band without it pins the column open and the frame is
+    // overflowed by however much that band's content wanted. It is `lg:` only,
+    // because below `lg` the arena stacks into a column that legitimately
+    // exceeds a narrow viewport and is meant to scroll.
     const src = sourceOf("src/components/ranked-arena/CanonicalArena.tsx");
-    expect(src).not.toContain("lg:min-h-0");
-    expect(sourceOf("src/components/ranked-arena/ArenaShell.tsx")).not.toContain("min-h-0");
+    expect(src).toContain("lg:min-h-0");
+    expect(src).not.toMatch(/(?<![a-z:])min-h-0/);
+    expect(sourceOf("src/components/ranked-arena/ArenaShell.tsx")).toContain("lg:min-h-0");
   });
 
   it("still keeps the shell's header offset and the viewport token", () => {

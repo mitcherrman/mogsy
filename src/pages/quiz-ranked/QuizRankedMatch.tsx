@@ -870,7 +870,14 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       // has no length and a "/ 10" here would be this client inventing one.
       title: moduleLabel ?? roundLabel,
       transitionNote: inTransition ? "Preparing next round…" : null,
-      playtestNote: m.publicRound.playtest?.isPlaceholder ? "Playtest · Placeholder" : null,
+      // RETIRED. The placeholder-bank notice was a build-state label from when
+      // the Ranked bank was still standing in for itself. It is a fact about the
+      // CONTENT PIPELINE, not about the match, it is the only thing in the
+      // strip a player can do nothing with, and it held a third line open on
+      // the header's right side for the whole match. Ranked publishes none;
+      // the slot itself stays, because the Daily Challenge uses it for its
+      // theme (`dailyArenaView`) and that IS match news.
+      playtestNote: null,
       presenceNote: opponentLabel,
       timer,
       timerLabel: "Shared round timer",

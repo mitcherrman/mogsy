@@ -252,7 +252,7 @@ export function CanonicalArena({
 
        Below `lg` this is the ordinary flow column it has always been: the
        arena stacks there and its natural height exceeds any narrow viewport. */}
-    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5"
+    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0"
       data-testid="ranked-match" data-reveal-hold={view.revealHold ? "true" : "false"}
       // THE ONE BAND THAT IS NOT ALWAYS THERE, stated rather than assumed.
       // `--ranked-chrome-h` has to know whether the ability dock is mounted,
@@ -443,7 +443,7 @@ export function CanonicalArena({
              natural height against a much taller centre (the §14 constraint).
              The panels themselves still size their own CONTENT — stretching
              the track is not stretching the content. */}
-      <div className="grid grid-cols-2 gap-3 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
         {/* `h-full` on BOTH the track cell and the panel: `items-stretch`
             stretches the grid cell, and without this the panel would still sit
             at its own content height inside a taller cell — which is the
@@ -458,7 +458,7 @@ export function CanonicalArena({
         </div>
 
         <div data-testid="ranked-focus-column"
-          className="relative col-span-2 flex flex-col gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          className="relative col-span-2 flex flex-col gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:min-h-0">
           {/* The level-2 choice is OVERLAID on the question rather than
               inserted above it. In flow it added ~192px to the middle of the
               page the instant a round resolved, pushing the question, the
@@ -515,7 +515,7 @@ export function CanonicalArena({
               // grows the card into whatever the arena band leaves above that
               // floor. Neither is a cap, so an oversized round still grows the
               // page rather than being clipped.
-              className={`ranked-panel ranked-folio ranked-question-stage p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-1 lg:flex-col ${
+              className={`ranked-panel ranked-folio ranked-question-stage p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-1 lg:flex-col lg:min-h-0 ${
                 view.revealHold || progression ? "opacity-60" : "opacity-100"}`}>
               {/* THE QUESTION'S BOX. It takes the card's height and there is
                   NOTHING to scroll inside it — no `overflow`, no clipping, no
@@ -523,7 +523,7 @@ export function CanonicalArena({
                   whole (audited: 108-character prompts, 63-character options),
                   and content that genuinely cannot be seated grows the page
                   instead, which is the browser's job and not the folio's. */}
-              <div className="lg:flex lg:flex-1 lg:flex-col"
+              <div className="lg:flex lg:flex-1 lg:flex-col lg:min-h-0"
                 data-testid="ranked-question-body">
               {/* `my-auto`, deliberately NOT `justify-center`. Both centre the
                   question in a card that is taller than its content; only this
