@@ -252,8 +252,16 @@ export function CanonicalArena({
 
        Below `lg` this is the ordinary flow column it has always been: the
        arena stacks there and its natural height exceeds any narrow viewport. */}
-    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-2"
-      data-testid="ranked-match" data-reveal-hold={view.revealHold ? "true" : "false"}>
+    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5"
+      data-testid="ranked-match" data-reveal-hold={view.revealHold ? "true" : "false"}
+      // THE ONE BAND THAT IS NOT ALWAYS THERE, stated rather than assumed.
+      // `--ranked-chrome-h` has to know whether the ability dock is mounted,
+      // and CSS cannot see a sibling. This is not a new fact and not a new
+      // decision — it is the same `abilityHud` the HUD row below branches on,
+      // published so the budget can read it. A budget that charged for a dock
+      // a points match never mounts is most of why the shell still did not
+      // fit at 1024.
+      data-ability-dock={abilityHud ? "true" : "false"}>
       {/* The strip, plus the one thing that hangs BENEATH it.
           `.ranked-panel` is `overflow: hidden`, so the transcript cannot live
           inside the strip — it would be clipped by it. This wrapper is the
@@ -285,7 +293,7 @@ export function CanonicalArena({
           `min-h` still reserves the tallest state, so nothing in the arena
           below moves when a face turns. */}
       <section data-testid="ranked-header"
-        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
+        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1">
         {/* LEFT — who this is and what kind of match it is. Both quiet. */}
         <div className="flex min-w-0 flex-col justify-center">
           <div className="ranked-eyebrow">{header.eyebrow}</div>
@@ -618,7 +626,7 @@ export function CanonicalArena({
                 arena allows. */}
             <div className="flex items-start justify-between gap-3 px-1">
               <p role={status?.isError ? "alert" : "status"} data-testid="submission-status"
-                className={`line-clamp-2 min-h-[2.25rem] text-xs ${
+                className={`line-clamp-2 min-h-[2rem] text-xs ${
                   status?.isError ? "text-destructive" : "text-muted-foreground"}`}>
                 {status?.text ?? ""}
               </p>

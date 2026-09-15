@@ -646,6 +646,62 @@
 .ranked-shell {
   position: relative;
 }
+
+/* ===========================================================================
+   RM1 HOTFIX — THE ARENA'S VERTICAL BUDGET.
+
+   THE RULE A RANKED MATCH HAS: the Match Shell fits in one viewport. A player
+   answering a question must never scroll the document to see the Module Rail,
+   the pointed foot of a Player Column, or the answer tablets.
+
+   Until now nothing in the arena stated a budget. `--ranked-stage-h` was a
+   FLOOR (`ArenaShell`'s `lg:min-h-[…]`), the Question Stage reserved a fixed
+   height derived only from its own tallest content, and the two were never
+   compared. On a tall screen that is invisible; on a 13" laptop the four bands
+   plus a 566px stage reserve add up to ~900px of shell inside a ~780px
+   viewport, and the page scrolls. RM1's larger header made it worse, but it
+   did not introduce it — it made an existing arithmetic gap visible.
+
+   So the budget is written down once, here, and the stage reads it.
+
+   `--ranked-chrome-h` is the measured sum of every band that is NOT the
+   Question Stage. Each term is its own line, named, so a band that changes
+   height is changed here too rather than silently eating the question's room.
+   `--qs-avail` is what is left for the stage. Both are `lg`-only: below `lg`
+   the arena deliberately stacks into a column taller than any phone viewport,
+   and a budget there would be a cap on a layout that is meant to scroll.
+   ======================================================================== */
+@media (min-width: 1024px) {
+  .ranked-shell {
+    /* The ability dock is the ONE band that is not always mounted: the arena
+       renders it only when the mode publishes an `abilityHud`, which Ranked
+       does only on a progression match. Charging for it unconditionally is
+       simply a wrong budget — it billed a points match 82px for a dock that is
+       not on its screen, which is most of why the shell still did not fit at
+       1024. So the term is a token, zero by default, and the arena turns it on
+       by stating the fact it already knows. */
+    --ranked-dock-h: 0rem;
+    --ranked-chrome-h: calc(
+        0.25rem     /* shell pt-1 */
+      + 1.75rem     /* chrome title row — arenaHeaderRowClass, lg:min-h-7 */
+      + 0.25rem     /* shell lg:gap-1, chrome row -> arena column */
+      + 4.625rem    /* Match Header strip: 64px of display + py-1 + 2px border */
+      + 0.375rem    /* lg:gap-1.5, header -> arena grid */
+      + 0.375rem    /* lg:gap-1.5, arena grid -> HUD row */
+      + var(--ranked-dock-h)  /* ability dock + its gap, when mounted */
+      + 2rem        /* HUD status line, which also seats the quiet control */
+      + 0.375rem    /* lg:gap-1.5, HUD row -> Module Rail */
+      + 3.875rem    /* Module Rail: 1px rule + 0.4rem + 3.4rem viewport */
+      + 0.5rem      /* shell pb-2 */
+    );
+    --qs-avail: calc(var(--ranked-stage-h) - var(--ranked-chrome-h));
+  }
+  /* 82px = the dock's 76px (label row + one 56px slot row) plus the HUD
+     column's own `gap-1.5` above the status line. Declared on the same
+     selector, so the arena's inner shell — the element that carries the
+     attribute — recomputes the whole budget for itself. */
+  .ranked-shell[data-ability-dock="true"] { --ranked-dock-h: 5.125rem; }
+}
 .ranked-shell::before {
   content: "";
   position: absolute;
@@ -1070,13 +1126,24 @@
 }
 
 /* ===== RM1 Pass 2 — THE DUEL BANNER ========================================
-   The Ranked duelist column, as a hanging academy banner rather than a navy
-   rectangle: a floating dark-navy field that comes to a POINT at the bottom.
+   The Ranked duelist column as a CEREMONIAL STANDARD rather than a navy
+   rectangle: a floating velvet field with chamfered heraldic shoulders, a gold
+   stroke that brightens into a long spear-point, and the role mascot seated on
+   a heraldic roundel as the standard's device.
 
-   NO HANGING HARDWARE. There is no rod, no rings, no cord and no crest. The
-   banner floats on its own shadow, which is the whole of the "hanging" reading
-   the reference asks for — a drawn rod would be furniture the arena has to
-   keep aligned at four breakpoints for no information.
+   RM1 HOTFIX Pass 3 pushed it from "pointed panel" to "banner": the taper went
+   from 2rem to 3.25rem, the head gained its chamfer, the trim went from 2px to
+   3px and now lights toward the tip, and the face gained a centre fold, a
+   drape and a sigil field. NOTHING was added that says anything — no rod, no
+   crest, no slogan, no ornament. Every layer is material, not decoration.
+
+   NO HANGING HARDWARE. There is no rod, no rings and no cord. The banner
+   floats on its own shadow, which is the whole of the "hanging" reading the
+   reference asks for — a drawn rod would be furniture the arena has to keep
+   aligned at four breakpoints for no information. Nor is there an academy
+   crest: the only device on the field is the role mascot the column already
+   had, and the roundel under it is a FIELD for that mascot, not a second
+   emblem competing with it.
 
    ─────────────────────────────────────────────────────────────────────────
    WHY TWO CLIPPED LAYERS AND NOT A BORDER
@@ -1090,8 +1157,9 @@
      * `::after` is the FACE — the navy fill, inset by the edge's width and
        clipped to the same silhouette.
 
-   The result is a stroke of even width along all five sides INCLUDING the two
-   diagonals, which is the one thing the border it replaces could not do.
+   The result is a stroke of even width along all SEVEN sides INCLUDING the
+   two chamfered shoulders and the two diagonals of the point, which is the
+   one thing the border it replaces could not do.
 
    NO OVERFLOW IS RELIED ON. `.ranked-panel` is `overflow: hidden` and this is
    deliberately not that: the banner clips its own decoration by geometry, so
@@ -1110,9 +1178,16 @@
    ========================================================================= */
 .ranked-banner {
   position: relative;
-  --banner-point: 2rem;
+  /* RM1 HOTFIX Pass 3 — THE CEREMONIAL STANDARD.
+     The silhouette is now a banner's, not a panel's with a nick taken out of
+     the bottom: chamfered heraldic shoulders at the head, a long spear-point
+     at the foot, and a gold stroke that brightens all the way down into the
+     tip the way a metal-shod standard does. */
+  --banner-point: 3.25rem;   /* the lower taper — assertive, not a notch */
+  --banner-head: 0.85rem;    /* how far the chamfered top corners cut in */
+  --banner-shoulder: 1.15rem;
   /* The edge's width. One value, read by both layers below. */
-  --banner-edge-w: 2px;
+  --banner-edge-w: 3px;
   --banner-edge: rgba(201,168,76,0.5);
   --banner-glow: rgba(201,168,76,0.22);
   border: 0;
@@ -1124,46 +1199,89 @@
     drop-shadow(0 0 18px var(--banner-glow))
     drop-shadow(0 16px 26px rgba(0,0,0,0.55));
 }
-/* The five-sided silhouette, shared by both layers so the stroke stays even. */
+/* The seven-sided silhouette. Declared ONCE, for both layers together, so the
+   edge and the face can never disagree about the shape — a half-pixel of drift
+   between them prints as a ragged stroke down the taper, which is exactly
+   where the eye is. */
 .ranked-banner::before,
 .ranked-banner::after {
   content: "";
   position: absolute;
   pointer-events: none;
   clip-path: polygon(
-    0 0, 100% 0,
+    0 var(--banner-head),
+    var(--banner-shoulder) 0,
+    calc(100% - var(--banner-shoulder)) 0,
+    100% var(--banner-head),
     100% calc(100% - var(--banner-point)),
     50% 100%,
     0 calc(100% - var(--banner-point))
   );
 }
-/* THE EDGE. */
+/* THE EDGE — gold trim, brightest at the point. */
 .ranked-banner::before {
   inset: 0;
   z-index: 0;
   background: linear-gradient(180deg,
-    var(--banner-edge) 0%,
-    var(--banner-edge) 62%,
-    rgba(201,168,76,0.72) 100%);
+    rgba(232,201,122,0.85) 0%,
+    var(--banner-edge) 14%,
+    var(--banner-edge) 58%,
+    rgba(201,168,76,0.82) 88%,
+    rgba(245,222,160,0.95) 100%);
 }
-/* THE FACE — the dark-navy field, inset so the edge reads as a stroke.
-   The vertical gradient deepens toward the point, which is what stops a tall
-   banner reading as a flat swatch without adding any ornament to it. */
+/* THE FACE — dark-navy velvet, inset so the edge reads as a stroke.
+
+   FOUR LAYERS, IN PAINT ORDER, and each is one cue and no ornament:
+     1. the fold — a soft vertical highlight down the banner's centre line, so
+        the cloth reads as hung from a centre seam rather than printed flat;
+     2. the drape — wide, very low-contrast vertical bands, the shading a
+        hanging tapestry gets from its own weight. Repeating, so it tracks the
+        column's width instead of being right at one and wrong at the next;
+     3. the halo — the cool light the arena throws on the banner's head;
+     4. the field itself, deepening toward the point, which is what stops a
+        tall banner reading as a flat swatch.
+   Nothing here is an emblem, a crest, a rod or a slogan. */
 .ranked-banner::after {
   inset: var(--banner-edge-w);
   z-index: 0;
   background:
+    linear-gradient(90deg,
+      transparent 42%, rgba(150,190,235,0.055) 50%, transparent 58%),
+    repeating-linear-gradient(90deg,
+      rgba(255,255,255,0.018) 0 14%,
+      rgba(0,0,0,0.055) 14% 28%),
+    radial-gradient(75% 40% at 50% 0%, rgba(80,170,220,0.12) 0%, transparent 70%),
     linear-gradient(170deg,
-      rgba(14,26,48,0.99) 0%,
+      rgba(16,29,53,0.99) 0%,
       rgba(8,17,34,0.99) 46%,
-      rgba(4,9,20,1) 100%),
-    radial-gradient(75% 40% at 50% 0%, rgba(80,170,220,0.10) 0%, transparent 70%);
+      rgba(3,7,16,1) 100%);
 }
 /* Content sits above both decorative layers — the same rule `.ranked-panel`
    keeps, for the same reason. */
 .ranked-banner > * {
   position: relative;
   z-index: 1;
+}
+/* THE MASCOT AS SIGIL.
+   A heraldic roundel — a dark charge field inside one thin gold ring — painted
+   BEHIND the role mascot, in the crest's own background layer so it needs no
+   markup and cannot intercept a click or clip the lunge the crest reserves
+   room for. The mascot stays the dominant element; this only gives it a field
+   to sit on, which is the difference between a character on a panel and a
+   device on a standard. Sized and placed in percentages so it tracks the
+   mascot as the column narrows. */
+.ranked-banner [data-testid="role-crest"] {
+  background-repeat: no-repeat;
+  background-position: 50% 62%;
+  background-size: 78% 78%;
+  background-image:
+    radial-gradient(closest-side circle at 50% 50%,
+      transparent 0 88%,
+      var(--banner-sigil-ring, rgba(201,168,76,0.34)) 88% 94%,
+      transparent 94%),
+    radial-gradient(closest-side circle at 50% 50%,
+      rgba(12,24,45,0.62) 0 88%,
+      transparent 88%);
 }
 /* WHICH BANNER THIS IS. The two columns differ in KIND, not in direction, so
    this is keyed off the side and is NOT mirrored (see `isMirroredSide`). */
@@ -1180,15 +1298,22 @@
 .ranked-banner[data-outcome="correct"] {
   --banner-edge: rgba(52,211,153,0.75);
   --banner-glow: rgba(52,211,153,0.26);
+  --banner-sigil-ring: rgba(52,211,153,0.4);
 }
 .ranked-banner[data-outcome="incorrect"] {
   --banner-edge: hsl(var(--destructive) / 0.8);
   --banner-glow: hsl(var(--destructive) / 0.26);
+  --banner-sigil-ring: hsl(var(--destructive) / 0.45);
 }
-/* Narrow viewports stack the columns into short cards; a 2rem taper there is
-   most of the card. The silhouette is kept and its scale is not. */
+/* Narrow viewports stack the columns into short cards; a full-size taper there
+   is most of the card. The silhouette is kept and its scale is not. */
 @media (max-width: 1023px) {
-  .ranked-banner { --banner-point: 1.1rem; }
+  .ranked-banner {
+    --banner-point: 1.35rem;
+    --banner-head: 0.5rem;
+    --banner-shoulder: 0.7rem;
+    --banner-edge-w: 2px;
+  }
 }
 /* The edge colour transition is the banner's only motion. */
 .ranked-banner::before { transition: background 300ms ease; }
@@ -1941,9 +2066,43 @@
   .ranked-question-stage {
     /* 256px — the tallest the 16/7 cinematic band reaches at ANY supported
        width (measured 193px at 1024, 247–256px from 1280 up). Reserving the
-       maximum is what keeps `--qs-media-max` from ever shrinking a band. */
-    --qs-media-h: 16rem;
-    --qs-media-max: 16rem;
+       maximum is what keeps `--qs-media-max` from ever shrinking a band.
+
+       RM1 HOTFIX — THE ONE REGION THAT YIELDS.
+       The reserve is now `min(that maximum, what the viewport can actually
+       pay)`, floored so it can never collapse. Measured at 1280 and up:
+
+         * from ~900px of viewport the shell fitted already, `--qs-media-fit`
+           exceeds 16rem, `min()` picks 16rem, and the stage renders at exactly
+           the height it has always rendered at — the clamp is inert;
+         * from ~760px to ~900px the band gives back precisely the shortfall,
+           and the shell fills the viewport exactly;
+         * below ~760px the floor holds and the page scrolls, which is the
+           browser's job. The arena does not clip a question to avoid it.
+
+       So the clamp only ever engages where the alternative was a scrolling
+       match, never where a taller band was affordable.
+
+       IT IS THE MEDIA BAND AND ONLY THE MEDIA BAND. The prompt and answer
+       reserves are text — squeezing those wraps a question or moves the
+       tablets' origin, which is the coordinate the whole stage exists to pin.
+       The band is art with a declared aspect and an existing cap the band
+       already honours (`--qs-media-max`), so it is the one region that can
+       give height back without changing what anything says. */
+    --qs-media-fit: calc(var(--qs-avail, 100rem)
+      - 2px                                /* .ranked-panel's two borders */
+      - 2.5rem                             /* sm:p-5, top + bottom */
+      - 0.75rem - var(--qs-prompt-h, 0px)  /* gap-3 + the prompt reserve */
+      - 0.75rem - var(--qs-answers-h, 0px) /* gap-3 + the answer reserve */
+    );
+    /* 4.5rem — the floor, and it is a MEASURED one: 72px is the compact
+       plate's own intrinsic height, the shortest band the shipped corpus
+       contains. At the floor the region is exactly the smallest real band, so
+       the reserve has stopped reserving air and has not started cropping
+       anything — a taller band still grows the card, as every reserve here
+       does. This is what lets the shell seat itself at 1024 wide. */
+    --qs-media-h: clamp(4.5rem, var(--qs-media-fit), 16rem);
+    --qs-media-max: clamp(4.5rem, var(--qs-media-fit), 16rem);
     /* 152px — the category line (19px) plus FIVE prompt lines at 18px/1.45.
        Five, not four, because the centre track is at its narrowest here and the
        longest prompt in the playtest bank (202 characters) wraps to five; at
