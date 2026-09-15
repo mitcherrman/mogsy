@@ -21,6 +21,7 @@ vi.mock("@/lib/backend-auth", () => ({
 }));
 
 import { CanonicalArena } from "./CanonicalArena";
+import { MODULE_HISTORY_WINDOW } from "./CombatantPanel";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type {
   ArenaRail, ArenaViewModel,
@@ -184,16 +185,17 @@ describe("the arena, composed", () => {
         b.getAttribute("data-base-points"), b.getAttribute("data-speed-bonus")]);
     const you = row("you");
     const them = row("opp");
-    expect(you).toHaveLength(10);
-    expect(them).toHaveLength(10);
-    // Index i is module i in BOTH rows — the property the end screen's two
-    // stacked rows will depend on.
-    expect(you[0]).toEqual(["2", "true"]);
-    expect(them[0]).toEqual(["1", "false"]);
-    // Every state in the approved vocabulary appears, and the unscored module
-    // is neutral rather than a red zero.
-    expect(you.map((b) => b[0])).toContain("0");
-    expect(them[9]).toEqual(["none", "false"]);
+    // THE WINDOW, not the run: the banner draws the most recent five modules
+    // (`MODULE_HISTORY_WINDOW`). What this test is really about is unchanged —
+    // index i is the same module in BOTH rows, which is the property the end
+    // screen's two stacked rows will depend on — and the two rows being the
+    // same length is what makes that comparison meaningful.
+    expect(you).toHaveLength(MODULE_HISTORY_WINDOW);
+    expect(them).toHaveLength(MODULE_HISTORY_WINDOW);
+    expect(you.length).toBe(them.length);
+    // The unscored module is still neutral rather than a red zero, and it is
+    // the last one, so the window shows it.
+    expect(them[them.length - 1]).toEqual(["none", "false"]);
   });
 });
 

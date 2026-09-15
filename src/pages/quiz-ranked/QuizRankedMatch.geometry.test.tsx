@@ -261,12 +261,16 @@ describe("the live arena's status slots", () => {
     expect(screen.queryByTestId("ranked-submission-status")).toBeNull();
   });
 
-  it("reserves a fixed line box for the transient submission status", async () => {
+  it("keeps the transient submission status out of the flow entirely", async () => {
     await mountArena();
     const status = await screen.findByTestId("submission-status");
-    // Always mounted with a reserved height: the three strings differ enough in
-    // length that swapping them used to change the panel's height.
-    expect(status.className).toContain("min-h-");
+    // Always mounted, and now OUT OF FLOW rather than reserved. The reserve
+    // existed so that swapping the strings could not change the panel's
+    // height; an absolutely positioned line cannot change it either, and costs
+    // nothing while idle — which matters on a shell locked to the viewport,
+    // where an always-empty box is height taken from the question.
+    expect(status.className).toContain("absolute");
+    expect(status.className).not.toContain("min-h-");
     expect(status.className).toContain("line-clamp-2");
   });
 

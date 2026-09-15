@@ -653,9 +653,26 @@ export function CanonicalArena({
                 height, so the control costs the stage no pixels and cannot
                 move an anchor — and it sits as far from the answer grid as the
                 arena allows. */}
-            <div className="flex items-start justify-between gap-3 px-1">
+            {/* THE STATUS LINE COSTS NO IDLE HEIGHT.
+                It used to reserve a two-line box for the whole match so that a
+                transient string could never move the arena when it appeared.
+                That was the right instinct and the wrong price: the reserve was
+                empty for most of every round, and on a shell locked to the
+                viewport an always-empty box is height taken from the question.
+
+                So the line is taken OUT OF FLOW instead. Absolutely positioned
+                inside this row — which is mounted for the whole match anyway,
+                because it carries the quiet control — it cannot move anything
+                when it appears or clears, which is exactly the property the
+                reserve was bought for, at no height at all. The row is now as
+                tall as the control alone.
+
+                `right-28` keeps the text clear of that control rather than
+                printing under it, and `line-clamp-2` still bounds a long error
+                to two lines — it simply bounds an overlay now. */}
+            <div className="relative flex items-start justify-end gap-3 px-1">
               <p role={status?.isError ? "alert" : "status"} data-testid="submission-status"
-                className={`line-clamp-2 min-h-[2rem] text-xs ${
+                className={`pointer-events-none absolute left-0 right-28 top-0 line-clamp-2 text-xs ${
                   status?.isError ? "text-destructive" : "text-muted-foreground"}`}>
                 {status?.text ?? ""}
               </p>

@@ -846,13 +846,26 @@ describe("every term between the card and the timeline is still reserved", () =>
     expect(arena()).toContain("min-h-[4.25rem]");
   });
 
-  it("the status line keeps its reserved line box", () => {
-    // 2rem, not the 2.25rem it reserved before the RM1 hotfix: the box is a
-    // `line-clamp-2` of `text-xs`, which is exactly two 16px lines, so the
-    // extra 4px was air a status string could never reach into. The RESERVE
-    // is what matters and it is still here — the line box cannot change height
-    // when one status replaces another.
-    expect(arena()).toContain("line-clamp-2 min-h-[2rem]");
+  it("the status line charges NO idle height, and still cannot move anything", () => {
+    // THE RESERVE IS GONE, AND SO IS THE REASON FOR IT.
+    // A two-line box was held for the whole match so a transient string could
+    // never move the arena when it appeared. Right instinct, wrong price: the
+    // box was empty for most of every round, and on a shell locked to the
+    // viewport an always-empty box is height taken from the question.
+    //
+    // Out of flow buys the same property for nothing: an absolutely positioned
+    // line cannot move a sibling whether it is empty, one line or two.
+    const src = arena();
+    expect(src).not.toContain("min-h-[2rem]");
+    expect(src).toContain("pointer-events-none absolute left-0 right-28 top-0 line-clamp-2");
+    // The row that carries it is still mounted for the whole match — it holds
+    // the quiet control — so the overlay always has a stable anchor.
+    expect(src).toContain('<div className="relative flex items-start justify-end gap-3 px-1">');
+    // And the idle copy is gone: the tablets are the only interactive thing on
+    // screen, so an instruction to click one was telling a player what they
+    // were already doing.
+    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx"))
+      .not.toContain("Choose an answer to lock it in.");
   });
 
   it("the round-resolution beat still cannot grow the strip", () => {

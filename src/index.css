@@ -1267,9 +1267,20 @@
 .ranked-banner > header { min-height: 1.75rem; }
 /* Points: a 4xl numeral over its label, reserved so a 9 -> 10 cannot move it. */
 .ranked-banner [data-testid^="score-"] { min-height: 3.5rem; }
-/* The bubble strip: label row plus two rows of tokens, which is the most a
-   ten-module match reaches at any supported column width. */
-.ranked-banner [data-testid^="module-history-"] { min-height: 4.5rem; }
+/* The bubble strip: the label row plus TWO token rows, reserved from the first
+   module to the last.
+
+   Two is both the reserve and the ceiling, and that is arithmetic rather than
+   hope. The window is five tokens (see `MODULE_HISTORY_WINDOW`); the narrowest
+   supported cloth interior is ~146px, which seats three 24px tokens and two
+   6px gaps in a row with room over — so five tokens can never need more than
+   two rows at any supported width, and a third row is unreachable rather than
+   merely unlikely.
+
+   Reserved from the start, so the zone is the same height at module 1 and at
+   module 10 and the rows below it never move. On a wide column all five sit in
+   one row and the second row is simply air — which is what a reserve IS. */
+.ranked-banner [data-testid^="module-history-"] { min-height: 4.75rem; }
 /* The verdict and the neutral chips share ONE slot, so settling a round
    replaces the contents and moves nothing. Both are already `min-h-7`; this
    reserves the same box on the wrapper so a wrapped chip set cannot grow it. */

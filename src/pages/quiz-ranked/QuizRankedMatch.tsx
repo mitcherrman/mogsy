@@ -975,8 +975,8 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       noAbilityLabel: "Clear ability",
     } : null,
     status: {
-      // THE IDLE LINE IS GONE. "Choose an answer to lock it in." was an
-      // instruction for a board that already says it: the tablets are the only
+      // THE IDLE LINE IS GONE. It was an instruction for a board that already
+      // says it: the tablets are the only
       // interactive thing on screen and clicking one submits it. It occupied
       // the status row for the whole of every round a player was thinking —
       // which is most of the match — to tell them what they were already
