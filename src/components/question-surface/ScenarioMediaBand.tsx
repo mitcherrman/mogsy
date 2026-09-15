@@ -32,6 +32,32 @@ import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/Scenari
  * 16/6; 16/7 gives the competitive/tutorial variants a noticeably larger, more
  * legible subject without tipping into an over-tall cinematic panel (weak
  * scenarios already go compact).
+ *
+ * QV1 Step 3B — these stay the DEFAULTS, and the Ranked desktop widens `band`
+ * to 16/7.5 through `--qs-band-aspect-band` (see the style object below and
+ * index.css). Widening the ratio is the lever that reaches the art: under the
+ * RM1 viewport lock the media region is the only term that yields, so on most
+ * desktops the band is not as tall as it would like to be — but at 1440x900 it
+ * is the ASPECT that binds, not the region. Measured, the band drew 248px
+ * inside a 256px region, because 567px of track at 16/7 is 248px; raising
+ * `--qs-media-h` there changed nothing at all (248 -> 248), while widening the
+ * ratio takes it to the region's full 256.
+ *
+ * It is also the only media lever that CANNOT reach a sparse card, which is
+ * why it is preferred to a bigger reserve: `CompactScenarioBand` declares no
+ * aspect ratio, so a plate simply fills whatever region it is given and the
+ * override cannot touch it. A global token increase does the opposite —
+ * measured, it grew the sparse plate 20px at 1440 while leaving the cinematic
+ * band exactly where it was.
+ *
+ * Not wider than 7.5: the region caps the band at 16rem on a tall desktop, so
+ * a taller ratio buys nothing there, and on every shorter desktop the region is
+ * already the binding constraint. 7.5 is the value that reaches the cap at
+ * 1440 without asking for height no viewport can give.
+ *
+ * The numbers here are unchanged, so a phone, the admin preview, the
+ * screenshot harness, Mastery and the Broadcast stage all render exactly what
+ * they rendered before.
  */
 export const BAND_ASPECT = { hero: "16 / 9", band: "16 / 7" } as const;
 
@@ -93,7 +119,15 @@ export function ScenarioMediaBand({
         // band has always had.
         style={{
           containerType: "size",
-          aspectRatio: BAND_ASPECT[aspect],
+          // The ratio is a TOKEN with this preset's own value as the fallback,
+          // exactly as `--qs-media-max` below is. That is what lets the Ranked
+          // stage widen the competitive band on a desktop without widening it
+          // on a phone: an inline `aspect-ratio` would outrank any stylesheet
+          // rule, so the override has to arrive through the cascade rather than
+          // fight it. Unset everywhere else — the admin preview, the screenshot
+          // harness, Mastery and every narrow viewport get the preset value and
+          // are byte-identical to what they rendered before.
+          aspectRatio: `var(--qs-band-aspect-${aspect}, ${BAND_ASPECT[aspect]})`,
           // BOUNDED BY ITS BOX, not only by itself. `bandMinHeight` is a
           // legibility floor for a band that would otherwise collapse on a
           // narrow viewport — but as a bare `min-height` it also outranked the
