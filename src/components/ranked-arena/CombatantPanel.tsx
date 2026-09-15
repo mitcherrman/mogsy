@@ -36,6 +36,7 @@ import type {
 } from "@/lib/ranked-core/viewTypes";
 import { ClassIdentity, classIdentityFor } from "./classIdentity";
 import { ModuleBubble } from "./ModuleBubble";
+import { AwardPops, type AwardEvent } from "./AwardPops";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
 
 /**
@@ -675,6 +676,7 @@ export function CombatantPanel({
   showRoundStatus = true,
   progressionEnabled = true,
   presentation = "card",
+  award = null,
   damage,
   outcome = null,
   damageDealt = null,
@@ -701,6 +703,17 @@ export function CombatantPanel({
    * swap, and a caller assembling it by hand is how two columns drift apart.
    */
   presentation?: "card" | "banner";
+  /**
+   * RM1 Pass 2B — this column's payout for the module that just settled, or
+   * null. Banner presentation only; the card draws no pops.
+   *
+   * BOTH columns receive their own, from their own award on the same
+   * settlement, which is the point: a duel in which only the viewer's score
+   * visibly moves reads as a solo run with a scoreboard. Nothing here is
+   * derived — the projection hands over `basePoints` and `speedBonusPoints`
+   * exactly as the backend published them.
+   */
+  award?: AwardEvent | null;
   /** Controllers may hide status chips (e.g. between rounds). */
   showRoundStatus?: boolean;
   /**
@@ -896,6 +909,13 @@ export function CombatantPanel({
               scored={scored} />
           )}
         </div>
+      )}
+      {banner && (
+        // The transient payout layer. Inside the banner (which is
+        // `position: relative`), absolutely positioned, and taking no layout —
+        // it lives in the open middle Pass 2A left between the history strip
+        // and the status row.
+        <AwardPops event={award} playerId={combatant.playerId} mirrored={mirrored} />
       )}
       {progressionEnabled && <ExperienceMeter combatant={combatant} />}
       {/* ONE reserved row: the reveal verdict REPLACES the neutral chips in

@@ -25,6 +25,7 @@ import type { ModuleRenderer, ModuleSegmentActions } from "./modules/types";
 import type { ArenaCardBeat } from "./cardBeat";
 import type { ArenaReportIdentity } from "./reportSnapshot";
 export type { ArenaReportIdentity };
+import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 // Re-exported so a component that renders one part of this view model has a
 // single import home for its types, the way `ResultKind` is re-exported from
 // `RoundResultBeat`.
@@ -87,6 +88,14 @@ export type ArenaRail =
      * it and knows nothing about what either value means.
      */
     presentation?: "card" | "banner";
+    /**
+     * RM1 Pass 2B — this flank's transient payout, or absent/null.
+     *
+     * A settled EVENT and not a value: the id names the round, so the arena
+     * can neither replay it on a re-render nor invent one. Every mode that
+     * passes nothing draws no pops at all.
+     */
+    award?: AwardEvent | null;
   }
   | { kind: "panel"; node: ReactNode };
 
@@ -107,6 +116,28 @@ export interface ArenaHeaderView {
   presenceNote: string | null;
   timer: TimerView | null;
   timerLabel: string;
+  /**
+   * RM1 Pass 2B — THE HEADER'S FOCAL DISPLAY, beyond the clock.
+   *
+   * Both are optional, and a mode that supplies neither gets a header centre
+   * that is only ever a timer — which is what the Daily Challenge and every
+   * dev harness still get.
+   *
+   * `centralResult` is the VIEWER's settled result in two lines. It must be
+   * projected from the REVEAL-GATED award so it is null outside the beat by
+   * construction; an ungated one would decay into a stale result sitting over
+   * a live question.
+   *
+   * `moduleTitle` names the round NOW IN PLAY, and `moduleEventId` is the
+   * round it names — the face plays once per new id, which is what makes a
+   * poll, a re-render or a reconnect unable to replay it. There is no way to
+   * name the NEXT round before it opens: the backend publishes nothing about
+   * an ungenerated question, which is the same fact that makes every future
+   * node on the round rail neutral.
+   */
+  centralResult?: { verdict: string; points: string } | null;
+  moduleTitle?: string | null;
+  moduleEventId?: number | null;
   /**
    * ARENA1 Step 5 — OPTIONAL replacements for the clock's two prose lines.
    * Absent = Ranked's own wording, which is what every existing caller gets.

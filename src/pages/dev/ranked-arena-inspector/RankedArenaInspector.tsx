@@ -15,6 +15,8 @@ import { useState } from "react";
 import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
+import { CentralStage } from "@/components/ranked-arena/CentralStage";
+import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { DiscoveryReveal } from "@/components/ranked-arena/DiscoveryReveal";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
@@ -210,6 +212,54 @@ function BannerBench({
       <CombatantPanel combatant={scoredOpponent(11)} progressionEnabled={false}
         presentation="banner" damage={OPPONENT_HISTORY}
         outcome={outcome} feedback={feedback} />
+    </div>
+  );
+}
+
+/**
+ * RM1 Pass 2B — THE HEADER'S FOCAL DISPLAY, at each of its three faces, and
+ * the banner payouts that run alongside the settled one.
+ *
+ * The faces are driven from static props rather than from the sequence, so a
+ * reviewer can hold each one still and look at it; the sequence itself is
+ * fixed by `CentralStage.test`.
+ */
+function CentralStageBench({
+  result = null, moduleTitle = null, moduleEventId = null, award = null,
+}: {
+  result?: { verdict: string; points: string } | null;
+  moduleTitle?: string | null;
+  moduleEventId?: number | null;
+  award?: AwardEvent | null;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap
+        items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
+        <div className="flex min-w-0 flex-col justify-center">
+          <div className="ranked-eyebrow">Ranked Duel · vs Bot</div>
+          <p className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+            Unrated · Opponent connected
+          </p>
+        </div>
+        <div className="order-last flex w-full justify-center sm:order-none sm:w-auto sm:flex-1">
+          <CentralStage timer={TIMER({ remainingSeconds: 8, durationSeconds: 30 })}
+            result={result} moduleTitle={moduleTitle} moduleEventId={moduleEventId} />
+        </div>
+        <div className="flex min-w-0 flex-col items-end justify-center gap-0.5">
+          <h3 className="ranked-title text-xs font-bold uppercase tracking-[0.16em] leading-tight">
+            Module 6 / 10
+          </h3>
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:min-h-[30rem] lg:items-stretch">
+        <CombatantPanel combatant={scoredPlayer(14)} progressionEnabled={false}
+          presentation="banner" damage={VIEWER_HISTORY} award={award} />
+        <CombatantPanel combatant={scoredOpponent(11)} progressionEnabled={false}
+          presentation="banner" damage={OPPONENT_HISTORY}
+          award={award ? { ...award, id: `${award.id}:opp`, basePoints: 3,
+            speedBonusPoints: 0 } : null} />
+      </div>
     </div>
   );
 }
@@ -1304,6 +1354,17 @@ const STATES: InspectorState[] = [
   { key: "rm1-banner-incorrect", label: "RM1 — banners (settled +0)",
     render: () => (
       <BannerBench outcome="incorrect" feedback={pointsFeedback("INCORRECT", 0, null, 14)} />
+    ) },
+  { key: "rm1-header-timer", label: "RM1 — header (timer face)",
+    render: () => <CentralStageBench /> },
+  { key: "rm1-header-result", label: "RM1 — header (result + payouts)",
+    render: () => (
+      <CentralStageBench result={{ verdict: "CORRECT", points: "+2 POINTS" }}
+        award={{ id: `rm1-bench-${Date.now()}`, basePoints: 2, speedBonusPoints: 1 }} />
+    ) },
+  { key: "rm1-header-module", label: "RM1 — header (next module)",
+    render: () => (
+      <CentralStageBench moduleTitle="Champion Abilities" moduleEventId={Date.now()} />
     ) },
   { key: "answer-unselected", label: "Answer — unselected",
     render: () => (

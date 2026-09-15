@@ -4,8 +4,9 @@
 - **Pass 1 — module scoring/history plumbing:** COMPLETE. Branch `rm1/pass1-module-history`,
   worktree `/Users/macmoney/mogsy-wt-rm1-pass1`, based on `origin/main` (`a3a35921`). Uncommitted.
 - **Pass 2A — duel banner + bubble integration:** COMPLETE, committed `8144d5c0`, visually verified.
-- **Pass 2B — Match Header, central timer/result, score animations, Meta Reflex `+1`:** NOT STARTED.
-  Paused for review of 2A, as instructed.
+- **Pass 2B — Match Header, central timer/result, score animations, Meta Reflex `+1`:** COMPLETE.
+  Paused for review, as instructed.
+- **ES1 end-screen bubble comparison:** NOT STARTED, deliberately.
 
 Audited: `mogsy` frontend. Backend repo `League_Combat_Simulator` inspected for payload
 availability only — **no backend change was made or is needed.**
@@ -341,3 +342,168 @@ the primary checkout, never the worktree, so a worktree-local config is silently
 
 Not in scope, still: the ES1 end-screen comparison UI. `mogsy-es1` is a separate checkout
 (`es1-isolated-fe`), so `MatchOverFrame` / `game-results` remain the conflict surface.
+
+
+---
+
+# Pass 2B — Match Header + result/score feedback (COMPLETE)
+
+## Files changed
+
+| File | Change |
+| --- | --- |
+| `src/lib/ranked-core/centralStage.ts` | **NEW.** `centralResult`, `centralCardResult`, `liveModuleTitle`, `MODULE_TITLE_MS`. Pure projections. |
+| `src/components/ranked-arena/CentralStage.tsx` | **NEW.** The header's focal display: clock → result → next module → clock. |
+| `src/components/ranked-arena/AwardPops.tsx` | **NEW.** Transient `+base` then `+bonus` payouts, with the replay guard. |
+| `src/components/ranked-arena/CanonicalArena.tsx` | Header rebuilt into three zones; relays `award` and `presentation`; plate demoted to the right. |
+| `src/components/ranked-arena/CombatantPanel.tsx` | Takes `award`; mounts the payout layer inside the banner. |
+| `src/lib/ranked-core/arenaView.ts` | `ArenaHeaderView` gains `centralResult` / `moduleTitle` / `moduleEventId`; `ArenaRail` gains `award`. |
+| `src/pages/quiz-ranked/QuizRankedMatch.tsx` | Projects both; hoists `cardBeat`; the Meta Reflex reconciliation. |
+| `src/index.css` | Stage-flip and award-pop keyframes (+ reduced-motion); removed the header-plate timer `font-size`. |
+| `RankedArenaInspector.tsx` | Three header benches. |
+| **Tests** | New: `CentralStage.test.tsx` (10), `AwardPops.test.tsx` (8), `centralStage.test.ts` (13), `QuizRankedMatch.rm1Feedback.test.tsx` (15). Updated: 2 constant pins (`min-h` 3.5→4.25rem). |
+
+## Header hierarchy, as built
+
+```
+RANKED DUEL · VS BOT                0:08                 MODULE 6 / 10
+UNRATED · OPPONENT CONNECTED      of 0:30                [block scoreline]
+                                                         [playtest note, demoted]
+```
+
+Playtest/placeholder text dropped to 9px at 50% muted. The presence line became a small
+uppercase label. `MODULE X / 10` dropped from an 18px `h3` to a 12px tracked label. The clock
+went from 24px in the strip's corner to 36–60px in the centre. Below `sm` the strip wraps and
+the display takes its own centred line.
+
+## The state sequence
+
+`timer → result → next module title → timer`, and it reuses existing timing:
+
+- **result** is non-null for exactly `revealHold` — the mode's own window, already sized and
+  already lengthened for a level-up or evidence. `CentralStage` neither starts nor ends it.
+- **module title** is the one beat with no existing window: one `setTimeout`, `MODULE_TITLE_MS`
+  = 900ms, edge-triggered on the round number and recorded in a **ref**.
+- **timer** is the backend's clock, untouched.
+
+There is no `LOCKED IN` face — locking is a fact about a player and is stated by the columns'
+answer chips.
+
+**The next module cannot be named before it opens.** The backend publishes nothing about an
+ungenerated question (the same fact that makes every future node on the round rail neutral), so
+this face runs as the new round *arrives*. When a round publishes no topic the face is skipped
+entirely rather than printing "Question".
+
+## Double-count safety
+
+Every pop carries an id naming the settled **event**: `award:<playerId>:<round>` or
+`card:<round>:<index>`. A round and a card each settle once, so both are stable and monotonic.
+Played ids live in a **ref**, so:
+
+- an ordinary poll re-render hands the same award back and plays nothing;
+- a **reconnect/backfill** never reaches the layer at all — it sets no `lastResolved` and starts
+  no reveal hold, which is the same property that stops it replaying a reveal. Tested: three
+  backfilled modules produce three history bubbles and **zero** payouts, with the centre on a
+  clock rather than a recovered result.
+
+## Meta Reflex — the audit, and what it permits
+
+**Audited before implementing, as instructed.** On `origin/master`:
+
+- `ranked_public/segment_flow.py` feeds the engine only at block **resolution**, so neither
+  player's authoritative score moves mid-block. It is correct throughout and simply does not
+  change until the module settles.
+- `SegmentStateView.ownCardReveals` gives server-decided per-card outcomes **for the viewer only**.
+  The opponent publishes `opponentChallengesCompleted` / `opponentFinished` — progress, never
+  correctness.
+- `ranked_modules/points.py` `slice_points` is `points = correct_count` (+1 only when perfect
+  AND strictly first), so one correct card is worth exactly one base point.
+
+**Implemented:** the viewer gets a `+1` per correct card from `ownCardReveals`. At settlement the
+viewer's base pop is **suppressed** — five `+1`s already paid it — and only the bonus pops. The
+suppression is **reconciled, not assumed**: it applies only when the number of cards this client
+actually popped equals the base the backend published. On a mismatch (reconnect mid-block, or
+scoring this client does not model) the authoritative base pops instead. No path shows a wrong
+number; no path shows one twice.
+
+**Limitations, reported rather than faked:**
+
+1. **The opponent gets no per-card `+1`.** Per-card correctness is not published for the other
+   seat, and drawing it would mean inventing the one fact the backend withholds. The opponent
+   receives its full base + bonus at settlement.
+2. **Neither column's score digit moves mid-block** — the backend does not move it. The score
+   jumps by the whole base at settlement, where the existing `.ranked-score-bump` plays. This is
+   correct, not a gap.
+3. The per-card `+1` figure is the module's own rule, not a per-card number the backend stated —
+   the same basis `CardResultBeat` has always used for this slot.
+
+## Two judgment calls you should overrule if you disagree
+
+1. **The persistent result plate was demoted, not deleted.** Removing it broke 27 tests, and the
+   churn was the signal: POINT1 deliberately made the plate *persist* after its beat as the
+   previous-module summary, so a player who looked away still sees what the last module was
+   worth. A display that hands the centre back to the clock cannot be that. So the plate moved
+   to the strip's right at small/quiet weight (the record), and the centre carries the loud,
+   momentary headline. During the beat the same fact appears twice at two weights; a second
+   later only the quiet one remains. Say the word and I'll delete it outright.
+2. **`TIMED OUT`, not `TIME EXPIRED`.** The brief writes `TIME EXPIRED`; the arena's rails and
+   plate have said `TIMED OUT` since the verdict row was written. One word for one state beats
+   matching the brief's example, so the existing vocabulary stands. Changing it is a one-line
+   change in `centralStage.ts` **and** `pointsFeedback.ts` together — never one of them.
+
+## Two things this pass caught that would have shipped silently
+
+- **The Daily Challenge's solo-run timer copy.** It overrides Ranked's "of M:SS **shared round**"
+  and "waiting for the round to resolve" through `timerNotes`, because it has no opponent. The
+  first `CentralStage` ignored them — it would have put an opponent back on the Daily's screen.
+  Now honoured; its own test caught it.
+- **A stylesheet rule deciding the clock's size.** `.ranked-academy .ranked-header-plate
+  [data-testid="timer-value"] { font-size: 1.625rem }` was written when the clock was a small
+  instrument at the end of the strip, and would have silently overridden every responsive step of
+  the new focal display. Size now belongs to the component; colour stays in the stylesheet.
+
+`timer-display` / `timer-value` moved to `CentralStage` with the role — the Daily finds its
+window by them.
+
+## Verification matrix
+
+| Case | Covered by |
+| --- | --- |
+| standard correct base award | `rm1Feedback` › CORRECT / +2 POINTS |
+| incorrect / `+0` | `rm1Feedback` › INCORRECT / +0 POINTS + `+0` pop |
+| base + speed bonus | `AwardPops` › separate pops, never summed |
+| opponent receives independent award | `rm1Feedback` › both columns paid |
+| asymmetric viewer/opponent awards | `rm1Feedback` › viewer's OWN result; base 2/1 vs 3/0 |
+| timeout | `rm1Feedback` › TIMED OUT / +0 POINTS |
+| next-module-title transition | `CentralStage` › runs after the result, once per round |
+| timer restarting for the following module | `rm1Feedback` › returns to a RUNNING clock |
+| Meta Reflex path | `rm1Feedback` › 4/5 and 5/5 + bonus + final bubble at base total |
+| Bot / unrated match | `rm1Feedback` › header names it, both columns paid |
+| reconnect / backfill | `rm1Feedback` › 3 backfilled modules, 0 payouts |
+| re-render | `AwardPops` › same event re-delivered 5×, silent |
+| responsive | Verified at 1500px and 375px in the inspector |
+
+## Test results — Pass 2B
+
+| Suite | Result |
+| --- | --- |
+| `CentralStage.test.tsx` | 10 passed |
+| `AwardPops.test.tsx` | 8 passed |
+| `centralStage.test.ts` | 13 passed |
+| `QuizRankedMatch.rm1Feedback.test.tsx` | 15 passed |
+| Ranked + Daily + game-results + all dev harnesses + playtest host | **173 files / 2612 passed**, 4 skipped |
+| `tsc --noEmit` | no new errors |
+
+The one failure in that run is the pre-existing `origin/main` one, unrelated and confirmed by
+stashing: `LobbyPreviewPage.test.tsx` › "is imported by the preview page ALONE".
+
+## Visual QA
+
+`/dev/ranked-arena-inspector` → `RM1 — header (timer face)` / `(result + payouts)` /
+`(next module)`, plus the three Pass 2A banner states. Dev server `rm1-banner-fe`, port 5998.
+
+## Next — ES1 (not started)
+
+The end-screen comparison: viewer's ten bubbles over the opponent's ten, from
+`projectRoundHistory` (proved feasible in Pass 1). `mogsy-es1` is a separate checkout
+(`es1-isolated-fe`), so `MatchOverFrame` and `game-results` remain the conflict surface.
