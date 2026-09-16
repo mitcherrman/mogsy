@@ -16,12 +16,22 @@
  * ABSOLUTELY positioned inside it, which is what lets the row collapse
  * completely instead of merely becoming short.
  *
- * WHERE THE LINK WENT. Far top-left, beside the Mogzy hat — the corner a
- * player already looks at to leave. `GlobalHud`'s hat chip is a 44px fixed
- * element at x 12–56, so `left-14` seats the link just clear of it, on the
- * same baseline, at the same quiet weight it always had. It is deliberately
- * NOT put inside `GlobalHud`: that is global chrome on every route, and a
- * Ranked-only link does not belong in it.
+ * WHERE THE LINK WENT, AND WHY THE FIRST ATTEMPT MISSED.
+ * It was `absolute lg:left-14` — 56px from the left edge of `ArenaShell`. But
+ * the shell is `mx-auto` with a `max-w`, so its left edge is NOT the viewport's:
+ * at 1920 the shell spans x 240..1680, and 56px inside it put the link at
+ * x ~296 — a quarter of the screen away from the hat it was supposed to sit
+ * beside. The offset was right and the coordinate space was wrong.
+ *
+ * So it is `fixed` now, in the viewport's own space, where the hat lives.
+ * `GlobalHud` lays its bar out at `h-[var(--app-header-h)]` with `pl-2 sm:pl-3`
+ * and the hat chip is `h-9 w-9` — so the hat occupies x 8..44, or x 12..48 from
+ * `sm` up. `left-14` (56px) clears the wider of those by 8px at every width,
+ * and matching the bar's height with `items-center` puts the link on the hat's
+ * own baseline rather than guessing a top offset.
+ *
+ * It is deliberately NOT put inside `GlobalHud`: that is global chrome on every
+ * route, and a Ranked-only link does not belong in it.
  */
 import { Link } from "react-router-dom";
 
@@ -32,17 +42,15 @@ export function RankedRouteHeader({ size = "default" }:
   void size;
   return (
     // `h-0` and not "no element": the shell gives its header slot a place in
-    // the flex column, and a zero-height box there collapses the row while
-    // keeping the link's positioning context predictable.
-    <div className="relative h-0 shrink-0">
+    // the flex column, and a zero-height box there collapses the row. The link
+    // itself is `fixed`, so it takes no part in layout at all.
+    <div className="h-0 shrink-0">
       <Link
         to="/quiz"
-        // Below `lg` the app shell's own header band is still reserved and the
-        // hat sits inside it, so the link keeps a normal inline position there
-        // rather than overlapping chrome it cannot measure.
-        className="absolute left-0 top-0 z-10 text-xs text-muted-foreground/70
-          underline underline-offset-2 transition-colors hover:text-muted-foreground
-          lg:left-14 lg:-top-0.5"
+        data-testid="ranked-back-to-quiz"
+        className="fixed left-14 top-0 z-40 flex h-[var(--app-header-h)] items-center
+          text-xs text-muted-foreground/70 underline underline-offset-2
+          transition-colors hover:text-muted-foreground"
       >
         Back to Quiz
       </Link>

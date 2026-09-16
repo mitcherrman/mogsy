@@ -269,8 +269,16 @@ describe("the duel banner is mounted from the approved asset", () => {
     ] as const) {
       expect(rules, `${zone} zone is not reserved`).toMatch(rule);
     }
-    // The verdict and the neutral chips share ONE reserved slot.
-    expect(rules).toMatch(/\[data-testid\^="outcome-"\] \{ min-height: 2\.25rem/);
+    // The verdict and the neutral chips share ONE slot — and it is now a
+    // FIXED bubble rather than a reserved minimum: one width, one height, one
+    // radius, centred, with only the icon, the words and the accent changing.
+    // The pill used to be as wide as whichever string was current, so the
+    // bottom of the column changed shape three times a module.
+    expect(rules).toMatch(/width:\s*10\.5rem/);
+    expect(rules).toMatch(/height:\s*2\.25rem/);
+    expect(rules).toMatch(/border-radius:\s*9999px/);
+    expect(rules).toMatch(/margin-inline:\s*auto/);
+    expect(rules).toMatch(/overflow:\s*hidden/);
   });
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -381,6 +381,77 @@ describe("the Ranked shell is locked to the viewport, not estimated", () => {
 // ───────────────────────────────────────────────────────────────────────────
 // RM1 — STATE MAY ANIMATE, GEOMETRY MAY NOT MOVE.
 // ───────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// RM1 — THE MATCH HEADER'S HIERARCHY, AND ITS FIXED WINDOWS.
+// ───────────────────────────────────────────────────────────────────────────
+describe("the Match Header says three things on the left and one on the right", () => {
+  const arenaSrc = () => read("components/ranked-arena/CanonicalArena.tsx");
+
+  it("has retired OPPONENT CONNECTED entirely", () => {
+    // The header's one permanently-true line: nothing a player could act on,
+    // present for the whole of every healthy match. The ABNORMAL presence
+    // states survive, because a duel whose opponent has dropped is a different
+    // match and the player has to be told.
+    const views = read("pages/quiz-ranked/rankedViews.ts");
+    expect(views).not.toContain('"Opponent connected"');
+    expect(views).toContain('case "connected": return null;');
+    expect(views).toContain('"Opponent disconnected"');
+    expect(views).toContain('"Opponent forfeited"');
+  });
+
+  it("stacks mode, opponent and progress as the left block", () => {
+    const src = arenaSrc();
+    const left = src.slice(src.indexOf("LEFT — the match's own hierarchy"),
+      src.indexOf("CENTRE — the display"));
+    // Three lines, in this order: what this is, who it is against, how far in.
+    expect(left.indexOf("header.eyebrow")).toBeLessThan(left.indexOf("ranked-presence"));
+    expect(left.indexOf("ranked-presence")).toBeLessThan(left.indexOf("ranked-header-title"));
+    // And the mode's name stopped carrying the opponent on its back.
+    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain('eyebrow: "Ranked Duel"');
+    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain("opponentVersusLabel");
+  });
+
+  it("drops the word MODULE from the progress figure", () => {
+    // Third line of a block whose first two lines are the mode and the
+    // opponent — the position already says what the number is, so the word was
+    // a label on a label.
+    const views = read("pages/quiz-ranked/rankedViews.ts");
+    expect(views).toContain("`${scoring.moduleNumber} / ${scoring.matchLength}`");
+    expect(views).not.toContain("`Module ${scoring.moduleNumber}");
+  });
+
+  it("owns progress in ONE place — the right side no longer repeats it", () => {
+    const src = arenaSrc();
+    const right = src.slice(src.indexOf("RIGHT — the previous module's record"));
+    expect(right).not.toContain("header.title");
+    // Exactly one rendering of the figure in the whole header.
+    expect(src.match(/ranked-header-title/g) ?? []).toHaveLength(1);
+  });
+
+  it("gives the previous-result record a FIXED window", () => {
+    // "TIMED OUT +0 | R1" and "CORRECT +2 | R2" are different lengths, and a
+    // box sized to whichever was current nudged the strip's right end on every
+    // settlement.
+    const src = arenaSrc();
+    expect(src).toContain('data-testid="ranked-record-window"');
+    expect(src).toContain('className="flex h-10 w-[11.5rem] shrink-0 items-center justify-center');
+    expect(src).toContain("min-[1500px]:w-[13rem]");
+  });
+
+  it("keeps the plate's depth paint-only, so the strip's geometry is untouched", () => {
+    const css = stripComments(CSS);
+    const plate = /\.ranked-academy \.ranked-header-plate \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    // Shading, and nothing that occupies space: no height, no padding, no
+    // margin, no border-width — the strip is the same box it was.
+    expect(plate).toMatch(/background-image:/);
+    expect(plate).toMatch(/box-shadow:/);
+    expect(plate).not.toMatch(/(^|[\s;])height:/);
+    expect(plate).not.toMatch(/(^|[\s;])padding/);
+    expect(plate).not.toMatch(/(^|[\s;])margin/);
+    expect(plate).not.toMatch(/border-width/);
+  });
+});
+
 describe("transient state cannot change Match Shell geometry", () => {
   it("has retired the PLAYTEST · PLACEHOLDER notice from Ranked", () => {
     const mode = read("pages/quiz-ranked/QuizRankedMatch.tsx");

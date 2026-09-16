@@ -49,7 +49,6 @@
  * about the match's clock.
  */
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import type { CentralStageView } from "@/lib/ranked-core/centralStage";
 import type { TimerView } from "@/lib/ranked-core/viewTypes";
@@ -150,31 +149,34 @@ export function CentralStage({
       className="relative flex h-[4.25rem] min-w-[9rem] flex-col items-center
         justify-center text-center sm:min-w-[11rem] min-[1500px]:h-[5rem]"
     >
-      {/* `key` on the FACE is the whole of the turn: a new face remounts this
-          node, which replays the one-shot flip keyframes in
-          `.ranked-stage-face`. No transition group, no animation engine, and
-          nothing that can be left half-played by a state change mid-flight. */}
-      {/* THE RESERVED FACE BOX — a FIXED height, not a minimum.
-          Every face is a different shape of text: the clock is one 48px line
-          (60px at 1500), the result is a 30px verdict stacked on a 20px award,
-          the module name is one 20px line. Under a `min-height` the tallest of
-          those set the strip's height and the others did not, so the header
-          grew ~4px the instant a round settled and shrank again when the clock
-          came back — the "timer -> result -> title -> timer" jitter, exactly.
+      {/* ONE WINDOW, THREE FACES, AND THE SAME TWO LINES EACH.
+          The faces used to differ in SHAPE and not only in content: the clock
+          was one 48px line with a small note hung underneath the face box, the
+          result was a 30px verdict over a 20px award INSIDE it, and the module
+          name was a single 20px line with nothing beneath it at all. So the
+          display's visual mass collapsed and expanded as it turned — which is
+          what read as the header shifting, even though its reserved height
+          never moved.
 
-          So the box is `h-`, sized to the tallest face at each step, and every
-          face centres inside it. Turning a face can no longer move the header,
-          the arena grid below it, or anything in either. The `key` still
-          remounts the face to replay `.ranked-stage-face`'s flip keyframes —
-          which are transform and opacity, and do not lay out. */}
+          Now every face is a PRIMARY line and a SECONDARY line in two fixed
+          sub-slots. The timer keeps the largest primary, because it is still
+          the most important state; the other two are close enough in mass that
+          turning between them is a change of content and not of size.
+
+          `key` on the face is the whole of the turn: a new face remounts this
+          node, which replays the one-shot flip keyframes in
+          `.ranked-stage-face`. Those are transform and opacity, and do not lay
+          out — so the animation happens strictly inside this window. */}
       <div key={stage.kind === "result" ? `result:${stage.verdict}` : stage.kind}
-        className="ranked-stage-face flex h-[3.25rem] flex-col items-center
-          justify-center leading-none min-[1500px]:h-[4rem]">
-        {stage.kind === "timer" && timer && (
-          <>
+        className="ranked-stage-face flex h-full w-full flex-col items-center
+          justify-center leading-none">
+        {/* PRIMARY — fixed height at every breakpoint, so the tallest glyph any
+            face can produce still cannot grow it. */}
+        <div className="flex h-12 w-full items-center justify-center
+          min-[1500px]:h-[3.75rem]">
+          {stage.kind === "timer" && timer && (
             <div
               // `aria-live="off"`: ticking digits would flood a screen reader.
-              // The same rule `TimerDisplay` has always applied.
               aria-live="off"
               aria-label={`Time remaining ${format(timer.remainingSeconds)}`}
               data-testid="timer-value"
@@ -186,54 +188,59 @@ export function CentralStage({
             >
               {format(timer.remainingSeconds)}
             </div>
-            {timer.paused && (
-              <Badge variant="secondary" data-testid="timer-paused"
-                className="mt-1">Paused</Badge>
-            )}
-          </>
-        )}
-        {stage.kind === "result" && (
-          // `role="status"` announces the result once, as one sentence: the
-          // verdict and the award are one fact.
-          //
-          // DELIBERATELY NOT `ranked-last-result`. That id names the strip's
-          // PERSISTENT summary — the plate that stays after its beat, on
-          // purpose, so a player who looked away still sees what the last
-          // module was worth (POINT1). This display is the opposite kind of
-          // thing: it is the loud, momentary headline, and it hands the centre
-          // back to the clock. Two surfaces, two lifetimes, two ids.
-          <div role="status" data-testid="central-result"
-            aria-label={`${stage.verdict}, ${stage.points}`}
-            className="flex flex-col items-center gap-0.5">
+          )}
+          {stage.kind === "result" && (
             <span aria-hidden data-testid="central-result-verdict"
-              className="text-2xl font-black uppercase tracking-[0.12em] sm:text-3xl">
+              className="truncate text-2xl font-black uppercase tracking-[0.12em]
+                sm:text-3xl min-[1500px]:text-4xl">
               {stage.verdict}
             </span>
-            <span aria-hidden data-testid="central-result-points"
-              className="text-sm font-black tabular-nums tracking-[0.16em] text-[#e8c97a]">
-              {stage.points}
+          )}
+          {stage.kind === "module" && (
+            <span aria-hidden data-testid="central-module-title"
+              className="truncate text-2xl font-black uppercase tracking-[0.14em]
+                text-[#e8c97a] sm:text-3xl min-[1500px]:text-4xl">
+              {stage.title}
             </span>
-          </div>
-        )}
-        {stage.kind === "module" && (
-          <div data-testid="central-module-title"
-            className="text-lg font-black uppercase tracking-[0.18em] text-[#e8c97a]
-              sm:text-xl">
-            {stage.title}
-          </div>
-        )}
-      </div>
-      {/* The clock's prose lines, and the ONLY thing under the display that
-          persists. Reserved height so a face change cannot move it, and it is
-          hidden on every face but the clock — a duration is a fact about a
-          timer and says nothing about a result. */}
-      <div className="mt-0.5 min-h-[0.875rem] text-[10px] leading-tight tabular-nums
-        text-muted-foreground">
-        {stage.kind === "timer" && timer && (expired
-          ? <span role="status" data-testid="central-timer-expired">{expiredNote}</span>
-          : durationNote
-            ? durationNote(format(timer.durationSeconds))
-            : `of ${format(timer.durationSeconds)} shared round`)}
+          )}
+        </div>
+        {/* SECONDARY — the same reserved strip on every face, so the line under
+            the primary is always in the same place whatever it says. */}
+        <div className="flex h-5 w-full items-center justify-center text-center">
+          {stage.kind === "timer" && timer && (
+            <span className="text-[10px] leading-tight tabular-nums text-muted-foreground">
+              {/* PAUSED moved into this slot from a Badge that used to sit
+                  UNDER the clock. The badge was the last thing in the display
+                  that added its own height when it appeared — a paused round
+                  grew the face by a row. It is a state of the clock, so it
+                  belongs on the clock's own line. */}
+              {timer.paused
+                ? <span data-testid="timer-paused">Paused</span>
+                : expired
+                ? <span role="status" data-testid="central-timer-expired">{expiredNote}</span>
+                : durationNote
+                  ? durationNote(format(timer.durationSeconds))
+                  : `of ${format(timer.durationSeconds)} shared round`}
+            </span>
+          )}
+          {stage.kind === "result" && (
+            // `role="status"` announces the result once, as one sentence: the
+            // verdict and the award are one fact. It carries the accessible
+            // name for BOTH lines, which is why the primary is aria-hidden.
+            <span role="status" data-testid="central-result"
+              aria-label={`${stage.verdict}, ${stage.points}`}
+              className="text-xs font-black tabular-nums tracking-[0.16em] text-[#e8c97a]">
+              <span aria-hidden data-testid="central-result-points">{stage.points}</span>
+            </span>
+          )}
+          {stage.kind === "module" && (
+            <span aria-hidden
+              className="text-[10px] font-bold uppercase tracking-[0.2em]
+                text-muted-foreground/70">
+              Next module
+            </span>
+          )}
+        </div>
       </div>
     </section>
   );

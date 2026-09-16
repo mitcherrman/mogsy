@@ -119,7 +119,7 @@ describe("a points match presents a SCORE", () => {
     await waitFor(() =>
       expect(screen.getByTestId("score-userA")).toHaveAttribute("data-score", "0"));
     expect(screen.getByTestId("score-userB")).toHaveAttribute("data-score", "0");
-    expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("Module 1 / 10");
+    expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("1 / 10");
   });
 
   it("shows both cumulative scores mid-match, labelled POINTS", async () => {
@@ -135,7 +135,7 @@ describe("a points match presents a SCORE", () => {
       .toBeInTheDocument();
     expect(within(screen.getByTestId("score-userB")).getByText("POINTS"))
       .toBeInTheDocument();
-    expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("Module 5 / 10");
+    expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("5 / 10");
   });
 
   it("reaches Module 10 / 10 without an off-by-one", async () => {
@@ -145,7 +145,7 @@ describe("a points match presents a SCORE", () => {
     };
     await mount();
     await waitFor(() =>
-      expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("Module 10 / 10"));
+      expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("10 / 10"));
     // A tie reads as a tie; nothing in the arena decides anything from it.
     expect(screen.getByTestId("score-userA")).toHaveTextContent("24");
     expect(screen.getByTestId("score-userB")).toHaveTextContent("24");
