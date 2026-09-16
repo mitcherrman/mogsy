@@ -293,7 +293,27 @@ export function CanonicalArena({
           `min-h` still reserves the tallest state, so nothing in the arena
           below moves when a face turns. */}
       <section data-testid="ranked-header"
-        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1">
+        // REGISTERED TO THE ARENA, NOT MERELY DISTRIBUTED ACROSS IT.
+        // The strip used to be `justify-between` over three flex children,
+        // which spreads them to the strip's ends and puts nothing in
+        // particular above anything in particular. The arena below is not
+        // thirds — it is 23 / 54 / 23 — so "spread evenly" and "lines up with
+        // the columns" were never going to be the same arrangement, and the
+        // header read as floating over the board rather than belonging to it.
+        //
+        // From `lg` the strip is THE SAME GRID as the arena: the identical
+        // track expression and the identical gap, so each zone sits in the
+        // track its object occupies. The one thing that has to go with it is
+        // the strip's own `px-4` — horizontal padding here would inset the
+        // tracks relative to the arena's and put every zone a few pixels off
+        // the thing it is supposed to be over. The zones are centred inside
+        // their tracks instead, which is what keeps content off the edges.
+        //
+        // Below `lg` the arena stacks and there is nothing to register to, so
+        // the wrapping flex row it has always been stays exactly as it was.
+        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1
+          lg:grid lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:gap-3 lg:px-0
+          min-[1500px]:gap-4">
         {/* LEFT — who this is and what kind of match it is. Both quiet. */}
         {/* LEFT — the match's own hierarchy, three quiet lines.
             WHAT this is, WHO it is against, HOW FAR through it is. Each was
@@ -308,7 +328,9 @@ export function CanonicalArena({
             Three lines at 10-11px cost less height than the two-line block
             they replace plus the plate they freed on the right, so the strip's
             reserved height is unchanged. */}
-        <div className="flex min-w-0 flex-col justify-center gap-px">
+        {/* `justify-self-center` centres the BLOCK over the left Player
+            Column; the lines inside it stay left-aligned to each other. */}
+        <div className="flex min-w-0 flex-col justify-center gap-px lg:justify-self-center">
           <div className="ranked-eyebrow">{header.eyebrow}</div>
           {header.presenceNote && (
             <p data-testid="ranked-presence"
@@ -328,7 +350,11 @@ export function CanonicalArena({
         {/* CENTRE — the display. `order` and not a grid: the strip wraps at
             narrow widths, and on a wrapped strip the display belongs on its
             own line between the two labels rather than squeezed beside one. */}
-        <div className="order-last flex w-full justify-center sm:order-none sm:w-auto sm:flex-1">
+        {/* The centre track is the Question Stage's, so the display is over
+            the board it times. `lg:flex-none` retires the flex-basis the old
+            distributed row needed — a grid track owns the width now. */}
+        <div className="order-last flex w-full justify-center sm:order-none sm:w-auto sm:flex-1
+          lg:order-none lg:w-full lg:flex-none lg:justify-self-center">
           {header.timer || header.centralResult ? (
             <CentralStage timer={header.timer} label={header.timerLabel}
               // Absent on every Ranked and Tutorial clock, which is why both
@@ -361,10 +387,11 @@ export function CanonicalArena({
             sized to whichever was current, every settlement nudged the strip's
             right end. Fixed width and height, contents centred inside, so the
             record changes and the window does not. */}
-        <div className="flex min-w-0 shrink-0 flex-col items-center justify-center gap-0.5">
+        <div className="flex min-w-0 shrink-0 flex-col items-center justify-center gap-0.5
+          lg:justify-self-center">
         <div data-testid="ranked-record-window"
-          className="flex h-10 w-[11.5rem] shrink-0 items-center justify-center
-            overflow-hidden min-[1500px]:w-[13rem]">
+          className="ranked-record-window flex h-10 w-[11.5rem] shrink-0 items-center
+            justify-center overflow-hidden min-[1500px]:w-[13rem]">
           {/* THE PERSISTENT SUMMARY — demoted, not deleted.
               This is the plate the strip has always carried, in the same
               precedence POINT1 wrote for it (a settled block, else a card of a
