@@ -877,26 +877,26 @@
    frame, and a brighter centre on the top hairline so the strip reads as a
    carved lintel over the chamber. Structure, height and content unchanged. */
 .ranked-academy .ranked-header-plate {
-  border-color: rgba(185,147,76,0.52);
-  background-color: var(--ranked-bg-panel);
-  background-image: linear-gradient(180deg,
-    rgba(16,32,53,0.95) 0%, rgba(9,21,36,0.97) 60%, rgba(6,14,26,0.98) 100%);
+  /* RM1 — A LITTLE DEPTH, AND NOTHING ELSE.
+     The plate keeps its shape, its height and its thin gold edge; what it
+     gains is the shading a physical bar would have. Four cheap cues and no
+     ornament: a face that is lighter at the top than the bottom, a hairline of
+     light along the top edge, a shadow gathering along the bottom inside edge,
+     and a soft shadow under the whole bar so it sits ABOVE the stage rather
+     than being painted on it.
+
+     No plaque, no filigree, no diamonds, no extra height — every one of these
+     is a paint-only change, so the strip's reserved geometry is untouched. */
+  background-image:
+    linear-gradient(180deg,
+      rgba(86,126,180,0.10) 0%,
+      rgba(20,34,58,0.00) 42%,
+      rgba(0,0,0,0.16) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(213,182,111,0.18),
-    inset 0 0 0 1px rgba(185,147,76,0.12),
-    inset 0 -1px 0 rgba(185,147,76,0.28),
-    0 12px 30px -20px rgba(0,0,0,0.9);
-}
-/* Brass hairline with a lit centre — the header's only ornament. */
-.ranked-academy .ranked-header-plate::before {
-  background: linear-gradient(90deg,
-    transparent 0%, rgba(185,147,76,0.35) 22%, rgba(240,215,140,0.95) 50%,
-    rgba(185,147,76,0.35) 78%, transparent 100%);
-  opacity: 1;
-}
-.ranked-academy .ranked-header-plate::after {
-  background: radial-gradient(70% 130% at 50% 0%,
-    rgba(213,182,111,0.10) 0%, transparent 62%);
+    inset 0 1px 0 rgba(213,182,111,0.20),
+    inset 0 -1px 0 rgba(0,0,0,0.55),
+    inset 0 -10px 18px -14px rgba(0,0,0,0.85),
+    0 8px 18px -12px rgba(0,0,0,0.75);
 }
 .ranked-academy .ranked-header-plate [data-testid="timer-value"] {
   color: var(--ranked-text);
@@ -1284,8 +1284,32 @@
 /* The verdict and the neutral chips share ONE slot, so settling a round
    replaces the contents and moves nothing. Both are already `min-h-7`; this
    reserves the same box on the wrapper so a wrapped chip set cannot grow it. */
+/* ONE PHYSICAL BUBBLE, WHATEVER IT SAYS.
+   "Thinking…", "Answer locked" and a settled verdict are three different
+   lengths, and the pill used to be as wide as whichever was current — so the
+   bottom of the column changed shape three times a module. That is the most
+   watched object in the banner and it was the least still.
+
+   It is a FIXED window now: one width, one height, one radius, centred. Only
+   what is inside it changes — the icon, the words, and the accent colour the
+   state already sets. `overflow: hidden` and the nowrap below are what keep a
+   long string from reopening the question, and the text truncates rather than
+   wrapping the box open. */
 .ranked-banner [data-testid^="status-"],
-.ranked-banner [data-testid^="outcome-"] { min-height: 2.25rem; }
+.ranked-banner [data-testid^="outcome-"] {
+  width: 10.5rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  margin-inline: auto;
+  border-radius: 9999px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  padding-inline: 0.625rem;
+}
+.ranked-banner [data-testid^="status-"] > *,
+.ranked-banner [data-testid^="outcome-"] > * { min-width: 0; }
+.ranked-banner [data-testid^="status-"] span,
+.ranked-banner [data-testid^="outcome-"] span { white-space: nowrap; }
 /* WHICH BANNER THIS IS. Both columns carry the same painted cloth and the same
    gold trim, because they are the same object; the side and the settled round
    are said in the LIGHT around it, which is the one channel that can carry

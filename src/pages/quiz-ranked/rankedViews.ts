@@ -73,9 +73,12 @@ export function isPointsMatch(pub: PublicRoundView): boolean {
 export function moduleProgressLabel(pub: PublicRoundView): string | null {
   const scoring = pub.scoring;
   if (!scoring || scoring.model !== "points") return null;
+  // NO "MODULE" PREFIX. The figure now sits as the third line of the header's
+  // left block, under "Ranked Duel" and the opponent — a position that already
+  // says what it is, which makes the word a label on a label.
   return scoring.matchLength === null
-    ? `Module ${scoring.moduleNumber}`
-    : `Module ${scoring.moduleNumber} / ${scoring.matchLength}`;
+    ? `${scoring.moduleNumber}`
+    : `${scoring.moduleNumber} / ${scoring.matchLength}`;
 }
 
 /**
@@ -293,7 +296,13 @@ export function abilityTrayIsUseful(abilities: AbilityView[],
 export function opponentPresenceLabel(presence: PresenceView | null): string | null {
   if (!presence) return null;
   switch (presence.opponentConnectionState) {
-    case "connected": return "Opponent connected";
+    // THE HEALTHY-PRESENCE LINE IS GONE. It was the header's only
+    // permanently-true line: it said nothing a player could act on, it was present for the
+    // whole of every healthy match, and it held a row in a strip that is now
+    // carrying the match's actual hierarchy. The ABNORMAL states stay, because
+    // those are real news — a duel whose opponent has dropped is a different
+    // match, and the player has to be told.
+    case "connected": return null;
     case "disconnected_grace": return "Opponent temporarily disconnected — reconnect grace active";
     case "disconnected": return "Opponent disconnected";
     case "forfeited": return "Opponent forfeited";

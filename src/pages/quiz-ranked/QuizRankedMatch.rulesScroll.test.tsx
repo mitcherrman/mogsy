@@ -121,7 +121,7 @@ describe("the scroll sits beside the arena, and only beside it", () => {
     await mount();
     expect(screen.getByTestId("ranked-rules-panel")).toBeInTheDocument();
     // And the match is drawn underneath it, untouched.
-    expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("Module 5 / 10");
+    expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("5 / 10");
   });
 
   it("a first-time player on a PHONE meets an uncovered module", async () => {

@@ -749,6 +749,12 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
   }
 
   const opponentLabel = opponentPresenceLabel(m.presence);
+  // "vs Bot" or "vs Opponent" — `opponentLabelFor` is the one place that
+  // decides which, and it is deliberately the only distinction available:
+  // Ranked's live projection redacts participant identity by design, so there
+  // is no display name to prefer here and none is invented.
+  const opponentVersusLabel = m.publicRound
+    ? `vs ${opponentLabelFor(m.publicRound)}` : null;
   // R3: the answer grid is open only while the round is unanswered. One click
   // submits, so there is no `reviewing` phase and no `canChangeAnswer` state.
   // The reveal beat withholds interactivity from the NEXT round while the last
@@ -864,7 +870,9 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
     // publishing, the mode only says who it is.
     report: { mode: "Ranked", category: "Ranked" },
     header: {
-      eyebrow: `Ranked Duel${m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}`,
+      // LINE 1 of the left block. The opponent moved to its own line below, so
+      // the mode's name is no longer carrying a second fact on its back.
+      eyebrow: "Ranked Duel",
       // RP1 — a points match names its MODULE and its length, both read off
       // the backend's scoring block; an hp match keeps "Round N", because it
       // has no length and a "/ 10" here would be this client inventing one.
@@ -878,7 +886,11 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       // the slot itself stays, because the Daily Challenge uses it for its
       // theme (`dailyArenaView`) and that IS match news.
       playtestNote: null,
-      presenceNote: opponentLabel,
+      // LINE 2 — WHO THIS IS AGAINST, and the abnormal presence states when
+      // there are any. `opponentPresenceLabel` is null for a healthy match now,
+      // so the identity line shows; when the opponent drops it takes over,
+      // because at that point the state IS the more important fact about them.
+      presenceNote: opponentLabel ?? opponentVersusLabel,
       timer,
       timerLabel: "Shared round timer",
       /**

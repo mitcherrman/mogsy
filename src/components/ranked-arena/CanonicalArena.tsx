@@ -295,12 +295,32 @@ export function CanonicalArena({
       <section data-testid="ranked-header"
         className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1">
         {/* LEFT — who this is and what kind of match it is. Both quiet. */}
-        <div className="flex min-w-0 flex-col justify-center">
+        {/* LEFT — the match's own hierarchy, three quiet lines.
+            WHAT this is, WHO it is against, HOW FAR through it is. Each was
+            already in the strip; what they lacked was an order. The mode's
+            name used to carry the opponent on its back ("Ranked Duel · vs
+            Bot"), the progress figure lived across the strip on the right with
+            the word "Module" labelling a number whose position already says
+            what it is, and between them sat "Opponent connected" — the one
+            line in the header that was permanently true and therefore never
+            news.
+
+            Three lines at 10-11px cost less height than the two-line block
+            they replace plus the plate they freed on the right, so the strip's
+            reserved height is unchanged. */}
+        <div className="flex min-w-0 flex-col justify-center gap-px">
           <div className="ranked-eyebrow">{header.eyebrow}</div>
           {header.presenceNote && (
             <p data-testid="ranked-presence"
               className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
               {header.presenceNote}
+            </p>
+          )}
+          {header.title && (
+            <p data-testid="ranked-header-title"
+              className="truncate text-[11px] font-bold uppercase tracking-[0.16em]
+                tabular-nums text-muted-foreground/90">
+              {header.title}
             </p>
           )}
         </div>
@@ -331,11 +351,20 @@ export function CanonicalArena({
 
         {/* RIGHT — where in the match this is, plus the one result surface the
             centre cannot carry. */}
-        <div className="flex min-w-0 flex-col items-end justify-center gap-0.5">
-          <h3 data-testid="ranked-header-title"
-            className="ranked-title text-xs font-bold uppercase tracking-[0.16em] leading-tight">
-            {header.title}
-          </h3>
+        {/* RIGHT — the previous module's record, and nothing else now.
+            The progress figure moved to the left block, where it belongs with
+            the rest of the match's identity; duplicating it here would have
+            been the same fact in two places at two weights.
+
+            A FIXED WINDOW, not a box that fits its string. "TIMED OUT +0 | R1"
+            and "CORRECT +2 | R2" are different lengths, and while the box was
+            sized to whichever was current, every settlement nudged the strip's
+            right end. Fixed width and height, contents centred inside, so the
+            record changes and the window does not. */}
+        <div className="flex min-w-0 shrink-0 flex-col items-center justify-center gap-0.5">
+        <div data-testid="ranked-record-window"
+          className="flex h-10 w-[11.5rem] shrink-0 items-center justify-center
+            overflow-hidden min-[1500px]:w-[13rem]">
           {/* THE PERSISTENT SUMMARY — demoted, not deleted.
               This is the plate the strip has always carried, in the same
               precedence POINT1 wrote for it (a settled block, else a card of a
@@ -367,6 +396,10 @@ export function CanonicalArena({
               pointsMatch={view.roundBeat.pointsMatch === true}
               className="hidden md:flex" />
           ) : null}
+        </div>
+          {/* OUTSIDE the fixed window, deliberately: these are not the record,
+              and letting them into it would be letting a variable-length line
+              back into the box that exists to have a fixed one. */}
           {/* DEMOTED. A placeholder-bank notice is a build-state fact, not
               match news, so it is the quietest text in the strip — present
               because it must be, at a weight that does not compete. */}

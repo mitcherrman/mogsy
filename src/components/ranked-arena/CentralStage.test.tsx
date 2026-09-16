@@ -6,6 +6,8 @@
  * cannot show a `LOCKED IN` phase that does not exist.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, render, screen } from "@testing-library/react";
 import { CentralStage } from "./CentralStage";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
@@ -147,11 +149,17 @@ describe("the module-name face, and the sequence", () => {
       // `h-`, not `min-h-`: a minimum is what let a taller face win.
       expect(outer()).toContain("h-[4.25rem]");
       expect(outer()).not.toContain("min-h-[");
-      expect(face()).toContain("h-[3.25rem]");
+      // The face now FILLS the window and divides it into two fixed sub-slots,
+      // so every face is a primary line over a secondary line in the same two
+      // places. `h-full` rather than its own height: one reserved box, not two.
+      expect(face()).toContain("h-full");
       expect(face()).toContain("justify-center");
-      // Stepped at 1500, where the clock itself steps up to `text-6xl`.
       expect(outer()).toContain("min-[1500px]:h-[5rem]");
-      expect(face()).toContain("min-[1500px]:h-[4rem]");
+      const src = readFileSync(
+        resolve(process.cwd(), "src/components/ranked-arena/CentralStage.tsx"), "utf8");
+      expect(src).toContain('className="flex h-12 w-full items-center justify-center');
+      expect(src).toContain("min-[1500px]:h-[3.75rem]");
+      expect(src).toContain('className="flex h-5 w-full items-center justify-center text-center"');
     });
 
     it("keeps that box byte-for-byte across clock -> result -> title -> clock", () => {
@@ -189,17 +197,24 @@ describe("the module-name face, and the sequence", () => {
       expect(digits).toContain("leading-none");
     });
 
-    it("keeps the prose line reserved on every face, so it cannot move either", () => {
+    it("gives every face the SAME secondary line, in the same place", () => {
+      // The prose line used to hang below the face and belong to the clock
+      // alone, so the result and the module name had nothing under them and
+      // the display's visual mass collapsed as it turned. The secondary slot
+      // is part of the face now and every state fills it: the clock's
+      // duration, the award, and "Next module".
       const base = { timer: timer(), moduleTitle: "Items" };
       const { rerender } = render(<CentralStage {...base} result={null} moduleEventId={1} />);
-      const note = () => screen.getByTestId("timer-display").lastElementChild!.className;
-      const n = note();
+      const secondary = () => screen.getByTestId("timer-display")
+        .querySelector(".ranked-stage-face")!.lastElementChild!.className;
+      const n = secondary();
+      expect(n).toContain("h-5");
       act(() => {
         rerender(<CentralStage {...base} result={{ verdict: "CORRECT", points: "+2 POINTS" }}
           moduleEventId={1} />);
       });
-      expect(note()).toBe(n);
-      expect(n).toContain("min-h-[0.875rem]");
+      expect(secondary()).toBe(n);
+      expect(screen.getByTestId("central-result-points")).toHaveTextContent("+2 POINTS");
     });
   });
 });

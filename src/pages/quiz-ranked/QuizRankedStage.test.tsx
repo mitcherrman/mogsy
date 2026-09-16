@@ -66,24 +66,28 @@ describe("the reclaimed HUD band", () => {
     expect(frame.className).not.toMatch(/(^|\s)-mt-\[var\(--app-header-h\)\]/);
   });
 
-  it("seats the way back beside the hat, clear of the chip itself", () => {
-    // THE TITLE ROW IS GONE. "Ranked Duel · Competitive Mode" was a heading
-    // over a screen that is already, unmistakably, a ranked duel — and it cost
-    // a full row at the top of a shell locked to the viewport, which is height
-    // taken from the question. What is left is the way back, moved to the
-    // corner a player already looks at to leave.
-    renderFrame();
-    const back = screen.getByRole("link", { name: "Back to Quiz" });
-    // Left: the hat chip is a 44px target at a 12px gutter → 3.5rem clears it,
-    // so the link sits just beside the hat rather than under it.
-    expect(back.className).toContain("lg:left-14");
-    expect(back.className).toContain("absolute");
-    // Quiet, and still quiet.
+  it("seats the way back beside the hat, in the VIEWPORT's coordinates", () => {
+    const { frame } = renderFrame();
+    const back = screen.getByTestId("ranked-back-to-quiz");
+    // THE FIRST ATTEMPT MISSED, and this is the reason. It was `absolute
+    // left-14` — 56px from the left edge of `ArenaShell`. The shell is
+    // `mx-auto` with a `max-w`, so its left edge is NOT the viewport's: at
+    // 1920 the shell spans x 240..1680 and the link landed near x 296, a
+    // quarter of the screen from the hat. The offset was right; the coordinate
+    // space was wrong.
+    expect(back.className).toContain("fixed");
+    expect(back.className).not.toContain("absolute");
+    // `GlobalHud` lays its bar out `pl-2 sm:pl-3` with an `h-9 w-9` hat chip,
+    // so the hat occupies x 12..48 from `sm` up; 56px clears it by 8px and
+    // matching the bar's height puts the link on the hat's own baseline.
+    expect(back.className).toContain("left-14");
+    expect(back.className).toContain("h-[var(--app-header-h)]");
+    expect(hudSource).toContain("h-9 w-9");
+    expect(hudSource).toContain("pl-2");
+    // Quiet, clickable, and costing no layout height.
     expect(back.className).toContain("text-muted-foreground/70");
-    // And the chips are still what that number describes, so a redesigned HUD
-    // fails here rather than silently colliding with the link.
-    expect(hudSource).toContain("h-[var(--app-header-h)]");
-    expect(hudSource).toContain("pointer-events-none fixed inset-x-0 top-0");
+    expect(back.getAttribute("href")).toBe("/quiz");
+    expect((frame.firstElementChild as HTMLElement).className).toContain("h-0");
   });
 });
 
