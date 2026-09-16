@@ -599,6 +599,74 @@ describe("nothing inside the card was made smaller to fit it", () => {
   });
 });
 
+// ───────────────────────────────────────────────────────────────────────────
+// QV1 — WIDE-DESKTOP MEDIA EXCEPTION.
+//
+// An additive, media-only exception for very wide desktops: at
+// (min-width: 1600px) and (min-height: 780px) the rich media height and
+// ceiling (17.25rem, via --qs-media-rich) apply to the cinematic and family
+// bands — never compact — in a SEPARATE block from the existing 861px rule,
+// which must stay intact and untouched.
+// ───────────────────────────────────────────────────────────────────────────
+describe("the wide-desktop media exception is additive, not a replacement", () => {
+  const css = () => stripComments(CSS);
+
+  const wideBlock = () => {
+    const src = css();
+    const re = /@media\s*\(min-width:\s*1600px\)\s*and\s*\(min-height:\s*780px\)\s*\{([\s\S]*?)\n\}/;
+    const m = re.exec(src);
+    expect(m, "the (min-width: 1600px) and (min-height: 780px) media query is missing").not.toBeNull();
+    return m![1];
+  };
+
+  it("declares the (min-width: 1600px) and (min-height: 780px) media query", () => {
+    expect(wideBlock().length).toBeGreaterThan(0);
+  });
+
+  it("targets only the cinematic and family bands, never compact", () => {
+    const body = wideBlock();
+    expect(body).toContain('data-band="cinematic"');
+    expect(body).toContain('data-band="family"');
+    expect(body).not.toContain('data-band="compact"');
+  });
+
+  it("uses the rich media height, 17.25rem, via --qs-media-rich", () => {
+    const body = wideBlock();
+    expect(body).toMatch(/height:\s*var\(--qs-media-rich,\s*17\.25rem\)/);
+    expect(body).toMatch(/--qs-media-max:\s*min\(var\(--qs-media-rich,\s*17\.25rem\),\s*100%\)/);
+  });
+
+  it("leaves the existing 861px rich-media rule fully intact", () => {
+    const src = css();
+    // There are multiple `(min-width: 1024px) and (min-height: 861px)` blocks
+    // in the stylesheet; the one this test defends is specifically the one
+    // that carries `--qs-media-rich`, so it is matched by content rather than
+    // by taking the first occurrence of the media-query header.
+    const re = /@media\s*\(min-width:\s*1024px\)\s*and\s*\(min-height:\s*861px\)\s*\{([\s\S]*?)\n\}/g;
+    let body: string | null = null;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src)) !== null) {
+      if (m[1].includes("--qs-media-rich")) { body = m[1]; break; }
+    }
+    expect(body, "the (min-width: 1024px) and (min-height: 861px) rich-media rule is missing").not.toBeNull();
+    expect(body).toContain('data-band="cinematic"');
+    expect(body).toContain('data-band="family"');
+    expect(body).toMatch(/height:\s*var\(--qs-media-rich,\s*17\.25rem\)/);
+    expect(body).toMatch(/--qs-media-max:\s*min\(var\(--qs-media-rich,\s*17\.25rem\),\s*100%\)/);
+  });
+
+  it("changes no prompt or answer sizing rule", () => {
+    // The exception is media-only: it must not appear anywhere near a prompt
+    // or answers font-size/padding declaration, and those ladders keep the
+    // exact values pinned earlier in this file.
+    const body = wideBlock();
+    expect(body).not.toMatch(/font-size/);
+    expect(body).not.toMatch(/padding/);
+    expect(body).not.toMatch(/data-surface-region="prompt"/);
+    expect(body).not.toMatch(/data-surface-region="answers"/);
+  });
+});
+
 describe("the stage reserves, and never clips or scrolls", () => {
   const block = () => {
     const css = stripComments(CSS);

@@ -2385,6 +2385,23 @@
   }
 }
 
+/* ---- QV1 wide-desktop media exception --------------------------------------
+   Additive, media-only exception for very wide desktops. It does not modify
+   the 861px rich-media rule above; it only re-asserts the same rich media
+   height/ceiling at a wider breakpoint so cinematic/family bands keep their
+   rich media sizing at >=1600px width. Does not touch data-band="compact". */
+@media (min-width: 1600px) and (min-height: 780px) {
+  .ranked-question-stage .question-surface-stack[data-band="cinematic"] > [data-surface-region="media"],
+  .ranked-question-stage .question-surface-stack[data-band="family"] > [data-surface-region="media"] {
+    height: var(--qs-media-rich, 17.25rem);
+  }
+
+  .ranked-question-stage .question-surface-stack[data-band="cinematic"],
+  .ranked-question-stage .question-surface-stack[data-band="family"] {
+    --qs-media-max: min(var(--qs-media-rich, 17.25rem), 100%);
+  }
+}
+
 /* ---- Question prompt weight -----------------------------------------------
    The folio is the gameplay board; its prompt reads a step larger than the
    surface's compact default so the question anchors the whole arena. On the
