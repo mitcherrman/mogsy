@@ -40,3 +40,27 @@ export function remainingSeconds(
 ): number {
   return Math.ceil(remainingMs(deadlineIso, skewMs, nowMs) / 1000);
 }
+
+/**
+ * Milliseconds until the round becomes ANSWERABLE, clamped at 0.
+ *
+ * The server opens a round in the future when the client is still showing the
+ * previous one's result and this module's name — `started_at` is that moment,
+ * and `active_deadline` is `started_at + duration`, so the configured answer
+ * time begins at the boundary rather than while a player is watching an
+ * animation. Before it, this is positive; at and after it, 0.
+ *
+ * Skew-corrected like every other reading here, and display-only in the same
+ * sense: the backend refuses a submission received before the boundary
+ * (`DuelRound.submit_answer`), so this decides what the UI shows and offers,
+ * never what is legal.
+ */
+export function msUntilAnswerable(
+  startedAtIso: string,
+  skewMs: number,
+  nowMs: number,
+): number {
+  const startedEpoch = Date.parse(startedAtIso);
+  if (Number.isNaN(startedEpoch)) return 0;
+  return Math.max(0, startedEpoch - nowMs - skewMs);
+}

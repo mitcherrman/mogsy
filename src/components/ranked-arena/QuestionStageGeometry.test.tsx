@@ -514,6 +514,30 @@ describe("the Match Header says three things on the left and one on the right", 
   });
 });
 
+describe("answering begins at the server's boundary", () => {
+  it("shuts input until the round is answerable", () => {
+    const mode = read("pages/quiz-ranked/QuizRankedMatch.tsx");
+    // A round is created in the future while the client is still playing the
+    // previous result and this module's title. Until `started_at` the question
+    // may be on screen, but it is not answerable — and the backend agrees,
+    // because `DuelRound.submit_answer` refuses a receipt earlier than the
+    // round's own start. Offering input here would be offering something the
+    // server would reject.
+    expect(mode).toContain("msUntilAnswerable(m.publicRound.activeRound.startedAt");
+    expect(mode).toContain("!m.revealHold && !answerablePending");
+  });
+
+  it("keeps the boundary the SERVER's, never a local constant's", () => {
+    // `MODULE_TITLE_MS` sequences the animation. It may not decide when
+    // answering starts, or the two would drift the moment either was tuned.
+    const views = read("pages/quiz-ranked/rankedViews.ts");
+    expect(views).toContain("Math.min(\n    active.durationSeconds,");
+    expect(views).not.toContain("MODULE_TITLE_MS");
+    const mode = read("pages/quiz-ranked/QuizRankedMatch.tsx");
+    expect(mode).not.toMatch(/inputOpen[^\n]*MODULE_TITLE_MS/);
+  });
+});
+
 describe("transient state cannot change Match Shell geometry", () => {
   it("has retired the PLAYTEST · PLACEHOLDER notice from Ranked", () => {
     const mode = read("pages/quiz-ranked/QuizRankedMatch.tsx");
