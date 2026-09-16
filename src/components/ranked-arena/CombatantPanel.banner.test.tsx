@@ -10,8 +10,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { render, screen, within } from "@testing-library/react";
-import { CombatantPanel } from "./CombatantPanel";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { CombatantPanel, MODULE_HISTORY_WINDOW } from "./CombatantPanel";
 import type { CombatantView, RoundHistoryEntry } from "@/lib/ranked-core/viewTypes";
 
 const combatant = (over: Partial<CombatantView> = {}): CombatantView => ({
@@ -91,27 +91,31 @@ describe("the module-history strip", () => {
     return screen.getByTestId("module-history-you");
   };
 
-  it("draws one bubble per settled module, in chronological order", () => {
+  it("draws one bubble per module IN THE WINDOW, in chronological order", () => {
+    // Ten modules, five drawn. The strip shows the TAIL of the run — see the
+    // window's own describe below for why five and what it does not touch.
     const el = strip();
     const bubbles = within(el).getAllByRole("img");
-    expect(bubbles).toHaveLength(10);
+    expect(bubbles).toHaveLength(MODULE_HISTORY_WINDOW);
     expect(bubbles.map((b) => b.getAttribute("data-base-points")))
-      .toEqual(["2", "1", "0", "3", "2", "1", "2", "0", "3", "1"]);
+      .toEqual(["1", "2", "0", "3", "1"]);   // modules 6..10 of the fixture
   });
 
   it("flags exactly the modules the SERVER gave a speed bonus", () => {
+    // Read against the drawn window, not the whole run.
     const el = strip();
     expect(within(el).getAllByRole("img").map((b) => b.getAttribute("data-speed-bonus")))
-      .toEqual(["true", "false", "false", "true", "false",
-        "false", "true", "false", "true", "false"]);
+      .toEqual(["false", "true", "false", "true", "false"]);   // modules 6..10
   });
 
   it("prints the BASE, never the base plus the bonus", () => {
     const el = strip();
-    // Module 1 banked three points (2 base + 1 speed) and reads +2.
-    const first = within(el).getByTestId("module-bubble-you-1");
-    expect(first).toHaveTextContent("+2");
-    expect(first).toHaveAccessibleName("2 base points, plus 1 speed bonus");
+    // Module 7 banked three points (2 base + 1 speed) and reads +2. Module 7
+    // rather than module 1 only because the strip draws the window; what is
+    // being fixed here — base, never base+bonus — is unchanged.
+    const bubble = within(el).getByTestId("module-bubble-you-7");
+    expect(bubble).toHaveTextContent("+2");
+    expect(bubble).toHaveAccessibleName("2 base points, plus 1 speed bonus");
   });
 
   it("is oldest-first on BOTH sides, so the two strips compare module for module",
@@ -129,7 +133,9 @@ describe("the module-history strip", () => {
       const order = (id: string) => within(screen.getByTestId(`module-history-${id}`))
         .getAllByRole("img").map((b) => b.getAttribute("data-base-points"));
       expect(order("you")).toEqual(order("opp"));
-      expect(order("you")[0]).toBe("2");   // module 1, not module 10
+      // The window's OLDEST, not the run's: both columns draw modules 6..10 of
+      // the fixture, so the first token is module 6 and never module 10.
+      expect(order("you")[0]).toBe("1");
     });
 
   it("says so honestly when nothing has settled yet", () => {
@@ -219,7 +225,7 @@ describe("the duel banner is mounted from the approved asset", () => {
     // The asset's gold trim IS the trim. A red opponent outline drawn over it
     // would fight the embroidery; the same fact reads fine as a glow.
     expect(rules).toContain("filter:");
-    expect(rules).toContain("drop-shadow(0 0 18px var(--banner-glow))");
+    expect(rules).toContain("drop-shadow(0 0 14px var(--banner-glow))");
     for (const state of ['[data-side="opponent"]', '[data-outcome="correct"]',
       '[data-outcome="incorrect"]']) {
       expect(rules).toContain(`.ranked-banner${state} { --banner-glow:`);
@@ -232,7 +238,121 @@ describe("the duel banner is mounted from the approved asset", () => {
     // or inside the taper; and the side inset clears the embroidery.
     expect(rules).toContain("padding: var(--banner-rod) 0 var(--banner-point)");
     expect(rules).toContain("margin-inline: var(--banner-inset)");
-    expect(rules).toMatch(/--banner-inset:\s*14%/);
+    // 18%, against embroidery that sits 11.5% in: real air, where the earlier
+    // 14% read as content touching the trim at every column width.
+    expect(rules).toMatch(/--banner-inset:\s*18%/);
   });
+
+  it("dims the banner without dimming what sits on it", () => {
+    // The cloth rides on the ELEMENT's background and the element also carries
+    // the column's content, so a `filter` there would dim the name, the score
+    // and the bubbles along with the banner — the opposite of the point. The
+    // cloth is veiled by a background layer instead; only the two pseudo-
+    // elements, which carry no content, take the filter.
+    expect(rules).toContain("linear-gradient(rgba(5,10,20,0.30), rgba(5,10,20,0.30))");
+    expect(rules).toContain("filter: brightness(0.80) saturate(0.90) contrast(0.97)");
+    // The veil is sized to the CLOTH (553 of the rod's 667), not the element —
+    // full width would paint a dark rectangle out over the transparent margin.
+    expect(rules).toContain("calc(100% * 553 / 667) 100%");
+    // And the element's own filter stays shadows only, so content is untouched.
+    expect(rules).not.toMatch(/\.ranked-banner \{[^}]*filter:[^;]*brightness/);
+  });
+
+  it("reserves every zone, so a state change moves nothing", () => {
+    // A score ticking, a bubble arriving, "Thinking…" becoming a verdict —
+    // each used to be only as tall as its current contents, and each moved the
+    // rows beneath it. Now each zone reserves its tallest state.
+    for (const [zone, rule] of [
+      ["identity", /\.ranked-banner > header \{ min-height: 1\.75rem/],
+      ["points", /\[data-testid\^="score-"\] \{ min-height: 3\.5rem/],
+      ["bubbles", /\[data-testid\^="module-history-"\] \{ min-height: 4\.75rem/],
+    ] as const) {
+      expect(rules, `${zone} zone is not reserved`).toMatch(rule);
+    }
+    // The verdict and the neutral chips share ONE reserved slot.
+    expect(rules).toMatch(/\[data-testid\^="outcome-"\] \{ min-height: 2\.25rem/);
+  });
+
+// ───────────────────────────────────────────────────────────────────────────
+// THE RECENT-HISTORY WINDOW — presentation only.
+//
+// Ten tokens do not fit on this cloth. Rather than shrink them into
+// illegibility or let the zone grow a row as the match went on, the banner
+// draws the TAIL of the run at a fixed count, and everything upstream still
+// sees every module.
+// ───────────────────────────────────────────────────────────────────────────
+describe("the banner shows a fixed window of recent modules", () => {
+  const bubbles = () => Array.from(
+    // The player-scoped prefix, deliberately: `module-bubble-speed` is the
+    // dot INSIDE a bubble and would otherwise be counted as one.
+    screen.getByTestId("module-history-you")
+      .querySelectorAll('[data-testid^="module-bubble-you-"]'),
+  ).map((el) => el.getAttribute("data-testid")!.replace("module-bubble-you-", ""));
+
+  it("is five, fixed, and does not adapt to the column", () => {
+    // Measured against the 18% safe area at the narrowest supported column
+    // (~146px of cloth): six tokens plus five gaps need 23px each, below the
+    // token's own `min-w-6`; five need 24px, which that column seats. A window
+    // that changed size mid-match would be a second source of movement in the
+    // one zone this exists to hold still.
+    expect(MODULE_HISTORY_WINDOW).toBe(5);
+  });
+
+  it("draws only the most recent N, in chronological order", () => {
+    render(<CombatantPanel combatant={combatant()} presentation="banner" damage={TEN} />);
+    expect(bubbles()).toEqual(["6", "7", "8", "9", "10"]);
+  });
+
+  it("appends the newest and drops the oldest as the match runs", () => {
+    const { rerender } = render(
+      <CombatantPanel combatant={combatant()} presentation="banner"
+        damage={TEN.slice(0, 4)} />);
+    // Below the window every module is visible, oldest first.
+    expect(bubbles()).toEqual(["1", "2", "3", "4"]);
+
+    rerender(<CombatantPanel combatant={combatant()} presentation="banner"
+      damage={TEN.slice(0, 5)} />);
+    expect(bubbles()).toEqual(["1", "2", "3", "4", "5"]);
+
+    // Full: the sixth pushes the first out, and the order never reverses.
+    rerender(<CombatantPanel combatant={combatant()} presentation="banner"
+      damage={TEN.slice(0, 6)} />);
+    expect(bubbles()).toEqual(["2", "3", "4", "5", "6"]);
+
+    rerender(<CombatantPanel combatant={combatant()} presentation="banner"
+      damage={TEN.slice(0, 7)} />);
+    expect(bubbles()).toEqual(["3", "4", "5", "6", "7"]);
+  });
+
+  it("never draws more than the window, at any length", () => {
+    for (let n = 0; n <= TEN.length; n++) {
+      cleanup();
+      render(<CombatantPanel combatant={combatant()} presentation="banner"
+        damage={TEN.slice(0, n)} />);
+      expect(bubbles().length, `at ${n} modules`)
+        .toBe(Math.min(n, MODULE_HISTORY_WINDOW));
+    }
+  });
+
+  it("keeps the FULL run intact — the window is drawing, not trimming", () => {
+    render(<CombatantPanel combatant={combatant()} presentation="banner" damage={TEN} />);
+    // The strip is handed all ten and says so. Nothing here touches the
+    // settlement log, `RoundHistoryEntry`, the ten-module chronology, the
+    // Module Rail or what an end screen could later compare.
+    expect(screen.getByTestId("module-history-you"))
+      .toHaveAttribute("data-history-total", "10");
+    expect(TEN).toHaveLength(10);
+  });
+
+  it("reserves the zone for two token rows, and two is also the ceiling", () => {
+    // Five tokens can wrap to at most two rows: the narrowest supported cloth
+    // (~146px) seats three 24px tokens and two 6px gaps with room over, so a
+    // third row is unreachable rather than merely unlikely. The reserve is in
+    // force from module 1, so the rows below it never move.
+    const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+    expect(css).toMatch(
+      /\[data-testid\^="module-history-"\] \{ min-height: 4\.75rem/);
+  });
+});
 });
 

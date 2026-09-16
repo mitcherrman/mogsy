@@ -371,6 +371,26 @@ const OUTCOME_STATE: Record<
  * and wrap, and the buffer upstream is bounded (`DAMAGE_LOG_LIMIT`), so a long
  * hp match cannot run the strip off the end of the banner.
  */
+/**
+ * HOW MANY MODULES THE BANNER SHOWS AT ONCE — and it is a PRESENTATION number,
+ * not a history one. The strip is handed the full run and draws the tail of it.
+ *
+ * WHY FIVE AND NOT SIX. Measured against the approved 18% safe area, at the
+ * narrowest supported Player Column: the arena's `lg` frame is `max-w-6xl`, so
+ * at a 1024px viewport the frame is ~992px, the 23fr rail is ~228px, and the
+ * cloth interior is ~146px. A bubble is `h-6 min-w-6` — 24px, and ~30px once
+ * the label is three characters ("+10"). Six tokens plus five 6px gaps need
+ * 23px each there, which is below the token's own minimum; five need 24px,
+ * which the narrowest column seats and every wider one seats comfortably
+ * (29px at 1152, 38px at 1440). Six only fits by shrinking the token into
+ * illegibility, which is the one thing this may not do.
+ *
+ * The count is FIXED for the life of a match at every width. It does not adapt
+ * to the column, because a window that changed size mid-duel would be a second
+ * source of movement in the zone this exists to hold still.
+ */
+export const MODULE_HISTORY_WINDOW = 5;
+
 export function ModuleHistoryStrip({
   entries, playerId, mirrored,
 }: {
@@ -378,10 +398,22 @@ export function ModuleHistoryStrip({
   playerId: string;
   mirrored: boolean;
 }) {
+  // THE WINDOW. `entries` is the full run, oldest first (`projectRoundHistory`
+  // sorts ascending), so the tail is the most recent modules already in
+  // chronological order — appending the newest and dropping the oldest falls
+  // out of the slice rather than being maintained.
+  //
+  // NOTHING UPSTREAM IS TRIMMED. The settlement log, `RoundHistoryEntry`, the
+  // full ten-module chronology, the Module Rail and whatever the end screen
+  // will compare all still see every module; this is the banner deciding how
+  // much of it fits on cloth.
+  const visible = entries.slice(-MODULE_HISTORY_WINDOW);
   return (
     <div
       data-testid={`module-history-${playerId}`}
       aria-label="Module history"
+      data-history-window={MODULE_HISTORY_WINDOW}
+      data-history-total={entries.length}
       className="flex min-h-[1.5rem] flex-col gap-1.5"
     >
       {/* The label centres with the tokens it labels — one group on the cloth.
@@ -405,7 +437,7 @@ export function ModuleHistoryStrip({
           cloth — and it is still a true mirror of the other column, because a
           centred row is its own reflection. */}
       <div className="flex flex-wrap content-start justify-center gap-1.5">
-        {entries.map((e) => (
+        {visible.map((e) => (
           <ModuleBubble
             key={e.roundNumber}
             testId={`module-bubble-${playerId}-${e.roundNumber}`}
