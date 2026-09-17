@@ -23,7 +23,7 @@ audit), longest real option labels 63 chars (`realMax`).
 - `?q=stressA` — 188-char item prompt + 4 × longest labels + cinematic Item Analysis art.
 - `?q=stressB` — 188-char Combat Calculation prompt + 4 × longest labels + family band.
 
-## Status: IMPLEMENTED (approved #1 + #2) — committed on branch, NOT merged; awaiting review
+## Status: IMPLEMENTED (approved #1 + #2, scope-corrected) — committed on branch, NOT merged
 
 ## Audit measurements (before, current main)
 Matrix: 1920×1080, 1920×800, 1878×797, 1878×800, 1600×900, 1600×800, 1600×780,
@@ -103,11 +103,13 @@ Keeping the step is preferable; documented rather than converted.
 
 ## Approved changes — implemented
 ### 1. Suppress unusably short rich media
-- Threshold probed at 44/48/52/56/64px (1878 wide, Stress A cinematic + Stress B
-  family; crops in `.rs2/thresh/`). Cinematic Item Analysis is unrecognisable at
-  every probed height (build-path labels are microscopic even at 64px). Family:
-  names clipped at ≤48px, barely legible at 52–56 with portraits cut. **Chosen:
-  hide below 56px.**
+- Probed at 44/48/52/56/64px (1878 wide, Stress A cinematic + Stress B family;
+  crops in `.rs2/thresh/`). Item Analysis was not useful even at 64px; Combat
+  Calculation names were clipped at ≤48px and barely legible at 52–56px.
+- **56px is a conservative suppression threshold, not a proven universal
+  readability boundary.** It eliminates every observed sub-56px sliver/spill
+  (13–50px) while leaving the next measured supported rich-media cases (72px and
+  up, e.g. 1280×720 Stress B) untouched. Not tuned further.
 - CSS only: under the lock, the cinematic/family media region is a size container
   (`container: qs-rich-media / size`); `@container qs-rich-media (max-height:
   55.98px)` sets the band `display: none`. The region keeps its height (set by
@@ -116,12 +118,14 @@ Keeping the step is preferable; documented rather than converted.
 - Not covered by design: the **compact** plate still renders a 13px sliver at
   1024×768 realMax (compact is a separate presentation, out of scope).
 
-### 2. Layout-aware answer padding
-- `AnswerGrid` renders `data-answer-layout="grid" | "stacked"` from `wideTwoColumn`
-  (the only source of truth).
-- Wide override (≥1600×780): `grid` keeps 18px; `stacked` uses 8px.
-- Note: the 2-option `short` card is stacked, so it also takes 8px (its art
-  grows 195→210 at 1878×797).
+### 2. Layout-aware answer padding (scope-corrected)
+- `AnswerGrid` renders `data-answer-layout="grid" | "stacked"` (from
+  `wideTwoColumn`, the only source of truth) and `data-answer-count`.
+- Wide override (≥1600×780): 18px stays the default; **stacked + four answers**
+  uses 8px. A 2×2 four-answer grid and a two-answer stack keep 18px.
+- Scope correction: the first RS2 commit also gave the two-answer `short` card
+  8px (art 195→210 at 1878×797). Corrected — `short` is back to pre-RS2 geometry
+  and 18px at every viewport.
 
 ### No clamp() introduced; 1600×780 gate, prompt type, shell/grid, columns, rail, header unchanged.
 
@@ -140,10 +144,10 @@ Seams (Stress A; realMax in brackets):
 - 1599→1600×800: before 133→41 [133→53]; **after 133→121 [133→133]**.
 - 1600×779→780: before 112→21 [112→33]; **after 112→101 [112→113]**.
 
-Whole matrix (14 viewports × 8 shapes): **80/112 rows pixel-identical** to before;
-every 2×2 shape (media, family, realP99) and Meta Reflex is identical at every
-viewport. All changes are stacked-answer rounds (realMax, short, stressA/B at
-≥1600×780) plus the suppressed 1024 bands. Supported contract: 104/104 clean
+Whole matrix (14 viewports × 8 shapes), after the scope correction: **87/112 rows
+pixel-identical** to pre-RS2. Identical everywhere: media, family, realP99, short,
+Meta Reflex. Changed: only four-answer stacked rounds (realMax, stressA/B) at
+≥1600×780, plus the suppressed 1024×768/700 Stress A/B bands. Supported contract: 104/104 clean
 (the only non-ok rows are 1024×700, below contract).
 
 ## Screenshots reviewed (after)
@@ -152,6 +156,20 @@ viewport. All changes are stacked-answer rounds (realMax, short, stressA/B at
 reference now show real, recognisable art; 1024×768 Stress A/B show clean
 parchment above the prompt.
 
+## Files changed
+- `src/index.css` — rich-media suppression container query; wide answer padding 8px for stacked four-answer layouts only.
+- `src/components/ranked-arena/AnswerGrid.tsx` — `data-answer-layout`, `data-answer-count`.
+- `src/pages/dev/ranked-shell-probe/RankedShellProbe.tsx` — `stressA`, `stressB` probe states.
+- `e2e/ranked-arena-fit.spec.ts` — stress shapes, 1024×768 contract doc, 1024×700 boundary probe, media-spill assertion.
+- `docs/handoffs/RS2-ranked-responsive-polish.md`.
+
+## Tests (final, after scope correction)
+- Arena fit suite (`playwright.arena.config.ts`): **173 passed, 0 failed**.
+- Media-spill assertion with suppression disabled (`1024x768.*Stress B`): 1 failed — it catches the defect.
+- Focused vitest (`ranked-arena`, `question-surface`, `quiz`, probe, `lib/question-surface`): 1502 passed, 1 failed — `LeaguecraftRecord.vellum.test.tsx` "draws only from Ranked art already committed here", which fails identically on a clean main tree; unrelated.
+- `npm run build`: passes.
+
 ## Unresolved observations
+- Compact plate still renders a 13px sliver at 1024×768 realMax (compact is out of RS2 scope).
 - Player Column name truncation at 1024 wide (out of scope).
 - `scenario-compact` internal overflow (~55px) at all viewports, pre-existing.

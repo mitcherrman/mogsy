@@ -9052,17 +9052,18 @@ html.high-contrast * { text-shadow: none !important; }
   }
 
   /* Answer tablets: restores the 18px vertical padding the compaction block
-     reduces to 8px at this very viewport — for the 2x2 GRID only.
+     reduces to 8px at this very viewport.
 
-     RS2 — LAYOUT-AWARE. Stacked (single-column) answers keep the short-layout
-     8px: four stacked rows at 18px cost 80px, which at ~1878x797 squeezed the
-     art of every long-label round to a 38-50px sliver. The layout comes from
-     `AnswerGrid`'s `data-answer-layout`, i.e. the `wideTwoColumn` decision. */
-  .ranked-academy [data-answers-state][data-answer-layout="grid"] [data-quiz-choice] {
+     RS2 — EXCEPT A FOUR-ANSWER STACK. Four single-column rows at 18px cost
+     80px, which at ~1878x797 squeezed the art of every long-label round to a
+     38-50px sliver. Those keep the short-layout 8px. A 2x2 grid and a
+     two-answer stack keep 18px. Layout and count come from `AnswerGrid`
+     (`data-answer-layout` is the `wideTwoColumn` decision). */
+  .ranked-academy [data-answers-state] [data-quiz-choice] {
     padding-top: 1.125rem;
     padding-bottom: 1.125rem;
   }
-  .ranked-academy [data-answers-state][data-answer-layout="stacked"] [data-quiz-choice] {
+  .ranked-academy [data-answers-state][data-answer-layout="stacked"][data-answer-count="4"] [data-quiz-choice] {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
   }
@@ -9071,10 +9072,13 @@ html.high-contrast * { text-shadow: none !important; }
 /* ---- RS2: suppress unusably short RICH media ------------------------------
    Under the lock the media region is the term that yields, and on the longest
    rounds it can yield to 13-50px. A cinematic or family band drawn that small
-   is not art, it is a dark sliver (measured: the Item Analysis build path is
-   unrecognisable at every height up to 64px; Combat Calculation names are
-   clipped at 48px and barely legible at 52-56px). So below 56px the band is
-   not drawn at all and the parchment shows through.
+   is not art, it is a dark sliver. 56px is a CONSERVATIVE suppression
+   threshold, not a proven universal readability boundary: probed at
+   44-64px, the Item Analysis build path was not useful even at 64px, and
+   Combat Calculation names were clipped at 48px and barely legible at 52-56px.
+   It removes every observed sub-56px sliver/spill (13-50px) while leaving the
+   next measured supported rich-media cases (72px and up) untouched. Below it
+   the band is not drawn and the parchment shows through.
 
    GEOMETRY DOES NOT MOVE. The region is a size container, and under the lock
    its height is already set by `height` + flex, never by its content — so
