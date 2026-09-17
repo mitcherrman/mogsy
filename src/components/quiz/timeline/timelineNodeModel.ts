@@ -54,6 +54,7 @@ import {
   type DifficultyTier,
 } from "@/lib/quiz/publicCategory";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { RANKED_ROLES, type RankedRole } from "@/lib/ranked-public/roles";
 
 /**
  * The backend's proven subject, verbatim (`ranked_public.review`).
@@ -75,6 +76,12 @@ export interface TimelineTopic {
   category: CategoryKey;
   tier: DifficultyTier | null;
   iconHint: TimelineIconHint | null;
+  /**
+   * RQ1 — the League role(s) the QUESTION applies to, in lane order. Never the
+   * player's role. Absent (not `[]`) when the wire named none: a neutral
+   * question, a Daily card, or a round from a backend that predates RQ1.
+   */
+  roles?: RankedRole[];
 }
 
 export type TimelineOutcome =
@@ -321,11 +328,23 @@ export function readTimelineTopic(value: unknown): TimelineTopic | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   const hint = raw.icon_hint ?? raw.iconHint;
+  const roles = readQuestionRoles(raw.roles);
   return {
     category: asCategoryKey(raw.category),
     tier: asDifficultyTier(raw.tier),
     iconHint: readIconHint(hint),
+    ...(roles.length > 0 ? { roles } : {}),
   };
+}
+
+/**
+ * RQ1 — `topic.roles` off the wire: canonical ids only, lane order, no
+ * duplicates. An unknown value is dropped rather than guessed.
+ */
+export function readQuestionRoles(value: unknown): RankedRole[] {
+  if (!Array.isArray(value)) return [];
+  const present = new Set(value);
+  return RANKED_ROLES.filter((role) => present.has(role));
 }
 
 function readIconHint(value: unknown): TimelineIconHint | null {

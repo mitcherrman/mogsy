@@ -462,15 +462,14 @@ describe("accessible labels", () => {
     expect(marker()).toHaveAttribute("aria-hidden");
   });
 
-  it("renders a future question tag into the label ONLY if one is ever supplied", () => {
-    // The seam, exercised. Nothing in the live projection produces this today
-    // (see the model's tests) — it exists so a later phase has a shape to fill
-    // rather than a reason to reach for `metadata_json`.
-    expect(nodeLabel({
-      roundNumber: 8, index: 4, visible: true, state: "current",
-      segmentKind: null, outcome: null, tag: { kind: "role", role: "jungle" },
-      topic: null,
-    })).toBe("Round 8, current round, jungle question");
+  it("names the question's role(s) ONLY from the published topic (RQ1)", () => {
+    // The reserved scalar `tag` is superseded by `topic.roles` and stays null;
+    // a node with no roles says nothing about role.
+    const base = { roundNumber: 8, index: 4, visible: true, state: "current" as const,
+      segmentKind: null, outcome: null, tag: null };
+    expect(nodeLabel({ ...base, topic: null })).toBe("Round 8, current round");
+    expect(nodeLabel({ ...base, topic: { category: "general", tier: null, iconHint: null,
+      roles: ["jungle", "support"] } })).toMatch(/, Jungle and Support question$/);
   });
 });
 

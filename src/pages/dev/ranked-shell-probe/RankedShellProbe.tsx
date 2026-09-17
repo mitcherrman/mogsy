@@ -17,6 +17,9 @@
  *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
  *   stressA | stressB | metareflex
  * `?role=` freezes a League role onto the viewer's participant.
+ * `?qroles=` (RQ1) serves the QUESTION's role(s) as `topic.roles`, e.g.
+ *   `?qroles=top` or `?qroles=adc,support`. Independent of `?role=` on
+ *   purpose: the player's role and the question's roles are different facts.
  * `?points=` serves an RP1 v2 POINTS match instead of the hp one, as
  *   `module:you-them` (e.g. `?points=1:0-0`, `?points=6:11-8`,
  *   `?points=10:24-24`). Anything unparseable serves module 1 at 0–0.
@@ -103,6 +106,16 @@ const STRESS_OPTIONS = [
 ];
 
 function questionFor(state: ProbeState) {
+  const question = baseQuestionFor(state) as Record<string, unknown>;
+  if (probe.questionRoles.length === 0) return question;
+  return { ...question, topic: {
+    category: "abilities", tier: "hard",
+    icon_hint: { kind: "category", key: String(question.category ?? ""), icon: null },
+    roles: probe.questionRoles,
+  } };
+}
+
+function baseQuestionFor(state: ProbeState) {
   switch (state) {
     case "short":
       return { question_id: "q-short", prompt: "Which item grants Immolate?",
@@ -250,7 +263,8 @@ function privateFor(state: ProbeState) {
 const probe: {
   state: ProbeState; role: string | null; legacy: boolean;
   points: { module: number; you: number; them: number } | null;
-} = { state: "opts4", role: "top", legacy: false, points: null };
+  questionRoles: string[];
+} = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [] };
 
 let installed = false;
 function installInterceptor() {
@@ -302,6 +316,7 @@ export default function RankedShellProbe() {
   probe.role = role && role !== "none" ? role : null;
   probe.legacy = params.get("legacy") === "1";
   probe.points = parsePoints(params.get("points"));
+  probe.questionRoles = (params.get("qroles") ?? "").split(",").filter(Boolean);
   // Remount the arena when the probe state changes so the canned round is
   // re-read; the controller caches its snapshot for the life of the mount.
   const [, force] = useState(0);
@@ -326,7 +341,7 @@ export default function RankedShellProbe() {
         ))}
       </div>
       <Frame size="wide">
-        <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}`}
+        <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}`}
           matchId="m1" viewerUserId={VIEWER} />
       </Frame>
     </div>

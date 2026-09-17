@@ -27,7 +27,6 @@ import {
   MOGZY_MASCOT_ASSETS,
   MOGZY_ROLE_ASSETS,
 } from "@/components/mascot/mascot-assets";
-import { RANKED_ROLE_CHAMPIONS } from "@/lib/ranked-public/roleChampions";
 
 afterEach(cleanup);
 beforeEach(() => sfx.play.mockClear());
@@ -280,61 +279,65 @@ describe("RankedClassCarousel — record honesty", () => {
 });
 
 /**
- * MALT — the League anchor beside the selected mascot.
- *
- * The rules under test are the ones that keep this a role stage rather than a
- * champion gallery: ONE medallion, for the role on stage, never five.
+ * RQ1 — the role emblem beside the selected mascot, in the slot the MALT
+ * champion medallion used to occupy. The champion portrait is gone entirely.
  */
-describe("RankedClassCarousel — champion anchor", () => {
-  it("shows exactly one champion medallion, whichever role is on stage", () => {
+describe("RankedClassCarousel — role emblem", () => {
+  it("shows exactly one role emblem, whichever role is on stage", () => {
     const { container } = renderCarousel({ value: "top" });
-    expect(container.querySelectorAll("[data-testid='ranked-class-champion']").length).toBe(1);
-    // And it stays one after moving the ring, not one per role visited.
+    expect(container.querySelectorAll("[data-testid='ranked-class-role-emblem']").length).toBe(1);
     fireEvent.click(screen.getByTestId("ranked-class-next"));
     fireEvent.click(screen.getByTestId("ranked-class-next"));
-    expect(container.querySelectorAll("[data-testid='ranked-class-champion']").length).toBe(1);
+    expect(container.querySelectorAll("[data-testid='ranked-class-role-emblem']").length).toBe(1);
   });
 
-  it("draws the canonical champion for every one of the five roles", () => {
+  it("draws the correct emblem art for every one of the five roles (adc -> bot.svg)", () => {
+    const file: Record<string, string> = {
+      top: "top.svg", jungle: "jungle.svg", mid: "mid.svg", adc: "bot.svg", support: "support.svg",
+    };
     for (const role of RANKED_ROLES) {
       cleanup();
       renderCarousel({ value: role });
-      const champion = RANKED_ROLE_CHAMPIONS[role];
-      const medallion = screen.getByTestId("ranked-class-champion");
-      expect(medallion.getAttribute("data-role"), role).toBe(role);
-      expect(medallion.getAttribute("data-champion"), role).toBe(champion.name);
-      expect(medallion.querySelector("img")!.getAttribute("src"), role).toContain(
-        champion.iconPath,
-      );
+      const slot = screen.getByTestId("ranked-class-role-emblem");
+      expect(slot.getAttribute("data-role"), role).toBe(role);
+      const img = slot.querySelector("img")!;
+      expect(img.getAttribute("data-role"), role).toBe(role);
+      expect(img.getAttribute("src"), role).toBe(`/assets/ranked/mogzy-role-icons/${file[role]}`);
     }
   });
 
-  it("follows the SELECTION as the ring moves, one champion at a time", () => {
+  it("no champion portrait remains anywhere on the stage", () => {
+    const { container } = renderCarousel({ value: "top" });
+    expect(container.querySelector("[data-testid='ranked-class-champion']")).toBeNull();
+    for (const img of Array.from(container.querySelectorAll("img"))) {
+      expect(img.getAttribute("src") ?? "").not.toContain("assets/champions/");
+    }
+  });
+
+  it("follows the SELECTION as the ring moves", () => {
     renderCarousel({ value: "top" });
-    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-champion")).toBe("Darius");
+    expect(screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role")).toBe("top");
     fireEvent.click(screen.getByTestId("ranked-class-next"));
-    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-champion")).toBe("Qiyana");
+    expect(screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role")).toBe("jungle");
     fireEvent.click(screen.getByTestId("ranked-class-previous"));
-    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-champion")).toBe("Darius");
+    expect(screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role")).toBe("top");
   });
 
   it("is decorative — it never becomes part of a role option's accessible name", () => {
     renderCarousel({ value: "mid" });
-    const medallion = screen.getByTestId("ranked-class-champion");
-    expect(medallion.getAttribute("aria-hidden")).toBe("true");
-    expect(medallion.querySelector("img")!.getAttribute("alt")).toBe("");
-    // Mounted on the stage, not inside a slide: that is what makes "only one"
-    // structural rather than a rule someone has to remember.
-    expect(medallion.closest("[data-testid^='ranked-class-slide-']")).toBeNull();
-    // The role is still named by TEXT on its own slide.
+    const slot = screen.getByTestId("ranked-class-role-emblem");
+    expect(slot.getAttribute("aria-hidden")).toBe("true");
+    expect(slot.querySelector("img")!.getAttribute("alt")).toBe("");
+    expect(slot.closest("[data-testid^='ranked-class-slide-']")).toBeNull();
     expect(screen.getByTestId("ranked-class-slide-mid").textContent).toContain("Mid");
   });
 
-  it("keeps the mascot primary: the medallion is far smaller than the figure", () => {
+  it("keeps the medallion's slot geometry: same position and coin size", () => {
     renderCarousel({ value: "adc" });
-    const medallion = screen.getByTestId("ranked-class-champion");
-    // The figure takes the stage's whole height; the anchor is a fixed coin.
-    expect(medallion.className).toContain("h-10");
+    const slot = screen.getByTestId("ranked-class-role-emblem");
+    for (const cls of ["absolute", "right-[2%]", "top-[22%]", "h-10", "w-10", "lg:h-12"]) {
+      expect(slot.className).toContain(cls);
+    }
     expect(screen.getByTestId("ranked-class-slide-adc").querySelector("img")!.className).toContain(
       "h-full",
     );

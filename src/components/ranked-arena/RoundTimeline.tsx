@@ -68,6 +68,8 @@
 // ARENA1 Step 2A — the shared arena layer reads its view types from
 // `lib/ranked-core`, never upward from the Ranked PAGE. The types are
 // mode-neutral; the page that happened to declare them is not.
+import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
+import { RANKED_ROLE_LABELS } from "@/lib/ranked-public/roles";
 import type {
   ResultKind, RoundTimelineView, TimelineNode, TimelineSegmentKind,
 } from "@/lib/ranked-core/viewTypes";
@@ -129,9 +131,12 @@ export function nodeLabel(node: TimelineNode): string {
   const identity = IDENTITY[identityOf(node.segmentKind)].label;
   const kind = identity ? `, ${identity}` : "";
   const outcome = node.outcome ? `, ${OUTCOME[node.outcome].label}` : "";
-  const tag = node.tag ? `, ${node.tag.role} question` : "";
+  // RQ1 — the question's role(s), from the published topic only.
+  const roles = node.topic?.roles?.length
+    ? `, ${node.topic.roles.map((r) => RANKED_ROLE_LABELS[r]).join(" and ")} question`
+    : "";
   return `Round ${node.roundNumber}, ${STATE_LABEL[node.state]}${kind}`
-    + `${subjectPhrase(node)}${outcome}${tag}`;
+    + `${subjectPhrase(node)}${outcome}${roles}`;
 }
 
 /**
@@ -204,6 +209,18 @@ function TimelineNodeMark({ node, slotWidth }: { node: TimelineNode; slotWidth: 
       <span aria-hidden style={{ color: identity.ink }}
         className="relative block h-8 w-full max-w-[2.25rem]">
         <QuizTimelineNode node={nodeModel(node)} />
+        {/* RQ1 — the question's role(s), as SECONDARY metadata: a tiny mark
+            pinned inside the plate's upper-right corner, below the result
+            stripe and clear of the kind badge (bottom-right). Absolutely
+            placed, so the plate keeps its size; absent for a neutral question
+            and for any node with no published topic. */}
+        <QuestionRoleEmblems
+          roles={node.topic?.roles}
+          size="xs"
+          overlap
+          testId={`timeline-node-roles-${node.roundNumber}`}
+          className="ranked-timeline-roles pointer-events-none absolute right-[2px] top-[4px] z-[2]"
+        />
       </span>
       <span aria-hidden
         className="ranked-timeline-ordinal block text-[9px] font-semibold leading-none tabular-nums">

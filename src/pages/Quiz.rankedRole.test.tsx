@@ -201,7 +201,7 @@ function browseRing(steps: number) {
 function browseTo(role: "top" | "jungle" | "mid" | "adc" | "support") {
   const ring = ["top", "jungle", "mid", "adc", "support"] as const;
   const current = () =>
-    screen.getByTestId("ranked-class-champion").getAttribute("data-role") as (typeof ring)[number];
+    screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role") as (typeof ring)[number];
   for (let guard = 0; guard < ring.length && current() !== role; guard++) {
     fireEvent.click(screen.getByTestId("ranked-class-next"));
   }
@@ -264,7 +264,7 @@ describe("Leaguecraft lobby — browsing is local", () => {
 
   it("still moves the stage and the ledger with every browse", async () => {
     await renderHub();
-    const champion = () => screen.getByTestId("ranked-class-champion").getAttribute("data-role");
+    const champion = () => screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role");
     const ledger = () => screen.getByTestId("role-mastery-ledger").getAttribute("data-role");
     expect(champion()).toBe("top");
 
@@ -319,7 +319,7 @@ describe("Leaguecraft lobby — PLAY commits the role", () => {
     // a real journey that changes nothing, and must cost nothing.
     await renderHub();
     browseRing(5);           // one full lap, back where it started
-    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-role")).toBe("top");
+    expect(screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role")).toBe("top");
 
     await playRanked();
     await waitFor(() =>
@@ -413,7 +413,7 @@ describe("Leaguecraft lobby — a refused commit", () => {
     await waitFor(() => expect(selectRole).toHaveBeenCalledTimes(1));
     // The stage still shows what the reader chose — a refusal must not
     // silently snap them back to the stored role.
-    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-role")).toBe("mid");
+    expect(screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role")).toBe("mid");
 
     // The record stayed on its menu, so the retry is another Ranked press —
     // no reopening, and the stepper is still showing Mid.
@@ -444,7 +444,7 @@ describe("Leaguecraft lobby — a refused commit", () => {
 describe("the lobby and the record share one role selection", () => {
   /** What the LOBBY's stage is pointing at, behind the open record. */
   const lobbyRole = () =>
-    screen.getByTestId("ranked-class-champion").getAttribute("data-role");
+    screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role");
   /** What the RECORD's stepper is showing. */
   const scrollRole = () =>
     screen.getByTestId("play-scroll-mascot").getAttribute("data-role");
@@ -626,7 +626,7 @@ describe("the lobby and the record share one role selection", () => {
 
 describe("PLAY1 sound — one action, one cue, across both role surfaces", () => {
   const lobbyRole = () =>
-    screen.getByTestId("ranked-class-champion").getAttribute("data-role");
+    screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role");
   const scrollRole = () =>
     screen.getByTestId("play-scroll-mascot").getAttribute("data-role");
   /** Every cue sounded so far, in order. */
@@ -830,7 +830,7 @@ describe("a guest pressing Ranked Match", () => {
   const scrollRole = () =>
     screen.getByTestId("play-scroll-mascot").getAttribute("data-role");
   const lobbyRole = () =>
-    screen.getByTestId("ranked-class-champion").getAttribute("data-role");
+    screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role");
 
   async function guestAtRanked() {
     asGuest();
@@ -1012,7 +1012,7 @@ describe("returning from signup", () => {
     );
     await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
     expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("adc");
-    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-role")).toBe("adc");
+    expect(screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role")).toBe("adc");
   });
 
   it("does NOT enter matchmaking by itself — the player presses Ranked again", async () => {
@@ -1056,7 +1056,7 @@ describe("returning from signup", () => {
 
 describe("PLAY1 sound — the two role surfaces, one tick", () => {
   const lobbyRole = () =>
-    screen.getByTestId("ranked-class-champion").getAttribute("data-role");
+    screen.getByTestId("ranked-class-role-emblem").getAttribute("data-role");
   const scrollRole = () =>
     screen.getByTestId("play-scroll-mascot").getAttribute("data-role");
   const cues = () => sfx.play.mock.calls.flat();

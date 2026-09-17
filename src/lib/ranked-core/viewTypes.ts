@@ -193,6 +193,12 @@ export interface QuestionView {
   prompt: string;
   options: AnswerOptionView[];
   category: string | null;
+  /**
+   * RQ1 — the League role(s) this QUESTION applies to (`topic.roles`), for the
+   * small role emblem beside the category. Absent for a neutral question. It
+   * is never derived from the player's role, the prompt or the category.
+   */
+  roles?: RankedRole[];
 }
 
 export type SubmissionPhase = "selecting" | "reviewing" | "locked";
@@ -383,6 +389,11 @@ export type TimelineNodeState = "resolved" | "current" | "upcoming";
  * only thing this type does is fix the shape a later phase fills once the
  * backend publishes an authoritative tag. It is NOT a place to smuggle
  * `metadata_json`, to read a category string as a role, or to guess.
+ *
+ * RQ1 — SUPERSEDED, still always null. The backend now publishes the question's
+ * role(s) as `topic.roles` (a LIST: a question may apply to several roles), and
+ * that is the one place the timeline reads them from. This scalar slot is kept
+ * only so existing node literals stay valid; nothing should start filling it.
  */
 export type TimelineNodeTag = { kind: "role"; role: RankedRole };
 
