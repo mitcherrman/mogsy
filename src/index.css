@@ -9005,6 +9005,66 @@ html.high-contrast * { text-shadow: none !important; }
 }
 
 /* ---------------------------------------------------------------------------
+   QV1 wide-desktop consolidated override — the Ranked question card, tuned for
+   very wide, tall-enough desktops ONLY (>=1600px width, >=780px height).
+
+   PLACEMENT IS THE FEATURE. The short-viewport compaction block directly above
+   fires at an ~1880x800 desktop (its height bound is 860px) and would otherwise
+   undo this block's answer padding and re-cap the cinematic window at 26vh —
+   which is why prior tuning appeared to do almost nothing. Sitting AFTER it,
+   with equal specificity and the same `!important`, this block wins both.
+
+   Scope: the Ranked question stage and its parchment only. Mobile, narrower
+   desktops, sparse/compact cards (`data-band="compact"`), the arena shell,
+   rails, header/timer, Module Rail and lobby/results are untouched.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1600px) and (min-height: 780px) {
+  /* The parchment: slightly shorter, with the excess reserved footprint paid
+     back into the content regions that render inside it. */
+  .ranked-question-stage {
+    flex: 0 0 38rem;
+    min-height: 38rem;
+    max-height: 38rem;
+    --qs-prompt-h: 6.5rem;
+    --qs-answers-h: 6.75rem;
+    --qs-band-aspect-band: 16 / 8;
+  }
+
+  /* Rich media only — cinematic and family bands, never the sparse compact
+     plate. The region grows and the band's own ceiling follows it; the ceiling
+     is what the band reads, so both must move together. */
+  .ranked-question-stage .question-surface-stack[data-band="cinematic"] > [data-surface-region="media"],
+  .ranked-question-stage .question-surface-stack[data-band="family"] > [data-surface-region="media"] {
+    height: var(--qs-media-rich, 19rem);
+  }
+  .ranked-question-stage .question-surface-stack[data-band="cinematic"],
+  .ranked-question-stage .question-surface-stack[data-band="family"] {
+    --qs-media-max: min(var(--qs-media-rich, 19rem), 100%);
+  }
+
+  /* The hero ceiling, re-asserted ABOVE the short-viewport rule: its
+     `max-height: min(16rem, 26vh) !important` fires at this viewport and would
+     otherwise keep the actual cinematic window capped even with a taller
+     region. Same `!important`, later in the file — this one wins. */
+  .ranked-academy [data-testid="scenario-hero"] {
+    max-height: min(19rem, 100%) !important;
+  }
+
+  /* The question itself: one step larger, with leading that grows with it. */
+  .ranked-academy .ranked-folio [data-testid="scenario-surface"] > header h2 {
+    font-size: 1.5rem;
+    line-height: 1.35;
+  }
+
+  /* Answer tablets: restores the 18px vertical padding the compaction block
+     reduces to 8px at this very viewport. */
+  .ranked-academy [data-answers-state] [data-quiz-choice] {
+    padding-top: 1.125rem;
+    padding-bottom: 1.125rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Closed Academy volume — the /lol hub destination book (AcademyHubBook).
 
    HEAD-ON (2026-09-03e). The books used to be turned inward at ±11deg so that
