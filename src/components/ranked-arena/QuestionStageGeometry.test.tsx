@@ -716,10 +716,14 @@ describe("the wide-desktop media exception is additive, not a replacement", () =
     expect(body).not.toContain('data-band="compact"');
   });
 
-  it("uses the rich media height, 17.25rem, via --qs-media-rich", () => {
+  it("uses the approved wide rich media height, 19rem, via --qs-media-rich", () => {
+    // The owner-approved wide-desktop design raises the rich region AND the
+    // band's own ceiling to 19rem together (the ceiling is what the band reads).
     const body = wideBlock();
-    expect(body).toMatch(/height:\s*var\(--qs-media-rich,\s*17\.25rem\)/);
-    expect(body).toMatch(/--qs-media-max:\s*min\(var\(--qs-media-rich,\s*17\.25rem\),\s*100%\)/);
+    expect(body).toMatch(/height:\s*var\(--qs-media-rich,\s*19rem\)/);
+    expect(body).toMatch(/--qs-media-max:\s*min\(var\(--qs-media-rich,\s*19rem\),\s*100%\)/);
+    // And re-asserts the hero ceiling above the <=860px compaction cap.
+    expect(body).toMatch(/\[data-testid="scenario-hero"\]\s*\{\s*max-height:\s*min\(19rem,\s*100%\)\s*!important/);
   });
 
   it("leaves the existing 861px rich-media rule fully intact", () => {
@@ -741,15 +745,18 @@ describe("the wide-desktop media exception is additive, not a replacement", () =
     expect(body).toMatch(/--qs-media-max:\s*min\(var\(--qs-media-rich,\s*17\.25rem\),\s*100%\)/);
   });
 
-  it("changes no prompt or answer sizing rule", () => {
-    // The exception is media-only: it must not appear anywhere near a prompt
-    // or answers font-size/padding declaration, and those ladders keep the
-    // exact values pinned earlier in this file.
+  it("tunes prompt type and answer air only, never the region reserves", () => {
+    // The approved wide-desktop design steps the prompt to 1.5rem/1.35 and
+    // restores 1.125rem of answer padding. It must still never touch the
+    // prompt/answer REGION reserves — those ladders keep the exact values
+    // pinned earlier in this file.
     const body = wideBlock();
-    expect(body).not.toMatch(/font-size/);
-    expect(body).not.toMatch(/padding/);
+    expect(body).toMatch(/header h2\s*\{\s*font-size:\s*1\.5rem;\s*line-height:\s*1\.35;\s*\}/);
+    expect(body.match(/font-size/g)).toHaveLength(1);
+    expect(body).toMatch(/\[data-quiz-choice\]\s*\{\s*padding-top:\s*1\.125rem;\s*padding-bottom:\s*1\.125rem;\s*\}/);
     expect(body).not.toMatch(/data-surface-region="prompt"/);
     expect(body).not.toMatch(/data-surface-region="answers"/);
+    expect(body).not.toMatch(/--qs-prompt-h|--qs-answers-h/);
   });
 });
 

@@ -75,11 +75,13 @@ measurements — including 1878×797 and 1920×1080 — are pixel-identical.
 - Fit spec with the fix reverted, `-g 1280x720`: 5 failed ("an arena column overflows the grid row it was given"), 2 passed — the new assertion catches the bug.
 - Full fit suite (`playwright.arena.config.ts`): **134 passed**, 0 failed.
 - `npm run build`: passes.
-- Vitest (`ranked-arena`, `question-surface`, probe, `lib/question-surface`): 647 passed, 2 failed — both in `QuestionStageGeometry.test.tsx` ("wide-desktop media exception is additive"), **pre-existing on main**: they assert 17.25rem and no font-size, but the owner's locked override is 19rem + 1.5rem prompt. RS1 touches neither `index.css` nor that test.
+- Vitest (`ranked-arena`, `question-surface`, probe, `lib/question-surface`): initially 647 passed / 2 failed — stale `QuestionStageGeometry` wide-exception expectations already red on main (17.25rem, no font-size). Updated to guard the approved design (rich media + hero ceiling 19rem; prompt 1.5rem/1.35; answer padding 1.125rem; region reserves still untouched). Now **649/649 passed, 44 files**.
+- Fit suite and build not rerun after the test-expectation commit: it changed only a vitest file, nothing runtime.
+
+- `src/components/ranked-arena/QuestionStageGeometry.test.tsx` — stale wide-desktop expectations updated (test-only).
 
 ## Status
-Implementation complete on branch; not merged/pushed.
+COMPLETE — approved and merged to `main`.
 
 ## Next task
-- Owner decision: refresh the two stale `QuestionStageGeometry` wide-exception assertions to the locked 19rem/1.5rem design.
-- Optional owner decision: smooth the 780px height gate media step.
+- Later design-tuning pass (out of RS1 scope): the non-breaking 779→780 and 1599→1600 media/text seams.
