@@ -352,11 +352,13 @@ export interface MascotReaction {
    * RP1 added `cheer`: a points match has no attacker and no victim, and its
    * mascot reacts to its OWN player's award. See `projectPointsMascotReactions`.
    */
-  action: "attack" | "hit" | "cheer";
-  /** The settled round this reaction belongs to. A round settles exactly once,
-   *  so the round number is a stable, monotonic event id — which is precisely
-   *  what `RoleMascot`'s edge-triggered playback needs. */
-  actionId: number;
+  action: "attack" | "hit" | "cheer" | "celebrate" | "focus";
+  /** The event this reaction belongs to. A round settles exactly once, so the
+   *  round number is a stable, monotonic event id — which is precisely what
+   *  `RoleMascot`'s edge-triggered playback needs. RD2's duel reactions name
+   *  the event instead (`lead:<round>:<player>`, `final:<round>`), which is the
+   *  same property with the kind of event spelled out. */
+  actionId: number | string;
 }
 
 /**
