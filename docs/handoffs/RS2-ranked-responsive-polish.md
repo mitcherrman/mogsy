@@ -23,7 +23,7 @@ audit), longest real option labels 63 chars (`realMax`).
 - `?q=stressA` — 188-char item prompt + 4 × longest labels + cinematic Item Analysis art.
 - `?q=stressB` — 188-char Combat Calculation prompt + 4 × longest labels + family band.
 
-## Status: IMPLEMENTED (approved #1 + #2, scope-corrected) — committed on branch, NOT merged
+## Status: COMPLETE — approved and merged to `main`
 
 ## Audit measurements (before, current main)
 Matrix: 1920×1080, 1920×800, 1878×797, 1878×800, 1600×900, 1600×800, 1600×780,
