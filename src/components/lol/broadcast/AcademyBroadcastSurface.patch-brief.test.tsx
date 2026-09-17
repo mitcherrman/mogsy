@@ -25,6 +25,7 @@ import type { PatchReportCard, PatchReportDetail } from "@/lib/patch-reports/api
 import { projectPatchBrief } from "@/lib/patch-reports/patch-brief";
 import AcademyBroadcastCenterpiece from "./AcademyBroadcastCenterpiece";
 import AcademyBroadcastSurface, {
+  briefGeometryAt,
   briefIconSizing,
   briefSpread,
 } from "./AcademyBroadcastSurface";
@@ -426,7 +427,7 @@ describe("Icon-only Patch Brief centerpiece — audio and dock regressions", () 
 
 /* -------------------------------------------------------------------------- */
 
-describe("briefIconSizing — content-aware shared icon ramp", () => {
+describe("briefIconSizing — parchment-fit shared icon ramp", () => {
   const section = (direction: "buff" | "nerf" | "adjustment", n: number) =>
     ({
       direction,
@@ -452,32 +453,44 @@ describe("briefIconSizing — content-aware shared icon ramp", () => {
     const sparse = sizing(2, 2, 1);
     const dense = sizing(14, 12, 9);
     expect(sparse.cqw).toBeGreaterThan(dense.cqw);
-    expect(sparse.maxPx).toBeGreaterThan(dense.maxPx);
+    expect(sparse.columns).toBeLessThanOrEqual(dense.columns);
   });
 
-  it("is monotonic: more icons never grow the shared size", () => {
-    let previous = Infinity;
-    for (let n = 1; n <= 24; n += 1) {
-      const { cqw } = sizing(n, n, n);
-      expect(cqw).toBeLessThanOrEqual(previous);
-      previous = cqw;
+  it.each([
+    [6, 5, 1],
+    [8, 8, 2],
+    [12, 10, 4],
+  ])("keeps %i buffs / %i nerfs / %i adjustments inside every supported parchment", (buffs, nerfs, adjustments) => {
+    const spread = {
+      leftTop: buffs ? section("buff", buffs) : null,
+      rightTop: nerfs ? section("nerf", nerfs) : null,
+      rightLower: adjustments ? [section("adjustment", adjustments)] : [],
+    };
+    const layout = briefIconSizing(spread);
+
+    // Explicit columns are the reflow lever: the 26.18-shaped right page
+    // chooses three columns rather than a third Nerfs row before Adjustments.
+    if (buffs === 6 && nerfs === 5 && adjustments === 1) {
+      expect(layout.columns).toBe(3);
     }
-  });
+    expect(layout.columns).toBeGreaterThanOrEqual(3);
+    expect(layout.columns).toBeLessThanOrEqual(6);
+    expect(layout.minPx).toBeGreaterThanOrEqual(10);
+    expect(layout.maxPx).toBeLessThanOrEqual(48);
 
-  it("stays within sane caps and never goes tiny", () => {
-    for (let n = 1; n <= 40; n += 1) {
-      const { columns, cqw, minPx, maxPx } = sizing(n, n, n);
-      expect(columns).toBeGreaterThanOrEqual(2);
-      expect(columns).toBeLessThanOrEqual(6);
-      expect(cqw).toBeGreaterThan(0);
-      expect(minPx).toBeGreaterThanOrEqual(14 - 0); // floor, or the cap if lower
-      expect(maxPx).toBeGreaterThanOrEqual(20);
-      expect(maxPx).toBeLessThanOrEqual(48);
+    // These cover the supported center-tome range in academy-layout.ts:
+    // last-resort narrow lane, normal constrained lane, and desktop cap.
+    for (const width of [200, 250, 380]) {
+      const geometry = briefGeometryAt(spread, width);
+      expect(geometry.bottomClearance).toBeGreaterThanOrEqual(0);
+      // The left page includes the real Read full report action block; the
+      // right is Nerfs stacked over Adjustments.
+      expect(geometry.pageHeights[0]).toBeLessThanOrEqual(geometry.availableHeight);
+      expect(geometry.pageHeights[1]).toBeLessThanOrEqual(geometry.availableHeight);
     }
-  });
 
-  it("lets the densest group decide the one shared size", () => {
-    // A big Nerfs group pulls the shared size down even with tiny Buffs.
-    expect(sizing(1, 18, 1).cqw).toBe(sizing(18, 18, 18).cqw);
+    if (buffs === 6 && nerfs === 5 && adjustments === 1) {
+      expect(briefGeometryAt(spread, 380).iconPx).toBeGreaterThan(28);
+    }
   });
 });
