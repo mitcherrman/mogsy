@@ -216,9 +216,17 @@ export function SegmentResultBeat({
             <>
               {/* The module name is context the player already has — they have
                   just played five of its cards — so it is the first thing to
-                  give up where the strip is narrow. The result never is. */}
-              <span className="hidden text-muted-foreground lg:inline">{title}</span>
-              <span aria-hidden className="hidden text-muted-foreground/50 lg:inline"> · </span>
+                  give up where the strip is narrow. The result never is.
+                  RR1 — in a points match it no longer rides the loud line at
+                  all: "META REFLEX · 0 / 5 +0" is 336px in a 184px record
+                  window. It moves to the quiet line below (see `consequence`),
+                  so the plate reads "0 / 5 +0" over "META REFLEX". */}
+              {!feedback && (
+                <>
+                  <span className="hidden text-muted-foreground lg:inline">{title}</span>
+                  <span aria-hidden className="hidden text-muted-foreground/50 lg:inline"> · </span>
+                </>
+              )}
               {/* RP1 — the block's result IS its count and what that count
                   earned. The win/loss word is retired for a points match: a
                   module is not won, it is scored, and "Loss · 4/5 +4" tells a
@@ -229,8 +237,11 @@ export function SegmentResultBeat({
             </>
           }
           consequence={feedback
+            // RR1 — the quiet line names the module, unless the block earned
+            // its speed bonus, which is the more important fact to state there.
+            // The count "N / 5" on the loud line already says it was a block.
             ? (feedback.speed
-              ? `${feedback.speed.label} +${feedback.speed.points}` : "")
+              ? `${feedback.speed.label} +${feedback.speed.points}` : title)
             : scoreline}
           // RP1 — NO BONUS CHIPS in a points match, and the absence is the
           // point. "Perfect" is a fact about the block and not a reward: RP1
