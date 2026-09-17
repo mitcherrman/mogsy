@@ -331,6 +331,35 @@ describe.each(["desktop", "mobile"] as const)(
       // data attribute is the stable assertion for the assigned row width.
     });
 
+    it("keeps a five-icon Nerfs grid as 3 + 2 centered", () => {
+      const entries = (prefix: string, count: number) =>
+        Array.from({ length: count }, (_, i) => ({
+          entityType: "champion" as const,
+          entityId: `${prefix}-${i}`,
+          accessibleName: `${prefix} ${i}`,
+          iconUrl: "x",
+        }));
+      const feed: BroadcastFeed = {
+        status: "ready",
+        transmissions: [briefTransmission({
+          patchVersion: "26.18",
+          patchLabel: "Patch 26.18",
+          fullReportHref: "/lol/patch-reports?patch=26.18",
+          sections: [
+            { direction: "buff", title: "Buffs", entries: entries("buff", 6) },
+            { direction: "nerf", title: "Nerfs", entries: entries("nerf", 5) },
+            { direction: "adjustment", title: "Adjustments", entries: entries("adjustment", 1) },
+          ],
+        })],
+        index: 0,
+      };
+      renderSurface(variant, feed);
+      const nerfs = surface().querySelector('[data-testid="patch-brief-section-nerf"] ul') as HTMLUListElement;
+      expect(nerfs.querySelectorAll("li")).toHaveLength(5);
+      expect(nerfs).toHaveStyle({ display: "flex", flexWrap: "wrap", justifyContent: "center" });
+      expect(nerfs.dataset.briefRowWidth).toContain("calc(");
+    });
+
     it("keeps Buffs natural and centers the CTA in the remaining left-page space", () => {
       renderSurface(variant);
       const s = surface();
@@ -539,5 +568,23 @@ describe("briefIconSizing — parchment-fit shared icon ramp", () => {
     expect(three.ctaTop!).toBeGreaterThan(two.ctaTop!);
     expect(three.ctaBottom!).toBeLessThanOrEqual(three.availableHeight);
     expect(two.ctaBottom!).toBeLessThanOrEqual(two.availableHeight);
+  });
+
+  it("keeps the ordinary 6/5/1 brief at 3 columns and inside both parchment pages", () => {
+    const spread = {
+      leftTop: section("buff", 6),
+      rightTop: section("nerf", 5),
+      rightLower: [section("adjustment", 1)],
+    };
+    for (const width of [200, 250, 380]) {
+      const geometry = briefGeometryAt(spread, width);
+      expect(geometry.columns).toBe(3);
+      expect(geometry.sectionRowsByPage).toEqual([[2], [2, 1]]);
+      expect(geometry.ctaTop!).toBeGreaterThan(geometry.leftNaturalHeight);
+      expect(geometry.ctaBottom!).toBeLessThanOrEqual(geometry.availableHeight);
+      // The second right-page section is Adjustments; its block bottom is
+      // represented by the full right-page stack height.
+      expect(geometry.pageHeights[1]).toBeLessThanOrEqual(geometry.availableHeight);
+    }
   });
 });

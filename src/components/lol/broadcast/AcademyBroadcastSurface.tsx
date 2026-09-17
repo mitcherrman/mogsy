@@ -189,6 +189,7 @@ const BRIEF_SAFE_HEIGHT_CQW = (0.855 - 0.165) * SURFACE_HEIGHT_PER_WIDTH * 100;
 const MIN_BOOK_WIDTH_PX = 200;
 const ICON_FLOOR_PX = 10;
 const ICON_CAP_PX = 48;
+const PREFERRED_COLUMNS = 3;
 const MAX_COLUMNS = 6;
 
 type BriefSpread = {
@@ -274,24 +275,24 @@ function iconLimitPx(spread: BriefSpread, columns: number, bookWidth: number, ha
  * reserve, grid gaps, and between-section gaps inside the measured parchment
  * height as well as for its usable page width.
  *
- * Fewer icons → fewer columns → bigger cells (up to the cap); more icons →
- * more columns → the size shrinks only as far as needed, floored so icons
- * never go tiny. Purely a formula over counts: generic for any future patch.
+ * Three columns are the visual default. More columns are a dense-content
+ * escape hatch only after three columns cannot fit at the icon floor; this
+ * keeps the ordinary 6/5/1 brief in the intended 3+3 / 3+2 / 1 hierarchy.
  */
 export function briefIconSizing(spread: BriefSpread, { hasAction = true }: { hasAction?: boolean } = {}): BriefIconSizing {
   /**
-   * Select the column count that yields the largest shared icon at the
-   * narrowest supported tome.  More columns are considered before shrinking
-   * icons; each candidate must pay for every stacked section heading, every
-   * grid row, the title reserve, and both kinds of gaps.  The resulting cqw
-   * ramp is safe at the 200px floor and grows with the container to the same
-   * bounded cap everywhere else.
+   * Three columns are tried first and retain their natural row hierarchy as
+   * long as the complete spread fits at the icon floor. Only genuinely dense
+   * future payloads advance to four, five, or six columns.
    */
-  let best = { columns: 2, iconPx: -Infinity };
-  for (let columns = 2; columns <= MAX_COLUMNS; columns += 1) {
+  let best = { columns: PREFERRED_COLUMNS, iconPx: -Infinity };
+  for (let columns = PREFERRED_COLUMNS; columns <= MAX_COLUMNS; columns += 1) {
     const limit = iconLimitPx(spread, columns, MIN_BOOK_WIDTH_PX, hasAction);
     const iconPx = Math.min(ICON_CAP_PX, limit);
-    if (iconPx >= ICON_FLOOR_PX && iconPx > best.iconPx) best = { columns, iconPx };
+    if (iconPx >= ICON_FLOOR_PX) {
+      best = { columns, iconPx };
+      break;
+    }
   }
 
   // Pathological future feeds can exceed even six compact columns. Keep the
@@ -345,6 +346,10 @@ export function briefGeometryAt(
     : null;
   const ctaBottom = ctaTop === null ? null : ctaTop + ctaHeight;
   const pageHeights = [leftNaturalHeight + ctaGap + ctaHeight, rightHeight];
+  const sectionRowsByPage = [
+    leftPage.map((section) => sectionRows(section, sizing.columns)),
+    rightPage.map((section) => sectionRows(section, sizing.columns)),
+  ];
   return {
     ...sizing,
     iconPx,
@@ -354,6 +359,7 @@ export function briefGeometryAt(
     ctaTop,
     ctaBottom,
     ctaRegionHeight,
+    sectionRowsByPage,
     bottomClearance: Math.min(...pageHeights.map((height) => availableHeight - height)),
   };
 }
