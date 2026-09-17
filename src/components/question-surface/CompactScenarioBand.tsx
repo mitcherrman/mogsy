@@ -45,6 +45,8 @@
  * second filler system, and nothing that can 404.
  */
 
+import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
+import type { RankedRole } from "@/lib/ranked-public/roles";
 import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
 import type { CompactDensity } from "@/lib/question-surface/compactDensity";
 import academyHall from "@/assets/ranked/academy-hall.jpg";
@@ -59,9 +61,11 @@ export interface CompactScenarioBandProps {
    * `@/lib/question-surface/compactDensity` for who opts in and why.
    */
   density?: CompactDensity;
+  /** RQ1 — the question's role(s); drawn immediately left of the label. */
+  roles?: readonly RankedRole[];
 }
 
-export function CompactScenarioBand({ category, density = "plate" }: CompactScenarioBandProps) {
+export function CompactScenarioBand({ category, density = "plate", roles }: CompactScenarioBandProps) {
   /**
    * ENV1 — the CONTEXT strip.
    *
@@ -176,8 +180,11 @@ export function CompactScenarioBand({ category, density = "plate" }: CompactScen
       </div>
 
       <div className="relative min-w-0">
-        <div className="truncate text-sm font-bold uppercase tracking-[0.26em] text-[#e8c97a]">
-          {label}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <QuestionRoleEmblems roles={roles} size="sm" />
+          <div className="min-w-0 truncate text-sm font-bold uppercase tracking-[0.26em] text-[#e8c97a]">
+            {label}
+          </div>
         </div>
         <div className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.3em] text-white/45">
           Knowledge Battle

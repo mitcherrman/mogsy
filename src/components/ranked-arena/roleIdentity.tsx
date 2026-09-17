@@ -16,7 +16,7 @@
  * created), and this is that change: `RoleCrest` now renders the reusable
  * `RoleMascot` in the same slot, and nothing that consumes `RoleCrest` moved.
  *
- * The sigils below are NOT dead. They remain the crest for a duelist with no
+ * The neutral sigil below is NOT dead. It remains the crest for a duelist with no
  * role at all — a pre-R1 match, or an account that never chose — where there
  * is no role and therefore no role art to draw. That branch never guesses.
  *
@@ -62,76 +62,21 @@ export function roleIdentityFor(roleId: string | null | undefined): RoleIdentity
 }
 
 /**
- * The lane sigil. One 24×24 viewBox per role, all built from the same three
- * primitives (the map diagonal, a lane bar, a marker) so the five read as one
- * set rather than five borrowed icons.
+ * The NEUTRAL sigil — the crest for a duelist with no role.
+ *
+ * RQ1: this used to draw a lane sigil per role as well, but every caller only
+ * ever reached it with `role === null` (a role draws its mascot instead), and
+ * the small real-role mark is now the shared `RoleEmblem` with the shipped
+ * role art. So only the neutral crossed-blades mark remains: there is one
+ * small icon system for Top/Jungle/Mid/ADC/Support, not two.
  */
-function Sigil({ role }: { role: RankedRole | null }) {
-  const common = {
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.6,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    className: "h-full w-full",
-    "aria-hidden": true,
-  };
-  switch (role) {
-    case "top":
-      // Upper-left lane: the corner the solo laner owns.
-      return (
-        <svg {...common}>
-          <path d="M4 20L20 4" opacity="0.35" />
-          <path d="M4 14V4h10" />
-          <circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none" />
-        </svg>
-      );
-    case "jungle":
-      // Between the lanes: the diagonal plus the camps either side of it.
-      return (
-        <svg {...common}>
-          <path d="M4 20L20 4" opacity="0.35" />
-          <path d="M12 20c0-4 2-6 5-7-1 4-2 6-5 7z" />
-          <path d="M12 20c0-4-2-6-5-7 1 4 2 6 5 7" opacity="0.6" />
-        </svg>
-      );
-    case "mid":
-      // The centre line, marked at the middle.
-      return (
-        <svg {...common}>
-          <path d="M4 20L20 4" />
-          <circle cx="12" cy="12" r="3.2" />
-        </svg>
-      );
-    case "adc":
-      // Lower-right lane with the carry's marker on the outside.
-      return (
-        <svg {...common}>
-          <path d="M4 20L20 4" opacity="0.35" />
-          <path d="M20 10v10H10" />
-          <circle cx="16.5" cy="16.5" r="1.6" fill="currentColor" stroke="none" />
-        </svg>
-      );
-    case "support":
-      // The same lower-right lane, two markers: the partner, not the carry.
-      return (
-        <svg {...common}>
-          <path d="M4 20L20 4" opacity="0.35" />
-          <path d="M20 10v10H10" />
-          <circle cx="14" cy="18" r="1.4" fill="currentColor" stroke="none" />
-          <circle cx="18" cy="14" r="1.4" fill="currentColor" stroke="none" opacity="0.65" />
-        </svg>
-      );
-    default:
-      // No role (a pre-R1 match, or an account that never chose). A neutral
-      // crossed-blades mark — never a guessed role.
-      return (
-        <svg {...common}>
-          <path d="M5 5l14 14M19 5L5 19" opacity="0.5" />
-        </svg>
-      );
-  }
+function NeutralSigil() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}
+      strokeLinecap="round" strokeLinejoin="round" className="h-full w-full" aria-hidden>
+      <path d="M5 5l14 14M19 5L5 19" opacity="0.5" />
+    </svg>
+  );
 }
 
 /**
@@ -315,7 +260,7 @@ export function RoleCrest({
                 }}
               >
                 <span className="h-1/2 w-1/2 opacity-80">
-                  <Sigil role={null} />
+                  <NeutralSigil />
                 </span>
               </span>
             </NeutralEmblemMotion>
@@ -368,7 +313,7 @@ export function RoleCrest({
         />
       ) : (
         <span className={size === "sm" ? "h-5 w-5" : "h-7 w-7"}>
-          <Sigil role={identity.role} />
+          <NeutralSigil />
         </span>
       )}
     </span>

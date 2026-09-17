@@ -29,9 +29,9 @@
  * real aggregate exists, `productionChampionKnowledge` is the one function
  * that changes, and no component does.
  *
- * `roleChampions.ts` is NOT an input here. That map is one COSMETIC champion
- * per role and says so in its own words; using it to answer "what am I best
- * at" would turn a decoration into a claim about the account.
+ * No cosmetic "champion per role" decoration is an input here (RQ1 removed
+ * the lobby's one); answering "what am I best at" from a decoration would
+ * turn it into a claim about the account.
  */
 import type { RankedRole } from "@/lib/ranked-public/roles";
 

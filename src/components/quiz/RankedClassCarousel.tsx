@@ -17,10 +17,9 @@
  * slide, so identity never depends on the picture.
  *
  * Beside the SELECTED figure — and only beside that one — sits a single small
- * champion medallion from `roleChampions.ts`: the League anchor for the role
- * on stage. It is cosmetic, it is announced to nobody, and it stays a coin at
- * the mascot's foot on purpose. The mascot is this stage's subject; five
- * champion portraits at once would make it a champion gallery instead.
+ * ROLE EMBLEM (RQ1): the shared `RoleEmblem` mark for the role on stage, in
+ * the slot a champion medallion used to occupy. It is decorative (the role's
+ * NAME is the identity) and the mascot stays this stage's subject.
  *
  * DATA HONESTY
  * ────────────
@@ -55,8 +54,7 @@ import {
   type RankedRole,
 } from "@/lib/ranked-public/roles";
 import { getRankedRoleMascotPath } from "@/components/mascot/mascot-assets";
-import { getRankedRoleChampion } from "@/lib/ranked-public/roleChampions";
-import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { RoleEmblem } from "@/components/ranked-arena/RoleEmblem";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 
 /** A real, already-tallied record for one role. Never defaulted to zeros —
@@ -124,13 +122,11 @@ const SURFACE = {
     recordValue: "text-[#e2c877]",
     recordScope: "text-muted-foreground",
     recordEmpty: "text-muted-foreground",
-    /** The champion medallion beside the selected figure — brass on navy. */
-    champion: {
+    /** The role emblem's coin beside the selected figure — brass on navy. */
+    emblem: {
       ring: "rgba(201,168,76,0.55)",
       halo: "rgba(6,13,26,0.72)",
       shadow: "0 6px 16px -6px rgba(0,0,0,0.85)",
-      /** Barely touched: on a dark stage the portrait is already contained. */
-      ink: "saturate(0.95)",
     },
   },
   parchment: {
@@ -167,17 +163,13 @@ const SURFACE = {
     recordValue: "text-[#3f2b06]",
     recordScope: "text-[#56412a]",
     recordEmpty: "text-[#3f2c14]",
-    /* The same medallion struck in the sheet's own metal. A game portrait is
-       a full-saturation digital image and the parchment is not, so it is
-       pulled a step toward the page's warmth — enough that the coin reads as
-       INLAID in the manuscript rather than pasted onto it, and not so much
-       that the champion stops being recognisable, which is the entire point
-       of having it there. */
-    champion: {
+    /* The emblem art is drawn for a dark ground (white and gold strokes), so
+       on the sheet the coin stays navy, rimmed in the page's own brown, and
+       reads as inlaid rather than as a hole in the paper. */
+    emblem: {
       ring: "rgba(74,48,16,0.62)",
-      halo: "rgba(255,247,230,0.55)",
+      halo: "rgba(16,26,42,0.88)",
       shadow: "0 5px 12px -5px rgba(56,36,10,0.6)",
-      ink: "sepia(0.22) saturate(0.88)",
     },
   },
 } as const;
@@ -368,11 +360,6 @@ export default function RankedClassCarousel({
   const activeRole = RANKED_ROLES[viewIndex];
   const activeAccent = accents[activeRole];
   const activeRecord = records?.[activeRole] ?? null;
-  // The League anchor for the role ON STAGE — exactly one, resolved here and
-  // rendered once below, so "only the selected role's champion is shown" is a
-  // property of the structure rather than a rule someone has to remember.
-  const activeChampion = getRankedRoleChampion(activeRole);
-  const championIconUrl = resolveQuizAssetUrl(activeChampion.iconPath);
 
   return (
     <div
@@ -525,52 +512,31 @@ export default function RankedClassCarousel({
           );
         })}
 
-        {/* ── League anchor ──────────────────────────────────────────────
-            ONE champion medallion, for the role standing on stage.
+        {/* ── Role emblem ────────────────────────────────────────────────
+            ONE emblem, for the role standing on stage (RQ1 — it replaced the
+            champion medallion that stood here, in the same slot and at the
+            same size, so the stage geometry is unchanged).
 
-            It is mounted on the STAGE, not inside a slide. That is what makes
-            "only the selected role's champion is visible" structural: there is
-            a single element and it is outside the five-slide map, so a second
-            one cannot appear and the stage can never become a champion
-            gallery. Being outside the buttons also keeps it out of every
-            radio's accessible name — a role option is named by its ROLE.
-
-            Decorative, and deliberately small. The Mogzy mascot is the subject
-            of this stage; the champion is the note in the margin saying which
-            game the stage belongs to, so it is sized as a coin at the selected
-            figure's foot rather than as a second portrait. */}
-        {championIconUrl && (
-          <span
-            aria-hidden="true"
-            data-testid="ranked-class-champion"
-            data-role={activeRole}
-            data-champion={activeChampion.name}
-            /* WHERE, and why it is not at the figure's foot.
-               The obvious place — down beside the selected mascot's feet — is
-               the one part of the stage that is already occupied: the two
-               neighbours are scaled from their FOOT line, so they stand in the
-               lower half and the coin landed squarely on top of the right-hand
-               one. It reads as a third, half-sized character rather than as an
-               emblem. Everything above ~54% of the stage height is free of
-               flanks by construction, so the medallion hangs at the selected
-               figure's shoulder instead: clear of the neighbours at every
-               width, and still beside the one mascot it belongs to. */
-            className="pointer-events-none absolute right-[2%] top-[22%] z-[3] flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border sm:h-11 sm:w-11 lg:h-12 lg:w-12"
-            style={{
-              borderColor: skin.champion.ring,
-              background: skin.champion.halo,
-              boxShadow: skin.champion.shadow,
-            }}
-          >
-            <img
-              src={championIconUrl}
-              alt=""
-              draggable={false}
-              className="h-full w-full rounded-full object-cover"
-              style={{ filter: skin.champion.ink }}
-            />
-          </span>
-        )}
+            It is mounted on the STAGE, not inside a slide, so a second one
+            cannot appear. Being outside the buttons also keeps it out of every
+            radio's accessible name — a role option is named by its ROLE text,
+            and the emblem is decorative. */}
+        <span
+          aria-hidden="true"
+          data-testid="ranked-class-role-emblem"
+          data-role={activeRole}
+          /* WHERE: the selected figure's shoulder. The neighbours are scaled
+             from their FOOT line and occupy the lower half of the stage, so
+             everything above ~54% of its height is clear at every width. */
+          className="pointer-events-none absolute right-[2%] top-[22%] z-[3] flex h-10 w-10 items-center justify-center rounded-full border sm:h-11 sm:w-11 lg:h-12 lg:w-12"
+          style={{
+            borderColor: skin.emblem.ring,
+            background: skin.emblem.halo,
+            boxShadow: skin.emblem.shadow,
+          }}
+        >
+          <RoleEmblem role={activeRole} size="md" decorative className="sm:h-[22px] sm:w-[22px] lg:h-6 lg:w-6" />
+        </span>
       </div>
 
       {/* ── Stage controls ────────────────────────────────────────────────

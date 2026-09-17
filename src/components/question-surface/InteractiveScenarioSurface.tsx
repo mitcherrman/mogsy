@@ -19,6 +19,7 @@
  * Variants change layout/density ONLY — there are no isTutorial/isRanked/isBot
  * branches. A mode passes `variant` and optional neutral `settings`.
  */
+import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import QuizAnswerFeedback, {
   type QuizFeedbackVerdict,
 } from "@/components/quiz/QuizAnswerFeedback";
@@ -139,6 +140,7 @@ function HeroBand({
       <CompactScenarioBand
         category={question.category}
         density={resolveCompactDensity(question.category)}
+        roles={question.roles}
       />
     );
   }
@@ -281,9 +283,24 @@ export function InteractiveScenarioSurface({
           // band already formats it (underscores → spaces; the uppercasing is
           // the CSS that was always here). Presentation layers scope their own
           // treatment to this class.
-          <span className="scenario-category text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {formatCategoryLabel(question.category)}
-          </span>
+          question.roles?.length ? (
+            // RQ1 — the question's role emblem(s) sit immediately LEFT of the
+            // category, on the SAME line. Each is a 17px navy tile pulled in by
+            // a negative 1px block margin, so it contributes exactly the label's
+            // 15px line box: the row does not grow and the prompt stays where it
+            // was. The category span keeps its hook and takes the rest of the
+            // row, so the folio's hairline still runs to the edge.
+            <div data-testid="question-meta-row" className="flex min-w-0 items-center gap-1.5">
+              <QuestionRoleEmblems roles={question.roles} size="card" backed className="-my-px" />
+              <span className="scenario-category min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {formatCategoryLabel(question.category)}
+              </span>
+            </div>
+          ) : (
+            <span className="scenario-category text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {formatCategoryLabel(question.category)}
+            </span>
+          )
         )}
         <h2 className={`${promptSize} font-semibold leading-snug`}>{question.prompt}</h2>
         {context && <p className="text-sm text-muted-foreground">{context}</p>}

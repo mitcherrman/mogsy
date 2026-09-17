@@ -296,5 +296,6 @@ export function questionViewFromPublicQuestion(
     prompt: question.prompt,
     options,
     category: question.category,
+    ...(question.topic?.roles?.length ? { roles: question.topic.roles } : {}),
   };
 }
