@@ -86,7 +86,10 @@ function Rail({ rail, progressionEnabled }:
       outcome={rail.outcome}
       damageDealt={rail.damageDealt}
       feedback={rail.feedback ?? null}
-      reaction={rail.reaction} />
+      reaction={rail.reaction}
+      // RD1 — relayed like everything above; absent draws the gold tally.
+      standing={rail.standing ?? null}
+      leadPulseId={rail.leadPulseId ?? null} />
   );
 }
 
@@ -343,6 +346,14 @@ export function CanonicalArena({
               className="truncate text-[11px] font-bold uppercase tracking-[0.16em]
                 tabular-nums text-muted-foreground/90">
               {header.title}
+              {/* RD1 — `· FINAL 3` / `· FINAL`, on the SAME line: the suffix
+                  is a few characters of the line the block already reserves,
+                  never a fourth row. */}
+              {header.titleSuffix && (
+                <span data-testid="ranked-header-final" className="ranked-duel-final">
+                  {" · "}{header.titleSuffix}
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -363,7 +374,8 @@ export function CanonicalArena({
               expiredNote={header.timerNotes?.expired}
               result={header.centralResult ?? null}
               moduleTitle={header.moduleTitle ?? null}
-              moduleEventId={header.moduleEventId ?? null} />
+              moduleEventId={header.moduleEventId ?? null}
+              standing={header.standing ?? null} />
           ) : (
             // No clock and no result: a phased segment's ability window, or the
             // gap before the first round. The transition note is the honest

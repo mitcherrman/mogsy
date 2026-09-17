@@ -31,6 +31,7 @@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Hourglass, Lock, ShieldCheck, Swords, XCircle, Zap } from "lucide-react";
 import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
+import type { DuelStanding } from "@/lib/ranked-core/duelState";
 import type {
   CombatantView, MascotReaction, ResolvedCombatantView, RoundHistoryEntry,
 } from "@/lib/ranked-core/viewTypes";
@@ -89,24 +90,60 @@ const mirrorAlign = (mirrored: boolean) => (mirrored ? "justify-end" : "");
  * the score passes 9, and both duelists' numbers must sit on the same
  * baseline whatever they read.
  */
-export function ScoreTally({ combatant }: { combatant: CombatantView }) {
+export function ScoreTally({
+  combatant, standing = null, leadPulseId = null,
+}: {
+  combatant: CombatantView;
+  /**
+   * RD1 — THIS column's standing in the duel, projected by `duelState` from
+   * the two settled public totals. The tally never compares scores itself: it
+   * publishes what it was told as `data-standing`, and the stylesheet colours
+   * the digits from that attribute alone. Absent/null is the gold it has
+   * always been — every caller that is not a live points duel.
+   */
+  standing?: DuelStanding | null;
+  /**
+   * RD1 — the settled EVENT that just put this column in the lead, or null.
+   *
+   * Present only during the reveal beat of a settlement whose own before/after
+   * totals changed who leads, so a reconnect or a backfilled ledger — neither
+   * of which starts a reveal — can never produce one. The glow mounts under
+   * this id: re-renders within the beat keep the same node and do not replay
+   * it, and the next lead change is a new id and a new one-shot.
+   */
+  leadPulseId?: string | null;
+}) {
   const { score, name } = combatant;
   const mirrored = isMirroredSide(combatant);
   const label = combatant.meterLabel ?? "POINTS";
   return (
     <div data-testid={`score-${combatant.playerId}`} data-score={String(score ?? 0)}
-      className={`flex flex-col leading-none ${mirrored ? "items-end text-right" : "items-start"}`}>
+      data-standing={standing ?? undefined}
+      // `relative` only anchors the lead glow below; it lays nothing out.
+      className={`relative flex flex-col leading-none ${mirrored ? "items-end text-right" : "items-start"}`}>
+      {/* RD1 — the lead-change glow. Absolutely positioned and animated in
+          opacity, transform and nothing else, so it cannot move the tally, the
+          banner or the ledger beneath it. It sits BEHIND the digits: the value
+          below is `relative` too and later in the DOM, so it paints on top. */}
+      {leadPulseId && (
+        <span key={leadPulseId} aria-hidden data-testid={`ranked-lead-pulse-${combatant.playerId}`}
+          data-event={leadPulseId}
+          className="ranked-score-lead-pulse pointer-events-none absolute -inset-x-3 -inset-y-2" />
+      )}
       {/* `key` on the VALUE is the whole of the update treatment: a new score
           remounts this span, which replays the one-shot bump keyframes in
           `.ranked-score-bump`. No state, no timer, no animation engine — and
           because the keyframes are transform/opacity only, 11 → 14 cannot
-          move anything around it. Reduced motion drops to a plain swap. */}
+          move anything around it. Reduced motion drops to a plain swap.
+          RD1: the colour is `.ranked-score-value`'s, keyed off the parent's
+          `data-standing`; size and position classes are unchanged. */}
       <span
         key={score ?? 0}
         role="status"
         aria-label={`${name} ${label.toLowerCase()} ${score ?? 0}`}
-        className="ranked-score-bump text-4xl font-black tabular-nums tracking-tight
-          text-[#e8c97a] min-[1500px]:text-5xl"
+        data-testid={`ranked-score-value-${combatant.playerId}`}
+        className="ranked-score-bump ranked-score-value relative text-4xl font-black tabular-nums tracking-tight
+          min-[1500px]:text-5xl"
       >
         {score ?? 0}
       </span>
@@ -725,8 +762,14 @@ export function CombatantPanel({
   damageDealt = null,
   feedback = null,
   reaction = null,
+  standing = null,
+  leadPulseId = null,
 }: {
   combatant: CombatantView;
+  /** RD1 — this column's duel standing; see `ScoreTally`. */
+  standing?: DuelStanding | null;
+  /** RD1 — the lead-change event that put this column ahead; see `ScoreTally`. */
+  leadPulseId?: string | null;
   /**
    * RM1 Pass 2 — WHICH OBJECT THIS COLUMN IS. Opt-in, and defaulted to the
    * panel every existing caller already has.
@@ -937,7 +980,7 @@ export function CombatantPanel({
           it does not. Every other difference below follows from this same
           value, so a column cannot end up with a score tally and a damage
           ledger, or an HP bar and a points verdict. */}
-      {scored ? <ScoreTally combatant={combatant} />
+      {scored ? <ScoreTally combatant={combatant} standing={standing} leadPulseId={leadPulseId} />
         : <HealthMeter combatant={combatant} />}
       {damage && (
         // `flex-1` is what routes the column's surplus height — the Phase 11

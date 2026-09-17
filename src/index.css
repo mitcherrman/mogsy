@@ -905,6 +905,10 @@
 .ranked-academy .ranked-header-plate [data-testid="timer-value"][data-timer-state="zero"] {
   color: #e2757b;
 }
+/* RD1 — a step stronger than `zero` while the clock is still running out. */
+.ranked-academy .ranked-header-plate [data-testid="timer-value"][data-timer-state="urgent"] {
+  color: #ec6f77;
+}
 .ranked-academy .ranked-header-plate .text-muted-foreground {
   color: var(--ranked-muted);
 }
@@ -1388,6 +1392,75 @@
     animation-duration: 200ms;
     transform: none;
     text-shadow: none;
+  }
+}
+
+/* ===== RD1 — THE DUEL'S STANDING, ON THE SCORE ===========================
+   The tally's digits say who is ahead. The standing is DECIDED by the duel
+   projection (`duelState.ts`) and published on the tally as `data-standing`;
+   nothing here compares two numbers, and a tally with no attribute — every
+   non-duel caller, and the match-over frame — keeps the gold it always had.
+
+   COLOUR ONLY. No size, weight, padding or position is set here, so the score
+   slot and the banner are the same boxes in every state. The two accents are
+   the Ranked palette's own: the soft green the result plates glow in, and the
+   rose the header clock turns when time runs short. Neither is neon. */
+.ranked-score-value { color: #e8c97a; }
+[data-standing="leading"] > .ranked-score-value { color: #86d4a4; }
+[data-standing="trailing"] > .ranked-score-value { color: #e2757b; }
+
+/* The lead-change glow: one soft green swell BEHIND the digits of the column
+   that just took the lead, then gone. Opacity and transform on an absolutely
+   positioned layer — it cannot lay anything out. It is mounted per settled
+   event (see `ScoreTally`), plays once, and fills neither end, so a column
+   that keeps the lead for the rest of the match carries no residue. */
+.ranked-score-lead-pulse {
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, rgba(110,231,183,0.34), rgba(110,231,183,0) 100%);
+  opacity: 0;
+  animation: ranked-score-lead-pulse 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) 80ms 1;
+}
+@keyframes ranked-score-lead-pulse {
+  0%   { opacity: 0;    transform: scale(0.82); }
+  30%  { opacity: 1;    transform: scale(1.04); }
+  100% { opacity: 0;    transform: scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still ARRIVES — the change of lead is news — it simply does not grow. */
+  @keyframes ranked-score-lead-pulse {
+    0%   { opacity: 0; }
+    35%  { opacity: 0.8; }
+    100% { opacity: 0; }
+  }
+  .ranked-score-lead-pulse { transform: none; }
+}
+
+/* ===== RD1 — THE HEADER'S PRESSURE LINES =================================
+   The standing under the clock, and the final-modules suffix on the left
+   block's progress line. Both are text in slots RM1 already reserved, so the
+   only thing set here is colour. */
+.ranked-duel-standing { color: #e8c97a; }
+.ranked-duel-standing[data-standing="leading"] { color: #86d4a4; }
+.ranked-duel-standing[data-standing="trailing"] { color: #e2757b; }
+.ranked-duel-final { color: #e8c97a; }
+
+/* ===== RD1 — THE CLOCK UNDER PRESSURE ====================================
+   `urgent` (0 < remaining <= 5s, decided by `projectTimer` and unchanged
+   here) already turns the digits rose. This adds a slow breath of glow on the
+   digits themselves: text-shadow and opacity only, no scale, so the fixed
+   centre window and the timer's own box cannot move by a pixel. */
+.ranked-timer-urgent {
+  animation: ranked-timer-urgent 1000ms ease-in-out infinite;
+}
+@keyframes ranked-timer-urgent {
+  0%, 100% { text-shadow: 0 0 6px rgba(226,117,123,0.20); opacity: 1; }
+  50%      { text-shadow: 0 0 16px rgba(226,117,123,0.55); opacity: 0.86; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranked-timer-urgent,
+  .ranked-academy .ranked-header-plate [data-testid="timer-value"].ranked-timer-urgent {
+    animation: none;
+    text-shadow: 0 0 10px rgba(226,117,123,0.35);
   }
 }
 

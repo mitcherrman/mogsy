@@ -50,6 +50,9 @@ import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 import {
   projectPointsMascotReactions, projectRevealFeedback, projectSettlementFeedback,
 } from "@/lib/ranked-core/pointsFeedback";
+import {
+  duelProgressSuffix, duelStandingLabel, projectDuelState, type DuelStanding,
+} from "@/lib/ranked-core/duelState";
 import { RankedScoreline } from "./RankedScoreline";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
 import { ResultContestants } from "@/components/game-results/ResultContestants";
@@ -69,6 +72,11 @@ import {
 import { useMatchDiscoveries } from "./useMatchDiscoveries";
 import { useRankedMatch } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
+
+/** RD1 — the opponent's column reads the viewer's standing from the other side. */
+const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
+  leading: "trailing", tied: "tied", trailing: "leading",
+};
 
 /** Identity of the module/segment a snapshot belongs to. */
 function segmentKey(round: PublicRoundView): string {
@@ -414,6 +422,20 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
   // as though it had been hurt. Step 3 silenced that; this replaces it with a
   // cheer the mascot already knew how to perform.
   const pointsMatch = m.publicRound !== null && isPointsMatch(m.publicRound);
+  /**
+   * RD1 — THE DUEL'S STANDING, projected once for every surface that shows it.
+   *
+   * Persistent facts (who leads, by how much, how far through) come from the
+   * live snapshot's settled totals and frozen scoring block, so they render
+   * straight away after a reconnect. The lead-change and speed-bonus EVENTS
+   * come from `lastResolved` behind the same `revealHold` gate the verdicts,
+   * awards and mascots use — and resume and backfill never open that gate, so
+   * a rehydrated settlement can never replay one. Null on an hp match.
+   */
+  const duelState = useMemo(() => projectDuelState({
+    publicRound: m.publicRound, viewerUserId,
+    settlement: m.lastResolved, revealing: m.revealHold,
+  }), [m.publicRound, viewerUserId, m.lastResolved, m.revealHold]);
   const mascotReactions = useMemo(
     () => (pointsMatch
       ? projectPointsMascotReactions(revealFeedback, m.lastResolved)
@@ -873,6 +895,14 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       // correctness is not published for the other seat.
       award: (which === "player" ? cardAward : null)
         ?? settlementAwards[c.playerId] ?? null,
+      // RD1 — the same standing seen from each side. The opponent's column is
+      // the viewer's standing reversed, not a second comparison.
+      standing: duelState
+        ? (which === "player" ? duelState.standing : OPPOSITE_STANDING[duelState.standing])
+        : null,
+      leadPulseId: duelState?.leadChange
+        && duelState.leadChange.newLeader === (which === "player" ? "viewer" : "opponent")
+        ? duelState.leadChange.eventId : null,
     };
   };
 
@@ -888,6 +918,13 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       // the backend's scoring block; an hp match keeps "Round N", because it
       // has no length and a "/ 10" here would be this client inventing one.
       title: moduleLabel ?? roundLabel,
+      // RD1 — `FINAL 3` / `FINAL` beside the module count, from the frozen
+      // length and the module in play. Nothing about rounds or phases: the
+      // format publishes none.
+      titleSuffix: duelProgressSuffix(duelState),
+      // RD1 — the viewer's standing on the clock's secondary line.
+      standing: duelState
+        ? { label: duelStandingLabel(duelState), standing: duelState.standing } : null,
       transitionNote: inTransition ? "Preparing next round…" : null,
       // RETIRED. The placeholder-bank notice was a build-state label from when
       // the Ranked bank was still standing in for itself. It is a fact about the
