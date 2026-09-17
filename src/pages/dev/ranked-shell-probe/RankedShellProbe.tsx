@@ -15,7 +15,9 @@
  *
  * `?q=` selects the question state to serve:
  *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
- *   stressA | stressB | metareflex | junglePet | junglePetBase | jungleRule
+ *   stressA | stressB | metareflex | junglePet | junglePetBase | jungleRule |
+ *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
+ *   carry `?qroles=` as their frozen roles)
  * `?role=` freezes a League role onto the viewer's participant.
  * `?qroles=` (RQ1) serves the QUESTION's role(s) as `topic.roles`, e.g.
  *   `?qroles=top` or `?qroles=adc,support`. Independent of `?role=` on
@@ -65,6 +67,7 @@ const VIEWER = "userA";
  */
 export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex",
+  "masteryRecall", "masteryCompare",
   "junglePet", "junglePetBase", "jungleRule",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
@@ -119,6 +122,53 @@ function junglePetPresentation(pet: string, form: "base" | "evolved") {
       icon: `${origin}/assets/ranked/jungle_pets/${pet}_${form}.png`,
     } },
     presentation: { role: "context", timing: "question", spoiler: false },
+  };
+}
+
+/** RQ1 — a backend-shaped Mastery slice segment for geometry checks. */
+function masteryChallenge(kind: "recall" | "compare", index: number) {
+  const roles = probe.questionRoles.length ? { roles: probe.questionRoles } : {};
+  return kind === "recall" ? {
+    challenge_index: index, interaction_kind: "atomic_recall",
+    question_family: "ability_cooldown", prompt: `Brand Q — ability_cooldown #${index}`,
+    answer_type: "single_choice", answer_options: ["9", "10", "11", "12"],
+    prompt_semantics: { template: "ability_cooldown_at_rank", champion_display: "Brand",
+      metric: "ability_cooldown", subject_ref: "Q", ability_name: "Q",
+      context: { ability_rank: 1, champion_level: null, form: null } },
+    comparison_semantics: null, patch_display: "League 26.18", ...roles,
+  } : {
+    challenge_index: index, interaction_kind: "comparison_left_right",
+    question_family: "ability_cooldown", prompt: "Brand Q vs Diana Q — ability_cooldown",
+    answer_type: "single_choice", answer_options: ["Brand", "Diana", "tie"],
+    prompt_semantics: null,
+    comparison_semantics: { template: "compare_ability_cooldown", champion_a_display: "Brand",
+      champion_b_display: "Diana", metric: "ability_cooldown", dimension: "duration",
+      subject_ref: "Q", context: { ability_rank: 1, champion_level: null, form: null },
+      unit: "seconds", ability_name_a: "Sear", ability_name_b: "Crescent Strike",
+      rank_independent: false },
+    patch_display: "League 26.18", ...roles,
+  };
+}
+
+function masterySegment(kind: "recall" | "compare") {
+  const base = {
+    module_id: "mastery_slice", module_version: 1, challenge_count: 3,
+    segment_number: 3, phase: "challenges", ability_deadline: null,
+    challenge_started_at: "2026-07-18T12:00:05+00:00",
+    challenge_deadline: "2026-07-18T12:00:30+00:00", pressure_applied: false,
+  };
+  return {
+    meta: { ...base, challenge_index: 0, resolved: false,
+      topic: { category: "general", tier: null,
+        icon_hint: { kind: "generic", key: null, icon: null }, roles: probe.questionRoles } },
+    state: { ...base, active: true,
+      own_ability: { selected_ability_id: null, confirmed: false,
+        available_ability_ids: [], unavailable_ability_ids: {} },
+      opponent_ability_confirmed: false, own_next_challenge_index: 0,
+      own_submitted_choices: [null, null, null], own_challenges_completed: 0,
+      opponent_challenges_completed: 0, opponent_finished: false, own_finished: false,
+      challenges: { prompt: "Mastery Slice: Brand", challenge_count: 3,
+        challenges: [0, 1, 2].map((i) => masteryChallenge(kind, i)) } },
   };
 }
 
@@ -275,6 +325,11 @@ function publicFor(state: ProbeState, role: string | null) {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
     payload.segment_state = metaReflexState(0);
+  } else if (state === "masteryRecall" || state === "masteryCompare") {
+    const seg = masterySegment(state === "masteryRecall" ? "recall" : "compare");
+    payload.question = null;
+    payload.segment = seg.meta;
+    payload.segment_state = seg.state;
   } else {
     payload.question = questionFor(state);
   }
@@ -291,6 +346,11 @@ function privateFor(state: ProbeState) {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
     payload.segment_state = metaReflexState(0);
+  } else if (state === "masteryRecall" || state === "masteryCompare") {
+    const seg = masterySegment(state === "masteryRecall" ? "recall" : "compare");
+    payload.question = null;
+    payload.segment = seg.meta;
+    payload.segment_state = seg.state;
   } else {
     payload.question = questionFor(state);
   }

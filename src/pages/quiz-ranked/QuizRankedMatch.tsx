@@ -514,7 +514,11 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
     // fresh at render. A round the client never saw live keeps no topic and
     // draws the neutral token, which is the truthful rendering of "this client
     // was not here".
-    questionTopic: m.publicRound?.question?.topic ?? null,
+    // RQ1: a Mastery slice publishes no question block; its topic (and frozen
+    // question roles) arrives on the segment instead.
+    questionTopic: m.publicRound?.question?.topic
+      ?? (m.publicRound?.segment?.moduleId === "mastery_slice"
+        ? m.publicRound.segment.topic ?? null : null),
     questionRoundNumber: segmentRoundNumber,
   });
   if (nextObservedKinds !== observedKinds) setObservedKinds(nextObservedKinds);

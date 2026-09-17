@@ -104,7 +104,8 @@ Senna,Support,Bot|Support
 | Item / objective / summoner-spell / environment families | none (not champion-centric) | Global | n/a | `[]` |
 | `ability_recognition` (not in Ranked pools today) | metadata `champion` | Yes, for relevance | **Champion is the answer** | Withheld |
 | `ability_cooldown_*`, `casts_before_oom`, `champion_*` (single-champion families, not in Ranked pools today) | metadata `champion`/`champion_name` | Yes | None | Published if a pool admits them |
-| Mastery slices (`mastery:`) | admin-fixed slice champion, not a family contract | No | n/a | `[]` (follow-up) |
+| Mastery slices (`mastery_slice.v1`) | structured config ids + step semantics (see below) | Yes, full sets | None today | Published (RQ1 Mastery pass) |
+| SSM curriculum slices (flag `RANKED_MASTERY_SLICES_ENABLED`) | summoner-spell subject, no champion | No | n/a | `[]` (correct) |
 | Meta Reflex, accepted-candidate `ranked:` bank, placeholder bank | no structured champion field | No | n/a | `[]` |
 
 ## Scheduler behaviour (RBOT2, unchanged)
@@ -166,7 +167,69 @@ Senna,Support,Bot|Support
 - **Post-match review:** role data already reaches `ReviewRound.topic.roles`.
   The shared `components/game-results` model (`ResultTimelineEntry`) needs an
   optional roles field before an emblem can sit beside each module title.
-- **Mastery slices:** give slices a semantic champion field so they can
-  publish roles.
 - **Roster refresh:** re-review the curated roster against a later patch. Use
   the same source and filter, and have the owner review the 5–15% band.
+
+## Mastery Slice roles (follow-up pass)
+A Mastery Slice is one multi-challenge segment, so it occupies one round row
+with N challenges, and it publishes no `question` block.
+
+- **Where the champion identity comes from:**
+  - **The slice's configured subjects** come from the frozen config's
+    structured ids (`MasterySliceConfig.champion_keys()`): the champion, both
+    matchup sides, or the chain attacker and target. They're resolved through
+    the Mastery identity registry to display names, then onto the
+    champion-role roster (`slice_champion_subjects`).
+  - **Each challenge's subjects** come from structured `prompt_semantics`
+    fields: `atomic_recall` uses `champion_display` (in a matchup slice that
+    is one side only); `comparison_left_right` uses `champion_a_display` and
+    `champion_b_display`. A prose applied-chain step has no per-step subject
+    fields, so it uses the slice's subjects (attacker and target).
+  - Every per-step subject must be one of the slice's subjects; anything
+    unresolved gives no subjects (`challenge_champion_subjects`).
+- **Role policy:** `champion_roles.publishable_roles_for_champions(family,
+  subjects)` takes the union of the full role sets, ordered, with `Bot` as
+  `adc`. It applies the same answer-safety set (`ANSWER_IS_CHAMPION_FAMILIES`)
+  as the pooled path.
+- **Frozen where:**
+  - Public challenge `roles` (added to the `PUBLIC_CHALLENGE_FIELDS`
+    allowlist).
+  - Private challenge `champion_subjects` (provenance).
+  - `GeneratedSegment.question_roles` → `ranked_rounds.question_roles_json`,
+    the segment-wide union.
+- **Transport:** non-quiz segments now publish `segment.topic` (the same
+  `topic_for_round` as the post-match review). The client reads it for
+  `mastery_slice` only.
+- **Frontend:**
+  - Structured Mastery cards (recall, comparison) draw the emblem cluster
+    immediately left of their existing metadata (patch badge and kind label),
+    only when the Ranked adapter passes `questionRoles`. Standalone Mastery is
+    unchanged.
+  - Prose challenges get roles through `QuestionView.roles`, which feeds the
+    shared metadata row or compact band.
+  - Emblems persist through the in-place reveal.
+- **Timeline:** a live Mastery node now has a topic, so its main art is the
+  General category (the same as its post-match review node already showed)
+  plus the role marker. Before this pass it was the neutral token.
+- **Coverage (every Mastery Slice family reachable in Ranked):**
+
+  | Mastery family | Semantic champion subject(s) | Safe to publish? | Result |
+  |---|---|---|---|
+  | Champion `ability_cooldown` / `ability_cost` (atomic recall) | `champion_display` ∈ config `champion_id` | Yes: champion stated; answer is a number | Champion's full roles |
+  | Champion `champion_base_stat` / `champion_level_stat` (recall, when the bank offers them) | same | Yes | Champion's full roles |
+  | Matchup comparisons (`ability_cooldown` / `ability_cost` / stats) | `champion_a_display` + `champion_b_display` ∈ config pair | Yes: both named; the answer is a side or a tie, and the union doesn't narrow it | Union |
+  | Matchup atomic recall (each side's own bank) | that side's `champion_display` | Yes | That champion's roles only |
+  | Applied chain `post_mitigation_single_type_damage` (prose) | config attacker + target | Yes: both named in the scenario; the answer is damage | Union |
+
+  No currently reachable Mastery family asks for a champion as its answer, so
+  nothing is withheld today. If one is ever added, listing it in
+  `ANSWER_IS_CHAMPION_FAMILIES` withholds it.
+- **Scheduler:** the RBOT2 role-aware selector picks shared-bank quiz slots
+  only. A Mastery Slice segment's subject is fixed by its format config, so
+  there is no per-question selection to bias. Its roles are shown and frozen,
+  but they don't affect serving. Letting role context choose which Mastery
+  subject a segment generates would be separate, future work.
+- **Dev probe:** `/dev/ranked-shell-probe?q=masteryRecall|masteryCompare&qroles=…`.
+  Browser-measured at 1024×768 and 1280×720 with five roles: the header row
+  stays 32px, the submit button doesn't move, and there's no page or stage
+  scroll.

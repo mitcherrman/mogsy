@@ -111,6 +111,8 @@ export function toPlayerQuestion(
     // it now also travels on the challenge. `null` means the segment was
     // frozen before the field existed, and reads as the badge it already had.
     patchDisplay: challenge.patchDisplay ?? "",
+    // RQ1: the challenge's frozen question roles, for the header emblems.
+    ...(challenge.roles?.length ? { questionRoles: challenge.roles } : {}),
     matchupIdentity: null,
     isReadOnly: true,
     hintAvailable: false,
@@ -182,6 +184,8 @@ export function questionViewForChallenge(
     prompt: challenge.prompt,
     options,
     category: challenge.questionFamily,
+    // RQ1: the challenge's frozen roles — family stays in `category`.
+    ...(challenge.roles?.length ? { roles: challenge.roles } : {}),
   };
 }
 
