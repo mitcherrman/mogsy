@@ -48,8 +48,12 @@ import {
 } from "@/lib/ranked-core/centralStage";
 import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 import {
-  projectPointsMascotReactions, projectRevealFeedback, projectSettlementFeedback,
+  projectRevealFeedback, projectSettlementFeedback,
 } from "@/lib/ranked-core/pointsFeedback";
+import {
+  EMPTY_FINAL_MODULE_WATCH, observeFinalModuleEntry, projectDuelMascotReactions,
+  type FinalModuleWatch,
+} from "@/lib/ranked-core/duelMascot";
 import {
   duelEventOf, duelProgressSuffix, duelStandingLabel, projectDuelState, type DuelStanding,
 } from "@/lib/ranked-core/duelState";
@@ -436,11 +440,39 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
     publicRound: m.publicRound, viewerUserId,
     settlement: m.lastResolved, revealing: m.revealHold,
   }), [m.publicRound, viewerUserId, m.lastResolved, m.revealHold]);
+  /**
+   * RD2 — has THIS client watched the match cross into its final module?
+   *
+   * Render-time reconciliation with an identity-preserving fold, the same
+   * shape `observeRoundKinds` uses below. The first snapshot only seeds the
+   * watch, so a refresh or reconnect into module 10 records no entry and the
+   * lock-in reaction cannot play for a player who did not see the crossing.
+   */
+  const [finalWatch, setFinalWatch] = useState<FinalModuleWatch>(EMPTY_FINAL_MODULE_WATCH);
+  const nextFinalWatch = observeFinalModuleEntry(finalWatch,
+    m.publicRound?.scoring?.model === "points"
+      ? {
+        moduleNumber: m.publicRound.scoring.moduleNumber,
+        matchLength: m.publicRound.scoring.matchLength,
+        matchOver: m.publicRound.matchOver,
+      }
+      : null);
+  if (nextFinalWatch !== finalWatch) setFinalWatch(nextFinalWatch);
+  // RD2 — a points match's mascots react to their OWN competitive state
+  // (lead taken, speed bonus, points scored, final module), never to the other
+  // side's; see `duelMascot.ts`. An hp match keeps its damage reactions.
+  const opponentPlayerId = m.publicRound?.players
+    .find((p) => p.playerId !== viewerUserId)?.playerId ?? null;
   const mascotReactions = useMemo(
     () => (pointsMatch
-      ? projectPointsMascotReactions(revealFeedback, m.lastResolved)
+      ? projectDuelMascotReactions({
+        settlement: m.lastResolved, revealing: m.revealHold,
+        viewerId: viewerUserId, opponentId: opponentPlayerId,
+        finalEntry: nextFinalWatch.entry,
+      })
       : projectMascotReactions(m.lastResolved, m.revealHold)),
-    [pointsMatch, revealFeedback, m.lastResolved, m.revealHold]);
+    [pointsMatch, m.lastResolved, m.revealHold, viewerUserId, opponentPlayerId,
+      nextFinalWatch.entry]);
   /**
    * RG — WHAT THE SERVER HAS SAID EACH ROUND'S SEGMENT IS.
    *

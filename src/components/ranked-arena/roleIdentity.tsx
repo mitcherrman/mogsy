@@ -29,7 +29,10 @@
  * alone (the R1 contract in `roles.ts`).
  */
 import { isRankedRole, RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
-import { RoleMascot, type RoleMascotAction } from "@/components/mascot/RoleMascot";
+import type { ReactNode } from "react";
+import {
+  RoleMascot, useMascotActionPlayback, type RoleMascotAction,
+} from "@/components/mascot/RoleMascot";
 
 export interface RoleIdentity {
   role: RankedRole | null;
@@ -129,6 +132,31 @@ function Sigil({ role }: { role: RankedRole | null }) {
         </svg>
       );
   }
+}
+
+/**
+ * RD2 — the neutral emblem's motion layer (Option B for a role-less bot).
+ *
+ * The emblem is a real box that transforms cleanly, so it takes the same
+ * match-event reactions a mascot does, through the mascot's own playback and
+ * keyframes. Transform-only, inside the same reserved slot: nothing lays out.
+ * No role is invented — only the neutral emblem moves.
+ */
+function NeutralEmblemMotion({ action, actionId, children }: {
+  action: RoleMascotAction | null;
+  actionId: string | number | null;
+  children: ReactNode;
+}) {
+  const ref = useMascotActionPlayback(action, actionId);
+  return (
+    <span data-testid="role-crest-neutral-motion"
+      className="role-emblem-motion flex h-[62%] w-[86%] items-center justify-center">
+      <span ref={ref} data-testid="role-crest-neutral-action"
+        className="role-mascot-action flex items-center justify-center">
+        {children}
+      </span>
+    </span>
+  );
 }
 
 /**
@@ -276,19 +304,21 @@ export function RoleCrest({
             data-testid="role-crest-neutral"
             className="relative flex aspect-[6/7] w-[52%] min-w-[3.5rem] max-w-[9rem] items-center justify-center"
           >
-            <span
-              className="flex h-[62%] w-[86%] items-center justify-center rounded-2xl border border-dashed"
-              style={{
-                color: identity.accent,
-                borderColor: `${identity.accent}55`,
-                backgroundImage:
-                  `radial-gradient(75% 65% at 50% 40%, ${identity.accentSoft}, transparent 78%)`,
-              }}
-            >
-              <span className="h-1/2 w-1/2 opacity-80">
-                <Sigil role={null} />
+            <NeutralEmblemMotion action={action} actionId={actionId}>
+              <span
+                className="flex h-full w-full items-center justify-center rounded-2xl border border-dashed"
+                style={{
+                  color: identity.accent,
+                  borderColor: `${identity.accent}55`,
+                  backgroundImage:
+                    `radial-gradient(75% 65% at 50% 40%, ${identity.accentSoft}, transparent 78%)`,
+                }}
+              >
+                <span className="h-1/2 w-1/2 opacity-80">
+                  <Sigil role={null} />
+                </span>
               </span>
-            </span>
+            </NeutralEmblemMotion>
           </span>
         )}
       </span>

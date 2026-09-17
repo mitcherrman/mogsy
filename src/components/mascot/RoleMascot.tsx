@@ -72,7 +72,7 @@ export type RoleMascotFacing = "left" | "right";
  * INTENTS, not a motion vocabulary: adding "what a hit looks like" is a change
  * to this file, never to a host.
  */
-export type RoleMascotAction = "attack" | "hit" | "cheer";
+export type RoleMascotAction = "attack" | "hit" | "cheer" | "celebrate" | "focus";
 
 /**
  * Everything the action layer can play, including the one motion no host can
@@ -93,6 +93,13 @@ const ACTION_CLASS: Record<PlayableAction, string> = {
   // the existing delight is the right amount of new vocabulary.
   cheer: "role-mascot-react",
   react: "role-mascot-react",
+  // RD2 — the two non-combat duel reactions. `celebrate` is a bigger, turning
+  // hop for the moments that matter more than a score (taking the lead, a
+  // speed bonus); `focus` is a small settle-and-brighten for the final module
+  // beginning — attention, not joy and not fear. Neither travels sideways, so
+  // neither can read as moving AT the other duelist.
+  celebrate: "role-mascot-celebrate",
+  focus: "role-mascot-focus",
 };
 
 // DEDUPED: two intents deliberately share one class (`cheer` reuses the click
@@ -108,7 +115,7 @@ const ALL_ACTION_CLASSES = [...new Set(Object.values(ACTION_CLASS))];
  * is the same KIND of thing — something that happened in the match, as opposed
  * to something the player did to the picture — and takes the same precedence.
  */
-const COMBAT_ACTIONS: readonly string[] = ["attack", "hit", "cheer"];
+const COMBAT_ACTIONS: readonly string[] = ["attack", "hit", "cheer", "celebrate", "focus"];
 
 function prefersReducedMotion(): boolean {
   return (
@@ -405,4 +412,51 @@ export function RoleMascot({
  *  the image announced rather than treating it as decorative. */
 export function roleMascotDefaultAlt(role: RankedRole): string {
   return `${RANKED_ROLE_LABELS[role]} mascot`;
+}
+
+/**
+ * RD2 — THE SAME PLAYBACK, FOR A HOST WITH NO ARTWORK.
+ *
+ * A duelist with no role (a bot) stands a neutral emblem where the mascot
+ * would be. It has no plate, no facing and no click reaction, but it can make
+ * the same match-event motions — so a bot match is not one live column beside
+ * a dead one. This hook is the edge-triggered core of `RoleMascot`, and ONLY
+ * that core: seeded from the first id so a mount mid-match plays nothing,
+ * edge-triggered on `actionId`, restarted by class drop + reflow, cleared on
+ * `animationend`, and skipped entirely under reduced motion. The keyframes and
+ * tuning are the mascot's own (`.role-mascot-action.role-mascot-*`); the host
+ * wraps its element in `.role-emblem-motion` to receive the tuning variables.
+ */
+export function useMascotActionPlayback(
+  action: RoleMascotAction | null,
+  actionId: string | number | null,
+) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const playedRef = useRef<string | number | null>(actionId);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || action === null || actionId === null) return;
+    if (actionId === playedRef.current) return;
+    playedRef.current = actionId;
+    if (prefersReducedMotion()) return;
+    el.classList.remove(...ALL_ACTION_CLASSES);
+    void el.offsetWidth;
+    el.classList.add(ACTION_CLASS[action]);
+    el.dataset.playing = action;
+  }, [action, actionId]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onEnd = () => {
+      el.classList.remove(...ALL_ACTION_CLASSES);
+      delete el.dataset.playing;
+    };
+    el.addEventListener("animationend", onEnd);
+    el.addEventListener("animationcancel", onEnd);
+    return () => {
+      el.removeEventListener("animationend", onEnd);
+      el.removeEventListener("animationcancel", onEnd);
+    };
+  }, []);
+  return ref;
 }
