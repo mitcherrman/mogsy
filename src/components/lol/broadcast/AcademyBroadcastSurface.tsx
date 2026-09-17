@@ -219,6 +219,24 @@ function pagesFor(spread: BriefSpread): PatchBriefSection[][] {
   ];
 }
 
+const sectionRows = (section: PatchBriefSection, columns: number) =>
+  Math.ceil(section.entries.length / columns);
+
+function sectionNaturalHeightPx(
+  section: PatchBriefSection,
+  columns: number,
+  bookWidth: number,
+  iconPx: number,
+) {
+  const rows = sectionRows(section, columns);
+  return (
+    headingHeightPx(bookWidth) +
+    BRIEF_METRICS.gridHeadingGap +
+    rows * iconPx +
+    Math.max(0, rows - 1) * iconGapPx(bookWidth)
+  );
+}
+
 /** Maximum icon edge which fits a page's stacked headings and grids. */
 function pageIconLimitPx(
   page: PatchBriefSection[],
@@ -232,8 +250,8 @@ function pageIconLimitPx(
     page.length * (headingHeightPx(bookWidth) + BRIEF_METRICS.gridHeadingGap) +
     Math.max(0, page.length - 1 + (hasAction ? 1 : 0)) * sectionGapPx(bookWidth) +
     (hasAction ? actionHeightPx(bookWidth) : 0) +
-    page.reduce((total, section) => total + Math.max(0, Math.ceil(section.entries.length / columns) - 1) * gap, 0);
-  const rows = page.reduce((total, section) => total + Math.ceil(section.entries.length / columns), 0);
+    page.reduce((total, section) => total + Math.max(0, sectionRows(section, columns) - 1) * gap, 0);
+  const rows = page.reduce((total, section) => total + sectionRows(section, columns), 0);
   const available = BRIEF_SAFE_HEIGHT_CQW / 100 * bookWidth - titleReservePx(bookWidth);
   return rows > 0 ? (available - fixedHeight) / rows : Infinity;
 }
@@ -310,18 +328,34 @@ export function briefGeometryAt(
 ) {
   const sizing = briefIconSizing(spread, { hasAction });
   const iconPx = clamp(sizing.minPx, sizing.cqw / 100 * bookWidth, sizing.maxPx);
-  const pageHeights = pagesFor(spread).map((page, index) => {
-    const rows = page.reduce((total, section) => total + Math.ceil(section.entries.length / sizing.columns), 0);
-    const height =
-      page.length * (headingHeightPx(bookWidth) + BRIEF_METRICS.gridHeadingGap) +
-      Math.max(0, page.length - 1 + (index === 0 && hasAction ? 1 : 0)) * sectionGapPx(bookWidth) +
-      (index === 0 && hasAction ? actionHeightPx(bookWidth) : 0) +
-      rows * iconPx +
-      page.reduce((total, section) => total + Math.max(0, Math.ceil(section.entries.length / sizing.columns) - 1) * iconGapPx(bookWidth), 0);
-    return height;
-  });
   const availableHeight = BRIEF_SAFE_HEIGHT_CQW / 100 * bookWidth - titleReservePx(bookWidth);
-  return { ...sizing, iconPx, availableHeight, pageHeights, bottomClearance: Math.min(...pageHeights.map((height) => availableHeight - height)) };
+  const [leftPage, rightPage] = pagesFor(spread);
+  const pageHeight = (page: PatchBriefSection[]) =>
+    page.reduce(
+      (height, section) => height + sectionNaturalHeightPx(section, sizing.columns, bookWidth, iconPx),
+      0,
+    ) + Math.max(0, page.length - 1) * sectionGapPx(bookWidth);
+  const leftNaturalHeight = pageHeight(leftPage);
+  const rightHeight = pageHeight(rightPage);
+  const ctaGap = hasAction && leftPage.length > 0 ? sectionGapPx(bookWidth) : 0;
+  const ctaHeight = hasAction ? actionHeightPx(bookWidth) : 0;
+  const ctaRegionHeight = hasAction ? availableHeight - leftNaturalHeight - ctaGap : 0;
+  const ctaTop = hasAction
+    ? leftNaturalHeight + ctaGap + Math.max(0, (ctaRegionHeight - ctaHeight) / 2)
+    : null;
+  const ctaBottom = ctaTop === null ? null : ctaTop + ctaHeight;
+  const pageHeights = [leftNaturalHeight + ctaGap + ctaHeight, rightHeight];
+  return {
+    ...sizing,
+    iconPx,
+    availableHeight,
+    pageHeights,
+    leftNaturalHeight,
+    ctaTop,
+    ctaBottom,
+    ctaRegionHeight,
+    bottomClearance: Math.min(...pageHeights.map((height) => availableHeight - height)),
+  };
 }
 
 /**
@@ -514,7 +548,10 @@ export default function AcademyBroadcastSurface({
                 />
               )}
               {(view.primaryAction || view.secondaryAction) && (
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <div
+                  data-testid="patch-brief-cta-region"
+                  className="flex flex-1 flex-wrap items-center justify-center gap-1.5 self-stretch"
+                >
                   {view.primaryAction && (
                     <BroadcastActionLink action={view.primaryAction} primary />
                   )}
@@ -667,10 +704,16 @@ function PatchBriefSectionBlock({
   iconSize?: string;
   className?: string;
 }) {
+  const rowWidth = columns
+    ? `calc(${[
+        ...Array.from({ length: columns }, () => iconSize),
+        ...Array.from({ length: Math.max(0, columns - 1) }, () => CQ.iconGap),
+      ].join(" + ")})`
+    : undefined;
   return (
     <div
       data-testid={`patch-brief-section-${section.direction}`}
-      className={cn("flex w-full flex-col items-center", className)}
+      className={cn("flex w-full shrink-0 flex-col items-center", className)}
     >
       <p
         className={cn(
@@ -686,12 +729,15 @@ function PatchBriefSectionBlock({
       </p>
       <ul
         aria-label={`${section.title} this patch`}
-        className="w-full justify-center"
+        data-brief-row-width={rowWidth}
+        className="max-w-full"
         style={{
           marginTop: "2px",
           gap: CQ.iconGap,
-          display: columns ? "grid" : "flex",
-          gridTemplateColumns: columns ? `repeat(${columns}, ${iconSize})` : undefined,
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          width: rowWidth ?? "100%",
         }}
       >
         {section.entries.map((entry) => (
