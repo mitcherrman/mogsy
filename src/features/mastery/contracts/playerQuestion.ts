@@ -8,6 +8,7 @@
  * a discriminated union over `answer_type`.
  */
 
+import type { RankedRole } from "@/lib/ranked-public/roles";
 import {
   AnswerType,
   MASTERY_INTERACTION_KINDS,
@@ -82,6 +83,12 @@ interface MasteryPlayerQuestionBase {
    */
   readonly state: MasteryStateView | null;
   readonly patchDisplay: string;
+  /**
+   * RQ1 — the League roles this question's champion subject(s) are relevant
+   * to (canonical ids, canonical order). Set only by the Ranked Mastery Slice
+   * adapter from the frozen challenge; standalone Mastery never sets it.
+   */
+  readonly questionRoles?: readonly RankedRole[];
   /**
    * Null when the set has no two-champion matchup identity (Phase 4C1
    * nullable-contract widening). Every payload served today still populates it.

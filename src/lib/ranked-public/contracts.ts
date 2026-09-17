@@ -23,7 +23,7 @@ import type {
 import type { OptionMediaView } from "@/lib/ranked-core/viewTypes";
 import { isRankedRole, type RankedRole } from "./roles";
 import {
-  readTimelineTopic, type TimelineTopic,
+  readQuestionRoles, readTimelineTopic, type TimelineTopic,
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 
@@ -176,6 +176,12 @@ export interface SegmentMeta {
   challengeDeadline: string | null;
   pressureApplied: boolean;
   resolved: boolean;
+  /**
+   * RQ1 — a payload segment's RG2 topic (a Mastery slice publishes no
+   * `question` block, so its topic and frozen question roles travel here).
+   * Absent on quiz segments and on payloads from an older backend.
+   */
+  topic?: TimelineTopic | null;
 }
 
 export type SegmentPhase = "ability" | "challenges" | null;
@@ -269,6 +275,14 @@ export interface MasterySliceChallengeView {
    * frozen before this shipped, which renders exactly as those segments
    * already rendered.
    */
+  /**
+   * RQ1 — the League roles THIS challenge's semantic champion subject(s) are
+   * relevant to, as canonical ids in canonical order. Frozen server-side from
+   * the slice's structured champion identity through the champion -> roles
+   * authority; already answer-safe. Absent/`null` for a segment frozen before
+   * RQ1 and for a role-less challenge, which draw no emblem.
+   */
+  roles?: RankedRole[] | null;
   patchDisplay?: string | null;
   /**
    * A NUMERIC challenge's real input contract — unit, step, decimal places,
@@ -424,6 +438,8 @@ export interface MasterySliceChallengeView {
   presentation?: Record<string, unknown> | null;
   patchDisplay?: string | null;
   inputConstraints?: Record<string, unknown> | null;
+  /** RQ1 — see the copy above. */
+  roles?: RankedRole[] | null;
 }
 
 /**
@@ -982,6 +998,7 @@ function readSegment(v: unknown): SegmentMeta {
     challengeDeadline: iso(o.challenge_deadline),
     pressureApplied: o.pressure_applied === true,
     resolved: o.resolved === true,
+    ...(o.topic ? { topic: readTimelineTopic(o.topic) } : {}),
   };
 }
 
@@ -1164,6 +1181,8 @@ export function readMasterySliceChallenge(v: unknown, label: string): MasterySli
       ? null : str(c.patch_display, `${label}.patch_display`),
     inputConstraints: c.input_constraints === null || c.input_constraints === undefined
       ? null : rec(c.input_constraints, `${label}.input_constraints`),
+    // RQ1: tolerant like the topic reader — canonical ids only, lane order.
+    ...(readQuestionRoles(c.roles).length ? { roles: readQuestionRoles(c.roles) } : {}),
   };
 }
 

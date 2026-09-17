@@ -14,6 +14,7 @@ import type { PlayerAnswer } from "../player/useMasteryFixtureSession";
 import { MasteryNumericInput, validateNumeric } from "../player/MasteryNumericInput";
 import { MasteryChoiceInput, type ChoiceOption } from "../player/MasteryBooleanInput";
 import { MasteryChampionPortrait } from "../player/MasteryChampionPortrait";
+import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import { MasteryPatchBadge } from "../player/MasteryPatchBadge";
 import { MasteryProgress } from "../player/MasteryProgress";
 import { formatRecallPrompt } from "./formatPromptSemantics";
@@ -124,6 +125,10 @@ export function AtomicRecallQuestionView({
             <span className="text-sm font-semibold">{ps.championDisplay}</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* RQ1 — the question's role emblem(s), immediately left of the
+                existing metadata (patch badge + kind label). Absent unless the
+                Ranked slice froze roles; standalone Mastery is unchanged. */}
+            <QuestionRoleEmblems roles={question.questionRoles} size="card" backed />
             <MasteryPatchBadge patchDisplay={question.patchDisplay} />
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
               Recall
