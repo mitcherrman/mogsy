@@ -9019,8 +9019,8 @@ html.high-contrast * { text-shadow: none !important; }
    rails, header/timer, Module Rail and lobby/results are untouched.
    ─────────────────────────────────────────────────────────────────────────── */
 @media (min-width: 1600px) and (min-height: 780px) {
-  /* The parchment: slightly shorter, with the excess reserved footprint paid
-     back into the content regions that render inside it. */
+  /* The parchment keeps the arena shell's viewport-managed flex sizing; only
+     the band aspect for rich media is widened at this viewport. */
   .ranked-question-stage {
     --qs-band-aspect-band: 16 / 8;
   }
