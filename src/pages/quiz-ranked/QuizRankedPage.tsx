@@ -63,6 +63,7 @@ import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
 import { RankedRouteHeader } from "./RankedRouteHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import { getActiveMatch } from "@/lib/ranked-public/client";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 
@@ -130,6 +131,10 @@ export default function QuizRankedPage() {
 
 function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   const location = useLocation();
+  // RMOB2 — the account's own display name, from the canonical `profiles`
+  // read the rest of the app already uses. Null until (or unless) it resolves,
+  // in which case the arena keeps its "You" fallback.
+  const viewerIdentity = useProfileIdentity(viewerUserId);
   // The handoff hint from the lobby's match-entry scroll. Read once: a later
   // re-render must not resurrect an id the account has since finished with.
   const [handoffMatchId] = useState<string | null>(() => {
@@ -173,6 +178,7 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
     // because the client had lost track of it, which is what recovery is for.
     return (
       <QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId}
+        viewerDisplayName={viewerIdentity.displayName}
         entry={handoffMatchId ? "fresh" : "recovered"}
         chrome={<RankedRouteHeader size="wide" />} />
     );

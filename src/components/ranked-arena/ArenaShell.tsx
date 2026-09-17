@@ -47,10 +47,16 @@ export interface ArenaShellProps {
   size?: "default" | "wide";
   /** Overrides the default `quiz-ranked` hook. */
   testId?: string;
+  /**
+   * RMOB2 — the arena inside is the phone one-screen composition. Below `lg`
+   * the frame becomes a viewport-tall column floor (see index.css
+   * `.ranked-academy[data-phone-arena]`); desktop is untouched.
+   */
+  phoneArena?: boolean;
 }
 
 export function ArenaShell({
-  children, header, size = "default", testId = "quiz-ranked",
+  children, header, size = "default", testId = "quiz-ranked", phoneArena = false,
 }: ArenaShellProps) {
   return (
     /* RG1 — THE RECLAIMED HUD BAND AND THE STAGE FLOOR.
@@ -86,7 +92,8 @@ export function ArenaShell({
       lg:-mt-[var(--app-header-h)] lg:gap-1 lg:pb-2 lg:pt-1
       lg:h-[var(--ranked-stage-h)] ${
       size === "wide" ? "max-w-6xl xl:max-w-[76rem] min-[1500px]:max-w-[90rem]" : "max-w-3xl"}`}
-      data-testid={testId}>
+      data-testid={testId}
+      data-phone-arena={phoneArena ? "true" : undefined}>
       {header}
       {/* The one region the arena is given. `flex-1` grows it into everything
           the chrome row leaves; there is deliberately no `min-h-0`, because

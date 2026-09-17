@@ -263,15 +263,17 @@ for (const vp of [...LOCKED, ...SEAMS]) {
   });
 }
 
-test.describe("390x844 — below `lg`, nothing is locked", () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-  test("keeps the stacked, intrinsic layout and scrolls normally", async ({ page }) => {
-    await page.goto("/dev/ranked-shell-probe?q=realMax");
+test.describe("360x740 — below `lg` the arena is a FLOOR, never a lock", () => {
+  test.use({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
+  test("a round taller than the phone scrolls the page whole instead of clipping", async ({ page }) => {
+    // RMOB2 made the phone arena one screen tall — as a `min-height`, not a
+    // height. The longest synthetic stress round genuinely cannot fit the
+    // shortest supported phone, and when it does not, the page scrolls and
+    // nothing is cut off.
+    await page.goto(`/dev/ranked-shell-probe?q=stressB${LIVE_PHONE}`);
     await page.waitForSelector('[data-testid="ranked-question"]');
     await page.waitForTimeout(900);
     const fit = await page.evaluate(MEASURE) as Fit;
-    // Nothing is clipped on a phone, and the page genuinely does scroll — the
-    // arena stacks into a column taller than any phone viewport, by design.
     expect(fit.outside).toBe(0);
     expect(fit.pageScroll).toBeGreaterThan(0);
   });
@@ -386,67 +388,147 @@ for (const vp of PHONES) {
 }
 
 /**
- * RMOB1 — THE MODULE RAIL CLEARS THE FIXED DOCK.
+ * RMOB2 — THE PHONE ONE-SCREEN ARENA.
  *
- * The audit found the Report/Rules tabs (fixed, bottom corners) sitting on the
- * rail at the end of the page: nothing in flow reserved room for them. The
- * shell now pads its foot by `--mogzy-dock-clearance`, so scrolled to the
- * bottom the rail must sit wholly above both tabs.
+ * Measured in the LIVE match shape: a role match with no progression layer, a
+ * ten-module points match three modules in (so each player has settled
+ * history), a real display name, and the match mounted bare exactly as
+ * `QuizRankedPage` mounts it (`frame=0`).
+ *
+ * What is asserted is the composition's CORRECTNESS and the fit contract the
+ * owner approved: ordinary rounds (every shape below except the two synthetic
+ * 188-character stress rounds) are exactly one screen on every supported
+ * phone; the stress rounds are one screen from 375x812 up and otherwise scroll
+ * the page whole (see the 360x740 floor test above).
  */
+const LIVE_PHONE = "&points=4:7-5&name=Kalista_Enjoyer&role=mid&orole=support&progression=0&frame=0";
+const ORDINARY = ["media", "family", "realP99", "realMax", "short", "opts2", "opts4", "metareflex"];
+
+const MEASURE_ONE_SCREEN = () => {
+  const vw = document.documentElement.clientWidth;
+  const rect = (sel: string) => document.querySelector(sel)?.getBoundingClientRect() ?? null;
+  const inside = (r: DOMRect, box: DOMRect) =>
+    r.left >= box.left - 0.5 && r.right <= box.right + 0.5
+    && r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5;
+  const bar = rect('[data-testid="ranked-mobile-matchbar"]');
+  const bottom = rect('[data-testid="ranked-mobile-bottombar"]');
+  const timeline = rect('[data-testid="mobile-ranked-round-timeline"]');
+  const clip = document.querySelector('[data-testid="mobile-ranked-round-timeline"] .ranked-timeline-clip')
+    ?.getBoundingClientRect() ?? null;
+  const tabs = ["question-report-tab", "ranked-rules-tab"]
+    .map((id) => document.querySelector(`[data-testid="${id}"]`))
+    .filter((e): e is Element => !!e && e.getBoundingClientRect().height > 0);
+  const textSpills = [...document.querySelectorAll(
+    '[data-testid="ranked-mobile-matchbar"] [data-testid^="mobile-name-"], '
+    + '[data-testid="ranked-mobile-matchbar"] [data-testid^="mobile-status-"]')]
+    .some((e) => {
+      const r = e.getBoundingClientRect();
+      if (bar && !inside(r, bar)) return true;
+      // Truncation is allowed ONLY as a drawn ellipsis, never as a hard cut.
+      const cut = [e, ...e.querySelectorAll("*")].some((n) =>
+        n.scrollWidth > n.clientWidth + 1 && getComputedStyle(n).textOverflow !== "ellipsis"
+        && getComputedStyle(n).overflowX !== "visible");
+      return cut;
+    });
+  const nodes = timeline && clip
+    ? [...document.querySelectorAll('[data-testid="mobile-ranked-round-timeline"] li')]
+      .filter((n) => { const r = n.getBoundingClientRect(); return r.left >= clip.left - 1 && r.right <= clip.right + 1; })
+    : [];
+  const match = document.querySelector('[data-testid="ranked-match"]')!;
+  return {
+    bar: bar ? { top: bar.top, bottom: bar.bottom, left: bar.left, right: bar.right } : null,
+    barInWidth: !!bar && bar.left >= -0.5 && bar.right <= vw + 0.5,
+    timerInBar: !!bar && !!rect('[data-testid="mobile-clock"]')
+      && inside(rect('[data-testid="mobile-clock"]')!, bar),
+    textSpills,
+    bubbles: ["userA", "userB"].map((id) =>
+      document.querySelectorAll(`[data-testid^="mobile-recent-bubble-${id}-"]`).length),
+    bottomInWidth: !!bottom && bottom.left >= -0.5 && bottom.right <= vw + 0.5,
+    tabsInBar: tabs.length > 0 && !!bottom && tabs.every((t) => inside(t.getBoundingClientRect(), bottom)),
+    tabsOverTimeline: !!timeline && tabs.some((t) => {
+      const r = t.getBoundingClientRect();
+      return r.right > timeline.left + 0.5 && r.left < timeline.right - 0.5;
+    }),
+    tabMascots: tabs.reduce((n, t) => n + t.querySelectorAll('[data-testid="mascot"], img').length, 0),
+    visibleNodes: nodes.length,
+    currentVisible: nodes.some((n) => n.getAttribute("aria-current") === "step"),
+    desktopHeaderShown: (rect('[data-testid="ranked-header"]')?.height ?? 0) > 0,
+    desktopTimelineShown: (rect('[data-testid="ranked-round-timeline"]')?.height ?? 0) > 0,
+    nested: [match, ...match.querySelectorAll("*")].filter((e) => {
+      const st = getComputedStyle(e);
+      return /auto|scroll/.test(st.overflowY) && e.scrollHeight > e.clientHeight + 1;
+    }).length,
+    pageScroll: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    pageSideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  };
+};
+
 for (const vp of PHONES) {
-  test.describe(`RMOB1 dock clearance ${vp.w}x${vp.h}`, () => {
+  test.describe(`RMOB2 one-screen ${vp.w}x${vp.h}`, () => {
     test.use({ viewport: { width: vp.w, height: vp.h }, isMobile: true, hasTouch: true });
-    for (const id of ["media", "metareflex"]) {
-      test(`${id}: the Module Rail clears the fixed dock at page end`, async ({ page }) => {
-        await page.goto(`/dev/ranked-shell-probe?q=${id}`);
-        await page.waitForSelector('[data-testid="ranked-question"]');
-        await page.waitForTimeout(900);
-        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-        await page.waitForTimeout(300);
-        const m = await page.evaluate(() => {
-          const rail = document.querySelector('[data-testid="ranked-round-timeline"]')!.getBoundingClientRect();
-          const docks = ["mogzy-dock-left", "mogzy-dock-right"]
-            .map((d) => document.querySelector(`[data-testid="${d}"]`)?.getBoundingClientRect())
-            .filter((r): r is DOMRect => !!r && r.height > 0);
-          return { docks: docks.length, overlap: docks.some((d) => d.top < rail.bottom), // The match shell's OWN foot below the rail. Not the document's: a round
-            // shorter than the screen leaves `min-h-dvh` page floor, which is not
-            // a footer this pass added.
-            tail: Math.round(document.querySelector('[data-testid="ranked-match"]')!
-              .getBoundingClientRect().bottom - rail.bottom) };
+    const shapes = [...ORDINARY, "stressA", "stressB"];
+    for (const id of shapes) {
+      test(`${id}: composition is correct${ORDINARY.includes(id) || vp.h >= 812 ? " and fits one screen" : ""}`,
+        async ({ page }) => {
+          await page.goto(`/dev/ranked-shell-probe?q=${id}${LIVE_PHONE}`);
+          await page.waitForSelector('[data-testid="ranked-mobile-bottombar"]');
+          // Let the resume backfill settle the history bubbles.
+          await page.waitForSelector('[data-testid^="mobile-recent-bubble-userB-"]');
+          await page.waitForTimeout(600);
+          const m = await page.evaluate(MEASURE_ONE_SCREEN);
+
+          expect(m.bar, "no phone match bar").not.toBeNull();
+          expect(m.barInWidth, "the match bar is wider than the phone").toBe(true);
+          expect(m.timerInBar, "the timer is outside the match bar").toBe(true);
+          expect(m.textSpills, "a name or status spills or is hard-cut").toBe(false);
+          expect(m.bubbles, "each player shows exactly two recent results").toEqual([2, 2]);
+          expect(m.desktopHeaderShown, "the desktop header strip is drawn on a phone").toBe(false);
+          expect(m.desktopTimelineShown, "the 9-node desktop rail is drawn on a phone").toBe(false);
+
+          expect(m.bottomInWidth, "the bottom bar is wider than the phone").toBe(true);
+          expect(m.tabsInBar, "Report/Rules are not in the bottom bar").toBe(true);
+          expect(m.tabsOverTimeline, "a Report/Rules control overlaps the timeline").toBe(false);
+          expect(m.tabMascots, "the phone Report/Rules controls still carry mascot art").toBe(0);
+          expect(m.visibleNodes, "the phone timeline window is not five modules").toBe(5);
+          expect(m.currentVisible, "the current module is not in the window").toBe(true);
+
+          expect(m.nested, "an accidental nested scroller").toBe(0);
+          expect(m.pageSideways, "the page scrolls sideways").toBeLessThanOrEqual(0);
+          if (ORDINARY.includes(id) || vp.h >= 812) {
+            expect(m.pageScroll, "this round should be exactly one screen").toBeLessThanOrEqual(0);
+          }
+
+          if (id === "metareflex") return; // its own comparison cards, no answer grid
+          const fit = await page.evaluate(MEASURE) as Fit;
+          expect(fit.outside, "an answer tablet is outside its clipping box").toBe(0);
+          expect(fit.answersInsideStage, "an answer tablet is outside the parchment").toBe(true);
+          expect(fit.mediaSpill, "media overflows its region").toBeLessThanOrEqual(0);
         });
-        expect(m.docks, "the probe mounted no dock tabs to clear").toBeGreaterThan(0);
-        expect(m.overlap, "a fixed dock tab covers the Module Rail").toBe(false);
-        // And no excessive empty footer: clearance, not a spacer.
-        expect(m.tail, "an excessive empty footer below the Module Rail").toBeLessThanOrEqual(96);
-      });
     }
   });
 }
 
-/** RMOB1 — the phone duel strip replaces the banners and keeps its text inside. */
-for (const vp of [{ w: 430, h: 932 }, { w: 360, h: 800 }]) {
-  test.describe(`RMOB1 duel strip ${vp.w}x${vp.h}`, () => {
-    test.use({ viewport: { width: vp.w, height: vp.h }, isMobile: true, hasTouch: true });
-    test("is compact, replaces the banners, and never spills its text", async ({ page }) => {
-      await page.goto("/dev/ranked-shell-probe?q=media");
-      await page.waitForSelector('[data-testid="ranked-mobile-duel"]');
-      await page.waitForTimeout(900);
-      const m = await page.evaluate(() => {
-        const strip = document.querySelector('[data-testid="ranked-mobile-duel"]')!.getBoundingClientRect();
-        const banners = [...document.querySelectorAll('[data-presentation="banner"]')]
-          .filter((b) => b.getBoundingClientRect().height > 0).length;
-        const spill = [...document.querySelectorAll('[data-testid="ranked-mobile-duel"] *')].some((e) => {
-          const r = e.getBoundingClientRect();
-          return r.width > 0 && (r.left < strip.left - 0.5 || r.right > strip.right + 0.5
-            || r.top < strip.top - 0.5 || r.bottom > strip.bottom + 0.5);
-        });
-        const header = document.querySelector('[data-testid="ranked-header"]')!.getBoundingClientRect();
-        return { stripH: strip.height, banners, spill, headerH: header.height };
+test.describe("RMOB2 compact phone HUD", () => {
+  test.use({ viewport: { width: 360, height: 800 }, isMobile: true, hasTouch: true });
+  test("is 40px tall and every control still takes a 44px-tall touch", async ({ page }) => {
+    await page.goto(`/dev/ranked-shell-probe?q=media${LIVE_PHONE}`);
+    await page.waitForSelector('[data-testid="ranked-mobile-matchbar"]');
+    const m = await page.evaluate(() => {
+      const row = document.querySelector('nav[aria-label="Mogzy controls"] > div')!.getBoundingClientRect();
+      const ids = ["hud-home", "academy-radio-hud-trigger", "hud-page-report", "hud-profile",
+        "hud-notifications-trigger"];
+      const reach = ids.map((id) => {
+        const el = document.querySelector(`[data-testid="${id}"]`);
+        if (!el) return { id, ok: true };
+        const r = el.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        // 4px above and below the visible box must still land on the control.
+        const hit = (y: number) => { const t = document.elementFromPoint(x, y); return !!t && (t === el || el.contains(t)); };
+        return { id, ok: hit(r.top - 3.5 < 0 ? 0 : r.top - 3.5) && hit(r.bottom + 3.5) };
       });
-      expect(m.banners, "a desktop duel banner is still drawn on a phone").toBe(0);
-      expect(m.spill, "duel-strip content spills outside the strip").toBe(false);
-      expect(m.stripH, "the duel strip is not compact").toBeLessThanOrEqual(96);
-      expect(m.headerH, "the Match Header is not compact").toBeLessThanOrEqual(88);
+      return { rowH: Math.round(row.height), reach };
     });
+    expect(m.rowH).toBe(40);
+    for (const r of m.reach) expect(r.ok, `${r.id} lost its 44px touch height`).toBe(true);
   });
-}
+});

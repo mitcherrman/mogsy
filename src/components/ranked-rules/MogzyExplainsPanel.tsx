@@ -115,13 +115,19 @@ export interface MogzyExplainsPanelProps {
    * shoved aside is not the player saying they have read anything.
    */
   onCollapse?: () => void;
+  /**
+   * RMOB2 — the glyph the COMPACT tab draws in place of the mascot when a
+   * surface hosts the dock's tabs in its own row (the phone Ranked bottom bar).
+   * Ignored everywhere else; the corner tab is unchanged.
+   */
+  tabIcon?: ReactNode;
 }
 
 export function MogzyExplainsPanel({
   open, onOpen, onClose, title, tabLabel, openLabel, children,
   prominent = false, testId = "mogzy-explains",
   dockOrder = DOCK_ORDER.rules, onCollapse, acknowledgeLabel = "Got it",
-  side = "right",
+  side = "right", tabIcon = null,
 }: MogzyExplainsPanelProps) {
   const headingId = useId();
   const tabRef = useRef<HTMLButtonElement | null>(null);
@@ -171,7 +177,7 @@ export function MogzyExplainsPanel({
     else onClose();
   }, [onCollapse, onClose]);
 
-  const { panelSlot, tabSlot } = useMogzyDockSlot({ id: testId, side, open, onCollapse: collapse });
+  const { panelSlot, tabSlot, hosted } = useMogzyDockSlot({ id: testId, side, open, onCollapse: collapse });
 
   /* Returning focus to the tab after a player-driven close. Without it a
      keyboard player is dropped at the top of the document every time they
@@ -274,7 +280,36 @@ export function MogzyExplainsPanel({
   /* The tab is ALWAYS mounted, open or not — it is the thing the panel unrolls
      from, it keeps the corner's shape stable, and leaving it present is what
      lets focus return to it on close. */
-  const tab = (
+  /* RMOB2 — HOSTED, the tab is a compact control in a bar row: no mascot,
+     an icon and the short label. Same button, same handlers, same test id and
+     accessible name, so every behaviour above (focus return, prominence,
+     exclusivity) is identical; only its size changes. The visible pill is
+     ~32px tall and its ::before extends the hit area to 44px. */
+  const tab = hosted ? (
+    <button
+      type="button"
+      ref={tabRef}
+      onClick={open ? close : onOpen}
+      aria-label={open ? `Close ${title}` : openLabel}
+      aria-expanded={open}
+      data-testid={`${testId}-tab`}
+      data-open={open ? "true" : undefined}
+      data-prominent={prominent ? "true" : undefined}
+      data-hosted="true"
+      style={{ order: dockOrder }}
+      className={`mogzy-scroll-tab mogzy-scroll-tab--hosted pointer-events-auto relative flex h-8
+        items-center gap-1 rounded-full px-2.5 ${prominent ? "mogzy-scroll-tab--calling" : ""}
+        focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+        focus-visible:outline-[#c9a84c]`}
+    >
+      {tabIcon && (
+        <span aria-hidden className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          {tabIcon}
+        </span>
+      )}
+      <span className="ranked-eyebrow !text-[10px] !tracking-[0.14em]">{tabLabel}</span>
+    </button>
+  ) : (
     <button
       type="button"
       ref={tabRef}

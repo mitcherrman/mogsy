@@ -17,6 +17,8 @@ import type { MatchResult } from "@/components/ranked-arena/MatchOverFrame";
 export interface RankedScorelineProps {
   /** The viewer's final score, from `result.scoring.final_scores`. */
   you: number;
+  /** RMOB2 — the viewer's display name for the label; "You" when unknown. */
+  youLabel?: string;
   /** The opponent's, from the same map; null when there is no opponent entry. */
   opponent: number | null;
   /** The backend's outcome, for emphasis only — never derived from the two. */
@@ -53,15 +55,15 @@ export function scorelineDisagreesWithOutcome(
 }
 
 /** One side of the scoreline. */
-function Side({ label, score, emphasis }:
-{ label: string; score: number | null; emphasis: boolean }) {
+function Side({ label, testKey, score, emphasis }:
+{ label: string; testKey: "you" | "opponent"; score: number | null; emphasis: boolean }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
       <span className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </span>
       <span
-        data-testid={`final-score-${label.toLowerCase()}`}
+        data-testid={`final-score-${testKey}`}
         className={`text-5xl font-black leading-none tabular-nums sm:text-6xl ${
           emphasis ? "text-[#f5e6b8]" : "text-slate-300/80"}`}
       >
@@ -72,7 +74,7 @@ function Side({ label, score, emphasis }:
 }
 
 export function RankedScoreline({
-  you, opponent, result, modulesPlayed, ratingDelta,
+  you, opponent, result, modulesPlayed, ratingDelta, youLabel = "You",
 }: RankedScorelineProps) {
   // Emphasis follows the BACKEND's result, not the numbers: a draw emphasises
   // neither, and a decisive match emphasises the side the result row named.
@@ -84,9 +86,9 @@ export function RankedScoreline({
       data-testid="ranked-final-scoreline"
       className="ranked-panel px-4 py-4">
       <div className="flex items-center justify-center gap-3 sm:gap-6">
-        <Side label="You" score={you} emphasis={youWon || result === "draw"} />
+        <Side label={youLabel} testKey="you" score={you} emphasis={youWon || result === "draw"} />
         <span aria-hidden className="shrink-0 text-2xl font-black text-muted-foreground/50">—</span>
-        <Side label="Opponent" score={opponent} emphasis={theyWon || result === "draw"} />
+        <Side label="Opponent" testKey="opponent" score={opponent} emphasis={theyWon || result === "draw"} />
       </div>
       {/* The two quiet facts, on one row, and each present only when the
           backend actually stated it. An unrated match simply has no rating

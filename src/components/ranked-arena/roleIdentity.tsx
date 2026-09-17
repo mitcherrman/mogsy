@@ -70,7 +70,7 @@ export function roleIdentityFor(roleId: string | null | undefined): RoleIdentity
  * role art. So only the neutral crossed-blades mark remains: there is one
  * small icon system for Top/Jungle/Mid/ADC/Support, not two.
  */
-function NeutralSigil() {
+export function NeutralSigil() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}
       strokeLinecap="round" strokeLinejoin="round" className="h-full w-full" aria-hidden>

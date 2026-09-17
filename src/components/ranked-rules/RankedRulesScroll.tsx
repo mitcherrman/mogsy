@@ -38,6 +38,7 @@
  * and re-deciding after an acknowledgement would fight the player for the
  * corner.
  */
+import { BookOpen } from "lucide-react";
 import { useCallback, useState } from "react";
 import { DOCK_ORDER } from "@/components/mogzy-dock/MogzyDock";
 import { MogzyExplainsPanel } from "./MogzyExplainsPanel";
@@ -91,6 +92,7 @@ export function RankedRulesScroll() {
       // acknowledged these rules gets the quiet tab, on every layout.
       prominent={unseen && !open}
       title="Ranked Rules"
+      tabIcon={<BookOpen className="h-3.5 w-3.5" />}
       tabLabel="Rules"
       openLabel="View Ranked scoring rules"
       testId="ranked-rules"

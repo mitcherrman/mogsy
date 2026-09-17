@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { Suspense, useEffect, useLayoutEffect } from "react";
 import GlobalHud from "./hud/GlobalHud";
-import { MogzyDockProvider, useMogzyDockOccupied } from "./mogzy-dock/MogzyDock";
+import { MogzyDockProvider, useMogzyDockOccupied, useMogzyDockTabsHosted } from "./mogzy-dock/MogzyDock";
 import { QuestionReportScroll } from "./report/QuestionReportScroll";
 import { ReportableQuestionProvider } from "@/lib/feedback/reportable-question";
 import FloatingFriendsButton from "./FloatingFriendsButton";
@@ -252,5 +252,10 @@ export function RouteLoader() {
  * whole shell and every route beneath it.
  */
 function CommunityTrigger() {
-  return <FloatingFriendsButton lifted={useMogzyDockOccupied("left")} />;
+  const lifted = useMogzyDockOccupied("left");
+  // RMOB2 — while a phone Ranked match hosts the dock tabs in its own bottom
+  // row there is no free corner: the page is one screen and this corner is the
+  // answer grid. The trigger steps out for the match and returns after it.
+  if (useMogzyDockTabsHosted("left")) return null;
+  return <FloatingFriendsButton lifted={lifted} />;
 }

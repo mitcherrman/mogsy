@@ -26,6 +26,7 @@
  * on demand, mid-question, would be an answer leak with a form attached.
  */
 
+import { Flag } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -114,6 +115,7 @@ export function QuestionReportScroll() {
          trained on for the mode's standing explanation. */
       side={DOCK_SIDE.questionReport}
       title="Report this question"
+      tabIcon={<Flag className="h-3.5 w-3.5" />}
       tabLabel="Report"
       openLabel="Report a problem with this question"
       testId="question-report"

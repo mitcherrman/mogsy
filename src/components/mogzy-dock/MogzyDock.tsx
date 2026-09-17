@@ -106,6 +106,13 @@ interface SideSlots {
 
 interface MogzyDockValue {
   slots: Record<MogzyDockSide, SideSlots>;
+  /**
+   * RMOB2 — which sides' TABS are currently hosted by a surface's own row (the
+   * phone Ranked bottom bar) instead of the fixed corner.
+   */
+  hosted: Record<MogzyDockSide, boolean>;
+  /** Hand a side's tabs to an element, or `null` to give them back. */
+  hostTabs: (side: MogzyDockSide, el: HTMLElement | null) => void;
   /** Which sides currently have at least one registered occupant. */
   occupied: Record<MogzyDockSide, boolean>;
   /** Register a panel so the dock can ask it to collapse. */
@@ -122,6 +129,14 @@ export function MogzyDockProvider({ children }: { children: ReactNode }) {
   const [rightPanelSlot, setRightPanelSlot] = useState<HTMLElement | null>(null);
   const [rightTabSlot, setRightTabSlot] = useState<HTMLElement | null>(null);
   const registrations = useRef(new Map<string, DockRegistration>());
+  /* RMOB2 — an optional per-side TAB HOST. Panels never move: they stay in the
+     fixed column (lifted clear of the host row), so every open/close, focus
+     and exclusivity rule above is the same code whichever box the tab is in. */
+  const [tabHosts, setTabHosts] = useState<Record<MogzyDockSide, HTMLElement | null>>(
+    { left: null, right: null });
+  const hostTabs = useCallback((side: MogzyDockSide, el: HTMLElement | null) => {
+    setTabHosts(prev => (prev[side] === el ? prev : { ...prev, [side]: el }));
+  }, []);
 
   /* Occupancy is STATE and not a ref read, because the shell re-layouts on it
      (the Community trigger steps aside for a left-docked tab). Counting rather
@@ -155,9 +170,11 @@ export function MogzyDockProvider({ children }: { children: ReactNode }) {
   const valueRef = useRef<MogzyDockValue | null>(null);
   valueRef.current = {
     slots: {
-      left: { panelSlot: leftPanelSlot, tabSlot: leftTabSlot },
-      right: { panelSlot: rightPanelSlot, tabSlot: rightTabSlot },
+      left: { panelSlot: leftPanelSlot, tabSlot: tabHosts.left ?? leftTabSlot },
+      right: { panelSlot: rightPanelSlot, tabSlot: tabHosts.right ?? rightTabSlot },
     },
+    hosted: { left: tabHosts.left !== null, right: tabHosts.right !== null },
+    hostTabs,
     occupied: { left: counts.left > 0, right: counts.right > 0 },
     register,
     claimExclusive,
@@ -168,11 +185,13 @@ export function MogzyDockProvider({ children }: { children: ReactNode }) {
       {children}
       <MogzyDockRoot
         side="left"
+        hosted={tabHosts.left !== null}
         onPanelSlot={setLeftPanelSlot}
         onTabSlot={setLeftTabSlot}
       />
       <MogzyDockRoot
         side="right"
+        hosted={tabHosts.right !== null}
         onPanelSlot={setRightPanelSlot}
         onTabSlot={setRightTabSlot}
       />
@@ -190,10 +209,12 @@ export function MogzyDockProvider({ children }: { children: ReactNode }) {
  */
 function MogzyDockRoot({
   side,
+  hosted = false,
   onPanelSlot,
   onTabSlot,
 }: {
   side: MogzyDockSide;
+  hosted?: boolean;
   onPanelSlot: (el: HTMLElement | null) => void;
   onTabSlot: (el: HTMLElement | null) => void;
 }) {
@@ -207,7 +228,10 @@ function MogzyDockRoot({
     <div
       data-testid={`mogzy-dock-${side}`}
       data-dock-side={side}
-      className={`pointer-events-none fixed bottom-4 z-40 flex max-w-[calc(100vw-1.5rem)]
+      // RMOB2 — with the tabs hosted in a surface's bottom row, the panel column
+      // lifts clear of that row (see `.mogzy-dock-root[data-tabs-hosted]`).
+      data-tabs-hosted={hosted ? "true" : undefined}
+      className={`mogzy-dock-root pointer-events-none fixed bottom-4 z-40 flex max-w-[calc(100vw-1.5rem)]
         flex-col gap-2 sm:bottom-5 ${anchor}`}
     >
       <div
@@ -243,6 +267,31 @@ export interface MogzyDockSlot {
   panelSlot: HTMLElement | null;
   /** Portal target for the collapsed tab, or null when no dock is mounted. */
   tabSlot: HTMLElement | null;
+  /** RMOB2 — the tab is in a surface's own row, so it draws its compact form. */
+  hosted: boolean;
+}
+
+/**
+ * RMOB2 — host a side's dock TABS in `el` while it is mounted and `enabled`.
+ *
+ * The surface owns WHERE (a row in its own layout) and WHEN (e.g. phone widths
+ * only); the dock still owns WHAT — registration, exclusivity and the panels.
+ * A no-op without a dock, and the tabs return to the corner on unmount.
+ */
+export function useMogzyDockTabHost(
+  side: MogzyDockSide, el: HTMLElement | null, enabled: boolean,
+): void {
+  const hostTabs = useContext(DockContext)?.hostTabs;
+  useEffect(() => {
+    if (!hostTabs || !enabled || !el) return;
+    hostTabs(side, el);
+    return () => hostTabs(side, null);
+  }, [hostTabs, side, el, enabled]);
+}
+
+/** RMOB2 — is a side's tab row currently hosted by a surface? */
+export function useMogzyDockTabsHosted(side: MogzyDockSide): boolean {
+  return useContext(DockContext)?.hosted[side] ?? false;
 }
 
 /**
@@ -280,5 +329,9 @@ export function useMogzyDockSlot(args: {
   }, [open, claimExclusive, id]);
 
   const slots = dock?.slots[side];
-  return { panelSlot: slots?.panelSlot ?? null, tabSlot: slots?.tabSlot ?? null };
+  return {
+    panelSlot: slots?.panelSlot ?? null,
+    tabSlot: slots?.tabSlot ?? null,
+    hosted: dock?.hosted[side] ?? false,
+  };
 }

@@ -14333,3 +14333,254 @@ html.hub-commons-in-view .hextech-ambience-layer {
     0 0 0 2px rgba(240, 215, 140, 0.30),
     0 0 18px -2px rgba(240, 215, 140, 0.28);
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   RMOB2 — THE PHONE ONE-SCREEN RANKED ARENA.
+
+   Below `lg`, a Ranked arena (`data-phone-arena`, set by CanonicalArena only
+   when both flanks are Ranked duel banners) is composed as
+
+     global HUD · match bar · question card · bottom bar (Report · timeline · Rules)
+
+   and the frame is a VIEWPORT-TALL FLOOR, never a ceiling: `min-height`, no
+   `overflow`, no clip. A round that fits leaves the document exactly one
+   screen tall; a round that genuinely cannot fit (the longest Combat
+   Calculation / stress shapes on the shortest phones) grows the page and
+   scrolls it, whole. There is no inner scroller anywhere.
+
+   Desktop is untouched: every rule below is inside the phone query and keyed
+   off an attribute the desktop DOM never carries.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1023.98px) {
+  /* The frame. `100dvh` less the app shell's HUD reservation is the screen
+     that is actually left; the safe-area inset keeps the bottom bar clear of
+     the home indicator. */
+  .ranked-academy[data-phone-arena="true"] {
+    min-height: calc(100dvh - var(--app-header-h));
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem calc(0.375rem + env(safe-area-inset-bottom, 0px));
+  }
+  .ranked-shell[data-phone-arena="true"] {
+    flex: 1 1 auto;
+    gap: 0.25rem;
+  }
+  /* The shell glow's horizontal bleed (-0.25rem each side, see
+     `.ranked-shell::before`) is harmless inside a centred desktop column, but
+     on a full-width phone frame it is 4px of real horizontal overflow — and a
+     mobile browser answers that by zooming the page out to 394px, which
+     scaled an exactly-one-screen arena to 853px of a 844px screen. */
+  .ranked-academy[data-phone-arena="true"]::before {
+    inset: 0;
+  }
+  /* The arena grid holds two banner cells that are `display:none` here, so its
+     one visible child is the focus column: a column that GROWS into the
+     screen, and the card with it. */
+  .ranked-shell[data-phone-arena="true"] > .ranked-arena-grid {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-focus-column"] {
+    flex: 1 1 auto;
+  }
+  .ranked-shell[data-phone-arena="true"] > [data-testid="ranked-round-timeline"] {
+    display: none;
+  }
+  .ranked-shell[data-phone-arena="true"] .ranked-folio {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+  /* The same `my-auto` the desktop lock uses: spare parchment is shared above
+     and below the question rather than pooled under the last answer. */
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > div {
+    margin-block: auto;
+    width: 100%;
+  }
+
+  /* The bottom bar's strip: the desktop strip is 3.4rem for a 9-node rail; a
+     5-node window in a control row needs the plate, its ordinal and the caret
+     and nothing more. */
+  .ranked-mobile-bottombar .ranked-timeline-viewport {
+    height: 2.625rem;
+  }
+
+  /* HOSTED dock panels lift clear of the bottom bar they unrolled from. */
+  .mogzy-dock-root[data-tabs-hosted="true"] {
+    bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* RMOB2 — the compact, HOSTED dock tab (see MogzyExplainsPanel). A ~32px pill
+   whose hit area is extended to 44px by an invisible ::before, so the control
+   is small on screen without being small under a thumb. */
+.mogzy-scroll-tab--hosted::before {
+  content: "";
+  position: absolute;
+  inset: -6px -2px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   RMOB2 — THE COMPACT PHONE HUD.
+
+   Phones only (below `sm`), every route. The desktop HUD is untouched.
+   The VISIBLE controls shrink — 44px targets become 36px boxes, 36px marks
+   become 30px, the cluster's padding and gaps tighten — while each control's
+   HIT AREA stays 44px tall through an invisible `::after`, so nothing gets
+   harder to tap. The strip itself drops from 48px to 40px; `--app-header-h`
+   (the page reservation every route reads) is deliberately NOT changed, so no
+   other page moves — only the phone Ranked arena spends the 8px it frees.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 639.98px) {
+  .global-hud > div {
+    height: 2.5rem;
+  }
+  .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"],
+    [data-testid="academy-radio-hud-trigger"], [data-testid="hud-page-report"],
+    [data-testid="hud-notifications-trigger"]) {
+    position: relative;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  .global-hud [data-testid="hud-notifications-trigger"] {
+    width: 1.75rem;
+  }
+  .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"],
+    [data-testid="academy-radio-hud-trigger"], [data-testid="hud-page-report"],
+    [data-testid="hud-notifications-trigger"])::after {
+    content: "";
+    position: absolute;
+    inset: -4px 0;
+  }
+  .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"]) .h-9.w-9 {
+    width: 1.875rem;
+    height: 1.875rem;
+  }
+  .global-hud [data-testid="academy-radio-hud-trigger"] svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  .global-hud [data-testid="hud-page-report"] svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  /* The cluster pill: 2px of inset instead of 4px, and the signup chip one
+     step smaller. */
+  .global-hud [data-testid="hud-signup-chip"] {
+    height: 1.5rem;
+    padding-inline: 0.5rem;
+    font-size: 10px;
+  }
+  .global-hud nav > div > div:last-child,
+  .global-hud > div > div:last-child {
+    gap: 0.125rem;
+    padding: 1px 2px;
+  }
+  /* The phone Ranked arena starts where the compact strip ends. */
+  .ranked-academy[data-phone-arena="true"] {
+    margin-top: -0.5rem;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   RMOB2 — THE PHONE QUESTION CARD, DENSITY PASS.
+
+   Only after the chrome was compressed, and only inside the phone Ranked
+   arena. Type sizes are NOT touched (prompt stays 18px, tablets 14px); what
+   gives is spacing, the cinematic art's height, and the Combat Calculation
+   band's arrangement. Nothing here sets a fixed height on text.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1023.98px) {
+  /* `.ranked-folio` is the same element as `.ranked-question-stage`; naming it
+     this way keeps the phone tokens out of the desktop stage-rule audit in
+     QuestionStageGeometry.test.tsx, which reads `.ranked-question-stage {`. */
+  .ranked-shell[data-phone-arena="true"] .ranked-folio {
+    padding: 0.5rem 0.625rem;
+    /* Cinematic art: a wider band on a phone, capped at 7.5rem. At phone widths
+       (296–366px of card) that is ~105–120px — the subject and its labels stay,
+       the dead sky above and below them goes. The band is a size container
+       and its art is drawn in container units, so it SCALES rather than
+       crops. */
+    --qs-band-aspect-band: 16 / 5.75;
+    --qs-media-max: 7.5rem;
+  }
+  /* The band's 8rem legibility floor is an inline style (ScenarioMediaBand), so
+     only `!important` reaches it. The floor exists for bands that would
+     collapse on a narrow column; here the aspect and the cap above already
+     bound it to ~95–120px. */
+  .ranked-shell[data-phone-arena="true"] [data-testid="scenario-hero"] {
+    min-height: 0 !important;
+  }
+  .ranked-shell[data-phone-arena="true"] .question-surface-stack {
+    gap: 0.5rem;
+  }
+  /* Answers: 9px of vertical padding instead of 12px, a 3rem floor so a
+     one-line tablet is still a comfortable 48px target, and a tighter gutter.
+     Height stays automatic, so a wrapped label is never clipped. */
+  .ranked-shell[data-phone-arena="true"] [data-answers-state] [data-quiz-choice] {
+    min-height: 3rem;
+    padding-top: 0.5625rem;
+    padding-bottom: 0.5625rem;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-testid="answer-grid"] > div {
+    gap: 0.375rem;
+  }
+
+  /* COMBAT CALCULATION (post-mitigation) — attacker → target on ONE row.
+     The stacked phone arrangement spent a full row per side plus a row for a
+     rotated arrow. Here both sides share the row with smaller portraits, and
+     nothing question-critical is hidden: the names and the ability/item wrap
+     instead of truncating, and both fact tablets keep their full values. The
+     only thing dropped is the detail's duplicate mini-icon — its name stays. */
+  .ranked-shell[data-phone-arena="true"] [data-combat-relation] {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    column-gap: 0.375rem;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-combat-relation] > [data-combat-side] {
+    width: auto;
+    flex: 1 1 0;
+    align-items: flex-start;
+    gap: 0.375rem;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-combat-side] > [data-testid="family-entity-tile"] {
+    width: 2rem;
+    height: 2rem;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-combat-relation] > [data-testid="combat-arrow"] {
+    transform: none;
+    align-self: center;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-combat-name] {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-combat-detail] {
+    margin-top: 0.125rem;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-combat-detail] > [data-testid="family-entity-tile"] {
+    display: none;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-combat-detail] > span:last-child {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: 0.06em;
+  }
+
+  /* The radio's first-visit nudge hangs under the HUD cluster, which on a
+     phone Ranked arena is exactly where the opponent's name is. It is a
+     transient suggestion; during a timed match it waits. */
+  body:has([data-phone-arena="true"]) [data-testid="academy-radio-hud-prompt"] {
+    display: none;
+  }
+}
