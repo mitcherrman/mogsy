@@ -68,6 +68,18 @@ export function orderedRoles(roles: readonly unknown[] | null | undefined): Rank
 }
 
 /**
+ * Spacing for a cluster. An overlapping cluster lives in a tiny slot: the 36px
+ * timeline plate, with the marks pinned 2px in from its right edge, leaves
+ * 34px. Eleven-pixel marks tuck harder as they multiply so the cluster always
+ * fits: 3 -> 27px, 4 -> 32px (4px tuck), 5 -> 31px (6px tuck).
+ */
+function overlapClass(overlap: boolean, count: number): string {
+  if (!overlap) return "gap-[3px]";
+  if (count >= 5) return "-space-x-[6px]";
+  return count === 4 ? "-space-x-[4px]" : "-space-x-[3px]";
+}
+
+/**
  * The role(s) a QUESTION applies to, as one compact horizontal cluster.
  *
  * Renders NOTHING for no roles: a neutral question has no mark, never a
@@ -100,7 +112,8 @@ export function QuestionRoleEmblems({
       aria-label={`Question ${ordered.length === 1 ? "role" : "roles"}: ${names}`}
       data-testid={testId}
       data-roles={ordered.join(" ")}
-      className={`inline-flex shrink-0 items-center ${overlap ? "-space-x-[3px]" : "gap-[3px]"} ${className}`}
+      data-count={ordered.length}
+      className={`inline-flex shrink-0 items-center ${overlapClass(overlap, ordered.length)} ${className}`}
     >
       {ordered.map((role) => (backed ? (
         <span key={role} data-testid="role-emblem-tile"

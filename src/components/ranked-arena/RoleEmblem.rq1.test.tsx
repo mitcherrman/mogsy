@@ -216,3 +216,50 @@ describe("authority guards", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────── multi-role authority (RQ1)
+
+describe("multi-role question roles", () => {
+  it("reads up to five roles off the wire in canonical order, deduplicated", () => {
+    expect(readTimelineTopic({ category: "abilities",
+      roles: ["support", "adc", "mid", "jungle", "top", "adc"] })?.roles)
+      .toEqual(["top", "jungle", "mid", "adc", "support"]);
+  });
+
+  it.each([
+    [["top", "mid", "support"]],
+    [["top", "jungle", "mid", "support"]],
+    [["top", "jungle", "mid", "adc", "support"]],
+  ])("the card renders every role, once, in order: %j", (roles) => {
+    card({ ...Q, roles: roles as QuestionView["roles"] });
+    const row = screen.getByTestId("question-meta-row");
+    expect(within(row).getAllByTestId("role-emblem").map((e) => e.getAttribute("data-role")))
+      .toEqual(roles);
+    expect(within(row).getAllByTestId("role-emblem-tile")).toHaveLength(roles.length);
+    // Still one row: the prompt follows the metadata row directly.
+    expect(row.nextElementSibling?.tagName).toBe("H2");
+  });
+
+  it("tucks 4-role and 5-role clusters so they fit the 36px timeline plate", () => {
+    const { unmount } = render(<QuestionRoleEmblems roles={["top", "jungle", "mid", "support"]} overlap size="xs" />);
+    expect(screen.getByTestId("question-role-emblems").className).toContain("-space-x-[4px]");
+    unmount();
+    render(<QuestionRoleEmblems roles={["top", "mid", "support"]} overlap size="xs" />);
+    expect(screen.getByTestId("question-role-emblems").className).toContain("-space-x-[3px]");
+  });
+
+  it("a five-role timeline cluster tucks tighter so it fits the plate", () => {
+    const five: TimelineNode[] = [{ roundNumber: 1, index: 0, visible: true, state: "current",
+      segmentKind: "standard", outcome: null, tag: null,
+      topic: { category: "abilities", tier: null, iconHint: null,
+        roles: ["top", "jungle", "mid", "adc", "support"] } }];
+    render(<RoundTimeline timeline={{
+      visibleNodes: TIMELINE_VISIBLE_NODES, anchorIndex: TIMELINE_ANCHOR_INDEX,
+      windowStart: 1, currentIndex: 0, currentRoundNumber: 1, anchored: false, nodes: five }} />);
+    const cluster = screen.getByTestId("timeline-node-roles-1");
+    expect(cluster.getAttribute("data-count")).toBe("5");
+    expect(cluster.className).toContain("-space-x-[6px]");
+    expect(screen.getByTestId("timeline-node-1").querySelector(".sr-only")?.textContent)
+      .toContain("Top, Jungle, Mid, ADC and Support question");
+  });
+});

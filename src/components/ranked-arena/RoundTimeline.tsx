@@ -127,13 +127,19 @@ const STATE_LABEL: Record<TimelineNode["state"], string> = {
  * resolved, Aatrox, Abilities & Cooldowns, hard, you answered incorrectly".
  * Both are added only when the server actually published a topic.
  */
+/** "Top", "Top and Mid", "Top, Jungle and Mid". */
+function listPhrase(items: string[]): string {
+  return items.length <= 2 ? items.join(" and ")
+    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 export function nodeLabel(node: TimelineNode): string {
   const identity = IDENTITY[identityOf(node.segmentKind)].label;
   const kind = identity ? `, ${identity}` : "";
   const outcome = node.outcome ? `, ${OUTCOME[node.outcome].label}` : "";
   // RQ1 — the question's role(s), from the published topic only.
   const roles = node.topic?.roles?.length
-    ? `, ${node.topic.roles.map((r) => RANKED_ROLE_LABELS[r]).join(" and ")} question`
+    ? `, ${listPhrase(node.topic.roles.map((r) => RANKED_ROLE_LABELS[r]))} question`
     : "";
   return `Round ${node.roundNumber}, ${STATE_LABEL[node.state]}${kind}`
     + `${subjectPhrase(node)}${outcome}${roles}`;
