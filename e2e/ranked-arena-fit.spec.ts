@@ -29,13 +29,82 @@ const QUESTIONS = [
   { id: "media", what: "a rich cinematic item card" },
   { id: "realP99", what: "a p99 prompt with p99 option labels" },
   { id: "realMax", what: "the longest prompt the bank can serve, with its longest options" },
+  { id: "family", what: "a Combat Calculation family card" },
 ] as const;
 
 /** Desktop widths where the lock applies (`lg` and up). */
 const LOCKED = [
-  { w: 1920, h: 1080 }, { w: 1440, h: 900 }, { w: 1366, h: 768 },
-  { w: 1280, h: 720 }, { w: 1024, h: 768 },
+  { w: 1920, h: 1080 }, { w: 1920, h: 800 }, { w: 1878, h: 797 },
+  { w: 1600, h: 900 }, { w: 1600, h: 800 }, { w: 1440, h: 900 },
+  { w: 1440, h: 800 }, { w: 1366, h: 768 }, { w: 1280, h: 720 },
+  { w: 1024, h: 768 },
 ];
+
+/**
+ * RS1 — the breakpoint SEAMS, one pixel either side. Each pair straddles a
+ * rule in `index.css` (the 1280/1500 reserve steps, the 1600x780 wide-desktop
+ * override, the 860/861 compaction gate), which is exactly where two rules
+ * that each fit on their own can stop fitting together.
+ */
+const SEAMS = [
+  { w: 1279, h: 800 }, { w: 1280, h: 800 }, { w: 1499, h: 800 }, { w: 1500, h: 800 },
+  { w: 1599, h: 800 }, { w: 1600, h: 779 }, { w: 1600, h: 780 },
+  { w: 1440, h: 860 }, { w: 1440, h: 861 },
+];
+
+/**
+ * RS1 — THE ARENA'S OWN BOXES, not just the card's.
+ *
+ * Every assertion above can pass while the whole arena row is wrong: at
+ * 1280x720 the grid's implicit `auto` row floored at 480.5px against a 447px
+ * grid, so the stage AND both Player Columns overflowed the grid by 34px and
+ * sat on top of the status strip — with every answer still inside the card,
+ * the Module Rail still on screen and the page not scrolling. The shrink chain
+ * never engaged, because the stage never saw a definite height.
+ */
+type Arena = {
+  shellOverViewport: number; gridOverflow: number[];
+  stageOverNext: number; stageOverRail: number; railsIntoStage: boolean;
+  pageScroll: number;
+};
+
+const MEASURE_ARENA = () => {
+  const shell = document.querySelector(".ranked-shell")!.getBoundingClientRect();
+  const stage = document.querySelector('[data-testid="ranked-question"]')!;
+  const focus = document.querySelector('[data-testid="ranked-focus-column"]')!;
+  const grid = focus.parentElement!;
+  const g = grid.getBoundingClientRect();
+  const s = stage.getBoundingClientRect();
+  const rail = document.querySelector('[data-testid="ranked-round-timeline"]')!
+    .getBoundingClientRect();
+  const next = grid.nextElementSibling?.getBoundingClientRect();
+  const sideCols = [grid.children[0], grid.children[1]]
+    .map((c) => (c.firstElementChild ?? c).getBoundingClientRect());
+  return {
+    shellOverViewport: Math.round(shell.bottom - window.innerHeight),
+    gridOverflow: [...grid.children]
+      .map((c) => Math.round(c.getBoundingClientRect().bottom - g.bottom)),
+    stageOverNext: next ? Math.round(s.bottom - next.top) : -1,
+    stageOverRail: Math.round(s.bottom - rail.top),
+    railsIntoStage: sideCols.some((r) =>
+      r.right > s.left + 0.5 && r.left < s.right - 0.5),
+    pageScroll: Math.round(
+      document.documentElement.scrollHeight - document.documentElement.clientHeight),
+  } satisfies Arena;
+};
+
+const expectArenaFits = (a: Arena) => {
+  expect(a.shellOverViewport, "the Ranked shell is taller than the viewport")
+    .toBeLessThanOrEqual(0);
+  expect(Math.max(...a.gridOverflow),
+    "an arena column overflows the grid row it was given").toBeLessThanOrEqual(0);
+  expect(a.stageOverNext, "the Question Stage runs into the strip below it")
+    .toBeLessThanOrEqual(0);
+  expect(a.stageOverRail, "the Question Stage crosses the Module Rail")
+    .toBeLessThanOrEqual(0);
+  expect(a.railsIntoStage, "a Player Column intersects the Question Stage").toBe(false);
+  expect(a.pageScroll, "the arena is scrolling the page").toBe(0);
+};
 
 type Fit = {
   total: number; inside: number; outside: number;
@@ -80,10 +149,18 @@ const MEASURE = () => {
       document.documentElement.scrollHeight - document.documentElement.clientHeight),
     railInViewport: rail
       ? rail.getBoundingClientRect().bottom <= window.innerHeight + 0.5 : false,
+    answersInsideStage: (() => {
+      const sr = stage.getBoundingClientRect();
+      return tablets.every((t) => {
+        const r = t.getBoundingClientRect();
+        return r.top >= sr.top - 0.5 && r.bottom <= sr.bottom + 0.5
+          && r.left >= sr.left - 0.5 && r.right <= sr.right + 0.5;
+      });
+    })(),
   } satisfies Fit;
 };
 
-for (const vp of LOCKED) {
+for (const vp of [...LOCKED, ...SEAMS]) {
   test.describe(`${vp.w}x${vp.h}`, () => {
     test.use({ viewport: { width: vp.w, height: vp.h } });
 
@@ -118,8 +195,19 @@ for (const vp of LOCKED) {
         expect(fit.pageScroll, "the arena is scrolling the page").toBe(0);
         // And the rail is the thing scrolling was traded away to keep on screen.
         expect(fit.railInViewport, "the Module Rail is off screen").toBe(true);
+        expect(fit.answersInsideStage, "an answer tablet is outside the parchment")
+          .toBe(true);
+        // RS1: and the card is where the arena put it.
+        expectArenaFits(await page.evaluate(MEASURE_ARENA) as Arena);
       });
     }
+
+    test("seats a Meta Reflex round inside the arena", async ({ page }) => {
+      await page.goto("/dev/ranked-shell-probe?q=metareflex");
+      await page.waitForSelector('[data-testid="ranked-question"]');
+      await page.waitForTimeout(900);
+      expectArenaFits(await page.evaluate(MEASURE_ARENA) as Arena);
+    });
 
     test("yields the ART before it yields the question", async ({ page }) => {
       // The compression order, observed rather than declared: the same round at

@@ -117,7 +117,8 @@ export const PHYSICAL_DAMAGE_Q: QuestionView = {
   options: options(["64", "86", "75", "109"]),
 };
 
-export const PHYSICAL_DAMAGE_SCENARIO = source(PHYSICAL_DAMAGE_Q, {
+/** The backend `presentation` for PHYSICAL_DAMAGE_Q (also served by the Ranked shell probe). */
+export const PHYSICAL_DAMAGE_PRESENTATION: Record<string, unknown> = {
   assets: {
     subject: {
       type: "combat_cooldown",
@@ -148,7 +149,9 @@ export const PHYSICAL_DAMAGE_SCENARIO = source(PHYSICAL_DAMAGE_Q, {
     },
   },
   presentation: FLAGS,
-});
+};
+
+export const PHYSICAL_DAMAGE_SCENARIO = source(PHYSICAL_DAMAGE_Q, PHYSICAL_DAMAGE_PRESENTATION);
 
 /**
  * physical_after_chain_vest — an older accepted candidate whose ability is a
