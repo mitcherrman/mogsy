@@ -14,7 +14,8 @@
  * moved into a browser so real boxes can be measured.
  *
  * `?q=` selects the question state to serve:
- *   short | opts2 | opts4 | realP99 | realMax | stress | media | family | metareflex
+ *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
+ *   stressA | stressB | metareflex
  * `?role=` freezes a League role onto the viewer's participant.
  * `?points=` serves an RP1 v2 POINTS match instead of the hp one, as
  *   `module:you-them` (e.g. `?points=1:0-0`, `?points=6:11-8`,
@@ -60,7 +61,7 @@ const VIEWER = "userA";
  * dictate the normal UI.
  */
 export const PROBE_STATES = [
-  "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "metareflex",
+  "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -72,6 +73,27 @@ const STRESS_PROMPT =
   + "Given that the enemy has one death timer running at twenty-eight seconds "
   + "and your bot lane has just recalled with 1600 gold, which of the following "
   + "objectives should the team commit to first?";
+
+/**
+ * RS2 — COMPOUND worst cases at REAL corpus bounds (not the synthetic
+ * `stress`). QuestionStageGeometry's corpus audit: prompt MAX 188 chars; the
+ * `realMax` option labels are the longest real labels (63 chars). Each state
+ * pairs those with the media shape that costs the most height.
+ */
+const COMPOUND_PROMPT_188 =
+  "Trinity Force builds from Sheen and Phage. Your top laner holds both "
+  + "components and 1,250 gold after recalling at nine minutes. Which "
+  + "other component completes the Trinity Force build now?";
+const COMPOUND_FAMILY_PROMPT_188 =
+  "Caitlyn's Piltover Peacemaker would deal 600 raw physical damage. Ahri "
+  + "then buys Chain Vest, raising armor from 60 to 100. How much less damage "
+  + "does the hit deal after that armor purchase?";
+const LONGEST_REAL_OPTIONS = [
+  "Ability Haste, Ability Power, Heal and Shield Power, Mana Regen",
+  "Ability Power, Heal and Shield Power, Move Speed, Mana Regen",
+  "Ability Haste, Ability Power, Health, Mana Regeneration Bonus",
+  "Ability Haste, Ability Power, Move Speed, Mana Regeneration",
+];
 
 const STRESS_OPTIONS = [
   "Group mid and force the Baron immediately, using the Herald to break the mid inhibitor turret before the death timer expires",
@@ -122,6 +144,16 @@ function questionFor(state: ProbeState) {
         options: STRESS_OPTIONS, category: "macro" };
     case "media":
       return ITEM_OPTION_QUESTION;
+    // RS2 Stress A: 188-char prompt + longest real labels + cinematic item art.
+    case "stressA":
+      return { ...ITEM_OPTION_QUESTION, question_id: "q-stress-a",
+        prompt: COMPOUND_PROMPT_188, options: LONGEST_REAL_OPTIONS,
+        option_media: undefined };
+    // RS2 Stress B: 188-char Combat Calculation prompt + longest real labels.
+    case "stressB":
+      return { question_id: "q-stress-b", prompt: COMPOUND_FAMILY_PROMPT_188,
+        options: LONGEST_REAL_OPTIONS, category: PHYSICAL_DAMAGE_Q.category ?? null,
+        presentation: PHYSICAL_DAMAGE_PRESENTATION };
     // RS1: a Combat Calculation (family band) round — the longest RA7 prompt.
     case "family":
       return { question_id: PHYSICAL_DAMAGE_Q.questionId, prompt: PHYSICAL_DAMAGE_Q.prompt,

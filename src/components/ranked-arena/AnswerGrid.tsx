@@ -88,6 +88,10 @@ export function AnswerGrid({
       disabled={!interactive}
       data-testid="answer-grid"
       data-answers-state={revealed ? "revealed" : interactive ? "open" : "locked"}
+      // RS2: the answer LAYOUT, from the same `wideTwoColumn` decision that
+      // picks the grid, so CSS can size tablets by layout without re-deriving it.
+      data-answer-layout={wideTwoColumn ? "grid" : "stacked"}
+      data-answer-count={options.length}
       data-eliminated-count={eliminatedIndexes.length}
       className="m-0 border-0 p-0"
     >
