@@ -9022,11 +9022,6 @@ html.high-contrast * { text-shadow: none !important; }
   /* The parchment: slightly shorter, with the excess reserved footprint paid
      back into the content regions that render inside it. */
   .ranked-question-stage {
-    flex: 0 0 38rem;
-    min-height: 38rem;
-    max-height: 38rem;
-    --qs-prompt-h: 6.5rem;
-    --qs-answers-h: 6.75rem;
     --qs-band-aspect-band: 16 / 8;
   }
 
