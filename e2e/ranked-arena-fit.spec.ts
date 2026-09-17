@@ -30,9 +30,22 @@ const QUESTIONS = [
   { id: "realP99", what: "a p99 prompt with p99 option labels" },
   { id: "realMax", what: "the longest prompt the bank can serve, with its longest options" },
   { id: "family", what: "a Combat Calculation family card" },
+  // RS2 compound worst cases at REAL corpus bounds (188-char prompt, 63-char
+  // labels): cinematic art + both, and a family card + both.
+  { id: "stressA", what: "Stress A: max prompt, longest labels, cinematic art" },
+  { id: "stressB", what: "Stress B: max Combat Calculation prompt, longest labels" },
 ] as const;
 
-/** Desktop widths where the lock applies (`lg` and up). */
+/**
+ * Desktop viewports where the lock applies (`lg` and up).
+ *
+ * RS2 — THE SUPPORTED DESKTOP CONTRACT. The minimum supported desktop Ranked
+ * viewport is 1024x768: every viewport here must seat every shape in
+ * QUESTIONS with the full geometry contract. Below `lg` (1024 wide) the arena
+ * is the stacked layout and is its own contract (see the 390x844 case). A
+ * desktop width with LESS than 768 of height is outside the contract — see the
+ * 1024x700 boundary probe at the end of this file.
+ */
 const LOCKED = [
   { w: 1920, h: 1080 }, { w: 1920, h: 800 }, { w: 1878, h: 797 },
   { w: 1600, h: 900 }, { w: 1600, h: 800 }, { w: 1440, h: 900 },
@@ -149,6 +162,18 @@ const MEASURE = () => {
       document.documentElement.scrollHeight - document.documentElement.clientHeight),
     railInViewport: rail
       ? rail.getBoundingClientRect().bottom <= window.innerHeight + 0.5 : false,
+    // RS2: a drawn media band never pokes out of its region. Found at
+    // 1024x768 Stress B: a 22px family-band floor in a 13px region spilled
+    // 9px; the band is now suppressed below the legibility floor instead.
+    mediaSpill: (() => {
+      const region = document.querySelector('[data-surface-region="media"]');
+      if (!region) return 0;
+      const rr = region.getBoundingClientRect();
+      return Math.max(0, ...[...region.children].map((c) => {
+        const r = c.getBoundingClientRect();
+        return r.height === 0 ? 0 : Math.round(r.bottom - rr.bottom);
+      }));
+    })(),
     answersInsideStage: (() => {
       const sr = stage.getBoundingClientRect();
       return tablets.every((t) => {
@@ -197,6 +222,8 @@ for (const vp of [...LOCKED, ...SEAMS]) {
         expect(fit.railInViewport, "the Module Rail is off screen").toBe(true);
         expect(fit.answersInsideStage, "an answer tablet is outside the parchment")
           .toBe(true);
+        expect(fit.mediaSpill, "the media band overflows its allocated region")
+          .toBeLessThanOrEqual(0);
         // RS1: and the card is where the arena put it.
         expectArenaFits(await page.evaluate(MEASURE_ARENA) as Arena);
       });
@@ -265,3 +292,20 @@ test.describe("390x844 — below `lg`, nothing is locked", () => {
  * recorded rather than encoded. Every height this file DOES test is a required
  * pass — there are no expected failures left in it.
  */
+
+test.describe("1024x700 — below the supported desktop contract (boundary probe)", () => {
+  test.use({ viewport: { width: 1024, height: 700 } });
+  test("stays locked and keeps the Module Rail, even where the longest rounds cannot fit", async ({ page }) => {
+    // Documents the boundary; it does NOT require every answer to be seated.
+    // Measured: `realMax`, `stressA` and `stressB` put one tablet outside the
+    // card here, with the media region already at 0. Seating them would mean
+    // shrinking text on supported sizes, which the contract forbids.
+    await page.goto("/dev/ranked-shell-probe?q=realMax");
+    await page.waitForSelector('[data-testid="ranked-question"]');
+    await page.waitForTimeout(900);
+    const fit = await page.evaluate(MEASURE) as Fit;
+    expect(fit.total).toBeGreaterThan(0);
+    expect(fit.pageScroll).toBe(0);
+    expect(fit.railInViewport).toBe(true);
+  });
+});
