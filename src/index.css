@@ -15,6 +15,13 @@
        instead of magic numbers. */
     --app-header-h: 3rem;
     --bottom-nav-clearance: 0px;
+    /* RMOB1 — clearance for the MOGZY DOCK's collapsed tabs (Report / Rules),
+       which `MogzyDock` pins at `bottom-4` and which stand ~2.875rem tall. On a
+       phone the page scrolls, so the last thing in flow must be able to rise
+       above them: bottom offset + tab + a 0.5rem breath + the device's own
+       safe-area inset. A separate token from --bottom-nav-clearance on
+       purpose — that one feeds --app-viewport-h and the desktop stage budget. */
+    --mogzy-dock-clearance: calc(1rem + 2.875rem + 0.5rem + env(safe-area-inset-bottom, 0px));
     /* THE authoritative "how much height does a page actually get" token.
        Dynamic viewport height minus the fixed header and the mobile bottom-nav
        clearance the app shell already reserves. Anything that wants to fill the
