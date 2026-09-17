@@ -158,56 +158,134 @@ const CQ = {
 
 /* --------------------------------------------------- content-aware icons -- */
 
-/** A page region is 38% of the tome's width; the icon gap eats ~1.3cqw. */
+/**
+ * Conservative dimensions of the measured parchment region, expressed against
+ * the drawn-book width.  The surface itself is 0.723 × book width high; the
+ * brief pages run from 16.5% to 85.5% of that surface, with a 36cqw usable
+ * page width.  Keeping the solver in the book's coordinate system means it
+ * follows the actual query container rather than a viewport tier.
+ */
 const PAGE_CQW = 36;
-const GAP_CQW = 1.3;
+const SURFACE_HEIGHT_PER_WIDTH = 0.723;
+const BRIEF_SAFE_HEIGHT_CQW = (0.855 - 0.165) * SURFACE_HEIGHT_PER_WIDTH * 100;
+const MIN_BOOK_WIDTH_PX = 200;
+const ICON_FLOOR_PX = 10;
+const ICON_CAP_PX = 28;
+const MAX_COLUMNS = 6;
+
+type BriefSpread = {
+  leftTop: PatchBriefSection | null;
+  rightTop: PatchBriefSection | null;
+  rightLower: PatchBriefSection[];
+};
+
+type BriefIconSizing = {
+  columns: number;
+  cqw: number;
+  minPx: number;
+  maxPx: number;
+  css: string;
+};
+
+const clamp = (min: number, value: number, max: number) => Math.min(max, Math.max(min, value));
+const iconGapPx = (bookWidth: number) => clamp(2, 0.011 * bookWidth, 6);
+const sectionGapPx = (bookWidth: number) => clamp(3, 0.014 * bookWidth, 8);
+const headingHeightPx = (bookWidth: number) => clamp(6.5, 0.022 * bookWidth, 9) * 1.2;
+const titleReservePx = (bookWidth: number) => clamp(14, 0.056 * bookWidth, 22);
+
+function pagesFor(spread: BriefSpread): PatchBriefSection[][] {
+  return [
+    [spread.leftTop].filter(Boolean) as PatchBriefSection[],
+    [spread.rightTop, ...spread.rightLower].filter(Boolean) as PatchBriefSection[],
+  ];
+}
+
+/** Maximum icon edge which fits a page's stacked headings and grids. */
+function pageIconLimitPx(page: PatchBriefSection[], columns: number, bookWidth: number): number {
+  if (page.length === 0) return Infinity;
+  const gap = iconGapPx(bookWidth);
+  const fixedHeight =
+    page.length * (headingHeightPx(bookWidth) + 2) +
+    Math.max(0, page.length - 1) * sectionGapPx(bookWidth) +
+    page.reduce((total, section) => total + Math.max(0, Math.ceil(section.entries.length / columns) - 1) * gap, 0);
+  const rows = page.reduce((total, section) => total + Math.ceil(section.entries.length / columns), 0);
+  const available = BRIEF_SAFE_HEIGHT_CQW / 100 * bookWidth - titleReservePx(bookWidth);
+  return rows > 0 ? (available - fixedHeight) / rows : Infinity;
+}
+
+function iconLimitPx(spread: BriefSpread, columns: number, bookWidth: number): number {
+  const widthLimit =
+    (PAGE_CQW / 100 * bookWidth - Math.max(0, columns - 1) * iconGapPx(bookWidth)) / columns;
+  return Math.min(widthLimit, ...pagesFor(spread).map((page) => pageIconLimitPx(page, columns, bookWidth)));
+}
 
 /**
  * ONE shared icon size for the whole brief, derived from content density.
  *
- * The densest group decides it, so Buffs / Nerfs / Adjustments always draw at
- * the same size and the spread reads intentional. Per section we ask: how many
- * columns are needed so the icons wrap into at most `rows` rows on their page
- * (a page carrying two stacked sections gets fewer rows each, which is the
- * height guard). The widest column count wins; that count divides the page's
- * usable width into the shared cell size.
+ * The densest page decides it, so Buffs / Nerfs / Adjustments always draw at
+ * the same size and the spread reads intentional. The solver tries explicit
+ * column counts and charges each candidate for its headings, grid rows, title
+ * reserve, grid gaps, and between-section gaps inside the measured parchment
+ * height as well as for its usable page width.
  *
  * Fewer icons → fewer columns → bigger cells (up to the cap); more icons →
  * more columns → the size shrinks only as far as needed, floored so icons
  * never go tiny. Purely a formula over counts: generic for any future patch.
  */
-export function briefIconSizing(spread: {
-  leftTop: PatchBriefSection | null;
-  rightTop: PatchBriefSection | null;
-  rightLower: PatchBriefSection[];
-}): { columns: number; cqw: number; minPx: number; maxPx: number; css: string } {
-  const pages = [
-    [spread.leftTop].filter(Boolean) as PatchBriefSection[],
-    [spread.rightTop, ...spread.rightLower].filter(Boolean) as PatchBriefSection[],
-  ];
-
-  let columns = 2;
-  for (const page of pages) {
-    // Rows the page can afford, split across the sections stacked on it.
-    const rows = Math.max(1, Math.floor(6 / Math.max(1, page.length)));
-    for (const section of page) {
-      const n = section.entries.length;
-      if (n === 0) continue;
-      columns = Math.max(columns, Math.ceil(n / rows));
-    }
+export function briefIconSizing(spread: BriefSpread): BriefIconSizing {
+  /**
+   * Select the column count that yields the largest shared icon at the
+   * narrowest supported tome.  More columns are considered before shrinking
+   * icons; each candidate must pay for every stacked section heading, every
+   * grid row, the title reserve, and both kinds of gaps.  The resulting cqw
+   * ramp is safe at the 200px floor and grows with the container to the same
+   * bounded cap everywhere else.
+   */
+  let best = { columns: 2, iconPx: -Infinity };
+  for (let columns = 2; columns <= MAX_COLUMNS; columns += 1) {
+    const limit = iconLimitPx(spread, columns, MIN_BOOK_WIDTH_PX);
+    const iconPx = Math.min(ICON_CAP_PX, limit);
+    if (iconPx >= ICON_FLOOR_PX && iconPx > best.iconPx) best = { columns, iconPx };
   }
-  columns = Math.min(columns, 6);
 
-  const cqw = Math.round(((PAGE_CQW - (columns - 1) * GAP_CQW) / columns) * 10) / 10;
-  // The cap tracks the ramp so a roomy grid can actually grow on a wide tome,
-  // and a dense grid stays modest. The floor keeps icons legible.
-  // 3.8 ≈ the tome's cap width (380px) / 100, so on a full-width tome the cap
-  // does not clip the ramp: the cell math itself decides the size, which is
-  // what lets a sparse brief actually fill the parchment.
-  const maxPx = Math.min(48, Math.max(20, Math.round(cqw * 3.8)));
-  const minPx = Math.min(14, maxPx);
+  // Pathological future feeds can exceed even six compact columns. Keep the
+  // grid deterministic and truthful rather than silently overflowing: choose
+  // the best candidate and allow the bounded floor to be the final guard.
+  if (!Number.isFinite(best.iconPx)) {
+    best = { columns: MAX_COLUMNS, iconPx: Math.max(ICON_FLOOR_PX, iconLimitPx(spread, MAX_COLUMNS, MIN_BOOK_WIDTH_PX)) };
+  }
 
-  return { columns, cqw, minPx, maxPx, css: `clamp(${minPx}px, ${cqw}cqw, ${maxPx}px)` };
+  // Round down: this value becomes CSS, so rounding to nearest could turn a
+  // mathematically exact fit into a fractional-pixel overflow at the floor.
+  const cqw = Math.floor((best.iconPx / MIN_BOOK_WIDTH_PX) * 1000) / 10;
+  return {
+    columns: best.columns,
+    cqw,
+    minPx: ICON_FLOOR_PX,
+    maxPx: ICON_CAP_PX,
+    css: `clamp(${ICON_FLOOR_PX}px, ${cqw}cqw, ${ICON_CAP_PX}px)`,
+  };
+}
+
+/**
+ * Testable geometry twin of the CSS layout.  It reports the smallest bottom
+ * clearance across both parchment pages for a concrete rendered book width.
+ * The supported centerpiece range comes from academy-layout.ts.
+ */
+export function briefGeometryAt(spread: BriefSpread, bookWidth: number) {
+  const sizing = briefIconSizing(spread);
+  const iconPx = clamp(sizing.minPx, sizing.cqw / 100 * bookWidth, sizing.maxPx);
+  const pageHeights = pagesFor(spread).map((page) => {
+    const rows = page.reduce((total, section) => total + Math.ceil(section.entries.length / sizing.columns), 0);
+    const height =
+      page.length * (headingHeightPx(bookWidth) + 2) +
+      Math.max(0, page.length - 1) * sectionGapPx(bookWidth) +
+      rows * iconPx +
+      page.reduce((total, section) => total + Math.max(0, Math.ceil(section.entries.length / sizing.columns) - 1) * iconGapPx(bookWidth), 0);
+    return height;
+  });
+  const availableHeight = BRIEF_SAFE_HEIGHT_CQW / 100 * bookWidth - titleReservePx(bookWidth);
+  return { ...sizing, iconPx, availableHeight, pageHeights, bottomClearance: Math.min(...pageHeights.map((height) => availableHeight - height)) };
 }
 
 /**
@@ -275,7 +353,8 @@ export default function AcademyBroadcastSurface({
   const desktop = variant === "desktop";
   const view = feedView(feed);
   const spread = view.brief ? briefSpread(view.brief.sections) : null;
-  const iconSize = spread ? briefIconSizing(spread).css : CQ.icon;
+  const iconSizing = spread ? briefIconSizing(spread) : null;
+  const iconSize = iconSizing?.css ?? CQ.icon;
 
 
   return (
@@ -390,7 +469,11 @@ export default function AcademyBroadcastSurface({
               }}
             >
               {spread.leftTop && (
-                <PatchBriefSectionBlock section={spread.leftTop} iconSize={iconSize} />
+                <PatchBriefSectionBlock
+                  section={spread.leftTop}
+                  columns={iconSizing!.columns}
+                  iconSize={iconSize}
+                />
               )}
               {(view.primaryAction || view.secondaryAction) && (
                 <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -418,12 +501,17 @@ export default function AcademyBroadcastSurface({
               }}
             >
               {spread.rightTop && (
-                <PatchBriefSectionBlock section={spread.rightTop} iconSize={iconSize} />
+                <PatchBriefSectionBlock
+                  section={spread.rightTop}
+                  columns={iconSizing!.columns}
+                  iconSize={iconSize}
+                />
               )}
               {spread.rightLower.map((section) => (
                 <PatchBriefSectionBlock
                   key={section.direction}
                   section={section}
+                  columns={iconSizing!.columns}
                   iconSize={iconSize}
                 />
               ))}
@@ -530,10 +618,13 @@ const SECTION_HEADING_INK: Record<PatchBriefSection["direction"], string> = {
  */
 function PatchBriefSectionBlock({
   section,
+  columns,
   iconSize = CQ.icon,
   className,
 }: {
   section: PatchBriefSection;
+  /** Shared explicit grid width selected by the parchment-fit solver. */
+  columns?: number;
   /** Shared content-aware icon ramp for the whole brief (briefIconSizing). */
   iconSize?: string;
   className?: string;
@@ -554,8 +645,13 @@ function PatchBriefSectionBlock({
       </p>
       <ul
         aria-label={`${section.title} this patch`}
-        className="flex w-full flex-wrap items-center justify-center"
-        style={{ marginTop: "2px", gap: CQ.iconGap }}
+        className="w-full justify-center"
+        style={{
+          marginTop: "2px",
+          gap: CQ.iconGap,
+          display: columns ? "grid" : "flex",
+          gridTemplateColumns: columns ? `repeat(${columns}, ${iconSize})` : undefined,
+        }}
       >
         {section.entries.map((entry) => (
           <PatchBriefEntryIcon
