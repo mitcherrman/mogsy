@@ -428,14 +428,76 @@ describe("the Match Header says three things on the left and one on the right", 
     expect(src.match(/ranked-header-title/g) ?? []).toHaveLength(1);
   });
 
+  it("mirrors the ARENA's tracks, so each zone sits over its own object", () => {
+    const src = arenaSrc();
+    // The arena is 23 / 54 / 23, not thirds. A header that merely spread its
+    // three children across the strip put nothing in particular above anything
+    // in particular; the registration is the same track expression and the
+    // same gap, so the left block is over the left Player Column, the display
+    // is over the Question Stage and the record is over the right column.
+    const TRACKS = "lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)]";
+    const header = src.slice(src.indexOf('data-testid="ranked-header"'),
+      src.indexOf("LEFT — the match's own hierarchy"));
+    const grid = src.slice(src.indexOf('className="grid grid-cols-2'));
+    expect(header).toContain(TRACKS);
+    expect(grid).toContain(TRACKS.replace("lg:grid-cols-", "lg:grid-cols-"));
+    // Same gutters, or the tracks resolve to different widths.
+    expect(header).toContain("lg:gap-3");
+    expect(header).toContain("min-[1500px]:gap-4");
+    // And the strip's own inline padding has to go with it: padding here would
+    // inset the tracks relative to the arena's and put every zone off by a few
+    // pixels from the thing it is over.
+    expect(header).toContain("lg:px-0");
+  });
+
+  it("centres each header zone inside its own track", () => {
+    const src = arenaSrc();
+    // Three zones, three `justify-self-center` — the grid decides the track,
+    // this decides where the block sits in it.
+    expect(src.match(/lg:justify-self-center/g) ?? []).toHaveLength(3);
+  });
+
+  it("keeps the header's height untouched by the registration", () => {
+    // Registration is a horizontal change. The strip reserves what it did.
+    expect(arenaSrc()).toContain('min-h-[4.25rem]');
+  });
+
   it("gives the previous-result record a FIXED window", () => {
     // "TIMED OUT +0 | R1" and "CORRECT +2 | R2" are different lengths, and a
     // box sized to whichever was current nudged the strip's right end on every
     // settlement.
     const src = arenaSrc();
     expect(src).toContain('data-testid="ranked-record-window"');
-    expect(src).toContain('className="flex h-10 w-[11.5rem] shrink-0 items-center justify-center');
+    expect(src).toContain("ranked-record-window flex h-10 w-[11.5rem] shrink-0 items-center");
     expect(src).toContain("min-[1500px]:w-[13rem]");
+  });
+
+  it("lightens the record plate without touching its fixed geometry", () => {
+    // The window stays; what goes is the tinted fill that made a badge read as
+    // a form field once it was alone in a 184px frame. The verdict is still
+    // coloured — the tone moves to the border, keyed off the `data-kind` the
+    // plate already publishes.
+    const css = stripComments(CSS);
+    const first = css.indexOf(".ranked-record-window .ranked-result-beat");
+    const scoped = css.slice(first, css.indexOf("@keyframes", first));
+    expect(scoped).toMatch(/background:\s*rgba\(255,255,255,0\.025\)/);
+    expect(scoped).toMatch(/border-color:\s*rgba\(255,255,255,0\.12\)/);
+    expect(scoped).toMatch(/data-kind="correct"/);
+    expect(scoped).toMatch(/data-kind="timed-out"/);
+    // Colour only: nothing here may resize the plate.
+    for (const geometry of [/(^|[\s;])width:/, /(^|[\s;])height:/, /(^|[\s;])padding/,
+      /(^|[\s;])margin/, /border-width/, /border-radius/]) {
+      expect(scoped).not.toMatch(geometry);
+    }
+  });
+
+  it("holds the module title long enough to read it", () => {
+    // 900ms spent 340 of them in the shared entrance flip, leaving ~560ms of
+    // actual hold — less than it takes to read a word and register it.
+    const src = read("lib/ranked-core/centralStage.ts");
+    expect(src).toContain("export const MODULE_TITLE_MS = 1400;");
+    // The flip is unchanged and still shared, so no other state slowed down.
+    expect(stripComments(CSS)).toMatch(/\.ranked-stage-face \{[^}]*340ms/);
   });
 
   it("keeps the plate's depth paint-only, so the strip's geometry is untouched", () => {
@@ -449,6 +511,30 @@ describe("the Match Header says three things on the left and one on the right", 
     expect(plate).not.toMatch(/(^|[\s;])padding/);
     expect(plate).not.toMatch(/(^|[\s;])margin/);
     expect(plate).not.toMatch(/border-width/);
+  });
+});
+
+describe("answering begins at the server's boundary", () => {
+  it("shuts input until the round is answerable", () => {
+    const mode = read("pages/quiz-ranked/QuizRankedMatch.tsx");
+    // A round is created in the future while the client is still playing the
+    // previous result and this module's title. Until `started_at` the question
+    // may be on screen, but it is not answerable — and the backend agrees,
+    // because `DuelRound.submit_answer` refuses a receipt earlier than the
+    // round's own start. Offering input here would be offering something the
+    // server would reject.
+    expect(mode).toContain("msUntilAnswerable(m.publicRound.activeRound.startedAt");
+    expect(mode).toContain("!m.revealHold && !answerablePending");
+  });
+
+  it("keeps the boundary the SERVER's, never a local constant's", () => {
+    // `MODULE_TITLE_MS` sequences the animation. It may not decide when
+    // answering starts, or the two would drift the moment either was tuned.
+    const views = read("pages/quiz-ranked/rankedViews.ts");
+    expect(views).toContain("Math.min(\n    active.durationSeconds,");
+    expect(views).not.toContain("MODULE_TITLE_MS");
+    const mode = read("pages/quiz-ranked/QuizRankedMatch.tsx");
+    expect(mode).not.toMatch(/inputOpen[^\n]*MODULE_TITLE_MS/);
   });
 });
 

@@ -968,6 +968,34 @@
   animation-fill-mode: both, none;
 }
 
+/* THE HEADER'S RECORD, LIGHTENED.
+   The fixed window the previous pass gave this plate is correct and stays —
+   what it also did was put a bordered, tinted `h-10` box alone in a 184px
+   frame, and on its own like that the same treatment that read as a badge in
+   a stacked column reads as a form field. So inside the header only, the fill
+   goes and the border becomes a hairline.
+
+   THE VERDICT IS STILL COLOURED. The tone moves to the border alone, keyed off
+   the `data-kind` the plate already publishes, and the icon and the label keep
+   the colours they always had — so the box gets quieter without the result
+   getting harder to read. GEOMETRY IS UNTOUCHED: no width, height, padding or
+   border-width is set here, only colour. */
+.ranked-record-window .ranked-result-beat {
+  background: rgba(255,255,255,0.025);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: none;
+}
+.ranked-record-window .ranked-result-beat[data-kind="correct"] {
+  border-color: rgba(52,211,153,0.34);
+}
+.ranked-record-window .ranked-result-beat[data-kind="both-correct"] {
+  border-color: rgba(201,168,76,0.34);
+}
+.ranked-record-window .ranked-result-beat[data-kind="incorrect"],
+.ranked-record-window .ranked-result-beat[data-kind="timed-out"] {
+  border-color: hsl(var(--destructive) / 0.34);
+}
+
 @keyframes ranked-result-in {
   0%   { transform: translateY(-30%) scale(0.9); opacity: 0; }
   60%  { transform: translateY(0) scale(1.03);   opacity: 1; }

@@ -26,6 +26,7 @@ import {
   DiscoveryReveal, discoveryRevealHasContent,
 } from "@/components/ranked-arena/DiscoveryReveal";
 import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
+import { msUntilAnswerable } from "@/lib/ranked-core/timerMath";
 import { RankedRulesScroll } from "@/components/ranked-rules/RankedRulesScroll";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
@@ -762,7 +763,17 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
   // next round and its clock is already running (the timer above keeps ticking
   // truthfully) — this just refuses to accept a click for ~1.5s so damage, XP
   // and any level-up are readable instead of flashing past.
-  const inputOpen = m.phase === "active" && !m.revealHold;
+  // ANSWERING BEGINS AT THE SERVER'S BOUNDARY, not when the round arrives.
+  // A round is created in the future while the client is still playing the
+  // previous result and this module's title; until `started_at` the question
+  // may be on screen and preparing, but it is not answerable — and the
+  // backend agrees, because `DuelRound.submit_answer` refuses a receipt
+  // earlier than the round's own start. Closing input here is what stops the
+  // client offering something the server would reject.
+  const answerablePending = m.publicRound?.activeRound
+    ? msUntilAnswerable(m.publicRound.activeRound.startedAt, m.skewMs, Date.now()) > 0
+    : false;
+  const inputOpen = m.phase === "active" && !m.revealHold && !answerablePending;
   const subPhase: SubmissionPhase = m.phase === "locked" ? "locked" : "selecting";
   const permissions = projectPermissions(subPhase, inputOpen, m.submitting);
   // The ability tray is gated INDEPENDENTLY of the answer: it stays live for as

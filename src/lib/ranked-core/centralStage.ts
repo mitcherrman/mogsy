@@ -30,15 +30,20 @@ import type { ResolvedCombatantView } from "./viewTypes";
  * How long the next module's name holds the centre before its clock replaces
  * it.
  *
- * SHORT, and deliberately shorter than the result beat it follows: the result
- * is news the player has to read, the module name is an orientation they
- * mostly already have from the rail below. It is also strictly decoration over
- * a clock that is ALREADY RUNNING — the backend starts the round's deadline
- * when it opens the round, not when this client finishes an animation — so
- * every millisecond here is a millisecond of the player's own answering time.
- * That is the entire argument for the number being this small.
+ * LONG ENOUGH TO READ, and no longer than that. At 900ms the face spent 340ms
+ * of its life in the entrance flip, leaving ~560ms of actual hold — short of
+ * the time it takes to read a word like ITEMIZATION and register it, so the
+ * name arrived and left as a flash.
+ *
+ * 1400ms is entrance (340ms, the shared flip) plus ~1060ms of readable hold.
+ *
+ * IT IS STILL A COST, and worth stating plainly: this is decoration over a
+ * clock that is ALREADY RUNNING — the backend starts the round's deadline when
+ * it opens the round, not when this client finishes an animation — so the
+ * extra 500ms is 500ms of the player's own answering time. That is the whole
+ * of the trade, and it is the reason this number is not larger still.
  */
-export const MODULE_TITLE_MS = 900;
+export const MODULE_TITLE_MS = 1400;
 
 /** One face of the header's focal display. */
 export type CentralStageView =

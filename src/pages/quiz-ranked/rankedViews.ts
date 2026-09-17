@@ -18,7 +18,7 @@ import {
   permissionsForSubmissionPhase,
   restrictPermissions,
 } from "@/lib/ranked-core/permissions";
-import { remainingSeconds } from "@/lib/ranked-core/timerMath";
+import { msUntilAnswerable, remainingSeconds } from "@/lib/ranked-core/timerMath";
 import {
   AbilityView,
   InteractionPermissions,
@@ -189,7 +189,22 @@ export function projectCombatants(pub: PublicRoundView, viewerUserId: string): C
 export function projectTimer(pub: PublicRoundView, skewMs: number, nowMs: number): TimerView | null {
   const active = pub.activeRound;
   if (!active) return null;
-  const remaining = remainingSeconds(active.activeDeadline, skewMs, nowMs);
+  // HELD AT FULL DURATION UNTIL THE ROUND IS ANSWERABLE.
+  // The server opens a round in the future while the client is still showing
+  // the previous result and this module's name, so `active_deadline` is
+  // `started_at + duration` and an unclamped countdown would read MORE than
+  // the round actually has — the clock would tick down through presentation
+  // the player cannot act during, which is the whole bug.
+  //
+  // `min` is the entire fix on the display side: before the boundary the
+  // configured duration is the smaller number and the clock sits still on it;
+  // at the boundary the two coincide; after it the remaining time is smaller
+  // and the clock ticks exactly as it always did. No fake countdown, no second
+  // clock, and nothing here decides when answering starts — the server does.
+  const remaining = Math.min(
+    active.durationSeconds,
+    remainingSeconds(active.activeDeadline, skewMs, nowMs),
+  );
   return {
     durationSeconds: active.durationSeconds,
     remainingSeconds: remaining,
