@@ -27,6 +27,7 @@ import { AbilityTray } from "./AbilityTray";
 import { ArenaShell } from "./ArenaShell";
 import { CombatantPanel } from "./CombatantPanel";
 import { LevelUpPanel } from "./LevelUpPanel";
+import { MobileDuelStrip } from "./MobileDuelStrip";
 import { MatchOverFrame } from "./MatchOverFrame";
 import { RevealPanel } from "./RevealPanel";
 import { RoundTimeline } from "./RoundTimeline";
@@ -196,6 +197,10 @@ export function CanonicalArena({
   // module's viewport is the one element here whose TYPE comes from the mode.
   const Viewport = surface.renderer?.Viewport ?? null;
   const hasSurface = Viewport !== null && surface.hasContent;
+  // RMOB1 — the phone strip replaces the flanks only when BOTH are Ranked duel
+  // banners; a card flank (Daily, staff duel) or a mode panel is left alone.
+  const mobileDuel = [view.left, view.right].every((r) =>
+    r.kind === "combatant" && r.presentation === "banner");
 
   /**
    * THE BOTTOM OF THE ARENA IS NOT A RESULT SURFACE — for ANY active state.
@@ -255,7 +260,7 @@ export function CanonicalArena({
 
        Below `lg` this is the ordinary flow column it has always been: the
        arena stacks there and its natural height exceeds any narrow viewport. */}
-    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0"
+    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0 pb-[var(--mogzy-dock-clearance)] lg:pb-0"
       data-testid="ranked-match" data-reveal-hold={view.revealHold ? "true" : "false"}
       // THE ONE BAND THAT IS NOT ALWAYS THERE, stated rather than assumed.
       // `--ranked-chrome-h` has to know whether the ability dock is mounted,
@@ -314,7 +319,7 @@ export function CanonicalArena({
         //
         // Below `lg` the arena stacks and there is nothing to register to, so
         // the wrapping flex row it has always been stays exactly as it was.
-        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1
+        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1 sm:gap-x-4 sm:px-4
           lg:grid lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:gap-3 lg:px-0
           min-[1500px]:gap-4">
         {/* LEFT — who this is and what kind of match it is. Both quiet. */}
@@ -364,7 +369,7 @@ export function CanonicalArena({
         {/* The centre track is the Question Stage's, so the display is over
             the board it times. `lg:flex-none` retires the flex-basis the old
             distributed row needed — a grid track owns the width now. */}
-        <div className="order-last flex w-full justify-center sm:order-none sm:w-auto sm:flex-1
+        <div className="flex w-auto flex-1 justify-center
           lg:order-none lg:w-full lg:flex-none lg:justify-self-center">
           {header.timer || header.centralResult ? (
             <CentralStage timer={header.timer} label={header.timerLabel}
@@ -404,7 +409,7 @@ export function CanonicalArena({
           lg:justify-self-center">
         <div data-testid="ranked-record-window"
           className="ranked-record-window flex h-10 w-[11.5rem] shrink-0 items-center
-            justify-center overflow-hidden min-[1500px]:w-[13rem]">
+            justify-center overflow-hidden max-md:hidden min-[1500px]:w-[13rem]">
           {/* THE PERSISTENT SUMMARY — demoted, not deleted.
               This is the plate the strip has always carried, in the same
               precedence POINT1 wrote for it (a settled block, else a card of a
@@ -460,6 +465,14 @@ export function CanonicalArena({
           )}
         </div>
       </section>
+      {/* RMOB1 — below `lg` the two duel banners give way to one compact strip,
+          inside the header's wrapper so the arena keeps its known bands
+          (see `MobileDuelStrip`). Ranked banners only; any other flank keeps
+          its own presentation at every width. */}
+      {mobileDuel && view.left.kind === "combatant" && view.right.kind === "combatant" && (
+        <MobileDuelStrip left={view.left} right={view.right}
+          progressionEnabled={view.progressionEnabled} className="mt-3 lg:hidden" />
+      )}
       {/* THE CARD-BY-CARD TRANSCRIPT — the one thing the retired segment
           banner owned that a 2.5rem plate cannot hold.
           Closed by default, opened only from the beat's own control, and
@@ -532,10 +545,10 @@ export function CanonicalArena({
             "tiny floating side cards beside a giant centre" reading §14 rules
             out. The panel's own sections keep their sizes; only the shared
             column extent changes. */}
-        <div className="lg:col-start-1 lg:row-start-1 lg:h-full">
+        <div className={`${mobileDuel ? "hidden lg:block " : ""}lg:col-start-1 lg:row-start-1 lg:h-full`}>
           <Rail rail={view.left} progressionEnabled={view.progressionEnabled} />
         </div>
-        <div className="lg:col-start-3 lg:row-start-1 lg:h-full">
+        <div className={`${mobileDuel ? "hidden lg:block " : ""}lg:col-start-3 lg:row-start-1 lg:h-full`}>
           <Rail rail={view.right} progressionEnabled={view.progressionEnabled} />
         </div>
 

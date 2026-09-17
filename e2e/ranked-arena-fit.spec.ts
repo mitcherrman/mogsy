@@ -309,3 +309,141 @@ test.describe("1024x700 — below the supported desktop contract (boundary probe
     expect(fit.railInViewport).toBe(true);
   });
 });
+
+/**
+ * RMOB1 — PHONES ARE THEIR OWN REGIME.
+ *
+ * Below `lg` the arena is natural document flow and the page scrolls by
+ * design, so nothing here asserts that a match fits one screen. These are
+ * CORRECTNESS checks only — what is wrong at any mobile design: a tablet cut
+ * off or poking out of the parchment, art spilling out of its region, the
+ * arena pushing the page sideways, or a hidden inner scroller inside the match.
+ * Mobile hierarchy/sizing is deliberately not encoded until it is approved.
+ */
+const PHONES = [
+  { w: 430, h: 932 }, { w: 412, h: 915 }, { w: 393, h: 852 }, { w: 390, h: 844 },
+  { w: 375, h: 812 }, { w: 360, h: 800 }, { w: 360, h: 740 },
+];
+
+const MEASURE_PHONE = () => {
+  const match = document.querySelector('[data-testid="ranked-match"]')!;
+  const stage = document.querySelector('[data-testid="ranked-question"]')!.getBoundingClientRect();
+  const tablets = [...document.querySelectorAll('[data-surface-region="answers"] [data-quiz-choice]')];
+  const vw = document.documentElement.clientWidth;
+  const region = document.querySelector('[data-surface-region="media"]');
+  const rr = region?.getBoundingClientRect();
+  return {
+    tablets: tablets.length,
+    tabletsOutsideStage: tablets.filter((t) => {
+      const r = t.getBoundingClientRect();
+      return r.top < stage.top - 0.5 || r.bottom > stage.bottom + 0.5
+        || r.left < stage.left - 0.5 || r.right > stage.right + 0.5;
+    }).length,
+    tabletsClippingText: tablets.filter((t) => t.scrollWidth > t.clientWidth + 1).length,
+    mediaSpill: rr ? Math.max(0, ...[...region!.children].map((c) => {
+      const r = c.getBoundingClientRect();
+      return r.height === 0 ? 0 : Math.round(r.bottom - rr.bottom);
+    })) : 0,
+    // Arena boxes only; the dev probe's own fixed switcher is not the arena.
+    matchWiderThanViewport: [match, ...match.querySelectorAll("*")].some((e) => {
+      const r = e.getBoundingClientRect();
+      if (r.width === 0) return false;
+      let n: Element | null = e.parentElement; // ignore content inside a clipping ancestor
+      while (n && n !== match.parentElement) {
+        if (/hidden|clip/.test(getComputedStyle(n).overflowX)) return false;
+        n = n.parentElement;
+      }
+      return r.right > vw + 0.5 || r.left < -0.5;
+    }),
+    innerScrollers: [match, ...match.querySelectorAll("*")].filter((e) => {
+      const s = getComputedStyle(e);
+      return /auto|scroll/.test(s.overflowY) && e.scrollHeight > e.clientHeight + 1;
+    }).map((e) => e.getAttribute("data-testid") ?? e.className.toString().slice(0, 40)),
+  };
+};
+
+for (const vp of PHONES) {
+  test.describe(`RMOB1 phone ${vp.w}x${vp.h}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h }, isMobile: true, hasTouch: true });
+    for (const id of [...QUESTIONS.map((q) => q.id), "short", "opts2", "metareflex"]) {
+      test(`${id}: nothing clipped, spilled, sideways or inner-scrolled`, async ({ page }) => {
+        await page.goto(`/dev/ranked-shell-probe?q=${id}`);
+        await page.waitForSelector('[data-testid="ranked-question"]');
+        await page.waitForTimeout(900);
+        const m = await page.evaluate(MEASURE_PHONE);
+        if (id !== "metareflex") expect(m.tablets, "no answers rendered").toBeGreaterThan(0);
+        expect(m.tabletsOutsideStage, "an answer tablet is outside the parchment").toBe(0);
+        expect(m.tabletsClippingText, "an answer label is clipped horizontally").toBe(0);
+        expect(m.mediaSpill, "media overflows its region").toBeLessThanOrEqual(0);
+        expect(m.matchWiderThanViewport, "the arena overflows the viewport sideways").toBe(false);
+        expect(m.innerScrollers, "an accidental nested scroller inside the match").toEqual([]);
+      });
+    }
+  });
+}
+
+/**
+ * RMOB1 — THE MODULE RAIL CLEARS THE FIXED DOCK.
+ *
+ * The audit found the Report/Rules tabs (fixed, bottom corners) sitting on the
+ * rail at the end of the page: nothing in flow reserved room for them. The
+ * shell now pads its foot by `--mogzy-dock-clearance`, so scrolled to the
+ * bottom the rail must sit wholly above both tabs.
+ */
+for (const vp of PHONES) {
+  test.describe(`RMOB1 dock clearance ${vp.w}x${vp.h}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h }, isMobile: true, hasTouch: true });
+    for (const id of ["media", "metareflex"]) {
+      test(`${id}: the Module Rail clears the fixed dock at page end`, async ({ page }) => {
+        await page.goto(`/dev/ranked-shell-probe?q=${id}`);
+        await page.waitForSelector('[data-testid="ranked-question"]');
+        await page.waitForTimeout(900);
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await page.waitForTimeout(300);
+        const m = await page.evaluate(() => {
+          const rail = document.querySelector('[data-testid="ranked-round-timeline"]')!.getBoundingClientRect();
+          const docks = ["mogzy-dock-left", "mogzy-dock-right"]
+            .map((d) => document.querySelector(`[data-testid="${d}"]`)?.getBoundingClientRect())
+            .filter((r): r is DOMRect => !!r && r.height > 0);
+          return { docks: docks.length, overlap: docks.some((d) => d.top < rail.bottom), // The match shell's OWN foot below the rail. Not the document's: a round
+            // shorter than the screen leaves `min-h-dvh` page floor, which is not
+            // a footer this pass added.
+            tail: Math.round(document.querySelector('[data-testid="ranked-match"]')!
+              .getBoundingClientRect().bottom - rail.bottom) };
+        });
+        expect(m.docks, "the probe mounted no dock tabs to clear").toBeGreaterThan(0);
+        expect(m.overlap, "a fixed dock tab covers the Module Rail").toBe(false);
+        // And no excessive empty footer: clearance, not a spacer.
+        expect(m.tail, "an excessive empty footer below the Module Rail").toBeLessThanOrEqual(96);
+      });
+    }
+  });
+}
+
+/** RMOB1 — the phone duel strip replaces the banners and keeps its text inside. */
+for (const vp of [{ w: 430, h: 932 }, { w: 360, h: 800 }]) {
+  test.describe(`RMOB1 duel strip ${vp.w}x${vp.h}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h }, isMobile: true, hasTouch: true });
+    test("is compact, replaces the banners, and never spills its text", async ({ page }) => {
+      await page.goto("/dev/ranked-shell-probe?q=media");
+      await page.waitForSelector('[data-testid="ranked-mobile-duel"]');
+      await page.waitForTimeout(900);
+      const m = await page.evaluate(() => {
+        const strip = document.querySelector('[data-testid="ranked-mobile-duel"]')!.getBoundingClientRect();
+        const banners = [...document.querySelectorAll('[data-presentation="banner"]')]
+          .filter((b) => b.getBoundingClientRect().height > 0).length;
+        const spill = [...document.querySelectorAll('[data-testid="ranked-mobile-duel"] *')].some((e) => {
+          const r = e.getBoundingClientRect();
+          return r.width > 0 && (r.left < strip.left - 0.5 || r.right > strip.right + 0.5
+            || r.top < strip.top - 0.5 || r.bottom > strip.bottom + 0.5);
+        });
+        const header = document.querySelector('[data-testid="ranked-header"]')!.getBoundingClientRect();
+        return { stripH: strip.height, banners, spill, headerH: header.height };
+      });
+      expect(m.banners, "a desktop duel banner is still drawn on a phone").toBe(0);
+      expect(m.spill, "duel-strip content spills outside the strip").toBe(false);
+      expect(m.stripH, "the duel strip is not compact").toBeLessThanOrEqual(96);
+      expect(m.headerH, "the Match Header is not compact").toBeLessThanOrEqual(88);
+    });
+  });
+}
