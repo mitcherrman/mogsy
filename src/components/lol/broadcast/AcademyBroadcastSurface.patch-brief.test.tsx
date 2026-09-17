@@ -315,6 +315,33 @@ describe.each(["desktop", "mobile"] as const)(
       expect([...sizes][0]).toBe(briefIconSizing(SPREAD_FOR_FIXTURE).css);
     });
 
+    it("centers incomplete icon rows within the solver's bounded row width", () => {
+      renderSurface(variant);
+      const s = surface();
+      const adjustmentGrid = s.querySelector('[data-testid="patch-brief-section-adjustment"] ul') as HTMLUListElement;
+      expect(adjustmentGrid).toHaveStyle({
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+      });
+      // One Adjustment icon must use the same bounded, centered row as a
+      // complete Buffs/Nerfs row — never a left edge of a CSS grid track.
+      expect(adjustmentGrid.dataset.briefRowWidth).toContain("calc(");
+      // jsdom drops container-unit calc() values from CSSOM, so the mirrored
+      // data attribute is the stable assertion for the assigned row width.
+    });
+
+    it("keeps Buffs natural and centers the CTA in the remaining left-page space", () => {
+      renderSurface(variant);
+      const s = surface();
+      const buffs = s.querySelector('[data-testid="patch-brief-section-buff"]')!;
+      const ctaRegion = s.querySelector('[data-testid="patch-brief-cta-region"]')!;
+      expect(buffs.className).toContain("shrink-0");
+      expect(ctaRegion.className).toContain("flex-1");
+      expect(ctaRegion.className).toContain("items-center");
+      expect(ctaRegion.className).toContain("justify-center");
+    });
+
   },
 );
 
@@ -492,5 +519,25 @@ describe("briefIconSizing — parchment-fit shared icon ramp", () => {
     if (buffs === 6 && nerfs === 5 && adjustments === 1) {
       expect(briefGeometryAt(spread, 380).iconPx).toBeGreaterThan(28);
     }
+  });
+
+  it("moves the centered CTA down when natural Buffs growth consumes another row", () => {
+    const twoRows = {
+      leftTop: section("buff", 6),
+      rightTop: section("nerf", 5),
+      rightLower: [section("adjustment", 1)],
+    };
+    const threeRows = { ...twoRows, leftTop: section("buff", 9) };
+    const two = briefGeometryAt(twoRows, 250);
+    const three = briefGeometryAt(threeRows, 250);
+
+    expect(two.columns).toBe(3);
+    expect(three.columns).toBe(3);
+    expect(three.leftNaturalHeight).toBeGreaterThan(two.leftNaturalHeight);
+    expect(three.ctaTop).not.toBeNull();
+    expect(two.ctaTop).not.toBeNull();
+    expect(three.ctaTop!).toBeGreaterThan(two.ctaTop!);
+    expect(three.ctaBottom!).toBeLessThanOrEqual(three.availableHeight);
+    expect(two.ctaBottom!).toBeLessThanOrEqual(two.availableHeight);
   });
 });
