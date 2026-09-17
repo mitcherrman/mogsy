@@ -187,9 +187,11 @@ describe("the header's centre carries the viewer's result", () => {
     expect(stage()).toBe("timer");
     settleModule({ userA: 12, userB: 6 });
     await waitFor(() => expect(stage()).toBe("result"), { timeout: 4000 });
-    expect(screen.getByTestId("central-result-verdict")).toHaveTextContent("CORRECT");
     // The BASE, not the 3 that was banked: the bonus has its own mark.
-    expect(screen.getByTestId("central-result-points")).toHaveTextContent("+2 POINTS");
+    // RD1 — this module also earned a speed bonus without moving the lead, so
+    // the duel event takes the secondary line and the base joins the verdict.
+    expect(screen.getByTestId("central-result-verdict")).toHaveTextContent("CORRECT +2");
+    expect(screen.getByTestId("central-duel-event")).toHaveTextContent("SPEED BONUS +1");
   });
 
   it("states a wrong module as INCORRECT / +0 POINTS", async () => {
@@ -361,7 +363,10 @@ describe("a Meta Reflex block", () => {
       { timeout: 2000 });
     // The BASE in the figure, the bonus as its own mark — the same rule
     // everywhere.
-    expect(screen.getByTestId("central-result-points")).toHaveTextContent("+5 POINTS");
+    // RD1 — with the speed bonus stated as the duel event, the base rides the
+    // verdict line ("5 / 5 +5").
+    expect(screen.getByTestId("central-result-verdict")).toHaveTextContent("5 / 5 +5");
+    expect(screen.getByTestId("central-duel-event")).toHaveTextContent("SPEED BONUS +1");
   });
 
   it("settles the block's permanent bubble at its final BASE total", async () => {

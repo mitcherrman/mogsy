@@ -51,7 +51,7 @@ import {
   projectPointsMascotReactions, projectRevealFeedback, projectSettlementFeedback,
 } from "@/lib/ranked-core/pointsFeedback";
 import {
-  duelProgressSuffix, duelStandingLabel, projectDuelState, type DuelStanding,
+  duelEventOf, duelProgressSuffix, duelStandingLabel, projectDuelState, type DuelStanding,
 } from "@/lib/ranked-core/duelState";
 import { RankedScoreline } from "./RankedScoreline";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
@@ -925,6 +925,10 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       // RD1 — the viewer's standing on the clock's secondary line.
       standing: duelState
         ? { label: duelStandingLabel(duelState), standing: duelState.standing } : null,
+      // RD1 — what this settlement just did to the duel, for the result face.
+      // Only on a SETTLEMENT's face: a Meta Reflex card's face outranks it and
+      // is about one card, not about the standing.
+      duelEvent: cardBeat ? null : duelEventOf(duelState),
       transitionNote: inTransition ? "Preparing next round…" : null,
       // RETIRED. The placeholder-bank notice was a build-state label from when
       // the Ranked bank was still standing in for itself. It is a fact about the

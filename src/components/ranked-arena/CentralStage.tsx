@@ -49,7 +49,7 @@
  * about the match's clock.
  */
 import { useEffect, useRef, useState } from "react";
-import type { DuelStanding } from "@/lib/ranked-core/duelState";
+import type { DuelEventView, DuelStanding } from "@/lib/ranked-core/duelState";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import type { CentralStageView } from "@/lib/ranked-core/centralStage";
 import type { TimerView } from "@/lib/ranked-core/viewTypes";
@@ -97,6 +97,16 @@ export interface CentralStageProps {
    * the standing are both projected upstream; this only draws them.
    */
   standing?: { label: string; standing: DuelStanding } | null;
+  /**
+   * RD1 — what the settlement being revealed just DID to the duel
+   * (`YOU TAKE THE LEAD`, `TIED UP`, `SPEED BONUS +1`), or null.
+   *
+   * Result face only, and only alongside a `result`: both are projected from
+   * the same reveal-gated settlement, so the phrase lives exactly as long as
+   * the beat. When present the result face reads `CORRECT +3` over the phrase
+   * — the same two fixed sub-slots, so nothing about the window moves.
+   */
+  event?: DuelEventView | null;
 }
 
 /**
@@ -137,7 +147,7 @@ export function useCentralStage({
 
 export function CentralStage({
   timer, result, moduleTitle, moduleEventId, label = "Round timer",
-  durationNote, expiredNote = "Time's up", standing = null,
+  durationNote, expiredNote = "Time's up", standing = null, event = null,
 }: CentralStageProps) {
   const stage = useCentralStage({ result, moduleTitle, moduleEventId });
   const expired = timer !== null && timer.remainingSeconds <= 0;
@@ -209,6 +219,9 @@ export function CentralStage({
               className="truncate text-2xl font-black uppercase tracking-[0.12em]
                 sm:text-3xl min-[1500px]:text-4xl">
               {stage.verdict}
+              {/* RD1 — with an event on the secondary line, the award joins
+                  the verdict ("CORRECT +3") so neither fact is lost. */}
+              {event && ` ${stage.points.replace(/\s+POINTS?$/, "")}`}
             </span>
           )}
           {stage.kind === "module" && (
@@ -245,7 +258,15 @@ export function CentralStage({
                   : `of ${format(timer.durationSeconds)} shared round`}
             </span>
           )}
-          {stage.kind === "result" && (
+          {stage.kind === "result" && event && (
+            <span role="status" data-testid="central-duel-event"
+              data-tone={event.tone}
+              aria-label={`${stage.verdict}, ${stage.points}. ${event.label}`}
+              className="ranked-duel-event text-xs font-black uppercase tracking-[0.16em]">
+              {event.label}
+            </span>
+          )}
+          {stage.kind === "result" && !event && (
             // `role="status"` announces the result once, as one sentence: the
             // verdict and the award are one fact. It carries the accessible
             // name for BOTH lines, which is why the primary is aria-hidden.

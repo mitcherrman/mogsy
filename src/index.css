@@ -1443,6 +1443,16 @@
 .ranked-duel-standing[data-standing="leading"] { color: #86d4a4; }
 .ranked-duel-standing[data-standing="trailing"] { color: #e2757b; }
 .ranked-duel-final { color: #e8c97a; }
+/* The transient event under the verdict. It arrives with the result face's
+   own flip (`.ranked-stage-face`, reduced-motion aware), so it adds no motion
+   of its own — only a colour and a faint glow. */
+.ranked-duel-event { color: #f3e6c4; text-shadow: 0 0 10px rgba(232,201,122,0.28); }
+.ranked-duel-event[data-tone="positive"] { color: #86d4a4; text-shadow: 0 0 10px rgba(110,231,183,0.30); }
+.ranked-duel-event[data-tone="danger"] { color: #e2757b; text-shadow: 0 0 10px rgba(226,117,123,0.28); }
+.ranked-duel-event[data-tone="neutral"] { color: #e8c97a; }
+@media (prefers-reduced-motion: reduce) {
+  .ranked-duel-event { text-shadow: none; }
+}
 
 /* ===== RD1 — THE CLOCK UNDER PRESSURE ====================================
    `urgent` (0 < remaining <= 5s, decided by `projectTimer` and unchanged

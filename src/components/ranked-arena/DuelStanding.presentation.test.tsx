@@ -111,9 +111,9 @@ describe("the clock face", () => {
 
   it("puts the standing on the secondary line instead of the round length", () => {
     render(<CentralStage timer={timer()} result={null} moduleTitle={null} moduleEventId={null}
-      standing={{ label: "LEADING +2", standing: "leading" }} />);
+      standing={{ label: "AHEAD BY 2 PTS", standing: "leading" }} />);
     const line = screen.getByTestId("central-duel-standing");
-    expect(line).toHaveTextContent("LEADING +2");
+    expect(line).toHaveTextContent("AHEAD BY 2 PTS");
     expect(line).toHaveAttribute("data-standing", "leading");
     expect(screen.getByTestId("timer-display").textContent).not.toMatch(/shared round/);
   });
@@ -127,6 +127,34 @@ describe("the clock face", () => {
       standing={{ label: "TIED", standing: "tied" }} />);
     expect(screen.getByTestId("central-timer-expired")).toBeInTheDocument();
     expect(screen.queryByTestId("central-duel-standing")).toBeNull();
+  });
+
+  it("a duel event takes the result face's secondary line; the award joins the verdict", () => {
+    render(<CentralStage timer={timer()} result={{ verdict: "CORRECT", points: "+3 POINTS" }}
+      moduleTitle={null} moduleEventId={null}
+      standing={{ label: "BEHIND BY 3 PTS", standing: "trailing" }}
+      event={{ label: "YOU TAKE THE LEAD", tone: "positive" }} />);
+    expect(screen.getByTestId("central-result-verdict")).toHaveTextContent("CORRECT +3");
+    const line = screen.getByTestId("central-duel-event");
+    expect(line).toHaveTextContent("YOU TAKE THE LEAD");
+    expect(line).toHaveAttribute("data-tone", "positive");
+    expect(line).toHaveClass("ranked-duel-event");
+    expect(screen.queryByTestId("central-result")).toBeNull();
+    expect(screen.queryByTestId("central-duel-standing")).toBeNull();
+  });
+
+  it("without an event the result face is exactly as before", () => {
+    render(<CentralStage timer={timer()} result={{ verdict: "CORRECT", points: "+2 POINTS" }}
+      moduleTitle={null} moduleEventId={null} />);
+    expect(screen.getByTestId("central-result-verdict").textContent).toBe("CORRECT");
+    expect(screen.getByTestId("central-result-points")).toHaveTextContent("+2 POINTS");
+    expect(screen.queryByTestId("central-duel-event")).toBeNull();
+  });
+
+  it("the event styles are colour and glow only", () => {
+    const rules = css.match(/\.ranked-duel-event[^{]*\{[^}]*\}/g) ?? [];
+    expect(rules.length).toBeGreaterThanOrEqual(4);
+    for (const r of rules) expect(r).not.toMatch(/font-size|height|width|margin|padding|transform/);
   });
 
   it("marks only the urgent state with the urgency class, without resizing the digits", () => {

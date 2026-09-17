@@ -375,7 +375,8 @@ export function CanonicalArena({
               result={header.centralResult ?? null}
               moduleTitle={header.moduleTitle ?? null}
               moduleEventId={header.moduleEventId ?? null}
-              standing={header.standing ?? null} />
+              standing={header.standing ?? null}
+              event={header.duelEvent ?? null} />
           ) : (
             // No clock and no result: a phased segment's ability window, or the
             // gap before the first round. The transition note is the honest

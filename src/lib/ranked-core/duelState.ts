@@ -75,6 +75,8 @@ export interface DuelStateView {
   leadChange: DuelLeadChange | null;
   /** The VIEWER's settled speed bonus, during its reveal beat only. */
   speedBonus: boolean;
+  /** Its size as the server awarded it; 0 whenever `speedBonus` is false. */
+  speedBonusPoints: number;
 }
 
 export interface DuelStateInput {
@@ -116,6 +118,9 @@ export function projectDuelState(
   const modulesRemaining = matchLength === null
     ? null : Math.max(0, matchLength - modulesCompleted);
 
+  const bonus = revealing
+    ? Math.max(0, settlement?.modulePoints?.[viewerUserId]?.speedBonusPoints ?? 0) : 0;
+
   return {
     standing: standingOf(viewerScore, opponentScore),
     margin: Math.abs(viewerScore - opponentScore),
@@ -126,8 +131,8 @@ export function projectDuelState(
     isFinalThree: live && moduleNumber >= matchLength! - 2,
     leadChange: revealing
       ? projectLeadChange(settlement, viewerUserId, opponent.playerId) : null,
-    speedBonus: revealing
-      && (settlement?.modulePoints?.[viewerUserId]?.speedBonusPoints ?? 0) > 0,
+    speedBonus: bonus > 0,
+    speedBonusPoints: bonus,
   };
 }
 
@@ -169,9 +174,49 @@ export function duelProgressSuffix(state: DuelStateView | null): string | null {
   return null;
 }
 
-/** `LEADING +2` / `TIED` / `TRAILING 1`, from the viewer's side. */
+/** `N PT` / `N PTS`. */
+function pts(n: number): string {
+  return `${n} ${n === 1 ? "PT" : "PTS"}`;
+}
+
+/** `AHEAD BY 2 PTS` / `TIED` / `BEHIND BY 1 PT`, from the viewer's side. */
 export function duelStandingLabel(state: DuelStateView): string {
-  if (state.standing === "leading") return `LEADING +${state.margin}`;
-  if (state.standing === "trailing") return `TRAILING ${state.margin}`;
+  if (state.standing === "leading") return `AHEAD BY ${pts(state.margin)}`;
+  if (state.standing === "trailing") return `BEHIND BY ${pts(state.margin)}`;
   return "TIED";
+}
+
+export type DuelEventTone = "positive" | "danger" | "neutral" | "bonus";
+
+/** Something that JUST happened in the duel, in words. */
+export interface DuelEventView {
+  /** One of the closed phrases below; never composed from free text. */
+  label: string;
+  tone: DuelEventTone;
+}
+
+/**
+ * THE TRANSIENT DUEL EVENT for the module being revealed, or null.
+ *
+ * Built ONLY from the reveal-gated event fields of `DuelStateView`, which
+ * exist only while a settlement this client watched is being revealed — so a
+ * reconnect, a resume or a backfilled ledger can never produce one. Outside
+ * the beat both fields are empty and this returns null by construction.
+ *
+ * ONE phrase per settlement, by a fixed precedence:
+ *   1. a lead change   — `YOU TAKE THE LEAD` / `OPPONENT TAKES THE LEAD`
+ *   2. into a tie      — `TIED UP`
+ *   3. a speed bonus   — `SPEED BONUS +N`
+ * A settlement that leaves the standing where it was (including a tie that
+ * stays tied, and the 0–0 opening) is not an event. Nothing else is said:
+ * no comeback, clinch, match point, streak or "need N" — none is published.
+ */
+export function duelEventOf(state: DuelStateView | null): DuelEventView | null {
+  if (!state) return null;
+  const change = state.leadChange;
+  if (change?.newLeader === "viewer") return { label: "YOU TAKE THE LEAD", tone: "positive" };
+  if (change?.newLeader === "opponent") return { label: "OPPONENT TAKES THE LEAD", tone: "danger" };
+  if (change && change.to === "tied") return { label: "TIED UP", tone: "neutral" };
+  if (state.speedBonus) return { label: `SPEED BONUS +${state.speedBonusPoints}`, tone: "bonus" };
+  return null;
 }
