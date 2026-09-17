@@ -479,7 +479,13 @@ describe("the Match Header says three things on the left and one on the right", 
     // plate already publishes.
     const css = stripComments(CSS);
     const first = css.indexOf(".ranked-record-window .ranked-result-beat");
-    const scoped = css.slice(first, css.indexOf("@keyframes", first));
+    // RR1 added the record window's FIT rules right after this colour block;
+    // they are geometry by design and are pinned in RecordWindow.fit.test.
+    // This guard keeps its original scope: the lightening block, colour only.
+    const fit = css.indexOf("width: calc(100% - 0.5rem)", first);
+    const end = Math.min(css.indexOf("@keyframes", first),
+      fit === -1 ? Infinity : css.lastIndexOf(".ranked-record-window .ranked-result-beat {", fit));
+    const scoped = css.slice(first, end);
     expect(scoped).toMatch(/background:\s*rgba\(255,255,255,0\.025\)/);
     expect(scoped).toMatch(/border-color:\s*rgba\(255,255,255,0\.12\)/);
     expect(scoped).toMatch(/data-kind="correct"/);

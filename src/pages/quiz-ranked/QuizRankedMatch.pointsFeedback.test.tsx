@@ -218,7 +218,8 @@ describe("a slice settles", () => {
     settleModule({ userA: 13, userB: 8 });
     await waitFor(() => expect(verdictLine()).toHaveTextContent("4 / 5 +4"),
       { timeout: 4000 });
-    expect(bonusLine().textContent).toBe("");
+    // RR1 — the plate's quiet line names the block; it never claims a bonus.
+    expect(bonusLine().textContent ?? "").not.toMatch(/first|\+\d/i);
     expect(screen.getByTestId("outcome-points-userA")).toHaveTextContent("+4");
     expect(screen.queryByTestId("outcome-speed-userA")).toBeNull();
     // And no perfect reward is named anywhere in the arena.

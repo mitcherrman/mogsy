@@ -225,7 +225,8 @@ export function BeatPlate({
         // The round this describes, kept quiet and separated: the strip's own
         // title already says which round is LIVE, and the two must not be
         // mistaken for each other.
-        className="ml-1 border-l border-white/15 pl-2 text-[10px] font-semibold tabular-nums text-muted-foreground/70"
+        data-beat-part="marker"
+        className="ml-1 shrink-0 border-l border-white/15 pl-2 text-[10px] font-semibold tabular-nums text-muted-foreground/70"
       >
         {marker}
       </span>
@@ -258,8 +259,14 @@ export function BeatBody({
   const { Icon } = RESULT_TONE[kind];
   return (
     <>
-      <Icon aria-hidden className={`h-5 w-5 shrink-0 ${RESULT_TONE[kind].text}`} />
-      <span aria-hidden className="flex flex-col justify-center leading-none">
+      <Icon aria-hidden data-beat-part="icon"
+        className={`h-5 w-5 shrink-0 ${RESULT_TONE[kind].text}`} />
+      {/* RR1 — the text column is the one part of the plate allowed to take
+          the space left between the fixed icon and the fixed round marker
+          (`min-w-0`), so the plate can be sized to its window instead of to
+          its content. See `.ranked-record-window` in index.css. */}
+      <span aria-hidden data-beat-part="text"
+        className="flex min-w-0 flex-col justify-center leading-none">
         <span
           data-testid={verdictTestId}
           className={`text-sm font-black uppercase tracking-[0.1em] lg:text-base ${

@@ -128,7 +128,9 @@ describe("a slice's plate", () => {
   it("5/5 and slower: 5 / 5 +5, and NO bonus line", () => {
     renderBlock(feedback("5 / 5", 5));
     expect(verdict()).toHaveTextContent("5 / 5 +5");
-    expect(consequence().textContent).toBe("");
+    // RR1 — the quiet line names the module now, and still claims no bonus.
+    expect(consequence().textContent).toBe("Meta Reflex");
+    expect(consequence().textContent).not.toMatch(/first|\+\d/i);
   });
 
   it("5/5 and first: 5 / 5 +5 over FINISHED FIRST +1", () => {
@@ -140,7 +142,9 @@ describe("a slice's plate", () => {
   it("4/5 and first: 4 / 5 +4, with NO speed line — the mandatory case", () => {
     renderBlock(feedback("4 / 5", 4), { correct: 4, perfect: false, speedBonus: 0 });
     expect(verdict()).toHaveTextContent("4 / 5 +4");
-    expect(consequence().textContent).toBe("");
+    // RR1 — the module's name, and no speed claim of any kind.
+    expect(consequence().textContent).toBe("Meta Reflex");
+    expect(consequence().textContent).not.toMatch(/first|\+\d/i);
   });
 
   it("shows NO perfect reward, even on a perfect first-finished block", () => {

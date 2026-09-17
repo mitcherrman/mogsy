@@ -996,6 +996,7 @@
   border-color: rgba(255,255,255,0.12);
   box-shadow: none;
 }
+
 .ranked-record-window .ranked-result-beat[data-kind="correct"] {
   border-color: rgba(52,211,153,0.34);
 }
@@ -1005,6 +1006,61 @@
 .ranked-record-window .ranked-result-beat[data-kind="incorrect"],
 .ranked-record-window .ranked-result-beat[data-kind="timed-out"] {
   border-color: hsl(var(--destructive) / 0.34);
+}
+
+/* RR1 — THE PLATE FITS ITS WINDOW, NOT ITS CONTENT.
+   The window is a fixed 184px (208px from 1500px), `overflow: hidden`, and
+   centres its one child. The plate used to be `shrink-0` + `nowrap`, i.e. as
+   wide as its content, so anything wider than the window spilled out on BOTH
+   sides and was cut: a Meta Reflex plate measured 336px ("…ETA REFLEX"), and
+   even INCORRECT/TIMED OUT lost 6–8px of icon and marker below 1500px.
+
+   Now the plate is the window's width less a 4px inset each side — the inset
+   is what keeps the entrance overshoot (scale 1.03) and the 3px miss jolt
+   inside the clip — and its parts are budgeted: icon and round marker fixed,
+   the text column taking what is left. Type steps down one size below 1500px
+   with tighter tracking so the longest verdict fits without truncation.
+   Scoped to the record window: the window's own size, height and position are
+   untouched, so the 23 / 54 / 23 header registration cannot move. */
+.ranked-record-window .ranked-result-beat {
+  width: calc(100% - 0.5rem);
+  min-width: 0;
+  flex-shrink: 1;
+  justify-content: center;
+  column-gap: 0.375rem;
+  padding-inline: 0.5rem;
+}
+.ranked-record-window .ranked-result-beat [data-beat-part="icon"] {
+  width: 1rem;
+  height: 1rem;
+}
+.ranked-record-window .ranked-result-beat [data-testid="ranked-last-result-verdict"] {
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+}
+.ranked-record-window .ranked-result-beat [data-testid="ranked-last-result-consequence"] {
+  font-size: 9px;
+  /* "FINISHED FIRST +1" is the longest quiet line; at 0.08em it ran 2px into
+     the round marker in the 184px window. */
+  letter-spacing: 0.03em;
+}
+.ranked-record-window .ranked-result-beat [data-beat-part="marker"] {
+  margin-left: 0;
+  padding-left: 0.375rem;
+}
+.ranked-record-window .ranked-result-beat [data-testid="segment-details-toggle"] {
+  width: 1rem;
+  margin-inline: 0;
+}
+@media (min-width: 1500px) {
+  .ranked-record-window .ranked-result-beat [data-testid="ranked-last-result-verdict"] {
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+  }
+  .ranked-record-window .ranked-result-beat [data-testid="ranked-last-result-consequence"] {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
 }
 
 @keyframes ranked-result-in {
