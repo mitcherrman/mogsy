@@ -164,9 +164,6 @@ Senna,Support,Bot|Support
   but non-selected-role and global content must stay non-zero to preserve
   variety. `primary_role` is available as an input if that weighting wants
   it.
-- **Post-match review:** role data already reaches `ReviewRound.topic.roles`.
-  The shared `components/game-results` model (`ResultTimelineEntry`) needs an
-  optional roles field before an emblem can sit beside each module title.
 - **Roster refresh:** re-review the curated roster against a later patch. Use
   the same source and filter, and have the owner review the 5–15% band.
 
@@ -233,3 +230,55 @@ with N challenges, and it publishes no `question` block.
   Browser-measured at 1024×768 and 1280×720 with five roles: the header row
   stays 32px, the submit button doesn't move, and there's no page or stage
   scroll.
+
+## Post-match review roles (final pass)
+- **Transport, all from frozen data:**
+  - A round's `ranked_rounds.question_roles_json` feeds `topic_for_round` →
+    review `topic.roles` → `ReviewRound.topic.roles`. This was already in
+    place.
+  - Each Mastery challenge's frozen public `roles` are now carried by
+    `review._mastery_slice_round` (canonical order, unknowns dropped) →
+    `ReviewMasteryChallenge.roles`.
+  - Nothing in review calls the champion-role authority (a test makes it raise
+    if called), so a historical match keeps the roles frozen when it was
+    played.
+- **Shared model:** `ResultTimelineEntry.roles?: readonly RankedRole[]` is
+  optional. Time Trial, Practice and Daily omit it and render unchanged.
+- **One rule for both surfaces:** `lib/ranked-public/reviewRoles.ts`.
+  - **Quiz round:** its frozen `topic.roles`.
+  - **Mastery Slice:** the module shows a set only when every challenge froze
+    the same set. If they differ, it shows no module set (no arbitrary pick,
+    no misleading union) and each challenge row shows its exact set. With no
+    challenge detail at all, it falls back to the frozen segment union.
+  - **Meta Reflex:** freezes no roles, so it shows none.
+- **Where roles appear:**
+  - **Results screen, module timeline:** the opened module's detail header
+    reads `[Module N] [role emblems] [subject]`. The 44px verdict marks are
+    unchanged.
+  - **Workspace review card (`QuestionReviewCard`):** the heading line reads
+    `Q n of m · [role emblems] [subject]`. On a Mastery card with differing
+    challenges, the emblems sit inline at the start of each challenge's prompt
+    instead, with no new band.
+- **Never on:** hero/headline, scoreline, contestants (player role mascots),
+  rating/progress, Mogzy's report, snapshot stats, discovery reveal.
+- **Old matches:** no roles means no emblem; no placeholder and no backfill.
+- **Tests:**
+  - Backend `test_rq1_review_roles.py`: frozen passthrough, the authority is
+    never consulted, old/malformed data.
+  - Frontend `reviewRoles.rq1.test.tsx`: 1/2/4/5 roles, order, global/old,
+    Mastery shared/differing/fallback, Meta Reflex, no emblems on match-level
+    surfaces, shared consumer unchanged, no authority/roleId/prompt/category
+    reads, five-emblem truncation.
+- **Browser:** `/dev/ranked-arena-inspector` "RESULT — full Ranked
+  composition" (its fixture now carries frozen roles), at 1440×900 and
+  1024×768. Modules with 5, 4 and 2 roles showed exactly those in order, the
+  header stayed 16px with no horizontal overflow, role-less modules showed
+  none, and there were no emblems anywhere with the timeline closed.
+
+## RQ1 status: functionally complete
+Live questions (shared bank, Jungle families, Mastery Slices, matchup unions,
+multi-role champions), the live timeline and post-match review all show
+frozen question roles. The remaining items are deliberately out of scope:
+- future role weighting / scheduler experiments (no multipliers chosen);
+- periodic roster refresh (same source and filter, owner review of 5–15%);
+- the question-family visual art system (separate workstream).

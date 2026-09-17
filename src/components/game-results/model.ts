@@ -17,6 +17,7 @@
  * a measurement.
  */
 import type { ReactNode } from "react";
+import type { RankedRole } from "@/lib/ranked-public/roles";
 
 /** The result word at the top. `complete` is a run that has no opponent to
  *  beat — a Daily, a Time Trial, a practice set. */
@@ -92,6 +93,13 @@ export interface ResultTimelineEntry {
   detail?: string | null;
   /** Optional second detail line — a category, a sub-result. */
   detailHint?: string | null;
+  /**
+   * RQ1 — the League roles THIS entry's question(s) apply to, as frozen by the
+   * mode that produced it (canonical order). Optional and question-level only:
+   * a mode with no role semantics omits it and the timeline renders exactly as
+   * before. Never a player's role, never a match-level fact.
+   */
+  roles?: readonly RankedRole[];
 }
 
 export interface ResultAction {

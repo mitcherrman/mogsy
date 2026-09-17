@@ -47,6 +47,7 @@ import type { CombatantView, RoundHistoryEntry } from "@/lib/ranked-core/viewTyp
 import type {
   MatchDiscoveriesView, MatchReviewView, ReviewRound,
 } from "@/lib/ranked-public/contracts";
+import { reviewRoundRoles } from "@/lib/ranked-public/reviewRoles";
 
 /**
  * What this module was ABOUT, as a subject a player would recognise.
@@ -106,6 +107,7 @@ export function buildRankedTimeline(
     // not be printed beside a question that can be asked again.
     detail: round.question?.prompt ?? null,
     detailHint: round.category ? prettyCategory(round.category) : null,
+    ...(reviewRoundRoles(round) ? { roles: reviewRoundRoles(round) } : {}),
   }));
 }
 

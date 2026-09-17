@@ -51,6 +51,10 @@ import {
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { useQuestionOwnership } from "@/components/quiz/workspace/ownedQuestionIndex";
 import type { ReviewChallenge, ReviewRound } from "@/lib/ranked-public/contracts";
+import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
+import {
+  masteryChallengeRolesDiffer, reviewRoundRoles,
+} from "@/lib/ranked-public/reviewRoles";
 
 /** The three marks, printed rather than lit — the row's own palette. */
 const TONE = {
@@ -314,6 +318,9 @@ function CardSide({
  */
 function MasterySliceBody({ round }: { round: ReviewRound }) {
   const challenges = round.masteryChallenges ?? [];
+  // RQ1: per-challenge emblems only when the challenges' frozen role sets
+  // differ — when they agree, the card header already shows the one set.
+  const perChallengeRoles = masteryChallengeRolesDiffer(round);
   const sub = round.viewerSubmission;
   return (
     <>
@@ -343,6 +350,11 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                 className="text-[12px] leading-relaxed"
                 style={{ color: LEAGUECRAFT_INK.strong }}
               >
+                {perChallengeRoles && (
+                  <QuestionRoleEmblems roles={challenge.roles} size="sm" backed
+                    className="mr-1.5 align-[-2px]"
+                    testId={`review-mastery-roles-${challenge.challengeIndex}`} />
+                )}
                 {challenge.prompt}
               </p>
 
@@ -526,6 +538,11 @@ export default function QuestionReviewCard({
         >
           Q{position} of {total}
         </span>
+        {/* RQ1 — the question's FROZEN role(s), immediately left of the
+            subject. A Mastery Slice shows a set here only when all of its
+            challenges share it (see `reviewRoundRoles`). */}
+        <QuestionRoleEmblems roles={reviewRoundRoles(round)} size="sm"
+          backed className="self-center" testId="review-question-roles" />
         <span
           className="min-w-0 flex-1 truncate text-[9.5px] font-bold uppercase tracking-[0.16em]"
           style={{ color: LEAGUECRAFT_INK.brass }}

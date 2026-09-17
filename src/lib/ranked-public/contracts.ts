@@ -2111,6 +2111,11 @@ export interface ReviewMasteryChallenge {
   explanation: string | null;
   viewerAnswer: string | number | boolean | null;
   isCorrect: boolean | null;
+  /**
+   * RQ1 — the challenge's roles as FROZEN at segment start (canonical order).
+   * Absent for a role-less challenge and for every match frozen before RQ1.
+   */
+  roles?: RankedRole[];
 }
 
 export interface ReviewRound {
@@ -2249,6 +2254,7 @@ function reviewMasteryChallenge(raw: unknown, label: string,
     explanation,
     viewerAnswer: reviewMasteryAnswer(c.viewer_answer, `${label}.viewer_answer`),
     isCorrect: nbool(c.is_correct, `${label}.is_correct`),
+    ...(readQuestionRoles(c.roles).length ? { roles: readQuestionRoles(c.roles) } : {}),
   };
 }
 
