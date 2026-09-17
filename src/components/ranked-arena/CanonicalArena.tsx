@@ -27,7 +27,8 @@ import { AbilityTray } from "./AbilityTray";
 import { ArenaShell } from "./ArenaShell";
 import { CombatantPanel } from "./CombatantPanel";
 import { LevelUpPanel } from "./LevelUpPanel";
-import { MobileDuelStrip } from "./MobileDuelStrip";
+import { MobileBottomBar } from "./MobileBottomBar";
+import { MobileMatchBar } from "./MobileMatchBar";
 import { MatchOverFrame } from "./MatchOverFrame";
 import { RevealPanel } from "./RevealPanel";
 import { RoundTimeline } from "./RoundTimeline";
@@ -235,7 +236,7 @@ export function CanonicalArena({
    * banner had no other caller and is deleted outright.
    */
   return (
-    <ArenaShell size="wide" header={chrome}>
+    <ArenaShell size="wide" header={chrome} phoneArena={mobileDuel}>
     {/* RG1 — THE STABLE SHELL.
        The shell hands this element one region (see `ArenaShell`'s stage floor)
        and the four bands below divide it: the top strip, the arena grid, the
@@ -260,8 +261,13 @@ export function CanonicalArena({
 
        Below `lg` this is the ordinary flow column it has always been: the
        arena stacks there and its natural height exceeds any narrow viewport. */}
-    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0 pb-[var(--mogzy-dock-clearance)] lg:pb-0"
-      data-testid="ranked-match" data-reveal-hold={view.revealHold ? "true" : "false"}
+    <div className={`ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0 ${
+      // RMOB2 — the phone arena hosts the dock tabs in its own bottom bar, so
+      // it needs no clearance for them; other arenas keep RMOB1's.
+      mobileDuel ? "" : "pb-[var(--mogzy-dock-clearance)] lg:pb-0"}`}
+      data-testid="ranked-match"
+      // RMOB2 — the phone one-screen composition keys off this (index.css).
+      data-phone-arena={mobileDuel ? "true" : undefined} data-reveal-hold={view.revealHold ? "true" : "false"}
       // THE ONE BAND THAT IS NOT ALWAYS THERE, stated rather than assumed.
       // `--ranked-chrome-h` has to know whether the ability dock is mounted,
       // and CSS cannot see a sibling. This is not a new fact and not a new
@@ -319,9 +325,11 @@ export function CanonicalArena({
         //
         // Below `lg` the arena stacks and there is nothing to register to, so
         // the wrapping flex row it has always been stays exactly as it was.
-        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1 sm:gap-x-4 sm:px-4
+        // RMOB2 — on a phone Ranked arena the match bar carries the timer, so
+        // this strip is desktop-only there.
+        className={`ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1 sm:gap-x-4 sm:px-4
           lg:grid lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:gap-3 lg:px-0
-          min-[1500px]:gap-4">
+          min-[1500px]:gap-4${mobileDuel ? " max-lg:hidden" : ""}`}>
         {/* LEFT — who this is and what kind of match it is. Both quiet. */}
         {/* LEFT — the match's own hierarchy, three quiet lines.
             WHAT this is, WHO it is against, HOW FAR through it is. Each was
@@ -465,13 +473,13 @@ export function CanonicalArena({
           )}
         </div>
       </section>
-      {/* RMOB1 — below `lg` the two duel banners give way to one compact strip,
-          inside the header's wrapper so the arena keeps its known bands
-          (see `MobileDuelStrip`). Ranked banners only; any other flank keeps
-          its own presentation at every width. */}
+      {/* RMOB2 — below `lg` the header strip AND both duel banners give way to
+          ONE match bar (players, timer, module position), inside the header's
+          wrapper so the arena keeps its known bands (see `MobileMatchBar`).
+          Ranked banners only; any other flank keeps its own presentation. */}
       {mobileDuel && view.left.kind === "combatant" && view.right.kind === "combatant" && (
-        <MobileDuelStrip left={view.left} right={view.right}
-          progressionEnabled={view.progressionEnabled} className="mt-3 lg:hidden" />
+        <MobileMatchBar left={view.left} right={view.right} header={header}
+          progressionEnabled={view.progressionEnabled} className="lg:hidden" />
       )}
       {/* THE CARD-BY-CARD TRANSCRIPT — the one thing the retired segment
           banner owned that a 2.5rem plate cannot hold.
@@ -492,6 +500,7 @@ export function CanonicalArena({
             reveal={segmentSettlement.settlement.reveal}
             viewerUserId={segmentSettlement.viewerUserId}
             opponentUserId={segmentSettlement.opponentUserId}
+            viewerLabel={view.left.kind === "combatant" ? view.left.combatant.name : undefined}
             damageDealt={
               segmentSettlement.settlement.damageByPlayerId[segmentSettlement.viewerUserId] ?? null}
             // R1: no ability layer means no ability reveal. An empty map
@@ -538,7 +547,7 @@ export function CanonicalArena({
           stage and both Player Columns overflowed it by the difference onto
           the status strip, and the media never yielded. A definite track is
           what lets the existing shrink chain reach the art. */}
-      <div className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch min-[1500px]:gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch min-[1500px]:gap-4 ranked-arena-grid">
         {/* `h-full` on BOTH the track cell and the panel: `items-stretch`
             stretches the grid cell, and without this the panel would still sit
             at its own content height inside a taller cell — which is the
@@ -794,6 +803,11 @@ export function CanonicalArena({
           beat, through a block settlement and through a level-2 choice — which
           is what makes it the arena's floor rather than another thing that
           appears and disappears down here. */}
+      {/* RMOB2 — the phone's bottom row: Report · a 5-node window of THIS
+          timeline · Rules. Mounted only on a phone viewport (see the bar). The
+          strip below stays the arena's last child and the desktop floor; on a
+          phone Ranked arena CSS hides it in favour of the bar. */}
+      {mobileDuel && timeline && <MobileBottomBar timeline={timeline} className="lg:hidden" />}
       {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
     </div>
     </ArenaShell>

@@ -73,7 +73,8 @@ export default function GlobalHud() {
   return (
     <nav
       aria-label="Mogzy controls"
-      className="pointer-events-none fixed inset-x-0 top-0 z-50"
+      // RMOB2 — `global-hud` is the hook for the phone compaction in index.css.
+      className="global-hud pointer-events-none fixed inset-x-0 top-0 z-50"
     >
       {/* The right padding folds in react-remove-scroll's published
           `--removed-body-scroll-bar-size` (set on body while any Radix modal

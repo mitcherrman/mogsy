@@ -82,11 +82,13 @@ export interface SegmentTranscriptProps {
   damageDealt?: number | null;
   /** Revealed abilities by player id, once the segment is over. */
   abilitiesByPlayerId?: Record<string, string | null>;
+  /** RMOB2 — the viewer's display name for the column header. */
+  viewerLabel?: string;
 }
 
 export function SegmentTranscript({
   reveal, viewerUserId, opponentUserId, damageDealt = null,
-  abilitiesByPlayerId = {},
+  abilitiesByPlayerId = {}, viewerLabel = "You",
 }: SegmentTranscriptProps) {
   const you = reveal.players[viewerUserId];
   const them = opponentUserId ? reveal.players[opponentUserId] : undefined;
@@ -164,7 +166,7 @@ export function SegmentTranscript({
               <th scope="col" className="py-1 pr-3">#</th>
               <th scope="col" className="py-1 pr-3">Pair</th>
               <th scope="col" className="py-1 pr-3">Answer</th>
-              <th scope="col" className="py-1 pr-3">You</th>
+              <th scope="col" className="py-1 pr-3">{viewerLabel}</th>
               <th scope="col" className="py-1 pr-3">Time</th>
               {them && <th scope="col" className="py-1 pr-3">Opponent</th>}
             </tr>

@@ -58,13 +58,16 @@ function Side({
     // Full width below `sm`, so the two sides STACK on a phone and each name
     // gets the whole row instead of being truncated into half of 375px. From
     // `sm` up they share the line and the arrow points across.
-    <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:flex-1">
+    // RMOB2: the `data-combat-*` hooks carry no style; the phone Ranked arena's
+    // compact arrangement (index.css) keys off them. Every other surface and
+    // every desktop width renders exactly the classes below.
+    <div data-combat-side className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:flex-1">
       <EntityTile icon={icon} name={name} shape="round" size="lg" accent={accent} />
       <div className="min-w-0">
         <BandLabel>{role}</BandLabel>
-        <div className="truncate text-sm font-bold leading-tight text-white">{name}</div>
+        <div data-combat-name className="truncate text-sm font-bold leading-tight text-white">{name}</div>
         {detail && (
-          <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          <div data-combat-detail className="mt-1 flex min-w-0 items-center gap-1.5">
             <EntityTile icon={detail.icon} name={detail.name} size="sm" accent={accent} />
             <span className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-[#e8c97a]/90">
               {detail.name}
@@ -126,7 +129,7 @@ export function PostMitigationBand({ layout }: { layout: CombatFamilyLayout }) {
         {/* Relation. Wraps to two rows on narrow viewports; the arrow rotates
             so the direction still reads top-to-bottom rather than pointing off
             the side of a stacked layout. */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+        <div data-combat-relation className="flex flex-wrap items-center gap-x-2 gap-y-2">
           <Side
             role="Attacker"
             name={attacker.name}
@@ -150,7 +153,7 @@ export function PostMitigationBand({ layout }: { layout: CombatFamilyLayout }) {
         </div>
 
         {/* Stated quantities. Never a computed one. */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div data-combat-facts className="flex flex-wrap items-center gap-1.5">
           {facts.rawDamage !== undefined && (
             <FactTablet
               testId="fact-raw-damage"

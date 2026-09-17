@@ -148,7 +148,8 @@ export function opponentLabelFor(pub: PublicRoundView): string {
  * a match that has no roles at all. On a role match a role-less participant
  * gets no tag from here and the panel supplies the NEUTRAL role label instead.
  */
-export function projectCombatants(pub: PublicRoundView, viewerUserId: string): CombatantViews {
+export function projectCombatants(pub: PublicRoundView, viewerUserId: string,
+                                  viewerLabel = "You"): CombatantViews {
   const identities: Record<string, { name: string; tag?: string; roleId?: string | null }> = {};
   const maxHpByPlayerId: Record<string, number> = {};
   // RP1 — filled ONLY for a points match, so an hp combatant carries no score
@@ -163,7 +164,9 @@ export function projectCombatants(pub: PublicRoundView, viewerUserId: string): C
     // Phase 11: the ROLE ID travels alongside the label so the arena can pick
     // the role crest without re-parsing the label back into an id.
     identities[p.playerId] = {
-      name: p.playerId === viewerUserId ? "You" : otherLabel,
+      // RMOB2 — the viewer's own display name when the page knows it; "You"
+      // is the fallback for an account with no name, never the default.
+      name: p.playerId === viewerUserId ? viewerLabel : otherLabel,
       // Undefined, never a class, when this participant has no role. On a
       // role match the panel fills the slot with the neutral role label; on a
       // legacy match the class is the identity and is used verbatim.

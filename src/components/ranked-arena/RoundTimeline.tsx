@@ -178,11 +178,12 @@ function nodeModel(node: TimelineNode): QuizTimelineNodeModel {
 }
 
 
-function TimelineNodeMark({ node, slotWidth }: { node: TimelineNode; slotWidth: string }) {
+function TimelineNodeMark({ node, slotWidth, testIdPrefix = "" }:
+{ node: TimelineNode; slotWidth: string; testIdPrefix?: string }) {
   const identity = IDENTITY[identityOf(node.segmentKind)];
   return (
     <li
-      data-testid={`timeline-node-${node.roundNumber}`}
+      data-testid={`${testIdPrefix}timeline-node-${node.roundNumber}`}
       data-round={String(node.roundNumber)}
       data-index={String(node.index)}
       data-state={node.state}
@@ -218,7 +219,7 @@ function TimelineNodeMark({ node, slotWidth }: { node: TimelineNode; slotWidth: 
           roles={node.topic?.roles}
           size="xs"
           overlap
-          testId={`timeline-node-roles-${node.roundNumber}`}
+          testId={`${testIdPrefix}timeline-node-roles-${node.roundNumber}`}
           className="ranked-timeline-roles pointer-events-none absolute right-[2px] top-[4px] z-[2]"
         />
       </span>
@@ -238,10 +239,16 @@ function TimelineNodeMark({ node, slotWidth }: { node: TimelineNode; slotWidth: 
  * anything — every judgement it renders was made in `projectRoundTimeline`.
  */
 export function RoundTimeline({
-  timeline, className = "",
+  timeline, className = "", testIdPrefix = "",
 }: {
   timeline: RoundTimelineView;
   className?: string;
+  /**
+   * RMOB2 — prefixes every test id, so the phone bar's windowed strip and the
+   * desktop strip can both be mounted (jsdom mounts every breakpoint) without
+   * duplicate ids. Empty for the desktop strip, whose DOM is unchanged.
+   */
+  testIdPrefix?: string;
 }) {
   // Slots divide the strip exactly, with no CSS gap: a gap would break the
   // arithmetic that keeps the marker and the node it rings in the same place.
@@ -251,6 +258,7 @@ export function RoundTimeline({
   return (
     <section
       data-testid="ranked-round-timeline"
+      {...(testIdPrefix ? { "data-testid": `${testIdPrefix}ranked-round-timeline` } : {})}
       data-window-start={String(timeline.windowStart)}
       data-current-round={timeline.currentRoundNumber === null
         ? "" : String(timeline.currentRoundNumber)}
@@ -274,7 +282,8 @@ export function RoundTimeline({
         <div className="ranked-timeline-clip absolute inset-0 overflow-hidden">
           <ol className="absolute inset-0 m-0 list-none p-0">
             {timeline.nodes.map((node) => (
-              <TimelineNodeMark key={node.roundNumber} node={node} slotWidth={slotWidth} />
+              <TimelineNodeMark key={node.roundNumber} node={node} slotWidth={slotWidth}
+                testIdPrefix={testIdPrefix} />
             ))}
           </ol>
         </div>
@@ -286,7 +295,7 @@ export function RoundTimeline({
         {markerIndex !== null && (
           <div
             aria-hidden
-            data-testid="ranked-timeline-marker"
+            data-testid={`${testIdPrefix}ranked-timeline-marker`}
             style={{ width: slotWidth, transform: `translateX(${markerIndex * 100}%)` }}
             className="ranked-timeline-marker pointer-events-none absolute inset-y-0 left-0
               flex flex-col items-center justify-end gap-[3px]"

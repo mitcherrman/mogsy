@@ -438,3 +438,42 @@ export function projectRoundTimeline(input: RoundTimelineInput): RoundTimelineVi
     nodes,
   };
 }
+
+/**
+ * RMOB2 — the phone's timeline WINDOW: `size` slots of an already-projected
+ * view, sliding with the current round.
+ *
+ * Presentation only. It decides nothing about any round — every node's state,
+ * outcome, kind and topic are the projection's, carried through untouched — it
+ * only re-indexes which contiguous run of the view's visible slots is on
+ * screen, centring the current round and clamping at both ends:
+ *
+ *   `[1] 2 3 4 5` · `2 3 [4] 5 6` · `6 7 8 9 [10]`
+ *
+ * With no round in play (a finished match) the window ends on the last
+ * resolved slot. A view that already fits returns unchanged.
+ */
+export function windowTimelineView(view: RoundTimelineView, size: number): RoundTimelineView {
+  const total = view.visibleNodes;
+  if (size <= 0 || total <= size) return view;
+  let focus = view.currentIndex;
+  if (focus === null) {
+    const resolved = view.nodes
+      .filter((n) => n.visible && n.state === "resolved")
+      .map((n) => n.index);
+    focus = resolved.length ? Math.max(...resolved) : 0;
+  }
+  const start = Math.min(Math.max(0, focus - Math.floor(size / 2)), total - size);
+  const inWindow = (i: number) => i >= 0 && i < size;
+  return {
+    ...view,
+    visibleNodes: size,
+    windowStart: view.windowStart + start,
+    anchorIndex: Math.min(Math.max(0, view.anchorIndex - start), size - 1),
+    currentIndex: view.currentIndex === null ? null : view.currentIndex - start,
+    anchored: false,
+    nodes: view.nodes.map((n) => ({
+      ...n, index: n.index - start, visible: n.visible && inWindow(n.index - start),
+    })),
+  };
+}

@@ -104,9 +104,9 @@ function segmentKey(round: PublicRoundView): string {
  * opponent is called on a bot match.
  */
 function revealNames(settlement: ResolvedRoundView,
-                     otherLabel: string): Record<string, string> {
+                     otherLabel: string, viewerLabel = "You"): Record<string, string> {
   return {
-    [settlement.players.p1.playerId]: "You",
+    [settlement.players.p1.playerId]: viewerLabel,
     [settlement.players.p2.playerId]: otherLabel,
   };
 }
@@ -131,6 +131,11 @@ const LOBBY_HREF = "/quiz";
 export interface QuizRankedMatchProps {
   matchId: string;
   viewerUserId: string;
+  /**
+   * RMOB2 — the signed-in account's display name, as the page read it from
+   * `profiles` (`useProfileIdentity`). Null/absent keeps the "You" fallback.
+   */
+  viewerDisplayName?: string | null;
   /**
    * RB3.2 — is this match being ENTERED or RECOVERED?
    *
@@ -205,11 +210,13 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
   );
 }
 
-function RankedMatchArena({ matchId, viewerUserId, chrome,
+function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chrome,
                             entry = "recovered",
                             paused = false, onSessionComplete,
                             onProgress }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, { paused, entry });
+  /** RMOB2 — what the viewer is called everywhere in the match. */
+  const viewerLabel = viewerDisplayName?.trim() || "You";
   // RB3 — the reporting seam. An effect rather than a render-time call so a
   // listener's own state update cannot re-enter this render, and keyed on the
   // two values so a poll that changed neither notifies nothing.
@@ -299,8 +306,8 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
   }, []);
 
   const combatants = useMemo(
-    () => (m.publicRound ? projectCombatants(m.publicRound, viewerUserId) : null),
-    [m.publicRound, viewerUserId]);
+    () => (m.publicRound ? projectCombatants(m.publicRound, viewerUserId, viewerLabel) : null),
+    [m.publicRound, viewerUserId, viewerLabel]);
   /**
    * Phase 11 — the two side columns' recent-damage trails, and their reveal
    * verdicts.
@@ -761,6 +768,7 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       scoreline: finalScores ? (
         <RankedScoreline
           you={finalScores[combatants.player.playerId] ?? 0}
+          youLabel={viewerLabel}
           opponent={finalScores[combatants.opponent.playerId] ?? null}
           result={result}
           modulesPlayed={m.result?.scoring?.modulesPlayed ?? null}

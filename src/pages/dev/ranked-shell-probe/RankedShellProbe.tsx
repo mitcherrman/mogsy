@@ -23,15 +23,26 @@
  * `?points=` serves an RP1 v2 POINTS match instead of the hp one, as
  *   `module:you-them` (e.g. `?points=1:0-0`, `?points=6:11-8`,
  *   `?points=10:24-24`). Anything unparseable serves module 1 at 0–0.
+ *   RMOB2: a points state also serves its `module - 1` settled modules as
+ *   resolved rounds, so the arena's own resume backfill fills the history.
+ * `?progression=0` serves the R1 LIVE shape (`progression_enabled: false`, no
+ *   ability layer) instead of the legacy default.
+ * `?orole=` freezes a League role onto the opponent's seat too.
+ * `?name=` is the viewer's display name, as `QuizRankedPage` would pass it.
+ * `?frame=0` mounts the match BARE, exactly as `QuizRankedPage` does (the arena
+ *   brings its own `ArenaShell`). The default keeps the historical extra
+ *   `Frame`, which every desktop fit baseline was measured inside; on a phone
+ *   that second shell costs 32px of padding production never renders.
  *
  * Dev route only — excluded from navigation and the sitemap.
  */
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Frame } from "@/pages/quiz-ranked/QuizRankedPage";
+import { RankedRouteHeader } from "@/pages/quiz-ranked/RankedRouteHeader";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
 import {
-  metaReflexSegmentMeta, metaReflexState, privatePlayerV2, publicRoundV2,
+  metaReflexSegmentMeta, metaReflexState, modulePointsBlock, privatePlayerV2, publicRoundV2,
   withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
 import {
@@ -236,9 +247,17 @@ function parsePoints(raw: string | null):
 }
 
 /** Apply the probe's points state to a public/private envelope, or leave it. */
-function applyPoints(env: { payload: Record<string, unknown> }) {
+function applyPoints(env: { payload: Record<string, unknown> } & { round_number?: number }) {
   const p = probe.points;
   if (!p) return env;
+  // RMOB2 — the module in play is the round in play, and every module before
+  // it has settled. Only on envelopes that carry a round (the public one).
+  if ("completed_rounds" in env.payload) {
+    env.payload.completed_rounds = p.module - 1;
+    const active = env.payload.active_round as Record<string, unknown> | null;
+    if (active) active.round_number = p.module;
+    env.round_number = p.module;
+  }
   return withPointsScoring(env, {
     moduleNumber: p.module,
     matchLength: 10,
@@ -255,7 +274,7 @@ function publicFor(state: ProbeState, role: string | null) {
   // R1: freeze a role onto the viewer's seat and leave the opponent's null —
   // exactly the shape an admin bot match produces.
   const players = (payload.players as Record<string, unknown>[]).map((p, i) => ({
-    ...p, role: i === 0 ? role : null,
+    ...p, role: i === 0 ? role : probe.opponentRole,
   }));
   payload.players = players;
   // R1 matches carry no progression layer, which is what puts the arena in
@@ -265,6 +284,7 @@ function publicFor(state: ProbeState, role: string | null) {
   if (!probe.legacy) {
     payload.level_thresholds = [0];
     payload.max_level = 1;
+    if (probe.progressionOff) payload.progression_enabled = false;
   } else {
     payload.players = (payload.players as Record<string, unknown>[])
       .map((p) => ({ ...p, role: null }));
@@ -297,6 +317,38 @@ function privateFor(state: ProbeState) {
   return applyPoints(env);
 }
 
+/** RMOB2 — one settled points module, in the shape the backend resolves. */
+function resolvedFor(round: number) {
+  const T = "2026-07-18T12:00:00+00:00";
+  const youScored = round % 3 !== 0;
+  const themScored = round % 2 === 1;
+  const player = (id: string, scored: boolean) => ({
+    player_id: id, class_id: id === VIEWER ? "tank" : "mage",
+    outcome: scored ? "correct" : "incorrect", submitted_at: T,
+    answered_first: id === VIEWER, timed_out: false, selected_ability_id: null,
+    damage: { base_damage_dealt: 0, outgoing_bonus: 0, final_damage_dealt: 0,
+      shield_absorbed: 0, incoming_reduction: 0, final_damage_received: 0 },
+    hp_before: 170, hp_after: 170, reached_zero_hp: false,
+    xp_gained: 0, total_xp_after: 0, level_before: 1, level_after: 1,
+    level_up_events: [], charge_consumed: false, consumed_ability_id: null,
+    remaining_charges: {},
+    carryover: { effects_gained: [], effects_consumed: [], consecutive_correct: 0 },
+    combat_lab_unlock_delta_seconds: 0,
+  });
+  return {
+    match_id: "m1", round_number: round, question_id: `q${round}`,
+    end_reason: "both_answered", started_at: T, original_deadline: T, final_deadline: T,
+    pressure_applied: false,
+    players: [player(VIEWER, youScored), player("userB", themScored)],
+    next_round_duration_seconds: 30, next_round_duration_delta: 0,
+    match_over: false, winner_id: null, completion_reason: null,
+    module_points: modulePointsBlock({
+      [VIEWER]: { base: youScored ? 2 : 0, speed: youScored && round % 2 === 0 ? 1 : 0 },
+      userB: { base: themScored ? 2 : 0 },
+    }),
+  };
+}
+
 /** Mutable, so switching probe state re-serves without a reload. */
 const probe: {
   state: ProbeState; role: string | null; legacy: boolean;
@@ -304,7 +356,11 @@ const probe: {
   questionRoles: string[];
   /** JPM1 — `?pet=` companion for the jungle pet states. */
   pet: string | null;
-} = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], pet: null };
+  /** RMOB2 — `?orole=` opponent role; `?progression=0` live R1 shape. */
+  opponentRole: string | null;
+  progressionOff: boolean;
+} = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], pet: null,
+  opponentRole: null, progressionOff: false };
 
 let installed = false;
 function installInterceptor() {
@@ -338,6 +394,16 @@ function installInterceptor() {
       return json({ status: "complete", match_id: "m1",
         forfeited: true, already_complete: false });
     }
+    // RMOB2 — a settled module of a points state, so the resume backfill (the
+    // real controller path) fills the recent-result history. Deterministic:
+    // the viewer takes every module but each third, the opponent every other.
+    const resolved = /\/rounds\/(\d+)\/resolved$/.exec(path);
+    if (resolved && probe.points && Number(resolved[1]) < probe.points.module) {
+      const round = Number(resolved[1]);
+      return json({ schema_version: "ranked_duel.resolved_round.v2",
+        projection_type: "resolved_round", match_id: "m1", round_number: round,
+        server_time: "2026-07-18T12:00:00+00:00", payload: resolvedFor(round) });
+    }
     if (path.endsWith("/private")) return json(privateFor(probe.state));
     if (path.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
     if (/\/matches\/m1$/.test(path)) return json(publicFor(probe.state, probe.role));
@@ -357,6 +423,10 @@ export default function RankedShellProbe() {
   probe.legacy = params.get("legacy") === "1";
   probe.points = parsePoints(params.get("points"));
   probe.questionRoles = (params.get("qroles") ?? "").split(",").filter(Boolean);
+  const orole = params.get("orole");
+  probe.opponentRole = orole && orole !== "none" ? orole : null;
+  probe.progressionOff = params.get("progression") === "0";
+  const viewerName = params.get("name");
   const pet = params.get("pet");
   probe.pet = pet && ["scorchclaw", "mosstomper", "gustwalker"].includes(pet) ? pet : null;
   // Remount the arena when the probe state changes so the canned round is
@@ -382,10 +452,16 @@ export default function RankedShellProbe() {
           </button>
         ))}
       </div>
-      <Frame size="wide">
+      {params.get("frame") === "0" ? (
         <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}`}
-          matchId="m1" viewerUserId={VIEWER} />
-      </Frame>
+          matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}
+          chrome={<RankedRouteHeader size="wide" />} />
+      ) : (
+        <Frame size="wide">
+          <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}`}
+            matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName} />
+        </Frame>
+      )}
     </div>
   );
 }
