@@ -25,6 +25,7 @@ export type SubjectKind =
   | "objective"
   | "minion"
   | "structure"
+  | "jungle_pet"
   | "none";
 
 export type ClassifiedSubject = {
@@ -155,7 +156,13 @@ export type EnvironmentSubject = {
    * and a `kind === "nexus"` branch here would be the frontend re-deciding
    * something it is not the authority on.
    */
-  kind: "minion" | "objective" | "structure";
+  kind: "minion" | "objective" | "structure" | "jungle_pet";
+  /**
+   * JPM1 — a jungle companion's FORM (`base` / `evolved`). Identity the
+   * backend resolved from the JSA1 unlock stage; the art path already encodes
+   * it, so this only drives the caption. Absent for every other kind.
+   */
+  form?: "base" | "evolved";
 };
 
 /** Parsed payload for combat cooldown calculation questions. */

@@ -50,6 +50,7 @@ import type { RankedRole } from "@/lib/ranked-public/roles";
 import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
 import type { CompactDensity } from "@/lib/question-surface/compactDensity";
 import academyHall from "@/assets/ranked/academy-hall.jpg";
+import { JUNGLE_GRASS_BACKGROUND } from "@/lib/question-surface/jungleAtmosphere";
 
 export interface CompactScenarioBandProps {
   /** Question category (already question-safe). Shown as the band label. */
@@ -91,6 +92,8 @@ export function CompactScenarioBand({ category, density = "plate", roles }: Comp
    * and positioned as a bullet, and it is asset-free so it can never 404.
    */
   const context = density === "context";
+  // JPM1 — Jungle Systems: plate geometry, jungle-grass ground, no watermark.
+  const jungle = density === "jungle";
   // Same formatter the cinematic header uses — the rule moved out of this file
   // unchanged so both presentations of the category read identically.
   const label = formatCategoryLabel(category, "Ranked");
@@ -139,6 +142,22 @@ export function CompactScenarioBand({ category, density = "plate", roles }: Comp
           }}
         />
       )}
+      {jungle && (
+        <img
+          src={JUNGLE_GRASS_BACKGROUND}
+          alt=""
+          aria-hidden
+          data-testid="scenario-compact-jungle-ground"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-60"
+          style={{
+            filter: "brightness(0.7) saturate(0.95)",
+            maskImage:
+              "linear-gradient(to right, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.7) 38%, #000 80%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.7) 38%, #000 80%)",
+          }}
+        />
+      )}
       {/* gold inner hairline ring — echoes the cinematic frame at a smaller scale */}
       <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-[#d4b35a]/15" />
       {/* faint diagonal sheen for a premium (not flat) feel; purely decorative */}
@@ -158,7 +177,7 @@ export function CompactScenarioBand({ category, density = "plate", roles }: Comp
           absolute wrapper takes a definite height from `inset-y-0`, so the 40%
           below is 40% of the plate: a ~28px mark on the original strip, and a
           ~102px one in the arena's 256px region. Decorative and asset-free. */}
-      {!context && (
+      {!context && !jungle && (
       <div
         aria-hidden
         data-testid="scenario-compact-watermark"

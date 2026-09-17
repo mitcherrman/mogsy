@@ -111,6 +111,18 @@ export const ATMOSPHERE_DIM_SCENE: AtmosphereSeating = {
 };
 
 /**
+ * JPM1 — the jungle-grass ground behind a jungle companion. Unlike the
+ * lantern-lit scenes it is a GROUND rather than a place beside the subject, so
+ * it is seated across the whole panel and held dark enough that a 64px
+ * companion portrait on its medallion stays the one thing that reads.
+ */
+export const ATMOSPHERE_JUNGLE_GROUND: AtmosphereSeating = {
+  className: "absolute inset-0 h-full w-full object-cover",
+  filter: "brightness(0.62) saturate(0.95)",
+  opacity: 0.7,
+};
+
+/**
  * Fades the atmosphere art into the panel's dark left and bottom rather than
  * letting it end on a cut-out edge. Two ramps intersected, so a corner gets
  * both. Shared by every subject: it is what makes the layer read as presence

@@ -113,6 +113,15 @@ export function classifySubject(question: QuizQuestion): ClassifiedSubject {
       // the choices, and an unclassified subject has no label to compare. The
       // backend already refuses those four rows a subject, so this is the
       // second lock on the same door rather than the first.
+      // JPM1 — a jungle companion. Classified for the same reason as
+      // "structure": the spoiler check compares the LABEL against the choices.
+      case "jungle_pet":
+        return {
+          kind: "jungle_pet",
+          label: subject.name as string | undefined,
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
+        };
+
       case "structure":
         return {
           kind: "structure",
@@ -493,7 +502,12 @@ export function getSummonerSpellSubject(
  * all unchanged. That is the whole point of a generic reader — the frontend
  * learns that structures are depictable, not what a turret looks like.
  */
-const ENVIRONMENT_SUBJECT_TYPES = new Set(["minion", "objective", "structure"]);
+/**
+ * JPM1 added `jungle_pet` the same way: the backend resolves a jungle companion
+ * and its form from `quiz.jungle_pet_assets` and emits id/name/icon (+ form).
+ * This repo learns that companions are depictable, never which one is which.
+ */
+const ENVIRONMENT_SUBJECT_TYPES = new Set(["minion", "objective", "structure", "jungle_pet"]);
 
 export function getEnvironmentSubject(question: QuizQuestion): EnvironmentSubject | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
@@ -517,6 +531,7 @@ export function getEnvironmentSubject(question: QuizQuestion): EnvironmentSubjec
     name,
     icon,
     kind: subject.type as EnvironmentSubject["kind"],
+    ...(subject.form === "base" || subject.form === "evolved" ? { form: subject.form } : {}),
   };
 }
 

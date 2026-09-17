@@ -58,7 +58,16 @@
  * near-empty rectangle. Interim only: it exists to be replaced by real subject
  * media, not to compete with it.
  */
-export type CompactDensity = "plate" | "context";
+export type CompactDensity = "plate" | "context" | "jungle";
+
+/**
+ * JPM1 — `jungle`: the Jungle Systems plate. PLATE geometry (it still grows
+ * into the reserved region, so nothing about the stage moves), with the
+ * jungle-grass ground in place of the generic watermark diamond. It names no
+ * subject: a media-free smite/quest/reward rule is about the jungle, not about
+ * any companion, and the grass says exactly that and no more.
+ */
+const JUNGLE_CATEGORIES = new Set(["jungle systems"]);
 
 /**
  * The categories whose media-free rows take the context strip.
@@ -111,5 +120,7 @@ function normalizeCategory(category: string | null | undefined): string {
 }
 
 export function resolveCompactDensity(category: string | null | undefined): CompactDensity {
-  return CONTEXT_CATEGORIES.has(normalizeCategory(category)) ? "context" : "plate";
+  const normalized = normalizeCategory(category);
+  if (JUNGLE_CATEGORIES.has(normalized)) return "jungle";
+  return CONTEXT_CATEGORIES.has(normalized) ? "context" : "plate";
 }

@@ -3,6 +3,7 @@ import { ScenarioCardFrame } from "./ScenarioCardFrame";
 import { ScenarioBadge, ScenarioTitle } from "./primitives";
 import {
   ATMOSPHERE_DIM_SCENE,
+  ATMOSPHERE_JUNGLE_GROUND,
   PanelFiligree,
   SUBJECT_MEDIA_GRADIENT,
   SubjectFocalZone,
@@ -10,6 +11,7 @@ import {
   SubjectMediaCaption,
 } from "./SubjectMediaComposition";
 import academyHall from "@/assets/ranked/academy-hall.jpg";
+import { JUNGLE_GRASS_BACKGROUND } from "@/lib/question-surface/jungleAtmosphere";
 
 /**
  * Environment card — the third consumer of the shared subject-media
@@ -61,8 +63,19 @@ export function EnvironmentScenarioCard({ subject }: { subject: EnvironmentSubje
     minion: "Minion",
     objective: "Objective",
     structure: "Structure",
+    jungle_pet: "Jungle Companion",
   };
   const kindLabel = KIND_LABELS[subject.kind];
+  // JPM1 — a jungle companion sits on the Jungle Systems ground rather than
+  // the Academy hall, and its caption states the FORM the backend resolved.
+  const jungle = subject.kind === "jungle_pet";
+  const kindLine = jungle
+    ? subject.form === "evolved"
+      ? "Evolved Companion"
+      : subject.form === "base"
+        ? "Companion"
+        : kindLabel
+    : kindLabel;
 
   return (
     <ScenarioCardFrame
@@ -75,8 +88,8 @@ export function EnvironmentScenarioCard({ subject }: { subject: EnvironmentSubje
       backgroundSlot={
         <SubjectMediaBackdrop
           echoIcon={subject.icon}
-          atmosphereSrc={academyHall}
-          atmosphereSeating={ATMOSPHERE_DIM_SCENE}
+          atmosphereSrc={jungle ? JUNGLE_GRASS_BACKGROUND : academyHall}
+          atmosphereSeating={jungle ? ATMOSPHERE_JUNGLE_GROUND : ATMOSPHERE_DIM_SCENE}
         />
       }
       gradientClass={SUBJECT_MEDIA_GRADIENT}
@@ -97,9 +110,9 @@ export function EnvironmentScenarioCard({ subject }: { subject: EnvironmentSubje
             under a "MINION" line reads as a bug, and the badge above already
             states the family. "Baron Nashor" keeps its OBJECTIVE line, because
             there the kind is the only place the family is named. */}
-        {!subject.name.toLowerCase().endsWith(kindLabel.toLowerCase()) && (
+        {!subject.name.toLowerCase().endsWith(kindLine.toLowerCase()) && (
           <div className="mt-[0.4cqmin] text-[max(0.95cqmin,calc(0.625*var(--sc-fit)))] leading-[min(1.5rem,1.25em)] font-semibold uppercase tracking-[0.24em] text-white/70">
-            {kindLabel}
+            {kindLine}
           </div>
         )}
       </SubjectMediaCaption>

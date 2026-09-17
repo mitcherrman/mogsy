@@ -34,6 +34,9 @@ const QUESTIONS = [
   // labels): cinematic art + both, and a family card + both.
   { id: "stressA", what: "Stress A: max prompt, longest labels, cinematic art" },
   { id: "stressB", what: "Stress B: max Combat Calculation prompt, longest labels" },
+  // JPM1 — a jungle companion subject and a media-free Jungle Systems plate.
+  { id: "junglePet", what: "a Jungle Systems evolved-companion card" },
+  { id: "jungleRule", what: "a media-free Jungle Systems plate" },
 ] as const;
 
 /**

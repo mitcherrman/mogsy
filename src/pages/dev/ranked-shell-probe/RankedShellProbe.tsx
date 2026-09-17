@@ -15,7 +15,7 @@
  *
  * `?q=` selects the question state to serve:
  *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
- *   stressA | stressB | metareflex
+ *   stressA | stressB | metareflex | junglePet | junglePetBase | jungleRule
  * `?role=` freezes a League role onto the viewer's participant.
  * `?qroles=` (RQ1) serves the QUESTION's role(s) as `topic.roles`, e.g.
  *   `?qroles=top` or `?qroles=adc,support`. Independent of `?role=` on
@@ -65,6 +65,7 @@ const VIEWER = "userA";
  */
 export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex",
+  "junglePet", "junglePetBase", "jungleRule",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -104,6 +105,22 @@ const STRESS_OPTIONS = [
   "Split the map: send the top laner to side-lane pressure while the remaining four set deep vision around the Baron pit",
   "Reset as a team, buy completed items with the accumulated gold, and re-approach the Baron with a full item advantage",
 ];
+
+/**
+ * JPM1 — a jungle companion subject in the verbatim backend blob shape. The
+ * icon is absolutised against THIS origin only because the probe runs with no
+ * backend: production serves the same relative path from the API's `/assets`.
+ */
+function junglePetPresentation(pet: string, form: "base" | "evolved") {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return {
+    assets: { subject: {
+      type: "jungle_pet", id: pet, name: pet[0].toUpperCase() + pet.slice(1), form,
+      icon: `${origin}/assets/ranked/jungle_pets/${pet}_${form}.png`,
+    } },
+    presentation: { role: "context", timing: "question", spoiler: false },
+  };
+}
 
 function questionFor(state: ProbeState) {
   const question = baseQuestionFor(state) as Record<string, unknown>;
@@ -173,6 +190,27 @@ function baseQuestionFor(state: ProbeState) {
         options: PHYSICAL_DAMAGE_Q.options.map((o) => o.label),
         category: PHYSICAL_DAMAGE_Q.category ?? null,
         presentation: PHYSICAL_DAMAGE_PRESENTATION };
+    // JPM1 — Jungle Systems: an evolved pet, a base pet, and a media-free rule.
+    case "junglePet": {
+      const pet = probe.pet ?? "scorchclaw";
+      return { question_id: "q-jungle-pet",
+        prompt: "Scorchclaw's Slash burns the champion you hit at full stacks. How much "
+          + "of the target's maximum health does that burn deal as true damage?",
+        options: ["3%", "4%", "5%", "6%"], category: "Jungle Systems",
+        presentation: junglePetPresentation(pet, "evolved") };
+    }
+    case "junglePetBase": {
+      const pet = probe.pet ?? "mosstomper";
+      return { question_id: "q-jungle-pet-base",
+        prompt: "Your jungle companion has not evolved yet. Which buff will it grant at its final evolution?",
+        options: ["A shield", "Bonus movement speed", "A burn", "Bonus gold"],
+        category: "Jungle Systems", presentation: junglePetPresentation(pet, "base") };
+    }
+    case "jungleRule":
+      return { question_id: "q-jungle-rule",
+        prompt: "How long does it take a spent Smite charge to recharge?",
+        options: ["60 seconds", "75 seconds", "90 seconds", "120 seconds"],
+        category: "Jungle Systems" };
     default:
       return CHAMPION_OPTION_QUESTION;
   }
@@ -264,7 +302,9 @@ const probe: {
   state: ProbeState; role: string | null; legacy: boolean;
   points: { module: number; you: number; them: number } | null;
   questionRoles: string[];
-} = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [] };
+  /** JPM1 — `?pet=` companion for the jungle pet states. */
+  pet: string | null;
+} = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], pet: null };
 
 let installed = false;
 function installInterceptor() {
@@ -317,6 +357,8 @@ export default function RankedShellProbe() {
   probe.legacy = params.get("legacy") === "1";
   probe.points = parsePoints(params.get("points"));
   probe.questionRoles = (params.get("qroles") ?? "").split(",").filter(Boolean);
+  const pet = params.get("pet");
+  probe.pet = pet && ["scorchclaw", "mosstomper", "gustwalker"].includes(pet) ? pet : null;
   // Remount the arena when the probe state changes so the canned round is
   // re-read; the controller caches its snapshot for the life of the mount.
   const [, force] = useState(0);
