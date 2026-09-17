@@ -96,8 +96,11 @@ export const RESULT_TONE: Record<ResultKind, {
     plate: "border-destructive/55 bg-destructive/10",
     Icon: XCircle,
   },
+  // RD1 — a timeout is the viewer's miss, and in a scored duel it pays
+  // nothing; muted grey read as "no result". It takes the danger rose the
+  // incorrect verdict uses. The plate and its motion are unchanged.
   "timed-out": {
-    text: "text-muted-foreground",
+    text: "text-[#e2757b]",
     plate: "border-white/20 bg-white/[0.04]",
     Icon: Hourglass,
   },
@@ -276,6 +279,24 @@ export function BeatBody({
   );
 }
 
+/**
+ * RD1 — the record's tone in a SCORED duel.
+ *
+ * `both-correct` exists for the hp match, where a traded round is a clash and
+ * not a win, so it is brass. In a points match both players simply scored:
+ * the viewer's `CORRECT +2` is the viewer's own positive result, whatever the
+ * opponent did, and it takes the green. Only the tone moves — `resultKind`
+ * itself is unchanged, because the module rail still reads it.
+ */
+export function pointsRecordKind(
+  kind: ResultKind, feedback: PointsFeedbackView | null,
+): ResultKind {
+  if (feedback !== null && kind === "both-correct" && feedback.basePoints > 0) {
+    return "correct";
+  }
+  return kind;
+}
+
 export function RoundResultBeat({
   settlement,
   viewerSlot,
@@ -297,7 +318,7 @@ export function RoundResultBeat({
   // `resultHeadline` stays the one authority on the verdict WORDS, so this and
   // any other result surface can never disagree about what a round was called.
   const { verdict } = resultHeadline(viewer, opponent);
-  const kind = resultKind(viewer, opponent);
+  const kind = pointsRecordKind(resultKind(viewer, opponent), feedback);
   const consequence = resultConsequence(viewer, feedback, pointsMatch);
   /**
    * THE LOUD LINE. In a points match it is the verdict AND what that verdict

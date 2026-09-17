@@ -49,6 +49,7 @@
  * about the match's clock.
  */
 import { useEffect, useRef, useState } from "react";
+import type { DuelStanding } from "@/lib/ranked-core/duelState";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import type { CentralStageView } from "@/lib/ranked-core/centralStage";
 import type { TimerView } from "@/lib/ranked-core/viewTypes";
@@ -85,6 +86,17 @@ export interface CentralStageProps {
    */
   durationNote?: (duration: string) => string;
   expiredNote?: string;
+  /**
+   * RD1 — the duel's standing, for the clock face's SECONDARY line.
+   *
+   * When present it replaces "of M:SS shared round" while the clock is
+   * running: a duel's score state is worth that slot, the round's configured
+   * length is not. Paused and expired keep their own wording, because those
+   * are states of the clock and outrank the score. Absent (the Daily, the
+   * tutorial, an hp match) leaves the line exactly as it was. The label and
+   * the standing are both projected upstream; this only draws them.
+   */
+  standing?: { label: string; standing: DuelStanding } | null;
 }
 
 /**
@@ -125,7 +137,7 @@ export function useCentralStage({
 
 export function CentralStage({
   timer, result, moduleTitle, moduleEventId, label = "Round timer",
-  durationNote, expiredNote = "Time's up",
+  durationNote, expiredNote = "Time's up", standing = null,
 }: CentralStageProps) {
   const stage = useCentralStage({ result, moduleTitle, moduleEventId });
   const expired = timer !== null && timer.remainingSeconds <= 0;
@@ -182,9 +194,12 @@ export function CentralStage({
               data-testid="timer-value"
               data-timer-state={timer.paused ? "paused"
                 : expired ? "zero" : urgent ? "urgent" : "running"}
+              // RD1 — `ranked-timer-urgent` is a glow breath on the digits
+              // (text-shadow/opacity only), so the primary line keeps its size.
               className={`font-mono text-4xl font-black tabular-nums leading-none
                 sm:text-5xl min-[1500px]:text-6xl ${
-                expired || urgent ? "text-destructive" : "text-foreground"}`}
+                expired || urgent ? "text-destructive" : "text-foreground"} ${
+                urgent && !expired && !timer.paused ? "ranked-timer-urgent" : ""}`}
             >
               {format(timer.remainingSeconds)}
             </div>
@@ -218,6 +233,13 @@ export function CentralStage({
                 ? <span data-testid="timer-paused">Paused</span>
                 : expired
                 ? <span role="status" data-testid="central-timer-expired">{expiredNote}</span>
+                : standing
+                ? (
+                  <span data-testid="central-duel-standing" data-standing={standing.standing}
+                    className="ranked-duel-standing font-black uppercase tracking-[0.18em]">
+                    {standing.label}
+                  </span>
+                )
                 : durationNote
                   ? durationNote(format(timer.durationSeconds))
                   : `of ${format(timer.durationSeconds)} shared round`}

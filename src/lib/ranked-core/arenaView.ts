@@ -23,6 +23,7 @@ import type {
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleSegmentActions } from "./modules/types";
 import type { ArenaCardBeat } from "./cardBeat";
+import type { DuelStanding } from "./duelState";
 import type { ArenaReportIdentity } from "./reportSnapshot";
 export type { ArenaReportIdentity };
 import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
@@ -96,6 +97,17 @@ export type ArenaRail =
      * passes nothing draws no pops at all.
      */
     award?: AwardEvent | null;
+    /**
+     * RD1 — this flank's standing in a points duel, from `projectDuelState`,
+     * or absent. Relayed to the score tally as a data attribute; the arena
+     * never compares the two scores itself.
+     */
+    standing?: DuelStanding | null;
+    /**
+     * RD1 — the lead-change EVENT id that just put this flank ahead, or absent.
+     * Reveal-beat only by construction (see `DuelLeadChange`).
+     */
+    leadPulseId?: string | null;
   }
   | { kind: "panel"; node: ReactNode };
 
@@ -149,6 +161,18 @@ export interface ArenaHeaderView {
    * built on there being no opponent must not be made to claim one by the
    * frame it renders in.
    */
+  /**
+   * RD1 — factual end-of-match pressure beside `title`: `FINAL 3` / `FINAL`,
+   * from the frozen match length and the module in play. Absent everywhere
+   * else. Drawn on the title's own line, so it costs the strip no height.
+   */
+  titleSuffix?: string | null;
+  /**
+   * RD1 — the viewer's duel standing for the clock face's secondary line
+   * (`LEADING +2` / `TIED` / `TRAILING 1`), or absent for any mode that is
+   * not a live points duel.
+   */
+  standing?: { label: string; standing: DuelStanding } | null;
   timerNotes?: {
     /** Replaces "of M:SS shared round". Receives the formatted duration. */
     duration?: (duration: string) => string;
