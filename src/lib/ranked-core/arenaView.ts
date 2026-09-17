@@ -23,7 +23,7 @@ import type {
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleSegmentActions } from "./modules/types";
 import type { ArenaCardBeat } from "./cardBeat";
-import type { DuelStanding } from "./duelState";
+import type { DuelEventView, DuelStanding } from "./duelState";
 import type { ArenaReportIdentity } from "./reportSnapshot";
 export type { ArenaReportIdentity };
 import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
@@ -173,6 +173,12 @@ export interface ArenaHeaderView {
    * not a live points duel.
    */
   standing?: { label: string; standing: DuelStanding } | null;
+  /**
+   * RD1 — the transient duel event for the settlement being revealed
+   * (`YOU TAKE THE LEAD` …), shown on the result face under the verdict.
+   * Reveal-gated by construction; absent for every other mode.
+   */
+  duelEvent?: DuelEventView | null;
   timerNotes?: {
     /** Replaces "of M:SS shared round". Receives the formatted duration. */
     duration?: (duration: string) => string;

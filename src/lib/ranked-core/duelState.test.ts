@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  duelProgressSuffix, duelStandingLabel, projectDuelState, projectLeadChange,
+  duelEventOf, duelProgressSuffix, duelStandingLabel, projectDuelState, projectLeadChange,
 } from "./duelState";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import type { ResolvedRoundView } from "./viewTypes";
@@ -45,14 +45,14 @@ describe("persistent standing", () => {
     const s = state(pub({ you: 9, opp: 6 }));
     expect(s.standing).toBe("leading");
     expect(s.margin).toBe(3);
-    expect(duelStandingLabel(s)).toBe("LEADING +3");
+    expect(duelStandingLabel(s)).toBe("AHEAD BY 3 PTS");
   });
 
   it("trailing, with the margin as a plain number", () => {
     const s = state(pub({ you: 4, opp: 5 }));
     expect(s.standing).toBe("trailing");
     expect(s.margin).toBe(1);
-    expect(duelStandingLabel(s)).toBe("TRAILING 1");
+    expect(duelStandingLabel(s)).toBe("BEHIND BY 1 PT");
   });
 
   it("tied, including the 0-0 opening", () => {
@@ -164,5 +164,57 @@ describe("formats it does not describe", () => {
     const solo = { ...pub(), players: [{ playerId: "you", score: 1 }] } as unknown as PublicRoundView;
     expect(projectDuelState({ publicRound: solo, viewerUserId: "you", settlement: null, revealing: false }))
       .toBeNull();
+  });
+});
+
+describe("standing wording", () => {
+  it.each([
+    [10, 9, "AHEAD BY 1 PT"], [10, 8, "AHEAD BY 2 PTS"],
+    [8, 9, "BEHIND BY 1 PT"], [5, 8, "BEHIND BY 3 PTS"], [4, 4, "TIED"],
+  ])("%i-%i reads %s", (you, opp, label) => {
+    expect(duelStandingLabel(state(pub({ you, opp })))).toBe(label);
+  });
+});
+
+describe("the transient duel event", () => {
+  const event = (p: PublicRoundView, s: ResolvedRoundView | null, revealing = true) =>
+    duelEventOf(state(p, s, revealing));
+
+  it("viewer takes the lead", () => {
+    expect(event(pub({ you: 8, opp: 6 }), settled(3, [5, 8], [6, 6])))
+      .toEqual({ label: "YOU TAKE THE LEAD", tone: "positive" });
+  });
+
+  it("opponent takes the lead", () => {
+    expect(event(pub({ you: 6, opp: 8 }), settled(3, [6, 6], [5, 8])))
+      .toEqual({ label: "OPPONENT TAKES THE LEAD", tone: "danger" });
+  });
+
+  it("into a tie from either side is TIED UP", () => {
+    expect(event(pub({ you: 4, opp: 4 }), settled(2, [4, 4], [2, 4])))
+      .toEqual({ label: "TIED UP", tone: "neutral" });
+    expect(event(pub({ you: 4, opp: 4 }), settled(2, [1, 4], [4, 4])))
+      .toEqual({ label: "TIED UP", tone: "neutral" });
+  });
+
+  it("staying tied, or 0-0 at load, is not an event", () => {
+    expect(event(pub({ you: 5, opp: 5 }), settled(2, [3, 5], [3, 5]))).toBeNull();
+    expect(event(pub({ you: 0, opp: 0 }), null)).toBeNull();
+    expect(event(pub({ you: 0, opp: 0 }), null, false)).toBeNull();
+  });
+
+  it("a speed bonus with no change of standing", () => {
+    expect(event(pub({ you: 12, opp: 6 }), settled(4, [9, 12, 1], [6, 6])))
+      .toEqual({ label: "SPEED BONUS +1", tone: "bonus" });
+  });
+
+  it("a lead change outranks a speed bonus earned on the same module", () => {
+    expect(event(pub({ you: 8, opp: 6 }), settled(3, [5, 8, 1], [6, 6]))?.label)
+      .toBe("YOU TAKE THE LEAD");
+  });
+
+  it("nothing outside the reveal beat, whatever the settlement says", () => {
+    expect(event(pub({ you: 8, opp: 6 }), settled(3, [5, 8, 1], [6, 6]), false)).toBeNull();
+    expect(duelEventOf(null)).toBeNull();
   });
 });

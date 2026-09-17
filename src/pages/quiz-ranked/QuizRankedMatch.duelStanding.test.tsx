@@ -181,11 +181,18 @@ describe("the score columns", () => {
       { timeout: 4000 });
     expect(screen.getByTestId("score-userA")).toHaveAttribute("data-standing", "leading");
     expect(screen.getByTestId("score-userB")).toHaveAttribute("data-standing", "trailing");
+    // The header says what just happened, over the verdict and award.
+    expect(screen.getByTestId("central-duel-event")).toHaveTextContent("YOU TAKE THE LEAD");
+    expect(screen.getByTestId("central-result-verdict")).toHaveTextContent("CORRECT +2");
     // The column that lost the lead gets no glow at all.
     expect(screen.queryByTestId("ranked-lead-pulse-userB")).toBeNull();
     // And the glow is gone with the beat.
     await waitFor(() => expect(screen.queryByTestId("ranked-lead-pulse-userA")).toBeNull(),
       { timeout: 4000 });
+    // ...and so is the phrase; the persistent standing takes the line back.
+    await waitFor(() => expect(standingLine()).toHaveTextContent("AHEAD BY 2 PTS"),
+      { timeout: 6000 });
+    expect(screen.queryByTestId("central-duel-event")).toBeNull();
   });
 
   it("does not glow when a module moves the score but not the lead", async () => {
@@ -201,6 +208,8 @@ describe("the score columns", () => {
       { timeout: 4000 });
     expect(screen.queryByTestId("ranked-lead-pulse-userA")).toBeNull();
     expect(screen.queryByTestId("ranked-lead-pulse-userB")).toBeNull();
+    // Still leading, no bonus: no transient phrase at all.
+    expect(screen.queryByTestId("central-duel-event")).toBeNull();
   });
 });
 
@@ -224,13 +233,16 @@ describe("a reconnect", () => {
       .toHaveAttribute("data-history-total", "1"));
     expect(screen.queryByTestId("ranked-lead-pulse-userA")).toBeNull();
     expect(screen.queryByTestId("ranked-lead-pulse-userB")).toBeNull();
+    // No transient phrase either — only the persistent standing.
+    expect(screen.queryByTestId("central-duel-event")).toBeNull();
+    await waitFor(() => expect(standingLine()).toHaveTextContent("AHEAD BY 2 PTS"));
   });
 });
 
 describe("the header", () => {
   it("states the viewer's standing under the clock", async () => {
     await mount();
-    await waitFor(() => expect(standingLine()).toHaveTextContent("TRAILING 1"),
+    await waitFor(() => expect(standingLine()).toHaveTextContent("BEHIND BY 1 PT"),
       { timeout: 4000 });
     expect(standingLine()).toHaveAttribute("data-standing", "trailing");
   });
