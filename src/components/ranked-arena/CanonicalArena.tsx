@@ -502,8 +502,17 @@ export function CanonicalArena({
              one vertical extent instead of the rails floating at their own
              natural height against a much taller centre (the §14 constraint).
              The panels themselves still size their own CONTENT — stretching
-             the track is not stretching the content. */}
-      <div className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
+             the track is not stretching the content.
+
+          RS1 — `lg:grid-rows-[minmax(0,1fr)]`: the ROW is the grid's height.
+          An implicit `auto` row is sized from its items' content, and the
+          stage's `min(reserve, 100%)` cannot resolve `100%` while the track is
+          being sized — so the row floored at 480.5px. Wherever the grid got
+          less (any viewport under ~754px tall, measured 447px at 1280x720) the
+          stage and both Player Columns overflowed it by the difference onto
+          the status strip, and the media never yielded. A definite track is
+          what lets the existing shrink chain reach the art. */}
+      <div className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch min-[1500px]:gap-4">
         {/* `h-full` on BOTH the track cell and the panel: `items-stretch`
             stretches the grid cell, and without this the panel would still sit
             at its own content height inside a taller cell — which is the

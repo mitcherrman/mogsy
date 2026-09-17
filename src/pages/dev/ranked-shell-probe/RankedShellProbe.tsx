@@ -14,7 +14,7 @@
  * moved into a browser so real boxes can be measured.
  *
  * `?q=` selects the question state to serve:
- *   short | long | opts2 | opts4 | media | metareflex
+ *   short | opts2 | opts4 | realP99 | realMax | stress | media | family | metareflex
  * `?role=` freezes a League role onto the viewer's participant.
  * `?points=` serves an RP1 v2 POINTS match instead of the hp one, as
  *   `module:you-them` (e.g. `?points=1:0-0`, `?points=6:11-8`,
@@ -33,6 +33,9 @@ import {
 import {
   CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION,
 } from "@/lib/ranked-core/adapters/optionMediaFixtures";
+import {
+  PHYSICAL_DAMAGE_PRESENTATION, PHYSICAL_DAMAGE_Q,
+} from "@/lib/question-surface/familyLayoutFixtures";
 import { RANKED_API_BASE } from "@/lib/ranked-public/client";
 
 const VIEWER = "userA";
@@ -57,7 +60,7 @@ const VIEWER = "userA";
  * dictate the normal UI.
  */
 export const PROBE_STATES = [
-  "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "metareflex",
+  "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "metareflex",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -119,6 +122,12 @@ function questionFor(state: ProbeState) {
         options: STRESS_OPTIONS, category: "macro" };
     case "media":
       return ITEM_OPTION_QUESTION;
+    // RS1: a Combat Calculation (family band) round — the longest RA7 prompt.
+    case "family":
+      return { question_id: PHYSICAL_DAMAGE_Q.questionId, prompt: PHYSICAL_DAMAGE_Q.prompt,
+        options: PHYSICAL_DAMAGE_Q.options.map((o) => o.label),
+        category: PHYSICAL_DAMAGE_Q.category ?? null,
+        presentation: PHYSICAL_DAMAGE_PRESENTATION };
     default:
       return CHAMPION_OPTION_QUESTION;
   }
