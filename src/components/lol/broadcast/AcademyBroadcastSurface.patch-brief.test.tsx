@@ -470,17 +470,27 @@ describe("briefIconSizing — parchment-fit shared icon ramp", () => {
 
     // Explicit columns are the reflow lever: the 26.18-shaped right page
     // chooses three columns rather than a third Nerfs row before Adjustments.
+    if (buffs === 6 && nerfs === 5 && adjustments === 1) {
+      expect(layout.columns).toBe(3);
+    }
     expect(layout.columns).toBeGreaterThanOrEqual(3);
     expect(layout.columns).toBeLessThanOrEqual(6);
     expect(layout.minPx).toBeGreaterThanOrEqual(10);
-    expect(layout.maxPx).toBeLessThanOrEqual(28);
+    expect(layout.maxPx).toBeLessThanOrEqual(48);
 
     // These cover the supported center-tome range in academy-layout.ts:
     // last-resort narrow lane, normal constrained lane, and desktop cap.
     for (const width of [200, 250, 380]) {
       const geometry = briefGeometryAt(spread, width);
       expect(geometry.bottomClearance).toBeGreaterThanOrEqual(0);
-      expect(Math.max(...geometry.pageHeights)).toBeLessThanOrEqual(geometry.availableHeight);
+      // The left page includes the real Read full report action block; the
+      // right is Nerfs stacked over Adjustments.
+      expect(geometry.pageHeights[0]).toBeLessThanOrEqual(geometry.availableHeight);
+      expect(geometry.pageHeights[1]).toBeLessThanOrEqual(geometry.availableHeight);
+    }
+
+    if (buffs === 6 && nerfs === 5 && adjustments === 1) {
+      expect(briefGeometryAt(spread, 380).iconPx).toBeGreaterThan(28);
     }
   });
 });
