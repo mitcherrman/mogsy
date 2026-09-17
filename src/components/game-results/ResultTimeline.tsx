@@ -27,6 +27,7 @@
 import { useState } from "react";
 import { Check, Minus, X } from "lucide-react";
 import type { ResultTimelineEntry } from "./model";
+import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 
 const MARK = {
   correct: {
@@ -115,6 +116,9 @@ export function ResultTimeline({
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#f0d78c]">
               {unitLabel.replace(/s$/, "")} {active.index}
             </span>
+            {/* RQ1 — the module's question role(s), left of its subject. Only
+                when the mode supplied them; nothing otherwise. */}
+            <QuestionRoleEmblems roles={active.roles} size="sm" className="self-center" />
             <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-200">
               {active.label}
             </span>

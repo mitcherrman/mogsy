@@ -1093,6 +1093,11 @@ const RESULT_SUBJECTS = [
   "Champion Abilities", "Item Costs",
 ];
 
+const RESULT_ROLES: (RankedRole[] | null)[] = [
+  null, null, ["top", "jungle", "mid", "adc", "support"], null,
+  null, ["adc", "support"], null, null, ["top", "jungle", "mid", "support"], null,
+];
+
 function resultReviewFixture(wins: readonly boolean[]): MatchReviewView {
   return {
     schemaVersion: "ranked_duel.match_review.v1",
@@ -1108,7 +1113,11 @@ function resultReviewFixture(wins: readonly boolean[]): MatchReviewView {
       canonicalQuestionRef: `ranked:v2-${i + 30}`,
       revealed: true,
       iconHint: { kind: "category", key: RESULT_SUBJECTS[i], icon: null },
-      topic: null,
+      // RQ1: frozen question roles on the champion modules (1 to 5 roles),
+      // none on the global ones — what a real review carries.
+      topic: RESULT_ROLES[i]
+        ? { category: "abilities", tier: null, iconHint: null, roles: RESULT_ROLES[i] }
+        : null,
       question: {
         prompt: `Module ${i + 1} — a ${RESULT_SUBJECTS[i]} question.`,
       },
