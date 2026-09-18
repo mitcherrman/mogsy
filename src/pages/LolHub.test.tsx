@@ -925,17 +925,21 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
 
   it("reuses Mogzy as an accessible mobile interaction host without changing book taps", () => {
     const { container } = renderHub();
+    const zone = screen.getByTestId("mobile-mogzy-zone");
     const mobileGuide = screen.getByTestId("mogzy-guide-mobile");
     const trigger = within(mobileGuide).getByRole("button", {
       name: "Mogzy, Academy guide",
     });
-    expect(trigger).toHaveClass("h-11");
+    expect(zone).toHaveClass("relative", "h-28", "items-center", "justify-center", "md:hidden");
+    expect(zone).not.toHaveClass("absolute");
+    expect(trigger).toHaveClass("h-24");
+    expect(mobileGuide).toHaveClass("h-full", "w-full", "items-center", "justify-center");
     expect(screen.getByTestId("mogzy-guide-bubble-mobile")).toHaveAttribute(
       "data-visible",
       "false",
     );
     expect(screen.getByTestId("mogzy-guide-bubble-mobile")).toHaveClass(
-      "left-[calc(100%+0.25rem)]",
+      "left-[calc(50%+1.5rem)]",
       "top-0",
     );
 

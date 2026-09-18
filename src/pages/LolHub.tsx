@@ -729,14 +729,18 @@ export default function LolHub() {
             </p>
           </header>
 
-          {/* Mobile Mogzy reuses the desktop guide's mascot, float, parchment
+          {/* Mobile Mogzy gets a real central stage between the title and the
+              volumes. It reuses the desktop guide's mascot, float, parchment
               bubble host and click reaction, but not its hover-driven card
-              travel. The 44px labelled button occupies only the hat/head band;
-              the rest of the artwork may overlap the first volume without
-              stealing that link's tap target. No announcement copy is
+              travel. The zone participates in layout, so the books and Patch
+              Report move down as one composition instead of Mogzy being
+              squeezed into an absolute overlay. No announcement copy is
               fabricated here: the real Academy Updates surface remains the
               policy/data-backed component below Patch Report. */}
-          <div className="pointer-events-none absolute left-1 top-[calc(var(--app-header-h)+0.1rem)] z-20 md:hidden">
+          <div
+            data-testid="mobile-mogzy-zone"
+            className="pointer-events-none relative z-20 mt-2 flex h-28 w-full items-center justify-center md:hidden"
+          >
             <MogzyHubGuide activeModeId={null} variant="mobile" />
           </div>
 

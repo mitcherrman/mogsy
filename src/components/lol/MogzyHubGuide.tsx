@@ -84,7 +84,7 @@ export default function MogzyHubGuide({
   if (activeMode) lastModeRef.current = activeMode;
   const displayMode = activeMode ?? lastModeRef.current;
   const bubblePlacementClass = mobile
-    ? "left-[calc(100%+0.25rem)] top-0 w-[min(190px,calc(100vw-5.5rem))] motion-reduce:[transform:translate(0,0)]"
+    ? "left-[calc(50%+1.5rem)] top-0 w-[min(160px,42vw)] motion-reduce:[transform:translate(0,0)]"
     : "bottom-[calc(100%-6px)] left-1/2 w-[clamp(170px,15vw,230px)] motion-reduce:[transform:translate(-50%,0)]";
   const bubbleStateClass = mobile
     ? activeMode
@@ -153,7 +153,7 @@ export default function MogzyHubGuide({
       data-testid={mobile ? "mogzy-guide-mobile" : undefined}
       className={
         mobile
-          ? "academy-mogzy-float relative flex h-11 justify-center"
+          ? "academy-mogzy-float relative flex h-full w-full items-center justify-center"
           : "academy-mogzy-float absolute inset-x-0 bottom-[16%] flex justify-center"
       }
     >
@@ -310,7 +310,7 @@ export default function MogzyHubGuide({
                 aria-label="Mogzy, Academy guide"
                 data-testid="mogzy-guide-trigger-mobile"
                 onClick={handleReact}
-                className="pointer-events-auto relative h-11 w-[clamp(58px,17vw,68px)] overflow-visible rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/80"
+                className="pointer-events-auto relative h-24 w-[clamp(84px,24vw,100px)] overflow-visible rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/80"
               >
                 <img
                   src="/mascot/mogzy-mascot-base-v1.png"
