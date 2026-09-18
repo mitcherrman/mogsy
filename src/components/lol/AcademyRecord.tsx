@@ -207,7 +207,12 @@ export default function AcademyRecord() {
           <p className="academy-commons-record-empty text-center text-[13.5px] leading-relaxed text-[#c3cfe2]/80">
             {progressLoading
               ? "Retrieving your record…"
-              : "Nothing is written here yet. Answer your first question and the Academy will start keeping your record — standing, accuracy, streak and all."}
+              : <>
+                  <span className="md:hidden">Answer your first question to open your Academy record.</span>
+                  <span className="hidden md:inline">
+                    Nothing is written here yet. Answer your first question and the Academy will start keeping your record — standing, accuracy, streak and all.
+                  </span>
+                </>}
           </p>
         )}
 

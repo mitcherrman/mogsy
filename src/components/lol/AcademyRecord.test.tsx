@@ -117,6 +117,9 @@ describe("AcademyRecord — the empty register", () => {
     expect(screen.getByTestId("academy-record-primary").textContent).toContain(
       "Begin Studying",
     );
+    expect(screen.getByText("Answer your first question to open your Academy record.")).toHaveClass(
+      "md:hidden",
+    );
   });
 
   it("treats a signed-in account with no activity exactly the same way", async () => {

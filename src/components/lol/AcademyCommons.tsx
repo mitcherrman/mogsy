@@ -224,7 +224,7 @@ export default function AcademyCommons({
         {/* The two supporting sheets. Subordinate to both mounts above them by
             size, by surface (ink on paper, not gilt on navy) and by order. */}
         <div className="academy-commons-mount-support grid shrink-0 gap-4 sm:grid-cols-2 lg:gap-6">
-          <HubPremiumPanel />
+          <HubPremiumPanel hideOnMobile />
           <HubCommunitySection />
         </div>
 

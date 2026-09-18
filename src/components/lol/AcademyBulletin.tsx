@@ -42,6 +42,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { usePremiumSession } from "@/hooks/usePremiumSession";
+import { getHubPremiumPresentation } from "@/components/lol/hubPremiumPresentation";
 import { useAcademyBulletin, type BulletinNotice } from "@/components/lol/useAcademyBulletin";
 
 /** Long enough to read a short notice; far too slow to read as a slideshow. */
@@ -75,6 +78,8 @@ function commonsOnScreen(): boolean {
 }
 
 export interface AcademyBulletinProps {
+  /** Responsive override for deterministic tests; production uses the shared 768px hook. */
+  mobile?: boolean;
   /**
    * Pin the board to one notice by id, for a deterministic screenshot or a
    * test. Internal only: nothing in the product renders a control that sets
@@ -94,13 +99,38 @@ export interface AcademyBulletinProps {
 }
 
 export default function AcademyBulletin({
+  mobile: mobileOverride,
   initialNoticeId,
   autoRotate = true,
   daySeed,
 }: AcademyBulletinProps = {}) {
   const { user } = useAuth();
   const isIdentified = !!user?.id && !(user as { is_anonymous?: boolean }).is_anonymous;
-  const notices = useAcademyBulletin({ isIdentified, userId: user?.id ?? null, daySeed });
+  const sourceNotices = useAcademyBulletin({ isIdentified, userId: user?.id ?? null, daySeed });
+  const detectedMobile = useIsMobile();
+  const mobile = mobileOverride ?? detectedMobile;
+  const { proStatus } = usePremiumSession();
+  const notices = useMemo(() => {
+    if (!mobile) return sourceNotices;
+
+    const premium = getHubPremiumPresentation(proStatus);
+    const premiumNotice: BulletinNotice = {
+      id: "premium-membership",
+      kind: "premium",
+      eyebrow: premium.eyebrow,
+      title: premium.title,
+      body: premium.body,
+      ctaLabel: premium.ctaLabel,
+      ctaTo: premium.ctaTo,
+    };
+
+    return [
+      premiumNotice,
+      ...sourceNotices.filter(
+        (notice) => notice.id !== "personal-standing" && notice.id !== "personal-streak",
+      ),
+    ];
+  }, [mobile, proStatus, sourceNotices]);
 
   const [index, setIndex] = useState(0);
   /** Set once the reader drives the board themselves. Never unset. */

@@ -101,4 +101,14 @@ describe("HubPremiumPanel", () => {
     // Motion is restrained and opts out under prefers-reduced-motion.
     expect(cta.className).toMatch(/motion-reduce:hover:translate-y-0/);
   });
+
+  it("can yield its phone slot to the shared Bulletin treatment", () => {
+    mocks.proStatus = "free";
+    render(
+      <MemoryRouter>
+        <HubPremiumPanel hideOnMobile />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("hub-premium-panel")).toHaveClass("hidden", "md:flex");
+  });
 });

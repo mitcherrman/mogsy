@@ -48,19 +48,22 @@
  */
 import { Link } from "react-router-dom";
 import { Crown, ArrowRight, Check } from "lucide-react";
-import { PREMIUM_ROUTE } from "@/lib/premium-routes";
 import { usePremiumSession } from "@/hooks/usePremiumSession";
+import { getHubPremiumPresentation } from "@/components/lol/hubPremiumPresentation";
 
-export default function HubPremiumPanel() {
+export default function HubPremiumPanel({ hideOnMobile = false }: { hideOnMobile?: boolean }) {
   const { proStatus } = usePremiumSession();
-  const isMember = proStatus === "pro";
+  const presentation = getHubPremiumPresentation(proStatus);
+  const { isMember } = presentation;
 
   return (
     <section
       data-testid="hub-premium-panel"
       data-premium-state={isMember ? "member" : "promo"}
       aria-labelledby="hub-premium-heading"
-      className="academy-commons-notice academy-commons-support academy-commons-support-premium relative flex min-w-0 flex-col justify-center rounded-[2px] px-5 py-4 [transform:rotate(0.3deg)]"
+      className={`academy-commons-notice academy-commons-support academy-commons-support-premium relative min-w-0 flex-col justify-center rounded-[2px] px-5 py-4 [transform:rotate(0.3deg)] ${
+        hideOnMobile ? "hidden md:flex" : "flex"
+      }`}
     >
       <span
         aria-hidden
@@ -80,23 +83,21 @@ export default function HubPremiumPanel() {
         </span>
         <div className="min-w-0">
           <span className="academy-commons-notice-soft academy-commons-support-eyebrow block text-[10px] font-bold uppercase tracking-[0.28em]">
-            {isMember ? "Member in good standing" : "Academy Membership"}
+            {presentation.eyebrow}
           </span>
           <h2
             id="hub-premium-heading"
             className="academy-commons-notice-ink academy-commons-support-title text-[1.05rem] font-semibold leading-tight"
             style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
           >
-            Mogzy Premium
+            {presentation.title}
           </h2>
         </div>
       </div>
 
       {/* One sentence, naming exactly the two features that actually ship. */}
       <p className="academy-commons-notice-soft academy-commons-support-blurb mt-2 text-[12.5px] leading-snug">
-        {isMember
-          ? "Your membership is active. Your full quiz history and every question you’ve missed are unlocked."
-          : "Keep your full quiz history, review every question you’ve missed, and read how your results are moving over time."}
+        {presentation.body}
       </p>
 
       {/* Ink on paper, not a gold plate: the Record and the Bulletin own the
@@ -104,11 +105,11 @@ export default function HubPremiumPanel() {
           hierarchy this pass exists to create. The tap target and the focus
           ring are unchanged. */}
       <Link
-        to={PREMIUM_ROUTE}
+        to={presentation.ctaTo}
         data-testid="hub-premium-cta"
         className="academy-commons-support-cta mt-3 inline-flex min-h-[52px] items-center justify-center gap-2 self-start rounded-[2px] border border-[#7a6230]/45 bg-[#e6d9b6]/45 px-4 py-2 text-[13px] font-semibold text-[#2c2417] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#f0e5c8]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
       >
-        {isMember ? "View Premium" : "Explore Premium"}
+        {presentation.ctaLabel}
         <ArrowRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
       </Link>
     </section>

@@ -54,7 +54,7 @@ import { deriveProfileStats } from "@/lib/profile/view-model";
 import { academyTierLabel, parseAcademyProgression } from "@/lib/progression/academy";
 import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory";
 
-export type BulletinNoticeKind = "personal" | "quiz" | "mechanics" | "proplay";
+export type BulletinNoticeKind = "personal" | "quiz" | "mechanics" | "proplay" | "premium";
 
 export interface BulletinNotice {
   id: string;

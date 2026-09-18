@@ -38,11 +38,15 @@ const mocks = vi.hoisted(() => ({
   progress: null as Record<string, unknown> | null,
   tables: null as Record<string, unknown> | null,
   tablesThrows: false,
+  proStatus: "free" as "unknown" | "pro" | "free",
   reducedMotion: false,
   requestedCategories: [] as string[],
 }));
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mocks.authUser }) }));
+vi.mock("@/hooks/usePremiumSession", () => ({
+  usePremiumSession: () => ({ proStatus: mocks.proStatus }),
+}));
 vi.mock("@/pages/quiz-ranked/useRankedMatchHistory", () => ({
   useRankedMatchHistory: (_limit?: number, opts?: { enabled?: boolean }) => {
     mocks.rankedCalls.push(opts);
@@ -228,6 +232,7 @@ beforeEach(() => {
   mocks.requestedCategories = [];
   mocks.tables = TABLES;
   mocks.tablesThrows = false;
+  mocks.proStatus = "free";
   mocks.reducedMotion = false;
   vi.stubGlobal("matchMedia", (q: string) => ({
     matches: mocks.reducedMotion && q.includes("reduced-motion"),
@@ -294,6 +299,61 @@ describe("what the board is allowed to say", () => {
     expect(text).not.toMatch(/\d+\s*-\s*\d+/); // no scoreline
     expect(text).not.toMatch(/\b\d+(\.\d+)?%/); // no win rate
     expect(screen.getByTestId("academy-bulletin-cta").getAttribute("href")).toBe("/lol/pro-play");
+  });
+});
+
+describe("mobile running order", () => {
+  beforeEach(() => {
+    mocks.authUser = { id: "u1", is_anonymous: false };
+    mocks.rankedLoadState = "ready";
+    mocks.rankedEntries = [MATCH];
+    mocks.progress = PROGRESS_ACTIVE;
+  });
+
+  it("opens on Premium, then retains every useful non-duplicative family", async () => {
+    renderBulletin({ mobile: true, daySeed: 0 });
+    await settled(5);
+
+    const ids: string[] = [];
+    const kinds: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const board = screen.getByTestId("academy-bulletin");
+      ids.push(board.dataset.bulletinNotice!);
+      kinds.push(board.dataset.bulletinKind!);
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
+
+    expect(ids).toEqual([
+      "premium-membership",
+      "personal-match-m-1",
+      `quiz-${QUESTION.id}`,
+      "mechanics-base_systems.study.fountain",
+      "proplay-invitation",
+    ]);
+    expect(kinds).toEqual(["premium", "personal", "quiz", "mechanics", "proplay"]);
+    expect(ids).not.toContain("personal-streak");
+    expect(ids).not.toContain("personal-standing");
+  });
+
+  it("uses the same entitlement branch as the desktop Premium slip", async () => {
+    mocks.proStatus = "pro";
+    renderBulletin({ mobile: true, initialNoticeId: "premium-membership" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin-title")).toHaveTextContent("Mogzy Premium"),
+    );
+    expect(screen.getByText("Member in good standing")).toBeTruthy();
+    expect(screen.getByTestId("academy-bulletin-cta")).toHaveTextContent("View Premium");
+    expect(screen.getByTestId("academy-bulletin-cta")).toHaveAttribute("href", "/lol/premium");
+  });
+
+  it("leaves the desktop board's personal running order unchanged", async () => {
+    renderBulletin({ mobile: false, daySeed: 0, initialNoticeId: "personal-streak" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinNotice).toBe(
+        "personal-streak",
+      ),
+    );
+    expect(screen.queryByText("Mogzy Premium")).toBeNull();
   });
 });
 
