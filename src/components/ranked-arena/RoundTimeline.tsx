@@ -306,14 +306,22 @@ export function RoundTimeline({
             className="ranked-timeline-marker pointer-events-none absolute inset-y-0 left-0
               flex flex-col items-center justify-end gap-[3px]"
           >
-            <svg viewBox="0 0 12 6" className="ranked-timeline-caret h-[5px] w-3" aria-hidden>
-              <path d="M6 6L0.8 0h10.4z" fill="#f0d78c" />
-            </svg>
-            <span className="ranked-timeline-marker-ring block h-8 w-full max-w-[2.25rem]
-              rounded-[0.3rem]" />
+            {/* The ring's column mirrors the node's column exactly (box, gap,
+                ordinal row), so wherever flex puts — or shrinks — the plate,
+                it puts the ring. The caret therefore rides OUTSIDE the flow,
+                hung 3px above the ring, rather than being a third row the node
+                does not have (on the 42px phone strip that extra row squashed
+                the ring and pushed it off the plate). */}
+            <span className="ranked-timeline-marker-ring relative block h-8 w-full max-w-[2.25rem]
+              rounded-[0.3rem]">
+              <svg viewBox="0 0 12 6" aria-hidden
+                className="ranked-timeline-caret absolute bottom-full left-1/2 mb-[3px] h-[5px] w-3 -translate-x-1/2">
+                <path d="M6 6L0.8 0h10.4z" fill="#f0d78c" />
+              </svg>
+            </span>
             {/* Reserves the ordinal row so the ring lands on the plate, not on
-                the number under it. */}
-            <span className="block h-[9px] w-full" />
+                the number under it. Never shrinks, as the ordinal text does not. */}
+            <span className="block h-[9px] w-full shrink-0" />
           </div>
         )}
       </div>
