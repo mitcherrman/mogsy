@@ -54,6 +54,16 @@ const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
 const HUD_NOTICE_DISCOVERY = "See what's playing!";
 const HUD_NOTICE_PROMPTS = ["Turn on the Radio!", HUD_NOTICE_DISCOVERY] as const;
 
+/**
+ * Temporary global kill switch for the HUD discovery nudge.
+ *
+ * Keep the implementation below intact so restoring the prompt is one small,
+ * reviewable change. While false, no prompt DOM, dismissal hit region, storage
+ * write, or copy-rotation timer is created at any viewport width. The actual
+ * radio trigger and transport panel are independent and remain fully active.
+ */
+export const HUD_RADIO_NOTICE_ENABLED = false;
+
 const iconButton =
   "inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors " +
   "hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
@@ -87,16 +97,21 @@ function PlayingIndicator({ active, still }: { active: boolean; still: boolean }
 export default function AcademyRadioControls({
   variant = "desktop",
   className,
+  hudNoticeEnabled = HUD_RADIO_NOTICE_ENABLED,
 }: {
   variant?: Variant;
   className?: string;
+  /** Test/preview seam; production callers inherit the global switch above. */
+  hudNoticeEnabled?: boolean;
 }) {
   const radio = useAcademyRadio();
   const reducedMotion = useReducedMotion() === true;
   const [panelOpen, setPanelOpen] = useState(false);
   const [promptIndex, setPromptIndex] = useState(0);
   // Read once, at mount, so a dismissed notice never flashes before it is hidden.
-  const [noticeDismissed, setNoticeDismissed] = useState(() => isRadioNoticeDismissed());
+  const [noticeDismissed, setNoticeDismissed] = useState(
+    () => hudNoticeEnabled && isRadioNoticeDismissed(),
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   const panelId = `academy-radio-panel-${variant}`;
@@ -140,13 +155,19 @@ export default function AcademyRadioControls({
   useEffect(() => {
     // Rotating copy is motion. Reduced motion keeps the first prompt still, and
     // a notice that is down to one string has nothing to rotate.
-    if (variant !== "hud" || reducedMotion || noticeDismissed || !canPromptToTuneIn) return;
+    if (
+      !hudNoticeEnabled ||
+      variant !== "hud" ||
+      reducedMotion ||
+      noticeDismissed ||
+      !canPromptToTuneIn
+    ) return;
     const timer = window.setInterval(
       () => setPromptIndex((index) => (index + 1) % HUD_NOTICE_PROMPTS.length),
       7000,
     );
     return () => window.clearInterval(timer);
-  }, [variant, reducedMotion, noticeDismissed, canPromptToTuneIn]);
+  }, [hudNoticeEnabled, variant, reducedMotion, noticeDismissed, canPromptToTuneIn]);
 
   /**
    * One dismissal for both routes into it — clicking the notice, and using the
@@ -154,7 +175,7 @@ export default function AcademyRadioControls({
    * visit; it is a nudge, and a nudge only earns one showing.
    */
   const dismissNotice = () => {
-    if (variant !== "hud" || noticeDismissed) return;
+    if (!hudNoticeEnabled || variant !== "hud" || noticeDismissed) return;
     setNoticeDismissed(true);
     dismissRadioNotice();
   };
@@ -269,7 +290,7 @@ export default function AcademyRadioControls({
   if (variant === "mobile" || variant === "hud") {
     const control = (
       <div className={cn(variant === "mobile" && "sm:hidden", className)}>
-        {variant === "hud" && !noticeDismissed && (
+        {hudNoticeEnabled && variant === "hud" && !noticeDismissed && (
           /* A temporary nudge hanging under the entire top-right HUD hub, not
              a fixture of the bar: absolutely positioned, so it reserves no
              space and nothing in the HUD cluster moves when it appears or goes

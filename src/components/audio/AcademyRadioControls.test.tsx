@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import AcademyRadioControls from "./AcademyRadioControls";
+import AcademyRadioControls, { HUD_RADIO_NOTICE_ENABLED } from "./AcademyRadioControls";
 import {
   DEFAULT_MUSIC_VOLUME,
   getRadioSnapshot,
@@ -262,145 +262,114 @@ describe("Academy Radio controls — desktop and mobile share one transport", ()
   });
 });
 
-/**
- * The HUD notice is a small, temporary nudge hanging under the top-right Radio
- * control — not a fixture of the bar. These specs pin where it sits, that its
- * copy is only the two approved strings, and that it goes away for good once
- * the visitor has answered it either way.
- */
-describe("Academy Radio controls — HUD notice", () => {
-  const notice = () => screen.getByTestId("academy-radio-hud-prompt");
+/** The notice implementation remains available behind one global switch. */
+describe("Academy Radio controls — temporarily disabled HUD notice", () => {
   const trigger = () => screen.getByTestId("academy-radio-hud-trigger");
 
-  it("hangs directly below the Radio control rather than inside the bar", () => {
-    render(<AcademyRadioControls variant="hud" />);
-
-    // Same anchor box as the control, and after it in the DOM: the notice is
-    // positioned off the trigger, not laid out beside it in the HUD cluster.
-    expect(notice().parentElement).toBe(trigger().parentElement);
-    expect(
-      trigger().compareDocumentPosition(notice()) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(notice()).toHaveClass("absolute", "top-full", "right-0");
-  });
-
-  it("is sized by its copy — no fixed box, so it can shift nothing", () => {
-    render(<AcademyRadioControls variant="hud" />);
-
-    expect(notice()).toHaveClass("w-fit", "whitespace-nowrap");
-    expect(notice()).not.toHaveClass("w-36");
-    expect(notice()).not.toHaveClass("h-8");
-  });
-
-  it("rotates only the two approved strings while the radio is still silent", () => {
+  it("keeps the restorable switch off and mounts no prompt or rotation timer", () => {
     vi.useFakeTimers();
     render(<AcademyRadioControls variant="hud" />);
 
-    expect(notice().textContent).toBe("Turn on the Radio!");
-    act(() => vi.advanceTimersByTime(7000));
-    expect(notice().textContent).toBe("See what's playing!");
-    act(() => vi.advanceTimersByTime(7000));
-    expect(notice().textContent).toBe("Turn on the Radio!");
-
-    expect(notice()).not.toHaveTextContent(/Tune In to listen/i);
-    expect(screen.queryByText(/Tune In to listen/i)).toBeNull();
+    expect(HUD_RADIO_NOTICE_ENABLED).toBe(false);
+    expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
+    expect(screen.queryByText("See what's playing!")).toBeNull();
+    expect(screen.queryByText("Turn on the Radio!")).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
     vi.useRealTimers();
   });
 
-  it("holds the notice still under reduced motion", () => {
-    mocks.reducedMotion = true;
-    vi.useFakeTimers();
+  it("does not create dismissal state or an invisible hit region", () => {
     render(<AcademyRadioControls variant="hud" />);
-
-    expect(notice().textContent).toBe("Turn on the Radio!");
-    act(() => vi.advanceTimersByTime(21_000));
-
-    expect(notice().textContent).toBe("Turn on the Radio!");
-    expect(screen.getByTestId("academy-radio-hud-prompt")).toBeTruthy();
-    vi.useRealTimers();
-  });
-
-  it("dismisses when the notice itself is clicked", () => {
-    render(<AcademyRadioControls variant="hud" />);
-
-    fireEvent.click(notice());
 
     expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
-    expect(localStorage.getItem(RADIO_STORAGE_KEYS.noticeSeen)).toBe("true");
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.noticeSeen)).toBeNull();
   });
 
-  it("dismisses when the Radio control is used instead", () => {
+  it("leaves the radio trigger and transport panel functional", () => {
     render(<AcademyRadioControls variant="hud" />);
 
     fireEvent.click(trigger());
 
     expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.noticeSeen)).toBeNull();
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("academy-radio-panel-hud")).toBeTruthy();
+  });
+});
+
+describe("Academy Radio controls — dormant HUD notice implementation", () => {
+  const notice = () => screen.getByTestId("academy-radio-hud-prompt");
+  const trigger = () => screen.getByTestId("academy-radio-hud-trigger");
+  const renderNotice = () =>
+    render(<AcademyRadioControls variant="hud" hudNoticeEnabled />);
+
+  it("retains the original zero-layout-space placement for later restoration", () => {
+    renderNotice();
+    expect(notice().parentElement).toBe(trigger().parentElement?.parentElement);
+    expect(notice()).toHaveClass(
+      "absolute",
+      "top-full",
+      "right-0",
+      "w-fit",
+      "whitespace-nowrap",
+    );
+  });
+
+  it("still rotates only the two approved strings when explicitly enabled", () => {
+    vi.useFakeTimers();
+    renderNotice();
+    expect(notice()).toHaveTextContent("Turn on the Radio!");
+    act(() => vi.advanceTimersByTime(7000));
+    expect(notice()).toHaveTextContent("See what's playing!");
+    act(() => vi.advanceTimersByTime(7000));
+    expect(notice()).toHaveTextContent("Turn on the Radio!");
+    vi.useRealTimers();
+  });
+
+  it("keeps the enabled notice still under reduced motion", () => {
+    mocks.reducedMotion = true;
+    vi.useFakeTimers();
+    renderNotice();
+    act(() => vi.advanceTimersByTime(21_000));
+    expect(notice()).toHaveTextContent("Turn on the Radio!");
+    vi.useRealTimers();
+  });
+
+  it("retains both dismissal paths for later restoration", () => {
+    const first = renderNotice();
+    fireEvent.click(notice());
+    expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
     expect(localStorage.getItem(RADIO_STORAGE_KEYS.noticeSeen)).toBe("true");
-    // The control still does its own job.
+
+    first.unmount();
+    localStorage.clear();
+    renderNotice();
+    fireEvent.click(trigger());
+    expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.noticeSeen)).toBe("true");
     expect(trigger()).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("stays dismissed on the next mount", () => {
-    const first = render(<AcademyRadioControls variant="hud" />);
-    fireEvent.click(notice());
-    first.unmount();
-
-    render(<AcademyRadioControls variant="hud" />);
-
-    expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
-  });
-
-  it("drops the invitation once the radio is actually audible", async () => {
-    render(<AcademyRadioControls variant="hud" />);
-    expect(notice().textContent).toBe("Turn on the Radio!");
-
+  it("retains the discovery fallback after the station becomes audible or manually muted", async () => {
+    renderNotice();
     await act(async () => { await playRadio(); });
-
-    // Nothing to turn on any more — discovery is all that is left to offer.
-    expect(getRadioSnapshot().isAudible).toBe(true);
-    expect(notice().textContent).toBe("See what's playing!");
-  });
-
-  it("does not rotate the invitation back in once audible", async () => {
-    render(<AcademyRadioControls variant="hud" />);
-    await act(async () => { await playRadio(); });
-
-    // Fake timers only for the rotation window, so nothing async runs under them.
-    vi.useFakeTimers();
-    act(() => vi.advanceTimersByTime(21_000));
-    vi.useRealTimers();
-
-    expect(notice().textContent).toBe("See what's playing!");
-  });
-
-  it("does not nag a visitor who muted the radio themselves", async () => {
-    render(<AcademyRadioControls variant="hud" />);
-    await act(async () => { await playRadio(); });
-
+    expect(notice()).toHaveTextContent("See what's playing!");
     act(() => setRadioMuted(true));
-
-    expect(getRadioSnapshot().muteReason).toBe("manual");
-    expect(notice().textContent).toBe("See what's playing!");
+    expect(notice()).toHaveTextContent("See what's playing!");
   });
 
-  it("keeps the invitation while startup has not succeeded yet", async () => {
-    // Autoplay refused: the station has never sounded, so turning it on really
-    // is the next step and the invitation is still the honest copy.
+  it("retains the invitation when playback is blocked", async () => {
     play.mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
-    render(<AcademyRadioControls variant="hud" />);
-
+    renderNotice();
     await act(async () => { await playRadio(); });
-
     expect(getRadioSnapshot().status).toBe("blocked");
-    expect(notice().textContent).toBe("Turn on the Radio!");
+    expect(notice()).toHaveTextContent("Turn on the Radio!");
   });
 
-  it("is never a toast and never announces itself", () => {
-    const { baseElement } = render(<AcademyRadioControls variant="hud" />);
-
+  it("keeps the optional nudge silent to assistive technology", () => {
+    const { baseElement } = renderNotice();
     expect(baseElement.querySelector('[role="status"], [role="alert"]')).toBeNull();
     expect(notice()).toHaveAttribute("aria-hidden", "true");
-    expect(screen.queryByLabelText(/Pause Academy Radio/i)).toBeNull();
   });
 });
 
