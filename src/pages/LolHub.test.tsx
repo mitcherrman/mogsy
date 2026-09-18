@@ -654,7 +654,7 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
   const react = (container: HTMLElement) =>
     container.querySelector<HTMLElement>('[data-testid="mogzy-guide-react"]')!;
   const mascot = (container: HTMLElement) =>
-    container.querySelector<HTMLImageElement>('img[src*="mogzy-mascot-base"]')!;
+    facing(container).querySelector<HTMLImageElement>('img[src*="mogzy-mascot-base"]')!;
   const card = (container: HTMLElement, id: HubGuideModeId) =>
     container.querySelector<HTMLElement>(`[data-guide-mode="${id}"]`)!;
 
@@ -921,6 +921,29 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
     for (const image of screen.getAllByTestId("mobile-academy-book-image")) {
       expect(image.getAttribute("src")).toContain("book-spine-flat-v2.png");
     }
+  });
+
+  it("reuses Mogzy as an accessible mobile interaction host without changing book taps", () => {
+    const { container } = renderHub();
+    const mobileGuide = screen.getByTestId("mogzy-guide-mobile");
+    const trigger = within(mobileGuide).getByRole("button", {
+      name: "Mogzy, Academy guide",
+    });
+    expect(trigger).toHaveClass("h-11");
+    expect(screen.getByTestId("mogzy-guide-bubble-mobile")).toHaveAttribute(
+      "data-visible",
+      "false",
+    );
+    expect(screen.getByTestId("mogzy-guide-bubble-mobile")).toHaveClass(
+      "left-[calc(100%+0.25rem)]",
+      "top-0",
+    );
+
+    fireEvent.click(trigger);
+    expect(screen.getByTestId("mogzy-guide-react-mobile").className).toContain(
+      "mogzy-click-react",
+    );
+    expect(container.querySelectorAll('[data-testid="mobile-academy-book"]')).toHaveLength(4);
   });
 });
 

@@ -525,8 +525,10 @@
    volumes sit above it untouched — at 1440x900 the ramp is still fully opaque
    past Mogzy's book stack — and only the empty floor and the pedestal's base
    dissolve, which reads as the room receding into shadow. */
-.academy-hero-fade {
+.academy-hub-page {
   --academy-hero-fade-band: 90px;
+}
+.academy-hero-fade {
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000 0,
@@ -547,8 +549,26 @@
   );
 }
 @media (min-width: 768px) {
-  .academy-hero-fade {
+  .academy-hub-page {
     --academy-hero-fade-band: 130px;
+  }
+}
+
+/* Mobile Hall/Commons continuity. The shell reserves the HUD band above an
+   ordinary page; LolHub cancels it so the library painting begins at the real
+   viewport top, then restores the same space as content padding. At the other
+   end the Commons starts one fade-band early, behind the Hall. The existing
+   alpha mask therefore reveals the actual Commons painting rather than body
+   colour, while equal Commons padding keeps every below-fold mount at its
+   previous document position. No seam colour is painted. */
+@media (max-width: 767px) {
+  .academy-hub-page .academy-hall {
+    z-index: 1;
+  }
+  .academy-hub-page .academy-commons {
+    z-index: 0;
+    margin-top: calc(-1 * var(--academy-hero-fade-band));
+    padding-top: var(--academy-hero-fade-band);
   }
 }
 

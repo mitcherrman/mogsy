@@ -148,12 +148,32 @@ describe("the hub holds its geometry before the painting decodes", () => {
   it("reserves the full viewport for the above-the-fold section", () => {
     renderHub();
     const section = backgroundImg().closest("section")!;
-    // Full-bleed under the floating HUD: the section owns a true 100dvh and
-    // cancels the shell's header padding with an equal negative margin, so
-    // the painting reaches the viewport top without overflowing the document.
+    // Full-bleed under the floating HUD: both phone and desktop cancel the
+    // shell's header padding so the painting reaches the viewport top.
     expect(section.className).toContain("md:min-h-[100dvh]");
-    expect(section.className).toContain("md:-mt-[var(--app-header-h)]");
+    expect(section.className).toContain("-mt-[var(--app-header-h)]");
+    expect(section.className).not.toContain("md:-mt-[var(--app-header-h)]");
     expect(section.className).toContain("relative");
+  });
+
+  it("restores the HUD clearance as mobile content padding", () => {
+    const { container } = renderHub();
+    const title = screen.getByTestId("academy-mobile-title");
+    const content = title.closest(".relative.z-10")!;
+    expect(content.className).toContain("pt-[calc(var(--app-header-h)+0.75rem)]");
+    expect(container.querySelector(".academy-hub-page")).not.toBeNull();
+  });
+
+  it("overlaps the real Commons artwork beneath the mobile alpha fade", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync("src/index.css", "utf8");
+    const mobile = css.slice(
+      css.indexOf("@media (max-width: 767px)"),
+      css.indexOf("}", css.indexOf(".academy-hub-page .academy-commons")) + 1,
+    );
+    expect(mobile).toContain("margin-top: calc(-1 * var(--academy-hero-fade-band))");
+    expect(mobile).toContain("padding-top: var(--academy-hero-fade-band)");
+    expect(mobile).not.toContain("background-color");
   });
 
   it("keeps the painting out of flow so it cannot push content", () => {

@@ -600,7 +600,7 @@ export default function LolHub() {
   );
 
   return (
-    <div>
+    <div className="academy-hub-page">
       <SEOHead
         title="Mogzy LoL Quiz | League of Legends Trivia and Training"
         description="Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account."
@@ -638,7 +638,7 @@ export default function LolHub() {
       <section
         data-hub-screen="hall"
         data-testid="academy-hall"
-        className="relative w-full md:-mt-[var(--app-header-h)] md:min-h-[100dvh] md:flex md:flex-col overflow-hidden"
+        className="academy-hall relative z-[1] -mt-[var(--app-header-h)] w-full overflow-hidden md:z-auto md:min-h-[100dvh] md:flex md:flex-col"
       >
         {/* Full-bleed library background. One <picture> rather than two <img>
             elements hidden by CSS: the browser resolves the media query itself
@@ -686,7 +686,7 @@ export default function LolHub() {
             below ~1000px viewports, min-h-driven above), and the whole
             reclaimed band becomes clean air between the radio dock and Mogzy
             (see the guide wrapper's matching 3.25rem offset in the lane). */}
-        <div className="relative z-10 flex w-full flex-1 flex-col px-4 md:px-3 lg:px-4 xl:px-6 pt-3 md:pt-2 pb-6 md:pb-14">
+        <div className="relative z-10 flex w-full flex-1 flex-col px-4 md:px-3 lg:px-4 xl:px-6 pt-[calc(var(--app-header-h)+0.75rem)] md:pt-2 pb-6 md:pb-14">
           {/* Guest signup lives in the global HUD now (GlobalHud's chip and
               account-menu entry) — the old full-width banner that sat here
               competed with the Academy title and its dismissal never
@@ -728,6 +728,17 @@ export default function LolHub() {
               {academyLine}
             </p>
           </header>
+
+          {/* Mobile Mogzy reuses the desktop guide's mascot, float, parchment
+              bubble host and click reaction, but not its hover-driven card
+              travel. The 44px labelled button occupies only the hat/head band;
+              the rest of the artwork may overlap the first volume without
+              stealing that link's tap target. No announcement copy is
+              fabricated here: the real Academy Updates surface remains the
+              policy/data-backed component below Patch Report. */}
+          <div className="pointer-events-none absolute left-1 top-[calc(var(--app-header-h)+0.1rem)] z-20 md:hidden">
+            <MogzyHubGuide activeModeId={null} variant="mobile" />
+          </div>
 
           {/* Screen-reader-only guide descriptions. Each desktop book card
               points here via aria-describedby, so AT announces the mode's

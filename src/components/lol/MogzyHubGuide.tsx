@@ -22,9 +22,14 @@ import {
  */
 export default function MogzyHubGuide({
   activeModeId,
+  variant = "desktop",
 }: {
   activeModeId: HubGuideModeId | null;
+  /** Mobile reuses the same mascot/motion stack without desktop hover travel. */
+  variant?: "desktop" | "mobile";
 }) {
+  const mobile = variant === "mobile";
+  const testSuffix = mobile ? "-mobile" : "";
   const activeMode = activeModeId ? HUB_GUIDE_MODES[activeModeId] : null;
 
   // Horizontal glide, capped at 7vw: the lean values are tuned against the
@@ -78,6 +83,16 @@ export default function MogzyHubGuide({
   const lastModeRef = useRef<HubGuideMode | null>(null);
   if (activeMode) lastModeRef.current = activeMode;
   const displayMode = activeMode ?? lastModeRef.current;
+  const bubblePlacementClass = mobile
+    ? "left-[calc(100%+0.25rem)] top-0 w-[min(190px,calc(100vw-5.5rem))] motion-reduce:[transform:translate(0,0)]"
+    : "bottom-[calc(100%-6px)] left-1/2 w-[clamp(170px,15vw,230px)] motion-reduce:[transform:translate(-50%,0)]";
+  const bubbleStateClass = mobile
+    ? activeMode
+      ? "[transform:translate(var(--guide-bubble-x,0px),var(--guide-bubble-y,0px))] opacity-100"
+      : "[transform:translate(var(--guide-bubble-x,0px),calc(var(--guide-bubble-y,0px)+6px))] opacity-0"
+    : activeMode
+      ? "[transform:translate(calc(-50%+var(--guide-bubble-x,0px)),var(--guide-bubble-y,0px))] opacity-100"
+      : "[transform:translate(calc(-50%+var(--guide-bubble-x,0px)),calc(var(--guide-bubble-y,0px)+6px))] opacity-0";
 
   // --- Facing (mascot animation prototype) -------------------------------
   // The base artwork is drawn facing slightly LEFT: the tome is held out on
@@ -134,13 +149,20 @@ export default function MogzyHubGuide({
 
   return (
     // Idle bob layer — unchanged from the pre-guide hub markup.
-    <div className="academy-mogzy-float absolute inset-x-0 bottom-[16%] flex justify-center">
+    <div
+      data-testid={mobile ? "mogzy-guide-mobile" : undefined}
+      className={
+        mobile
+          ? "academy-mogzy-float relative flex h-11 justify-center"
+          : "academy-mogzy-float absolute inset-x-0 bottom-[16%] flex justify-center"
+      }
+    >
       {/* Contextual lean layer. Separate from the float so the idle keyframe
           and the acknowledgement shift compose instead of fighting over one
           transform. Reduced motion pins Mogzy in place (the bubble still
           carries the information). */}
       <div
-        data-testid="mogzy-guide-lean"
+        data-testid={`mogzy-guide-lean${testSuffix}`}
         // 340ms with a whisper of overshoot (control point y > 1): deliberate
         // glide out, gentle settle — tuned for the ~90px travel; 500ms read
         // as sluggish at this distance and plain ease-out read as mechanical.
@@ -187,9 +209,10 @@ export default function MogzyHubGuide({
             headline, slate body), which is the parchment the hub already
             speaks — Ranked's warmer ink would visibly clash next to it. */}
         <div
-          data-testid="mogzy-guide-bubble"
+          data-testid={`mogzy-guide-bubble${testSuffix}`}
           data-visible={activeMode ? "true" : "false"}
           data-active-mode={activeMode?.id ?? ""}
+          aria-hidden
           style={
             {
               "--guide-bubble-x": bubbleXExpr,
@@ -198,11 +221,7 @@ export default function MogzyHubGuide({
                 "linear-gradient(178deg, rgba(247,239,217,0.97) 0%, rgba(232,218,186,0.95) 46%, rgba(208,190,152,0.97) 100%)",
             } as React.CSSProperties
           }
-          className={`absolute bottom-[calc(100%-6px)] left-1/2 z-10 w-[clamp(170px,15vw,230px)] rounded-lg border border-[#b9934c]/60 bg-[#c6b48f] px-3 py-2 text-center shadow-[inset_0_0_0_1px_rgba(255,248,226,0.45),0_10px_24px_rgba(0,0,0,0.5)] mogzy-lean-bubble motion-reduce:[transform:translate(-50%,0)] ${
-            activeMode
-              ? "[transform:translate(calc(-50%+var(--guide-bubble-x,0px)),var(--guide-bubble-y,0px))] opacity-100"
-              : "[transform:translate(calc(-50%+var(--guide-bubble-x,0px)),calc(var(--guide-bubble-y,0px)+6px))] opacity-0"
-          }`}
+          className={`pointer-events-none absolute z-10 rounded-lg border border-[#b9934c]/60 bg-[#c6b48f] px-3 py-2 text-center shadow-[inset_0_0_0_1px_rgba(255,248,226,0.45),0_10px_24px_rgba(0,0,0,0.5)] mogzy-lean-bubble ${bubblePlacementClass} ${bubbleStateClass}`}
         >
           {displayMode && (
             <>
@@ -231,7 +250,11 @@ export default function MogzyHubGuide({
               gradient's bottom stop so the seam where the tail overlaps the
               bubble's border disappears into the parchment. */}
           <div
-            className="absolute left-[clamp(14px,calc(50%-var(--guide-bubble-x,0px)),calc(100%-14px))] top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[#b9934c]/60 bg-[#d0be98] mogzy-lean-bubble-tail motion-reduce:left-1/2"
+            className={`absolute top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[#b9934c]/60 bg-[#d0be98] mogzy-lean-bubble-tail ${
+              mobile
+                ? "left-3 motion-reduce:left-3"
+                : "left-[clamp(14px,calc(50%-var(--guide-bubble-x,0px)),calc(100%-14px))] motion-reduce:left-1/2"
+            }`}
             aria-hidden
           />
         </div>
@@ -247,7 +270,7 @@ export default function MogzyHubGuide({
             which is also where reduced motion pins it at the unmirrored
             artwork, matching the way the lean layer pins the glide. */}
         <div
-          data-testid="mogzy-guide-facing"
+          data-testid={`mogzy-guide-facing${testSuffix}`}
           data-facing={facing === -1 ? "right" : "left"}
           className="mogzy-facing-turn"
           style={{ "--mogzy-facing": facing } as React.CSSProperties}
@@ -257,7 +280,7 @@ export default function MogzyHubGuide({
               it costs nothing in every other state and Mogzy resumes
               whatever the layers above him are doing (idle bob, or the lean
               of a still-active card) the instant the hop finishes. */}
-          <div ref={reactRef} data-testid="mogzy-guide-react">
+          <div ref={reactRef} data-testid={`mogzy-guide-react${testSuffix}`}>
             {/* Ambient glow + mascot — unchanged from the pre-guide hub markup. */}
             <div
               className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2"
@@ -281,13 +304,31 @@ export default function MogzyHubGuide({
                 would put an unlabelled, purely cosmetic control into the
                 hub's tab order ahead of the cards. Keyboard parity for the
                 guide itself is unchanged — it still rides card focus. */}
-            <img
-              src="/mascot/mogzy-mascot-base-v1.png"
-              alt=""
-              draggable={false}
-              onClick={handleReact}
-              className="pointer-events-auto relative w-[clamp(97px,9.7vw,167px)] cursor-pointer select-none drop-shadow-[0_12px_24px_rgba(0,0,0,0.55)]"
-            />
+            {mobile ? (
+              <button
+                type="button"
+                aria-label="Mogzy, Academy guide"
+                data-testid="mogzy-guide-trigger-mobile"
+                onClick={handleReact}
+                className="pointer-events-auto relative h-11 w-[clamp(58px,17vw,68px)] overflow-visible rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/80"
+              >
+                <img
+                  src="/mascot/mogzy-mascot-base-v1.png"
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  className="pointer-events-none absolute left-1/2 top-0 w-full max-w-none -translate-x-1/2 select-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.58)]"
+                />
+              </button>
+            ) : (
+              <img
+                src="/mascot/mogzy-mascot-base-v1.png"
+                alt=""
+                draggable={false}
+                onClick={handleReact}
+                className="pointer-events-auto relative w-[clamp(97px,9.7vw,167px)] cursor-pointer select-none drop-shadow-[0_12px_24px_rgba(0,0,0,0.55)]"
+              />
+            )}
           </div>
         </div>
       </div>

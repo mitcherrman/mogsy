@@ -15,9 +15,9 @@ type MobileAcademyBook = {
  * original image inside it, so the transparent canvas does not recreate the
  * taller cover silhouette from the previous asset.
  *
- * Later books sit behind earlier ones. The modest four-pixel overlap keeps the
- * volumes visually connected while leaving nearly the entire flatter spine as
- * an unambiguous tap target.
+ * Later books sit behind earlier ones. The twelve-pixel overlap makes the
+ * volumes read as one physical stack while leaving roughly 44px of every
+ * lower spine exposed as an unambiguous tap target at phone widths.
  */
 export default function MobileAcademyBookStack({
   books,
@@ -46,7 +46,7 @@ export default function MobileAcademyBookStack({
             aspectRatio: "2071 / 336",
             left: offsets[index % offsets.length],
             zIndex: books.length - index,
-            marginTop: index === 0 ? undefined : "-0.25rem",
+            marginTop: index === 0 ? undefined : "-0.75rem",
           }}
         >
           <img
