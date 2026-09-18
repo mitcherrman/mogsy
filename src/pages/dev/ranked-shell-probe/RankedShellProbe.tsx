@@ -17,7 +17,11 @@
  *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
  *   stressA | stressB | metareflex | junglePet | junglePetBase | jungleRule |
  *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
- *   carry `?qroles=` as their frozen roles)
+ *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
+ *   base-stat recall) | abilityCost (QF1.2A: a real `ability_cost_rank`
+ *   presentation blob)
+ * `?motif=` (QF1) serves `topic.motif` on the question/segment and `motif` on
+ *   every Mastery challenge, e.g. `?motif=champion_studies`.
  * `?role=` freezes a League role onto the viewer's participant.
  * `?qroles=` (RQ1) serves the QUESTION's role(s) as `topic.roles`, e.g.
  *   `?qroles=top` or `?qroles=adc,support`. Independent of `?role=` on
@@ -85,7 +89,7 @@ const VIEWER = "userA";
  */
 export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex",
-  "masteryRecall", "masteryCompare",
+  "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
   "junglePet", "junglePetBase", "jungleRule",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
@@ -144,8 +148,21 @@ function junglePetPresentation(pet: string, form: "base" | "evolved") {
 }
 
 /** RQ1 — a backend-shaped Mastery slice segment for geometry checks. */
-function masteryChallenge(kind: "recall" | "compare", index: number) {
-  const roles = probe.questionRoles.length ? { roles: probe.questionRoles } : {};
+function masteryChallenge(kind: "recall" | "compare" | "stat", index: number) {
+  const roles = {
+    ...(probe.questionRoles.length ? { roles: probe.questionRoles } : {}),
+    ...(probe.motif ? { motif: probe.motif } : {}),
+  };
+  if (kind === "stat") {
+    return {
+      challenge_index: index, interaction_kind: "atomic_recall",
+      question_family: "champion_base_stat", prompt: `Garen base armor #${index}`,
+      answer_type: "single_choice", answer_options: ["32", "36", "38", "40"],
+      prompt_semantics: { template: "champion_base_stat", champion_display: "Garen",
+        metric: "armor" },
+      comparison_semantics: null, patch_display: "League 26.18", ...roles,
+    };
+  }
   return kind === "recall" ? {
     challenge_index: index, interaction_kind: "atomic_recall",
     question_family: "ability_cooldown", prompt: `Brand Q — ability_cooldown #${index}`,
@@ -168,7 +185,7 @@ function masteryChallenge(kind: "recall" | "compare", index: number) {
   };
 }
 
-function masterySegment(kind: "recall" | "compare") {
+function masterySegment(kind: "recall" | "compare" | "stat") {
   const base = {
     module_id: "mastery_slice", module_version: 1, challenge_count: 3,
     segment_number: 3, phase: "challenges", ability_deadline: null,
@@ -178,25 +195,28 @@ function masterySegment(kind: "recall" | "compare") {
   return {
     meta: { ...base, challenge_index: 0, resolved: false,
       topic: { category: "general", tier: null,
-        icon_hint: { kind: "generic", key: null, icon: null }, roles: probe.questionRoles } },
+        icon_hint: { kind: "generic", key: null, icon: null }, roles: probe.questionRoles,
+        ...(probe.motif ? { motif: probe.motif } : {}) } },
     state: { ...base, active: true,
       own_ability: { selected_ability_id: null, confirmed: false,
         available_ability_ids: [], unavailable_ability_ids: {} },
       opponent_ability_confirmed: false, own_next_challenge_index: 0,
       own_submitted_choices: [null, null, null], own_challenges_completed: 0,
       opponent_challenges_completed: 0, opponent_finished: false, own_finished: false,
-      challenges: { prompt: "Mastery Slice: Brand", challenge_count: 3,
+      challenges: { prompt: kind === "stat" ? "Mastery Slice: Garen" : "Mastery Slice: Brand",
+        challenge_count: 3,
         challenges: [0, 1, 2].map((i) => masteryChallenge(kind, i)) } },
   };
 }
 
 function questionFor(state: ProbeState) {
   const question = baseQuestionFor(state) as Record<string, unknown>;
-  if (probe.questionRoles.length === 0) return question;
+  if (probe.questionRoles.length === 0 && !probe.motif) return question;
   return { ...question, topic: {
     category: "abilities", tier: "hard",
     icon_hint: { kind: "category", key: String(question.category ?? ""), icon: null },
     roles: probe.questionRoles,
+    ...(probe.motif ? { motif: probe.motif } : {}),
   } };
 }
 
@@ -274,6 +294,19 @@ function baseQuestionFor(state: ProbeState) {
         options: ["A shield", "Bonus movement speed", "A burn", "Bonus gold"],
         category: "Jungle Systems", presentation: junglePetPresentation(pet, "base") };
     }
+    // QF1.2A — a pooled `ability_cost_rank` round, with the presentation blob
+    // the backend's renderer produces for it verbatim.
+    case "abilityCost":
+      return { question_id: "qq-ability-cost#r8",
+        prompt: "What is the mana cost of Ahri's Orb of Deception (Q) at rank 1?",
+        options: ["55", "60", "65", "70"], category: "Champion Ability Costs",
+        presentation: { assets: { subject: {
+          type: "combat_cooldown", champion: "Ahri", ability_name: "Orb of Deception",
+          champion_icon: "assets/champions/Ahri/icon.png",
+          ability_icon: "assets/champions/Ahri/Q_AhriQ.png", item_icons: [],
+          ability_slot: "Q", champion_splash: "assets/champions/Ahri/splash/0_default.jpg",
+          champion_loading: "assets/champions/Ahri/loading/0_default.jpg", ability_rank: 1 } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
     case "jungleRule":
       return { question_id: "q-jungle-rule",
         prompt: "How long does it take a spent Smite charge to recharge?",
@@ -352,8 +385,9 @@ function publicFor(state: ProbeState, role: string | null) {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
     payload.segment_state = metaReflexState(0);
-  } else if (state === "masteryRecall" || state === "masteryCompare") {
-    const seg = masterySegment(state === "masteryRecall" ? "recall" : "compare");
+  } else if (state === "masteryRecall" || state === "masteryCompare" || state === "masteryStat") {
+    const seg = masterySegment(state === "masteryRecall" ? "recall"
+      : state === "masteryStat" ? "stat" : "compare");
     payload.question = null;
     payload.segment = seg.meta;
     payload.segment_state = seg.state;
@@ -373,8 +407,9 @@ function privateFor(state: ProbeState) {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
     payload.segment_state = metaReflexState(0);
-  } else if (state === "masteryRecall" || state === "masteryCompare") {
-    const seg = masterySegment(state === "masteryRecall" ? "recall" : "compare");
+  } else if (state === "masteryRecall" || state === "masteryCompare" || state === "masteryStat") {
+    const seg = masterySegment(state === "masteryRecall" ? "recall"
+      : state === "masteryStat" ? "stat" : "compare");
     payload.question = null;
     payload.segment = seg.meta;
     payload.segment_state = seg.state;
@@ -421,6 +456,8 @@ const probe: {
   state: ProbeState; role: string | null; legacy: boolean;
   points: { module: number; you: number; them: number } | null;
   questionRoles: string[];
+  /** QF1 — `?motif=`, served verbatim; the client validates it. */
+  motif: string | null;
   /** JPM1 — `?pet=` companion for the jungle pet states. */
   pet: string | null;
   /** RMOB2 — `?orole=` opponent role; `?progression=0` live R1 shape. */
@@ -432,7 +469,7 @@ const probe: {
   bot: boolean;
   rated: boolean;
   discoveries: boolean;
-} = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], pet: null,
+} = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
   discoveries: true };
 
@@ -690,6 +727,7 @@ export default function RankedShellProbe() {
   probe.legacy = params.get("legacy") === "1";
   probe.points = parsePoints(params.get("points"));
   probe.questionRoles = (params.get("qroles") ?? "").split(",").filter(Boolean);
+  probe.motif = params.get("motif") || null;
   const orole = params.get("orole");
   probe.opponentRole = orole && orole !== "none" ? orole : null;
   probe.progressionOff = params.get("progression") === "0";

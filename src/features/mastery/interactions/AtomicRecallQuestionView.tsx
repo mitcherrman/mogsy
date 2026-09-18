@@ -20,6 +20,7 @@ import { MasteryProgress } from "../player/MasteryProgress";
 import { formatRecallPrompt } from "./formatPromptSemantics";
 import { MasteryInlineReveal } from "./MasteryInlineReveal";
 import type { MasteryQuestionReveal } from "./revealState";
+import { QuestionMotifLayer, motifHostClass } from "@/components/question-surface/QuestionMotifLayer";
 
 export class MasteryAtomicRecallContractError extends Error {
   constructor(message: string) {
@@ -112,7 +113,8 @@ export function AtomicRecallQuestionView({
   };
 
   return (
-    <section aria-label="Question" className="space-y-4" data-testid="mastery-atomic-recall-question">
+    <section aria-label="Question" data-testid="mastery-atomic-recall-question"
+      className={`space-y-4${motifHostClass(question.questionMotif)}`}>
       <div className="space-y-3">
         <MasteryProgress index={question.sequenceIndex} total={total} />
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -189,6 +191,11 @@ export function AtomicRecallQuestionView({
           )}
         </div>
       )}
+      {/* QF1.2 — the motif, last and absolutely positioned (a `space-y`
+          host cannot offset it). An ability recall reads as a study, a stat
+          recall as a dossier; the accent sits in the empty foot. */}
+      <QuestionMotifLayer motif={question.questionMotif}
+        variant={ps.subjectRef ? "study" : "dossier"} />
     </section>
   );
 }

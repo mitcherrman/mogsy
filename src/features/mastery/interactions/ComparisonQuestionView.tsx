@@ -28,6 +28,7 @@ import { MasteryProgress } from "../player/MasteryProgress";
 import { formatComparisonPrompt } from "./formatComparisonSemantics";
 import { MasteryInlineReveal } from "./MasteryInlineReveal";
 import type { MasteryQuestionReveal } from "./revealState";
+import { QuestionMotifLayer, motifHostClass } from "@/components/question-surface/QuestionMotifLayer";
 
 export class MasteryComparisonContractError extends Error {
   constructor(message: string) {
@@ -99,7 +100,8 @@ export function ComparisonQuestionView({
   };
 
   return (
-    <section aria-label="Question" className="space-y-4" data-testid="mastery-comparison-question">
+    <section aria-label="Question" data-testid="mastery-comparison-question"
+      className={`space-y-4${motifHostClass(question.questionMotif)}`}>
       <div className="space-y-3">
         <MasteryProgress index={question.sequenceIndex} total={total} />
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -173,6 +175,9 @@ export function ComparisonQuestionView({
           )}
         </div>
       )}
+      {/* QF1.2 — the motif, last and absolutely positioned (a `space-y`
+          host cannot offset it); a comparison draws the versus variant. */}
+      <QuestionMotifLayer motif={question.questionMotif} variant="versus" />
     </section>
   );
 }

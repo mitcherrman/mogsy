@@ -137,7 +137,7 @@ describe("Mastery Slice motif", () => {
   });
 });
 
-describe("QF1.1 renders nothing", () => {
+describe("motifs with no artwork render nothing", () => {
   const OPEN: InteractionPermissions = {
     canSelectAnswer: true, canChangeAnswer: true, canSelectAbility: true,
     canReviewSubmission: true, canConfirmSubmission: true, canAdvance: false,
@@ -147,7 +147,9 @@ describe("QF1.1 renders nothing", () => {
     options: ["3400", "3300", "3500", "3450"].map((label, index) => ({ id: String(index), index, label })),
   };
 
-  it("the question card DOM is identical with and without a motif", () => {
+  it("the card DOM is identical with no motif and with every not-yet-drawn motif", () => {
+    // QF1.2A draws `champion_studies` only (see QuestionMotifLayer.qf1 tests);
+    // the other four must stay byte-identical to a card with no motif at all.
     const html = (question: QuestionView) => {
       const { container, unmount } = render(
         <InteractiveScenarioSurface question={question} selectedOptionId={null}
@@ -158,9 +160,10 @@ describe("QF1.1 renders nothing", () => {
       return out;
     };
     const plain = html(Q);
-    for (const motif of QUESTION_MOTIFS) {
+    for (const motif of QUESTION_MOTIFS.filter((m) => m !== "champion_studies")) {
       expect(html({ ...Q, motif })).toBe(plain);
     }
+    expect(html({ ...Q, motif: null })).toBe(plain);
     expect(plain).not.toContain("motif");
   });
 });
