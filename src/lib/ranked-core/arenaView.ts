@@ -434,6 +434,8 @@ export interface ArenaTerminalView {
    * passes nothing and its terminal frame is byte-identical.
    */
   identity?: ReactNode;
+  /** RE1 — the frame's header density; see `MatchOverFrame`. Absent = default. */
+  density?: "default" | "compact";
   /**
    * Extra content INSIDE the frame, under the two duelists.
    *

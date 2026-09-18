@@ -10,17 +10,24 @@
  * whose only prominent controls are "again" and "leave" is a PvP scoreboard
  * wearing its coat. So review gets a real button, at the same height as the
  * primary, and only the exit is allowed to look like a link.
+ *
+ * RE1 — `inline` puts all three on ONE row from `sm` up (the exit last and
+ * quiet, at its own width), for an end screen that must fit one viewport. The
+ * weights and the order are unchanged; only the stacking is.
  */
 import { Button } from "@/components/ui/button";
 import type { ResultActions as Actions } from "./model";
 
-export function ResultActions({ actions }: { actions: Actions }) {
+export function ResultActions({ actions, inline = false }: {
+  actions: Actions; inline?: boolean;
+}) {
   const { primary, secondary, tertiary } = actions;
   if (!primary && !secondary && !tertiary) return null;
   return (
-    <div data-testid="result-actions" className="space-y-2">
+    <div data-testid="result-actions" data-layout={inline ? "inline" : "stacked"}
+      className={inline ? "flex flex-col gap-2 sm:flex-row sm:items-center" : "space-y-2"}>
       {(primary || secondary) && (
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className={`flex flex-col gap-2 sm:flex-row ${inline ? "sm:flex-1" : ""}`}>
           {primary && (
             <Button
               type="button"
@@ -54,8 +61,8 @@ export function ResultActions({ actions }: { actions: Actions }) {
           data-testid={tertiary.testId ?? "result-tertiary"}
           disabled={tertiary.disabled}
           onClick={tertiary.onClick}
-          className="min-h-[44px] w-full text-xs font-medium text-muted-foreground
-            hover:text-slate-200"
+          className={`min-h-[44px] w-full text-xs font-medium text-muted-foreground
+            hover:text-slate-200 ${inline ? "sm:w-auto sm:shrink-0 sm:px-4" : ""}`}
         >
           {tertiary.label}
         </Button>

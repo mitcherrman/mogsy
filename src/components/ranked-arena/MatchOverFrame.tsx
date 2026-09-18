@@ -62,6 +62,10 @@ export interface MatchOverFrameProps {
    * is a SLOT rather than a `compact` boolean for the reason `scoreline` is
    * one: what a mode shows about who played is the mode's sentence, and the
    * frame must not learn a second layout to hold it.
+   *
+   * RE1 — `null` (as opposed to absent) means "no identity row": a mode whose
+   * `scoreline` already carries both duelists (Ranked's duel poster) passes
+   * null so the frame neither repeats them nor falls back to the columns.
    */
   identity?: ReactNode;
   /** Optional statistics/summary content slot. */
@@ -70,6 +74,12 @@ export interface MatchOverFrameProps {
   secondaryAction?: MatchOverAction;
   /** R1: does this match have a level/XP layer? Defaults true. */
   progressionEnabled?: boolean;
+  /**
+   * RE1 — `compact` is the header for a mode whose own content frames the
+   * emotion (Ranked's two role mascots): no generic Mogzy pose, tighter
+   * padding, a slightly larger result word. Absent = every existing caller.
+   */
+  density?: "default" | "compact";
 }
 
 const DEFAULT_HEADING: Record<MatchResult, string> = {
@@ -109,19 +119,26 @@ export function MatchOverFrame({
   // arena about whether this match ever had a level/XP layer. Defaults true,
   // so every existing caller is unchanged.
   progressionEnabled = true,
+  density = "default",
 }: MatchOverFrameProps) {
+  const compact = density === "compact";
   return (
     <section
       aria-label="Match over"
       data-testid="match-over-frame"
       data-result={result}
-      className="space-y-4"
+      data-density={density}
+      className={compact ? "space-y-3" : "space-y-4"}
     >
-      <header className="ranked-panel px-4 py-6 text-center space-y-1">
-        <MogzyMascot pose={RESULT_POSE[result]} decorative
-          className="mx-auto mb-2 h-20 w-20 sm:h-24 sm:w-24" />
+      <header className={`ranked-panel px-4 text-center ${
+        compact ? "space-y-0.5 py-2.5 lg:py-3" : "space-y-1 py-6"}`}>
+        {!compact && (
+          <MogzyMascot pose={RESULT_POSE[result]} decorative
+            className="mx-auto mb-2 h-20 w-20 sm:h-24 sm:w-24" />
+        )}
         <div className={`ranked-eyebrow ${RESULT_STYLE[result].eyebrow}`}>{eyebrow ?? "Match Complete"}</div>
-        <h2 className={`text-3xl font-black uppercase tracking-[0.06em] ${RESULT_STYLE[result].heading}`}
+        <h2 className={`font-black uppercase tracking-[0.06em] ${
+          compact ? "text-3xl lg:text-4xl" : "text-3xl"} ${RESULT_STYLE[result].heading}`}
           data-testid="match-over-heading">
           {heading ?? DEFAULT_HEADING[result]}
         </h2>
@@ -144,7 +161,7 @@ export function MatchOverFrame({
           height of a small poster. Capping it at roughly the width it would
           have had beside a second duelist keeps the panel the same OBJECT the
           arena has been showing all match. */}
-      {identity ?? (
+      {identity !== undefined ? identity : (
         <div className={`grid gap-3 ${
           opponent ? "md:grid-cols-2" : "mx-auto w-full max-w-sm"}`}>
           <CombatantPanel combatant={player} showRoundStatus={false}
