@@ -14489,8 +14489,10 @@ html.hub-commons-in-view .hextech-ambience-layer {
     width: 0.875rem;
     height: 0.875rem;
   }
-  /* The cluster pill: 2px of inset instead of 4px, and the signup chip one
-     step smaller. */
+  /* The cluster pill: the approved control boxes already provide their own
+     breathing room, so the phone shell needs no extra horizontal inset or
+     inter-control gap. This reclaims width without changing a single visible
+     mark or the 44px vertical hit extensions above. */
   .global-hud [data-testid="hud-signup-chip"] {
     height: 1.5rem;
     padding-inline: 0.5rem;
@@ -14498,8 +14500,8 @@ html.hub-commons-in-view .hextech-ambience-layer {
   }
   .global-hud nav > div > div:last-child,
   .global-hud > div > div:last-child {
-    gap: 0.125rem;
-    padding: 1px 2px;
+    gap: 0;
+    padding: 1px 0;
   }
   /* The phone Ranked arena starts where the compact strip ends. */
   .ranked-academy[data-phone-arena="true"] {

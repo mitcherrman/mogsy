@@ -395,6 +395,10 @@ describe("LolHub — navigation structure", () => {
     renderHub();
     expect(screen.getByTestId("academy-mobile-title")).toHaveTextContent("MOGZY ACADEMY");
     expect(screen.getByTestId("academy-mobile-title").className).toContain("md:hidden");
+    expect(screen.getByTestId("academy-mobile-title").className).toContain(
+      "[font-size:clamp(1.5rem,7.7vw,1.9rem)]",
+    );
+    expect(screen.getByTestId("academy-mobile-title")).toHaveClass("whitespace-nowrap");
     expect(screen.getByText("Mogzy’s Academy of")).toBeTruthy();
     expect(screen.getByText("Leaguecraft and Technology")).toBeTruthy();
     expect(screen.getByTestId("academy-desktop-title").className).toContain("md:block");
@@ -920,6 +924,12 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
 
     for (const image of screen.getAllByTestId("mobile-academy-book-image")) {
       expect(image.getAttribute("src")).toContain("book-spine-flat-v2.png");
+    }
+    for (const title of within(stack).getAllByText(
+      /Leaguecraft|Combat Simulation|Mogzy Archives|Pro Play/,
+    )) {
+      expect(title.className).toContain("tracking-[0.025em]");
+      expect(title.className).toContain("[font-size:clamp(0.68rem,3.05vw,0.76rem)]");
     }
   });
 

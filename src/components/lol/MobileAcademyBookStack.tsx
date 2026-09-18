@@ -59,7 +59,7 @@ export default function MobileAcademyBookStack({
           />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-[14%] left-[27.25%] right-[27.69%] top-[29%] flex items-center justify-center whitespace-nowrap text-center font-semibold uppercase leading-none tracking-[0.075em] text-[#ead79f] [font-family:'Cinzel','Trajan_Pro','EB_Garamond',Georgia,serif] [font-size:clamp(0.58rem,2.7vw,0.74rem)] [text-shadow:0_2px_3px_rgba(0,0,0,0.95)]"
+            className="pointer-events-none absolute bottom-[14%] left-[27.25%] right-[27.69%] top-[29%] flex items-center justify-center whitespace-nowrap text-center font-semibold uppercase leading-none tracking-[0.025em] text-[#ead79f] [font-family:'Cinzel','Trajan_Pro','EB_Garamond',Georgia,serif] [font-size:clamp(0.68rem,3.05vw,0.76rem)] [text-shadow:0_2px_3px_rgba(0,0,0,0.95)]"
           >
             {book.title}
           </span>

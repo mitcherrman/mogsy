@@ -696,7 +696,7 @@ export default function LolHub() {
           <header className="text-center">
             <h1
               data-testid="academy-mobile-title"
-              className="font-medium uppercase leading-none tracking-[0.16em] text-[#d8c58e] [font-family:'Cinzel','Trajan_Pro','EB_Garamond',Georgia,serif] [font-size:clamp(1.05rem,5.2vw,1.3rem)] [text-shadow:0_2px_3px_rgba(0,0,0,0.8)] md:hidden"
+              className="whitespace-nowrap font-medium uppercase leading-none tracking-[0.16em] text-[#d8c58e] [font-family:'Cinzel','Trajan_Pro','EB_Garamond',Georgia,serif] [font-size:clamp(1.5rem,7.7vw,1.9rem)] [text-shadow:0_2px_3px_rgba(0,0,0,0.8)] md:hidden"
             >
               MOGZY ACADEMY
             </h1>
@@ -739,7 +739,7 @@ export default function LolHub() {
               policy/data-backed component below Patch Report. */}
           <div
             data-testid="mobile-mogzy-zone"
-            className="pointer-events-none relative z-20 mt-2 flex h-28 w-full items-center justify-center md:hidden"
+            className="pointer-events-none relative z-20 -mt-0.5 flex h-28 w-full items-center justify-center md:hidden"
           >
             <MogzyHubGuide activeModeId={null} variant="mobile" />
           </div>
