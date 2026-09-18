@@ -221,6 +221,50 @@ describe("adaptBackendSettlement — exact projection pass-through", () => {
     expect(a.players.p2.reachedZeroHp).toBe(true);
   });
 
+  /**
+   * RE1 — the FINAL module of every RP1 points match. The engine ends a points
+   * match with `segments_complete` (the configured number of modules played),
+   * not a knockout. This reason used to be rejected, so module 10's
+   * settlement was dropped from every points match's history.
+   */
+  const pointsFinal = (winner: string | null) => {
+    const f = fixture("plain-round");
+    f.round_number = 10;
+    f.match_over = true;
+    f.winner_id = winner;
+    (f as { completion_reason: string }).completion_reason = "segments_complete";
+    (f as unknown as { module_points: unknown }).module_points = {
+      [FIXTURE_P1_ID]: { base_points: 2, speed_bonus_points: 1, points_awarded: 3,
+        score_before: 21, score_after: 24 },
+      [FIXTURE_P2_ID]: { base_points: 0, speed_bonus_points: 0, points_awarded: 0,
+        score_before: 15, score_after: 15 },
+    };
+    return f;
+  };
+
+  it("accepts a points match's final module ending `segments_complete`", () => {
+    const a = adapt(pointsFinal(FIXTURE_P1_ID));
+    expect(a.matchOver).toBe(true);
+    expect(a.roundNumber).toBe(10);
+    expect(a.winner).toBe("p1");
+    expect(a.completionReason).toBe("segments_complete");
+  });
+
+  it("accepts a `segments_complete` DRAW with no winner", () => {
+    const a = adapt(pointsFinal(null));
+    expect(a.matchOver).toBe(true);
+    expect(a.winner).toBeNull();
+    expect(a.completionReason).toBe("segments_complete");
+  });
+
+  it("keeps module 10's award halves intact on that final settlement", () => {
+    const a = adapt(pointsFinal(FIXTURE_P1_ID));
+    const award = a.modulePoints?.[FIXTURE_P1_ID];
+    expect(award?.basePoints).toBe(2);
+    expect(award?.speedBonusPoints).toBe(1);
+    expect(a.modulePoints?.[FIXTURE_P2_ID]?.basePoints).toBe(0);
+  });
+
   it("maps non-terminal rounds with null winner and completion reason", () => {
     const a = adapt(fixture("plain-round"));
     expect(a.matchOver).toBe(false);

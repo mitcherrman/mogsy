@@ -188,7 +188,7 @@ export function buildRankedResults(input: RankedResultsInput): GameResultsModel 
   if (discoveries && discoveries.newCount > 0) {
     progress.push({
       key: "discoveries",
-      label: "New questions discovered",
+      label: "New questions",
       value: `+${discoveries.newCount}`,
       delta: discoveries.newCount,
       icon: "collection",

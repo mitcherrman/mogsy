@@ -164,7 +164,11 @@ export interface AdaptedSettlement {
 
 const OUTCOMES = new Set(["correct", "incorrect", "timeout"]);
 const END_REASONS = new Set(["both_answered", "deadline_expired"]);
-const COMPLETION_REASONS = new Set(["knockout", "simultaneous_knockout"]);
+// RE1 — `segments_complete` is the ONLY way a points match ends (RP1). Before
+// it was listed here the final module's settlement failed to adapt on every
+// points match, so module 10 never reached the settlement log: the live
+// strip's last bubble and the end screen's final column were both missing.
+const COMPLETION_REASONS = new Set(["knockout", "simultaneous_knockout", "segments_complete"]);
 
 const nonNegative = (value: unknown, field: string): void => {
   if (typeof value !== "number" || Number.isNaN(value) || value < 0) {

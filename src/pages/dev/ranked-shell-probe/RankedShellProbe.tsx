@@ -31,6 +31,13 @@
  *   ability layer) instead of the legacy default.
  * `?orole=` freezes a League role onto the opponent's seat too.
  * `?name=` is the viewer's display name, as `QuizRankedPage` would pass it.
+ * `?end=victory|defeat|draw` (RE1) serves a FINISHED ten-module points match:
+ *   the resume carries the result row, the resume backfill fetches every
+ *   settled module (both players' awards), and the review / history /
+ *   discoveries reads answer too — so the real end screen renders through the
+ *   real controller. `?gap=4,7` withholds those modules' settlements (a
+ *   reconnect's partial backfill); `?bot=1` marks the match a bot match;
+ *   `?rating=0` withholds the rating row; `?disc=0` serves no discoveries.
  * `?frame=0` mounts the match BARE, exactly as `QuizRankedPage` does (the arena
  *   brings its own `ArenaShell`). The default keeps the historical extra
  *   `Frame`, which every desktop fit baseline was measured inside; on a phone
@@ -44,8 +51,8 @@ import { Frame } from "@/pages/quiz-ranked/QuizRankedPage";
 import { RankedRouteHeader } from "@/pages/quiz-ranked/RankedRouteHeader";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
 import {
-  metaReflexSegmentMeta, metaReflexState, modulePointsBlock, privatePlayerV2, publicRoundV2,
-  withPointsScoring,
+  matchResultPointsV1, metaReflexSegmentMeta, metaReflexState, modulePointsBlock,
+  privatePlayerV2, publicRoundV2, withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
 import {
   CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION,
@@ -419,8 +426,174 @@ const probe: {
   /** RMOB2 — `?orole=` opponent role; `?progression=0` live R1 shape. */
   opponentRole: string | null;
   progressionOff: boolean;
+  /** RE1 — `?end=` terminal state, `?gap=` withheld modules, `?bot=1`. */
+  end: EndState | null;
+  gaps: number[];
+  bot: boolean;
+  rated: boolean;
+  discoveries: boolean;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], pet: null,
-  opponentRole: null, progressionOff: false };
+  opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
+  discoveries: true };
+
+/**
+ * RE1 — A FINISHED MATCH, module by module, for both seats.
+ *
+ * Base and speed travel separately, exactly as `module_points` publishes them,
+ * and the final score is the result row's own figure (the sums below), so the
+ * end screen is measured on data that agrees with itself. Module 5 is a Meta
+ * Reflex block and module 8 a hard module, so the grid carries every base
+ * figure a real match can.
+ */
+type EndState = "victory" | "defeat" | "draw";
+const END_LENGTH = 10;
+const END_AWARDS: Record<EndState, { you: [number, number][]; them: [number, number][] }> = (() => {
+  const strong: [number, number][] = [
+    [2, 1], [0, 0], [3, 0], [2, 1], [4, 0], [2, 0], [2, 1], [3, 0], [0, 0], [2, 1]];
+  const weak: [number, number][] = [
+    [0, 0], [2, 1], [2, 0], [0, 0], [2, 0], [0, 0], [2, 1], [3, 0], [2, 0], [0, 0]];
+  const even: [number, number][] = [
+    [2, 0], [2, 1], [0, 0], [2, 1], [3, 0], [2, 1], [0, 0], [3, 0], [2, 1], [3, 1]];
+  return {
+    victory: { you: strong, them: weak },
+    defeat: { you: weak, them: strong },
+    draw: { you: strong, them: even },
+  };
+})();
+const END_SUBJECTS = [
+  "items", "abilities", "summoner_spells", "runes", "meta_reflex",
+  "abilities", "items", "item_costs", "runes", "abilities"];
+
+function endTotals(end: EndState) {
+  const sum = (rows: [number, number][]) => rows.reduce((t, [b, sp]) => t + b + sp, 0);
+  return { userA: sum(END_AWARDS[end].you), userB: sum(END_AWARDS[end].them) };
+}
+
+/** The finished match's public snapshot: every module settled, no round open. */
+function endPublic(end: EndState) {
+  const env = publicFor(probe.state, probe.role) as { payload: Record<string, unknown>;
+    round_number?: number };
+  const payload = env.payload;
+  payload.match_status = "complete";
+  payload.match_over = true;
+  payload.completed_rounds = END_LENGTH;
+  payload.active_round = null;
+  payload.question = null;
+  payload.winner_id = end === "draw" ? null : end === "victory" ? VIEWER : "userB";
+  payload.completion_reason = "segments_complete";
+  if (probe.bot) {
+    payload.playtest = { question_bank_mode: "production", is_placeholder: false,
+      is_bot_match: true, session_preset: null };
+  }
+  env.round_number = END_LENGTH;
+  return withPointsScoring(env, {
+    moduleNumber: END_LENGTH, matchLength: END_LENGTH, modulesCompleted: END_LENGTH,
+    scores: endTotals(end),
+  });
+}
+
+function endResult(end: EndState) {
+  return matchResultPointsV1(endTotals(end), {
+    outcome: end === "draw" ? "draw" : "decisive",
+    winner: end === "draw" ? null : end === "victory" ? VIEWER : "userB",
+    modulesPlayed: END_LENGTH,
+  });
+}
+
+/** One settled module of the finished match, both seats' awards intact. */
+function endResolved(end: EndState, round: number) {
+  const base = resolvedFor(round);
+  const [yb, ys] = END_AWARDS[end].you[round - 1];
+  const [tb, ts] = END_AWARDS[end].them[round - 1];
+  base.players[0].outcome = yb > 0 ? "correct" : "incorrect";
+  base.players[1].outcome = tb > 0 ? "correct" : "incorrect";
+  base.module_points = modulePointsBlock({
+    [VIEWER]: { base: yb, speed: ys }, userB: { base: tb, speed: ts },
+  });
+  // The final module ends the match the way every points match ends.
+  const last = round === END_LENGTH;
+  return {
+    ...base,
+    match_over: last,
+    winner_id: last && end !== "draw" ? (end === "victory" ? VIEWER : "userB") : null,
+    completion_reason: last ? "segments_complete" : null,
+  };
+}
+
+function endReview(end: EndState) {
+  return {
+    schema_version: "ranked_duel.match_review.v1", projection_type: "match_review",
+    match_id: "m1", round_number: END_LENGTH, server_time: "2026-07-18T12:10:00+00:00",
+    payload: {
+      match_id: "m1", final_round_number: END_LENGTH, round_count: END_LENGTH,
+      rounds: END_SUBJECTS.map((subject, i) => {
+        const won = END_AWARDS[end].you[i][0] > 0;
+        const meta = subject === "meta_reflex";
+        return {
+          round_number: i + 1,
+          kind: meta ? "meta_reflex" : "quiz",
+          module_id: meta ? "meta_reflex.v1" : "quiz.v1",
+          category: meta ? null : subject,
+          canonical_question_ref: `ranked:probe-${i + 1}`,
+          revealed: true,
+          icon_hint: meta ? { kind: "meta_reflex", key: null, icon: null }
+            : { kind: "category", key: subject, icon: null },
+          question: meta ? null : {
+            prompt: `Module ${i + 1} — a probe question.`,
+            options: ["A", "B", "C", "D"], correct_option_index: 0, explanation: null,
+          },
+          challenges: null,
+          viewer_submission: {
+            answer_index: won ? 0 : 1, is_correct: won,
+            correct_count: null, answered_count: null, challenge_count: null,
+          },
+        };
+      }),
+    },
+  };
+}
+
+function endHistory(end: EndState) {
+  return {
+    schema_version: "ranked_duel.match_history.v1", projection_type: "match_history",
+    match_id: null, round_number: null, server_time: "2026-07-18T12:10:00+00:00",
+    payload: {
+      count: 1,
+      entries: [{
+        match_id: "m1",
+        viewer_outcome: end === "victory" ? "win" : end === "defeat" ? "loss" : "draw",
+        terminal_reason: "combat", completion_reason: "segments_complete",
+        final_round_number: END_LENGTH, completed_at: "2026-07-18T12:10:00+00:00",
+        is_bot_match: probe.bot, viewer_class: "tank", opponent_class: "mage",
+        viewer_role: probe.role, opponent_role: probe.opponentRole,
+        opponent_display_name: probe.bot ? null : "Rivalmogz",
+        opponent_is_bot: probe.bot,
+        rating_delta: probe.bot || !probe.rated ? null
+          : end === "victory" ? 18 : end === "defeat" ? -14 : 0,
+        rating_after: probe.bot || !probe.rated ? null
+          : end === "victory" ? 1218 : end === "defeat" ? 1186 : 1200,
+      }],
+    },
+  };
+}
+
+function endDiscoveries() {
+  const found = probe.discoveries ? [1, 3, 6] : [];
+  return {
+    schema_version: "ranked_duel.match_discoveries.v1", projection_type: "match_discoveries",
+    match_id: "m1", round_number: null, server_time: "2026-07-18T12:10:00+00:00",
+    payload: {
+      match_id: "m1", scope: "account", includes_default_library: true,
+      new_discoveries: found.map((r) => ({
+        canonical_question_ref: `ranked:probe-${r}`, first_seen_at: "2026-07-18T12:05:00+00:00",
+        first_round_number: r, metadata_status: "resolved", metadata_source: "frozen_round",
+        question: { prompt: `Module ${r} — a probe question.`, category: END_SUBJECTS[r - 1] },
+      })),
+      new_count: found.length, collection_total: 420 + found.length,
+      collection_total_before: 420, truncated: false,
+    },
+  };
+}
 
 let installed = false;
 function installInterceptor() {
@@ -434,6 +607,40 @@ function installInterceptor() {
       : input instanceof URL ? input.href : input.url;
     if (!url.startsWith(`${RANKED_API_BASE}/api/ranked/`)) return real(input as RequestInfo, init);
     const path = url.slice(`${RANKED_API_BASE}`.length);
+    // RE1 — a finished match. Checked first: every read below has a terminal
+    // answer that differs from the live one.
+    const end = probe.end;
+    if (end) {
+      if (path.endsWith("/resume")) {
+        return json({
+          schema_version: "ranked_duel.resume.v1", projection_type: "resume",
+          match_id: "m1", round_number: END_LENGTH, server_time: "2026-07-18T12:10:00+00:00",
+          payload: {
+            match_status: "complete", match_over: true,
+            public: endPublic(end), private: privateFor(probe.state),
+            progression_pending_players: [], latest_resolved_round: null,
+            result: endResult(end),
+          },
+        });
+      }
+      const settled = /\/rounds\/(\d+)\/resolved$/.exec(path);
+      if (settled) {
+        const round = Number(settled[1]);
+        if (probe.gaps.includes(round) || round > END_LENGTH) {
+          return new Response("{}", { status: 404 });
+        }
+        return json({ schema_version: "ranked_duel.resolved_round.v2",
+          projection_type: "resolved_round", match_id: "m1", round_number: round,
+          server_time: "2026-07-18T12:10:00+00:00", payload: endResolved(end, round) });
+      }
+      if (path.endsWith("/result")) return json(endResult(end));
+      if (path.endsWith("/review")) return json(endReview(end));
+      if (path.endsWith("/discoveries")) return json(endDiscoveries());
+      if (path.startsWith("/api/ranked/history")) return json(endHistory(end));
+      if (path.includes("/presence")) return json({ status: "complete", match_id: "m1", active: false });
+      if (/\/matches\/m1$/.test(path)) return json(endPublic(end));
+      return json({});
+    }
     if (path.endsWith("/resume")) {
       return json({
         schema_version: "ranked_duel.resume.v1", projection_type: "resume",
@@ -486,6 +693,12 @@ export default function RankedShellProbe() {
   const orole = params.get("orole");
   probe.opponentRole = orole && orole !== "none" ? orole : null;
   probe.progressionOff = params.get("progression") === "0";
+  const end = params.get("end");
+  probe.end = end === "victory" || end === "defeat" || end === "draw" ? end : null;
+  probe.gaps = (params.get("gap") ?? "").split(",").map(Number).filter((n) => n > 0);
+  probe.bot = params.get("bot") === "1";
+  probe.rated = params.get("rating") !== "0";
+  probe.discoveries = params.get("disc") !== "0";
   const viewerName = params.get("name");
   const pet = params.get("pet");
   probe.pet = pet && ["scorchclaw", "mosstomper", "gustwalker"].includes(pet) ? pet : null;
@@ -513,12 +726,12 @@ export default function RankedShellProbe() {
         ))}
       </div>
       {params.get("frame") === "0" ? (
-        <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}`}
+        <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
           matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}
           chrome={<RankedRouteHeader size="wide" />} />
       ) : (
         <Frame size="wide">
-          <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}`}
+          <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
             matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName} />
         </Frame>
       )}

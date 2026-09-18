@@ -34,6 +34,13 @@ export interface RankedScorelineProps {
    * fabricated here — no zero, no "pending", no placeholder row.
    */
   ratingDelta: number | null;
+  /**
+   * RE1 — `inline` drops the panel and the two side labels, for a host that
+   * already frames the scoreline between the duelists' own names (the Ranked
+   * end screen's duel poster). The numbers, the chips and every test id are
+   * the same; `panel` (the default) is the original stand-alone section.
+   */
+  variant?: "panel" | "inline";
 }
 
 /**
@@ -55,16 +62,19 @@ export function scorelineDisagreesWithOutcome(
 }
 
 /** One side of the scoreline. */
-function Side({ label, testKey, score, emphasis }:
-{ label: string; testKey: "you" | "opponent"; score: number | null; emphasis: boolean }) {
+function Side({ label, testKey, score, emphasis, inline }:
+{ label: string; testKey: "you" | "opponent"; score: number | null; emphasis: boolean;
+  inline: boolean }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-      <span className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+    <div className={`flex min-w-0 flex-col items-center gap-1 ${inline ? "" : "flex-1"}`}>
+      <span className={inline ? "sr-only"
+        : "truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"}>
         {label}
       </span>
       <span
         data-testid={`final-score-${testKey}`}
-        className={`text-5xl font-black leading-none tabular-nums sm:text-6xl ${
+        className={`font-black leading-none tabular-nums ${
+          inline ? "text-5xl lg:text-6xl" : "text-5xl sm:text-6xl"} ${
           emphasis ? "text-[#f5e6b8]" : "text-slate-300/80"}`}
       >
         {score ?? "—"}
@@ -74,8 +84,9 @@ function Side({ label, testKey, score, emphasis }:
 }
 
 export function RankedScoreline({
-  you, opponent, result, modulesPlayed, ratingDelta, youLabel = "You",
+  you, opponent, result, modulesPlayed, ratingDelta, youLabel = "You", variant = "panel",
 }: RankedScorelineProps) {
+  const inline = variant === "inline";
   // Emphasis follows the BACKEND's result, not the numbers: a draw emphasises
   // neither, and a decisive match emphasises the side the result row named.
   const youWon = result === "victory";
@@ -84,17 +95,20 @@ export function RankedScoreline({
   return (
     <section aria-label="Final score"
       data-testid="ranked-final-scoreline"
-      className="ranked-panel px-4 py-4">
+      data-variant={variant}
+      className={inline ? "" : "ranked-panel px-4 py-4"}>
       <div className="flex items-center justify-center gap-3 sm:gap-6">
-        <Side label={youLabel} testKey="you" score={you} emphasis={youWon || result === "draw"} />
+        <Side label={youLabel} testKey="you" score={you} inline={inline}
+          emphasis={youWon || result === "draw"} />
         <span aria-hidden className="shrink-0 text-2xl font-black text-muted-foreground/50">—</span>
-        <Side label="Opponent" testKey="opponent" score={opponent} emphasis={theyWon || result === "draw"} />
+        <Side label="Opponent" testKey="opponent" score={opponent} inline={inline}
+          emphasis={theyWon || result === "draw"} />
       </div>
       {/* The two quiet facts, on one row, and each present only when the
           backend actually stated it. An unrated match simply has no rating
           chip — it does not have an empty one. */}
       {(ratingDelta !== null || modulesPlayed !== null) && (
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <div className={`${inline ? "mt-2" : "mt-3"} flex flex-wrap items-center justify-center gap-x-3 gap-y-1`}>
           {ratingDelta !== null && (
             <span data-testid="ranked-rating-delta"
               className={`text-xs font-black uppercase tracking-[0.14em] tabular-nums ${
