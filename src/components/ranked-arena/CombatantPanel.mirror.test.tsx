@@ -25,6 +25,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { CombatantPanel, isMirroredSide } from "./CombatantPanel";
+import { MOGZY_ROLE_ART_FACING } from "@/components/mascot/mascot-assets";
+import type { RankedRole } from "@/lib/ranked-public/roles";
 import type { CombatantView } from "@/lib/ranked-core/viewTypes";
 
 afterEach(cleanup);
@@ -209,7 +211,36 @@ describe("every row reflects, and reflects the right way", () => {
     // why the two columns can disagree here while both face the centre.
     expect(m(L).dataset.role).toBe("top");
     expect(m(R).dataset.role).toBe("mid");
+    // Both are drawn facing left, so both plates are normalised to face right;
+    // the right column's facing layer then turns its mascot back to the centre.
     expect(m(L).dataset.plateFlipped).toBe("true");    // top is drawn facing left
-    expect(m(R).dataset.plateFlipped).toBeUndefined();  // mid is drawn facing left
+    expect(m(R).dataset.plateFlipped).toBe("true");    // mid is drawn facing left
+  });
+
+  /**
+   * What a player SEES: the art's own direction times both mirrors. Asserted
+   * as that product rather than as either attribute, because the defect this
+   * pins was two individually plausible attributes cancelling out — every
+   * right-hand mascot looked out of the arena, and a same-role duel drew two
+   * identical mascots pointing the same way.
+   */
+  const onScreen = (mascot: HTMLElement) => {
+    const art = MOGZY_ROLE_ART_FACING[mascot.dataset.role as RankedRole] === "right" ? 1 : -1;
+    const facing = Number((mascot.querySelector(".role-mascot-facing") as HTMLElement)
+      .style.getPropertyValue("--role-mascot-facing"));
+    const plate = Number((mascot.querySelector(".role-mascot-plate") as HTMLElement)
+      .style.getPropertyValue("--role-mascot-plate"));
+    return art * facing * plate === 1 ? "right" : "left";
+  };
+
+  it.each([
+    ["top", "mid"], ["adc", "adc"], ["jungle", "jungle"],
+  ] as const)("points both mascots at the centre on screen: %s vs %s", (l, r) => {
+    const left = render(<CombatantPanel combatant={combatant({ roleId: l })} damage={DAMAGE} />);
+    const right = render(<CombatantPanel combatant={opponent({ roleId: r })} damage={DAMAGE} />);
+    const m = (c: HTMLElement) => c.querySelector('[data-testid="role-crest-mascot"]') as HTMLElement;
+    // Left column looks right, into the arena; right column looks left, into it.
+    expect(onScreen(m(left.container))).toBe("right");
+    expect(onScreen(m(right.container))).toBe("left");
   });
 });

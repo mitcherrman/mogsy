@@ -332,9 +332,17 @@ export function RoleMascot({
   }, [settle]);
 
   const decorative = alt === undefined;
-  // Does this plate have to be flipped to LOOK the way the host asked? A fact
-  // about the artwork, resolved in exactly one place.
-  const plateFlipped = facing !== getRankedRoleArtFacing(role);
+  // Does this plate have to be flipped? A fact about the ARTWORK alone,
+  // resolved in exactly one place: the plate normalises every drawing to face
+  // RIGHT, and the facing layer above it — which already mirrors for `left` —
+  // turns that into the direction the host asked for.
+  //
+  // This used to compare against `facing` as well, which corrected the
+  // same mirror twice: for `facing="left"` the facing layer's -1 and the
+  // plate's -1 cancelled, so EVERY opponent-side mascot (live columns and end
+  // screen alike) looked away from the arena, and a same-role duel drew two
+  // identical mascots pointing the same way.
+  const plateFlipped = getRankedRoleArtFacing(role) === "left";
 
   return (
     // Host layer: layout, size, position. Carries NO transform of its own, so

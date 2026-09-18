@@ -38,6 +38,7 @@ import {
 import { MasteryComparisonSemantics, readComparisonSemantics } from "./comparisonSemantics";
 import { MasteryPromptSemantics, readPromptSemantics } from "./promptSemantics";
 import { MasteryStateView, readOptionalStateView } from "./stateView";
+import type { QuestionMotif } from "@/lib/question-surface/questionMotif";
 
 export interface MasteryMatchupIdentity {
   readonly championA: string;
@@ -89,6 +90,12 @@ interface MasteryPlayerQuestionBase {
    * adapter from the frozen challenge; standalone Mastery never sets it.
    */
   readonly questionRoles?: readonly RankedRole[];
+  /**
+   * QF1 — the question's visual motif, set only by the Ranked Mastery Slice
+   * adapter from the challenge's backend-resolved `motif`. Standalone Mastery
+   * never sets it. Nothing renders it yet.
+   */
+  readonly questionMotif?: QuestionMotif;
   /**
    * Null when the set has no two-champion matchup identity (Phase 4C1
    * nullable-contract widening). Every payload served today still populates it.

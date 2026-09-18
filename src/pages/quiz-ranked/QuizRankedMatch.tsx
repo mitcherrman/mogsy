@@ -61,6 +61,8 @@ import { RankedScoreline } from "./RankedScoreline";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
 import { ResultContestants } from "@/components/game-results/ResultContestants";
 import { buildRankedResults } from "./rankedResultsModel";
+import { buildModuleDuel } from "./moduleDuel";
+import { RankedResultDuel } from "./RankedResultDuel";
 import { useMatchTimeline } from "./useMatchTimeline";
 import { useRankedMatchHistory } from "./useRankedMatchHistory";
 import {
@@ -189,6 +191,20 @@ export interface QuizRankedMatchProps {
    * assert. The route supplies it; the arena renders it.
    */
   chrome?: ReactNode;
+}
+
+/**
+ * RE1 — the quiet line on the closed "Match details" disclosure: what is
+ * behind the click, as counts the screen already holds. Null when neither is
+ * known, and the disclosure simply reads "Match details".
+ */
+export function rankedDetailsSummary(modules: number, newQuestions: number): string | null {
+  const parts: string[] = [];
+  if (modules > 0) parts.push(`${modules} module${modules === 1 ? "" : "s"}`);
+  if (newQuestions > 0) {
+    parts.push(`${newQuestions} new question${newQuestions === 1 ? "" : "s"}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 /**
@@ -699,6 +715,15 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
      * here compares the two numbers.
      */
     const finalScores = m.result?.scoring?.finalScores ?? null;
+    /**
+     * RE1 — what the end screen may call the other duelist. The live
+     * projection redacts identity by design; the account's own history row is
+     * the one place the backend states the opponent's display name to this
+     * viewer (the Record's match rows print the same field). A bot is "Bot",
+     * and a name the backend withheld stays "Opponent" — none is invented.
+     */
+    const resultOpponentName = isBotMatch
+      ? otherLabel : historyRow?.opponentDisplayName ?? otherLabel;
     const withFinalScore = (c: typeof combatants.player) => (
       finalScores && finalScores[c.playerId] !== undefined
         ? { ...c, score: finalScores[c.playerId] } : c);
@@ -724,7 +749,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       review: matchReview,
       roundHistory: roundHistory.player,
       discoveries: discoveries.view,
-      opponentLabel: otherLabel,
+      opponentLabel: resultOpponentName,
     });
     /**
      * RB2/RB3 — playing again is the PRIMARY action and leaving is the quiet
@@ -761,34 +786,68 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
           onReview={() => { window.location.assign("/quiz#review"); }} />)
       : undefined;
 
+    /**
+     * RE1 — THE HEAD-TO-HEAD, module by module, on one canonical axis.
+     *
+     * Both players' settlement logs, placed by module number on an axis as
+     * long as the match's FROZEN length (never a hard-coded ten). A module
+     * this client holds no settlement for keeps its column and renders
+     * neutral. Explanation only — the score above is the result row's.
+     */
+    const matchLength = m.result?.scoring?.matchLength
+      ?? m.publicRound.scoring?.matchLength ?? null;
+    const duelSlots = pointsMatch || finalScores
+      ? buildModuleDuel({
+        matchLength,
+        modulesPlayed: m.result?.scoring?.modulesPlayed ?? null,
+        viewer: roundHistory.player,
+        opponent: roundHistory.opponent,
+      })
+      : [];
+    const scorelineNode = finalScores ? (
+      <RankedScoreline
+        you={finalScores[combatants.player.playerId] ?? 0}
+        youLabel={viewerLabel}
+        opponent={finalScores[combatants.opponent.playerId] ?? null}
+        result={result}
+        modulesPlayed={m.result?.scoring?.modulesPlayed ?? null}
+        ratingDelta={ratingDelta}
+        variant="inline" />
+    ) : null;
+
     const terminal: ArenaTerminalView = {
       result,
       player: withFinalScore(combatants.player),
       opponent: withFinalScore(combatants.opponent),
+      density: "compact",
       /**
-       * RP1 Step 4 — a scored match ends on a SCORELINE, and says so directly
-       * under the result word.
-       */
-      scoreline: finalScores ? (
-        <RankedScoreline
-          you={finalScores[combatants.player.playerId] ?? 0}
-          youLabel={viewerLabel}
-          opponent={finalScores[combatants.opponent.playerId] ?? null}
-          result={result}
-          modulesPlayed={m.result?.scoring?.modulesPlayed ?? null}
-          ratingDelta={ratingDelta} />
-      ) : undefined,
-      /**
-       * The two duelist COLUMNS, replaced by one row.
+       * RE1 — THE DUEL POSTER, directly under the result word: both role
+       * mascots framing the final scoreline, and the ten-versus-ten module
+       * comparison underneath. It carries the two duelists itself, so the
+       * frame's identity row is explicitly empty (`null`, not absent — absent
+       * would bring back the two full combatant columns).
        *
-       * The scoreline directly above already prints both numbers, so the strip
-       * carries identity only — see `ResultContestants`.
+       * An hp match (no result scoring) has no scoreline and no module axis,
+       * and keeps the compact identity strip it had.
        */
-      identity: results.contestants ? (
-        <ResultContestants you={results.contestants.you}
-          opponent={results.contestants.opponent ?? null}
-          showScores={finalScores === null} />
+      scoreline: results.contestants && (scorelineNode || duelSlots.length > 0) ? (
+        <RankedResultDuel
+          result={result}
+          viewer={{ name: results.contestants.you.name,
+            roleId: results.contestants.you.roleId ?? null, tag: results.contestants.you.tag }}
+          opponent={{ name: results.contestants.opponent?.name ?? otherLabel,
+            roleId: results.contestants.opponent?.roleId ?? null,
+            tag: results.contestants.opponent?.tag }}
+          scoreline={scorelineNode}
+          slots={duelSlots} />
       ) : undefined,
+      identity: results.contestants && (scorelineNode || duelSlots.length > 0)
+        ? null
+        : results.contestants ? (
+          <ResultContestants you={results.contestants.you}
+            opponent={results.contestants.opponent ?? null}
+            showScores={finalScores === null} />
+        ) : undefined,
       /** RB2 — the one thing the end screen says differently about a bot. */
       eyebrow: isBotMatch ? "Match Complete · Unrated" : undefined,
       subheading: results.subheading ?? undefined,
@@ -798,7 +857,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
        * discovery reveal and the three actions — the shared body every mode
        * renders, in the frame's existing summary slot.
        */
-      summary: <GameResultsBody model={results} />,
+      summary: (
+        <GameResultsBody model={results} variant="compact"
+          detailsSummary={rankedDetailsSummary(results.timeline?.entries.length ?? 0,
+            discoveries.view?.newCount ?? 0)} />
+      ),
       /**
        * NO SETTLEMENT PANEL.
        *

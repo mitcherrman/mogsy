@@ -26,6 +26,7 @@ import {
   readQuestionRoles, readTimelineTopic, type TimelineTopic,
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
+import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -433,6 +434,9 @@ export interface MasterySliceChallengeView {
   answerOptions: string[];
   promptSemantics: Record<string, unknown> | null;
   comparisonSemantics: Record<string, unknown> | null;
+  /** QF1 — the challenge's motif, resolved by the backend from
+   *  `question_family`. `null` for an unmapped family or an older backend. */
+  motif?: QuestionMotif | null;
   /** See the copy above — TypeScript MERGES these two declarations, so the
    *  members have to be kept in step by hand until one of them is deleted. */
   presentation?: Record<string, unknown> | null;
@@ -1183,6 +1187,8 @@ export function readMasterySliceChallenge(v: unknown, label: string): MasterySli
       ? null : rec(c.input_constraints, `${label}.input_constraints`),
     // RQ1: tolerant like the topic reader — canonical ids only, lane order.
     ...(readQuestionRoles(c.roles).length ? { roles: readQuestionRoles(c.roles) } : {}),
+    // QF1: fail-closed — an unknown or absent motif is null, never a guess.
+    motif: readQuestionMotif(c.motif),
   };
 }
 
@@ -2103,6 +2109,8 @@ export interface ReviewMasteryChallenge {
   prompt: string;
   interactionKind: string;
   questionFamily: string | null;
+  /** QF1 — backend-resolved motif of the challenge; `null` when none. */
+  motif?: QuestionMotif | null;
   answerType: "single_choice" | "numeric" | "boolean";
   answerOptions: string[];
   promptSemantics: Record<string, unknown> | null;
@@ -2243,6 +2251,7 @@ function reviewMasteryChallenge(raw: unknown, label: string,
     // — the renderer's business, not the parser's, so it is carried verbatim.
     interactionKind: nstr(c.interaction_kind, `${label}.interaction_kind`) ?? "",
     questionFamily: nstr(c.question_family, `${label}.question_family`),
+    motif: readQuestionMotif(c.motif),
     answerType,
     answerOptions: strList(c.answer_options, `${label}.answer_options`),
     promptSemantics: c.prompt_semantics === null || c.prompt_semantics === undefined

@@ -18,8 +18,12 @@ export type BackendAnswerOutcome = "correct" | "incorrect" | "timeout";
 /** duel_round_engine.RoundEndReason */
 export type BackendRoundEndReason = "both_answered" | "deadline_expired";
 
-/** duel_match_engine.MatchCompletionReason */
-export type BackendCompletionReason = "knockout" | "simultaneous_knockout";
+/**
+ * duel_match_engine.MatchCompletionReason. `segments_complete` is how every
+ * RP1 points match ends — its configured number of modules has been played.
+ */
+export type BackendCompletionReason =
+  | "knockout" | "simultaneous_knockout" | "segments_complete";
 
 /** One entry of `record.level_up_events`, filtered per player. */
 export interface BackendLevelUpEvent {

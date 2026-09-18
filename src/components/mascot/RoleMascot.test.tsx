@@ -182,13 +182,38 @@ describe("RoleMascot — the artwork's own direction", () => {
 
   it("leaves the net flip of a left-facing plate at IDENTITY when asked to face left", () => {
     stubReducedMotion(false);
-    // `mid` drawn facing left, asked to face left: the plate is already right,
-    // so nothing flips it — and the semantic layer alone carries the mirror.
+    // `mid` drawn facing left, asked to face left. The semantic layer carries
+    // the mirror (-1) and the plate normalises the drawing to face right (-1),
+    // so the NET is identity: the art is shown exactly as drawn. (This test
+    // used to pin plate = 1 under that same title — a net of -1, which turned
+    // every opponent-side mascot away from the arena.)
     const { container } = render(<RoleMascot role="mid" facing="left" />);
-    expect((container.querySelector(".role-mascot-plate") as HTMLElement)
-      .style.getPropertyValue("--role-mascot-plate")).toBe("1");
-    expect((container.querySelector(".role-mascot-facing") as HTMLElement)
-      .style.getPropertyValue("--role-mascot-facing")).toBe("-1");
+    const plate = Number((container.querySelector(".role-mascot-plate") as HTMLElement)
+      .style.getPropertyValue("--role-mascot-plate"));
+    const facing = Number((container.querySelector(".role-mascot-facing") as HTMLElement)
+      .style.getPropertyValue("--role-mascot-facing"));
+    expect(facing).toBe(-1);
+    expect(plate * facing).toBe(1);
+  });
+
+  it("puts every role's art on screen facing the way it was asked to, both ways", () => {
+    stubReducedMotion(false);
+    // The ON-SCREEN direction is the art's own direction times both mirrors.
+    // Asserted as that product, for all five roles and both facings, so the
+    // two layers can never again each correct the same mirror.
+    const sign = (d: "left" | "right") => (d === "right" ? 1 : -1);
+    for (const role of RANKED_ROLES) {
+      for (const want of ["left", "right"] as const) {
+        const { container } = render(<RoleMascot role={role} facing={want} />);
+        const plate = Number((container.querySelector(".role-mascot-plate") as HTMLElement)
+          .style.getPropertyValue("--role-mascot-plate"));
+        const facing = Number((container.querySelector(".role-mascot-facing") as HTMLElement)
+          .style.getPropertyValue("--role-mascot-facing"));
+        expect(sign(MOGZY_ROLE_ART_FACING[role]) * plate * facing, `${role} → ${want}`)
+          .toBe(sign(want));
+        cleanup();
+      }
+    }
   });
 
   it("keeps the plate correction out of the reduced-motion overrides", () => {
