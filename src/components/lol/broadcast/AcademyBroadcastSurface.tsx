@@ -191,6 +191,13 @@ const ICON_FLOOR_PX = 10;
 const ICON_CAP_PX = 48;
 const PREFERRED_COLUMNS = 3;
 const MAX_COLUMNS = 6;
+/**
+ * Flex line-break slack, not visual spacing. Firefox can independently round
+ * cqw-sized icons and gaps upward while rounding this row width downward;
+ * one physical pixel prevents an intended third icon from wrapping at a
+ * fractional tome width (for example 314.633331px at DPR 1).
+ */
+const FLEX_ROW_ROUNDING_ALLOWANCE_PX = 1;
 
 type BriefSpread = {
   leftTop: PatchBriefSection | null;
@@ -714,6 +721,7 @@ function PatchBriefSectionBlock({
     ? `calc(${[
         ...Array.from({ length: columns }, () => iconSize),
         ...Array.from({ length: Math.max(0, columns - 1) }, () => CQ.iconGap),
+        `${FLEX_ROW_ROUNDING_ALLOWANCE_PX}px`,
       ].join(" + ")})`
     : undefined;
   return (
