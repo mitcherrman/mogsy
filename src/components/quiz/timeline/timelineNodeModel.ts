@@ -55,6 +55,7 @@ import {
 } from "@/lib/quiz/publicCategory";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { RANKED_ROLES, type RankedRole } from "@/lib/ranked-public/roles";
+import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
 
 /**
  * The backend's proven subject, verbatim (`ranked_public.review`).
@@ -82,6 +83,14 @@ export interface TimelineTopic {
    * question, a Daily card, or a round from a backend that predates RQ1.
    */
   roles?: RankedRole[];
+  /**
+   * QF1 — the question's visual motif (what KIND of knowledge it is), resolved
+   * by the backend from the question's family. `null` when the wire named none
+   * (Meta Reflex, a mixed segment, an older backend) — absent, like `roles`.
+   * Independent of
+   * `category` and `roles`; nothing renders it yet.
+   */
+  motif?: QuestionMotif | null;
 }
 
 export type TimelineOutcome =
@@ -329,11 +338,14 @@ export function readTimelineTopic(value: unknown): TimelineTopic | null {
   const raw = value as Record<string, unknown>;
   const hint = raw.icon_hint ?? raw.iconHint;
   const roles = readQuestionRoles(raw.roles);
+  const motif = readQuestionMotif(raw.motif);
   return {
     category: asCategoryKey(raw.category),
     tier: asDifficultyTier(raw.tier),
     iconHint: readIconHint(hint),
     ...(roles.length > 0 ? { roles } : {}),
+    // QF1: present only when the wire named a known motif, like `roles`.
+    ...(motif ? { motif } : {}),
   };
 }
 

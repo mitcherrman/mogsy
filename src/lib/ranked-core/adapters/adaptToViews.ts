@@ -297,5 +297,8 @@ export function questionViewFromPublicQuestion(
     options,
     category: question.category,
     ...(question.topic?.roles?.length ? { roles: question.topic.roles } : {}),
+    // QF1: the backend-resolved motif, carried beside (never instead of) the
+    // category and roles.
+    ...(question.topic?.motif ? { motif: question.topic.motif } : {}),
   };
 }

@@ -22,6 +22,7 @@ import type { RankedRole } from "@/lib/ranked-public/roles";
 // boundary this layer enforces is against a mode's `pages/` directory, and
 // `components/quiz/timeline` is neither Ranked's nor the Daily's.
 import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
+import type { QuestionMotif } from "@/lib/question-surface/questionMotif";
 
 /**
  * Frontend-stable settlement slot: p1 = the viewer/owner, p2 = the other
@@ -199,6 +200,13 @@ export interface QuestionView {
    * is never derived from the player's role, the prompt or the category.
    */
   roles?: RankedRole[];
+  /**
+   * QF1 — what KIND of knowledge this question is (`topic.motif`), resolved by
+   * the backend from the question's family. Absent/`null` = no motif. Carried
+   * for the question surface; nothing renders it yet. Never derived from the
+   * category, roles, prompt or media.
+   */
+  motif?: QuestionMotif | null;
 }
 
 export type SubmissionPhase = "selecting" | "reviewing" | "locked";

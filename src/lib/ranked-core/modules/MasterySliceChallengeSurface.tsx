@@ -113,6 +113,8 @@ export function toPlayerQuestion(
     patchDisplay: challenge.patchDisplay ?? "",
     // RQ1: the challenge's frozen question roles, for the header emblems.
     ...(challenge.roles?.length ? { questionRoles: challenge.roles } : {}),
+    // QF1: the backend-resolved motif, beside the family, never instead of it.
+    ...(challenge.motif ? { questionMotif: challenge.motif } : {}),
     matchupIdentity: null,
     isReadOnly: true,
     hintAvailable: false,
@@ -186,6 +188,7 @@ export function questionViewForChallenge(
     category: challenge.questionFamily,
     // RQ1: the challenge's frozen roles — family stays in `category`.
     ...(challenge.roles?.length ? { roles: challenge.roles } : {}),
+    ...(challenge.motif ? { motif: challenge.motif } : {}),
   };
 }
 
