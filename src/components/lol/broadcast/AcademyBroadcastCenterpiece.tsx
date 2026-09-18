@@ -52,14 +52,13 @@ export default function AcademyBroadcastCenterpiece({
         energized={radio.isPlaying}
         variant={variant}
       />
-      {/* The dock is the tome's control deck: a small breathing gap below the
-          painted base keeps them related but not fused. Desktop spans the
-          tome's full width because the lane can run as narrow as 200px and
-          the track title must stay readable. Mobile has room to inset it. */}
-      <AcademyRadioDock
-        variant={variant}
-        className={cn("mx-auto mt-1.5", variant === "desktop" ? "w-full" : "w-[92%]")}
-      />
+      {/* The dock is the desktop tome's control deck: a small breathing gap
+          below the painted base keeps them related but not fused. The phone
+          Hall deliberately shows the Patch Report surface alone; global HUD
+          playback remains available and continues to drive the tome's energy. */}
+      {variant === "desktop" ? (
+        <AcademyRadioDock variant="desktop" className="mx-auto mt-1.5 w-full" />
+      ) : null}
     </div>
   );
 }

@@ -178,14 +178,14 @@ describe("Academy Broadcast centerpiece — composition", () => {
     expect(baseElement.querySelector('[role="status"], [role="alert"]')).toBeNull();
   });
 
-  it("the mobile variant renders its own stacked surface, book painting and dock", () => {
+  it("the mobile variant renders the Patch surface without the local radio dock", () => {
     render(<AcademyBroadcastCenterpiece variant="mobile" />);
 
     expect(screen.getByTestId("academy-broadcast-centerpiece-mobile")).toBeTruthy();
     expect(screen.getByTestId("academy-broadcast-surface-mobile")).toBeTruthy();
     const book = screen.getByTestId("academy-broadcast-book-mobile");
     expect(book).toHaveAttribute("alt", "");
-    expect(screen.getByTestId("academy-radio-dock-mobile")).toBeTruthy();
+    expect(screen.queryByTestId("academy-radio-dock-mobile")).toBeNull();
   });
 });
 

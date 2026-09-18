@@ -1,6 +1,6 @@
 /**
  * /lol homepage navigation structure: the academy library hub renders every
- * approved destination (desktop book cards + mobile panels), the League Swipe
+ * approved destination (desktop volumes + mobile physical books), the League Swipe
  * subsection stays hidden, and landing analytics stay wired.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -144,13 +144,13 @@ describe("LolHub — navigation structure", () => {
     }
   });
 
-  it("renders each destination twice: desktop book card + mobile panel", () => {
+  it("renders each destination twice: desktop volume + mobile physical book", () => {
     const { container } = renderHub();
     // Scoped to Screen 1 since Revision 27: the Academy Bulletin's Pro Play
     // notice is a third /lol/pro-play link on the page, and it is a notice on
     // a board, not a book. What this guards is unchanged — inside the HALL
     // every destination appears exactly twice, desktop volume plus mobile
-    // panel — and scoping keeps that guarantee exact.
+    // book — and scoping keeps that guarantee exact.
     const hall = within(container.querySelector('[data-hub-screen="hall"]') as HTMLElement);
     for (const d of HUB_DESTINATIONS) {
       const links = hall
@@ -211,7 +211,7 @@ describe("LolHub — navigation structure", () => {
     // thing this test exists for — is asserted exactly as before.
     const hall = container.querySelector('[data-hub-screen="hall"]') as HTMLElement;
     const proPlay = hall.querySelectorAll('a[href="/lol/pro-play"]');
-    expect(proPlay).toHaveLength(2); // desktop book + mobile panel
+    expect(proPlay).toHaveLength(2); // desktop volume + mobile physical book
     expect(container.querySelector('[data-guide-mode="pro-play"]')).toBeTruthy();
   });
 
@@ -391,12 +391,15 @@ describe("LolHub — navigation structure", () => {
     expect(screen.queryByText("Train Your League Knowledge")).toBeNull();
   });
 
-  it("renders the academy heading and welcome copy", () => {
+  it("uses compact mobile copy while preserving the desktop academy title", () => {
     renderHub();
+    expect(screen.getByTestId("academy-mobile-title")).toHaveTextContent("MOGZY ACADEMY");
+    expect(screen.getByTestId("academy-mobile-title").className).toContain("md:hidden");
     expect(screen.getByText("Mogzy’s Academy of")).toBeTruthy();
     expect(screen.getByText("Leaguecraft and Technology")).toBeTruthy();
-    expect(screen.getByText(/Welcome back, Summoner/i)).toBeTruthy();
-    expect(screen.getByText("Chart your path. Sharpen your edge.")).toBeTruthy();
+    expect(screen.getByTestId("academy-desktop-title").className).toContain("md:block");
+    expect(screen.queryByText(/Welcome back, Summoner/i)).toBeNull();
+    expect(screen.queryByText("Chart your path. Sharpen your edge.")).toBeNull();
   });
 
   it("renders no page-level signup banner for guests — the HUD owns guest conversion now", () => {
@@ -423,29 +426,23 @@ describe("LolHub — Academy Broadcast centerpiece", () => {
     renderHub();
     expect(screen.getByTestId("academy-broadcast-centerpiece")).toBeTruthy();
     expect(screen.getByTestId("academy-broadcast-centerpiece-mobile")).toBeTruthy();
-    // The tome shows the honest placeholder; both docks read the same store
-    // and name the real runtime track.
+    // The tome shows the honest placeholder. Only desktop keeps the large
+    // local dock; mobile relies on the global HUD transport.
     expect(screen.getByTestId("academy-broadcast-surface")).toHaveTextContent(
       "Transmission systems online",
     );
     expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent("Tidecaller");
-    expect(screen.getByTestId("academy-radio-dock-mobile")).toHaveTextContent("Tidecaller");
+    expect(screen.queryByTestId("academy-radio-dock-mobile")).toBeNull();
   });
 
-  it("keeps the radio dock below the broadcast surface, on desktop and mobile", () => {
+  it("keeps the desktop radio dock below its surface and omits it on mobile", () => {
     renderHub();
-    for (const [surfaceId, dockId] of [
-      ["academy-broadcast-surface", "academy-radio-dock"],
-      ["academy-broadcast-surface-mobile", "academy-radio-dock-mobile"],
-    ] as const) {
-      const surface = screen.getByTestId(surfaceId);
-      const dock = screen.getByTestId(dockId);
-      expect(
-        surface.compareDocumentPosition(dock) & Node.DOCUMENT_POSITION_FOLLOWING,
-        `${dockId} below ${surfaceId}`,
-      ).toBeTruthy();
-      expect(surface.contains(dock)).toBe(false);
-    }
+    const surface = screen.getByTestId("academy-broadcast-surface");
+    const dock = screen.getByTestId("academy-radio-dock");
+    expect(surface.compareDocumentPosition(dock) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(surface.contains(dock)).toBe(false);
+    expect(screen.getByTestId("academy-broadcast-surface-mobile")).toBeTruthy();
+    expect(screen.queryByTestId("academy-radio-dock-mobile")).toBeNull();
   });
 
   it("mounting the hub never starts playback or creates an audio element", () => {
@@ -900,17 +897,29 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
     }
   });
 
-  it("the mobile panel list is untouched by the conversion", () => {
+  it("renders the mobile destinations as four physical books with live titles", () => {
     const { container } = renderHub();
-    // Scoped to Screen 1 since Revision 24: the Academy Record's primary action
-    // is also a /quiz link, and it is not a book. What this guards is unchanged
-    // — inside the HALL every destination appears exactly twice, desktop volume
-    // plus mobile panel — and scoping it keeps that guarantee exact rather than
-    // letting the Commons inflate the count.
     const hall = container.querySelector('[data-hub-screen="hall"]')!;
-    for (const href of ["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]) {
+    const stack = screen.getByTestId("mobile-academy-book-stack");
+    const expected = [
+      ["Leaguecraft", "/quiz"],
+      ["Combat Simulation", "/combat-lab"],
+      ["Mogzy Archives", "/lol/docs"],
+      ["Pro Play", "/lol/pro-play"],
+    ] as const;
+
+    expect(screen.getAllByTestId("mobile-academy-book")).toHaveLength(4);
+    expect(screen.getAllByTestId("mobile-academy-book-image")).toHaveLength(4);
+    for (const [title, href] of expected) {
       expect(hall.querySelectorAll(`a[href="${href}"]`)).toHaveLength(2);
       expect(hall.querySelector(`a.academy-hub-book[href="${href}"]`)).not.toBeNull();
+      const mobileBook = within(stack).getByRole("link", { name: title });
+      expect(mobileBook.getAttribute("href")).toBe(href);
+      expect(within(mobileBook).getByText(title)).toBeTruthy();
+    }
+
+    for (const image of screen.getAllByTestId("mobile-academy-book-image")) {
+      expect(image.getAttribute("src")).toContain("book-spine.png");
     }
   });
 });
@@ -1195,6 +1204,12 @@ describe("Academy Updates — on, with a published notice", () => {
       expect(screen.getAllByTestId("academy-updates-mark").length).toBeGreaterThan(0),
     );
     expect(academyStore.listPublishedUpdates).toHaveBeenCalled();
+
+    const stack = screen.getByTestId("mobile-academy-book-stack");
+    const report = screen.getByTestId("academy-broadcast-centerpiece-mobile");
+    const updates = screen.getByTestId("academy-updates-mobile");
+    expect(stack.compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(report.compareDocumentPosition(updates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("still renders nothing when the switch is on but the read comes back empty", async () => {

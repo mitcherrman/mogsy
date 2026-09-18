@@ -5,7 +5,7 @@ import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyHubShelf from "@/components/lol/AcademyHubShelf";
-import HexPanelLink from "@/components/lol/HexPanelLink";
+import MobileAcademyBookStack from "@/components/lol/MobileAcademyBookStack";
 import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -175,10 +175,6 @@ const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
 const RIGHT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 1);
 /** Mobile list order = registry order (desktop reading order). */
 const ALL_DESTINATIONS = HUB_DESTINATIONS;
-/** Mobile panels that keep the gold accent (Combat Simulation kept its own;
- *  Pro Play inherits the gold its standalone panel shipped with). */
-const GOLD_ACCENT_ROUTES = new Set(["/combat-lab", "/lol/pro-play"]);
-
 // Personalized academy lines. One is picked at random per hub entry and stays
 // fixed for the whole visit (see academyLineIndex below).
 const ACADEMY_LINES: ((name: string) => string)[] = [
@@ -699,7 +695,14 @@ export default function LolHub() {
           {/* Compact centered academy heading */}
           <header className="text-center">
             <h1
-              className="academy-hub-title mx-auto font-medium leading-[1.12] text-transparent bg-clip-text"
+              data-testid="academy-mobile-title"
+              className="font-medium uppercase leading-none tracking-[0.16em] text-[#d8c58e] [font-family:'Cinzel','Trajan_Pro','EB_Garamond',Georgia,serif] [font-size:clamp(1.05rem,5.2vw,1.3rem)] [text-shadow:0_2px_3px_rgba(0,0,0,0.8)] md:hidden"
+            >
+              MOGZY ACADEMY
+            </h1>
+            <h1
+              data-testid="academy-desktop-title"
+              className="academy-hub-title mx-auto hidden font-medium leading-[1.12] text-transparent bg-clip-text md:block"
               style={{
                 // Smallest of: width-fluid (original), height-fit (short
                 // laptops), HUD-clearance (narrow desktops) — academy-layout.ts.
@@ -718,14 +721,6 @@ export default function LolHub() {
               <span className="block text-balance">Mogzy’s Academy of</span>
               <span className="block text-balance">Leaguecraft and Technology</span>
             </h1>
-            {/* Sub-lines are mobile-only: on desktop that vertical band goes to
-                the book grid instead. Mobile presentation is unchanged. */}
-            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.34em] text-[#c9a84c]/90 md:hidden">
-              Welcome back, Summoner
-            </p>
-            <p className="mt-1 text-xs text-[#cfc4a5]/85 md:hidden">
-              Chart your path. Sharpen your edge.
-            </p>
             {/* Randomized personalized academy line (desktop). Chosen once per
                 mount; the entrance fade is disabled under prefers-reduced-motion
                 by .academy-personal-line in index.css. */}
@@ -836,35 +831,20 @@ export default function LolHub() {
             )}
           </div>
 
-          {/* Mobile fallback — clipped Hextech panels (unchanged presentation) */}
-          <div className="mt-5 grid grid-cols-1 gap-3 md:hidden">
-            {ALL_DESTINATIONS.map((d) => (
-              <HexPanelLink
-                key={d.to}
-                to={d.to}
-                title={d.title}
-                description={d.subtitle}
-                Icon={d.Icon}
-                accent={GOLD_ACCENT_ROUTES.has(d.to) ? "gold" : "cyan"}
-                onClick={() => onDestinationClick(d.to)}
-              />
-            ))}
-          </div>
+          {/* Mobile: four copies of the physical book asset, with live titles
+              and the same route registry as desktop. */}
+          <MobileAcademyBookStack books={ALL_DESTINATIONS} onBookClick={onDestinationClick} />
 
-          {/* Academy Updates, mobile (WHATSNEW1). The mobile Hall has no
-              Mogzy to anchor to — it is a plain list of Hextech panels — so
-              the mark becomes a compact labelled row instead of a bare glyph.
-              Placed after the four destinations so primary navigation keeps
-              the top of the list, and it renders nothing at all while the
-              feature is disabled. */}
-          <AcademyUpdates variant="mobile" enabled={settings.policy.academy.updatesEnabled} />
-
-          {/* Mobile Academy Broadcast — the stacked magic-book card with the
-              radio dock beneath it, after the four destinations so primary
-              navigation keeps the top of the list. */}
-          <div className="mt-4 md:hidden">
+          {/* Mobile Patch Report follows the book stack directly. The large
+              local radio dock is suppressed by the mobile centerpiece variant;
+              the global HUD transport and shared audio state are untouched. */}
+          <div className="mt-1 md:hidden">
             <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
           </div>
+
+          {/* Academy Updates remains available on mobile, but follows the Patch
+              Report so it cannot interrupt navigation → report. */}
+          <AcademyUpdates variant="mobile" enabled={settings.policy.academy.updatesEnabled} />
         </div>
 
         {/* THE THRESHOLD. A restrained way down to the Commons, and the reason
