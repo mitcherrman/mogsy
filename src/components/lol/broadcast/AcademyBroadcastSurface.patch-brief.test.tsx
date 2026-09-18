@@ -327,6 +327,10 @@ describe.each(["desktop", "mobile"] as const)(
       // One Adjustment icon must use the same bounded, centered row as a
       // complete Buffs/Nerfs row — never a left edge of a CSS grid track.
       expect(adjustmentGrid.dataset.briefRowWidth).toContain("calc(");
+      // A physical-pixel allowance absorbs independent browser rounding of
+      // cqw icon/gap values so an intended third icon cannot wrap at a
+      // fractional-width tome (Windows Firefox regression).
+      expect(adjustmentGrid.dataset.briefRowWidth).toContain("+ 1px)");
       // jsdom drops container-unit calc() values from CSSOM, so the mirrored
       // data attribute is the stable assertion for the assigned row width.
     });
