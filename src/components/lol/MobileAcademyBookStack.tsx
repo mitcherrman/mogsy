@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import bookSpine from "@/assets/book-spine.png";
+import bookSpine from "@/assets/book-spine-flat-v2.png";
 
 type MobileAcademyBook = {
   to: string;
@@ -10,15 +10,14 @@ type MobileAcademyBook = {
 /**
  * The phone Hall's four physical navigation books.
  *
- * The source image is 1658×949, while its non-transparent artwork occupies a
- * roughly 1639×495 box. Each link therefore uses the visible-art ratio and
- * positions the original image inside it; the asset is displayed directly and
- * its large transparent canvas margins do not become layout height.
+ * The source image is 2172×724, while its solid artwork occupies a roughly
+ * 2071×336 box. Each link uses that visible-art ratio and positions the
+ * original image inside it, so the transparent canvas does not recreate the
+ * taller cover silhouette from the previous asset.
  *
- * Later books sit behind earlier ones. The overlap leaves about 48px of each
- * lower spine exposed at phone widths, so the visible strip — including its
- * live title — belongs to that book's own link rather than to the book painted
- * over it.
+ * Later books sit behind earlier ones. The modest four-pixel overlap keeps the
+ * volumes visually connected while leaving nearly the entire flatter spine as
+ * an unambiguous tap target.
  */
 export default function MobileAcademyBookStack({
   books,
@@ -42,15 +41,12 @@ export default function MobileAcademyBookStack({
           aria-label={book.title}
           data-testid="mobile-academy-book"
           onClick={() => onBookClick?.(book.to)}
-          className="group relative block w-[calc(100%-0.75rem)] max-w-[22rem] overflow-hidden rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7ad6ff]"
+          className="group relative block min-h-12 w-[calc(100%-0.75rem)] max-w-[22rem] overflow-hidden rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7ad6ff]"
           style={{
-            aspectRatio: "1639 / 495",
+            aspectRatio: "2071 / 336",
             left: offsets[index % offsets.length],
             zIndex: books.length - index,
-            // 30.2% is the visible artwork's height relative to the source
-            // width. Subtracting it from 3.25rem keeps approximately 48px of
-            // each following spine exposed across ordinary phone widths.
-            marginTop: index === 0 ? undefined : "calc(3.25rem - 30.2%)",
+            marginTop: index === 0 ? undefined : "-0.25rem",
           }}
         >
           <img
@@ -59,11 +55,11 @@ export default function MobileAcademyBookStack({
             aria-hidden="true"
             draggable={false}
             data-testid="mobile-academy-book-image"
-            className="pointer-events-none absolute left-[-0.6%] top-[-38%] h-auto w-[101.2%] max-w-none select-none drop-shadow-[0_8px_8px_rgba(0,0,0,0.4)]"
+            className="pointer-events-none absolute left-[-2.41%] top-[-61.9%] h-auto w-[104.88%] max-w-none select-none drop-shadow-[0_6px_6px_rgba(0,0,0,0.42)]"
           />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-[13%] top-[59%] flex h-[33%] items-center justify-center text-center font-semibold uppercase leading-none tracking-[0.13em] text-[#ead79f] [font-family:'Cinzel','Trajan_Pro','EB_Garamond',Georgia,serif] [font-size:clamp(0.72rem,3.7vw,0.95rem)] [text-shadow:0_2px_3px_rgba(0,0,0,0.95)]"
+            className="pointer-events-none absolute bottom-[14%] left-[27.25%] right-[27.69%] top-[29%] flex items-center justify-center whitespace-nowrap text-center font-semibold uppercase leading-none tracking-[0.075em] text-[#ead79f] [font-family:'Cinzel','Trajan_Pro','EB_Garamond',Georgia,serif] [font-size:clamp(0.58rem,2.7vw,0.74rem)] [text-shadow:0_2px_3px_rgba(0,0,0,0.95)]"
           >
             {book.title}
           </span>

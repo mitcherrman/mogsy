@@ -919,7 +919,7 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
     }
 
     for (const image of screen.getAllByTestId("mobile-academy-book-image")) {
-      expect(image.getAttribute("src")).toContain("book-spine.png");
+      expect(image.getAttribute("src")).toContain("book-spine-flat-v2.png");
     }
   });
 });
