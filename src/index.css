@@ -2619,7 +2619,8 @@
   height: 190px;
   background: url("/assets/ranked/question-accents/rift-vines-top.svg") no-repeat;
   background-size: 100% 100%;
-  opacity: 0.5;
+  /* Owner: same vines, quieter (0.5 -> 0.32). */
+  opacity: 0.32;
 }
 /* A phone card has no parchment to spare; the motif is a desktop texture. */
 @media (max-width: 639px) {
