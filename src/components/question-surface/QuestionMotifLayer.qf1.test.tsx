@@ -136,35 +136,22 @@ describe("QuestionMotifLayer", () => {
     }
   });
 
-  it("draws the Items study (Long Sword + Amp Tome at 0.22, gold accents at 0.22)", () => {
+  it("draws the Items hero (one large Amp Tome at 0.22, nothing else)", () => {
     const { container } = render(<QuestionMotifLayer motif="items_economy" />);
     const layer = within(container).getByTestId("question-motif-layer");
     expect(layer.getAttribute("data-motif-art")).toBe("items");
     expect(layer.getAttribute("aria-hidden")).toBe("true");
     expect(layer.childElementCount).toBe(0);
-    const at = (sel: string) => {
-      const k = css.lastIndexOf(`${sel} {`);
-      expect(k, `missing ${sel}`).toBeGreaterThanOrEqual(0);
-      return css.slice(k, css.indexOf("}", k));
-    };
-    const items = at('.question-motif-layer[data-motif-art="items"]::before');
-    expect(items).toContain('url("/assets/ranked/question-accents/longsword.png")');
+    const k = css.lastIndexOf('.question-motif-layer[data-motif-art="items"]::before {');
+    const items = css.slice(k, css.indexOf("}", k));
+    expect(items.match(/url\(/g)).toHaveLength(1);
     expect(items).toContain('url("/assets/ranked/question-accents/amptome.png")');
-    expect(items).not.toContain("deathcap");
-    expect(items).toContain("opacity: 0.22");
     expect(items).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
-    const gold = at('.question-surface-stack.question-motif-host:has(> '
-      + '.question-motif-layer[data-motif-art="items"])::before');
-    expect(gold.match(/gold\.png/g)).toHaveLength(4);
-    expect(gold).toContain("opacity: 0.22");
-    expect(gold).toContain("z-index: -1");
-    expect(gold).toContain("pointer-events: none");
-    // Two coins on each outer side.
-    expect(gold.match(/left \d/g)).toHaveLength(2);
-    expect(gold.match(/right \d/g)).toHaveLength(2);
-    for (const f of ["longsword.png", "amptome.png", "gold.png"]) {
-      expect(existsSync(resolve(process.cwd(), "public/assets/ranked/question-accents", f))).toBe(true);
-    }
+    expect(items).toContain("opacity: 0.22");
+    for (const gone of ["longsword", "deathcap", "gold.png"]) expect(css).not.toContain(gone);
+    expect(css).not.toContain('.question-motif-layer[data-motif-art="items"])::before');
+    expect(existsSync(resolve(process.cwd(), "public/assets/ranked/question-accents/amptome.png")))
+      .toBe(true);
   });
 
   it("Champion/Combat is unchanged by the Rift art", () => {
