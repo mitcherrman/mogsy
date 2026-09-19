@@ -16,7 +16,7 @@ export interface SfxAssetVoice {
 }
 
 export interface SfxRegistryEntry {
-  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "ranked";
+  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked";
   minReplayMs: number;
   relativeGain: number;
   legacySettingKey?: keyof SoundSettings;
@@ -57,6 +57,13 @@ export const SFX_REGISTRY = {
   "ui.feedback.error": { group: "ui", minReplayMs: 300, relativeGain: 1, legacySettingKey: "play_error", builtInGeneratorId: "sfx.legacy.error" },
   "hub.book.land": { group: "hub", minReplayMs: 40, relativeGain: 1, legacySettingKey: "play_book_land", builtInGeneratorId: "sfx.legacy.book-land" },
   "hub.book.open": { group: "hub", minReplayMs: 220, relativeGain: 1, legacySettingKey: "play_book_ruffle", builtInGeneratorId: "sfx.legacy.book-ruffle" },
+  "hub.destination.focus": { group: "hub", minReplayMs: 0, relativeGain: 0.72, builtInGeneratorId: "sfx.hub.destination-focus" },
+  "leaguecraft.record.selection": { group: "leaguecraft", minReplayMs: 80, relativeGain: 0.82, builtInGeneratorId: "sfx.leaguecraft.selection" },
+  "leaguecraft.quiz.start": { group: "leaguecraft", minReplayMs: 250, relativeGain: 0.92, builtInGeneratorId: "sfx.leaguecraft.quiz-start" },
+  "leaguecraft.answer.lock": { group: "leaguecraft", minReplayMs: 120, relativeGain: 0.82, builtInGeneratorId: "sfx.leaguecraft.answer-lock" },
+  "leaguecraft.answer.correct": { group: "leaguecraft", minReplayMs: 180, relativeGain: 0.9, builtInGeneratorId: "sfx.leaguecraft.answer-correct" },
+  "leaguecraft.answer.incorrect": { group: "leaguecraft", minReplayMs: 180, relativeGain: 0.88, builtInGeneratorId: "sfx.leaguecraft.answer-incorrect" },
+  "leaguecraft.quiz.complete": { group: "leaguecraft", minReplayMs: 500, relativeGain: 0.95, builtInGeneratorId: "sfx.leaguecraft.quiz-complete" },
   "ranked.record.open": { group: "ranked", minReplayMs: 250, relativeGain: 1, legacySettingKey: "play_scroll_open", builtInGeneratorId: "sfx.legacy.scroll-open" },
   "ranked.record.close": { group: "ranked", minReplayMs: 250, relativeGain: 1, legacySettingKey: "play_scroll_close", builtInGeneratorId: "sfx.legacy.scroll-close" },
   "ranked.role.step": { group: "ranked", minReplayMs: 40, relativeGain: 1, legacySettingKey: "play_role_step", builtInGeneratorId: "sfx.legacy.role-step" },

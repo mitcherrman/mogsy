@@ -236,6 +236,42 @@ const renderers = {
     noise(context, output, startAt, { at: 0.142, dur: 0.09, peak: 0.04, from: 2400, to: 1300, q: 0.9, attack: 0.14 });
     noise(context, output, startAt, { at: 0.05, dur: 0.16, peak: 0.024, from: 700, to: 380, q: 1.1, attack: 0.3 });
   },
+  hubDestinationFocus(context, output, startAt) {
+    // A fingertip across leather and one tiny brass catch: intentionally much
+    // quieter and shorter than opening the book.
+    noise(context, output, startAt, { dur: 0.045, peak: 0.018, from: 1450, to: 900, q: 1.5, attack: 0.1 });
+    tone(context, output, startAt, { dur: 0.06, peak: 0.012, freq: 392, slideTo: 349.2, type: "triangle" });
+  },
+  leaguecraftSelection(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.045, peak: 0.024, from: 1150, to: 720, q: 1.4, attack: 0.08 });
+    tone(context, output, startAt, { dur: 0.075, peak: 0.024, freq: 740, slideTo: 659.3, type: "triangle" });
+  },
+  leaguecraftStart(context, output, startAt) {
+    // Short seal/rune commitment, without the weight of Ranked's mode seal.
+    noise(context, output, startAt, { dur: 0.09, peak: 0.04, from: 420, to: 210, q: 1.1, attack: 0.08 });
+    tone(context, output, startAt, { dur: 0.16, peak: 0.05, freq: 261.6, type: "triangle" });
+    tone(context, output, startAt, { at: 0.055, dur: 0.22, peak: 0.028, freq: 392 });
+  },
+  answerLock(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.032, peak: 0.034, from: 820, to: 460, q: 1.6, attack: 0.08 });
+    tone(context, output, startAt, { dur: 0.055, peak: 0.025, freq: 196, slideTo: 174.6, type: "triangle" });
+  },
+  answerCorrect(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.11, peak: 0.047, freq: 659.3, type: "triangle" });
+    tone(context, output, startAt, { at: 0.075, dur: 0.16, peak: 0.05, freq: 880 });
+    tone(context, output, startAt, { at: 0.13, dur: 0.15, peak: 0.022, freq: 1318.5 });
+  },
+  answerIncorrect(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.13, peak: 0.043, freq: 392, slideTo: 349.2, type: "triangle" });
+    tone(context, output, startAt, { at: 0.1, dur: 0.18, peak: 0.038, freq: 293.7, slideTo: 261.6, type: "triangle" });
+  },
+  quizComplete(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.1, peak: 0.026, from: 620, to: 1250, q: 1.1, attack: 0.25 });
+    tone(context, output, startAt, { dur: 0.2, peak: 0.05, freq: 392, type: "triangle" });
+    tone(context, output, startAt, { at: 0.1, dur: 0.24, peak: 0.052, freq: 523.3, type: "triangle" });
+    tone(context, output, startAt, { at: 0.2, dur: 0.32, peak: 0.05, freq: 659.3 });
+    tone(context, output, startAt, { at: 0.24, dur: 0.28, peak: 0.018, freq: 1046.5 });
+  },
   scribble(context, output, startAt, options) {
     const duration = Math.min(MAX_SCRIBBLE_MS, Math.max(0, options.durationMs ?? 0)) / 1000;
     if (duration <= 0) return;
@@ -308,6 +344,13 @@ export const SFX_GENERATORS = {
   "sfx.legacy.error": renderers.error,
   "sfx.legacy.book-land": renderers.bookLand,
   "sfx.legacy.book-ruffle": renderers.bookRuffle,
+  "sfx.hub.destination-focus": renderers.hubDestinationFocus,
+  "sfx.leaguecraft.selection": renderers.leaguecraftSelection,
+  "sfx.leaguecraft.quiz-start": renderers.leaguecraftStart,
+  "sfx.leaguecraft.answer-lock": renderers.answerLock,
+  "sfx.leaguecraft.answer-correct": renderers.answerCorrect,
+  "sfx.leaguecraft.answer-incorrect": renderers.answerIncorrect,
+  "sfx.leaguecraft.quiz-complete": renderers.quizComplete,
   "sfx.legacy.welcome-scribble": renderers.scribble,
   "sfx.legacy.welcome-page-turn": renderers.pageTurn,
 } as const satisfies Record<string, SfxSynthRenderer>;

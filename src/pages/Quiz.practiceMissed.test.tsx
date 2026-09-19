@@ -18,6 +18,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("@/components/ads/AdSlot", () => ({ default: () => null }));
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
@@ -140,6 +143,37 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Practice — remediating the run you just played", () => {
+  it("sounds start, answer lock/result, and completion once at their owning actions", async () => {
+    await playASessionWithOneMiss();
+    expect(sfx.play.mock.calls).toEqual([
+      ["leaguecraft.quiz.start"],
+      ["leaguecraft.answer.lock", { eventId: expect.stringMatching(/:0:11:lock$/) }],
+      ["leaguecraft.answer.incorrect", { eventId: expect.stringMatching(/:0:11:result$/) }],
+      ["leaguecraft.answer.lock", { eventId: expect.stringMatching(/:1:12:lock$/) }],
+      ["leaguecraft.answer.correct", { eventId: expect.stringMatching(/:1:12:result$/) }],
+      ["leaguecraft.quiz.complete", { eventId: expect.stringMatching(/:complete$/) }],
+    ]);
+  });
+
+  it("sounds answer lock but no result when grading has no server authority", async () => {
+    submitAnswerMock.mockRejectedValueOnce(new Error("offline"));
+    render(
+      <MemoryRouter initialEntries={["/quiz"]}>
+        <QuizPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("leaguecraft-workspace")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("practice-tile"));
+    await waitFor(() => expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Next question/ })).toBeTruthy());
+
+    expect(sfx.play.mock.calls.filter(([event]) => event === "leaguecraft.answer.lock")).toHaveLength(1);
+    expect(sfx.play).not.toHaveBeenCalledWith("leaguecraft.answer.correct", expect.anything());
+    expect(sfx.play).not.toHaveBeenCalledWith("leaguecraft.answer.incorrect", expect.anything());
+  });
+
   it("offers the misses from this session, counted", async () => {
     await playASessionWithOneMiss();
     const cta = screen.getByTestId("practice-missed-cta");

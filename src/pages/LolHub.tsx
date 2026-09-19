@@ -609,6 +609,34 @@ export default function LolHub() {
   const sfx = usePlaySfx();
   const sfxRef = useRef(sfx);
   sfxRef.current = sfx;
+  const lastKeyboardNavigationAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const destinationPreviewAtRef = useRef(new Map<HubGuideModeId, number>());
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") lastKeyboardNavigationAtRef.current = Date.now();
+    };
+    const onPointerDown = () => { lastKeyboardNavigationAtRef.current = Number.NEGATIVE_INFINITY; };
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, []);
+
+  const previewDestination = useCallback((guideId: HubGuideModeId, input: "pointer" | "keyboard") => {
+    if (input === "pointer") {
+      const fineHover = window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true;
+      if (!fineHover) return;
+    } else if (Date.now() - lastKeyboardNavigationAtRef.current > 1000) {
+      // Focus restored by code or the browser is not an authored interaction.
+      return;
+    }
+    const now = Date.now();
+    if (now - (destinationPreviewAtRef.current.get(guideId) ?? Number.NEGATIVE_INFINITY) < 320) return;
+    destinationPreviewAtRef.current.set(guideId, now);
+    canonicalSfx.play("hub.destination.focus");
+  }, [canonicalSfx]);
   useEffect(() => {
     if (!runEntrance) return;
     if (typeof window === "undefined") return;
@@ -693,8 +721,15 @@ export default function LolHub() {
       key={d.to}
       data-guide-mode={d.guideId}
       onMouseEnter={() => activateGuide(d.guideId)}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "touch") return;
+        previewDestination(d.guideId, "pointer");
+      }}
       onMouseLeave={deactivateGuide}
-      onFocus={() => activateGuide(d.guideId)}
+      onFocus={() => {
+        activateGuide(d.guideId);
+        previewDestination(d.guideId, "keyboard");
+      }}
       onBlur={deactivateGuide}
       className={`relative z-10 w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
       style={{

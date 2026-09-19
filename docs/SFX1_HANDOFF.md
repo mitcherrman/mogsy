@@ -158,7 +158,7 @@ Canonical details:
 - Dependency: SFX1.2.
 - Must not change: music controls or Hub navigation timing.
 
-### SFX1.4 — Home Hub and Leaguecraft semantic coverage
+### SFX1.4 — Home Hub and Leaguecraft semantic coverage — COMPLETE
 
 - Goal: bounded desktop book hover/focus plus deliberate Leaguecraft select/start/answer/result cues.
 - Likely files: Hub book components, Leaguecraft quiz components, registry/tests.
@@ -222,7 +222,7 @@ Canonical details:
 
 ## Exact next task
 
-Implement **SFX1.4 only**: add bounded desktop Home Hub book hover/focus feedback and deliberate Leaguecraft select/start/answer/result cues through the canonical registry. Gate hover to fine pointers, provide keyboard-focus parity, keep touch activation-only, suppress generic cues when a specialized cue applies, and preserve selection, submission, routing, and reduced-motion behavior. Do not add Ranked, Combat Simulation, Pro Play, Archives, auth, victory/defeat, or Broadcast cues, and do not change music.
+Implement **SFX1.5 only**: add live Ranked and results cues for round/module begin, accepted local answer lock, the viewer's authoritative correct/incorrect reveal, neutral public opponent action/progress, Meta Reflex interactions and results, award/speed bonus, module settlement, and terminal victory/defeat/draw outcomes. Establish initial hydration and reconnect state silently, dedupe StrictMode/poll transitions with stable authoritative ids, and never encode or infer opponent correctness. Preserve server authority, timers, answer submission, hidden information, match music, forfeit/no-contest policy, and all non-Ranked surfaces.
 
 ## SFX1.1 implementation state
 
@@ -266,3 +266,13 @@ SFX1.2 is complete at the commit containing this section. Its frontend implement
 - Focused verification: 18 files / 270 tests, all passing. Full TypeScript validation reports unrelated current-worktree errors and none in SFX1.3 files. Focused lint passes; the broader changed-file invocation exposes only five pre-existing `no-explicit-any` errors and two Fast Refresh warnings in `MogzyIdentityMenu.tsx`. Existing React `act(...)`, router-future, and `fetchPriority` warnings remain in legacy suites.
 - Static audit finds no `playUiSfx`, `UiSfx`, `mogsy.uiSfx.v1`, or `ui-sfx` import under `src`. Remaining non-canonical playback is limited to Quiz Broadcast, Academy Radio, Mode Soundtrack, video playback, Admin-only preview tooling, and the documented dev-only launch-chime prototype. The sole `custom_sound_urls` production reference is the one-way Admin migration key.
 - No new audible product moment, backend/schema change, music change, Broadcast change, gameplay transition, or route behavior was introduced.
+
+## SFX1.4 implementation state
+
+- The canonical registry now adds seven synthesized semantic events: `hub.destination.focus`, `leaguecraft.record.selection`, `leaguecraft.quiz.start`, `leaguecraft.answer.lock`, `leaguecraft.answer.correct`, `leaguecraft.answer.incorrect`, and `leaguecraft.quiz.complete`. Their restrained built-ins are short leather/brass, academic-tactile, seal/rune, dry lock, ascending/descending result, and resolved completion voices; no external asset, schema, backend, or music change was needed.
+- Desktop Hub books request destination focus only on authored pointer entry when `(hover: hover) and (pointer: fine)` matches, or on focus immediately authored by Tab navigation. Touch hover, programmatic/restored focus, pointer movement inside a book, and immediate same-book re-entry are silent. The existing activation stays exactly one `bookRuffle`; mobile therefore remains activation-only.
+- Leaguecraft Record History/Review/Trends requests one selection cue only when the pane actually changes. Initial/hash-restored state and reselecting the active pane are silent. Successful pack/category/builder/remediation starts request one start cue only after a nonempty session exists; empty, unavailable, or failed starts remain silent, and direct starts do not stack selection plus start.
+- Practice answer choice immediately requests one lock cue. Correct/incorrect cues occur only after the authoritative submit response succeeds; transport failure gets no false negative cue. Per-run question/index ids dedupe lock/result playback across rerenders or repeated results. Final `See results` owns one run-scoped completion cue; ordinary Next Question, answer hover, initial/restored state, and results rendering are silent.
+- Focused SFX1.4 verification covers registry rendering/mute, Hub fine-pointer/keyboard/touch/re-entry behavior, Record selection/no-op behavior, empty start silence, full wrong/right practice progression, failed grading authority, and completion. The affected 4-file run is 138/139 passing; the sole independent failure is the existing Quiz hub assertion that expects an `<h1>` in the current lobby markup. A broader 12-file audio/Leaguecraft run is 148/149 passing; its sole independent failure is the already documented Ranked-role Practice test that reaches an empty-question error. TypeScript passes. Targeted ESLint reports only the existing `Quiz.tsx` `no-explicit-any` and exhaustive-deps findings.
+- Browser QA passed at 1440×900 and 390×844 in the in-app Chromium browser. Desktop keyboard traversal reached the authored Hub books; Hub activation, Leaguecraft Record selection, a real 10-question practice start, and authoritative incorrect grading all completed. Mobile rendered the physical destination stack and Leaguecraft Ranked lobby correctly. The only browser console error-level entry was the pre-existing React `fetchPriority` casing warning.
+- Intentionally untouched: live Ranked/match/results, Combat Simulation, Pro Play, Archives, auth/account, Admin, Broadcast, Academy Radio, Mode Soundtrack, routing, quiz selection/submission authority, and reduced-motion policy.

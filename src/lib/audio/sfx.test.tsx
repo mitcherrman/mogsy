@@ -152,6 +152,26 @@ describe("canonical registration and API", () => {
 });
 
 describe("semantic registry and configuration timing", () => {
+  it("registers the authored Hub and Leaguecraft voices", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    const events = [
+      "hub.destination.focus",
+      "leaguecraft.record.selection",
+      "leaguecraft.quiz.start",
+      "leaguecraft.answer.lock",
+      "leaguecraft.answer.correct",
+      "leaguecraft.answer.incorrect",
+      "leaguecraft.quiz.complete",
+    ] as const;
+    for (const event of events) {
+      sfxController.play(event);
+      vi.advanceTimersByTime(600);
+    }
+    expect(audio.counts.oscillators).toBeGreaterThanOrEqual(events.length);
+  });
+
   it("keeps migrated legacy UI semantics silent until Audio Studio binds them", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
@@ -199,6 +219,16 @@ describe("semantic registry and configuration timing", () => {
 });
 
 describe("global visitor mute", () => {
+  it("silences representative new Leaguecraft feedback", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    localStorage.setItem(SFX_MUTE_STORAGE_KEY, "1");
+    window.dispatchEvent(new Event(SFX_MUTE_CHANGE_EVENT));
+    sfxController.play("leaguecraft.answer.correct");
+    expect(audio.counts.oscillators).toBe(0);
+  });
+
   it("reacts to mute and unmute without a reload", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);

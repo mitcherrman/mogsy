@@ -41,6 +41,7 @@ import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
 import { isRankedRole, type RankedRole } from "@/lib/ranked-public/roles";
 import { authHref } from "@/lib/auth/auth-destination";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+import { useSfx } from "@/lib/audio/useSfx";
 import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
 import { playModeVisibility } from "@/lib/quiz/playModes";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -508,6 +509,12 @@ export default function Quiz() {
    * could not do.
    */
   const sfx = usePlaySfx();
+  const canonicalSfx = useSfx();
+  const sfxSessionRunRef = useRef(0);
+  const soundQuizStarted = useCallback(() => {
+    sfxSessionRunRef.current += 1;
+    canonicalSfx.play("leaguecraft.quiz.start");
+  }, [canonicalSfx]);
 
   /**
    * THE RANKED SIGNUP GATE — one notice, and it lingers.
@@ -806,6 +813,7 @@ export default function Quiz() {
         setErrorMsg("No questions available for this set.");
         return;
       }
+      soundQuizStarted();
       setQuestions(qs);
       setPhase("active");
       if (isAnonymous) {
@@ -815,7 +823,7 @@ export default function Quiz() {
       setPhase("error");
       setErrorMsg(err?.message || "Failed to load questions.");
     }
-  }, [startHistorySession, isAnonymous]);
+  }, [startHistorySession, isAnonymous, soundQuizStarted]);
 
   /**
    * PRAC1 — start a Practice session for one category-rail subject.
@@ -865,6 +873,7 @@ export default function Quiz() {
         setErrorMsg(`No practice questions available for ${tile.full} right now.`);
         return;
       }
+      soundQuizStarted();
       setQuestions(qs);
       setPhase("active");
       if (isAnonymous) {
@@ -878,7 +887,7 @@ export default function Quiz() {
       setPhase("error");
       setErrorMsg(err instanceof Error ? err.message : "Failed to load questions.");
     }
-  }, [startHistorySession, isAnonymous]);
+  }, [startHistorySession, isAnonymous, soundQuizStarted]);
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
@@ -923,6 +932,8 @@ export default function Quiz() {
 
   const handleSelectAnswer = useCallback(async (choice: string) => {
     if (!currentQuestion || answerResult) return;
+    const sfxEventBase = `leaguecraft:${sfxSessionRunRef.current}:${currentIndex}:${currentQuestion.id}`;
+    canonicalSfx.play("leaguecraft.answer.lock", { eventId: `${sfxEventBase}:lock` });
     setSelectedAnswer(choice);
     try {
       const result: QuizAnswerResult = await quizApi.submitAnswer({
@@ -932,6 +943,10 @@ export default function Quiz() {
         session_id: sessionIdRef.current ?? undefined,
       });
       setAnswerResult(result);
+      canonicalSfx.play(
+        result.is_correct ? "leaguecraft.answer.correct" : "leaguecraft.answer.incorrect",
+        { eventId: `${sfxEventBase}:result` },
+      );
       if (result.is_correct) setScore((s) => s + 1);
       trackFunnelEvent("quiz_question_answered", {
         quiz_mode: "standard",
@@ -995,11 +1010,14 @@ export default function Quiz() {
         explanation: "Could not verify answer. Please check your connection and try again.",
       });
     }
-  }, [currentQuestion, currentIndex, answerResult, userId, loadProgress, loadAchievements]);
+  }, [currentQuestion, currentIndex, answerResult, userId, loadProgress, loadAchievements, canonicalSfx]);
 
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
       completeHistorySession();
+      canonicalSfx.play("leaguecraft.quiz.complete", {
+        eventId: `leaguecraft:${sfxSessionRunRef.current}:complete`,
+      });
       setPhase("result");
       const completionPayload = {
         quiz_mode: "standard",
@@ -1020,7 +1038,7 @@ export default function Quiz() {
       setFillBlankValue("");
       setAnswerResult(null);
     }
-  }, [currentIndex, questions.length, isAnonymous, completeHistorySession, currentSet, score]);
+  }, [currentIndex, questions.length, isAnonymous, completeHistorySession, currentSet, score, canonicalSfx]);
 
   /**
    * PT1.7A — REMEDIATION, BOUNDED TO THE SESSION THAT JUST ENDED.
@@ -1055,6 +1073,7 @@ export default function Quiz() {
 
   const handlePracticeMissed = useCallback(() => {
     if (missedQuestions.length === 0) return;
+    soundQuizStarted();
     // A replay is its own study session in the record, named for what it is.
     startHistorySession("practice_missed", currentSet?.name);
     setQuestions(missedQuestions);
@@ -1070,7 +1089,7 @@ export default function Quiz() {
       set_id: currentSet?.name ?? null,
       total_questions: missedQuestions.length,
     });
-  }, [missedQuestions, currentSet, startHistorySession]);
+  }, [missedQuestions, currentSet, startHistorySession, soundQuizStarted]);
 
   /**
    * PT1.8 — the Trends → Builder handoff, held here because this page hosts
@@ -1110,6 +1129,7 @@ export default function Quiz() {
    */
   const handleBuiltSession = useCallback((built: QuizQuestion[], label: string) => {
     if (built.length === 0) return;
+    soundQuizStarted();
     startHistorySession("practice_builder", label);
     setCurrentSet({
       id: `practice-builder:${label}`,
@@ -1127,7 +1147,7 @@ export default function Quiz() {
     setAnswerResult(null);
     setErrorMsg("");
     setPhase("active");
-  }, [startHistorySession]);
+  }, [startHistorySession, soundQuizStarted]);
 
   const handlePlayAgain = useCallback(() => {
     // A subject replays through its own loader. `currentSet` holds a synthetic

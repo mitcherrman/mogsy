@@ -11,6 +11,9 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("@/components/ads/AdSlot", () => ({ default: () => null }));
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
@@ -116,7 +119,11 @@ async function renderHub() {
 import QuizPage from "./Quiz";
 
 beforeEach(() => {
+  sfx.play.mockClear();
   questionsMock.mockClear();
+  questionsMock.mockResolvedValue({ questions: [] });
+  categoryQuestionsMock.mockClear();
+  categoryQuestionsMock.mockResolvedValue({ questions: [] });
   historyMock.mockClear();
   historyMock.mockResolvedValue(HISTORY);
   // Optional-call: in this repo's vitest/jsdom environment `localStorage`
@@ -264,6 +271,7 @@ describe("Leaguecraft hub — hierarchy", () => {
       expect(questionsMock).toHaveBeenCalledWith("Champion Basics", 10),
     );
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
+    expect(sfx.play).not.toHaveBeenCalledWith("leaguecraft.quiz.start");
   });
 
   it("makes the rail the Practice chooser — a tile starts a session in place", async () => {
@@ -297,6 +305,7 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
     // The lobby is still the lobby — no runner took over the page.
     expect(container.querySelector('[data-testid="quiz-category-rail"]')).not.toBeNull();
+    expect(sfx.play).not.toHaveBeenCalled();
   });
 
   it("the Ranked hero keeps the personal records ledger + profile link", async () => {
@@ -346,6 +355,16 @@ describe("Leaguecraft hub — hierarchy", () => {
 });
 
 describe("Leaguecraft hub — category rail", () => {
+  it("keeps initial/restored state silent and sounds one intentional Record selection", async () => {
+    await renderHub();
+    expect(sfx.play).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+    expect(sfx.play).toHaveBeenCalledWith("leaguecraft.record.selection");
+    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+  });
+
   // The six subjects used to be a strip inside the Practice panel: five of
   // twelve columns wide, folded to two rows of three, and below the fold on
   // every desktop. They are now a rail of their own, spanning the whole

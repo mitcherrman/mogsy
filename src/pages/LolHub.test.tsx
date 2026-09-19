@@ -321,6 +321,87 @@ describe("LolHub — navigation structure", () => {
     expect(mocks.canonicalSfxPlay).not.toHaveBeenCalledWith("hub.book.open");
   });
 
+  it("previews desktop destinations once per authored hover entry", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(hover: hover) and (pointer: fine)",
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList) as typeof window.matchMedia;
+    try {
+      const { container } = renderHub();
+      mocks.canonicalSfxPlay.mockClear();
+      const books = [...container.querySelectorAll<HTMLElement>("[data-guide-mode]")];
+
+      fireEvent.pointerEnter(books[0], { pointerType: "mouse" });
+      fireEvent.pointerMove(books[0], { pointerType: "mouse" });
+      fireEvent.pointerEnter(books[1], { pointerType: "mouse" });
+      fireEvent.pointerLeave(books[0], { pointerType: "mouse" });
+      fireEvent.pointerEnter(books[0], { pointerType: "mouse" });
+
+      expect(mocks.canonicalSfxPlay.mock.calls).toEqual([
+        ["hub.destination.focus"],
+        ["hub.destination.focus"],
+      ]);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("keeps touch preview silent while activation still sounds exactly once", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(hover: hover) and (pointer: fine)",
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList) as typeof window.matchMedia;
+    try {
+      const { container } = renderHub();
+      mocks.canonicalSfxPlay.mockClear();
+      const book = container.querySelector<HTMLElement>('[data-guide-mode="leaguecraft"]')!;
+      const touchEnter = createEvent.pointerEnter(book);
+      Object.defineProperty(touchEnter, "pointerType", { value: "touch" });
+      fireEvent(book, touchEnter);
+      fireEvent.click(within(book).getByRole("link"));
+
+      expect(mocks.canonicalSfxPlay).not.toHaveBeenCalledWith("hub.destination.focus");
+      expect(mocks.sfxPlay.mock.calls.filter(([cue]) => cue === "bookRuffle")).toHaveLength(1);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("previews only keyboard-authored focus, not restored programmatic focus", () => {
+    const { container } = renderHub();
+    mocks.canonicalSfxPlay.mockClear();
+    const links = [...container.querySelectorAll<HTMLElement>("[data-guide-mode] a")];
+
+    fireEvent.focus(links[0]);
+    expect(mocks.canonicalSfxPlay).not.toHaveBeenCalledWith("hub.destination.focus");
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.focus(links[1]);
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.focus(links[2]);
+
+    expect(
+      mocks.canonicalSfxPlay.mock.calls.filter(([event]) => event === "hub.destination.focus"),
+    ).toEqual([
+      ["hub.destination.focus"],
+      ["hub.destination.focus"],
+    ]);
+  });
+
   it("inscribes the legal set into the plinth, at the sitewide wording", () => {
     // These three are the destinations no other surface on /lol carries. They
     // used to come from the sitewide Footer's legal-only variant on this route;
