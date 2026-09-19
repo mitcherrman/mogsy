@@ -25,7 +25,7 @@ import type { QuestionMotif } from "@/lib/question-surface/questionMotif";
  * and Combat Workings share ONE artwork (the "Champion/Combat" classification,
  * `public/assets/ranked/question-accents/champ-combat.png`); Rift/Jungle
  * prints the minion + turret study; Items prints one large Amp Tome
- * study; Spells has none yet and renders nothing.
+ * study; Spells & Runes prints one large Electrocute bolt.
  */
 const ART: Readonly<Partial<Record<QuestionMotif, string>>> = {
   champion_studies: "champ-combat",
@@ -35,6 +35,8 @@ const ART: Readonly<Partial<Record<QuestionMotif, string>>> = {
   rift_field_guide: "rift",
   // Items — one hero: the pencil Amplifying Tome, enlarged and centred.
   items_economy: "items",
+  // Spells & Runes — one hero: the pencil Electrocute bolt, enlarged.
+  runes_summoner_arts: "spells",
 };
 
 /** Does this motif draw anything? Hosts use it to opt into the host class. */

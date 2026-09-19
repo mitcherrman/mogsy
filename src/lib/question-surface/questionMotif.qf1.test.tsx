@@ -148,8 +148,8 @@ describe("motifs with no artwork render nothing", () => {
   };
 
   it("the card DOM is identical with no motif and with every not-yet-drawn motif", () => {
-    // Champion/Combat, Rift/Jungle and Items draw (see QuestionMotifLayer.qf1
-    // tests); Spells must stay byte-identical to no motif at all.
+    // Every approved motif now draws (see QuestionMotifLayer.qf1 tests); a
+    // card with NO motif must stay byte-identical to one that never had QF1.
     const html = (question: QuestionView) => {
       const { container, unmount } = render(
         <InteractiveScenarioSurface question={question} selectedOptionId={null}
@@ -162,7 +162,7 @@ describe("motifs with no artwork render nothing", () => {
     const plain = html(Q);
     for (const motif of QUESTION_MOTIFS.filter((m) =>
       m !== "champion_studies" && m !== "combat_workings" && m !== "rift_field_guide"
-      && m !== "items_economy")) {
+      && m !== "items_economy" && m !== "runes_summoner_arts")) {
       expect(html({ ...Q, motif })).toBe(plain);
     }
     expect(html({ ...Q, motif: null })).toBe(plain);

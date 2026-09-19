@@ -24,8 +24,9 @@ import type { InteractionPermissions, QuestionView } from "@/lib/ranked-core/vie
 afterEach(cleanup);
 
 const CHAMP_COMBAT = ["champion_studies", "combat_workings"] as const;
-const DRAWN = [...CHAMP_COMBAT, "rift_field_guide", "items_economy"] as const;
-/** Runes & Summoner Arts: no art yet. */
+const DRAWN = [...CHAMP_COMBAT, "rift_field_guide", "items_economy",
+  "runes_summoner_arts"] as const;
+/** Every approved motif now has art. */
 const OTHER_MOTIFS = QUESTION_MOTIFS.filter(
   (m) => !(DRAWN as readonly string[]).includes(m));
 const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
@@ -61,8 +62,8 @@ describe("QuestionMotifLayer", () => {
     expect(motifHostClass(null)).toBe("");
   });
 
-  it("renders nothing for Spells (no art yet)", () => {
-    expect(OTHER_MOTIFS).toEqual(["runes_summoner_arts"]);
+  it("every approved motif has art (nothing left undrawn)", () => {
+    expect(OTHER_MOTIFS).toEqual([]);
     for (const motif of OTHER_MOTIFS) {
       const { container, unmount } = render(<QuestionMotifLayer motif={motif} />);
       expect(container.innerHTML).toBe("");
@@ -154,6 +155,23 @@ describe("QuestionMotifLayer", () => {
       .toBe(true);
   });
 
+  it("draws the Spells & Runes hero (one large Electrocute at 0.22, nothing else)", () => {
+    const { container } = render(<QuestionMotifLayer motif="runes_summoner_arts" />);
+    const layer = within(container).getByTestId("question-motif-layer");
+    expect(layer.getAttribute("data-motif-art")).toBe("spells");
+    expect(layer.getAttribute("aria-hidden")).toBe("true");
+    expect(layer.childElementCount).toBe(0);
+    const k = css.lastIndexOf('.question-motif-layer[data-motif-art="spells"]::before {');
+    expect(k).toBeGreaterThanOrEqual(0);
+    const spells = css.slice(k, css.indexOf("}", k));
+    expect(spells.match(/url\(/g)).toHaveLength(1);
+    expect(spells).toContain('url("/assets/ranked/question-accents/electrocute.png")');
+    expect(spells).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
+    expect(spells).toContain("opacity: 0.22");
+    expect(existsSync(resolve(process.cwd(), "public/assets/ranked/question-accents/electrocute.png")))
+      .toBe(true);
+  });
+
   it("Champion/Combat is unchanged by the Rift art", () => {
     const sheet = rule(
       '.question-surface-stack > .question-motif-layer[data-motif-art="champ-combat"]::before');
@@ -221,11 +239,12 @@ describe("live Ranked question (quiz.v1 → InteractiveScenarioSurface)", () => 
       .toBe("champ-combat");
   });
 
-  it("a Spells question draws nothing", () => {
+  it("a Spells & Runes question draws the Electrocute hero", () => {
     renderLive("runes_summoner_arts");
-    expect(screen.queryByTestId("question-motif-layer")).toBeNull();
+    expect(screen.getByTestId("question-motif-layer").getAttribute("data-motif-art"))
+      .toBe("spells");
     expect(screen.getByTestId("scenario-surface").className)
-      .not.toContain(QUESTION_MOTIF_HOST_CLASS);
+      .toContain(QUESTION_MOTIF_HOST_CLASS);
   });
 
   it("a Rift/Jungle question draws the rift study; reveal keeps it", () => {

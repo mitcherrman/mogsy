@@ -91,6 +91,7 @@ export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex",
   "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
   "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
+  "spellCooldown",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -325,6 +326,15 @@ function baseQuestionFor(state: ProbeState) {
         options: ["All of it, as true damage", "Half of it, as true damage",
           "All of it, as magic damage", "None; Smite cannot target champions"],
         category: "Jungle Systems" };
+    // QF1 Spells — a pooled `summoner_spell_cooldown` round, with the blob the
+    // backend renderer produces for Ignite.
+    case "spellCooldown":
+      return { question_id: "qq-spell-cd#r2", prompt: "What is the cooldown of Ignite?",
+        options: ["150 seconds", "180 seconds", "210 seconds", "240 seconds"],
+        category: "Summoner Spells",
+        presentation: { assets: { subject: { type: "summoner_spell_subject", spell: "Ignite",
+          spell_icon: "assets/summoner_spells/Ignite.png", badge: "Summoner Spell" } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
     case "jungleRule":
       return { question_id: "q-jungle-rule",
         prompt: "How long does it take a spent Smite charge to recharge?",
