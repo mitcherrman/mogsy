@@ -25,7 +25,9 @@
 > (GR1 reusable state architecture — **audit only**; its §0 reports a post-GR1 upstream change
 > that halved the Champion Mastery corpus) and
 > [`docs/gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md)
-> (GR1 reusable state architecture — **design, revision 2 (2026-09-19): four owner-approved constraints, Phase 1 seam proposed, nothing implemented**).
+> (GR1 reusable state architecture — **design, revision 2 (2026-09-19): four owner-approved constraints, Phase 1 seam proposed**) and
+> [`docs/gr1-reusable-state-phase1.md`](./gr1-reusable-state-phase1.md)
+> (GR1 reusable state **Phase 1 — inert foundation, MERGED to `master`, NOT wired**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -56,6 +58,7 @@
 | **GR1 × QCA8 Mastery eligibility correction** | **CORRECTED, 2026-09-19. Committed, NOT pushed.** Intent audit [`gr1-qca8-mastery-eligibility-intent-audit.md`](./gr1-qca8-mastery-eligibility-intent-audit.md) classified the QCA8 (`b7ccf8e0`) loss of `MASTERY` on `champion_stat_level` / `champion_stat_compare` as collateral. Backend branch `gr1/qca8-mastery-compat` @ **`5769dee3`**, base `origin/master` **`5c15cb5d`**, one commit. See the section below. |
 | **GR1 reusable state architecture — design** | **DESIGN PROPOSAL, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (one items-only fast-forward past the brief's `5769dee3`; no `mastery/`, `quiz/` or `ranked_modules/` change), docs base `origin/main` **`3c9ddfc4`**. StateTemplate / ResolvedState / FrozenStateArtifact for **setup** state, the matchup composition, the source abstraction, the pipeline, Full/Slice over one universe, identity under state, fail-closed rules. **17 owner decisions (§16) pending.** See [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md) and the summary below. |
 | **GR1 reusable state architecture — design revision 2** | **DESIGN ONLY, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (unchanged), docs base `origin/main` **`2ba820e1`**. Four owner-approved corrections: **no architectural level-18 cap** (capability ≠ rules ≠ derivation support), **independent matchup sides** (symmetric-only is generator policy), **replaceable setup sources** (no recommended-build authority exists), **historical patch = capability** (generic basis id; unavailable → refuse). Defines the smallest **Phase 1 seam** (inert `mastery/setup_state/` package, no callers, no I/O). See the section below. |
+| **GR1 reusable state — Phase 1 (inert foundation)** | **IMPLEMENTED AND MERGED, 2026-09-19. NOT wired.** `origin/master` contains **`88c9f7a0`** (rebased from `d9db54cb` onto `cf1d2db2`; upstream moved two items-only commits with zero file overlap), one commit. New package `mastery/setup_state/` (contracts, identity, structural validation, errors) with **no importer outside its own tests** (AST-enforced). Empty `ScenarioBinding` reproduces every existing fact, candidate and comparison id/digest byte-for-byte (fixtures + roster probe 173/173). See [`gr1-reusable-state-phase1.md`](./gr1-reusable-state-phase1.md) and the section below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -1147,6 +1150,41 @@ universe) → 4 Slice over a resolved state/window → 5 Full composer.
 **Decisions (§17):** A-1…A-4 and R-1…R-9 APPROVED. D-1, D-2, D-3 (revised), D-5, D-6 (now
 generation policy), D-7 (shape), D-9 (revised), D-10…D-17 and new D-18…D-21 are OPEN. D-21 is
 "approve Phase 1 as specified".
+
+## Reusable state — PHASE 1 IMPLEMENTED, inert (2026-09-19)
+
+Full record: [`gr1-reusable-state-phase1.md`](./gr1-reusable-state-phase1.md). The owner approved
+Phase 1 as specified in design §15 (D-21), with the package name `mastery/setup_state/` (D-18 a).
+
+* **Backend:** **`88c9f7a0`**, now on `origin/master`. Implemented on `b1fd3510`, rebased onto
+  `cf1d2db2` (two upstream items-only commits, zero file overlap) and pushed on 2026-09-19.
+  Branch `gr1/setup-state-phase1`, worktree `~/lcs-wt-gr1-state1`. One commit. It adds 9 files (5 in the package, 4 tests). It edits 2 test-support files:
+  `facts_support.GR1_PACKAGES` plus that list's pinned-set test, because the footprint guards
+  require the new package to be declared.
+* **Types:** `StateTemplate` / `SideTemplate` / `SharedContextTemplate` / `BasisRequest`;
+  `ResolvedState` / `ResolvedSide` / `SetupInputs` / `DerivedBlock` / `DerivedValue` (status
+  enforced, so unsupported is never zero) / `PairDerived` / `DataBasis{DataBasisId, availability}`
+  / `ResolutionRecord` / `DerivationSupport`; `FrozenStateArtifact` + `StepBinding`;
+  `ScenarioBinding` (generic typed inputs + roles, **no provenance field**); `SetupRecord`,
+  `SourceRef`, `SourceProvenance` and `SourcePolicy` as types only.
+* **Identity:** `semantic_state_key` (readable, caller-order free, provenance/basis-free).
+  `resolved_state_digest` (value-bearing, so manual vs saved gives the same digest, a new basis
+  with the same values gives the same digest, and a moved value gives a new digest).
+  `bind_identity(material, EMPTY)` **returns the same object**. Matchup canonicalization moves
+  whole sides and remaps roles and `side<i>.` keys. Identical mirrors minimise the binding.
+* **Validation:** shape only. Level 19, rank 6, a four-rank R and seven items all validate.
+  No game-rule number exists in the package (enforced: every int literal is 0, 1 or 2).
+* **Tests:** 103 new pass. Focused Mastery suites: same single pre-existing failure before and
+  after (`test_format_for_creation_is_unaffected_by_this_module`, Ranked default-format drift),
+  1042 → 1152 passed. Roster probe (read-only, not committed): 173/173 banks, 12,333 facts,
+  8,806 candidates, 60 pairs / 2,961 comparisons, all byte-identical.
+* **Ambiguities for the owner (Phase 1 doc §9):** the frozen block is one per state (a
+  multi-state container is Stage 3/4); runes and shards are order-free multisets; there is no
+  per-metric precision registry, so the producer must round bound floats; `rules_rev` and
+  `derivation_version` bumps move the digest.
+* **Next:** Stage 2 (rules authority, current-basis resolution, sources, derivation with a support
+  manifest) needs its own approval. At that point the isolation rule narrows deliberately from
+  "no importer" to "no serving importer".
 
 ## Screenshots / artifacts
 
