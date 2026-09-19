@@ -25,7 +25,7 @@
 > (GR1 reusable state architecture — **audit only**; its §0 reports a post-GR1 upstream change
 > that halved the Champion Mastery corpus) and
 > [`docs/gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md)
-> (GR1 reusable state architecture — **design proposal only, 17 owner decisions pending**).
+> (GR1 reusable state architecture — **design, revision 2 (2026-09-19): four owner-approved constraints, Phase 1 seam proposed, nothing implemented**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -55,6 +55,7 @@
 | **GR1 reusable state architecture audit** | **COMPLETE, 2026-09-19. AUDIT ONLY — nothing implemented.** Backend `origin/master` **`fc2e8be9`**, frontend `origin/main` **`4c29f7ba`** (both fast-forwards of the brief's `2387e8f5` / `791027de`). How close the architecture is to "questions consume a reusable, data-driven state", and to one universe feeding FULL and SLICE composers. **§0 is a regression report:** upstream `b7ccf8e0` (qca8) removed `MASTERY` from the `champion_stat_level` / `champion_stat_compare` modes. See [`gr1-reusable-state-architecture-audit.md`](./gr1-reusable-state-architecture-audit.md) and the summary below. |
 | **GR1 × QCA8 Mastery eligibility correction** | **CORRECTED, 2026-09-19. Committed, NOT pushed.** Intent audit [`gr1-qca8-mastery-eligibility-intent-audit.md`](./gr1-qca8-mastery-eligibility-intent-audit.md) classified the QCA8 (`b7ccf8e0`) loss of `MASTERY` on `champion_stat_level` / `champion_stat_compare` as collateral. Backend branch `gr1/qca8-mastery-compat` @ **`5769dee3`**, base `origin/master` **`5c15cb5d`**, one commit. See the section below. |
 | **GR1 reusable state architecture — design** | **DESIGN PROPOSAL, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (one items-only fast-forward past the brief's `5769dee3`; no `mastery/`, `quiz/` or `ranked_modules/` change), docs base `origin/main` **`3c9ddfc4`**. StateTemplate / ResolvedState / FrozenStateArtifact for **setup** state, the matchup composition, the source abstraction, the pipeline, Full/Slice over one universe, identity under state, fail-closed rules. **17 owner decisions (§16) pending.** See [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md) and the summary below. |
+| **GR1 reusable state architecture — design revision 2** | **DESIGN ONLY, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (unchanged), docs base `origin/main` **`2ba820e1`**. Four owner-approved corrections: **no architectural level-18 cap** (capability ≠ rules ≠ derivation support), **independent matchup sides** (symmetric-only is generator policy), **replaceable setup sources** (no recommended-build authority exists), **historical patch = capability** (generic basis id; unavailable → refuse). Defines the smallest **Phase 1 seam** (inert `mastery/setup_state/` package, no callers, no I/O). See the section below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -1044,6 +1045,10 @@ base-stat slices" predates this. It is owner decision 1 in the audit.
 
 ## Reusable state architecture — DESIGN PROPOSAL (2026-09-19)
 
+> **SUPERSEDED by revision 2 (section below).** Kept for history. Its level-18 cap, its
+> symmetric-only matchup recommendation, `champion_item_builds.json` as `curated_default`, and
+> the `"current" | PinnedBasis` basis were all corrected by the owner.
+
 Full proposal: [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md).
 **Design only. No runtime code, schema, migration, Slice, Full, tie, QCA, Applied-chain,
 Combat Lab or UI change.** Backend read at `b1fd3510`, frontend/docs base `3c9ddfc4`.
@@ -1088,6 +1093,60 @@ window → Full (a separate phase). Journeys and Combat Lab are untouched throug
 
 **Owner decisions:** 17, listed with options, trade-offs and recommendations in §16 of the
 design (D-1 setup-only … D-17 eligibility via `family_contract` + Mastery pin tests).
+
+## Reusable state architecture — DESIGN REVISION 2 (2026-09-19)
+
+Full design: [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md)
+(revision 2 replaces revision 1 in place; revision 1 is `2ba820e1`). **Design only. Phase 1 is
+proposed, NOT implemented.** Backend read at `b1fd3510` with `git show`/`git grep`; no DB opened.
+
+**Four owner-APPROVED constraints (§17.1 A-1…A-4):**
+
+* **No architectural level-18 cap.** The contract holds level, ranks, items, runes and shards as
+  data with no game-rule numbers. Legality comes from a **rules authority** keyed by
+  ruleset + basis. What derivation can compute is a separately declared **support manifest**
+  (levels 1–18 at first). Out-of-rules → refused. In-rules but out-of-support → `unsupported`.
+  Never clamped. Evidence: both existing skill-point rules (`transitions._min_level_for_rank`,
+  `combat_scenarios.resolver.validate_rank_for_level`) hardcode 5 basic ranks / R at 6-11-16 ≤ 3,
+  which is wrong for Nidalee/Elise/Karma (4-rank R, rank 1 at start) and Jayce/Yuumi/Udyr (6-rank
+  basics). `champion_state.py`'s store-guarded ceiling tables are the right source. Revision 1's
+  "adopt `_min_level_for_rank`" recommendation is **withdrawn**.
+* **Independent matchup sides.** Ahri L7 vs Syndra L6, different ranks, items, runes, shards and
+  derived stats are all ordinary states. Generating only today's symmetric cases is a **generator
+  policy** (D-6, OPEN). Canonical side order is `(slug, side setup key)`. Setup stays bound to its
+  champion. Directional roles live in the binding after canonicalization.
+* **Replaceable sources.** Resolution consumes a normalized `SetupRecord`. Generators are
+  source-blind. Provenance is frozen but is never identity. The default is `SourcePolicy`
+  **configuration**. **Mogzy has no recommended-build, skill-order, rune-page or shard
+  authority.** `champion_item_builds.json` is at most one curated adapter (D-9 recommends
+  selectable-by-name, not default).
+* **Historical basis = capability.** `BasisRequest = current | pinned(DataBasisId)`. A resolved
+  state always stores a **concrete** generic `DataBasisId{scheme,key}` with
+  `availability = live_only | retrievable`. Today only the live basis is available, so any other
+  pinned basis → `HistoricalBasisUnavailable`. Snapshots added later would change availability,
+  not the contract.
+
+**Identity (§8):** semantic question id = existing intrinsic material + binding (the empty binding
+returns the material **unchanged**, byte-identical). State identity has three parts:
+`semantic_state_key` (readable inputs, no basis, no source), `resolved_state_digest` (value-bearing,
+following the `fact_id`/`content_digest` precedent, so a patch that changes nothing read leaves it
+alone), and provenance (never identity). Manual vs saved source for the same setup gives the same
+key and digest with different provenance. `(Ahri,Syndra)` ≡ `(Syndra,Ahri)`.
+
+**Phase 1 seam (§15), PROPOSED:** new `mastery/setup_state/` (`contract.py`, `identity.py`,
+`validation.py`, `errors.py`) plus four new tests. Files only, **no importer outside tests
+(AST-enforced)**, no I/O, no rules data, no derivation, no source reads. The key acceptance test
+builds real Champion and Matchup banks from `facts_support` fixtures and proves that
+`bind_identity(material, EMPTY)` reproduces every `fact_id`, `candidate_id`, `content_digest` and
+`candidate_key`. Rollback = revert one additive commit.
+
+**Stages (§16):** 1 contracts+identity (inert) → 2 resolution + rules + derivation (uncalled by
+serving) → 3 first state-aware family in Generator Lab (includes `resolver.publish` receiving its
+universe) → 4 Slice over a resolved state/window → 5 Full composer.
+
+**Decisions (§17):** A-1…A-4 and R-1…R-9 APPROVED. D-1, D-2, D-3 (revised), D-5, D-6 (now
+generation policy), D-7 (shape), D-9 (revised), D-10…D-17 and new D-18…D-21 are OPEN. D-21 is
+"approve Phase 1 as specified".
 
 ## Screenshots / artifacts
 
