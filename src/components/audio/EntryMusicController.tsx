@@ -1,5 +1,9 @@
 import { useEffect } from "react";
 
+// SFX1.1: register the dark canonical SFX channel beside the existing music
+// controllers. No product call site uses it until SFX1.2.
+import "@/lib/audio/sfx";
+
 import {
   adoptAcademyRadioPlaylist,
   attemptRadioAutostart,

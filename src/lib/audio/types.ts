@@ -1,3 +1,5 @@
+import type { SfxEvent } from "./sfx-registry";
+
 export interface RadioEngineSnapshot {
   isPlaying: boolean;
   isAudible: boolean;
@@ -56,4 +58,23 @@ export interface ModeSoundtrackController {
   setMuted: (muted: boolean) => void;
   setVolume: (volume: number) => void;
   setPlayAutomatically: (enabled: boolean) => void;
+}
+
+export interface SfxPlayOptions {
+  /** Stable server/game identity. The same id is rendered at most once. */
+  eventId?: string;
+}
+
+export interface SfxEngineSnapshot {
+  muted: boolean;
+  configReady: boolean;
+  contextState: "locked" | "running" | "suspended" | "unavailable";
+}
+
+export interface SfxController {
+  getSnapshot: () => SfxEngineSnapshot;
+  subscribe: (listener: () => void) => () => void;
+  play: (event: SfxEvent, options?: SfxPlayOptions) => void;
+  unlock: () => Promise<boolean>;
+  refreshMute: () => void;
 }

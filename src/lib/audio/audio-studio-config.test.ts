@@ -43,7 +43,7 @@ describe("Audio Studio configuration", () => {
     });
   });
 
-  it("normalizes event-binding metadata without integrating SFX playback", () => {
+  it("normalizes event-binding metadata for canonical SFX playback", () => {
     const config = parseAudioStudioConfig({ eventBindings: [
       { event_key: "ui.nav-click", source_type: "asset", audio_asset_id: "click", relative_gain: 0.6 },
       { event_key: "quiz.correct", source_type: "synthesized", generator_id: "correct-tone" },
