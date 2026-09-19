@@ -14801,58 +14801,76 @@ html.hub-commons-in-view .hextech-ambience-layer {
    RMOB2 — THE COMPACT PHONE HUD.
 
    Phones only (below `sm`), every route. The desktop HUD is untouched.
-   The VISIBLE controls shrink — 44px targets become 36px boxes, 36px marks
-   become 30px, the cluster's padding and gaps tighten — while each control's
+   The VISIBLE controls shrink — 44px targets become 32px boxes, 36px marks
+   become 27px, the cluster's padding and gaps tighten — while each control's
    HIT AREA stays 44px tall through an invisible `::after`, so nothing gets
-   harder to tap. The strip itself drops from 48px to 40px; `--app-header-h`
-   (the page reservation every route reads) is deliberately NOT changed, so no
-   other page moves — only the phone Ranked arena spends the 8px it frees.
+   harder to tap. The painted strip drops to 36px; `--app-header-h` (the page
+   reservation every route reads) is deliberately NOT changed, so no page
+   content moves with the chrome.
    ─────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 639.98px) {
   .global-hud > div {
-    height: 2.5rem;
+    /* Centre the 36px painted controls in a transparent 44px interaction
+       band. This keeps the invisible hit extensions inside the viewport even
+       though the visible chrome is materially smaller. */
+    height: 2.75rem;
   }
   .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"],
     [data-testid="academy-radio-hud-trigger"], [data-testid="hud-page-report"],
     [data-testid="hud-notifications-trigger"]) {
     position: relative;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2rem;
+    height: 2rem;
   }
   .global-hud [data-testid="hud-notifications-trigger"] {
-    width: 1.75rem;
+    width: 1.5rem;
   }
   .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"],
     [data-testid="academy-radio-hud-trigger"], [data-testid="hud-page-report"],
     [data-testid="hud-notifications-trigger"])::after {
     content: "";
     position: absolute;
-    inset: -4px 0;
+    inset: -6px 0;
   }
   .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"]) .h-9.w-9 {
-    width: 1.875rem;
-    height: 1.875rem;
+    width: 1.6875rem;
+    height: 1.6875rem;
   }
   .global-hud [data-testid="academy-radio-hud-trigger"] svg {
-    width: 1.125rem;
-    height: 1.125rem;
+    width: 1rem;
+    height: 1rem;
   }
   .global-hud [data-testid="hud-page-report"] svg {
-    width: 0.875rem;
-    height: 0.875rem;
+    width: 0.8125rem;
+    height: 0.8125rem;
   }
-  /* The cluster pill: the approved control boxes already provide their own
-     breathing room, so the phone shell needs no extra horizontal inset or
-     inter-control gap. This reclaims width without changing a single visible
-     mark or the 44px vertical hit extensions above. */
+  .global-hud [data-testid="hud-notifications-trigger"] svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+  .global-hud [data-testid="hud-profile"] + span[aria-hidden="true"] {
+    height: 1.25rem;
+  }
+  /* The conversion chip is already wider than 44px. Its invisible extension
+     preserves a 44px-tall target while the visible chip remains deliberately
+     quiet beside the primary controls. */
   .global-hud [data-testid="hud-signup-chip"] {
+    position: relative;
     height: 1.5rem;
-    padding-inline: 0.5rem;
+    padding-inline: 0.25rem;
     font-size: 10px;
   }
+  .global-hud [data-testid="hud-signup-chip"]::after {
+    content: "";
+    position: absolute;
+    inset: -10px 0;
+  }
+  /* Two pixels separates the pill's compound controls. The controls' own
+     fixed boxes provide the remaining optical breathing room, so extra shell
+     padding would read as unused navy at phone scale. */
   .global-hud nav > div > div:last-child,
   .global-hud > div > div:last-child {
-    gap: 0;
+    gap: 2px;
     padding: 1px 0;
   }
   /* The phone Ranked arena starts where the compact strip ends. */
