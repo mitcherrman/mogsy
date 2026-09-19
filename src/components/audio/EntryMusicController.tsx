@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 
-// SFX1.1: register the dark canonical SFX channel beside the existing music
-// controllers. No product call site uses it until SFX1.2.
+// Register the canonical SFX channel beside the independent music controllers.
 import "@/lib/audio/sfx";
 
 import {
@@ -18,6 +17,7 @@ import {
   resolveRuntimePlaylist,
   subscribeAudioStudioRuntime,
 } from "@/lib/audio/audio-studio-runtime";
+import { loadSoundSettingsRuntime } from "@/lib/audio/sound-settings-runtime";
 
 /**
  * Academy Radio mount point.
@@ -48,6 +48,7 @@ export default function AcademyRadioController() {
     installFirstGestureUnlock();
     installRadioInactivityMonitor();
     void attemptRadioAutostart();
+    void loadSoundSettingsRuntime();
     const applyRuntime = (runtime = getAudioStudioRuntimeSnapshot()) => {
       const playlist = resolveRuntimePlaylist(runtime.config, "academy-radio");
       if (!playlist) return;

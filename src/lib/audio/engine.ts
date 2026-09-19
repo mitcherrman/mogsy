@@ -73,4 +73,12 @@ export const mogzyAudio = {
       // A controller bug degrades to silence, never to a broken application action.
     }
   },
+
+  stopSfx(event: SfxEvent): void {
+    try { state().sfx?.stop(event); } catch { /* optional sound stays optional */ }
+  },
+
+  preloadSfx(event: SfxEvent): void {
+    try { state().sfx?.preload(event); } catch { /* optional warm-up stays optional */ }
+  },
 };

@@ -7,6 +7,8 @@ import type { SfxPlayOptions } from "./types";
 
 export interface SfxApi {
   play: (event: SfxEvent, options?: SfxPlayOptions) => void;
+  stop: (event: SfxEvent) => void;
+  preload: (event: SfxEvent) => void;
 }
 
 /** Stable command-only API. Configuration changes never change `play` identity. */
@@ -14,6 +16,12 @@ export function useSfx(): SfxApi {
   return useMemo(() => ({
     play(event: SfxEvent, options?: SfxPlayOptions) {
       mogzyAudio.playSfx(event, options);
+    },
+    stop(event: SfxEvent) {
+      mogzyAudio.stopSfx(event);
+    },
+    preload(event: SfxEvent) {
+      mogzyAudio.preloadSfx(event);
     },
   }), []);
 }

@@ -63,6 +63,10 @@ export interface ModeSoundtrackController {
 export interface SfxPlayOptions {
   /** Stable server/game identity. The same id is rendered at most once. */
   eventId?: string;
+  /** Optional authored window for continuous semantic effects such as writing. */
+  durationMs?: number;
+  /** Admin preview only; product callers must use persisted compatibility policy. */
+  bypassLegacySetting?: boolean;
 }
 
 export interface SfxEngineSnapshot {
@@ -75,6 +79,8 @@ export interface SfxController {
   getSnapshot: () => SfxEngineSnapshot;
   subscribe: (listener: () => void) => () => void;
   play: (event: SfxEvent, options?: SfxPlayOptions) => void;
+  stop: (event: SfxEvent) => void;
+  preload: (event: SfxEvent) => void;
   unlock: () => Promise<boolean>;
   refreshMute: () => void;
 }

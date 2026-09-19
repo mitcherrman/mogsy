@@ -138,7 +138,7 @@ Canonical details:
 - Dependency: use existing Supabase audio tables; no backend service work.
 - Must not change: music state, cue sound design, gameplay timing, routes.
 
-### SFX1.2 — migrate existing shared-settings SFX without audible changes
+### SFX1.2 — migrate existing shared-settings SFX without audible changes — COMPLETE
 
 - Goal: register and route landing, swipe/Elo, card, shop, tome, and all PLAY/Hub cues through the canonical authority; retain old hook signatures as thin adapters first.
 - Likely files: current SFX hooks/engines, `Index.tsx`, tome files, PLAY files, their tests.
@@ -222,7 +222,7 @@ Canonical details:
 
 ## Exact next task
 
-Implement **SFX1.2 only**: adapt the existing proven renderer implementations into the canonical registry and migrate the existing shared-settings SFX paths—landing, swipe/Elo, card animations, shop, tome, PLAY1, and Hub—through thin compatibility adapters. Preserve current triggers, gains, cadence, and semantic timing; make the existing global mute cover the four previously ungated meme samples; prevent legacy/canonical double playback; do not add new cues, migrate `ui-sfx`, touch Broadcast, or add live Ranked/Leaguecraft sounds.
+Implement **SFX1.3 only**: migrate the remaining main-app `ui-sfx` calls in Global HUD, identity menu, HexTrainingHero, and Hub `appEnter` to explicit canonical semantics; remove the now-obsolete Hub/UI duplicate configuration path and `UiSfxSettings` only after all its callers are canonical; replace runtime-inert `custom_sound_urls` behavior with Audio Studio event bindings; make Admin save publications update mounted canonical consumers; and expose the existing Academy Hub settings rows. Do not add hover, generic global clicks, new Leaguecraft/Ranked cues, or change Broadcast/music.
 
 ## SFX1.1 implementation state
 
@@ -239,3 +239,19 @@ SFX1.1 adds a dark canonical runtime without moving any production cue request.
 - `src/lib/audio/sfx.test.tsx` contains 18 focused tests covering registration, shared React/non-React routing, stable hook identity, registry lookup, config timing, reactive mute/music isolation, asset and synthesized precedence, explicit disable, asset caching, event-id and per-event cadence, missing/refused/resumed contexts, fetch/decode/binding failures, and renderer exceptions.
 - Focused regression result: 14 files, 241 tests, all passing. This covers SFX plus directly affected Audio Studio, engine, radio, mode soundtrack, settings, PLAY1, and tome suites. Focused lint has no errors (two pre-existing React Refresh warnings in `EntryMusicController.tsx`). The full app typecheck still reports unrelated baseline errors; it reports no errors in the SFX1.1 files.
 - No backend or Supabase schema changed. No existing SFX call site was migrated. The existing PLAY1, Hub, landing, swipe/Elo, card, shop, tome, UI, and Broadcast paths still render exactly as they did before this phase.
+
+## SFX1.2 implementation state
+
+SFX1.2 is complete at the commit containing this section. Its frontend implementation base was `73cf76f8`.
+
+- The canonical semantic registry now contains the existing landing, swipe/Elo, card-animation, shop, welcome, PLAY1, and Hub cues. `sfx-renderers.ts` carries the proven oscillator/noise structures, envelopes, frequencies, durations, and relative levels; bundled animation samples retain their existing files, gains, composite timing, trim, and fade behavior.
+- `usePlaySfx`, `playSfxEngine`, `useSwipeSound`, `useAnimationSound`, `useShopSound`, and `tomeAudioEngine` remain only as temporary compatibility adapters. They own no `AudioContext`, unlock listener, mute decision, replay guard, settings fetch, asset cache, or Audio Studio resolution. Existing product call sites therefore keep their signatures and semantic trigger boundaries while reaching the one canonical controller.
+- Landing now requests `landing.enter` and retains its existing 250 ms navigation timing. PLAY/record/queue callers retain their existing legacy cue names through the canonical map. Hub entrance timers still request four `bookLand` impacts at the existing animation fractions; destination activation requests exactly one canonical `bookRuffle`, and the duplicate `playUiSfx("sectionOpen")` call is removed.
+- Swipe, Elo correct/wrong, shop purchase/diamond/power-up, and all active card animations map to canonical events. Paper rip and the `chop`, `mogged`, `doakes`, and `amongus` samples use the canonical bounded decoded-buffer cache and SFX gain path. The four previously ungated samples now obey `mogsy-sounds-muted`.
+- Welcome keeps its higher-level `scribble(ms)`, `stopScribble()`, and `pageTurn()` API. The canonical renderer owns the variable-duration quill voice and its stop handle, page-turn cadence, shared context, and master gain; the old tome context/unlock/dedupe state is gone.
+- `sound-settings-runtime.ts` is the single observable compatibility snapshot for persisted `app_settings.sound_settings`. Registry entries declare their legacy setting key, so the controller—not adapters—enforces existing operator enablement. Keyed cues remain silent until that snapshot is available, avoiding the former default-enabled flash. Admin save publishes the new snapshot to mounted consumers. The old hook is now only a compatibility view for Admin and the dev-only entry prototype.
+- Audio Studio precedence is unchanged: a valid enabled binding overrides the migrated built-in; an absent binding uses the proven renderer/sample; an explicit disabled, invalid, unavailable, or failed binding remains silent. Built-in and custom voices never stack.
+- The canonical controller gained generic `stop` and `preload` commands for the welcome scribble and paper-rip warm-up, plus built-in multi-sample playback. All remain fail-soft and use the existing shared context, master gain, cache, mute, configuration, and replay state.
+- Focused verification: 19 files / 577 tests, with 576 passing. The only failure is the documented pre-existing `Quiz.rankedRole.test.tsx` case “commits NOTHING for Practice after a role change”; all of that suite's PLAY1 sound assertions pass. Focused lint has zero errors and four existing/export-structure Fast Refresh warnings. Full app typecheck still reports only unrelated baseline errors and none in SFX1.2 files.
+- Static runtime audit: `src/lib/audio/sfx.ts` and `sfx-renderers.ts` are the only product canonical Web Audio authority; Academy Radio and Mode Soundtrack remain separate music; `ui-sfx.ts` and its HUD/identity/Hex/Hub callers remain explicitly deferred to SFX1.3; Quiz Broadcast remains deferred to SFX1.7; `AutoVideo` is video; Admin sound/card-animation contexts are preview-only; `pages/dev/mogzy-entry-v2/useLaunchChime.ts` is a dev-only prototype copy. No unexplained active product SFX authority remains.
+- No new sound moment, backend change, schema change, music change, Broadcast change, visible UI change, gameplay transition, or route behavior was introduced.

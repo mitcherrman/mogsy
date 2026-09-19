@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Volume2, VolumeX, Play, Upload, Trash2, X, Pause } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   SoundSettings,
   SOUND_DEFAULTS,
   SOUND_LABELS,
-  invalidateSoundSettingsCache,
 } from "@/hooks/useSoundSettings";
+import { publishSoundSettings } from "@/lib/audio/sound-settings-runtime";
 import { tomeAudioEngine } from "@/pages/welcome/tomeAudio";
 import { playSfxEngine, resetPlaySfxGuards } from "@/lib/audio/play-sfx";
 import { PLAY_SFX_SETTING_KEY } from "@/lib/audio/usePlaySfx";
@@ -154,16 +155,16 @@ export default function AdminSounds() {
     setSaving(true);
     await Promise.all([
       supabase.from("app_settings").upsert(
-        { key: "sound_settings", value: settings as any, updated_at: new Date().toISOString() },
+        { key: "sound_settings", value: settings as unknown as Json, updated_at: new Date().toISOString() },
         { onConflict: "key" }
       ),
       supabase.from("app_settings").upsert(
-        { key: "custom_sound_urls", value: customSounds as any, updated_at: new Date().toISOString() },
+        { key: "custom_sound_urls", value: customSounds as unknown as Json, updated_at: new Date().toISOString() },
         { onConflict: "key" }
       ),
     ]);
     setSaving(false);
-    invalidateSoundSettingsCache();
+    publishSoundSettings(settings);
     toast.success("Sound settings saved");
   };
 

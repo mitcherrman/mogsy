@@ -8,10 +8,12 @@ import { getSfxRegistryEntry } from "./sfx-registry";
 import {
   resetSfxForTests,
   setSfxConfigForTests,
+  setSfxSettingsForTests,
   SFX_MUTE_CHANGE_EVENT,
   SFX_MUTE_STORAGE_KEY,
   sfxController,
 } from "./sfx";
+import { SOUND_DEFAULTS } from "./sound-settings-runtime";
 import { useSfx } from "./useSfx";
 
 interface FakeAudioOptions {
@@ -27,10 +29,13 @@ function installAudio(options: FakeAudioOptions = {}) {
     value: 0,
     setValueAtTime: vi.fn(),
     exponentialRampToValueAtTime: vi.fn(),
+    linearRampToValueAtTime: vi.fn(),
+    cancelScheduledValues: vi.fn(),
   });
   const context = {
     state: options.state ?? "running",
     currentTime: 0,
+    sampleRate: 48000,
     destination: {},
     resume: vi.fn(async function (this: { state: AudioContextState }) {
       if (options.refuseResume) throw new Error("blocked");
@@ -38,6 +43,13 @@ function installAudio(options: FakeAudioOptions = {}) {
     }),
     close: vi.fn(async () => {}),
     createGain: () => ({ gain: param(), connect: vi.fn() }),
+    createBuffer: (_channels: number, length: number) => ({
+      duration: length / 48000,
+      getChannelData: () => new Float32Array(length),
+    }),
+    createBiquadFilter: () => ({
+      type: "", Q: param(), frequency: param(), connect: vi.fn(),
+    }),
     createOscillator: () => {
       if (options.throwRenderer) throw new Error("renderer failed");
       return {
@@ -50,13 +62,16 @@ function installAudio(options: FakeAudioOptions = {}) {
     },
     createBufferSource: () => ({
       buffer: null,
+      loop: false,
+      playbackRate: param(),
       connect: vi.fn(),
       start: vi.fn(() => { counts.buffers += 1; }),
+      stop: vi.fn(),
     }),
     decodeAudioData: vi.fn(async () => {
       counts.decoded += 1;
       if (options.refuseDecode) throw new Error("decode failed");
-      return { duration: 0.1 } as AudioBuffer;
+      return { duration: 0.5 } as AudioBuffer;
     }),
   };
   Object.defineProperty(window, "AudioContext", {
@@ -177,6 +192,25 @@ describe("global visitor mute", () => {
     expect(sfxController.getSnapshot().muted).toBe(false);
   });
 
+  it("silences previously ungated sampled card effects", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    localStorage.setItem(SFX_MUTE_STORAGE_KEY, "1");
+    window.dispatchEvent(new Event(SFX_MUTE_CHANGE_EVENT));
+    sfxController.play("card.animation.amongus");
+    await flush();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(audio.counts.buffers).toBe(0);
+
+    localStorage.removeItem(SFX_MUTE_STORAGE_KEY);
+    window.dispatchEvent(new Event(SFX_MUTE_CHANGE_EVENT));
+    sfxController.play("card.animation.amongus");
+    await flush();
+    expect(fetch).toHaveBeenCalledWith("/sounds/amongus-death.mp3");
+    expect(audio.counts.buffers).toBe(1);
+  });
+
   it("does not alter either music controller", () => {
     const radioSetMuted = vi.fn();
     const modeSetMuted = vi.fn();
@@ -205,6 +239,22 @@ describe("global visitor mute", () => {
   });
 });
 
+describe("legacy operator settings compatibility", () => {
+  it("keeps a migrated cue silent until settings are ready and while its old key is off", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    setSfxSettingsForTests(SOUND_DEFAULTS, false);
+    sfxController.play("swipe.action");
+    setSfxSettingsForTests({ ...SOUND_DEFAULTS, swipe_tap: false });
+    sfxController.play("swipe.action");
+    expect(audio.counts.oscillators).toBe(0);
+    setSfxSettingsForTests(SOUND_DEFAULTS);
+    sfxController.play("swipe.action");
+    expect(audio.counts.oscillators).toBe(2);
+  });
+});
+
 describe("Audio Studio binding precedence", () => {
   it("uses an enabled SFX asset instead of the built-in and caches its decode", async () => {
     const audio = installAudio();
@@ -227,7 +277,7 @@ describe("Audio Studio binding precedence", () => {
     const audio = installAudio();
     setSfxConfigForTests(config({ eventBindings: [{
       eventKey: "ui.button.press", sourceType: "synthesized", assetId: null,
-      generatorId: "sfx.foundation.soft-confirm", enabled: true, relativeGain: 1,
+      generatorId: "sfx.legacy.mode-confirm", enabled: true, relativeGain: 1,
     }] }));
     await sfxController.unlock();
     sfxController.play("ui.button.press");

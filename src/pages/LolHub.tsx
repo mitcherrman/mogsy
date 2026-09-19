@@ -635,7 +635,6 @@ export default function LolHub() {
     // keep sounding on the next page (verified by counting voices across the
     // transition). Holding navigation for audio would be the wrong trade.
     sfxRef.current.play("bookRuffle");
-    playUiSfx("sectionOpen");
     if (to === "/quiz") {
       trackFunnelEvent("lol_start_quiz_clicked", { cta: "hub_book" });
     }

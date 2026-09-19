@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   // expectation in this file — including the "renders nothing" ones — holds
   // unchanged.
   academyUpdatesEnabled: false,
+  sfxPlay: vi.fn(),
+  uiSfxPlay: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -75,7 +77,10 @@ vi.mock("@/components/lol/LolPopoutStyleToggle", () => ({ default: () => null })
 vi.mock("@/lib/funnel-analytics", () => ({
   trackFunnelEvent: mocks.trackFunnelEvent,
 }));
-vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+vi.mock("@/lib/audio/usePlaySfx", () => ({
+  usePlaySfx: () => ({ play: mocks.sfxPlay }),
+}));
+vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: mocks.uiSfxPlay }));
 vi.mock("@/integrations/supabase/client", () => {
   const b: Record<string, unknown> = {};
   Object.assign(b, {
@@ -304,6 +309,15 @@ describe("LolHub — navigation structure", () => {
     expect(commons.lastElementChild!.className).toMatch(/academy-commons-plinth/);
     // The Commons itself is the final stage and the final document element.
     expect(commons.parentElement!.lastElementChild).toBe(commons);
+  });
+
+  it("sounds exactly one canonical book opening and no legacy sectionOpen on activation", () => {
+    renderHub();
+    const link = screen.getAllByRole("link", { name: /Leaguecraft/ })
+      .find((candidate) => candidate.getAttribute("href") === "/quiz")!;
+    fireEvent.click(link);
+    expect(mocks.sfxPlay.mock.calls.filter(([cue]) => cue === "bookRuffle")).toHaveLength(1);
+    expect(mocks.uiSfxPlay).not.toHaveBeenCalledWith("sectionOpen");
   });
 
   it("inscribes the legal set into the plinth, at the sitewide wording", () => {
