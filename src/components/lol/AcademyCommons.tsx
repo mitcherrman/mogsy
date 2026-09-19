@@ -249,8 +249,7 @@ export default function AcademyCommons({
 
           `scroll-snap-align: end` is set on this element in the desktop stage
           gate as the existing belt-and-braces target for an unexpectedly tall
-          room. Mobile uses a document-level marker after this section because
-          this painted room intentionally clips its contents. */}
+          room. The mobile snap target is the Commons stage itself. */}
       {/* Flow mode keeps the wide side returns and the deep bottom padding:
           the shell floats a friends control in the bottom-LEFT corner of the
           viewport on every page, and at a narrower return it lands on top of

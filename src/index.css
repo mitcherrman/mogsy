@@ -10330,10 +10330,6 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
    One compact second screen, without changing any painted desktop mount.
    The DOM and data authorities stay shared: only the phone layout reflows the
    Record, promotes the Bulletin, and quiets the supporting utilities. */
-.academy-commons-mobile-snap-anchor {
-  display: none;
-}
-
 @media (max-width: 767px) {
   /* Two native document snap targets, never a nested scroller. `mandatory`
      ensures iOS Safari cannot leave an ordinary swipe parked between the two
@@ -10348,18 +10344,10 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
     scroll-snap-align: start;
     scroll-snap-stop: normal;
   }
-  /* The Commons can be taller than Safari's current visual viewport when its
-     browser chrome is expanded. Its top must therefore not be a third/early
-     resting place: the document-level marker after the painted room owns the
-     one Commons snap coordinate and aligns its bottom edge to the snapport. */
+  /* The Commons is the one second-fold snap area. End alignment makes its real
+     bottom the destination even when Safari's expanded chrome shortens the
+     visual viewport; there is no competing top target or correction marker. */
   html.hub-two-screen:not(.large-text) [data-hub-screen="commons"] {
-    scroll-snap-align: none;
-  }
-  html.hub-two-screen:not(.large-text) .academy-commons-mobile-snap-anchor {
-    display: block;
-    height: 1px;
-    margin-top: -1px;
-    pointer-events: none;
     scroll-snap-align: end;
     scroll-snap-stop: normal;
   }

@@ -302,12 +302,8 @@ describe("LolHub — navigation structure", () => {
 
     const commons = container.querySelector('[data-testid="academy-commons"]')!;
     expect(commons.lastElementChild!.className).toMatch(/academy-commons-plinth/);
-    // Only the zero-height mobile snap marker follows the Commons; no visible
-    // content or footer may float below its legal plinth.
-    const marker = commons.nextElementSibling as HTMLElement;
-    expect(marker.dataset.hubMobileSnap).toBe("commons");
-    expect(marker.className).toBe("academy-commons-mobile-snap-anchor");
-    expect(commons.parentElement!.lastElementChild).toBe(marker);
+    // The Commons itself is the final stage and the final document element.
+    expect(commons.parentElement!.lastElementChild).toBe(commons);
   });
 
   it("inscribes the legal set into the plinth, at the sitewide wording", () => {
@@ -1055,25 +1051,16 @@ describe("LolHub — the two-screen Academy", () => {
     }
   });
 
-  it("lands mobile View More on the document-bottom snap anchor", () => {
-    const calls: ScrollToOptions[] = [];
-    const originalScrollTo = window.scrollTo;
+  it("end-aligns mobile View More on the Commons in one native scroll", () => {
+    const calls: Array<{ screen: string | undefined; opts: ScrollIntoViewOptions }> = [];
     const originalScrollIntoView = Element.prototype.scrollIntoView;
     const originalMM = window.matchMedia;
-    const originalScrollHeight = Object.getOwnPropertyDescriptor(
-      document.documentElement,
-      "scrollHeight",
-    );
-    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
-    Object.defineProperty(document.documentElement, "scrollHeight", {
-      configurable: true,
-      value: 1598,
-    });
-    Object.defineProperty(window, "visualViewport", {
-      configurable: true,
-      value: { height: 844 },
-    });
-    window.scrollTo = ((options: ScrollToOptions) => calls.push(options)) as typeof window.scrollTo;
+    Element.prototype.scrollIntoView = function (arg?: unknown) {
+      calls.push({
+        screen: (this as HTMLElement).dataset?.hubScreen,
+        opts: arg as ScrollIntoViewOptions,
+      });
+    };
     window.matchMedia = ((query: string) =>
       ({
         matches: query === "(max-width: 767px)",
@@ -1090,36 +1077,18 @@ describe("LolHub — the two-screen Academy", () => {
       renderHub();
       fireEvent.click(screen.getByTestId("hall-descend-mobile"));
       expect(calls.at(-1)).toEqual({
-        behavior: "smooth",
-        top: 754,
+        screen: "commons",
+        opts: { behavior: "smooth", block: "end" },
       });
 
-      const hallCalls: Array<{ screen: string | undefined; opts: ScrollIntoViewOptions }> = [];
-      Element.prototype.scrollIntoView = function (arg?: unknown) {
-        hallCalls.push({
-          screen: (this as HTMLElement).dataset?.hubScreen,
-          opts: arg as ScrollIntoViewOptions,
-        });
-      };
       fireEvent.click(screen.getByTestId("commons-back-to-hall"));
-      expect(hallCalls.at(-1)).toEqual({
+      expect(calls.at(-1)).toEqual({
         screen: "hall",
         opts: { behavior: "smooth", block: "start" },
       });
     } finally {
       window.matchMedia = originalMM;
-      window.scrollTo = originalScrollTo;
       Element.prototype.scrollIntoView = originalScrollIntoView;
-      if (originalScrollHeight) {
-        Object.defineProperty(document.documentElement, "scrollHeight", originalScrollHeight);
-      } else {
-        Reflect.deleteProperty(document.documentElement, "scrollHeight");
-      }
-      if (originalVisualViewport) {
-        Object.defineProperty(window, "visualViewport", originalVisualViewport);
-      } else {
-        Reflect.deleteProperty(window, "visualViewport");
-      }
     }
   });
 

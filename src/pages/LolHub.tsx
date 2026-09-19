@@ -240,26 +240,14 @@ function prefersReducedMotion(): boolean {
  * under reduced motion. CSS snapping then holds whichever screen this lands on.
  */
 function hubScrollTo(screen: "hall" | "commons") {
-  const useMobileBottomAnchor =
+  const endAlignMobileCommons =
     screen === "commons" && window.matchMedia?.(HUB_MOBILE_MEDIA).matches === true;
   const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
-
-  if (useMobileBottomAnchor) {
-    const visualViewportHeight = window.visualViewport?.height ?? window.innerHeight;
-    window.scrollTo({
-      behavior,
-      top: Math.max(0, document.documentElement.scrollHeight - visualViewportHeight),
-    });
-    return;
-  }
-
-  const el = document.querySelector<HTMLElement>(
-    `[data-hub-screen="${screen}"]`,
-  );
+  const el = document.querySelector<HTMLElement>(`[data-hub-screen="${screen}"]`);
   if (!el) return;
   el.scrollIntoView({
     behavior,
-    block: "start",
+    block: endAlignMobileCommons ? "end" : "start",
   });
 }
 
@@ -949,14 +937,6 @@ export default function LolHub() {
       <AcademyCommons
         onBackToHall={() => hubScrollTo("hall")}
         navHintRevealed={settledHint === "commons"}
-      />
-      {/* The Commons clips its painted room, so a snap area inside it belongs
-          to that clipping container in WebKit. This zero-layout-cost sibling
-          is instead owned by the document scroller and marks its true end. */}
-      <div
-        aria-hidden="true"
-        data-hub-mobile-snap="commons"
-        className="academy-commons-mobile-snap-anchor"
       />
     </div>
   );
