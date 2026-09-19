@@ -23,7 +23,9 @@
 > (GR1 Matchup tie policy — **design and measurement only, nothing implemented**) and
 > [`docs/gr1-reusable-state-architecture-audit.md`](./gr1-reusable-state-architecture-audit.md)
 > (GR1 reusable state architecture — **audit only**; its §0 reports a post-GR1 upstream change
-> that halved the Champion Mastery corpus).
+> that halved the Champion Mastery corpus) and
+> [`docs/gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md)
+> (GR1 reusable state architecture — **design proposal only, 17 owner decisions pending**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -52,6 +54,7 @@
 | **GR1 Matchup Mastery structural audit** | **COMPLETE, 2026-09-13. AUDIT ONLY — nothing implemented, nothing pushed.** Audited backend `origin/master` **`16db3690`** (which contains the tie policy: `git diff afb55d1e 16db3690` is one doc file), frontend `origin/main` **`756b6b41`** read only, docs base `origin/gr1/docs-snapshot` **`decc49b6`**. Full structural picture of what Matchup generates, what it holds, what dominates, and what the owner may eventually have to decide. See [`gr1-matchup-mastery-structural-audit.md`](./gr1-matchup-mastery-structural-audit.md) and the summary below. |
 | **GR1 reusable state architecture audit** | **COMPLETE, 2026-09-19. AUDIT ONLY — nothing implemented.** Backend `origin/master` **`fc2e8be9`**, frontend `origin/main` **`4c29f7ba`** (both fast-forwards of the brief's `2387e8f5` / `791027de`). How close the architecture is to "questions consume a reusable, data-driven state", and to one universe feeding FULL and SLICE composers. **§0 is a regression report:** upstream `b7ccf8e0` (qca8) removed `MASTERY` from the `champion_stat_level` / `champion_stat_compare` modes. See [`gr1-reusable-state-architecture-audit.md`](./gr1-reusable-state-architecture-audit.md) and the summary below. |
 | **GR1 × QCA8 Mastery eligibility correction** | **CORRECTED, 2026-09-19. Committed, NOT pushed.** Intent audit [`gr1-qca8-mastery-eligibility-intent-audit.md`](./gr1-qca8-mastery-eligibility-intent-audit.md) classified the QCA8 (`b7ccf8e0`) loss of `MASTERY` on `champion_stat_level` / `champion_stat_compare` as collateral. Backend branch `gr1/qca8-mastery-compat` @ **`5769dee3`**, base `origin/master` **`5c15cb5d`**, one commit. See the section below. |
+| **GR1 reusable state architecture — design** | **DESIGN PROPOSAL, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (one items-only fast-forward past the brief's `5769dee3`; no `mastery/`, `quiz/` or `ranked_modules/` change), docs base `origin/main` **`3c9ddfc4`**. StateTemplate / ResolvedState / FrozenStateArtifact for **setup** state, the matchup composition, the source abstraction, the pipeline, Full/Slice over one universe, identity under state, fail-closed rules. **17 owner decisions (§16) pending.** See [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md) and the summary below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -1038,6 +1041,53 @@ base-stat slices" predates this. It is owner decision 1 in the audit.
   of intrinsic facts with no state order, and every composition mechanism is budget-first.
 
 **15 owner questions** are listed in §13 of the audit, and are not repeated here.
+
+## Reusable state architecture — DESIGN PROPOSAL (2026-09-19)
+
+Full proposal: [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md).
+**Design only. No runtime code, schema, migration, Slice, Full, tie, QCA, Applied-chain,
+Combat Lab or UI change.** Backend read at `b1fd3510`, frontend/docs base `3c9ddfc4`.
+
+**The proposal in eight lines:**
+
+* **Setup state only.** Champion, form, level, ranks, items, runes, shards, position.
+  Encounter state (HP/resource, buffs, stacks, gold) is a separate later layer, so the state
+  does not become a god object.
+* **Three layers.** `StateTemplate` (a request; may reference a source; no numbers) →
+  `ResolvedState` (canonical ids + a `DerivedBlock` where every value has a status
+  `supported | unsupported | not_applicable` and `depends_on`, plus a `DataBasis`) →
+  `FrozenStateArtifact` (an optional private sub-block of `mastery_artifact`: inputs,
+  `derived_used`, data basis, source provenance; never re-resolved).
+* **Sources** (`literal`, `curated_default` = `champion_item_builds.json` with confidence
+  normalized, later `saved` / `historical` / `internal_observed`) all yield one normalized
+  `SetupRecord`. Generators never see a source. Source provenance is recorded but is **not**
+  part of state identity.
+* **Matchup** = two fully independent sides + ONE shared data basis + `PairDerived`, in
+  canonical side order (slug), so `(a,b) == (b,a)`. Attacker/target roles live on the
+  *question*. NOW only symmetric templates; asymmetry is owner decision D-6.
+* **`FactContext` stays intrinsic.** Scenario inputs travel in a separate `ScenarioBinding`
+  = the dependency projection (only the resolved values the answer depends on, e.g.
+  `{ability_haste.total: 20}`). **Empty binding ⇒ every current `candidate_key`, `mastery:`
+  ref, `fact_id` and digest is byte-identical.** That is the migration key.
+* **Identity:** semantic (intrinsic + binding) / state (`state_key` readable inputs;
+  `state_digest` = + data basis) / artifact instance (Phase 4, unchanged).
+* **Full/Slice:** candidates are generated per state over an ordered state sequence and
+  deduped by semantic identity, so Full is naturally incremental (only questions whose
+  inputs changed come back). Slice = a coherent window + the existing budget composer.
+  Today's slices = the intrinsic template, sequence length 1, unchanged.
+* **Fail closed.** Unknown or non-current item, illegal rank, missing stat row and basis
+  mismatch refuse the state. An unsupported modifier is `unsupported`, never 0. §11.2 lists
+  the existing zero-fill paths (Combat `default_preview_base_stats`, `calculate_build_stats`
+  keeping unknown items at zero, silent unknown runes/shards, the certified-only rank check).
+  They are unchanged and not routed through.
+
+**Migration (concept):** pure types with no callers + a roster-wide byte-identity probe →
+`resolver.publish` receives its universe instead of re-projecting → optional private
+`state` block → first state-reading family Lab-only behind a flag → a single-state Slice
+window → Full (a separate phase). Journeys and Combat Lab are untouched throughout.
+
+**Owner decisions:** 17, listed with options, trade-offs and recommendations in §16 of the
+design (D-1 setup-only … D-17 eligibility via `family_contract` + Mastery pin tests).
 
 ## Screenshots / artifacts
 
