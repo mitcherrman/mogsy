@@ -181,22 +181,20 @@ describe("the hub holds its geometry before the painting decodes", () => {
     expect(backgroundImg().className).toContain("absolute");
   });
 
-  it("uses a mobile-only mandatory snap with stable small-viewport fold floors", async () => {
+  it("keeps mobile free of CSS snap while retaining stable small-viewport fold floors", async () => {
     const { readFileSync } = await import("node:fs");
     const css = readFileSync("src/index.css", "utf8");
     const mobileFlowStart = css.indexOf("THE ACADEMY COMMONS — MOBILE FLOW");
     const mobileFlowEnd = css.indexOf("THE ACADEMY COMMONS — STAGE MODE", mobileFlowStart);
     const mobileFlow = css.slice(mobileFlowStart, mobileFlowEnd);
 
-    expect(mobileFlow).toContain("scroll-snap-type: y mandatory");
-    expect(mobileFlow).toContain('[data-hub-screen="hall"]');
-    expect(mobileFlow).toContain('[data-hub-screen="commons"]');
-    expect(mobileFlow).toContain("scroll-snap-align: end");
+    expect(mobileFlow).not.toContain("scroll-snap-type");
+    expect(mobileFlow).not.toContain("scroll-snap-align");
     expect(mobileFlow).not.toContain("academy-commons-mobile-snap-anchor");
     expect(mobileFlow).toContain(".academy-hub-page .academy-hall");
     expect(mobileFlow).toContain(".academy-hub-page .academy-commons");
     expect(mobileFlow.match(/min-height: 100svh/g)).toHaveLength(2);
-    expect(mobileFlow).toContain("html.hub-two-screen:not(.large-text)");
+    expect(mobileFlow).toContain("non-passive vertical gesture lock");
     expect(mobileFlow).toContain(".academy-commons-utilstrip-link");
     expect(mobileFlow).toContain("min-height: 32px");
     expect(mobileFlow).not.toContain("overflow-y: scroll");

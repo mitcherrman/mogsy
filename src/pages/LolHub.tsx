@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Swords, Flame, BrainCircuit, FileText, Trophy, ChevronDown } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
@@ -211,6 +211,10 @@ const HUB_COMMONS_VIEW_CLASS = "hub-commons-in-view";
  */
 const HUB_SNAP_MEDIA = "(min-width: 1024px) and (min-height: 780px)";
 const HUB_MOBILE_MEDIA = "(max-width: 767px)";
+const HUB_SWIPE_AXIS_LOCK_PX = 10;
+const HUB_SWIPE_TRIGGER_PX = 48;
+const HUB_SWIPE_VERTICAL_RATIO = 1.25;
+const HUB_FOLD_TRANSITION_MS = 520;
 
 /** How long a screen must sit settled before its hint is offered. */
 const HUB_HINT_DELAY_MS = 1700;
@@ -232,23 +236,6 @@ function prefersReducedMotion(): boolean {
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true ||
     document.documentElement.classList.contains("reduce-motion")
   );
-}
-
-/**
- * Move between the two screens. Plain `scrollIntoView` — no wheel interception,
- * no scroll hijacking — with the smooth request dropped to an instant jump
- * under reduced motion. CSS snapping then holds whichever screen this lands on.
- */
-function hubScrollTo(screen: "hall" | "commons") {
-  const endAlignMobileCommons =
-    screen === "commons" && window.matchMedia?.(HUB_MOBILE_MEDIA).matches === true;
-  const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
-  const el = document.querySelector<HTMLElement>(`[data-hub-screen="${screen}"]`);
-  if (!el) return;
-  el.scrollIntoView({
-    behavior,
-    block: endAlignMobileCommons ? "end" : "start",
-  });
 }
 
 export default function LolHub() {
@@ -275,6 +262,68 @@ export default function LolHub() {
    * over and over and leaning on React's bail-out to absorb it.
    */
   const settledHintRef = useRef<HubScreen | null>(null);
+  const foldTransitionActiveRef = useRef(false);
+  const foldTransitionFrameRef = useRef(0);
+
+  /**
+   * One navigation authority for gestures and both fold controls. Phones use a
+   * deliberately authored two-state animation, with no CSS snap or native
+   * momentum competing for the endpoint. Desktop and mobile large-text mode
+   * retain ordinary `scrollIntoView` navigation.
+   */
+  const navigateHubFold = useCallback((screen: HubScreen) => {
+    const root = document.documentElement;
+    const mobilePagerEnabled =
+      window.matchMedia?.(HUB_MOBILE_MEDIA).matches === true &&
+      !root.classList.contains("large-text");
+
+    if (!mobilePagerEnabled) {
+      const el = document.querySelector<HTMLElement>(`[data-hub-screen="${screen}"]`);
+      if (!el) return;
+      el.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "start",
+      });
+      return;
+    }
+
+    if (foldTransitionActiveRef.current) return;
+
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const destination =
+      screen === "hall"
+        ? 0
+        : Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+    const origin = window.scrollY;
+
+    if (Math.abs(destination - origin) <= 1 || prefersReducedMotion()) {
+      window.scrollTo({ top: destination, behavior: "auto" });
+      return;
+    }
+
+    foldTransitionActiveRef.current = true;
+    const startedAt = performance.now();
+    const distance = destination - origin;
+
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / HUB_FOLD_TRANSITION_MS);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      window.scrollTo({
+        top: origin + distance * eased,
+        behavior: "auto",
+      });
+
+      if (progress < 1) {
+        foldTransitionFrameRef.current = window.requestAnimationFrame(animate);
+        return;
+      }
+
+      foldTransitionFrameRef.current = 0;
+      foldTransitionActiveRef.current = false;
+    };
+
+    foldTransitionFrameRef.current = window.requestAnimationFrame(animate);
+  }, []);
 
   const isAnonymous = !user || user.is_anonymous === true;
   const { settings } = useAppSettings();
@@ -287,15 +336,107 @@ export default function LolHub() {
     }
   }, [user]);
 
-  // Arm the two-screen snap for as long as the hub is mounted, and disarm it on
-  // the way out so no other route inherits it. The class only ENABLES the media
-  // query in index.css; every responsive and accessibility fallback is decided
-  // there, in CSS, not here.
+  // Arm the desktop two-screen snap for as long as the hub is mounted, and
+  // disarm it on the way out so no other route inherits it. Mobile uses the
+  // gesture pager below; this class has no mobile snap rules.
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add(HUB_SNAP_CLASS);
     return () => root.classList.remove(HUB_SNAP_CLASS);
   }, []);
+
+  // Mobile two-state gesture pager. Direction is locked only after a clear
+  // vertical lead, then native scrolling is prevented before it can develop
+  // momentum. A tap or horizontal gesture never crosses that lock and remains
+  // ordinary page interaction. Large text deliberately keeps free scrolling.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+
+    let startX = 0;
+    let startY = 0;
+    let startScreen: HubScreen = "hall";
+    let tracking = false;
+    let verticalIntent = false;
+    let horizontalIntent = false;
+    let triggered = false;
+    let blockedByTransition = false;
+
+    const pagerEnabled = () =>
+      window.matchMedia(HUB_MOBILE_MEDIA).matches &&
+      !document.documentElement.classList.contains("large-text");
+
+    const resetGesture = () => {
+      tracking = false;
+      verticalIntent = false;
+      horizontalIntent = false;
+      triggered = false;
+      blockedByTransition = false;
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      resetGesture();
+      if (!pagerEnabled() || event.touches.length !== 1) return;
+
+      const touch = event.touches[0];
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const bottom = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startScreen = Math.abs(window.scrollY - bottom) < Math.abs(window.scrollY) ? "commons" : "hall";
+      tracking = true;
+      blockedByTransition = foldTransitionActiveRef.current;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!tracking || event.touches.length !== 1 || horizontalIntent) return;
+
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = startY - touch.clientY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      if (!verticalIntent) {
+        if (Math.max(absX, absY) < HUB_SWIPE_AXIS_LOCK_PX) return;
+        if (absY < absX * HUB_SWIPE_VERTICAL_RATIO) {
+          horizontalIntent = true;
+          return;
+        }
+        verticalIntent = true;
+      }
+
+      event.preventDefault();
+      if (blockedByTransition || triggered || absY < HUB_SWIPE_TRIGGER_PX) return;
+
+      const destination =
+        startScreen === "hall" && deltaY > 0
+          ? "commons"
+          : startScreen === "commons" && deltaY < 0
+            ? "hall"
+            : null;
+      if (!destination) return;
+
+      triggered = true;
+      navigateHubFold(destination);
+    };
+
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", resetGesture, { passive: true });
+    document.addEventListener("touchcancel", resetGesture, { passive: true });
+
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", resetGesture);
+      document.removeEventListener("touchcancel", resetGesture);
+      if (foldTransitionFrameRef.current) {
+        window.cancelAnimationFrame(foldTransitionFrameRef.current);
+        foldTransitionFrameRef.current = 0;
+      }
+      foldTransitionActiveRef.current = false;
+    };
+  }, [navigateHubFold]);
 
   // ---- contextual navigation hints + the Commons' ambience override -------
   //
@@ -866,7 +1007,7 @@ export default function LolHub() {
           <div className="flex h-11 items-center justify-center md:hidden">
             <button
               type="button"
-              onClick={() => hubScrollTo("commons")}
+              onClick={() => navigateHubFold("commons")}
               data-testid="hall-descend-mobile"
               className="academy-hall-descend academy-hall-descend-mobile inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-[2px] px-3 text-[9px] font-bold uppercase tracking-[0.28em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70"
             >
@@ -896,7 +1037,7 @@ export default function LolHub() {
         <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 hidden justify-center md:flex">
           <button
             type="button"
-            onClick={() => hubScrollTo("commons")}
+            onClick={() => navigateHubFold("commons")}
             data-testid="hall-descend"
             data-hub-hint="hall"
             className={`academy-hall-descend academy-hub-hint pointer-events-auto group flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-[2px] px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70 ${
@@ -935,7 +1076,7 @@ export default function LolHub() {
           area on 2026-09-04 and stay removed; their own front doors
           (/league-swipe, /blog) are untouched. */}
       <AcademyCommons
-        onBackToHall={() => hubScrollTo("hall")}
+        onBackToHall={() => navigateHubFold("hall")}
         navHintRevealed={settledHint === "commons"}
       />
     </div>

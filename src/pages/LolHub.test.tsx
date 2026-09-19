@@ -4,7 +4,7 @@
  * subsection stays hidden, and landing analytics stay wired.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LolHub from "./LolHub";
@@ -1051,16 +1051,37 @@ describe("LolHub — the two-screen Academy", () => {
     }
   });
 
-  it("end-aligns mobile View More on the Commons in one native scroll", () => {
-    const calls: Array<{ screen: string | undefined; opts: ScrollIntoViewOptions }> = [];
+  it("uses the same two-state animation for mobile View More and Back to the Hall", () => {
+    const scrollCalls: ScrollToOptions[] = [];
+    const frames: FrameRequestCallback[] = [];
+    const originalScrollTo = window.scrollTo;
     const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const originalRAF = window.requestAnimationFrame;
+    const originalCAF = window.cancelAnimationFrame;
     const originalMM = window.matchMedia;
-    Element.prototype.scrollIntoView = function (arg?: unknown) {
-      calls.push({
-        screen: (this as HTMLElement).dataset?.hubScreen,
-        opts: arg as ScrollIntoViewOptions,
-      });
-    };
+    const originalScrollY = Object.getOwnPropertyDescriptor(window, "scrollY");
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(
+      document.documentElement,
+      "scrollHeight",
+    );
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    window.scrollTo = ((options: ScrollToOptions) => scrollCalls.push(options)) as typeof window.scrollTo;
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof window.requestAnimationFrame;
+    window.cancelAnimationFrame = vi.fn();
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      value: 1598,
+    });
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { height: 844 },
+    });
     window.matchMedia = ((query: string) =>
       ({
         matches: query === "(max-width: 767px)",
@@ -1076,19 +1097,159 @@ describe("LolHub — the two-screen Academy", () => {
     try {
       renderHub();
       fireEvent.click(screen.getByTestId("hall-descend-mobile"));
-      expect(calls.at(-1)).toEqual({
-        screen: "commons",
-        opts: { behavior: "smooth", block: "end" },
-      });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(frames).toHaveLength(1);
+      act(() => frames.shift()!(performance.now() + 1000));
+      expect(scrollCalls.at(-1)).toEqual({ top: 754, behavior: "auto" });
 
+      Object.defineProperty(window, "scrollY", { configurable: true, value: 754 });
       fireEvent.click(screen.getByTestId("commons-back-to-hall"));
-      expect(calls.at(-1)).toEqual({
-        screen: "hall",
-        opts: { behavior: "smooth", block: "start" },
-      });
+      expect(frames).toHaveLength(1);
+      act(() => frames.shift()!(performance.now() + 1000));
+      expect(scrollCalls.at(-1)).toEqual({ top: 0, behavior: "auto" });
+
+      Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+      document.documentElement.classList.add("reduce-motion");
+      fireEvent.click(screen.getByTestId("hall-descend-mobile"));
+      expect(frames).toHaveLength(0);
+      expect(scrollCalls.at(-1)).toEqual({ top: 754, behavior: "auto" });
     } finally {
+      document.documentElement.classList.remove("reduce-motion");
       window.matchMedia = originalMM;
+      window.scrollTo = originalScrollTo;
       Element.prototype.scrollIntoView = originalScrollIntoView;
+      window.requestAnimationFrame = originalRAF;
+      window.cancelAnimationFrame = originalCAF;
+      if (originalScrollY) Object.defineProperty(window, "scrollY", originalScrollY);
+      else Reflect.deleteProperty(window, "scrollY");
+      if (originalScrollHeight) {
+        Object.defineProperty(document.documentElement, "scrollHeight", originalScrollHeight);
+      } else {
+        Reflect.deleteProperty(document.documentElement, "scrollHeight");
+      }
+      if (originalVisualViewport) {
+        Object.defineProperty(window, "visualViewport", originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, "visualViewport");
+      }
+    }
+  });
+
+  it("locks deliberate vertical swipes before native momentum but leaves taps and horizontal gestures alone", () => {
+    const frames: FrameRequestCallback[] = [];
+    const originalScrollTo = window.scrollTo;
+    const originalRAF = window.requestAnimationFrame;
+    const originalMM = window.matchMedia;
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(
+      document.documentElement,
+      "scrollHeight",
+    );
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+    const scrollTo = vi.fn();
+    window.scrollTo = scrollTo;
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof window.requestAnimationFrame;
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      value: 1598,
+    });
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { height: 844 },
+    });
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query === "(max-width: 767px)",
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        onchange: null,
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      renderHub();
+
+      fireEvent.touchStart(document, { touches: [{ clientX: 200, clientY: 500 }] });
+      const verticalIntent = createEvent.touchMove(document, {
+        touches: [{ clientX: 202, clientY: 480 }],
+      });
+      fireEvent(document, verticalIntent);
+      expect(verticalIntent.defaultPrevented).toBe(true);
+      expect(frames).toHaveLength(0);
+
+      const committedSwipe = createEvent.touchMove(document, {
+        touches: [{ clientX: 203, clientY: 440 }],
+      });
+      fireEvent(document, committedSwipe);
+      expect(committedSwipe.defaultPrevented).toBe(true);
+      expect(frames).toHaveLength(1);
+
+      // A second gesture during the active transition is consumed but cannot
+      // schedule another fold animation.
+      fireEvent.touchEnd(document, { touches: [] });
+      fireEvent.touchStart(document, { touches: [{ clientX: 200, clientY: 500 }] });
+      const blockedSwipe = createEvent.touchMove(document, {
+        touches: [{ clientX: 200, clientY: 430 }],
+      });
+      fireEvent(document, blockedSwipe);
+      expect(blockedSwipe.defaultPrevented).toBe(true);
+      expect(frames).toHaveLength(1);
+
+      const gestureTrace: number[] = [];
+      const traceStartedAt = performance.now();
+      for (const offset of [100, 200, 300, 400, 600]) {
+        const frame = frames.shift();
+        expect(frame).toBeDefined();
+        act(() => frame!(traceStartedAt + offset));
+        gestureTrace.push((scrollTo.mock.calls.at(-1)?.[0] as ScrollToOptions).top as number);
+      }
+      expect(gestureTrace.at(-1)).toBe(754);
+      expect(gestureTrace.every((position, index) => index === 0 || position > gestureTrace[index - 1])).toBe(true);
+      expect(scrollTo).toHaveBeenLastCalledWith({ top: 754, behavior: "auto" });
+
+      fireEvent.touchEnd(document, { touches: [] });
+      fireEvent.touchStart(document, { touches: [{ clientX: 100, clientY: 400 }] });
+      const horizontal = createEvent.touchMove(document, {
+        touches: [{ clientX: 180, clientY: 396 }],
+      });
+      fireEvent(document, horizontal);
+      expect(horizontal.defaultPrevented).toBe(false);
+      expect(frames).toHaveLength(0);
+
+      fireEvent.touchEnd(document, { touches: [] });
+      const callCountBeforeTap = scrollTo.mock.calls.length;
+      fireEvent.touchStart(document, { touches: [{ clientX: 100, clientY: 400 }] });
+      fireEvent.touchEnd(document, { touches: [] });
+      expect(scrollTo).toHaveBeenCalledTimes(callCountBeforeTap);
+
+      document.documentElement.classList.add("large-text");
+      fireEvent.touchStart(document, { touches: [{ clientX: 200, clientY: 500 }] });
+      const largeTextSwipe = createEvent.touchMove(document, {
+        touches: [{ clientX: 200, clientY: 420 }],
+      });
+      fireEvent(document, largeTextSwipe);
+      expect(largeTextSwipe.defaultPrevented).toBe(false);
+      expect(scrollTo).toHaveBeenCalledTimes(callCountBeforeTap);
+    } finally {
+      document.documentElement.classList.remove("large-text");
+      window.matchMedia = originalMM;
+      window.scrollTo = originalScrollTo;
+      window.requestAnimationFrame = originalRAF;
+      if (originalScrollHeight) {
+        Object.defineProperty(document.documentElement, "scrollHeight", originalScrollHeight);
+      } else {
+        Reflect.deleteProperty(document.documentElement, "scrollHeight");
+      }
+      if (originalVisualViewport) {
+        Object.defineProperty(window, "visualViewport", originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, "visualViewport");
+      }
     }
   });
 
