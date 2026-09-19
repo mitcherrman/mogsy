@@ -51,7 +51,45 @@
 | **GR1 Matchup tie policy — implementation** | **COMPLETE and verified, 2026-09-13.** The approved hybrid — tie deprioritization + a per-slice cap of `max(1, n // 4)` — on branch `gr1/matchup-tie-policy` @ **`afb55d1e`**, base `origin/master` **`087f9a78`**. One commit, clean fast-forward. **NOW INTEGRATED** — `origin/master` is **`16db3690`** and `git diff afb55d1e 16db3690` is one documentation file. **No frontend change.** See [`gr1-matchup-mastery-tie-policy-implementation.md`](./gr1-matchup-mastery-tie-policy-implementation.md) and the summary below. |
 | **GR1 Matchup Mastery structural audit** | **COMPLETE, 2026-09-13. AUDIT ONLY — nothing implemented, nothing pushed.** Audited backend `origin/master` **`16db3690`** (which contains the tie policy: `git diff afb55d1e 16db3690` is one doc file), frontend `origin/main` **`756b6b41`** read only, docs base `origin/gr1/docs-snapshot` **`decc49b6`**. Full structural picture of what Matchup generates, what it holds, what dominates, and what the owner may eventually have to decide. See [`gr1-matchup-mastery-structural-audit.md`](./gr1-matchup-mastery-structural-audit.md) and the summary below. |
 | **GR1 reusable state architecture audit** | **COMPLETE, 2026-09-19. AUDIT ONLY — nothing implemented.** Backend `origin/master` **`fc2e8be9`**, frontend `origin/main` **`4c29f7ba`** (both fast-forwards of the brief's `2387e8f5` / `791027de`). How close the architecture is to "questions consume a reusable, data-driven state", and to one universe feeding FULL and SLICE composers. **§0 is a regression report:** upstream `b7ccf8e0` (qca8) removed `MASTERY` from the `champion_stat_level` / `champion_stat_compare` modes. See [`gr1-reusable-state-architecture-audit.md`](./gr1-reusable-state-architecture-audit.md) and the summary below. |
+| **GR1 × QCA8 Mastery eligibility correction** | **CORRECTED, 2026-09-19. Committed, NOT pushed.** Intent audit [`gr1-qca8-mastery-eligibility-intent-audit.md`](./gr1-qca8-mastery-eligibility-intent-audit.md) classified the QCA8 (`b7ccf8e0`) loss of `MASTERY` on `champion_stat_level` / `champion_stat_compare` as collateral. Backend branch `gr1/qca8-mastery-compat` @ **`5769dee3`**, base `origin/master` **`5c15cb5d`**, one commit. See the section below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
+
+## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
+
+**What happened.** Upstream QCA8 (`b7ccf8e0`, 2026-09-14) moved `champion_stat_level` and
+`champion_stat_compare` to runtime composition with zero stored rows, and in the same line
+narrowed their modes from `practice, daily, ranked, mastery` to `practice` — one rationale
+("Practice is the only surface with a runtime consumer") written for six families. That premise is
+about *row* consumers. The Mastery publication gate reads the family **declaration**, not rows, so
+the narrowing silently took out Champion Mastery's level-stat category and Matchup Mastery's
+base-stat comparisons. No test pinned Mastery eligibility, so nothing failed.
+
+**Narrow correction.** Backend `5769dee3` on `gr1/qca8-mastery-compat` (base `5c15cb5d`):
+`quiz/family_contract.py` — both families `modes=(PRACTICE,)` → `modes=(PRACTICE, MASTERY)`, and the
+`_QCA8_STAT` note rewritten to say why. QCA4/QCA8 contract tests updated to the new tuple. New
+`mastery/tests/test_gr1_qca8_stat_family_mastery_eligibility.py` pins: exact modes, exclusion from
+DAILY / RANKED / TIME_TRIAL (both `eligible_family_ids` and `families_for_mode`), the Mastery gate
+admitting both, the bank/composer hints still naming them, RUNTIME architecture intact, and zero
+stored rows in the canonical DB. No change to Mastery, composition, tie policy, wording,
+`runtime_casual`, `champion_stat_authority`, Ranked `shared_bank`, Time Trial, frontend or migrations.
+
+**Restored behaviour** (canonical `lol_calc.db`, 5.7 GB, `mode=ro`; same probe as the intent audit):
+
+| | before fix (`5c15cb5d`) | after fix (`5769dee3`) | pre-QCA8 (`23d0f688`) |
+|---|---|---|---|
+| Champion Mastery gate-eligible, 173 champions | 3,238 | **6,787** | 6,787 |
+| · `champion_stat_level` | 0 | **3,549** | 3,549 |
+| Matchup `champion_stat_compare`, 249 pairs | 0 | **2,183** | 2,183 |
+| · `ability_cooldown_compare` | 1,908 | 1,908 | 1,908 |
+| Pairs with zero eligible comparisons | 109 | **0** | 0 |
+
+All 109 previously empty pairs (108 involving aphelios/elise/jayce/nidalee/udyr, plus
+`reksai|shyvana`) regained base-stat comparisons.
+
+**QCA8 architecture preserved.** Both families remain RUNTIME, composed by `quiz.runtime_casual`
+from `quiz.champion_stat_authority`; stored `quiz_questions` rows for both = **0**; no QCA8 code
+reverted. DAILY, RANKED and TIME_TRIAL remain excluded. Whether Mastery should keep following
+`family_contract` modes or own its eligibility is still reusable-state audit §13 Q1 (owner).
 
 ## Commits
 
