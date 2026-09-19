@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer jwt" }),
 }));
@@ -10,6 +13,7 @@ import { privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
 
 interface Backend {
   submissions: unknown[];
+  submissionFailure: boolean;
   /** Bodies posted to the R3 round-ability route, in order. */
   abilityDrafts: unknown[];
   /** Set to make the next ability write fail with this typed code. */
@@ -108,7 +112,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-07-18T12:00:05Z"));
   backend = {
-    submissions: [], abilityDrafts: [], abilityFailure: null,
+    submissions: [], submissionFailure: false, abilityDrafts: [], abilityFailure: null,
     resumeCalls: 0, publicOverride: null, completedRounds: 0,
     resolvedRequests: [],
   };
@@ -117,7 +121,11 @@ beforeEach(() => {
     const method = init.method ?? "GET";
     if (u.endsWith("/resume")) { backend.resumeCalls += 1; return json(resumeEnvelope()); }
     if (u.endsWith("/private")) return json(privatePlayerV2("userA"));
-    if (u.includes("/submission")) { backend.submissions.push(JSON.parse(init.body as string)); return json({ status: "accepted" }); }
+    if (u.includes("/submission")) {
+      backend.submissions.push(JSON.parse(init.body as string));
+      if (backend.submissionFailure) return json({ detail: { code: "RANKED_ROUND_CLOSED", message: "closed" } }, 409);
+      return json({ status: "accepted" });
+    }
     if (/\/rounds\/\d+\/ability$/.test(u)) {
       if (backend.abilityFailure) {
         const code = backend.abilityFailure;
@@ -139,6 +147,7 @@ beforeEach(() => {
       return json(backend.publicOverride ?? publicRoundV2());
     return json({}, 200);
   }) as unknown as typeof fetch);
+  sfx.play.mockClear();
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
@@ -163,6 +172,9 @@ describe("useRankedMatch", () => {
       act(() => result.current.answer("1", 1));   // option index 1
       await settle();
       expect(backend.submissions).toEqual([{ round_number: 1, answer: 1 }]);
+      expect(sfx.play).toHaveBeenCalledWith("ranked.answer.lock", {
+        eventId: "ranked:m1:round:1:lock",
+      });
     });
 
   it("a second click while the first is in flight sends nothing extra", async () => {
@@ -174,6 +186,16 @@ describe("useRankedMatch", () => {
     });
     await settle();
     expect(backend.submissions).toEqual([{ round_number: 1, answer: 1 }]);
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not sound a lock when the server rejects the submission", async () => {
+    backend.submissionFailure = true;
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    act(() => result.current.answer("1", 1));
+    await settle();
+    expect(sfx.play).not.toHaveBeenCalledWith("ranked.answer.lock", expect.anything());
   });
 
   it("does not report the answer as locked before the server accepts it", async () => {

@@ -13,6 +13,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer jwt" }),
 }));
@@ -20,7 +23,7 @@ vi.mock("@/lib/backend-auth", () => ({
 import { useRankedMatch, HEARTBEAT_MS } from "./useRankedMatch";
 import {
   icdChallengeState, icdResolvedPayload, icdSegmentMeta, icdSegmentState,
-  privatePlayerV2, publicRoundV2,
+  metaReflexSegmentMeta, metaReflexState, privatePlayerV2, publicRoundV2,
 } from "@/lib/ranked-public/fixtures";
 
 interface Backend {
@@ -127,6 +130,7 @@ beforeEach(() => {
     if (/\/matches\/m1$/.test(u) && method === "GET") return json(publicBody());
     return json({}, 200);
   }) as unknown as typeof fetch);
+  sfx.play.mockClear();
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
@@ -173,6 +177,43 @@ describe("useRankedMatch — multi-challenge segments", () => {
     expect(backend.challengeSubmits).toEqual([
       { index: 1, body: { item_id: "Item 3" } },
     ]);
+    expect(sfx.play).not.toHaveBeenCalled();
+  });
+
+  it("sounds an accepted Meta Reflex card action once with stable identity", async () => {
+    backend.segmentState = metaReflexState(1);
+    backend.segmentMeta = metaReflexSegmentMeta({ challenge_index: 1 });
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    act(() => result.current.submitSegmentChallenge(1, { cardId: "c1:left" }));
+    await settle();
+    expect(sfx.play).toHaveBeenCalledWith("ranked.meta.action", {
+      eventId: "ranked:m1:segment:4:card:1:action",
+    });
+  });
+
+  it("keeps a rejected Meta Reflex card action silent", async () => {
+    backend.segmentState = metaReflexState(1);
+    backend.segmentMeta = metaReflexSegmentMeta({ challenge_index: 1 });
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
+      const u = String(url);
+      if (u.endsWith("/resume")) return json(resumeEnvelope());
+      if (u.endsWith("/private")) return json(privateBody());
+      if (u.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
+      if (u.includes("/challenges/")) {
+        return json({ detail: { code: "RANKED_WRONG_CHALLENGE_INDEX",
+          message: "already advanced" } }, 409);
+      }
+      if (/\/matches\/m1$/.test(u) && (init.method ?? "GET") === "GET") {
+        return json(publicBody());
+      }
+      return json({}, 200);
+    }) as unknown as typeof fetch);
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    act(() => result.current.submitSegmentChallenge(1, { cardId: "c1:left" }));
+    await settle();
+    expect(sfx.play).not.toHaveBeenCalled();
   });
 
   it("never advances the challenge index itself", async () => {

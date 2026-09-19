@@ -272,6 +272,52 @@ const renderers = {
     tone(context, output, startAt, { at: 0.2, dur: 0.32, peak: 0.05, freq: 659.3 });
     tone(context, output, startAt, { at: 0.24, dur: 0.28, peak: 0.018, freq: 1046.5 });
   },
+  rankedModuleStart(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.06, peak: 0.025, from: 520, to: 980, q: 1.3, attack: 0.12 });
+    tone(context, output, startAt, { dur: 0.14, peak: 0.034, freq: 293.7, type: "triangle" });
+    tone(context, output, startAt, { at: 0.07, dur: 0.2, peak: 0.038, freq: 440, type: "triangle" });
+  },
+  rankedAnswerLock(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.028, peak: 0.035, from: 960, to: 520, q: 1.8, attack: 0.06 });
+    tone(context, output, startAt, { dur: 0.06, peak: 0.028, freq: 220, slideTo: 196, type: "triangle" });
+  },
+  rankedAnswerCorrect(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.09, peak: 0.046, freq: 659.3, type: "triangle" });
+    tone(context, output, startAt, { at: 0.065, dur: 0.15, peak: 0.052, freq: 987.8 });
+  },
+  rankedAnswerIncorrect(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.11, peak: 0.04, freq: 370, slideTo: 311.1, type: "triangle" });
+    tone(context, output, startAt, { at: 0.075, dur: 0.17, peak: 0.034, freq: 277.2, slideTo: 246.9, type: "triangle" });
+  },
+  rankedOpponentSubmitted(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.035, peak: 0.018, from: 1300, to: 900, q: 1.7, attack: 0.08 });
+    tone(context, output, startAt, { dur: 0.07, peak: 0.018, freq: 523.3, type: "triangle" });
+  },
+  rankedMetaAction(context, output, startAt) {
+    noise(context, output, startAt, { dur: 0.022, peak: 0.024, from: 1500, to: 820, q: 1.8, attack: 0.04 });
+    tone(context, output, startAt, { dur: 0.045, peak: 0.02, freq: 698.5, slideTo: 587.3, type: "triangle" });
+  },
+  rankedPointsAwarded(context, output, startAt) {
+    // Delayed behind the verdict so a settlement reads as a sequence, not a pile.
+    tone(context, output, startAt, { at: 0.18, dur: 0.1, peak: 0.038, freq: 784, type: "triangle" });
+    tone(context, output, startAt, { at: 0.24, dur: 0.15, peak: 0.036, freq: 1046.5 });
+  },
+  rankedSpeedBonus(context, output, startAt) {
+    tone(context, output, startAt, { at: 0.4, dur: 0.09, peak: 0.03, freq: 1318.5, type: "triangle" });
+  },
+  rankedMatchVictory(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.16, peak: 0.052, freq: 392, type: "triangle" });
+    tone(context, output, startAt, { at: 0.1, dur: 0.2, peak: 0.055, freq: 523.3, type: "triangle" });
+    tone(context, output, startAt, { at: 0.2, dur: 0.3, peak: 0.058, freq: 784 });
+  },
+  rankedMatchDefeat(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.18, peak: 0.046, freq: 392, slideTo: 349.2, type: "triangle" });
+    tone(context, output, startAt, { at: 0.13, dur: 0.3, peak: 0.042, freq: 293.7, slideTo: 220, type: "triangle" });
+  },
+  rankedMatchDraw(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.2, peak: 0.044, freq: 349.2, type: "triangle" });
+    tone(context, output, startAt, { at: 0.08, dur: 0.28, peak: 0.04, freq: 440, type: "triangle" });
+  },
   scribble(context, output, startAt, options) {
     const duration = Math.min(MAX_SCRIBBLE_MS, Math.max(0, options.durationMs ?? 0)) / 1000;
     if (duration <= 0) return;
@@ -351,6 +397,17 @@ export const SFX_GENERATORS = {
   "sfx.leaguecraft.answer-correct": renderers.answerCorrect,
   "sfx.leaguecraft.answer-incorrect": renderers.answerIncorrect,
   "sfx.leaguecraft.quiz-complete": renderers.quizComplete,
+  "sfx.ranked.module-start": renderers.rankedModuleStart,
+  "sfx.ranked.answer-lock": renderers.rankedAnswerLock,
+  "sfx.ranked.answer-correct": renderers.rankedAnswerCorrect,
+  "sfx.ranked.answer-incorrect": renderers.rankedAnswerIncorrect,
+  "sfx.ranked.opponent-submitted": renderers.rankedOpponentSubmitted,
+  "sfx.ranked.meta-action": renderers.rankedMetaAction,
+  "sfx.ranked.points-awarded": renderers.rankedPointsAwarded,
+  "sfx.ranked.speed-bonus": renderers.rankedSpeedBonus,
+  "sfx.ranked.match-victory": renderers.rankedMatchVictory,
+  "sfx.ranked.match-defeat": renderers.rankedMatchDefeat,
+  "sfx.ranked.match-draw": renderers.rankedMatchDraw,
   "sfx.legacy.welcome-scribble": renderers.scribble,
   "sfx.legacy.welcome-page-turn": renderers.pageTurn,
 } as const satisfies Record<string, SfxSynthRenderer>;

@@ -24,9 +24,12 @@ import type {
   MatchResultView, PresenceView, PrivatePlayerView, PublicRoundView,
   SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
-import { readSegmentSettlement } from "@/lib/ranked-public/contracts";
+import {
+  META_REFLEX_MIXED_VERSION, readSegmentSettlement,
+} from "@/lib/ranked-public/contracts";
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
+import { useSfx } from "@/lib/audio/useSfx";
 
 const POLL_MS = 1500;
 const MAX_BACKOFF_MS = 8000;
@@ -274,6 +277,7 @@ export interface RankedMatchOptions {
 
 export function useRankedMatch(matchId: string | null, viewerUserId: string,
                                options: RankedMatchOptions = {}): MatchController {
+  const { play: playSfx } = useSfx();
   const paused = options.paused === true;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
@@ -806,6 +810,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     (async () => {
       try {
         await api.submitRound(matchId, rn, answerIndex);
+        playSfx("ranked.answer.lock", {
+          eventId: `ranked:${matchId}:round:${rn}:lock`,
+        });
         poke();  // the next snapshot is what actually flips the UI to locked
       } catch (e) {
         // Release the grid so the player can answer again.
@@ -820,7 +827,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         setSubmitting(false);
       }
     })();
-  }, [matchId, publicRound, poke]);
+  }, [matchId, publicRound, poke, playSfx]);
 
   /**
    * Arm, change, or clear the round's ability. Independent of the answer in
@@ -865,13 +872,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const segmentNumber = segmentState?.segmentNumber ?? null;
 
   const runSegmentAction = useCallback(
-    (action: (segment: number) => Promise<unknown>) => {
+    (action: (segment: number) => Promise<unknown>, onAccepted?: (segment: number) => void) => {
       if (!matchId || submitting || segmentNumber === null) return;
       setSubmitting(true);
       setActionError(null);
       (async () => {
         try {
           await action(segmentNumber);
+          onAccepted?.(segmentNumber);
         } catch (e) {
           // A stale phase/index means the server already moved on — re-poll
           // rather than surfacing a transient race as an error.
@@ -907,8 +915,15 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const submitSegmentChallenge = useCallback(
     (challengeIndex: number, choice: api.SegmentChoice) => {
       runSegmentAction((segment) =>
-        api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice));
-    }, [runSegmentAction, matchId]);
+        api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice),
+      (segment) => {
+        if (segmentState?.moduleId !== "item_cost_duel"
+            || segmentState.moduleVersion < META_REFLEX_MIXED_VERSION) return;
+        playSfx("ranked.meta.action", {
+          eventId: `ranked:${matchId}:segment:${segment}:card:${challengeIndex}:action`,
+        });
+      });
+    }, [runSegmentAction, matchId, segmentState, playSfx]);
 
   const chooseLevelTwo = useCallback((abilityId: string) => {
     if (!matchId || submitting) return;

@@ -76,19 +76,16 @@ Configured but unreachable: `bubble_tap` has no runtime consumer; UI `success` a
 - Existing contexts are fragmented and most older hooks do not explicitly resume a suspended context. PLAY/tome call `resume()` asynchronously but return silence while it is still suspended, so the first cue may be dropped; this is fail-soft but not a complete iOS lifecycle strategy.
 - Stale comments say PLAY has eight cues, while the closed set now has eleven (`play-sfx.ts:65-90`).
 
-## Ranked coverage at current HEAD
+## Ranked coverage through SFX1.5
 
 Already covered:
 
 - Match entry: record open/close, role movement, mascot reaction, mode confirmation, neutral controls, visible entry errors.
 - Queue: server-accepted queue start; opponent found once; passive recovery and retry churn are silent.
 - Ranked match music: `useRankedAudioBoundary` acquires/release the `ranked` mode soundtrack.
-
-Missing:
-
-- Live match SFX: module/round begin, local answer lock, own correct/incorrect reveal, public opponent-submitted/progress cue, Meta Reflex card interaction/result, point/speed bonus, module settlement.
-- End state SFX: victory, defeat, draw, forfeit/no-contest handling.
-- `QuizRankedMatch.tsx` has no SFX import/call. It already documents the safe boundary: `ownCardReveals` contains only the viewer's correctness, while opponent data exposes progress/finished and never correctness (`QuizRankedMatch.tsx:389-417`). Preserve that boundary.
+- Live match: playable module start, accepted local answer lock, authoritative own correct/incorrect, neutral public opponent submission/progress, Meta Reflex accepted actions and owner-only card results, public base award and speed accent.
+- Results: authoritative victory, defeat, and draw after observed live play; completed-match load/reload is silent. Forfeit/no-contest follows the authoritative result rather than a separate client inference.
+- Deliberately silent: hydration/reconnect/history, duplicate polls/renders, failed/stale commands, timeout/unanswered verdicts, zero awards, opponent correctness/speed/points, raw score mutation, generic settlement, and separate Meta completion.
 
 ## Decision: one canonical target architecture
 
@@ -168,7 +165,7 @@ Canonical details:
 - Dependency: SFX1.3.
 - Must not change: selection, submission, or routing logic.
 
-### SFX1.5 — live Ranked and results
+### SFX1.5 — live Ranked and results — COMPLETE
 
 - Goal: add round/module, local lock, own reveal, public opponent action, Meta Reflex, award/bonus, settlement, and terminal cues.
 - Likely files: `QuizRankedMatch.tsx`, `useRankedMatch.ts`, safe projection helpers, Ranked tests, registry.
@@ -222,7 +219,7 @@ Canonical details:
 
 ## Exact next task
 
-Implement **SFX1.5 only**: add live Ranked and results cues for round/module begin, accepted local answer lock, the viewer's authoritative correct/incorrect reveal, neutral public opponent action/progress, Meta Reflex interactions and results, award/speed bonus, module settlement, and terminal victory/defeat/draw outcomes. Establish initial hydration and reconnect state silently, dedupe StrictMode/poll transitions with stable authoritative ids, and never encode or infer opponent correctness. Preserve server authority, timers, answer submission, hidden information, match music, forfeit/no-contest policy, and all non-Ranked surfaces.
+Implement **SFX1.6 only**: audit Combat Simulation, Archives/Wiki, Pro Play, auth/account, and the shared shell; add only high-value semantic confirmation/error cues where an authoritative successful or failed action benefits from feedback. Reuse the canonical vocabulary when meanings match, create specialized events only when they do not, enforce one action/one cue with stable ids where transitions repeat, preserve navigation/data-fetch authority and all music behavior, and leave Broadcast convergence for SFX1.7.
 
 ## SFX1.1 implementation state
 
@@ -276,3 +273,18 @@ SFX1.2 is complete at the commit containing this section. Its frontend implement
 - Focused SFX1.4 verification covers registry rendering/mute, Hub fine-pointer/keyboard/touch/re-entry behavior, Record selection/no-op behavior, empty start silence, full wrong/right practice progression, failed grading authority, and completion. The affected 4-file run is 138/139 passing; the sole independent failure is the existing Quiz hub assertion that expects an `<h1>` in the current lobby markup. A broader 12-file audio/Leaguecraft run is 148/149 passing; its sole independent failure is the already documented Ranked-role Practice test that reaches an empty-question error. TypeScript passes. Targeted ESLint reports only the existing `Quiz.tsx` `no-explicit-any` and exhaustive-deps findings.
 - Browser QA passed at 1440×900 and 390×844 in the in-app Chromium browser. Desktop keyboard traversal reached the authored Hub books; Hub activation, Leaguecraft Record selection, a real 10-question practice start, and authoritative incorrect grading all completed. Mobile rendered the physical destination stack and Leaguecraft Ranked lobby correctly. The only browser console error-level entry was the pre-existing React `fetchPriority` casing warning.
 - Intentionally untouched: live Ranked/match/results, Combat Simulation, Pro Play, Archives, auth/account, Admin, Broadcast, Academy Radio, Mode Soundtrack, routing, quiz selection/submission authority, and reduced-motion policy.
+
+## SFX1.5 implementation state
+
+- The registry adds `ranked.module.start`, `ranked.answer.lock`, `ranked.answer.correct`, `ranked.answer.incorrect`, `ranked.opponent.submitted`, `ranked.meta.action`, `ranked.points.awarded`, `ranked.speed.bonus`, and distinct `ranked.match.victory|defeat|draw` events. Voices are short and music-safe; the award starts 180 ms after the verdict and the speed accent at 400 ms, making one intentional settlement phrase rather than overlapping independent effects.
+- Accepted ordinary answer lock is emitted only after `submitRound` resolves successfully. Accepted Meta Reflex action is emitted only after `submitSegmentChallenge` resolves successfully and only for `item_cost_duel` at `META_REFLEX_MIXED_VERSION` or later. Stable ids are match + round + lock and match + segment + card + action; retries, stale races, failures, rerenders, and double activation cannot claim a second success sound.
+- `useRankedMatchSfx` observes the existing public controller without grading or mutating it. Its first snapshot per match is a silent baseline. A playable `surfaceRound` identity change emits module start after the existing reveal hold; repeated polls and reconnect/remount baselines are silent. Live resolved-round feedback is admitted only while `revealHold` is true, so resume/backfill settlements never replay history.
+- Ordinary own correct/incorrect comes from the adapted authoritative settlement's viewer player. Meta Reflex per-card correct/incorrect comes only from `segmentState.ownCardReveals`; timeout/unanswered remains silent. Aggregate multi-card settlement does not add another verdict. The fifth card's verdict plus its published award closes the block, so there is no separate completion or settlement cue.
+- Opponent feedback reads only public `hasSubmitted` false→true while the viewer is still active, or an increase in public `opponentChallengesCompleted` while the viewer's Meta block is unfinished. It always emits the same neutral `ranked.opponent.submitted`; skipped poll counts coalesce to one cue. No opponent answer, correctness, score inference, speed inference, timing comparison, or hidden settlement field enters the SFX layer.
+- Point sound reads only the viewer's published `modulePoints` for a newly live settlement. Positive `pointsAwarded` emits one base award; the optional second accent requires the backend's explicit `speedBonusPoints > 0`. Zero awards, opponent awards, raw cumulative score mutations, and hidden score state are silent.
+- Terminal sound requires both an authoritative `MatchResultView` and a session that previously observed a nonterminal public snapshot. Result `draw` maps to draw; otherwise `winnerUserId === viewerUserId` maps to victory and the other result maps to defeat. A delayed result read still sounds once; opening/reloading an already-completed match remains silent. Forfeit and no-contest use the same authoritative result mapping rather than a client-side special rule.
+- Stable event ids cover every repeating transition: match/module/start; match/round/opponent; match/segment/opponent-progress-count; match/segment/card/result; match/round/result, award, and speed; match/terminal outcome. The canonical controller's bounded id set is the second guard behind the per-match observed-state tracker.
+- Focused verification: 4 files / 66 tests passed for canonical rendering/mute, accepted/rejected command boundaries, observer baselines/dedupe, own verdicts, neutral opponent progress, Meta reveals, awards/speed, and terminal policy. The full `src/pages/quiz-ranked` regression directory passed; it retains existing fixture-adapter stderr and React `act(...)` warnings. TypeScript passes. Targeted ESLint has no new errors and only the pre-existing Fast Refresh/exhaustive-deps warnings in large Ranked files.
+- Browser QA uses the real Ranked shell/controller through `/dev/ranked-shell-probe` plus a query-gated live-transition control. Installed Edge passed 6/6 at 1280×720 and touch 390×844: ordinary accepted lock, accepted Meta action, opponent submission, correct + base award, correct + base + speed, incorrect, live victory, completed-result reload silence, and unchanged visible match/result layouts. Synth playback was counted at the `AudioContext` oscillator boundary with a 750 ms accepted-action limit; no touch-unlock delay was observed.
+- The dev probe now returns the existing valid segment challenge acknowledgement and exposes `?sfx=1` transition steps only for browser QA. Production contracts and behavior are unchanged. Ranked music, scoring, timers, ten-module flow, module history, Player Columns, reveal choreography, zero-scroll desktop contract, mobile flow, and result presentation were not changed.
+- Remaining scope is SFX1.6 major-surface confirmation/error coverage, then SFX1.7 Broadcast renderer convergence/cleanup and SFX1.8 final cross-device mix certification.

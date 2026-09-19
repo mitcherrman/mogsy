@@ -78,6 +78,7 @@ import {
 import { useMatchDiscoveries } from "./useMatchDiscoveries";
 import { useRankedMatch } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
+import { useRankedMatchSfx } from "./useRankedMatchSfx";
 
 /** RD1 — the opponent's column reads the viewer's standing from the other side. */
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
@@ -314,6 +315,16 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   );
   if (canAdvanceSurface && live !== renderedRound) setRenderedRound(live);
   const surfaceRound = renderedRound ?? live;
+  useRankedMatchSfx({
+    matchId,
+    viewerUserId,
+    publicRound: m.publicRound,
+    surfaceRound,
+    lastResolved: m.lastResolved,
+    lastSegmentRoundNumber: m.lastSegmentRoundNumber,
+    revealHold: m.revealHold,
+    result: m.result,
+  });
 
   // 1s render tick so the skew-anchored timer counts down between polls.
   useEffect(() => {

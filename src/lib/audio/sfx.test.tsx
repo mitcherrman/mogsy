@@ -172,6 +172,23 @@ describe("semantic registry and configuration timing", () => {
     expect(audio.counts.oscillators).toBeGreaterThanOrEqual(events.length);
   });
 
+  it("registers restrained built-in voices for every live Ranked semantic", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    const events = [
+      "ranked.module.start", "ranked.answer.lock", "ranked.answer.correct",
+      "ranked.answer.incorrect", "ranked.opponent.submitted", "ranked.meta.action",
+      "ranked.points.awarded", "ranked.speed.bonus", "ranked.match.victory",
+      "ranked.match.defeat", "ranked.match.draw",
+    ] as const;
+    for (const event of events) {
+      sfxController.play(event);
+      vi.advanceTimersByTime(1100);
+    }
+    expect(audio.counts.oscillators).toBeGreaterThanOrEqual(events.length);
+  });
+
   it("keeps migrated legacy UI semantics silent until Audio Studio binds them", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
@@ -219,6 +236,17 @@ describe("semantic registry and configuration timing", () => {
 });
 
 describe("global visitor mute", () => {
+  it("silences representative live Ranked feedback", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    localStorage.setItem(SFX_MUTE_STORAGE_KEY, "1");
+    window.dispatchEvent(new Event(SFX_MUTE_CHANGE_EVENT));
+    sfxController.play("ranked.answer.correct");
+    sfxController.play("ranked.match.victory");
+    expect(audio.counts.oscillators).toBe(0);
+  });
+
   it("silences representative new Leaguecraft feedback", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);

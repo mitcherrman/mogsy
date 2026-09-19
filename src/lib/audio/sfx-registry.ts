@@ -71,6 +71,17 @@ export const SFX_REGISTRY = {
   "ranked.mode.confirm": { group: "ranked", minReplayMs: 250, relativeGain: 1, legacySettingKey: "play_mode_confirm", builtInGeneratorId: "sfx.legacy.mode-confirm" },
   "ranked.queue.start": { group: "ranked", minReplayMs: 400, relativeGain: 1, legacySettingKey: "play_queue_start", builtInGeneratorId: "sfx.legacy.queue-start" },
   "ranked.opponent.found": { group: "ranked", minReplayMs: 400, relativeGain: 1, legacySettingKey: "play_opponent_found", builtInGeneratorId: "sfx.legacy.opponent-found" },
+  "ranked.module.start": { group: "ranked", minReplayMs: 300, relativeGain: 0.82, builtInGeneratorId: "sfx.ranked.module-start" },
+  "ranked.answer.lock": { group: "ranked", minReplayMs: 90, relativeGain: 0.8, builtInGeneratorId: "sfx.ranked.answer-lock" },
+  "ranked.answer.correct": { group: "ranked", minReplayMs: 140, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.answer-correct" },
+  "ranked.answer.incorrect": { group: "ranked", minReplayMs: 140, relativeGain: 0.84, builtInGeneratorId: "sfx.ranked.answer-incorrect" },
+  "ranked.opponent.submitted": { group: "ranked", minReplayMs: 180, relativeGain: 0.58, builtInGeneratorId: "sfx.ranked.opponent-submitted" },
+  "ranked.meta.action": { group: "ranked", minReplayMs: 90, relativeGain: 0.62, builtInGeneratorId: "sfx.ranked.meta-action" },
+  "ranked.points.awarded": { group: "ranked", minReplayMs: 180, relativeGain: 0.78, builtInGeneratorId: "sfx.ranked.points-awarded" },
+  "ranked.speed.bonus": { group: "ranked", minReplayMs: 180, relativeGain: 0.7, builtInGeneratorId: "sfx.ranked.speed-bonus" },
+  "ranked.match.victory": { group: "ranked", minReplayMs: 1000, relativeGain: 0.94, builtInGeneratorId: "sfx.ranked.match-victory" },
+  "ranked.match.defeat": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-defeat" },
+  "ranked.match.draw": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-draw" },
 } as const satisfies Record<string, SfxRegistryEntry>;
 
 export type SfxEvent = keyof typeof SFX_REGISTRY;
