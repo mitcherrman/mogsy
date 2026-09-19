@@ -104,29 +104,34 @@ describe("QuestionMotifLayer", () => {
       .toContain("overflow: clip");
   });
 
-  it("draws the Rift/Jungle study (minion + turret + one leaf cluster)", () => {
+  it("draws the Rift/Jungle study (large minion + turret, edge-hung foliage)", () => {
     const { container } = render(<QuestionMotifLayer motif="rift_field_guide" />);
     const layer = within(container).getByTestId("question-motif-layer");
     expect(layer.getAttribute("data-motif-art")).toBe("rift");
     expect(layer.getAttribute("aria-hidden")).toBe("true");
     expect(layer.childElementCount).toBe(0);
-    // Both pseudo-elements bleed past the card body (full-sheet convention).
-    const bleed = rule('.question-motif-layer[data-motif-art="rift"]::before,\n'
-      + '.question-motif-layer[data-motif-art="rift"]::after');
-    expect(bleed).toContain("position: absolute");
-    expect(bleed).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
     const at = (sel: string) => {
-      const i = css.lastIndexOf(`${sel} {`);
-      return css.slice(i, css.indexOf("}", i));
+      const k = css.lastIndexOf(`${sel} {`);
+      expect(k, `missing ${sel}`).toBeGreaterThanOrEqual(0);
+      return css.slice(k, css.indexOf("}", k));
     };
+    // Figures: one full-sheet bleed, faded to 0.25.
     const figures = at('.question-motif-layer[data-motif-art="rift"]::before');
     expect(figures).toContain('url("/assets/ranked/question-accents/minion.png")');
     expect(figures).toContain('url("/assets/ranked/question-accents/tower.png")');
-    const leaves = at('.question-motif-layer[data-motif-art="rift"]::after');
-    expect(leaves).toContain('url("/assets/ranked/question-accents/rift-leaves.svg")');
-    // Exactly one foliage image — no border, no extra props.
-    expect(leaves.match(/url\(/g)).toHaveLength(1);
-    for (const f of ["minion.png", "tower.png", "rift-leaves.svg"]) {
+    expect(figures).toContain("opacity: 0.25");
+    expect(css).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
+    // Foliage: hung from the parchment's top edge by the HOST section, beneath
+    // content, non-interactive — and nothing on the layer's ::after any more.
+    const foliage = at('.question-surface-stack.question-motif-host:has(> '
+      + '.question-motif-layer[data-motif-art="rift"])::before');
+    expect(foliage).toContain('url("/assets/ranked/question-accents/rift-vines-top.svg")');
+    expect(foliage).toContain("z-index: -1");
+    expect(foliage).toContain("pointer-events: none");
+    expect(foliage).toContain("top: -1.45rem");
+    expect(css).not.toContain('.question-motif-layer[data-motif-art="rift"]::after');
+    expect(css).not.toContain("rift-leaves.svg");
+    for (const f of ["minion.png", "tower.png", "rift-vines-top.svg"]) {
       expect(existsSync(resolve(process.cwd(), "public/assets/ranked/question-accents", f))).toBe(true);
     }
   });

@@ -2580,8 +2580,7 @@
   --qm-bleed-y: 40rem;
   overflow: visible;
 }
-.question-motif-layer[data-motif-art="rift"]::before,
-.question-motif-layer[data-motif-art="rift"]::after {
+.question-motif-layer[data-motif-art="rift"]::before {
   content: "";
   position: absolute;
   inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x));
@@ -2598,18 +2597,29 @@
   /* The drawings' white fills tone down to parchment instead of printing as
      bright patches; the pencil lines keep their contrast. */
   filter: grayscale(1) sepia(0.35) brightness(0.94) contrast(1.15);
-  opacity: 0.32;
+  /* Slightly faded (0.32 -> 0.25) so the large figures compete less with
+     the prompt while still reading as a minion and a turret. */
+  opacity: 0.25;
 }
-.question-motif-layer[data-motif-art="rift"]::after {
-  background-image: url("/assets/ranked/question-accents/rift-leaves.svg");
-  /* One cluster, growing in from the parchment's RIGHT edge (cropped by it)
-     over the turret — never floating in the card body. The sprig is drawn
-     growing left-to-right, so the pseudo is mirrored; with symmetric bleeds
-     the mirror axis is the card's centre, so `left` here lands on the right. */
-  transform: scaleX(-1);
-  background-size: 170px auto;
-  background-position: left calc(var(--qm-bleed-x) - 96px) bottom calc(var(--qm-bleed-y) + 96px);
-  opacity: 0.42;
+/* Rift foliage hangs from the PARCHMENT'S top edge and drapes down its side
+   margins — never in the card body. The motif layer's box starts at the
+   prompt, so it cannot reach the sheet's top; the section that hosts it
+   starts at the top of the card body, so the foliage is that section's own
+   ::before, `z-index: -1` inside the isolated host (beneath the media panel,
+   prompt and tablets), bled out over the panel's padding so the parchment
+   edge crops it. Scoped with :has() to a Rift layer only. */
+.question-surface-stack.question-motif-host:has(> .question-motif-layer[data-motif-art="rift"])::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  top: -1.45rem;
+  left: -1.45rem;
+  right: -1.45rem;
+  height: 190px;
+  background: url("/assets/ranked/question-accents/rift-vines-top.svg") no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.5;
 }
 /* A phone card has no parchment to spare; the motif is a desktop texture. */
 @media (max-width: 639px) {
