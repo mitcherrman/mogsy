@@ -2591,10 +2591,10 @@
   background-image:
     url("/assets/ranked/question-accents/minion.png"),
     url("/assets/ranked/question-accents/tower.png");
-  background-size: 250px auto, auto 300px;
+  background-size: 470px auto, auto 560px;
   background-position:
-    left calc(var(--qm-bleed-x) - 34px) bottom var(--qm-bleed-y),
-    right calc(var(--qm-bleed-x) - 28px) bottom calc(var(--qm-bleed-y) + 16px);
+    left calc(var(--qm-bleed-x) - 150px) bottom calc(var(--qm-bleed-y) - 160px),
+    right calc(var(--qm-bleed-x) - 140px) bottom calc(var(--qm-bleed-y) - 150px);
   /* The drawings' white fills tone down to parchment instead of printing as
      bright patches; the pencil lines keep their contrast. */
   filter: grayscale(1) sepia(0.35) brightness(0.94) contrast(1.15);
@@ -2602,10 +2602,13 @@
 }
 .question-motif-layer[data-motif-art="rift"]::after {
   background-image: url("/assets/ranked/question-accents/rift-leaves.svg");
-  /* One cluster, growing up over the turret's lower edge from behind the
-     tablets — an overgrown Rift turret, not a border. */
-  background-size: 140px auto;
-  background-position: right calc(var(--qm-bleed-x) + 118px) bottom calc(var(--qm-bleed-y) + 104px);
+  /* One cluster, growing in from the parchment's RIGHT edge (cropped by it)
+     over the turret — never floating in the card body. The sprig is drawn
+     growing left-to-right, so the pseudo is mirrored; with symmetric bleeds
+     the mirror axis is the card's centre, so `left` here lands on the right. */
+  transform: scaleX(-1);
+  background-size: 170px auto;
+  background-position: left calc(var(--qm-bleed-x) - 96px) bottom calc(var(--qm-bleed-y) + 96px);
   opacity: 0.42;
 }
 /* A phone card has no parchment to spare; the motif is a desktop texture. */
