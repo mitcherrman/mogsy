@@ -37,6 +37,7 @@ import { SegmentTranscript } from "./SegmentTranscript";
 import { CardResultBeat } from "./CardResultBeat";
 import { CentralStage } from "./CentralStage";
 import { RoundResultBeat } from "./RoundResultBeat";
+import { QuestionResultOverlay } from "./QuestionResultOverlay";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import { arenaReportSnapshot } from "@/lib/ranked-core/reportSnapshot";
 import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
@@ -621,7 +622,11 @@ export function CanonicalArena({
               // floor. Neither is a cap, so an oversized round still grows the
               // page rather than being clipped.
               className={`ranked-panel ranked-folio ranked-question-stage p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-1 lg:flex-col lg:min-h-0 ${
-                view.revealHold || progression ? "opacity-60" : "opacity-100"}`}>
+                // RFX1: a reveal that carries a result overlay is NOT dimmed —
+                // the overlay is the treatment, and dimming the stage would dim
+                // the overlay (its child) and the tablets it is explaining.
+                (view.revealHold && !view.resultFeedback?.viewer) || progression
+                  ? "opacity-60" : "opacity-100"}`}>
               {/* THE QUESTION'S BOX. It takes the card's height and there is
                   NOTHING to scroll inside it — no `overflow`, no clipping, no
                   bar in the parchment. The stage is sized so real content fits
@@ -699,6 +704,10 @@ export function CanonicalArena({
               />
               </div>
               </div>
+              {/* RFX1 — the result, on the card. Absolute, pointer-events
+                  none, inside this overflow-hidden panel: it adds no height
+                  and moves nothing (see QuestionResultOverlay). */}
+              <QuestionResultOverlay feedback={view.resultFeedback ?? null} />
             </section>
           )}
           {!surface.renderer && (

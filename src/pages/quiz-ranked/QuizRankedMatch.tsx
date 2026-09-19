@@ -78,6 +78,10 @@ import {
 import { useMatchDiscoveries } from "./useMatchDiscoveries";
 import { useRankedMatch } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
+import {
+  projectPresentationPhase, projectResultFeedback, upcomingRound,
+} from "@/lib/ranked-core/flow/rankedFlow";
+import { useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 
 /** RD1 — the opponent's column reads the viewer's standing from the other side. */
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
@@ -418,6 +422,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    */
   const cardPopsRef = useRef<{ round: number; count: number } | null>(null);
   const cardPopKeyRef = useRef<string | null>(null);
+  /** RFX1 — the card that was already revealing when this mount first saw the
+   *  match (`undefined` until then). Restored, never replayed. */
+  const cardBaselineRef = useRef<string | null | undefined>(undefined);
   const settlementAwards = useMemo((): Record<string, AwardEvent> => {
     const round = m.lastResolved?.roundNumber ?? null;
     if (round === null) return {};
@@ -580,7 +587,6 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   const abilities = useMemo(
     () => (m.privatePlayer ? projectAbilities(m.privatePlayer, m.selectedAbilityId) : []),
     [m.privatePlayer, m.selectedAbilityId]);
-  const timer = m.publicRound ? projectTimer(m.publicRound, m.skewMs, Date.now()) : null;
   // QUIZ1 Phase 11 — the post-settlement answer-tablet reveal. The whole
   // disclosure gate lives in `projectSurfaceReveal`; this only supplies the
   // round the surface is actually showing, which is deliberately NOT the live
@@ -593,6 +599,42 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     () => projectSurfaceReveal(m.lastResolved, surfaceRoundNumber, question,
       m.lastResolved?.players.p1 ?? null),
     [m.lastResolved, surfaceRoundNumber, question]);
+
+  // ── RFX1 Phase 2A — ONE PRESENTED ROUND ────────────────────────────────
+  // During a live reveal the controller already holds round N+1 (the server
+  // opens it in the same transaction that settles N). The SURFACE keeps
+  // presenting N, and now so does every piece of round-scoped chrome: the
+  // header's module label and title, the timer and the phone match bar all
+  // read `headerRound` instead of the live snapshot. Scores, rails and the
+  // result itself still read the live snapshot and the settlement — they ARE
+  // round N's result.
+  const revealing = m.revealHold && m.lastResolved !== null
+    && m.lastResolved.roundNumber === surfaceRoundNumber;
+  const headerRound = revealing ? surfaceRound : m.publicRound;
+  // No clock while a settled round is being revealed: N's clock has ended and
+  // N+1's has not begun, and showing either over N's result is the mixed-round
+  // state this replaces. The centre shows the result instead.
+  const timer = !revealing && m.publicRound
+    ? projectTimer(m.publicRound, m.skewMs, Date.now()) : null;
+  // Wake EXACTLY at the live round's authoritative start, so input opens at
+  // `started_at` rather than on the next 1s tick. One timeout, re-armed only
+  // when the instant changes, cleared on unmount.
+  useServerInstantWake(m.publicRound?.activeRound?.startedAt ?? null, m.skewMs);
+  const presentationPhase = projectPresentationPhase({
+    revealing,
+    locked: m.phase === "locked",
+    presentedStartedAt: surfaceRound?.activeRound?.startedAt ?? null,
+    skewMs: m.skewMs,
+    nowMs: Date.now(),
+  });
+  // Phase 2B seam: the authoritative next round, known but not yet presented.
+  // Its media is what the preloader will prepare during the reveal.
+  const nextRound = upcomingRound(m.publicRound, surfaceRound);
+  // The viewer's pick for the PRESENTED round: the kept record while that
+  // round is on screen (so a reveal shows it), else the live echo.
+  const surfaceSelection = m.answeredSelection
+    && m.answeredSelection.roundNumber === surfaceRoundNumber
+    ? m.answeredSelection.optionId : m.selectedOptionId;
   // A module that owns its own ability window and submission renders those
   // itself; the shell must not also show the quiz confirm strip or ability
   // tray. This is a capability the module declares — not a mode branch here.
@@ -930,12 +972,13 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // sticky `roundNumber` keeps the last shown round so the header never blanks
   // to "Round —". During that gap (input phases only) we show an intentional
   // "Preparing next round…" transition instead of a malformed header/empty timer.
-  const roundLabel = m.roundNumber !== null ? `Round ${m.roundNumber}` : "Preparing match…";
+  const headerRoundNumber = revealing ? surfaceRoundNumber : m.roundNumber;
+  const roundLabel = headerRoundNumber !== null ? `Round ${headerRoundNumber}` : "Preparing match…";
   // Null on every hp match; "Module 6 / 10" on a v2 points match.
-  const moduleLabel = moduleProgressLabel(m.publicRound);
+  const moduleLabel = moduleProgressLabel(headerRound ?? m.publicRound);
   // A phased segment in its ability window legitimately has no engine round
   // and therefore no shared timer — that is the phase, not a transition gap.
-  const inTransition = !timer && m.phase !== "progression" && !m.segmentState;
+  const inTransition = !revealing && !timer && m.phase !== "progression" && !m.segmentState;
 
   // The Level 2 overlay is gated on the SAME signal. `phase === "progression"`
   // is already structurally unreachable on an R1 match (a match frozen with a
@@ -951,6 +994,23 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    */
   const cardBeat = projectCardBeat(surfaceRound?.segmentState ?? null,
     surfaceRound?.activeRound?.roundNumber ?? null);
+  // A card that is only being REVEALED counts as live (not a finished block's
+  // last card persisting), and only if this mount watched it begin: the card
+  // already revealing when the match was first seen is restored, not played.
+  const revealingCard = cardBeat
+    && surfaceRound?.segmentState?.ownRevealingCardIndex === cardBeat.challengeIndex
+    ? cardBeat : null;
+  const cardKey = revealingCard ? `${revealingCard.roundNumber}:${revealingCard.challengeIndex}` : null;
+  if (cardBaselineRef.current === undefined) cardBaselineRef.current = cardKey;
+  const liveCard = revealingCard && cardKey !== cardBaselineRef.current ? revealingCard : null;
+  const resultFeedback = projectResultFeedback({
+    matchId, viewerId: viewerUserId, opponentId: opponentPlayerId,
+    revealing, presentedRoundNumber: surfaceRoundNumber,
+    settlement: m.lastResolved,
+    segment: m.lastSegmentSettlement
+      ? { settlement: m.lastSegmentSettlement, roundNumber: m.lastSegmentRoundNumber } : null,
+    liveCard,
+  });
 
   /**
    * RM1 Pass 2B — ONE card of a Meta Reflex block, for the viewer's column.
@@ -1028,7 +1088,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // RD1 — `FINAL 3` / `FINAL` beside the module count, from the frozen
       // length and the module in play. Nothing about rounds or phases: the
       // format publishes none.
-      titleSuffix: duelProgressSuffix(duelState),
+      titleSuffix: duelProgressSuffix(revealing
+        ? projectDuelState({ publicRound: headerRound, viewerUserId,
+          settlement: m.lastResolved, revealing: true })
+        : duelState),
       // RD1 — the viewer's standing on the clock's secondary line.
       standing: duelState
         ? { label: duelStandingLabel(duelState), standing: duelState.standing } : null,
@@ -1076,8 +1139,8 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // the next one first — the backend publishes nothing about a question it
       // has not generated, which is the same fact that makes every future node
       // on the round rail neutral — so this face runs as the new round arrives.
-      moduleTitle: liveModuleTitle(m.publicRound),
-      moduleEventId: m.roundNumber,
+      moduleTitle: liveModuleTitle(headerRound ?? m.publicRound),
+      moduleEventId: headerRoundNumber,
     },
     roundBeat: m.lastResolved ? {
       settlement: m.lastResolved,
@@ -1111,7 +1174,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       renderer,
       publicRound: surfaceRound!,
       segmentState: surfaceRound!.segmentState,
-      selection: m.selectedOptionId,
+      selection: surfaceSelection,
       permissions,
       actions: segmentActions,
       skewMs: m.skewMs,
@@ -1172,6 +1235,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     timeline,
     revealHold: m.revealHold,
     progressionEnabled,
+    resultFeedback,
+    presentationPhase,
+    upcomingRound: nextRound,
   };
 
   return <CanonicalArena view={view} chrome={chrome} />;

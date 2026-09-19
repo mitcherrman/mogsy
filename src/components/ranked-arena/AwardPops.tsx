@@ -81,16 +81,25 @@ interface ActivePop { key: string; kind: "base" | "bonus"; points: number }
 export function useAwardPops(event: AwardEvent | null): ActivePop[] {
   const played = useRef(new Set<string>());
   const [pops, setPops] = useState<ActivePop[]>([]);
+  // RFX1 — the timers belong to the MOUNT, not to one `event` value. They used
+  // to be cleared by the effect's cleanup whenever `event` changed identity
+  // (a re-render with a fresh object, or the award going null as the reveal
+  // ended); `played` then stopped the effect from re-arming them, so a pop
+  // whose removal was cancelled stayed in state for the rest of the match.
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => {
+    for (const t of timers.current) window.clearTimeout(t);
+    timers.current = [];
+  }, []);
 
   useEffect(() => {
     if (!event) return;
     if (played.current.has(event.id)) return;
     played.current.add(event.id);
 
-    const timers: number[] = [];
     const add = (pop: ActivePop) => {
       setPops((current) => [...current, pop]);
-      timers.push(window.setTimeout(
+      timers.current.push(window.setTimeout(
         () => setPops((c) => c.filter((p) => p.key !== pop.key)), POP_MS));
     };
 
@@ -106,10 +115,9 @@ export function useAwardPops(event: AwardEvent | null): ActivePop[] {
       const bonus: ActivePop = {
         key: `${event.id}:bonus`, kind: "bonus", points: event.speedBonusPoints,
       };
-      timers.push(window.setTimeout(() => add(bonus),
+      timers.current.push(window.setTimeout(() => add(bonus),
         event.baseAlreadyShown ? 0 : BONUS_DELAY_MS));
     }
-    return () => { for (const t of timers) window.clearTimeout(t); };
   }, [event]);
 
   return pops;

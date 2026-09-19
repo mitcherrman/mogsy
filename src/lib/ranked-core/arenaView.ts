@@ -23,6 +23,7 @@ import type {
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleSegmentActions } from "./modules/types";
 import type { ArenaCardBeat } from "./cardBeat";
+import type { RankedPresentationPhase, RankedResultFeedback } from "./flow/rankedFlow";
 import type { DuelEventView, DuelStanding } from "./duelState";
 import type { ArenaReportIdentity } from "./reportSnapshot";
 export type { ArenaReportIdentity };
@@ -394,6 +395,19 @@ export interface ArenaViewModel {
   revealHold: boolean;
   /** Does this match have a level/XP layer at all? */
   progressionEnabled: boolean;
+  /**
+   * RFX1 — the result cues for the PRESENTED round (viewer, and the opponent's
+   * staggered beat over the same settlement). Absent for a mode that has none,
+   * and then the arena draws no result overlay.
+   */
+  resultFeedback?: RankedResultFeedback | null;
+  /** RFX1 — where the presentation is (derived; see `flow/rankedFlow`). */
+  presentationPhase?: RankedPresentationPhase;
+  /**
+   * RFX1 Phase 2B seam — the authoritative next round the server has opened
+   * but the arena is not presenting yet. Unused by the arena in Phase 2A.
+   */
+  upcomingRound?: PublicRoundView | null;
 }
 
 /** The terminal frame, when the match is over. */

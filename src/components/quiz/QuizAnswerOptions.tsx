@@ -124,6 +124,13 @@ type QuizAnswerOptionsProps = {
    * surface must not be painted by two vocabularies at once.
    */
   eliminatedIndexes?: readonly number[];
+  /**
+   * RFX1 — after a reveal, mark the tablet the player chose with a "Your pick"
+   * tag and a ring, so "I picked this", "this was wrong" and "that one was
+   * right" read together without relying on colour. Opt-in: the Quiz page is
+   * unchanged. Absolutely positioned, so it never resizes a tablet.
+   */
+  markSelectionOnReveal?: boolean;
 };
 
 export default function QuizAnswerOptions({
@@ -133,6 +140,7 @@ export default function QuizAnswerOptions({
   onSelect,
   columns = "auto",
   optionMedia,
+  markSelectionOnReveal = false,
   eliminatedIndexes,
 }: QuizAnswerOptionsProps) {
   const eliminated = new Set(answerResult ? [] : (eliminatedIndexes ?? []));
@@ -179,6 +187,7 @@ export default function QuizAnswerOptions({
         const isSelected = selectedAnswer === label;
         const isCorrect = answerResult?.correct_answer === label;
         const isEliminated = eliminated.has(idx);
+        const showPick = markSelectionOnReveal && !!answerResult && isSelected;
         let btnVariant: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive" | "hero" | "accent" = "outline";
         if (answerResult) {
           if (isCorrect) btnVariant = "default";
@@ -237,6 +246,7 @@ export default function QuizAnswerOptions({
               variant={btnVariant}
               data-quiz-choice={idx}
               data-choice-state={choiceState}
+              data-your-pick={showPick ? "true" : undefined}
               onClick={() => onSelect(label, idx)}
               // An eliminated option is unavailable INDIVIDUALLY: the rest of
               // the grid stays live, which is what makes the retry a retry.
@@ -260,6 +270,9 @@ export default function QuizAnswerOptions({
                 // one out never reflows the others.
                 isEliminated
                   ? "line-through opacity-45 border-destructive/40 disabled:opacity-45"
+                  : "",
+                showPick
+                  ? "relative ring-2 ring-offset-2 ring-offset-transparent ring-[#f0d78c] disabled:opacity-100"
                   : "",
               ].join(" ").trim()}
             >
@@ -309,6 +322,12 @@ export default function QuizAnswerOptions({
                     <XCircle className="h-4 w-4 text-destructive-foreground ml-2 shrink-0" />
                   )}
                 </>
+              )}
+              {showPick && (
+                <span data-testid="answer-your-pick"
+                  className="pointer-events-none absolute bottom-0.5 right-2 text-[9px] font-black uppercase leading-none tracking-[0.16em] opacity-90">
+                  Your pick
+                </span>
               )}
               {/* The reason, for anyone who cannot see the strike-through. */}
               {isEliminated && <span className="sr-only">Eliminated</span>}
