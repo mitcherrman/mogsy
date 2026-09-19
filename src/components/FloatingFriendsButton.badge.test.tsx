@@ -181,7 +181,12 @@ describe("the rendered badge", () => {
       expect(tokens).toContain(token);
     }
     expect(tokens).not.toContain("bottom-20");
-    expect(trigger.className).toMatch(/\bh-9 w-9\b/);
+    // The semantic button is now a genuine 44px target. Its child remains the
+    // approved 36px painted circle, so Hall looks identical while Commons can
+    // dock that surface flush to the edge without shrinking the hit area.
+    expect(trigger.className).toMatch(/\bh-11 w-11\b/);
+    const surface = trigger.querySelector<HTMLElement>(".hub-community-trigger-surface");
+    expect(surface?.className).toMatch(/\bh-9 w-9\b/);
   });
 
   it("is present at mobile widths too — the trigger carries no width gate", () => {

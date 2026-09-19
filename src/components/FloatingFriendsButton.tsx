@@ -274,23 +274,25 @@ export default function FloatingFriendsButton({ lifted = false }: FloatingFriend
                the transition is on `bottom` as well as colour so the button
                slides rather than teleports when a question appears. It drops
                back on its own the moment the reporter unmounts. */
-            className={`fixed left-6 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-[background-color,bottom] hover:bg-primary/90 ${
+            className={`hub-community-trigger fixed left-6 z-40 flex h-11 w-11 items-end justify-start transition-[left,bottom] duration-200 hover:text-primary-foreground ${
               lifted ? "bottom-20" : "bottom-6"
             }`}
           >
-            <Users className="h-4 w-4" />
-            {/* Purely decorative and absolutely positioned: it is out of flow,
-                so growing from "1" to "99+" cannot move or resize the trigger.
-                Same grammar as the HUD bell's badge. */}
-            {badge && (
-              <span
-                aria-hidden="true"
-                data-testid="community-badge"
-                className="pointer-events-none absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold leading-none bg-destructive text-destructive-foreground"
-              >
-                {badge.display}
-              </span>
-            )}
+            <span className="hub-community-trigger-surface relative flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-[border-radius,background-color] duration-200 hover:bg-primary/90">
+              <Users className="h-4 w-4" aria-hidden="true" />
+              {/* Purely decorative and absolutely positioned: it is out of flow,
+                  so growing from "1" to "99+" cannot move or resize the trigger.
+                  Same grammar as the HUD bell's badge. */}
+              {badge && (
+                <span
+                  aria-hidden="true"
+                  data-testid="community-badge"
+                  className="pointer-events-none absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold leading-none bg-destructive text-destructive-foreground"
+                >
+                  {badge.display}
+                </span>
+              )}
+            </span>
           </motion.button>
         </SheetTrigger>
 

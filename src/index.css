@@ -14868,14 +14868,85 @@ html.hub-commons-in-view .hextech-ambience-layer {
   /* Two pixels separates the pill's compound controls. The controls' own
      fixed boxes provide the remaining optical breathing room, so extra shell
      padding would read as unused navy at phone scale. */
-  .global-hud nav > div > div:last-child,
-  .global-hud > div > div:last-child {
+  .global-hud [data-testid="global-hud-controls"] {
     gap: 2px;
     padding: 1px 0;
   }
   /* The phone Ranked arena starts where the compact strip ends. */
   .ranked-academy[data-phone-arena="true"] {
     margin-top: -0.5rem;
+  }
+}
+
+/* Mobile Home Hub fold chrome. The pager owns the root class; these controls
+   merely present that state. No scroll listener or second fold threshold lives
+   here. The full HUD remains one mounted control tree and expands leftward
+   from the right-edge launcher. */
+@media (max-width: 767.98px) {
+  html.hub-floating-controls-collapsed .global-hud-right {
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-right: calc(-0.5rem - var(--removed-body-scroll-bar-size, 0px));
+  }
+  html.hub-floating-controls-collapsed .global-hud-controls {
+    position: absolute;
+    right: 0;
+    top: 0.25rem;
+    transform-origin: right center;
+    transition:
+      transform 180ms ease,
+      opacity 160ms ease,
+      visibility 0s linear;
+  }
+  html.hub-floating-controls-collapsed
+    .global-hud-right[data-hub-expanded="false"]
+    .global-hud-controls {
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(72%) scaleX(0.28);
+    transition:
+      transform 180ms ease,
+      opacity 140ms ease,
+      visibility 0s linear 180ms;
+  }
+  html.hub-floating-controls-collapsed
+    .global-hud-right[data-hub-expanded="true"]
+    .global-hud-controls {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+  }
+  .global-hud-expand {
+    position: absolute;
+    right: 0;
+    top: 0;
+    opacity: 1;
+    transition: opacity 150ms ease;
+  }
+  .global-hud-right[data-hub-expanded="true"] .global-hud-expand {
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* The Community trigger already is the correct friends icon. Commons moves
+     its 36px painted circle from a 24px inset to the left edge; the containing
+     button remains a full 44×44 target and still opens the same Sheet. */
+  html.hub-floating-controls-collapsed .hub-community-trigger {
+    left: 0;
+  }
+  html.hub-floating-controls-collapsed .hub-community-trigger-surface {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-hud-controls,
+  .global-hud-expand,
+  .hub-community-trigger,
+  .hub-community-trigger-surface {
+    transition-duration: 0.01ms !important;
   }
 }
 

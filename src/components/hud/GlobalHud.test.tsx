@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 // Auth state drives ONLY the guest-signup affordances; default to a real
@@ -33,6 +33,7 @@ vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
 vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
 
 import GlobalHud from "./GlobalHud";
+import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
 
 const renderHud = (initialPath = "/lol") =>
   render(
@@ -47,6 +48,7 @@ const follows = (a: Element, b: Element) =>
 
 afterEach(() => {
   cleanup();
+  setHubFloatingControlsCollapsed(false);
   authUser = { id: "u1" };
   funnel.trackFunnelEvent.mockClear();
 });
@@ -98,6 +100,47 @@ describe("GlobalHud chrome", () => {
       const el = screen.getByTestId(id);
       expect(el.closest("div.hidden")).toBeNull();
       expect(el.closest("[class*='sm:hidden']")).toBeNull();
+    }
+  });
+
+  it("retracts to one mobile Hub launcher without duplicating the existing controls", () => {
+    const originalMM = window.matchMedia;
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query === "(max-width: 767px)",
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        onchange: null,
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      renderHud();
+      act(() => setHubFloatingControlsCollapsed(true));
+
+      const launcher = screen.getByTestId("hub-hud-expand");
+      const controls = screen.getByTestId("global-hud-controls");
+      expect(launcher.getAttribute("aria-expanded")).toBe("false");
+      expect(controls.getAttribute("aria-hidden")).toBe("true");
+      expect(screen.getAllByTestId("radio-controls-hud")).toHaveLength(1);
+      expect(screen.getAllByTestId("hud-identity-menu")).toHaveLength(1);
+
+      fireEvent.click(launcher);
+      expect(launcher.getAttribute("aria-expanded")).toBe("true");
+      expect(controls.getAttribute("aria-hidden")).toBeNull();
+
+      fireEvent.pointerDown(document.body);
+      expect(launcher.getAttribute("aria-expanded")).toBe("false");
+      expect(controls.getAttribute("aria-hidden")).toBe("true");
+
+      act(() => setHubFloatingControlsCollapsed(false));
+      expect(screen.queryByTestId("hub-hud-expand")).toBeNull();
+      expect(controls.getAttribute("aria-hidden")).toBeNull();
+    } finally {
+      window.matchMedia = originalMM;
     }
   });
 });
