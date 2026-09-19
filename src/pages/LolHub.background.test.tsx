@@ -189,7 +189,11 @@ describe("the hub holds its geometry before the painting decodes", () => {
     const mobileFlow = css.slice(mobileFlowStart, mobileFlowEnd);
 
     expect(mobileFlow).toContain("scroll-snap-type: y mandatory");
-    expect(mobileFlow).toContain("scroll-snap-align: start");
+    expect(mobileFlow).toContain('[data-hub-screen="hall"]');
+    expect(mobileFlow).toContain('[data-hub-screen="commons"]');
+    expect(mobileFlow).toContain("scroll-snap-align: none");
+    expect(mobileFlow).toContain(".academy-commons-mobile-snap-anchor");
+    expect(mobileFlow).toContain("scroll-snap-align: end");
     expect(mobileFlow).toContain(".academy-hub-page .academy-hall");
     expect(mobileFlow).toContain(".academy-hub-page .academy-commons");
     expect(mobileFlow.match(/min-height: 100svh/g)).toHaveLength(2);

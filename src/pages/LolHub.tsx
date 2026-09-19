@@ -210,6 +210,7 @@ const HUB_COMMONS_VIEW_CLASS = "hub-commons-in-view";
  * its timing logic desktop-only.
  */
 const HUB_SNAP_MEDIA = "(min-width: 1024px) and (min-height: 780px)";
+const HUB_MOBILE_MEDIA = "(max-width: 767px)";
 
 /** How long a screen must sit settled before its hint is offered. */
 const HUB_HINT_DELAY_MS = 1700;
@@ -239,10 +240,25 @@ function prefersReducedMotion(): boolean {
  * under reduced motion. CSS snapping then holds whichever screen this lands on.
  */
 function hubScrollTo(screen: "hall" | "commons") {
-  const el = document.querySelector<HTMLElement>(`[data-hub-screen="${screen}"]`);
+  const useMobileBottomAnchor =
+    screen === "commons" && window.matchMedia?.(HUB_MOBILE_MEDIA).matches === true;
+  const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
+
+  if (useMobileBottomAnchor) {
+    const visualViewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    window.scrollTo({
+      behavior,
+      top: Math.max(0, document.documentElement.scrollHeight - visualViewportHeight),
+    });
+    return;
+  }
+
+  const el = document.querySelector<HTMLElement>(
+    `[data-hub-screen="${screen}"]`,
+  );
   if (!el) return;
   el.scrollIntoView({
-    behavior: prefersReducedMotion() ? "auto" : "smooth",
+    behavior,
     block: "start",
   });
 }
@@ -933,6 +949,14 @@ export default function LolHub() {
       <AcademyCommons
         onBackToHall={() => hubScrollTo("hall")}
         navHintRevealed={settledHint === "commons"}
+      />
+      {/* The Commons clips its painted room, so a snap area inside it belongs
+          to that clipping container in WebKit. This zero-layout-cost sibling
+          is instead owned by the document scroller and marks its true end. */}
+      <div
+        aria-hidden="true"
+        data-hub-mobile-snap="commons"
+        className="academy-commons-mobile-snap-anchor"
       />
     </div>
   );
