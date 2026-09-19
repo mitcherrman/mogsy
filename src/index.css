@@ -2528,15 +2528,24 @@
   -webkit-mask-image: radial-gradient(ellipse 62% 64% at 50% 46%, #000 52%, transparent 100%);
   mask-image: radial-gradient(ellipse 62% 64% at 50% 46%, #000 52%, transparent 100%);
 }
-/* On the question surface the tablets are opaque and fill the LOWER part of
-   the layer, so the parchment that actually shows is behind the prompt and in
-   the strip above the tablets. Anchor the composition (and its fade) high, so
-   the drawing's upper half — the faces — lands there. */
+/* On the question surface the opaque tablets fill the LOWER part of the layer,
+   so the parchment that shows is behind the prompt and in the strip above the
+   tablets. Owner review (QF1.2 retry): the whole-image watermark was too faint
+   and too small to read, so this ZOOMS IN (180% of the card width) and places
+   the drawing's strongest form — Ekko's face and gauntlet — in that strip, at
+   a clearly visible 30%. The layer runs past the card's sides into the
+   parchment margin (the panel clips it at its edge) so there is no hard
+   vertical cut; the radial mask fades the rest. `bottom` stays 0: extending it
+   below the card made the stage's content overflow. */
 .question-surface-stack > .question-motif-layer[data-motif-art="champ-combat"] {
-  background-position: center 8%;
-  opacity: 0.15;
-  -webkit-mask-image: radial-gradient(ellipse 64% 70% at 50% 30%, #000 50%, transparent 100%);
-  mask-image: radial-gradient(ellipse 64% 70% at 50% 30%, #000 50%, transparent 100%);
+  left: -1.35rem;
+  right: -1.35rem;
+  background-size: 180% auto;
+  background-position: -266px -277px;
+  filter: grayscale(1) brightness(1.2) contrast(1.5);
+  opacity: 0.3;
+  -webkit-mask-image: radial-gradient(ellipse 85% 120% at 62% 60%, #000 60%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 120% at 62% 60%, #000 60%, transparent 100%);
 }
 /* A phone card has no parchment to spare; the motif is a desktop texture. */
 @media (max-width: 639px) {
