@@ -128,7 +128,7 @@ describe("QuestionMotifLayer", () => {
     expect(foliage).toContain('url("/assets/ranked/question-accents/rift-vines-top.svg")');
     expect(foliage).toContain("z-index: -1");
     expect(foliage).toContain("pointer-events: none");
-    expect(foliage).toContain("top: -1.55rem");
+    expect(foliage).toContain("top: -1.45rem");
     expect(css).not.toContain('.question-motif-layer[data-motif-art="rift"]::after');
     expect(css).not.toContain("rift-leaves.svg");
     for (const f of ["minion.png", "tower.png", "rift-vines-top.svg"]) {

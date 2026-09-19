@@ -2613,12 +2613,9 @@
   position: absolute;
   z-index: -1;
   pointer-events: none;
-  /* Set just past the parchment on the top and both sides (the panel's
-     padding is 1.25rem at this size), so the vines read as entering from
-     outside the sheet and the edge crops their stems. */
-  top: -1.55rem;
-  left: -1.6rem;
-  right: -1.6rem;
+  top: -1.45rem;
+  left: -1.45rem;
+  right: -1.45rem;
   height: 190px;
   background: url("/assets/ranked/question-accents/rift-vines-top.svg") no-repeat;
   background-size: 100% 100%;
