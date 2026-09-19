@@ -451,14 +451,20 @@ describe("an ordinary round resolves in the top strip, never at the bottom", () 
     // Inside the top strip, not floating at the bottom of the page.
     const strip = screen.getByTestId("ranked-match").firstElementChild!;
     expect(strip.contains(beat)).toBe(true);
-    // Secondary to the live round, and not a control.
+    // Not a control.
     expect(beat.querySelector("button")).toBeNull();
-    expect(strip).toHaveTextContent("Round 2");
+    // RFX1 Phase 2A — ONE PRESENTED ROUND. The server has already opened
+    // round 2, but while round 1's result is on screen the strip still names
+    // round 1: the next round's identity must not appear over the old one.
+    expect(strip).toHaveTextContent("Round 1");
+    expect(strip).not.toHaveTextContent("Round 2");
 
     // It SURVIVES the beat as the quiet previous-round summary...
     await waitFor(() => expect(holdActive()).toBe(false),
       { timeout: REVEAL_HOLD_MS + 2000 });
     expect(screen.getByTestId("ranked-last-result")).toHaveAttribute("data-round", "1");
+    // ...and only now does the strip move on to the live round.
+    expect(strip).toHaveTextContent("Round 2");
 
     // ...until the next settlement replaces it.
     advanceRound();

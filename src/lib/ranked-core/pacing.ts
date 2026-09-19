@@ -49,3 +49,35 @@ export const REVEAL_HOLD_LEVEL_UP_MS = 2600;
  * which is most rounds — keeps its 1500ms exactly.
  */
 export const REVEAL_HOLD_EVIDENCE_MS = REVEAL_HOLD_LEVEL_UP_MS;
+
+/**
+ * RFX1 Phase 2A — the shortest reveal a LIVE settlement is ever given.
+ *
+ * Only reached when the client discovered the resolution late (it learns on
+ * its own poll, up to one interval after the server resolved, possibly on the
+ * opponent's request). Long enough for the viewer's verdict and the opponent's
+ * staggered beat (~400ms later) to both land.
+ */
+export const REVEAL_HOLD_MIN_MS = 900;
+
+/**
+ * The reveal hold, ANCHORED TO THE SERVER'S CLOCK.
+ *
+ * The hold used to run a fixed duration from the moment THIS client noticed the
+ * settlement, while the next round's `started_at` is anchored to the moment the
+ * SERVER resolved. A late discovery therefore ate the module-title window and
+ * could leave the new question appearing in the same instant it became
+ * answerable. Now the hold ends no later than `started_at − titleMs`, so the
+ * title keeps its window whenever the server's budget allows it, and the
+ * nominal hold is never lengthened.
+ *
+ * `msUntilNextAnswerable` is server-anchored (skew-corrected) time until the
+ * next round's `started_at`, or null when there is no next round (match over,
+ * a phased segment with no engine round yet) — then the nominal hold stands.
+ */
+export function anchoredRevealHoldMs(
+  nominalMs: number, msUntilNextAnswerable: number | null, titleMs: number,
+): number {
+  if (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)) return nominalMs;
+  return Math.max(REVEAL_HOLD_MIN_MS, Math.min(nominalMs, msUntilNextAnswerable - titleMs));
+}

@@ -10,8 +10,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS,
+  REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
 } from "@/lib/ranked-core/pacing";
+import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 
 // The backend resolved payload is validated at runtime by the settlement
@@ -162,6 +163,19 @@ export interface MatchController {
   opponentUserId: string | null;
   /** The option the viewer has answered with (or has in flight). */
   selectedOptionId: string | null;
+  /**
+   * RFX1 — the option the viewer answered round `roundNumber` with, kept
+   * through that round's reveal.
+   *
+   * `selectedOptionId` is the CURRENT round's echo and is dropped the moment a
+   * snapshot opens the next round — which is the same snapshot that settles
+   * this one, so the reveal used to render with the player's own pick already
+   * gone. This survives the round boundary and is simply superseded by the
+   * next answer; the view shows it only while the surface still presents the
+   * round it belongs to. It is a record of what was SENT, never a verdict:
+   * correctness always comes from the settlement.
+   */
+  answeredSelection: { roundNumber: number; optionId: string } | null;
   /** The server's current ability draft, echoed locally between polls. */
   selectedAbilityId: string | null;
   submitting: boolean;
@@ -295,6 +309,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const [result, setResult] = useState<MatchResultView | null>(null);
   const [skewMs, setSkewMs] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [answeredSelection, setAnsweredSelection] =
+    useState<{ roundNumber: number; optionId: string } | null>(null);
   // Local ECHO of the server's ability draft, so a click feels immediate. The
   // authoritative value always wins on the next snapshot (see the sync effect
   // below) and a failed write reverts to it, so this can never drift into a
@@ -386,18 +402,22 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
    * presentation: it reads `leveledUp` off the authoritative settlement only to
    * decide how LONG to hold, and holds nothing back from the server.
    */
-  const beginRevealHold = useCallback((leveledUp: boolean, hasEvidence = false) => {
+  const beginRevealHold = useCallback((leveledUp: boolean, hasEvidence = false,
+                                       msUntilNextAnswerable: number | null = null) => {
     if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
     setRevealHold(true);
     // The LONGEST applicable allowance, not a chain of branches: a round that
     // both levelled the player up and carried evidence has both things to
     // read, and taking a max is the only combination that never shortens a
     // beat by adding a reason to lengthen it.
-    const hold = Math.max(
+    const nominal = Math.max(
       REVEAL_HOLD_MS,
       leveledUp ? REVEAL_HOLD_LEVEL_UP_MS : 0,
       hasEvidence ? REVEAL_HOLD_EVIDENCE_MS : 0,
     );
+    // RFX1 — end no later than the server's `started_at − title`, so a late
+    // discovery shortens the reveal instead of the next module's intro.
+    const hold = anchoredRevealHoldMs(nominal, msUntilNextAnswerable, MODULE_TITLE_MS);
     revealTimerRef.current = window.setTimeout(() => {
       revealTimerRef.current = undefined;
       setRevealHold(false);
@@ -422,7 +442,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     round: number,
     signal: AbortSignal,
     ids: { p1PlayerId: string; p2PlayerId: string } | null,
-    opts: { hold?: boolean } = {},
+    opts: { hold?: boolean; nextStartedAt?: string | null; skewMs?: number } = {},
   ) => {
     if (resolvedRef.current === round) return;
     if (!ids) return;  // opponent not in the snapshot yet — a real not-ready
@@ -477,7 +497,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       // for a round whose frozen material produced nothing showable.
       const hasEvidence = settlement !== null
         && conciseEvidence(settlement.questionExplanation) !== null;
-      beginRevealHold(leveledUp, hasEvidence);
+      const nextStart = opts.nextStartedAt ? Date.parse(opts.nextStartedAt) : NaN;
+      beginRevealHold(leveledUp, hasEvidence, Number.isNaN(nextStart)
+        ? null : nextStart - Date.now() - (opts.skewMs ?? 0));
     }
   }, [matchId, beginRevealHold]);
 
@@ -530,14 +552,16 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     abortRef.current = controller;
     try {
       const pub = await api.getPublicRound(matchId, controller.signal);
-      setSkewMs(snapshotSkewMs(pub.serverTime, Date.now()));
+      const pubSkewMs = snapshotSkewMs(pub.serverTime, Date.now());
+      setSkewMs(pubSkewMs);
       const active = pub.activeRound?.roundNumber ?? null;
       const previous = activeRoundRef.current;
       if (previous !== null && active !== null && active !== previous) {
         // Ids come from THIS snapshot, so the mapping always matches the match
         // the settlement belongs to.
         await captureResolved(previous, controller.signal,
-          idMappingFromRound(pub, viewerUserId));
+          idMappingFromRound(pub, viewerUserId),
+          { nextStartedAt: pub.activeRound?.startedAt ?? null, skewMs: pubSkewMs });
         // A new round: drop the previous round's local echoes. The ability ref
         // is reset too, so the next snapshot's value is adopted even when the
         // new round's draft happens to equal the old one.
@@ -741,6 +765,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     setLastResolved(null);
     setLastSegmentSettlement(null);
     setLastSegmentRoundNumber(null);
+    setAnsweredSelection(null);
     (async () => {
       // RB3.2 — RECOVERY IS EXCEPTIONAL, and a fresh entry is not it.
       //
@@ -802,6 +827,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     if (rn === undefined) return;
     answeringRef.current = true;
     setSelectedOptionId(optionId);  // shows WHICH option is in flight, not a lock
+    setAnsweredSelection({ roundNumber: rn, optionId });
     setSubmitting(true); setActionError(null);
     (async () => {
       try {
@@ -810,6 +836,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       } catch (e) {
         // Release the grid so the player can answer again.
         setSelectedOptionId(null);
+        setAnsweredSelection((cur) => (cur?.roundNumber === rn ? null : cur));
         if (!(e instanceof RankedApiError && e.code === "RANKED_STALE_ROUND")) {
           setActionError(e instanceof Error ? e.message : "submit failed");
         } else {
@@ -948,7 +975,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   return {
     phase, publicRound, roundNumber, privatePlayer, lastResolved, damageLog, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
-    selectedOptionId, selectedAbilityId, submitting, abilityBusy, actionError,
+    selectedOptionId, answeredSelection, selectedAbilityId, submitting, abilityBusy, actionError,
     error, contractError, retry, roundLive, answer, selectAbility, chooseLevelTwo,
     forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,

@@ -105,6 +105,7 @@ export function AnswerGrid({
           options.some((o) => o.media) ? options.map((o) => o.media ?? null) : undefined
         }
         eliminatedIndexes={eliminatedIndexes}
+        markSelectionOnReveal
       />
     </fieldset>
   );
