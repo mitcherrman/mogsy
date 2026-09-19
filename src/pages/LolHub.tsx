@@ -21,6 +21,7 @@ import {
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
 import AcademyCommons from "@/components/lol/AcademyCommons";
 import { playUiSfx } from "@/lib/ui-sfx";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
@@ -289,6 +290,11 @@ export default function LolHub() {
 
     if (foldTransitionActiveRef.current) return;
 
+    // The mobile floating chrome follows the SAME two-state decision as the
+    // pager. Set it before the first animation frame so Hall → Commons begins
+    // with one coordinated motion; returning to Hall restores it immediately.
+    setHubFloatingControlsCollapsed(screen === "commons");
+
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const destination =
       screen === "hall"
@@ -342,7 +348,10 @@ export default function LolHub() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add(HUB_SNAP_CLASS);
-    return () => root.classList.remove(HUB_SNAP_CLASS);
+    return () => {
+      root.classList.remove(HUB_SNAP_CLASS);
+      setHubFloatingControlsCollapsed(false);
+    };
   }, []);
 
   // Mobile two-state gesture pager. Direction is locked only after a clear

@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import AcademyRadioControls from "@/components/audio/AcademyRadioControls";
@@ -7,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { isGuestUser, signupHrefFor } from "@/lib/hud/identity";
 import { hudChipSurface, hudHitTarget, hudPopVisual } from "@/lib/hud/chrome";
+import { useHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { playUiSfx } from "@/lib/ui-sfx";
@@ -64,11 +67,40 @@ export default function GlobalHud() {
   const homeRoute = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/";
   const { pathname } = useLocation();
   const { user } = useAuth();
+  const hubCollapsed = useHubFloatingControlsCollapsed();
+  const [hubExpanded, setHubExpanded] = useState(false);
+  const hubControlsRef = useRef<HTMLDivElement>(null);
+  const hubClusterRef = useRef<HTMLDivElement>(null);
 
   // Same guest test the retired /lol banner used, now shared with the identity
   // menu so the chip and the menu can never disagree about who is a guest.
   const isAnonymous = isGuestUser(user);
   const signupHref = signupHrefFor(pathname);
+
+  // The controls stay mounted — and therefore retain all of their existing
+  // radio/report/profile/notification state — while their Commons launcher is
+  // closed. `inert` keeps the visually retracted controls out of touch and
+  // keyboard navigation without duplicating or conditionally remounting them.
+  const controlsRetracted = hubCollapsed && !hubExpanded;
+  useEffect(() => {
+    if (hubControlsRef.current) hubControlsRef.current.inert = controlsRetracted;
+  }, [controlsRetracted]);
+
+  // A fold change always returns the HUD to its one-control resting state.
+  useEffect(() => {
+    setHubExpanded(false);
+  }, [hubCollapsed]);
+
+  useEffect(() => {
+    if (!hubCollapsed || !hubExpanded) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!hubClusterRef.current?.contains(event.target as Node)) {
+        setHubExpanded(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [hubCollapsed, hubExpanded]);
 
   return (
     <nav
@@ -139,7 +171,18 @@ export default function GlobalHud() {
           </span>
         </Link>
 
-        <div className={`${hudChip} relative flex items-center gap-1 px-1 py-0.5`}>
+        <div
+          ref={hubClusterRef}
+          className="global-hud-right relative flex items-center"
+          data-hub-collapsed={hubCollapsed ? "true" : "false"}
+          data-hub-expanded={hubExpanded ? "true" : "false"}
+        >
+          <div
+            ref={hubControlsRef}
+            data-testid="global-hud-controls"
+            aria-hidden={controlsRetracted ? "true" : undefined}
+            className={`${hudChip} global-hud-controls relative flex items-center gap-1 px-1 py-0.5`}
+          >
           {/* Guest conversion chip — small, quiet, and the only signup
               affordance in the chrome. AUTH1 cut it back to the two words that
               are the action ("SIGN UP") and moved the polish into CSS: a
@@ -178,9 +221,27 @@ export default function GlobalHud() {
               the cluster by design — utility styling, no pop — because it is
               the one control here nobody is looking for until something is
               already wrong. */}
-          <AcademyRadioControls variant="hud" />
-          <PageReportControl />
-          <MogzyIdentityMenu />
+            <AcademyRadioControls variant="hud" />
+            <PageReportControl />
+            <MogzyIdentityMenu />
+          </div>
+          {hubCollapsed && (
+            <button
+              type="button"
+              data-testid="hub-hud-expand"
+              aria-label="Expand Mogzy controls"
+              aria-expanded={hubExpanded}
+              onClick={() => setHubExpanded(true)}
+              className="global-hud-expand pointer-events-auto relative flex h-11 w-11 items-center justify-end focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/80"
+            >
+              <span
+                aria-hidden="true"
+                className={`${hudChipSurface} flex h-9 w-9 items-center justify-center rounded-l-full rounded-r-none`}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </nav>

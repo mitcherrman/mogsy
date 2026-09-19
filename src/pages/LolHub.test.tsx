@@ -1097,6 +1097,9 @@ describe("LolHub — the two-screen Academy", () => {
     try {
       renderHub();
       fireEvent.click(screen.getByTestId("hall-descend-mobile"));
+      expect(
+        document.documentElement.classList.contains("hub-floating-controls-collapsed"),
+      ).toBe(true);
       expect(scrollIntoView).not.toHaveBeenCalled();
       expect(frames).toHaveLength(1);
       act(() => frames.shift()!(performance.now() + 1000));
@@ -1104,6 +1107,9 @@ describe("LolHub — the two-screen Academy", () => {
 
       Object.defineProperty(window, "scrollY", { configurable: true, value: 754 });
       fireEvent.click(screen.getByTestId("commons-back-to-hall"));
+      expect(
+        document.documentElement.classList.contains("hub-floating-controls-collapsed"),
+      ).toBe(false);
       expect(frames).toHaveLength(1);
       act(() => frames.shift()!(performance.now() + 1000));
       expect(scrollCalls.at(-1)).toEqual({ top: 0, behavior: "auto" });
