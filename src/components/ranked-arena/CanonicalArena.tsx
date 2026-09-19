@@ -69,7 +69,12 @@ export interface CanonicalArenaProps {
    */
   guidance?: ReactNode;
   /** Copy for the null-view placeholder, which is a mode's own sentence. */
-  recovering?: { eyebrow: string; message: string };
+  recovering?: {
+    eyebrow: string;
+    message: string;
+    /** RFX1 2B1 — which entry stage this placeholder stands in for (2B2 reads it). */
+    phase?: "match-unresolved" | "preparing";
+  };
 }
 
 /** One flank. Ranked fills both with a duelist; a mode may supply a panel. */
@@ -181,7 +186,8 @@ export function CanonicalArena({
   if (!view) {
     return (
       <ArenaShell size="wide" header={chrome}>
-        <section data-testid="ranked-recovering" className="ranked-shell">
+        <section data-testid="ranked-recovering" className="ranked-shell"
+          data-entry-phase={recovering?.phase}>
           <div className="ranked-panel p-6 text-center space-y-1">
             <div className="ranked-eyebrow ranked-eyebrow--cyan">
               {recovering?.eyebrow ?? "Ranked Duel"}

@@ -64,6 +64,7 @@ import PlayModeMenu, {
 import RankedQueueView from "./RankedQueueView";
 import InvitePlayView from "./InvitePlayView";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+import { warmRankedEntry } from "@/lib/ranked-core/media/warmRankedEntry";
 import { PLAY_INK as INK } from "./ink";
 
 type ScrollView = "menu" | "ranked" | "invite";
@@ -412,12 +413,18 @@ export default function PlayScrollRecord({
     if (handedOffRef.current === queue.matchId) return;
     handedOffRef.current = queue.matchId;
     const id = queue.matchId;
+    // RFX1 2B1 — Tier 1: use the matched beat the lobby already holds to warm
+    // the arena's code, chrome and the viewer's own mascot. Adds no delay.
+    warmRankedEntry(displayRole);
     if (handoffDelayMs <= 0) {
       onEnterMatch(id);
       return;
     }
     const timer = window.setTimeout(() => onEnterMatch(id), handoffDelayMs);
     return () => window.clearTimeout(timer);
+    // `displayRole` is read once, at the handoff; a later role change cannot
+    // re-warm a match that has already been handed off.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue.state, queue.matchId, handoffDelayMs, onEnterMatch]);
 
   /**

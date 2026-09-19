@@ -408,6 +408,13 @@ export interface ArenaViewModel {
    * but the arena is not presenting yet. Unused by the arena in Phase 2A.
    */
   upcomingRound?: PublicRoundView | null;
+  /**
+   * RFX1 Phase 2B1 — round 1's entry stage (`projectEntryPhase`): `ready`
+   * while the first question is prepared and on screen before its server
+   * `started_at`, `live` once it is answerable. The arena renders nothing
+   * from it yet; Phase 2B2's entry intro is built on it.
+   */
+  entryPhase?: "match-unresolved" | "preparing" | "ready" | "live";
 }
 
 /** The terminal frame, when the match is over. */

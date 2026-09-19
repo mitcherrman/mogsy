@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
+  swapMediaWaitMs,
 } from "@/lib/ranked-core/pacing";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
@@ -284,6 +285,16 @@ export interface RankedMatchOptions {
    * claim. See `entryRef` below.
    */
   entry?: "fresh" | "recovered";
+  /**
+   * RFX1 2B1 — prepare a round's CRITICAL media before the surface swaps to
+   * it. Called with the already-open next round when the nominal reveal hold
+   * expires; the hold then stays up until the returned promise settles or the
+   * server's budget runs out (`started_at − SWAP_MEDIA_MIN_LEAD_MS`),
+   * whichever is first. It can shorten nothing and it can never move the
+   * answerable instant, which is the server's `started_at` regardless.
+   * Absent → the hold ends on its nominal timer, exactly as before.
+   */
+  prepareRound?: (round: PublicRoundView) => Promise<unknown>;
 }
 
 export function useRankedMatch(matchId: string | null, viewerUserId: string,
@@ -322,6 +333,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const [error, setError] = useState<string | null>(null);
   const [contractError, setContractError] = useState<string | null>(null);
   const [revealHold, setRevealHold] = useState(false);
+  // RFX1 2B1: the swap gate reads the LATEST round and preparer at the moment
+  // the nominal hold expires, not the ones captured when it began.
+  const latestRoundRef = useRef<PublicRoundView | null>(null);
+  latestRoundRef.current = publicRound;
+  const prepareRoundRef = useRef(options.prepareRound);
+  prepareRoundRef.current = options.prepareRound;
+  /** Bumped per hold, so a superseded hold's media wait cannot end a newer one. */
+  const holdTokenRef = useRef(0);
 
   const abortRef = useRef<AbortController | null>(null);
   const revealTimerRef = useRef<number | undefined>(undefined);
@@ -418,9 +437,28 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     // RFX1 — end no later than the server's `started_at − title`, so a late
     // discovery shortens the reveal instead of the next module's intro.
     const hold = anchoredRevealHoldMs(nominal, msUntilNextAnswerable, MODULE_TITLE_MS);
-    revealTimerRef.current = window.setTimeout(() => {
+    const token = ++holdTokenRef.current;
+    const heldAt = Date.now();
+    const release = () => {
+      if (holdTokenRef.current !== token) return;
+      if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
       setRevealHold(false);
+    };
+    revealTimerRef.current = window.setTimeout(() => {
+      revealTimerRef.current = undefined;
+      // RFX1 2B1 — the bounded swap gate. The next round's media has been
+      // loading since this hold began (the arena prepares `upcomingRound`);
+      // if its critical images are still in flight, keep presenting round N
+      // a little longer, but only inside the server's own presentation
+      // budget. Input never waits on this: it opens at `started_at`.
+      const next = latestRoundRef.current;
+      const prepare = prepareRoundRef.current;
+      const budget = swapMediaWaitMs(
+        msUntilNextAnswerable === null ? null : msUntilNextAnswerable - (Date.now() - heldAt));
+      if (!prepare || !next || budget <= 0) { release(); return; }
+      revealTimerRef.current = window.setTimeout(release, budget);
+      prepare(next).then(release, release);
     }, hold);
   }, []);
 
@@ -788,6 +826,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       if (hbRef.current !== undefined) window.clearInterval(hbRef.current);
       if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
+      holdTokenRef.current += 1;
       abortRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -801,6 +840,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
     }
+    holdTokenRef.current += 1;
     setRevealHold(false);
   }, [matchOver]);
 

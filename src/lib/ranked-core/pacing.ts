@@ -81,3 +81,39 @@ export function anchoredRevealHoldMs(
   if (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)) return nominalMs;
   return Math.max(REVEAL_HOLD_MIN_MS, Math.min(nominalMs, msUntilNextAnswerable - titleMs));
 }
+
+/**
+ * RFX1 2B1 — the least time the next question stays on screen, locked, before
+ * it becomes answerable, when the swap waited for its media. The module title
+ * owns `MODULE_TITLE_MS` of the lead-in; the swap may borrow the part of it
+ * above this floor and never more.
+ */
+export const SWAP_MEDIA_MIN_LEAD_MS = 1000;
+
+/**
+ * How long the swap may still wait for the next round's critical media, given
+ * the server-anchored time left until that round's `started_at`. 0 when there
+ * is no budget (or no next round): the swap happens now and the media simply
+ * finishes loading on screen. It can never reach past `started_at`.
+ */
+export function swapMediaWaitMs(msUntilNextAnswerable: number | null): number {
+  if (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)) return 0;
+  return Math.max(0, msUntilNextAnswerable - SWAP_MEDIA_MIN_LEAD_MS);
+}
+
+/**
+ * RFX1 2B1 — ROUND 1's entry preparation. When round 1 arrives with a server
+ * lead-in still ahead of it, the arena may keep its existing "Entering the
+ * arena…" placeholder while round 1's critical media loads and decodes, for at
+ * most `ENTRY_PREP_CAP_MS`, and never later than `started_at −
+ * ENTRY_MIN_LEAD_MS`. With no lead-in left (a reload into a live round, an
+ * old backend) there is no wait at all.
+ */
+export const ENTRY_PREP_CAP_MS = 1500;
+export const ENTRY_MIN_LEAD_MS = 700;
+
+/** The entry wait budget for round 1, or 0 for none. */
+export function entryPrepBudgetMs(msUntilAnswerable: number | null): number {
+  if (msUntilAnswerable === null || Number.isNaN(msUntilAnswerable)) return 0;
+  return Math.max(0, Math.min(ENTRY_PREP_CAP_MS, msUntilAnswerable - ENTRY_MIN_LEAD_MS));
+}

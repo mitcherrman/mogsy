@@ -31,24 +31,26 @@ export type ChampionManifest = {
  * relative (e.g. "assets/champions/Akali/cutouts/Akali_Cutout.png"); resolve
  * with `resolveAssetUrl` before using in <img src>.
  */
+export const championAssetsQuery = {
+  queryKey: ["champion-assets"] as const,
+  staleTime: 60 * 60 * 1000,
+  gcTime: 24 * 60 * 60 * 1000,
+  queryFn: async (): Promise<ChampionManifest | null> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/assets/champions`, {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as ChampionManifest;
+      return data ?? null;
+    } catch {
+      return null;
+    }
+  },
+};
+
 export function useChampionAssets() {
-  return useQuery<ChampionManifest | null>({
-    queryKey: ["champion-assets"],
-    staleTime: 60 * 60 * 1000,
-    gcTime: 24 * 60 * 60 * 1000,
-    queryFn: async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/assets/champions`, {
-          headers: { accept: "application/json" },
-        });
-        if (!res.ok) return null;
-        const data = (await res.json()) as ChampionManifest;
-        return data ?? null;
-      } catch {
-        return null;
-      }
-    },
-  });
+  return useQuery<ChampionManifest | null>(championAssetsQuery);
 }
 
 /** Resolve a possibly-relative manifest path against the Combat API base. */
