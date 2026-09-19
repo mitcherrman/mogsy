@@ -89,6 +89,18 @@ describe("QuestionMotifLayer", () => {
     expect(host).toContain("isolation: isolate");
   });
 
+  it("on the question surface the art is a full-sheet bleed clipped only by the parchment", () => {
+    const sheet = rule(
+      '.question-surface-stack > .question-motif-layer[data-motif-art="champ-combat"]::before');
+    expect(sheet).toContain("position: absolute");
+    expect(sheet).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
+    expect(sheet).toContain('url("/assets/ranked/question-accents/champ-combat.png")');
+    expect(sheet).toContain("opacity: 0.3");
+    // The panel clips the bleed WITHOUT becoming a scroll container.
+    expect(rule(".ranked-panel:has(.question-surface-stack.question-motif-host)"))
+      .toContain("overflow: clip");
+  });
+
   it("the rejected Champion Studies pieces are gone", () => {
     for (const piece of ["qm-ruler", "qm-corner", "qm-keys", "qm-dossier", "qm-versus",
       "question-motifs/champion-studies"]) {
