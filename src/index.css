@@ -2640,10 +2640,10 @@
      overflowing and cropped by the parchment edges. */
   background-image: url("/assets/ranked/question-accents/amptome.png");
   background-size: 700px auto;
-  /* Shifted toward the upper-left: its centre 70px left of the card's
+  /* Shifted slightly left and up: its centre 30px left of the card's
      centre, its bottom 90px below the answer grid. */
   background-position:
-    left calc(50% - 70px) bottom calc(var(--qm-bleed-y) - 90px);
+    left calc(50% - 30px) bottom calc(var(--qm-bleed-y) - 90px);
   filter: grayscale(1) sepia(0.35) brightness(0.94) contrast(1.15);
   opacity: 0.22;
 }
