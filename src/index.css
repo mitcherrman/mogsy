@@ -2622,6 +2622,51 @@
   /* Owner-approved: same vines, quieter (0.5 -> 0.22). */
   opacity: 0.22;
 }
+/* Items — a shop-ledger study page: the pencil Long Sword cropped in from the
+   lower-left and Rabadon's Deathcap from the right, both large and rising
+   from behind the tablets (same full-sheet bleed as Rift: art on the layer's
+   ::before, positions measured from the answer grid's left/right/bottom),
+   plus small League gold accents down both outer sides at 0.22 — painted by
+   the host section so they reach the parchment's side margins. Only the
+   parchment panel (overflow: clip) cuts any of it. */
+.question-motif-layer[data-motif-art="items"] {
+  --qm-bleed-x: 8rem;
+  --qm-bleed-y: 40rem;
+  overflow: visible;
+}
+.question-motif-layer[data-motif-art="items"]::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x));
+  background-repeat: no-repeat;
+  background-image:
+    url("/assets/ranked/question-accents/longsword.png"),
+    url("/assets/ranked/question-accents/deathcap.png");
+  background-size: 440px auto, 400px auto;
+  background-position:
+    left calc(var(--qm-bleed-x) - 70px) bottom calc(var(--qm-bleed-y) - 30px),
+    right calc(var(--qm-bleed-x) - 150px) bottom calc(var(--qm-bleed-y) + 10px);
+  filter: grayscale(1) sepia(0.35) brightness(0.94) contrast(1.15);
+  opacity: 0.25;
+}
+.question-surface-stack.question-motif-host:has(> .question-motif-layer[data-motif-art="items"])::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: 0 -1.2rem;
+  background-image:
+    url("/assets/ranked/question-accents/gold.png"),
+    url("/assets/ranked/question-accents/gold.png"),
+    url("/assets/ranked/question-accents/gold.png"),
+    url("/assets/ranked/question-accents/gold.png");
+  background-repeat: no-repeat;
+  background-size: 38px 38px, 30px 30px, 32px 32px, 38px 38px;
+  background-position:
+    left 0 top 34%, left 6px top 62%,
+    right 2px top 28%, right 0 top 70%;
+  opacity: 0.22;
+}
 /* A phone card has no parchment to spare; the motif is a desktop texture. */
 @media (max-width: 639px) {
   .question-motif-layer { display: none; }

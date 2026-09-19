@@ -24,8 +24,8 @@ import type { QuestionMotif } from "@/lib/question-surface/questionMotif";
  * The illustration each drawn motif prints, keyed by motif. Champion Studies
  * and Combat Workings share ONE artwork (the "Champion/Combat" classification,
  * `public/assets/ranked/question-accents/champ-combat.png`); Rift/Jungle
- * prints the minion + turret study; Items and Spells have none yet and render
- * nothing.
+ * prints the minion + turret study; Items prints the Long Sword + Deathcap
+ * study; Spells has none yet and renders nothing.
  */
 const ART: Readonly<Partial<Record<QuestionMotif, string>>> = {
   champion_studies: "champ-combat",
@@ -33,6 +33,8 @@ const ART: Readonly<Partial<Record<QuestionMotif, string>>> = {
   // Rift/Jungle — the pencil caster minion and outer turret
   // (`question-accents/minion.png`, `tower.png`) plus one leaf cluster.
   rift_field_guide: "rift",
+  // Items — pencil Long Sword and Rabadon's Deathcap, plus small gold accents.
+  items_economy: "items",
 };
 
 /** Does this motif draw anything? Hosts use it to opt into the host class. */

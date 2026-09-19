@@ -24,8 +24,8 @@ import type { InteractionPermissions, QuestionView } from "@/lib/ranked-core/vie
 afterEach(cleanup);
 
 const CHAMP_COMBAT = ["champion_studies", "combat_workings"] as const;
-const DRAWN = [...CHAMP_COMBAT, "rift_field_guide"] as const;
-/** Items & Economy and Runes & Summoner Arts: no art yet. */
+const DRAWN = [...CHAMP_COMBAT, "rift_field_guide", "items_economy"] as const;
+/** Runes & Summoner Arts: no art yet. */
 const OTHER_MOTIFS = QUESTION_MOTIFS.filter(
   (m) => !(DRAWN as readonly string[]).includes(m));
 const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
@@ -61,8 +61,8 @@ describe("QuestionMotifLayer", () => {
     expect(motifHostClass(null)).toBe("");
   });
 
-  it("renders nothing for Items & Spells (no art yet)", () => {
-    expect(OTHER_MOTIFS).toEqual(["items_economy", "runes_summoner_arts"]);
+  it("renders nothing for Spells (no art yet)", () => {
+    expect(OTHER_MOTIFS).toEqual(["runes_summoner_arts"]);
     for (const motif of OTHER_MOTIFS) {
       const { container, unmount } = render(<QuestionMotifLayer motif={motif} />);
       expect(container.innerHTML).toBe("");
@@ -136,6 +136,35 @@ describe("QuestionMotifLayer", () => {
     }
   });
 
+  it("draws the Items study (Long Sword + Deathcap, gold accents at 0.22)", () => {
+    const { container } = render(<QuestionMotifLayer motif="items_economy" />);
+    const layer = within(container).getByTestId("question-motif-layer");
+    expect(layer.getAttribute("data-motif-art")).toBe("items");
+    expect(layer.getAttribute("aria-hidden")).toBe("true");
+    expect(layer.childElementCount).toBe(0);
+    const at = (sel: string) => {
+      const k = css.lastIndexOf(`${sel} {`);
+      expect(k, `missing ${sel}`).toBeGreaterThanOrEqual(0);
+      return css.slice(k, css.indexOf("}", k));
+    };
+    const items = at('.question-motif-layer[data-motif-art="items"]::before');
+    expect(items).toContain('url("/assets/ranked/question-accents/longsword.png")');
+    expect(items).toContain('url("/assets/ranked/question-accents/deathcap.png")');
+    expect(items).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
+    const gold = at('.question-surface-stack.question-motif-host:has(> '
+      + '.question-motif-layer[data-motif-art="items"])::before');
+    expect(gold.match(/gold\.png/g)).toHaveLength(4);
+    expect(gold).toContain("opacity: 0.22");
+    expect(gold).toContain("z-index: -1");
+    expect(gold).toContain("pointer-events: none");
+    // Two coins on each outer side.
+    expect(gold.match(/left \d/g)).toHaveLength(2);
+    expect(gold.match(/right \d/g)).toHaveLength(2);
+    for (const f of ["longsword.png", "deathcap.png", "gold.png"]) {
+      expect(existsSync(resolve(process.cwd(), "public/assets/ranked/question-accents", f))).toBe(true);
+    }
+  });
+
   it("Champion/Combat is unchanged by the Rift art", () => {
     const sheet = rule(
       '.question-surface-stack > .question-motif-layer[data-motif-art="champ-combat"]::before');
@@ -203,8 +232,8 @@ describe("live Ranked question (quiz.v1 → InteractiveScenarioSurface)", () => 
       .toBe("champ-combat");
   });
 
-  it("an Items or Spells question draws nothing", () => {
-    renderLive("items_economy");
+  it("a Spells question draws nothing", () => {
+    renderLive("runes_summoner_arts");
     expect(screen.queryByTestId("question-motif-layer")).toBeNull();
     expect(screen.getByTestId("scenario-surface").className)
       .not.toContain(QUESTION_MOTIF_HOST_CLASS);
