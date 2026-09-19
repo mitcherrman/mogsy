@@ -14929,13 +14929,17 @@ html.hub-commons-in-view .hextech-ambience-layer {
     opacity: 0;
   }
 
-  /* The Community trigger already is the correct friends icon. Commons moves
-     its 36px painted circle from a 24px inset to the left edge; the containing
+  /* The Community trigger already is the correct friends icon. Commons tucks
+     its painted surface into the literal bottom-left SAFE corner: zero inline
+     inset, and only the device's home-indicator inset below it. The semantic
      button remains a full 44×44 target and still opens the same Sheet. */
   html.hub-floating-controls-collapsed .hub-community-trigger {
     left: 0;
+    bottom: env(safe-area-inset-bottom, 0px);
   }
   html.hub-floating-controls-collapsed .hub-community-trigger-surface {
+    width: 1.875rem;
+    height: 1.875rem;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }
