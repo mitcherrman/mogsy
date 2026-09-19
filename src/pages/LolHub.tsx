@@ -856,6 +856,21 @@ export default function LolHub() {
             <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
           </div>
 
+          {/* A real flow sibling below the mobile Patch Report. Keeping this
+              out of the Hall's absolute threshold layer prevents it from
+              reading as part of the open report artwork. */}
+          <div className="flex h-11 items-center justify-center md:hidden">
+            <button
+              type="button"
+              onClick={() => hubScrollTo("commons")}
+              data-testid="hall-descend-mobile"
+              className="academy-hall-descend academy-hall-descend-mobile inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-[2px] px-3 text-[9px] font-bold uppercase tracking-[0.28em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70"
+            >
+              <span>View More</span>
+              <ChevronDown className="h-3 w-3" aria-hidden />
+            </button>
+          </div>
+
           {/* Academy Updates remains available on mobile, but follows the Patch
               Report so it cannot interrupt navigation → report. */}
           <AcademyUpdates variant="mobile" enabled={settings.policy.academy.updatesEnabled} />
@@ -871,11 +886,10 @@ export default function LolHub() {
             pedestal. It must lose every contest with the mascot and the four
             volumes, and only be found by someone looking for a way onward.
 
-            On phones MH1C gives the Hall a one-small-viewport floor, so the
-            same affordance becomes a skinny, always-present fold control. Its
-            mobile label is shortened and its box remains out of flow; desktop
-            keeps the approved delayed treatment and wording. */}
-        <div className="academy-hall-descend-slot pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center">
+            Phones now own an in-flow View More control directly below their
+            Patch Report. This threshold affordance remains desktop-only, with
+            its approved delayed treatment and wording unchanged. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 hidden justify-center md:flex">
           <button
             type="button"
             onClick={() => hubScrollTo("commons")}
@@ -887,8 +901,7 @@ export default function LolHub() {
           >
             <span className="academy-hall-descend-rule h-px w-24" aria-hidden />
             <span className="text-[10px] font-bold uppercase tracking-[0.34em]">
-              <span className="md:hidden">Commons</span>
-              <span className="hidden md:inline">Explore the Academy</span>
+              Explore the Academy
             </span>
             <ChevronDown className="academy-hall-descend-chevron h-3.5 w-3.5" aria-hidden />
           </button>

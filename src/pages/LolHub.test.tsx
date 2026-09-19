@@ -340,6 +340,16 @@ describe("LolHub — navigation structure", () => {
     renderHub();
     const community = screen.getByTestId("hub-community-section");
     expect(within(community).getByText("Join the Academy")).toBeTruthy();
+    const mobile = community.querySelector(".academy-commons-community-mobile") as HTMLElement;
+    expect(mobile).toBeTruthy();
+    expect(mobile.textContent).toBe("");
+    expect(within(mobile).getAllByLabelText(/unavailable$/)).toHaveLength(4);
+    for (const id of ["discord", "youtube", "x", "instagram"]) {
+      const mark = screen.getByTestId(`hub-community-mobile-${id}`);
+      expect(mark.tagName).toBe("SPAN");
+      expect(mark.getAttribute("aria-disabled")).toBe("true");
+    }
+    expect(screen.queryByTestId("hub-community-mobile-tiktok")).toBeNull();
     // No Mogzy-owned social URL is configured in this repo, so the section must
     // render the pending state and NOT a link to nowhere.
     expect(screen.queryByTestId("hub-community-discord")).toBeNull();
@@ -1011,10 +1021,18 @@ describe("LolHub — the two-screen Academy", () => {
 
       const descend = screen.getByTestId("hall-descend");
       expect(descend.tagName).toBe("BUTTON");
-      expect(descend.textContent).toContain("Commons");
       expect(descend.textContent).toContain("Explore the Academy");
-      expect(descend.parentElement?.className).toContain("academy-hall-descend-slot");
       fireEvent.click(descend);
+      expect(calls.at(-1)).toEqual({
+        el: "commons",
+        opts: { behavior: "smooth", block: "start" },
+      });
+
+      const mobileDescend = screen.getByTestId("hall-descend-mobile");
+      expect(mobileDescend.tagName).toBe("BUTTON");
+      expect(mobileDescend).toHaveTextContent("View More");
+      expect(mobileDescend).not.toHaveTextContent("Explore the Academy");
+      fireEvent.click(mobileDescend);
       expect(calls.at(-1)).toEqual({
         el: "commons",
         opts: { behavior: "smooth", block: "start" },
@@ -1090,7 +1108,7 @@ describe("LolHub — the two-screen Academy", () => {
     const { container } = renderHub();
     // Four guide-bearing volumes, still. Neither new control is one.
     expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(4);
-    for (const id of ["hall-descend", "commons-back-to-hall"]) {
+    for (const id of ["hall-descend", "hall-descend-mobile", "commons-back-to-hall"]) {
       expect(screen.getByTestId(id).closest("[data-guide-mode]")).toBeNull();
     }
   });

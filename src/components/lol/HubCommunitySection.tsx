@@ -51,7 +51,7 @@ const CHANNEL_MARKS: Record<CommunityChannelId, (p: { className?: string }) => J
 };
 
 /**
- * A secondary channel, as an icon-only mark on the slip. The label is carried
+ * A secondary channel, as an icon-only mark on the desktop slip. The label is carried
  * by `aria-label` and `title` rather than by visible text — the sheet is small
  * now, and four labelled chips would not fit without dropping one. The channel
  * still renders only when it has a resolved URL.
@@ -74,6 +74,48 @@ function SecondaryChannel({ channel }: { channel: CommunityChannel }) {
   );
 }
 
+/**
+ * MH1C's phone utility mark. All four requested identities stay visible even
+ * before their destinations are configured; an unavailable destination is a
+ * disabled span rather than a fabricated link. The accessible name carries
+ * the state without adding visible explanatory copy to the icon row.
+ */
+function MobileChannelIcon({ channel }: { channel: CommunityChannel }) {
+  const Mark = CHANNEL_MARKS[channel.id];
+  const className =
+    "academy-commons-community-mobile-mark inline-flex h-11 w-11 items-center justify-center rounded-[2px] border border-[#c9a84c]/25 text-[#e2d0a5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70";
+  const icon = <Mark className="h-[18px] w-[18px]" />;
+
+  if (!channel.url) {
+    return (
+      <span
+        aria-label={`${channel.label} unavailable`}
+        aria-disabled="true"
+        data-testid={`hub-community-mobile-${channel.id}`}
+        className={`${className} cursor-default border-dashed opacity-45`}
+      >
+        {icon}
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={channel.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={channel.label}
+      title={channel.label}
+      data-testid={`hub-community-mobile-${channel.id}`}
+      className={`${className} transition-colors hover:bg-[#e6d9b6]/10`}
+    >
+      {icon}
+    </a>
+  );
+}
+
+const MOBILE_CHANNEL_IDS: CommunityChannelId[] = ["discord", "youtube", "x", "instagram"];
+
 export default function HubCommunitySection() {
   const discord = COMMUNITY_CHANNELS.find((c) => c.id === "discord")!;
   const secondary = secondaryCommunityChannels(COMMUNITY_CHANNELS);
@@ -85,6 +127,18 @@ export default function HubCommunitySection() {
       aria-labelledby="hub-community-heading"
       className="academy-commons-notice academy-commons-support academy-commons-support-community relative flex min-w-0 flex-col justify-center rounded-[2px] px-5 py-4 [transform:rotate(-0.28deg)]"
     >
+      <div
+        className="academy-commons-community-mobile hidden items-center justify-center gap-2 md:hidden"
+        aria-label="Community links"
+      >
+        {MOBILE_CHANNEL_IDS.map((id) => (
+          <MobileChannelIcon
+            key={id}
+            channel={COMMUNITY_CHANNELS.find((channel) => channel.id === id)!}
+          />
+        ))}
+      </div>
+
       <span
         aria-hidden
         className="academy-commons-pin absolute left-1/2 top-2 h-2.5 w-2.5 -translate-x-1/2 rounded-full"
@@ -136,8 +190,7 @@ export default function HubCommunitySection() {
 
       {openSecondary.length === 0 && (
         <p className="academy-commons-notice-soft academy-commons-support-footnote mt-2 text-[11.5px] leading-snug">
-          <span className="md:hidden">Socials coming soon.</span>
-          <span className="hidden md:inline">YouTube, TikTok, Instagram and X are on the way.</span>
+          YouTube, TikTok, Instagram and X are on the way.
         </p>
       )}
     </section>
