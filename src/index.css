@@ -9870,7 +9870,7 @@ html.high-contrast * { text-shadow: none !important; }
    in ONE viewport rather than a stack of cards over a website footer.
 
    ---------------------------------------------------------------------------
-   1. SCROLL SNAPPING — why the document, why mandatory, why gated
+   1. SCROLL SNAPPING — why the document, and why each viewport differs
    ---------------------------------------------------------------------------
 
    THE SCROLL CONTAINER IS THE VIEWPORT, and nothing new was introduced.
@@ -9884,8 +9884,9 @@ html.high-contrast * { text-shadow: none !important; }
    Ranked stage was rebuilt to remove (see Layout.tsx), so there is no second
    scroll container anywhere on this page.
 
-   `mandatory`, NOT `proximity` — and that was measured, not assumed. Driving
-   the real page at 1440x900 with genuine phased scroll gestures (Chrome's
+   DESKTOP uses `mandatory`, not `proximity` — and that was measured, not
+   assumed. Driving the real page at 1440x900 with genuine phased scroll
+   gestures (Chrome's
    `Input.synthesizeScrollGesture`, which carries the begin/update/end phases a
    trackpad or wheel actually sends — Playwright's own `mouse.wheel` does not,
    and synthesising unphased events gives a badly misleading answer):
@@ -9911,12 +9912,13 @@ html.high-contrast * { text-shadow: none !important; }
    its default `normal`, so a fast flick or a Page Down still passes straight
    through — a soft lock, never a trap.
 
-   THE GATE. Mandatory snapping becomes hostile the moment a screen grows
+   THE DESKTOP GATE. Mandatory snapping becomes hostile the moment a screen grows
    taller than the viewport, because the overflow then sits between two snap
    positions and the browser pulls the reader back off it. Rather than guess,
    snapping only turns on where the Commons is measured to fit:
 
-     • `min-width: 1024px`  — phones and tablets scroll naturally, always.
+     • `min-width: 1024px`  — below this, the separate phone treatment may use
+       proximity snapping but never inherits this mandatory lock.
      • `min-height: 780px`  — short laptops, and ANY page zoom deep enough to
        shrink the CSS viewport past it, scroll naturally. At 150% zoom on a
        1440x900 display the viewport is 960x600 and snapping is simply off.
@@ -9924,9 +9926,10 @@ html.high-contrast * { text-shadow: none !important; }
        type without shrinking the viewport, so no media query can see it. It is
        excluded by hand.
 
-   Outside the gate, `[data-hub-screen="commons"]` keeps its natural height and
-   the page is an ordinary scrolling document. Nothing is ever clipped: the
-   Commons is sized with `min-height`, never `height`.
+   Phones below 768px use the later MH1C `proximity` rule only when both folds
+   fit their stable `100svh` floors. The 768–1023px band and every excluded
+   accessibility/height case remain ordinary scrolling documents. Nothing is
+   ever clipped: the Commons is sized with `min-height`, never `height`.
 
    BELT AND BRACES. The plinth carries `scroll-snap-align: end`. If the Commons
    ever does outgrow the viewport inside the gate — a future ad unit rendering
@@ -10328,23 +10331,83 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
    The DOM and data authorities stay shared: only the phone layout reflows the
    Record, promotes the Bulletin, and quiets the supporting utilities. */
 @media (max-width: 767px) {
+  /* Two native document snap targets, never a nested scroller. `proximity`
+     helps an ordinary swipe settle without pulling a reader away from content
+     they are intentionally reading. `100svh` is stable while Safari's browser
+     chrome expands/collapses; unlike `100dvh`, it cannot move a snap point in
+     the middle of a gesture. Large text stays an ordinary document because
+     either fold may legitimately grow beyond one viewport. */
+  html.hub-two-screen:not(.large-text) {
+    scroll-snap-type: y proximity;
+  }
+  html.hub-two-screen:not(.large-text) [data-hub-screen] {
+    scroll-snap-align: start;
+    scroll-snap-stop: normal;
+  }
+
+  /* MH1A's contents keep every approved coordinate. Only the section floor is
+     extended, so Fold 1 owns a complete small viewport and the Commons no
+     longer peeks up behind the Patch Report at rest. */
+  .academy-hub-page .academy-hall {
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+
+  /* The Commons overlaps the Hall by the existing 90px alpha transition, so
+     a one-viewport Commons plus a one-viewport Hall contributes exactly two
+     snap intervals rather than creating a third trailing stop. */
+  .academy-hub-page .academy-commons {
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+
+  /* Both fold controls keep a 44px hit box while their visible treatment is
+     only a hairline, concise label and chevron. The Hall control is absolutely
+     anchored and therefore changes none of the approved MH1A flow geometry. */
+  .academy-hall-descend {
+    min-height: 44px;
+    flex-direction: row;
+    gap: 0.35rem;
+    padding: 0 0.75rem;
+  }
+  .academy-hall-descend-slot {
+    /* Keep the Hall control above the shared fade band. At the Commons snap
+       coordinate it has fully left the viewport, so the two directions never
+       appear beside each other. */
+    bottom: calc(var(--academy-hero-fade-band) + 0.25rem);
+  }
+  .academy-hall-descend .academy-hall-descend-rule {
+    width: 2.75rem;
+  }
+  .academy-hall-descend-chevron {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
   .academy-commons-room {
-    gap: 0.625rem;
-    padding: calc(var(--app-header-h) + 0.25rem) 0.75rem 0.625rem;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
   }
 
   .academy-commons-crest {
+    position: relative;
+    height: 28px;
+    flex: 0 0 28px;
     gap: 0;
   }
   .academy-commons-crest [data-testid="commons-back-to-hall"] {
+    position: absolute;
+    inset-block-start: -8px;
     margin-top: 0;
+    min-height: 44px;
     padding-inline: 0.625rem;
     font-size: 9px;
   }
 
   .academy-commons-mounts,
   .academy-commons-mount-support {
-    gap: 0.625rem;
+    gap: 0.25rem;
   }
 
   /* The credential becomes a dense mobile folio: identity in one row, facts
@@ -10442,12 +10505,12 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
   /* The Bulletin remains the Commons' large feature. Premium is supplied as
      its first mobile notice; all navigation retains a full-height target. */
   .academy-commons-board {
-    min-height: 270px;
+    min-height: 250px;
     border-width: 3px;
     padding: 0.6rem;
   }
   .academy-commons-bulletin-bill {
-    min-height: 245px;
+    min-height: 225px;
     justify-content: center;
     padding-block: 1rem;
     padding-inline: 2.25rem;
@@ -10474,8 +10537,14 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
 
   /* Community is a utility lane on phones, not a third feature card. */
   .academy-commons-support-community {
+    min-height: 48px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 0.5rem;
     transform: none;
-    padding: 0.5rem 0.25rem;
+    padding: 0.125rem 0.25rem;
     border-block: 1px solid rgba(201, 168, 76, 0.18);
     background-image: none;
     box-shadow: none;
@@ -10487,60 +10556,61 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
   }
   .academy-commons-support-community .academy-commons-support-eyebrow {
     color: rgba(233, 208, 148, 0.88);
-    font-size: 9px;
-    letter-spacing: 0.22em;
+    font-size: 8px;
+    letter-spacing: 0.16em;
   }
   .academy-commons-support-community .academy-commons-support-actions {
-    margin-top: 0.25rem;
+    margin-top: 0;
     gap: 0.25rem;
   }
   .academy-commons-support-community .academy-commons-support-cta {
     min-height: 44px;
-    padding: 0.35rem 0.65rem;
-    font-size: 11.5px;
+    padding: 0.25rem 0.45rem;
+    font-size: 10px;
   }
   .academy-commons-support-community .academy-commons-support-footnote {
-    margin-top: 0.2rem;
+    margin-top: 0;
     color: rgba(226, 210, 176, 0.72);
-    font-size: 10px;
-    line-height: 1.3;
+    font-size: 8.5px;
+    line-height: 1.15;
   }
 
   .academy-commons-utilstrip-row {
-    gap: 0;
+    flex-wrap: nowrap;
+    gap: 0.15rem;
   }
   .academy-commons-utilstrip-link {
-    min-height: 40px;
-    gap: 0.35rem;
-    padding-inline: 0.45rem;
-    font-size: 9px;
-    letter-spacing: 0.1em;
+    min-height: 44px;
+    gap: 0;
+    padding-inline: 0.3rem;
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
   }
   .academy-commons-utilstrip-link svg {
-    width: 12px;
-    height: 12px;
+    display: none;
   }
 
   .academy-commons-plinth {
-    padding: 0.5rem 1rem 1rem;
+    padding: 0.25rem 0.75rem max(0.5rem, env(safe-area-inset-bottom));
   }
   .academy-commons-plinth-inner {
-    gap: 0.35rem;
+    gap: 0.2rem;
   }
   .academy-commons-plinth-row {
     justify-content: center;
-    gap: 0.25rem 0.75rem;
+    gap: 0.1rem 0.55rem;
   }
   .academy-commons-plinth-row nav {
-    gap: 0.25rem 1rem;
+    gap: 0.1rem 0.75rem;
   }
   .academy-commons-plinth-row .academy-commons-inscription-link,
   .academy-commons-plinth-row .academy-commons-inscription {
-    font-size: 9.5px;
+    font-size: 9px;
   }
   .academy-commons-disclaimer {
-    font-size: 9.5px;
-    line-height: 1.3;
+    font-size: 9px;
+    line-height: 1.2;
     text-align: center;
   }
 }

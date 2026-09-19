@@ -1011,7 +1011,9 @@ describe("LolHub — the two-screen Academy", () => {
 
       const descend = screen.getByTestId("hall-descend");
       expect(descend.tagName).toBe("BUTTON");
+      expect(descend.textContent).toContain("Commons");
       expect(descend.textContent).toContain("Explore the Academy");
+      expect(descend.parentElement?.className).toContain("academy-hall-descend-slot");
       fireEvent.click(descend);
       expect(calls.at(-1)).toEqual({
         el: "commons",

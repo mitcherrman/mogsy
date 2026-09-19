@@ -38,11 +38,11 @@
  *   a panel cannot drift off its frame as the window changes shape. See the
  *   `--commons-img-*` block in index.css.
  *
- * **Flow mode** — everything else (phones, short laptops, deep page zoom,
- * large text). The composition is not forced: the artwork drops back to a
- * plain scrimmed `cover` backdrop, the panels keep their own coded chrome
- * (walnut plaque, planked board, parchment slips) and the room becomes an
- * ordinary scrolling document. Readability wins over framing, by design.
+ * **Flow mode** — phones, short laptops, deep page zoom and large text. The
+ * artwork drops back to a plain scrimmed `cover` backdrop and the panels keep
+ * their own coded chrome (walnut plaque, planked board, parchment slips).
+ * Phones use a one-`svh` proximity-snapped flow composition; every case whose
+ * content may outgrow a fold remains an ordinary scrolling document.
  *
  * ### The panels lose their frames where the painting already has one
  * In stage mode the plaque's walnut mount, the noticeboard's planking and the

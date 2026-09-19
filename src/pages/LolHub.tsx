@@ -204,11 +204,10 @@ const HUB_SNAP_CLASS = "hub-two-screen";
 const HUB_COMMONS_VIEW_CLASS = "hub-commons-in-view";
 
 /**
- * The gate the contextual navigation hints obey, character-for-character the
- * snap gate declared in index.css. Both hints ("Explore the Academy ↓" and
- * "Back to the Hall ↑") are only ever DELAYED where the page actually snaps;
- * on a phone, a short laptop, deep page zoom or the large-text setting the
- * CSS never hides them and this observer keeps its hands off them.
+ * The gate the DELAYED desktop navigation hints obey, character-for-character
+ * the desktop snap gate declared in index.css. Phones now use their own
+ * always-present skinny fold controls, so this observer deliberately keeps
+ * its timing logic desktop-only.
  */
 const HUB_SNAP_MEDIA = "(min-width: 1024px) and (min-height: 780px)";
 
@@ -872,12 +871,11 @@ export default function LolHub() {
             pedestal. It must lose every contest with the mascot and the four
             volumes, and only be found by someone looking for a way onward.
 
-            Desktop only: the hero is 100dvh from `md` up, which is what makes a
-            bottom-anchored affordance mean anything. On phones the page is an
-            ordinary tall document and the mobile Broadcast card already sits at
-            the foot of the hero, so a "scroll down" hint there would be noise
-            over content. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 hidden justify-center md:flex">
+            On phones MH1C gives the Hall a one-small-viewport floor, so the
+            same affordance becomes a skinny, always-present fold control. Its
+            mobile label is shortened and its box remains out of flow; desktop
+            keeps the approved delayed treatment and wording. */}
+        <div className="academy-hall-descend-slot pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center">
           <button
             type="button"
             onClick={() => hubScrollTo("commons")}
@@ -889,7 +887,8 @@ export default function LolHub() {
           >
             <span className="academy-hall-descend-rule h-px w-24" aria-hidden />
             <span className="text-[10px] font-bold uppercase tracking-[0.34em]">
-              Explore the Academy
+              <span className="md:hidden">Commons</span>
+              <span className="hidden md:inline">Explore the Academy</span>
             </span>
             <ChevronDown className="academy-hall-descend-chevron h-3.5 w-3.5" aria-hidden />
           </button>

@@ -136,7 +136,8 @@ export default function HubCommunitySection() {
 
       {openSecondary.length === 0 && (
         <p className="academy-commons-notice-soft academy-commons-support-footnote mt-2 text-[11.5px] leading-snug">
-          YouTube, TikTok, Instagram and X are on the way.
+          <span className="md:hidden">Socials coming soon.</span>
+          <span className="hidden md:inline">YouTube, TikTok, Instagram and X are on the way.</span>
         </p>
       )}
     </section>
