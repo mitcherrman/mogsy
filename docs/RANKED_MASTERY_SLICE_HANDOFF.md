@@ -20,7 +20,10 @@
 > [`docs/gr1-matchup-mastery-rank-diversity.md`](./gr1-matchup-mastery-rank-diversity.md)
 > (GR1 Matchup rank diversity — the seed picks which rank is asked) and
 > [`docs/gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md)
-> (GR1 Matchup tie policy — **design and measurement only, nothing implemented**).
+> (GR1 Matchup tie policy — **design and measurement only, nothing implemented**) and
+> [`docs/gr1-reusable-state-architecture-audit.md`](./gr1-reusable-state-architecture-audit.md)
+> (GR1 reusable state architecture — **audit only**; its §0 reports a post-GR1 upstream change
+> that halved the Champion Mastery corpus).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -47,6 +50,7 @@
 | **GR1 Matchup tie policy — design** | **DESIGN + MEASUREMENT COMPLETE, 2026-09-13. Superseded by the implementation row below.** Audited backend `origin/master` **`825e2db2`**; frontend `origin/main` **`756b6b41`** read only. Four policies simulated in a throwaway probe layer over **45,144 real generated slices**. Recommendation: **tie deprioritization + a per-slice tie cap; do NOT adopt metric-level suppression.** See [`gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md) and the summary below. |
 | **GR1 Matchup tie policy — implementation** | **COMPLETE and verified, 2026-09-13.** The approved hybrid — tie deprioritization + a per-slice cap of `max(1, n // 4)` — on branch `gr1/matchup-tie-policy` @ **`afb55d1e`**, base `origin/master` **`087f9a78`**. One commit, clean fast-forward. **NOW INTEGRATED** — `origin/master` is **`16db3690`** and `git diff afb55d1e 16db3690` is one documentation file. **No frontend change.** See [`gr1-matchup-mastery-tie-policy-implementation.md`](./gr1-matchup-mastery-tie-policy-implementation.md) and the summary below. |
 | **GR1 Matchup Mastery structural audit** | **COMPLETE, 2026-09-13. AUDIT ONLY — nothing implemented, nothing pushed.** Audited backend `origin/master` **`16db3690`** (which contains the tie policy: `git diff afb55d1e 16db3690` is one doc file), frontend `origin/main` **`756b6b41`** read only, docs base `origin/gr1/docs-snapshot` **`decc49b6`**. Full structural picture of what Matchup generates, what it holds, what dominates, and what the owner may eventually have to decide. See [`gr1-matchup-mastery-structural-audit.md`](./gr1-matchup-mastery-structural-audit.md) and the summary below. |
+| **GR1 reusable state architecture audit** | **COMPLETE, 2026-09-19. AUDIT ONLY — nothing implemented.** Backend `origin/master` **`fc2e8be9`**, frontend `origin/main` **`4c29f7ba`** (both fast-forwards of the brief's `2387e8f5` / `791027de`). How close the architecture is to "questions consume a reusable, data-driven state", and to one universe feeding FULL and SLICE composers. **§0 is a regression report:** upstream `b7ccf8e0` (qca8) removed `MASTERY` from the `champion_stat_level` / `champion_stat_compare` modes. See [`gr1-reusable-state-architecture-audit.md`](./gr1-reusable-state-architecture-audit.md) and the summary below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## Commits
@@ -950,6 +954,52 @@ requested, whether a 65% base-stat 8-question slice is the intended shape, and w
 1,150,680 unreachable atomic candidates belong in the matchup universe.
 
 **Nothing was turned into an implementation plan, and no redesign was proposed.**
+
+## Reusable state architecture audit — AUDIT ONLY (2026-09-19)
+
+Full evidence: [`gr1-reusable-state-architecture-audit.md`](./gr1-reusable-state-architecture-audit.md).
+Backend `origin/master` **`fc2e8be9`**, frontend `origin/main` **`4c29f7ba`**, clean worktrees,
+read-only probes (`mode=ro`). **No runtime code changed, nothing implemented.**
+
+**⚠️ Regression found upstream, not remedied (§0).** `b7ccf8e0` — QCA8, 2026-09-14, after
+`2387e8f5` — narrowed `champion_stat_level` and `champion_stat_compare` to
+`modes=(PRACTICE,)`, calling Practice "the only surface with a runtime consumer". The Mastery
+publication gate reads those modes. Same DB, only the commit differs: **Champion Mastery
+6,695 → 3,213 servable** (level-stat 3,482 → 0), **Matchup comparisons −40%** (base stat → 0),
+and **880 of 14,878 pairs now have no comparison at all** (e.g. `aphelios × ahri` = 15 Ahri
+atomic-recall candidates). Every earlier Matchup figure on base stats, MR/MS ties and "65%
+base-stat slices" predates this. It is owner decision 1 in the audit.
+
+**Core findings, one line each:**
+
+* **The generated path is stateless by design.** `FactContext` holds rank, level and form only,
+  and its docstring forbids scenario axes such as haste. Levels are the constant `(6, 11, 18)`.
+  No item, rune, shard or patch input reaches `synthesize_*`, and `normalized_config` refuses
+  unknown keys.
+* **Matchup has no pair state.** It joins two independent banks on an *identical* context. The
+  wire (`StatedContext`, both semantics types) carries one context, so per-side levels or
+  items are unrepresentable.
+* **The Ahri/Syndra lineage is NOT retired.** Ahri-vs-Syndra v2 is still the **default set** of
+  `/api/mastery/sets`, served by `/quiz/mastery` (Mastery Journey, `HUB_MODULES.masteryJourney:
+  true`). MC1 retired only the Ranked static catalog.
+* **A full state model already exists there.** `CanonicalMasteryState` has one or two
+  champions, each with level, ranks, inventory, runes and vitals, plus a `ValidationContext`,
+  24 transition types and `BuildCandidate.classification` (a declared build source). The
+  generated path imports none of it. Applied-chain is the bridge: it is on that lineage, at
+  `SCENARIO_LEVEL = 11`, and mixes live item data with frozen champion data.
+* **No service resolves champion + level + ranks + items + runes + shards + patch.** The
+  closest is Combat Lab's `build_runtime_champion_stats` (`/build-preview`). It has no ranks, no
+  shards and no patch, and it zero-fills a missing champion.
+* **No build, rune-page, shard or skill-order authority exists.** The nearest are
+  `quiz/data/champion_item_builds.json` (a whitelist) and the curated Ahri `build_candidates.py`.
+* **Canonical data is overwritten in place.** No "as of patch N" read exists. There are three
+  unrelated patch notions, and nothing in Mastery keys on `league_patches.patch_id`.
+* **The Phase 4 freeze preserves content, not state.** Private JSON can hold more; the public
+  side, `review_view` and `review.py` are positive allow-lists.
+* **Full vs Slice.** Generation is already separate from composition. But the universe is a bag
+  of intrinsic facts with no state order, and every composition mechanism is budget-first.
+
+**15 owner questions** are listed in §13 of the audit, and are not repeated here.
 
 ## Screenshots / artifacts
 
