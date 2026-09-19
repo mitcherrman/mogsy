@@ -24,8 +24,10 @@ import type { InteractionPermissions, QuestionView } from "@/lib/ranked-core/vie
 afterEach(cleanup);
 
 const CHAMP_COMBAT = ["champion_studies", "combat_workings"] as const;
+const DRAWN = [...CHAMP_COMBAT, "rift_field_guide"] as const;
+/** Items & Economy and Runes & Summoner Arts: no art yet. */
 const OTHER_MOTIFS = QUESTION_MOTIFS.filter(
-  (m) => !(CHAMP_COMBAT as readonly string[]).includes(m));
+  (m) => !(DRAWN as readonly string[]).includes(m));
 const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 const rule = (selector: string) => {
   const at = css.indexOf(`${selector} {`);
@@ -59,7 +61,8 @@ describe("QuestionMotifLayer", () => {
     expect(motifHostClass(null)).toBe("");
   });
 
-  it("renders nothing for the non-Champion/Combat motifs", () => {
+  it("renders nothing for Items & Spells (no art yet)", () => {
+    expect(OTHER_MOTIFS).toEqual(["items_economy", "runes_summoner_arts"]);
     for (const motif of OTHER_MOTIFS) {
       const { container, unmount } = render(<QuestionMotifLayer motif={motif} />);
       expect(container.innerHTML).toBe("");
@@ -99,6 +102,41 @@ describe("QuestionMotifLayer", () => {
     // The panel clips the bleed WITHOUT becoming a scroll container.
     expect(rule(".ranked-panel:has(.question-surface-stack.question-motif-host)"))
       .toContain("overflow: clip");
+  });
+
+  it("draws the Rift/Jungle study (minion + turret + one leaf cluster)", () => {
+    const { container } = render(<QuestionMotifLayer motif="rift_field_guide" />);
+    const layer = within(container).getByTestId("question-motif-layer");
+    expect(layer.getAttribute("data-motif-art")).toBe("rift");
+    expect(layer.getAttribute("aria-hidden")).toBe("true");
+    expect(layer.childElementCount).toBe(0);
+    // Both pseudo-elements bleed past the card body (full-sheet convention).
+    const bleed = rule('.question-motif-layer[data-motif-art="rift"]::before,\n'
+      + '.question-motif-layer[data-motif-art="rift"]::after');
+    expect(bleed).toContain("position: absolute");
+    expect(bleed).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
+    const at = (sel: string) => {
+      const i = css.lastIndexOf(`${sel} {`);
+      return css.slice(i, css.indexOf("}", i));
+    };
+    const figures = at('.question-motif-layer[data-motif-art="rift"]::before');
+    expect(figures).toContain('url("/assets/ranked/question-accents/minion.png")');
+    expect(figures).toContain('url("/assets/ranked/question-accents/tower.png")');
+    const leaves = at('.question-motif-layer[data-motif-art="rift"]::after');
+    expect(leaves).toContain('url("/assets/ranked/question-accents/rift-leaves.svg")');
+    // Exactly one foliage image — no border, no extra props.
+    expect(leaves.match(/url\(/g)).toHaveLength(1);
+    for (const f of ["minion.png", "tower.png", "rift-leaves.svg"]) {
+      expect(existsSync(resolve(process.cwd(), "public/assets/ranked/question-accents", f))).toBe(true);
+    }
+  });
+
+  it("Champion/Combat is unchanged by the Rift art", () => {
+    const sheet = rule(
+      '.question-surface-stack > .question-motif-layer[data-motif-art="champ-combat"]::before');
+    expect(sheet).toContain("opacity: 0.3");
+    expect(sheet).toContain("filter: grayscale(1) brightness(1.2) contrast(1.5)");
+    expect(sheet).toContain("background-position:\n    calc(var(--qm-bleed-x) - 266px - 1.35rem) calc(var(--qm-bleed-y) - 277px)");
   });
 
   it("the rejected Champion Studies pieces are gone", () => {
@@ -160,11 +198,27 @@ describe("live Ranked question (quiz.v1 → InteractiveScenarioSurface)", () => 
       .toBe("champ-combat");
   });
 
-  it("a non-Champion/Combat question draws nothing", () => {
+  it("an Items or Spells question draws nothing", () => {
     renderLive("items_economy");
     expect(screen.queryByTestId("question-motif-layer")).toBeNull();
     expect(screen.getByTestId("scenario-surface").className)
       .not.toContain(QUESTION_MOTIF_HOST_CLASS);
+  });
+
+  it("a Rift/Jungle question draws the rift study; reveal keeps it", () => {
+    const { rerender } = render(
+      <InteractiveScenarioSurface question={{ ...Q, motif: "rift_field_guide", roles: ["jungle"] }}
+        selectedOptionId="1" permissions={NO_INTERACTIONS} onSelectOption={vi.fn()}
+        variant="competitive" />);
+    expect(screen.getByTestId("question-motif-layer").getAttribute("data-motif-art")).toBe("rift");
+    rerender(
+      <InteractiveScenarioSurface question={{ ...Q, motif: "rift_field_guide", roles: ["jungle"] }}
+        selectedOptionId="1" permissions={NO_INTERACTIONS} onSelectOption={vi.fn()}
+        variant="competitive"
+        reveal={{ revealed: true, correctOptionId: "0", isCorrect: false, explanation: null }} />);
+    expect(screen.getByTestId("question-motif-layer").getAttribute("data-motif-art")).toBe("rift");
+    expect(within(screen.getByTestId("scenario-surface")).getAllByTestId("role-emblem")
+      .map((e) => e.getAttribute("data-role"))).toEqual(["jungle"]);
   });
 
   it("no motif on the wire draws nothing and adds no host class", () => {

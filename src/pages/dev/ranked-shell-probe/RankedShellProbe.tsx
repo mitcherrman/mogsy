@@ -90,7 +90,7 @@ const VIEWER = "userA";
 export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex",
   "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
-  "junglePet", "junglePetBase", "jungleRule",
+  "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -307,6 +307,24 @@ function baseQuestionFor(state: ProbeState) {
           ability_slot: "Q", champion_splash: "assets/champions/Ahri/splash/0_default.jpg",
           champion_loading: "assets/champions/Ahri/loading/0_default.jpg", ability_rank: 1 } },
           presentation: { role: "context", timing: "question", spoiler: false } } };
+    // QF1 Rift/Jungle — an `environment_mechanic` minion row, with the blob the
+    // backend renderer produces for (minion_base_stats, gold_start:melee).
+    case "minionWave":
+      return { question_id: "qq-minion-wave#r4",
+        prompt: "How much gold does a melee minion grant at the start of the game?",
+        options: ["20", "21", "22", "23"], category: "Minion Waves",
+        presentation: { assets: { subject: { type: "minion", id: "melee",
+          name: "Melee Minion", icon: "assets/minions/melee.png" } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
+    // QF1 Rift/Jungle — long-prompt stress for a media-less jungle rule.
+    case "jungleLong":
+      return { question_id: "q-jungle-long",
+        prompt: "Your jungle companion has finished its quest and your Smite has upgraded. "
+          + "When you next Smite an enemy champion, how much of the upgraded Smite's "
+          + "damage is dealt, and as what damage type?",
+        options: ["All of it, as true damage", "Half of it, as true damage",
+          "All of it, as magic damage", "None; Smite cannot target champions"],
+        category: "Jungle Systems" };
     case "jungleRule":
       return { question_id: "q-jungle-rule",
         prompt: "How long does it take a spent Smite charge to recharge?",
