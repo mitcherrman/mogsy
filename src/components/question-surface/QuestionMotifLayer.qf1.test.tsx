@@ -136,7 +136,7 @@ describe("QuestionMotifLayer", () => {
     }
   });
 
-  it("draws the Items study (Long Sword + Deathcap, gold accents at 0.22)", () => {
+  it("draws the Items study (Long Sword + Amp Tome at 0.22, gold accents at 0.22)", () => {
     const { container } = render(<QuestionMotifLayer motif="items_economy" />);
     const layer = within(container).getByTestId("question-motif-layer");
     expect(layer.getAttribute("data-motif-art")).toBe("items");
@@ -149,7 +149,9 @@ describe("QuestionMotifLayer", () => {
     };
     const items = at('.question-motif-layer[data-motif-art="items"]::before');
     expect(items).toContain('url("/assets/ranked/question-accents/longsword.png")');
-    expect(items).toContain('url("/assets/ranked/question-accents/deathcap.png")');
+    expect(items).toContain('url("/assets/ranked/question-accents/amptome.png")');
+    expect(items).not.toContain("deathcap");
+    expect(items).toContain("opacity: 0.22");
     expect(items).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
     const gold = at('.question-surface-stack.question-motif-host:has(> '
       + '.question-motif-layer[data-motif-art="items"])::before');
@@ -160,7 +162,7 @@ describe("QuestionMotifLayer", () => {
     // Two coins on each outer side.
     expect(gold.match(/left \d/g)).toHaveLength(2);
     expect(gold.match(/right \d/g)).toHaveLength(2);
-    for (const f of ["longsword.png", "deathcap.png", "gold.png"]) {
+    for (const f of ["longsword.png", "amptome.png", "gold.png"]) {
       expect(existsSync(resolve(process.cwd(), "public/assets/ranked/question-accents", f))).toBe(true);
     }
   });
