@@ -148,7 +148,7 @@ Canonical details:
 - Dependency: SFX1.1.
 - Must not change: animation/game outcomes, queue transitions, welcome cadence.
 
-### SFX1.3 — retire generic UI duplication and repair controls
+### SFX1.3 — retire generic UI duplication and repair controls — COMPLETE
 
 - Goal: migrate HUD/identity/HexTrainingHero/Hub calls, remove `ui-sfx` and `UiSfxSettings`, remove Hub double request, replace `custom_sound_urls` with Audio Studio event bindings, expose Hub rows in admin until the new editor lands.
 - Likely files: `ui-sfx.ts`, `UiSfxSettings.tsx`, `Settings.tsx`, `AdminSounds.tsx`, HUD, Hub, HexTrainingHero, Audio Studio admin/schema paths.
@@ -222,7 +222,7 @@ Canonical details:
 
 ## Exact next task
 
-Implement **SFX1.3 only**: migrate the remaining main-app `ui-sfx` calls in Global HUD, identity menu, HexTrainingHero, and Hub `appEnter` to explicit canonical semantics; remove the now-obsolete Hub/UI duplicate configuration path and `UiSfxSettings` only after all its callers are canonical; replace runtime-inert `custom_sound_urls` behavior with Audio Studio event bindings; make Admin save publications update mounted canonical consumers; and expose the existing Academy Hub settings rows. Do not add hover, generic global clicks, new Leaguecraft/Ranked cues, or change Broadcast/music.
+Implement **SFX1.4 only**: add bounded desktop Home Hub book hover/focus feedback and deliberate Leaguecraft select/start/answer/result cues through the canonical registry. Gate hover to fine pointers, provide keyboard-focus parity, keep touch activation-only, suppress generic cues when a specialized cue applies, and preserve selection, submission, routing, and reduced-motion behavior. Do not add Ranked, Combat Simulation, Pro Play, Archives, auth, victory/defeat, or Broadcast cues, and do not change music.
 
 ## SFX1.1 implementation state
 
@@ -255,3 +255,14 @@ SFX1.2 is complete at the commit containing this section. Its frontend implement
 - Focused verification: 19 files / 577 tests, with 576 passing. The only failure is the documented pre-existing `Quiz.rankedRole.test.tsx` case “commits NOTHING for Practice after a role change”; all of that suite's PLAY1 sound assertions pass. Focused lint has zero errors and four existing/export-structure Fast Refresh warnings. Full app typecheck still reports only unrelated baseline errors and none in SFX1.2 files.
 - Static runtime audit: `src/lib/audio/sfx.ts` and `sfx-renderers.ts` are the only product canonical Web Audio authority; Academy Radio and Mode Soundtrack remain separate music; `ui-sfx.ts` and its HUD/identity/Hex/Hub callers remain explicitly deferred to SFX1.3; Quiz Broadcast remains deferred to SFX1.7; `AutoVideo` is video; Admin sound/card-animation contexts are preview-only; `pages/dev/mogzy-entry-v2/useLaunchChime.ts` is a dev-only prototype copy. No unexplained active product SFX authority remains.
 - No new sound moment, backend change, schema change, music change, Broadcast change, visible UI change, gameplay transition, or route behavior was introduced.
+
+## SFX1.3 implementation state
+
+- Global HUD, identity/profile actions, HexTrainingHero entry, and Hub `appEnter` now request explicit canonical semantics. The four migrated UI semantics intentionally have no built-in renderer, preserving the retired per-browser system's default-silent behavior until an operator authors an Audio Studio binding. Passive training-mode changes remain silent, and Hub destination activation still requests only its existing canonical book ruffle.
+- `src/lib/ui-sfx.ts`, `UiSfxSettings.tsx`, their Settings surface, `playUiSfx`, `UiSfx` types, and the `mogsy.uiSfx.v1` code path are removed. No production or test import remains.
+- Admin sound replacements now read and write canonical `audio_assets` plus `audio_event_bindings`. Uploading creates an enabled SFX asset binding; removing deletes the binding so the built-in can resume. Existing compatible `custom_sound_urls` values are surfaced as migration input and consumed on a successful Save; unsupported or explicitly overridden legacy data is preserved rather than silently discarded. `custom_sound_urls` is no longer a playback authority.
+- Admin Save publishes `sound_settings` immediately and refreshes the existing Audio Studio runtime snapshot, so mounted canonical consumers receive both policy and replacement changes without a reload. Visitor mute remains independent. Academy Radio and Mode Soundtrack were not changed.
+- AdminSounds now renders the existing `Academy Hub` group, including Book Landing and Book Page Ruffle, through the same saved `sound_settings` authority.
+- Focused verification: 18 files / 270 tests, all passing. Full TypeScript validation reports unrelated current-worktree errors and none in SFX1.3 files. Focused lint passes; the broader changed-file invocation exposes only five pre-existing `no-explicit-any` errors and two Fast Refresh warnings in `MogzyIdentityMenu.tsx`. Existing React `act(...)`, router-future, and `fetchPriority` warnings remain in legacy suites.
+- Static audit finds no `playUiSfx`, `UiSfx`, `mogsy.uiSfx.v1`, or `ui-sfx` import under `src`. Remaining non-canonical playback is limited to Quiz Broadcast, Academy Radio, Mode Soundtrack, video playback, Admin-only preview tooling, and the documented dev-only launch-chime prototype. The sole `custom_sound_urls` production reference is the one-way Admin migration key.
+- No new audible product moment, backend/schema change, music change, Broadcast change, gameplay transition, or route behavior was introduced.

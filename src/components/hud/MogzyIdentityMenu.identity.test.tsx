@@ -67,7 +67,8 @@ vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
-vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
 const funnel = vi.hoisted(() => ({ trackFunnelEvent: vi.fn() }));
 vi.mock("@/lib/funnel-analytics", () => funnel);
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
@@ -168,9 +169,12 @@ describe("identity compound — two targets, one piece of chrome", () => {
 
   it("does not open the panel when the portrait is clicked", () => {
     render(<MogzyIdentityMenu />);
+    expect(sfx.play).not.toHaveBeenCalled();
     fireEvent.click(portrait());
     expect(screen.queryByTestId("notification-panel")).toBeNull();
     expect(chevron().getAttribute("aria-expanded")).toBe("false");
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+    expect(sfx.play).toHaveBeenCalledWith("ui.identity.action");
   });
 
   it("gives the chevron its own explicit, action-shaped accessible name", async () => {

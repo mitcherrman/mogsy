@@ -21,9 +21,9 @@ import {
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+import { useSfx } from "@/lib/audio/useSfx";
 import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
 import AcademyCommons from "@/components/lol/AcademyCommons";
-import { playUiSfx } from "@/lib/ui-sfx";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
@@ -240,6 +240,7 @@ function prefersReducedMotion(): boolean {
 }
 
 export default function LolHub() {
+  const canonicalSfx = useSfx();
   const { user } = useAuth();
   const { data: championAssets } = useChampionAssets();
   // One Patch Brief feed serves the desktop and mobile centerpieces alike.
@@ -547,10 +548,10 @@ export default function LolHub() {
   // Funnel: landing view, once per mount.
   useEffect(() => {
     trackFunnelEvent("lol_landing_viewed");
-    // appEnter SFX — playUiSfx skips this internally on a cold page load
-    // (no user gesture yet), so it only sounds after internal navigation.
-    playUiSfx("appEnter");
-  }, []);
+    // This semantic has no built-in voice, preserving the legacy path's
+    // default-silent behavior while allowing an Audio Studio binding.
+    canonicalSfx.play("hub.application.enter");
+  }, [canonicalSfx]);
 
   // Display name for the academy line. Anonymous users keep the "Summoner"
   // fallback and never hit the network; a signed-in user with no display_name

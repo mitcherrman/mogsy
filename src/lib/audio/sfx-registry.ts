@@ -25,6 +25,13 @@ export interface SfxRegistryEntry {
 }
 
 export const SFX_REGISTRY = {
+  // Migrated legacy UI requests deliberately have no built-in voice. The old
+  // per-browser UI system was off by default, so these stay silent until an
+  // operator authors an Audio Studio binding.
+  "ui.navigation.activate": { group: "ui", minReplayMs: 40, relativeGain: 1 },
+  "ui.identity.action": { group: "ui", minReplayMs: 40, relativeGain: 1 },
+  "hub.application.enter": { group: "hub", minReplayMs: 500, relativeGain: 1 },
+  "training.primary.activate": { group: "ui", minReplayMs: 40, relativeGain: 1 },
   "landing.enter": { group: "landing", minReplayMs: 0, relativeGain: 1, legacySettingKey: "launch_chime", builtInGeneratorId: "sfx.legacy.launch" },
   "swipe.action": { group: "swipe", minReplayMs: 0, relativeGain: 1, legacySettingKey: "swipe_tap", builtInGeneratorId: "sfx.legacy.swipe" },
   "swipe.elo.correct": { group: "swipe", minReplayMs: 0, relativeGain: 1, legacySettingKey: "correct_chime", builtInGeneratorId: "sfx.legacy.correct" },
@@ -76,6 +83,35 @@ export const LEGACY_ANIMATION_SFX_EVENT = {
   mogged: "card.animation.mogged", doakes: "card.animation.doakes",
   amongus: "card.animation.amongus",
 } as const satisfies Record<string, SfxEvent>;
+
+/** Canonical event controlled by each surviving app_settings sound toggle. */
+export const SFX_EVENT_BY_LEGACY_SETTING = {
+  launch_chime: "landing.enter",
+  swipe_tap: "swipe.action",
+  correct_chime: "swipe.elo.correct",
+  wrong_tone: "swipe.elo.wrong",
+  anim_paper_rip: "card.animation.paper-rip",
+  anim_shatter: "card.animation.shatter",
+  anim_burn: "card.animation.burn",
+  anim_vaporize: "card.animation.vaporize",
+  anim_crush: "card.animation.crush",
+  shop_purchase: "shop.purchase",
+  shop_diamond_tap: "shop.diamond.tap",
+  shop_powerup: "shop.powerup",
+  welcome_scribble: "welcome.scribble",
+  welcome_page_turn: "welcome.page.turn",
+  play_scroll_open: "ranked.record.open",
+  play_scroll_close: "ranked.record.close",
+  play_role_step: "ranked.role.step",
+  play_mascot_react: "ranked.mascot.react",
+  play_mode_confirm: "ranked.mode.confirm",
+  play_queue_start: "ranked.queue.start",
+  play_opponent_found: "ranked.opponent.found",
+  play_error: "ui.feedback.error",
+  play_button_press: "ui.button.press",
+  play_book_land: "hub.book.land",
+  play_book_ruffle: "hub.book.open",
+} as const satisfies Partial<Record<keyof SoundSettings, SfxEvent>>;
 
 export function getSfxRegistryEntry(event: string): SfxRegistryEntry | null {
   return Object.prototype.hasOwnProperty.call(SFX_REGISTRY, event) ? SFX_REGISTRY[event as SfxEvent] : null;

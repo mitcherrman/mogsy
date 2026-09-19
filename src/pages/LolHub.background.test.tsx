@@ -50,7 +50,7 @@ vi.mock("@/hooks/useAppSettings", async () => {
   };
 });
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
-vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: vi.fn() }) }));
 vi.mock("@/integrations/supabase/client", () => {
   const b: Record<string, unknown> = {};
   Object.assign(b, {

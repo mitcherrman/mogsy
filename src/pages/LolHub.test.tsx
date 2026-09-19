@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   // unchanged.
   academyUpdatesEnabled: false,
   sfxPlay: vi.fn(),
-  uiSfxPlay: vi.fn(),
+  canonicalSfxPlay: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -80,7 +80,7 @@ vi.mock("@/lib/funnel-analytics", () => ({
 vi.mock("@/lib/audio/usePlaySfx", () => ({
   usePlaySfx: () => ({ play: mocks.sfxPlay }),
 }));
-vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: mocks.uiSfxPlay }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: mocks.canonicalSfxPlay }) }));
 vi.mock("@/integrations/supabase/client", () => {
   const b: Record<string, unknown> = {};
   Object.assign(b, {
@@ -313,11 +313,12 @@ describe("LolHub — navigation structure", () => {
 
   it("sounds exactly one canonical book opening and no legacy sectionOpen on activation", () => {
     renderHub();
+    expect(mocks.canonicalSfxPlay.mock.calls.filter(([event]) => event === "hub.application.enter")).toHaveLength(1);
     const link = screen.getAllByRole("link", { name: /Leaguecraft/ })
       .find((candidate) => candidate.getAttribute("href") === "/quiz")!;
     fireEvent.click(link);
     expect(mocks.sfxPlay.mock.calls.filter(([cue]) => cue === "bookRuffle")).toHaveLength(1);
-    expect(mocks.uiSfxPlay).not.toHaveBeenCalledWith("sectionOpen");
+    expect(mocks.canonicalSfxPlay).not.toHaveBeenCalledWith("hub.book.open");
   });
 
   it("inscribes the legal set into the plinth, at the sitewide wording", () => {

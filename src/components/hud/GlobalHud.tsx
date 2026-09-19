@@ -12,7 +12,7 @@ import { hudChipSurface, hudHitTarget, hudPopVisual } from "@/lib/hud/chrome";
 import { useHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { prefetchRoute } from "@/lib/route-prefetch";
-import { playUiSfx } from "@/lib/ui-sfx";
+import { useSfx } from "@/lib/audio/useSfx";
 
 /**
  * Global HUD — the app's chrome after the traditional navbar (top bar + mobile
@@ -64,6 +64,7 @@ import { playUiSfx } from "@/lib/ui-sfx";
 const hudChip = `pointer-events-auto ${hudChipSurface}`;
 
 export default function GlobalHud() {
+  const sfx = useSfx();
   const homeRoute = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/";
   const { pathname } = useLocation();
   const { user } = useAuth();
@@ -131,7 +132,7 @@ export default function GlobalHud() {
           onMouseEnter={() => prefetchRoute(homeRoute)}
           onFocus={() => prefetchRoute(homeRoute)}
           onTouchStart={() => prefetchRoute(homeRoute)}
-          onClick={() => playUiSfx("navClick")}
+          onClick={() => sfx.play("ui.navigation.activate")}
           data-testid="hud-home"
           className={`pointer-events-auto ${hudHitTarget} z-10`}
         >
@@ -203,7 +204,7 @@ export default function GlobalHud() {
               onMouseEnter={() => prefetchRoute("/auth")}
               onFocus={() => prefetchRoute("/auth")}
               onClick={() => {
-                playUiSfx("primaryAction");
+                sfx.play("ui.identity.action");
                 trackFunnelEvent("hud_signup_chip_clicked", { returnTo: pathname });
               }}
               className="hud-signup-chip flex h-7 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background"

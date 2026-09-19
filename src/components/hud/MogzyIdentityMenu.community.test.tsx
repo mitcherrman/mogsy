@@ -67,7 +67,7 @@ vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
-vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: vi.fn() }) }));
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),

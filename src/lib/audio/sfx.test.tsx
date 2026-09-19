@@ -13,7 +13,7 @@ import {
   SFX_MUTE_STORAGE_KEY,
   sfxController,
 } from "./sfx";
-import { SOUND_DEFAULTS } from "./sound-settings-runtime";
+import { publishSoundSettings, SOUND_DEFAULTS } from "./sound-settings-runtime";
 import { useSfx } from "./useSfx";
 
 interface FakeAudioOptions {
@@ -152,6 +152,30 @@ describe("canonical registration and API", () => {
 });
 
 describe("semantic registry and configuration timing", () => {
+  it("keeps migrated legacy UI semantics silent until Audio Studio binds them", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    sfxController.play("ui.navigation.activate");
+    sfxController.play("ui.identity.action");
+    sfxController.play("hub.application.enter");
+    sfxController.play("training.primary.activate");
+    expect(audio.counts.oscillators).toBe(0);
+    expect(audio.counts.buffers).toBe(0);
+  });
+
+  it("applies published setting changes to an already-mounted controller", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    publishSoundSettings({ ...SOUND_DEFAULTS, play_button_press: false });
+    sfxController.play("ui.button.press");
+    expect(audio.counts.oscillators).toBe(0);
+    publishSoundSettings({ ...SOUND_DEFAULTS, play_button_press: true });
+    sfxController.play("ui.button.press");
+    expect(audio.counts.oscillators).toBe(1);
+  });
+
   it("resolves known semantics and treats unknown input as silence", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);

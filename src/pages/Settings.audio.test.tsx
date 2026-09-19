@@ -14,7 +14,6 @@ vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ clear: vi.fn() }) }));
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("@/components/TwoFactorAuth", () => ({ default: () => null }));
-vi.mock("@/components/UiSfxSettings", () => ({ default: () => null }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 const nativeLocalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");

@@ -14,11 +14,25 @@ import {
   SOUND_LABELS,
 } from "@/hooks/useSoundSettings";
 import { publishSoundSettings } from "@/lib/audio/sound-settings-runtime";
+import {
+  buildAdminSfxReplacementPlan,
+  hasCanonicalSfxEvent,
+  LEGACY_CUSTOM_SOUND_SETTINGS_KEY,
+  readAdminSfxReplacements,
+} from "@/lib/audio/admin-sfx-bindings";
+import {
+  EMPTY_AUDIO_STUDIO_CONFIG,
+  parseAudioStudioConfig,
+  type AudioStudioConfig,
+} from "@/lib/audio/audio-studio-config";
+import { refreshAudioStudioRuntime } from "@/lib/audio/audio-studio-runtime";
 import { tomeAudioEngine } from "@/pages/welcome/tomeAudio";
 import { playSfxEngine, resetPlaySfxGuards } from "@/lib/audio/play-sfx";
 import { PLAY_SFX_SETTING_KEY } from "@/lib/audio/usePlaySfx";
 
-const GROUPS = ["General", "Swiping", "Card Animations", "Shop", "Academy Welcome", "Match Entry"] as const;
+export const ADMIN_SOUND_GROUPS = [
+  "General", "Swiping", "Card Animations", "Shop", "Academy Welcome", "Match Entry", "Academy Hub",
+] as const;
 
 /** Setting key -> PLAY1 cue, inverted from the ONE map in `usePlaySfx` so
  *  the two cannot drift. Lets Preview play the real cue. */
@@ -28,7 +42,7 @@ const PLAY_SFX_BY_KEY = Object.fromEntries(
 
 function groupedEntries() {
   const keys = Object.keys(SOUND_LABELS) as (keyof SoundSettings)[];
-  return GROUPS.map((group) => ({
+  return ADMIN_SOUND_GROUPS.map((group) => ({
     group,
     items: keys.filter((k) => SOUND_LABELS[k].group === group),
   }));
@@ -118,10 +132,13 @@ interface CustomSoundEntry {
 
 export default function AdminSounds() {
   const [settings, setSettings] = useState<SoundSettings>({ ...SOUND_DEFAULTS });
-  const [customSounds, setCustomSounds] = useState<Record<string, string>>({});
+  const [customSounds, setCustomSounds] = useState<Partial<Record<keyof SoundSettings, string>>>({});
+  const [audioStudioConfig, setAudioStudioConfig] = useState<AudioStudioConfig>(EMPTY_AUDIO_STUDIO_CONFIG);
+  const [removedCustomKeys, setRemovedCustomKeys] = useState<Set<keyof SoundSettings>>(() => new Set());
+  const legacyCustomSoundsRef = useRef<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadDialogKey, setUploadDialogKey] = useState<string | null>(null);
+  const [uploadDialogKey, setUploadDialogKey] = useState<keyof SoundSettings | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
@@ -129,14 +146,23 @@ export default function AdminSounds() {
   useEffect(() => {
     Promise.all([
       supabase.from("app_settings").select("value").eq("key", "sound_settings").maybeSingle(),
-      supabase.from("app_settings").select("value").eq("key", "custom_sound_urls").maybeSingle(),
-    ]).then(([settingsRes, customRes]) => {
+      supabase.from("app_settings").select("value").eq("key", LEGACY_CUSTOM_SOUND_SETTINGS_KEY).maybeSingle(),
+      supabase.from("audio_assets").select("*"),
+      supabase.from("audio_event_bindings").select("*"),
+    ]).then(([settingsRes, customRes, assetsRes, bindingsRes]) => {
       if (settingsRes.data?.value) {
         setSettings({ ...SOUND_DEFAULTS, ...(settingsRes.data.value as Record<string, boolean>) });
       }
-      if (customRes.data?.value) {
-        setCustomSounds(customRes.data.value as Record<string, string>);
-      }
+      const legacyUrls = customRes.data?.value
+        ? customRes.data.value as Record<string, string>
+        : {};
+      legacyCustomSoundsRef.current = legacyUrls;
+      const config = parseAudioStudioConfig({
+        assets: assetsRes.data,
+        eventBindings: bindingsRes.data,
+      });
+      setAudioStudioConfig(config);
+      setCustomSounds(readAdminSfxReplacements(config, legacyUrls).urls);
       setLoading(false);
     });
   }, []);
@@ -153,19 +179,49 @@ export default function AdminSounds() {
 
   const save = async () => {
     setSaving(true);
-    await Promise.all([
-      supabase.from("app_settings").upsert(
-        { key: "sound_settings", value: settings as unknown as Json, updated_at: new Date().toISOString() },
-        { onConflict: "key" }
-      ),
-      supabase.from("app_settings").upsert(
-        { key: "custom_sound_urls", value: customSounds as unknown as Json, updated_at: new Date().toISOString() },
-        { onConflict: "key" }
-      ),
-    ]);
-    setSaving(false);
-    publishSoundSettings(settings);
-    toast.success("Sound settings saved");
+    try {
+      const plan = buildAdminSfxReplacementPlan({
+        config: audioStudioConfig,
+        replacements: customSounds,
+        removedKeys: removedCustomKeys,
+        legacyUrls: legacyCustomSoundsRef.current,
+        labelFor: (key) => SOUND_LABELS[key].label,
+        createId: () => crypto.randomUUID(),
+      });
+      const writes: Array<PromiseLike<{ error: { message: string } | null }>> = [
+        supabase.from("app_settings").upsert(
+          { key: "sound_settings", value: settings as unknown as Json, updated_at: new Date().toISOString() },
+          { onConflict: "key" },
+        ),
+        // Keep only entries that have no canonical event. Compatible legacy
+        // URLs are consumed into Audio Studio bindings on this Save.
+        supabase.from("app_settings").upsert(
+          { key: LEGACY_CUSTOM_SOUND_SETTINGS_KEY, value: plan.remainingLegacyUrls as unknown as Json, updated_at: new Date().toISOString() },
+          { onConflict: "key" },
+        ),
+      ];
+      if (plan.assets.length) writes.push(supabase.from("audio_assets").upsert(plan.assets));
+      if (plan.bindings.length) {
+        writes.push(supabase.from("audio_event_bindings").upsert(plan.bindings, { onConflict: "event_key" }));
+      }
+      for (const event of plan.removeBindings) {
+        writes.push(supabase.from("audio_event_bindings").delete().eq("event_key", event));
+      }
+      const results = await Promise.all(writes);
+      const failure = results.find((result) => result.error)?.error;
+      if (failure) throw new Error(failure.message);
+
+      publishSoundSettings(settings);
+      const refreshed = await refreshAudioStudioRuntime();
+      setAudioStudioConfig(refreshed.config);
+      legacyCustomSoundsRef.current = plan.remainingLegacyUrls;
+      setRemovedCustomKeys(new Set());
+      toast.success("Sound settings saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save sound settings");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const preview = useCallback((key: keyof SoundSettings) => {
@@ -193,23 +249,29 @@ export default function AdminSounds() {
     }
   }, [customSounds]);
 
-  const uploadCustomSound = async (key: string, file: File) => {
+  const uploadCustomSound = async (key: keyof SoundSettings, file: File) => {
     const ext = file.name.split(".").pop();
     const path = `sounds/${key}_${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from("animation-assets").upload(path, file);
     if (error) { toast.error(`Upload failed: ${error.message}`); return; }
     const { data: { publicUrl } } = supabase.storage.from("animation-assets").getPublicUrl(path);
     setCustomSounds(prev => ({ ...prev, [key]: publicUrl }));
+    setRemovedCustomKeys((previous) => {
+      const next = new Set(previous);
+      next.delete(key);
+      return next;
+    });
     toast.success("Custom sound uploaded — save to apply");
     setUploadDialogKey(null);
   };
 
-  const removeCustomSound = (key: string) => {
+  const removeCustomSound = (key: keyof SoundSettings) => {
     setCustomSounds(prev => {
       const next = { ...prev };
       delete next[key];
       return next;
     });
+    setRemovedCustomKeys((previous) => new Set(previous).add(key));
     toast.success("Custom sound removed — save to apply");
   };
 
@@ -240,6 +302,7 @@ export default function AdminSounds() {
           {items.map((key) => {
             const meta = SOUND_LABELS[key];
             const hasCustom = !!customSounds[key];
+            const canReplace = hasCanonicalSfxEvent(key);
             return (
               <div key={key} className="rounded-xl border border-border bg-card p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -264,13 +327,15 @@ export default function AdminSounds() {
                     >
                       {playingKey === key ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                     </button>
-                    <button
-                      onClick={() => setUploadDialogKey(key)}
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      title="Upload custom sound"
-                    >
-                      <Upload className="h-3.5 w-3.5" />
-                    </button>
+                    {canReplace && (
+                      <button
+                        onClick={() => setUploadDialogKey(key)}
+                        className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        title="Upload custom sound"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     {hasCustom && (
                       <button
                         onClick={() => removeCustomSound(key)}

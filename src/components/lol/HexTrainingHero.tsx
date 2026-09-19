@@ -5,7 +5,7 @@ import {
   type ChampionManifest,
   getChampionSplash,
 } from "@/hooks/useChampionAssets";
-import { playUiSfx } from "@/lib/ui-sfx";
+import { useSfx } from "@/lib/audio/useSfx";
 import { META_REFLEX_NAME, META_REFLEX_ROUTE } from "@/lib/league-swipe/branding";
 
 export type TrainingModeKey = "quiz" | "lab" | "swipe";
@@ -66,6 +66,7 @@ type Props = {
  * respects reduced motion.
  */
 export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
+  const sfx = useSfx();
   const [modeKey, setModeKey] = useState<TrainingModeKey>("quiz");
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const mode = TRAINING_MODES.find((m) => m.key === modeKey)!;
@@ -147,7 +148,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
                 <Link
                   to={mode.to}
                   onClick={() => {
-                    playUiSfx("primaryAction");
+                    sfx.play("training.primary.activate");
                     if (mode.key === "quiz") onStartQuiz();
                   }}
                   className="text-sm md:text-base font-bold text-[#0ac8ff] hover:underline inline-flex items-center gap-1.5"
