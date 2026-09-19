@@ -1104,3 +1104,7 @@ hold, so the "opponent" capture must use `scale: "css"`. The Phase 2A 390
 opponent shots had captured the next round.
 
 Phase 2A is ready to merge.
+
+## Integration
+
+Merged to frontend `main` as merge commit `1ee7ac59` (`--no-ff`, approved tip `e784a1af` preserved) on 2026-09-19, over `origin/main` `82b7acf6` (+2 docs-only gr1 commits since the branch base `3c9ddfc4`, no file overlap). Phase 2A is complete; Phase 2B1 is next.
