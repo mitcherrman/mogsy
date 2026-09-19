@@ -2662,9 +2662,9 @@
   inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x));
   background-repeat: no-repeat;
   background-image: url("/assets/ranked/question-accents/electrocute.png");
-  background-size: 640px auto;
+  background-size: 560px auto;
   background-position:
-    left calc(50% + 10px) bottom calc(var(--qm-bleed-y) - 170px);
+    left calc(50% + 10px) bottom calc(var(--qm-bleed-y) - 70px);
   filter: grayscale(1) sepia(0.35) brightness(0.94) contrast(1.15);
   opacity: 0.22;
 }
