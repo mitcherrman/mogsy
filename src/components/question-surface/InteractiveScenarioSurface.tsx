@@ -276,7 +276,7 @@ export function InteractiveScenarioSurface({
         </div>
       )}
 
-      <header data-surface-region="prompt" className={`space-y-1${motifHostClass(question.motif)}`}>
+      <header data-surface-region="prompt" className="space-y-1">
         {/* Category shows once: in the compact band when that is shown, else here. */}
         {question.category && bandProfile !== "compact" && (
           // `scenario-category` is a styling HOOK, not new behaviour: the label
@@ -305,8 +305,6 @@ export function InteractiveScenarioSurface({
         )}
         <h2 className={`${promptSize} font-semibold leading-snug`}>{question.prompt}</h2>
         {context && <p className="text-sm text-muted-foreground">{context}</p>}
-        {/* QF1.2 — the motif's accent, bottom-right of the prompt region. */}
-        <QuestionMotifLayer motif={question.motif} variant="study" parts="accent" />
       </header>
 
       {/* Answer interaction is the shared, reveal-safe AnswerGrid (→ QuizAnswerOptions,
@@ -383,11 +381,12 @@ export function InteractiveScenarioSurface({
         />
       )}
 
-      {/* QF1.2 — the card's motif (what KIND of knowledge this is). LAST, so
-          no sibling selector or region rule ever sees it; absolutely
-          positioned and aria-hidden, so it takes no slot in this flex column
-          and no gap. Renders nothing for a question with no drawn motif. */}
-      <QuestionMotifLayer motif={question.motif} variant="study" parts="frame" />
+      {/* QF1.2 — the card's motif illustration, printed into the parchment
+          BELOW the media region and behind the prompt and tablets. LAST, so no
+          sibling selector or region rule ever sees it; absolutely positioned
+          and aria-hidden, so it takes no slot in this flex column and no gap.
+          Renders nothing for a question with no illustrated motif. */}
+      <QuestionMotifLayer motif={question.motif} />
     </section>
   );
 }

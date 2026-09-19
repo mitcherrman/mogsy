@@ -175,9 +175,9 @@ export function ComparisonQuestionView({
           )}
         </div>
       )}
-      {/* QF1.2 — the motif, last and absolutely positioned (a `space-y`
-          host cannot offset it); a comparison draws the versus variant. */}
-      <QuestionMotifLayer motif={question.questionMotif} variant="versus" />
+      {/* QF1.2 — the motif illustration, last and absolutely positioned (a
+          `space-y` host cannot offset it), behind the whole question. */}
+      <QuestionMotifLayer motif={question.questionMotif} />
     </section>
   );
 }

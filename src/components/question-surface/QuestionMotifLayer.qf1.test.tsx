@@ -1,11 +1,12 @@
 /**
- * QF1.2A — the Champion Studies motif: the layer, its three hosts (the live
- * question surface and both structured Mastery views), and the guarantees
- * that keep it decorative and layout-neutral.
+ * QF1.2 — the Champion/Combat watermark (`champ-combat.png`, drawn for both
+ * `champion_studies` and `combat_workings`): the layer, its three hosts (the
+ * live question surface and both structured Mastery views), and the
+ * guarantees that keep it decorative and layout-neutral.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InteractiveScenarioSurface } from "./InteractiveScenarioSurface";
@@ -22,7 +23,9 @@ import type { InteractionPermissions, QuestionView } from "@/lib/ranked-core/vie
 
 afterEach(cleanup);
 
-const OTHER_MOTIFS = QUESTION_MOTIFS.filter((m) => m !== "champion_studies");
+const CHAMP_COMBAT = ["champion_studies", "combat_workings"] as const;
+const OTHER_MOTIFS = QUESTION_MOTIFS.filter(
+  (m) => !(CHAMP_COMBAT as readonly string[]).includes(m));
 const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 const rule = (selector: string) => {
   const at = css.indexOf(`${selector} {`);
@@ -31,11 +34,20 @@ const rule = (selector: string) => {
 };
 
 describe("QuestionMotifLayer", () => {
-  it("draws champion_studies", () => {
-    render(<QuestionMotifLayer motif="champion_studies" />);
-    const layer = screen.getByTestId("question-motif-layer");
-    expect(layer.getAttribute("data-motif")).toBe("champion_studies");
-    expect(layer.querySelectorAll(".qm-piece").length).toBeGreaterThan(0);
+  it("draws the champ-combat illustration for Champion/Combat motifs", () => {
+    for (const motif of CHAMP_COMBAT) {
+      const { unmount } = render(<QuestionMotifLayer motif={motif} />);
+      const layer = screen.getByTestId("question-motif-layer");
+      expect(layer.getAttribute("data-motif")).toBe(motif);
+      expect(layer.getAttribute("data-motif-art")).toBe("champ-combat");
+      expect(isDrawnMotif(motif)).toBe(true);
+      unmount();
+    }
+    expect(rule('.question-motif-layer[data-motif-art="champ-combat"]'))
+      .toContain('url("/assets/ranked/question-accents/champ-combat.png")');
+    // The asset the rule points at is the one in the repo.
+    expect(readFileSync(resolve(process.cwd(),
+      "public/assets/ranked/question-accents/champ-combat.png")).length).toBeGreaterThan(0);
   });
 
   it("renders nothing for a null / absent motif", () => {
@@ -47,7 +59,7 @@ describe("QuestionMotifLayer", () => {
     expect(motifHostClass(null)).toBe("");
   });
 
-  it("renders nothing for the four motifs that have no artwork yet", () => {
+  it("renders nothing for the non-Champion/Combat motifs", () => {
     for (const motif of OTHER_MOTIFS) {
       const { container, unmount } = render(<QuestionMotifLayer motif={motif} />);
       expect(container.innerHTML).toBe("");
@@ -57,11 +69,12 @@ describe("QuestionMotifLayer", () => {
     }
   });
 
-  it("is hidden from assistive technology and holds no text", () => {
-    render(<QuestionMotifLayer motif="champion_studies" variant="versus" />);
+  it("is decorative: aria-hidden, empty, no children", () => {
+    render(<QuestionMotifLayer motif="champion_studies" />);
     const layer = screen.getByTestId("question-motif-layer");
     expect(layer.getAttribute("aria-hidden")).toBe("true");
     expect(layer.textContent).toBe("");
+    expect(layer.childElementCount).toBe(0);
   });
 
   it("is non-interactive and out of flow (the stylesheet contract)", () => {
@@ -74,33 +87,14 @@ describe("QuestionMotifLayer", () => {
     const host = rule(`.${QUESTION_MOTIF_HOST_CLASS}`);
     expect(host).toContain("position: relative");
     expect(host).toContain("isolation: isolate");
-    // No role colour and no fixed colour of its own: ink is currentColor.
-    expect(rule(".question-motif-layer .qm-piece")).toContain("background-color: currentColor");
   });
 
-  it("draws one accent per variant, never a second motif id", () => {
-    const accents = { study: "qm-keys", dossier: "qm-dossier", versus: "qm-versus" } as const;
-    for (const [variant, cls] of Object.entries(accents)) {
-      const { container, unmount } = render(
-        <QuestionMotifLayer motif="champion_studies" variant={variant as keyof typeof accents} />);
-      const layer = within(container).getByTestId("question-motif-layer");
-      expect(layer.getAttribute("data-motif")).toBe("champion_studies");
-      expect(layer.querySelectorAll(".qm-accent")).toHaveLength(1);
-      expect(layer.querySelector(`.${cls}`)).not.toBeNull();
-      unmount();
+  it("the rejected Champion Studies pieces are gone", () => {
+    for (const piece of ["qm-ruler", "qm-corner", "qm-keys", "qm-dossier", "qm-versus",
+      "question-motifs/champion-studies"]) {
+      expect(css).not.toContain(piece);
     }
-  });
-
-  it("splits frame and accent when asked", () => {
-    const { container } = render(<>
-      <QuestionMotifLayer motif="champion_studies" parts="frame" />
-      <QuestionMotifLayer motif="champion_studies" parts="accent" />
-    </>);
-    const [frame, accent] = within(container).getAllByTestId("question-motif-layer");
-    expect(frame.querySelector(".qm-accent")).toBeNull();
-    expect(frame.querySelector(".qm-ruler")).not.toBeNull();
-    expect(accent.querySelector(".qm-ruler")).toBeNull();
-    expect(accent.querySelector(".qm-accent")).not.toBeNull();
+    expect(existsSync(resolve(process.cwd(), "public/assets/question-motifs"))).toBe(false);
   });
 });
 
@@ -135,18 +129,30 @@ function renderLive(motif: string | null, roles: string[] = []) {
 }
 
 describe("live Ranked question (quiz.v1 → InteractiveScenarioSurface)", () => {
-  it("topic.motif reaches the card: the frame on the card, the accent in the prompt", () => {
+  it("topic.motif reaches the card: one layer, the section's last child", () => {
     renderLive("champion_studies");
     const surface = screen.getByTestId("scenario-surface");
     expect(surface.className).toContain(QUESTION_MOTIF_HOST_CLASS);
     const layers = within(surface).getAllByTestId("question-motif-layer");
-    expect(layers.map((l) => l.getAttribute("data-motif-parts"))).toEqual(["accent", "frame"]);
+    expect(layers).toHaveLength(1);
+    expect(surface.lastElementChild).toBe(layers[0]);
+    // The prompt region itself is untouched (no class, no child layer).
     const prompt = surface.querySelector('[data-surface-region="prompt"]')!;
-    expect(prompt.className).toContain(QUESTION_MOTIF_HOST_CLASS);
-    expect(within(prompt as HTMLElement).getByTestId("question-motif-layer")
-      .getAttribute("data-motif-parts")).toBe("accent");
-    // The frame is the section's LAST child: no sibling selector sees it.
-    expect(surface.lastElementChild?.getAttribute("data-testid")).toBe("question-motif-layer");
+    expect(prompt.className).toBe("space-y-1");
+    expect(within(prompt as HTMLElement).queryByTestId("question-motif-layer")).toBeNull();
+  });
+
+  it("a combat_workings question draws the same artwork", () => {
+    renderLive("combat_workings");
+    expect(screen.getByTestId("question-motif-layer").getAttribute("data-motif-art"))
+      .toBe("champ-combat");
+  });
+
+  it("a non-Champion/Combat question draws nothing", () => {
+    renderLive("items_economy");
+    expect(screen.queryByTestId("question-motif-layer")).toBeNull();
+    expect(screen.getByTestId("scenario-surface").className)
+      .not.toContain(QUESTION_MOTIF_HOST_CLASS);
   });
 
   it("no motif on the wire draws nothing and adds no host class", () => {
@@ -173,18 +179,18 @@ describe("live Ranked question (quiz.v1 → InteractiveScenarioSurface)", () => 
       <InteractiveScenarioSurface question={{ ...Q, motif: "champion_studies" }}
         selectedOptionId="1" permissions={NO_INTERACTIONS} onSelectOption={vi.fn()}
         variant="competitive" />);
-    expect(screen.getAllByTestId("question-motif-layer")).toHaveLength(2);
+    expect(screen.getAllByTestId("question-motif-layer")).toHaveLength(1);
     rerender(
       <InteractiveScenarioSurface question={{ ...Q, motif: "champion_studies" }}
         selectedOptionId="1" permissions={NO_INTERACTIONS} onSelectOption={vi.fn()}
         variant="competitive"
         reveal={{ revealed: true, correctOptionId: "0", isCorrect: false, explanation: null }} />);
-    expect(screen.getAllByTestId("question-motif-layer")).toHaveLength(2);
+    expect(screen.getAllByTestId("question-motif-layer")).toHaveLength(1);
   });
 
   it("adds nothing but the host class and the layers to the card", () => {
     const strip = (html: string) => html
-      .replace(/<div aria-hidden="true" data-testid="question-motif-layer"[\s\S]*?<\/div>/g, "")
+      .replace(/<div aria-hidden="true" data-testid="question-motif-layer"[^>]*><\/div>/g, "")
       .split(` ${QUESTION_MOTIF_HOST_CLASS}`).join("");
     const html = (motif: QuestionView["motif"]) => {
       const { container, unmount } = render(
@@ -260,27 +266,23 @@ function renderSlice(wire: Record<string, unknown>) {
 }
 
 describe("structured Mastery views", () => {
-  it("an ability recall draws the study variant on its own card", () => {
-    renderSlice(challenge("ability", "champion_studies"));
-    const card = screen.getByTestId("mastery-atomic-recall-question");
-    expect(card.className).toContain(QUESTION_MOTIF_HOST_CLASS);
-    const layer = within(card).getByTestId("question-motif-layer");
-    expect(layer.getAttribute("data-motif-variant")).toBe("study");
-    expect(layer.getAttribute("data-motif-parts")).toBe("all");
-    expect(card.lastElementChild).toBe(layer);
+  it("a recall card draws the watermark on its own card, last child", () => {
+    for (const kind of ["ability", "stat"] as const) {
+      const { unmount } = renderSlice(challenge(kind, "champion_studies"));
+      const card = screen.getByTestId("mastery-atomic-recall-question");
+      expect(card.className).toContain(QUESTION_MOTIF_HOST_CLASS);
+      const layer = within(card).getByTestId("question-motif-layer");
+      expect(layer.getAttribute("data-motif-art")).toBe("champ-combat");
+      expect(card.lastElementChild).toBe(layer);
+      unmount();
+    }
   });
 
-  it("a stat recall draws the dossier variant", () => {
-    renderSlice(challenge("stat", "champion_studies"));
-    expect(screen.getByTestId("question-motif-layer").getAttribute("data-motif-variant"))
-      .toBe("dossier");
-  });
-
-  it("a comparison draws the versus variant, and keeps both roles", () => {
+  it("a comparison draws it too, and keeps both roles", () => {
     renderSlice(challenge("compare", "champion_studies", ["mid", "top"]));
     const card = screen.getByTestId("mastery-comparison-question");
-    expect(within(card).getByTestId("question-motif-layer").getAttribute("data-motif-variant"))
-      .toBe("versus");
+    expect(within(card).getByTestId("question-motif-layer").getAttribute("data-motif-art"))
+      .toBe("champ-combat");
     expect(within(card).getAllByTestId("role-emblem").map((e) => e.getAttribute("data-role")))
       .toEqual(["top", "mid"]);
   });

@@ -148,8 +148,8 @@ describe("motifs with no artwork render nothing", () => {
   };
 
   it("the card DOM is identical with no motif and with every not-yet-drawn motif", () => {
-    // QF1.2A draws `champion_studies` only (see QuestionMotifLayer.qf1 tests);
-    // the other four must stay byte-identical to a card with no motif at all.
+    // QF1.2 draws the Champion/Combat pair only (see QuestionMotifLayer.qf1
+    // tests); the other three must stay byte-identical to no motif at all.
     const html = (question: QuestionView) => {
       const { container, unmount } = render(
         <InteractiveScenarioSurface question={question} selectedOptionId={null}
@@ -160,7 +160,8 @@ describe("motifs with no artwork render nothing", () => {
       return out;
     };
     const plain = html(Q);
-    for (const motif of QUESTION_MOTIFS.filter((m) => m !== "champion_studies")) {
+    for (const motif of QUESTION_MOTIFS.filter(
+      (m) => m !== "champion_studies" && m !== "combat_workings")) {
       expect(html({ ...Q, motif })).toBe(plain);
     }
     expect(html({ ...Q, motif: null })).toBe(plain);

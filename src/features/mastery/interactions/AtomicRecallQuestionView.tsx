@@ -191,11 +191,9 @@ export function AtomicRecallQuestionView({
           )}
         </div>
       )}
-      {/* QF1.2 — the motif, last and absolutely positioned (a `space-y`
-          host cannot offset it). An ability recall reads as a study, a stat
-          recall as a dossier; the accent sits in the empty foot. */}
-      <QuestionMotifLayer motif={question.questionMotif}
-        variant={ps.subjectRef ? "study" : "dossier"} />
+      {/* QF1.2 — the motif illustration, last and absolutely positioned (a
+          `space-y` host cannot offset it), behind the whole question. */}
+      <QuestionMotifLayer motif={question.questionMotif} />
     </section>
   );
 }

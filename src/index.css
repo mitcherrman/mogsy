@@ -2475,17 +2475,14 @@
 }
 
 /* ── QF1.2 — THE QUESTION MOTIF LAYER ──────────────────────────────────────
-   What KIND of knowledge a card is, as faint study marks (QuestionMotifLayer).
-   Layout-neutral by construction: the layer is absolutely positioned, takes no
-   flex slot or gap, and the host only becomes `position: relative` +
-   `isolation: isolate` when a DRAWN motif is present — so an un-motifed card
-   is untouched. `z-index: -1` inside that isolated host paints every mark
-   beneath the host's content: a mark that meets a tablet, the media band or
-   the prompt is covered by it, never drawn over it.
-   Ink is `currentColor` — the card's own text colour — at a low opacity, so it
-   reads as pencil on parchment and follows the theme without a colour of its
-   own. No role colour, ever. Hairlines (rule, corners) carry a little more
-   opacity than the accent so the two read at the same visual weight. */
+   What KIND of knowledge a card is, as one faint pencil illustration printed
+   into the parchment (QuestionMotifLayer). A WATERMARK, not a region: it owns
+   no space, and the prompt and answer tablets sit on top of it.
+   Layout-neutral by construction: absolutely positioned, no flex slot or gap,
+   and the host only becomes `position: relative` + `isolation: isolate` when
+   an illustrated motif is present — so an un-motifed card is untouched.
+   `z-index: -1` inside that isolated host paints the art beneath every piece
+   of the host's content. */
 .question-motif-host {
   position: relative;
   isolation: isolate;
@@ -2497,74 +2494,51 @@
   pointer-events: none;
   /* A `space-y-*` host would otherwise offset its last child. */
   margin: 0 !important;
-  --qm-line: 0.17;
-  --qm-accent: 0.12;
+  overflow: hidden;
+  background-repeat: no-repeat;
 }
-.question-motif-layer .qm-piece {
-  position: absolute;
-  display: block;
-  background-color: currentColor;
-  opacity: var(--qm-line);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
+/* On the question surface the art starts BELOW the media region, never behind
+   the top media panel. On the arena stage that region is exactly
+   `--qs-media-h` tall (+ the stack's 0.75rem gap); off the stage the token is
+   unset and the band — opaque — covers whatever sits behind it. */
+.question-surface-stack:has(> [data-surface-region="media"]) > .question-motif-layer {
+  top: calc(var(--qs-media-h, 0px) + 0.75rem);
 }
-/* Champion Studies — a margin measurement rule, in the panel's own padding
-   beside the card, clear of the corner brackets. */
-.question-motif-layer .qm-ruler {
-  top: 2rem;
-  bottom: 2rem;
-  width: 12px;
-  -webkit-mask-image: url("/assets/question-motifs/champion-studies/ruler.svg");
-  mask-image: url("/assets/question-motifs/champion-studies/ruler.svg");
-  -webkit-mask-repeat: repeat-y;
-  mask-repeat: repeat-y;
-  -webkit-mask-size: 12px 48px;
-  mask-size: 12px 48px;
+/* …but under the arena's height lock the media region SHRINKS below that
+   token, so where anchor positioning exists the layer starts at the prompt
+   region's real top instead. `anchor-name` has no layout effect. */
+@supports (anchor-name: --a) {
+  .question-surface-stack.question-motif-host > [data-surface-region="prompt"] {
+    anchor-name: --qm-prompt;
+  }
+  .question-surface-stack.question-motif-host > .question-motif-layer {
+    top: calc(anchor(--qm-prompt top) - 0.5rem);
+  }
 }
-.question-motif-layer .qm-ruler--left { left: -1.05rem; }
-.question-motif-layer .qm-ruler--right { right: -1.05rem; transform: scaleX(-1); }
-/* Dossier corner brackets, in the panel's corner margins. */
-.question-motif-layer .qm-corner {
-  width: 30px;
-  height: 30px;
-  -webkit-mask-image: url("/assets/question-motifs/champion-studies/corner.svg");
-  mask-image: url("/assets/question-motifs/champion-studies/corner.svg");
+/* Champion/Combat — champion_studies + combat_workings share one artwork. */
+.question-motif-layer[data-motif-art="champ-combat"] {
+  background-image: url("/assets/ranked/question-accents/champ-combat.png");
+  background-size: auto 118%;
+  background-position: center 30%;
+  /* The drawing sits on grey paper. Lift that paper to parchment-light so the
+     pencil LINES carry the image, instead of a grey patch. */
+  filter: grayscale(1) brightness(1.45) contrast(1.35);
+  opacity: 0.13;
+  /* No hard edge where the layer box clips the art. */
+  -webkit-mask-image: radial-gradient(ellipse 62% 64% at 50% 46%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(ellipse 62% 64% at 50% 46%, #000 52%, transparent 100%);
 }
-.question-motif-layer .qm-corner--tl { top: -0.9rem; left: -0.9rem; }
-.question-motif-layer .qm-corner--tr { top: -0.9rem; right: -0.9rem; transform: scaleX(-1); }
-.question-motif-layer .qm-corner--bl { bottom: -0.9rem; left: -0.9rem; transform: scaleY(-1); }
-.question-motif-layer .qm-corner--br { bottom: -0.9rem; right: -0.9rem; transform: scale(-1, -1); }
-/* The variant accent, in its host's bottom-right corner: on the question
-   surface that host is the PROMPT region (so the accent is the parchment just
-   above the tablets, however they wrap); on a structured Mastery view it is
-   the whole card, whose foot beside the submit control is empty. */
-.question-motif-layer .qm-accent {
-  right: 0.25rem;
-  bottom: 0.2rem;
-  opacity: var(--qm-accent);
+/* On the question surface the tablets are opaque and fill the LOWER part of
+   the layer, so the parchment that actually shows is behind the prompt and in
+   the strip above the tablets. Anchor the composition (and its fade) high, so
+   the drawing's upper half — the faces — lands there. */
+.question-surface-stack > .question-motif-layer[data-motif-art="champ-combat"] {
+  background-position: center 8%;
+  opacity: 0.15;
+  -webkit-mask-image: radial-gradient(ellipse 64% 70% at 50% 30%, #000 50%, transparent 100%);
+  mask-image: radial-gradient(ellipse 64% 70% at 50% 30%, #000 50%, transparent 100%);
 }
-.question-motif-layer .qm-keys {
-  width: 114px;
-  height: 27px;
-  -webkit-mask-image: url("/assets/question-motifs/champion-studies/ability-keys.svg");
-  mask-image: url("/assets/question-motifs/champion-studies/ability-keys.svg");
-}
-.question-motif-layer .qm-dossier,
-.question-motif-layer .qm-versus {
-  width: 132px;
-  height: 40px;
-}
-.question-motif-layer .qm-dossier {
-  -webkit-mask-image: url("/assets/question-motifs/champion-studies/dossier-card.svg");
-  mask-image: url("/assets/question-motifs/champion-studies/dossier-card.svg");
-}
-.question-motif-layer .qm-versus {
-  -webkit-mask-image: url("/assets/question-motifs/champion-studies/versus-card.svg");
-  mask-image: url("/assets/question-motifs/champion-studies/versus-card.svg");
-}
-/* A phone card has no margin to draw in; the motif is a desktop texture. */
+/* A phone card has no parchment to spare; the motif is a desktop texture. */
 @media (max-width: 639px) {
   .question-motif-layer { display: none; }
 }
