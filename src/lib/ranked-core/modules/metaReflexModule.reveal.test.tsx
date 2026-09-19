@@ -212,6 +212,24 @@ describe("the phase is the SERVER's", () => {
       .getByTestId("mr-choice-left")).toHaveAttribute("data-reveal", "correct");
   });
 
+  it("names the wrong pick and the correct side in words, not colour alone", () => {
+    renderBlock(revealing(2, { outcome: "incorrect",
+      selected_card_id: "c2:right", correct_card_id: "c2:left" }));
+    const settled = within(screen.getByTestId("mr-settled-card"));
+    expect(settled.getByTestId("mr-tag-right")).toHaveTextContent(/^Your pick$/);
+    expect(settled.getByTestId("mr-choice-right")).toHaveAttribute("data-picked", "true");
+    expect(settled.getByTestId("mr-tag-left")).toHaveTextContent(/^Correct$/);
+    expect(settled.getByTestId("mr-choice-left")).not.toHaveAttribute("data-picked");
+  });
+
+  it("marks a right pick as both the player's and correct", () => {
+    renderBlock(revealing(2, { outcome: "correct",
+      selected_card_id: "c2:left", correct_card_id: "c2:left" }));
+    const settled = within(screen.getByTestId("mr-settled-card"));
+    expect(settled.getByTestId("mr-tag-left")).toHaveTextContent("Your pick · Correct");
+    expect(settled.queryByTestId("mr-tag-right")).toBeNull();
+  });
+
   it("reveals every one of the five cards", () => {
     for (let i = 0; i < 5; i += 1) {
       const { unmount } = renderBlock(revealing(i));

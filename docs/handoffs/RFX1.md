@@ -787,22 +787,34 @@ Geometry:
 - `position:absolute; inset:0; pointer-events:none; z-index:15`
 - no flow height, no overflow, no scroll
 
-Contents:
-- **Edge treatment:** an inset 3 px ring plus inner glow, and a top wash
-  limited to 26% of the card. Green for success, red for failure, gold for a
-  mixed block. The question and tablets remain readable.
-- **Viewer stamp** at top centre:
+Contents (final, after the pre-merge visual polish):
+- **Edge treatment:** an inset 3 px ring plus a 22 px inner glow (was 56 px at
+  0.42 alpha; now 0.30). Green for success, red for failure, gold for a mixed
+  block.
+- **Tint (`.ranked-result-edge::before`):** a radial tint from the top
+  (0.32 → 0.12 → 0.06 alpha) that **hits and settles**: opacity 0 → 1 by
+  ~135 ms, down to 0.28 by ~450 ms, held at 0.28 (900 ms keyframe). The old
+  full-strength top-26% linear wash is gone. Parchment texture and text stay
+  visible. Under reduced motion, the animation is removed, so the tint renders
+  directly at the settled 0.28.
+- **Viewer stamp** at top centre, unchanged in size:
   - ✓ `CORRECT` (green)
   - ✗ `INCORRECT` (red)
   - ⏱ `TIMED OUT` (red)
   - `n / m CORRECT` for a block
-  - Meta Reflex adds `Card n`.
-- **Opponent stamp** is anchored to the card's **right edge** (the opponent's
-  side) and slides in from the right after 400 ms:
-  - `OPPONENT CORRECT` / `OPPONENT MISSED` (a timeout also reads MISSED)
-  - `OPPONENT n / m` for a block
-  - It is a different shape and size from the viewer stamp, and does not
-    repeat the full-card edge treatment.
+  - Meta Reflex no longer appends `Card n`; the header's `n / 5` carries the
+    position.
+- **Opponent stamp** sits **directly under** the viewer stamp, centred, in one
+  flex column (`.ranked-result-stack`, top 0.75rem, 0.4rem gap). The
+  right-edge anchor and slide-in are removed.
+  - Size: a small pill, 0.62rem type (0.70rem at ≥1024px), 1 px border,
+    0.22/0.6rem padding.
+  - Measured height: 20–21 px, against the viewer stamp's 35 px (mobile) and
+    45 px (desktop).
+  - It fades down 4 px, with a 450 ms delay and a 280 ms duration. It becomes
+    fully visible about 600–630 ms after the viewer stamp.
+  - Labels: `OPPONENT CORRECT` / `OPPONENT MISSED` (a timeout also reads
+    MISSED), and `OPPONENT n / m` for a block.
 - A single `role="status"` sr-only line announces both. The stamps themselves
   are `aria-hidden`.
 
@@ -829,6 +841,19 @@ a level-2 choice and to a reveal with no cue.
   - picked and right: ✓ + YOUR PICK on one tablet
 
   The Quiz page is unchanged because the prop is off by default.
+
+### Meta Reflex settled card (polish pass)
+
+`metaReflexModule.tsx` `ChoiceCard` gains a `picked` prop (from the server's
+`selectedCardId`). A settled side gets an absolutely positioned top-centre tag,
+so the card does not resize:
+- the wrong pick: red `✕ YOUR PICK` on a red-tinted card
+  (`border-red-600 bg-red-500/15`)
+- the untaken correct side: green `✓ CORRECT`
+- the picked correct side: green `✓ YOUR PICK · CORRECT`
+
+`aria-label`s state the same facts in words. There is no redesign of the card
+layout.
 
 ## Exact timing behavior
 
@@ -951,7 +976,7 @@ between the two is 550–590 ms.
   - right pick: `correct+PICK, idle, idle, idle`
 - After the swap, the header, phone bar and card move to `2 / 10` together and
   no pick or overlay survives.
-- **Meta Reflex:** the viewer stamp shows `INCORRECT · Card 1`, there is **no
+- **Meta Reflex:** the viewer stamp shows `INCORRECT` (polish pass: was `INCORRECT · Card 1`), there is **no
   opponent stamp**, and stage and body geometry are unchanged at all 4
   viewports.
 - Console: only 403/429 responses from the probe's unauthenticated
@@ -1047,3 +1072,35 @@ Modified:
 | `public/assets/ranked/jungle_pets/jungle_grass_background.png` | 648 KB, 1280×720 | `jungleAtmosphere.ts` (question band) | WebP ~960w q≈75; Tier-3 preload covers the rest |
 
 Ignore sub-50 KB files (role SVGs, item icons).
+
+## Final Phase 2A visual polish (pre-merge)
+
+Scope: presentation only. There are no changes to state, the result flow,
+event ids, timing, scoring, layout or the preload seam.
+
+Changes:
+1. Opponent result stacks centred under the player stamp at about 60% of its
+   height, on both mobile and desktop.
+2. The wash goes from a heavy hit to a faint tint. The ring and the stamp
+   carry the verdict.
+3. The Meta Reflex settled card names the pick and the correct side.
+4. There is no `Card N` in the stamp.
+
+Verification: production build, the probe harness, Playwright. Screenshots are
+in the session scratchpad `pol-*.png`.
+
+| state | stage/body/grid/tablets Δ | h-overflow / doc scroll / nested | stamp → opponent rects |
+|---|---|---|---|
+| 390×844 wrong + opp correct | 0 | none | 184×35 @y123 → 162×20 @y165 |
+| 390×844 correct | 0 | none | 162×35 → 162×20 @y165 |
+| 390×844 Meta Reflex wrong | 0 (mr-surface too) | none | stamp only |
+| 1440×900 correct / wrong | 0 | none | 223–257×45 @y105 → 180×21 @y156 |
+| 390×844 reduced motion (all 3) | 0 | none | same rects; both present at t=0 |
+
+Viewer → opponent full visibility measured 600–630 ms apart.
+
+Harness note: 3× DPR mobile screenshots take longer than the rest of the
+hold, so the "opponent" capture must use `scale: "css"`. The Phase 2A 390
+opponent shots had captured the next round.
+
+Phase 2A is ready to merge.

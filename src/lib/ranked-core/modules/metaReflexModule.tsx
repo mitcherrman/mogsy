@@ -25,6 +25,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
+import { Check, X } from "lucide-react";
 import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
@@ -157,7 +158,7 @@ type Side = "left" | "right";
  *    ("left option"), because any real description would be the answer. The
  *    media URL is never parsed for a name either.
  */
-function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null }: {
+function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, picked = false }: {
   card: MetaReflexCard;
   side: Side;
   selected: boolean;
@@ -175,6 +176,8 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null }: {
    * because the two untaken sides of a settled card have nothing to say.
    */
   reveal?: "correct" | "wrong" | null;
+  /** RFX1 — on a settled card, this side is the player's own pick. */
+  picked?: boolean;
 }) {
   const recognition = card.kind === "recognition";
   const entity = card[side];
@@ -192,7 +195,7 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null }: {
       aria-pressed={selected}
       // The verdict is stated in WORDS to a screen reader, never by colour
       // alone — the same rule the arena's verdict chips follow.
-      aria-label={reveal === "correct" ? `${accessibleName}, correct answer`
+      aria-label={reveal === "correct" ? `${accessibleName}, ${picked ? "your answer, " : ""}correct answer`
         : reveal === "wrong" ? `${accessibleName}, your answer, incorrect`
           : accessibleName}
       data-testid={`mr-choice-${side}`}
@@ -201,17 +204,30 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null }: {
       // The border is ALREADY 2px in every state, so switching its colour
       // cannot reflow the row: a reveal changes what the rectangle says and
       // never how large it is.
-      className={`flex min-h-[7.5rem] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center lg:min-h-[12rem] lg:gap-3 lg:p-5
+      data-picked={picked || undefined}
+      className={`relative flex min-h-[7.5rem] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center lg:min-h-[12rem] lg:gap-3 lg:p-5
         transition-[border-color,background-color,transform] duration-150 motion-reduce:transition-none
         disabled:cursor-not-allowed
         enabled:hover:border-[#e8c97a]/70 enabled:active:scale-[0.99]
         ${reveal === "correct"
         ? "border-emerald-400 bg-emerald-500/15 ring-2 ring-emerald-400/40 disabled:opacity-100"
         : reveal === "wrong"
-          ? "border-destructive bg-destructive/10 disabled:opacity-100"
+          ? "border-red-600 bg-red-500/15 disabled:opacity-100"
           : `disabled:opacity-70 ${selected
             ? "border-[#e8c97a] bg-[#e8c97a]/10" : "border-[#b9934c]/30 bg-black/20"}`}`}
     >
+      {/* RFX1 — absolute corner tags (no layout): the pick is named in words
+          and an icon, never colour alone. */}
+      {reveal && (
+        <span data-testid={`mr-tag-${side}`} aria-hidden
+          className={`pointer-events-none absolute left-1/2 top-1 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black uppercase leading-none tracking-[0.14em] text-white lg:text-[10px] ${
+            reveal === "correct" ? "bg-emerald-700" : "bg-red-700"}`}>
+          {reveal === "correct"
+            ? <Check className="h-2.5 w-2.5" strokeWidth={4} />
+            : <X className="h-2.5 w-2.5" strokeWidth={4} />}
+          {reveal === "correct" ? (picked ? "Your pick · Correct" : "Correct") : "Your pick"}
+        </span>
+      )}
       <CardArt src={src} alt={`${accessibleName} artwork`} large={recognition} />
       {label !== null && (
         <span className="line-clamp-2 text-sm font-semibold leading-tight sm:text-base lg:text-lg"
@@ -395,7 +411,8 @@ function SettledCard({ card, reveal }: {
     <div className="flex gap-2 sm:gap-3" data-testid="mr-settled-card">
       {(["left", "right"] as Side[]).map((side) => (
         <ChoiceCard key={side} card={card} side={side} selected={false}
-          disabled onPick={() => {}} reveal={stateFor(side)} />
+          disabled onPick={() => {}} reveal={stateFor(side)}
+          picked={sideOf(side) === reveal.selectedCardId} />
       ))}
     </div>
   );

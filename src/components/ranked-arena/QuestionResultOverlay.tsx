@@ -5,11 +5,11 @@
  * inset: 0` in a `.ranked-panel` (already `position: relative; overflow:
  * hidden`), with `pointer-events: none`, so it takes no height, cannot move a
  * tablet, cannot overflow and cannot scroll. The question and the answers stay
- * readable under it: the treatment is an edge glow and two stamps, never a
- * wash across the text.
+ * readable under it: a brief tinted hit settles into a faint tint, and the
+ * edge ring plus the two stamps carry the verdict.
  *
  * TWO BEATS, ONE FACT. The viewer's stamp lands immediately; the opponent's
- * lands ~400ms later from the RIGHT edge (the opponent's side of the arena).
+ * lands ~400ms later, directly UNDER it and much smaller — secondary news.
  * Both come from the same settlement (`flow/rankedFlow`). The stagger is a CSS
  * `animation-delay` — no timer, no state — so it cannot outlive the reveal:
  * the overlay unmounts with the beat that owns it.
@@ -46,7 +46,8 @@ function viewerFace(cue: ViewerResultCue): { tone: Tone; label: string; sub: str
   return {
     tone: cue.verdict === "correct" ? "success" : "failure",
     label: VERDICT_LABEL[cue.verdict],
-    sub: cue.kind === "card" ? `Card ${cue.cardNumber}` : null,
+    // No `Card n`: the Meta Reflex header's `n / 5` already says which card.
+    sub: null,
   };
 }
 
@@ -83,6 +84,7 @@ export function QuestionResultOverlay({ feedback }: { feedback: RankedResultFeed
         <div key={`edge:${viewer.id}`} data-testid="result-edge"
           aria-hidden className={`ranked-result-edge ranked-result-edge--${vf.tone}`} />
       )}
+      <div className="ranked-result-stack">
       {viewer && vf && (
         <div key={viewer.id} data-testid="result-stamp-viewer" aria-hidden
           data-event-id={viewer.id} data-tone={vf.tone}
@@ -101,6 +103,7 @@ export function QuestionResultOverlay({ feedback }: { feedback: RankedResultFeed
           <span>{of.label}</span>
         </div>
       )}
+      </div>
       {/* The announcement, once, in words — the stamps above are aria-hidden
           decoration of the same two facts. */}
       <span className="sr-only" role="status">
