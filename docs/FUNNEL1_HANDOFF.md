@@ -1,19 +1,22 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: PHASE 1B2.5 — DATABASE CERTIFIED, CODE ON THE PRODUCTION REF,
-AWAITING ONE LOVABLE PUBLISH.**
+**State: PHASE 1B2.5 — PUBLISHED AND LIVE. 4 of 7 closure criteria met;
+awaiting the privileged read-back and cleanup (§17.5).**
 
 The schema is live in `kewgjwrzpzpeltwidvuc`, all eight certification items are
 closed from both the anon client path and privileged access, and the store was
 cleaned transactionally back to **zero rows** — a certified, empty baseline
 before the first real visitor (**§15.8**).
 
-The instrumented frontend is now on **`origin/main` = `c67722ec`**, and the
-Lovable production ref was confirmed from direct evidence to be **`main`**
-(§16.4). The deployed bundle, measured directly, still predates B1 and writes
-to the non-existent `funnel_events` — so **one Lovable Publish is all that
-separates B2 from closure**, and the clean baseline cannot be contaminated
-meanwhile.
+The instrumented frontend is on **`origin/main` = `be0dfad6`**, the Lovable
+production ref was confirmed from direct evidence to be **`main`** (§16.4), and
+it is **published**: the live bundle at `mogzy.lol` is `index-RqqHkANc.js`,
+which contains `analytics_events` and no longer contains `funnel_events`
+(§17.1). A real visit through Landing → Hub → Leaguecraft on the deployed site
+produced a visitor, a session, first-touch attribution and
+`POST /rest/v1/analytics_events` (§17.2).
+
+**Outstanding:** the privileged read-back and the test-row cleanup — §17.5.
 
 Production baseline: **2026-09-20T11:27:52Z**. Funnel data begins when the
 frontend ships; everything before is permanently zero (§5).
@@ -21,7 +24,7 @@ frontend ships; everything before is permanently zero (§5).
 Sections 1–13 are the FUNNEL1A audit, retained unedited: they are the evidence
 the design rests on, and rewriting them to match the outcome would destroy the
 record of what was actually found. §14 is the B1 contract and schema, §15 the
-B2 instrumentation and database certification — **§16 is the current state.**
+B2 instrumentation and database certification, §16 the integration — **§17 is the current state.**
 Where a phase departed from a proposal in §9, it says so and says why.
 
 **SHA note:** every commit hash in §14 and §15 predates the B2.5 rebase and no
@@ -1744,3 +1747,262 @@ until §16.7 reads all ✅.
 5. **The uid-continuity-across-signup test** (§15.13.3).
 
 Admin analytics UI remains out of scope until the data exists to justify it.
+
+---
+
+# 17. FUNNEL1B2.5 — Publish and production loop (CLIENT SIDE PROVEN)
+
+Continues §16, which ended blocked on a Lovable Publish. That has happened, and
+the loop has been driven on the real deployed site. **What remains is the
+privileged read-back and cleanup (§17.5).**
+
+## 17.1 Publish verified — by measurement, not by report
+
+Deployment `6e4c4a8c-1633-49bb-b36e-682261a89894`, returned `pending`, so the
+deployed SHA was **not** assumed. The bundle was measured instead.
+
+| | Before publish | After publish |
+|---|---|---|
+| Entry bundle | `assets/index-C2juFm5U.js` | **`assets/index-RqqHkANc.js`** |
+| `funnel_events` | 1 | **0** |
+| `analytics_events` | 0 | **1** |
+| `analytics_visitors` | 0 | **1** |
+| `analytics_sessions` | 0 | **1** |
+| `mogzy.analytics.visitor` | 0 | **1** |
+| `mogzy.analytics.session` | 0 | **1** |
+| `landing_viewed` | 0 | **1** |
+| `hub_entered` | 0 | **1** |
+
+All four required conditions hold: new hash, `analytics_events` present,
+`mogzy.analytics.visitor` present, `funnel_events` **absent**. The dead table
+is gone from the shipped code for the first time since 2026-07-10.
+
+`https://mogzy.lovable.app` 301s to `https://mogzy.lol`; they are one site and
+`mogzy.lol` is canonical (`SITE_URL` in `site-config.ts`). All measurements are
+against `mogzy.lol`.
+
+### The SHA that moved, and why it is harmless
+
+Lovable reported `1b4f60ea` immediately before publishing and
+`be0dfad6dedd6ebb6aadb67c6a9ef01791f0efba` immediately after, which looks
+alarming and is not. `be0dfad6` is a **docs-only commit by the repository
+owner** on top of `1b4f60ea`:
+
+```
+be0dfad6  Mitchell Leung  2026-09-20 05:46:00 -0700
+          docs(gr1): coherent window candidate composition -- the record
+  docs/RANKED_MASTERY_SLICE_HANDOFF.md           |  94 ++-
+  docs/gr1-reusable-state-window-composition.md  | 483 +++
+  2 files changed, 576 insertions(+), 1 deletion(-)
+```
+
+Zero source files. Whichever of the two was built, the analytics code in the
+bundle is identical — and the bundle scan above confirms it directly, which is
+why measuring beats trusting a reported SHA.
+
+`origin/main` is now `be0dfad6`, and it contains all of B1/B2.
+
+## 17.2 The production loop — a real visit on the deployed site
+
+Driven in a real browser against `https://mogzy.lol`, from empty storage, not a
+dev server.
+
+```
+https://mogzy.lol/?utm_source=production_loop_test
+                  &utm_medium=funnel1b25
+                  &utm_campaign=loop_closure
+   →  /lol   (Hub)
+   →  /quiz  (Leaguecraft)
+```
+
+No gameplay was started.
+
+**Identity minted on the landing page:**
+
+| | |
+|---|---|
+| `visitor_id` | `dd6dcfbf-8ae7-4443-8c6f-489b7c2eb9b6` |
+| `session_id` | `4674ae74-c1dc-447b-9f9c-3c795451ba1c` |
+| session `startedAt` | 1789911301125 |
+| session `lastActivityAt` after `/quiz` | 1789911330033 |
+
+Observed client-side, on the live site:
+
+- **First-touch was captured from the landing URL**, with the full campaign:
+  `utm_source=production_loop_test`, `utm_medium=funnel1b25`,
+  `utm_campaign=loop_closure`, `landing_path="/"`, `referrer=null`.
+- **`mogzy.analytics.visitorFirstTouch.v1` = the visitor id.** That flag is
+  written only after the `analytics_visitors` insert returns without error, so
+  the visitor row was accepted by production.
+- **`recorded: true` on the stored session.** Same contract — the
+  `analytics_sessions` insert was accepted.
+- **One session across all three routes.** The id never changed; only
+  `lastActivityAt` advanced (+28.9s). The rule that a route transition must not
+  start a session — the failure the brief named explicitly — holds in
+  production, not just in jsdom.
+- **`POST /rest/v1/analytics_events`** observed in the page's own resource
+  timeline. The client is writing to the real table.
+
+### Expected rows, stated before the read-back
+
+Four events in this session, three canonical and one diagnostic:
+
+| Route | Event | Kind |
+|---|---|---|
+| `/` | `landing_viewed` | canonical |
+| `/lol` | `hub_entered` | canonical |
+| `/quiz` | `leaguecraft_opened` | canonical |
+| `/quiz` | `dsa_legacy_fallback` | diagnostic, pre-existing |
+
+The fourth is not a surprise and is worth naming so the read-back is not
+misread: `Quiz.tsx:508/511` fires `dsa_legacy_fallback` on mount when the Daily
+Score Attack feature reports disabled or unavailable. It is a plain
+`trackFunnelEvent` and is deliberately **not** deduped. Two
+`analytics_events` POSTs were observed on the `/quiz` document, which is exactly
+this plus `leaguecraft_opened`.
+
+**A second `leaguecraft_opened` would be a dedupe failure.** There was none in
+the network timeline, and the read-back should confirm it.
+
+### Side effect worth recording
+
+Visiting `/lol` triggers `supabase.auth.signInAnonymously()`, so this test
+created one anonymous auth user (`b2c6d84e-…`) and its profile
+(`5bc93da4-…`). That is what every real first-time visitor does, it is not
+analytics data, and it does not touch the analytics tables. It is also no longer
+counted as a signup — the §15.10 fix excludes anonymous profiles — and
+`purge-anonymous-users` will reap it. Noted rather than cleaned, because
+deleting auth rows is a heavier operation than this test justifies.
+
+## 17.3 What is proven, and what is not
+
+**Proven, by direct observation on the deployed public site:**
+the published bundle contains the new analytics and not the dead table; a real
+visit mints a visitor and a session; first touch captures the campaign; the
+session survives SPA navigation across three routes; and the client POSTs to
+`analytics_events` in production.
+
+**Not yet proven** — and not claimable until the read-back returns: that the
+rows *landed*, that the three canonical names are present exactly once each
+with the right common fields, that the event → visitor → session join
+reproduces the attribution, and that no retired name appears. The anon key
+cannot read these tables by design (§14.9), so this genuinely requires
+privileged access.
+
+## 17.4 Legacy pollution — reasoning, pending confirmation
+
+Two independent reasons to expect zero retired-name rows, both to be confirmed
+by query rather than argument:
+
+1. The emitter **refuses** all six retired names outright (§15.1), so even a
+   reintroduced call site could not write one.
+2. Until this publish, the deployed bundle targeted `funnel_events`, which does
+   not exist — so no build before today could have written anything at all.
+
+## 17.5 Remaining privileged SQL — read-back, then cleanup
+
+Precise ids are known, so these are keyed to them as well as to the campaign.
+
+```sql
+-- A. the events of this visit, in order
+select e.event_name, e.route, e.visitor_id, e.session_id, e.user_id,
+       e.is_guest, e.source_system, e.event_version,
+       e.occurred_at, e.received_at, e.metadata
+from public.analytics_events e
+where e.session_id = '4674ae74-c1dc-447b-9f9c-3c795451ba1c'
+order by e.received_at;
+-- EXPECT exactly four rows, in this order:
+--   landing_viewed      route '/'
+--   hub_entered         route '/lol'
+--   leaguecraft_opened  route '/quiz'
+--   dsa_legacy_fallback route '/quiz'   (diagnostic, see §17.2)
+-- all with source_system='web', is_guest=true, event_version=1,
+-- one distinct visitor_id, one distinct session_id.
+-- A SECOND landing_viewed / hub_entered / leaguecraft_opened = dedupe failure.
+
+-- B. attribution, first touch and session touch together
+select v.visitor_id, v.first_seen_at,
+       v.first_utm_source, v.first_utm_medium, v.first_utm_campaign,
+       v.first_landing_path, v.first_referrer,
+       s.session_id, s.started_at, s.utm_source, s.utm_medium, s.utm_campaign,
+       s.landing_path, s.referrer
+from public.analytics_visitors v
+join public.analytics_sessions s on s.visitor_id = v.visitor_id
+where v.visitor_id = 'dd6dcfbf-8ae7-4443-8c6f-489b7c2eb9b6';
+-- EXPECT one row: first_utm_source='production_loop_test',
+--   first_utm_medium='funnel1b25', first_utm_campaign='loop_closure',
+--   first_landing_path='/', first_referrer null, and the session columns
+--   carrying the same campaign.
+
+-- C. no retired or misnamed event became canonical data
+select event_name, count(*) from public.analytics_events
+where event_name in ('lol_landing_viewed','lol_start_quiz_clicked',
+                     'quiz_guest_started','auth_signup_viewed_from_quiz',
+                     'auth_signup_completed_from_quiz','quiz_results_viewed')
+group by event_name;
+-- EXPECT zero rows.
+
+-- D. whole-table sanity — nothing arrived that this test did not cause
+select event_name, count(*) from public.analytics_events
+group by event_name order by 2 desc;
+-- EXPECT only the four names from A.
+```
+
+### Cleanup — narrow, campaign-keyed
+
+```sql
+delete from public.analytics_events
+ where session_id = '4674ae74-c1dc-447b-9f9c-3c795451ba1c';
+delete from public.analytics_sessions
+ where session_id = '4674ae74-c1dc-447b-9f9c-3c795451ba1c'
+    or utm_source = 'production_loop_test';
+delete from public.analytics_visitors
+ where visitor_id = 'dd6dcfbf-8ae7-4443-8c6f-489b7c2eb9b6'
+    or first_utm_source = 'production_loop_test';
+
+select count(*) as remaining_events from public.analytics_events;  -- expect 0
+```
+
+Every predicate names either this exact session/visitor or a `utm_source` no
+real visitor can produce, so none can reach a genuine row. Deleting events
+before sessions/visitors keeps the order sane even though no FKs exist to
+enforce it (§14.3).
+
+## 17.6 Completion state
+
+| # | Requirement | Status |
+|---|---|---|
+| 1 | Schema is live | ✅ certified both sides (§15.8) |
+| 2 | B2 code on the real production ref | ✅ `origin/main` = `be0dfad6` |
+| 3 | Lovable has published that commit | ✅ verified by bundle measurement (§17.1) |
+| 4 | A real production visit emitted canonical analytics | ✅ client side — visitor, session, first touch, and `POST /rest/v1/analytics_events` all observed live (§17.2) |
+| 5 | Live DB read-back confirms identity + attribution | ⏳ **pending §17.5 A/B** |
+| 6 | Retired/misnamed events did not pollute the dataset | ⏳ **pending §17.5 C/D** — expected clean for two independent reasons (§17.4) |
+| 7 | Test rows cleaned up | ⏳ **pending §17.5 cleanup** |
+
+**FUNNEL1B2 is not yet closed: 4 of 7.** The deployment loop itself is closed —
+code ships, the bundle is correct, and a real visitor produces writes. What
+remains is confirming on the server what was observed on the client, and
+removing the test rows.
+
+## 17.7 Remaining scope for FUNNEL1B3
+
+Unchanged from §16.8. B3 still must not start until §17.6 reads all ✅.
+
+1. Regenerate `src/integrations/supabase/types.ts`, then delete
+   `AnalyticsDatabase` from `src/lib/analytics/schema.ts` and point
+   `analyticsDb` at `supabase` directly.
+2. **Railway → Supabase gameplay emission** — the real B3 subject. Decide §13.2,
+   then emit `practice_quiz_*`, `ranked_*`, `mastery_*`, `dsa_*` over
+   `service_role` via `buildServerEventRow`, keyed per §14.9 — **match** for
+   completions, **participant** for per-player starts.
+3. Meta Reflex completion is Supabase-side (`league_swipe_results`) and needs no
+   Railway path.
+4. A freshness assertion on `max(received_at)`.
+5. The uid-continuity-across-signup test (§15.13.3).
+
+One new candidate, from this loop: `dsa_legacy_fallback` fired on an ordinary
+`/quiz` load, meaning Daily Score Attack is reporting **disabled or
+unavailable** in production. That is a product-configuration question rather
+than an analytics one, but the funnel found it, and it should be looked at
+before DSA numbers are read.
