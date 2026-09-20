@@ -12,9 +12,9 @@ service-role key, which Lovable Cloud does not expose anyway. It posts to a
 dedicated `railway-analytics-ingest` edge function holding one narrow secret,
 and the privileged credential never leaves Lovable Cloud.
 
-**Not deployed.** It needs `RAILWAY_ANALYTICS_INGEST_SECRET` created and set in
-both Lovable Cloud and Railway, the function deployed, and the branch merged —
-none of which this environment can do (§21.8–21.9). Until then Railway records
+**Not deployed.** It needs a random token in Railway, its SHA-256 digest in the
+edge function (B3.1a: no Lovable Cloud secret required), the function deployed,
+and the branch merged — none of which this environment can do (§21.8–21.9). Until then Railway records
 every milestone durably and delivers nothing, which is the safe direction.
 **§20 is the design; §21 is the current state; FUNNEL1C is scoped in §20.13.**
 
@@ -2831,17 +2831,46 @@ function authenticates itself before reading anything. It is **not** authorized
 by the anon key — that key is public by construction, so using it here would
 mean any browser could forge gameplay.
 
-## 21.3 Secret model
+## 21.3 Secret model — ONE raw secret, in Railway only (B3.1a)
 
-One secret, `RAILWAY_ANALYTICS_INGEST_SECRET`, in exactly two places: the
-Lovable Cloud function secret store, and Railway's `web` service.
+B3.1 shipped the same raw bearer token to two systems. **B3.1a removed the
+second copy.**
 
-Not committed, not in frontend code, not logged (a bad-secret rejection logs
-that it happened and never what was supplied), and never in a health response —
-`/api/admin/analytics/health` reports the *endpoint* and a
-`secret_configured` boolean, and a test asserts the value cannot appear.
-Comparison is length-checked and constant-time-ish, because `===` on a secret
-leaks its prefix through timing.
+| | Railway | Lovable Cloud |
+|---|---|---|
+| Holds | `RAILWAY_ANALYTICS_INGEST_SECRET` — the raw 256-bit token | `RAILWAY_ANALYTICS_INGEST_SECRET_SHA256` — its lowercase hex digest |
+| Is it a credential? | **Yes** | **No** |
+
+On every request the function reads the bearer token, SHA-256s it with Web
+Crypto, and compares digests in constant time. Railway is the only place a raw
+credential exists.
+
+Two copies of one secret is two places to leak it, two to rotate, and two that
+can drift — and drift presents as a 401 storm that reads like an outage rather
+than a config error. A digest cannot be replayed as a bearer token (tested:
+presenting the digest itself is rejected), and recovering the token from it
+means brute-forcing a 256-bit random value. So the digest is ordinary
+configuration and may be **committed in `index.ts`** (`PINNED_SECRET_SHA256`),
+which is what removes the need for a Lovable Cloud secret entirely. An env var
+override is supported and wins, so rotation needs no code deploy.
+
+> **The precondition is load-bearing.** The digest is publishable *because* the
+> token is cryptographically random and full length. A human-chosen or
+> low-entropy token is recoverable from its digest by dictionary search, and
+> publishing it would be publishing the secret. `looksLikeDigest` validates the
+> digest's shape; nothing can validate the token's entropy, so that obligation
+> sits with whoever generates it. Use `openssl rand -base64 32`.
+
+**Fails closed.** A missing or malformed expected digest rejects *every*
+request with a 500 (retryable, so the backlog survives) rather than accepting
+every request — the one outcome that would be unrecoverable. Tested against
+empty, short, long, uppercase and null digests.
+
+Neither the token nor the digest is ever logged: echoing a near-miss token
+would put a credential in the log, and echoing the digest would hand an
+attacker the offline target for free. Neither appears in a health response —
+`/api/admin/analytics/health` reports the *endpoint* and a `secret_configured`
+boolean, and a test asserts the value cannot appear.
 
 `SUPABASE_SERVICE_ROLE_KEY` is no longer read by Railway, and a leftover one
 does **not** re-enable delivery — tested, so an old env var cannot quietly
@@ -2891,7 +2920,7 @@ it would turn a five-minute config fix into permanent data loss.
 ```
 supabase/functions/railway-analytics-ingest/index.ts          NEW  transport
 supabase/functions/railway-analytics-ingest/contract.ts       NEW  the rules
-supabase/functions/railway-analytics-ingest/contract.test.ts  NEW  37 tests
+supabase/functions/railway-analytics-ingest/contract.test.ts  NEW  44 tests
 supabase/config.toml                                          verify_jwt = false
 vitest.config.ts                                              include the test
 docs/FUNNEL1_HANDOFF.md                                       this section
@@ -2914,18 +2943,25 @@ No gameplay file changed in B3.1 — the emit points from §20 are untouched.
 ## 21.7 Tests
 
 ```
-supabase/functions/railway-analytics-ingest/contract.test.ts   37 passed
+supabase/functions/railway-analytics-ingest/contract.test.ts   44 passed
 test_funnel1b3_gameplay_analytics.py                           51 passed
 ```
 
-Edge contract (37): the eight-name allowlist and rejection of a browser event,
+Edge contract (44): the eight-name allowlist and rejection of a browser event,
 an unknown snake_case name and the brief's `practice_started` spelling ·
 `source_system` forced even when the caller supplies `web` · `route` and
 `verification_type` nulled · the caller's `id`/`received_at` discarded ·
 `ranked_participant` accepted and `ranked_match` rejected · entity id required
 and bounded · uuid validation, with malformed rejected and non-persons nulled ·
-version, timestamp and metadata bounds · batch envelope, empty and oversized ·
-secret match/mismatch/missing and bearer parsing.
+version, timestamp and metadata bounds · batch envelope, empty and oversized.
+
+B3.1a digest auth (7 of those 44): a known-answer SHA-256 check, so a broken
+hash cannot pass by agreeing with itself · correct token accepted · wrong,
+near-miss, missing and empty tokens rejected · **malformed expected digest
+fails closed** across empty, short, long, uppercase and null · digest shape
+validation · non-short-circuiting comparison · and the property the whole
+change rests on: presenting the digest itself as a bearer token is rejected, so
+the Lovable side holds nothing replayable.
 
 Railway (51 = 39 from §20.8, unmodified, + 12 new): endpoint is the function
 and not PostgREST · a leftover service-role key does not re-enable delivery ·
@@ -2946,11 +2982,22 @@ emits a server-authoritative name.
 
 Nothing here can be done from this environment.
 
-1. **Generate** a high-entropy `RAILWAY_ANALYTICS_INGEST_SECRET` (e.g. 32+
-   random bytes, base64). Do not paste it into chat.
-2. **Lovable Cloud** → function secrets → add it.
-3. **Railway `web` service** → variables → add the same value. Confirm
-   `SUPABASE_URL` is already present (it is, for auth).
+1. **Generate** the token and its digest. It must be cryptographically random
+   — see the warning in §21.3. Do not paste the token into chat; the digest is
+   not a secret and may be shared.
+
+   ```bash
+   TOKEN=$(openssl rand -base64 32)
+   printf %s "$TOKEN" | openssl dgst -sha256 -r | cut -d' ' -f1   # the digest
+   ```
+
+2. **Lovable Cloud — no secret needed.** Put the *digest* in
+   `PINNED_SECRET_SHA256` in
+   `supabase/functions/railway-analytics-ingest/index.ts`, or set
+   `RAILWAY_ANALYTICS_INGEST_SECRET_SHA256` as a plain function environment
+   variable. Either is fine; the env var wins when both are set.
+3. **Railway `web` service** → variables → `RAILWAY_ANALYTICS_INGEST_SECRET` =
+   the raw token. Confirm `SUPABASE_URL` is already present (it is, for auth).
 4. **Deploy the edge function.**
 5. **Smoke-test it server-to-server** before any Railway deploy:
 
@@ -2979,9 +3026,11 @@ Then delete the smoke row:
 ## 21.9 Deployment order
 
 1. ✅ Edge function + Railway client implemented and tested
-2. ⏳ Generate `RAILWAY_ANALYTICS_INGEST_SECRET`
-3. ⏳ Set it in Lovable Cloud
-4. ⏳ Set the same value in Railway `web`
+2. ⏳ Generate the random token and its SHA-256 digest
+3. ⏳ Put the **digest** in the edge function (source constant or env var) —
+   no Lovable Cloud secret required
+4. ⏳ Put the **raw token** in Railway `web` as
+   `RAILWAY_ANALYTICS_INGEST_SECRET`
 5. ⏳ Deploy the edge function
 6. ⏳ Server-to-server smoke call (§21.8)
 7. ⏳ Merge `funnel1b3-gameplay-analytics` → `master`
@@ -3035,9 +3084,12 @@ genuine history and deleting it would falsify the record.
 ## 21.11 Remaining risks
 
 1. **Nothing is deployed.** Every production claim above is a prediction.
-2. **Two places must hold the same secret.** A mismatch is the most likely
-   failure, which is why 401 is counted, named in the health output, and
-   retryable rather than destructive.
+2. **A mismatch between the token and the configured digest** is still the
+   most likely failure, and it is why 401 is counted, named in the health
+   output, and retryable rather than destructive. B3.1a removed the *duplicate
+   raw secret* but not the need for the two values to correspond.
+   **The digest's safety depends on the token being truly random** (§21.3) —
+   that is now the one assumption this design cannot check for itself.
 3. **Edge function cold starts** add latency to a drain pass. Harmless — the
    drainer is off the gameplay path and retries — but it will show as
    occasional 5xx/timeouts early on.

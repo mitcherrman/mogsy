@@ -60,10 +60,33 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import {
+  bearerMatchesDigest,
   bearerToken,
-  secretMatches,
+  looksLikeDigest,
   validateIngestBatch,
 } from "./contract.ts";
+
+/**
+ * B3.1a — the expected SHA-256 of Railway's bearer token, lowercase hex.
+ *
+ * NOT a secret, so it may be committed here: a digest cannot be replayed, and
+ * recovering the token from it means brute-forcing a 256-bit random value.
+ * Pinning it in source is what removes the need for a Lovable Cloud secret
+ * entirely — Railway becomes the only place a raw credential exists.
+ *
+ * Leave empty to configure via the RAILWAY_ANALYTICS_INGEST_SECRET_SHA256
+ * environment variable instead; the env var wins when both are present, so a
+ * rotation can be done without a code deploy.
+ *
+ * Generate with:
+ *     openssl rand -base64 32                      # the Railway token
+ *     printf %s "<token>" | openssl dgst -sha256   # this value
+ *
+ * The digest's publishability depends entirely on the token being
+ * cryptographically random and full length. A human-chosen token is
+ * recoverable from its digest by dictionary search.
+ */
+const PINNED_SECRET_SHA256 = "";
 
 const PG_UNIQUE_VIOLATION = "23505";
 
@@ -83,20 +106,33 @@ Deno.serve(async (req) => {
     return json(405, { ok: false, code: "method_not_allowed" });
   }
 
-  const expected = Deno.env.get("RAILWAY_ANALYTICS_INGEST_SECRET") ?? null;
-  if (!expected) {
-    // Deployed without its secret. Loud, and a 500 rather than a 401 because
-    // the caller did nothing wrong and this is retryable once configured.
+  const expectedDigest =
+    (Deno.env.get("RAILWAY_ANALYTICS_INGEST_SECRET_SHA256") || PINNED_SECRET_SHA256)
+      .trim()
+      .toLowerCase() || null;
+
+  if (!looksLikeDigest(expectedDigest)) {
+    // Absent or malformed configuration. A 500, not a 401, because the caller
+    // did nothing wrong and this is retryable the moment it is fixed — and
+    // Railway's drainer keeps 5xx retryable, so the backlog survives.
+    //
+    // Fails CLOSED: a typo in the digest rejects every request. The opposite —
+    // a malformed digest accepting everything — is the one outcome that would
+    // be unrecoverable.
     console.error(
-      "railway-analytics-ingest: RAILWAY_ANALYTICS_INGEST_SECRET is not set; " +
-        "refusing every request until it is configured",
+      "railway-analytics-ingest: RAILWAY_ANALYTICS_INGEST_SECRET_SHA256 is " +
+        "missing or is not 64 lowercase hex characters; refusing every " +
+        "request until it is configured",
     );
     return json(500, { ok: false, code: "ingest_not_configured" });
   }
 
-  if (!secretMatches(bearerToken(req.headers.get("Authorization")), expected)) {
-    // Never echo what was supplied — that would put a near-miss secret in logs.
-    console.error("railway-analytics-ingest: rejected a request with a bad or missing secret");
+  const presented = bearerToken(req.headers.get("Authorization"));
+  if (!(await bearerMatchesDigest(presented, expectedDigest))) {
+    // Neither the token nor its digest is logged. Echoing a near-miss token
+    // would put a credential in the log; echoing the digest would hand an
+    // attacker the offline target for free.
+    console.error("railway-analytics-ingest: rejected a request with a bad or missing bearer token");
     return json(401, { ok: false, code: "unauthorized" });
   }
 

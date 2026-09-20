@@ -7,16 +7,19 @@
  * — is covered here without a Deno runtime or a network.
  */
 
-import { describe, it, expect } from "vitest";
+import { beforeAll, describe, it, expect } from "vitest";
 
 import {
   ALLOWED_ENTITY_TYPES,
   ALLOWED_EVENTS,
   MAX_ENTITY_ID_LENGTH,
   MAX_METADATA_BYTES,
+  bearerMatchesDigest,
   bearerToken,
+  digestsMatch,
   isAttributableUserId,
-  secretMatches,
+  looksLikeDigest,
+  sha256Hex,
   validateIngestBatch,
   validateIngestEvent,
 } from "./contract";
@@ -245,19 +248,73 @@ describe("batches", () => {
 
 // ---------------------------------------------------------------- the secret
 
-describe("the shared secret", () => {
-  it("accepts the exact secret and nothing near it", () => {
-    expect(secretMatches("s3cret", "s3cret")).toBe(true);
-    expect(secretMatches("s3crey", "s3cret")).toBe(false);
-    expect(secretMatches("s3cre", "s3cret")).toBe(false);
-    expect(secretMatches("s3cret ", "s3cret")).toBe(false);
+describe("digest authentication (B3.1a)", () => {
+  // A stand-in for the real thing: 32 random bytes, base64. The digest below
+  // is only publishable BECAUSE the token is random — that precondition is the
+  // whole argument for keeping the raw secret in Railway alone.
+  const TOKEN = "Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZmdoaQ==";
+  let DIGEST = "";
+
+  beforeAll(async () => {
+    DIGEST = await sha256Hex(TOKEN);
   });
 
-  it("refuses when either side is missing", () => {
-    // A function deployed without its secret must not accept everything.
-    expect(secretMatches(null, "s3cret")).toBe(false);
-    expect(secretMatches("s3cret", null)).toBe(false);
-    expect(secretMatches("", "")).toBe(false);
+  it("produces a 64-character lowercase hex digest", async () => {
+    expect(DIGEST).toMatch(/^[0-9a-f]{64}$/);
+    // Known-answer check, so a broken hash cannot pass by agreeing with itself.
+    expect(await sha256Hex("")).toBe(
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  });
+
+  it("accepts the correct raw secret", async () => {
+    expect(await bearerMatchesDigest(TOKEN, DIGEST)).toBe(true);
+  });
+
+  it("rejects a wrong secret", async () => {
+    expect(await bearerMatchesDigest("not-the-token", DIGEST)).toBe(false);
+    // A near miss must be no better than a wild guess.
+    expect(await bearerMatchesDigest(TOKEN.slice(0, -1) + "A", DIGEST)).toBe(false);
+  });
+
+  it("rejects a missing secret", async () => {
+    expect(await bearerMatchesDigest(null, DIGEST)).toBe(false);
+  });
+
+  it("rejects an empty secret", async () => {
+    expect(await bearerMatchesDigest("", DIGEST)).toBe(false);
+  });
+
+  it("fails CLOSED when the expected digest is malformed", async () => {
+    // The important direction: a typo in configuration must reject every
+    // request. A malformed digest that accepted everything would be the one
+    // unrecoverable outcome.
+    for (const bad of ["", "   ", "not-a-digest", DIGEST.slice(0, 63),
+                       DIGEST + "0", DIGEST.toUpperCase(), null]) {
+      expect(await bearerMatchesDigest(TOKEN, bad as string | null)).toBe(false);
+    }
+  });
+
+  it("recognises a well-formed digest and refuses anything else", () => {
+    expect(looksLikeDigest(DIGEST)).toBe(true);
+    expect(looksLikeDigest(DIGEST.toUpperCase())).toBe(false);  // lowercase only
+    expect(looksLikeDigest("abc")).toBe(false);
+    expect(looksLikeDigest(null)).toBe(false);
+    expect(looksLikeDigest(undefined)).toBe(false);
+  });
+
+  it("compares digests without short-circuiting on the first difference", () => {
+    expect(digestsMatch("a".repeat(64), "a".repeat(64))).toBe(true);
+    expect(digestsMatch("a".repeat(64), "a".repeat(63) + "b")).toBe(false);
+    expect(digestsMatch("a".repeat(64), "b" + "a".repeat(63))).toBe(false);
+    expect(digestsMatch(null, "a".repeat(64))).toBe(false);
+    expect(digestsMatch("a".repeat(64), null)).toBe(false);
+  });
+
+  it("never needs the raw secret on the Lovable side", async () => {
+    // The point of B3.1a: everything the function needs to authenticate is
+    // derivable from the digest alone, and the digest cannot be replayed as a
+    // bearer token.
+    expect(await bearerMatchesDigest(DIGEST, DIGEST)).toBe(false);
   });
 
   it("parses a bearer header and ignores anything else", () => {

@@ -291,20 +291,75 @@ export function validateIngestBatch(
 }
 
 /**
- * Constant-time-ish secret comparison.
+ * B3.1a — THE RAW SECRET LIVES IN EXACTLY ONE PLACE: RAILWAY.
  *
- * `===` on secrets leaks length and prefix through timing. The exposure is
- * small over the public internet, but the fix is four lines and this is the
- * only thing standing between an anonymous caller and the gameplay ledger.
+ * B3.1 stored the same raw bearer token in two systems, Railway and Lovable
+ * Cloud. Two copies of one secret is two places to leak it, two to rotate, and
+ * two that can silently drift out of step — and drift presents as a 401 storm
+ * that looks like an outage rather than a config error.
+ *
+ * Now Lovable holds only the SHA-256 digest of Railway's token, and the
+ * function hashes what it is given and compares digests. A digest is not a
+ * credential: it cannot be replayed, and recovering the token from it means
+ * brute-forcing a 256-bit random value. So it is ordinary non-secret
+ * configuration, and may sit in source or in a plain environment variable.
+ *
+ * THAT ARGUMENT HAS ONE PRECONDITION, AND IT IS LOAD-BEARING: the token must be
+ * cryptographically random and full length. A human-chosen or low-entropy
+ * token is trivially recovered from its digest by dictionary search, and
+ * publishing the digest would then be publishing the secret. `looksLikeDigest`
+ * checks the digest's shape; nothing here can check the token's entropy, so
+ * that obligation sits with whoever generates it and is stated in the handoff.
  */
-export function secretMatches(provided: string | null, expected: string | null): boolean {
-  if (!provided || !expected) return false;
-  if (provided.length !== expected.length) return false;
+
+const DIGEST_HEX_RE = /^[0-9a-f]{64}$/;
+
+/** Is this a well-formed lowercase hex SHA-256 digest? */
+export function looksLikeDigest(value: string | null | undefined): value is string {
+  return typeof value === "string" && DIGEST_HEX_RE.test(value);
+}
+
+/** Lowercase hex SHA-256, via Web Crypto (present in Deno and in Node 18+). */
+export async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Constant-time-ish comparison of two hex digests.
+ *
+ * `===` short-circuits on the first differing character, leaking a prefix
+ * through timing. Both operands here are fixed-length hex, so the loop is a
+ * clean XOR accumulate. The exposure over the public internet is small, but
+ * this is the only thing between an anonymous caller and the gameplay ledger
+ * and the fix is six lines.
+ */
+export function digestsMatch(a: string | null, b: string | null): boolean {
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < provided.length; i += 1) {
-    diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return diff === 0;
+}
+
+/**
+ * Does this bearer token hash to the expected digest?
+ *
+ * Returns false for an absent token, an empty token, or a malformed expected
+ * digest. A malformed digest failing CLOSED is the important half: a typo in
+ * configuration must reject every request, never accept every request.
+ */
+export async function bearerMatchesDigest(
+  provided: string | null,
+  expectedDigest: string | null,
+): Promise<boolean> {
+  if (!provided || !looksLikeDigest(expectedDigest)) return false;
+  return digestsMatch(await sha256Hex(provided), expectedDigest);
 }
 
 /** Pull the bearer token out of an Authorization header. */
