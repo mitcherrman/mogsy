@@ -24,7 +24,8 @@ interface FakeAudioOptions {
 }
 
 function installAudio(options: FakeAudioOptions = {}) {
-  const counts = { oscillators: 0, buffers: 0, decoded: 0 };
+  const counts = { contexts: 0, oscillators: 0, buffers: 0, decoded: 0 };
+  const gains: Array<{ gain: ReturnType<typeof param>; connect: ReturnType<typeof vi.fn> }> = [];
   const param = () => ({
     value: 0,
     setValueAtTime: vi.fn(),
@@ -42,7 +43,11 @@ function installAudio(options: FakeAudioOptions = {}) {
       this.state = "running";
     }),
     close: vi.fn(async () => {}),
-    createGain: () => ({ gain: param(), connect: vi.fn() }),
+    createGain: () => {
+      const gain = { gain: param(), connect: vi.fn() };
+      gains.push(gain);
+      return gain;
+    },
     createBuffer: (_channels: number, length: number) => ({
       duration: length / 48000,
       getChannelData: () => new Float32Array(length),
@@ -77,9 +82,9 @@ function installAudio(options: FakeAudioOptions = {}) {
   Object.defineProperty(window, "AudioContext", {
     configurable: true,
     writable: true,
-    value: function () { return context; },
+    value: function () { counts.contexts += 1; return context; },
   });
-  return { context, counts };
+  return { context, counts, gains };
 }
 
 function removeAudio(): void {
@@ -319,6 +324,23 @@ describe("global visitor mute", () => {
     expect(sfxController.getSnapshot().muted).toBe(false);
   });
 
+  it("reacts to cross-tab storage changes and mutes the live master bus", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    expect(audio.gains[0].gain.setValueAtTime).toHaveBeenLastCalledWith(1, 0);
+
+    localStorage.setItem(SFX_MUTE_STORAGE_KEY, "1");
+    window.dispatchEvent(new Event("storage"));
+    expect(sfxController.getSnapshot().muted).toBe(true);
+    expect(audio.gains[0].gain.setValueAtTime).toHaveBeenLastCalledWith(0, 0);
+
+    localStorage.removeItem(SFX_MUTE_STORAGE_KEY);
+    window.dispatchEvent(new Event("storage"));
+    expect(sfxController.getSnapshot().muted).toBe(false);
+    expect(audio.gains[0].gain.setValueAtTime).toHaveBeenLastCalledWith(1, 0);
+  });
+
   it("silences previously ungated sampled card effects", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
@@ -479,9 +501,29 @@ describe("central replay policy", () => {
     sfxController.play("ranked.role.step");
     expect(audio.counts.oscillators).toBe(2);
   });
+
+  it("bounds stable event identities and eventually admits an evicted identity", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    for (let index = 0; index < 513; index += 1) {
+      sfxController.play("ui.button.press", { eventId: `event:${index}` });
+      vi.advanceTimersByTime(50);
+    }
+    sfxController.play("ui.button.press", { eventId: "event:0" });
+    expect(audio.counts.oscillators).toBe(514);
+  });
 });
 
 describe("fail-soft platform and renderer behavior", () => {
+  it("reuses one audio context across repeated unlock requests", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await expect(sfxController.unlock()).resolves.toBe(true);
+    await expect(sfxController.unlock()).resolves.toBe(true);
+    expect(audio.counts.contexts).toBe(1);
+  });
+
   it("silences a missing AudioContext", async () => {
     removeAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
@@ -519,6 +561,46 @@ describe("fail-soft platform and renderer behavior", () => {
     await flush();
     expect(audio.counts.buffers).toBe(0);
     expect(audio.counts.oscillators).toBe(0);
+  });
+
+  it("caches a failed asset without blocking an unrelated asset", async () => {
+    const audio = installAudio();
+    vi.stubGlobal("fetch", vi.fn(async (src: string) => ({
+      ok: !src.includes("missing"),
+      arrayBuffer: async () => new ArrayBuffer(8),
+    })));
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    const missing = { src: "/audio/missing.mp3", relativeGain: 1 };
+    sfxController.play("broadcast.transition", { configuredAsset: missing });
+    await flush();
+    vi.advanceTimersByTime(200);
+    sfxController.play("broadcast.transition", { configuredAsset: missing });
+    await flush();
+    vi.advanceTimersByTime(200);
+    sfxController.play("broadcast.transition", {
+      configuredAsset: { src: "/audio/available.mp3", relativeGain: 1 },
+    });
+    await flush();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(audio.counts.buffers).toBe(1);
+  });
+
+  it("bounds the decoded-asset cache and refetches its oldest eviction", async () => {
+    installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    for (let index = 0; index < 25; index += 1) {
+      sfxController.play("broadcast.transition", {
+        configuredAsset: { src: `/audio/cache-${index}.mp3`, relativeGain: 1 },
+      });
+      vi.advanceTimersByTime(200);
+    }
+    sfxController.play("broadcast.transition", {
+      configuredAsset: { src: "/audio/cache-0.mp3", relativeGain: 1 },
+    });
+    await flush();
+    expect(fetch).toHaveBeenCalledTimes(26);
   });
 
   it("silences a bad binding instead of falling through", async () => {
