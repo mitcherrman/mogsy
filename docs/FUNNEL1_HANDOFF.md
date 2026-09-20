@@ -1,30 +1,37 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: PHASE 1B2.5 — PUBLISHED AND LIVE. 4 of 7 closure criteria met;
-awaiting the privileged read-back and cleanup (§17.5).**
+**State: FUNNEL1B2 CLOSED — schema live and certified, canonical web funnel
+instrumented, published, and proven end to end against the deployed site. All
+seven closure criteria met (§19). B3 not started.**
 
 The schema is live in `kewgjwrzpzpeltwidvuc`, all eight certification items are
 closed from both the anon client path and privileged access, and the store was
 cleaned transactionally back to **zero rows** — a certified, empty baseline
 before the first real visitor (**§15.8**).
 
-The instrumented frontend is on **`origin/main` = `be0dfad6`**, the Lovable
-production ref was confirmed from direct evidence to be **`main`** (§16.4), and
-it is **published**: the live bundle at `mogzy.lol` is `index-RqqHkANc.js`,
-which contains `analytics_events` and no longer contains `funnel_events`
-(§17.1). A real visit through Landing → Hub → Leaguecraft on the deployed site
-produced a visitor, a session, first-touch attribution and
-`POST /rest/v1/analytics_events` (§17.2).
+The Lovable production ref is **`main`** (§16.4, from direct evidence), and the
+live bundle at `mogzy.lol` is `index-BgKO9opI.js` — it contains
+`analytics_events` and no longer contains `funnel_events`. A real visit through
+Landing → Hub → Leaguecraft on the deployed site produced exactly three
+canonical rows sharing one visitor and one session, with first-touch and
+session-touch attribution intact, and the privileged read-back confirmed every
+field (§18.7).
 
-**Outstanding:** the privileged read-back and the test-row cleanup — §17.5.
+Seventeen real analytics events now exist in production, all from genuine
+visitors, all under the corrected contract. No test rows remain.
 
-Production baseline: **2026-09-20T11:27:52Z**. Funnel data begins when the
-frontend ships; everything before is permanently zero (§5).
+**Read §19 for closure and the B3 handoff.**
+
+Production baseline: **2026-09-20**. The schema was certified empty at
+11:27:52Z and the instrumented frontend shipped the same day, so real funnel
+data begins there and everything before it is permanently zero (§5) — there is
+nothing to backfill and nothing to exclude.
 
 Sections 1–13 are the FUNNEL1A audit, retained unedited: they are the evidence
 the design rests on, and rewriting them to match the outcome would destroy the
 record of what was actually found. §14 is the B1 contract and schema, §15 the
-B2 instrumentation and database certification, §16 the integration — **§17 is the current state.**
+B2 instrumentation and database certification, §16–§18 the integration,
+publish and the one semantics fix — **§19 is closure.**
 Where a phase departed from a proposal in §9, it says so and says why.
 
 **SHA note:** every commit hash in §14 and §15 predates the B2.5 rebase and no
@@ -1473,7 +1480,7 @@ should be closed promptly rather than left open.
 
 ---
 
-# 16. FUNNEL1B2.5 — Integration and production loop closure (IN PROGRESS)
+# 16. FUNNEL1B2.5 — Integration and production loop closure (COMPLETE)
 
 Closing the gap §15.15 identified: the certified analytics code existed only on
 an unpushed local branch. Phases 1–4 are complete and the code is now on the
@@ -1750,7 +1757,7 @@ Admin analytics UI remains out of scope until the data exists to justify it.
 
 ---
 
-# 17. FUNNEL1B2.5 — Publish and production loop (CLIENT SIDE PROVEN)
+# 17. FUNNEL1B2.5 — Publish and production loop (COMPLETE)
 
 Continues §16, which ended blocked on a Lovable Publish. That has happened, and
 the loop has been driven on the real deployed site. **What remains is the
@@ -2231,21 +2238,98 @@ delete from public.analytics_visitors
     or first_utm_source = 'production_loop_test_b26';
 ```
 
-Note the eight unrelated real analytics events already in the table: three of
-them are almost certainly `practice_builder_opened` rows written by the B2 build
-between publish and this fix. They are genuine visitor rows and should be kept,
-but that one event name should be **excluded from any Builder reporting** —
-it means "the hub rendered", not "the Builder was opened", for its entire
-lifetime.
+**Correction.** I predicted here that some of the real rows already in the table
+would be `practice_builder_opened`, written by the B2 build between publish and
+this fix, and that Builder reporting would therefore need a permanent exclusion
+rule for that name. The read-back found **zero** historical
+`practice_builder_opened` rows. The only one ever written in production was my
+own B2.5 test row, and it was deleted with that session.
 
-### Status
+So **no exclusion rule and no backfill are needed**, and the name carries no
+history at all. The window between the B2 publish and this fix was short enough
+that no real visitor reached `/quiz` inside it.
 
-| # | Requirement | Status |
+### Read-back result — passed
+
+The test session contained **exactly three rows and nothing else**:
+`landing_viewed /`, `hub_entered /lol`, `leaguecraft_opened /quiz`. No
+`practice_builder_opened`. Attribution matched on every field —
+`production_loop_test_b26` / `funnel1b26` / `builder_semantics`, landing path
+`/`, referrer NULL.
+
+Cleanup completed: test events 0, test sessions 0, test visitors 0. Seventeen
+unrelated real analytics events remain, untouched.
+
+---
+
+# 19. FUNNEL1B2 — CLOSED
+
+All seven completion criteria are met.
+
+| # | Requirement | Evidence |
 |---|---|---|
-| 1 | Schema live | ✅ |
-| 2 | Code on production ref | ✅ `main` = `0010a636` |
-| 3 | Lovable published it | ✅ `index-BgKO9opI.js` |
-| 4 | Real production visit emitted canonical analytics | ✅ |
-| 5 | Read-back confirmed identity + attribution | ✅ for B2.5; B2.6 pending the query above |
-| 6 | No misnamed event polluting the dataset | ✅ client side — `/quiz` writes once |
-| 7 | Test rows cleaned up | ⏳ B2.6 rows pending the cleanup above |
+| 1 | Schema is live | §15.8 — certified from both the anon client path and privileged access |
+| 2 | B2 code on the real production ref | §16.3 — `main`, fast-forwarded |
+| 3 | Lovable published that commit | §18.7 — `index-BgKO9opI.js`, measured not reported |
+| 4 | A real production visit emitted canonical analytics | §18.7 — `/` → `/lol` → `/quiz`, one write each |
+| 5 | Live DB read-back confirmed identity + attribution | §18.7 — three rows, one visitor, one session, every UTM field matched |
+| 6 | Retired/misnamed events did not pollute the dataset | §18.7 — no retired name ever appeared; the one misnamed live event was caught and retired with **zero** historical rows |
+| 7 | Test rows cleaned up | §18.7 — events, sessions and visitors all back to zero |
+
+**Production baseline: 2026-09-20.** Seventeen real analytics events exist, all
+from genuine visitors, all under the corrected contract. `analytics_events` has
+never held a row written under a misleading name.
+
+## 19.1 What FUNNEL1 actually changed
+
+The audit opened on a system where every funnel event had been a silent no-op
+for two months, `/` emitted nothing, the Hub called itself the landing page,
+Leaguecraft opens were inferred from one button, signups counted every guest,
+and there was no visitor, session or attribution model of any kind.
+
+What exists now: three certified tables with database-enforced first-touch
+immutability and append-only history; one event vocabulary with one emitter;
+visitor and session identity with a 30-minute inactivity policy that survives
+SPA navigation; first-touch and session-touch attribution; a signup definition
+that counts an auth transition rather than a profile row; server authority
+pinned by RLS so a browser cannot forge a Railway event; and idempotency ready
+for B3 to emit against.
+
+## 19.2 The part worth keeping
+
+Three defects were found by tests and verification rather than by review, and
+each was invisible to the layer above it:
+
+1. **A targeted `ON CONFLICT` fails under insert-only RLS** — found by running
+   the migration on a real Postgres. It would have broken every attribution
+   write in production while looking like a policy bug.
+2. **`useSurfaceEvent` silently disabled first-touch attribution** — found by a
+   behavioural test, caused by a one-shot flag being consumed by an extra read.
+3. **`practice_builder_opened` reported a render, not an action** — found only
+   by reading back a real production visit, which no test could have done.
+
+The pattern is the one the original audit was about: each was a plausible-looking
+line whose meaning had drifted from its name. The defence that worked was
+writing the expected result down *before* looking — which is also how I caught
+that my own prediction about the fourth event was wrong.
+
+## 19.3 Scope for FUNNEL1B3 — unchanged, now unblocked
+
+1. Regenerate `src/integrations/supabase/types.ts`, delete `AnalyticsDatabase`
+   from `src/lib/analytics/schema.ts`, point `analyticsDb` at `supabase`.
+2. **Railway → Supabase gameplay emission** — the subject of B3. Decide §13.2
+   (webhook, scheduled reconciliation, or outbox), then emit `practice_quiz_*`,
+   `ranked_*`, `mastery_*`, `dsa_*` over `service_role` via
+   `buildServerEventRow`, keyed per §14.9 — **match** for completions,
+   **participant** for per-player starts, or the unique index silently drops
+   four of five players.
+3. Meta Reflex completion is Supabase-side (`league_swipe_results`) and needs no
+   Railway path.
+4. A freshness assertion on `max(received_at)`. The whole audit exists because a
+   silent outage ran for two months; DEV has the diagnostics channel, production
+   has nothing.
+5. The uid-continuity-across-signup test (§15.13.3).
+
+Out of scope and owned elsewhere: the Builder's catalog fetch running for every
+`/quiz` visitor (§18.5), the two ad analytics systems (§13.4), and the Admin
+analytics UI — which now, finally, has data to justify it.
