@@ -48,7 +48,12 @@
 > [`docs/gr1-reusable-state-sequence-window.md`](./gr1-reusable-state-sequence-window.md)
 > (GR1 reusable state **sequence/window phase — ordered `StateNode`s, derived transitions,
 > `StateWindow`, one deterministic window policy and the source CONTRACT with no production source.
-> Pure contract code, INTEGRATED and PUSHED (`origin/master` `6073e035`); wired into nothing**).
+> Pure contract code, INTEGRATED and PUSHED (`origin/master` `6073e035`); wired into nothing**) and
+> [`docs/gr1-reusable-state-window-composition.md`](./gr1-reusable-state-window-composition.md)
+> (GR1 reusable state **window composition — the window, the per-state candidates, the deduplicated
+> multi-state universe, one EXPERIMENTAL Lab composition policy and the first multi-state
+> `FrozenStateBundle`. Backend `aa9e2ea5` PUSHED to `origin/master`; Generator Lab only, no route,
+> nothing persisted, no production sequence source**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -86,6 +91,7 @@
 | **GR1 reusable state — Phase 4A (the frozen block)** | **INTEGRATED, PUSHED AND LIVE ON `origin/master`, 2026-09-20. Still persists nothing.** Backend **`8227e4a3`** (pre-rebase `96f16a08`) on `gr1/setup-state-phase4a`, integration base `origin/master` **`91fd0cc5`** (implementation base **`d90fd45b`**) (two item-runtime commits past the design's `e9bdf537`, zero `mastery/` overlap), worktree `~/lcs-wt-gr1-state4a`. One commit, 10 files, all inside `mastery/setup_state/` or `mastery/tests/`. **The defect is fixed and measured: frozen blocks carrying a derived value went 0/162 → 162/162 roster-wide** (1,028 values), with the same 11 fail-closed refusals on both arms. The fix is the SHAPE, not the call site — `check_used_metrics` refuses a flat sequence, a side-count mismatch, and a declared metric the state does not carry. The block also gained `display_labels` (captured at normalization, where `resolve_item` already returns the name, so no extra query and no chance of reading a different row), the resolver/derivation versions and warnings the digest deliberately excludes, and per-step `state_index`/`family_id`/`answer_metric`/`candidate_id`/`content_digest`. `FrozenStateBundle` holds ordered self-contained states and refuses a mixed basis. **First deserializers in the package besides `StateTemplate`'s**, plus `verify_frozen_bundle`, which reads nothing but the block (a test monkeypatches `sqlite3.connect` to raise), reports the digest as unverifiable-by-design rather than silently passing it, and never repairs. **Nothing moved:** two-worktree probe over 20 banks, 7 pairs both orders and 8 published artifacts gave IDENTICAL 1,030,247-byte dumps; `mastery/tests` failure SET byte-identical to base. See [`gr1-reusable-state-phase4a.md`](./gr1-reusable-state-phase4a.md) and the section below. |
 | **GR1 reusable state — Phase 4B (persistence)** | **INTEGRATED AND PUSHED TO `origin/master`, 2026-09-20. ZERO DDL, and in fact zero writes.** Backend **`dcfe8e2e`** (pre-rebase `906e72c2`) on `gr1/setup-state-phase4b`, implementation base `origin/master` **`8227e4a3`** (which IS Phase 4A), integration base **`92be472e`** (one item-runtime commit later, zero `mastery/` overlap; the patch is byte-identical across the rebase), worktree `~/lcs-wt-gr1-state4b`; comparison base `~/lcs-wt-gr1-4b-base` @ `8227e4a3`. Docs base `origin/main` **`84de68ef`**. One commit, **7 files, all inside `mastery/`** — 3 new, 4 modified; no route, no generator, no Ranked module, no frontend, no migration. **This is the design's Phase 4C delivered as 4B** (the owner sequenced persistence ahead of the sequence contract), minus attempt provenance and minus the review wiring, both deliberately. **The seam is split along the isolation boundary rather than across it:** `mastery/setup_state/persistence.py` is the TYPED half (verify → serialise → parse → verify → project) and is declared in the isolation guard's **CONTRACT** list, so "reading a frozen block cannot reach a database" is mechanically enforced; `mastery/serving/state.py` is the PLAIN half and imports nothing but `typing`, so **no serving module names `setup_state` and that pinned one-file boundary is unwidened**. It is a NEW file rather than an edit to `mastery/serving/artifact.py`, which stays byte-identical. **Write fails closed** — a bundle that cannot verify is never stored, and a caller that supplied one either gets it persisted or gets an exception. **Read never repairs and never re-resolves** — corrupt, tampered, truncated and future-versioned blocks all raise, with `sqlite3.connect` made to throw to prove the refusal never becomes a lookup. **Answer safety is proved, not promised:** the block holds the answer as a number under the bare key `value`, which `answer_safety` does **not** carry (asserted), so the block is safe by placement and by never being projected whole — and `state_review_view` is a positive allow-list that omits `derived_used` entirely, making it answer-free by construction rather than by being gated. **Nothing writes a block**: `generate_segment` is untouched and a test scans the tracked file list for a production importer and asserts there is none. `mastery/tests` failure **SET** byte-identical to base (5 failed, 2108 → **2179** passed; the +71 reconciles exactly); 6 Ranked-Mastery integration files identical on both arms. Read-only probe: **16 real state-aware artifacts** round-tripped through a real `TEXT` column — 0 mismatches, 0 findings, **0 answer leaks**. See [`gr1-reusable-state-phase4b.md`](./gr1-reusable-state-phase4b.md) and the section below. |
 | **GR1 reusable state — sequence + window mechanics** | **IMPLEMENTED, INTEGRATED AND PUSHED, 2026-09-20. Pure contract code; wired into nothing.** Backend **`6073e035`** (rebase of `3a202eb9`) on `gr1/reusable-state-sequence-window`, base `origin/master` **`09d58a98`** (zero file overlap across the 5 intervening commits), worktree `~/lcs-wt-gr1-seq`; **`origin/master` is now `6073e035`.** Docs base `origin/main` **`7bc6581b`**, docs commit *(this commit; a commit cannot embed its own SHA — read it with `git log`)*, worktree `~/mogsy-wt-gr1-seq`. **9 files, all inside `mastery/`** — 4 new, 5 modified; no route, no generator, no Ranked module, no frontend, no migration, no DDL. Three new modules in the isolation guard's **CONTRACT** half, so the sequence layer provably reads no data and carries no game-rule number (integer literals restricted to `{0,1,2}`, no float, no QWER letter): **`sequence.py`** (a `StateNode` holds a TEMPLATE — never a resolved state, never a question; ordered dense ordinals; identity is the template's SPECIFIED axes with `template_ref`, label, `setup_source` and basis excluded; a sequence refuses a mixed kind, champion set, ruleset or basis, and adjacent nodes need not differ at all), **transitions DERIVED by diffing adjacent templates over the existing CLOSED axis vocabulary** with side association kept (`SideChange` names its champion) and absence explicit (`absent_before` — unspecified is not zero), a supplied-but-wrong transition set refused; **`window.py`** (`StateWindow` is contiguous, inclusive, fail-closed on every out-of-range span, valid at one node, and carries **no question selection** — `max_nodes` is a STATE count), plus ONE deterministic testing policy `window.contiguous_seeded.v1` that positions the span by a `content_hash` offset over every legal start (so it does **not** bias to the first state) and supports a containment `anchor`; **`sequence_source.py`** (the replaceable `StateSequenceSource` Protocol, `LiteralSequenceSource`, and **`default_sequence_registry()` is EMPTY — asserted**, so `rule.haste_ladder.v1` is unregistered and no production caller can obtain a sequence). **One side permutation governs the whole run** rather than per-node canonicalization, which is what keeps a MIRROR matchup's sides attached to their own progressions. Identity: one material, two encodings — readable `sseq.v1:` key and the design's compact `sseq_` digest — plus `strans_` per transition and `swin_` per window composition (seed included only when the policy declares it material; **no candidate id, because no question exists at this layer**). The resolution seam `resolve_window_states` is **PREPARED and unwired**: each node resolves independently through the existing `resolve_state`, a refusal names the node, and there is no partial result. Generator Lab: **backend JSON `window.diagnostic()` only, no new endpoint** — the Lab router's route set is pinned by exact set equality and widening it for an inspection a pure function provides was the wrong trade. `mastery/tests` failure **SET** byte-identical to base (5 failed, 2179 → **2266** passed; +87 reconciles exactly as 72 new tests + 15 new parametrised isolation cases); 9 Ranked/Mastery-slice integration files **269 passed on both arms**. One existing test edited on purpose: Phase 4B's "no sequence exists yet" scope guard, narrowed to "the sequence layer arrived and persistence gained nothing from it". See [`gr1-reusable-state-sequence-window.md`](./gr1-reusable-state-sequence-window.md) and the section below. |
+| **GR1 reusable state — window composition** | **IMPLEMENTED AND PUSHED to `origin/master`, 2026-09-20. Generator Lab only, nothing persisted.** Backend **`aa9e2ea5`** on `origin/master` (authored `93f3e28f` on base `dd97112b` -- two item-runtime commits past the sequence/window phase's `6073e035`, **zero `mastery/` overlap** -- then rebased clean onto `21cf0c71` and pushed), worktree `~/lcs-wt-gr1-compose`; comparison base `~/lcs-wt-gr1-compose-base` @ `dd97112b`. Docs base `origin/main` **`1b4f60ea`**, worktree `~/mogsy-wt-gr1-compose`. **6 files, all inside `mastery/setup_state/` or `mastery/tests/`** — 3 new, 3 modified; no route, no generator, no Ranked module, no serving file, no frontend, no migration. This is the phase the sequence/window record named as its own boundary, and it connects the pieces for the first time: `StateWindow → resolve_window_states → the EXISTING Phase 3 state-aware cooldown candidates per resolved state → ONE deduplicated multi-state universe → ONE composed set → the first MULTI-STATE FrozenStateBundle`. **No identity rule was added:** collapse is keyed on `candidate_id()`, which is already the repository's semantic question identity, and every producing state is kept BESIDE it in `source_ordinals` and never inside it — so two builds resolving to 20 haste are ONE question produced by two states, 20 vs 40 haste stay two, a rank change stays two, and **Ahri Q r3→r4→r4 collapses to one because Ahri's Q cooldown is FLAT**. One identity carrying two answers is **refused** (`candidate_answer_conflict`), never won by whichever was read last. **A state that resolves but has nothing askable is a recorded `BarrenState` in the family's own words** — producers ∪ barren is every window node, asserted — while a state that cannot RESOLVE still fails the whole window naming its node. The EXPERIMENTAL policy `composition.lab_window_coverage.v1` groups by presentation state, spreads each state's near-identical variants apart, then round-robins across the window from a seeded offset: deterministic, budget independent of the state count, no state contributing more than `ceil(budget/groups)`, no duplicates, no filler, and **budget > supply returns the whole universe**. Final order is `(primary_ordinal, family_id, candidate_key)` — **the seed chooses WHICH questions, never their order**. The multi-state bundle needed **no type change**: only the states a selected question needs are included, densely remapped from zero, each step bound to its presentation state with its binding, answer metric and digests, round-tripping exactly and verifying with `sqlite3.connect` made to raise. `FrozenTransition` is populated **only** where it can be honest — contiguous included states, one side — and is left empty with a stated reason otherwise, because a partial tuple cannot be told from an absent change. **Recorded finding:** the production publication gate **refuses** a composed set that is three questions about one ability (`PublicationBlocked: request 'recall_ability_cooldown' asked for 3, only 2 available`); that refusal is correct, is not routed around, is asserted by a test, and is why rendering is optional — **a Slice policy that ignores the gate's diversity rule will compose sets that cannot be served.** **No endpoint was added** (the Lab route set is pinned by exact set equality); the surface is `window_lab.window_diagnostic()`, backend JSON only. `mastery/tests` failure **SET** byte-identical to base (5 failed, 2266 → **2337** passed pre-commit, **2344**/7 skipped post-commit; +71 reconciles as 63 new tests + 8 new parametrised isolation cases); focused setup_state arm **431 passed**; the 9-file Ranked/Mastery arm is **2 failed, 213 passed**, both failures `test_mastery_ranked_capsule`'s pinned ids/digests and **identical on a clean base worktree**. See [`gr1-reusable-state-window-composition.md`](./gr1-reusable-state-window-composition.md) and the section below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -1781,6 +1787,92 @@ Backend **`6073e035`** (rebase of `3a202eb9`) on `gr1/reusable-state-sequence-wi
   pre-existing failures (`test_audit_db` ×3, `test_reveal_needs_no_new_persistence`,
   `test_format_for_creation_is_unaffected_by_this_module`) are unrelated and untouched.
 * **Rollback:** `git revert <backend>`. Nothing persisted, no production caller, no migration.
+
+## Reusable state — WINDOW COMPOSITION implemented, Generator Lab only (2026-09-20)
+
+Full record: [`gr1-reusable-state-window-composition.md`](./gr1-reusable-state-window-composition.md).
+Backend **`aa9e2ea5`** on `origin/master` (authored `93f3e28f` on `dd97112b`, rebased onto `21cf0c71`), worktree
+`~/lcs-wt-gr1-compose`; comparison base `~/lcs-wt-gr1-compose-base` @ `dd97112b`. Docs base
+`origin/main` **`1b4f60ea`**, worktree `~/mogsy-wt-gr1-compose`. **BOTH PUSHED.** No frontend
+commit.
+
+* **What it is.** The first connection of the pieces the previous phases built: `StateWindow →
+  resolve_window_states → the EXISTING Phase 3 state-aware cooldown candidates per resolved state →
+  ONE deduplicated multi-state candidate universe → ONE composed question set → a MULTI-STATE
+  `FrozenStateBundle`. **6 files, all inside `mastery/setup_state/` or `mastery/tests/`** (3 new, 3
+  modified). `composition.py` is in the isolation guard's **CONTRACT** half — so a composer provably
+  cannot reach a database, carries no game-rule number and holds no family id, roster or metric name
+  of its own — and `window_lab.py` is the CONSUMER that connects the two halves.
+* **No identity rule was added.** Collapse is keyed on `candidate_id()`, which is already the
+  repository's semantic question identity, and provenance is kept BESIDE it (`source_ordinals`),
+  never inside it. Two builds resolving to 20 haste give ONE question produced by two states (whose
+  `semantic_state_key`s genuinely differ — asserted); 20 vs 40 haste stay two; a rank change stays
+  two; and **Ahri Q r3 → r4 → r4 collapses to one, because Ahri's Q cooldown is FLAT and a
+  rank-invariant cooldown is asked without a rank.** One identity carrying two `content_digest`s is
+  **refused** (`candidate_answer_conflict`) rather than won by whichever was read last.
+* **Every window node is accounted for.** A state that resolves and has nothing askable is a recorded
+  `BarrenState` carrying the family's OWN refusal code; producers ∪ barren is the whole window and
+  the two are disjoint, asserted. A state that cannot be RESOLVED still fails the whole window,
+  naming its node — there is no partial window. A window with nothing askable anywhere is refused
+  whole.
+* **The composition policy is EXPERIMENTAL and says so.** `composition.lab_window_coverage.v1`:
+  group by presentation state (the earliest producer), spread each state's near-identical variants
+  apart by bucketing on `subject_ref` and interleaving, then round-robin across the window from a
+  seeded offset. Deterministic from `(seed, budget, universe)` alone — no clock, no RNG. **The
+  budget is a plain count independent of the number of states**, no state contributes more than
+  `ceil(budget/groups)`, there are no duplicates, and a budget larger than the supply returns the
+  whole universe with **nothing invented to fill it**. It is not the Slice policy; the current Slice
+  composer and `_pattern_group` are byte-identical.
+* **Ordering: progression first.** `(primary_ordinal, family_id, candidate_key)`. **The seed chooses
+  WHICH questions are asked and never reorders them** — nothing is globally randomized after
+  composition, because a set whose states interleave unpredictably is not a progression a reader can
+  follow.
+* **The first multi-state frozen bundle, and it needed no type change.** Only the states a selected
+  question needs are included, in window order, `state_index` remapped densely from zero
+  deterministically; `step_index` is the composed presentation order; each step keeps its
+  `ScenarioBinding`, `answer_metric`, `candidate_id` and `content_digest`; `derived_used` is narrowed
+  to what the selected questions read; display labels are merged and a conflicting label refused. It
+  round-trips exactly through `json` and through the Phase 4B seam into a real sqlite `TEXT` column,
+  and **verifies with `sqlite3.connect` made to raise**. Nothing is persisted.
+* **`FrozenTransition` is populated only where it can be honest.** Contiguous included states and one
+  side: then `(0→1)`, `(1→2)` with changed axes and a delta. Non-contiguous or multi-side: **empty,
+  with the reason reported** — a partial tuple cannot be told from an absent change, and a
+  transition across a gap would read as one step of a progression while describing several.
+* **Recorded finding — composition and publication are two policies and they disagree.** A composed
+  set of three questions about one ability at three ranks is **refused by the production gate**:
+  `PublicationBlocked: policy gating left the recipe unsatisfied (request 'recall_ability_cooldown'
+  asked for 3, only 2 available)`. That refusal is correct, is not routed around, is asserted by a
+  test, and is why rendering through the production path is **optional** here. **A production Slice
+  policy that ignores the gate's diversity rule will compose sets that cannot be served** — the most
+  useful thing this phase learned, and now the first blocker.
+* **Generator Lab: backend JSON only, no endpoint.** `window_lab.window_diagnostic()` shows the
+  window, each state with its candidates/skips/barren reason, the deduplicated universe with
+  per-candidate source states, the composed set with its coverage, the questions in progression
+  order and the verified bundle with its dense index map. `literal_window()` is the only sequence
+  builder and orders exactly what it is handed. The Lab route set is pinned by exact set equality
+  and was not widened; frontend untouched.
+* **Nothing moved.** Champion Mastery, Matchup Mastery, Ranked, the current Slice, `_pattern_group`,
+  `mastery_slice.py`, `lab.py`, `scenario.py`, the Lab route, `persistence.py` and
+  `mastery/serving/state.py` are all byte-identical. `default_sequence_registry()` is still EMPTY
+  (asserted), `rule.haste_ladder.v1` is unregistered, `champion_item_builds.json` is not consumed,
+  no `mastery_state` is written, no DDL, no migration, no new family, no Full. A test scans the
+  tracked file list for any production importer of `mastery.setup_state.window_lab` and finds none;
+  the one-file isolation allow-list is unchanged.
+* **Tests.** `mastery/tests` failure **SET** byte-identical to base: 5 failed both arms, 2266 →
+  **2337** passed pre-commit and **2344** passed / 7 skipped post-commit; the +71 reconciles exactly
+  as 63 new tests plus 8 new parametrised isolation cases, and the 14 → 7 skip fall is the
+  committed-footprint guards running, as every earlier phase recorded. Focused setup_state arm
+  **431 passed**. Ranked/Mastery arm **2 failed, 213 passed**, both `test_mastery_ranked_capsule`'s
+  pinned capsule ids and digests, **re-run on a clean detached worktree at `dd97112b` and identical
+  there**.
+* **Next-phase boundary.** Three things, and nothing here assumes which comes first: **a real state
+  source** (until one exists, every window and composition policy is fitted to a fixture);
+  **persisting a multi-state bundle on a served segment** (one line beside the `served_artifact.build`
+  `generate_segment` already calls, and it must not happen before something can produce a
+  state-aware segment); and **reconciling the composition policy with the publication gate**, which
+  this phase proved is not optional.
+* **Rollback:** `git revert aa9e2ea5`. Nothing persisted, no production caller, no route, no
+  migration, no frontend.
 
 ## Screenshots / artifacts
 
