@@ -34,17 +34,32 @@ import { ScenarioCard } from "./ScenarioCard";
 import { resolveBandProfile } from "@/lib/question-surface/bandProfile";
 import { resolveCompactDensity } from "@/lib/question-surface/compactDensity";
 import {
+  interimBackgroundSceneIds,
   resolveEnvironmentSceneArt,
   supportedSceneIds,
 } from "@/lib/question-surface/environmentScenes";
 import { ATMOSPHERE_SCENE_GROUND } from "./SubjectMediaComposition";
 
-/** The exact `assets.scene` blob `resolve_environment_scene` emits. */
+/** The exact `assets.scene` blobs `resolve_environment_scene` emits. */
 const BASE_SCENE = {
   type: "scene",
   id: "base_fountain",
   name: "The Base",
   caption: "Fountain & Base Area",
+} as const;
+
+const LANE_MINION_SCENE = {
+  type: "scene",
+  id: "lane_minion",
+  name: "The Lane",
+  caption: "Minion Wave",
+} as const;
+
+const LANE_TURRET_SCENE = {
+  type: "scene",
+  id: "lane_turret",
+  name: "The Lane",
+  caption: "Lane Structures",
 } as const;
 
 const CONTEXT_FLAGS = { role: "context", timing: "question", spoiler: false } as const;
@@ -114,14 +129,42 @@ function renderCard(q: QuizQuestion, revealed = false, answer: string | null = n
 // ── 6. the classifier recognises scene presentation ────────────────────────
 
 describe("scene classification", () => {
-  it("reads assets.scene into an EnvironmentScene", () => {
+  it("reads a background-only scene into an EnvironmentScene", () => {
     const scene = getEnvironmentScene(sceneQuestion());
     expect(scene).toEqual({
       id: "base_fountain",
       name: "The Base",
       caption: "Fountain & Base Area",
-      art: resolveEnvironmentSceneArt("base_fountain")!.src,
+      art: resolveEnvironmentSceneArt("base_fountain")!.background,
     });
+    // No foreground: base_fountain is background-only today.
+    expect(scene!.foreground).toBeUndefined();
+  });
+
+  it("reads a two-layer scene, background plus foreground", () => {
+    for (const blob of [LANE_MINION_SCENE, LANE_TURRET_SCENE]) {
+      const art = resolveEnvironmentSceneArt(blob.id)!;
+      const scene = getEnvironmentScene(sceneQuestion({ scene: blob }));
+      expect(scene).toEqual({
+        id: blob.id,
+        name: blob.name,
+        caption: blob.caption,
+        art: art.background,
+        foreground: art.foreground,
+        foregroundAlt: art.foregroundAlt,
+      });
+    }
+  });
+
+  it("points the foregrounds at the backend's own canonical registry art", () => {
+    // The owner's instruction, held as a test: the minion art is the art other
+    // minion questions use, and the turret art is the default turret. Both are
+    // the files `quiz.minion_assets` / `quiz.structure_assets` resolve for the
+    // entity-subject rows, so a player sees one of each across the domain.
+    expect(resolveEnvironmentSceneArt("lane_minion")!.foreground)
+      .toContain("assets/minions/caster.png");
+    expect(resolveEnvironmentSceneArt("lane_turret")!.foreground)
+      .toContain("assets/structures/turret.png");
   });
 
   it("does not read a scene as a SUBJECT", () => {
@@ -164,7 +207,7 @@ describe("scene classification", () => {
 describe("EnvironmentScenarioCard — scene branch", () => {
   it("draws the scene art full-bleed, with the shared composition", () => {
     const { container } = renderCard(sceneQuestion());
-    const art = resolveEnvironmentSceneArt("base_fountain")!.src;
+    const art = resolveEnvironmentSceneArt("base_fountain")!.background;
 
     const atmosphere = container.querySelector(`img[src="${art}"]`);
     expect(atmosphere).not.toBeNull();
@@ -186,14 +229,46 @@ describe("EnvironmentScenarioCard — scene branch", () => {
     expect(getAllByText("Environment")).toHaveLength(1);
   });
 
-  it("draws NO focal medallion and NO echo", () => {
-    // The one deliberate difference from the subject branch. A scene row has
-    // no entity and therefore no portrait; a medallion built around nothing
-    // would be the gold-framed empty rectangle the composition exists to
-    // remove. Both the focal image and the echo wash are the subject's own
-    // icon, so a scene card must contain exactly one image: the atmosphere.
+  it("draws NO focal medallion for a background-only scene", () => {
+    // A medallion built around nothing would be the gold-framed empty
+    // rectangle the composition exists to remove. The echo is also absent in
+    // both shapes, so a background-only card contains exactly one image.
     const { container } = renderCard(sceneQuestion());
     expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("draws the foreground in the shared focal medallion, and no echo", () => {
+    for (const blob of [LANE_MINION_SCENE, LANE_TURRET_SCENE]) {
+      const art = resolveEnvironmentSceneArt(blob.id)!;
+      const { container, unmount } = renderCard(
+        sceneQuestion({ id: `qq-${blob.id}`, scene: blob }),
+      );
+      // Exactly two images: the background and the foreground. A third would
+      // be the echo wash, which a scene card must not draw — the background
+      // already fills the panel.
+      const imgs = [...container.querySelectorAll("img")].map((i) => i.getAttribute("src"));
+      expect(imgs).toHaveLength(2);
+      expect(imgs).toContain(art.background);
+      expect(imgs).toContain(art.foreground);
+      unmount();
+    }
+  });
+
+  it("renders the approved treatment for a representative row of each group", () => {
+    const cases: Array<[string, typeof BASE_SCENE | typeof LANE_MINION_SCENE | typeof LANE_TURRET_SCENE, string, number]> = [
+      ["Standing in the fountain, what percentage of your maximum health do you recover per second?", BASE_SCENE, "The Base", 1],
+      ["Which minion has the most health?", LANE_MINION_SCENE, "The Lane", 2],
+      ["Which turrets can gain Crystalline Overgrowth?", LANE_TURRET_SCENE, "The Lane", 2],
+    ];
+    cases.forEach(([prompt, blob, title, imageCount], index) => {
+      const { container, unmount } = renderCard(
+        sceneQuestion({ id: `qq-group-${index}`, prompt, scene: blob }),
+      );
+      expect(within(container).getAllByText(title)).toHaveLength(1);
+      expect(within(container).getAllByText(blob.caption)).toHaveLength(1);
+      expect(container.querySelectorAll("img")).toHaveLength(imageCount);
+      unmount();
+    });
   });
 
   it("renders the same card for every Batch 1 mechanic", () => {
@@ -258,11 +333,18 @@ describe("scene anti-spoiler", () => {
     expect(shuffled).toEqual(base);
   });
 
-  it("only declares art for reviewed scene ids", () => {
-    // Batch 2's lane/wave scene is NOT here yet, deliberately: its safety
-    // argument depends on exactly which units the art contains, and that
-    // review has not happened.
-    expect(supportedSceneIds()).toEqual(["base_fountain"]);
+  it("declares art for exactly the three approved treatments", () => {
+    expect(supportedSceneIds()).toEqual(["base_fountain", "lane_minion", "lane_turret"]);
+  });
+
+  it("records which backgrounds are still placeholders", () => {
+    // The open asset swap, visible to a test rather than only to a comment.
+    // This list shrinks to [] when the owner's fountain and lane art land, and
+    // nothing else has to change. Foregrounds are NOT interim — they are the
+    // shipped backend registry art.
+    expect(interimBackgroundSceneIds()).toEqual([
+      "base_fountain", "lane_minion", "lane_turret",
+    ]);
   });
 });
 

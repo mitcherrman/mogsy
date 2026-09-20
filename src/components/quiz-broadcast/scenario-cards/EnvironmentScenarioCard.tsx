@@ -80,23 +80,30 @@ export function EnvironmentScenarioCard(props: EnvironmentCardProps) {
  * a turret round to a fountain round sees the same panel with a different
  * picture in it, which is the point.
  *
- * THE ONE DELIBERATE DIFFERENCE: no `SubjectFocalZone`.
- * The focal zone is a medallion built around the subject's own portrait, and a
- * scene row has no portrait — it has no depictable entity at all, which is why
- * it is a scene. Drawing the medallion empty, or around a "?", would be the
- * gold-framed empty rectangle this whole composition exists to remove. So the
- * art is seated full-bleed (`ATMOSPHERE_SCENE_GROUND`) and the caption is the
- * only foreground, which is also why the echo layer is passed `null`: an echo
- * is an oversized wash of the subject's icon, and there is no icon.
+ * TWO SHAPES, ONE BRANCH
+ * A scene may carry a FOREGROUND — the shared minion art on a wave question,
+ * the default turret art on a structure one. When it does, that object takes
+ * the same `SubjectFocalZone` medallion an entity subject would, so a
+ * lane+minion card and a turret-portrait card are the same composition with a
+ * different background behind them.
+ *
+ * When it does not (`base_fountain` today), there is no medallion. Drawing one
+ * empty, or around a "?", would be the gold-framed empty rectangle this whole
+ * composition exists to remove — so the background carries the card alone and
+ * the caption is the only foreground.
+ *
+ * The echo layer is `null` in BOTH shapes. An echo is an oversized wash of the
+ * subject's own icon, used to light the panel's left when the subject IS the
+ * picture. Here the background is the picture and already fills the panel; a
+ * wash of the foreground over it would be a second copy of the same object.
  *
  * DISCLOSURE
- * This branch receives `id`, `name`, `caption` and an art URL, and there is no
- * field on `EnvironmentScene` a number could arrive in. The thirteen rows it
- * serves answer with a duration, a percentage, a time or a yes/no; the card
- * states a place and stops. The art rule that keeps the picture itself clean —
- * a LOCATION only, no numerals, no clock reading a time, no bars, no buff
- * icons, no side-naming team colour — lives with the art table in
- * `lib/question-surface/environmentScenes.ts`.
+ * This branch receives `id`, `name`, `caption` and up to two image URLs. There
+ * is no field on `EnvironmentScene` a number, a count or a team could arrive
+ * in, so whatever a row answers with, the card cannot state it. Which art a
+ * row gets is the backend's reviewed decision (`quiz.environment_scene_assets`,
+ * and the owner's art direction recorded there); which file an id draws is the
+ * art table in `lib/question-surface/environmentScenes.ts`.
  */
 function EnvironmentSceneBody({ scene }: { scene: EnvironmentScene }) {
   return (
@@ -107,8 +114,7 @@ function EnvironmentSceneBody({ scene }: { scene: EnvironmentScene }) {
       backgroundAlt={scene.name}
       backgroundSlot={
         <SubjectMediaBackdrop
-          // No echo: an echo is a wash of the SUBJECT's own icon, and a scene
-          // has none. See the branch note above.
+          // No echo in either shape — see the branch note above.
           echoIcon={null}
           atmosphereSrc={scene.art}
           atmosphereSeating={ATMOSPHERE_SCENE_GROUND}
@@ -121,6 +127,13 @@ function EnvironmentSceneBody({ scene }: { scene: EnvironmentScene }) {
           below says which place. Deliberately not "Scene", which is an
           implementation word the reader has no use for. */}
       <ScenarioBadge>Environment</ScenarioBadge>
+
+      {/* The SAME medallion the entity-subject branch draws, called rather
+          than copied, so the contextual object is seated and sized exactly as
+          a turret portrait already is on its own rows. */}
+      {scene.foreground && (
+        <SubjectFocalZone iconUrl={scene.foreground} alt={scene.foregroundAlt || scene.name} />
+      )}
 
       <PanelFiligree />
 

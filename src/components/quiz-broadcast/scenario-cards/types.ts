@@ -190,8 +190,20 @@ export type EnvironmentScene = {
   name: string;
   /** One caption line, e.g. "Fountain & Base Area". Also backend-decided. */
   caption: string;
-  /** Atmosphere art for `id`, resolved through `lib/question-surface/environmentScenes`. */
+  /** Full-bleed background art for `id`, from `lib/question-surface/environmentScenes`. */
   art: string;
+  /**
+   * Optional contextual object composited over the background — the shared
+   * minion art for a wave question, the default turret art for a structure
+   * one. Absent for a background-only scene such as `base_fountain`.
+   *
+   * Still identity-free and still measurement-free: it is one image URL the
+   * backend's scene id selected, and there is no field here a number, a count
+   * or a team could arrive in.
+   */
+  foreground?: string;
+  /** Accessible label for `foreground`, when there is one. */
+  foregroundAlt?: string;
 };
 
 /** Parsed payload for combat cooldown calculation questions. */
