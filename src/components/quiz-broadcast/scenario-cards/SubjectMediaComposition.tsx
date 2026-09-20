@@ -136,28 +136,41 @@ export const ATMOSPHERE_JUNGLE_GROUND: AtmosphereSeating = {
  *
  * Geometrically this is therefore `JUNGLE_GROUND` — full bleed, `object-cover`.
  *
- * EXPOSURE, and why it is not `JUNGLE_GROUND`'s
+ * EXPOSURE — re-derived when the owner's final art landed
  * Perceived weight is luminance x brightness x opacity, the arithmetic
- * `ATMOSPHERE_DIM_SCENE` records. The measurement that preset carries is that
- * `academy-hall.jpg` arrives at mean luminance 27.5, roughly a quarter of
- * `Spellcaster.jpg`'s 102.0, because it is a night interior. `JUNGLE_GROUND`
- * DARKENS its source (0.62 x 0.7 = 0.43) because jungle grass arrives bright;
- * applied to the hall that lands it at ~11.9 and erases it, which is the exact
- * failure `DIM_SCENE` was written to avoid.
+ * `ATMOSPHERE_DIM_SCENE` records, and the target band is the ~22.5-38.7 the
+ * two approved atmospheres already span (`Spellcaster.jpg` ~22.5, the
+ * shopkeeper ~38.7).
  *
- * So the correction runs the same way `DIM_SCENE`'s does, at ground scale:
- * 27.5 x 1.45 x 0.7 = ~27.9. That sits just above `DIM_SCENE`'s ~24.7 and
- * inside the ~22.5-38.7 band the two approved atmospheres already span — a
- * touch stronger, because here the art IS the subject rather than the setting,
- * and still under the frame's readability gradient so the caption holds.
+ * This preset first shipped at `brightness(1.45)` because it was seating
+ * `academy-hall.jpg` — an interim placeholder at mean luminance 27.5, a night
+ * interior that had to be LIFTED to reach the band at all.
  *
- * Saturation is left at 1 for the reason `DIM_SCENE` states: the source is
- * blue-and-candlelight, and desaturating it flattens the one thing separating
- * it from the panel's own warm wash.
+ * The final scene art is nothing like that. Measured:
+ *
+ *     lane.png    1437x765   mean luminance 76.3
+ *     nexus.png    690x590   mean luminance 69.3
+ *
+ * At the old 1.45 those land at ~77.4 and ~70.3 — roughly twice the top of the
+ * band, bright enough to compete with the caption and with the foreground
+ * object sitting on its medallion. So the correction now runs the other way,
+ * as `JUNGLE_GROUND`'s does for its own bright source:
+ *
+ *     lane    76.3 x 0.55 x 0.7 = ~29.4
+ *     nexus   69.3 x 0.55 x 0.7 = ~26.7
+ *
+ * Both inside the band and bracketing the ~27.9 this preset was tuned to when
+ * it was written, so the card's perceived weight is unchanged while the
+ * picture behind it is completely different. ONE value serves both because the
+ * two sources are only ~10% apart; a per-scene preset would be two numbers to
+ * keep in step for a difference the eye cannot find.
+ *
+ * Saturation is left at 1, as it was: both sources are Summoner's Rift art
+ * whose colour is the thing separating them from the panel's own warm wash.
  */
 export const ATMOSPHERE_SCENE_GROUND: AtmosphereSeating = {
   className: "absolute inset-0 h-full w-full object-cover",
-  filter: "brightness(1.45)",
+  filter: "brightness(0.55)",
   opacity: 0.7,
 };
 
