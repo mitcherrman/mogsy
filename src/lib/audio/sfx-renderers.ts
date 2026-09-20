@@ -318,6 +318,26 @@ const renderers = {
     tone(context, output, startAt, { dur: 0.2, peak: 0.044, freq: 349.2, type: "triangle" });
     tone(context, output, startAt, { at: 0.08, dur: 0.28, peak: 0.04, freq: 440, type: "triangle" });
   },
+  combatSimulationResolve(context, output, startAt) {
+    // A compact analytical relay settling into one resolved reading.
+    noise(context, output, startAt, { dur: 0.055, peak: 0.022, from: 780, to: 1320, q: 1.4, attack: 0.12 });
+    tone(context, output, startAt, { dur: 0.11, peak: 0.036, freq: 220, slideTo: 293.7, type: "triangle" });
+    tone(context, output, startAt, { at: 0.075, dur: 0.17, peak: 0.032, freq: 440, type: "triangle" });
+  },
+  archivesReferenceOpen(context, output, startAt) {
+    // One small page edge: deliberately quieter than the Hub's full book ruffle.
+    noise(context, output, startAt, { dur: 0.075, peak: 0.018, from: 1950, to: 1050, q: 1.1, attack: 0.16 });
+    tone(context, output, startAt, { at: 0.035, dur: 0.08, peak: 0.009, freq: 392, slideTo: 349.2, type: "triangle" });
+  },
+  proPlayAnalysisOpen(context, output, startAt) {
+    // Clean data handoff without drifting into a broadcast stinger.
+    tone(context, output, startAt, { dur: 0.07, peak: 0.025, freq: 523.3, type: "triangle" });
+    tone(context, output, startAt, { at: 0.055, dur: 0.12, peak: 0.028, freq: 698.5, type: "triangle" });
+  },
+  accountActionConfirmed(context, output, startAt) {
+    tone(context, output, startAt, { dur: 0.09, peak: 0.026, freq: 440, type: "triangle" });
+    tone(context, output, startAt, { at: 0.07, dur: 0.14, peak: 0.029, freq: 587.3, type: "triangle" });
+  },
   scribble(context, output, startAt, options) {
     const duration = Math.min(MAX_SCRIBBLE_MS, Math.max(0, options.durationMs ?? 0)) / 1000;
     if (duration <= 0) return;
@@ -408,6 +428,10 @@ export const SFX_GENERATORS = {
   "sfx.ranked.match-victory": renderers.rankedMatchVictory,
   "sfx.ranked.match-defeat": renderers.rankedMatchDefeat,
   "sfx.ranked.match-draw": renderers.rankedMatchDraw,
+  "sfx.combat.simulation-resolve": renderers.combatSimulationResolve,
+  "sfx.archives.reference-open": renderers.archivesReferenceOpen,
+  "sfx.pro-play.analysis-open": renderers.proPlayAnalysisOpen,
+  "sfx.account.action-confirmed": renderers.accountActionConfirmed,
   "sfx.legacy.welcome-scribble": renderers.scribble,
   "sfx.legacy.welcome-page-turn": renderers.pageTurn,
 } as const satisfies Record<string, SfxSynthRenderer>;

@@ -124,6 +124,7 @@ import { useAuth } from "@/hooks/useAuth";
 import CombatLabToolbar from "@/components/combat-lab/CombatLabToolbar";
 import { useInputHistory } from "@/hooks/useInputHistory";
 import { useSectionNavigation, type SectionDef } from "@/hooks/useSectionNavigation";
+import { useSfx } from "@/lib/audio/useSfx";
 import {
   deepEqual,
   describeCombatLabChange,
@@ -2026,6 +2027,7 @@ function InteractiveSandbox({
   onCreditsChange,
   linkedDefender,
 }: SandboxProps) {
+  const { play: playSfx } = useSfx();
   const [state, setState] = useState<Record<string, unknown> | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [scopes, setScopes] = useState<Record<string, TargetScopeInfo>>({});
@@ -2690,16 +2692,19 @@ function InteractiveSandbox({
   ) => {
     if (!config.champion) {
       toast({ title: "Pick a champion first", variant: "destructive" });
+      playSfx("ui.feedback.error");
       return;
     }
     if (targetSetup.targetMode === "target_profile") {
       if (!config.target_profile) {
         toast({ title: "Pick a target profile first", variant: "destructive" });
+        playSfx("ui.feedback.error");
         return;
       }
     } else if (targetSetup.targetMode === "target_champion") {
       if (!targetSetup.targetChampionName) {
         toast({ title: "Pick a defender champion first", variant: "destructive" });
+        playSfx("ui.feedback.error");
         return;
       }
     }
@@ -2796,6 +2801,7 @@ function InteractiveSandbox({
       setLastResponse(res);
       if (res.credits) setCredits(res.credits);
       applyResponse(res);
+      playSfx("combat.simulation.resolve");
       // Build a Combat Timeline entry from the new events appended by this action.
       const newEvents = Array.isArray(res.events) ? res.events : [];
       let rawSum = 0;
@@ -2871,6 +2877,7 @@ function InteractiveSandbox({
         setError(e?.message || `${kind} failed`);
         setLastResponse({ error: e?.message || String(e) });
       }
+      playSfx("ui.feedback.error");
     } finally {
       setBusy(null);
     }

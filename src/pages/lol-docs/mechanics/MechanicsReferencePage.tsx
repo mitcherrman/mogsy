@@ -25,6 +25,7 @@ import StudyTableView, {
 } from "@/components/mechanics-tables/StudyTableView";
 import { SITE_URL } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
+import { useSfx } from "@/lib/audio/useSfx";
 import {
   fetchStudyTable,
   fetchTablesIndex,
@@ -137,9 +138,11 @@ function NotFoundPanel({ children }: { children: React.ReactNode }) {
 
 function CategoryCard({ category }: { category: CategoryView }) {
   const { Icon } = category;
+  const { play } = useSfx();
   return (
     <Link
       to={categoryPath(category)}
+      onClick={() => play("archives.reference.open")}
       className={cn(
         "group flex h-full flex-col rounded-xl border border-border bg-card/60 p-4 transition-colors",
         "hover:border-[#c9a84c]/40 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/50",
@@ -229,11 +232,13 @@ function TableChips({
   category: CategoryView;
   activeSlug?: string;
 }) {
+  const { play } = useSfx();
   if (category.tables.length < 2) return null;
   return (
     <nav aria-label={`${category.label} tables`} className="flex flex-wrap gap-2">
       <Link
         to={categoryPath(category)}
+        onClick={activeSlug ? () => play("archives.reference.open") : undefined}
         aria-current={activeSlug ? undefined : "page"}
         className={cn(
           "rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/50",
@@ -250,6 +255,7 @@ function TableChips({
           <Link
             key={table.tableId}
             to={tablePath(table)}
+            onClick={active ? undefined : () => play("archives.reference.open")}
             aria-current={active ? "page" : undefined}
             className={cn(
               "rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/50",

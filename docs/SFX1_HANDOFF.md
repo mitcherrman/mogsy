@@ -175,7 +175,7 @@ Canonical details:
 - Dependency: SFX1.1-1.3; server fields already expose the safe public boundaries.
 - Must not change: server authority, timers, answer submission, hidden information, match music.
 
-### SFX1.6 — remaining major surfaces
+### SFX1.6 — remaining major surfaces — COMPLETE
 
 - Goal: audit and add only high-value confirmations/errors to Combat Simulation, Archives/Wiki, Pro Play, auth/account, shell.
 - Likely files: surface-specific handlers plus registry/tests.
@@ -219,7 +219,7 @@ Canonical details:
 
 ## Exact next task
 
-Implement **SFX1.6 only**: audit Combat Simulation, Archives/Wiki, Pro Play, auth/account, and the shared shell; add only high-value semantic confirmation/error cues where an authoritative successful or failed action benefits from feedback. Reuse the canonical vocabulary when meanings match, create specialized events only when they do not, enforce one action/one cue with stable ids where transitions repeat, preserve navigation/data-fetch authority and all music behavior, and leave Broadcast convergence for SFX1.7.
+Implement **SFX1.7 only**: converge Quiz Broadcast on the canonical low-level asset renderer and AudioContext unlock while retaining Broadcast-local session settings and phase authority. Audit and remove obsolete adapters, keys, comments, and dead `bubble_tap` only after migration data is handled; explicitly decide and test whether reveal plus correct-answer is one semantic cue or two, keep phase/tick dedupe and long-running state bounded, verify autoplay-unblock and continuous transitions in desktop/mobile browser QA, and do not change Broadcast engine timing, session persistence, music, or any non-Broadcast product SFX.
 
 ## SFX1.1 implementation state
 
@@ -287,4 +287,15 @@ SFX1.2 is complete at the commit containing this section. Its frontend implement
 - Focused verification: 4 files / 66 tests passed for canonical rendering/mute, accepted/rejected command boundaries, observer baselines/dedupe, own verdicts, neutral opponent progress, Meta reveals, awards/speed, and terminal policy. The full `src/pages/quiz-ranked` regression directory passed; it retains existing fixture-adapter stderr and React `act(...)` warnings. TypeScript passes. Targeted ESLint has no new errors and only the pre-existing Fast Refresh/exhaustive-deps warnings in large Ranked files.
 - Browser QA uses the real Ranked shell/controller through `/dev/ranked-shell-probe` plus a query-gated live-transition control. Installed Edge passed 6/6 at 1280×720 and touch 390×844: ordinary accepted lock, accepted Meta action, opponent submission, correct + base award, correct + base + speed, incorrect, live victory, completed-result reload silence, and unchanged visible match/result layouts. Synth playback was counted at the `AudioContext` oscillator boundary with a 750 ms accepted-action limit; no touch-unlock delay was observed.
 - The dev probe now returns the existing valid segment challenge acknowledgement and exposes `?sfx=1` transition steps only for browser QA. Production contracts and behavior are unchanged. Ranked music, scoring, timers, ten-module flow, module history, Player Columns, reveal choreography, zero-scroll desktop contract, mobile flow, and result presentation were not changed.
-- Remaining scope is SFX1.6 major-surface confirmation/error coverage, then SFX1.7 Broadcast renderer convergence/cleanup and SFX1.8 final cross-device mix certification.
+- Remaining scope is SFX1.7 Broadcast renderer convergence/cleanup, then SFX1.8 final cross-device mix certification.
+
+## SFX1.6 implementation state
+
+- Audited Combat Simulation, Mogzy Archives mechanics reference, Pro Play, auth/account, and the shared shell. The deliberately small result is four new synthesized semantics—`combat.simulation.resolve`, `archives.reference.open`, `pro-play.analysis.open`, and `account.action.confirmed`—plus reuse of `ui.feedback.error` for visible refusals. No asset, backend, schema, music, routing, data, scoring, Premium, Home Hub, Leaguecraft, Ranked, or Broadcast behavior changed.
+- Combat sounds only after a real interactive sandbox action resolves through the existing backend boundary. Missing setup, backend failure, and exhausted-credit gates request the canonical refusal; passive config restoration and the hidden legacy rotation tab stay silent. There is no optimistic press/start cue, so a fast action cannot stack press + start + result.
+- Archives stays scholarly: opening a mechanics category or changing to a different table requests one very quiet page-edge cue. Initial/deep-linked render, active-table reselection, breadcrumbs, ordinary reading, retry, search/filter-like activity, and external/reference navigation stay silent.
+- Pro Play sounds only the deliberate analytical handoffs into Matchup Explorer, Explore Pro Data, or `Graph this`. Public profile links, live/recent matches, search, quiz, filters, sorting, pagination, passive loads, refreshes, and surfaced background failures stay silent. No broadcast-style sports stinger was introduced.
+- Auth/account uses one minimal neutral confirmation only after authoritative sign-in, immediate signup/guest conversion, password-email/resend acceptance, or explicit connection/disconnection succeeds. Visible submit/refusal failures reuse `ui.feedback.error`. Form entry, focus, visibility controls, mode switches, redirects, callback/restored connection state, pending verification hydration, and expired callback hydration remain silent; redirects and `returnTo` are unchanged.
+- Shared HUD/identity semantics remain explicit but default-silent. The audit found no conspicuously dead shell action worth making audible: global destinations already receive their own authored destination/action feedback where appropriate, and a generic shell voice would double-cue navigation.
+- Focused verification: 8 files / 207 tests passed, covering built-in rendering, global mute, authoritative success/refusal, initial/deep-link/pending silence, rerender stability, analytical-only navigation, and no generic + specialized stacking. The canonical-audio plus Home Hub, Leaguecraft, and full Ranked regression sweep passed 59 files / 755 tests. Full TypeScript validation and the production Vite build pass. Targeted lint outside the large pre-existing Combat file has no new errors; the broader invocation still exposes only that file's existing `no-explicit-any` debt and existing hook/Fast Refresh warnings.
+- Installed Edge browser QA passed 6/6 at 1280×720 and touch 390×844. It exercised a successful and refused Combat action, silent Archives load plus category opening, silent Pro Play load plus analytical handoff, and silent auth initialization. Playback was counted at the actual `AudioContext` oscillator boundary; no initial-render, duplicate, or touch-hover cue appeared.

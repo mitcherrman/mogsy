@@ -25,6 +25,7 @@ import { validateNewPassword } from "@/lib/auth/password-policy";
 import { resetGateState } from "@/lib/quiz/onboarding-gate";
 import { claimUsername } from "@/lib/identity/claim-username";
 import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
+import { useSfx } from "@/lib/audio/useSfx";
 
 export type UpgradePhase =
   | "idle"
@@ -79,6 +80,7 @@ export function useAccountUpgrade(
   onConverted?: (destination: string) => void,
 ): AccountUpgradeState {
   const { user, loading: authLoading, upgradeAnonymousEmail } = useAuth();
+  const { play: playSfx } = useSfx();
 
   const initialPending = useRef(readPendingUpgrade()).current;
   const [phase, setPhase] = useState<UpgradePhase>(
@@ -117,6 +119,7 @@ export function useAccountUpgrade(
       if (!trimmed) {
         setError("Enter your email to continue.");
         setPhase("error");
+        playSfx("ui.feedback.error");
         return;
       }
       // One policy, shared with every other password surface.
@@ -124,11 +127,13 @@ export function useAccountUpgrade(
       if (!pw.ok) {
         setError(pw.error ?? "Choose a password.");
         setPhase("error");
+        playSfx("ui.feedback.error");
         return;
       }
       if (!user || user.is_anonymous !== true) {
         setError("No anonymous session to upgrade. Please reload the page.");
         setPhase("error");
+        playSfx("ui.feedback.error");
         return;
       }
       // AUTH3 — the name first, and deliberately so. This guest is already
@@ -142,6 +147,7 @@ export function useAccountUpgrade(
         if (localProblem) {
           setUsernameError(USERNAME_MESSAGES[localProblem]);
           setPhase("error");
+          playSfx("ui.feedback.error");
           return;
         }
       }
@@ -158,6 +164,7 @@ export function useAccountUpgrade(
           submittingRef.current = false;
           setUsernameError(claim.error ?? USERNAME_MESSAGES.unavailable);
           setPhase("error");
+          playSfx("ui.feedback.error");
           return;
         }
       }
@@ -172,6 +179,7 @@ export function useAccountUpgrade(
           // original intent — no inbox round-trip.
           resetGateState();
           setPhase("converted");
+          playSfx("account.action.confirmed");
           onConverted?.(returnTo);
         } else {
           setPhase("verification_pending");
@@ -181,9 +189,10 @@ export function useAccountUpgrade(
         setError(res.error ?? "Could not start account creation.");
         setEmailInUse(!!res.emailInUse);
         setPhase("error");
+        playSfx("ui.feedback.error");
       }
     },
-    [authLoading, user, upgradeAnonymousEmail, returnTo, onConverted, callbackUrl],
+    [authLoading, user, upgradeAnonymousEmail, returnTo, onConverted, callbackUrl, playSfx],
   );
 
   /**
@@ -203,10 +212,12 @@ export function useAccountUpgrade(
     submittingRef.current = false;
     if (res.ok) {
       setCooldown(RESEND_COOLDOWN_SECONDS);
+      playSfx("account.action.confirmed");
     } else {
       setError(res.error ?? "Could not resend the confirmation email.");
+      playSfx("ui.feedback.error");
     }
-  }, [cooldown, email, callbackUrl]);
+  }, [cooldown, email, callbackUrl, playSfx]);
 
   const changeEmail = useCallback(() => {
     clearPendingUpgrade();

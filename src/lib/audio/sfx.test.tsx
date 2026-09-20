@@ -189,6 +189,23 @@ describe("semantic registry and configuration timing", () => {
     expect(audio.counts.oscillators).toBeGreaterThanOrEqual(events.length);
   });
 
+  it("registers restrained built-in voices for the audited major surfaces", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    const events = [
+      "combat.simulation.resolve",
+      "archives.reference.open",
+      "pro-play.analysis.open",
+      "account.action.confirmed",
+    ] as const;
+    for (const event of events) {
+      sfxController.play(event);
+      vi.advanceTimersByTime(400);
+    }
+    expect(audio.counts.oscillators).toBeGreaterThanOrEqual(events.length);
+  });
+
   it("keeps migrated legacy UI semantics silent until Audio Studio binds them", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
@@ -254,6 +271,20 @@ describe("global visitor mute", () => {
     localStorage.setItem(SFX_MUTE_STORAGE_KEY, "1");
     window.dispatchEvent(new Event(SFX_MUTE_CHANGE_EVENT));
     sfxController.play("leaguecraft.answer.correct");
+    expect(audio.counts.oscillators).toBe(0);
+  });
+
+  it("silences all newly audited surface feedback", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    localStorage.setItem(SFX_MUTE_STORAGE_KEY, "1");
+    window.dispatchEvent(new Event(SFX_MUTE_CHANGE_EVENT));
+    sfxController.play("combat.simulation.resolve");
+    sfxController.play("archives.reference.open");
+    sfxController.play("pro-play.analysis.open");
+    sfxController.play("account.action.confirmed");
+    sfxController.play("ui.feedback.error");
     expect(audio.counts.oscillators).toBe(0);
   });
 

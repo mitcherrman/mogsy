@@ -16,7 +16,7 @@ export interface SfxAssetVoice {
 }
 
 export interface SfxRegistryEntry {
-  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked";
+  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth";
   minReplayMs: number;
   relativeGain: number;
   legacySettingKey?: keyof SoundSettings;
@@ -82,6 +82,10 @@ export const SFX_REGISTRY = {
   "ranked.match.victory": { group: "ranked", minReplayMs: 1000, relativeGain: 0.94, builtInGeneratorId: "sfx.ranked.match-victory" },
   "ranked.match.defeat": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-defeat" },
   "ranked.match.draw": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-draw" },
+  "combat.simulation.resolve": { group: "combat", minReplayMs: 220, relativeGain: 0.78, builtInGeneratorId: "sfx.combat.simulation-resolve" },
+  "archives.reference.open": { group: "archives", minReplayMs: 120, relativeGain: 0.48, builtInGeneratorId: "sfx.archives.reference-open" },
+  "pro-play.analysis.open": { group: "pro-play", minReplayMs: 160, relativeGain: 0.62, builtInGeneratorId: "sfx.pro-play.analysis-open" },
+  "account.action.confirmed": { group: "auth", minReplayMs: 300, relativeGain: 0.6, builtInGeneratorId: "sfx.account.action-confirmed" },
 } as const satisfies Record<string, SfxRegistryEntry>;
 
 export type SfxEvent = keyof typeof SFX_REGISTRY;

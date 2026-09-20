@@ -3,9 +3,9 @@
  * This pins that the area identifies itself, offers every module it has built,
  * and can get back to the academy.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProPlayHub, {
   PRO_PLAY_GRAPHS_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
@@ -14,6 +14,15 @@ import ProPlayHub, {
   PRO_PLAY_ROUTE,
   PRO_PLAY_SEARCH_ROUTE,
 } from "./ProPlayHub";
+
+const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
+
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+vi.mock("@/components/pro-play/ProStatsExplorer", () => ({
+  default: () => <div data-testid="pro-stats-explorer" />,
+}));
+
+beforeEach(() => sfx.play.mockReset());
 
 afterEach(cleanup);
 
@@ -25,6 +34,19 @@ const renderHub = () =>
   );
 
 describe("ProPlayHub", () => {
+  it("sounds one analytical handoff for Matchup Explorer", () => {
+    renderHub();
+    fireEvent.click(screen.getByRole("link", { name: /Matchup Explorer/i }));
+    expect(sfx.play).toHaveBeenCalledOnce();
+    expect(sfx.play).toHaveBeenCalledWith("pro-play.analysis.open");
+  });
+
+  it("keeps ordinary Pro Play navigation silent", () => {
+    renderHub();
+    fireEvent.click(screen.getByRole("link", { name: /Live & Recent Matches/i }));
+    expect(sfx.play).not.toHaveBeenCalled();
+  });
+
   it("identifies the area as Pro Play", () => {
     renderHub();
     expect(screen.getByRole("heading", { level: 1, name: "Pro Play" })).toBeTruthy();

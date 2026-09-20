@@ -22,6 +22,7 @@ import UsernameField from "@/components/auth/UsernameField";
 import { claimUsername } from "@/lib/identity/claim-username";
 import { readPreferredUsername } from "@/lib/identity/preferred-username";
 import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
+import { useSfx } from "@/lib/audio/useSfx";
 
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
@@ -57,6 +58,7 @@ export default function Auth() {
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { play: playSfx } = useSfx();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite");
   const defaultReturnTo = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/home";
@@ -134,8 +136,10 @@ export default function Auth() {
     setResendLoading(false);
     if (error) {
       toast({ title: "Failed to resend", description: error.message, variant: "destructive" });
+      playSfx("ui.feedback.error");
     } else {
       toast({ title: "Email sent!", description: "Check your inbox (and spam folder)." });
+      playSfx("account.action.confirmed");
       setResendCooldown(60);
     }
   };
@@ -153,8 +157,10 @@ export default function Auth() {
     setLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      playSfx("ui.feedback.error");
     } else {
       setMode("reset-sent");
+      playSfx("account.action.confirmed");
     }
   };
 
@@ -173,6 +179,7 @@ export default function Auth() {
       // the attempt fails, and replaces it cleanly when it succeeds.
       const { error } = await signIn(email, password);
       if (error) {
+        playSfx("ui.feedback.error");
         const mapped = mapAuthError(error, "signin");
         if (mapped.kind === "email_not_confirmed") {
           toast({ title: "Confirm your email", description: mapped.message, variant: "destructive" });
@@ -182,6 +189,7 @@ export default function Auth() {
         }
       } else {
         resetGateState();
+        playSfx("account.action.confirmed");
         // `replace` so the browser Back button from the destination returns to
         // where the user was before the interruption, not to the auth form
         // they just completed.
@@ -196,6 +204,7 @@ export default function Auth() {
       const nameProblem = usernameProblem(username);
       if (nameProblem) {
         setUsernameError(USERNAME_MESSAGES[nameProblem]);
+        playSfx("ui.feedback.error");
         setLoading(false);
         return;
       }
@@ -206,11 +215,13 @@ export default function Auth() {
         const retry = await claimUsername(username, { onlyIfUnset: true });
         if (!retry.ok) {
           setUsernameError(retry.error ?? USERNAME_MESSAGES.unavailable);
+          playSfx("ui.feedback.error");
           setLoading(false);
           return;
         }
         setAwaitingUsername(false);
         toast({ title: `Welcome to Mogzy, ${retry.username}!` });
+        playSfx("account.action.confirmed");
         navigate(safeReturnTo, { replace: true });
         setLoading(false);
         return;
@@ -220,6 +231,7 @@ export default function Auth() {
       const pw = validateNewPassword(password);
       if (!pw.ok) {
         toast({ title: pw.error, variant: "destructive" });
+        playSfx("ui.feedback.error");
         setLoading(false);
         return;
       }
@@ -237,6 +249,7 @@ export default function Auth() {
       // nameless, and nothing for the user to retype.
       const { error, session } = await signUp(email, password, username);
       if (error) {
+        playSfx("ui.feedback.error");
         const mapped = mapAuthError(error, "signup");
         if (mapped.offerSignIn) {
           // AUTH2: this branch used to test for the literal "already been
@@ -272,6 +285,7 @@ export default function Auth() {
           if (!claim.ok && claim.taken) {
             setAwaitingUsername(true);
             setUsernameError(claim.error ?? USERNAME_MESSAGES.taken);
+            playSfx("ui.feedback.error");
             toast({
               title: "Pick another username",
               description: "Your account is ready — that name is just already taken.",
@@ -287,6 +301,7 @@ export default function Auth() {
           // check-your-email screen. That screen is retained below for the
           // branch where Supabase genuinely withholds the session.
           toast({ title: "Welcome to Mogzy!", description: "Your account is ready." });
+          playSfx("account.action.confirmed");
           navigate(safeReturnTo, { replace: true });
         } else {
           setMode("confirm-sent");

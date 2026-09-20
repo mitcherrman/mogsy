@@ -61,6 +61,7 @@ import {
   type ProStatsView,
 } from "@/lib/pro-play/statsApi";
 import { graphHandoff } from "@/lib/pro-play/graphHandoff";
+import { useSfx } from "@/lib/audio/useSfx";
 
 const GOLD = "#c9a84c";
 const PAGE_SIZE = 25;
@@ -428,6 +429,7 @@ const ALL_FILTERS = [...LIST_FILTERS, ...TEXT_FILTERS] as const;
 type FilterKey = (typeof ALL_FILTERS)[number];
 
 export default function ProStatsExplorer() {
+  const { play } = useSfx();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const read = (key: string) => searchParams.get(key) ?? "";
@@ -757,6 +759,7 @@ export default function ProStatsExplorer() {
                 {handoff && (
                   <Link
                     to={handoff.href}
+                    onClick={() => play("pro-play.analysis.open")}
                     aria-label={`Graph ${handoff.entityLabel} in Explore Pro Data`}
                     className="inline-flex items-center gap-1.5 text-xs font-medium text-[#c9a84c] underline-offset-2 transition-colors hover:underline"
                   >

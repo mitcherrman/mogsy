@@ -21,6 +21,11 @@ const mocks = vi.hoisted(() => ({
   disconnect: vi.fn(),
   setPreference: vi.fn(),
   assigned: [] as string[],
+  playSfx: vi.fn(),
+}));
+
+vi.mock("@/lib/audio/useSfx", () => ({
+  useSfx: () => ({ play: mocks.playSfx }),
 }));
 
 // The real client is pulled in transitively and would try to open a session.
@@ -94,6 +99,7 @@ beforeEach(() => {
   mocks.start.mockReset().mockResolvedValue("https://discord.com/oauth2/authorize?x=1");
   mocks.disconnect.mockReset().mockResolvedValue(undefined);
   mocks.setPreference.mockReset().mockResolvedValue(undefined);
+  mocks.playSfx.mockReset();
   at("/settings");
 });
 
@@ -209,6 +215,7 @@ describe("OAuth return", () => {
     renderPage();
     expect(await screen.findByTestId("connections-notice")).toHaveTextContent("expired");
     expect(mocks.redeem).not.toHaveBeenCalled();
+    expect(mocks.playSfx).not.toHaveBeenCalled();
   });
 });
 
@@ -293,6 +300,8 @@ describe("connected Discord", () => {
     mocks.links = [];
     fireEvent.click(screen.getByTestId("connection-discord-disconnect"));
     await waitFor(() => expect(mocks.disconnect).toHaveBeenCalledWith("discord"));
+    expect(mocks.playSfx).toHaveBeenCalledOnce();
+    expect(mocks.playSfx).toHaveBeenCalledWith("account.action.confirmed");
   });
 
   it("starts the ceremony from Connect", async () => {

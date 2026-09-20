@@ -12,6 +12,11 @@ const mocks = vi.hoisted(() => ({
   authLoading: false,
   upgradeAnonymousEmail: vi.fn(),
   resendUpgradeConfirmation: vi.fn(),
+  playSfx: vi.fn(),
+}));
+
+vi.mock("@/lib/audio/useSfx", () => ({
+  useSfx: () => ({ play: mocks.playSfx }),
 }));
 
 // `resend` re-issues the email directly rather than re-running submit — the
@@ -125,6 +130,8 @@ describe("useAccountUpgrade", () => {
     });
     expect(result.current.phase).toBe("error");
     expect(result.current.emailInUse).toBe(true);
+    expect(mocks.playSfx).toHaveBeenCalledOnce();
+    expect(mocks.playSfx).toHaveBeenCalledWith("ui.feedback.error");
   });
 
   it("enforces a resend cooldown after sending", async () => {
@@ -155,6 +162,8 @@ describe("useAccountUpgrade", () => {
     expect(onConverted).toHaveBeenCalledWith("/quiz/ranked");
     // No inbox round-trip means no cooldown to sit through.
     expect(result.current.cooldown).toBe(0);
+    expect(mocks.playSfx).toHaveBeenCalledOnce();
+    expect(mocks.playSfx).toHaveBeenCalledWith("account.action.confirmed");
   });
 
   it("does not call onConverted while a confirmation is still outstanding", async () => {
@@ -165,6 +174,7 @@ describe("useAccountUpgrade", () => {
     });
     expect(result.current.phase).toBe("verification_pending");
     expect(onConverted).not.toHaveBeenCalled();
+    expect(mocks.playSfx).not.toHaveBeenCalled();
   });
 
   // ---- AUTH1: the shared password policy, enforced here ----

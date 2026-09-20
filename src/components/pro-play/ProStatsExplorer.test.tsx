@@ -14,6 +14,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProStatsExplorer from "./ProStatsExplorer";
 import type { ProStatsPlayerRow, ProStatsResponse } from "@/lib/pro-play/statsApi";
 
+const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
+
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+
 vi.mock("@/hooks/useChampionAssets", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/useChampionAssets")>()),
   useChampionAssets: () => ({
@@ -155,6 +159,7 @@ function rowFor(player: string) {
 }
 
 beforeEach(() => {
+  sfx.play.mockReset();
   lastSearch = "";
   getProStats.mockReset();
   getProStatsFilterOptions.mockReset();
@@ -932,6 +937,21 @@ describe("Graph this", () => {
     expect(q.get("e")).toBe("Faker");
     expect(q.get("league")).toBe("LoL Champions Korea");
     expect(q.get("from")).toBe("2026-01-01");
+  });
+
+  it("sounds exactly one analytical handoff when activated", async () => {
+    getProStats.mockResolvedValue(
+      response([ENRICHED], {
+        filters: {
+          year: null, league: null, patch: null, role: null,
+          player: "Faker", team: null, champion: null, min_games: 0,
+        },
+      }),
+    );
+    renderExplorer("/lol/pro-play?view=players&player=Faker");
+    fireEvent.click(await screen.findByRole("link", { name: /^Graph Faker/ }));
+    expect(sfx.play).toHaveBeenCalledOnce();
+    expect(sfx.play).toHaveBeenCalledWith("pro-play.analysis.open");
   });
 
   it("names the filters that stayed with the table", async () => {
