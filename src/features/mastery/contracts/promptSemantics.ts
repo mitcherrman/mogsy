@@ -25,6 +25,13 @@ export const PROMPT_TEMPLATES = [
   "ability_cost_flat",
   "champion_base_stat",
   "champion_stat_at_level",
+  // GR1 reusable state, Phase 3. The same cooldown question asked INSIDE a
+  // resolved setup state: the prompt must state the scenario inputs the
+  // answer depends on, which is what `scenario` below carries. Only the
+  // Admin Generator Lab's experimental state-aware preview produces it today
+  // — no player-facing surface does — but the reader is shared, so it is
+  // declared here rather than in a second parallel contract.
+  "ability_cooldown_under_state",
 ] as const;
 export type PromptTemplate = (typeof PROMPT_TEMPLATES)[number];
 
@@ -60,6 +67,20 @@ export interface MasteryPromptSemantics {
    */
   readonly resource: string;
   readonly context: MasteryFactContext;
+  /**
+   * The SCENARIO inputs the prompt must state, as `[name, value]` pairs — for
+   * example `[["ability_haste", 20]]`.
+   *
+   * Empty for every intrinsic question, which is every question a player is
+   * served today: the backend omits the key entirely when there is no
+   * scenario, so an existing payload reads exactly as it always did.
+   *
+   * This is what the question STATES, not what identifies it. The backend's
+   * `ScenarioBinding` — the canonical identity material — never crosses this
+   * wire; it travels in the Lab's diagnostics instead, because a player-facing
+   * card should carry the premise and not the provenance.
+   */
+  readonly scenario: readonly (readonly [string, string | number])[];
 }
 
 /**
@@ -88,7 +109,39 @@ export function readPromptSemantics(value: unknown, label = "prompt_semantics"):
     resource: p.resource === undefined ? "" : str(p.resource, `${label}.resource`),
     context: p.context === undefined ? { abilityRank: null, championLevel: null, form: null }
       : readFactContext(p.context, `${label}.context`),
+    scenario: readScenario(p.scenario, `${label}.scenario`),
   };
+}
+
+/**
+ * Reads the scenario pairs, fail-closed on anything that is not one.
+ *
+ * Absent is the ordinary case and reads as empty. A malformed entry throws
+ * rather than being skipped: a prompt that silently dropped one of the inputs
+ * its answer depends on would be an unanswerable question rendered as a
+ * confident one.
+ */
+export function readScenario(
+  value: unknown, label = "scenario",
+): readonly (readonly [string, string | number])[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) {
+    throw new MasteryContractParseError("expected an array of pairs", label);
+  }
+  return value.map((entry, index) => {
+    const where = `${label}[${index}]`;
+    if (!Array.isArray(entry) || entry.length !== 2) {
+      throw new MasteryContractParseError("expected a [name, value] pair", where);
+    }
+    const [name, raw] = entry;
+    if (typeof name !== "string" || name.length === 0) {
+      throw new MasteryContractParseError("expected a non-empty name", where);
+    }
+    if (typeof raw !== "string" && typeof raw !== "number") {
+      throw new MasteryContractParseError("expected a string or number", where);
+    }
+    return [name, raw] as const;
+  });
 }
 
 /** Fail-closed guard used by the atomic recall renderer for a template it does

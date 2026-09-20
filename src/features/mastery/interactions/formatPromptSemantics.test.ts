@@ -16,6 +16,9 @@ function ps(over: Partial<MasteryPromptSemantics> & { template: PromptTemplate }
     abilityName: "Infernal Chains",
     resource: "",
     context: { abilityRank: null, championLevel: null, form: null },
+    // Empty for every intrinsic question, which is every question a player
+    // is served. A case that wants a scenario states one.
+    scenario: [],
     ...over,
   };
 }
@@ -128,7 +131,57 @@ describe("an ability cost names the resource it is denominated in", () => {
   });
 });
 
-// ---- 4. the closed union still fails closed ------------------------------
+// ---- 4. state-aware cooldown (GR1 reusable state, Phase 3) ---------------
+//
+// A cooldown asked INSIDE a resolved setup state. The prompt must STATE the
+// scenario the answer depends on: "what is this ability's cooldown?" has one
+// answer intrinsically and a different one at 20 ability haste, and a prompt
+// that omitted the haste would be unanswerable while looking answerable.
+describe("ability_cooldown_under_state states the scenario it is asked in", () => {
+  it("names the rank and the resolved haste", () => {
+    expect(formatRecallPrompt(ps({
+      template: "ability_cooldown_under_state",
+      context: { abilityRank: 4, championLevel: null, form: null },
+      scenario: [["ability_haste", 20]],
+    }))).toBe(
+      "At rank 4 with 20 Ability Haste, what is Aatrox W (Infernal Chains)'s "
+      + "cooldown, in seconds?");
+  });
+
+  // A rank-invariant cooldown carries no rank, because the backend collapsed
+  // it the same way the intrinsic flat template is collapsed. One template,
+  // two shapes -- exactly as `champion_stat_at_level` handles a null level.
+  it("omits a rank the state does not bind", () => {
+    expect(formatRecallPrompt(ps({
+      template: "ability_cooldown_under_state",
+      scenario: [["ability_haste", 20]],
+    }))).toBe(
+      "With 20 Ability Haste, what is Aatrox W (Infernal Chains)'s cooldown, "
+      + "in seconds?");
+  });
+
+  // Zero is a real resolved value, not an absence, and the prompt says so --
+  // the same distinction the backend keeps between "read it and found zero"
+  // and "did not read this axis".
+  it("states a resolved zero rather than dropping the clause", () => {
+    expect(formatRecallPrompt(ps({
+      template: "ability_cooldown_under_state",
+      context: { abilityRank: 2, championLevel: null, form: null },
+      scenario: [["ability_haste", 0]],
+    }))).toContain("At rank 2 with 0 Ability Haste");
+  });
+
+  // Generic over the metric vocabulary: a second bound input is joined
+  // rather than the renderer knowing which ones exist.
+  it("joins more than one scenario input", () => {
+    expect(formatRecallPrompt(ps({
+      template: "ability_cooldown_under_state",
+      scenario: [["ability_haste", 20], ["some_future_metric", 3]],
+    }))).toContain("With 20 Ability Haste and 3 some future metric,");
+  });
+});
+
+// ---- 5. the closed union still fails closed ------------------------------
 describe("an unknown template", () => {
   it("throws rather than rendering an empty or misleading prompt", () => {
     expect(() => formatRecallPrompt(ps({

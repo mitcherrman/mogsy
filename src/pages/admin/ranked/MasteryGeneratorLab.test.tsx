@@ -30,6 +30,8 @@ vi.mock("@/lib/admin/rankedFormatApi", async () => {
     fetchModuleCatalog: vi.fn(),
     previewMasterySlice: vi.fn(),
     fetchMasterySliceCoverage: vi.fn(),
+    fetchMasteryStateFamilies: vi.fn(),
+    previewMasteryState: vi.fn(),
   };
 });
 
@@ -43,20 +45,34 @@ vi.mock("@/components/admin/AdminAuthGate", () => ({
 import CATALOG_ENTRY from "@/lib/admin/__fixtures__/masterySliceCatalogEntry.json";
 import PREVIEWS from "@/lib/admin/__fixtures__/masterySlicePreviews.json";
 import COVERAGE from "@/lib/admin/__fixtures__/masterySliceCoverage.json";
+// GR1 reusable state, Phase 3. Also a verbatim capture: the real response of
+// `mastery.setup_state.lab.state_preview` against the canonical database, for
+// one resolved state (Ahri, level 7, Q r4 / W r4 / E r3, one 20-haste item).
+// Hand-writing it would have proved nothing about the contract.
+import STATE from "@/lib/admin/__fixtures__/masteryStatePreview.json";
 import {
   RankedFormatApiError,
   fetchMasterySliceCoverage,
+  fetchMasteryStateFamilies,
   fetchModuleCatalog,
   previewMasterySlice,
+  previewMasteryState,
   type CatalogModule,
   type MasterySliceCoverageView,
   type MasterySlicePreview,
+  type MasteryStateFamilies,
+  type MasteryStatePreview,
 } from "@/lib/admin/rankedFormatApi";
-import { MasteryGeneratorLab, STATIC_QUESTIONS_PATH, newSeed } from "./MasteryGeneratorLab";
+import { MasteryGeneratorLab, STATIC_QUESTIONS_PATH, championOptionsOf, newSeed } from "./MasteryGeneratorLab";
 
 const catalog = vi.mocked(fetchModuleCatalog);
 const preview = vi.mocked(previewMasterySlice);
 const coverage = vi.mocked(fetchMasterySliceCoverage);
+const stateFamilies = vi.mocked(fetchMasteryStateFamilies);
+const statePreview = vi.mocked(previewMasteryState);
+
+const STATE_PREVIEW = (STATE as Record<string, unknown>).preview as MasteryStatePreview;
+const STATE_FAMILIES = (STATE as Record<string, unknown>).families as MasteryStateFamilies;
 
 const ENTRY = CATALOG_ENTRY as unknown as CatalogModule;
 type Mode = "champion" | "matchup" | "applied_chain";
@@ -97,6 +113,8 @@ beforeEach(() => {
   });
   preview.mockResolvedValue(previewFor("champion"));
   coverage.mockResolvedValue(coverageFor("champion"));
+  stateFamilies.mockResolvedValue({ ...STATE_FAMILIES, enabled: true });
+  statePreview.mockResolvedValue(STATE_PREVIEW);
 });
 
 async function generate(mode: Mode = "champion") {
@@ -438,5 +456,210 @@ describe("Generator Lab — it asks for nothing that writes", () => {
     fireEvent.click(screen.getByTestId("check-coverage"));
     await waitFor(() => expect(preview).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(coverage).toHaveBeenCalledTimes(1));
+  });
+});
+
+// ------------------------------------------- state-aware (GR1 Phase 3)
+//
+// The experimental surface. Every assertion reads the FIXTURE — the champion,
+// the ability, the item, the haste, the digests and the answers are all the
+// backend's, and none of them is typed here.
+
+async function openStateSurface() {
+  mountLab();
+  fireEvent.click(await screen.findByTestId("surface-state"));
+  return screen.findByTestId("state-aware-surface");
+}
+
+async function generateState() {
+  await openStateSurface();
+  fireEvent.click(screen.getByTestId("state-generate"));
+  return screen.findByTestId("state-generated-slice");
+}
+
+describe("Generator Lab — the state-aware surface is separate and opt-in", () => {
+  it("does not show the state-aware panel until it is chosen", async () => {
+    mountLab();
+    await screen.findByTestId("generate");
+    expect(screen.queryByTestId("state-aware-surface")).not.toBeInTheDocument();
+    expect(statePreview).not.toHaveBeenCalled();
+  });
+
+  it("is not a fourth production generator", async () => {
+    // The production picker's own options are the backend catalog's, and the
+    // state-aware path is not among them — there is nothing to configure,
+    // because no Ranked format can name it.
+    mountLab();
+    await screen.findByTestId("generate");
+    const modes = ENTRY.fields.find((f) => f.key === "mastery_mode");
+    expect((modes?.options ?? []).map((o) => o.value))
+      .not.toContain("state_aware");
+  });
+
+  it("labels itself experimental and says nothing is servable", async () => {
+    const said = (await openStateSurface()).textContent!.replace(/\s+/g, " ");
+    expect(said).toMatch(/experimental/i);
+    expect(said).toMatch(/No Ranked format can name it/i);
+    expect(said).toMatch(/nothing is stored/i);
+  });
+
+  it("switching back leaves the production surface exactly as it was", async () => {
+    mountLab();
+    fireEvent.click(await screen.findByTestId("surface-state"));
+    fireEvent.click(screen.getByTestId("surface-production"));
+    fireEvent.click(await screen.findByTestId("generate"));
+    await screen.findByTestId("generated-slice");
+    expect(preview).toHaveBeenCalledTimes(1);
+    expect(statePreview).not.toHaveBeenCalled();
+  });
+
+  it("reports a deployment that does not serve the path, instead of a dead button",
+     async () => {
+    stateFamilies.mockResolvedValue({ ...STATE_FAMILIES, enabled: false });
+    await openStateSurface();
+    const notice = await screen.findByTestId("state-disabled");
+    expect(notice.textContent).toContain(STATE_FAMILIES.flag);
+  });
+});
+
+describe("Generator Lab — state-aware controls state a SETUP, not an answer", () => {
+  it("offers no ability-haste override anywhere", async () => {
+    const surface = await openStateSurface();
+    expect(surface.querySelector("[data-testid^='state-haste']")).toBeNull();
+    const labels = Array.from(surface.querySelectorAll("label"))
+      .map((l) => l.textContent!.toLowerCase());
+    expect(labels.some((l) => l.includes("haste"))).toBe(false);
+    // And the reason is the backend's own, printed rather than restated.
+    expect(screen.getByTestId("state-family-note").textContent)
+      .toBe(STATE_FAMILIES.note);
+  });
+
+  it("sends the axes the admin typed, unnormalized", async () => {
+    await openStateSurface();
+    fireEvent.change(screen.getByTestId("state-champion"),
+                     { target: { value: "Ahri" } });
+    fireEvent.change(screen.getByTestId("state-rank-slot-0"),
+                     { target: { value: "W" } });
+    fireEvent.change(screen.getByTestId("state-rank-value-0"),
+                     { target: { value: "4" } });
+    fireEvent.change(screen.getByTestId("state-item-0"),
+                     { target: { value: "Axiom Arc" } });
+    fireEvent.change(screen.getByTestId("state-level"), { target: { value: "7" } });
+    fireEvent.click(screen.getByTestId("state-generate"));
+    await waitFor(() => expect(statePreview).toHaveBeenCalledTimes(1));
+    expect(statePreview).toHaveBeenCalledWith(expect.objectContaining({
+      champion: "Ahri",
+      abilityRanks: { W: 4 },
+      items: ["Axiom Arc"],
+      level: 7,
+    }));
+  });
+
+  it("holds no roster of its own — the champion list is the backend catalog's",
+     async () => {
+    await openStateSurface();
+    const options = Array.from(
+      document.querySelectorAll("#state-champion-options option"))
+      .map((o) => o.getAttribute("value"));
+    expect(options).toEqual(championOptionsOf(ENTRY).map((o) => o.value));
+    expect(options.length).toBeGreaterThan(0);
+  });
+
+  it("surfaces the backend's refusal verbatim", async () => {
+    statePreview.mockRejectedValue(
+      new RankedFormatApiError("Ahri R rank 2 is not reachable before level 11", 422));
+    await openStateSurface();
+    fireEvent.click(screen.getByTestId("state-generate"));
+    expect((await screen.findByTestId("state-preview-error")).textContent)
+      .toBe("Ahri R rank 2 is not reachable before level 11");
+  });
+});
+
+describe("Generator Lab — the state is visible enough to answer the question", () => {
+  it("shows the setup the questions were asked in", async () => {
+    await generateState();
+    const context = screen.getByTestId("state-context");
+    const inputs = STATE_PREVIEW.state.inputs as Record<string, unknown>;
+    const ranks = inputs.ability_ranks as [string, number][];
+    const items = inputs.items as { item_id: string }[];
+    expect(screen.getByTestId("state-ranks").textContent)
+      .toBe(ranks.map(([slot, rank]) => `${slot} r${rank}`).join(" · "));
+    expect(screen.getByTestId("state-items").textContent)
+      .toBe(items.map((i) => i.item_id).join(" · "));
+    expect(context.textContent).toContain(String(inputs.level));
+    expect(context.textContent)
+      .toContain(STATE_PREVIEW.state.resolved_state_digest);
+    // The concrete basis, which is the "against which data" half.
+    const basis = STATE_PREVIEW.state.data_basis as
+      { id: { key: string }; patch_label: string };
+    expect(context.textContent).toContain(basis.id.key);
+    expect(context.textContent).toContain(basis.patch_label);
+  });
+
+  it("shows the resolved values the questions read, and their units", async () => {
+    await generateState();
+    for (const value of STATE_PREVIEW.state.derived_used) {
+      const row = screen.getByTestId(`derived-${value.metric}`);
+      if (value.status === "supported") {
+        expect(row.textContent).toContain(String(value.value));
+      } else {
+        expect(row.textContent).toContain(value.status);
+        // Never a number on an unsupported value.
+        expect(row.textContent).not.toMatch(/\d+\.\d+/);
+      }
+    }
+    expect(STATE_PREVIEW.state.derived_used.length).toBeGreaterThan(0);
+  });
+
+  it("puts the binding in the diagnostics, never in the question card", async () => {
+    await generateState();
+    fireEvent.click(screen.getByTestId("toggle-state-diagnostics"));
+    const diagnostics = await screen.findByTestId("state-diagnostics");
+    expect(diagnostics.textContent)
+      .toContain(JSON.stringify(STATE_PREVIEW.scenario_binding));
+    expect(diagnostics.textContent).toContain(STATE_PREVIEW.family.family_id);
+    // ...and it says the frozen block was not stored.
+    expect(diagnostics.textContent).toMatch(/NOT stored/);
+
+    const card = screen.getByTestId("state-question-0");
+    const surface = within(card).getByTestId("mastery-atomic-recall-question");
+    expect(surface.textContent).not.toContain("scenario_binding");
+    expect(surface.textContent).not.toContain("semantic_state_key");
+  });
+});
+
+describe("Generator Lab — a state-aware question renders through the real surface", () => {
+  it("draws each challenge with the production renderer and states its scenario",
+     async () => {
+    await generateState();
+    for (const [index, challenge] of STATE_PREVIEW.challenges.entries()) {
+      const card = screen.getByTestId(`state-question-${index}`);
+      // The arena's own component, not a Lab lookalike.
+      expect(within(card).getByTestId("mastery-atomic-recall-question")).toBeInTheDocument();
+      const semantics = challenge.prompt_semantics as
+        { scenario: [string, number][]; ability_name: string };
+      const [[name, value]] = semantics.scenario;
+      const shown = card.textContent!.replace(/\s+/g, " ");
+      // The premise the player must be told, in the card itself.
+      expect(shown).toContain(String(value));
+      expect(shown.toLowerCase()).toContain(name.replace(/_/g, " "));
+      expect(shown).toContain(semantics.ability_name);
+      // The admin half, read off the fixture.
+      expect(within(card).getByTestId(`state-answer-${index}`).textContent)
+        .toContain(String(challenge.correct_answer));
+    }
+    expect(STATE_PREVIEW.challenges.length).toBeGreaterThan(0);
+  });
+
+  it("refuses a malformed challenge rather than drawing half a question",
+     async () => {
+    statePreview.mockResolvedValue({
+      ...STATE_PREVIEW,
+      challenges: [{ ...STATE_PREVIEW.challenges[0], answer_type: 17 as never }],
+    });
+    await openStateSurface();
+    fireEvent.click(screen.getByTestId("state-generate"));
+    await screen.findByTestId("state-challenge-parse-error");
+    expect(screen.queryByTestId("state-question-0")).not.toBeInTheDocument();
   });
 });

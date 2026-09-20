@@ -54,3 +54,38 @@ describe("assertKnownTemplate", () => {
     expect(() => assertKnownTemplate("comparison_left_right")).toThrow(MasteryContractParseError);
   });
 });
+
+// ---- scenario (GR1 reusable state, Phase 3) ------------------------------
+describe("readPromptSemantics scenario", () => {
+  const base = {
+    template: "ability_cooldown_under_state",
+    champion_display: "Ahri",
+    metric: "ability_cooldown",
+    subject_ref: "W",
+    ability_name: "Fox-Fire",
+  };
+
+  it("reads pairs the backend sends", () => {
+    const ps = readPromptSemantics({ ...base, scenario: [["ability_haste", 20]] });
+    expect(ps.scenario).toEqual([["ability_haste", 20]]);
+  });
+
+  // The ordinary case: every intrinsic question omits the key entirely, and
+  // an existing payload must read exactly as it always did.
+  it("reads an absent scenario as empty", () => {
+    expect(readPromptSemantics({ ...base, template: "champion_base_stat",
+                                 metric: "base_armor" }).scenario).toEqual([]);
+  });
+
+  // Fail closed: a prompt that silently dropped an input its answer depends
+  // on would be an unanswerable question rendered as a confident one.
+  it.each([
+    ["not an array", "nope"],
+    ["a non-pair entry", [["ability_haste"]]],
+    ["a non-string name", [[7, 20]]],
+    ["a non-scalar value", [["ability_haste", { v: 20 }]]],
+  ])("refuses %s", (_label, scenario) => {
+    expect(() => readPromptSemantics({ ...base, scenario }))
+      .toThrow(MasteryContractParseError);
+  });
+});

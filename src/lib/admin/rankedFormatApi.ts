@@ -373,6 +373,129 @@ export const fetchMasterySliceCoverage = (moduleConfig: Record<string, unknown>)
     body: JSON.stringify({ module_config: moduleConfig }),
   });
 
+// ───────────────────────── state-aware preview (GR1 Phase 3, EXPERIMENTAL)
+//
+// A separate endpoint, a separate response shape and a separate opt-in, on
+// purpose. The state-aware path is admin-only, flag-gated and reaches no
+// player surface, and folding it into `previewMasterySlice` would have made
+// an experimental generator look like a fourth production mode of the
+// `mastery_slice` module — which it deliberately is not: no Ranked format
+// can name it, because there is nothing to name.
+//
+// Every field below is read verbatim. Nothing in this repo resolves a state,
+// derives a value, rounds a number or decides which axis a question reads.
+
+/** One state-aware family's declared read-set. Data from the backend. */
+export interface MasteryStateFamily {
+  family_id: string;
+  generation_id: string;
+  required_axes: string[];
+  optional_axes: string[];
+  bound_metrics: string[];
+  answer_metric_template: string;
+  binding_precision: Record<string, number>;
+}
+
+export interface MasteryStateFamilies {
+  schema_version: string;
+  families: MasteryStateFamily[];
+  ruleset: string;
+  note: string;
+  /** Whether THIS deployment serves the experimental path at all. */
+  enabled: boolean;
+  flag: string;
+}
+
+/** One resolved derived value, with its status. `value` is null unless
+ *  `status === "supported"` — an unsupported value never carries a number. */
+export interface MasteryStateDerivedValue {
+  metric: string;
+  status: string;
+  unit: string;
+  value: number | null;
+  reason: string | null;
+  derivation: string | null;
+  depends_on: string[];
+}
+
+/** The resolved state, as much of it as explains the questions. */
+export interface MasteryResolvedStateView {
+  semantic_state_key: string;
+  resolved_state_digest: string;
+  kind: string;
+  ruleset: string;
+  rules_rev: string;
+  data_basis: Record<string, unknown>;
+  display_names: string[];
+  inputs: Record<string, unknown>;
+  source_provenance: Record<string, unknown>;
+  derived_used: MasteryStateDerivedValue[];
+  derived_value_count: number;
+  resolution: Record<string, unknown>;
+}
+
+export interface MasteryStatePreviewChallenge extends MasterySlicePreviewChallenge {
+  candidate_id: string;
+  candidate_key: string;
+  content_digest: string;
+  /** The canonical identity material, for diagnostics. Never rendered into
+   *  the question card: the card states its premise through
+   *  `prompt_semantics.scenario`. */
+  scenario_binding: Record<string, unknown> | null;
+}
+
+export interface MasteryStatePreview {
+  schema_version: string;
+  is_sample: boolean;
+  is_experimental: boolean;
+  surface: string;
+  note: string;
+  mastery_set_id: string;
+  prompt: string;
+  challenge_count: number;
+  patch_display: string | null;
+  seed?: string | null;
+  selection_salt?: string | null;
+  family: MasteryStateFamily;
+  state: MasteryResolvedStateView;
+  template_key: string;
+  scenario_binding: Record<string, unknown> | null;
+  /** Computed and NOT stored. The backend says so in the field beside it. */
+  frozen_state_preview: Record<string, unknown>;
+  frozen_state_is_persisted: boolean;
+  skipped: { subject_ref: string; ability_rank: number | null;
+             reason_code: string; detail: string }[];
+  policy_excluded: Record<string, unknown>[];
+  challenges: MasteryStatePreviewChallenge[];
+}
+
+export interface MasteryStatePreviewRequest {
+  champion: string;
+  abilityRanks: Record<string, number>;
+  items: string[];
+  level: number | null;
+  challengeCount: number;
+  seed?: string | null;
+}
+
+const STATE_LAB = "/api/ranked/admin/mastery-state-lab";
+
+export const fetchMasteryStateFamilies = () =>
+  request<MasteryStateFamilies>(`${STATE_LAB}/families`);
+
+export const previewMasteryState = (body: MasteryStatePreviewRequest) =>
+  request<MasteryStatePreview>(`${STATE_LAB}/preview`, {
+    method: "POST",
+    body: JSON.stringify({
+      champion: body.champion,
+      ability_ranks: body.abilityRanks,
+      items: body.items,
+      level: body.level,
+      challenge_count: body.challengeCount,
+      ...(body.seed ? { seed: body.seed } : {}),
+    }),
+  });
+
 export const saveFormatConfig = (target: ConfigTarget, format: RankedFormatJson) =>
   request<SavedConfig>(`/api/ranked/admin/format-config/${target}`, {
     method: "PUT",

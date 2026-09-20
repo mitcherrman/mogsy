@@ -1,0 +1,762 @@
+{
+ "families": {
+  "enabled": true,
+  "families": [
+   {
+    "answer_metric_template": "ability.{slot}.cooldown.effective",
+    "binding_precision": {
+     "ability_haste.total": 0
+    },
+    "bound_metrics": [
+     "ability_haste.total"
+    ],
+    "family_id": "combat_cooldown",
+    "generation_id": "setup_state_scenario.v1",
+    "optional_axes": [
+     "items"
+    ],
+    "required_axes": [
+     "ability_ranks"
+    ]
+   }
+  ],
+  "flag": "GR1_STATE_AWARE_LAB_ENABLED",
+  "note": "Ability haste comes from ITEMS the state names. There is no manual override: a derived value with no input behind it would describe a build that cannot exist.",
+  "ruleset": "summoners_rift",
+  "schema_version": "gr1.mastery_state_preview.v1"
+ },
+ "preview": {
+  "challenge_count": 3,
+  "challenges": [
+   {
+    "answer_options": [],
+    "answer_type": "numeric",
+    "candidate_id": "cqc_27e88d87ccf1943dac31623247e6f62f1424d36dab69f1862ae8056d21aa355c",
+    "candidate_key": "combat_cooldown:state:Ahri:Q:flat:ah20",
+    "challenge_index": 0,
+    "comparison_semantics": null,
+    "content_digest": "cqcval_9fae97c2b0c7955548caa1128b82c63fca1ee5f30d399e7ec70bcedd846c727b",
+    "correct_answer": 5.833333333333334,
+    "explanation": "Ahri Orb of Deception: 5.8 seconds at 20 ability haste.",
+    "input_constraints": {
+     "decimal_places": 2,
+     "integer_only": false,
+     "max": null,
+     "min": 0,
+     "precision_contract_version": "mastery-precision-1.0.0",
+     "precision_instruction": "Round to 2 decimal places.",
+     "rounding_mode": "ROUND_HALF_UP",
+     "step": 0.01,
+     "unit": "seconds"
+    },
+    "interaction_kind": "atomic_recall",
+    "patch_display": "League 26.16",
+    "presentation": {
+     "assets": {
+      "subject": {
+       "ability_icon": "assets/champions/Ahri/Q_AhriQ.png",
+       "ability_name": "Orb of Deception",
+       "ability_slot": "Q",
+       "badge": "Champion Mastery",
+       "champion": "Ahri",
+       "champion_icon": "assets/champions/Ahri/icon.png",
+       "champion_loading": "assets/champions/Ahri/loading/0_default.jpg",
+       "champion_splash": "assets/champions/Ahri/splash/0_default.jpg",
+       "type": "combat_cooldown"
+      }
+     },
+     "presentation": {
+      "role": "context",
+      "spoiler": false,
+      "timing": "question"
+     }
+    },
+    "prompt": "Ahri Orb of Deception \u2014 ability_cooldown @ 20 ability haste",
+    "prompt_semantics": {
+     "ability_name": "Orb of Deception",
+     "champion_display": "Ahri",
+     "context": {
+      "ability_rank": null,
+      "champion_level": null,
+      "form": null
+     },
+     "metric": "ability_cooldown",
+     "resource": "",
+     "scenario": [
+      [
+       "ability_haste",
+       20
+      ]
+     ],
+     "subject_ref": "Q",
+     "template": "ability_cooldown_under_state"
+    },
+    "question_family": "ability_cooldown",
+    "scenario_binding": {
+     "inputs": [
+      [
+       "ability_haste.total",
+       20
+      ]
+     ],
+     "roles": [],
+     "version": "scenario_binding.v1"
+    }
+   },
+   {
+    "answer_options": [
+     "5",
+     "8",
+     "6",
+     "3"
+    ],
+    "answer_type": "single_choice",
+    "candidate_id": "cqc_4b86fe75851d12d9b3bb39259fd06cb460de210bf151dd9fcec50847c6a11d8c",
+    "candidate_key": "combat_cooldown:state:Ahri:W:r4:ah20",
+    "challenge_index": 1,
+    "comparison_semantics": null,
+    "content_digest": "cqcval_284fd388482ae44de23ea5f4a8cd7b0e1a594d2fdfdf53d9ae6087e4204906d4",
+    "correct_answer": "5",
+    "explanation": "Ahri Fox-Fire: 5 seconds at 20 ability haste.",
+    "interaction_kind": "atomic_recall",
+    "patch_display": "League 26.16",
+    "presentation": {
+     "assets": {
+      "subject": {
+       "ability_icon": "assets/champions/Ahri/W_AhriW.png",
+       "ability_name": "Fox-Fire",
+       "ability_rank": 4,
+       "ability_slot": "W",
+       "badge": "Champion Mastery",
+       "champion": "Ahri",
+       "champion_icon": "assets/champions/Ahri/icon.png",
+       "champion_loading": "assets/champions/Ahri/loading/0_default.jpg",
+       "champion_splash": "assets/champions/Ahri/splash/0_default.jpg",
+       "type": "combat_cooldown"
+      }
+     },
+     "presentation": {
+      "role": "context",
+      "spoiler": false,
+      "timing": "question"
+     }
+    },
+    "prompt": "Ahri Fox-Fire \u2014 ability_cooldown @ 20 ability haste",
+    "prompt_semantics": {
+     "ability_name": "Fox-Fire",
+     "champion_display": "Ahri",
+     "context": {
+      "ability_rank": 4,
+      "champion_level": null,
+      "form": null
+     },
+     "metric": "ability_cooldown",
+     "resource": "",
+     "scenario": [
+      [
+       "ability_haste",
+       20
+      ]
+     ],
+     "subject_ref": "W",
+     "template": "ability_cooldown_under_state"
+    },
+    "question_family": "ability_cooldown",
+    "scenario_binding": {
+     "inputs": [
+      [
+       "ability_haste.total",
+       20
+      ]
+     ],
+     "roles": [],
+     "version": "scenario_binding.v1"
+    }
+   },
+   {
+    "answer_options": [
+     "16",
+     "12",
+     "13",
+     "10"
+    ],
+    "answer_type": "single_choice",
+    "candidate_id": "cqc_ea8aa11dea7cf93286419ace0e69bc08022d3c8ff561ad9b54db0d6b3e56d024",
+    "candidate_key": "combat_cooldown:state:Ahri:E:flat:ah20",
+    "challenge_index": 2,
+    "comparison_semantics": null,
+    "content_digest": "cqcval_1a78c82b21ec91be0d6ce9465735af6f79f0332b205b57327095028bd546a567",
+    "correct_answer": "10",
+    "explanation": "Ahri Charm: 10 seconds at 20 ability haste.",
+    "interaction_kind": "atomic_recall",
+    "patch_display": "League 26.16",
+    "presentation": {
+     "assets": {
+      "subject": {
+       "ability_icon": "assets/champions/Ahri/E_AhriE.png",
+       "ability_name": "Charm",
+       "ability_slot": "E",
+       "badge": "Champion Mastery",
+       "champion": "Ahri",
+       "champion_icon": "assets/champions/Ahri/icon.png",
+       "champion_loading": "assets/champions/Ahri/loading/0_default.jpg",
+       "champion_splash": "assets/champions/Ahri/splash/0_default.jpg",
+       "type": "combat_cooldown"
+      }
+     },
+     "presentation": {
+      "role": "context",
+      "spoiler": false,
+      "timing": "question"
+     }
+    },
+    "prompt": "Ahri Charm \u2014 ability_cooldown @ 20 ability haste",
+    "prompt_semantics": {
+     "ability_name": "Charm",
+     "champion_display": "Ahri",
+     "context": {
+      "ability_rank": null,
+      "champion_level": null,
+      "form": null
+     },
+     "metric": "ability_cooldown",
+     "resource": "",
+     "scenario": [
+      [
+       "ability_haste",
+       20
+      ]
+     ],
+     "subject_ref": "E",
+     "template": "ability_cooldown_under_state"
+    },
+    "question_family": "ability_cooldown",
+    "scenario_binding": {
+     "inputs": [
+      [
+       "ability_haste.total",
+       20
+      ]
+     ],
+     "roles": [],
+     "version": "scenario_binding.v1"
+    }
+   }
+  ],
+  "family": {
+   "answer_metric_template": "ability.{slot}.cooldown.effective",
+   "binding_precision": {
+    "ability_haste.total": 0
+   },
+   "bound_metrics": [
+    "ability_haste.total"
+   ],
+   "family_id": "combat_cooldown",
+   "generation_id": "setup_state_scenario.v1",
+   "optional_axes": [
+    "items"
+   ],
+   "required_axes": [
+    "ability_ranks"
+   ]
+  },
+  "frozen_state_is_persisted": false,
+  "frozen_state_preview": {
+   "data_basis": {
+    "availability": "live_only",
+    "id": {
+     "key": "basis_032228aec526f94426a21f6d4de658ec6336eb55b395b918a837c0920260aade",
+     "scheme": "store_fingerprint.v1"
+    },
+    "patch_label": "League 26.16",
+    "resolved_at": null,
+    "store_revisions": [
+     [
+      "champion_abilities",
+      "rows n=692, official-wiki authority stamps n=692"
+     ],
+     [
+      "champion_ability_formulas",
+      "2026-09-19 01:39:48..2026-09-19 01:39:48 (n=1720)"
+     ],
+     [
+      "champion_stats",
+      "2026-05-23 09:14:42..2026-08-06 05:27:25 (n=173)"
+     ],
+     [
+      "cooldown_authority",
+      "3433210..4050364 (n=688)"
+     ],
+     [
+      "item_canonical",
+      "4051358..4051358 (n=237)"
+     ],
+     [
+      "runes",
+      "unversioned (n=34)"
+     ],
+     [
+      "stat_shards",
+      "absent"
+     ]
+    ]
+   },
+   "derived_used": [
+    {
+     "values": []
+    }
+   ],
+   "display_names": [
+    "Ahri"
+   ],
+   "frozen_schema_version": "frozen_state.v1",
+   "inputs": [
+    {
+     "ability_ranks": [
+      [
+       "E",
+       3
+      ],
+      [
+       "Q",
+       4
+      ],
+      [
+       "W",
+       4
+      ]
+     ],
+     "champion": "ahri",
+     "form": "absent_unrequested",
+     "items": [
+      {
+       "item_id": "6696",
+       "slot": null
+      }
+     ],
+     "level": 7,
+     "position": "absent_unrequested",
+     "runes": "absent_unrequested",
+     "shards": "absent_unrequested"
+    }
+   ],
+   "pair_derived_used": null,
+   "resolved_state_digest": "rstate_267a8c61fdf2627883e83ff854ed8ea4cd38702d84b3dbea454487bf37c7d2bf",
+   "rules_rev": "rules_e9ffca5c2765c3ed4e4a484981c344057a1dc6aba3acb3bb1303d432dfb67ffd",
+   "ruleset": "summoners_rift",
+   "semantic_state_key": "sstate.v1:{\"kind\":\"champion\",\"ruleset\":\"summoners_rift\",\"sides\":[{\"ability_ranks\":{\"E\":3,\"Q\":4,\"W\":4},\"champion\":\"ahri\",\"items\":[\"6696\"],\"level\":7}]}",
+   "source_provenance": [
+    {
+     "by_axis": [
+      [
+       "ability_ranks",
+       {
+        "classification": "manual",
+        "confidence": "declared",
+        "observed_at": null,
+        "patch_basis": null,
+        "source_id": "manual",
+        "source_kind": "manual",
+        "source_version": null
+       }
+      ],
+      [
+       "items",
+       {
+        "classification": "manual",
+        "confidence": "declared",
+        "observed_at": null,
+        "patch_basis": null,
+        "source_id": "manual",
+        "source_kind": "manual",
+        "source_version": null
+       }
+      ],
+      [
+       "level",
+       {
+        "classification": "manual",
+        "confidence": "declared",
+        "observed_at": null,
+        "patch_basis": null,
+        "source_id": "manual",
+        "source_kind": "manual",
+        "source_version": null
+       }
+      ]
+     ]
+    }
+   ],
+   "step_bindings": [
+    {
+     "binding": {
+      "inputs": [
+       [
+        "ability_haste.total",
+        20
+       ]
+      ],
+      "roles": [],
+      "version": "scenario_binding.v1"
+     },
+     "resolved_state_digest": "rstate_267a8c61fdf2627883e83ff854ed8ea4cd38702d84b3dbea454487bf37c7d2bf",
+     "step_index": 0
+    },
+    {
+     "binding": {
+      "inputs": [
+       [
+        "ability_haste.total",
+        20
+       ]
+      ],
+      "roles": [],
+      "version": "scenario_binding.v1"
+     },
+     "resolved_state_digest": "rstate_267a8c61fdf2627883e83ff854ed8ea4cd38702d84b3dbea454487bf37c7d2bf",
+     "step_index": 1
+    },
+    {
+     "binding": {
+      "inputs": [
+       [
+        "ability_haste.total",
+        20
+       ]
+      ],
+      "roles": [],
+      "version": "scenario_binding.v1"
+     },
+     "resolved_state_digest": "rstate_267a8c61fdf2627883e83ff854ed8ea4cd38702d84b3dbea454487bf37c7d2bf",
+     "step_index": 2
+    }
+   ],
+   "template_key": "stemplate_763af17c2f9ff1f18d0c7d504a6732f8ec80db3d048bb662baf8aca23a61e933",
+   "template_ref": null
+  },
+  "is_experimental": true,
+  "is_sample": true,
+  "mastery_set_id": "mset_1013b800df94880feb05bc335585c05551c4ed8be38985f763c094296f8e15ad",
+  "note": "EXPERIMENTAL state-aware preview. Generated now, from a resolved setup state over current canonical data. Nothing here is stored, no player-facing surface can reach it, and no Ranked format can name it. A later canonical-data change moves these answers.",
+  "patch_display": "League 26.16",
+  "policy_excluded": [],
+  "prompt": "Ahri \u2014 state-aware cooldown (Lab preview)",
+  "scenario_binding": {
+   "inputs": [
+    [
+     "ability_haste.total",
+     20
+    ]
+   ],
+   "roles": [],
+   "version": "scenario_binding.v1"
+  },
+  "schema_version": "gr1.mastery_state_preview.v1",
+  "seed": "lab-demo",
+  "selection_salt": "lab-demo:1",
+  "skipped": [],
+  "state": {
+   "data_basis": {
+    "availability": "live_only",
+    "id": {
+     "key": "basis_032228aec526f94426a21f6d4de658ec6336eb55b395b918a837c0920260aade",
+     "scheme": "store_fingerprint.v1"
+    },
+    "patch_label": "League 26.16",
+    "resolved_at": null,
+    "store_revisions": [
+     [
+      "champion_abilities",
+      "rows n=692, official-wiki authority stamps n=692"
+     ],
+     [
+      "champion_ability_formulas",
+      "2026-09-19 01:39:48..2026-09-19 01:39:48 (n=1720)"
+     ],
+     [
+      "champion_stats",
+      "2026-05-23 09:14:42..2026-08-06 05:27:25 (n=173)"
+     ],
+     [
+      "cooldown_authority",
+      "3433210..4050364 (n=688)"
+     ],
+     [
+      "item_canonical",
+      "4051358..4051358 (n=237)"
+     ],
+     [
+      "runes",
+      "unversioned (n=34)"
+     ],
+     [
+      "stat_shards",
+      "absent"
+     ]
+    ]
+   },
+   "derived_used": [
+    {
+     "depends_on": [
+      "ability_ranks"
+     ],
+     "derivation": "canonical_cooldown_at_rank.v1",
+     "metric": "ability.E.cooldown.base",
+     "reason": null,
+     "sources": [],
+     "status": "supported",
+     "unit": "seconds",
+     "value": 12.0
+    },
+    {
+     "depends_on": [
+      "ability_ranks",
+      "items"
+     ],
+     "derivation": "haste_to_cooldown_multiplier.v1",
+     "metric": "ability.E.cooldown.effective",
+     "reason": null,
+     "sources": [
+      {
+       "revision": "4051358",
+       "store": "item_canonical"
+      }
+     ],
+     "status": "supported",
+     "unit": "seconds",
+     "value": 10.0
+    },
+    {
+     "depends_on": [
+      "ability_ranks"
+     ],
+     "derivation": "canonical_cooldown_at_rank.v1",
+     "metric": "ability.Q.cooldown.base",
+     "reason": null,
+     "sources": [],
+     "status": "supported",
+     "unit": "seconds",
+     "value": 7.0
+    },
+    {
+     "depends_on": [
+      "ability_ranks",
+      "items"
+     ],
+     "derivation": "haste_to_cooldown_multiplier.v1",
+     "metric": "ability.Q.cooldown.effective",
+     "reason": null,
+     "sources": [
+      {
+       "revision": "4051358",
+       "store": "item_canonical"
+      }
+     ],
+     "status": "supported",
+     "unit": "seconds",
+     "value": 5.833333333333334
+    },
+    {
+     "depends_on": [
+      "ability_ranks"
+     ],
+     "derivation": "canonical_cooldown_at_rank.v1",
+     "metric": "ability.W.cooldown.base",
+     "reason": null,
+     "sources": [],
+     "status": "supported",
+     "unit": "seconds",
+     "value": 6.0
+    },
+    {
+     "depends_on": [
+      "ability_ranks",
+      "items"
+     ],
+     "derivation": "haste_to_cooldown_multiplier.v1",
+     "metric": "ability.W.cooldown.effective",
+     "reason": null,
+     "sources": [
+      {
+       "revision": "4051358",
+       "store": "item_canonical"
+      }
+     ],
+     "status": "supported",
+     "unit": "seconds",
+     "value": 5.0
+    },
+    {
+     "depends_on": [
+      "items"
+     ],
+     "derivation": "canonical_item_stat_sum.v1",
+     "metric": "ability_haste.total",
+     "reason": null,
+     "sources": [
+      {
+       "revision": "4051358",
+       "store": "item_canonical"
+      }
+     ],
+     "status": "supported",
+     "unit": "",
+     "value": 20.0
+    }
+   ],
+   "derived_value_count": 53,
+   "display_names": [
+    "Ahri"
+   ],
+   "inputs": {
+    "ability_ranks": [
+     [
+      "E",
+      3
+     ],
+     [
+      "Q",
+      4
+     ],
+     [
+      "W",
+      4
+     ]
+    ],
+    "champion": "ahri",
+    "form": "absent_unrequested",
+    "items": [
+     {
+      "item_id": "6696",
+      "slot": null
+     }
+    ],
+    "level": 7,
+    "position": "absent_unrequested",
+    "runes": "absent_unrequested",
+    "shards": "absent_unrequested"
+   },
+   "kind": "champion",
+   "resolution": {
+    "basis_request": {
+     "basis_id": null,
+     "kind": "current"
+    },
+    "derivation_support": {
+     "level_range": [
+      1,
+      18
+     ],
+     "support_id": "setup_state_derivation.v1",
+     "supported_axes": [
+      "level",
+      "ability_ranks",
+      "items"
+     ],
+     "supported_metrics": [
+      "ability.<slot>.cooldown.base",
+      "ability.<slot>.cooldown.effective",
+      "ability.<slot>.cost",
+      "ability_haste.bonus",
+      "ability_haste.total",
+      "ability_power.bonus",
+      "ability_power.total",
+      "armor.at_level",
+      "armor.base",
+      "armor.bonus",
+      "armor.total",
+      "attack_damage.at_level",
+      "attack_damage.base",
+      "attack_damage.bonus",
+      "attack_damage.total",
+      "attack_range.at_level",
+      "attack_range.base",
+      "attack_range.bonus",
+      "attack_range.total",
+      "attack_speed.at_level",
+      "attack_speed.base",
+      "attack_speed.bonus",
+      "attack_speed.total",
+      "health.at_level",
+      "health.base",
+      "health.bonus",
+      "health.total",
+      "health_regen.at_level",
+      "health_regen.base",
+      "health_regen.bonus",
+      "health_regen.total",
+      "magic_resist.at_level",
+      "magic_resist.base",
+      "magic_resist.bonus",
+      "magic_resist.total",
+      "movement_speed.at_level",
+      "movement_speed.base",
+      "movement_speed.bonus",
+      "movement_speed.total",
+      "resource.at_level",
+      "resource.base",
+      "resource.bonus",
+      "resource.total",
+      "resource_regen.at_level",
+      "resource_regen.base",
+      "resource_regen.bonus",
+      "resource_regen.total"
+     ]
+    },
+    "derivation_version": "setup_state_derivation.v1",
+    "resolver_version": "setup_state_resolver.v1",
+    "template_key": "stemplate_763af17c2f9ff1f18d0c7d504a6732f8ec80db3d048bb662baf8aca23a61e933",
+    "template_ref": null,
+    "warnings": [
+     "side0: item stats present and not modelled by setup_state_derivation.v1: LETHALITY"
+    ]
+   },
+   "resolved_state_digest": "rstate_267a8c61fdf2627883e83ff854ed8ea4cd38702d84b3dbea454487bf37c7d2bf",
+   "rules_rev": "rules_e9ffca5c2765c3ed4e4a484981c344057a1dc6aba3acb3bb1303d432dfb67ffd",
+   "ruleset": "summoners_rift",
+   "semantic_state_key": "sstate.v1:{\"kind\":\"champion\",\"ruleset\":\"summoners_rift\",\"sides\":[{\"ability_ranks\":{\"E\":3,\"Q\":4,\"W\":4},\"champion\":\"ahri\",\"items\":[\"6696\"],\"level\":7}]}",
+   "source_provenance": {
+    "by_axis": [
+     [
+      "ability_ranks",
+      {
+       "classification": "manual",
+       "confidence": "declared",
+       "observed_at": null,
+       "patch_basis": null,
+       "source_id": "manual",
+       "source_kind": "manual",
+       "source_version": null
+      }
+     ],
+     [
+      "items",
+      {
+       "classification": "manual",
+       "confidence": "declared",
+       "observed_at": null,
+       "patch_basis": null,
+       "source_id": "manual",
+       "source_kind": "manual",
+       "source_version": null
+      }
+     ],
+     [
+      "level",
+      {
+       "classification": "manual",
+       "confidence": "declared",
+       "observed_at": null,
+       "patch_basis": null,
+       "source_id": "manual",
+       "source_kind": "manual",
+       "source_version": null
+      }
+     ]
+    ]
+   }
+  },
+  "surface": "admin_generator_lab",
+  "template_key": "stemplate_763af17c2f9ff1f18d0c7d504a6732f8ec80db3d048bb662baf8aca23a61e933"
+ }
+}

@@ -69,6 +69,32 @@ function costNoun(ps: MasteryPromptSemantics): string {
   return ps.resource ? ` ${ps.resource}` : "";
 }
 
+/**
+ * The scenario a state-aware prompt has to STATE, as an English clause.
+ *
+ * GR1 reusable state, Phase 3. "What is this ability's cooldown?" has one
+ * answer intrinsically and a different one inside a build, so a prompt that
+ * omitted the scenario would be unanswerable — and would look answerable,
+ * which is worse. The pairs come from the backend's resolved state, already
+ * rounded to each metric's declared precision, so nothing is computed here.
+ *
+ * `ability_haste` is spelled out because it is the one metric this phase
+ * binds and "20 Ability Haste" is what the game calls it; anything else
+ * degrades to its own slug rather than being dropped.
+ */
+const SCENARIO_NAMES: Record<string, string> = {
+  ability_haste: "Ability Haste",
+};
+
+function scenarioClause(ps: MasteryPromptSemantics): string {
+  const parts = ps.scenario.map(
+    ([name, value]) => `${value} ${SCENARIO_NAMES[name] ?? name.replace(/_/g, " ")}`,
+  );
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 function abilityLabel(ps: MasteryPromptSemantics): string {
   const ref = `${ps.championDisplay} ${ps.subjectRef}`.trim();
   // The parenthetical exists to name the ability behind a slot letter
@@ -80,9 +106,10 @@ function abilityLabel(ps: MasteryPromptSemantics): string {
 }
 
 /**
- * Renders a prompt sentence for one of the four atomic-recall shapes this
- * slice supports: ability cooldown recall, resource-cost recall, base-stat
- * recall, level-stat recall. Fails explicitly (never silently blanks) on a
+ * Renders a prompt sentence for one of the atomic-recall shapes this slice
+ * supports: ability cooldown recall, resource-cost recall, base-stat recall,
+ * level-stat recall, and (Admin Generator Lab only) cooldown recall inside a
+ * resolved setup state. Fails explicitly (never silently blanks) on a
  * template it does not recognise, so a future template cannot render as an
  * empty or misleading prompt.
  */
@@ -100,6 +127,16 @@ export function formatRecallPrompt(ps: MasteryPromptSemantics): string {
       return `What is ${ps.championDisplay}'s base ${statName(ps.metric)}?`;
     case "champion_stat_at_level":
       return `At level ${ps.context.championLevel ?? "?"}, what is ${ps.championDisplay}'s ${statName(ps.metric)}?`;
+    case "ability_cooldown_under_state": {
+      // One template covers both shapes, exactly as `champion_stat_at_level`
+      // covers a null level: a rank-invariant cooldown carries no rank,
+      // because the backend collapsed it the same way the intrinsic flat
+      // template is collapsed.
+      const scenario = scenarioClause(ps);
+      const rank = ps.context.abilityRank;
+      const lead = rank === null ? `With ${scenario}` : `At rank ${rank} with ${scenario}`;
+      return `${lead}, what is ${abilityLabel(ps)}'s cooldown, in seconds?`;
+    }
     default: {
       // Exhaustiveness guard: PROMPT_TEMPLATES is a closed union, so an
       // unrecognised value can only reach here via a widened/future backend
