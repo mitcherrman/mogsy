@@ -26,7 +26,7 @@ describe("legacy product hooks are canonical adapters", () => {
     for (const id of ["slice", "shatter", "burn", "vaporize", "crush", "chop", "mogged", "doakes", "amongus"]) {
       result.current.playAnimationSound(id);
     }
-    result.current.playAnimationSound("bubble_tap");
+    result.current.playAnimationSound("unused_animation");
     expect(canonical.play.mock.calls.map(([event]) => event)).toEqual([
       "card.animation.paper-rip", "card.animation.shatter", "card.animation.burn",
       "card.animation.vaporize", "card.animation.crush", "card.animation.chop",

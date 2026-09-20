@@ -67,6 +67,12 @@ export interface SfxPlayOptions {
   durationMs?: number;
   /** Admin preview only; product callers must use persisted compatibility policy. */
   bypassLegacySetting?: boolean;
+  /**
+   * Specialist-adapter seam for persisted product-owned asset bindings.
+   * Ordinary callers must request only semantic events; Quiz Broadcast owns
+   * the sole current adapter because its session config predates Audio Studio.
+   */
+  configuredAsset?: { src: string; relativeGain: number };
 }
 
 export interface SfxEngineSnapshot {

@@ -237,6 +237,18 @@ function resolveEvent(s: SfxRuntimeState, event: SfxEvent, options: SfxPlayOptio
     }
     return { type: "silence" };
   }
+  // A specialist's persisted asset is a compatibility fallback, not a way to
+  // bypass explicit Audio Studio policy for the canonical semantic event.
+  if (options.configuredAsset) {
+    const src = options.configuredAsset.src.trim();
+    return src
+      ? {
+          type: "asset",
+          voices: [{ src, gain: 1 }],
+          relativeGain: Math.min(4, Math.max(0, options.configuredAsset.relativeGain)),
+        }
+      : { type: "silence" };
+  }
   const fallback = getSfxGenerator(entry.builtInGeneratorId);
   if (fallback) return { type: "synth", renderer: fallback, relativeGain: 1 };
   if (entry.builtInAssetVoices) {

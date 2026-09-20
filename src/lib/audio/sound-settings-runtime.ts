@@ -2,7 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface SoundSettings {
   launch_chime: boolean;
-  bubble_tap: boolean;
   swipe_tap: boolean;
   correct_chime: boolean;
   wrong_tone: boolean;
@@ -30,7 +29,7 @@ export interface SoundSettings {
 }
 
 export const SOUND_DEFAULTS: SoundSettings = {
-  launch_chime: true, bubble_tap: true, swipe_tap: true,
+  launch_chime: true, swipe_tap: true,
   correct_chime: true, wrong_tone: true,
   anim_paper_rip: true, anim_shatter: true, anim_burn: true,
   anim_vaporize: true, anim_crush: true,
@@ -44,7 +43,6 @@ export const SOUND_DEFAULTS: SoundSettings = {
 
 export const SOUND_LABELS: Record<keyof SoundSettings, { label: string; group: string; description: string }> = {
   launch_chime: { label: "Launch Chime", group: "General", description: "Sound when tapping the Mogsy logo to enter" },
-  bubble_tap: { label: "Bubble Tap", group: "General", description: "iOS-style pop when tapping category bubbles" },
   swipe_tap: { label: "Swipe Tap", group: "Swiping", description: "Haptic pop sound on each swipe action" },
   correct_chime: { label: "Correct Chime", group: "Swiping", description: "Ascending two-note chime on correct Elo guess" },
   wrong_tone: { label: "Wrong Tone", group: "Swiping", description: "Descending tone on wrong Elo guess" },

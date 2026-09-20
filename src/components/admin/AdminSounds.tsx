@@ -76,14 +76,6 @@ function synthesizeSound(ctx: AudioContext, key: keyof SoundSettings) {
         osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.25);
       }); return;
     }
-    case "bubble_tap": {
-      const osc = ctx.createOscillator(); osc.type = "sine";
-      osc.frequency.setValueAtTime(1200, t);
-      osc.frequency.exponentialRampToValueAtTime(600, t + 0.06);
-      g.gain.setValueAtTime(0.1, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-      osc.connect(g); osc.start(t); osc.stop(t + 0.1); return;
-    }
     case "swipe_tap": {
       const osc = ctx.createOscillator(); osc.type = "triangle";
       osc.frequency.setValueAtTime(400, t);

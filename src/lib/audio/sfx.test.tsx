@@ -253,6 +253,20 @@ describe("semantic registry and configuration timing", () => {
 });
 
 describe("global visitor mute", () => {
+  it("silences a Broadcast session asset without touching its local config", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    localStorage.setItem(SFX_MUTE_STORAGE_KEY, "1");
+    window.dispatchEvent(new Event(SFX_MUTE_CHANGE_EVENT));
+    sfxController.play("broadcast.question.start", {
+      configuredAsset: { src: "/quiz-broadcast/audio/sfx/question.mp3", relativeGain: 0.4 },
+    });
+    await flush();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(audio.counts.buffers).toBe(0);
+  });
+
   it("silences representative live Ranked feedback", async () => {
     const audio = installAudio();
     setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
@@ -369,6 +383,36 @@ describe("legacy operator settings compatibility", () => {
 });
 
 describe("Audio Studio binding precedence", () => {
+  it("lets Audio Studio override a persisted specialist asset binding", async () => {
+    const audio = installAudio();
+    const bound = sfxAssetConfig("/audio-studio/broadcast-reveal.mp3");
+    bound.eventBindings[0] = { ...bound.eventBindings[0], eventKey: "broadcast.reveal" };
+    setSfxConfigForTests(bound);
+    await sfxController.unlock();
+    sfxController.play("broadcast.reveal", {
+      eventId: "broadcast:session-1:reveal:1",
+      configuredAsset: { src: "/quiz-broadcast/audio/sfx/reveal.mp3", relativeGain: 0.3 },
+    });
+    await flush();
+    expect(fetch).toHaveBeenCalledWith("/audio-studio/broadcast-reveal.mp3");
+    expect(fetch).not.toHaveBeenCalledWith("/quiz-broadcast/audio/sfx/reveal.mp3");
+    expect(audio.counts.buffers).toBe(1);
+    expect(audio.counts.oscillators).toBe(0);
+  });
+
+  it("uses a Broadcast session asset when Audio Studio has no explicit binding", async () => {
+    const audio = installAudio();
+    setSfxConfigForTests(EMPTY_AUDIO_STUDIO_CONFIG);
+    await sfxController.unlock();
+    sfxController.play("broadcast.reveal", {
+      eventId: "broadcast:session-1:reveal:2",
+      configuredAsset: { src: "/quiz-broadcast/audio/sfx/reveal.mp3", relativeGain: 0.3 },
+    });
+    await flush();
+    expect(fetch).toHaveBeenCalledWith("/quiz-broadcast/audio/sfx/reveal.mp3");
+    expect(audio.counts.buffers).toBe(1);
+  });
+
   it("uses an enabled SFX asset instead of the built-in and caches its decode", async () => {
     const audio = installAudio();
     setSfxConfigForTests(sfxAssetConfig());
