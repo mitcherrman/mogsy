@@ -30,6 +30,7 @@ vi.mock("@/lib/quiz/builderApi", async (importOriginal) => {
 });
 
 import PracticeBuilderPanel from "./PracticeBuilderPanel";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { toast } from "sonner";
 
 const PREMIUM_CAPABILITY = {
@@ -255,5 +256,54 @@ describe("Practice Builder — saved sets", () => {
     fireEvent.click(await screen.findByTestId("builder-delete-3"));
     await waitFor(() => expect(api.deleteSet).toHaveBeenCalledWith(3));
     await waitFor(() => expect(screen.queryByTestId("builder-run-3")).toBeNull());
+  });
+});
+
+/**
+ * FUNNEL1B2.6 — the panel does not report itself as "opened".
+ *
+ * Regression guard for a semantic telemetry bug that only a real production
+ * read-back exposed: `practice_builder_opened` fired on mount, which — because
+ * this panel is an always-visible section of the Leaguecraft hub and its `open`
+ * prop is the hub's default phase — meant it fired for every /quiz visitor,
+ * about a millisecond after `leaguecraft_opened`, from people who never touched
+ * the Builder.
+ *
+ * The assertion is deliberately "no event on mount at all" rather than "not
+ * that one name". Mount is a render, and no render of this panel is a user
+ * action worth a row; anything that starts firing here again should have to
+ * justify itself against this test.
+ */
+describe("Practice Builder — telemetry semantics", () => {
+  it("emits nothing merely for being rendered, for a Premium reader", async () => {
+    renderPanel();
+    // Wait for the catalog to resolve, so this is not passing on a bare
+    // first paint that has not run its effects yet.
+    expect(await screen.findByTestId("builder-build")).toBeTruthy();
+
+    expect(trackFunnelEvent).not.toHaveBeenCalled();
+  });
+
+  it("emits nothing merely for being rendered, for a Free reader", async () => {
+    api.catalog.mockResolvedValue(CATALOG(FREE_CAPABILITY));
+    api.listSets.mockResolvedValue({ ok: true, sets: [], capability: FREE_CAPABILITY });
+    renderPanel();
+    expect(await screen.findByTestId("practice-builder-locked")).toBeTruthy();
+
+    // The population this mattered most for: a Free visitor was counted as
+    // having "opened" a Builder they cannot use.
+    expect(trackFunnelEvent).not.toHaveBeenCalled();
+  });
+
+  it("still reports a real interaction — the first deliberate act", async () => {
+    renderPanel();
+    fireEvent.click(await screen.findByTestId("builder-pool-missed"));
+
+    await waitFor(() =>
+      expect(trackFunnelEvent).toHaveBeenCalledWith(
+        "practice_builder_pool_selected",
+        expect.objectContaining({ pool: "missed" }),
+      ),
+    );
   });
 });

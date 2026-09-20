@@ -120,7 +120,6 @@ export const PRODUCT_EVENTS = [
   "hud_signup_chip_clicked",
   "hud_signup_menu_clicked",
   "practice_missed_started",
-  "practice_builder_opened",
   "practice_builder_pool_selected",
   "practice_builder_filters_changed",
   "practice_builder_build_attempted",
@@ -190,6 +189,16 @@ export const RETIRED_EVENTS: Readonly<Record<string, string>> = {
   // Fired in the same block as quiz_completed with an identical payload.
   // Counting both double-counted one moment.
   quiz_results_viewed: "quiz_completed (the duplicate half is gone)",
+  // FUNNEL1B2.6. Claimed a user action; reported a render. The Builder is an
+  // always-visible section on the Leaguecraft hub with no disclosure control,
+  // and its `open` prop is the hub's default phase — so this fired for every
+  // /quiz visitor, ~1ms after leaguecraft_opened, including visitors who never
+  // touched it. Caught by the B2.5 production loop, which is the first time a
+  // real visit had ever been read back. Nothing replaces it: see
+  // PracticeBuilderPanel.tsx for why an impression metric is a feature, not a
+  // rename.
+  practice_builder_opened:
+    "nothing — use leaguecraft_opened as the denominator and practice_builder_pool_selected as first engagement",
 };
 
 const KNOWN_EVENTS = new Set<string>([...MACRO_EVENTS, ...PRODUCT_EVENTS]);

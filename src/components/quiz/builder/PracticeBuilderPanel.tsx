@@ -82,9 +82,31 @@ export default function PracticeBuilderPanel({
   const appliedPreset = useRef<number | null>(null);
 
   useEffect(() => setSets(state.sets), [state.sets]);
-  useEffect(() => {
-    if (open) trackFunnelEvent("practice_builder_opened", {});
-  }, [open]);
+
+  /* FUNNEL1B2.6 — `practice_builder_opened` was emitted here and has been
+     removed, not moved, because there is no user action for it to move to.
+     Found by the B2.5 production loop: a plain visit to /quiz produced it ~1ms
+     after `leaguecraft_opened`, from a visitor who never touched the Builder.
+
+     `open` does not mean "the user opened the Builder". It is
+     `phase === "sets"` at the call site in Quiz.tsx — the Leaguecraft hub's
+     DEFAULT phase — and this panel is an always-visible section beneath the
+     curated packs, with no disclosure control of its own. So the prop is true
+     for every hub visitor, and the event was reporting a render while its name
+     claimed an intent. That is the same defect the audit found in
+     `lol_landing_viewed`, one layer down.
+
+     Nothing replaces it. An event that fires for every /quiz visitor is
+     `leaguecraft_opened` with extra steps, and keeping it would have made the
+     Builder's conversion rate look catastrophic for a purely clerical reason.
+     The Builder's real funnel now starts at the first deliberate act —
+     `practice_builder_pool_selected` / `_filters_changed` — against
+     `leaguecraft_opened` as the denominator.
+
+     If a genuine "the Builder was SEEN" metric is wanted, it needs a real
+     visibility signal (the panel sits below the fold for most viewports, so
+     rendered ≠ seen). That is a feature with its own design, not a rename of
+     this line. */
 
   /* PT1.8's handoff. It applies ONLY once the server has said this caller may
      build: a preset that landed on a Free panel would silently rewrite a

@@ -2006,3 +2006,130 @@ One new candidate, from this loop: `dsa_legacy_fallback` fired on an ordinary
 unavailable** in production. That is a product-configuration question rather
 than an analytics one, but the funnel found it, and it should be looked at
 before DSA numbers are read.
+
+---
+
+# 18. FUNNEL1B2.6 — `practice_builder_opened` semantics fix
+
+A small correction, found by exactly the thing that was supposed to find it:
+the first privileged read-back of a real production visit (§17).
+
+## 18.1 What the read-back actually showed
+
+The three canonical rows passed as predicted — `landing_viewed /` →
+`hub_entered /lol` → `leaguecraft_opened /quiz`, one visitor, one session,
+first-touch and session-touch both carrying `production_loop_test` /
+`funnel1b25` / `loop_closure`, landing path `/`, referrer NULL, and **no
+retired event, including `lol_landing_viewed`**.
+
+The fourth row was **not** what §17.2 predicted. I expected
+`dsa_legacy_fallback`; production has **zero** of those. It was
+**`practice_builder_opened`**, on `/quiz`, ~1ms after `leaguecraft_opened`.
+
+My inference was wrong. There were two candidate emitters on `/quiz`, I
+reasoned from the DSA fallback's plausibility, and I did not check the Builder —
+which was the one that fires unconditionally. Writing the prediction down
+beforehand is what made the mismatch visible rather than invisible, so the
+method held even though the guess did not.
+
+## 18.2 The bug
+
+`src/components/quiz/builder/PracticeBuilderPanel.tsx` emitted on mount:
+
+```ts
+useEffect(() => { if (open) trackFunnelEvent("practice_builder_opened", {}); }, [open]);
+```
+
+`open` does not mean the user opened anything. At the call site
+(`Quiz.tsx:1544`) it is **`open={phase === "sets"}`** — the Leaguecraft hub's
+DEFAULT phase — and the panel is an always-visible section beneath the curated
+packs (`LeaguecraftHub.tsx:741`), with no disclosure control of its own.
+
+So it fired for **every `/quiz` visitor**, including:
+
+- visitors who never scrolled to it (it sits below the fold on most viewports);
+- **Free visitors, who cannot use it at all** and are shown only a paywall;
+- and again on every return to the hub from a quiz, as `phase` flips back.
+
+It claimed a user action and reported a render — precisely the defect the audit
+found in `lol_landing_viewed`, one layer down. Left alone it would have made the
+Builder's conversion rate look catastrophic for a purely clerical reason.
+
+The author's intent is legible and was never in doubt:
+`usePracticeBuilder.ts:59` reads *"a reader who never opens the Builder should
+not spend a request on it."* The intent was "the user opened the Builder"; the
+wiring made it "the hub rendered".
+
+## 18.3 The fix — removed, not moved
+
+There is no user action to move the emission to, because there is no open
+action in this UI. `practice_builder_opened` is **retired**, with nothing
+replacing it:
+
+- an event that fires for every `/quiz` visitor is `leaguecraft_opened` with
+  extra steps; and
+- the Builder's funnel now runs `leaguecraft_opened` (denominator) →
+  `practice_builder_pool_selected` / `_filters_changed` (first deliberate act)
+  → `_build_attempted` → `_build_succeeded`, which is a real funnel.
+
+A genuine "the Builder was SEEN" metric needs a real visibility signal, since
+rendered ≠ seen here. That is a feature with its own design, not a rename of
+this line, and it is explicitly out of scope.
+
+Changed: the emission deleted (reasoning left in its place), the name removed
+from `PRODUCT_EVENTS`, and added to `RETIRED_EVENTS` — so the emitter now
+**refuses** it, and the existing all-of-`src/` scan fails if it ever returns.
+
+## 18.4 Tests
+
+Three added to the existing Builder harness, on top of the contract scans that
+already existed:
+
+- emits nothing merely for being rendered — **Premium** reader
+- emits nothing merely for being rendered — **Free** reader (the population this
+  distorted most)
+- still reports a real interaction — `practice_builder_pool_selected` on the
+  first deliberate act
+
+The first two assert **no event at all on mount**, not merely "not that name".
+No render of this panel is a user action worth a row, and anything that starts
+firing here again should have to argue with this test.
+
+```
+src/components/quiz/builder/*              20 passed
+src/lib/analytics/*, src/test/funnel/*     98 passed
+                                          ───────────
+                                          118 passed / 0 failed
+```
+
+`tsc --noEmit`: 23 errors, unchanged from baseline, none in a touched file.
+ESLint on the touched directories: 0 errors. One pre-existing warning remains at
+`usePracticeBuilder.ts:130` (an unused disable directive) — verified present
+before this change, in a file this work does not touch.
+
+## 18.5 Out of scope, but found and worth recording
+
+The same wiring means `usePracticeBuilder`'s catalog fetch also runs for every
+`/quiz` visitor, which is not what its own comment claims and costs an
+account-bound request per hub load. That is a performance/cost question rather
+than a telemetry one, and it is deliberately left alone here. It belongs with
+the Builder's owner.
+
+Separately, and correcting §17.7: production has **zero** `dsa_legacy_fallback`
+rows, so the worry that Daily Score Attack was reporting unavailable in
+production was unfounded. That was my misattribution, not a product signal.
+
+## 18.6 Status
+
+| # | Requirement | Status |
+|---|---|---|
+| 1 | Schema live | ✅ |
+| 2 | Code on production ref | ✅ |
+| 3 | Lovable published | ✅ for B2; **B2.6 build pending** |
+| 4 | Real production visit emitted canonical analytics | ✅ |
+| 5 | Read-back confirmed identity + attribution | ✅ §18.1 |
+| 6 | No retired/misnamed event polluted the dataset | ⚠️ → ✅ once B2.6 ships. No *retired* name appeared, but `practice_builder_opened` was a live name with wrong semantics, which is the same harm under a different heading |
+| 7 | Test rows cleaned up | ✅ controlled rows deleted; 8 unrelated real events untouched |
+
+**B2 closes when the B2.6 build is published and one short production check
+confirms `/quiz` emits `leaguecraft_opened` and no `practice_builder_opened`.**
