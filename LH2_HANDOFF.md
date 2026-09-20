@@ -514,3 +514,137 @@ project. Cross-mode concept ontology remains intentionally deferred.
 LH2.3 — make the CURRENT `quiz.runtime_casual` generator authority consumable
 by Ranked composition without reviving retired stored casual-question families.
 Do not start LH2.3 as part of LH2.2.
+
+## LH2.3 — Runtime casual → Ranked
+
+LH2.3 is implemented. The chosen seam is a small question-provider adapter,
+`ranked_public.runtime_casual.RuntimeCasualQuestionProvider`, injected into the
+already-registered `quiz.v1` / `quiz.v2` module when a frozen `SegmentSpec`
+declares `module_config.runtime_family`. There is no new module id, renderer,
+endpoint, question runtime, numeric id space, or gameplay path.
+
+The adapter calls the current `quiz.runtime_casual` authority directly:
+`available_keys(..., mode="practice")` supplies eligible current keys and
+`compose(conn, question_key)` supplies the prompt, options, correct answer,
+category, explanation, difficulty and provenance. It converts that result to
+the existing immutable `ranked_duel_gameplay.QuestionRecord`. The serving id
+is the nonnumeric `<question_key>#r<round_number>` and the durable semantic
+identity is `canonical_question_ref="quiz:<question_key>"` through the existing
+`ranked_public.discovery.canonical_ref_for_question_key` helper.
+
+Generation occurs only when Ranked opens a new segment. `_open_segment` writes
+the complete prompt, option order, correct index, category, canonical ref and
+explanation/provenance into `ranked_rounds`. All reads, reconnects, grading,
+bot answers, reveal, review and replay consume that frozen row; they do not
+call the runtime generator again. No `quiz_questions` row is looked up or
+created. Runtime-source readiness is checked before match creation using the
+same adapter and current canonical database.
+
+### First runtime Practice preset
+
+Preset key: `practice.champion_fundamentals`.
+
+Frozen format: `practice_champion_fundamentals` v1; active, bot-eligible,
+rating-ineligible, points model, exactly four `quiz.v2` single-question
+segments. Every segment uses normal additive Ranked points and the frozen +1
+speed bonus:
+
+1. `champion_resource` — easy timer, 2 correct points
+2. `champion_highest_base_stat` — medium timer, 2 correct points
+3. `champion_stat_compare` — medium timer, 2 correct points
+4. `champion_stat_level` — hard timer, 3 correct points
+
+Launch remains exactly `POST /api/ranked/queue` with
+`{"match_with_bot": true, "preset": "practice.champion_fundamentals"}`.
+It resolves through `preset_format()` and `create_bot_match(...,
+format_override=...)`, freezes the format snapshot, creates an unrated bot
+match, and renders through the ordinary `/quiz/ranked` `QuizRankedMatch` host.
+The legacy Practice gameplay, attempt endpoint and result renderer are not
+entered.
+
+Attack type is deliberately absent from the proof. The current runtime
+authority has no centralized form/state ambiguity exclusion for Kayle, Gnar,
+Jayce, Nidalee, Elise, and any equivalent transform/state-dependent champion.
+No narrow guard was required because the preset does not use the family; the
+future content-quality pass should add one at the generator authority before
+that family is promoted into a first-party preset.
+
+### Runtime-family compatibility inventory
+
+| Runtime family | LH2.3 classification | Finding |
+|---|---|---|
+| `champion_resource` | READY FOR RANKED VIA NEW ADAPTER / USED IN PROOF | Current `champion_facts` authority; text-answerable and row-less |
+| `champion_highest_base_stat` | READY FOR RANKED VIA NEW ADAPTER / USED IN PROOF | Current `champion_stat_authority`; stable stat-subject key |
+| `champion_stat_compare` | READY FOR RANKED VIA NEW ADAPTER / USED IN PROOF | Current stat authority; deterministic pair key/options |
+| `champion_stat_level` | READY FOR RANKED VIA NEW ADAPTER / USED IN PROOF | Current stat authority and growth curve; deterministic level key |
+| `rune_tree` | NOT USED IN PROOF BUT SHOULD WORK | Text-answerable current rune authority |
+| `rune_type` | NOT USED IN PROOF BUT SHOULD WORK | Text-answerable current rune authority |
+| `rune_keystone` | NOT USED IN PROOF BUT SHOULD WORK | Text-answerable current rune authority |
+| `item_single_stat` | NOT USED IN PROOF BUT SHOULD WORK | Text-answerable current item-stat authority |
+| `champion_attack_type` | AMBIGUITY GUARD REQUIRED | Adapter-compatible mechanically; do not promote until transform/state ambiguity is centrally pruned |
+| `ability_recognition` | NEEDS SPECIAL HANDLING | The image is required; Ranked needs a typed-presentation bridge for runtime `image_path` |
+| `item_recognition` | NEEDS SPECIAL HANDLING | Same required-media constraint |
+| `rune_recognition` | NEEDS SPECIAL HANDLING | Same required-media constraint |
+| `summoner_spell_recognition` | NEEDS SPECIAL HANDLING | Same required-media constraint |
+| Environment/runtime content outside `quiz.runtime_casual` | OUT OF SCOPE / DIFFERENT GENERATOR | Do not route through this adapter without a separate focused authority audit |
+
+The adapter's allow-list intentionally excludes the four recognition families
+until their required media can be translated to Ranked's existing typed
+`presentation` contract. This is a fail-closed rendering constraint, not a
+second content authority.
+
+### Settlement and learning projection
+
+The preset uses unchanged `quiz.v2` validation, backend correctness, bot
+choice, answer lock, additive points and speed-bonus settlement. Answers write
+immutable `ranked_submissions` plus the existing discovery rollup. There is no
+Ranked-to-`quiz_attempts` mirror. `learning_attempts_for_user()` reads the
+Ranked submission and frozen round, parses the `quiz:` ref back to the exact
+runtime `question_key`, derives the family from its prefix, and maps the frozen
+format id to `session_preset="practice.champion_fundamentals"`.
+
+### Exact files/types/functions
+
+Backend additions/changes:
+
+- `ranked_public/runtime_casual.py` — provider adapter and fail-closed family compatibility set.
+- `ranked_formats/schema.py` — validated `runtime_family` selector and `practice_champion_fundamentals_format()`.
+- `ranked_modules/quiz.py::QuizModule.generate_segment()` — selects the injected runtime provider without changing scoring/rendering.
+- `ranked_public/service.py::_generate_segment()` and preset registry — inject provider and register preset.
+- `ranked_public/readiness.py` — live runtime-family servability before row creation.
+- `ranked_public/projections.py` and `services/learning_attempts.py` — existing format-id-to-preset mapping extended for the new identity.
+- `ranked_formats/__init__.py` — exports the new format.
+- `test_lh23_runtime_casual_ranked.py` — focused adapter, format, queue, freeze, settlement, row-less identity and learning-projection proof.
+
+Frontend production code is unchanged. The LH2.1 boundary still pins
+`/quiz/ranked` to `QuizRankedMatch` and excludes legacy Practice execution.
+
+### Verification and limitations
+
+On 2026-09-20, bundled Python successfully compiled every touched production
+module and the new focused test module. A direct format probe validated the
+four-slot snapshot round trip and preset resolution. `git diff --check`
+passed. The bundled Python runtime does not contain `pytest`, and no other
+Python/pytest installation is present, so the focused pytest campaign could
+not execute in this environment; no dependency was installed. The test file
+covers correct and incorrect settlement, points results, immutable Ranked
+submissions, zero `quiz_attempts` growth, absence of materialized question
+rows, freeze/reconnect behavior, learning projection/family/preset identity,
+and the unchanged Item Fundamentals/Playtest/ordinary resolver paths.
+
+Recognition visuals remain the one known adapter limitation. Broader content
+quality, including attack-type ambiguity pruning, remains explicitly deferred.
+
+### Legacy migration implications
+
+The old Champion Basics pack no longer needs stored-row counts for the four
+proof concepts. Future Study Hall presets can select current runtime champion,
+rune and item facts through the same compiled Ranked seam, and Quiz Forge can
+eventually expose allow-listed current generators rather than retired banks.
+No old Practice Pack/Builder caller was migrated or deleted in LH2.3.
+
+### Next task
+
+LH2.4 — resolve clean Mastery Practice composition/scoring/session-length
+semantics so Champion Mastery can become a first-class Practice preset without
+RB4A HP-cycling scaffolding. Do not start LH2.4 as part of LH2.3.
