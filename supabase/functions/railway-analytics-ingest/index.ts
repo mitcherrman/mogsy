@@ -86,7 +86,7 @@ import {
  * cryptographically random and full length. A human-chosen token is
  * recoverable from its digest by dictionary search.
  */
-const PINNED_SECRET_SHA256 = "";
+const PINNED_SECRET_SHA256 = "30d4d9105961cf57a009be44d683342ecae42800c85f5f0c383b12aa0b0aa6e9";
 
 const PG_UNIQUE_VIOLATION = "23505";
 
