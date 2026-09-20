@@ -80,8 +80,8 @@
 
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { History, Shield } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, History, Shield } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import RankCrown from "@/components/ranked/RankCrown";
@@ -115,6 +115,29 @@ import type { TrendsSource } from "@/components/quiz/trends/usePerformanceTrends
 import type { TrendReport } from "@/lib/quiz/analyticsApi";
 
 const PLACEMENT_TOTAL = 5;
+const MOBILE_RANKED_STAGE_QUERY = "(max-width: 1023px)";
+
+type MobileRankedPanel = "standing" | "role" | "record";
+const MOBILE_RANKED_PANELS: readonly MobileRankedPanel[] = ["standing", "role", "record"];
+
+function useMobileRankedStage(): boolean {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia(MOBILE_RANKED_STAGE_QUERY).matches
+      : false,
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia(MOBILE_RANKED_STAGE_QUERY);
+    const update = () => setMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  return mobile;
+}
 
 /**
  * The visual baseline of the Ranked ladder — PRESENTATION ONLY.
@@ -334,13 +357,30 @@ export default function RankedLobbyHero({
   // saved role: a reader spinning the ring expects the ledger under it to
   // follow their eye. Seeded from the saved role, then owned by the stage.
   const [browsedRole, setBrowsedRole] = useState<RankedRole>(rankedRole ?? "top");
+  const [mobilePanel, setMobilePanel] = useState<MobileRankedPanel>("role");
+  const mobileStage = useMobileRankedStage();
+  const mobilePanelIndex = MOBILE_RANKED_PANELS.indexOf(mobilePanel);
+
+  const mobilePanelProps = (panel: MobileRankedPanel) => {
+    const inactive = mobileStage && mobilePanel !== panel;
+    return {
+      "data-mobile-panel": panel,
+      "data-mobile-active": mobilePanel === panel ? "true" : "false",
+      "aria-hidden": inactive ? true : undefined,
+      /* React 18 does not yet model `inert` as a boolean DOM property. The
+         empty-string form emits the standards-defined presence attribute
+         without the "non-boolean attribute" warning. */
+      inert: inactive ? "" : undefined,
+    } as const;
+  };
 
   const recentMatches = matchHistory.slice(0, RECENT_LEDGER_ROWS);
 
   return (
     <section
       data-testid="ranked-hero"
-      className="relative grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.9fr)] lg:gap-4 xl:gap-6"
+      data-mobile-stage={mobileStage ? "true" : undefined}
+      className="ranked-hero-mobile-stage relative grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.9fr)] lg:gap-4 xl:gap-6"
     >
       {/* ══ LEFT — RANKED STANDING: "Where do I stand in Ranked?" ═════════
           RL1: the competitive identity moved here from the centre, whole —
@@ -353,7 +393,11 @@ export default function RankedLobbyHero({
           (choose a role, press Play) and standing is not a decision — it is
           the context you read before making one. A column that held both put
           a ceremonial emblem between the reader and the seal. */}
-      <div className="order-2 flex min-w-0 flex-col lg:order-1" data-testid="hero-standing-column">
+      <div
+        className="ranked-hero-slide order-2 flex min-w-0 flex-col lg:order-1"
+        data-testid="hero-standing-column"
+        {...mobilePanelProps("standing")}
+      >
         <LobbyPanel variant="scroll" order="left">
         <ColumnHeading>Ranked standing</ColumnHeading>
 
@@ -500,8 +544,9 @@ export default function RankedLobbyHero({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="order-1 flex min-w-0 flex-col lg:order-2"
+        className="ranked-hero-slide order-1 flex min-w-0 flex-col lg:order-2"
         data-testid="hero-play-column"
+        {...mobilePanelProps("role")}
       >
         <LobbyPanel variant="scroll" order="centre" emphasis className="items-center text-center">
         {/* The lobby's one genuine pre-match DECISION, and since RL1 the only
@@ -577,7 +622,11 @@ export default function RankedLobbyHero({
           and now live on the LEFT standing sheet, so the Academy crown is the
           only rank art in this column and cannot be misread as the
           competitive tier. */}
-      <div className="order-3 flex min-w-0 flex-col" data-testid="hero-profile-column">
+      <div
+        className="ranked-hero-slide order-3 flex min-w-0 flex-col"
+        data-testid="hero-profile-column"
+        {...mobilePanelProps("record")}
+      >
         <LobbyPanel variant="scroll" order="right">
         <ColumnHeading align="right">Academy record</ColumnHeading>
 
@@ -772,6 +821,31 @@ export default function RankedLobbyHero({
           </Button>
         </div>
         </LobbyPanel>
+      </div>
+
+      <div
+        className="ranked-mobile-stage-controls pointer-events-none absolute inset-x-0 top-1/2 z-20 mx-auto hidden w-full max-w-[30rem] -translate-y-1/2 justify-between lg:hidden"
+        aria-label="Ranked Hub panels"
+        data-testid="ranked-mobile-stage-controls"
+      >
+        <button
+          type="button"
+          aria-label="Previous Ranked panel"
+          disabled={mobilePanelIndex === 0}
+          onClick={() => setMobilePanel(MOBILE_RANKED_PANELS[mobilePanelIndex - 1])}
+          className="pointer-events-auto ml-0.5 flex h-10 w-10 items-center justify-center rounded-full border border-[#8f6d2f]/45 bg-[#07101d]/75 text-[#ead7a0] shadow-lg backdrop-blur-sm disabled:pointer-events-none disabled:opacity-0"
+        >
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next Ranked panel"
+          disabled={mobilePanelIndex === MOBILE_RANKED_PANELS.length - 1}
+          onClick={() => setMobilePanel(MOBILE_RANKED_PANELS[mobilePanelIndex + 1])}
+          className="pointer-events-auto mr-0.5 flex h-10 w-10 items-center justify-center rounded-full border border-[#8f6d2f]/45 bg-[#07101d]/75 text-[#ead7a0] shadow-lg backdrop-blur-sm disabled:pointer-events-none disabled:opacity-0"
+        >
+          <ChevronRight className="h-5 w-5" aria-hidden="true" />
+        </button>
       </div>
     </section>
   );

@@ -37,7 +37,10 @@ import { RANKED_ROLE_BLURBS } from "@/lib/ranked-public/roles";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { MatchHistoryEntryView, RankedProgressionView } from "@/lib/ranked-public/contracts";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 const PLACED: RankedState = {
   placementMatchesRemaining: 0,
@@ -98,6 +101,62 @@ function renderHero(over: Partial<React.ComponentProps<typeof RankedLobbyHero>> 
   );
   return { ...utils, onPlayRanked };
 }
+
+function usePhoneViewport() {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: query === "(max-width: 1023px)",
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+}
+
+describe("RankedLobbyHero — mobile shared parchment stage", () => {
+  it("opens on Choose Your Role and removes both inactive sheets from interaction", () => {
+    usePhoneViewport();
+    renderHero();
+
+    const standing = screen.getByTestId("hero-standing-column");
+    const role = screen.getByTestId("hero-play-column");
+    const record = screen.getByTestId("hero-profile-column");
+    expect(role.dataset.mobileActive).toBe("true");
+    expect(role).not.toHaveAttribute("aria-hidden");
+    expect(standing).toHaveAttribute("aria-hidden", "true");
+    expect(standing).toHaveAttribute("inert");
+    expect(record).toHaveAttribute("aria-hidden", "true");
+    expect(record).toHaveAttribute("inert");
+  });
+
+  it("moves role → standing → role → record and disables both endpoints", () => {
+    usePhoneViewport();
+    renderHero();
+    const previous = screen.getByRole("button", { name: "Previous Ranked panel" });
+    const next = screen.getByRole("button", { name: "Next Ranked panel" });
+
+    fireEvent.click(previous);
+    expect(screen.getByTestId("hero-standing-column").dataset.mobileActive).toBe("true");
+    expect(previous).toBeDisabled();
+
+    fireEvent.click(next);
+    expect(screen.getByTestId("hero-play-column").dataset.mobileActive).toBe("true");
+    fireEvent.click(next);
+    expect(screen.getByTestId("hero-profile-column").dataset.mobileActive).toBe("true");
+    expect(next).toBeDisabled();
+
+    fireEvent.click(previous);
+    expect(screen.getByTestId("hero-play-column").dataset.mobileActive).toBe("true");
+  });
+
+  it("overlaps the three sheets into one intrinsic-height grid row on mobile only", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+    expect(css).toMatch(/@media \(max-width: 1023px\)[\s\S]*?\.ranked-hero-mobile-stage > \.ranked-hero-slide\s*\{\s*grid-area: 1 \/ 1;/);
+    expect(css).toMatch(/\.ranked-hero-slide\[data-mobile-active="false"\][\s\S]*?visibility: hidden;/);
+  });
+});
 
 describe("RankedLobbyHero — three-column composition", () => {
   it("renders the standing column, the play column and the profile column", () => {

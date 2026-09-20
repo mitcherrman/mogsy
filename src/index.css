@@ -6608,6 +6608,31 @@ html.high-contrast * { text-shadow: none !important; }
    is what gets capped, so the scroll simply stops growing. The bleed also
    goes to zero — there is no gutter to hang into when there is one column. */
 @media (max-width: 1023px) {
+  /* RHMobile1.2 — all three existing parchment columns share one grid cell.
+     CSS Grid takes the row size from the tallest overlapped item, so changing
+     the active sheet cannot move the Leaguecraft content below it. Hidden
+     sheets remain measurable (unlike display:none) but are removed from paint,
+     hit-testing and — by the component's inert/aria-hidden attributes — the
+     phone accessibility tree. At lg the original three-column grid and its
+     document order resume unchanged. */
+  .ranked-hero-mobile-stage {
+    gap: 0;
+  }
+
+  .ranked-hero-mobile-stage > .ranked-hero-slide {
+    grid-area: 1 / 1;
+    align-self: start;
+  }
+
+  .ranked-hero-mobile-stage > .ranked-hero-slide[data-mobile-active="false"] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .ranked-mobile-stage-controls {
+    display: flex;
+  }
+
   .lc-scroll {
     --lc-scroll-bleed: 0%;
     width: 100%;
