@@ -610,8 +610,8 @@ export interface MatchScoringView {
   modulesCompleted: number;
 }
 
-/** The two scoring vocabularies. v2 is `points`; legacy v1 is `hp`. */
-export type ScoringModel = "points" | "hp";
+/** Ranked-style knowledge activities have one scoring vocabulary. */
+export type ScoringModel = "points";
 
 /**
  * RP1 — the finished match's scoreline, or `null` for an hp match.
@@ -770,7 +770,9 @@ export interface HeartbeatView {
 // --------------------------------------------------------------- readers
 
 function readPresence(value: unknown): PresenceView | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined) {
+    throw new RankedPublicParseError("scoring block is required");
+  }
   const p = rec(value, "presence");
   const state = (v: unknown, l: string): PresenceState => {
     const s = str(v, l);
@@ -954,9 +956,9 @@ function readScoring(value: unknown): MatchScoringView | null {
   if (value === null || value === undefined) return null;
   const o = rec(value, "scoring");
   const model = str(o.model, "scoring.model");
-  if (model !== "points" && model !== "hp") {
+  if (model !== "points") {
     throw new RankedPublicParseError(
-      `scoring.model must be "points" or "hp" (got ${model})`);
+      `scoring.model must be "points" (got ${model})`);
   }
   return {
     model,
@@ -1806,12 +1808,14 @@ export function readQueueStatus(body: unknown): QueueStatusView {
  * participant, so a viewer always finds their own id in it.
  */
 function readResultScoring(value: unknown): ResultScoringView | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined) {
+    throw new RankedPublicParseError("result scoring block is required");
+  }
   const o = rec(value, "result scoring");
   const model = str(o.model, "scoring.model");
-  if (model !== "points" && model !== "hp") {
+  if (model !== "points") {
     throw new RankedPublicParseError(
-      `scoring.model must be "points" or "hp" (got ${model})`);
+      `scoring.model must be "points" (got ${model})`);
   }
   const finalScores: Record<string, number> = {};
   for (const [pid, raw] of Object.entries(rec(o.final_scores, "scoring.final_scores"))) {

@@ -648,3 +648,112 @@ No old Practice Pack/Builder caller was migrated or deleted in LH2.3.
 LH2.4 — resolve clean Mastery Practice composition/scoring/session-length
 semantics so Champion Mastery can become a first-class Practice preset without
 RB4A HP-cycling scaffolding. Do not start LH2.4 as part of LH2.3.
+
+## LH2.4 — HP/outcome scoring eradication
+
+LH2.4 is implemented. Mogzy has one current scoring architecture for
+Ranked-style knowledge activities: points. Old HP/damage/outcome scoring is
+removed, not deprecated. Current dependencies must migrate rather than
+preserve it.
+
+### Dependency map and decisions
+
+| Dependency | Why it existed | Disposition |
+|---|---|---|
+| `RankedFormat.scoring_model = hp|points` and `SegmentSpec.scoring = outcome|additive` | RP1 introduced points beside the original knockout contract | Current schema is points-only; schema v2 rejects `hp`, `outcome`, and removed damage fields |
+| `SegmentSpec.full_damage/reduced_damage` | Tuned zero-sum answer damage and Playtest survivability | Deleted from the format contract, serialization, builder catalog, and all current format definitions |
+| `SegmentResolution.damage` / `supports_additive_scoring` | Transported module awards through the combat damage channel | Replaced with required `points` / `supports_points_scoring` contracts |
+| Quiz v1 outcome settlement | Original ordinary Ranked question contract | Registered version now provides points; every current format uses `quiz.v2` with frozen tier points and speed bonus |
+| `mastery_slice.v1` winner/loser outcome scoring | Champion, Matchup, and applied-chain generators were wired to the old zero-sum path | Generator survives unchanged; resolution awards one point per correct challenge plus the existing +1 perfect-and-faster bonus |
+| Meta Reflex additive “damage” | Its card score was originally expressed as simultaneous damage | Same additive card/perfect/speed arithmetic is now an explicit point award |
+| RB4A Playtest damage headroom/cycling | Kept a 51-segment audit alive under knockout termination | Deleted as a runtime requirement; Playtest is an exact 51-segment points match and settles once |
+| Match engine hp/points branch | Supported both knockout and fixed-length results | Current match config accepts only points and terminates only at `match_length`; module points are banked directly |
+| Frontend HP fallback | Allowed missing/pre-RP1 scoring blocks to render as HP matches | Removed; scoring blocks are required and only `model: "points"` parses |
+| Admin Ranked Builder damage fields | Exposed old per-question damage tuning | Replaced by `correct_points` and `speed_bonus_points`; Quiz builder target is v2 |
+
+The low-level duel calculation types still contain inert HP/damage quantities
+because class-combat/prototype code outside Ranked also uses that engine. The
+current Ranked integration neutralizes those quantities and never treats them
+as score, termination, or public scoring authority. Historical migration files
+remain migration history only; no compatibility loader was added for old HP
+snapshots.
+
+### Final module architecture
+
+- Champion Mastery: current synthesis → `mastery_slice.v1` interaction →
+  per-correct points + existing perfect/strict-speed bonus → fixed-length
+  Ranked result.
+- Matchup Mastery: current matchup generator → the same points-native Mastery
+  interaction and settlement.
+- Applied/certified calculation: current applied-chain generator → the same
+  points-native Mastery interaction. Damage remains question content only.
+- Meta Reflex: existing per-card correctness, perfect, and speed rules are
+  retained as additive points.
+
+Current ordinary Ranked, Bot Ranked, `practice.item_fundamentals`, and
+`practice.champion_fundamentals` all freeze points formats. The current
+Playtest preset freezes 51 modules and no longer relies on a second pattern
+cycle or health headroom. Preset identity and canonical Bot Ranked execution
+are unchanged.
+
+### Daily Challenge and Time Trial
+
+Daily Challenge has no HP/outcome scoring dependency. Its only Ranked import
+is shared presentation/type vocabulary; its completion model was already
+non-HP, so no redesign was made. Time Trial has no dependency on Ranked HP or
+outcome settlement and retains its 30-question/90-second/official-attempt
+contract unchanged.
+
+### Persistence and frontend
+
+No database column migration was required for the scoring contract: format
+and match composition are frozen JSON. Current format schema version 2 no
+longer serializes obsolete scoring/damage properties and intentionally refuses
+old HP snapshots; fake/dev history compatibility is not preserved. Match
+results, `ranked_submissions`, discoveries, and
+`learning_attempts_for_user()` remain the authorities they were before.
+
+The frontend contract now accepts only points scoring and requires the live
+and result scoring blocks. The legacy missing-block → HP fallback is gone, so
+the current Ranked UI cannot select HP rails or HP result vocabulary.
+
+### Anti-regression guard
+
+`test_lh24_points_only_scoring.py` proves that all current production,
+Practice, and Playtest formats are fixed-length points formats; every
+registered module advertises a points contract; `scoring="outcome"`,
+`full_damage`, and `reduced_damage` are unknown segment fields; and
+`scoring_model="hp"` is rejected.
+
+### Legitimate retained HP/damage content
+
+Champion/base-stat HP, health growth, armor/resistance, mitigation, lethal
+thresholds, combat simulation, damage-chain questions, Meta Reflex HP-stat
+cards, and Daily/Time Trial question content remain. Low-level combat engine
+quantities used by Combat Lab and the separate staff prototype also remain;
+they are gameplay simulation state, not Mogzy quiz scoring.
+
+### Verification
+
+- Python compilation passed for every touched backend production module.
+- Direct points-only guard probe passed: all current formats resolve to
+  `points`, exact lengths match their patterns, every registered module is
+  points-capable, and banned schema values are rejected.
+- Direct format/preset probe passed for Ranked v2 (10), Item Fundamentals (6),
+  Champion Fundamentals (4), modern Ranked (12), and Playtest (51).
+- Frontend `tsc --noEmit` passed using the existing local toolchain.
+- `git diff --check` passed after cleanup.
+- Backend pytest could not run because the bundled Python environment has no
+  `pytest` module. Frontend Vitest could not start because esbuild was denied
+  access while resolving the workspace config; no dependency/network changes
+  were attempted.
+
+Backend commit: `0c33ef42` — `LH2.4 eradicate HP outcome scoring`.
+
+Frontend/handoff commit is recorded in the repository history for this section.
+
+### Next task
+
+LH2.5 — migrate useful old Practice Pack concepts into modern first-party
+Ranked presets using current stored/runtime/generator authorities, then begin
+retiring their old execution infrastructure. Do not begin LH2.5 here.

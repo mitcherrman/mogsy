@@ -50,12 +50,14 @@ import type {
  * a module id, or the presence of a `score` field.
  */
 export function matchScoringModel(pub: PublicRoundView): ScoringModel {
-  return pub.scoring?.model ?? "hp";
+  if (!pub.scoring) throw new Error("Ranked points scoring is required");
+  return "points";
 }
 
 /** Convenience for the branch above. Nothing else decides this question. */
 export function isPointsMatch(pub: PublicRoundView): boolean {
-  return matchScoringModel(pub) === "points";
+  matchScoringModel(pub);
+  return true;
 }
 
 /**
