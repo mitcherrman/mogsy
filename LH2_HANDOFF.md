@@ -435,3 +435,82 @@ LH2.2: make the CURRENT `quiz.runtime_casual` generator authority consumable by
 Ranked composition without reviving or re-materializing retired casual banks.
 Do not begin Study Hall/Quiz Forge UI, History redesign, or legacy Practice
 deletion as part of that adapter task.
+
+## LH2.2 — Learning telemetry convergence
+
+LH2.2 is complete. The canonical learning read seam is
+`services.learning_attempts.learning_attempts_for_user(cur, user_id)`. It is a
+read-only application projection over the two answer-level authorities:
+`quiz_attempts` and `ranked_submissions` joined to frozen `ranked_rounds` and
+`ranked_matches`. No table, migration, public API, gameplay path, History path,
+or duplicate Ranked-to-quiz write was added.
+
+### Persistence source matrix
+
+| Source | Authoritative answer record | Identity and metadata | LH2.2 coverage |
+|---|---|---|---|
+| Ordinary quiz/study and legacy Practice | `quiz_attempts` (optional `quiz_sessions`) | `question_key` is canonical; nullable numeric `question_id`; frozen category, difficulty, correctness, timestamp; session mode/id when present | Fully covered |
+| Ordinary single-question Ranked | immutable `ranked_submissions` + frozen `ranked_rounds`/`ranked_matches` | `(match_id, round_number, user_id)` event; `canonical_question_ref`; frozen category/module/config; submitted timestamp | Fully covered when the round has a canonical ref |
+| `practice.item_fundamentals` | same Ranked records | `quiz:<question_key>` plus frozen `format_id=practice_item_fundamentals`, mapped to `session_preset=practice.item_fundamentals` | Fully covered |
+| Runtime/generated quiz questions | `quiz_attempts` | nullable `question_id`, durable `question_key`, snapshots/provenance | Fully covered; no current-bank join required |
+| Champion Mastery in current Ranked path | `ranked_segment_challenges` is execution authority; its existing best-effort generated-attempt bridge writes `quiz_attempts` | generated Mastery `question_key`, category and frozen snapshots | Partially covered through the existing attempt bridge; raw multi-challenge execution is not independently projected, avoiding duplicate facts |
+| Official Time Trial | `dsa_runs`/answer persistence; official resolved answers are transactionally mirrored to `quiz_attempts` today | fallback `question_key`, frozen question/category/difficulty, `source=daily_score_attack` | Fully covered at answer level through the existing mirror |
+| Time Trial practice | Time Trial runtime, with no answer-level learning event | none available to read | Not yet covered; defer instrumentation to its focused migration |
+| `ranked_question_discoveries` | lifetime per-user rollup, not execution authority | canonical ref plus counts/first/last provenance | Deliberately excluded from the attempt UNION; reading it would double-count Ranked executions |
+
+The normalized identity is always `canonical_question_ref`. A quiz attempt with
+`question_key=k` projects as `quiz:k`; a Ranked `quiz:k` ref safely parses back
+to the same `question_key`. Non-`quiz:` Ranked refs remain intact with a null
+question key. Family is the current question-key prefix when available, with
+the frozen Ranked category as the conservative fallback. Subject is the
+attempt/round's frozen category. This preserves retired and runtime identities
+without joining to the current question bank.
+
+### Current consumers and disposition
+
+| Consumer | Current read | Disposition |
+|---|---|---|
+| `services.personal_analytics` (trends, recent performance, weakness categories) | `quiz_attempts`, assumes category/timestamp/correctness and optional quiz session mode | KEEP + migrate later to the unified seam/aggregate |
+| Practice Builder “Questions I have missed” | `quiz_attempts.question_id` | DELETE WITH LEGACY BUILDER; intentionally not modernized |
+| Practice Builder “My weakest categories” | `quiz_attempts` category aggregates | REPLACE WITH STUDY HALL; intentionally not modernized |
+| Practice Builder “Owned” | `ranked_question_discoveries`, and only resolvable `quiz:` refs | DELETE/MIGRATE with legacy Builder; it is a collection query, not attempt analytics |
+| Quiz History | `quiz_sessions` plus session-scoped `quiz_attempts` | HISTORY — LEAVE ALONE |
+| Ranked History/review/results | Ranked match, round, result and submission projections | HISTORY — LEAVE ALONE |
+| Ranked question library | `ranked_question_discoveries` | KEEP as collection ownership; not a learning-attempt source |
+| Admin/global quiz performance exports | `quiz_attempts` | Out of Study Hall scope; leave unchanged |
+
+### Exact implementation and proof
+
+- Added `services/learning_attempts.py` with immutable `LearningAttempt`, safe
+  identity helpers, `learning_attempts_for_user`, and the small
+  `aggregate_by_family` proof primitive.
+- Added `test_lh22_learning_attempts.py`. It covers quiz and Ranked
+  normalization, correct/incorrect values, Practice preset identity, ordinary
+  Ranked, two executions of one logical question remaining two events,
+  exclusion of discovery-rollup duplicates, retired rows, runtime keys, safe
+  canonical-ref parsing, and the two-attempt `item_cost` 50% aggregate.
+- Existing write paths are untouched. Ranked quiz submissions still write only
+  Ranked execution/discovery records; ordinary quiz attempts still use the
+  existing recorder; official Time Trial keeps its existing transactional
+  mirror. No schema change exists.
+- `practice.item_fundamentals` and ordinary Ranked can now feed future Study
+  Hall calculations through the same read call.
+
+Verification on 2026-09-20: both new files passed `py_compile`, and a stdlib
+SQLite execution proof produced two same-identity cross-source attempts and a
+50% `item_cost` aggregate. The available bundled Python has no `pytest` module
+and the machine has no `py`/`python` launcher, so the pytest files (including
+the LH2.1 regression) could not be executed in this environment; no dependency
+was installed.
+
+Known caveats: Ranked rows with no canonical ref are omitted because inventing
+an identity would be unsafe. Generated multi-challenge Mastery depends on its
+pre-existing best-effort `quiz_attempts` bridge and is therefore partial rather
+than claiming raw-execution completeness. Time Trial practice has no event to
+project. Cross-mode concept ontology remains intentionally deferred.
+
+### Next task
+
+LH2.3 — make the CURRENT `quiz.runtime_casual` generator authority consumable
+by Ranked composition without reviving retired stored casual-question families.
+Do not start LH2.3 as part of LH2.2.
