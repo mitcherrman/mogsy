@@ -1,81 +1,101 @@
 /**
- * ENVVIS1 Batch 1 — which ATMOSPHERE an environment scene id draws.
+ * ENVVIS1 — which ART an environment scene id draws.
  *
  * The frontend half of the scene channel. The backend
- * (`quiz/environment_scene_assets.py`) decides WHICH ROWS may carry a scene
- * and what that scene is called; this file decides what the scene looks like.
- * The split is deliberate and is the same one `jungleAtmosphere.ts` already
- * makes for the Jungle Systems ground: identity and safety are backend
- * decisions with an answer in them, art is a layout decision with none.
+ * (`quiz/environment_scene_assets.py`) decides WHICH ROWS carry which scene id
+ * and what that scene is called; this file decides what the id looks like. The
+ * split is the one `jungleAtmosphere.ts` already makes for the Jungle Systems
+ * ground: row mapping is a content decision, art is a layout decision.
  *
- * WHAT A SCENE IS, AND WHAT IT IS NOT
- * ───────────────────────────────────
- * A scene arrives on `assets.scene`, never on `assets.subject`. It says "this
- * round happens HERE", not "this round is about this thing". That is the
- * weaker of the two claims and it is the only one these rows can support:
- * they ask about the fountain's regeneration rate, Homeguard's lockout, the
- * enemy Obelisk's damage and how death timers scale, and every one of those
- * answers is a duration, a percentage, a time or a yes/no. A place states
- * none of them.
+ * TWO LAYERS PER SCENE
+ * ────────────────────
+ * The art-wiring pass introduced a foreground. A scene is now:
  *
- * So the art rule for anything added here is narrow: it may depict a LOCATION
- * and nothing else. No numerals, no clocks reading a time, no health or mana
- * bars, no buff icons, no tooltips, no team colour that would name a side —
- * the backend's `SCENE_NEUTRALITY` note records why the last one matters (two
- * of the thirteen Batch 1 rows ask about the ENEMY fountain while the other
- * eleven ask about your own, so one atmosphere serves both and no per-side
- * variant is drawn).
+ *   background   the place, seated full-bleed behind the panel
+ *   foreground   optional — one contextual object composited over it, drawn in
+ *                the shared focal medallion the entity-subject cards use
  *
- * ── INTERIM ART, AND IT IS TRACKED AS SUCH ────────────────────────────────
- * `base_fountain` is currently served by `academy-hall.jpg`. That file is
- * SAFE — it is a night interior that encodes no duration, no amount and no
- * side, so it cannot leak any of these thirteen answers — but it is not the
- * base, and it does not communicate "fountain" to a reader.
+ * `base_fountain` is background-only. `lane_minion` and `lane_turret` share a
+ * background and differ only in the foreground, which is why they are two ids
+ * over one painting rather than one id with a flag: the id already names the
+ * treatment, so this table stays a flat lookup with no conditionals in it.
  *
- * It is used anyway, on purpose. ENVVIS1 Batch 1's goal was to prove the scene
- * channel end to end (registry -> contract -> wire -> classifier -> card), and
- * the hall is the one environment atmosphere this repo already ships and has
- * already measured and seated (see `ATMOSPHERE_DIM_SCENE`). Wiring the
- * architecture against real art beats wiring it against a placeholder nobody
- * reviewed, and it means the day a dedicated base/fountain asset lands the
- * change is ONE line here — no contract change, no card change, no backend
- * change, no re-review of which rows are safe.
+ * WHERE THE FOREGROUNDS COME FROM
+ * ───────────────────────────────
+ * Not from this repo. `assets/minions/caster.png` and
+ * `assets/structures/turret.png` are the BACKEND's canonical registry art —
+ * literally the same files `quiz.minion_assets` and `quiz.structure_assets`
+ * resolve for the entity-subject rows — served through the same
+ * `resolveQuizAssetUrl` every other backend icon goes through. That is the
+ * owner's instruction taken exactly: use the minion art other minion questions
+ * use, and the default turret art. A player sees one minion and one turret
+ * across the whole environment domain instead of two of each.
  *
- * A dedicated `base_fountain` asset is an OPEN ITEM. See ENVVIS1_HANDOFF.md.
+ * ── PLACEHOLDERS STILL IN PLACE ───────────────────────────────────────────
+ * Both BACKGROUNDS are interim. The owner is providing the final fountain/base
+ * and lane art; until it lands:
+ *
+ *   base_fountain  -> academy-hall.jpg        (a candlelit library interior)
+ *   lane_minion    -> jungle_grass_background (an outdoor Rift ground)
+ *   lane_turret    -> jungle_grass_background (the same)
+ *
+ * Neither is the place it claims to be. They are here so the wiring ships and
+ * can be verified end to end; `interimBackground: true` marks each one, and
+ * swapping them is a one-line change per row of this table with no contract,
+ * card, test or backend change. The FOREGROUNDS are final — they are the
+ * shipped registry art.
  */
 import academyHall from "@/assets/ranked/academy-hall.jpg";
+import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { JUNGLE_GRASS_BACKGROUND } from "@/lib/question-surface/jungleAtmosphere";
 
-/**
- * The art for one scene id.
- *
- * `interim` is carried in the data rather than in a comment so the open art
- * gap is visible to anything that reads this table — today that is the handoff
- * and the tests, which assert the flag rather than the filename, so replacing
- * the asset does not churn a test that is not about the asset.
- */
+/** The art for one scene id, with its resolution state. */
 export type EnvironmentSceneArt = {
-  /** Resolved module URL for the atmosphere image. */
-  src: string;
-  /** True while this scene is served by borrowed art. See the module note. */
-  interim: boolean;
+  /** Full-bleed background. A module URL or a served path. */
+  background: string;
+  /** Optional contextual object drawn over it, already resolved to a URL. */
+  foreground?: string;
+  /** Accessible label for the foreground, when there is one. */
+  foregroundAlt?: string;
+  /** True while the BACKGROUND is borrowed art awaiting the owner's asset. */
+  interimBackground: boolean;
 };
 
 /**
- * Scene id -> atmosphere. An EXPLICIT table, matching the discipline the
- * subject readers use for their type sets: a future backend scene id must not
- * acquire art by being named plausibly, and an id with no entry here resolves
- * to null, which is the polished text-only fallback rather than a broken
- * image.
- *
- * Batch 1 declares one id. Batch 2's neutral lane/wave scene is NOT here yet,
- * deliberately — its safety argument depends on exactly which units and
- * structures the art contains, and that review has not happened.
+ * Backend-relative paths for the foregrounds. Named here rather than inlined
+ * so the two canonical files this repo depends on are greppable, and so a
+ * backend asset move shows up as one edit.
+ */
+const MINION_ART = "assets/minions/caster.png";
+const TURRET_ART = "assets/structures/turret.png";
+
+/**
+ * Scene id -> art. An EXPLICIT table, matching the discipline the subject
+ * readers use for their type sets: a backend scene id this repo has no art for
+ * must resolve to null rather than to a broken image, so a vocabulary that
+ * runs ahead of the art degrades to the compact band instead of shipping an
+ * empty gold frame.
  */
 const SCENE_ART: Record<string, EnvironmentSceneArt> = {
-  base_fountain: { src: academyHall, interim: true },
+  base_fountain: {
+    background: academyHall,
+    interimBackground: true,
+  },
+  lane_minion: {
+    background: JUNGLE_GRASS_BACKGROUND,
+    foreground: resolveQuizAssetUrl(MINION_ART),
+    foregroundAlt: "Minion",
+    interimBackground: true,
+  },
+  lane_turret: {
+    background: JUNGLE_GRASS_BACKGROUND,
+    foreground: resolveQuizAssetUrl(TURRET_ART),
+    foregroundAlt: "Turret",
+    interimBackground: true,
+  },
 };
 
-/** The atmosphere for one backend scene id, or null when it has none. */
+/** The art for one backend scene id, or null when this repo has none. */
 export function resolveEnvironmentSceneArt(
   sceneId: string | null | undefined,
 ): EnvironmentSceneArt | null {
@@ -86,4 +106,18 @@ export function resolveEnvironmentSceneArt(
 /** Every scene id this repo can draw, sorted. Diagnostics and tests. */
 export function supportedSceneIds(): string[] {
   return Object.keys(SCENE_ART).sort();
+}
+
+/**
+ * Scene ids still drawing borrowed BACKGROUND art, sorted.
+ *
+ * Exported so the open asset swap is visible to a test rather than only to a
+ * comment — the list shrinks to empty when the owner's art lands, and nothing
+ * else has to change.
+ */
+export function interimBackgroundSceneIds(): string[] {
+  return Object.entries(SCENE_ART)
+    .filter(([, art]) => art.interimBackground)
+    .map(([id]) => id)
+    .sort();
 }

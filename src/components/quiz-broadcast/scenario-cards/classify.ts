@@ -579,7 +579,18 @@ export function getEnvironmentScene(question: QuizQuestion): EnvironmentScene | 
   const art = resolveEnvironmentSceneArt(id);
   if (!art) return null;
 
-  return { id, name, caption, art: art.src };
+  return {
+    id,
+    name,
+    caption,
+    art: art.background,
+    // Whole-layer, like every other media channel here: a foreground that did
+    // not resolve is simply absent and the card draws its background alone,
+    // rather than a medallion around a broken image.
+    ...(art.foreground
+      ? { foreground: art.foreground, foregroundAlt: art.foregroundAlt || name }
+      : {}),
+  };
 }
 
 export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubject | null {
