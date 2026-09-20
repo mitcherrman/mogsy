@@ -1,11 +1,19 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: PHASE 1B2 COMPLETE — contract frozen, schema APPLIED AND CERTIFIED IN
-PRODUCTION, canonical web funnel instrumented. Frontend not yet deployed.**
+**State: PHASE 1B2 — DATABASE SIDE FULLY CERTIFIED IN PRODUCTION. CODE SIDE NOT
+YET DEPLOYED.**
 
-Production baseline: **2026-09-20T11:27:52Z**, project `kewgjwrzpzpeltwidvuc`,
-commit `f2c0da40`. Funnel data begins there; everything before it is
-permanently zero (§5). See **§15.8** for the certification evidence.
+The schema is live in `kewgjwrzpzpeltwidvuc`, all eight certification items are
+closed from both the anon client path and privileged access, and the store was
+cleaned transactionally back to **zero rows** — a certified, empty baseline
+before the first real visitor (**§15.8**).
+
+The instrumented frontend is committed but sits on an **unpushed local branch**
+and therefore cannot reach production. **§15.15** is the review of that, and
+**B3 must not begin until it is resolved.**
+
+Production baseline: **2026-09-20T11:27:52Z**, commit `f2c0da40`. Funnel data
+begins when the frontend ships; everything before is permanently zero (§5).
 
 Sections 1–13 are the FUNNEL1A audit, retained unedited: they are the evidence
 the design rests on, and rewriting them to match the outcome would destroy the
@@ -1139,11 +1147,21 @@ Certification items and how each was established:
 | 1 | `analytics_events` exists | ✅ anon PostgREST probe |
 | 2 | `analytics_visitors` exists | ✅ anon PostgREST probe |
 | 3 | `analytics_sessions` exists | ✅ anon PostgREST probe |
-| 4 | Expected RLS policies present | ✅ **attested by the privileged operator**, not by this script — it holds no privilege to read `pg_policies`. Six policies + the indexes, including `uq_analytics_events_authoritative_entity`, were confirmed out of band |
+| 4 | Expected RLS policies present | ✅ **privileged verification**, direct Lovable database access. All six policies present, plus every expected index including `uq_analytics_events_authoritative_entity` |
 | 5 | Real web event inserted via the client path | ✅ event + visitor + session all accepted |
-| 6 | Readable through authorized access | ⏳ **pending privileged read-back** — SQL in §15.9 |
-| 7 | Common fields populated correctly | ✅ accepted as written; server-side value confirmation is part of item 6 |
+| 6 | Readable through authorized access | ✅ **privileged read-back passed for both smoke rows** |
+| 7 | Common fields populated correctly | ✅ verified server-side — field values correct, and the event → visitor → session join reproduced both first-touch and current-touch attribution |
 | 8 | Unauthorized reads blocked | ✅ anon sees zero rows on all three tables, including rows it just wrote |
+| 8b | Browser cannot forge server authority | ✅ rejected in production by RLS |
+
+**All eight items are closed. Nothing in this certification is second-hand.**
+Items 1, 2, 3, 5, 7, 8 and 8b were proved from the anon client path by
+`scripts/funnel/certify-analytics.ts`; items 4, 6 and the server-side half of 7
+were proved through direct privileged database access. The two halves were run
+against the same project by different credentials, which is a stronger result
+than either could give alone: the client path proves the policies *behave*
+correctly against a real browser credential, and the privileged path proves the
+policies and the stored values *are* what the migration intended.
 
 ### Smoke rows
 
@@ -1152,12 +1170,27 @@ in the contract and never will be**, so it cannot enter any funnel count by
 accident and cannot be confused with product telemetry — whereas a tagged
 `landing_viewed` would have put an exclusion clause on every future query.
 
-The script was run twice (once before the migration, which wrote nothing, and
-twice after during verification), so **two** smoke visitor/session/event sets
-exist. All are removed by the name/`utm_source = 'certification'` predicates in
-§15.9, which cannot match a real row.
+The script was run twice after the migration (a third run, before it, wrote
+nothing), so two smoke visitor/session/event sets existed. **Both have been
+removed transactionally.** Post-cleanup counts, verified with privileged
+access:
 
-## 15.9 Remaining privileged SQL
+```
+smoke_test_ping rows        0
+certification sessions      0
+certification visitors      0
+total analytics_events      0
+```
+
+The store is therefore **certified and empty before the first real visitor** —
+which is the clean statistical starting line the rollout rule was written to
+protect. The first row written to `analytics_events` in production will be a
+genuine one.
+
+## 15.9 The privileged SQL — RUN, PASSED, CLEANED UP
+
+Retained as the record of what was executed and as the re-certification recipe
+for the next deploy. Nothing here is outstanding.
 
 ```sql
 -- 6. authorized read-back + field validation
@@ -1186,8 +1219,9 @@ delete from public.analytics_sessions where utm_source = 'certification';
 delete from public.analytics_visitors where first_utm_source = 'certification';
 ```
 
-After cleanup, `analytics_events` should be empty until the instrumented
-frontend ships.
+All three cleanup statements ran transactionally and the table is empty
+(§15.8). It stays empty until the instrumented frontend ships — see §15.15,
+which is the reason it has not shipped yet.
 
 ## 15.10 Data-quality fix — the signup metric
 
@@ -1279,39 +1313,42 @@ src/pages/LolHub.test.tsx                     asserts hub_entered
 
 ## 15.13 Remaining data-quality risks
 
-1. **The frontend is not deployed yet.** The schema is live and certified; the
-   instrumented code is committed but not shipped. Until it is, the tables stay
-   empty. The baseline in §15.8 dates the schema, not the first real visitor.
-2. **Item 6 is not closed** until the privileged read-back in §15.9 returns, and
-   the smoke rows are still present until the cleanup runs.
-3. **Item 4 is attested, not independently verified by this repo's tooling.**
-   The policy inventory came from privileged access out of band. The policies
-   ARE proved to behave correctly — items 8 and 8b exercise them from a real
-   client — but the `pg_policies` listing itself is second-hand here.
-4. **Mode completion is still Railway-only.** Every `*_completed` in the
+1. **The frontend is not deployed, and is not currently on a path that reaches
+   production.** The schema is live and certified; the instrumented code is
+   committed to an unpushed local branch. This is the one blocking risk and it
+   has its own section — **§15.15**. The baseline in §15.8 dates the schema, not
+   the first real visitor.
+2. **Mode completion is still Railway-only.** Every `*_completed` in the
    contract is unwritten. §13.2 — how gameplay truth reaches Supabase — remains
    the largest open architectural decision.
-5. **Guest→registered depends on in-place upgrade.** If Auth ever stops
+3. **Guest→registered depends on in-place upgrade.** If Auth ever stops
    upgrading identities in place, `observeAuthIdentity` stops seeing the
    transition and signups silently undercount. `visitor_id` limits the blast
    radius; a test asserting uid continuity across signup is still owed.
-6. **Repeat within-session navigation is not counted** by design (§15.5). Anyone
+4. **Repeat within-session navigation is not counted** by design (§15.5). Anyone
    reading "Leaguecraft opens" should read it as "sessions that opened
    Leaguecraft".
-7. **Mastery is guest-invisible** by product design (`ProtectedRoute`).
-8. **`visitor_id` is self-reported.** Cleared site data, a second browser or a
+5. **Mastery is guest-invisible** by product design (`ProtectedRoute`).
+6. **`visitor_id` is self-reported.** Cleared site data, a second browser or a
    second device each produce a new visitor; unique-visitor counts are upper
    bounds.
-9. **Two ad analytics systems remain** (§13.4), now both alive: `ad_events` and
+7. **Two ad analytics systems remain** (§13.4), now both alive: `ad_events` and
    `ad_slot_*` into `analytics_events`. Reconcile before reporting on either.
-10. **`analytics_visitors` is publicly insertable with no rate limit.** Bounded
+8. **`analytics_visitors` is publicly insertable with no rate limit.** Bounded
     in shape by the CHECK constraints, unbounded in volume.
 
 ## 15.14 Proposed scope for FUNNEL1B3
 
-1. **Close out B2's tail**: run the §15.9 read-back, delete the smoke rows, ship
-   the frontend, then re-run `certify-analytics.ts` against the deployed site
-   and record the first real `landing_viewed`.
+**B3 is blocked until §15.15's steps 1–5 are done.** The database side of B2 is
+fully certified; the code side has not reached production, and Railway emission
+built on an unproven web funnel would be the third repetition of the same
+half-shipped mistake.
+
+1. **Close out B2's tail** (§15.15): rebase, push, confirm the ref Lovable
+   publishes from, merge, publish, then re-run `certify-analytics.ts` against
+   the deployed site and confirm real `landing_viewed` rows are arriving. The
+   store is certified empty, so the first row that appears is unambiguous
+   evidence — the read-back and smoke-row cleanup are already done (§15.9).
 2. **Regenerate `types.ts`** now that the tables exist, then delete
    `AnalyticsDatabase` from `src/lib/analytics/schema.ts` and point `analyticsDb`
    at `supabase` directly. The file documents its own removal.
@@ -1328,3 +1365,91 @@ src/pages/LolHub.test.tsx                     asserts hub_entered
 
 Admin analytics UI stays out of B3 unless explicitly scoped — but after B3 the
 data will finally exist to justify it.
+
+## 15.15 Integration / deployment state — THE INSTRUMENTED FRONTEND DOES NOT CURRENTLY REACH PRODUCTION
+
+Asked before authorising B3, and the answer is the most important line in this
+section, so it is first: **the schema half of FUNNEL1B2 is live in production;
+the code half is not, and nothing will carry it there without a deliberate act.**
+
+### What is true right now
+
+| | |
+|---|---|
+| Branch | `funnel1b1-analytics-foundation` |
+| HEAD | `9953af88` |
+| Upstream | **none** — `fatal: no upstream configured for branch` |
+| Remote branches containing HEAD | **none** |
+| Position vs `origin/main` | **3 ahead, 5 behind** |
+| CI / deploy config in repo | none (`.github/workflows` absent; no `vercel.json`, `netlify.toml`, `Dockerfile`) |
+
+The three commits — `9bedaae4` (B1 schema + emitter), `f2c0da40` (B2
+instrumentation), `9953af88` (certification record) — exist **only in the local
+worktree**. They have never been pushed. Production deploys via Lovable
+Publish, which builds from the GitHub repository, so code that is not on the
+remote cannot be in a build, and no amount of further local work changes that.
+
+This is the same failure shape FUNNEL1A found, with the halves swapped. In July
+the code shipped and the migration did not, so the emitter wrote into nothing.
+Today the migration has shipped and the code has not, so nothing writes into
+the tables. Both are "one half of a two-part change reached production", and
+both are silent: the tables are empty, and an empty analytics table looks
+exactly like a product with no traffic.
+
+### Divergence and merge risk — low, and measured
+
+`origin/main` advanced five commits since this branch was cut at `84de68ef`:
+`2f211a3b`, `7bc6581b`, `2b6d3e91`, `a6a41a52`, `0b86c7fa` — the MRLVL1 champion
+level badge and GR1 reusable-state docs.
+
+- **File overlap with this branch: zero.** Their work touches
+  `ChampionLevelBadge`, `ranked-core`/`ranked-public`, `league-swipe/api.ts`,
+  `LeagueSwipeGame.tsx` and docs. This branch touches the analytics library, the
+  page surfaces, `useAuth`, `useAccountUpgrade`, `admin-data-sources` and
+  `LolHub`/`Quiz`/`Auth`. The intersection is empty.
+- **`git merge-tree --write-tree origin/main HEAD` is clean** — no conflicts.
+
+Note the near-miss worth naming: they changed `LeagueSwipeGame.tsx`; this branch
+instruments `LeagueSwipeHub.tsx`. Different files, same feature area. A later
+B3 that instruments the game itself will not be so lucky, and should rebase
+first.
+
+### What must happen before B3, in order
+
+1. **Rebase onto current `origin/main`** (clean, per the trial merge) and re-run
+   the focused suites. This is cheap now and gets more expensive every day the
+   branch sits.
+2. **Push the branch and open a PR**, so the code is somewhere a build can see
+   it. Until this step, every later step is blocked.
+3. **Confirm which ref Lovable Publish actually builds from.** The repo carries
+   no CI configuration, so this cannot be answered from source — it is a
+   setting in the Lovable project, and it is the single fact this review cannot
+   establish from here. If it publishes from `main`, the branch must be merged
+   to `main`; if from a preview ref, that ref must be the one carrying these
+   commits.
+4. **Merge and publish.**
+5. **Re-run `scripts/funnel/certify-analytics.ts`** against the deployed site,
+   then confirm in the database that real `landing_viewed` rows are arriving
+   from real visitors — not just that an insert is *possible*, which is all
+   §15.8 proves. The store is empty and certified clean, so the first row to
+   appear is a genuine one and is unambiguous evidence the loop is closed.
+6. **Only then start B3.** Railway emission depends on the web funnel actually
+   producing rows; building the server half against an unproven client half
+   would repeat the same mistake a third time.
+
+### The ordering risk this phase deliberately accepted
+
+The rollout rule said schema and instrumentation should ship together, and they
+have not. The consequence is bounded and was chosen knowingly: the schema
+shipping alone writes no rows and breaks nothing, because the only code that
+could write to it is the code that has not shipped. The reverse order — the one
+July took — is the dangerous one.
+
+What it does cost is the guarantee that nobody *else's* deploy reaches
+production first. The legacy shim (`src/lib/funnel-analytics.ts`) routes 34
+existing call sites into `analytics_events`, and those call sites are already
+live on `origin/main`. **They are harmless only because the shim's new target
+does not exist in the shipped bundle** — the deployed build still writes to
+`funnel_events`, which still does not exist, and still fails silently. No
+partial or stale deploy can contaminate the clean baseline. But the window
+should be closed promptly rather than left open.
