@@ -27,7 +27,9 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { ChampionLevelBadge } from "@/components/ChampionLevelBadge";
-import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
+import {
+  MetaReflexSting, STING_MS, useEntrySting,
+} from "@/components/ranked-arena/MetaReflexSting";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
 import type { QuestionView } from "@/lib/ranked-core/viewTypes";
@@ -460,7 +462,9 @@ function MetaReflexHeader({ progress, clock }:
   );
 }
 
-function MetaReflexViewport({ publicRound, segmentState, actions, skewMs }: ModuleViewportProps) {
+function MetaReflexViewport({
+  publicRound, segmentState, actions, skewMs, entryPresentationMs,
+}: ModuleViewportProps) {
   /**
    * Phase 11 — the entry sting's identity is the BLOCK, not the card.
    *
@@ -476,7 +480,12 @@ function MetaReflexViewport({ publicRound, segmentState, actions, skewMs }: Modu
   const blockKey = segmentState && segmentState.phase === "challenges"
     ? `${publicRound.segment.moduleVersion}#${publicRound.segment.segmentNumber ?? "-"}`
     : null;
-  const stinging = useEntrySting(blockKey);
+  /**
+   * RFX1 2B3 — the coordinator's window, or the sting's own default when no
+   * coordinator supplied one (the dev harnesses). 0 means "not owed one",
+   * which is how a reconnect into a running block skips it.
+   */
+  const stinging = useEntrySting(blockKey, entryPresentationMs ?? STING_MS);
   if (!segmentState) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="mr-loading">

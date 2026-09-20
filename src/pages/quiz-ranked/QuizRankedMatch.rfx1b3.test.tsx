@@ -24,9 +24,13 @@ import { QuizRankedMatch } from "./QuizRankedMatch";
 import { __resetPreparedImagesForTests } from "@/lib/ranked-core/media/prepareImage";
 import {
   ENTRY_INTRO_MIN_MS, ENTRY_MIN_LEAD_MS, MATCH_OUTRO_MS,
+  PRESENTATION_HEADROOM_MS, RESOLVE_DISCOVERY_MS, SPECIAL_TRANSITION_VISIBLE_MS,
   REVEAL_HOLD_MIN_MS,
 } from "@/lib/ranked-core/pacing";
-import { matchResultPointsV1, privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
+import {
+  matchResultPointsV1, metaReflexSegmentMeta, metaReflexState,
+  privatePlayerV2, publicRoundV2,
+} from "@/lib/ranked-public/fixtures";
 
 const T = "2026-07-18T12:00:00+00:00";
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -58,6 +62,12 @@ let overMatch: boolean;
 let liveOver: boolean;
 let mediaLoads: boolean;
 let isBotMatch: boolean;
+/** RFX1 2B3 — which module this round is, and where it sits in the match. */
+let moduleNumber: number;
+let matchLength: number | null;
+let segmentOverride: Record<string, unknown> | null;
+/** The round the server currently reports as active. */
+let activeRound: number;
 /** Round-trip cost on the two reads the ending needs. Production has one. */
 let endingLatencyMs: number;
 
@@ -99,7 +109,6 @@ function shape<T2 extends { payload: Record<string, unknown> }>(env: T2): T2 {
     payload.completion_reason = "segments_complete";
     // The final round settled INSIDE the transaction that ended the match —
     // which is exactly why it is the one round whose reveal had never played.
-    payload.completed_rounds = 1;
   }
   payload.progression_enabled = false;
   payload.server_time = iso(Date.now());
@@ -112,13 +121,35 @@ function shape<T2 extends { payload: Record<string, unknown> }>(env: T2): T2 {
     question_bank_mode: "shared_bank", is_placeholder: false,
     is_bot_match: isBotMatch, session_preset: null,
   };
+  payload.completed_rounds = done ? moduleNumber : activeRound - 1;
+  const q = payload.question as Record<string, unknown> | null;
+  if (q) q.question_id = `q${activeRound}`;
   const ar = payload.active_round as Record<string, unknown> | null;
   if (ar) {
+    ar.round_number = activeRound;
     ar.started_at = iso(startedAt);
     ar.active_deadline = iso(startedAt + 30_000);
     ar.duration_seconds = 30;
   }
-  payload.scoring = { model: "points", match_length: 10, module_number: 1, modules_completed: 0 };
+  payload.scoring = {
+    model: "points", match_length: matchLength,
+    module_number: moduleNumber, modules_completed: moduleNumber - 1,
+  };
+  /**
+   * RFX1 2B3 — a Meta Reflex block, from round 2 on. Round 1 stays an
+   * ordinary quiz round so a test can mount into one and then watch the
+   * TRANSITION into the block, which is the only thing the beat reacts to.
+   */
+  if (segmentOverride && activeRound >= 2 && !done) {
+    payload.segment = metaReflexSegmentMeta({
+      segment_number: activeRound,
+      challenge_index: segmentOverride.challenge_index ?? 0,
+    });
+    payload.segment_state = metaReflexState(
+      (segmentOverride.challenge_index as number) ?? 0,
+      { segment_number: activeRound });
+    payload.question = null;
+  }
   return env;
 }
 
@@ -138,18 +169,24 @@ beforeEach(() => {
   liveOver = false;
   mediaLoads = true;
   isBotMatch = false;
+  moduleNumber = 1;
+  matchLength = 10;
+  segmentOverride = null;
+  activeRound = 1;
   endingLatencyMs = 0;
   startedAt = Date.now() + LEAD_ON_ARRIVAL;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const u = String(url);
     if (u.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
     if (u.endsWith("/private")) return json(shape(privatePlayerV2("userA")));
-    if (/\/rounds\/1\/resolved$/.test(u)) {
+    const settled = /\/rounds\/(\d+)\/resolved$/.exec(u);
+    if (settled) {
       if (endingLatencyMs) await new Promise((r) => setTimeout(r, endingLatencyMs));
+      const rn = Number(settled[1]);
       return json({
         schema_version: "ranked_duel.resolved_round.v2", projection_type: "resolved_round",
-        match_id: "m1", round_number: 1, server_time: iso(Date.now()),
-        payload: resolvedPayload(),
+        match_id: "m1", round_number: rn, server_time: iso(Date.now()),
+        payload: { ...resolvedPayload(), round_number: rn, question_id: `q${rn}` },
       });
     }
     if (u.endsWith("/resume")) {
@@ -507,5 +544,271 @@ describe("RFX1 2B3 — the outro plays only for a client that WATCHED the end", 
     await screen.findByTestId("ranked-match-over", undefined, { timeout: 8000 });
     expect(outro()).toBeNull();
     expect(intro()).toBeNull();
+  }, 25000);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Part 5 — the MEDIUM beats: Final Round and Meta Reflex entry              */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+const finalWarning = () => screen.queryByTestId("ranked-final-round-warning");
+const sting = () => screen.queryByTestId("mr-sting");
+const specialAttr = () => arena()?.getAttribute("data-special-transition") ?? null;
+const moduleFace = () =>
+  screen.queryByTestId("central-stage")?.getAttribute("data-face") ?? null;
+
+/**
+ * The server's own budget for each beat (backend `module_transition_ms`):
+ * the result hold, the poll interval the client may be behind by, the beat
+ * and its cutoff margin.
+ */
+const FINAL_LEAD = 1500 + RESOLVE_DISCOVERY_MS + PRESENTATION_HEADROOM_MS
+  + SPECIAL_TRANSITION_VISIBLE_MS["final-round"] + 150;      // 5100
+const MR_LEAD = 1500 + RESOLVE_DISCOVERY_MS + PRESENTATION_HEADROOM_MS
+  + SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"] + 150; // 5600
+
+/** Turn round 2 into a Meta Reflex block; `challenge_index` picks the card. */
+const MR_SEGMENT = { challenge_index: 0 };
+
+/**
+ * Mount into a live round 1, then let the server resolve it and open round 2
+ * with the lead-in that round's own kind is owed — the real transition.
+ */
+async function transitionIntoRound2(lead: number) {
+  startedAt = Date.now() - 4000;
+  render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
+  // Round 1 is always an ordinary quiz round, whatever round 2 will be — the
+  // beat reacts to the TRANSITION, so there has to be something to leave.
+  await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
+  moduleNumber = 2;
+  activeRound = 2;
+  startedAt = Date.now() + lead;
+}
+
+/** Sample the arena until `stop` says so, recording every state change. */
+async function sample(stopAfterMs: number) {
+  const seen: { special: string | null; at: number; input: boolean }[] = [];
+  const until = Date.now() + stopAfterMs;
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 15));
+    const special = specialAttr();
+    const last = seen[seen.length - 1];
+    if (!last || last.special !== special) {
+      seen.push({
+        special, at: Date.now(),
+        input: screen.queryByTestId("ranked-question")
+          ?.getAttribute("data-input-open") === "true",
+      });
+    }
+  }
+  return seen;
+}
+
+describe("RFX1 2B3 — the Final Round beat", () => {
+  it("plays on the live transition into the final round, and only then", async () => {
+    matchLength = 2;                       // round 2 IS the final round
+    await transitionIntoRound2(FINAL_LEAD);
+    const node = await screen.findByTestId("ranked-final-round-warning",
+      undefined, { timeout: 8000 });
+    expect(node).toHaveAttribute("data-warning-id", "m1:r2");
+    expect(node).toHaveAttribute("data-warning-ms",
+      String(SPECIAL_TRANSITION_VISIBLE_MS["final-round"]));
+    expect(specialAttr()).toBe("final-round");
+  }, 25000);
+
+  it("holds its configured duration, keeps input locked, and ends before started_at",
+    async () => {
+      matchLength = 2;
+      await transitionIntoRound2(FINAL_LEAD);
+      await screen.findByTestId("ranked-final-round-warning", undefined, { timeout: 8000 });
+      const shownAt = Date.now();
+      let endedAt = 0;
+      await waitFor(() => { expect(finalWarning()).toBeNull(); endedAt = Date.now(); },
+        { timeout: 6000, interval: 10 });
+      // The whole promise, not a flash…
+      expect(endedAt - shownAt)
+        .toBeGreaterThanOrEqual(SPECIAL_TRANSITION_VISIBLE_MS["final-round"] - 120);
+      // …and off screen BEFORE the player may act.
+      expect(startedAt - endedAt).toBeGreaterThan(0);
+      expect(screen.getByTestId("ranked-question").getAttribute("data-input-open"))
+        .toBe("false");
+      // Input still opens at the server's instant, untouched by any of this.
+      let openedAt = 0;
+      await waitFor(() => {
+        expect(screen.getByTestId("ranked-question").getAttribute("data-input-open"))
+          .toBe("true");
+        openedAt = Date.now();
+      }, { timeout: 3000, interval: 10 });
+      expect(openedAt - startedAt).toBeGreaterThanOrEqual(0);
+      expect(openedAt - startedAt).toBeLessThan(300);
+    }, 25000);
+
+  it("REPLACES the module title — the two never stack", async () => {
+    matchLength = 2;
+    await transitionIntoRound2(FINAL_LEAD);
+    await screen.findByTestId("ranked-final-round-warning", undefined, { timeout: 8000 });
+    const seen = await sample(4000);
+    // The warning is up exactly once, and while it is up the header is never
+    // showing a module-name face. One intro for one question.
+    const runs = seen.filter((s) => s.special === "final-round");
+    expect(runs).toHaveLength(1);
+    expect(moduleFace()).not.toBe("module");
+    // And nothing was interactive underneath it.
+    expect(seen.filter((s) => s.special === "final-round" && s.input)).toEqual([]);
+  }, 25000);
+
+  it("does not replay from polling or rerenders once it is spent", async () => {
+    matchLength = 2;
+    await transitionIntoRound2(FINAL_LEAD);
+    await screen.findByTestId("ranked-final-round-warning", undefined, { timeout: 8000 });
+    await waitFor(() => expect(finalWarning()).toBeNull(),
+      { timeout: 6000, interval: 10 });
+    // Several polls and a long stretch of renders later: still gone.
+    const seen = await sample(2500);
+    expect(seen.every((s) => s.special === null)).toBe(true);
+  }, 25000);
+
+  it("a RECONNECT straight into the final round plays nothing", async () => {
+    // The lead-in is already spent, which is what arriving into a round in
+    // progress looks like. `specialTransitionWindowMs` reads 0.
+    matchLength = 2; moduleNumber = 2; activeRound = 2;
+    startedAt = Date.now() - 4000;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" />);
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
+    expect(finalWarning()).toBeNull();
+    expect(specialAttr()).toBeNull();
+    await new Promise((r) => setTimeout(r, 400));
+    expect(finalWarning()).toBeNull();
+  }, 25000);
+
+  it("a REFRESH inside the final round's own lead-in still plays nothing", async () => {
+    // The clock alone would allow it here — the lead-in has not been spent.
+    // The mount-advance guard is what refuses: this client did not watch the
+    // round arrive, so it is not being warned about a transition it saw.
+    matchLength = 2; moduleNumber = 2; activeRound = 2;
+    startedAt = Date.now() + FINAL_LEAD;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
+    const seen = await sample(2500);
+    expect(seen.every((s) => s.special === null)).toBe(true);
+  }, 25000);
+
+  it("REDUCED MOTION keeps the same duration", async () => {
+    document.documentElement.classList.add("reduce-motion");
+    matchLength = 2;
+    await transitionIntoRound2(FINAL_LEAD);
+    const node = await screen.findByTestId("ranked-final-round-warning",
+      undefined, { timeout: 8000 });
+    expect(node).toHaveAttribute("data-reduced-motion", "true");
+    const shownAt = Date.now();
+    await waitFor(() => expect(finalWarning()).toBeNull(),
+      { timeout: 6000, interval: 10 });
+    expect(Date.now() - shownAt)
+      .toBeGreaterThanOrEqual(SPECIAL_TRANSITION_VISIBLE_MS["final-round"] - 120);
+  }, 25000);
+
+  it("leaves an ORDINARY round with its ordinary transition", async () => {
+    matchLength = 10;                       // round 2 of 10 — nothing special
+    await transitionIntoRound2(1500 + 1400);
+    const seen = await sample(4000);
+    expect(seen.every((s) => s.special === null)).toBe(true);
+    expect(finalWarning()).toBeNull();
+    // And the minor beat is untouched: the module face still plays for it.
+    await waitFor(() => expect(screen.getByTestId("answer-grid")).toBeInTheDocument(),
+      { timeout: 3000 });
+  }, 25000);
+});
+
+describe("RFX1 2B3 — the Meta Reflex entry beat", () => {
+  it("plays before Card 1, for its configured duration, not the old flash", async () => {
+    segmentOverride = MR_SEGMENT;
+    await transitionIntoRound2(MR_LEAD);
+    await waitFor(() => expect(specialAttr()).toBe("meta-reflex-entry"),
+      { timeout: 8000 });
+    const shownAt = Date.now();
+    // It IS the existing sting, extended — not a second popup laid over it.
+    expect(sting()).not.toBeNull();
+    expect(finalWarning()).toBeNull();
+    let endedAt = 0;
+    await waitFor(() => { expect(sting()).toBeNull(); endedAt = Date.now(); },
+      { timeout: 6000, interval: 10 });
+    expect(endedAt - shownAt)
+      .toBeGreaterThanOrEqual(SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"] - 150);
+    // Comfortably longer than the 720 ms it replaced.
+    expect(endedAt - shownAt).toBeGreaterThan(720 * 2);
+    // Gone before the block becomes answerable.
+    expect(startedAt - endedAt).toBeGreaterThan(0);
+  }, 25000);
+
+  it("does not let Card 1 become interactive underneath it", async () => {
+    segmentOverride = MR_SEGMENT;
+    await transitionIntoRound2(MR_LEAD);
+    await waitFor(() => expect(specialAttr()).toBe("meta-reflex-entry"),
+      { timeout: 8000 });
+    const seen = await sample(2400);
+    expect(seen.filter((s) => s.special === "meta-reflex-entry" && s.input)).toEqual([]);
+  }, 25000);
+
+  it("plays ONCE per block — cards 2-5 do not replay it", async () => {
+    segmentOverride = MR_SEGMENT;
+    await transitionIntoRound2(MR_LEAD);
+    await waitFor(() => expect(sting()).not.toBeNull(), { timeout: 8000 });
+    await waitFor(() => expect(sting()).toBeNull(), { timeout: 6000, interval: 10 });
+    // Advance the block card by card. The sting is keyed on the BLOCK, so
+    // none of these is a new beat.
+    for (let index = 1; index < 5; index += 1) {
+      segmentOverride = { ...MR_SEGMENT, challenge_index: index };
+      await new Promise((r) => setTimeout(r, 350));
+      expect(sting()).toBeNull();
+    }
+    expect(specialAttr()).toBeNull();
+  }, 25000);
+
+  it("a RECONNECT into a running block plays nothing", async () => {
+    segmentOverride = MR_SEGMENT;
+    moduleNumber = 2; activeRound = 2;
+    startedAt = Date.now() - 4000;          // the block is already running
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" />);
+    await screen.findByTestId("mr-surface", undefined, { timeout: 8000 });
+    expect(sting()).toBeNull();
+    await new Promise((r) => setTimeout(r, 400));
+    expect(sting()).toBeNull();
+  }, 25000);
+
+  it("REDUCED MOTION keeps the same duration", async () => {
+    document.documentElement.classList.add("reduce-motion");
+    segmentOverride = MR_SEGMENT;
+    await transitionIntoRound2(MR_LEAD);
+    await waitFor(() => expect(sting()).not.toBeNull(), { timeout: 8000 });
+    const shownAt = Date.now();
+    await waitFor(() => expect(sting()).toBeNull(), { timeout: 6000, interval: 10 });
+    expect(Date.now() - shownAt)
+      .toBeGreaterThanOrEqual(SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"] - 150);
+  }, 25000);
+});
+
+describe("RFX1 2B3 — when the final round IS a Meta Reflex block", () => {
+  it("plays ONE beat: the Final Round message on the Meta Reflex clock", async () => {
+    matchLength = 2;                        // round 2 is final…
+    segmentOverride = MR_SEGMENT;           // …and is a Meta Reflex block
+    await transitionIntoRound2(MR_LEAD);
+    await waitFor(() => expect(specialAttr()).toBe("final-round"), { timeout: 8000 });
+    const shownAt = Date.now();
+    // The higher-stakes word, and NOT the sting as well.
+    expect(finalWarning()).not.toBeNull();
+    expect(sting()).toBeNull();
+    expect(finalWarning()).toHaveAttribute("data-warning-ms",
+      String(SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"]));
+    let endedAt = 0;
+    await waitFor(() => { expect(finalWarning()).toBeNull(); endedAt = Date.now(); },
+      { timeout: 6000, interval: 10 });
+    // The more generous clock: the mode shift still has to register.
+    expect(endedAt - shownAt)
+      .toBeGreaterThanOrEqual(SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"] - 150);
+    // And ONE beat, never the two back to back.
+    expect(endedAt - shownAt).toBeLessThan(
+      SPECIAL_TRANSITION_VISIBLE_MS["final-round"]
+      + SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"]);
+    expect(startedAt - endedAt).toBeGreaterThan(0);
   }, 25000);
 });

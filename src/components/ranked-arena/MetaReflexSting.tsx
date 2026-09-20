@@ -1,22 +1,28 @@
 /**
  * QUIZ1 Phase 11 — the Meta Reflex mode-transition sting.
+ * RFX1 2B3 — now the MEDIUM presentation beat for entering a block.
  *
  * Plays ONCE when a block is entered, never between cards.
  *
- * The timing constraint, and why this is an overlay rather than a curtain
- * ────────────────────────────────────────────────────────────────────────
- * The backend starts card 1's deadline at the instant it CREATES the block
- * (`ranked_public/service.py` calls `sf.start_card_deadline` inside the same
- * transaction that inserts the round), before this client has polled. The card
- * clock is therefore already running when the first card renders. A 720ms
- * animation that covered or replaced the card would spend 12% of a six-second
- * window on itself, and the player would have no way to get it back.
+ * WHY IT WAS 720 MS AND AN OVERLAY, AND WHAT CHANGED
+ * ──────────────────────────────────────────────────
+ * When this shipped, the backend started card 1's deadline at the instant it
+ * CREATED the block, before this client had polled — so the card clock was
+ * already running when the first card rendered, and anything that covered or
+ * replaced the card would have spent the player's own answer window on
+ * itself. 720 ms of decoration over a live surface was the only shape that
+ * was honest about that clock.
  *
- * So the sting does not gate anything. It is `pointer-events: none`, it is
- * bounded to the block HEADER band rather than the choice buttons, and it does
- * not delay, defer or remount the card beneath it. The full server window
- * stays interactive for its whole duration; the animation is decoration laid
- * over a live surface, which is the only shape that is honest about the clock.
+ * RFX1 2B1 removed the premise. `_open_segment` now opens a round at
+ * `now + presentation_ms`, and `start_card_deadline` is anchored on that same
+ * instant — so a lead-in given to the block round is time card 1 does not
+ * pay for. RFX1 2B3 sizes that lead for a real mode-shift beat
+ * (`pacing.SPECIAL_TRANSITION_VISIBLE_MS`), and the card underneath is
+ * visible-but-LOCKED for it, exactly as round 1 is during its own preview.
+ *
+ * The overlay shape is kept anyway: `pointer-events: none` costs nothing now
+ * that input is closed by `started_at`, and it means a clock error can only
+ * ever produce a harmless banner rather than a curtain over a live card.
  *
  * Reduced motion is handled in CSS (`src/index.css`): the two words stop
  * travelling and simply appear centred and fade.
@@ -28,7 +34,12 @@
  */
 import { useEffect, useRef, useState } from "react";
 
-/** Total sting duration. Must match the CSS animation duration. */
+/**
+ * The sting's own duration, and the DEFAULT for every caller that does not
+ * supply one — the Daily, which has no server-owned lead-in to sit in and
+ * whose behaviour this phase deliberately does not change. Matches the CSS
+ * animation duration.
+ */
 export const STING_MS = 720;
 
 /**
@@ -38,7 +49,20 @@ export const STING_MS = 720;
  * new block?" — is testable on its own, and so the sting element only exists
  * while it is actually playing.
  */
-export function useEntrySting(blockKey: string | null): boolean {
+export function useEntrySting(
+  blockKey: string | null,
+  /**
+   * RFX1 2B3 — HOW LONG THE BEAT IS HELD, from the Ranked presentation
+   * coordinator. Ranked passes the server-anchored Meta Reflex entry window
+   * (`SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"]`, clamped to the
+   * round's own lead-in); everything else keeps `STING_MS` and is unchanged.
+   *
+   * 0 means DO NOT PLAY: a reconnect or a refresh into a block whose lead-in
+   * is already spent is not owed a mode-shift warning for a mode it is
+   * already in.
+   */
+  durationMs: number = STING_MS,
+): boolean {
   // "Which block have I already played for" is a REF, not state, and that is
   // load-bearing: as state it would be an effect dependency, so recording it
   // re-ran the effect, whose cleanup cancelled the timer that ends the sting —
@@ -48,10 +72,15 @@ export function useEntrySting(blockKey: string | null): boolean {
   const [playing, setPlaying] = useState(false);
   useEffect(() => {
     if (blockKey === null || blockKey === playedFor.current) return;
+    // Read at the START of the beat and deliberately not a dependency: the
+    // Ranked window counts down every render, and depending on it would
+    // restart the timer on every tick. Same rule as `CentralStage`'s title.
+    if (durationMs <= 0) { playedFor.current = blockKey; return; }
     playedFor.current = blockKey;
     setPlaying(true);
-    const id = window.setTimeout(() => setPlaying(false), STING_MS);
+    const id = window.setTimeout(() => setPlaying(false), durationMs);
     return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockKey]);
   return playing;
 }

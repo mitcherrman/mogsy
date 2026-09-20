@@ -79,7 +79,8 @@ import { useMatchDiscoveries } from "./useMatchDiscoveries";
 import { useRankedMatch } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
 import {
-  projectPresentationPhase, projectResultFeedback, upcomingRound,
+  projectPresentationPhase, projectResultFeedback, projectSpecialTransition,
+  upcomingRound,
 } from "@/lib/ranked-core/flow/rankedFlow";
 import { useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 import {
@@ -87,10 +88,14 @@ import {
 } from "@/lib/ranked-core/media/useRankedMediaPreparation";
 import {
   entryPrepBudgetMs, moduleTitleWindowMs, presentationCutoffAt,
+  specialTransitionWindowMs,
 } from "@/lib/ranked-core/pacing";
 import { useEntryIntro } from "@/lib/ranked-core/flow/useEntryIntro";
 import { useCountdownNow } from "@/lib/ranked-core/flow/useCountdownNow";
 import { projectMatchOutro } from "@/lib/ranked-core/flow/matchOutro";
+import { useSpecialTransition } from "@/lib/ranked-core/flow/useSpecialTransition";
+import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
+import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useRankedMatchSfx } from "./useRankedMatchSfx";
@@ -99,6 +104,16 @@ import { useRankedMatchSfx } from "./useRankedMatchSfx";
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
   leading: "trailing", tied: "tied", trailing: "leading",
 };
+
+/**
+ * RFX1 2B3 — identity of the ROUND a snapshot is presenting, for the medium
+ * warnings' one-per-round latch. Null-safe: a snapshot with no active round
+ * (a phased segment, a completed match) has no beat to key.
+ */
+function roundKeyOf(round: PublicRoundView | null): string | null {
+  const n = round?.activeRound?.roundNumber ?? null;
+  return n === null ? null : `${round!.matchId}:r${n}`;
+}
 
 /** Identity of the module/segment a snapshot belongs to. */
 function segmentKey(round: PublicRoundView): string {
@@ -344,7 +359,28 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     || renderedRound === null
     || segmentKey(live) !== segmentKey(renderedRound)
   );
-  if (canAdvanceSurface && live !== renderedRound) setRenderedRound(live);
+  /**
+   * RFX1 2B3 — DID THIS MOUNT WATCH THE ARENA ADVANCE INTO THE PRESENTED
+   * ROUND?
+   *
+   * The medium warnings (Final Round, Meta Reflex entry) are owed only to a
+   * client that transitioned INTO the round. A reconnect or a refresh has its
+   * lead-in already spent and is filtered by the clock alone, but a refresh
+   * landing INSIDE that 1.3-1.8 s window would otherwise replay a warning for
+   * a transition it never saw. This is that observation, and the first swap a
+   * mount makes (null -> the first snapshot) deliberately does not count.
+   */
+  const advancedInto = useRef<string | null>(null);
+  if (canAdvanceSurface && live !== renderedRound) {
+    // THE ROUND, NOT THE OBJECT. Every poll returns a fresh snapshot object
+    // for the same round, and treating that as an advance would let a refresh
+    // that landed inside the lead-in claim it had watched a transition it
+    // never saw. Only a change of round number is one.
+    const from = roundKeyOf(renderedRound);
+    const to = roundKeyOf(live);
+    if (from !== null && to !== null && from !== to) advancedInto.current = to;
+    setRenderedRound(live);
+  }
   const surfaceRound = renderedRound ?? live;
   useRankedMatchSfx({
     matchId,
@@ -729,6 +765,52 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     nowMs: Date.now(),
     matchOutro: m.matchOutroId !== null,
   });
+  /**
+   * RFX1 2B3 — THE MEDIUM BEAT this round is owed, if any.
+   *
+   * Classified from the PRESENTED round, so a Final Round warning cannot
+   * appear while the player is still reading the previous round's result, and
+   * gated on the server's own lead-in — which is also the replay rule.
+   */
+  const surfaceRoundKey = roundKeyOf(surfaceRound);
+  const specialCandidate = projectSpecialTransition({
+    presented: surfaceRound,
+    metaReflexModuleId: META_REFLEX_MODULE_ID,
+    metaReflexMinVersion: META_REFLEX_MIXED_VERSION,
+  });
+  const msUntilSurfaceAnswerable = surfaceRound?.activeRound?.startedAt
+    ? msUntilAnswerable(surfaceRound.activeRound.startedAt, m.skewMs, Date.now()) : null;
+  /**
+   * THE BEAT'S WINDOW, COMPUTED ONCE AND SYNCHRONOUSLY.
+   *
+   * Every consumer below reads this same number on the SAME render, which is
+   * load-bearing rather than tidiness. The Meta Reflex beat is played by the
+   * module's own sting, and that sting latches on the first render where the
+   * block exists — one render BEFORE `useSpecialTransition` has set its
+   * state. Feeding the module from the hook's output would hand it 0 on the
+   * only render that matters and permanently suppress the beat.
+   */
+  const observedLiveRound = surfaceRoundKey !== null
+    && advancedInto.current === surfaceRoundKey;
+  const specialWindowMs = specialCandidate && observedLiveRound
+    ? specialTransitionWindowMs(msUntilSurfaceAnswerable, specialCandidate.visibleMs)
+    : 0;
+  const specialBeat = useSpecialTransition({
+    candidate: specialCandidate,
+    roundKey: surfaceRoundKey,
+    windowMs: specialWindowMs,
+    // Not the first snapshot a mount sees: that is an arrival, not a
+    // transition, and the player was not shown the round changing.
+    observedLive: observedLiveRound,
+  });
+  /**
+   * THE MEDIUM BEAT REPLACES THE MINOR ONE — it never follows it. Suppressing
+   * the ordinary module title here is the arena's half of the substitution
+   * the backend makes in `module_transition_ms`; both read the same fact, so
+   * the two can never disagree about whether a round owes one intro or two.
+   */
+  const suppressModuleTitle = specialWindowMs > 0;
+
   // Phase 2B seam: the authoritative next round, known but not yet presented.
   // Its media is what the preloader will prepare during the reveal.
   const nextRound = upcomingRound(m.publicRound, surfaceRound);
@@ -1291,7 +1373,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // RFX1 2B1 — the title may not outlive the server's own start. A swap
       // that waited for media shortens the title instead of leaving an intro
       // face over a question the player may already be answering.
-      moduleTitleWindowMs: moduleTitleWindowMs(
+      moduleTitleWindowMs: suppressModuleTitle ? 0 : moduleTitleWindowMs(
         m.publicRound?.activeRound
           ? msUntilAnswerable(m.publicRound.activeRound.startedAt, m.skewMs, Date.now())
           : null,
@@ -1333,6 +1415,14 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       permissions,
       actions: segmentActions,
       skewMs: m.skewMs,
+      // RFX1 2B3 — the mode-entry beat this segment is owed, decided by the
+      // coordinator above. Non-zero only for a LIVE entry into a Meta Reflex
+      // block with the server's lead-in still ahead of it.
+      // From the SYNCHRONOUS window, not from the hook's state: see above.
+      // `kind` is `final-round` when a round is both, which is exactly why
+      // the sting does not also play on a final Meta Reflex round.
+      entryPresentationMs: specialCandidate?.kind === "meta-reflex-entry"
+        ? specialWindowMs : 0,
       reveal,
       // R3: selecting an option IS answering. The index comes from the
       // projected question so the arena never guesses it from the option id.
@@ -1392,6 +1482,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     progressionEnabled,
     resultFeedback,
     presentationPhase,
+    specialTransition: specialBeat?.kind ?? null,
     upcomingRound: nextRound,
     entryPhase: projectEntryPhase({
       hasRound: true,
@@ -1419,8 +1510,32 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * says and looks like is the owner's design decision and is not made here.
    */
   const outro = matchOutro;
+  /**
+   * RFX1 2B3 — THE FINAL ROUND BEAT'S PLACEHOLDER.
+   *
+   * Only the Final Round beat gets a node here. The Meta Reflex beat IS the
+   * existing entry sting (`MetaReflexSting`), given this coordinator's window
+   * instead of its own 720 ms timer — extending the path that already exists
+   * rather than laying a second popup over it.
+   *
+   * THE COPY AND THE LOOK BELOW ARE A PLACEHOLDER, deliberately. This phase
+   * ships the lifecycle and the timing; what the warning says and looks like
+   * is the owner's design decision and is not made here.
+   */
+  const warning = specialBeat?.kind === "final-round" ? (
+    <section data-testid="ranked-final-round-warning"
+      data-warning-id={specialBeat.id}
+      data-warning-ms={String(specialBeat.visibleMs)}
+      data-reduced-motion={reducedMotion ? "true" : "false"}
+      aria-live="polite"
+      className="ranked-special-warning rounded-lg border border-border/60 bg-card/90 px-6 py-4
+                 text-center font-mono text-sm uppercase tracking-[0.2em] text-foreground">
+      Final round
+      <span className="block text-xs text-muted-foreground">Get ready</span>
+    </section>
+  ) : null;
   return (
-    <CanonicalArena view={view} chrome={chrome}
+    <CanonicalArena view={view} chrome={chrome} warning={warning}
       outro={outro ? (
         <section data-testid="ranked-match-outro" data-match-outro-id={outro.id}
           data-match-outro-result={outro.result}

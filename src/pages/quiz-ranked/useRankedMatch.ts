@@ -12,8 +12,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
   swapMediaWaitMs,
-  MATCH_OUTRO_MS,
+  MATCH_OUTRO_MS, PRESENTATION_HEADROOM_MS, REVEAL_ABSORB_CAP_MS,
+  specialTransitionBudgetMs,
 } from "@/lib/ranked-core/pacing";
+import { projectSpecialTransition } from "@/lib/ranked-core/flow/rankedFlow";
+import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 
@@ -471,7 +474,15 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
    * decide how LONG to hold, and holds nothing back from the server.
    */
   const beginRevealHold = useCallback((leveledUp: boolean, hasEvidence = false,
-                                       msUntilNextAnswerable: number | null = null) => {
+                                       msUntilNextAnswerable: number | null = null,
+                                       /**
+                                        * RFX1 2B3 — the next round's MEDIUM
+                                        * beat: how much room it needs after
+                                        * this hold, and the licence for this
+                                        * hold to absorb the poll's slack so
+                                        * the beat does not have to.
+                                        */
+                                       special: { tailMs: number } | null = null) => {
     if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
     setRevealHold(true);
     // The LONGEST applicable allowance, not a chain of branches: a round that
@@ -485,7 +496,11 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     );
     // RFX1 — end no later than the server's `started_at − title`, so a late
     // discovery shortens the reveal instead of the next module's intro.
-    const hold = anchoredRevealHoldMs(nominal, msUntilNextAnswerable, MODULE_TITLE_MS);
+    const hold = anchoredRevealHoldMs(
+      nominal, msUntilNextAnswerable,
+      // The tail a medium beat needs is its own, not the module title's.
+      special ? special.tailMs : MODULE_TITLE_MS,
+      special ? REVEAL_ABSORB_CAP_MS : undefined);
     const token = ++holdTokenRef.current;
     const heldAt = Date.now();
     const release = () => {
@@ -503,7 +518,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       // budget. Input never waits on this: it opens at `started_at`.
       const next = latestRoundRef.current;
       const prepare = prepareRoundRef.current;
-      const budget = swapMediaWaitMs(
+      const budget = special ? 0 : swapMediaWaitMs(
         msUntilNextAnswerable === null ? null : msUntilNextAnswerable - (Date.now() - heldAt));
       if (!prepare || !next || budget <= 0) { release(); return; }
       revealTimerRef.current = window.setTimeout(release, budget);
@@ -529,7 +544,11 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     round: number,
     signal: AbortSignal,
     ids: { p1PlayerId: string; p2PlayerId: string } | null,
-    opts: { hold?: boolean; nextStartedAt?: string | null; skewMs?: number } = {},
+    opts: {
+      hold?: boolean; nextStartedAt?: string | null; skewMs?: number;
+      /** RFX1 2B3 — the medium beat the NEXT round is owed, if any. */
+      special?: { tailMs: number } | null;
+    } = {},
   ) => {
     if (resolvedRef.current === round) return;
     if (!ids) return;  // opponent not in the snapshot yet — a real not-ready
@@ -586,7 +605,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         && conciseEvidence(settlement.questionExplanation) !== null;
       const nextStart = opts.nextStartedAt ? Date.parse(opts.nextStartedAt) : NaN;
       beginRevealHold(leveledUp, hasEvidence, Number.isNaN(nextStart)
-        ? null : nextStart - Date.now() - (opts.skewMs ?? 0));
+        ? null : nextStart - Date.now() - (opts.skewMs ?? 0), opts.special ?? null);
     }
   }, [matchId, beginRevealHold]);
 
@@ -652,9 +671,32 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       if (previous !== null && active !== null && active !== previous) {
         // Ids come from THIS snapshot, so the mapping always matches the match
         // the settlement belongs to.
+        /**
+         * RFX1 2B3 — is the round we are moving INTO a special one? Decided
+         * from the snapshot that just arrived, which already carries it, so
+         * the hold can make room for the beat rather than the beat having to
+         * fit in whatever the hold left.
+         */
+        const nextSpecial = projectSpecialTransition({
+          presented: pub,
+          metaReflexModuleId: META_REFLEX_MODULE_ID,
+          metaReflexMinVersion: META_REFLEX_MIXED_VERSION,
+        });
         await captureResolved(previous, controller.signal,
           idMappingFromRound(pub, viewerUserId),
-          { nextStartedAt: pub.activeRound?.startedAt ?? null, skewMs: pubSkewMs });
+          {
+            nextStartedAt: pub.activeRound?.startedAt ?? null, skewMs: pubSkewMs,
+            /**
+             * THE TAIL INCLUDES THE HEADROOM, and that is the whole point of
+             * having one. An absorbing hold expands to fill everything except
+             * the tail, so a tail of exactly `visible + margin` hands the
+             * beat precisely its floor and nothing more — and a beat with no
+             * slack is one that jitter cancels outright.
+             */
+            special: nextSpecial
+              ? { tailMs: specialTransitionBudgetMs(nextSpecial.visibleMs)
+                    + PRESENTATION_HEADROOM_MS } : null,
+          });
         // A new round: drop the previous round's local echoes. The ability ref
         // is reset too, so the next snapshot's value is adopted even when the
         // new round's draft happens to equal the old one.

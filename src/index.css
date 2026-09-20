@@ -15501,3 +15501,26 @@ html.hub-commons-in-view .hextech-ambience-layer {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ── RFX1 2B3 — the medium presentation beats ────────────────────────────
+   A NEUTRAL PLACEHOLDER for the Final Round warning. Its composition and
+   copy are the owner's design decision and are not made here; this exists
+   so the lifecycle is visible and testable.
+
+   The same rule as every other beat in this phase: REDUCE MOTION CHANGES THE
+   ANIMATION, NEVER THE PACING. The warning is held for its configured
+   duration either way — the coordinator owns that, not the animation. */
+@media (prefers-reduced-motion: no-preference) {
+  .ranked-special-warning { animation: ranked-special-warning-in 220ms ease-out both; }
+}
+.ranked-special-warning[data-reduced-motion="true"] {
+  animation: ranked-special-warning-fade 180ms ease-out both;
+}
+@keyframes ranked-special-warning-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ranked-special-warning-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

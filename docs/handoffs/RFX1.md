@@ -2778,18 +2778,236 @@ unchanged — it simply begins later.
 
 ---
 
+## Final Round presentation contract
+
+**Trigger.** The PRESENTED round is the last module of the match, read from
+the match contract and never from a constant: `scoring.moduleNumber ===
+scoring.matchLength`. An hp match (and any deployment predating RP1) carries a
+null `matchLength`, cannot say which round is last, and is owed no warning —
+the truthful answer rather than a guess. The backend reaches the same
+conclusion independently from the frozen format snapshot
+(`_upcoming_presentation_flags`), so a seven-module format's round 7 is the
+final round and a hardcoded 10 never appears on either side.
+
+Three things must ALL hold, and each closes a different replay hole:
+
+1. the presented round is special;
+2. the server's lead-in still has room for the whole beat
+   (`specialTransitionWindowMs`) — which is what makes a reconnect or a late
+   discovery skip it silently;
+3. THIS MOUNT WATCHED THE ROUND ARRIVE (`advancedInto`, compared by ROUND
+   NUMBER, not by snapshot object — every poll returns a fresh object for the
+   same round and treating that as a transition let a refresh claim one it
+   never saw).
+
+**Duration.** `SPECIAL_TRANSITION_VISIBLE_MS["final-round"]` = **1300 ms**
+guaranteed visible, the lower end of the 1200-1500 the owner asked for.
+Measured 1501-1604 ms in the browser, because the beat absorbs the poll's
+leftover slack (below).
+
+**Interaction with the ordinary module transition — it REPLACES it.** A round
+that announces itself does not also need its module name in the header first;
+that is two intros back to back for one question, and it was the single
+biggest risk in adding these. The substitution is made in both places from the
+same two booleans: `module_transition_ms` substitutes the special term for
+`MODULE_TITLE_MS`, and `QuizRankedMatch` passes `moduleTitleWindowMs = 0` for
+the same round. Ordinary rounds are untouched — same 2900 ms, same
+`MODULE_TITLE_MIN_MS` floor, same cutoff.
+
+**Authoritative timing.** The beat lives inside the server-owned window
+between a settled round and the next one. `started_at` is still written once,
+by the same `_open_segment` mechanism, and the answer window still begins at
+it. Input is closed for the whole beat (`phase !== "active"`), and the beat
+ends `MODULE_TITLE_END_MARGIN_MS` before `started_at` — measured 127-143 ms
+early on every run.
+
+**Replay.** Never on a refresh, a reconnect, a resumed match already in the
+final round, or from polling and rerenders. A one-per-round latch (`playedFor`,
+a ref) plus the two conditions above.
+
+## Meta Reflex entry presentation contract
+
+**Old duration: 720 ms** (`STING_MS`), and non-blocking by necessity — when it
+shipped, the backend started card 1's deadline at the instant it CREATED the
+block, so anything that covered the card would have spent the player's own
+answer window. RFX1 2B1 removed that premise (`_open_segment` opens a round at
+`now + presentation_ms` and `start_card_deadline` anchors on the same
+instant), and 2B3 sizes the lead for a real mode-shift beat.
+
+**New duration: 1800 ms** guaranteed visible. Measured 2015-2168 ms in the
+browser, ending 132-139 ms before `started_at`.
+
+**Trigger.** The presented round's module is Meta Reflex: module id
+`item_cost_duel` AND version >= 4. The version is the only honest
+discriminator — v1-v3 share the id but are the legacy five-pair Item Cost
+Duel, an ordinary round owed no mode-shift beat — and it is the same rule the
+renderer applies with `servesVersion`. Plus the same three conditions as
+above.
+
+**It IS the existing sting, extended.** `useEntrySting` gained an optional
+`durationMs`; Ranked passes the coordinator's window and everything else (the
+Daily, every harness) keeps `STING_MS` and is byte-identical. No second popup
+was added. The window reaches the module through one optional
+`entryPresentationMs` prop on `ModuleViewportProps`.
+
+**Card 1 behaviour.** Visible and LOCKED underneath, exactly as round 1 is
+during its own preview: `started_at` is 1800 ms away, so `answerablePending`
+closes input and the backend would refuse a submission anyway. The sting keeps
+its `pointer-events: none` shape, which now costs nothing and means a clock
+error can only ever produce a harmless banner rather than a curtain over a
+live card.
+
+**Block behaviour and replay.** Once per BLOCK, before card 1 only. Cards 2-5
+share the block key and replay nothing. A reconnect into a running block finds
+its lead-in spent, reads a 0 window and shows nothing.
+
+## Special-transition priority — when the final round IS a Meta Reflex block
+
+**FINAL ROUND wins the message; META REFLEX wins the clock.** One beat, one
+phase, deterministic (`resolveSpecialTransition`, mirrored by
+`upcoming_round_kind` / `special_transition_ms`):
+
+* the higher-stakes word is shown, because a player at module 10 of 10 already
+  knows the modules differ, and two large warnings back to back for one
+  question is the failure this phase must not produce;
+* on the LONGER of the two durations (1800 ms), because the mode shift is
+  still happening and the player still has to re-orient before card 1;
+* never the two lengths back to back — a test pins `visible < 1300 + 1800`.
+
+The production ladder does not currently hit this case (Meta Reflex sits at
+modules 4 and 9 of 10), so it is contract correctness rather than a live path.
+The eventual design may want the Final Round card to also name the module; the
+payload carries it.
+
+## The server-owned budget for a special round
+
+```
+ordinary            1500 + 1400                      = 2900   (unchanged)
+final round         1500 + 1900 + 600 + 1300 + 150   = 5450
+Meta Reflex entry   1500 + 1900 + 600 + 1800 + 150   = 5950
+                     ^      ^      ^      ^      ^
+                     |      |      |      |      cutoff margin
+                     |      |      |      the beat's visible promise
+                     |      |      headroom (PRESENTATION_HEADROOM_MS)
+                     |      discovery: POLL_MS 1500 + one RTT 400
+                     result hold
+```
+
+**No ordinary round is lengthened by any of this.** The special terms are paid
+only by the two or three rounds in a match that actually announce themselves.
+
+Two terms were sized by browser measurement rather than assumption, and both
+were wrong on the first pass:
+
+* **discovery is the poll interval PLUS a round trip.** The reveal began
+  1798 ms after the server resolved on a throttled phone, not the 1500 ms
+  `POLL_MS` alone predicts, and those 298 ms were enough to cancel the beat.
+* **`PRESENTATION_HEADROOM_MS` is 600 ms, not 250.** A medium beat is
+  all-or-nothing, so an exact fit is a beat that jitter cancels — and browser
+  runs reproduced exactly that, the same build playing the beat on one run and
+  skipping it on the next. The term it covers is the gap between the reveal
+  hold's timer firing and the render that evaluates the window, measured at up
+  to ~190 ms on a 4x-throttled phone.
+
+**Which beat absorbs the slack.** The client can be anywhere in its poll
+interval when the server resolves. Handing all of that to the warning made a
+FINAL ROUND card sit for nearly three seconds on a lucky poll. So the RESULT
+BEAT absorbs first (`anchoredRevealHoldMs`'s new `absorbUpToMs`, capped at
+`REVEAL_HOLD_LEVEL_UP_MS` 2600) and the warning takes only what is left,
+floored at its promise. The player looks at their own result for longer when
+their poll was lucky; the announcement stays close to its intended length.
+Ordinary rounds pass no cap and are unchanged.
+
+## Measurements — the medium beats
+
+Production build under `vite preview`, the real `/dev/ranked-shell-probe`
+driven through a live round 1 -> round 2 transition, production-shaped latency
+(110-260 ms varying per poll) layered over the probe's own interceptor,
+headless Chromium under CDP throttling.
+
+| viewport | beat | result beat | warning | ends before `started_at` | overlap |
+|---|---|---|---|---|---|
+| 390x844, 4x CPU | Final Round | 1769→3407 | **1586 ms** | 140 ms | none |
+| | Meta Reflex | 1816→3407 | **2036 ms** | 132 ms | none |
+| 360x800, 4x CPU | Final Round | 1777→3411 | **1604 ms** | 127 ms | none |
+| | Meta Reflex | 1686→3407 | **2168 ms** | 139 ms | none |
+| 1440x900 | Final Round | 1877→3407 | **1501 ms** | 137 ms | none |
+| | Meta Reflex | 1870→3425 | **2015 ms** | 138 ms | none |
+
+Across six Final Round runs the beat measured 1426-1840 ms and ended 122-143 ms
+before `started_at` every time. No answer time is lost: input opens at the
+server's instant, and no sample ever had input open while a beat was up
+(`OVERLAP none`). No document scroll and no nested scroll at any viewport; the
+4 px horizontal overflow at 390/360 is the probe's own fixed toolbar,
+identical on `origin/main`.
+
+**A note on what the browser run covers for Meta Reflex.** The figures above
+are the coordinator's window (`data-special-transition`), which is the number
+the sting is fed synchronously. Driving the sting ELEMENT in the probe would
+need a full contract-valid `segment_state` that the overlay cannot fabricate
+by hand, so the element's own duration, its once-per-block behaviour, its
+reconnect skip and its reduced-motion duration are covered by the integration
+tests against the real fixtures instead.
+
+## Tests — the medium beats
+
+`src/lib/ranked-core/specialTransition.test.ts` (14) — the hierarchy is
+declared and every beat is in exactly one class; each duration is what the
+owner asked for; the budget carries the poll's latency and real headroom;
+final-round detection is from the match contract (10-of-10 yes, 9-of-10 no,
+7-of-7 yes, null length no); Meta Reflex by id AND version (v3 no, v5 yes);
+final+Meta Reflex is one beat with the higher-stakes word on the longer clock,
+deterministically; and the window is all-or-nothing, absorbs surplus, and
+reads 0 for a round the client is already in.
+
+`QuizRankedMatch.rfx1b3.test.tsx` gained 13 — the live transition triggers the
+beat with its deterministic id; it holds its duration, keeps input locked and
+ends before `started_at` while input still opens AT it; it REPLACES the module
+title (one run, no `module` face, nothing interactive underneath); no replay
+from polling or rerenders; a reconnect straight into the final round plays
+nothing; a REFRESH inside the final round's own lead-in plays nothing (the
+clock alone would allow it — the mount-advance guard refuses); reduced motion
+keeps the duration; an ordinary round keeps its ordinary transition. Meta
+Reflex: the beat plays before card 1 for its configured duration and is
+comfortably longer than the 720 ms it replaced, card 1 is never interactive
+underneath it, it plays once per block with cards 2-5 replaying nothing, a
+reconnect into a running block plays nothing, and reduced motion keeps the
+duration. Plus: a final round that is also Meta Reflex plays ONE beat, with
+`data-warning-ms` proving it took the Meta Reflex clock.
+
+Backend `test_ranked_answerable_boundary.py` gained 8 — a medium beat replaces
+the module title and never follows it; no ordinary round is lengthened; the
+budget is the beat plus the poll's own latency plus headroom; final round wins
+the message and Meta Reflex wins the clock; the visible promise survives the
+latest discovery with room to spare; the client constants are mirrored
+exactly; special rounds are detected from the frozen format (Meta Reflex at
+modules 4 and 9 of the real ladder, final at 10); a format with no
+`match_length` is owed no final warning; legacy v1-v3 is not a Meta Reflex
+entry; and an unreadable snapshot fails closed to no beat.
+
+**Results.** Ranked + Daily suites **137 files / 1774 tests passing**. Whole
+frontend suite 734 files / 11773 passing, failure set **byte-identical to
+clean `origin/main`**. Production build clean. Backend Ranked suites 61
+passing (plus the one pre-existing stub-DB failure).
+
 ## Remaining design work
 
-Exactly two items, both the owner's, and neither started here:
+Exactly four items, all the owner's, and none of them started here:
 
-1. **The intro screen's visual and content design** — what the pre-match
-   presentation actually looks like and says. 2B2's duel card occupies the
-   window today; this phase only decided how long that window is.
-2. **The outro screen's visual and content design** — what the match-complete
-   beat actually looks like and says. Today it is a neutral `MATCH COMPLETE`
-   placeholder, unstyled beyond sitting in the focus column, rendered so the
-   lifecycle is visible and testable. `MatchOutroView` states what
-   authoritative material the design may draw on.
+1. **The Ranked Duel intro's visual and content design** — what the pre-match
+   presentation looks like and says. 2B2's duel card occupies the window
+   today; this phase only decided how long that window is.
+2. **The Meta Reflex warning's visual and content design** — the existing
+   720 ms sting now holds for 1800 ms, so its entrance animation finishes and
+   the element simply holds for the remainder. That is honest for a
+   placeholder and is exactly the thing to redesign.
+3. **The Final Round warning's visual and content design** — today a neutral
+   `FINAL ROUND / GET READY` placeholder in the arena's new `warning` overlay
+   seam, unstyled beyond being visible and testable. The words are
+   placeholder semantics, not approved copy.
+4. **The match outro's visual and content design** — today a neutral
+   `MATCH COMPLETE` placeholder in the focus column. `MatchOutroView` states
+   what authoritative material the design may draw on.
 
-Neither design is complete, and nothing in this phase should be read as
-approving copy or composition for either.
+None of these designs is complete, and nothing in this phase should be read as
+approving copy or composition for any of them.

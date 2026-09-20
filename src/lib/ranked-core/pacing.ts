@@ -77,9 +77,18 @@ export const REVEAL_HOLD_MIN_MS = 900;
  */
 export function anchoredRevealHoldMs(
   nominalMs: number, msUntilNextAnswerable: number | null, titleMs: number,
+  /**
+   * RFX1 2B3 — the next round has a MEDIUM beat, so this hold may run past
+   * its nominal length to soak up the poll's slack, to this cap. See
+   * `REVEAL_ABSORB_CAP_MS`. Absent for every ordinary round, which is
+   * unchanged.
+   */
+  absorbUpToMs?: number,
 ): number {
   if (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)) return nominalMs;
-  return Math.max(REVEAL_HOLD_MIN_MS, Math.min(nominalMs, msUntilNextAnswerable - titleMs));
+  const ceiling = absorbUpToMs === undefined
+    ? nominalMs : Math.max(nominalMs, absorbUpToMs);
+  return Math.max(REVEAL_HOLD_MIN_MS, Math.min(ceiling, msUntilNextAnswerable - titleMs));
 }
 
 /**
@@ -274,6 +283,210 @@ export function entryIntroDurationMs(
   const exit = entryIntroExitMs(startedAtMs);
   return exit === null ? 0 : Math.max(0, exit - firstVisibleMs);
 }
+
+/**
+ * RFX1 2B3 — THE RANKED PRESENTATION HIERARCHY.
+ *
+ * Ranked has three classes of presentation, and they are declared here rather
+ * than living as scattered timers because the only question that matters
+ * between them is "which one is playing, and for how long".
+ *
+ *   MAJOR   the fresh-match Ranked Duel intro, and the match-complete outro.
+ *           Whole-screen beats at the edges of a match. They own their own
+ *           windows (`ENTRY_INTRO_MIN_MS`, `MATCH_OUTRO_MS`).
+ *   MEDIUM  the Meta Reflex entry warning and the Final Round warning. A beat
+ *           that says THIS ROUND IS DIFFERENT, played in the window between a
+ *           settled round and the next one.
+ *   MINOR   the ordinary module transition (`MODULE_TITLE_MS`), which every
+ *           other round gets.
+ *
+ * THE MEDIUM BEATS REPLACE THE MINOR ONE. They do not follow it. A round that
+ * announces itself does not also need its module name in the header first —
+ * that is two intros back to back for one question, and it is the single
+ * biggest risk in adding these at all. `module_transition_ms` on the backend
+ * substitutes the special term for `MODULE_TITLE_MS`, and the arena passes
+ * `moduleTitleWindowMs = 0` for the same round, so the substitution is made in
+ * both places from the same fact.
+ *
+ * This is a small Ranked-specific config, deliberately: no generic animation
+ * framework, no registry, no per-beat lifecycle. Two constants and a rule.
+ */
+export type RankedPresentationClass = "major" | "medium" | "minor";
+
+/** The two MEDIUM beats. Null everywhere else — most rounds are ordinary. */
+export type SpecialTransitionKind = "final-round" | "meta-reflex-entry";
+
+/**
+ * How long each medium beat is GUARANTEED TO BE VISIBLE.
+ *
+ * Visible, not budgeted: the cutoff margin is added on top when the server's
+ * lead is derived (`specialTransitionBudgetMs`), so these numbers are the
+ * promise to the player rather than an allowance the margin then eats into.
+ * That is the opposite of `MODULE_TITLE_MS`, which is a budget capped down to
+ * `started_at − MODULE_TITLE_END_MARGIN_MS` and therefore plays for less than
+ * its nominal value — a distinction worth keeping straight when tuning these.
+ */
+export const SPECIAL_TRANSITION_VISIBLE_MS: Record<SpecialTransitionKind, number> = {
+  // Sized to fit INSIDE the budget an ordinary round already owns: the beat it
+  // replaces is 1400 ms, so at 1300 + 150 the final round's lead-in grows by
+  // 50 ms and cannot meaningfully move anything. The owner asked for
+  // 1200-1500 and for the lower end where it fits cleanly; this is the value
+  // that fits cleanliest.
+  "final-round": 1300,
+  // A mode shift, and the one beat that genuinely needs more room than the
+  // budget already holds: the player has to recognise that the rules just
+  // changed before card 1's clock starts. The old sting was 720 ms and played
+  // OVER a card whose deadline was already running.
+  "meta-reflex-entry": 1800,
+};
+
+/** Which class a beat belongs to. Stated so the hierarchy is checkable. */
+export const RANKED_PRESENTATION_CLASS: Record<
+  "entry-intro" | "match-outro" | SpecialTransitionKind | "module-title",
+  RankedPresentationClass
+> = {
+  "entry-intro": "major",
+  "match-outro": "major",
+  "final-round": "medium",
+  "meta-reflex-entry": "medium",
+  "module-title": "minor",
+};
+
+/**
+ * WHEN BOTH MEDIUM BEATS APPLY TO ONE ROUND — the final round IS a Meta
+ * Reflex block.
+ *
+ * FINAL ROUND WINS the message: it is the higher-stakes thing to say, and a
+ * player who has reached module 10 of 10 already knows they are in a match
+ * whose modules differ. Two large warnings back to back for one question is
+ * exactly what this phase must not produce.
+ *
+ * But it takes the LONGER duration. The mode shift is still happening, the
+ * player still has to re-orient before card 1, and shortening that to make
+ * room for a different word would trade the thing the beat is for. One phase,
+ * one placeholder, the higher-stakes semantic, the more generous clock.
+ */
+export function resolveSpecialTransition(args: {
+  finalRound: boolean; metaReflexEntry: boolean;
+}): { kind: SpecialTransitionKind; visibleMs: number } | null {
+  const { finalRound, metaReflexEntry } = args;
+  if (!finalRound && !metaReflexEntry) return null;
+  const kind: SpecialTransitionKind = finalRound ? "final-round" : "meta-reflex-entry";
+  const visibleMs = Math.max(
+    finalRound ? SPECIAL_TRANSITION_VISIBLE_MS["final-round"] : 0,
+    metaReflexEntry ? SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"] : 0,
+  );
+  return { kind, visibleMs };
+}
+
+/**
+ * The lead-in a medium beat needs from the server: its visible promise plus
+ * the same cutoff margin every intro face respects, so the beat is off screen
+ * before the round becomes answerable rather than at the instant it does.
+ *
+ * Takes the RESOLVED duration rather than the kind, because a round that is
+ * both a final round and a Meta Reflex block carries the `final-round` kind
+ * on the Meta Reflex clock — and sizing its window from the kind would hand
+ * it the shorter of the two and cancel the beat outright.
+ *
+ * Mirrors `special_transition_ms` in `ranked_public/pacing.py`. A test pins
+ * the two together.
+ */
+export function specialTransitionBudgetMs(visibleMs: number): number {
+  return visibleMs + MODULE_TITLE_END_MARGIN_MS;
+}
+
+/**
+ * RFX1 2B3 — HOW LATE THE CLIENT CAN LEARN THAT A ROUND RESOLVED.
+ *
+ * `useRankedMatch` polls every `POLL_MS`, and the server resolves a round on
+ * whichever participant's request happens to drive it — so this client can be
+ * a full interval behind. The ordinary module title simply shortens when that
+ * happens (`anchoredRevealHoldMs` trades the reveal for the title, and the
+ * title trades itself for the boundary). A MEDIUM BEAT CANNOT: it is either
+ * played in full or not at all, so the server's budget has to carry this
+ * term or a slow poll would silently cancel it.
+ *
+ * IT IS THE POLL INTERVAL PLUS A ROUND TRIP, not the interval alone. A
+ * browser run caught that directly: the reveal began 1798 ms after the server
+ * resolved on a throttled phone, not the 1500 ms `POLL_MS` alone predicts,
+ * and the 298 ms difference was enough to cancel the beat.
+ *
+ * Mirrors `RESOLVE_DISCOVERY_MS` in `ranked_public/pacing.py`, which is where
+ * it is actually spent.
+ */
+export const RESOLVE_POLL_MS = 1500;
+/** One snapshot round trip. Phase 1 measured 110-250 ms against production. */
+export const RESOLVE_RTT_MS = 400;
+export const RESOLVE_DISCOVERY_MS = RESOLVE_POLL_MS + RESOLVE_RTT_MS;
+
+/**
+ * RFX1 2B3 — HEADROOM, so the floor is met with margin rather than exactly.
+ *
+ * Without it the server's budget equals the worst case precisely, and on the
+ * latest possible discovery the beat's window came out at exactly its
+ * configured length. Any scheduling jitter then dropped it below the floor
+ * and CANCELLED THE BEAT ENTIRELY, because a medium beat is all-or-nothing —
+ * a silent failure under load, and browser runs reproduced it: the same build
+ * played the beat on one run and skipped it on the next.
+ *
+ * The term it has to cover is the gap between the reveal hold's timer firing
+ * and the render that evaluates the window, which on a 4x-throttled phone was
+ * measured at up to ~190 ms, plus ordinary scheduling noise. 600 ms is
+ * roughly three times that, and the cost of being generous here is a slightly
+ * longer result beat — not a millisecond of answer time.
+ *
+ * Mirrors `PRESENTATION_HEADROOM_MS` in `ranked_public/pacing.py`, which is
+ * where it is actually spent.
+ */
+export const PRESENTATION_HEADROOM_MS = 600;
+
+/**
+ * How long the beat actually plays, given the server-anchored time left until
+ * `started_at` at the moment it begins.
+ *
+ * IT ABSORBS THE SURPLUS, exactly as the fresh-match intro does. The client
+ * learns that a round resolved on its own poll, up to one `POLL_MS` after the
+ * server did, so the time left when the beat starts varies by that much. The
+ * alternative — a fixed duration — would leave up to a poll interval of dead
+ * air between the warning ending and the round starting, which is the thing
+ * the ordinary module transition already gets wrong. So the beat runs to
+ * `started_at − MODULE_TITLE_END_MARGIN_MS`, and the configured value is its
+ * FLOOR rather than its length.
+ *
+ * 0 means DO NOT PLAY IT AT ALL, and that is also the replay rule: a
+ * reconnect, a refresh or a very late discovery lands on a round whose
+ * lead-in is already spent, reads 0 here, and shows nothing. The player is
+ * not warned about a round they are already in.
+ *
+ * It is ALL OR NOTHING — never a shortened version. A 300 ms flash of FINAL
+ * ROUND is worse than no warning, for the same reason `MODULE_TITLE_MIN_MS`
+ * exists.
+ */
+export function specialTransitionWindowMs(
+  msUntilAnswerable: number | null, visibleMs: number,
+): number {
+  if (msUntilAnswerable === null || Number.isNaN(msUntilAnswerable)) return 0;
+  const room = msUntilAnswerable - MODULE_TITLE_END_MARGIN_MS;
+  return room >= visibleMs ? room : 0;
+}
+
+/**
+ * RFX1 2B3 — WHICH BEAT ABSORBS THE POLL'S SLACK.
+ *
+ * The client can be anywhere in its poll interval when the server resolves, so
+ * between a round settling and its successor starting there is up to
+ * `RESOLVE_POLL_MS` of slack that some beat has to take. Handing all of it to
+ * the WARNING made a FINAL ROUND card sit for nearly three seconds on a lucky
+ * poll, which is twice what it was designed for.
+ *
+ * So the RESULT BEAT absorbs first, up to the longer hold the product already
+ * uses for a settlement with more to read, and the warning takes only what is
+ * left. The player looks at their own result for longer; the announcement
+ * stays close to its intended length. Same shape as the entry contract, where
+ * the intro absorbs and the locked preview stays at 700 ms.
+ */
+export const REVEAL_ABSORB_CAP_MS = REVEAL_HOLD_LEVEL_UP_MS;
 
 /**
  * RFX1 2B3 — THE MATCH-COMPLETE PRESENTATION BEAT.
