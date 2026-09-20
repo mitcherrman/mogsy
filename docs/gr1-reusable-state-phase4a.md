@@ -9,10 +9,10 @@ provenance, no state-aware question in Ranked, no new family, no Slice or Full c
 
 | | SHA | Note |
 |---|---|---|
-| Backend base | `origin/master` **`d90fd45b`** | Moved two item-runtime commits past the design's `e9bdf537` during the phase (`fe5ad948`→`e9bdf537`→`d90fd45b`). `git diff e9bdf537 d90fd45b` touches **no** `mastery/`, `quiz/`, `ranked_*` or `routes/` file, and none of the five shared primitives `derive.py` borrows. |
-| Backend commit | **`96f16a08`** | One commit, branch `gr1/setup-state-phase4a`, worktree `~/lcs-wt-gr1-state4a`. **NOT pushed** (`origin/master` auto-deploys). |
+| Backend base | `origin/master` **`d90fd45b`** | Moved two item-runtime commits past the design's `e9bdf537` during the phase (`fe5ad948`→`e9bdf537`→`d90fd45b`). **At integration the commit was rebased onto `origin/master` `91fd0cc5`** — the two commits in between (`1bddaf71` Force of Nature, `91fd0cc5` items docs) touch **zero** files this phase touches, so the diff is byte-identical. `git diff e9bdf537 d90fd45b` touches **no** `mastery/`, `quiz/`, `ranked_*` or `routes/` file, and none of the five shared primitives `derive.py` borrows. |
+| Backend commit | **`8227e4a3`** (was `96f16a08` before integration) | One commit, branch `gr1/setup-state-phase4a`, worktree `~/lcs-wt-gr1-state4a`. **INTEGRATED AND PUSHED to `origin/master` 2026-09-20**, rebased unchanged onto `91fd0cc5` (same 10 files, same diff). |
 | Comparison base | `~/lcs-wt-gr1-4a-base` @ `d90fd45b` | Clean detached worktree, same symlinked `lol_calc.db`, for the failure-set and byte-identity arms. |
-| Docs | `origin/main` **`fe0804c3`** + `3dee2e27` | Branch `gr1/reusable-state-phase4-design`, worktree `~/mogsy-wt-gr1-state4-design`. **NOT pushed.** |
+| Docs | `origin/main` **`9469c26a`** (design record `eec4a14c`) | Branch `gr1/reusable-state-phase4-design`, worktree `~/mogsy-wt-gr1-state4-design`, rebased onto `origin/main` `aa62fc22`. **PUSHED to `origin/main` 2026-09-20. Docs-only — there is no Phase 4A frontend runtime commit.** |
 | Design | [Phase 4 design](./gr1-reusable-state-phase4-design.md) §12 (Phase 4A) | The owner approved the direction and scoped this phase to: repair `derived_used`, finalize the block including historical display metadata, and test serialization/round-trip. |
 
 **Files: 10 — 2 new, 8 modified, every one inside `mastery/setup_state/` or `mastery/tests/`.**
@@ -274,5 +274,5 @@ belongs with whatever phase next touches the Lab UI.
    now carries everything needed for it (`answer_metric`, the bound inputs and both cooldown
    values), and nothing renders it.
 
-**Rollback:** `git revert 96f16a08`. Nothing persisted, nothing to un-migrate, and the one
+**Rollback:** `git revert 8227e4a3`. Nothing persisted, nothing to un-migrate, and the one
 consumer is a route behind a flag that is off.
