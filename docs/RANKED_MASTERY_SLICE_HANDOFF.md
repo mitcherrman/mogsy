@@ -1880,6 +1880,79 @@ commit.
 * **Rollback:** `git revert aa9e2ea5`. Nothing persisted, no production caller, no route, no
   migration, no frontend.
 
+## Reusable state — the FIRST PRODUCTION CHAMPION SOURCE, wired into nothing (2026-09-20)
+
+Full record: [`gr1-champion-state-sequence-source.md`](./gr1-champion-state-sequence-source.md).
+Backend **`e7436166`**, now `origin/master`. Authored as `bd586737` on implementation base
+`origin/master` **`cffa85f0`**, rebased onto **`399c8e60`** (RFX1 presentation lead-in landed
+mid-phase, zero file overlap), then rebased once more at integration onto **`cb017087`**
+(minion-execute item semantics — again zero file overlap) and re-validated; worktree
+`~/lcs-wt-gr1-src`; comparison base `~/lcs-wt-gr1-base`. Docs on `origin/main`, rebased onto
+**`9f3d3dfa`**; worktree `~/mogsy-wt-gr1-src`. **BOTH PUSHED.** No frontend commit. **Note both handoff refs were stale on arrival** - the brief
+named `0ce7b531` / `f274f66e`, and both repositories had moved twice before this phase started and
+once during it.
+
+* **What it is.** `default_sequence_registry()` was empty and there was no production source, so
+  nothing could obtain an ordered run of Champion states by naming one. There is one now:
+  `champion.progression.legal_advance.v1`, deterministic, data-driven, replaceable, versioned and
+  provenance-aware. It is registered, selectable and **reachable by no player**.
+
+* **The audit result that shaped everything.** Mogzy has a rules authority for levels and rank
+  legality, a canonical item store with per-item recipes, and ONE curated build file
+  (`curated.item_whitelist.v1` - 173/173 champions, `needs_manual_review: true` on **every** row,
+  patch basis "26.16/26.17 working approximation"). It has **no skill-order store, no rune-page
+  authority, no shard id space, and - the decisive finding - no authority whatsoever correlating a
+  level with an item purchase.** `quiz/champion_item_builds.stage_for_rank` looks like one and says
+  in its own docstring that it gives broad timing *"without pretending an exact champion level"*; it
+  was deliberately not adopted.
+
+* **So a run advances EXACTLY ONE dimension**: `level`; `level` + a skill order the CALLER states
+  (with a mandatory authority string that may not claim "recommended" or "optimal"); `items` along a
+  NAMED curated path; or `items` at component granularity, each completion preceded by its recipe's
+  direct components in the order `item_canonical_components` publishes. An axis that does not
+  advance may still be **held** constant - *a constant is a statement about the run, a schedule is a
+  claim about time* - and holding an axis the advance moves is refused.
+
+* **Legality is checked, never clamped.** Every node goes through `normalize_side` before it is
+  emitted, so the rules authority, the canonical item store and the inventory policy all get their
+  say. Roster-wide over 173 champions: **173/173** level runs, **164** rank runs, **146** item runs,
+  **118** component runs; **zero** illegal or clamped nodes, **zero** duplicate semantic nodes,
+  **zero** empty transitions, and identical `sequence_id` on regeneration in all four arms.
+
+* **Every refusal accounted for.** 6 x `rank_rule_unsupported` (elise, jayce, karma, nidalee, udyr,
+  yuumi - the undeclared rank domains, failing closed exactly as `rules.py` intends); 3 x
+  `unknown_ability_slot` (**pre-existing**: the identity registry says `Dr Mundo` / `Nunu` /
+  `Renata` while `champion_abilities` says `Dr. Mundo` / `Nunu & Willump` / `Renata Glasc`, so
+  `champion_slots` returns `()` - surfaced here, deliberately **not** repaired); 27 and 55 x
+  `inventory_policy` against curated paths longer than the ruleset's six slots, every one of which
+  builds when the caller shortens it with `item_count`.
+
+* **The registration finding, which is architectural rather than editorial.**
+  `sequence_source.default_sequence_registry()` **stays EMPTY and a test pins it so.** That function
+  is in the CONTRACT half, whose isolation guard takes a static import closure and forbids the half
+  from reaching `sqlite3` / `champion_state` / `quiz` **transitively, including imports written
+  inside functions**. A source that reads `item_canonical` cannot be named from there without giving
+  the contract half exactly the dependency it exists to refuse. So the production source registers
+  from `progression.default_champion_sequence_registry()` - the resolution half, which is allowed to
+  read data. This is not "not trusted enough to register"; it is *which registry a data-reading
+  source may live in*.
+
+* **Components are not decoration.** Ahri's first item is built from a haste component, so the
+  partial inventory resolves to **10 ability haste - a state the completed-item walk never
+  reaches**. Measured across five champions, the component granularity strictly increases distinct
+  haste values every time (ahri 2->3, syndra 2->4, lux 2->3, jarvan 4->6, garen 3->4).
+
+* **The cooldown family was used only to LOOK.** A level run with no stated order is barren in every
+  state (`required_axis_absent`) and that is not an error; an item run with held ranks yields
+  `abilities x DISTINCT haste values` distinct questions, so Ahri's 13-state component run collapses
+  52 per-state candidates into 12. **The source was not distorted to improve that number** and the
+  prompt wording was not touched.
+
+* **Nothing moved.** 5 files, all under `mastery/`. Failure set identical to the base (the same
+  five pre-existing failures, by name); 2464 passed vs 2380, +74 new focused tests. `literal_window`
+  and every literal fixture retained. No route, no DDL, no migration, no frontend, no
+  `mastery_state` write, no Full, no Matchup source.
+
 ## Reusable state — GATE-AWARE COMPOSITION implemented, Generator Lab only (2026-09-20)
 
 Full record: [`gr1-reusable-state-gate-aware-composition.md`](./gr1-reusable-state-gate-aware-composition.md).
@@ -2390,8 +2463,35 @@ player is listed in [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3
 **Do not widen Phase 3 into a family-expansion project**; one family is the
 seam, and a second one before persistence exists buys nothing.
 
-**Current next task — a real state source, or persisting a multi-state bundle on a served
-segment. Nothing else, and NOT both at once.** Gate-aware composition is done (see the row above and
+**Current next task — a PRODUCT window policy, or persisting a multi-state bundle on a served
+segment. Nothing else, and NOT both at once.** The real source now exists (see the row above and
+[`gr1-champion-state-sequence-source.md`](./gr1-champion-state-sequence-source.md) §15), so the
+first of the two items below is **CLOSED** and the machinery is no longer fitted to a fixture. What
+that phase deliberately did **not** do, and what therefore comes next:
+
+1. **Choose a product window policy.** `window.contiguous_seeded.v1` is the testing policy and says
+   so; its identity is recorded in every window it builds precisely so a product policy cannot
+   inherit those windows' identities. This decision was blocked on having a real source and is not
+   blocked any more.
+2. **Persist a multi-state bundle on a served segment** - unchanged from below, and still must not
+   happen before something can produce a state-aware segment.
+
+Explicitly NOT next: wiring the new source into Champion Mastery, Ranked, Slice or Full; adding a
+second state-aware family; changing the cooldown prompt; adding a Matchup source. The source is
+registered in `progression.default_champion_sequence_registry()` and reachable by no player - keep
+it that way until a window policy and a persistence decision both exist.
+
+Three data blockers the source surfaced, none of which is GR1's to invent:
+**(a)** six champions (elise, jayce, karma, nidalee, udyr, yuumi) need a declared rank-availability
+rule, with the wiki sentence, exactly as `rules.py` already carries for Karma's and Nidalee's
+ultimates; **(b)** three champions (dr-mundo, nunu, renata) need the identity <-> `champion_abilities`
+name mismatch closed before any rank-bearing run can reach them; **(c)** the curated item path is
+the only item ordering that exists and every one of its 173 rows still says
+`needs_manual_review: true` on a 26.16/26.17 basis - serving it means reviewing it or presenting it
+honestly as an approximation.
+
+**Superseded — a real state source, or persisting a multi-state bundle on a served
+segment.** (Item 1 is now done.) Gate-aware composition is done (see the row above and
 [`gr1-reusable-state-gate-aware-composition.md`](./gr1-reusable-state-gate-aware-composition.md)
 §13), which closes the last of the three candidates the window-composition phase left open and the
 one it said was not optional. Two remain:
