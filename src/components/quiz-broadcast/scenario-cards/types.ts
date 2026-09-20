@@ -165,6 +165,35 @@ export type EnvironmentSubject = {
   form?: "base" | "evolved";
 };
 
+/**
+ * ENVVIS1 Batch 1 — an environment SCENE: the place a question happens in.
+ *
+ * NOT an `EnvironmentSubject`, and separate on purpose. A subject is the thing
+ * the question is ABOUT and is drawn as a focal portrait; a scene is only
+ * WHERE it happens and is drawn as the panel's backdrop. The backend keeps the
+ * two apart by channel (`assets.scene` vs `assets.subject`) and by type
+ * (`SceneRef` is not an `EntityRef`), and this repo keeps them apart the same
+ * way rather than by adding a `kind: "scene"` member to the subject union — a
+ * scene has no icon, so every reader of `EnvironmentSubject` would have had to
+ * learn that its `icon` is sometimes absent, and the environment card's whole
+ * composition is built around that icon being present.
+ *
+ * Carries identity and NOTHING measured, for the same reason
+ * `EnvironmentSubject` does and with a shorter argument: the rows this serves
+ * answer with a duration, a percentage, a time or a yes/no, and there is
+ * deliberately no field here any of those could arrive in.
+ */
+export type EnvironmentScene = {
+  /** Backend scene id, e.g. "base_fountain". Identity only. */
+  id: string;
+  /** Display title, e.g. "The Base". Decided by the backend registry. */
+  name: string;
+  /** One caption line, e.g. "Fountain & Base Area". Also backend-decided. */
+  caption: string;
+  /** Atmosphere art for `id`, resolved through `lib/question-surface/environmentScenes`. */
+  art: string;
+};
+
 /** Parsed payload for combat cooldown calculation questions. */
 export type CombatCooldownSubject = {
   champion: string;
@@ -238,6 +267,7 @@ export type ScenarioSelection =
   | { card: "matchup"; key: string; matchup: MatchupSubject }
   | { card: "summoner_spell"; key: string; spell: SummonerSpellSubject }
   | { card: "environment"; key: string; environment: EnvironmentSubject }
+  | { card: "environment_scene"; key: string; scene: EnvironmentScene }
   | { card: "item_analysis"; key: string; item: ItemAnalysisSubject }
   | { card: "champion_profile"; key: string; champion: string }
   | { card: "collectible"; key: string; iconUrl: string; label?: string; kind: SubjectKind }

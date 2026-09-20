@@ -1,9 +1,10 @@
-import type { EnvironmentSubject } from "./types";
+import type { EnvironmentScene, EnvironmentSubject } from "./types";
 import { ScenarioCardFrame } from "./ScenarioCardFrame";
 import { ScenarioBadge, ScenarioTitle } from "./primitives";
 import {
   ATMOSPHERE_DIM_SCENE,
   ATMOSPHERE_JUNGLE_GROUND,
+  ATMOSPHERE_SCENE_GROUND,
   PanelFiligree,
   SUBJECT_MEDIA_GRADIENT,
   SubjectFocalZone,
@@ -47,7 +48,97 @@ import { JUNGLE_GRASS_BACKGROUND } from "@/lib/question-surface/jungleAtmosphere
  * and the art stays a SINGLE-UNIT portrait — the MAA1 Phase 4 rule — so the
  * picture cannot be counted either.
  */
-export function EnvironmentScenarioCard({ subject }: { subject: EnvironmentSubject }) {
+/**
+ * ENVVIS1 Batch 1 — the card takes a SUBJECT or a SCENE, never both.
+ *
+ * Expressed as a discriminated prop union rather than two optional props, so
+ * `<EnvironmentScenarioCard subject={...} scene={...} />` is a type error at
+ * the call site. That mirrors the backend, where `PublicPresentation` refuses
+ * a subject and a scene at once for the same reason: they are two different
+ * claims about what the reader is looking at, and a card that made both would
+ * be making one of them falsely.
+ *
+ * Every existing call site passes `subject` and is untouched.
+ */
+export type EnvironmentCardProps =
+  | { subject: EnvironmentSubject; scene?: never }
+  | { scene: EnvironmentScene; subject?: never };
+
+export function EnvironmentScenarioCard(props: EnvironmentCardProps) {
+  if (props.scene) return <EnvironmentSceneBody scene={props.scene} />;
+  return <EnvironmentSubjectBody subject={props.subject} />;
+}
+
+/**
+ * The SCENE branch: a place, drawn as the whole panel.
+ *
+ * WHAT IT SHARES WITH ITS SIBLING, AND WHY THAT MATTERS
+ * The frame, the Ken Burns pan, the vignette, the readability gradient, the
+ * corner filigree, the badge, the caption block and its typography all come
+ * from the same two modules the subject branch calls. Nothing here draws
+ * geometry, and nothing here is a second card language: a reader moving from
+ * a turret round to a fountain round sees the same panel with a different
+ * picture in it, which is the point.
+ *
+ * THE ONE DELIBERATE DIFFERENCE: no `SubjectFocalZone`.
+ * The focal zone is a medallion built around the subject's own portrait, and a
+ * scene row has no portrait — it has no depictable entity at all, which is why
+ * it is a scene. Drawing the medallion empty, or around a "?", would be the
+ * gold-framed empty rectangle this whole composition exists to remove. So the
+ * art is seated full-bleed (`ATMOSPHERE_SCENE_GROUND`) and the caption is the
+ * only foreground, which is also why the echo layer is passed `null`: an echo
+ * is an oversized wash of the subject's icon, and there is no icon.
+ *
+ * DISCLOSURE
+ * This branch receives `id`, `name`, `caption` and an art URL, and there is no
+ * field on `EnvironmentScene` a number could arrive in. The thirteen rows it
+ * serves answer with a duration, a percentage, a time or a yes/no; the card
+ * states a place and stops. The art rule that keeps the picture itself clean —
+ * a LOCATION only, no numerals, no clock reading a time, no bars, no buff
+ * icons, no side-naming team colour — lives with the art table in
+ * `lib/question-surface/environmentScenes.ts`.
+ */
+function EnvironmentSceneBody({ scene }: { scene: EnvironmentScene }) {
+  return (
+    <ScenarioCardFrame
+      // Same reasoning as the subject branch: the picture is composed in the
+      // background slot, not pushed through the frame's splash crop.
+      backgroundUrl={null}
+      backgroundAlt={scene.name}
+      backgroundSlot={
+        <SubjectMediaBackdrop
+          // No echo: an echo is a wash of the SUBJECT's own icon, and a scene
+          // has none. See the branch note above.
+          echoIcon={null}
+          atmosphereSrc={scene.art}
+          atmosphereSeating={ATMOSPHERE_SCENE_GROUND}
+        />
+      }
+      gradientClass={SUBJECT_MEDIA_GRADIENT}
+    >
+      {/* A FAMILY word, not an entity and not the scene's own name. The
+          badge says what kind of card this is ("Environment"); `scene.name`
+          below says which place. Deliberately not "Scene", which is an
+          implementation word the reader has no use for. */}
+      <ScenarioBadge>Environment</ScenarioBadge>
+
+      <PanelFiligree />
+
+      <SubjectMediaCaption>
+        <ScenarioTitle>{scene.name}</ScenarioTitle>
+        {/* Suppressed when the caption would restate the title, the same rule
+            the subject branch applies to its kind line. */}
+        {scene.caption && scene.caption.toLowerCase() !== scene.name.toLowerCase() && (
+          <div className="mt-[0.4cqmin] text-[max(0.95cqmin,calc(0.625*var(--sc-fit)))] leading-[min(1.5rem,1.25em)] font-semibold uppercase tracking-[0.24em] text-white/70">
+            {scene.caption}
+          </div>
+        )}
+      </SubjectMediaCaption>
+    </ScenarioCardFrame>
+  );
+}
+
+function EnvironmentSubjectBody({ subject }: { subject: EnvironmentSubject }) {
   // "Caster Minion" under a MINION chip: the class is the specific thing and
   // the family is the context, which is the same order the item card states
   // its own name and kind in. The chip is never the whole card any more, so it
