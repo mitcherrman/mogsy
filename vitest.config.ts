@@ -21,6 +21,10 @@ export default defineConfig({
       // tested here. Named explicitly: its sibling gift-catalog.test.ts is
       // Deno-native and must not be picked up.
       "supabase/functions/_shared/offer-catalog.test.ts",
+      // FUNNEL1B3.1's ingest contract is likewise pure TypeScript — the Deno
+      // and Supabase imports live in its index.ts, not here — and it decides
+      // what may enter analytics_events from Railway, so it is unit tested.
+      "supabase/functions/railway-analytics-ingest/contract.test.ts",
     ],
   },
   resolve: {

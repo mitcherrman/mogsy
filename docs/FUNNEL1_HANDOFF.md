@@ -1,14 +1,22 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: FUNNEL1B2 CLOSED and live. FUNNEL1B3 IMPLEMENTED, AWAITING DEPLOY.**
+**State: FUNNEL1B2 CLOSED and live. FUNNEL1B3 + B3.1 IMPLEMENTED, AWAITING
+SECRET CONFIG AND DEPLOY.**
 
 The web funnel is in production and proven end to end (§19). The gameplay half
 — authoritative milestones emitted from Railway through a transactional outbox
-— is built and tested on branch `funnel1b3-gameplay-analytics` @ `98cd42da`,
-but **not deployed**: it needs `SUPABASE_SERVICE_ROLE_KEY` set in Railway and a
-merge to `master`, neither of which this environment can do (§20.10). Until
-then Railway records every milestone durably and delivers nothing, which is the
-safe direction. **§20 is the current state; FUNNEL1C is scoped in §20.13.**
+— is built and tested on branch `funnel1b3-gameplay-analytics` @ `f43dcd7d`.
+
+**B3.1 corrected its delivery seam** (§21): Railway no longer needs a
+service-role key, which Lovable Cloud does not expose anyway. It posts to a
+dedicated `railway-analytics-ingest` edge function holding one narrow secret,
+and the privileged credential never leaves Lovable Cloud.
+
+**Not deployed.** It needs `RAILWAY_ANALYTICS_INGEST_SECRET` created and set in
+both Lovable Cloud and Railway, the function deployed, and the branch merged —
+none of which this environment can do (§21.8–21.9). Until then Railway records
+every milestone durably and delivers nothing, which is the safe direction.
+**§20 is the design; §21 is the current state; FUNNEL1C is scoped in §20.13.**
 
 The schema is live in `kewgjwrzpzpeltwidvuc`, all eight certification items are
 closed from both the anon client path and privileged access, and the store was
@@ -2723,3 +2731,325 @@ Not started, and it should not start before §20.10–20.11 are green.
 
 Explicitly still out of scope: verification features, Meta Reflex emission,
 reconciling the two ad analytics systems (§13.4).
+
+---
+
+# 21. FUNNEL1B3.1 — Least-privilege ingest replaces service-role delivery
+
+A correction to B3's delivery seam. Everything else in §20 stands.
+
+## 21.1 What changed, exactly
+
+| | B3 (wrong) | B3.1 |
+|---|---|---|
+| Railway holds | `SUPABASE_SERVICE_ROLE_KEY` | `RAILWAY_ANALYTICS_INGEST_SECRET` |
+| That credential can | read and write **every table** in the database | append one authoritative gameplay row |
+| Delivery target | `POST /rest/v1/analytics_events` (PostgREST) | `POST /functions/v1/railway-analytics-ingest` |
+| Privileged key lives | in Railway's environment, on another platform | inside Lovable Cloud, injected by the edge runtime |
+| Row construction | Railway sends the finished row | Railway sends facts; the function builds the row |
+
+```
+Railway gameplay tx ─► SQLite outbox ─► railway-analytics-ingest ─► analytics_events
+```
+
+The premise B3 was built on was simply false: Lovable Cloud exposes no
+user-facing service-role credential. But the fix is not a workaround for a
+missing key — it is the shape this should have had anyway. A database-wide
+master credential, sitting in a second platform's environment, able to read
+`profiles` and write `user_roles`, in exchange for appending to one table, is
+an enormous grant for a small need. A leak of the new secret is a bounded
+incident: rotate it, and the exposure was append-only rows in one table whose
+`source_system` the caller never controlled.
+
+**Nothing else moved.** The transactional outbox, the authoritative transition
+map (§20.1), the entity/idempotency model (§20.2), per-participant ranked keys,
+uid continuity, bot/`anonymous` exclusion and the non-blocking gameplay
+semantics are unchanged — and their tests still pass unmodified, which is the
+evidence that this was a delivery change and not a redesign.
+
+## 21.2 Edge Function contract
+
+`supabase/functions/railway-analytics-ingest/` — `index.ts` (transport) and
+`contract.ts` (all the rules, pure TypeScript, unit tested).
+
+**Request** — `POST`, `Authorization: Bearer <RAILWAY_ANALYTICS_INGEST_SECRET>`,
+body `{"events": [...]}` (a bare array is also accepted), at most 50 per call.
+
+Each event carries facts only:
+
+```jsonc
+{ "event_name": "...", "source_entity_type": "...", "source_entity_id": "...",
+  "user_id": "uuid|null", "is_guest": true, "occurred_at": "ISO",
+  "event_version": 1, "metadata": {} }
+```
+
+**The caller does not get to choose the row.** Set server-side, every time:
+
+- `source_system` → **forced** to `railway`. A leaked secret still cannot forge
+  a `web` row or invent a source system.
+- `route` → always null. A backend event carrying one would be lying.
+- `verification_type` → always null. Not Railway's to assert.
+
+Validation, all rejections permanent: event name in the eight-name allowlist ·
+entity type in the four Railway owns · entity id present, trimmed, ≤128 chars ·
+`event_version` supported · `occurred_at` parseable · `metadata` ≤4 KiB
+(deliberately under the column's own 8 KiB CHECK, so anything accepted here is
+insertable) · `user_id` uuid-shaped when supplied.
+
+Identity has one asymmetry worth stating: a **malformed** `user_id` is
+*rejected*, because that is a caller bug and silently nulling it would hide it;
+a **known non-person** (`anonymous`, `bot::…`) is accepted with `user_id` null,
+because a signed-out DSA practice run is a real gameplay fact and losing the
+event to protect one column would be the wrong trade.
+
+**Status codes are a contract with the outbox** — the drainer decides
+retry-vs-dead-letter from them alone:
+
+| Status | Meaning | Outbox does |
+|---|---|---|
+| 200 | stored, or already present | mark delivered |
+| 401 | bad/missing secret | **retry**, and shout: config failure |
+| 405 | not POST | dead-letter |
+| 422 | contract violation | **dead-letter**, never retry |
+| 500 | function misconfigured / our bug | retry |
+| 503 | insert failed (pooler, restart) | retry |
+
+Rows are inserted one at a time, mirroring the drainer: a batch containing one
+conflicting row would otherwise be rejected whole.
+
+**Naming.** The allowlist is the FROZEN contract's names —
+`practice_quiz_started` / `_completed`, not the `practice_started` / `_completed`
+the B3.1 brief lists. §14.4 renamed those deliberately ("practice" is ambiguous
+here: Practice Quiz, Practice Builder, DSA practice run) and the frontend's
+`MACRO_EVENTS` already reserves the longer names for exactly this emission.
+Accepting a second spelling would create two names for one fact. A test asserts
+`practice_started` is rejected.
+
+`verify_jwt = false` in `config.toml`, declared so a repo-driven deploy
+reproduces it: the caller is a server with no Supabase session, and the
+function authenticates itself before reading anything. It is **not** authorized
+by the anon key — that key is public by construction, so using it here would
+mean any browser could forge gameplay.
+
+## 21.3 Secret model
+
+One secret, `RAILWAY_ANALYTICS_INGEST_SECRET`, in exactly two places: the
+Lovable Cloud function secret store, and Railway's `web` service.
+
+Not committed, not in frontend code, not logged (a bad-secret rejection logs
+that it happened and never what was supplied), and never in a health response —
+`/api/admin/analytics/health` reports the *endpoint* and a
+`secret_configured` boolean, and a test asserts the value cannot appear.
+Comparison is length-checked and constant-time-ish, because `===` on a secret
+leaks its prefix through timing.
+
+`SUPABASE_SERVICE_ROLE_KEY` is no longer read by Railway, and a leftover one
+does **not** re-enable delivery — tested, so an old env var cannot quietly
+resurrect the removed path.
+
+## 21.4 Railway client changes
+
+`analytics/client.py` only. `resolve_config()` now returns the ingest endpoint
+and secret; `requests_transport` POSTs `{"events": [...]}` with the bearer
+header and maps the status table above onto `TransportResult`, which gained a
+`permanent` flag.
+
+**One new environment variable, not two.** The endpoint is derived from
+`SUPABASE_URL` (already in Railway) as
+`{SUPABASE_URL}/functions/v1/railway-analytics-ingest`, with
+`ANALYTICS_INGEST_URL` as an override for a custom domain or a staging function.
+
+`analytics/outbox.py` gained one column, `dead_letter`, via a tolerant `ALTER`
+(SQLite has no `ADD COLUMN IF NOT EXISTS`). `mark_dead()` parks a row;
+`claim_unsent` skips them; `stats()` counts them separately from a backlog.
+Dead rows are **kept**, not deleted — a rejected event is evidence of a contract
+bug, and deleting it would destroy the only record.
+
+## 21.5 Failure classification
+
+| Condition | Response | Behaviour | Visibility |
+|---|---|---|---|
+| Missing/bad secret | 401 | **retryable** — a secret set later must drain the backlog | `auth_failures` counter + a loud log naming the variable |
+| Unknown event name | 422 | dead-letter | `dead_lettered`, log says "contract bug" |
+| Malformed entity id / type | 422 | dead-letter | same |
+| Invalid user id | 422 | dead-letter | same |
+| Unsupported version / oversized metadata | 422 | dead-letter | same |
+| Duplicate event | 200 | **success** — the row is present | `duplicates` counter |
+| Function unavailable / cold start / network | 5xx or exception | retry, capped at `MAX_ATTEMPTS` | `abandoned` once capped |
+| Database unavailable | 503 | retry | as above |
+| Function deployed without its secret | 500 | retry | server-side error log |
+
+The 401-is-retryable choice is deliberate and is the one that looks wrong at
+first glance. It is a *configuration* failure, not a contract failure: the
+payload is fine and will deliver the moment the secret matches. Dead-lettering
+it would turn a five-minute config fix into permanent data loss.
+
+## 21.6 Files changed
+
+**Frontend / Lovable** (`mogsy`)
+
+```
+supabase/functions/railway-analytics-ingest/index.ts          NEW  transport
+supabase/functions/railway-analytics-ingest/contract.ts       NEW  the rules
+supabase/functions/railway-analytics-ingest/contract.test.ts  NEW  37 tests
+supabase/config.toml                                          verify_jwt = false
+vitest.config.ts                                              include the test
+docs/FUNNEL1_HANDOFF.md                                       this section
+```
+
+**Backend** (`League_Combat_Simulator`, branch `funnel1b3-gameplay-analytics`)
+
+```
+analytics/client.py                        ingest endpoint + secret; status map;
+                                           TransportResult.permanent
+analytics/outbox.py                        dead_letter column, mark_dead,
+                                           stats separation
+analytics/__init__.py                      three-way classification, auth_failures
+routes/analytics_health.py                 six distinguishable states
+test_funnel1b3_gameplay_analytics.py       +12 tests
+```
+
+No gameplay file changed in B3.1 — the emit points from §20 are untouched.
+
+## 21.7 Tests
+
+```
+supabase/functions/railway-analytics-ingest/contract.test.ts   37 passed
+test_funnel1b3_gameplay_analytics.py                           51 passed
+```
+
+Edge contract (37): the eight-name allowlist and rejection of a browser event,
+an unknown snake_case name and the brief's `practice_started` spelling ·
+`source_system` forced even when the caller supplies `web` · `route` and
+`verification_type` nulled · the caller's `id`/`received_at` discarded ·
+`ranked_participant` accepted and `ranked_match` rejected · entity id required
+and bounded · uuid validation, with malformed rejected and non-persons nulled ·
+version, timestamp and metadata bounds · batch envelope, empty and oversized ·
+secret match/mismatch/missing and bearer parsing.
+
+Railway (51 = 39 from §20.8, unmodified, + 12 new): endpoint is the function
+and not PostgREST · a leftover service-role key does not re-enable delivery ·
+override wins · the secret travels in the header, never the URL · a 422 is
+dead-lettered and **never picked up again** · dead rows are counted apart from a
+backlog · a 401 stays retryable, is counted, and the backlog delivers once the
+secret is fixed · retryable and permanent failures do not block each other · the
+retry budget caps rather than looping · **gameplay succeeds with the ingest
+unavailable, and with no secret configured at all**.
+
+Affected backend suites re-run: **180 passed, 1 failed** — the mastery catalog
+failure already reproduced on a clean stash of this branch (§20.8).
+
+Frontend suites remain green (95), including the scan proving no browser source
+emits a server-authoritative name.
+
+## 21.8 Config steps still requiring deployment access
+
+Nothing here can be done from this environment.
+
+1. **Generate** a high-entropy `RAILWAY_ANALYTICS_INGEST_SECRET` (e.g. 32+
+   random bytes, base64). Do not paste it into chat.
+2. **Lovable Cloud** → function secrets → add it.
+3. **Railway `web` service** → variables → add the same value. Confirm
+   `SUPABASE_URL` is already present (it is, for auth).
+4. **Deploy the edge function.**
+5. **Smoke-test it server-to-server** before any Railway deploy:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' -X POST \
+  "$SUPABASE_URL/functions/v1/railway-analytics-ingest" \
+  -H "Content-Type: application/json" -d '{"events":[]}'
+# expect 401 — no secret
+
+curl -sS -X POST "$SUPABASE_URL/functions/v1/railway-analytics-ingest" \
+  -H "Authorization: Bearer $RAILWAY_ANALYTICS_INGEST_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"events":[{"event_name":"landing_viewed","source_entity_type":"quiz_session","source_entity_id":"x"}]}'
+# expect 422 unknown_event — the vocabulary is closed
+
+curl -sS -X POST "$SUPABASE_URL/functions/v1/railway-analytics-ingest" \
+  -H "Authorization: Bearer $RAILWAY_ANALYTICS_INGEST_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"events":[{"event_name":"practice_quiz_started","source_entity_type":"quiz_session","source_entity_id":"smoke-b31","user_id":null}]}'
+# expect {"ok":true,"stored":1,...}; repeat it — expect duplicates:1, stored:0
+```
+
+Then delete the smoke row:
+`delete from public.analytics_events where source_entity_id = 'smoke-b31';`
+
+## 21.9 Deployment order
+
+1. ✅ Edge function + Railway client implemented and tested
+2. ⏳ Generate `RAILWAY_ANALYTICS_INGEST_SECRET`
+3. ⏳ Set it in Lovable Cloud
+4. ⏳ Set the same value in Railway `web`
+5. ⏳ Deploy the edge function
+6. ⏳ Server-to-server smoke call (§21.8)
+7. ⏳ Merge `funnel1b3-gameplay-analytics` → `master`
+8. ⏳ Railway deploys
+9. ⏳ Practice certification
+10. ⏳ Ranked certification
+
+Steps 2–5 are safe before any Railway deploy: until the backend ships, nothing
+calls the function. Step 7 is deliberately **after** step 6 — the brief's
+ordering, and the right one, because a merge that deploys a live game backend
+should not be the thing that discovers the function is misconfigured.
+
+## 21.10 Production certification
+
+**Not yet run** — blocked on §21.9 steps 2–8.
+
+Practice first (one player, no matchmaking): start and finish one quiz on the
+deployed site, then
+
+```sql
+select event_name, source_system, source_entity_type, source_entity_id,
+       user_id, is_guest, occurred_at, received_at
+from public.analytics_events
+where source_system = 'railway'
+order by received_at desc limit 20;
+-- expect exactly one practice_quiz_started and one practice_quiz_completed,
+-- sharing one quiz_session entity id, carrying the tester's Supabase uid —
+-- the same uid their landing_viewed carried.
+
+select source_entity_type, source_entity_id, event_name, count(*)
+from public.analytics_events where source_system = 'railway'
+group by 1,2,3 having count(*) > 1;
+-- expect ZERO rows.
+```
+
+Then Ranked: **two** participant-level starts and **two** completions for a
+human-vs-human duel, entity ids `<match_id>:<user_id>`, a bot opponent
+contributing none.
+
+Replay proof: re-run the drain (or restart the process with a row already
+sent) and confirm counts do not change — the `duplicates` counter should rise
+while `analytics_events` does not.
+
+Railway-side: `/api/admin/analytics/health` → `ok: true`, `unsent: 0`,
+`dead_lettered: 0`, recent `last_sent_at`.
+
+Cleanup: these are real gameplay rows from a real account. Remove only the
+`smoke-b31` row from §21.8; a practice quiz the owner actually played is
+genuine history and deleting it would falsify the record.
+
+## 21.11 Remaining risks
+
+1. **Nothing is deployed.** Every production claim above is a prediction.
+2. **Two places must hold the same secret.** A mismatch is the most likely
+   failure, which is why 401 is counted, named in the health output, and
+   retryable rather than destructive.
+3. **Edge function cold starts** add latency to a drain pass. Harmless — the
+   drainer is off the gameplay path and retries — but it will show as
+   occasional 5xx/timeouts early on.
+4. **The drainer runs per process** (§20.12.2), unchanged by B3.1. Safe,
+   because delivery is idempotent, but untested at concurrency.
+5. **Dead-lettered rows need a human.** Counted and logged; nothing pages.
+6. **No rate limiting on the ingest.** The secret is the only gate. Append-only
+   with a forced `source_system` bounds the damage, and a rotation ends it.
+7. §20.12's items 3, 5, 6, 7 and 8 are unchanged: SQLite durability on Railway,
+   clock skew, mastery's unguarded transition, Meta Reflex having no
+   authoritative event, and the frontend type shim.
+
+## 21.12 FUNNEL1C scope
+
+Unchanged from §20.13, and still not started.

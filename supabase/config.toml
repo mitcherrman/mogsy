@@ -20,6 +20,14 @@ project_id = "kewgjwrzpzpeltwidvuc"
     verify_jwt = false
   [functions.populate-preset-images]
     verify_jwt = false
+  # FUNNEL1B3.1 — Railway's authoritative gameplay ingest. The caller is a
+  # server with no Supabase session, so the gateway must not demand a user JWT;
+  # the function authenticates itself against RAILWAY_ANALYTICS_INGEST_SECRET
+  # before it reads anything else. Declared here so a repo-driven deploy
+  # reproduces that rather than silently defaulting verify_jwt back to true and
+  # breaking every gameplay event with a 401.
+  [functions.railway-analytics-ingest]
+    verify_jwt = false
   [functions.purge-anonymous-users]
     verify_jwt = false
   [functions.snapshot-global-elo]
