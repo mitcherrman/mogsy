@@ -152,6 +152,12 @@ export interface ArenaHeaderView {
   moduleTitle?: string | null;
   moduleEventId?: number | null;
   /**
+   * RFX1 2B1 — the module title's remaining window, capped by the server's
+   * `started_at` so no intro face survives into live answering. Undefined
+   * keeps the nominal beat (the Daily arena, which has no such boundary).
+   */
+  moduleTitleWindowMs?: number;
+  /**
    * ARENA1 Step 5 — OPTIONAL replacements for the clock's two prose lines.
    * Absent = Ranked's own wording, which is what every existing caller gets.
    *

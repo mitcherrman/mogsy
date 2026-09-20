@@ -47,6 +47,7 @@
 import type { ArenaCardBeat } from "@/lib/ranked-core/cardBeat";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type { PublicRoundView, SegmentSettlementView } from "@/lib/ranked-public/contracts";
+import { MODULE_TITLE_END_MARGIN_MS } from "../pacing";
 
 export type RankedPresentationPhase = "answering" | "waiting" | "revealing" | "module-intro";
 
@@ -79,11 +80,19 @@ export function projectPresentationPhase(args: {
   presentedStartedAt: string | null;
   skewMs: number;
   nowMs: number;
+  /**
+   * RFX1 2B1 — THE PRESENTATION CUTOFF. `module-intro` ends this many ms
+   * BEFORE `started_at`, never at it: the arena must already be the live
+   * question by the moment the player may act, with a margin for the intro
+   * face's own exit. Defaults to `MODULE_TITLE_END_MARGIN_MS`.
+   */
+  cutoffMarginMs?: number;
 }): RankedPresentationPhase {
   if (args.revealing) return "revealing";
   if (args.presentedStartedAt) {
     const start = Date.parse(args.presentedStartedAt);
-    if (!Number.isNaN(start) && start - args.nowMs - args.skewMs > 0) return "module-intro";
+    const margin = args.cutoffMarginMs ?? MODULE_TITLE_END_MARGIN_MS;
+    if (!Number.isNaN(start) && start - args.nowMs - args.skewMs > margin) return "module-intro";
   }
   return args.locked ? "waiting" : "answering";
 }

@@ -44,7 +44,7 @@ import {
 } from "@/lib/ranked-core/settlementViews";
 import { projectCardBeat } from "@/lib/ranked-core/cardBeat";
 import {
-  centralCardResult, centralResult, liveModuleTitle,
+  MODULE_TITLE_MS, centralCardResult, centralResult, liveModuleTitle,
 } from "@/lib/ranked-core/centralStage";
 import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 import {
@@ -85,7 +85,9 @@ import { useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWak
 import {
   prepareRoundCritical, projectEntryPhase, useEntryPreparation, useRankedMediaPreparation,
 } from "@/lib/ranked-core/media/useRankedMediaPreparation";
-import { entryPrepBudgetMs } from "@/lib/ranked-core/pacing";
+import {
+  entryPrepBudgetMs, moduleTitleWindowMs, presentationCutoffAt,
+} from "@/lib/ranked-core/pacing";
 
 /** RD1 — the opponent's column reads the viewer's standing from the other side. */
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
@@ -639,6 +641,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // `started_at` rather than on the next 1s tick. One timeout, re-armed only
   // when the instant changes, cleared on unmount.
   useServerInstantWake(m.publicRound?.activeRound?.startedAt ?? null, m.skewMs);
+  // RFX1 2B1 — and once more a margin EARLIER, so the intro presentation is
+  // already gone when that instant arrives rather than being re-evaluated by
+  // the same render that opens input.
+  useServerInstantWake(
+    presentationCutoffAt(surfaceRound?.activeRound?.startedAt ?? null), m.skewMs);
   const presentationPhase = projectPresentationPhase({
     revealing,
     locked: m.phase === "locked",
@@ -1162,6 +1169,14 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // on the round rail neutral — so this face runs as the new round arrives.
       moduleTitle: liveModuleTitle(headerRound ?? m.publicRound),
       moduleEventId: headerRoundNumber,
+      // RFX1 2B1 — the title may not outlive the server's own start. A swap
+      // that waited for media shortens the title instead of leaving an intro
+      // face over a question the player may already be answering.
+      moduleTitleWindowMs: moduleTitleWindowMs(
+        m.publicRound?.activeRound
+          ? msUntilAnswerable(m.publicRound.activeRound.startedAt, m.skewMs, Date.now())
+          : null,
+        MODULE_TITLE_MS),
     },
     roundBeat: m.lastResolved ? {
       settlement: m.lastResolved,

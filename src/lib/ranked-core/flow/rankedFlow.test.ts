@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   cardEventId, projectPresentationPhase, projectResultFeedback, resultEventId, upcomingRound,
 } from "./rankedFlow";
-import { anchoredRevealHoldMs, REVEAL_HOLD_MIN_MS, REVEAL_HOLD_MS } from "@/lib/ranked-core/pacing";
+import {
+  anchoredRevealHoldMs, MODULE_TITLE_END_MARGIN_MS, moduleTitleWindowMs,
+  REVEAL_HOLD_MIN_MS, REVEAL_HOLD_MS,
+} from "@/lib/ranked-core/pacing";
+import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type { PublicRoundView, SegmentSettlementView } from "@/lib/ranked-public/contracts";
 
@@ -113,5 +117,37 @@ describe("anchoredRevealHoldMs — the hold ends by the server's clock", () => {
   });
   it("stands at nominal with no next round to anchor to", () => {
     expect(anchoredRevealHoldMs(2600, null, 1400)).toBe(2600);
+  });
+});
+
+describe("RFX1 2B1 — the presentation cutoff", () => {
+  const at = (msUntilStart: number, cutoffMarginMs?: number) => projectPresentationPhase({
+    revealing: false, locked: false, skewMs: 0, nowMs: 0,
+    presentedStartedAt: new Date(msUntilStart).toISOString(),
+    ...(cutoffMarginMs === undefined ? {} : { cutoffMarginMs }),
+  });
+
+  it("leaves module-intro a margin BEFORE started_at, never at it", () => {
+    expect(at(2000)).toBe("module-intro");
+    expect(at(MODULE_TITLE_END_MARGIN_MS + 1)).toBe("module-intro");
+    // At the margin, and from there to the start itself, the arena is already
+    // the live question.
+    expect(at(MODULE_TITLE_END_MARGIN_MS)).toBe("answering");
+    expect(at(1)).toBe("answering");
+    expect(at(0)).toBe("answering");
+    expect(at(-500)).toBe("answering");
+  });
+
+  it("caps the module title by the same boundary", () => {
+    // A full lead-in: the nominal beat.
+    expect(moduleTitleWindowMs(2900, MODULE_TITLE_MS)).toBe(MODULE_TITLE_MS);
+    // A swap that waited: the title shortens instead of outliving the start.
+    expect(moduleTitleWindowMs(1000, MODULE_TITLE_MS)).toBe(1000 - MODULE_TITLE_END_MARGIN_MS);
+    // Already answerable: no intro face at all.
+    expect(moduleTitleWindowMs(100, MODULE_TITLE_MS)).toBe(0);
+    expect(moduleTitleWindowMs(0, MODULE_TITLE_MS)).toBe(0);
+    expect(moduleTitleWindowMs(-1000, MODULE_TITLE_MS)).toBe(0);
+    // No next round to anchor to: unchanged.
+    expect(moduleTitleWindowMs(null, MODULE_TITLE_MS)).toBe(MODULE_TITLE_MS);
   });
 });

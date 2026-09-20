@@ -1562,3 +1562,147 @@ Total Ranked-arena chrome plus both mascots goes from about **7.5 MB to about
    `fetchpriority=low` on the HUD art on `/quiz/ranked`.
 4. Revisit `SWAP_MEDIA_MIN_LEAD_MS` (note 2) once assets are light. The gate
    will rarely need to hold at all.
+
+---
+
+## Phase 2B1 closeout (approved before merge)
+
+Two items, both timing. Nothing in the preload architecture changed: the
+Round-1 lead-in, the three tiers, `prepareImage`, the media descriptor, the
+anti-cheat rule, the Meta Reflex block preload, the bounded waits and input at
+the server's `started_at` are all as described above.
+
+### 1. Queue lead-in: unchanged at 4200 ms
+
+Approved as restoration of time previously lost before first interaction.
+Still applied once, at match creation.
+
+### 2. Bot lead-in: traced, and kept at 2200 ms
+
+The bot entry path, read rather than assumed:
+
+| term | present on the bot path? | evidence |
+|---|---|---|
+| discovery poll | **No** | `POST /api/ranked/queue` with `match_with_bot` creates the match **inside that request** (`routes/ranked_public.py` → `_create_admin_bot_match` → `service.create_bot_match`) and returns a **matched** queue snapshot carrying the id. `useRankedQueue.joinWithoutClass` applies that status directly; nothing polls for it. |
+| 800 ms lobby handoff | **Yes** | `matchWithBot` "changes nothing about this state machine … the existing matched → handoff beat carries the player into the arena with no extra state, no polling, and no bot-specific branch". `PlayScrollRecord`'s handoff effect is keyed on `queue.state === "matched"`, which a bot join reaches the same way a pairing does. |
+| module-title window | **Yes** | The same `MODULE_TITLE_MS` beat every round is owed; the arena has no bot-specific presentation. |
+
+So the bot lead-in is `ENTRY_HANDOFF_MS + MODULE_TITLE_MS = 2200`, and it
+differs from the queue's 4200 by exactly the discovery term. A test pins both
+that arithmetic and the source-level fact that the bot join creates its match
+in its own request.
+
+**Client-side time between bot creation and first payload**: the join
+response, the SPA navigation (its chunk warmed at the handoff by Tier 1) and
+the first snapshot fetch — about **0.3–0.6 s** on top of the 800 ms handoff,
+so roughly **1.1–1.4 s** in total. Measured against a modelled 1.4 s, Round 1
+was decoded at **112 ms** and visible at **146 ms** after the first snapshot,
+leaving about **0.65 s** of prepared, locked question before `started_at`.
+That is why nothing was added: the unmodelled 0.3–0.6 s is spent **inside** the
+title window, never out of the answer window. The queue's 2000 ms discovery
+term is an upper bound that absorbs the same costs on its own path; padding the
+bot path to match would be inventing time.
+
+### 3. The presentation cutoff
+
+**Invariant: once `started_at` is reached the arena is unmistakably the live
+question. No intro face may be up while input is open.**
+
+Before this closeout the module title ran `MODULE_TITLE_MS` from the swap, so
+a swap that had waited for media could leave the header's module face up past
+`started_at` (measured at 36–53 ms on the baseline, and up to ~400 ms in the
+worst gated case).
+
+Two changes, both anchored on the server instant, and **neither delays input
+or reduces preload time**:
+
+1. `pacing.moduleTitleWindowMs(msUntilAnswerable, nominal)` caps the title at
+   `started_at − MODULE_TITLE_END_MARGIN_MS (150)`. `QuizRankedMatch` passes
+   it through `view.header.moduleTitleWindowMs` and `CentralStage` uses it
+   instead of the fixed beat. A round that is **already** answerable (a late
+   discovery) plays **no** title at all.
+2. `projectPresentationPhase` leaves `module-intro` at the same boundary
+   (`cutoffMarginMs`, default 150 ms), and a second `useServerInstantWake` at
+   `presentationCutoffAt(started_at)` makes that flip happen **then**, rather
+   than being re-evaluated by the render that opens input.
+
+`view.presentationPhase` and `view.entryPhase` are now also published as
+`data-presentation-phase` / `data-entry-phase` on the arena root, so the
+invariant is observable in tests and in the browser.
+
+The swap gate is unchanged (`started_at − 1000`), so media preparation keeps
+the same window; only the title shortens under it.
+
+### Closeout measurements
+
+Same method as above (production builds, real arena via the probe, CDP
+throttling: phone 1.6 Mbps / 150 ms / 4× CPU, desktop 9 Mbps / 40 ms). Cold
+entry models the path already spent before the first snapshot: queue ≈2.4 s,
+bot ≈1.4 s.
+
+**Cold entry** (ms from the first snapshot):
+
+| run | media req | decoded | question visible | `started_at` | input active | input − start |
+|---|---|---|---|---|---|---|
+| bot, before, 390 | 58 | — | 61 | **−1400** | 61 | **+1461 (1.4 s already lost)** |
+| bot, after, 390 | 13 | 112 | 146 | 800 | 818 | **+18** |
+| bot, before, 1440 | 10 | — | 15 | −1400 | 15 | +1415 (lost) |
+| bot, after, 1440 | 3 | 104 | 110 | 800 | 823 | **+23** |
+| queue, before, 390 | 40 | — | 43 | −2400 | 43 | +2443 (lost) |
+| queue, after, 390 | 12 | 700 | 734 | 1800 | 1821 | **+21** |
+| queue, before, 1440 | 9 | — | 11 | −2400 | 11 | +2411 (lost) |
+| queue, after, 1440 | 3 | 275 | 284 | 1800 | 1811 | **+11** |
+
+Full answer duration is preserved in every after-run: input opens 11–23 ms
+after the authoritative instant, and the whole configured window follows it.
+
+**Round N → N+1, with a named module so the title actually plays** (ms from
+the server resolving N; next lead 2900):
+
+| run | next media req | next decoded | swap | module face | `started_at` | input | intro ends before start? |
+|---|---|---|---|---|---|---|---|
+| before, 390 | 36 | — | 1521 | 1546 → **2953** | 2900 | 2914 | **No — 53 ms past** |
+| after, 390 | 31 | pending | 1923 (gate) | 1947 → **2794** | 2900 | 2923 | **Yes, 106 ms before** |
+| before, 1440 | 15 | — | 1536 | 1536 → **2936** | 2900 | 2914 | **No — 36 ms past** |
+| after, 1440 | 11 | 1224 | 1522 | 1522 → **2797** | 2900 | 2948 | **Yes, 103 ms before** |
+
+- After, phone: `presentationPhase` ran `revealing@15 → module-intro@1923 →
+  answering@2776`, i.e. the arena was `answering` **124 ms before**
+  `started_at`. Desktop: `answering@2797`, 103 ms before.
+- Next-round media still begins **before the swap** (31 ms vs a 1923 ms swap
+  on phone; 11 ms vs 1522 ms on desktop), unchanged by the closeout.
+- The title still plays: 847 ms (phone) and 1275 ms (desktop) of it.
+- Geometry: no horizontal overflow, no document scroll, no nested scroll at
+  390×844 or 1440×900 in every run. Only the known probe 403 in the console.
+
+### Closeout tests
+
+- `rankedFlow.test.ts` (+2): `module-intro` ends a margin **before**
+  `started_at` and never at or after it; `moduleTitleWindowMs` shortens,
+  floors at 0 for an already-answerable round, and is unchanged with no next
+  round.
+- `QuizRankedMatch.rfx1b1.test.tsx` (+2, real controller): with media that
+  never loads (the slow-phone case) the title plays but **every sample from
+  `started_at` onwards** is the live question — no `module` face, no
+  `module-intro` phase, and no sample where input is open under an intro; and
+  a round that is already answerable plays no title at all. The harness
+  fixture now carries a `topic.category`, without which no title plays and the
+  assertion would be vacuous.
+- `test_ranked_answerable_boundary.py` (+1, and the lead-in test extended):
+  the bot lead-in equals the queue lead-in minus the discovery term, and the
+  bot join creates its match inside its own request.
+
+### Closeout files changed
+
+Frontend: `src/lib/ranked-core/pacing.ts` (`MODULE_TITLE_END_MARGIN_MS`,
+`moduleTitleWindowMs`, `presentationCutoffAt`),
+`src/lib/ranked-core/flow/rankedFlow.ts` (cutoff margin),
+`src/components/ranked-arena/CentralStage.tsx` (capped title window),
+`src/components/ranked-arena/CanonicalArena.tsx` (passes the window; publishes
+both phases as data attributes), `src/lib/ranked-core/arenaView.ts`
+(`moduleTitleWindowMs`), `src/pages/quiz-ranked/QuizRankedMatch.tsx` (computes
+the window, second wake at the cutoff), plus the two test files.
+
+Backend: `ranked_public/pacing.py` (the traced bot derivation, documented) and
+`test_ranked_answerable_boundary.py`. **No behavioural backend change**: the
+lead-in values are unchanged.

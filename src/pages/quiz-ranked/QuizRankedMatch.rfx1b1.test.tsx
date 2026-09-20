@@ -83,6 +83,11 @@ function publicBody() {
     `Round ${backend.activeRound} — which item grants Immolate?`;
   // A media-rich question: its subject icon names the round, so a request
   // for it proves WHICH round's media was being prepared.
+  // A round with a MODULE NAME, so the header's intro face is real: the
+  // presentation cutoff cannot be tested against a round that never plays one.
+  (payload.question as Record<string, unknown>).topic = {
+    category: "itemization", tier: null, icon_hint: null,
+  };
   (payload.question as Record<string, unknown>).presentation = {
     assets: { subject: { type: "item", name: "Sunfire Aegis",
       icon: `assets/items/round-${backend.activeRound}.png` } },
@@ -238,6 +243,60 @@ describe("RFX1 2B1 — preparation never costs answer time", () => {
     }, { timeout: 3000, interval: 10 });
     expect(openedAt - startedAt).toBeGreaterThanOrEqual(0);
     expect(openedAt - startedAt).toBeLessThan(250);
+  }, 15000);
+});
+
+describe("RFX1 2B1 — the presentation cutoff: no intro survives started_at", () => {
+  const stage = () => screen.getByTestId("timer-display").getAttribute("data-stage");
+  const phase = () => screen.getByTestId("ranked-match").getAttribute("data-presentation-phase");
+
+  it("ends the module title by started_at even when the swap waited for media", async () => {
+    // The slow-phone case: media never loads, so the swap gate holds to
+    // `started_at − 1000` and the title has only that window left.
+    imageMode = "never";
+    await mountAndAnswer(2);
+    resolveRound("correct", 2900);
+    const startedAt = backend.startedAt;
+    await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
+    await waitFor(() => expect(surfaceText()).toContain("Round 2"), { timeout: 4000, interval: 10 });
+    // The title does play — the intro is not sacrificed...
+    expect(stage()).toBe("module");
+    expect(phase()).toBe("module-intro");
+    // ...and every sample from `started_at` onwards is the live question.
+    const samples: { t: number; stage: string | null; phase: string | null; open: string | null }[] = [];
+    const sampler = setInterval(() => samples.push({
+      t: Date.now() - startedAt, stage: stage(), phase: phase(),
+      open: screen.getByTestId("ranked-question").getAttribute("data-input-open"),
+    }), 10);
+    await waitFor(() => {
+      expect(screen.getByTestId("ranked-question")).toHaveAttribute("data-input-open", "true");
+    }, { timeout: 3000, interval: 10 });
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    clearInterval(sampler);
+    // The intro ends BEFORE the server's instant, with the margin, not at it.
+    const lastIntro = samples.filter((s) => s.phase === "module-intro").pop();
+    expect(lastIntro, "the module intro should have been observed").toBeDefined();
+    expect(lastIntro!.t).toBeLessThan(0);
+    const after = samples.filter((s) => s.t >= 0);
+    expect(after.length).toBeGreaterThan(5);
+    for (const s of after) {
+      expect(s.stage, `stage at started_at+${s.t}ms`).not.toBe("module");
+      expect(s.phase, `phase at started_at+${s.t}ms`).not.toBe("module-intro");
+    }
+    // ...and nothing that was open ever coexisted with the intro.
+    expect(samples.filter((s) => s.open === "true" && s.stage === "module")).toHaveLength(0);
+  }, 15000);
+
+  it("plays no title at all for a round that is already answerable", async () => {
+    // A late discovery: the settlement is seen after `started_at` has passed.
+    await mountAndAnswer(2);
+    resolveRound("correct", 900);
+    await waitFor(() => expect(surfaceText()).toContain("Round 2"), { timeout: 4000, interval: 10 });
+    await waitFor(() => {
+      expect(screen.getByTestId("ranked-question")).toHaveAttribute("data-input-open", "true");
+    }, { timeout: 3000, interval: 10 });
+    expect(stage()).not.toBe("module");
+    expect(phase()).not.toBe("module-intro");
   }, 15000);
 });
 

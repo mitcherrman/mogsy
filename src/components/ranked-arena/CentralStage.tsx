@@ -107,6 +107,13 @@ export interface CentralStageProps {
    * — the same two fixed sub-slots, so nothing about the window moves.
    */
   event?: DuelEventView | null;
+  /**
+   * RFX1 2B1 — how long the module title may play, from the server's own
+   * `started_at` (`pacing.moduleTitleWindowMs`). Undefined keeps the nominal
+   * `MODULE_TITLE_MS`; 0 means the round is already answerable and no intro
+   * face may be shown.
+   */
+  moduleTitleWindowMs?: number;
 }
 
 /**
@@ -115,8 +122,9 @@ export interface CentralStageProps {
  * sequence and is worth fixing independently of how it is drawn.
  */
 export function useCentralStage({
-  result, moduleTitle, moduleEventId,
-}: Pick<CentralStageProps, "result" | "moduleTitle" | "moduleEventId">): CentralStageView {
+  result, moduleTitle, moduleEventId, moduleTitleWindowMs,
+}: Pick<CentralStageProps,
+  "result" | "moduleTitle" | "moduleEventId" | "moduleTitleWindowMs">): CentralStageView {
   // The round whose title has already had its turn. A REF, not state: writing
   // it must not re-run the effect that schedules the face, which is the same
   // trap `useEntrySting` documents next door.
@@ -130,10 +138,21 @@ export function useCentralStage({
     if (result) return;
     if (moduleEventId === null || moduleTitle === null) return;
     if (moduleEventId === playedFor.current) return;
+    // RFX1 2B1 — THE PRESENTATION CUTOFF. The caller passes how much room the
+    // server's own `started_at` leaves; the title takes the shorter of that
+    // and its nominal beat, and plays not at all when the round is already
+    // answerable. A swap that waited for media therefore shortens the title
+    // rather than pushing it past the moment the player may act.
+    const window_ = moduleTitleWindowMs ?? MODULE_TITLE_MS;
+    if (window_ <= 0) { playedFor.current = moduleEventId; return; }
     playedFor.current = moduleEventId;
     setTitleFor(moduleEventId);
-    const id = window.setTimeout(() => setTitleFor(null), MODULE_TITLE_MS);
+    const id = window.setTimeout(() => setTitleFor(null), window_);
     return () => window.clearTimeout(id);
+    // `moduleTitleWindowMs` is read at the START of the beat and deliberately
+    // not a dependency: it is recomputed every render (it counts down), and
+    // re-running here would restart the title on every tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, moduleEventId, moduleTitle]);
 
   // Precedence, and the reason it is written once: the result is the news, the
@@ -148,8 +167,9 @@ export function useCentralStage({
 export function CentralStage({
   timer, result, moduleTitle, moduleEventId, label = "Round timer",
   durationNote, expiredNote = "Time's up", standing = null, event = null,
+  moduleTitleWindowMs,
 }: CentralStageProps) {
-  const stage = useCentralStage({ result, moduleTitle, moduleEventId });
+  const stage = useCentralStage({ result, moduleTitle, moduleEventId, moduleTitleWindowMs });
   const expired = timer !== null && timer.remainingSeconds <= 0;
   const urgent = timer?.urgent ?? false;
   return (
