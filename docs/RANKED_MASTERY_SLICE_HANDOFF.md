@@ -36,8 +36,11 @@
 > in the Admin Generator Lab only, behind a flag that is off; committed, NOT pushed**) and
 > [`docs/gr1-reusable-state-phase4-design.md`](./gr1-reusable-state-phase4-design.md)
 > (GR1 reusable state **Phase 4 — DESIGN ONLY: durable frozen state, the state-sequence model,
-> coherent Slice windows, Full, and where states come from. Nothing implemented; 14 proposed
-> decisions awaiting the owner. Records two measured defects on `master`**).
+> coherent Slice windows, Full, and where states come from. Direction APPROVED; the sequence and
+> source proposals remain provisional. Records two measured defects on `master`**) and
+> [`docs/gr1-reusable-state-phase4a.md`](./gr1-reusable-state-phase4a.md)
+> (GR1 reusable state **Phase 4A — the frozen block repaired and readable. `derived_used` went
+> 0/162 → 162/162; committed, NOT pushed; still persists nothing**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -72,6 +75,7 @@
 | **GR1 reusable state — Phase 2 (resolution + derivation)** | **IMPLEMENTED AND MERGED, 2026-09-19. Wired for the first time by Phase 3, in the Lab only.** `origin/master` contains **`89b5ce4b`** (implemented as `35e08c11` on `88c9f7a0`, rebased onto `57016334` — one upstream items-only commit, zero file overlap); worktree `~/lcs-wt-gr1-state2`, one commit, **14 files all inside `mastery/setup_state/` or `mastery/tests/`**. Six new modules: a **data-basis resolver** (one available basis, named concretely; a pinned historical one is refused, never served from current data), a **rules authority** (legality as data; the per-champion rank domain is READ from `champion_state.ability_rank_ceiling`, and an undeclared special availability rule refuses rather than falling back to the 5/3 rule that is wrong for six champions), **setup sources** (one curated source, selectable by name and NOT the default; source-blind identity), **canonical normalization** (unknown references fail closed), a **derivation authority** (level-scaled stats read from Mastery's OWN fact layer, so they cannot drift; **no silent zero** — AP 0 is a supported zero, an unsupported value carries no number, a manaless resource pool is `not_applicable`), and the **pipeline** with pure matchup resolution. Two tested contract corrections: `resolved_state_digest` no longer hashes `rules_rev`/`derivation_version`, and a template axis may say `INTRINSIC`. Roster-wide: **173/173** resolve, **692/692** states fully derived on the core axes, 0 failures, 0 silent-zero cases, 60/60 matchups reversal-identical. `mastery/tests` failure **set** identical to the base. See [`gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md) and the section below. |
 | **GR1 reusable state — Phase 3 (the first state-aware question path)** | **IMPLEMENTED AND INTEGRATED, 2026-09-19. PUSHED to both repos. Admin Generator Lab only.** Backend: `origin/master` contains **`22a1c7d9`** (base `ca3d7333`; implemented on `295fd58f` and rebased over 3 item-runtime commits with **zero file overlap** — at integration master had not moved, so no second rebase was needed), worktree `~/lcs-wt-gr1-state3`. Frontend: `origin/main` contains **`8f949824`** (pre-rebase `bd4b78e8`; implemented on `b901ea0e` and rebased onto **`ce3f49be`** over 3 RFX1 commits — Ranked asset derivatives and the entry intro — with **zero file overlap**), worktree `~/mogsy-wt-gr1-state3`. The seam runs end to end: `StateTemplate → ResolvedState → state-aware candidates → the EXISTING composition, publication gate and Mastery presentation → a Lab preview`. One family — **champion ability cooldown under resolved ability haste** — and it unlocks nothing: it names `quiz.family_contract`'s already-CERTIFIED, Mastery-eligible **`combat_cooldown`**, goes through the same gate as an intrinsic candidate, and honours that family's own `static_cooldown` exclusion. The resolver seam is one optional `universe=` on `resolve_with_universe`/`publish`, and supplying the pool the resolver would have rebuilt gives a **byte-identical** snapshot. **Nothing a player can reach is wired**: `mastery_slice` has no state-aware mode, so no saved Ranked format can name one, and the single serving-side importer is one admin-gated route behind `GR1_STATE_AWARE_LAB_ENABLED`, off by default. **Current behaviour proven unmoved byte-for-byte** across two worktrees (887 candidates, 303 comparisons both orders, 12 published artifacts, 16 slice preview/coverage payloads — identical 1.7 MB dumps). Roster-wide: 165/173 champions, 2,356 candidates, **0 answer mismatches**, 589/589 identity equality at equal haste and 589/589 difference at different haste. See [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3.md) and the section below. |
 | **GR1 reusable state — Phase 4 (design)** | **DESIGN ONLY, 2026-09-19. NOTHING IMPLEMENTED, nothing pushed.** Backend audited at `origin/master` **`e9bdf537`** (two item-runtime commits past Phase 3's `22a1c7d9`, zero `mastery/` overlap); docs base `origin/main` **`fe0804c3`**. Answers the five brief questions: how a served question freezes its exact state, what a `FrozenStateArtifact` contains, how a Slice picks a coherent window instead of unrelated states, how Full walks the same sequence without a second question system, and where states come from when nobody types one. **Recommends a slice-level `FrozenStateBundle` in a new `mastery_state` key of `segment_private_json` (sibling to `mastery_artifact`, never public, ZERO DDL)**, a `StateSequence` of templates with derived transitions, window-first Slice composition, Full as the same pipeline with no budget, `rule.haste_ladder.v1` as the first state source, and **Champion Mastery as the first consumer**. **Two measured defects recorded, not fixed:** `derived_used` is empty on every frozen block master can produce (a `used_metrics` shape mismatch, fail-open and untested), and item display names are never frozen so a historical state cannot be read without re-reading `item_canonical`. **14 proposed decisions (§13.2) await the owner.** See [`gr1-reusable-state-phase4-design.md`](./gr1-reusable-state-phase4-design.md) and the section below. |
+| **GR1 reusable state — Phase 4A (the frozen block)** | **IMPLEMENTED AND COMMITTED, 2026-09-20. NOT pushed. Still persists nothing.** Backend **`96f16a08`** on `gr1/setup-state-phase4a`, base `origin/master` **`d90fd45b`** (two item-runtime commits past the design's `e9bdf537`, zero `mastery/` overlap), worktree `~/lcs-wt-gr1-state4a`. One commit, 10 files, all inside `mastery/setup_state/` or `mastery/tests/`. **The defect is fixed and measured: frozen blocks carrying a derived value went 0/162 → 162/162 roster-wide** (1,028 values), with the same 11 fail-closed refusals on both arms. The fix is the SHAPE, not the call site — `check_used_metrics` refuses a flat sequence, a side-count mismatch, and a declared metric the state does not carry. The block also gained `display_labels` (captured at normalization, where `resolve_item` already returns the name, so no extra query and no chance of reading a different row), the resolver/derivation versions and warnings the digest deliberately excludes, and per-step `state_index`/`family_id`/`answer_metric`/`candidate_id`/`content_digest`. `FrozenStateBundle` holds ordered self-contained states and refuses a mixed basis. **First deserializers in the package besides `StateTemplate`'s**, plus `verify_frozen_bundle`, which reads nothing but the block (a test monkeypatches `sqlite3.connect` to raise), reports the digest as unverifiable-by-design rather than silently passing it, and never repairs. **Nothing moved:** two-worktree probe over 20 banks, 7 pairs both orders and 8 published artifacts gave IDENTICAL 1,030,247-byte dumps; `mastery/tests` failure SET byte-identical to base. See [`gr1-reusable-state-phase4a.md`](./gr1-reusable-state-phase4a.md) and the section below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -1534,6 +1538,71 @@ branch `gr1/reusable-state-phase4-design`, worktree `~/mogsy-wt-gr1-state4-desig
   D-6, D-13, D-17, **D-20** (which §7.2 shows stops being theoretical the moment a state source
   is chosen), the patch-identity mismatch, the three-champion `db_lookup_name` gap, four
   champions' undeclared rank-availability rules, and runes/shards.
+
+## Reusable state — PHASE 4A IMPLEMENTED, the frozen block repaired (2026-09-20)
+
+Full record: [`gr1-reusable-state-phase4a.md`](./gr1-reusable-state-phase4a.md).
+**The block is now correct and readable. It is still written nowhere.**
+Backend **`96f16a08`** on `gr1/setup-state-phase4a`, base `origin/master` **`d90fd45b`**,
+worktree `~/lcs-wt-gr1-state4a`. One commit, 10 files. **NOT pushed.**
+Comparison base `~/lcs-wt-gr1-4a-base` @ `d90fd45b`.
+
+* **The defect, measured at both SHAs.** `lab.py` handed `freeze_resolved_state` a FLAT tuple of
+  metric names where the contract takes one sequence PER SIDE, so `used_metrics[0]` was a metric
+  *string*, `set()` of it a set of single characters, and no metric ever matched. **0 of 162
+  frozen blocks carried a derived value at base; 162 of 162 do on the branch** (1,028 values
+  roster-wide), with the same 11 fail-closed refusals on both arms so nothing about which states
+  resolve changed. It failed OPEN and was invisible because the Lab panel beside the block uses
+  the same tuple flat, and was right — the panel showed seven values while the block below it
+  recorded none.
+* **The fix is the shape, not the call site.** `contract.check_used_metrics` refuses a flat
+  sequence, a per-side length that disagrees with the state, and a declared metric the state does
+  not carry. The last of those is fail-closed ON WRITE deliberately: a frozen artifact is never
+  rewritten, so a question frozen without the value its answer came from is unexplainable forever.
+* **One design rule did not survive the data.** "`derived_used` = the transitive closure of
+  `depends_on`" is **not implementable**: every `depends_on` entry is an AXIS
+  (`('ability_ranks','items')`), never a metric, so there is no metric graph to close over. The
+  implemented rule is the generator's DECLARED set, validated to contain every bound and answer
+  metric — which `scenario.py` already produced correctly.
+* **Historical display metadata, captured where the names already are.** A state froze
+  `items:[{"item_id":"4629"}]` and champions-only `display_names`, so rendering the build meant
+  re-reading `item_canonical`, whose own `availability` is `live_only`. `display_labels` is now
+  collected at NORMALIZATION, because `resolve_item` already returns `canonical_name` beside the
+  id — no extra query, and no chance of naming a different row than the one that produced the
+  state. Labels are never identity (asserted), and a CONFLICTING label for one id is refused.
+  162/162 states label every opaque id.
+* **What else the block gained:** `resolver_version` / `derivation_version` /
+  `derivation_support` / `warnings` — all of which `resolved_state_digest` deliberately excludes
+  (Phase 2 §11), so the block is the only place they survive; `state_index`, because a digest is
+  not an order; and per step `family_id` (into a hoisted bundle-level `families` map carrying the
+  read-set), `answer_metric`, `candidate_id` and `content_digest` — the last two being what a
+  served slice currently loses entirely, since it keeps only the projection of a step.
+* **`FrozenStateBundle`** holds ordered, self-contained states plus the step→state map, and
+  **refuses a mixed basis, ruleset or rules revision**, so the self-containment is checked rather
+  than tolerated. `FrozenTransition` is typed and nothing produces one, so adding transitions
+  later changes no shape.
+* **Reading it back — the first deserializers in the package besides `StateTemplate`'s.** Until
+  now a block could be written and never parsed, so nothing could verify one.
+  `verify_frozen_bundle` **reads nothing but the block** (a test monkeypatches `sqlite3.connect`
+  to raise), **reports and never repairs**, and says the digest is
+  `unverifiable_by_design` — it covers every derived value and the block keeps only the read ones
+  — rather than silently returning "verified". `frozen.py` is declared in the isolation guard's
+  CONTRACT half, which makes the no-database claim mechanically enforced.
+* **Nothing moved.** A read-only two-worktree probe over 20 champion banks, 7 pairs in BOTH call
+  orders and 8 published artifacts produced **identical 1,030,247-byte dumps**. `mastery/tests`
+  failure SET byte-identical to base (the same five pre-existing failures), 2056 → 2109 passed
+  pre-commit and 2116 / 6 skipped post-commit — the +7/−7 being the committed-footprint guards
+  that skip until something is committed, the same arithmetic Phases 1 and 3 recorded. Three
+  Ranked-Mastery integration files: 2 failed / 85 passed on both arms.
+* **No footprint list moved.** `mastery/setup_state/` is already in `GR1_PACKAGES`. The one guard
+  edit is declaring `frozen.py` in the isolation test's pinned module set, which the guard forced.
+* **Still persists nothing, and the sequence/source work is untouched.** No `mastery_artifact`
+  change, no round row, no review projection, no attempt provenance, no `StateSequence`, no
+  source, **no `rule.haste_ladder.v1`** (the haste items in tests are literal fixtures, not a
+  registered source), no Slice window, no Full, no new family, no `mastery_slice` mode, no DDL, no
+  frontend change.
+* **Rollback:** `git revert 96f16a08`. Nothing persisted, nothing to un-migrate, one consumer
+  behind a flag that is off.
 
 ## Screenshots / artifacts
 
