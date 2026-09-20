@@ -1,12 +1,17 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: PHASE 1B1 IMPLEMENTED — contract frozen, schema written, awaiting
-manual migration apply.**
+**State: PHASE 1B2 COMPLETE — contract frozen, schema APPLIED AND CERTIFIED IN
+PRODUCTION, canonical web funnel instrumented. Frontend not yet deployed.**
+
+Production baseline: **2026-09-20T11:27:52Z**, project `kewgjwrzpzpeltwidvuc`,
+commit `f2c0da40`. Funnel data begins there; everything before it is
+permanently zero (§5). See **§15.8** for the certification evidence.
 
 Sections 1–13 are the FUNNEL1A audit, retained unedited: they are the evidence
 the design rests on, and rewriting them to match the outcome would destroy the
-record of what was actually found. **Section 14 is the current state.** Where
-1B1 departed from a proposal in §9, §14 says so and says why.
+record of what was actually found. **§14 is the B1 contract and schema; §15 is
+the B2 instrumentation and the production certification — §15 is the current
+state.** Where a phase departed from a proposal in §9, it says so and says why.
 
 FUNNEL1A itself implemented, migrated, renamed and refactored nothing; that
 document and the audit behind it were its only deliverables.
@@ -897,3 +902,429 @@ Possible once the migration is applied and B2 instruments the routes:
 
 Admin analytics UI stays out of B2 unless explicitly scoped; it needs data
 first.
+
+---
+
+# 15. FUNNEL1B2 — Canonical web funnel + production certification (IMPLEMENTED, DEPLOYED)
+
+Branch `funnel1b1-analytics-foundation`, continuing from B1. Same isolated
+worktree; the divergent local `mogsy` checkout was not touched.
+
+**The analytics schema is live in production.** §15.8 records the deployment
+and the certification evidence.
+
+## 15.1 Legacy emitter audit — the first task, and the reason for it
+
+The rollout rule was that B1's schema must not ship before the legacy events
+were classified, because the compatibility shim would have let 34 call sites
+start writing the moment the tables existed — and several of those names are
+actively misleading. With zero historical funnel data there is exactly one
+chance at a clean statistical starting line.
+
+All 34 `trackFunnelEvent(...)` sites were enumerated and classified. Six
+retired, twenty-eight kept as diagnostics, one new diagnostic added.
+
+| Legacy event | Emitter | What it actually meant | Action |
+|---|---|---|---|
+| `lol_landing_viewed` | `LolHub.tsx:550` | Hub entry, labelled as a landing | **RETIRE** → `hub_entered` |
+| `lol_start_quiz_clicked` | `LolHub.tsx:668` | One CTA standing in for a page entry | **RETIRE** → `leaguecraft_opened` (surface) + `leaguecraft_cta_clicked` (new diagnostic) |
+| `quiz_guest_started` ×2 | `Quiz.tsx:820,880` | Practice start — **only when anonymous** | **RETIRE** → `practice_quiz_opened`, unconditional |
+| `auth_signup_viewed_from_quiz` | `Auth.tsx:80` | Signup screen, quiz arrivals only | **RETIRE** → `signup_viewed` + `entry_surface` |
+| `auth_signup_completed_from_quiz` | `Auth.tsx:272` | Signup, quiz arrivals AND email path only | **RETIRE** → `signup_completed` (analytics/signup.ts) |
+| `quiz_results_viewed` | `Quiz.tsx:1030` | Same block, same payload as `quiz_completed` | **RETIRE** — a duplicate of one moment |
+| `quiz_completed`, `quiz_question_answered`, `practice_missed_started` | `Quiz.tsx` | Real product detail | KEEP_DIAGNOSTIC |
+| `quiz_signup_gate_shown` / `_clicked` / `quiz_guest_continue_clicked` | `QuizSignUpGate.tsx` | Gate behaviour | KEEP_DIAGNOSTIC |
+| `hud_signup_chip_clicked` / `_menu_clicked` | HUD | CTA placement | KEEP_DIAGNOSTIC |
+| 11 × `practice_builder_*` | PT1.7 | Premium product telemetry | KEEP_DIAGNOSTIC |
+| 3 × `trends_*` | PT1.8 | Premium product telemetry | KEEP_DIAGNOSTIC |
+| 5 × `ad_slot_*` / `house_ad_clicked` | `lib/ads/analytics.ts` | Ad lifecycle | KEEP_DIAGNOSTIC |
+| 12 × `dsa_*` | DSA bridge | Run detail, production-gated | KEEP_DIAGNOSTIC |
+
+**B1's alias table is gone.** B1 translated `lol_*` at the emitter because the
+call sites could not be touched in a schema phase. B2 removed the call sites,
+so translation became a liability: it would let a reintroduced legacy call site
+quietly rejoin canonical counts under a rewrite rule invisible at the call
+site. A retired name is now **refused** with a `contract:retired_event`
+diagnostic and no row. `RETIRED_EVENTS` in `contract.ts` is the record, and a
+test scans all of `src/` to prove none of them is emitted anywhere.
+
+## 15.2 Canonical events added
+
+`landing_viewed` · `hub_entered` · `leaguecraft_opened` · `practice_quiz_opened`
+· `ranked_opened` · `meta_reflex_opened` · `mastery_opened` · `dsa_opened` ·
+`signup_viewed` · `signup_started` · `signup_completed`, plus the diagnostic
+`leaguecraft_cta_clicked`.
+
+No new vocabulary was invented — all eleven were frozen in B1 §14.4.
+
+**No verification events were instrumented.** There is no verification UI in the
+product yet, and the brief forbids placeholders. The schema and contract stay
+ready; the VERIFY workstream emits them when it ships.
+
+## 15.3 Surfaces instrumented
+
+| Event | Surface | Boundary note |
+|---|---|---|
+| `landing_viewed` | `MogzyEntryV2` | Gated on `seo === "root"`, so the `/dev` preview mount of the same component is not a landing |
+| `hub_entered` | `LolHub` | Replaces `lol_landing_viewed` in place. `markHubVisited()` is untouched — it is routing/onboarding state, not analytics |
+| `leaguecraft_opened` | `Quiz` (the `/quiz` route) | **Route, not CTA.** Direct link, bookmark, internal navigation and the back button all count identically |
+| `practice_quiz_opened` | `Quiz`, both start paths | `entry: "question_set"` / `"category_rail"` distinguishes them; not deduped, because three sets is three events |
+| `ranked_opened` | `QuizRankedPage` | Emitted **above** the account gate, deliberately: a signed-out visitor being asked to sign in is the drop-off worth measuring |
+| `meta_reflex_opened` | `LeagueSwipeHub` | Per-game opens stay out of the macro funnel; the slug is on the result rows |
+| `mastery_opened` | `MasteryJourneysPage` | Behind `ProtectedRoute`, so this step is structurally empty for guests — a product fact |
+| `dsa_opened` | `QuizDailyScoreAttack` | The production wrapper only, so the `/dev` prototype stays out, matching the existing `dsa_*` gating |
+| `signup_viewed` | `Auth` | Unconditional for `mode=signup`; origin moves to `entry_surface` metadata |
+| `signup_started` | `Auth` + `useAccountUpgrade` | After validation, as the request goes out |
+| `signup_completed` | `analytics/signup.ts` only | §15.4 |
+
+`LobbyPreviewPage` also mounts `LeaguecraftHub`, which is why the canonical
+open is bound to the `/quiz` page rather than to that shared component — the
+dev preview would otherwise have counted as a Leaguecraft open.
+
+### Opened vs started
+
+The distinction is kept only where the browser can truthfully know it.
+`practice_quiz_opened` fires when a set actually begins — but it is named
+`_opened`, not `_started`, because `practice_quiz_started` is reserved for
+Railway's `quiz_sessions`, which is the counted truth. `ranked_opened` means
+arrival at Ranked and nothing more. A test scans `src/` and asserts that no
+source file emits any of the ten server-authoritative gameplay names.
+
+## 15.4 Signup definition
+
+**One canonical row per signup, produced by one module.** There are exactly two
+ways to become registered, and they are detected differently on purpose:
+
+1. **Guest upgrade** — `observeAuthIdentity`, called from `AuthProvider`,
+   watches for the SAME account ceasing to be anonymous. Detected centrally
+   rather than in a UI callback because the transition can complete long after
+   every form has unmounted: a guest who takes the email-confirmation branch
+   leaves in `verification_pending`, still anonymous, and becomes registered
+   when they click the link days later.
+2. **Brand-new registered account** — reported explicitly by `Auth.tsx` on
+   `signUp()` success, because at the auth layer "a registered user appeared
+   where there was none" is **indistinguishable from an ordinary sign-in on a
+   new device**. Counting that transition would turn every returning user into
+   a signup — a subtler version of the defect this replaces.
+
+The two are mutually exclusive by construction (`Auth.tsx` returns the upgrade
+panel early for anonymous users, so the `signUp()` branch cannot run for a
+guest), and both dedupe on the uid in `localStorage`, so a reload, a second tab
+or a token refresh cannot produce a second row.
+
+A signup is therefore **never** a `profiles` row, an anonymous session, or a
+Hub load. Guest→account identity continuity is preserved: the upgrade is in
+place, so `user_id` is the same uid before and after, and `is_guest` flips from
+true to false across the boundary on that one uid. Tested.
+
+`entry_surface` (`ranked` / `leaguecraft` / `hub` / `guest_upgrade` / `direct`),
+`return_to` and `from_guest` are metadata, not separate event names — the
+`_from_quiz` suffix is exactly how the old vocabulary went wrong.
+
+**No OAuth path exists in this codebase** (`signInWithOAuth` appears nowhere),
+so the audit's "OAuth signup is untracked" finding is currently moot. Recorded
+so it is not re-raised.
+
+## 15.5 Dedupe strategy
+
+`useSurfaceEvent` fires a surface event **once per `(session_id, event_name,
+key)`**, held in a module-level Set that is never cleaned up — the cleanup
+function deliberately does not remove the key, because StrictMode's
+effect → cleanup → effect sequence would re-arm it and restore the double-fire.
+
+- Not once per **mount**: mounts are a React fact, not a visitor fact.
+- Not once per **process**: that is global suppression, which the brief rules
+  out, and it would silence tomorrow's visit.
+
+The session is the boundary because it is already the unit the funnel is
+measured in, so "sessions that saw the landing page" is what the number means.
+Survives StrictMode double-invoke, rerenders, state changes, auth hydration and
+unexpected remounts; fires again after a 30-minute inactivity rollover or a new
+campaign arrival.
+
+**Stated consequence:** Hub → Leaguecraft → Hub inside one session records ONE
+`hub_entered`. Repeat navigation within a visit is not a funnel step; where raw
+open frequency matters, `leaguecraft_cta_clicked` carries it.
+
+Action events (`practice_quiz_opened`, `signup_started`, every diagnostic) do
+**not** use the hook — three practice sets must be three events.
+
+## 15.6 Attribution validated through real navigation
+
+All five required scenarios are tested against the emitter with a real session
+store:
+
+| # | Scenario | Result |
+|---|---|---|
+| 1 | Direct visit | No campaign, `first_landing_path` = `/`, referrer null |
+| 2 | UTM visit | All five UTM fields on both the visitor row and the session row |
+| 3 | Later return, no UTM | **First touch unchanged**; one visitor row total; second session is direct |
+| 4 | Later return, different UTM | First touch still TikTok; session touch is YouTube; new session started |
+| 5 | Guest → signup | One visitor, one session across `landing_viewed` → `hub_entered` → `signup_started` → `signup_completed`; `is_guest` flips true → false on one uid |
+
+Session stability across SPA route transitions, expiry only after inactivity,
+UTM parsing, referrer/direct behaviour and landing path are covered in B1's
+suite and re-exercised here. No attribution logic exists outside
+`src/lib/analytics/`.
+
+## 15.7 Two real defects found by the new tests
+
+1. **First-touch attribution had silently stopped being written.** B1 gated the
+   visitor-row insert on `VisitorState.isNew`, a one-shot flag consumed by
+   whichever caller reaches `getVisitor()` first. The moment `useSurfaceEvent`
+   began resolving the session before emitting, `getSession()` consumed it, and
+   by the time `track()` looked the visitor was no longer new — so
+   `analytics_visitors` was never populated at all. Both attribution writes are
+   now gated on a **persisted** flag (`isFirstTouchRecorded` /
+   `isSessionRecorded`), which cannot be consumed by an extra read and which
+   additionally makes both writes **retryable** — fixing a quieter B1 defect
+   where a first-touch insert that failed offline was never retried.
+2. **`trackSignupCompleted` was a second producer of `signup_completed`.** B1
+   shipped it as a generic helper; once the event became a real metric, a
+   freely-callable emitter was the most likely route to two canonical rows for
+   one signup. Removed. A test asserts `analytics/signup.ts` is the only file
+   in `src/` that emits the name.
+
+## 15.8 Production deployment and certification — COMPLETE
+
+| | |
+|---|---|
+| **Supabase project ref** | `kewgjwrzpzpeltwidvuc` |
+| **Migration applied** | `supabase/migrations/20260920120000_funnel1b1_analytics_foundation.sql` |
+| **Applied by** | Privileged Lovable database access, out of band |
+| **Certification timestamp (UTC)** | **2026-09-20T11:27:52Z** (first smoke insert), run completed 11:28:07Z |
+| **Deployed commit** | **`f2c0da4017010dafc5675291caa3464aa2c627e3`** (`f2c0da40`) |
+| **Baseline** | Funnel data begins at this timestamp. Everything before it is permanently zero — there is nothing to backfill (§5) |
+
+Project identity was confirmed before anything was written: `.env`
+`VITE_SUPABASE_PROJECT_ID`, `supabase/config.toml` `project_id` and the live
+host all read `kewgjwrzpzpeltwidvuc`. No secret was printed.
+
+`scripts/funnel/certify-analytics.ts` is the reusable evidence, and it runs with
+the **publishable (anon) key only** — the same credential a browser holds — so
+what it proves, it proves through the real client path.
+
+```
+FUNNEL1B2 — analytics production certification
+  project ref : kewgjwrzpzpeltwidvuc
+  host        : kewgjwrzpzpeltwidvuc.supabase.co
+  credential  : publishable (anon) — no privileged key is used
+
+PASS  0. project identity agrees between .env and supabase/config.toml
+PASS  1. public.analytics_events exists in the live project
+PASS  2. public.analytics_visitors exists in the live project
+PASS  3. public.analytics_sessions exists in the live project
+PASS  5. an anonymous browser can insert a web event through the client path
+PASS  7. common fields are accepted as written
+PASS  8. unauthorized reads are blocked — anon sees nothing, including its own rows
+PASS  8b. a browser cannot write a server-authoritative row
+
+8/8 automated checks passed.
+```
+
+Against the same script **before** the migration, for contrast: checks 1–3
+returned `PGRST205 Could not find the table … in the schema cache` — the exact
+signature `funnel_events` gave for two months (§5).
+
+Item **8b** is not on the brief's list and is the one worth keeping: a browser
+attempting `source_system = 'railway'` with a forged
+`source_entity_type`/`source_entity_id` was **rejected in production** by RLS.
+The authoritative/idempotent design in §14.9 now rests on a verified fact rather
+than on the policy text.
+
+Certification items and how each was established:
+
+| # | Requirement | Status |
+|---|---|---|
+| 1 | `analytics_events` exists | ✅ anon PostgREST probe |
+| 2 | `analytics_visitors` exists | ✅ anon PostgREST probe |
+| 3 | `analytics_sessions` exists | ✅ anon PostgREST probe |
+| 4 | Expected RLS policies present | ✅ **attested by the privileged operator**, not by this script — it holds no privilege to read `pg_policies`. Six policies + the indexes, including `uq_analytics_events_authoritative_entity`, were confirmed out of band |
+| 5 | Real web event inserted via the client path | ✅ event + visitor + session all accepted |
+| 6 | Readable through authorized access | ⏳ **pending privileged read-back** — SQL in §15.9 |
+| 7 | Common fields populated correctly | ✅ accepted as written; server-side value confirmation is part of item 6 |
+| 8 | Unauthorized reads blocked | ✅ anon sees zero rows on all three tables, including rows it just wrote |
+
+### Smoke rows
+
+`smoke_test_ping` was used rather than tagging a real funnel event. It is **not
+in the contract and never will be**, so it cannot enter any funnel count by
+accident and cannot be confused with product telemetry — whereas a tagged
+`landing_viewed` would have put an exclusion clause on every future query.
+
+The script was run twice (once before the migration, which wrote nothing, and
+twice after during verification), so **two** smoke visitor/session/event sets
+exist. All are removed by the name/`utm_source = 'certification'` predicates in
+§15.9, which cannot match a real row.
+
+## 15.9 Remaining privileged SQL
+
+```sql
+-- 6. authorized read-back + field validation
+select id, event_name, event_version, visitor_id, session_id, user_id,
+       is_guest, route, source_system, source_entity_type, source_entity_id,
+       occurred_at, received_at, metadata
+from public.analytics_events
+where event_name = 'smoke_test_ping'
+order by received_at desc;
+-- expect per row: source_system='web', user_id null, is_guest true,
+--                 route '/', entity columns null, received_at ≥ occurred_at.
+
+-- 7. joined to its attribution — the point of the three-table model
+select e.event_name, e.route, e.is_guest,
+       v.first_utm_source, v.first_utm_medium, v.first_referrer, v.first_landing_path,
+       s.utm_source, s.landing_path
+from public.analytics_events e
+join public.analytics_visitors v on v.visitor_id = e.visitor_id
+join public.analytics_sessions s on s.session_id = e.session_id
+where e.event_name = 'smoke_test_ping';
+-- expect first_utm_source='certification', first_landing_path='/'.
+
+-- CLEANUP — run all three, in this order.
+delete from public.analytics_events   where event_name = 'smoke_test_ping';
+delete from public.analytics_sessions where utm_source = 'certification';
+delete from public.analytics_visitors where first_utm_source = 'certification';
+```
+
+After cleanup, `analytics_events` should be empty until the instrumented
+frontend ships.
+
+## 15.10 Data-quality fix — the signup metric
+
+`src/lib/admin-data-sources.ts` `user_signups` now filters
+`is_anonymous = false` alongside `is_bot = false`. The correction was genuinely
+isolated — one predicate on one query — so it was made rather than deferred,
+and deliberately not bundled with any wider Arena/Admin cleanup.
+
+This makes the legacy chart honest; it does **not** make it the source of
+truth. The canonical signup metric is `analytics_events` where `event_name =
+'signup_completed'`, which additionally separates a guest upgrade from a
+brand-new account and survives the anonymous-profile purge.
+
+## 15.11 Tests — 95 new, 536 passing, no regressions
+
+```
+src/lib/analytics/analytics.test.ts              48 passed  (B1 contract, updated for retirement)
+src/lib/analytics/instrumentation.test.ts        24 passed  (dedupe + signup definition)
+src/test/funnel/canonicalSurfaces.test.tsx       23 passed  (surface wiring)
+src/test/security/funnel1b1AnalyticsSchema.test.ts  34 passed  (B1, PGlite)
+                                                 ─────────
+                    targeted regression sweep   536 passed / 4 failed
+```
+
+The landing page is **rendered under StrictMode**, because "exactly one event
+per page entry" is a runtime property and the double-invoke is the exact
+failure it must survive. The other surfaces are asserted statically, by reading
+each source for an emission call: rendering Ranked, Meta Reflex, Mastery and
+DSA would mean an auth provider, a query client and several network doubles per
+page — a harness that would mostly be testing itself — and the dedupe they
+inherit is already proved twice over. The static matcher requires an emitter
+call, so the many deliberate prose mentions of retired names are not mistaken
+for call sites.
+
+Covered: one canonical event at root · Hub emits `hub_entered` and never
+`landing_viewed` · direct `/quiz` emits `leaguecraft_opened` · the CTA path
+does not double-count the open · `ranked_opened` including for signed-out
+visitors · every mode mapping · each surface event emitted from exactly one
+file · no browser emission of any server-authoritative name · signup start ·
+completion only on a real upgrade · anonymous session creation is not a signup ·
+plain sign-in is not a signup · no double-count across reload, second tab or
+token refresh · every retired name refused and absent from `src/` · StrictMode
+and remount dedupe · the five attribution scenarios.
+
+**Regression verification.** The affected suites were run against a
+`9bedaae4` (B1 head) baseline worktree and against B2: **identical sets of 4
+pre-existing failures** (`Quiz.hub.test.tsx` h1, two `lobby-preview` import-
+isolation scans, one `syntheticRankedHistory` scan), 441 → 536 passing. No
+regressions. `tsc --noEmit` shows the same 23 pre-existing errors in the same 15
+files, none touched by this phase. ESLint is clean on every file authored here;
+the remaining errors in edited files are pre-existing `no-explicit-any` on
+untouched lines.
+
+One existing test was updated on purpose: `LolHub.test.tsx` asserted
+`lol_landing_viewed`. It now asserts `hub_entered` and that neither
+`landing_viewed` nor the retired name is emitted.
+
+## 15.12 Files changed
+
+```
+src/lib/analytics/useSurfaceEvent.ts          NEW  dedupe boundary
+src/lib/analytics/signup.ts                   NEW  signup definition + observer
+src/lib/analytics/instrumentation.test.ts     NEW
+src/test/funnel/canonicalSurfaces.test.tsx    NEW
+scripts/funnel/certify-analytics.ts           NEW  production certification
+
+src/lib/analytics/contract.ts                 RETIRED_EVENTS replaces the alias table
+src/lib/analytics/track.ts                    refuses retired names; persisted attribution gating;
+                                              trackSignupCompleted removed
+src/lib/analytics/identity.ts                 isFirstTouchRecorded / markFirstTouchRecorded
+src/lib/analytics/index.ts                    exports
+src/lib/analytics/analytics.test.ts           retirement tests replace alias tests
+src/lib/funnel-analytics.ts                   legacy names dropped from the shim's type
+
+src/pages/dev/mogzy-entry-v2/MogzyEntryV2.tsx landing_viewed
+src/pages/LolHub.tsx                          hub_entered; CTA → diagnostic
+src/pages/Quiz.tsx                            leaguecraft_opened; practice_quiz_opened ×2;
+                                              quiz_results_viewed removed
+src/pages/quiz-ranked/QuizRankedPage.tsx      ranked_opened
+src/pages/LeagueSwipeHub.tsx                  meta_reflex_opened
+src/pages/quiz-mastery/MasteryJourneysPage.tsx mastery_opened
+src/pages/QuizDailyScoreAttack.tsx            dsa_opened
+src/pages/Auth.tsx                            signup_viewed / _started / _completed
+src/lib/auth/useAccountUpgrade.ts             signup_started
+src/hooks/useAuth.tsx                         observeAuthIdentity
+src/lib/admin-data-sources.ts                 signup metric excludes anonymous profiles
+src/pages/LolHub.test.tsx                     asserts hub_entered
+```
+
+## 15.13 Remaining data-quality risks
+
+1. **The frontend is not deployed yet.** The schema is live and certified; the
+   instrumented code is committed but not shipped. Until it is, the tables stay
+   empty. The baseline in §15.8 dates the schema, not the first real visitor.
+2. **Item 6 is not closed** until the privileged read-back in §15.9 returns, and
+   the smoke rows are still present until the cleanup runs.
+3. **Item 4 is attested, not independently verified by this repo's tooling.**
+   The policy inventory came from privileged access out of band. The policies
+   ARE proved to behave correctly — items 8 and 8b exercise them from a real
+   client — but the `pg_policies` listing itself is second-hand here.
+4. **Mode completion is still Railway-only.** Every `*_completed` in the
+   contract is unwritten. §13.2 — how gameplay truth reaches Supabase — remains
+   the largest open architectural decision.
+5. **Guest→registered depends on in-place upgrade.** If Auth ever stops
+   upgrading identities in place, `observeAuthIdentity` stops seeing the
+   transition and signups silently undercount. `visitor_id` limits the blast
+   radius; a test asserting uid continuity across signup is still owed.
+6. **Repeat within-session navigation is not counted** by design (§15.5). Anyone
+   reading "Leaguecraft opens" should read it as "sessions that opened
+   Leaguecraft".
+7. **Mastery is guest-invisible** by product design (`ProtectedRoute`).
+8. **`visitor_id` is self-reported.** Cleared site data, a second browser or a
+   second device each produce a new visitor; unique-visitor counts are upper
+   bounds.
+9. **Two ad analytics systems remain** (§13.4), now both alive: `ad_events` and
+   `ad_slot_*` into `analytics_events`. Reconcile before reporting on either.
+10. **`analytics_visitors` is publicly insertable with no rate limit.** Bounded
+    in shape by the CHECK constraints, unbounded in volume.
+
+## 15.14 Proposed scope for FUNNEL1B3
+
+1. **Close out B2's tail**: run the §15.9 read-back, delete the smoke rows, ship
+   the frontend, then re-run `certify-analytics.ts` against the deployed site
+   and record the first real `landing_viewed`.
+2. **Regenerate `types.ts`** now that the tables exist, then delete
+   `AnalyticsDatabase` from `src/lib/analytics/schema.ts` and point `analyticsDb`
+   at `supabase` directly. The file documents its own removal.
+3. **Railway → Supabase gameplay emission** — the actual B3 subject. Decide
+   §13.2 (webhook on completion, scheduled reconciliation, or outbox), then emit
+   `practice_quiz_*`, `ranked_*`, `mastery_*`, `dsa_*` over `service_role` using
+   `buildServerEventRow`, keyed per §14.9 — **match** for completions,
+   **participant** for per-player starts.
+4. **Meta Reflex completion** is Supabase-side (`league_swipe_results`), so it
+   can be emitted by trigger or RPC rather than over the Railway path.
+5. **A freshness check**: assert in CI or in Admin that
+   `max(received_at)` is recent, so the next silent outage is loud.
+6. **The uid-continuity test** (§15.13.5).
+
+Admin analytics UI stays out of B3 unless explicitly scoped — but after B3 the
+data will finally exist to justify it.
