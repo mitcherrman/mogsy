@@ -337,14 +337,25 @@ describe("scene anti-spoiler", () => {
     expect(supportedSceneIds()).toEqual(["base_fountain", "lane_minion", "lane_turret"]);
   });
 
-  it("records which backgrounds are still placeholders", () => {
-    // The open asset swap, visible to a test rather than only to a comment.
-    // This list shrinks to [] when the owner's fountain and lane art land, and
-    // nothing else has to change. Foregrounds are NOT interim — they are the
-    // shipped backend registry art.
-    expect(interimBackgroundSceneIds()).toEqual([
-      "base_fountain", "lane_minion", "lane_turret",
-    ]);
+  it("ships no placeholder backgrounds", () => {
+    // The owner's final art landed on 2026-09-20 and this list emptied. Kept
+    // as an assertion rather than deleted with the placeholders: it is what
+    // would catch a future scene that shipped ahead of its art.
+    expect(interimBackgroundSceneIds()).toEqual([]);
+  });
+
+  it("draws the owner's final backgrounds", () => {
+    const base = resolveEnvironmentSceneArt("base_fountain")!;
+    const laneMinion = resolveEnvironmentSceneArt("lane_minion")!;
+    const laneTurret = resolveEnvironmentSceneArt("lane_turret")!;
+
+    expect(base.background).toContain("nexus");
+    expect(laneMinion.background).toContain("lane");
+    // The two lane treatments share one painting and differ only in the
+    // object over it — asserted, because that is the reason they are two
+    // scene ids rather than one with a flag.
+    expect(laneTurret.background).toBe(laneMinion.background);
+    expect(laneTurret.foreground).not.toBe(laneMinion.foreground);
   });
 });
 

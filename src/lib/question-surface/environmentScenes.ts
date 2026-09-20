@@ -31,23 +31,27 @@
  * use, and the default turret art. A player sees one minion and one turret
  * across the whole environment domain instead of two of each.
  *
- * ── PLACEHOLDERS STILL IN PLACE ───────────────────────────────────────────
- * Both BACKGROUNDS are interim. The owner is providing the final fountain/base
- * and lane art; until it lands:
+ * ── ALL ART IS FINAL ──────────────────────────────────────────────────────
+ * The owner supplied the two backgrounds on 2026-09-20 and both placeholders
+ * are gone:
  *
- *   base_fountain  -> academy-hall.jpg        (a candlelit library interior)
- *   lane_minion    -> jungle_grass_background (an outdoor Rift ground)
- *   lane_turret    -> jungle_grass_background (the same)
+ *   base_fountain  -> nexus.png   (was academy-hall.jpg, a library interior)
+ *   lane_minion    -> lane.png    (was the jungle-grass ground)
+ *   lane_turret    -> lane.png    (the same)
  *
- * Neither is the place it claims to be. They are here so the wiring ships and
- * can be verified end to end; `interimBackground: true` marks each one, and
- * swapping them is a one-line change per row of this table with no contract,
- * card, test or backend change. The FOREGROUNDS are final — they are the
- * shipped registry art.
+ * `interimBackground` is kept as a field rather than deleted: it is how a
+ * future scene added ahead of its art declares itself, and
+ * `interimBackgroundSceneIds()` is asserted to be empty, so a placeholder
+ * that shipped by accident fails a test instead of sitting unnoticed.
+ *
+ * The final art is MUCH brighter than the placeholder it replaced — mean
+ * luminance 76.3 (lane) and 69.3 (nexus) against the hall's 27.5 — which is
+ * why `ATMOSPHERE_SCENE_GROUND` was re-derived in the same change. See that
+ * preset for the arithmetic.
  */
-import academyHall from "@/assets/ranked/academy-hall.jpg";
+import laneScene from "@/assets/ranked/lane.png";
+import nexusScene from "@/assets/ranked/nexus.png";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
-import { JUNGLE_GRASS_BACKGROUND } from "@/lib/question-surface/jungleAtmosphere";
 
 /** The art for one scene id, with its resolution state. */
 export type EnvironmentSceneArt = {
@@ -57,7 +61,14 @@ export type EnvironmentSceneArt = {
   foreground?: string;
   /** Accessible label for the foreground, when there is one. */
   foregroundAlt?: string;
-  /** True while the BACKGROUND is borrowed art awaiting the owner's asset. */
+  /**
+   * True while the BACKGROUND is borrowed art awaiting a final asset.
+   *
+   * `false` for every scene today. Kept as a field rather than removed so a
+   * scene added ahead of its art can declare itself, and so
+   * `interimBackgroundSceneIds()` stays a meaningful check rather than a
+   * function that can only ever return nothing.
+   */
   interimBackground: boolean;
 };
 
@@ -78,20 +89,20 @@ const TURRET_ART = "assets/structures/turret.png";
  */
 const SCENE_ART: Record<string, EnvironmentSceneArt> = {
   base_fountain: {
-    background: academyHall,
-    interimBackground: true,
+    background: nexusScene,
+    interimBackground: false,
   },
   lane_minion: {
-    background: JUNGLE_GRASS_BACKGROUND,
+    background: laneScene,
     foreground: resolveQuizAssetUrl(MINION_ART),
     foregroundAlt: "Minion",
-    interimBackground: true,
+    interimBackground: false,
   },
   lane_turret: {
-    background: JUNGLE_GRASS_BACKGROUND,
+    background: laneScene,
     foreground: resolveQuizAssetUrl(TURRET_ART),
     foregroundAlt: "Turret",
-    interimBackground: true,
+    interimBackground: false,
   },
 };
 
