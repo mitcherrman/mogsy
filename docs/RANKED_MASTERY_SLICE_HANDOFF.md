@@ -27,7 +27,10 @@
 > [`docs/gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md)
 > (GR1 reusable state architecture — **design, revision 2 (2026-09-19): four owner-approved constraints, Phase 1 seam proposed**) and
 > [`docs/gr1-reusable-state-phase1.md`](./gr1-reusable-state-phase1.md)
-> (GR1 reusable state **Phase 1 — inert foundation, MERGED to `master`, NOT wired**).
+> (GR1 reusable state **Phase 1 — inert foundation, MERGED to `master`, NOT wired**) and
+> [`docs/gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md)
+> (GR1 reusable state **Phase 2 — resolution and derivation. `StateTemplate → ResolvedState`
+> works; committed, NOT pushed, and still not wired into anything a player can reach**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -59,6 +62,7 @@
 | **GR1 reusable state architecture — design** | **DESIGN PROPOSAL, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (one items-only fast-forward past the brief's `5769dee3`; no `mastery/`, `quiz/` or `ranked_modules/` change), docs base `origin/main` **`3c9ddfc4`**. StateTemplate / ResolvedState / FrozenStateArtifact for **setup** state, the matchup composition, the source abstraction, the pipeline, Full/Slice over one universe, identity under state, fail-closed rules. **17 owner decisions (§16) pending.** See [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md) and the summary below. |
 | **GR1 reusable state architecture — design revision 2** | **DESIGN ONLY, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (unchanged), docs base `origin/main` **`2ba820e1`**. Four owner-approved corrections: **no architectural level-18 cap** (capability ≠ rules ≠ derivation support), **independent matchup sides** (symmetric-only is generator policy), **replaceable setup sources** (no recommended-build authority exists), **historical patch = capability** (generic basis id; unavailable → refuse). Defines the smallest **Phase 1 seam** (inert `mastery/setup_state/` package, no callers, no I/O). See the section below. |
 | **GR1 reusable state — Phase 1 (inert foundation)** | **IMPLEMENTED AND MERGED, 2026-09-19. NOT wired.** `origin/master` contains **`88c9f7a0`** (rebased from `d9db54cb` onto `cf1d2db2`; upstream moved two items-only commits with zero file overlap), one commit. New package `mastery/setup_state/` (contracts, identity, structural validation, errors) with **no importer outside its own tests** (AST-enforced). Empty `ScenarioBinding` reproduces every existing fact, candidate and comparison id/digest byte-for-byte (fixtures + roster probe 173/173). See [`gr1-reusable-state-phase1.md`](./gr1-reusable-state-phase1.md) and the section below. |
+| **GR1 reusable state — Phase 2 (resolution + derivation)** | **IMPLEMENTED AND MERGED, 2026-09-19. Still NOT wired.** `origin/master` contains **`89b5ce4b`** (implemented as `35e08c11` on `88c9f7a0`, rebased onto `57016334` — one upstream items-only commit, zero file overlap); worktree `~/lcs-wt-gr1-state2`, one commit, **14 files all inside `mastery/setup_state/` or `mastery/tests/`**. Six new modules: a **data-basis resolver** (one available basis, named concretely; a pinned historical one is refused, never served from current data), a **rules authority** (legality as data; the per-champion rank domain is READ from `champion_state.ability_rank_ceiling`, and an undeclared special availability rule refuses rather than falling back to the 5/3 rule that is wrong for six champions), **setup sources** (one curated source, selectable by name and NOT the default; source-blind identity), **canonical normalization** (unknown references fail closed), a **derivation authority** (level-scaled stats read from Mastery's OWN fact layer, so they cannot drift; **no silent zero** — AP 0 is a supported zero, an unsupported value carries no number, a manaless resource pool is `not_applicable`), and the **pipeline** with pure matchup resolution. Two tested contract corrections: `resolved_state_digest` no longer hashes `rules_rev`/`derivation_version`, and a template axis may say `INTRINSIC`. Roster-wide: **173/173** resolve, **692/692** states fully derived on the core axes, 0 failures, 0 silent-zero cases, 60/60 matchups reversal-identical. `mastery/tests` failure **set** identical to the base. See [`gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md) and the section below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -1186,6 +1190,106 @@ Phase 1 as specified in design §15 (D-21), with the package name `mastery/setup
   manifest) needs its own approval. At that point the isolation rule narrows deliberately from
   "no importer" to "no serving importer".
 
+## Reusable state — PHASE 2 IMPLEMENTED, resolution + derivation, still unwired (2026-09-19)
+
+Full record: [`gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md).
+**`StateTemplate → ResolvedState` now actually works. Nothing a player can reach uses it.**
+
+* **Backend:** **`89b5ce4b`**, now on `origin/master`. Implemented as `35e08c11` on
+  base `88c9f7a0`, rebased onto `origin/master` `57016334` (one upstream items-only
+  commit, zero file overlap) and pushed on 2026-09-19; worktree `~/lcs-wt-gr1-state2`.
+  One commit, **pushed**. 14 files, **every one inside `mastery/setup_state/` or
+  `mastery/tests/`** — zero serving files, zero generators, zero routes, zero frontend.
+  No migration, no DDL, no config key, no flag.
+* **Six new modules.** `basis.py` (the one available data basis), `rules.py` (structural
+  legality as data), `sources.py` (`SetupRecord` + registry + `SourcePolicy`),
+  `normalize.py` (canonical ids + precedence), `derive.py` (values with statuses),
+  `resolve.py` (the pipeline + matchup resolution).
+* **Data basis.** Machine key = a fingerprint over observed store revisions, following
+  the convention `projection_patch_key` already set and reusing `load_source_revisions`;
+  label = `league_patches`' live row via `canonical_patch`, display only. Availability is
+  `live_only` because the stores are overwritten in place, so `pinned(anything but live)`
+  is **`HistoricalBasisUnavailable`** and current data is never substituted. A resolved
+  state never stores the word `"current"`. **Remaining mismatch, documented not fixed:** a
+  state's `DataBasisId` and a Mastery artifact's `patch_key_digest` are computed over
+  different material and are not interchangeable.
+* **Rules authority.** Level bounds, inventory slot limit and the unlock rules are DATA,
+  and `rules_rev` is derived from that data. The per-champion rank domain is **read** from
+  `champion_state.ability_rank_ceiling`, never copied — so Jayce/Yuumi/Udyr's six-rank
+  basics and Nidalee/Elise/Karma's four-rank ultimates are right. Rank **availability** is
+  the ordinary rule for ordinary champions plus declared exceptions (`nidalee/R`,
+  `karma/R`, each carrying the wiki sentence); the other four champions' anomalous slots
+  refuse with `rank_rule_unsupported` and are **never** measured against the 5/3 rule that
+  `_min_level_for_rank` and `validate_rank_for_level` encode, both of which are wrong for
+  them and both of which are unmodified. `InventoryPolicy` is reused as rules data.
+* **Legality ≠ derivation support.** Udyr Q rank 6 is legal and its cooldown derives
+  (6.0 s); the same state *with a level* refuses, because his availability rule is
+  undeclared; and a level-dependent value with no level is `unsupported`, never clamped
+  and never zero.
+* **Derivation reuses, never restates.** Level-scaled stats come from
+  `mastery.facts.projection.ChampionFactSet.resolve`, i.e. **Mastery's own fact layer**, so
+  a derived value is the value Mastery publishes bit for bit (tested per champion). Attack
+  speed from `champion_stat_profile`'s canonical composition; item stats from
+  `item_canonical`; haste → cooldown from the declared shared primitive; movement speed
+  from `movement_speed_model`'s own arithmetic. `build_runtime_champion_stats`,
+  `calculate_build_stats`, `calculate_rune_stats` and `apply_stat_shards` were all
+  **rejected as the authority** (zero-fill, clamps, silent ignores) and **none was changed**.
+* **One deliberate widening.** Mastery's question-eligibility gate refuses any ability
+  progression whose length is not 5/5/5/3, which is a publication policy rather than a
+  derivation limit. Cooldown and cost are therefore read from the canonical row at the
+  rank, with the progression length required to equal the declared ceiling. Result: Udyr Q
+  rank 6 = 6.0 s, Yuumi Q rank 6 cost 75, **Karma R rank 4 = 34.0 s** (the number the old
+  three-rank clamp published as 36). Aphelios Q/W/E — six stored values that are five
+  weapons and a pad — are `unsupported(rank_domain_mismatch)`, the only three rows in 692
+  where the progression and the ceiling disagree.
+* **No silent zero.** `ability_power.total = 0` with no AP source is a **supported** zero;
+  an `unsupported` value carries no number at all (contract-enforced); a manaless
+  champion's resource pool is `not_applicable` per the canonical resource authority rather
+  than per the populated `champion_stats.mp` column; a missing stats row is
+  `SourceIntegrityError`, never zeros.
+* **Runes and shards.** Runes are representable, their identity resolves (by name), and
+  their numbers are **unsupported** for two independent reasons: `rune_provenance` is the
+  repo's own statement that rune values are unversioned and excluded, and the nine
+  `rune_stats` rows are conditional maxima. Shards are representable and **cannot resolve
+  at all** — there is no `stat_shards` table and no id space, so normalization refuses with
+  `unknown_shard`.
+* **Matchup.** Independent sides, one shared concrete basis, asymmetry ordinary, caller
+  order not an input (same key AND same digest from either order), setups never detach
+  from their champion, no attacker/target direction anywhere in state identity, and
+  `pair_derived` is `None` because every pair value the design lists is combat.
+* **Two contract corrections, both tested.** (1) `resolved_state_digest` no longer hashes
+  `rules_rev` or `derivation_version` — they are provenance, and Phase 1's inclusion made a
+  refactor look like new data. Nothing consumed the Phase 1 digest. (2) A template axis may
+  state `AxisState.INTRINSIC`, so "deliberately unmodelled" is requestable and not only
+  representable. **No existing Mastery question identity changed.**
+* **The guard was reworked, not weakened.** `setup_state → canonical services` is now
+  allowed and is the point; `serving → setup_state` stays forbidden and is checked against
+  a prefix set derived from the repository's own declared footprints plus the Ranked, API,
+  Journey and Combat Lab packages; the contract half keeps every Phase 1 property (a static
+  import closure proves it cannot reach `sqlite3`); every canonical read is deferred into
+  the function that needs it, so importing the package loads no generator, route or
+  framework; and game-rule numbers now exist in exactly one module. The stronger "no
+  importer at all" claim is kept as a fact of today, so Phase 3's wire-up must edit that
+  file on purpose.
+* **Roster-wide (read-only, not committed):** 173/173 champions resolve, **692/692**
+  (champion, level) states fully derived on the core axes, 692 distinct digests, **0
+  failures**, **0 silent-zero or status violations**. 599 of 38,320 values unsupported
+  (1.6%), all four reasons accounted for. Curated item builds at level 18: 146/173 resolve
+  with the whole path and 173/173 truncated to six items — the 27 refusals are the
+  inventory rule working on seven-entry paths. 60/60 sampled asymmetric matchups, 0
+  reversal mismatches.
+* **Tests:** 125 new (102 resolution + 23 backwards-compat) and the isolation guard 26 →
+  55. Whole `mastery/tests`: **the failure SET is identical to the base** (the same five
+  pre-existing failures — three audit-DB drift, per-question reveal persistence, Ranked
+  default-format drift), 1830 → 1985 passed.
+* **Phase 3 boundary:** the first real consumer is a state-aware family in the **Generator
+  Lab**, admin-only and behind a flag, with `resolver.publish` receiving its universe
+  instead of re-projecting it. Blockers carried forward: no per-metric precision registry;
+  `resolver.publish` re-projects; `FrozenStateArtifact` is still written nowhere and is one
+  block per state; the patch-identity mismatch; `get_identity_registry` can fall back to
+  the curated six; four champions' rank-availability rules are undeclared; runes and shards
+  need a versioned store. Rollback is `git revert 35e08c11`.
+
 ## Screenshots / artifacts
 
 `docs/audits/gr1-matchup-mastery/` — **2 PNGs (Matchup Mastery capability audit).** Both are
@@ -1224,6 +1328,24 @@ Applied-chain has **no capturable UI** here (needs a real Supabase JWT); its exa
 documented instead (prose → `InteractiveScenarioSurface`, no media band).
 
 ## Tests run
+
+### Reusable state — Phase 2 (2026-09-19), base `origin/master` `88c9f7a0`
+
+| Suite | Base `88c9f7a0` | Phase 2 `35e08c11` |
+|---|---|---|
+| `pytest mastery/tests` | 5 failed, 1830 passed, 13 skipped | **5 failed, 1985 passed, 13 skipped** — the failure **SET is identical** |
+| 34 focused suites (knowledge bank, champion facts, every `test_gr1_*`, identity, footprint guard, Ranked Mastery, Generator Lab) | 994 passed, 5 skipped, **0 failed** | **1149 passed, 5 skipped, 0 failed** |
+| `mastery/tests/test_setup_state_resolution.py` | — | **102 passed** (new) |
+| `mastery/tests/test_setup_state_backwards_compat.py` | — | **23 passed** (new) |
+| `mastery/tests/test_setup_state_isolation.py` | 26 passed | **55 passed** (guard reworked, §13 of the Phase 2 doc) |
+| `vitest` | — | not run — **no frontend file changed** |
+
+The five pre-existing failures: 3 × `test_audit_db` (audit-DB drift),
+`test_mastery_per_question_reveal::test_reveal_needs_no_new_persistence`, and
+`test_phase4f_ranked_mastery_slice::test_format_for_creation_is_unaffected_by_this_module`
+(`'ranked_points_v2' == 'ranked_modern'`). Counts reconcile: 1830 + 102 + 23 + 29 + 1 = 1985.
+
+### GR1 generator phases (historical)
 
 | Suite | Phase 1 (audit) | Phase 2 (after) |
 |---|---|---|
