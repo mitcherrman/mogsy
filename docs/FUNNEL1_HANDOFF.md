@@ -1,8 +1,14 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: FUNNEL1B2 CLOSED — schema live and certified, canonical web funnel
-instrumented, published, and proven end to end against the deployed site. All
-seven closure criteria met (§19). B3 not started.**
+**State: FUNNEL1B2 CLOSED and live. FUNNEL1B3 IMPLEMENTED, AWAITING DEPLOY.**
+
+The web funnel is in production and proven end to end (§19). The gameplay half
+— authoritative milestones emitted from Railway through a transactional outbox
+— is built and tested on branch `funnel1b3-gameplay-analytics` @ `98cd42da`,
+but **not deployed**: it needs `SUPABASE_SERVICE_ROLE_KEY` set in Railway and a
+merge to `master`, neither of which this environment can do (§20.10). Until
+then Railway records every milestone durably and delivers nothing, which is the
+safe direction. **§20 is the current state; FUNNEL1C is scoped in §20.13.**
 
 The schema is live in `kewgjwrzpzpeltwidvuc`, all eight certification items are
 closed from both the anon client path and privileged access, and the store was
@@ -2333,3 +2339,387 @@ that my own prediction about the fourth event was wrong.
 Out of scope and owned elsewhere: the Builder's catalog fetch running for every
 `/quiz` visitor (§18.5), the two ad analytics systems (§13.4), and the Admin
 analytics UI — which now, finally, has data to justify it.
+
+---
+
+# 20. FUNNEL1B3 — Authoritative gameplay analytics (IMPLEMENTED, AWAITING DEPLOY)
+
+The gameplay half of the funnel. Railway keeps owning gameplay truth; Supabase
+receives a small analytics representation of transitions Railway has already
+proven. No gameplay table moved, no browser became authoritative, and Admin
+still never joins the two databases live.
+
+**Backend repo:** `mitcherrman/League_Combat_Simulator`, branch
+`funnel1b3-gameplay-analytics` @ **`98cd42da`**, cut from `origin/master`
+`cffa85f0` in an isolated worktree. The owner's divergent local checkout
+(`envvis1-batch1-scene-channel`, uncommitted) was not touched.
+
+**Not deployed.** §20.10 is the blocker and it is short.
+
+## 20.1 Authoritative transition map
+
+Read from current code, not from old migrations.
+
+| Milestone | Authoritative transition | Write path | Stable entity id | User id available |
+|---|---|---|---|---|
+| Practice start | `INSERT INTO quiz_sessions` | `routes/quiz.py` `start_quiz_session` | `quiz_sessions.id` (`lastrowid`) | ✅ `resolve_write_user_id` → verified Supabase `sub` |
+| Practice completion | `UPDATE … SET completed_at … WHERE id=? AND user_id=? AND completed_at IS NULL`, **rowcount 1** | `routes/quiz.py` `complete_quiz_session` | same session id | ✅ |
+| Ranked start | `INSERT INTO ranked_participants`, once per player | `ranked_public/service.py` `create_match_rows` | `<match_id>:<user_id>` | ✅ participant `user_id` |
+| Ranked completion (played out) | `mark_match_complete` → `status='active'→'complete'`, **rowcount 1** | `service.py` `_commit_result` | `<match_id>:<user_id>` per participant | ✅ |
+| Ranked completion (forfeit / no-contest) | same guard, second path | `service.py` `_terminate_disconnect` | same | ✅ |
+| DSA start | `INSERT INTO dsa_runs` | `daily_score_attack/service.py` `start_official_run` / practice | `dsa_runs.run_id` | ✅ + `user_is_anonymous` |
+| DSA completion | `update_run_from_state` guarded by `status='active'`, **rowcount 1**, AND `state.status is COMPLETED` | `service.py` `_finalize` | same run id | ✅ |
+| Mastery start | `INSERT INTO mastery_sessions` | `mastery/publication/sessions.py` `create_session` | `mastery_sessions.session_id` | ✅ `owner_id` |
+| Mastery completion | `UPDATE … phase='completed'` — **NOT status-guarded** (§20.6) | `sessions.py` `advance_session` | same session id | ✅ |
+
+### Milestones deliberately NOT emitted
+
+- **Meta Reflex.** Its truth (`league_swipe_results`) is already in Supabase, not
+  Railway. Emitting it from here would route a Supabase fact through a second
+  system for no gain; it belongs to a trigger or RPC on that side.
+- **DSA expiry.** `RunStatus.EXPIRED` is terminal but it is an abandonment, not
+  a completion. Counting it would inflate the one number `dsa_completed` exists
+  to produce. It stays visible in `dsa_runs` for anyone who wants it.
+- **Ranked "queued".** `ranked_queue_entries` is ephemeral (one live row per
+  user, deleted on match), so there is no durable record to key an event on.
+
+## 20.2 Event / entity idempotency map
+
+The database rejects a duplicate of
+`(source_system, event_name, source_entity_type, source_entity_id)` for any
+non-`web` row. The entity therefore **is** the definition of "the same event",
+and choosing it wrongly does not raise — it silently drops rows.
+
+| Event | Entity type | Entity id | Rows per gameplay object |
+|---|---|---|---|
+| `practice_quiz_started` | `quiz_session` | `<session_id>` | 1 per session |
+| `practice_quiz_completed` | `quiz_session` | `<session_id>` | 1 per session |
+| `ranked_started` | `ranked_participant` | `<match_id>:<user_id>` | **1 per human player** (2 per duel) |
+| `ranked_completed` | `ranked_participant` | `<match_id>:<user_id>` | **1 per human player** |
+| `dsa_started` | `dsa_run` | `<run_id>` | 1 per run |
+| `dsa_completed` | `dsa_run` | `<run_id>` | 1 per run |
+| `mastery_started` | `mastery_session` | `<session_id>` | 1 per session |
+| `mastery_completed` | `mastery_session` | `<session_id>` | 1 per session |
+
+### Ranked completion is per participant — a deliberate departure
+
+The brief suggested `ranked_match/<match_id>` for completion. It is keyed per
+participant instead, for two reasons:
+
+1. A match-level row can carry only one `user_id`, making it the only event in
+   the warehouse not attributable to a person — and every funnel question Admin
+   will ask is per-person.
+2. Asymmetric granularity makes `started → completed` uncomputable per player.
+   Keyed identically at both ends, "did this player finish the match they
+   started" is one join on the entity id.
+
+Match-level facts (winner, completion reason, outcome, `won`) ride in metadata
+on each participant's row, so nothing is lost. A test keeps the
+counter-example: with a match-level key, two players collapse to one row.
+
+### Event names
+
+The frozen contract's, not the brief's: **`practice_quiz_started` /
+`practice_quiz_completed`**, not `practice_started` / `practice_completed`.
+§14.4 renamed those deliberately — "practice" alone is ambiguous in this
+product — and the frontend's `MACRO_EVENTS` already reserves the longer names
+for exactly this emission. A second spelling would have been the drift FUNNEL1
+exists to stop.
+
+## 20.3 The Railway analytics client — a transactional outbox
+
+`analytics/` — four modules, ~700 lines including the reasoning.
+
+```
+contract.py   event names, entity rules, AuthoritativeEvent, uid eligibility
+outbox.py     the SQLite outbox: schema, enqueue, claim, mark, stats
+client.py     config from env + one POST (transport only)
+__init__.py   record() / drain_once() / start_drainer() / health()
+```
+
+**Why an outbox rather than a direct POST.** Every milestone is recognised
+*inside* a transaction that can still roll back. Ranked is the clear case:
+`_commit_result` marks the match complete and then applies rating, and an
+exception there unwinds the completion. A POST fired at the guard would
+describe a match that never finished — and because the analytics unique index
+makes that row permanent, nothing could take it back.
+
+Writing the event to SQLite **in the same transaction** makes the two facts
+atomic: if the completion survives, so does its event; if it rolls back, so
+does the event.
+
+It also rules out a subtler bug. This app runs sync endpoints in a threadpool
+while its middleware runs on the event loop, so a thread-local staging buffer
+flushed by a request hook would have been **invisible** to that hook — silently
+dropping every event and leaking them into whatever request reused the thread.
+The outbox has no such coupling.
+
+```
+gameplay tx ──► analytics_outbox (SQLite, atomic with the gameplay write)
+                      │
+                drainer thread (15s) ──► Supabase analytics_events
+                      │
+                sent_at stamped; the unique index makes replay harmless
+```
+
+Against the brief's requirements:
+
+| Requirement | How |
+|---|---|
+| Service-authorized | `SUPABASE_SERVICE_ROLE_KEY`; RLS pins anon/authenticated to `source_system='web'`, so this is the only credential that can write `'railway'` |
+| `source_system='railway'` | Set in `contract.py`, not per call site |
+| Typed payload | `AuthoritativeEvent` rejects a non-authoritative name and an absent entity at construction |
+| Explicit entity type/id | Required; construction fails without them |
+| Idempotent retry | At-least-once delivery, exactly-once storage: local `UNIQUE`, then Supabase's unique index, whose 409/23505 is treated as success |
+| Non-blocking | Gameplay pays one local INSERT; no socket on a request thread |
+| Observable failure | `last_error`, `attempts` per row, structured logs, `health()` |
+| Bounded timeout | 5s per attempt |
+| No secrets in source | Env only; never logged, never in a health response |
+
+Rows are sent **one at a time**, not as one array POST: a batch containing one
+bad row would be rejected whole, and one poisoned event must not block every
+event behind it. Tested.
+
+## 20.4 Identity — uid continuity verified, not assumed
+
+`routes/supabase_auth.py` `Identity.user_id` is documented as the *verified
+Supabase UUID*, and `resolve_write_user_id` returns the verified JWT subject in
+preference to anything a client sends. So `quiz_sessions.user_id`,
+`ranked_participants.user_id`, `dsa_runs.user_id` and
+`mastery_sessions.owner_id` already **are** Supabase uids.
+
+Continuity therefore holds end to end: anonymous Supabase uid → upgraded in
+place at signup (the uid does not change) → the same uid on the Railway row →
+the same uid on the analytics event. Acquisition and gameplay join on one
+column. No auth change was needed and none was made.
+
+Three identities are excluded from attribution, via one predicate
+(`is_emittable_user_id`):
+
+- **`"anonymous"`** — the literal `resolve_write_user_id` returns when no
+  verified subject exists and the rollback switch is off. Writing it as a uid
+  would invent an account.
+- **`bot::…`** — ranked bots have no account and no funnel.
+- **null/empty.**
+
+Tested directly, including a real bot match producing exactly one start row.
+
+## 20.5 Start vs complete — exact predicates
+
+| Event | Predicate |
+|---|---|
+| `practice_quiz_started` | `INSERT INTO quiz_sessions` committed. Not a click — the browser's `practice_quiz_opened` is the intent event and is never counted as a start |
+| `practice_quiz_completed` | the `completed_at IS NULL`-guarded UPDATE returned rowcount 1. A second call takes the rowcount-0 branch and never reaches the emit |
+| `ranked_started` | `insert_participant` for a human, inside match creation |
+| `ranked_completed` | `mark_match_complete` returned rowcount 1 (`status='active'` guard), on either terminal path |
+| `dsa_started` | `insert_run` committed |
+| `dsa_completed` | `update_run_from_state` returned rowcount 1 **and** `state.status is RunStatus.COMPLETED` |
+| `mastery_started` | `INSERT INTO mastery_sessions` — `start_or_resume` returns an existing active session instead of calling it, so reaching it is a genuinely new journey |
+| `mastery_completed` | the `phase='completed'` branch of `advance_session` (§20.6) |
+
+No event fires on a result screen, a route change, or a response render.
+
+## 20.6 The one transition that is not idempotent at source
+
+**Mastery completion is not status-guarded.** `advance_session` has no
+`WHERE phase != 'completed'`, and it deliberately parks the cursor at the final
+index — so `current + 1 >= total_steps` stays true and a repeated advance
+re-runs the completion branch.
+
+Left alone: guarding it would change mastery's own semantics, which is out of
+scope here. It is absorbed by the entity key instead — the outbox's
+`UNIQUE (event_name, entity_type, entity_id)` refuses the second enqueue
+locally, and Supabase's unique index refuses it again if one ever gets past.
+A test drives three advances and asserts one row.
+
+This is the clearest demonstration of why the entity key is mandatory rather
+than advisory, and it is recorded here rather than quietly fixed.
+
+## 20.7 Freshness / health
+
+`GET /api/admin/analytics/health`, admin-gated (`routes/analytics_health.py`).
+
+Reports configuration state, drainer liveness, counters, and the outbox's
+`unsent` / `oldest_unsent_age_seconds` / `abandoned`. **The age is the whole
+signal:** a few unsent rows seconds old is a drainer mid-pass; a backlog
+minutes old while `total` climbs is the failure this exists to catch.
+
+`ok: false` with a plain-language `problems` list when unconfigured, disabled,
+drainer-dead, stale past 5 minutes, or holding retry-exhausted rows. Deliberately
+minimal — a probe, not the Admin analytics UI, which is FUNNEL1C. No credential
+appears in the response, and a test asserts that.
+
+## 20.8 Tests — 39 new, all passing
+
+`test_funnel1b3_gameplay_analytics.py`. The outbox runs against real SQLite;
+Supabase runs through an injected transport, so retry and duplicate handling are
+the real code paths with no network.
+
+```
+contract           5   non-authoritative name refused, entity required,
+                       source_system pinned, uid eligibility, per-participant key
+identity           3   uid reaches the row, sentinel never becomes a uid,
+                       guestness snapshot
+idempotency        4   same transition twice = 1 row, start/complete coexist,
+                       409 treated as delivered
+ranked granularity 4   2 players = 2 rows; match-key counter-example collapses
+failure isolation  7   rollback takes the event, outage keeps it, retry does not
+                       duplicate, poisoned row does not block others,
+                       unconfigured keeps rather than drops
+freshness          4   backlog visible and aging, cleared on delivery, no key leak
+ranked integration 6   REAL service: 2 starts, bot excluded, 2 completions,
+                       double-forfeit not double-counted, shared entity key
+mastery integration 3  REAL advance_session: completion recorded, mid-journey
+                       silent, triple advance = 1 row
+                  ───
+                   39 passed
+```
+
+Existing suites re-run against the change:
+
+```
+test_ranked_public_service.py                                 14 passed
+test_daily_score_attack_lifecycle.py + ranked history/rating  97 passed
+test_mastery_precision_e2e.py                    18 passed, 1 failed
+```
+
+The mastery failure (`test_public_catalog_still_ahri_v2_only`) was reproduced
+on a clean stash of this branch — **pre-existing, not caused here**.
+
+Frontend contract re-run (`mogsy`, 95 passed), including the scan asserting
+**no browser source emits any server-authoritative gameplay name** — the
+no-overlap guarantee, now load-bearing in both directions.
+
+**Environment note:** `httpx>=0.27` is a declared dev dependency
+(`requirements-dev.txt:15`) that was simply not installed locally, which was
+blocking collection of every FastAPI TestClient suite. Installed. Several
+unrelated suites still cannot collect because `lol_calc.db` is a 0-byte
+placeholder in this checkout — pre-existing and unrelated.
+
+## 20.9 Supabase types / the shim — NOT regenerated
+
+The frontend's `AnalyticsDatabase` shim in `src/lib/analytics/schema.ts`
+**stays**. Regeneration needs the Supabase CLI and a project access token;
+neither exists in this environment (`supabase` is not installed,
+`SUPABASE_ACCESS_TOKEN` is unset), and the brief is explicit that it must not
+be faked. The three tables are confirmed present in production by B2's
+certification, so regeneration is safe whenever someone has the credential —
+`schema.ts` documents its own removal.
+
+## 20.10 Deploy — BLOCKED, and it is two steps
+
+Nothing is deployed. Two things are needed, **in this order**:
+
+1. **Set `SUPABASE_SERVICE_ROLE_KEY` (and confirm `SUPABASE_URL`) in the
+   Railway environment.** This must come first, and it is safe to do now:
+   nothing reads it until the code ships. Without it the backend still runs
+   normally and still records every event durably in the outbox — it just
+   delivers nothing, and `/api/admin/analytics/health` says
+   `configured: false`. A deploy that forgets it degrades to "analytics
+   pending", never to "gameplay broken".
+2. **Merge `funnel1b3-gameplay-analytics` into `master` and let Railway
+   deploy.**
+
+This environment holds no Railway credentials and cannot set an env var or
+trigger a deploy, and the branch was deliberately **not** merged to `master`:
+merging is what deploys a live game backend, and the ordering above is the
+owner's call, not something to infer.
+
+## 20.11 Production certification — NOT YET RUN
+
+Ready to execute once §20.10 is done. Smallest safe cases:
+
+**Practice (safest — one player, no matchmaking):** start a practice quiz on
+the deployed site and finish it.
+
+**Ranked (if practical):** one duel, played out or forfeited.
+
+Then verify in Supabase:
+
+```sql
+select event_name, source_system, source_entity_type, source_entity_id,
+       user_id, is_guest, occurred_at, received_at, metadata
+from public.analytics_events
+where source_system = 'railway'
+order by received_at desc
+limit 20;
+-- expect: source_system='railway' on every row;
+--         practice_quiz_started + practice_quiz_completed sharing one
+--         quiz_session entity id;
+--         ranked_started/ranked_completed as TWO rows each, entity ids
+--         <match_id>:<user_id>, never one row per match;
+--         user_id = the tester's Supabase uid — the same uid their
+--         landing_viewed carried, which is the whole point.
+
+-- duplicate protection, live
+select source_entity_type, source_entity_id, event_name, count(*)
+from public.analytics_events
+where source_system = 'railway'
+group by 1,2,3 having count(*) > 1;
+-- expect ZERO rows.
+
+-- the acquisition -> gameplay join this phase existed to make possible
+select e.user_id, min(e.received_at) filter (where e.event_name='landing_viewed') as landed,
+       min(e.received_at) filter (where e.event_name='practice_quiz_completed') as played
+from public.analytics_events e
+where e.user_id is not null
+group by e.user_id;
+```
+
+Railway-side, after the test: `GET /api/admin/analytics/health` should report
+`ok: true`, `unsent: 0`, and a recent `last_sent_at`.
+
+**Retry proof, live:** re-POST the same completion (or restart the process with
+a row already sent) and confirm the count does not change.
+
+**Cleanup:** these are real gameplay rows from a real account. Per the brief,
+clean only what is clearly test-specific; a practice quiz the owner played is
+genuine history and deleting it would falsify the record. The recommendation is
+to keep them and note the tester's uid.
+
+## 20.12 Remaining risks
+
+1. **Nothing is deployed** (§20.10). Every statement above about production is
+   a prediction until then.
+2. **The drainer runs per process.** Railway running multiple web processes
+   means multiple drainers on one SQLite file. Safe — claims are oldest-first
+   and delivery is idempotent, so the worst case is a duplicate POST that
+   Supabase refuses — but it is untested at concurrency, and a single worker or
+   a dedicated drainer process would be tidier.
+3. **SQLite on Railway is ephemeral unless `/data` is mounted.** The outbox
+   lives in the gameplay DB, so it inherits whatever durability that has. If
+   the volume is lost, undelivered events are lost with it — the same exposure
+   gameplay already carries.
+4. **`retries exhausted` rows are kept, not alerted on.** `health()` counts
+   them; nothing pages anyone.
+5. **Clock skew.** `occurred_at` is Railway's clock; `received_at` is the
+   database's. Group by `received_at`, as §14.3 says.
+6. **Mastery completion remains non-idempotent at source** (§20.6). Protected,
+   not fixed.
+7. **Meta Reflex has no authoritative event** (§20.1), so mode coverage is
+   four of five.
+8. **The frontend shim is still in place** (§20.9).
+
+## 20.13 Scope for FUNNEL1C — Admin analytics
+
+Not started, and it should not start before §20.10–20.11 are green.
+
+1. **One destination, under Overview**, registered through
+   `src/lib/admin/admin-registry.ts` — one entry, nothing else moved (§10).
+2. **The acquisition funnel**: unique visitors → sessions → `landing_viewed` →
+   `hub_entered` → `leaguecraft_opened` → mode opens → `signup_completed`,
+   sliced by first-touch source/medium/campaign.
+3. **The gameplay funnel**, now that it exists: mode opened → started →
+   completed, per mode, from `source_system='railway'` rows only.
+4. **Guest → registered conversion** from the `is_guest` snapshot, and
+   **new vs returning / D1 / D7** from `analytics_sessions` (§14.12).
+5. **Read path.** Admin reads Supabase only — never a live join against
+   Railway. That boundary is what B3 exists to have removed the need for.
+6. **Surface the freshness signal** (§20.7) somewhere an operator sees it
+   daily. A dashboard reading zero must be distinguishable from a product
+   nobody used.
+7. **Fix the remaining `/admin/data` Arena-era framing** or label it archived
+   (§7) — out of scope for the charts themselves.
+
+Explicitly still out of scope: verification features, Meta Reflex emission,
+reconciling the two ad analytics systems (§13.4).
