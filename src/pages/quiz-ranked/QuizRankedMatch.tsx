@@ -398,8 +398,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // playtest host's terminal path) would hold the card over the result screen
   // for ever.
   const introEligible = entry === "fresh" && m.phase !== "match_over" && !m.result;
-  const entryIntroUp = useEntryIntro({
+  const entryIntro = useEntryIntro({
     eligible: introEligible, startedAt: live?.activeRound?.startedAt, skewMs: m.skewMs });
+  const entryIntroUp = entryIntro.up;
 
   // 1s render tick so the skew-anchored timer counts down between polls.
   useEffect(() => {
@@ -813,6 +814,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
               // progress is not being introduced to it.
               intro: introEligible ? (
                 <RankedEntryIntro
+                  // RFX1 2B3 — the VISIBLE intro this entry is on course for,
+                  // from the card's real first paint. Measurement only: the
+                  // contract is checked against what the player saw rather
+                  // than against an assumption about their device.
+                  visibleMs={entryIntro.visibleMs}
                   // The arena's own entry projection, not a second state
                   // machine: `preparing` is real media in flight, and `ready`
                   // is the first question prepared and waiting on the server.

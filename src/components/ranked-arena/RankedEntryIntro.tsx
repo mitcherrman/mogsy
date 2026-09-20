@@ -54,6 +54,12 @@ export interface RankedEntryIntroProps {
   isBotMatch?: boolean;
   /** OS `prefers-reduced-motion` or Settings → Reduce Motion. */
   reducedMotion?: boolean;
+  /**
+   * RFX1 2B3 — how long this card is on course to be VISIBLE for, from its
+   * own first paint. MEASUREMENT ONLY: it is published as `data-intro-ms` and
+   * changes nothing that is drawn.
+   */
+  visibleMs?: number | null;
 }
 
 /**
@@ -122,6 +128,7 @@ function Seat({ duelist, side }: {
 
 export function RankedEntryIntro({
   phase, player = null, opponent = null, isBotMatch = false, reducedMotion = false,
+  visibleMs = null,
 }: RankedEntryIntroProps) {
   return (
     <section
@@ -129,6 +136,11 @@ export function RankedEntryIntro({
       // The same two attributes the live arena publishes, so a test and a
       // browser can read the entry state off the DOM without reading copy.
       data-entry-phase={phase}
+      // RFX1 2B3 — the VISIBLE intro duration this entry is on course for,
+      // measured from this card's real first paint. Published so a test and a
+      // browser read the contract's own number off the DOM instead of
+      // inferring it from two observations.
+      data-intro-ms={visibleMs === null ? undefined : String(Math.round(visibleMs))}
       data-reduced-motion={reducedMotion ? "true" : undefined}
       data-bot-match={isBotMatch ? "true" : undefined}
       className="ranked-panel ranked-entry-intro">

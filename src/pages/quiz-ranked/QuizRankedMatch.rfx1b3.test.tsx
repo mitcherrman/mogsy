@@ -23,7 +23,7 @@ vi.mock("@/lib/backend-auth", () => ({
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { __resetPreparedImagesForTests } from "@/lib/ranked-core/media/prepareImage";
 import {
-  ENTRY_INTRO_MAX_MS, ENTRY_INTRO_MIN_MS, ENTRY_MIN_LEAD_MS, MATCH_OUTRO_MS,
+  ENTRY_INTRO_MIN_MS, ENTRY_MIN_LEAD_MS, MATCH_OUTRO_MS,
   REVEAL_HOLD_MIN_MS,
 } from "@/lib/ranked-core/pacing";
 import { matchResultPointsV1, privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
@@ -34,17 +34,30 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 /**
- * The server's Round-1 lead-in, as `ranked_public.pacing.entry_lead_ms`
- * leaves it by the time a client actually holds the payload. The QUEUE path's
- * 5800 ms less its own ~3100 ms of discovery, handoff and route paint.
+ * What the server's lead-in has left by the time the card actually paints,
+ * on each path's WORST-REASONABLE entry — `entry_lead_ms` less that path's
+ * own spend (`ranked_public.pacing._ENTRY_SPEND`):
+ *
+ *   queue  5900 − (2000 discovery + 800 handoff + 400 route paint) = 2700
+ *   bot    4400 − ( 500 join RTT + 800 handoff + 400 route paint)  = 2700
+ *
+ * Deliberately the SAME number: the presentation is owed to the player, not
+ * to the way the match was created. It is exactly the floor plus the preview,
+ * which is what makes these tests a check on the contract rather than on a
+ * comfortable margin.
  */
 const LEAD_ON_ARRIVAL = ENTRY_INTRO_MIN_MS + ENTRY_MIN_LEAD_MS;
+
+/** A TYPICAL queue entry, where discovery landed in ~1 s of its 2 s bound. */
+const LEAD_WITH_SURPLUS = LEAD_ON_ARRIVAL + 1000;
+
 
 let startedAt: number;
 let overMatch: boolean;
 /** Flipped mid-test to end the match under a mounted client. */
 let liveOver: boolean;
 let mediaLoads: boolean;
+let isBotMatch: boolean;
 /** Round-trip cost on the two reads the ending needs. Production has one. */
 let endingLatencyMs: number;
 
@@ -97,7 +110,7 @@ function shape<T2 extends { payload: Record<string, unknown> }>(env: T2): T2 {
   }
   payload.playtest = {
     question_bank_mode: "shared_bank", is_placeholder: false,
-    is_bot_match: false, session_preset: null,
+    is_bot_match: isBotMatch, session_preset: null,
   };
   const ar = payload.active_round as Record<string, unknown> | null;
   if (ar) {
@@ -124,6 +137,7 @@ beforeEach(() => {
   overMatch = false;
   liveOver = false;
   mediaLoads = true;
+  isBotMatch = false;
   endingLatencyMs = 0;
   startedAt = Date.now() + LEAD_ON_ARRIVAL;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
@@ -166,6 +180,11 @@ afterEach(() => {
 });
 
 const intro = () => screen.queryByTestId("ranked-entry-intro");
+/** The contract's own number, read off the card rather than inferred. */
+const introMs = () => {
+  const v = intro()?.getAttribute("data-intro-ms");
+  return v === null || v === undefined ? null : Number(v);
+};
 const outro = () => screen.queryByTestId("ranked-match-outro");
 const endScreen = () => screen.queryByTestId("ranked-match-over");
 const arena = () => screen.queryByTestId("ranked-match");
@@ -176,38 +195,79 @@ const phaseOf = () => arena()?.getAttribute("data-presentation-phase") ?? null;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 describe("RFX1 2B3 — the intro is presentation, not a loading cover", () => {
-  it("holds its minimum even when every asset lands instantly", async () => {
+  /** Mount a fresh entry and report what the player actually saw. */
+  async function observeEntry() {
     const paint = Date.now();
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
     expect(intro()).not.toBeNull();
-    await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
+    let planned: number | null = null;
+    await waitFor(() => { planned = introMs(); expect(planned).not.toBeNull(); },
+      { timeout: 3000, interval: 10 });
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
     const revealedAt = Date.now();
-    // FAST LOADING DOES NOT SHORTEN IT. The media decoded in ~5 ms; the card
-    // still occupied its deliberate beat.
-    expect(revealedAt - paint).toBeGreaterThanOrEqual(ENTRY_INTRO_MIN_MS - 120);
-    // And it is bounded, so a fast desktop does not get a visibly longer
-    // intro than a phone: the surplus goes to the locked preview instead.
-    expect(revealedAt - paint).toBeLessThanOrEqual(ENTRY_INTRO_MAX_MS + 250);
-    expect(intro()).toBeNull();
-  }, 20000);
+    return {
+      paint,
+      planned: planned as unknown as number,
+      /** What the card was VISIBLE for, wall-clock. */
+      visible: revealedAt - paint,
+      /** The locked, prepared question before the server's instant. */
+      preview: startedAt - revealedAt,
+    };
+  }
 
-  it("leaves a locked, visible question before started_at, and opens AT it", async () => {
-    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
-    const grid = await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
-    expect(grid).toBeInTheDocument();
-    // THE PREVIEW. The arena is up, and it is not answerable yet.
-    expect(startedAt - Date.now()).toBeGreaterThanOrEqual(ENTRY_MIN_LEAD_MS - 150);
-    expect(screen.getByTestId("ranked-question").getAttribute("data-input-open")).toBe("false");
-    let openedAt = 0;
-    await waitFor(() => {
-      expect(screen.getByTestId("ranked-question").getAttribute("data-input-open")).toBe("true");
-      openedAt = Date.now();
-    }, { timeout: 3000, interval: 10 });
-    // The intro never stole answer time: the whole window still follows the
-    // server's instant.
-    expect(openedAt - startedAt).toBeGreaterThanOrEqual(0);
-    expect(openedAt - startedAt).toBeLessThan(300);
-  }, 20000);
+  it("gives a QUEUE fresh match its whole deliberate beat, however fast it loads",
+    async () => {
+      // Media decodes in ~5 ms here; the card still occupies its beat.
+      const e = await observeEntry();
+      expect(e.visible).toBeGreaterThanOrEqual(ENTRY_INTRO_MIN_MS - 120);
+      // And the contract's own number agrees with the wall clock, which is
+      // the point of measuring from the real first paint.
+      expect(e.planned).toBeGreaterThanOrEqual(ENTRY_INTRO_MIN_MS - 60);
+      expect(Math.abs(e.planned - e.visible)).toBeLessThan(250);
+      expect(intro()).toBeNull();
+    }, 25000);
+
+  it("gives a BOT fresh match the identical beat", async () => {
+    // The bot path's lead differs, but what is LEFT once the card paints is
+    // the same 2700 ms — the presentation is owed to the player, not to the
+    // way the match was created. This is 2B2's "the bot intro is short".
+    isBotMatch = true;
+    const e = await observeEntry();
+    expect(e.visible).toBeGreaterThanOrEqual(ENTRY_INTRO_MIN_MS - 120);
+    expect(e.preview).toBeGreaterThanOrEqual(ENTRY_MIN_LEAD_MS - 150);
+  }, 25000);
+
+  it("reveals the arena ~700 ms before started_at, and opens input AT it",
+    async () => {
+      const e = await observeEntry();
+      // THE PREVIEW. The arena is up, and it is not answerable yet.
+      expect(e.preview).toBeGreaterThanOrEqual(ENTRY_MIN_LEAD_MS - 150);
+      expect(e.preview).toBeLessThanOrEqual(ENTRY_MIN_LEAD_MS + 150);
+      expect(screen.getByTestId("ranked-question").getAttribute("data-input-open"))
+        .toBe("false");
+      let openedAt = 0;
+      await waitFor(() => {
+        expect(screen.getByTestId("ranked-question").getAttribute("data-input-open"))
+          .toBe("true");
+        openedAt = Date.now();
+      }, { timeout: 3000, interval: 10 });
+      // The intro never stole answer time: the whole window still starts at
+      // the server's instant, which nothing on the client moved.
+      expect(openedAt - startedAt).toBeGreaterThanOrEqual(0);
+      expect(openedAt - startedAt).toBeLessThan(300);
+    }, 25000);
+
+  it("spends SURPLUS lead on the card, not on a long inert locked preview",
+    async () => {
+      // A typical queue entry: discovery landed in ~1 s of its 2 s bound, so
+      // there is a second of budget spare. An earlier draft capped the intro
+      // and handed that second to the preview, which is a stall.
+      startedAt = Date.now() + LEAD_WITH_SURPLUS;
+      const e = await observeEntry();
+      expect(e.visible).toBeGreaterThanOrEqual(ENTRY_INTRO_MIN_MS + 1000 - 150);
+      // …and the preview did not grow while that happened.
+      expect(e.preview).toBeLessThanOrEqual(ENTRY_MIN_LEAD_MS + 150);
+    }, 25000);
 
   it("lets CRITICAL loading extend the presentation, bounded by the server", async () => {
     // Media that never settles — the throttled-phone case. 2B1's entry
@@ -217,35 +277,37 @@ describe("RFX1 2B3 — the intro is presentation, not a loading cover", () => {
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
     await waitFor(() => expect(intro()).toHaveAttribute("data-entry-phase", "preparing"),
       { timeout: 3000 });
-    await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
     // Extended, but never past the locked preview the server owns.
     expect(startedAt - Date.now()).toBeGreaterThanOrEqual(ENTRY_MIN_LEAD_MS - 200);
-  }, 20000);
+  }, 25000);
 
   it("REDUCED MOTION changes the animation, never the pacing", async () => {
     document.documentElement.classList.add("reduce-motion");
     const paint = Date.now();
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
     expect(intro()).toHaveAttribute("data-reduced-motion", "true");
-    await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
     expect(Date.now() - paint).toBeGreaterThanOrEqual(ENTRY_INTRO_MIN_MS - 120);
-  }, 20000);
+  }, 25000);
 
   it("a RECOVERY is not an entry: no card, and no minimum to serve", async () => {
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" />);
-    await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
     expect(intro()).toBeNull();
-  }, 20000);
+  }, 25000);
 
   it("a spent lead-in — a refresh into a running round — plays no intro", async () => {
     // The server's instant is already behind us, which is what a reload into
-    // a live round looks like. The card must never appear over it.
+    // a live round looks like. The card must never appear over it, and the
+    // minimum must never delay it.
     startedAt = Date.now() - 4000;
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
-    await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
     expect(intro()).toBeNull();
-    expect(screen.getByTestId("ranked-question").getAttribute("data-input-open")).toBe("true");
-  }, 20000);
+    expect(screen.getByTestId("ranked-question").getAttribute("data-input-open"))
+      .toBe("true");
+  }, 25000);
 });
 
 /* ══════════════════════════════════════════════════════════════════════════ */

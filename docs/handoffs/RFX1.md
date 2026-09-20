@@ -2264,65 +2264,101 @@ testable. Both designs are explicitly left to the owner.
 
 Three presentation behaviours stopped being accidents of load speed:
 
-1. the pre-match intro is a **deliberate, repeatable beat** rather than a
-   loading cover whose length is whatever the entry path left over;
+1. the pre-match intro is a **deliberate, repeatable beat** — at least 2 s of
+   VISIBLE card on every genuine fresh entry, measured from its real first
+   paint, followed by ~700 ms of locked, prepared question;
 2. the Ranked countdown **ticks like a clock** — each visible number occupies
    one real second, anchored to the authoritative deadline;
 3. the match ends through a **real match-complete beat** instead of cutting
    from the final answer straight to the end screen.
 
----
+The entry timing contract was corrected once after review; the section below
+is the final one, and the first draft's `ENTRY_INTRO_MAX_MS` is gone.
 
 ## Intro timing contract
 
-```
-intro exit = min( started_at − ENTRY_MIN_LEAD_MS ,
-                  firstVisibleAt + ENTRY_INTRO_MAX_MS )
-```
+**Corrected before merge.** The first draft measured the floor from a modelled
+`ENTRY_ROUTE_PAINT_MS = 300`, which left the bot path meeting it *exactly*
+(zero headroom), and capped the intro at `ENTRY_INTRO_MAX_MS = 2600`, which
+handed a fast queue entry's surplus to the locked preview instead — up to
+2119 ms of prepared question the player could not answer. Both are fixed
+below; `ENTRY_INTRO_MAX_MS` no longer exists.
 
-| | value | owner |
-|---|---|---|
-| minimum presentation | `ENTRY_INTRO_MIN_MS` **2000 ms** | guaranteed by the SERVER's lead, not by a client timer |
-| ceiling | `ENTRY_INTRO_MAX_MS` **2600 ms** | client; surplus goes to the locked preview |
-| locked arena preview | `ENTRY_MIN_LEAD_MS` **700 ms** | unchanged from 2B1 |
-| queue server lead | **5800 ms** (was 4200) | `ranked_public/pacing.py` |
-| bot server lead | **3800 ms** (was 2200) | same |
-
-Backend arithmetic, term by term — each mirrors a real client constant:
+### The client contract
 
 ```
-ENTRY_DISCOVERY_MS   2000   useRankedQueue POLL_MS          (queue only)
-ENTRY_HANDOFF_MS      800   PlayScrollRecord DEFAULT_HANDOFF_MS
-ENTRY_ROUTE_PAINT_MS  300   SPA route swap → the arena's first paint
-ENTRY_INTRO_MIN_MS   2000   the deliberate intro beat
-ENTRY_ARENA_PREVIEW_MS 700  the prepared, locked question before started_at
-
-ENTRY_PRESENTATION_MS = 2000 + 700 = 2700   (identical on both paths)
-queue        = 2000 + 800 + 300 + 2700 = 5800
-bot_playtest =        800 + 300 + 2700 = 3800
-everything else                        =    0
+arenaRevealAt     = started_at − ENTRY_MIN_LEAD_MS          (the one fixed point)
+introVisibleUntil = arenaRevealAt
+subject to:  introVisibleUntil − firstVisibleAt >= ENTRY_INTRO_MIN_MS
 ```
 
-`MODULE_TITLE_MS` **leaves** the entry formula. Round 1's orientation beat is
-now the duel card, not the module name in the header; with only 700 ms of
-preview the title window falls below its new floor and is skipped, so the
-preview shows the question and its clock. That is deliberate.
+`firstVisibleAt` is the card's **actual first paint on this device**, captured
+by the coordinator on its first eligible render. It is not a modelled
+estimate: it is what the floor is measured from, what the tests assert on, and
+what the card publishes as `data-intro-ms`, so the contract is checked against
+what the player saw.
 
-**Extension rules.** The client only ever CLIPS. 2B1's `useEntryPreparation`
-still keeps the card up while Round 1's *critical* media decodes, bounded by
-`min(ENTRY_PREP_CAP_MS 1500, msUntil(started_at) − 700)` — so slow loading may
-lengthen the presentation and can never shorten the preview or move
-`started_at`. A lead that is short or already spent (a reload into a running
-round, a staff match with a zero lead) ends the card immediately or never
-shows it.
+Because the reveal is pinned to `started_at`, **there is no ceiling on the
+intro**. Any surplus presentation budget goes to the card and the locked
+preview stays at its 700 ms. A longer card is presentation; a longer inert
+preview is a stall.
 
-**Why the bot lead rose.** 2B2's "Remaining issues" item 1 recorded that the
-bot card was 0.1–0.7 s. Under the old model that was honest — the bot path is
-genuinely shorter. Under the new one the presentation is owed to the PLAYER,
-not to the way the match was made, so both paths now carry the same
-`ENTRY_PRESENTATION_MS` and differ only by the discovery term.
+| | value |
+|---|---|
+| minimum visible intro | `ENTRY_INTRO_MIN_MS` **2000 ms**, from the real first paint |
+| locked arena preview | `ENTRY_MIN_LEAD_MS` **700 ms** (unchanged since 2B1) |
+| intro ceiling | **none** |
 
----
+### The server keeps the floor
+
+`started_at` is written once inside the creation transaction and the client
+only ever CLIPS, so the floor is a property of `entry_lead_ms`: each path's
+lead is that path's own worst-reasonable spend **before the card can paint**,
+plus the presentation.
+
+```
+ENTRY_DISCOVERY_MS     2000   queue only — useRankedQueue POLL_MS, an upper
+                              bound that also absorbs that poll's round trip
+ENTRY_JOIN_RTT_MS       500   bot only — the create-and-return POST's round
+                              trip; the queue has no equivalent because the
+                              discovery bound already covers the same cost
+ENTRY_HANDOFF_MS        800   both — PlayScrollRecord DEFAULT_HANDOFF_MS
+ENTRY_ROUTE_PAINT_MS    400   both — the warm SPA route swap to the card's
+                              FIRST PAINT. MEASURED at 9–62 ms across four
+                              throttle profiles × five warm swaps; the
+                              constant is ~6× the worst of those, and the
+                              headroom is the point.
+
+ENTRY_INTRO_MIN_MS     2000
+ENTRY_ARENA_PREVIEW_MS  700
+ENTRY_PRESENTATION_MS  2700   identical on both paths
+
+queue        = 2000 + 800 + 400 + 2700 = 5900   (2B1: 4200)
+bot_playtest =  500 + 800 + 400 + 2700 = 4400   (2B1: 2200)
+everything else                        =    0   (unchanged)
+```
+
+Both paths therefore leave **exactly 2700 ms** once the card paints, on their
+worst-reasonable entry — the floor plus the preview. The two leads differ only
+in how the same "find out the match exists" cost is bounded: a poll period on
+one, a request on the other.
+
+**`ENTRY_JOIN_RTT_MS` is new.** 2B1 explicitly declined it ("padding it would
+be inventing time"), and under 2B1's model — where the lead only refunded real
+losses — that was right. Under 2B3 the presentation is a promise, and the bot
+path is the one path where no other term bounds that cost. It is a bound, not
+a measurement; Phase 1 measured 110–250 ms TTFB against production and
+bot-match creation does real question-bank work on top.
+
+**`MODULE_TITLE_MS` leaves the entry formula.** Round 1's orientation beat is
+the duel card now, not the module name in the header.
+
+**Extension rules.** 2B1's `useEntryPreparation` still keeps the card up while
+Round 1's *critical* media decodes, bounded by `min(ENTRY_PREP_CAP_MS 1500,
+msUntil(started_at) − 700)`. Slow loading may lengthen the presentation; it can
+never shorten the preview or move `started_at`. A lead that is short or already
+spent (a reload into a running round, a staff match with a zero lead) ends the
+card early or never shows it.
 
 ## Countdown clock
 
@@ -2520,34 +2556,41 @@ Production builds under `vite preview`: **before** = `origin/main` (:8472),
 **after** = this branch (:8471). Headless Chromium, CDP throttling — phones
 1.6 Mbps / 150 ms / 4× CPU, desktop 9 Mbps / 40 ms.
 
-### Intro — the minimum holds, and the variance collapses
+### Intro — deterministic on both paths, at every viewport
 
-Modelled as the server lead LESS the client spend before the arena's first
-paint (slow ≈3100 ms queue / 1400 ms bot, fast ≈1100 ms):
+`lead` models what the server's lead-in has LEFT by the time the card paints:
+`entry_lead_ms` less that path's own spend. Queue worst `5900 − 3200 = 2700`,
+bot worst `4400 − 1700 = 2700`; "typical" adds the slack a real entry usually
+has (discovery landing in ~1 s of its 2 s bound; a 200 ms join round trip).
 
-| path | arrival | before → intro | after → intro | after → locked preview |
+| viewport | path | visible intro | locked preview | `data-intro-ms` |
 |---|---|---|---|---|
-| queue | slow | **421 ms** | **2021 ms** | 700 ms |
-| queue | fast | 2428 ms | **2596 ms** (capped) | 2119 ms |
-| bot | slow | **121 ms** | 1722 ms | 701 ms |
-| bot | fast | 418 ms | **2026 ms** | 686 ms |
+| 390×844, 4× CPU | queue worst | **2072 ms** | 677 ms | 2056 |
+| | queue typical | 3035 ms | 678 ms | 3046 |
+| | bot worst | **2071 ms** | 682 ms | 2047 |
+| | bot typical | 2332 ms | 679 ms | 2324 |
+| 360×800, 4× CPU | queue worst | **2062 ms** | 681 ms | 2043 |
+| | queue typical | 3027 ms | 676 ms | 3019 |
+| | bot worst | **2074 ms** | 677 ms | 2046 |
+| | bot typical | 2361 ms | 679 ms | 2347 |
+| 1440×900 | queue worst | **2024 ms** | 694 ms | 2021 |
+| | queue typical | 3023 ms | 695 ms | 3017 |
+| | bot worst | **2022 ms** | 690 ms | 2016 |
+| | bot typical | 2331 ms | 675 ms | 2312 |
 
-Before, the queue intro swung **2007 ms** between a fast machine and a slow
-one and degenerated to a 0.4 s flash; the bot card was 0.1–0.4 s. After, the
-swing is **575 ms**, the floor is met and the surplus lands on the locked
-preview. (The bot "slow" row models a route paint 300 ms slower than
-`ENTRY_ROUTE_PAINT_MS`; see Unresolved.)
+* Visible intro **≥ 2016 ms in all twelve runs**; never below the floor.
+* Locked preview **675–695 ms in all twelve runs** — including the surplus
+  cases, where the extra second went to the card and the preview did not move.
+* A 4×-throttled phone and an unthrottled desktop get the same beat to within
+  50 ms, and the queue and bot worst cases are within 50 ms of each other.
+* The card's own `data-intro-ms` agrees with the wall clock to within ~20 ms
+  everywhere, which is what makes the contract checkable from the DOM.
+* Input stayed tied to the server's instant in every run.
 
-### Intro — consistent across hardware (after, three viewports)
-
-| viewport | intro first visible | intro duration | arena reveal → input |
-|---|---|---|---|
-| 390×844, 4× CPU | 6029 ms | **2080 ms** | 678 ms |
-| 360×800, 4× CPU | 5978 ms | **2068 ms** | 678 ms |
-| 1440×900 | 1572 ms | **2075 ms** | 696 ms |
-
-A 4×-throttled phone and an unthrottled desktop get the same beat to within
-12 ms, and the locked preview lands on its 700 ms target.
+**Against the first draft** (queue 5800 / bot 3800, ceiling 2600): the queue
+intro swung 2021–2596 ms and its preview reached 2119 ms; the bot worst case
+fell to ~1.7 s. **Against `origin/main`**: the queue intro swung 421–2428 ms
+and the bot card was 121–418 ms.
 
 ### Countdown — real-clock cadence
 
@@ -2648,13 +2691,13 @@ lead covers its own worst-reasonable client spend plus the presentation.
 
 ### Results
 
-* Ranked suites: **131 files / 1621 tests passing**.
-* Whole frontend suite: **733 files / 11742 passing**; the 15 failing files /
+* Ranked suites: **131 files / 1623 tests passing**.
+* Whole frontend suite: **733 files / 11744 passing**; the 15 failing files /
   79 failing tests are **byte-identical to the set on clean `origin/main`**,
   verified by a full baseline run in a separate worktree. Zero regressions;
-  +41 tests, +3 files.
+  +43 tests, +3 files.
 * Production `vite build`: clean.
-* Backend Ranked suites: **85 passing**.
+* Backend Ranked suites: **86 passing**.
   `test_ranked_prototype.py::test_two_human_match_defaults_to_production_and_not_bot`
   fails identically with the branch stashed — the fresh worktree's empty stub
   DB has no `quiz_questions`. Pre-existing and environmental.
@@ -2672,11 +2715,16 @@ Modified:
 * `src/lib/ranked-core/timerMath.ts` — `msUntilSecondBoundary`,
   `SKEW_RESYNC_THRESHOLD_MS`, `reconciledSkewMs`;
 * `src/lib/ranked-core/pacing.ts` — `ENTRY_INTRO_MIN_MS`,
-  `ENTRY_INTRO_MAX_MS`, `entryIntroExitMs`, `entryIntroHolding` (new
-  signature), `entryIntroDurationMs`, `MODULE_TITLE_MIN_MS`,
-  `MATCH_OUTRO_MS`, and the floor inside `moduleTitleWindowMs`;
+  `entryIntroExitMs` (the reveal, pinned to `started_at`), `entryIntroHolding`
+  and `entryIntroDurationMs` (both on the real first paint),
+  `MODULE_TITLE_MIN_MS`, `MATCH_OUTRO_MS`, and the floor inside
+  `moduleTitleWindowMs`;
 * `src/lib/ranked-core/flow/useEntryIntro.ts` — the entry presentation
-  coordinator: the first-paint anchor, the local-instant exit, the latch;
+  coordinator: the first-paint anchor, the local-instant exit, the latch, and
+  the `EntryIntroWindow` return carrying the measured `visibleMs`;
+* `src/components/ranked-arena/RankedEntryIntro.tsx` — the optional
+  `visibleMs` prop, published as `data-intro-ms` (measurement only; nothing
+  drawn changes);
 * `src/lib/ranked-core/flow/rankedFlow.ts` — the `match-outro` phase;
 * `src/pages/quiz-ranked/useRankedMatch.ts` — the `match_outro` phase, the
   outro state and its two refs, the scoped final-round hold, the scoped
@@ -2702,16 +2750,18 @@ unchanged — it simply begins later.
 
 ## Unresolved / notes
 
-1. **The bot path's worst case is ~1.7 s, not 2.0 s.** The floor is measured
-   from the arena's first paint, and `ENTRY_ROUTE_PAINT_MS` models that at
-   300 ms. A cold, throttled phone that takes 600 ms to paint loses the
-   difference off the card, because the server's lead is fixed at creation.
-   Bounded and quantified; the lever is `ENTRY_ROUTE_PAINT_MS`, and raising it
-   costs nothing but a later `started_at`. Not raised here on speculation.
-2. **`ENTRY_INTRO_MAX_MS` 2600 sends surplus to the locked preview**, which on
-   a fast queue entry reached 2119 ms. A prepared question sitting locked for
-   two seconds reads as anticipation rather than as a stall, but it is the one
-   number in this contract that a design pass may want to revisit.
+1. **`ENTRY_JOIN_RTT_MS` 500 is a bound, not a measurement.** It is the only
+   term in either lead that was not either a client constant or measured in a
+   browser. Phase 1 measured 110–250 ms TTFB against production and bot-match
+   creation does question-bank work on top, so 500 ms is a generous upper
+   bound — but a production bot join that ever exceeded it would take the
+   difference out of the card. Worth one real-network measurement on mogzy.lol
+   before anyone tunes it down.
+2. **`ENTRY_ROUTE_PAINT_MS` 400 carries deliberate headroom.** The warm SPA
+   swap to the card's first paint measured 9–62 ms; the constant is ~6× the
+   worst of those and a test pins that multiple. It is the term that absorbs a
+   cold device, a GC pause or a slow first render, and it is the first place
+   to look if a real entry ever misses the floor.
 3. **`SWAP_MEDIA_MIN_LEAD_MS` is still 1000** (2B1 note 4, 2B2 issue 4). With
    the 2B2 derivatives the gate rarely waits at all, and it is what makes
    `MODULE_TITLE_MIN_MS` reachable rather than aspirational — a test pins that

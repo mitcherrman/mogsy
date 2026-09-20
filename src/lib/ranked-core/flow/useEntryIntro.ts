@@ -9,12 +9,16 @@
  * THE RHYTHM (2B3)
  * ────────────────
  *   match found
- *     → the intro, for `ENTRY_INTRO_MIN_MS` at least and
- *       `ENTRY_INTRO_MAX_MS` at most, measured from its first paint
+ *     → the intro, for AT LEAST `ENTRY_INTRO_MIN_MS`, measured from the
+ *       instant the card actually first paints on this device
  *     → the arena and Round 1, VISIBLE and LOCKED, for `ENTRY_MIN_LEAD_MS`
- *       (plus any slack the ceiling handed back)
  *     → `started_at`: input live, with the whole configured answer window
  *       still ahead of it.
+ *
+ * The reveal is pinned to `started_at`, so surplus presentation budget goes
+ * to the CARD and the locked preview stays at its 700 ms. There is no
+ * ceiling on the intro and there is no local timer: this reads the server's
+ * instant and the card's real first paint, and answers one question.
  *
  * The floor is the SERVER's promise, not this hook's: `entry_lead_ms` in
  * `ranked_public/pacing.py` is sized as the client's own entry path plus the
@@ -36,7 +40,18 @@
 import { useRef } from "react";
 
 import { useServerInstantWake } from "./useServerInstantWake";
-import { entryIntroExitMs, entryIntroHolding } from "../pacing";
+import { entryIntroDurationMs, entryIntroExitMs, entryIntroHolding } from "../pacing";
+
+export interface EntryIntroWindow {
+  /** Is the card up on this render? */
+  up: boolean;
+  /**
+   * How long the card is on course to be VISIBLE for, from its real first
+   * paint — the contract's own measurement, published as `data-intro-ms`.
+   * Null before a `started_at` exists to measure against.
+   */
+  visibleMs: number | null;
+}
 
 export function useEntryIntro(args: {
   /**
@@ -47,7 +62,7 @@ export function useEntryIntro(args: {
   /** Round 1's authoritative start, or null while the match is still resolving. */
   startedAt: string | null | undefined;
   skewMs: number;
-}): boolean {
+}): EntryIntroWindow {
   const { eligible, startedAt, skewMs } = args;
   const closed = useRef(false);
   /**
@@ -66,7 +81,9 @@ export function useEntryIntro(args: {
   // timestamp less the skew — the same correction `msUntilAnswerable` makes.
   const startedAtMs = startedAt ? Date.parse(startedAt) - skewMs : null;
   const anchor = firstVisible.current ?? Date.now();
-  const exitMs = entryIntroExitMs(startedAtMs, anchor);
+  const exitMs = entryIntroExitMs(startedAtMs);
+  const visibleMs = startedAtMs === null || Number.isNaN(startedAtMs)
+    ? null : entryIntroDurationMs(startedAtMs, anchor);
 
   // Come down AT the exit instant rather than on the next 1s tick or the next
   // poll — the same pattern, and the same reason, as the presentation cutoff.
@@ -75,12 +92,12 @@ export function useEntryIntro(args: {
   useServerInstantWake(
     eligible && !closed.current && exitMs !== null ? new Date(exitMs).toISOString() : null, 0);
 
-  if (!eligible || closed.current) return false;
-  if (!entryIntroHolding(startedAtMs, anchor, Date.now())) {
+  if (!eligible || closed.current) return { up: false, visibleMs: null };
+  if (!entryIntroHolding(startedAtMs, Date.now())) {
     // Render-phase, and deliberately: the card must be gone on the SAME render
     // that first sees the exit instant pass, not one effect later.
     closed.current = true;
-    return false;
+    return { up: false, visibleMs: null };
   }
-  return true;
+  return { up: true, visibleMs };
 }

@@ -181,60 +181,69 @@ export function presentationCutoffAt(startedAtIso: string | null | undefined): s
 /**
  * RFX1 2B3 — THE PRE-MATCH PRESENTATION CONTRACT.
  *
- * WHAT CHANGED FROM 2B2, AND WHY
- * ──────────────────────────────
+ * WHAT THE ENTRY IS FOR
+ * ─────────────────────
  * In 2B2 the intro was a loading cover that happened to be visible: it was up
  * from the arena's first paint and came down at `started_at − 700 ms`, so its
  * length was "whatever the server's lead-in had left after the client
  * arrived". A fast machine got a long card, a slow one got a flash, and
  * neither was a decision anybody made.
  *
- * The intro is now PRESENTATION. Every fresh Ranked match is owed the same
- * deliberate beat before its first question, and loading runs underneath it
- * rather than defining it.
+ * The entry is now a PRESENTATION with a deliberate, repeatable rhythm:
  *
- * THE THREE NUMBERS
- * ─────────────────
- *  * `ENTRY_INTRO_MIN_MS` — the beat the entry is owed, measured from the
- *    instant the intro is FIRST VISIBLE (the arena's first paint). It is a
- *    floor on presentation, and it is guaranteed by the SERVER's lead-in, not
- *    by a timer here: see `ranked_public/pacing.py`, whose queue and bot leads
- *    are the client's own entry path plus this floor plus the preview below.
- *  * `ENTRY_INTRO_MAX_MS` — the ceiling. A client that arrived early has
- *    slack; without a ceiling all of it would land on the card and the intro
- *    would be visibly longer on a fast desktop than on a phone. Above the
- *    ceiling the slack goes to the locked preview instead, where waiting reads
- *    as anticipation rather than as a stall.
- *  * `ENTRY_MIN_LEAD_MS` — the locked-arena preview: the prepared first
- *    question on screen, visible and NOT answerable, before `started_at`.
- *    Unchanged from 2B1, where the preparation wait already respected it.
+ *     match found
+ *       → the Ranked intro, AT LEAST `ENTRY_INTRO_MIN_MS`, measured from the
+ *         instant the card is actually first VISIBLE on this device
+ *       → the arena and Round 1, visible and LOCKED, for
+ *         `ENTRY_MIN_LEAD_MS`
+ *       → `started_at`: input live, with the whole configured answer window
+ *         still ahead of it.
  *
- * WHAT IS NOT NEGOTIABLE
- * ──────────────────────
- * `started_at` is the server's, written once inside the match-creation
- * transaction. Nothing here moves it, and the ceiling below is a hard clip:
- * if the lead-in is short or already spent — a reload into a running round, a
- * staff match created with a zero lead, a very late first snapshot — the exit
- * is in the past and the card never appears. The intro can only ever spend
- * time the player was not going to be answering in.
+ * TWO NUMBERS, AND ONLY TWO
+ * ─────────────────────────
+ * There is no ceiling on the intro. Whatever presentation budget the server's
+ * lead-in has spare goes to the CARD, because the reveal is pinned to
+ * `started_at` and the locked preview is therefore always about 700 ms. An
+ * earlier draft capped the intro instead, and a fast queue entry spent the
+ * surplus staring at a prepared question it could not answer for two seconds.
+ * A longer card is presentation; a longer inert preview is a stall.
+ *
+ *     arenaRevealAt      = started_at − ENTRY_MIN_LEAD_MS
+ *     introVisibleUntil  = arenaRevealAt
+ *     subject to:  introVisibleUntil − firstVisibleAt >= ENTRY_INTRO_MIN_MS
+ *
+ * WHO KEEPS THE FLOOR
+ * ───────────────────
+ * The SERVER, and it is the only thing that can. `started_at` is written once
+ * inside the match-creation transaction and nothing on the client may move
+ * it, so the floor is a property of `entry_lead_ms` in
+ * `ranked_public/pacing.py`: each creation source's lead is that path's own
+ * worst-reasonable spend BEFORE the card can paint, plus this floor, plus the
+ * preview. This module only ever CLIPS — a lead that is short or already
+ * spent (a reload into a running round, a staff match created with a zero
+ * lead) ends the card early or never shows it, because the one thing the
+ * entry presentation may never do is cost the player answer time.
+ *
+ * `firstVisibleAt` is the client's ACTUAL first paint of the card, not a
+ * modelled estimate of it. It is what the floor is measured from, what the
+ * tests assert on, and what the card publishes as `data-intro-ms`, so the
+ * contract is checked against what the player saw rather than against an
+ * assumption about how fast their device is.
  */
 export const ENTRY_INTRO_MIN_MS = 2000;
-export const ENTRY_INTRO_MAX_MS = 2600;
 
 /**
- * The instant the entry intro must be off screen, in local epoch ms.
+ * The instant the entry intro must be off screen, in local epoch ms — the
+ * arena reveal, and nothing else.
  *
  * `startedAtMs` is Round 1's authoritative start, already skew-corrected into
- * LOCAL time by the caller. `firstVisibleMs` is when the card first painted.
- * Null when there is no start to anchor to — the match is still resolving,
- * which is itself an intro state and is decided by `entryIntroHolding`.
+ * LOCAL time by the caller. Null when there is no start to anchor to: the
+ * match is still resolving, which is itself an intro state and is decided by
+ * `entryIntroHolding`.
  */
-export function entryIntroExitMs(
-  startedAtMs: number | null, firstVisibleMs: number,
-): number | null {
+export function entryIntroExitMs(startedAtMs: number | null): number | null {
   if (startedAtMs === null || Number.isNaN(startedAtMs)) return null;
-  // The server's ceiling wins over the presentation's preference, always.
-  return Math.min(startedAtMs - ENTRY_MIN_LEAD_MS, firstVisibleMs + ENTRY_INTRO_MAX_MS);
+  return startedAtMs - ENTRY_MIN_LEAD_MS;
 }
 
 /**
@@ -246,24 +255,23 @@ export function entryIntroExitMs(
  * exist must not be held open, or one broken timestamp would leave the card
  * on screen for the whole match.
  */
-export function entryIntroHolding(
-  startedAtMs: number | null, firstVisibleMs: number, nowMs: number,
-): boolean {
+export function entryIntroHolding(startedAtMs: number | null, nowMs: number): boolean {
   if (startedAtMs === null) return true;
   if (Number.isNaN(startedAtMs)) return false;
-  const exit = entryIntroExitMs(startedAtMs, firstVisibleMs);
+  const exit = entryIntroExitMs(startedAtMs);
   return exit !== null && nowMs < exit;
 }
 
 /**
- * How much deliberate intro the server's lead-in actually bought, given when
- * the client first painted the card. Measurement and tests read this; nothing
- * in the product decides on it.
+ * How much VISIBLE intro this entry actually gets, from the card's real first
+ * paint. The contract's own measurement: tests assert on it and the card
+ * publishes it. Nothing in the product decides on it — it is the outcome, not
+ * an input.
  */
 export function entryIntroDurationMs(
   startedAtMs: number | null, firstVisibleMs: number,
 ): number {
-  const exit = entryIntroExitMs(startedAtMs, firstVisibleMs);
+  const exit = entryIntroExitMs(startedAtMs);
   return exit === null ? 0 : Math.max(0, exit - firstVisibleMs);
 }
 
