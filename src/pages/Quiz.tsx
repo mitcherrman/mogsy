@@ -1379,7 +1379,7 @@ export default function Quiz() {
       <div
         className={`relative mx-auto px-4 pb-4 ${
           phase === "sets"
-            ? "max-w-[1500px] pt-3 lg:-mt-[calc(var(--app-header-h)_-_1.5rem)] xl:-mt-[var(--app-header-h)]"
+            ? "quiz-ranked-hub-frame max-w-[1500px] pt-3 lg:-mt-[calc(var(--app-header-h)_-_1.5rem)] xl:-mt-[var(--app-header-h)]"
             : "max-w-3xl pt-4"
         }`}
       >

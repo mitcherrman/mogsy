@@ -14809,6 +14809,27 @@ html.hub-commons-in-view .hextech-ambience-layer {
    content moves with the chrome.
    ─────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 639.98px) {
+  /* RHMobile1.1 — the lobby's shared mobile stage envelope.
+
+     The app shell still reserves the old 48px mobile header band, and the
+     hub added another 12px of top padding. RMOB2 reduced the HUD itself to a
+     44px interaction band containing 36px painted controls, leaving the
+     primary parchment at y=60 even though y=44 is the first safe row.
+
+     Reclaim both pieces here, on the HUB FRAME rather than on Choose Your
+     Role, so RHMobile1.2 can put all three parchments in this same envelope.
+     The safe-area arm grows the clearance when an installed/full-screen
+     browser reports a top inset; in an ordinary mobile tab it resolves to
+     the HUD's 44px hit band. Desktop keeps the existing pt-3 and breakpoint
+     reclaim rules byte-for-byte. */
+  .quiz-ranked-hub-frame {
+    margin-top: calc(
+      max(2.75rem, calc(env(safe-area-inset-top, 0px) + 2.25rem))
+      - var(--app-header-h)
+    );
+    padding-top: 0;
+  }
+
   .global-hud > div {
     /* Centre the 36px painted controls in a transparent 44px interaction
        band. This keeps the invisible hit extensions inside the viewport even
