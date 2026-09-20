@@ -247,7 +247,7 @@ describe("RFX1 2B2 — decorative media never blocks entry", () => {
 });
 
 describe("RFX1 2B2 — reduced motion keeps every word", () => {
-  it("marks the card and still names both duelists and the status", async () => {
+  it("marks the card and still names both duelists and the title", async () => {
     document.documentElement.classList.add("reduce-motion");
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
     await waitFor(() => expect(screen.getByTestId("entry-intro-role-player").textContent)
@@ -255,7 +255,19 @@ describe("RFX1 2B2 — reduced motion keeps every word", () => {
     expect(intro()).toHaveAttribute("data-reduced-motion", "true");
     expect(screen.getByTestId("entry-intro-role-opponent").textContent).toBe("Mid");
     expect(screen.getByTestId("entry-intro-name-player")).toBeInTheDocument();
-    expect(screen.getByTestId("entry-intro-status").textContent).toBeTruthy();
     expect(intro()!.textContent).toContain("Ranked Duel");
+    /**
+     * RFX1 2B3 VISUAL IMPLEMENTATION — the assertion that used to stand here
+     * was `entry-intro-status` being truthy, and it is gone deliberately
+     * rather than by accident.
+     *
+     * 2B2's card closed with a sentence about the CLIENT ("Preparing the
+     * first question…"). The approved 2B3 design removes loading language
+     * from the primary presentation: the one surviving status line belongs to
+     * `match-unresolved`, where the card genuinely has no names yet, and by
+     * this point in the test both seats are named. Reduced motion still
+     * changes only the animation — every word that IS shown is shown.
+     */
+    expect(screen.queryByTestId("entry-intro-status")).toBeNull();
   });
 });

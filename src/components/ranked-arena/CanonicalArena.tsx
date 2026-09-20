@@ -69,14 +69,20 @@ export interface CanonicalArenaProps {
    */
   guidance?: ReactNode;
   /**
-   * RFX1 2B3 — THE OUTRO SEAM. A node the mode renders inside the focus
-   * column while the match is authoritatively over but still being
-   * PRESENTED, before its end screen mounts.
+   * RFX1 2B3 — THE OUTRO SEAM. A node the mode lays OVER the arena while the
+   * match is authoritatively over but still being PRESENTED, before its end
+   * screen mounts.
    *
-   * A slot, in the same spirit as `guidance` and `recovering.intro`: the
-   * arena never learns what a duel's ending is, only that a mode had
-   * something to say in that window. Optional, so every existing caller —
-   * the Daily, the staff duel, every dev harness — is byte-identical.
+   * 2B3 visual implementation: this was a focus-COLUMN slot, and at every
+   * viewport that put the closing beat in the lowest, darkest strip of the
+   * layout (measured `top: 708` of 900 on desktop, `top: 728` of 853 on a
+   * phone), rendered quieter than the question above it. It shares the
+   * `warning` overlay layer now — same `pointer-events-none` rule, so it can
+   * never be the thing that stops a click; input is already closed.
+   *
+   * Still a slot: the arena never learns what a duel's ending IS, only that a
+   * mode had something to say in that window. Optional, so every existing
+   * caller — the Daily, the staff duel, every dev harness — is byte-identical.
    */
   outro?: ReactNode;
   /**
@@ -781,8 +787,6 @@ export function CanonicalArena({
               Ranked passes nothing; React renders nothing; the column's DOM is
               byte-for-byte what it was. */}
           {guidance}
-          {/* The outro seam. Last, under the question the match ended on. */}
-          {outro}
         </div>
       </div>
 
@@ -875,13 +879,21 @@ export function CanonicalArena({
       {mobileDuel && timeline && <MobileBottomBar timeline={timeline} className="lg:hidden" />}
       {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
 
-      {/* RFX1 2B3 — the warning seam. LAST, so it lays over everything in the
-          shell, and `pointer-events-none` so it can never be what stops a
-          click: input is closed by `started_at`, not by this. */}
-      {warning && (
+      {/* RFX1 2B3 — the PRESENTATION OVERLAY. LAST, so it lays over everything
+          in the shell, and `pointer-events-none` so it can never be what stops
+          a click: input is closed by `started_at`, not by this.
+
+          The warning and the outro share the layer because they are the same
+          kind of thing — a beat over the arena — and because they are mutually
+          exclusive by construction: a medium warning announces a round that is
+          about to open, and the outro only exists once the match is over. The
+          outro is rendered second, so were they ever to coincide the ending
+          would win, which is the correct precedence. */}
+      {(warning || outro) && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center
                         justify-center" data-testid="ranked-warning-layer">
           {warning}
+          {outro}
         </div>
       )}
     </div>

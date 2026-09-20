@@ -54,6 +54,9 @@ import { useSearchParams } from "react-router-dom";
 import { Frame } from "@/pages/quiz-ranked/QuizRankedPage";
 import { RankedRouteHeader } from "@/pages/quiz-ranked/RankedRouteHeader";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
+import { MetaReflexSting } from "@/components/ranked-arena/MetaReflexSting";
+import { RankedFinalRoundWarning } from "@/components/ranked-arena/RankedFinalRoundWarning";
+import { RankedMatchOutro } from "@/components/ranked-arena/RankedMatchOutro";
 import {
   matchResultPointsV1, metaReflexSegmentMeta, metaReflexState, modulePointsBlock,
   privatePlayerV2, publicRoundV2, withPointsScoring,
@@ -839,6 +842,17 @@ export default function RankedShellProbe() {
   probe.progressionOff = params.get("progression") === "0";
   const end = params.get("end");
   const sfxQa = params.get("sfx") === "1";
+  /**
+   * RFX1 2B3 visual implementation — STATIC PREVIEW of the two beats that
+   * need a live round transition to appear on their own.
+   *
+   * `?beat=final` and `?beat=outro` mount the REAL components with real-shaped
+   * payloads so the composition can be reviewed and screenshotted. It is a
+   * preview, not a simulation: the beats' timing, their replay protection and
+   * their substitution for the module title are owned by the arena and are
+   * covered by `QuizRankedMatch.rfx1b3.test.tsx`, not by this.
+   */
+  const beatPreview = params.get("beat");
   probe.sfxStep = sfxQa ? sfxStep : 0;
   probe.end = sfxQa && sfxStep >= 5 ? "victory"
     : end === "victory" || end === "defeat" || end === "draw" ? end : null;
@@ -885,6 +899,42 @@ export default function RankedShellProbe() {
           Advance SFX fixture ({sfxStep}/5)
         </button>
       ) : null}
+      {beatPreview === "meta" && (
+        <div className="pointer-events-none fixed inset-0 z-[70]"
+          data-testid="probe-beat-preview">
+          {/* The element cannot be driven through the probe's own fixtures —
+              it needs a contract-valid `segment_state` the overlay cannot
+              fabricate — so this mounts it directly. To hold it still for a
+              screenshot, pause its animations from the browser rather than
+              from here: the probe declares no layout and no styling of its
+              own, which its own test enforces. */}
+          <MetaReflexSting variant="beat" durationMs={1800} cardCount={5}
+            reducedMotion={params.get("rm") === "1"} />
+        </div>
+      )}
+      {beatPreview === "final" && (
+        <div className="pointer-events-none fixed inset-0 z-[70]"
+          data-testid="probe-beat-preview">
+          <RankedFinalRoundWarning id="preview" visibleMs={1300}
+            viewerScore={24} opponentScore={22}
+            reducedMotion={params.get("rm") === "1"} />
+        </div>
+      )}
+      {beatPreview === "outro" && (
+        <div className="pointer-events-none fixed inset-0 z-[70]"
+          data-testid="probe-beat-preview">
+          <RankedMatchOutro reducedMotion={params.get("rm") === "1"} outro={{
+            id: "m1:outro", matchId: "m1",
+            result: (params.get("end") === "defeat" ? "loss"
+              : params.get("end") === "draw" ? "draw" : "win"),
+            terminalReason: params.get("forfeit") === "1" ? "forfeit" : "combat",
+            viewerScore: 24, opponentScore: 15,
+            viewerLabel: viewerName ?? "You", opponentLabel: "Opponent",
+            viewerRole: role ?? "mid", opponentRole: orole ?? "top",
+            finalRoundNumber: 10, ratingDelta: 18,
+          }} />
+        </div>
+      )}
       {params.get("frame") === "0" ? (
         <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
           matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}

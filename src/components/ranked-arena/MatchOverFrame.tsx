@@ -90,7 +90,11 @@ const DEFAULT_HEADING: Record<MatchResult, string> = {
 
 // Result-driven banner styling (never mode identity). Literal hex so the banner
 // reads premium under the /quiz theme AND in the dev inspector alike.
-const RESULT_STYLE: Record<MatchResult, { eyebrow: string; heading: string }> = {
+//
+// RFX1 2B3 — EXPORTED so the match outro, which hands over to this frame
+// 1200 ms later, takes the result's colour from here rather than restating it.
+// Two tables would be two authorities on what victory looks like.
+export const RESULT_STYLE: Record<MatchResult, { eyebrow: string; heading: string }> = {
   victory: { eyebrow: "text-[#f0d78c]", heading: "ranked-title text-[#f5e6b8]" },
   defeat: { eyebrow: "text-rose-300/80", heading: "text-rose-200" },
   draw: { eyebrow: "text-[#7fd6ef]", heading: "text-slate-100" },

@@ -97,8 +97,11 @@ import { useSpecialTransition } from "@/lib/ranked-core/flow/useSpecialTransitio
 import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
 import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
+import { RankedFinalRoundWarning } from "@/components/ranked-arena/RankedFinalRoundWarning";
+import { RankedMatchOutro } from "@/components/ranked-arena/RankedMatchOutro";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useRankedMatchSfx } from "./useRankedMatchSfx";
+import { useRankedPresentationSfx } from "./useRankedPresentationSfx";
 
 /** RD1 — the opponent's column reads the viewer's standing from the other side. */
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
@@ -382,17 +385,6 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     setRenderedRound(live);
   }
   const surfaceRound = renderedRound ?? live;
-  useRankedMatchSfx({
-    matchId,
-    viewerUserId,
-    publicRound: m.publicRound,
-    surfaceRound,
-    lastResolved: m.lastResolved,
-    lastSegmentRoundNumber: m.lastSegmentRoundNumber,
-    revealHold: m.revealHold,
-    result: m.result,
-  });
-
   // ── RFX1 Phase 2B1 — media preparation ─────────────────────────────────
   // Tier 1 (chrome, both mascots), Tier 2 (the presented round) and Tier 3
   // (`upcomingRound`, under the previous round's reveal) all start from state
@@ -811,6 +803,40 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    */
   const suppressModuleTitle = specialWindowMs > 0;
 
+  /**
+   * SOUND, AFTER THE PRESENTATION COORDINATOR — deliberately.
+   *
+   * RFX1 2B3 moved this call down from its 2B2 position so it can be handed
+   * `outcomeMoment`, which is a fact about the PRESENTATION and not about any
+   * snapshot. It is still unconditional and still ahead of every early
+   * return, so the hook order is stable.
+   */
+  useRankedMatchSfx({
+    matchId,
+    viewerUserId,
+    publicRound: m.publicRound,
+    surfaceRound,
+    lastResolved: m.lastResolved,
+    lastSegmentRoundNumber: m.lastSegmentRoundNumber,
+    revealHold: m.revealHold,
+    result: m.result,
+    // The result sting belongs to the outro beat, not to the completion
+    // snapshot that claims it. `match_over` is included so a match that never
+    // presents an outro — a reconnect onto a finished one — cannot strand it.
+    outcomeMoment: presentationPhase === "match-outro" || m.phase === "match_over",
+  });
+  /**
+   * RFX1 2B3 — the three PRESENTATION beats' own events. A separate hook
+   * because none of them is in the snapshot stream the projection hook
+   * observes: the intro plays while `publicRound` is still null, and the two
+   * warnings are the coordinator's decision rather than a field.
+   */
+  useRankedPresentationSfx({
+    matchId,
+    introVisible: introEligible && entryIntroUp,
+    specialBeat,
+  });
+
   // Phase 2B seam: the authoritative next round, known but not yet presented.
   // Its media is what the preloader will prepare during the reveal.
   const nextRound = upcomingRound(m.publicRound, surfaceRound);
@@ -920,6 +946,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
                   opponent={combatants ? {
                     name: combatants.opponent.name, roleId: combatants.opponent.roleId } : null}
                   isBotMatch={m.publicRound?.playtest?.isBotMatch === true}
+                  // RFX1 2B3 — the secondary line is REAL MATCH DATA. Null on
+                  // an hp match and on any deployment predating RP1, and the
+                  // card omits the line rather than guessing a length.
+                  matchLength={m.publicRound?.scoring?.matchLength ?? null}
                   reducedMotion={reducedMotion} />
               ) : undefined }
           : { eyebrow: "Ranked Duel", message: "Recovering match…",
@@ -1523,28 +1553,20 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * is the owner's design decision and is not made here.
    */
   const warning = specialBeat?.kind === "final-round" ? (
-    <section data-testid="ranked-final-round-warning"
-      data-warning-id={specialBeat.id}
-      data-warning-ms={String(specialBeat.visibleMs)}
-      data-reduced-motion={reducedMotion ? "true" : "false"}
-      aria-live="polite"
-      className="ranked-special-warning rounded-lg border border-border/60 bg-card/90 px-6 py-4
-                 text-center font-mono text-sm uppercase tracking-[0.2em] text-foreground">
-      Final round
-      <span className="block text-xs text-muted-foreground">Get ready</span>
-    </section>
+    <RankedFinalRoundWarning
+      id={specialBeat.id}
+      visibleMs={specialBeat.visibleMs}
+      // THE ARENA'S OWN SETTLED TOTALS, passed through. `projectCombatants`
+      // fills these only for a points match, so an hp match hands the plate
+      // two undefineds and it prints the title alone rather than `0 - 0`.
+      viewerScore={combatants.player.score ?? null}
+      opponentScore={combatants.opponent.score ?? null}
+      reducedMotion={reducedMotion} />
   ) : null;
   return (
     <CanonicalArena view={view} chrome={chrome} warning={warning}
       outro={outro ? (
-        <section data-testid="ranked-match-outro" data-match-outro-id={outro.id}
-          data-match-outro-result={outro.result}
-          data-reduced-motion={reducedMotion ? "true" : "false"}
-          aria-live="polite"
-          className="ranked-match-outro rounded-lg border border-border/60 bg-card/80 px-4 py-3
-                     text-center font-mono text-sm uppercase tracking-[0.2em] text-muted-foreground">
-          Match complete
-        </section>
+        <RankedMatchOutro outro={outro} reducedMotion={reducedMotion} />
       ) : undefined} />
   );
 }

@@ -29,6 +29,24 @@ export interface RankedSfxObservation {
   ownAward: { pointsAwarded: number; speedBonusPoints: number } | null;
   terminal: boolean;
   terminalResult: "victory" | "defeat" | "draw" | null;
+  /**
+   * RFX1 2B3 — HAS THE PRESENTATION REACHED THE MOMENT THE OUTCOME IS
+   * ANNOUNCED?
+   *
+   * The result sting used to fire on `terminal` alone, which is the raw
+   * completion snapshot — and 2B3 made that strictly too early: the snapshot
+   * is what CLAIMS the outro, and the beat itself does not present until the
+   * result row and the final settlement have been fetched (`outro.ready`),
+   * after the final round's own reveal hold. So the sound landed during the
+   * last answer's verdict, under a still-live arena.
+   *
+   * The caller passes the presentation's own answer: the outro beat is on
+   * screen, or the end screen has mounted. Both are included deliberately —
+   * a match that ends with no outro at all (a completion this mount never saw
+   * live) must not be able to STRAND the sound, and a match that has one
+   * sounds at the beat rather than before it.
+   */
+  outcomeMoment: boolean;
 }
 
 export interface RankedSfxWatch extends RankedSfxObservation {
@@ -124,7 +142,8 @@ export function observeRankedSfx(
   }
 
   let terminalSounded = previous.terminalSounded;
-  if (current.terminal && current.terminalResult && previous.sawLive && !terminalSounded) {
+  if (current.terminal && current.terminalResult && previous.sawLive && !terminalSounded
+      && current.outcomeMoment) {
     emissions.push({
       event: `ranked.match.${current.terminalResult}` as SfxEvent,
       eventId: id(`match:${current.terminalResult}`),
@@ -172,6 +191,8 @@ export interface UseRankedMatchSfxInput {
   lastSegmentRoundNumber: number | null;
   revealHold: boolean;
   result: MatchResultView | null;
+  /** RFX1 2B3 — see `RankedSfxObservation.outcomeMoment`. */
+  outcomeMoment: boolean;
 }
 
 export function useRankedMatchSfx(input: UseRankedMatchSfxInput): void {
@@ -215,6 +236,7 @@ export function useRankedMatchSfx(input: UseRankedMatchSfxInput): void {
       } : null,
       terminal: round.matchOver,
       terminalResult: terminalResult(input.result, input.viewerUserId),
+      outcomeMoment: input.outcomeMoment,
     };
   }, [input]);
 

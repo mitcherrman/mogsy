@@ -485,6 +485,8 @@ function MetaReflexViewport({
    * coordinator supplied one (the dev harnesses). 0 means "not owed one",
    * which is how a reconnect into a running block skips it.
    */
+  const stingMs = entryPresentationMs && entryPresentationMs > 0
+    ? entryPresentationMs : STING_MS;
   const stinging = useEntrySting(blockKey, entryPresentationMs ?? STING_MS);
   if (!segmentState) {
     return (
@@ -522,7 +524,15 @@ function MetaReflexViewport({
       {/* Laid OVER a live, clickable card — never in front of it. See
           MetaReflexSting for why a blocking curtain would spend the player's
           own answer window. */}
-      {stinging && <MetaReflexSting />}
+      {stinging && (
+        /* RFX1 2B3 visual implementation — the sting is told how long it is
+           being HELD for, so its animation lasts as long as the element does.
+           Before this it ran a fixed 720 ms in-and-out cycle and came to rest
+           at `opacity: 0`, which left ~1080 ms of the Ranked 1800 ms beat
+           showing nothing at all. The card count is the block's own. */
+        <MetaReflexSting variant="beat" durationMs={stingMs}
+          cardCount={segmentState.challengeCount} />
+      )}
       {block?.contract === "meta_reflex" ? (
         <BlockPhase state={segmentState} cards={block.cards} actions={actions} skewMs={skewMs} />
       ) : (

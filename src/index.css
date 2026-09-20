@@ -3887,44 +3887,127 @@ html.high-contrast * { text-shadow: none !important; }
    META enters from the left, REFLEX from the right; they reach the centre at
    the same instant, hold, then leave along the reverse paths. ~720ms total.
    --------------------------------------------------------------------------- */
+/* RFX1 2B3 VISUAL IMPLEMENTATION — THE PERCENTAGES ARE THE FIX.
+
+   These three keyframes used to be a complete in-AND-OUT cycle: in by 30%,
+   hold to 62%, back off-axis to `opacity: 0` at 100%. At the sting's own
+   720 ms that was right — it was decoration over a LIVE card and had to get
+   out of the way fast. RFX1 2B3 then held the ELEMENT for 1800 ms without
+   changing this, and `animation-fill-mode: both` holds the LAST keyframe: so
+   ~1080 ms of every Ranked mode-shift beat was a mounted, fully transparent
+   overlay. The duration tests could not see it; they assert milliseconds, not
+   pixels.
+
+   Rewritten as ENTER -> READABLE HOLD -> LEAVE, expressed in percentages of
+   whatever duration the caller supplies. At 720 ms the shape is close enough
+   to the original that the Daily is visually unchanged; at 1800 ms the hold
+   simply gets longer, which is exactly what a mode-shift beat wants. There is
+   no pulse and no counter: the player is given time to read and switch modes,
+   which is the whole point of the beat.
+
+       0-18%    enter
+      18-82%    HELD, centred, fully opaque   <- this is the part that was missing
+     82-100%    leave, into card 1
+
+   `--mr-sting-ms` is published by the component from the coordinator's own
+   window and DEFAULTS to 720ms, so every caller that supplies no duration —
+   the Daily, every harness — is byte-identical. */
 @keyframes mr-sting-left {
   0%   { transform: translateX(-140%); opacity: 0; }
-  30%  { transform: translateX(0);     opacity: 1; }
-  62%  { transform: translateX(0);     opacity: 1; }
-  100% { transform: translateX(-140%); opacity: 0; }
+  18%  { transform: translateX(0);     opacity: 1; }
+  82%  { transform: translateX(0);     opacity: 1; }
+  100% { transform: translateX(-24%);  opacity: 0; }
 }
 @keyframes mr-sting-right {
   0%   { transform: translateX(140%);  opacity: 0; }
-  30%  { transform: translateX(0);     opacity: 1; }
-  62%  { transform: translateX(0);     opacity: 1; }
-  100% { transform: translateX(140%);  opacity: 0; }
+  18%  { transform: translateX(0);     opacity: 1; }
+  82%  { transform: translateX(0);     opacity: 1; }
+  100% { transform: translateX(24%);   opacity: 0; }
 }
 @keyframes mr-sting-mark {
   0%   { transform: scale(0.4); opacity: 0; }
-  34%  { transform: scale(1);   opacity: 1; }
-  62%  { transform: scale(1);   opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0; }
+  20%  { transform: scale(1);   opacity: 1; }
+  82%  { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(1.1); opacity: 0; }
+}
+@keyframes mr-sting-subline {
+  0%   { opacity: 0; transform: translateY(4px); }
+  26%  { opacity: 1; transform: none; }
+  82%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: none; }
+}
+@keyframes mr-sting-scrim {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  84%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
-.mr-sting__word--left  { animation: mr-sting-left  720ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-.mr-sting__word--right { animation: mr-sting-right 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-.mr-sting__mark        { animation: mr-sting-mark  720ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mr-sting__word--left  { animation: mr-sting-left    var(--mr-sting-ms, 720ms) cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mr-sting__word--right { animation: mr-sting-right   var(--mr-sting-ms, 720ms) cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mr-sting__mark        { animation: mr-sting-mark    var(--mr-sting-ms, 720ms) cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mr-sting__subline     { animation: mr-sting-subline var(--mr-sting-ms, 720ms) ease-out both; }
+.mr-sting__scrim       { animation: mr-sting-scrim   var(--mr-sting-ms, 720ms) ease-out both; }
+
+/* THE MEDIUM BEAT'S SCRIM. Background only, behind the wordmark, so the arena
+   dims and the beat reads as an interstitial rather than as a header
+   decoration. `pointer-events` is already none on the whole overlay. */
+.mr-sting__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 5, 12, 0.55);
+  pointer-events: none;
+}
+.mr-sting__band {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.mr-sting__subline {
+  position: relative;
+  margin-top: 0.6rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ranked-muted);
+  text-align: center;
+}
+@media (min-width: 640px) {
+  .mr-sting__subline { font-size: 0.75rem; }
+}
 
 /* Reduced motion: no directional travel at all. The wordmark simply appears
    centred and fades — the same information, none of the movement. */
+/* Reduced motion: no directional travel at all. The wordmark simply appears
+   centred and fades — the same information, the same DURATION, none of the
+   movement. RFX1 2B3: this keyframe had the identical opacity-0 tail as the
+   three above and left ~1180 ms of an 1800 ms beat dark; it now holds too,
+   and it is driven by the same `--mr-sting-ms` so reduced motion never
+   changes the pacing. Both the OS query and the app's own Settings ->
+   Reduce Motion (`[data-reduced-motion]`) answer it. */
+@keyframes mr-sting-fade {
+  0%   { opacity: 0; }
+  14%  { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { opacity: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
-  @keyframes mr-sting-fade {
-    0%   { opacity: 0; }
-    30%  { opacity: 1; }
-    62%  { opacity: 1; }
-    100% { opacity: 0; }
-  }
   .mr-sting__word--left,
   .mr-sting__word--right,
-  .mr-sting__mark {
-    animation: mr-sting-fade 620ms linear both;
+  .mr-sting__mark,
+  .mr-sting__subline {
+    animation: mr-sting-fade var(--mr-sting-ms, 720ms) linear both;
     transform: none;
   }
+}
+.mr-sting[data-reduced-motion="true"] .mr-sting__word--left,
+.mr-sting[data-reduced-motion="true"] .mr-sting__word--right,
+.mr-sting[data-reduced-motion="true"] .mr-sting__mark,
+.mr-sting[data-reduced-motion="true"] .mr-sting__subline {
+  animation: mr-sting-fade var(--mr-sting-ms, 720ms) linear both;
+  transform: none;
 }
 
 /*  Academy Welcome — the cinematic tome (HI1-C) 
@@ -15342,26 +15425,128 @@ html.hub-commons-in-view .hextech-ambience-layer {
    `QuizRankedMatch`, in server time. Every animation below is an ENTRANCE —
    nothing plays on exit, because an exit animation would be exactly the frame
    budget the first question is owed. */
-.ranked-entry-intro {
+/* ══ RFX1 2B3 VISUAL IMPLEMENTATION — THE RANKED BEAT VOCABULARY ══════════
+   ONE language, THREE intensities. The intensity is carried by four dials and
+   a beat's class is defined by which of them it turns:
+
+     dial        major (intro, outro)      medium (warnings)     minor (title)
+     scrim       0.78                      0.55                  none
+     frame       gold hairlines, no box    one navy plate        none
+     title       clamp(2rem, 7vw, 3.25rem) clamp(1.375rem,5vw,2rem)  14px
+     mascots     BOTH, inward              never                 never
+
+   That last row is the rule that keeps the hierarchy legible with no other
+   cue: a player learns in one match that "both ghosts on screen" means the
+   duel is starting or ending.
+
+   EVERYTHING HERE IS PRESENTATION. Not one rule can hold a beat up: the
+   intro's exit instant is `started_at − ENTRY_MIN_LEAD_MS`, the warnings'
+   is `useSpecialTransition`'s timer and the outro's is `MATCH_OUTRO_MS` —
+   all in `QuizRankedMatch`, all in server time. Every animation below is
+   bounded by its own duration and none of them gates anything. */
+
+.ranked-beat {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1.25rem 1rem 1.1rem;
+  justify-content: center;
+  width: 100%;
   text-align: center;
 }
-.ranked-entry-intro__eyebrow { letter-spacing: 0.22em; }
+/* The scrim deepens the academy backdrop the page already paints. Background
+   only — the overlay layer that hosts the warnings and the outro is already
+   `pointer-events: none`, and the intro occupies the arena's own placeholder
+   slot where there is nothing behind it to click. */
+.ranked-beat__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ranked-beat--major > .ranked-beat__scrim {
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgba(2,5,12,0.62) 0%, rgba(2,5,12,0.86) 100%);
+}
+.ranked-beat--medium > .ranked-beat__scrim { background: rgba(2, 5, 12, 0.55); }
 
-/* The board is a THREE-TRACK GRID with a fixed centre, not a flex row: the two
-   seats get identical space whatever their names are, so a long display name
-   on one side cannot shift the VS off the card's centre line. */
+.ranked-beat__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 0.6rem;
+}
+/* MAJOR BEATS USE RULES, NOT BOXES. Dropping the `.ranked-panel` chrome the
+   2B2 card wore is what lets the duel chamber do the framing — which is the
+   point of the scrim. The gradient is the panel's own top hairline, reused. */
+.ranked-beat__rule {
+  display: block;
+  width: min(22rem, 76%);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240, 215, 140, 0.8), transparent);
+  opacity: 0.9;
+}
+.ranked-beat__title {
+  margin: 0;
+  text-transform: uppercase;
+  line-height: 1.05;
+  font-weight: 700;
+}
+.ranked-beat--major .ranked-beat__title {
+  font-size: clamp(1.75rem, 8vw, 2.25rem);
+  letter-spacing: 0.14em;
+}
+.ranked-beat--medium .ranked-beat__title {
+  font-size: clamp(1.375rem, 5.5vw, 1.75rem);
+  letter-spacing: 0.18em;
+}
+/* The secondary line: real match data, never client state. */
+.ranked-beat__meta {
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ranked-muted);
+}
+.ranked-beat__dash {
+  margin-inline: 0.45em;
+  color: var(--ranked-vellum-dark);
+  font-weight: 400;
+}
+@media (min-width: 640px) {
+  .ranked-beat__inner { gap: 0.85rem; }
+  .ranked-beat--major .ranked-beat__title { font-size: clamp(2rem, 4.4vw, 3.25rem); }
+  .ranked-beat--medium .ranked-beat__title { font-size: clamp(1.5rem, 2.4vw, 2rem); }
+  .ranked-beat__meta { font-size: 0.75rem; }
+  .ranked-beat__rule { width: min(30rem, 68%); }
+}
+
+/* ── THE RANKED DUEL INTRO — the opening major beat ──────────────────────
+   It OCCUPIES THE PRESENTATION REGION. The 2B2 card measured 693x327 inside
+   a 1440x900 arena — 36% of the height, pinned to the top, with ~560px of
+   lit duel chamber empty underneath — because it was a capped `.ranked-panel`
+   in a slot that does not stretch. The min-height below is what makes the
+   beat fill the room it is in, and it is a `min()` against the viewport so it
+   can never be the thing that introduces a scroll. */
+.ranked-entry-intro {
+  min-height: min(30rem, calc(100svh - 13rem));
+  padding: 1.25rem 1rem;
+  gap: 0;
+}
 .ranked-entry-intro__board {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* A THREE-TRACK GRID WITH A FIXED CENTRE, not a flex row: the two seats get
+     identical space whatever their names are, so a long display name on one
+     side cannot shift the VS off the card's centre line. `minmax(0, 1fr)` is
+     load-bearing — a bare `1fr` floors at the content's min width and a long
+     unbroken name would widen the track and push the centre across. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: end;
   gap: 0.5rem;
   width: 100%;
   max-width: 34rem;
+  margin-top: 0.9rem;
 }
 .ranked-entry-intro__seat {
   position: relative;
@@ -15381,7 +15566,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
 .ranked-entry-intro__figure {
   position: relative;
   display: block;
-  width: 4.5rem;
+  width: 5rem;
   aspect-ratio: 6 / 7;
 }
 .ranked-entry-intro__name {
@@ -15399,128 +15584,316 @@ html.hub-commons-in-view .hextech-ambience-layer {
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+/* THE VS MEDALLION. A ring drawn in CSS — there is no seal asset to use here
+   (`play-seal.png` has the word PLAY baked into the artwork) and this phase
+   commissions none. */
 .ranked-entry-intro__versus {
   align-self: center;
-  padding-bottom: 1.25rem;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 182, 111, 0.45);
+  background: radial-gradient(70% 70% at 50% 40%, rgba(201, 168, 76, 0.16), transparent 76%);
+  box-shadow: 0 0 22px -6px rgba(201, 168, 76, 0.5);
+}
+.ranked-entry-intro__versus-word {
   font-family: "Cinzel", "Trajan Pro", Georgia, serif;
-  font-size: 1.125rem;
-  letter-spacing: 0.12em;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
   color: var(--ranked-gold-bright);
   text-shadow: 0 0 18px rgba(201, 168, 76, 0.35);
 }
 .ranked-entry-intro__status {
-  font-size: 0.8125rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
   color: var(--ranked-muted);
-  min-height: 1.25rem;
+  min-height: 1.1rem;
 }
-
 @media (min-width: 640px) {
-  /* CAPPED AND CENTRED, so it reads as a card rather than a banner across a
-     1440px arena. It stays in the placeholder's slot — the top of the shell,
-     where the question itself is about to appear — so the reveal is a swap in
-     place and nothing travels. */
   .ranked-entry-intro {
-    gap: 1rem;
-    padding: 2rem 1.5rem 1.75rem;
-    max-width: 44rem;
-    margin-inline: auto;
+    /* Measured: at 1440x900 a 34rem floor left the composition's centre at
+       31% of the viewport with ~350px of unused chamber under it. 44rem puts
+       it near 40% and fills the presentation region, and the `calc` term is
+       what stops it ever asking for more room than the shell has. */
+    min-height: min(44rem, calc(100vh - 10rem));
+    padding: 2rem 1.5rem;
   }
-  .ranked-entry-intro__board { gap: 1.25rem; }
-  .ranked-entry-intro__figure { width: 8.5rem; }
-  .ranked-entry-intro__name { font-size: 1rem; }
+  .ranked-entry-intro__board { gap: 1.5rem; max-width: 46rem; margin-top: 1.5rem; }
+  .ranked-entry-intro__figure { width: 11rem; }
+  .ranked-entry-intro__name { font-size: 1.0625rem; }
   .ranked-entry-intro__role { font-size: 0.75rem; }
-  .ranked-entry-intro__versus { font-size: 1.75rem; padding-bottom: 2rem; }
-  .ranked-entry-intro__status { font-size: 0.875rem; }
+  .ranked-entry-intro__versus { width: 5rem; height: 5rem; margin-bottom: 2.1rem; }
+  .ranked-entry-intro__versus-word { font-size: 1.625rem; }
+  .ranked-entry-intro__status { font-size: 0.8125rem; }
 }
 
-/* Entrance only, and short: the two seats arrive from their own sides and the
-   card settles. `motion-safe` is Tailwind's OS query; the app's own Settings →
-   Reduce Motion switch is read in React (`useReducedMotionPreference`) and
-   drops `data-reduced-motion` on the card, which the block below answers. */
+/* Entrance only, and it settles well inside the 2000 ms guaranteed window:
+   scrim 180, seats 320 from their own sides, title 300, medallion 380. The
+   medallion then BREATHES once — the single addition whose whole job is to
+   give the long static hold something alive in it. Nothing plays on exit: an
+   exit animation would be exactly the frame budget the first question is
+   owed. `prefers-reduced-motion` is the OS query; the app's own Settings →
+   Reduce Motion drops `data-reduced-motion` and the block after it answers. */
 @media (prefers-reduced-motion: no-preference) {
-  .ranked-entry-intro { animation: ranked-entry-intro-in 260ms ease-out both; }
+  .ranked-entry-intro > .ranked-beat__scrim { animation: ranked-beat-scrim-in 180ms ease-out both; }
+  .ranked-entry-intro .ranked-beat__title { animation: ranked-beat-title-in 300ms 200ms ease-out both; }
+  .ranked-entry-intro .ranked-beat__rule { animation: ranked-beat-rule-in 320ms 260ms ease-out both; }
   .ranked-entry-intro__seat[data-side="player"] {
-    animation: ranked-entry-seat-left 320ms ease-out both;
+    animation: ranked-entry-seat-left 320ms 120ms ease-out both;
   }
   .ranked-entry-intro__seat[data-side="opponent"] {
-    animation: ranked-entry-seat-right 320ms ease-out both;
+    animation: ranked-entry-seat-right 320ms 120ms ease-out both;
   }
   .ranked-entry-intro__versus {
-    animation: ranked-entry-versus 380ms 120ms ease-out both;
+    animation: ranked-entry-versus 380ms 340ms ease-out both,
+               ranked-entry-versus-breathe 900ms 760ms ease-in-out both;
   }
+  .ranked-entry-intro .ranked-beat__meta { animation: ranked-beat-title-in 300ms 420ms ease-out both; }
 }
-/* The app switch. Same card, same words, same information — only the travel
-   goes. It is a plain fade, so the card still arrives rather than appearing
-   with no transition at all. */
+/* The app switch. Same beat, same words, same information, same duration —
+   only the travel goes. A plain fade, so it still ARRIVES rather than
+   appearing with no transition at all. */
 .ranked-entry-intro[data-reduced-motion="true"],
-.ranked-entry-intro[data-reduced-motion="true"] .ranked-entry-intro__seat,
-.ranked-entry-intro[data-reduced-motion="true"] .ranked-entry-intro__versus {
-  animation: ranked-entry-intro-fade 180ms ease-out both;
+.ranked-entry-intro[data-reduced-motion="true"] * {
+  animation: ranked-beat-fade 180ms ease-out both !important;
 }
-@keyframes ranked-entry-intro-in {
-  from { opacity: 0; transform: scale(0.985); }
+
+@keyframes ranked-beat-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ranked-beat-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ranked-beat-title-in {
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes ranked-entry-intro-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes ranked-beat-rule-in {
+  from { opacity: 0; transform: scaleX(0.4); }
+  to { opacity: 0.9; transform: none; }
 }
 @keyframes ranked-entry-seat-left {
-  from { opacity: 0; transform: translateX(-10px); }
+  from { opacity: 0; transform: translateX(-14px); }
   to { opacity: 1; transform: none; }
 }
 @keyframes ranked-entry-seat-right {
-  from { opacity: 0; transform: translateX(10px); }
+  from { opacity: 0; transform: translateX(14px); }
   to { opacity: 1; transform: none; }
 }
 @keyframes ranked-entry-versus {
   from { opacity: 0; transform: scale(0.8); }
   to { opacity: 1; transform: none; }
 }
+@keyframes ranked-entry-versus-breathe {
+  0%   { box-shadow: 0 0 22px -6px rgba(201, 168, 76, 0.5); }
+  50%  { box-shadow: 0 0 34px -4px rgba(201, 168, 76, 0.72); }
+  100% { box-shadow: 0 0 22px -6px rgba(201, 168, 76, 0.5); }
+}
 
-/* ── RFX1 2B3 — the match-complete beat ──────────────────────────────────
-   A NEUTRAL PLACEHOLDER. The outro's actual composition and copy are the
-   owner's design decision and are not made here; this exists so the
-   lifecycle is visible and testable, and it is deliberately unstyled beyond
-   sitting where the guidance seam sits.
-
-   The one rule that IS this phase's: REDUCE MOTION CHANGES THE ANIMATION,
-   NEVER THE PACING. The beat is `MATCH_OUTRO_MS` either way — a player who
-   turned motion off gets the same match-complete presentation, as a fade. */
+/* ── THE FINAL ROUND BEAT — a medium plate ───────────────────────────────
+   Sized against what it replaces: the 2B3 placeholder was 167x67 px in
+   `font-mono` with no scrim, i.e. 0.86% of a 1440x900 viewport, and read as a
+   developer tooltip. The plate is ~4x that area on desktop and ~2.7x on a
+   phone, and the scrim is what actually creates the stakes. */
+.ranked-final-round {
+  position: absolute;
+  inset: 0;
+  justify-content: flex-start;
+}
+/* 38% rather than dead centre: centring it puts the plate ON the answer
+   tablets, which obscures the content of the round it is announcing. 38% sits
+   it over the question's headline area, which is where the eye already is. */
+.ranked-final-round__plate {
+  position: relative;
+  z-index: 1;
+  /* Not dead centre: centring puts the plate ON the answer tablets, which
+     obscures the content of the round it is announcing. Measured at 1440x900,
+     34vh clears the module header strip above and the prompt below. */
+  margin-top: 34vh;
+  width: min(20rem, calc(100% - 2.5rem));
+  padding: 1rem 1.25rem 1.1rem;
+  border-radius: 0;
+  /* A straight-sided crop of the navy banner cloth the arena rails already
+     draw and the chrome already preloaded: the mid-band, where the cloth's
+     sides are straight, so a rectangle matches the silhouette exactly. */
+  background-image:
+    linear-gradient(rgba(5, 10, 20, 0.34), rgba(5, 10, 20, 0.34)),
+    url("/assets/ranked/navy-banner2-768w.webp");
+  background-repeat: no-repeat, no-repeat;
+  /* Zoomed well INTO the cloth: at 108% the crop still showed the banner's
+     two gold side trims and the plate read as a little scroll rather than as
+     a field of cloth. 260%/600% lands inside the flat middle, where the only
+     thing left is the weave and the sheen. */
+  background-size: 100% 100%, 260% 600%;
+  background-position: 50% 50%, 50% 48%;
+  box-shadow: 0 0 26px -6px rgba(201, 168, 76, 0.32), 0 18px 40px -20px rgba(0, 0, 0, 0.9);
+}
+.ranked-final-round__title { color: #f5e6b8; }
+.ranked-final-round__score {
+  margin-top: 0.4rem;
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ranked-text);
+  letter-spacing: 0.04em;
+}
+.ranked-beat__rule--top { margin-bottom: 0.7rem; }
+.ranked-beat__rule--bottom { margin-top: 0.7rem; }
+.ranked-final-round .ranked-beat__rule { width: 100%; }
+@media (min-width: 640px) {
+  .ranked-final-round__plate {
+    margin-top: 34vh;
+    width: min(28.75rem, calc(100% - 4rem));
+    padding: 1.25rem 2rem 1.35rem;
+  }
+  .ranked-final-round__score { font-size: 2rem; }
+}
 @media (prefers-reduced-motion: no-preference) {
-  .ranked-match-outro { animation: ranked-match-outro-in 260ms ease-out both; }
+  .ranked-final-round > .ranked-beat__scrim { animation: ranked-beat-scrim-in 180ms ease-out both; }
+  .ranked-final-round__plate { animation: ranked-plate-open 220ms 80ms cubic-bezier(0.2,0.7,0.2,1) both; }
+  .ranked-final-round .ranked-beat__title { animation: ranked-beat-title-in 200ms 260ms ease-out both; }
+  .ranked-final-round__score { animation: ranked-beat-fade 220ms 420ms ease-out both; }
 }
-.ranked-match-outro[data-reduced-motion="true"] {
-  animation: ranked-match-outro-fade 180ms ease-out both;
+.ranked-final-round[data-reduced-motion="true"],
+.ranked-final-round[data-reduced-motion="true"] * {
+  animation: ranked-beat-fade 180ms ease-out both !important;
 }
-@keyframes ranked-match-outro-in {
-  from { opacity: 0; transform: translateY(6px); }
+@keyframes ranked-plate-open {
+  from { opacity: 0; transform: scaleX(0.4); }
   to { opacity: 1; transform: none; }
 }
-@keyframes ranked-match-outro-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+
+/* ── THE MATCH OUTRO — the closing major beat ────────────────────────────
+   Full-shell, deeper scrim than the medium beats, both mascots, and the SAME
+   centre axis as the intro: the score lands where the VS was. */
+.ranked-match-outro {
+  position: absolute;
+  inset: 0;
+  padding: 1rem;
+}
+/* DEEPER THAN THE INTRO'S, and the difference is not decoration.
+   The intro sits over the arena's empty placeholder — there is nothing behind
+   it but the chamber, and letting the chamber read is the point. The outro
+   sits over a LIVE arena: a question, four answer tablets and two rails. At
+   the shared major value (0.62 at the centre) the tablets read straight
+   through the result word, measured at 390x844. The duel is being put away,
+   so it goes dark — but not black: the final parchment stays visible
+   underneath, which is what makes this a transition rather than a cut. */
+.ranked-match-outro > .ranked-beat__scrim {
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgba(2,5,12,0.92) 0%, rgba(2,5,12,0.97) 100%);
+}
+/* DELIBERATELY SMALLER THAN THE INTRO'S TITLE, and smaller than the result
+   word below it. The intro's title IS its beat; the outro's title is the
+   frame and the RESULT is the beat. Measured at both viewports: at the shared
+   major scale the two lines were within 4px of each other and the emphasis
+   read as flat. */
+/* TWO CLASSES, because `.ranked-beat--major .ranked-beat__title` is also two
+   and a single-class rule here silently lost to it — the size did not change
+   at all until this selector did. */
+.ranked-match-outro .ranked-match-outro__heading {
+  color: #efe4c4;
+  font-size: clamp(1.125rem, 5.5vw, 1.5rem);
+  letter-spacing: 0.2em;
+}
+@media (min-width: 640px) {
+  .ranked-match-outro .ranked-match-outro__heading {
+    font-size: clamp(1.375rem, 2.4vw, 1.875rem);
+  }
+}
+.ranked-match-outro__result {
+  margin-top: 0.15rem;
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+  font-size: clamp(2rem, 11vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+/* THE BOOKEND. Same three-track grid, same fixed centre, same `minmax(0,1fr)`
+   protection against a long name as the intro's board — so the two
+   compositions sit on one axis and the move from VS to score is the only
+   thing that changed. */
+.ranked-match-outro__board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 30rem;
+  margin-top: 0.75rem;
+}
+.ranked-match-outro__seat {
+  position: relative;
+  display: block;
+  width: 4rem;
+  aspect-ratio: 6 / 7;
+}
+.ranked-match-outro__seat[data-side="player"] { justify-self: end; }
+.ranked-match-outro__seat[data-side="opponent"] { justify-self: start; }
+.ranked-match-outro__glow {
+  position: absolute;
+  inset: -0.25rem;
+  border-radius: 1rem;
+  pointer-events: none;
+}
+.ranked-match-outro__score {
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+  font-size: clamp(1.75rem, 9vw, 2.25rem);
+  font-weight: 700;
+  color: var(--ranked-text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.ranked-match-outro__score-absent { display: block; width: 1.5rem; }
+@media (min-width: 640px) {
+  .ranked-match-outro__result { font-size: clamp(2.5rem, 5vw, 3.5rem); }
+  .ranked-match-outro__board { gap: 1.5rem; max-width: 42rem; margin-top: 1.1rem; }
+  .ranked-match-outro__seat { width: 8rem; }
+  .ranked-match-outro__score { font-size: clamp(2.25rem, 4vw, 3rem); }
 }
 
-/* ── RFX1 2B3 — the medium presentation beats ────────────────────────────
-   A NEUTRAL PLACEHOLDER for the Final Round warning. Its composition and
-   copy are the owner's design decision and are not made here; this exists
-   so the lifecycle is visible and testable.
+/* The sequence, inside MATCH_OUTRO_MS (1200 ms) and finished by ~960 ms so the
+   cross-fade into the end screen has room. Not everything at full emphasis
+   from frame 1: the duel ends, THEN you learn how.
 
-   The same rule as every other beat in this phase: REDUCE MOTION CHANGES THE
-   ANIMATION, NEVER THE PACING. The warning is held for its configured
-   duration either way — the coordinator owns that, not the animation. */
+     0    arena dims                       180
+     60   DUEL COMPLETE + rule             240
+     340  mascots settle INWARD            280   <- inverse of the intro's travel
+     420  result word scales up            320
+     560  score fades in (never counts up) 200
+     960  settled */
 @media (prefers-reduced-motion: no-preference) {
-  .ranked-special-warning { animation: ranked-special-warning-in 220ms ease-out both; }
+  .ranked-match-outro > .ranked-beat__scrim { animation: ranked-beat-scrim-in 180ms ease-out both; }
+  .ranked-match-outro__heading { animation: ranked-beat-title-in 240ms 60ms ease-out both; }
+  .ranked-match-outro .ranked-beat__rule { animation: ranked-beat-rule-in 240ms 120ms ease-out both; }
+  .ranked-match-outro__seat[data-side="player"] {
+    animation: ranked-outro-seat-left 280ms 340ms ease-out both;
+  }
+  .ranked-match-outro__seat[data-side="opponent"] {
+    animation: ranked-outro-seat-right 280ms 340ms ease-out both;
+  }
+  .ranked-match-outro__result { animation: ranked-outro-result 320ms 420ms ease-out both; }
+  .ranked-match-outro__score { animation: ranked-beat-fade 200ms 560ms ease-out both; }
+  .ranked-match-outro .ranked-beat__meta { animation: ranked-beat-fade 200ms 640ms ease-out both; }
 }
-.ranked-special-warning[data-reduced-motion="true"] {
-  animation: ranked-special-warning-fade 180ms ease-out both;
+.ranked-match-outro[data-reduced-motion="true"],
+.ranked-match-outro[data-reduced-motion="true"] * {
+  animation: ranked-beat-fade 180ms ease-out both !important;
 }
-@keyframes ranked-special-warning-in {
-  from { opacity: 0; transform: scale(0.96); }
+/* INWARD, where the intro's seats travelled OUT of. Same vocabulary, opposite
+   direction: anticipation vs resolution. */
+@keyframes ranked-outro-seat-left {
+  from { opacity: 0; transform: translateX(18px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes ranked-special-warning-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes ranked-outro-seat-right {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ranked-outro-result {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: none; }
 }
