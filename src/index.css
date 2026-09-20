@@ -6625,7 +6625,6 @@ html.high-contrast * { text-shadow: none !important; }
 
   .ranked-hero-mobile-stage > .ranked-hero-slide {
     grid-area: 1 / 1;
-    align-self: start;
   }
 
   .ranked-hero-mobile-stage > .ranked-hero-slide[data-mobile-active="false"] {
@@ -6709,6 +6708,179 @@ html.high-contrast * { text-shadow: none !important; }
   .lc-scroll[data-emphasis="true"] {
     --lc-scroll-tint: brightness(0.94) saturate(1);
     --lc-age: 0.7;
+  }
+}
+
+/* RHMobile1.4 — the role sheet remains the stage's height reference, while
+   the two reading sheets spend their new body room on type and ledger rhythm.
+   This is deliberately phone-only: tablet and desktop density are unchanged,
+   and the fixed-ratio roller caps above and below are never resized. */
+@media (max-width: 639.98px) {
+  .ranked-hero-slide[data-mobile-panel="standing"] .lc-scroll__content,
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-scroll__content {
+    justify-content: space-between;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] .lc-column-heading > div,
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-column-heading > div {
+    font-size: 12px;
+    letter-spacing: 0.22em;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] [data-testid="hub-ranked-tier"] {
+    margin-top: 6px;
+    font-size: 23px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] :is(
+    [data-testid="hub-ranked-rating"],
+    [data-testid="hub-ranked-rating-absent"]
+  ) {
+    font-size: 13px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] :is(
+    [data-testid="rank-progress"] > div,
+    [data-testid="hub-ranked-placement"] > p,
+    [data-testid="hub-ranked-standing-absent"]
+  ) {
+    font-size: 12px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] [data-testid="hero-recent-matches"] {
+    margin-top: 16px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] .lc-role-mastery {
+    margin-top: 14px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] [data-testid="role-mastery-summary"] {
+    padding-block: 8px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] [data-testid="role-mastery-figure"] {
+    font-size: 28px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="standing"] [data-testid="hero-recent-empty"] {
+    font-size: 13px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-display-name"] {
+    font-size: 20px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-academy-tier"] {
+    font-size: 17px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-academy-standing"] {
+    margin-top: 4px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="academy-analytics-carousel"] {
+    font-size: 11.5px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="academy-analytics-caption"] {
+    font-size: 10px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="lobby-analytics-filters"] > div > span {
+    font-size: 9px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="lobby-analytics-filters"] button {
+    font-size: 9.5px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-personal-records"] {
+    margin-top: 10px;
+  }
+
+  .ranked-hero-slide:is([data-mobile-panel="standing"], [data-mobile-panel="record"])
+    .lc-ledger-title span {
+    font-size: 11.5px;
+  }
+
+  .ranked-hero-slide:is([data-mobile-panel="standing"], [data-mobile-panel="record"])
+    .lc-ledger-row {
+    padding-block: 3px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-ledger-row {
+    padding-block: 2px;
+  }
+
+  .ranked-hero-slide:is([data-mobile-panel="standing"], [data-mobile-panel="record"])
+    .lc-ledger-row > span:first-child {
+    font-size: 12px;
+  }
+
+  .ranked-hero-slide:is([data-mobile-panel="standing"], [data-mobile-panel="record"])
+    .lc-ledger-row > span:last-child {
+    font-size: 13.5px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-academy-actions {
+    gap: 4px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-academy-actions a {
+    min-height: 28px;
+    font-size: 12.5px;
+  }
+}
+
+/* The 360px reference has 104 fewer vertical pixels than the next phone
+   target. Keep the Academy record readable there without allowing its six-row
+   ledger to replace Choose Role as the stage's height reference. */
+@media (max-width: 374.98px) {
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-column-heading > div {
+    font-size: 11px;
+    letter-spacing: 0.24em;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-display-name"] {
+    font-size: 18px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-academy-tier"] {
+    font-size: 16px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-academy-standing"] {
+    margin-top: 4px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] [data-testid="hero-personal-records"] {
+    margin-top: 8px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-ledger-title span {
+    font-size: 10.5px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-ledger-row {
+    padding-block: 1px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-ledger-row > span:first-child {
+    font-size: 11px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-ledger-row > span:last-child {
+    font-size: 12.5px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-academy-actions {
+    gap: 2px;
+  }
+
+  .ranked-hero-slide[data-mobile-panel="record"] .lc-academy-actions a {
+    min-height: 24px;
+    font-size: 11.5px;
   }
 }
 

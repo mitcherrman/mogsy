@@ -176,12 +176,15 @@ describe("RankedLobbyHero — mobile shared parchment stage", () => {
     expect(screen.getByTestId("hero-play-column").dataset.mobileActive).toBe("true");
   });
 
-  it("overlaps the three sheets into one intrinsic-height grid row on mobile only", () => {
+  it("overlaps and stretches the three sheets into one equal-height grid row on mobile only", () => {
     const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
     expect(css).toMatch(/@media \(max-width: 1023px\)[\s\S]*?\.ranked-hero-mobile-stage > \.ranked-hero-slide\s*\{\s*grid-area: 1 \/ 1;/);
+    expect(css).not.toMatch(/\.ranked-hero-mobile-stage > \.ranked-hero-slide\s*\{[^}]*align-self:\s*start/);
     expect(css).toMatch(/\.ranked-hero-slide\[data-mobile-active="false"\][\s\S]*?visibility: hidden;/);
     expect(css).toMatch(/ranked-mobile-panel-from-right 180ms ease-out/);
     expect(css).toMatch(/prefers-reduced-motion: reduce[\s\S]*?ranked-hero-mobile-stage[\s\S]*?animation: none !important/);
+    expect(css).toMatch(/@media \(max-width: 639\.98px\)[\s\S]*?data-mobile-panel="standing"[\s\S]*?data-mobile-panel="record"/);
+    expect(css).toMatch(/data-mobile-panel="standing"\] \.lc-scroll__content,[\s\S]*?data-mobile-panel="record"\] \.lc-scroll__content[\s\S]*?justify-content: space-between/);
   });
 });
 

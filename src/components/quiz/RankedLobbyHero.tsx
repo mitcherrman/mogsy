@@ -709,7 +709,7 @@ export default function RankedLobbyHero({
         {/* mt-1, not mt-0.5. This is the ONE gap in the compacted column that
             measured too tight — the name landed 2px under the portrait's box.
             The pixels come back out of the rail's own padding instead. */}
-        <div className="mt-1 w-full text-center">
+        <div className="lc-academy-identity mt-1 w-full text-center">
           <div
             className="truncate text-lg font-extrabold tracking-tight"
             style={{ color: INK.strong, textShadow: INK.press }}
@@ -840,7 +840,7 @@ export default function RankedLobbyHero({
         {/* Same reason as the stakes row: at the deepest inset the two links
             are a hair wider than the writing area, so the row wraps rather
             than reaching past the sheet's margin. */}
-        <div className="mt-0.5 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
+        <div className="lc-academy-actions mt-0.5 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
           <Button
             asChild
             variant="ghost"
@@ -988,7 +988,7 @@ function RoleMasteryLedger({
       : "Not established";
 
   return (
-    <div className="mt-2.5 w-full" data-testid="role-mastery-ledger" data-role={role}>
+    <div className="lc-role-mastery mt-2.5 w-full" data-testid="role-mastery-ledger" data-role={role}>
       <LedgerTitle>Role mastery</LedgerTitle>
 
       {/* ── The summary band ─────────────────────────────────────────────
@@ -1236,7 +1236,7 @@ function ColumnHeading({
   if (ceremonial) {
     return (
       <div
-        className="w-full text-center"
+        className="lc-column-heading w-full text-center"
         data-testid="column-heading-ceremonial"
       >
         {/* One line at every supported width. A display title that breaks
@@ -1254,7 +1254,7 @@ function ColumnHeading({
   }
 
   return (
-    <div className="w-full">
+    <div className="lc-column-heading w-full">
       <div
         className={`text-[11px] font-extrabold uppercase tracking-[0.26em] ${
           align === "right" ? "text-center lg:text-right" : "text-center lg:text-left"
@@ -1305,7 +1305,7 @@ function LedgerTitle({
   icon?: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
 }) {
   return (
-    <div className="w-full">
+    <div className="lc-ledger-title w-full">
       <div className="flex items-center gap-1.5">
         {Icon && <Icon className="h-3 w-3 shrink-0" style={{ color: INK.accent }} />}
         <span
@@ -1339,7 +1339,7 @@ function LedgerRow({ label, value }: { label: string; value: React.ReactNode }) 
          still 22px tall, which is above the 20px the taller of the two lines
          actually needs. Shared with the role ledger in the LEFT column on
          purpose: one ledger rhythm, both sheets. */
-      className="flex items-baseline justify-between gap-2 border-b py-[1px] last:border-b-0"
+      className="lc-ledger-row flex items-baseline justify-between gap-2 border-b py-[1px] last:border-b-0"
       style={{ borderColor: INK.rule }}
     >
       <span
