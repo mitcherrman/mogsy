@@ -12,9 +12,10 @@ service-role key, which Lovable Cloud does not expose anyway. It posts to a
 dedicated `railway-analytics-ingest` edge function holding one narrow secret,
 and the privileged credential never leaves Lovable Cloud.
 
-**Not deployed.** It needs a random token in Railway, its SHA-256 digest in the
-edge function (B3.1a: no Lovable Cloud secret required), the function deployed,
-and the branch merged — none of which this environment can do (§21.8–21.9). Until then Railway records
+**Not deployed, and B3.2 found why.** The token is in Railway and the digest is
+pinned in the source, but the `railway-analytics-ingest` edge function itself
+**returns 404 in production** — the Lovable publish shipped the frontend and
+not the function. Deploying it is the single blocker; see **§22**. Until then Railway records
 every milestone durably and delivers nothing, which is the safe direction.
 **§20 is the design; §21 is the current state; FUNNEL1C is scoped in §20.13.**
 
@@ -3105,3 +3106,125 @@ genuine history and deleting it would falsify the record.
 ## 21.12 FUNNEL1C scope
 
 Unchanged from §20.13, and still not started.
+
+---
+
+# 22. FUNNEL1B3.2 — Smoke, merge, deploy, certify: BLOCKED AT STEP 1
+
+Stopped where the brief says to stop. **The edge function is not deployed**, so
+no smoke test could run and the backend was deliberately not merged.
+
+## 22.1 Step 1 — production edge function verification: FAILED
+
+The endpoint was derived from config rather than guessed:
+`supabase/config.toml` `project_id = kewgjwrzpzpeltwidvuc`, so
+`https://kewgjwrzpzpeltwidvuc.supabase.co/functions/v1/railway-analytics-ingest`.
+
+```
+POST .../functions/v1/railway-analytics-ingest
+  → HTTP 404  {"code":"NOT_FOUND","message":"Requested function was not found"}
+GET     → 404
+OPTIONS → 404
+```
+
+**This is not a URL mistake.** Four sibling functions on the identical base URL
+answer normally, which is what rules that out:
+
+| Function | Status |
+|---|---|
+| `railway-analytics-ingest` | **404 NOT_FOUND** |
+| `check-subscription` | 200 |
+| `purge-anonymous-users` | 401 |
+| `identity-link` | 401 |
+| `verify-gift` | 401 |
+
+A deployed function with no bearer would answer **401**, which is what B3.1a's
+own auth returns. A 404 means the Supabase edge runtime has no function by that
+name at all.
+
+### The source IS on main; only the deploy is missing
+
+| Check | Result |
+|---|---|
+| `cd07d67f` exists and is an ancestor of `origin/main` | ✅ |
+| `origin/main` | `884e96a5` — one commit later, `docs(gr1)`, **docs only** |
+| `PINNED_SECRET_SHA256` at `cd07d67f` | `30d4d910…a6e9` (64 lowercase hex — well formed) |
+| Same digest still at `origin/main` | ✅ unchanged |
+| `index.ts`, `contract.ts`, `contract.test.ts` on `origin/main` | ✅ all three |
+| `[functions.railway-analytics-ingest] verify_jwt = false` in `config.toml` on `origin/main` | ✅ |
+
+So the repository is correct and complete. **The Lovable publish deployed the
+frontend but did not deploy this edge function.** That is the entire blocker.
+
+The digest was NOT changed — verification did not prove it wrong, it never got
+far enough to test it, and the brief forbids touching it otherwise.
+
+## 22.2 Step 2 — smoke contract: NOT RUN
+
+Blocked twice over, and both are worth stating because fixing only the first
+does not unblock it:
+
+1. **There is no function to call** (§22.1).
+2. **This environment has no authorized access to the raw Railway secret.** It
+   is not in the shell environment, not in any local `.env`, and there is no
+   `railway` CLI here. Per the brief, no secret was invented, none was rotated,
+   and nothing was merged.
+
+Neither `RAILWAY_ANALYTICS_INGEST_SECRET` nor the pinned digest was printed,
+logged or transmitted at any point.
+
+## 22.3 Steps 3–7 — NOT RUN
+
+Backend `f43dcd7d` was **not merged**; `master` is untouched. Merging a live
+game backend whose only new outbound dependency returns 404 would queue every
+gameplay event into the outbox with nothing to deliver to — safe, but it would
+convert a five-minute deploy fix into a production change to reason about.
+
+Nothing was deployed, no gameplay was run, and no certification was attempted.
+
+## 22.4 What unblocks this
+
+**Deploy the edge function.** The repo needs no change.
+
+Either:
+
+- **Lovable Cloud** — deploy edge functions explicitly. A frontend publish
+  evidently does not do it; a function added by a git push from outside
+  Lovable's own editor may need to be picked up deliberately, or its deploy may
+  have failed with an error visible in the Lovable function logs.
+- **Supabase CLI**, if a project access token is available (neither the CLI nor
+  a token exists here):
+
+  ```bash
+  supabase functions deploy railway-analytics-ingest --project-ref kewgjwrzpzpeltwidvuc
+  ```
+
+Then confirm with one unauthenticated call — **401, not 404**:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  "https://kewgjwrzpzpeltwidvuc.supabase.co/functions/v1/railway-analytics-ingest" \
+  -H 'Content-Type: application/json' -d '{"events":[]}'
+```
+
+That single digit is the whole gate: **404 = not deployed; 401 = deployed and
+authenticating.** Everything from §21.9 step 6 onward follows unchanged once it
+reads 401.
+
+For step 2 the raw Railway token also has to reach whoever runs the smoke test
+— it is only in the Railway `web` service variables.
+
+## 22.5 Status
+
+| Step | State |
+|---|---|
+| 1 Edge function live | ❌ **404 — not deployed** |
+| 2 Smoke contract (401/422/stored/duplicate) | ⛔ blocked on 1, and on secret access |
+| 3 Merge backend `f43dcd7d` | ⛔ not done, deliberately |
+| 4 Railway deploy | ⛔ |
+| 5 Practice certification | ⛔ |
+| 6 Ranked certification | ⛔ |
+| 7 Freshness diagnostic | ⛔ (implemented and unit-tested; unverified in production) |
+
+**B3 is NOT closed.** Nothing regressed — the web funnel (§19) is live and
+unaffected, and the backend is exactly where §21 left it.
