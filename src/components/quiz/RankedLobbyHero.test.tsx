@@ -30,6 +30,7 @@ vi.mock("@/lib/audio/usePlaySfx", () => ({
 }));
 
 import RankedLobbyHero from "./RankedLobbyHero";
+import { mobileRankedSwipeDirection } from "./ranked-mobile-carousel";
 import { LOBBY_PANEL_WASH } from "./LobbyPanel";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -151,10 +152,36 @@ describe("RankedLobbyHero — mobile shared parchment stage", () => {
     expect(screen.getByTestId("hero-play-column").dataset.mobileActive).toBe("true");
   });
 
+  it("tracks the outer carousel with three bars, centred on Choose Your Role", () => {
+    usePhoneViewport();
+    renderHero();
+    const indicator = screen.getByTestId("ranked-mobile-stage-indicator");
+    expect(indicator).toHaveAttribute("aria-label", "Choose Your Role, panel 2 of 3");
+    expect([...indicator.children].map((mark) => mark.getAttribute("data-active")))
+      .toEqual(["false", "true", "false"]);
+  });
+
+  it("classifies horizontal swipes and rejects short or vertical gestures", () => {
+    expect(mobileRankedSwipeDirection(-80, 4)).toBe("next");
+    expect(mobileRankedSwipeDirection(80, 4)).toBe("previous");
+    expect(mobileRankedSwipeDirection(-47, 0)).toBeNull();
+    expect(mobileRankedSwipeDirection(-70, 100)).toBeNull();
+    expect(mobileRankedSwipeDirection(70, 56)).toBeNull();
+  });
+
+  it("keeps the inner role arrow independent from the outer carousel", () => {
+    usePhoneViewport();
+    renderHero();
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    expect(screen.getByTestId("hero-play-column").dataset.mobileActive).toBe("true");
+  });
+
   it("overlaps the three sheets into one intrinsic-height grid row on mobile only", () => {
     const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
     expect(css).toMatch(/@media \(max-width: 1023px\)[\s\S]*?\.ranked-hero-mobile-stage > \.ranked-hero-slide\s*\{\s*grid-area: 1 \/ 1;/);
     expect(css).toMatch(/\.ranked-hero-slide\[data-mobile-active="false"\][\s\S]*?visibility: hidden;/);
+    expect(css).toMatch(/ranked-mobile-panel-from-right 180ms ease-out/);
+    expect(css).toMatch(/prefers-reduced-motion: reduce[\s\S]*?ranked-hero-mobile-stage[\s\S]*?animation: none !important/);
   });
 });
 

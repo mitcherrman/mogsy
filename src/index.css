@@ -6617,6 +6617,10 @@ html.high-contrast * { text-shadow: none !important; }
      document order resume unchanged. */
   .ranked-hero-mobile-stage {
     gap: 0;
+    /* The browser keeps vertical panning native. Horizontal travel remains
+       available to Pointer Events, where the component applies its threshold
+       and axis-intent check without cancelling touchmove. */
+    touch-action: pan-y;
   }
 
   .ranked-hero-mobile-stage > .ranked-hero-slide {
@@ -6631,6 +6635,49 @@ html.high-contrast * { text-shadow: none !important; }
 
   .ranked-mobile-stage-controls {
     display: flex;
+  }
+
+  .ranked-mobile-stage-arrow {
+    background:
+      radial-gradient(circle at 42% 34%, rgba(44, 58, 79, 0.96), rgba(7, 16, 29, 0.94) 68%),
+      #07101d;
+    box-shadow:
+      0 8px 20px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(240, 215, 140, 0.2),
+      0 0 0 2px rgba(7, 16, 29, 0.7);
+    transition: border-color 140ms ease, color 140ms ease, transform 140ms ease;
+  }
+
+  .ranked-mobile-stage-arrow:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
+  .ranked-mobile-stage-indicator {
+    display: flex;
+  }
+
+  .ranked-mobile-stage-indicator__mark {
+    width: 0.45rem;
+    background: rgba(234, 215, 160, 0.38);
+    transition: width 160ms ease, background-color 160ms ease;
+  }
+
+  .ranked-mobile-stage-indicator__mark[data-active="true"] {
+    width: 1.25rem;
+    background: #d6b85f;
+    box-shadow: 0 0 7px rgba(214, 184, 95, 0.38);
+  }
+
+  .ranked-hero-mobile-stage[data-mobile-direction="previous"]
+    > .ranked-hero-slide[data-mobile-active="true"]
+    > .lc-scroll {
+    animation: ranked-mobile-panel-from-left 180ms ease-out both;
+  }
+
+  .ranked-hero-mobile-stage[data-mobile-direction="next"]
+    > .ranked-hero-slide[data-mobile-active="true"]
+    > .lc-scroll {
+    animation: ranked-mobile-panel-from-right 180ms ease-out both;
   }
 
   .lc-scroll {
@@ -6662,6 +6709,27 @@ html.high-contrast * { text-shadow: none !important; }
   .lc-scroll[data-emphasis="true"] {
     --lc-scroll-tint: brightness(0.94) saturate(1);
     --lc-age: 0.7;
+  }
+}
+
+@keyframes ranked-mobile-panel-from-left {
+  from { opacity: 0.72; transform: translateX(-12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ranked-mobile-panel-from-right {
+  from { opacity: 0.72; transform: translateX(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ranked-hero-mobile-stage > .ranked-hero-slide > .lc-scroll {
+    animation: none !important;
+  }
+
+  .ranked-mobile-stage-arrow,
+  .ranked-mobile-stage-indicator__mark {
+    transition: none;
   }
 }
 

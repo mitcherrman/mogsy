@@ -93,14 +93,38 @@ test.describe("shared three-parchment stage", () => {
     await previous.click();
     await expect(role).toHaveAttribute("data-mobile-active", "true");
 
+    const swipe = async (
+      from: { x: number; y: number },
+      to: { x: number; y: number },
+      pointerId: number,
+    ) => {
+      await page.getByTestId("ranked-hero").dispatchEvent("pointerdown", {
+        pointerId, pointerType: "touch", clientX: from.x, clientY: from.y,
+      });
+      await page.getByTestId("ranked-hero").dispatchEvent("pointerup", {
+        pointerId, pointerType: "touch", clientX: to.x, clientY: to.y,
+      });
+    };
+    await swipe({ x: 120, y: 320 }, { x: 205, y: 324 }, 11);
+    await expect(standing).toHaveAttribute("data-mobile-active", "true");
+    await swipe({ x: 120, y: 320 }, { x: 205, y: 324 }, 12);
+    await expect(standing).toHaveAttribute("data-mobile-active", "true");
+    await swipe({ x: 250, y: 320 }, { x: 165, y: 324 }, 13);
+    await expect(role).toHaveAttribute("data-mobile-active", "true");
+    await swipe({ x: 250, y: 250 }, { x: 175, y: 350 }, 14);
+    await swipe({ x: 250, y: 320 }, { x: 220, y: 322 }, 15);
+    await expect(role).toHaveAttribute("data-mobile-active", "true");
+    await swipe({ x: 250, y: 320 }, { x: 165, y: 324 }, 16);
+    await expect(record).toHaveAttribute("data-mobile-active", "true");
+
     const final = await page.evaluate(() => ({
+      heroHeight: document.querySelector<HTMLElement>("[data-testid='ranked-hero']")!.getBoundingClientRect().height,
       railTop: document.querySelector<HTMLElement>("[data-testid='quiz-category-rail']")!.getBoundingClientRect().top,
-      documentHeight: document.documentElement.scrollHeight,
       scrollY,
       horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
     }));
+    expect(final.heroHeight).toBe(initial.heroHeight);
     expect(final.railTop).toBe(initial.railTop);
-    expect(final.documentHeight).toBe(initial.documentHeight);
     expect(final.scrollY).toBe(initial.scrollY);
     expect(final.horizontalOverflow).toBe(0);
   });

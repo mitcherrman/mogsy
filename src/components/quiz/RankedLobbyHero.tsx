@@ -80,7 +80,7 @@
 
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, History, Shield } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -113,12 +113,21 @@ import {
 } from "@/lib/quiz/championKnowledge";
 import type { TrendsSource } from "@/components/quiz/trends/usePerformanceTrends";
 import type { TrendReport } from "@/lib/quiz/analyticsApi";
+import {
+  mobileRankedSwipeDirection,
+  type MobileRankedPanelDirection,
+} from "@/components/quiz/ranked-mobile-carousel";
 
 const PLACEMENT_TOTAL = 5;
 const MOBILE_RANKED_STAGE_QUERY = "(max-width: 1023px)";
 
 type MobileRankedPanel = "standing" | "role" | "record";
 const MOBILE_RANKED_PANELS: readonly MobileRankedPanel[] = ["standing", "role", "record"];
+const MOBILE_RANKED_PANEL_LABELS: Record<MobileRankedPanel, string> = {
+  standing: "Ranked Standing",
+  role: "Choose Your Role",
+  record: "Academy Record",
+};
 
 function useMobileRankedStage(): boolean {
   const [mobile, setMobile] = useState(() =>
@@ -358,8 +367,39 @@ export default function RankedLobbyHero({
   // follow their eye. Seeded from the saved role, then owned by the stage.
   const [browsedRole, setBrowsedRole] = useState<RankedRole>(rankedRole ?? "top");
   const [mobilePanel, setMobilePanel] = useState<MobileRankedPanel>("role");
+  const [mobilePanelDirection, setMobilePanelDirection] = useState<MobileRankedPanelDirection>("none");
   const mobileStage = useMobileRankedStage();
   const mobilePanelIndex = MOBILE_RANKED_PANELS.indexOf(mobilePanel);
+  const swipeStart = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+
+  const moveMobilePanel = (direction: Exclude<MobileRankedPanelDirection, "none">) => {
+    const step = direction === "previous" ? -1 : 1;
+    const nextIndex = mobilePanelIndex + step;
+    if (!mobileStage || nextIndex < 0 || nextIndex >= MOBILE_RANKED_PANELS.length) return;
+    setMobilePanelDirection(direction);
+    setMobilePanel(MOBILE_RANKED_PANELS[nextIndex]);
+  };
+
+  const onStagePointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if (!mobileStage || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, a, input, select, textarea, [role='button'], [role='radio']")) return;
+    swipeStart.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+  };
+
+  const clearStagePointer = () => {
+    swipeStart.current = null;
+  };
+
+  const onStagePointerUp = (event: React.PointerEvent<HTMLElement>) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start || start.pointerId !== event.pointerId) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    const direction = mobileRankedSwipeDirection(dx, dy);
+    if (direction) moveMobilePanel(direction);
+  };
 
   const mobilePanelProps = (panel: MobileRankedPanel) => {
     const inactive = mobileStage && mobilePanel !== panel;
@@ -380,6 +420,12 @@ export default function RankedLobbyHero({
     <section
       data-testid="ranked-hero"
       data-mobile-stage={mobileStage ? "true" : undefined}
+      data-mobile-direction={mobilePanelDirection}
+      aria-label={mobileStage ? `Ranked Hub carousel: ${MOBILE_RANKED_PANEL_LABELS[mobilePanel]}` : undefined}
+      aria-roledescription={mobileStage ? "carousel" : undefined}
+      onPointerDown={onStagePointerDown}
+      onPointerUp={onStagePointerUp}
+      onPointerCancel={clearStagePointer}
       className="ranked-hero-mobile-stage relative grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.9fr)] lg:gap-4 xl:gap-6"
     >
       {/* ══ LEFT — RANKED STANDING: "Where do I stand in Ranked?" ═════════
@@ -832,8 +878,8 @@ export default function RankedLobbyHero({
           type="button"
           aria-label="Previous Ranked panel"
           disabled={mobilePanelIndex === 0}
-          onClick={() => setMobilePanel(MOBILE_RANKED_PANELS[mobilePanelIndex - 1])}
-          className="pointer-events-auto ml-0.5 flex h-10 w-10 items-center justify-center rounded-full border border-[#8f6d2f]/45 bg-[#07101d]/75 text-[#ead7a0] shadow-lg backdrop-blur-sm disabled:pointer-events-none disabled:opacity-0"
+          onClick={() => moveMobilePanel("previous")}
+          className="ranked-mobile-stage-arrow pointer-events-auto ml-0.5 flex h-11 w-11 items-center justify-center rounded-full border border-[#c9a84c]/55 text-[#f0d78c] disabled:pointer-events-none disabled:opacity-0"
         >
           <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -841,11 +887,26 @@ export default function RankedLobbyHero({
           type="button"
           aria-label="Next Ranked panel"
           disabled={mobilePanelIndex === MOBILE_RANKED_PANELS.length - 1}
-          onClick={() => setMobilePanel(MOBILE_RANKED_PANELS[mobilePanelIndex + 1])}
-          className="pointer-events-auto mr-0.5 flex h-10 w-10 items-center justify-center rounded-full border border-[#8f6d2f]/45 bg-[#07101d]/75 text-[#ead7a0] shadow-lg backdrop-blur-sm disabled:pointer-events-none disabled:opacity-0"
+          onClick={() => moveMobilePanel("next")}
+          className="ranked-mobile-stage-arrow pointer-events-auto mr-0.5 flex h-11 w-11 items-center justify-center rounded-full border border-[#c9a84c]/55 text-[#f0d78c] disabled:pointer-events-none disabled:opacity-0"
         >
           <ChevronRight className="h-5 w-5" aria-hidden="true" />
         </button>
+      </div>
+
+      <div
+        className="ranked-mobile-stage-indicator pointer-events-none absolute bottom-3 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1.5 rounded-full border border-[#c9a84c]/35 bg-[#07101d]/85 px-2.5 py-1 shadow-lg backdrop-blur-sm lg:hidden"
+        aria-label={`${MOBILE_RANKED_PANEL_LABELS[mobilePanel]}, panel ${mobilePanelIndex + 1} of 3`}
+        data-testid="ranked-mobile-stage-indicator"
+      >
+        {MOBILE_RANKED_PANELS.map((panel) => (
+          <span
+            key={panel}
+            aria-hidden="true"
+            data-active={mobilePanel === panel ? "true" : "false"}
+            className="ranked-mobile-stage-indicator__mark h-1 rounded-full"
+          />
+        ))}
       </div>
     </section>
   );
