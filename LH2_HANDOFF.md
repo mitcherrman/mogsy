@@ -750,7 +750,7 @@ they are gameplay simulation state, not Mogzy quiz scoring.
 
 Backend commit: `0c33ef42` — `LH2.4 eradicate HP outcome scoring`.
 
-Frontend/handoff commit is recorded in the repository history for this section.
+Frontend/handoff commit: `ab23e50d` — `Document LH2.4 points-only scoring`.
 
 ### Next task
 
