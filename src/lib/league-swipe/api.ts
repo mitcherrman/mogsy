@@ -254,6 +254,19 @@ export type FactualPool = {
   prompt: string;
   unit: string;
   higherWins: boolean;
+  /**
+   * MRLVL1 — the champion level every `value` below is measured at, or null.
+   *
+   * A scaling champion-stat category (HP, AD, armor) is frozen at one of six
+   * breakpoints, and its entity values are the canonical stats AT THAT LEVEL,
+   * not base stats. Null for a category with no level: item cost, move speed,
+   * attack range.
+   *
+   * The level is part of the CATEGORY's identity, which is why there is no way
+   * to ask for a different one — the client picks a category and is served a
+   * pool already measured at its level. It can never disagree with the badge.
+   */
+  championLevel: number | null;
   entities: FactualEntity[];
 };
 
@@ -277,6 +290,7 @@ export async function fetchFactualPool(categoryId: string): Promise<FactualPool>
   const data = await getJson<{
     category_id?: string; prompt?: string; unit?: string;
     higher_wins?: boolean; entities?: FactualEntity[];
+    champion_level?: number | null;
   }>(`/api/meta-reflex/factual/pool/${encodeURIComponent(categoryId)}`);
   return {
     categoryId: data.category_id ?? categoryId,
@@ -284,6 +298,10 @@ export async function fetchFactualPool(categoryId: string): Promise<FactualPool>
     unit: data.unit ?? "",
     higherWins: data.higher_wins ?? true,
     entities: data.entities ?? [],
+    // `?? null`, never `?? 1`: a backend that predates MRLVL1 omits the key
+    // entirely, and the honest reading of an absent level is "this pool did
+    // not say", not "level 1". The badge is then simply not drawn.
+    championLevel: data.champion_level ?? null,
   };
 }
 
@@ -421,6 +439,14 @@ export type SwipeMatchup = {
   context?: Record<string, unknown>;
   explanation?: string;
   valueUnit?: string;
+  /**
+   * MRLVL1 — the champion level both sides are measured at, or absent/null.
+   *
+   * Copied from the category's pool, never chosen here: an opinion or a
+   * legacy stat matchup has no level and leaves it undefined, which renders no
+   * badge. One value per matchup, because it applies to both cards.
+   */
+  championLevel?: number | null;
 };
 
 export function makeOpinionMatchup(game: SwipeGameConfig, champions: string[]): SwipeMatchup {
@@ -503,7 +529,11 @@ export function makeItemCostMatchup(game: SwipeGameConfig, items: ItemMeta[]): S
  */
 export function makeFactualMatchup(
   pool: FactualEntity[],
-  opts: { prompt: string; unit: string; variant: string; statLabel: string },
+  opts: {
+    prompt: string; unit: string; variant: string; statLabel: string;
+    /** MRLVL1: the pool's frozen level, passed straight through. */
+    championLevel?: number | null;
+  },
 ): SwipeMatchup | null {
   if (pool.length < 2) return null;
   for (let attempt = 0; attempt < 25; attempt++) {
@@ -528,6 +558,7 @@ export function makeFactualMatchup(
         `${winner.label} has ${Number(winner.value).toLocaleString()}${opts.unit} ` +
         `to ${loser.label}'s ${Number(loser.value).toLocaleString()}${opts.unit}.`,
       valueUnit: opts.unit,
+      championLevel: opts.championLevel ?? null,
     };
   }
   return null;

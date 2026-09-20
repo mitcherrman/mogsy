@@ -26,6 +26,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
+import { ChampionLevelBadge } from "@/components/ChampionLevelBadge";
 import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
@@ -342,10 +343,7 @@ function BlockPhase({ state, cards, actions, skewMs }: {
         <MetaReflexHeader
           progress={`${revealing.challengeIndex + 1} / ${state.challengeCount}`}
         />
-        <p className="text-center text-base font-semibold sm:text-lg lg:text-xl"
-           data-testid="mr-prompt">
-          {revealedCard.prompt}
-        </p>
+        <CardPrompt card={revealedCard} />
         <SettledCard card={revealedCard} reveal={revealing} />
         <p className="min-h-[1.25rem] text-center text-xs text-muted-foreground"
            role="status" data-testid="mr-status">
@@ -363,9 +361,7 @@ function BlockPhase({ state, cards, actions, skewMs }: {
                           timerMs={state.cardTimerMs} />}
       />
 
-      <p className="text-center text-base font-semibold sm:text-lg lg:text-xl" data-testid="mr-prompt">
-        {current.prompt}
-      </p>
+      <CardPrompt card={current} />
 
       <div className="flex gap-2 sm:gap-3">
         <ChoiceCard card={current} side="left" disabled={locked}
@@ -414,6 +410,39 @@ function SettledCard({ card, reveal }: {
           disabled onPick={() => {}} reveal={stateFor(side)}
           picked={sideOf(side) === reveal.selectedCardId} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * The card's question: the frozen level, then the prompt.
+ *
+ * ONE component for both phases (answer and reveal) rather than two copies of
+ * the markup, because a card that grew a badge when it settled — or lost one —
+ * would read as the question having changed.
+ *
+ * MRLVL1: the badge sits ABOVE the prompt, centred, on its own line. Three
+ * reasons it is not anywhere else:
+ *
+ *  - not inside either ChoiceCard, because the level applies to BOTH champions
+ *    and a badge on a coin reads as a fact about that coin;
+ *  - not in `MetaReflexHeader`, whose right-hand slot is the per-card
+ *    countdown — a gold pill beside a gold clock is two numbers competing to
+ *    be the urgent one;
+ *  - above rather than below, so it is read before the question it qualifies.
+ *
+ * `ChampionLevelBadge` renders nothing for a null level, so a level-independent
+ * card and a pre-MRLVL1 segment produce exactly the markup they did before —
+ * no empty element, no reserved row, no layout change.
+ */
+function CardPrompt({ card }: { card: MetaReflexCard }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <ChampionLevelBadge level={card.championLevel} />
+      <p className="text-center text-base font-semibold sm:text-lg lg:text-xl"
+         data-testid="mr-prompt">
+        {card.prompt}
+      </p>
     </div>
   );
 }

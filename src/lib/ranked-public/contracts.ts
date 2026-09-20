@@ -347,6 +347,25 @@ interface MetaReflexCardBase {
   /** Server-issued positional tokens. The ONLY thing a v4 answer may name. */
   leftCardId: string;
   rightCardId: string;
+  /**
+   * MRLVL1 — the champion level the SERVER froze this card at, or null.
+   *
+   * A number (one of 1, 6, 11, 16, 18, 20) on a scaling champion-stat card:
+   * both champions are compared at that level, not at their base stats. Null
+   * on every card that has no level — move speed, attack range, item cost,
+   * item stats, recognition, classification — and on every segment frozen
+   * before MRLVL1, which has no such key at all.
+   *
+   * ONE value per CARD, never per side: a card compares two champions at the
+   * same level, and a per-side level would be a card with no answer.
+   *
+   * Nullable rather than optional so every construction site has to say what
+   * it means. The client never chooses, infers, defaults or recomputes it —
+   * absent stays absent, and is NOT read as level 1. It is safe to hold
+   * pre-reveal for the same reason `prompt` is: the level is part of the
+   * question, not part of the answer.
+   */
+  championLevel: number | null;
 }
 
 export interface MetaReflexMagnitudeCard extends MetaReflexCardBase {
@@ -1124,6 +1143,11 @@ function readMetaReflexCard(v: unknown, label: string): MetaReflexCard {
     entityKind: str(o.entity_kind, `${label}.entity_kind`),
     leftCardId: str(o.left_card_id, `${label}.left_card_id`),
     rightCardId: str(o.right_card_id, `${label}.right_card_id`),
+    // MRLVL1. `nnum` treats BOTH null and a missing key as null, which is what
+    // makes a pre-MRLVL1 frozen segment parse unchanged instead of throwing on
+    // a key its payload was never written with. A present non-number still
+    // fails loudly — degrading silently is how a level ends up guessed.
+    championLevel: nnum(o.champion_level, `${label}.champion_level`),
   };
   if (kind === "recognition") {
     return { ...base, kind, left: readArtSide(o.left, `${label}.left`),

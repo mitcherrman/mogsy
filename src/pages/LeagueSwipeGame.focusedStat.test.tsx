@@ -31,6 +31,11 @@ const HP_POOL: FactualPool = {
   prompt: "Which champion has more base health?",
   unit: " HP",
   higherWins: true,
+  // MRLVL1: these three fixtures model the pools as the PRE-MRLVL1 backend
+  // served them — no level, "base" wording. They stay that way on purpose, so
+  // the wiring below keeps being exercised against a level-less pool and the
+  // level cases live in LeagueSwipeGame.level.test.tsx.
+  championLevel: null,
   entities: [
     { id: "Sion", label: "Sion", value: 720, asset_path: null },
     { id: "Ahri", label: "Ahri", value: 590, asset_path: null },
@@ -42,6 +47,11 @@ const AD_POOL: FactualPool = {
   prompt: "Which champion has more base attack damage?",
   unit: " AD",
   higherWins: true,
+  // MRLVL1: these three fixtures model the pools as the PRE-MRLVL1 backend
+  // served them — no level, "base" wording. They stay that way on purpose, so
+  // the wiring below keeps being exercised against a level-less pool and the
+  // level cases live in LeagueSwipeGame.level.test.tsx.
+  championLevel: null,
   entities: [
     { id: "Draven", label: "Draven", value: 62, asset_path: null },
     { id: "Ahri", label: "Ahri", value: 53, asset_path: null },
@@ -53,6 +63,11 @@ const ARMOR_POOL: FactualPool = {
   prompt: "Which champion has more base armor?",
   unit: " armor",
   higherWins: true,
+  // MRLVL1: these three fixtures model the pools as the PRE-MRLVL1 backend
+  // served them — no level, "base" wording. They stay that way on purpose, so
+  // the wiring below keeps being exercised against a level-less pool and the
+  // level cases live in LeagueSwipeGame.level.test.tsx.
+  championLevel: null,
   entities: [
     { id: "Rammus", label: "Rammus", value: 40, asset_path: null },
     { id: "Ahri", label: "Ahri", value: 21, asset_path: null },

@@ -201,35 +201,79 @@ function artSide(index: number, side: "left" | "right") {
   return { media_url: `/api/ranked/media/segment-card/m1/4/${index}/${side}.png` };
 }
 
-/** The five cards of a mixed block: 3 magnitude, 1 recognition, 1 classification. */
+/**
+ * The five cards of a mixed block: 3 magnitude, 1 recognition, 1 classification.
+ *
+ * MRLVL1: every card carries `champion_level`, and all five are `null` — which
+ * is honest rather than incidental. None of these five families HAS a level:
+ * item cost, a classification, a recognition, move speed (League does not
+ * scale it) and an item stat line. A level-aware card is a different family
+ * and gets its own fixture below, so this block keeps meaning exactly what it
+ * meant when it was copied off a live response.
+ */
 export function metaReflexCards() {
   return [
     { challenge_index: 0, prompt: "Which item costs more gold?", kind: "magnitude",
       entity_kind: "item",
       left: namedSide("Hexdrinker", "Hexdrinker", "assets/items/3155.png"),
       right: namedSide("Giant's Belt", "Giant's Belt", "assets/items/1011.png"),
-      left_card_id: "c0:left", right_card_id: "c0:right" },
+      left_card_id: "c0:left", right_card_id: "c0:right",
+      champion_level: null },
     { challenge_index: 1, prompt: "Which champion uses Energy?", kind: "classification",
       entity_kind: "champion",
       left: namedSide("Kennen", "Kennen", "assets/champions/Kennen/icon.png"),
       right: namedSide("Kha'Zix", "Kha'Zix", "assets/champions/KhaZix/icon.png"),
-      left_card_id: "c1:left", right_card_id: "c1:right" },
+      left_card_id: "c1:left", right_card_id: "c1:right",
+      champion_level: null },
     { challenge_index: 2, prompt: "Which one is Xerath's W?", kind: "recognition",
       entity_kind: "ability",
       left: artSide(2, "left"), right: artSide(2, "right"),
-      left_card_id: "c2:left", right_card_id: "c2:right" },
+      left_card_id: "c2:left", right_card_id: "c2:right",
+      champion_level: null },
     { challenge_index: 3, prompt: "Which champion is faster?", kind: "magnitude",
       entity_kind: "champion",
       // No art on the left: a card with missing media must still be playable.
       left: namedSide("Vel'Koz", "Vel'Koz", null),
       right: namedSide("Kled", "Kled", "assets/champions/Kled/icon.png"),
-      left_card_id: "c3:left", right_card_id: "c3:right" },
+      left_card_id: "c3:left", right_card_id: "c3:right",
+      champion_level: null },
     { challenge_index: 4, prompt: "Which item gives more Armor?", kind: "magnitude",
       entity_kind: "item",
       left: namedSide("Knight's Vow", "Knight's Vow", "assets/items/3109.png"),
       right: namedSide("Thornmail", "Thornmail", "assets/items/3075.png"),
-      left_card_id: "c4:left", right_card_id: "c4:right" },
+      left_card_id: "c4:left", right_card_id: "c4:right",
+      champion_level: null },
   ];
+}
+
+/**
+ * MRLVL1 — one level-aware champion-stat card, backend-shaped.
+ *
+ * The shape `champion_stat:hp@lvl{level}` produces: a scaling stat compared at
+ * a frozen breakpoint, with the level carried as structured state and NOT
+ * written into the prompt. The prompt says "Health", not "base health" and not
+ * "at level 11" — the badge is the level, and that separation is the whole
+ * point of the field.
+ *
+ * `level` defaults to 11 (the mid-game breakpoint) and is a parameter so a
+ * test can walk the real pool — 1, 6, 11, 16, 18, 20 — without hand-writing a
+ * card six times.
+ */
+export function metaReflexLevelAwareCard(
+  level: number | null = 11,
+  challengeIndex = 0,
+) {
+  return {
+    challenge_index: challengeIndex,
+    prompt: "Which champion has more Health?",
+    kind: "magnitude",
+    entity_kind: "champion",
+    left: namedSide("Garen", "Garen", "assets/champions/Garen/icon.png"),
+    right: namedSide("Ahri", "Ahri", "assets/champions/Ahri/icon.png"),
+    left_card_id: `c${challengeIndex}:left`,
+    right_card_id: `c${challengeIndex}:right`,
+    champion_level: level,
+  };
 }
 
 /** Backend-shaped `segment` discriminator for a Meta Reflex block. */
