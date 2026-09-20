@@ -30,7 +30,10 @@
 > (GR1 reusable state **Phase 1 — inert foundation, MERGED to `master`, NOT wired**) and
 > [`docs/gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md)
 > (GR1 reusable state **Phase 2 — resolution and derivation. `StateTemplate → ResolvedState`
-> works; committed, NOT pushed, and still not wired into anything a player can reach**).
+> works; merged to `master`, and still not wired into anything a player can reach**) and
+> [`docs/gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3.md)
+> (GR1 reusable state **Phase 3 — the FIRST state-aware question path. The whole seam runs,
+> in the Admin Generator Lab only, behind a flag that is off; committed, NOT pushed**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -62,7 +65,8 @@
 | **GR1 reusable state architecture — design** | **DESIGN PROPOSAL, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (one items-only fast-forward past the brief's `5769dee3`; no `mastery/`, `quiz/` or `ranked_modules/` change), docs base `origin/main` **`3c9ddfc4`**. StateTemplate / ResolvedState / FrozenStateArtifact for **setup** state, the matchup composition, the source abstraction, the pipeline, Full/Slice over one universe, identity under state, fail-closed rules. **17 owner decisions (§16) pending.** See [`gr1-reusable-state-architecture-design.md`](./gr1-reusable-state-architecture-design.md) and the summary below. |
 | **GR1 reusable state architecture — design revision 2** | **DESIGN ONLY, 2026-09-19. Nothing implemented.** Backend read at `origin/master` **`b1fd3510`** (unchanged), docs base `origin/main` **`2ba820e1`**. Four owner-approved corrections: **no architectural level-18 cap** (capability ≠ rules ≠ derivation support), **independent matchup sides** (symmetric-only is generator policy), **replaceable setup sources** (no recommended-build authority exists), **historical patch = capability** (generic basis id; unavailable → refuse). Defines the smallest **Phase 1 seam** (inert `mastery/setup_state/` package, no callers, no I/O). See the section below. |
 | **GR1 reusable state — Phase 1 (inert foundation)** | **IMPLEMENTED AND MERGED, 2026-09-19. NOT wired.** `origin/master` contains **`88c9f7a0`** (rebased from `d9db54cb` onto `cf1d2db2`; upstream moved two items-only commits with zero file overlap), one commit. New package `mastery/setup_state/` (contracts, identity, structural validation, errors) with **no importer outside its own tests** (AST-enforced). Empty `ScenarioBinding` reproduces every existing fact, candidate and comparison id/digest byte-for-byte (fixtures + roster probe 173/173). See [`gr1-reusable-state-phase1.md`](./gr1-reusable-state-phase1.md) and the section below. |
-| **GR1 reusable state — Phase 2 (resolution + derivation)** | **IMPLEMENTED AND MERGED, 2026-09-19. Still NOT wired.** `origin/master` contains **`89b5ce4b`** (implemented as `35e08c11` on `88c9f7a0`, rebased onto `57016334` — one upstream items-only commit, zero file overlap); worktree `~/lcs-wt-gr1-state2`, one commit, **14 files all inside `mastery/setup_state/` or `mastery/tests/`**. Six new modules: a **data-basis resolver** (one available basis, named concretely; a pinned historical one is refused, never served from current data), a **rules authority** (legality as data; the per-champion rank domain is READ from `champion_state.ability_rank_ceiling`, and an undeclared special availability rule refuses rather than falling back to the 5/3 rule that is wrong for six champions), **setup sources** (one curated source, selectable by name and NOT the default; source-blind identity), **canonical normalization** (unknown references fail closed), a **derivation authority** (level-scaled stats read from Mastery's OWN fact layer, so they cannot drift; **no silent zero** — AP 0 is a supported zero, an unsupported value carries no number, a manaless resource pool is `not_applicable`), and the **pipeline** with pure matchup resolution. Two tested contract corrections: `resolved_state_digest` no longer hashes `rules_rev`/`derivation_version`, and a template axis may say `INTRINSIC`. Roster-wide: **173/173** resolve, **692/692** states fully derived on the core axes, 0 failures, 0 silent-zero cases, 60/60 matchups reversal-identical. `mastery/tests` failure **set** identical to the base. See [`gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md) and the section below. |
+| **GR1 reusable state — Phase 2 (resolution + derivation)** | **IMPLEMENTED AND MERGED, 2026-09-19. Wired for the first time by Phase 3, in the Lab only.** `origin/master` contains **`89b5ce4b`** (implemented as `35e08c11` on `88c9f7a0`, rebased onto `57016334` — one upstream items-only commit, zero file overlap); worktree `~/lcs-wt-gr1-state2`, one commit, **14 files all inside `mastery/setup_state/` or `mastery/tests/`**. Six new modules: a **data-basis resolver** (one available basis, named concretely; a pinned historical one is refused, never served from current data), a **rules authority** (legality as data; the per-champion rank domain is READ from `champion_state.ability_rank_ceiling`, and an undeclared special availability rule refuses rather than falling back to the 5/3 rule that is wrong for six champions), **setup sources** (one curated source, selectable by name and NOT the default; source-blind identity), **canonical normalization** (unknown references fail closed), a **derivation authority** (level-scaled stats read from Mastery's OWN fact layer, so they cannot drift; **no silent zero** — AP 0 is a supported zero, an unsupported value carries no number, a manaless resource pool is `not_applicable`), and the **pipeline** with pure matchup resolution. Two tested contract corrections: `resolved_state_digest` no longer hashes `rules_rev`/`derivation_version`, and a template axis may say `INTRINSIC`. Roster-wide: **173/173** resolve, **692/692** states fully derived on the core axes, 0 failures, 0 silent-zero cases, 60/60 matchups reversal-identical. `mastery/tests` failure **set** identical to the base. See [`gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md) and the section below. |
+| **GR1 reusable state — Phase 3 (the first state-aware question path)** | **IMPLEMENTED AND INTEGRATED, 2026-09-19. PUSHED to both repos. Admin Generator Lab only.** Backend: `origin/master` contains **`22a1c7d9`** (base `ca3d7333`; implemented on `295fd58f` and rebased over 3 item-runtime commits with **zero file overlap** — at integration master had not moved, so no second rebase was needed), worktree `~/lcs-wt-gr1-state3`. Frontend: `origin/main` contains **`8f949824`** (pre-rebase `bd4b78e8`; implemented on `b901ea0e` and rebased onto **`ce3f49be`** over 3 RFX1 commits — Ranked asset derivatives and the entry intro — with **zero file overlap**), worktree `~/mogsy-wt-gr1-state3`. The seam runs end to end: `StateTemplate → ResolvedState → state-aware candidates → the EXISTING composition, publication gate and Mastery presentation → a Lab preview`. One family — **champion ability cooldown under resolved ability haste** — and it unlocks nothing: it names `quiz.family_contract`'s already-CERTIFIED, Mastery-eligible **`combat_cooldown`**, goes through the same gate as an intrinsic candidate, and honours that family's own `static_cooldown` exclusion. The resolver seam is one optional `universe=` on `resolve_with_universe`/`publish`, and supplying the pool the resolver would have rebuilt gives a **byte-identical** snapshot. **Nothing a player can reach is wired**: `mastery_slice` has no state-aware mode, so no saved Ranked format can name one, and the single serving-side importer is one admin-gated route behind `GR1_STATE_AWARE_LAB_ENABLED`, off by default. **Current behaviour proven unmoved byte-for-byte** across two worktrees (887 candidates, 303 comparisons both orders, 12 published artifacts, 16 slice preview/coverage payloads — identical 1.7 MB dumps). Roster-wide: 165/173 champions, 2,356 candidates, **0 answer mismatches**, 589/589 identity equality at equal haste and 589/589 difference at different haste. See [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3.md) and the section below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -1290,7 +1294,136 @@ Full record: [`gr1-reusable-state-phase2.md`](./gr1-reusable-state-phase2.md).
   the curated six; four champions' rank-availability rules are undeclared; runes and shards
   need a versioned store. Rollback is `git revert 35e08c11`.
 
+## Reusable state — PHASE 3 IMPLEMENTED, the first state-aware question path (2026-09-19)
+
+Full record: [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3.md).
+**The whole seam runs. It runs in the Admin Generator Lab and nowhere else.**
+
+* **Backend:** **`22a1c7d9`** on `gr1/setup-state-phase3`, base `origin/master`
+  **`ca3d7333`** (implemented on `295fd58f`, rebased over 3 upstream
+  item-runtime commits with zero file overlap), worktree `~/lcs-wt-gr1-state3`.
+  One commit, 14 files. **NOT pushed.**
+  **Frontend:** **`bd4b78e8`** on `gr1/reusable-state-phase3`, base
+  `origin/main` **`b901ea0e`** (upstream moved zero commits), worktree
+  `~/mogsy-wt-gr1-state3`. One commit, 8 files. **NOT pushed.**
+* **The seam.** `StateTemplate → ResolvedState → state-aware candidates → the
+  EXISTING composition, publication gate, session adapter and Ranked
+  presentation → a Lab preview`. Everything after candidate generation is the
+  production path called with production arguments; the new code composes no
+  sequence, dedupes nothing, gates nothing, writes no prompt, builds no option
+  set and resolves no media asset.
+* **One family, and it unlocks nothing.** Champion ability cooldown under
+  resolved ability haste. Every part already existed — a certified
+  `ChampionFact` for the base, a Phase 2 derived value for the haste,
+  `calculate_cooldown.haste_to_cooldown_multiplier` reached *through* the
+  Phase 2 derivation, and the already-**CERTIFIED**, Mastery-eligible
+  **`combat_cooldown`** family in `quiz.family_contract`, which is
+  **not modified**. A state-aware candidate is put to the same publication
+  gate as an intrinsic one. `ability_cooldown_haste` was rejected as the
+  family id because it is RETIRED and the gate correctly refuses it.
+* **It honours the declared family's own exclusions.** A roster probe found 20
+  abilities whose cooldown ability haste does not reduce (`static_cooldown.v1`
+  — Amumu W, Jinx Q, Karthus E, Samira R, Singed Q and others). The question
+  would have been correct and would have taught the wrong thing, and
+  `combat_cooldown` excludes exactly that case, so the generator skips them
+  with that word.
+* **The resolver seam.** `resolve_with_universe` / `resolve` /
+  `gate_snapshot` / `publish` gain one optional `universe=`; `None` — every
+  existing caller — is unchanged, and **supplying the pool the resolver would
+  have rebuilt gives a byte-identical snapshot** (same digest, seed, steps and
+  bindings), which a test pins. A supplied pool is validated against exactly
+  what the selector reads and refused on anything malformed. It exists because
+  no manifest source can name a state-aware candidate: without it
+  `_build_universe` would silently substitute the intrinsic bank.
+* **Identity, all seven brief cases.** An empty binding adds **no key at all**
+  — not even `{}` — so every existing fact, candidate, comparison,
+  `mastery_set_id` and `artifact_digest` is byte-identical. Two different
+  builds that both resolve to 20 haste are **one question** (589/589
+  roster-wide) with two different state keys; 20 vs 40 are two (589/589); a
+  manual and a curated source of the same setup give one question and differ
+  only in per-axis provenance; a level no bound value reads changes the state
+  and not the question; and a bound `{AH: 0}` stays distinct from the
+  intrinsic question, because "read zero" and "did not read" are different
+  questions. **The per-metric binding precision Phases 1 and 2 left open is
+  now declared** (`ability_haste.total` → 0 places).
+* **Correctness.** Cross-checked against the projection fact **and** the shared
+  primitive: roster-wide **2,356 candidates, 0 answer mismatches**. The
+  formula is not duplicated, asserted structurally — `scenario.py` imports
+  neither `calculate_cooldown` nor the multiplier, calls neither, and contains
+  no `100` and no float literal, so it *cannot* disagree.
+* **Deliberately narrower than Phase 2 can derive.** The generator additionally
+  requires Mastery's own certified fact at that rank, so Udyr Q rank 6 and
+  Karma R rank 4 are not asked here. A published step must carry canonical
+  `fact_refs`, and a state-aware question must not be the back door through
+  which Mastery starts asking about facts its gate declined.
+* **Fail-closed.** Unknown champion, a non-current item, an illegal or
+  unavailable rank, a pinned historical basis, an unresolved required derived
+  value (**never** read as zero), no rank stated, a matchup state, and nothing
+  askable each refuse the whole preview — in the state layer's own words,
+  re-typed but never rephrased.
+* **The Lab, and only the Lab.** Two endpoints under
+  `/api/ranked/admin/mastery-state-lab/`, admin-gated and behind
+  `GR1_STATE_AWARE_LAB_ENABLED` (off by default; `families` answers anyway so a
+  client can say the deployment does not serve it). **There is no
+  ability-haste override** — haste comes from the items the state names,
+  because a derived value with no input behind it describes a build that
+  cannot exist. The frontend adds a second, clearly-experimental surface
+  beside the production picker, holds no roster and no rule, and draws the
+  questions with `MasterySliceChallengeSurface`, the arena's own component.
+* **Current behaviour proven unmoved, byte-for-byte.** A read-only probe run in
+  a clean base worktree and in the Phase 3 worktree — 20 champion banks (887
+  candidates, with identity material, rendered prompts, explanations, options
+  and effective-question keys), 7 pairs in **both call orders** (303
+  comparisons), 8 published Champion and 4 published Matchup artifacts with
+  every step's identity material, and 16 `mastery_slice` preview/coverage
+  payloads across all three production generators seeded and unseeded —
+  produced **identical 1,720,329-byte dumps**.
+* **`mastery_slice` has no state-aware mode**, so **no saved Ranked format can
+  name one**. Asserted: the mode set is exactly `{champion, matchup,
+  applied_chain}`, the module source does not contain `setup_state`, and
+  parsing a `state_aware` mode raises.
+* **The guards were narrowed on purpose, not dropped.** Phase 2's "no importer
+  at all" becomes a pinned allow-list of **one** file, declared from both
+  directions (the isolation test and `facts_support.GR1_RUNTIME_FILES`) and
+  asserted to be admin- and flag-gated and not where the question is built.
+  The importer scan now runs over **prose-free** source, so a module may name
+  the package in a docstring without being read as depending on it while a
+  dynamic `import_module` is still caught. The diff-shape guard becomes six
+  named serving files, each with its reason.
+* **Tests:** 59 new, isolation 64 → 68, backwards-compat 24 → 25. The
+  `mastery/tests` + Ranked-Mastery failure **SET is identical to the base**
+  (the same five pre-existing failures), 2068 → 2146 passed. Frontend: Lab
+  suite 31 → 45, 1160 passed across the Mastery / ranked-core / admin suites
+  with the one pre-existing `adminCredentials` failure. One observed flake is
+  recorded in the phase doc rather than tidied away.
+* **Screenshots:** `docs/audits/gr1-reusable-state-phase3/` — 8 PNGs through
+  the REAL route and the REAL components, including the production surface
+  beside the new one, unchanged.
+* **Before a state-aware question can be SERVED:** frozen-state persistence
+  (and a multi-state container decision); the D-20 composition policy;
+  Ranked reachability (a mode, a config key, a schema branch, a readiness
+  report — and an owner decision that it should be served at all); a source of
+  states for when nobody types one (`SourcePolicy` ships empty); the
+  three-champion `db_lookup_name` normalization gap §11 found (fail-closed, so
+  coverage not correctness); four champions' undeclared rank-availability
+  rules; the patch-identity mismatch; reveal wording that shows the
+  arithmetic; and more than one family. Full list in the phase doc §14.
+* **Rollback:** `git revert 22a1c7d9` / `bd4b78e8`. Nothing persisted, nothing
+  to un-migrate, and the one consumer is behind a flag that is off.
+
 ## Screenshots / artifacts
+
+`docs/audits/gr1-reusable-state-phase3/` — **8 PNGs (reusable state Phase 3, the
+state-aware Generator Lab).** Captured with Playwright through the REAL
+`/admin/ranked/generator-lab` route, the REAL `MasteryGeneratorLab`, the REAL
+`MasterySliceChallengeSurface` and the REAL backend routers, against the
+canonical database — no mock. The configured state, the resolved-state
+context, an unanswered state-aware question, the same card answered with its
+admin-only key, the scenario binding and provenance, the raw response, the
+whole surface, and — the one that matters most — `08-production-surface-unchanged.png`,
+the intrinsic generator beside it with no scenario clause in either its prompt
+or its explanation. Capture harness notes are in the phase doc §12; both
+harness files were deleted and neither is committed.
 
 `docs/audits/gr1-matchup-mastery/` — **2 PNGs (Matchup Mastery capability audit).** Both are
 the Phase 5 Generator Lab captures reproduced here because they are the only real Matchup
@@ -1328,6 +1461,37 @@ Applied-chain has **no capturable UI** here (needs a real Supabase JWT); its exa
 documented instead (prose → `InteractiveScenarioSurface`, no media band).
 
 ## Tests run
+
+### Reusable state — Phase 3 (2026-09-19), base `origin/master` `ca3d7333`
+
+| Run | Result |
+|---|---|
+| New `mastery/tests/test_gr1_state_aware_lab.py` | **59 passed** |
+| Reworked `test_setup_state_isolation.py` | 68 passed (was 64) |
+| `test_setup_state_backwards_compat.py` | 25 passed (was 24) |
+| `mastery/tests` + Phase 5 Lab + artifact persistence + applied chain **at the base** | 5 failed, 2068 passed, 14 skipped |
+| The same four targets **at `22a1c7d9`** | 5 failed, **2146 passed**, 7 skipped |
+| Frontend `MasteryGeneratorLab.test.tsx` | 45 passed (was 31) |
+| Frontend `src/features/mastery` + `ranked-core` + `pages/admin/ranked` + `lib/admin` | 1 pre-existing failure, **1160 passed** |
+
+**The failure SET is identical to the base** — the same five pre-existing
+failures (three audit-DB drift, per-question reveal persistence, Ranked
+default-format drift). The skip count falls 14 → 7 because seven
+committed-footprint guards skip while nothing is committed and run once it is;
+Phase 1 recorded the same arithmetic. One observed flake
+(`test_review_is_unchanged_after_the_canonical_data_moves`, once, not
+reproducible in three re-runs or in isolation on either tree) is recorded in
+the phase doc §10 rather than omitted.
+
+**Byte-for-byte invariance probe** (read-only, two worktrees, not committed):
+887 champion candidates, 303 comparisons in both call orders, 12 published
+artifacts and 16 `mastery_slice` preview/coverage payloads — identical
+1,720,329-byte dumps.
+
+**Roster-wide state-aware probe** (read-only, not committed): 165/173
+champions, 2,356 candidates over four builds, **0 answer mismatches**,
+589/589 identity equality at equal haste, 589/589 difference at different
+haste, 3 champions refused by a pre-existing `db_lookup_name` gap.
 
 ### Reusable state — Phase 2 (2026-09-19), base `origin/master` `88c9f7a0`
 
@@ -1607,7 +1771,18 @@ identity at all, since prompt text is not in `identity_material`).
 
 ## Next task
 
-**GR1 Phase 5 — not yet scoped.** (Phase 4 is done; see below.)
+**GR1 reusable state — Phase 4, not yet scoped, and it needs its own approval.**
+Phase 3 proved the seam in the Lab. The next thing it is missing is the one
+that gates everything else: **frozen-state persistence** —
+`FrozenStateArtifact` is computed and written nowhere, and it is currently one
+block per state, so a Slice window over more than one state needs a container
+decision first (`StepBinding` already carries the digest, so the type does not
+move). Everything else on the road to serving a state-aware question to a
+player is listed in [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3.md) §14.
+**Do not widen Phase 3 into a family-expansion project**; one family is the
+seam, and a second one before persistence exists buys nothing.
+
+**Superseded — GR1 Phase 5 — not yet scoped.** (Phase 4 is done; see below.)
 
 **Superseded note, kept for history — GR1 Phase 4 — not yet scoped.** The generators now compose sensibly and the foundation under them
 is trustworthy. Still untouched, each needing its own phase: public Ranked rotation, Admin Quiz
