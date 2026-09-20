@@ -254,6 +254,135 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events: {
+        Row: {
+          event_name: string
+          event_version: number
+          id: string
+          is_guest: boolean | null
+          metadata: Json | null
+          occurred_at: string
+          received_at: string
+          route: string | null
+          session_id: string | null
+          source_entity_id: string | null
+          source_entity_type: string | null
+          source_system: string
+          user_id: string | null
+          verification_type: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          event_name: string
+          event_version?: number
+          id?: string
+          is_guest?: boolean | null
+          metadata?: Json | null
+          occurred_at?: string
+          received_at?: string
+          route?: string | null
+          session_id?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_system?: string
+          user_id?: string | null
+          verification_type?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          event_name?: string
+          event_version?: number
+          id?: string
+          is_guest?: boolean | null
+          metadata?: Json | null
+          occurred_at?: string
+          received_at?: string
+          route?: string | null
+          session_id?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_system?: string
+          user_id?: string | null
+          verification_type?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_sessions: {
+        Row: {
+          landing_path: string | null
+          referrer: string | null
+          session_id: string
+          started_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          visitor_id: string
+        }
+        Insert: {
+          landing_path?: string | null
+          referrer?: string | null
+          session_id: string
+          started_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id: string
+        }
+        Update: {
+          landing_path?: string | null
+          referrer?: string | null
+          session_id?: string
+          started_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
+      analytics_visitors: {
+        Row: {
+          first_landing_path: string | null
+          first_referrer: string | null
+          first_seen_at: string
+          first_utm_campaign: string | null
+          first_utm_content: string | null
+          first_utm_medium: string | null
+          first_utm_source: string | null
+          first_utm_term: string | null
+          visitor_id: string
+        }
+        Insert: {
+          first_landing_path?: string | null
+          first_referrer?: string | null
+          first_seen_at?: string
+          first_utm_campaign?: string | null
+          first_utm_content?: string | null
+          first_utm_medium?: string | null
+          first_utm_source?: string | null
+          first_utm_term?: string | null
+          visitor_id: string
+        }
+        Update: {
+          first_landing_path?: string | null
+          first_referrer?: string | null
+          first_seen_at?: string
+          first_utm_campaign?: string | null
+          first_utm_content?: string | null
+          first_utm_medium?: string | null
+          first_utm_source?: string | null
+          first_utm_term?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       animation_usage_logs: {
         Row: {
           animation_id: string
