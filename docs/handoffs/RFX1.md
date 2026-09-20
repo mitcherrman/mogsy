@@ -2184,6 +2184,31 @@ Modified:
 
 ---
 
+## Integration
+
+Merged on 2026-09-19 with `--no-ff`, content-identical to the approved tip.
+
+| | |
+|---|---|
+| Frontend | `rfx1/phase2b2` (approved tip **`e8a19853`**) → `main` as merge **`b7908b21`**, over `origin/main` **`b901ea0e`**. |
+| Movement | **The remote had not moved.** `b901ea0e` was already the branch's own parent, so there was no overlap, no rebase and **nothing to reconcile**. `git diff e8a19853 <merge>` is empty. |
+| Backend | **No change.** `master` stays at the Phase 2B1 merge **`295fd58f`**; the Round-1 lead-in contract (queue 4200 ms, bot 2200 ms, every other creation source 0) is untouched by this phase. |
+
+Verified on the merge result: `ENTRY_MIN_LEAD_MS` 700, `ENTRY_PREP_CAP_MS`
+1500, `MODULE_TITLE_END_MARGIN_MS` 150 and `SWAP_MEDIA_MIN_LEAD_MS` 1000 all
+unchanged; the intro path contains no local timer, minimum or padding of any
+kind; `projectEntryPhase` is still the only thing that drives the card;
+`rankedRoleMascotUrl` still returns the rendered `compact` path; all eight
+high-resolution source assets still present; `item-shopkeeper.png` untouched.
+Ranked-adjacent suites 184 files / 2802 tests passing, and the production build
+is clean (173/173 prerendered champion pages verified).
+
+**RFX1 is COMPLETE.** Pushed to `origin/main`; the site still needs an owner
+**Lovable Publish** before any of it reaches mogzy.lol — a push to `main` is
+not a deploy.
+
+---
+
 # RFX1 final state
 
 **Phase 1** audited the Ranked entry and round lifecycles and found two of the
