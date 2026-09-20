@@ -221,12 +221,12 @@ describe("once the backend has settled the forfeit", () => {
   it("enters the ended state with no reload and no remount", async () => {
     await forfeit();
     // The SAME mounted component reaches the terminal frame off its own poll.
-    await screen.findByTestId("ranked-match-over");
+    await screen.findByTestId("ranked-match-over", undefined, { timeout: 5000 });
   });
 
   it("leaves the live arena rather than layering over it", async () => {
     await forfeit();
-    await screen.findByTestId("ranked-match-over");
+    await screen.findByTestId("ranked-match-over", undefined, { timeout: 5000 });
     expect(screen.queryByTestId("ranked-match")).toBeNull();
     // Gameplay controls are gone with it — including the one just pressed.
     expect(screen.queryByTestId("ranked-forfeit")).toBeNull();
@@ -234,7 +234,7 @@ describe("once the backend has settled the forfeit", () => {
 
   it("names the outcome using the existing end-state UI", async () => {
     await forfeit();
-    const frame = await screen.findByTestId("ranked-match-over");
+    const frame = await screen.findByTestId("ranked-match-over", undefined, { timeout: 5000 });
     // The server said the opponent won, so this is a defeat by forfeit — the
     // client reads the reason and the winner, and asserts neither itself.
     expect(frame).toHaveTextContent(/You forfeited\./);
@@ -242,7 +242,7 @@ describe("once the backend has settled the forfeit", () => {
 
   it("stops polling the match it has already lost", async () => {
     await forfeit();
-    await screen.findByTestId("ranked-match-over");
+    await screen.findByTestId("ranked-match-over", undefined, { timeout: 5000 });
     const seen = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } })
       .mock.calls.length;
     await new Promise((r) => setTimeout(r, 60));

@@ -20,6 +20,9 @@ const base = (over: Partial<RankedSfxObservation> = {}): RankedSfxObservation =>
   ownAward: null,
   terminal: false,
   terminalResult: null,
+  // RFX1 2B3 — the PRESENTATION has not reached the outcome by default; a
+  // test that wants the result sting says so, as the arena now does.
+  outcomeMoment: false,
   ...over,
 });
 
@@ -130,25 +133,57 @@ describe("Ranked semantic SFX observation", () => {
     expect(terminalWithoutResult.emissions).toEqual([]);
     const victory = step(terminalWithoutResult.watch, base({
       moduleKey: null, roundKey: null, terminal: true, terminalResult: "victory",
+      outcomeMoment: true,
     }));
     expect(victory.emissions.map((event) => event.event)).toEqual([
       "ranked.match.victory",
     ]);
     expect(step(victory.watch, base({
       moduleKey: null, roundKey: null, terminal: true, terminalResult: "victory",
+      outcomeMoment: true,
     })).emissions).toEqual([]);
 
     expect(step(null, base({
       moduleKey: null, roundKey: null, terminal: true, terminalResult: "defeat",
+      outcomeMoment: true,
     })).emissions).toEqual([]);
 
     for (const result of ["defeat", "draw"] as const) {
       const transition = step(live.watch, base({
         moduleKey: null, roundKey: null, terminal: true, terminalResult: result,
+        outcomeMoment: true,
       }));
       expect(transition.emissions.map((event) => event.event)).toEqual([
         `ranked.match.${result}`,
       ]);
     }
+  });
+  /**
+   * RFX1 2B3 — THE RESULT STING BELONGS TO THE OUTRO, NOT TO THE SNAPSHOT.
+   *
+   * The completion snapshot is what CLAIMS the outro; the beat itself does not
+   * present until the result row and the final settlement have been fetched,
+   * after the final round's own reveal hold. Firing on `terminal` alone put
+   * the sound under a still-live arena, during the last answer's verdict.
+   */
+  it("holds the result sting until the presentation reaches the outcome", () => {
+    const live = step(null, base());
+    const claimed = step(live.watch, base({
+      moduleKey: null, roundKey: null, terminal: true, terminalResult: "victory",
+      outcomeMoment: false,
+    }));
+    expect(claimed.emissions).toEqual([]);
+    const presented = step(claimed.watch, base({
+      moduleKey: null, roundKey: null, terminal: true, terminalResult: "victory",
+      outcomeMoment: true,
+    }));
+    expect(presented.emissions.map((event) => event.event)).toEqual([
+      "ranked.match.victory",
+    ]);
+    // And it still cannot replay once the end screen takes over.
+    expect(step(presented.watch, base({
+      moduleKey: null, roundKey: null, terminal: true, terminalResult: "victory",
+      outcomeMoment: true,
+    })).emissions).toEqual([]);
   });
 });

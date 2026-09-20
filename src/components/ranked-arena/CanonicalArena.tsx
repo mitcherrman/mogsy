@@ -68,6 +68,34 @@ export interface CanonicalArenaProps {
    * supplies none, and renders exactly the DOM it always has.
    */
   guidance?: ReactNode;
+  /**
+   * RFX1 2B3 — THE OUTRO SEAM. A node the mode lays OVER the arena while the
+   * match is authoritatively over but still being PRESENTED, before its end
+   * screen mounts.
+   *
+   * 2B3 visual implementation: this was a focus-COLUMN slot, and at every
+   * viewport that put the closing beat in the lowest, darkest strip of the
+   * layout (measured `top: 708` of 900 on desktop, `top: 728` of 853 on a
+   * phone), rendered quieter than the question above it. It shares the
+   * `warning` overlay layer now — same `pointer-events-none` rule, so it can
+   * never be the thing that stops a click; input is already closed.
+   *
+   * Still a slot: the arena never learns what a duel's ending IS, only that a
+   * mode had something to say in that window. Optional, so every existing
+   * caller — the Daily, the staff duel, every dev harness — is byte-identical.
+   */
+  outro?: ReactNode;
+  /**
+   * RFX1 2B3 — THE WARNING SEAM. A node the mode lays OVER the arena while a
+   * medium presentation beat is playing (Ranked: Final Round). An overlay
+   * layer rather than a column slot, because the beat is conceptually a
+   * popup and the eventual design must not be boxed into the question
+   * column — but it is `pointer-events-none`, so it can never be the thing
+   * that stops a click. Input is already closed by `started_at`.
+   *
+   * Optional, so every existing caller is byte-identical.
+   */
+  warning?: ReactNode;
   /** Copy for the null-view placeholder, which is a mode's own sentence. */
   recovering?: {
     eyebrow: string;
@@ -114,7 +142,7 @@ function Rail({ rail, progressionEnabled }:
 }
 
 export function CanonicalArena({
-  view, terminal = null, chrome, recovering, guidance,
+  view, terminal = null, chrome, recovering, guidance, outro, warning,
 }: CanonicalArenaProps) {
   /**
    * The Meta Reflex transcript's disclosure, owned HERE rather than by the
@@ -283,7 +311,7 @@ export function CanonicalArena({
 
        Below `lg` this is the ordinary flow column it has always been: the
        arena stacks there and its natural height exceeds any narrow viewport. */}
-    <div className={`ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0 ${
+    <div className={`relative ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0 ${
       // RMOB2 — the phone arena hosts the dock tabs in its own bottom bar, so
       // it needs no clearance for them; other arenas keep RMOB1's.
       mobileDuel ? "" : "pb-[var(--mogzy-dock-clearance)] lg:pb-0"}`}
@@ -294,6 +322,9 @@ export function CanonicalArena({
       // reading text: `module-intro` may never be up once input is open.
       data-presentation-phase={view.presentationPhase}
       data-entry-phase={view.entryPhase}
+      // RFX1 2B3 — which MEDIUM beat is playing, if any. Observable without
+      // reading copy, so the "no stacked intros" invariant is testable.
+      data-special-transition={view.specialTransition ?? undefined}
       // THE ONE BAND THAT IS NOT ALWAYS THERE, stated rather than assumed.
       // `--ranked-chrome-h` has to know whether the ability dock is mounted,
       // and CSS cannot see a sibling. This is not a new fact and not a new
@@ -702,6 +733,9 @@ export function CanonicalArena({
                 publicRound={surface.publicRound}
                 selection={surface.selection}
                 permissions={surface.permissions}
+                // RFX1 2B3 — the mode-entry beat, relayed verbatim. The arena
+                // never decides one; it only passes on what the mode said.
+                entryPresentationMs={surface.entryPresentationMs}
                 // R3: selecting an option IS answering. The mode's adapter maps
                 // the selection to a submission; the arena never guesses one.
                 onSelect={surface.onSelect}
@@ -844,6 +878,24 @@ export function CanonicalArena({
           phone Ranked arena CSS hides it in favour of the bar. */}
       {mobileDuel && timeline && <MobileBottomBar timeline={timeline} className="lg:hidden" />}
       {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
+
+      {/* RFX1 2B3 — the PRESENTATION OVERLAY. LAST, so it lays over everything
+          in the shell, and `pointer-events-none` so it can never be what stops
+          a click: input is closed by `started_at`, not by this.
+
+          The warning and the outro share the layer because they are the same
+          kind of thing — a beat over the arena — and because they are mutually
+          exclusive by construction: a medium warning announces a round that is
+          about to open, and the outro only exists once the match is over. The
+          outro is rendered second, so were they ever to coincide the ending
+          would win, which is the correct precedence. */}
+      {(warning || outro) && (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center
+                        justify-center" data-testid="ranked-warning-layer">
+          {warning}
+          {outro}
+        </div>
+      )}
     </div>
     </ArenaShell>
   );

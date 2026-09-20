@@ -558,7 +558,7 @@ describe("match over — no HP or damage vocabulary survives on the end screen",
     backend.matchOver = true;
     const over = await screen.findByTestId("ranked-match-over", undefined, { timeout: 6000 });
     expect(over).toBeInTheDocument();
-    await screen.findByTestId("match-over-frame");
+    await screen.findByTestId("match-over-frame", undefined, { timeout: 5000 });
     expect(screen.queryByTestId("reveal-panel")).toBeNull();
     expect(screen.queryByTestId("reveal-userA")).toBeNull();
     expect(screen.queryByTestId("reveal-userB")).toBeNull();
@@ -570,7 +570,7 @@ describe("match over — no HP or damage vocabulary survives on the end screen",
     advanceRound();
     backend.matchOver = true;
     const over = await screen.findByTestId("ranked-match-over", undefined, { timeout: 6000 });
-    await screen.findByTestId("match-over-frame");
+    await screen.findByTestId("match-over-frame", undefined, { timeout: 5000 });
     const text = over.textContent ?? "";
     expect(text).not.toMatch(/damage dealt/i);
     expect(text).not.toMatch(/mitigation/i);

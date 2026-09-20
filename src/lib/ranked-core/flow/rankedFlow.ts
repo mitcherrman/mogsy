@@ -22,6 +22,8 @@
  *                 screen (`revealHold`, which only live capture ever sets)
  *   module-intro  the presented round is the new one, but its authoritative
  *                 `started_at` has not arrived — the server-owned lead-in
+ *   match-outro   the match is authoritatively OVER, the final round's reveal
+ *                 has played, and the end screen has not mounted yet
  *
  * RESULT CUES
  *
@@ -47,9 +49,17 @@
 import type { ArenaCardBeat } from "@/lib/ranked-core/cardBeat";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type { PublicRoundView, SegmentSettlementView } from "@/lib/ranked-public/contracts";
-import { MODULE_TITLE_END_MARGIN_MS } from "../pacing";
+import { MODULE_TITLE_END_MARGIN_MS, resolveSpecialTransition } from "../pacing";
+import type { SpecialTransitionKind } from "../pacing";
 
-export type RankedPresentationPhase = "answering" | "waiting" | "revealing" | "module-intro";
+export type RankedPresentationPhase =
+  | "answering" | "waiting" | "revealing" | "module-intro"
+  /**
+   * RFX1 2B3 — the deliberate match-complete beat, after the final round's
+   * own reveal and before the end screen. Authoritative completion drives it;
+   * nothing here infers it.
+   */
+  | "match-outro";
 
 export type RoundVerdict = "correct" | "incorrect" | "timed_out";
 
@@ -87,8 +97,15 @@ export function projectPresentationPhase(args: {
    * face's own exit. Defaults to `MODULE_TITLE_END_MARGIN_MS`.
    */
   cutoffMarginMs?: number;
+  /**
+   * RFX1 2B3 — the controller's `matchOutroId !== null`. Ranked after
+   * `revealing` on purpose: the final round's own verdict beat plays FIRST,
+   * and the match-complete beat follows it.
+   */
+  matchOutro?: boolean;
 }): RankedPresentationPhase {
   if (args.revealing) return "revealing";
+  if (args.matchOutro) return "match-outro";
   if (args.presentedStartedAt) {
     const start = Date.parse(args.presentedStartedAt);
     const margin = args.cutoffMarginMs ?? MODULE_TITLE_END_MARGIN_MS;
@@ -169,4 +186,49 @@ export function upcomingRound(
   const a = live.activeRound?.roundNumber ?? null;
   const b = presented.activeRound?.roundNumber ?? null;
   return a !== null && a !== b ? live : null;
+}
+
+
+/**
+ * RFX1 2B3 — IS THE ROUND BEING INTRODUCED A SPECIAL ONE?
+ *
+ * Pure, and a function of the PRESENTED round only — the one the arena is
+ * about to show, which during a reveal is still round N and after the swap is
+ * N+1. Reading the live snapshot instead would announce the final round while
+ * the player was still reading round 9's result.
+ *
+ * FINAL-ROUND DETECTION IS FROM THE MATCH CONTRACT, never a hardcoded 10.
+ * `scoring.matchLength` is the format's own module count and
+ * `scoring.moduleNumber` is the module this round is. An hp match (and any
+ * deployment predating RP1) carries a null `matchLength`, which is the honest
+ * "this match does not know how long it is" — and a match that cannot say
+ * which round is last does not get a Final Round warning. That is a real
+ * behavioural gap, and it is the truthful one.
+ *
+ * META REFLEX ENTRY is the module id plus "the block has not started". The
+ * per-card phase is deliberately not consulted here: the beat belongs to the
+ * block, and the block latch downstream is what keeps it to once.
+ */
+export function projectSpecialTransition(args: {
+  /** The round the arena is presenting, or null. */
+  presented: PublicRoundView | null;
+  /** Meta Reflex's module id, so this file holds no module name of its own. */
+  metaReflexModuleId: string;
+  /**
+   * The first module VERSION that is Meta Reflex. The id is shared with the
+   * legacy Item Cost Duel (v1-v3), which is an ordinary five-pair round and
+   * is owed no mode-shift beat, so the version is the only honest
+   * discriminator — the same rule `servesVersion` applies to the renderer.
+   */
+  metaReflexMinVersion: number;
+}): { kind: SpecialTransitionKind; visibleMs: number } | null {
+  const round = args.presented;
+  if (!round) return null;
+  const scoring = round.scoring;
+  const finalRound = scoring !== null
+    && scoring.matchLength !== null
+    && scoring.moduleNumber === scoring.matchLength;
+  const metaReflexEntry = round.segment.moduleId === args.metaReflexModuleId
+    && round.segment.moduleVersion >= args.metaReflexMinVersion;
+  return resolveSpecialTransition({ finalRound, metaReflexEntry });
 }

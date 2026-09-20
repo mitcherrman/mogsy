@@ -79,6 +79,17 @@ export const SFX_REGISTRY = {
   "ranked.meta.action": { group: "ranked", minReplayMs: 90, relativeGain: 0.62, builtInGeneratorId: "sfx.ranked.meta-action" },
   "ranked.points.awarded": { group: "ranked", minReplayMs: 180, relativeGain: 0.78, builtInGeneratorId: "sfx.ranked.points-awarded" },
   "ranked.speed.bonus": { group: "ranked", minReplayMs: 180, relativeGain: 0.7, builtInGeneratorId: "sfx.ranked.speed-bonus" },
+  // RFX1 2B3 — THE PRESENTATION BEATS. Deliberately voiceless, exactly as the
+  // migrated legacy UI requests above are: the registry's own contract is that
+  // an entry with no `builtInGeneratorId` and no `builtInAssetVoices` is
+  // SILENT until an operator authors an Audio Studio binding, and this phase
+  // adds no sound assets. What these rows buy today is the seam — one
+  // canonical event name per beat, with policy, unlock, mute, cache and
+  // dedupe already applied — so giving them a voice later is an Audio Studio
+  // action and not a code change.
+  "ranked.duel.begin": { group: "ranked", minReplayMs: 1000, relativeGain: 1 },
+  "ranked.mode.shift": { group: "ranked", minReplayMs: 400, relativeGain: 1 },
+  "ranked.round.final": { group: "ranked", minReplayMs: 400, relativeGain: 1 },
   "ranked.match.victory": { group: "ranked", minReplayMs: 1000, relativeGain: 0.94, builtInGeneratorId: "sfx.ranked.match-victory" },
   "ranked.match.defeat": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-defeat" },
   "ranked.match.draw": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-draw" },

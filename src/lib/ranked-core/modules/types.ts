@@ -71,6 +71,17 @@ export interface ModuleViewportProps {
   /** Deadline-anchored clock skew, so a countdown uses server time. */
   skewMs: number;
   /**
+   * RFX1 2B3 — THE MODE-ENTRY PRESENTATION this segment is owed, in ms, or 0
+   * for none. Supplied by the Ranked presentation coordinator, which owns the
+   * decision (is this a live entry? is the server's lead-in long enough?) so
+   * a module never has to re-derive it.
+   *
+   * Optional and defaulting to absent, so every other mode and every harness
+   * is byte-identical: a module that is not given one keeps whatever beat it
+   * already had.
+   */
+  entryPresentationMs?: number;
+  /**
    * QUIZ1 Phase 11 — backend-authoritative reveal for the CURRENTLY RENDERED
    * round, or null.
    *

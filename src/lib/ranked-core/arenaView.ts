@@ -235,6 +235,8 @@ export interface ArenaSurfaceView {
   permissions: InteractionPermissions;
   actions: ModuleSegmentActions;
   skewMs: number;
+  /** RFX1 2B3 — the mode-entry presentation beat, in ms, or 0/absent. */
+  entryPresentationMs?: number;
   /** Backend-authoritative, post-settlement only. Null pre-reveal, always. */
   reveal: SurfaceReveal | null;
   onSelect: (selection: unknown) => void;
@@ -409,6 +411,11 @@ export interface ArenaViewModel {
   resultFeedback?: RankedResultFeedback | null;
   /** RFX1 — where the presentation is (derived; see `flow/rankedFlow`). */
   presentationPhase?: RankedPresentationPhase;
+  /**
+   * RFX1 2B3 — the MEDIUM beat playing over this arena, or absent. Published
+   * as `data-special-transition`; nothing is drawn from it here.
+   */
+  specialTransition?: "final-round" | "meta-reflex-entry" | null;
   /**
    * RFX1 Phase 2B seam — the authoritative next round the server has opened
    * but the arena is not presenting yet. Unused by the arena in Phase 2A.

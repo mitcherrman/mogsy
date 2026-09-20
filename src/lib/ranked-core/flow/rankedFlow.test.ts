@@ -3,7 +3,8 @@ import {
   cardEventId, projectPresentationPhase, projectResultFeedback, resultEventId, upcomingRound,
 } from "./rankedFlow";
 import {
-  anchoredRevealHoldMs, ENTRY_MIN_LEAD_MS, entryIntroExitAt, entryIntroHolding,
+  anchoredRevealHoldMs, ENTRY_INTRO_MIN_MS, ENTRY_MIN_LEAD_MS,
+  entryIntroDurationMs, entryIntroExitMs, entryIntroHolding,
   MODULE_TITLE_END_MARGIN_MS, moduleTitleWindowMs,
   REVEAL_HOLD_MIN_MS, REVEAL_HOLD_MS,
 } from "@/lib/ranked-core/pacing";
@@ -154,36 +155,65 @@ describe("RFX1 2B1 — the presentation cutoff", () => {
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* RFX1 2B2 — the entry intro's window (the arithmetic; the controller-level  */
-/* behaviour is in QuizRankedMatch.rfx1b2.test.tsx).                          */
+/* RFX1 2B2/2B3 — the entry presentation contract (the arithmetic; the        */
+/* controller-level behaviour is in QuizRankedMatch.rfx1b2/b3.test.tsx).      */
 /* ────────────────────────────────────────────────────────────────────────── */
 
-describe("RFX1 2B2 — the entry intro's window", () => {
-  it("holds while the lead-in has more than the reveal margin left", () => {
-    expect(entryIntroHolding(ENTRY_MIN_LEAD_MS + 1)).toBe(true);
-    expect(entryIntroHolding(4200)).toBe(true);
+describe("RFX1 2B3 — the entry presentation contract", () => {
+  // The card's REAL first paint on this device — not a modelled estimate of
+  // it. Everything below is measured from here, which is the whole of the
+  // correction: the contract is checked against what the player saw.
+  const paint = 1_000_000;
+  const start = (leadFromPaint: number) => paint + leadFromPaint;
+
+  it("reveals the arena exactly one preview before the server's instant", () => {
+    // The reveal is PINNED to `started_at`. It is the one fixed point, and it
+    // is why the locked preview is always about 700 ms.
+    for (const lead of [2700, 4000, 9000]) {
+      expect(start(lead) - entryIntroExitMs(start(lead))!).toBe(ENTRY_MIN_LEAD_MS);
+    }
   });
 
-  it("is over AT the margin, and stays over past the start", () => {
-    expect(entryIntroHolding(ENTRY_MIN_LEAD_MS)).toBe(false);
-    expect(entryIntroHolding(ENTRY_MIN_LEAD_MS - 1)).toBe(false);
-    expect(entryIntroHolding(0)).toBe(false);
-    expect(entryIntroHolding(-5000)).toBe(false);
+  it("gives SURPLUS budget to the card, never to a longer inert preview", () => {
+    // An earlier draft capped the intro, so a fast queue entry spent the
+    // surplus staring at a prepared question it could not answer. A longer
+    // card is presentation; a longer preview is a stall.
+    const tight = ENTRY_INTRO_MIN_MS + ENTRY_MIN_LEAD_MS;
+    expect(entryIntroDurationMs(start(tight), paint)).toBe(ENTRY_INTRO_MIN_MS);
+    expect(entryIntroDurationMs(start(tight + 1800), paint))
+      .toBe(ENTRY_INTRO_MIN_MS + 1800);
+    // …and the preview did not grow by a millisecond while that happened.
+    expect(start(tight + 1800) - entryIntroExitMs(start(tight + 1800))!)
+      .toBe(ENTRY_MIN_LEAD_MS);
+  });
+
+  it("NEVER reaches past the preview margin: the server always wins", () => {
+    // A short lead — a staff match, a reload into a running round. The client
+    // clips rather than delaying `started_at`.
+    const s = start(900);
+    expect(entryIntroExitMs(s)).toBe(s - ENTRY_MIN_LEAD_MS);
+    expect(entryIntroDurationMs(s, paint)).toBeLessThan(ENTRY_INTRO_MIN_MS);
+    // Spent entirely: no card at all rather than a card over a live question.
+    expect(entryIntroDurationMs(start(0), paint)).toBe(0);
+    expect(entryIntroDurationMs(start(-5000), paint)).toBe(0);
+  });
+
+  it("holds until the exit instant and not one ms past it", () => {
+    const s = start(ENTRY_INTRO_MIN_MS + ENTRY_MIN_LEAD_MS);
+    const exit = entryIntroExitMs(s)!;
+    expect(entryIntroHolding(s, exit - 1)).toBe(true);
+    expect(entryIntroHolding(s, exit)).toBe(false);
+    expect(entryIntroHolding(s, exit + 1)).toBe(false);
   });
 
   it("treats an unresolved match as an intro state, not as a finished one", () => {
     // No round yet IS "match resolving"; the latch in `useEntryIntro` is what
     // keeps this from reading the same way mid-match.
-    expect(entryIntroHolding(null)).toBe(true);
-    expect(entryIntroHolding(Number.NaN)).toBe(false);
-  });
-
-  it("puts the exit exactly ENTRY_MIN_LEAD_MS before the server's instant", () => {
-    const start = "2026-09-19T12:00:10.000Z";
-    expect(entryIntroExitAt(start))
-      .toBe(new Date(Date.parse(start) - ENTRY_MIN_LEAD_MS).toISOString());
-    expect(entryIntroExitAt(null)).toBeNull();
-    expect(entryIntroExitAt("not a date")).toBeNull();
+    expect(entryIntroHolding(null, paint)).toBe(true);
+    // A start that cannot be parsed proves no window, so none is held open.
+    expect(entryIntroHolding(Number.NaN, paint)).toBe(false);
+    expect(entryIntroExitMs(Number.NaN)).toBeNull();
+    expect(entryIntroExitMs(null)).toBeNull();
   });
 
   it("leaves the arena ANSWERABLE before it, not at it", () => {

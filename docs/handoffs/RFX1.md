@@ -2238,7 +2238,2081 @@ for the surfaces that draw it large. On top of that preparation, a Ranked /
 Academy Duel card names the match, both duelists and their roles, occupies the
 period the server already owned, and is gone by `started_at − 700 ms`.
 
+**Phase 2B3** made three presentation behaviours deliberate instead of
+accidents of load speed: a repeatable intro floor measured from the card's real
+first paint, a countdown that ticks like a clock, and a real match-complete
+beat instead of a cut. It added the two medium beats — Final Round and a Meta
+Reflex entry sized for a mode shift — with their own replay guards and their
+substitution for the ordinary module title.
+
+**Phase 2B3 visual implementation** gave all four of those surfaces their
+approved design under one Ranked beat vocabulary at three intensities, and
+fixed two defects the timing work could not see: the Meta Reflex sting spent
+~60% of its beat fully transparent, and the result sting fired on the
+completion snapshot rather than at the outro. **Awaiting owner visual
+approval; not merged.**
+
 The invariant the whole workstream now holds: **the player sees the duel, then
 a prepared and stable first question, and input opens at the server's instant
 with the entire configured answer window still ahead of it.** Nothing the
 client does extends, shortens or anticipates that instant.
+
+---
+
+# Phase 2B3: presentation timing, the countdown clock and match-outro plumbing
+
+Status: **implemented and committed on two scoped branches. Not merged.**
+No visual or copy design: the intro card is 2B2's, and the outro is a neutral
+`MATCH COMPLETE` placeholder that exists so the lifecycle is visible and
+testable. Both designs are explicitly left to the owner.
+
+## Baselines
+
+| | |
+|---|---|
+| Frontend | `/Users/macmoney/mogsy-wt-rfx1-2b3`, branch `rfx1/phase2b3`, on `origin/main` **`aa62fc22`**. Phase 2A / 2B1 / 2B2 all verified present (`RankedEntryIntro.tsx`, `flow/useEntryIntro.ts`, `projectEntryPhase`, `moduleTitleWindowMs`, `entry_lead_ms`). |
+| Backend | `/Users/macmoney/lcs-wt-rfx1-2b3`, branch `rfx1/phase2b3-presentation-leadin`, on `origin/master` **`1bddaf71`**. The 2B1 merge `295fd58f` is an ancestor. |
+| Method | Production `vite build` under `vite preview`; the real `/dev/ranked-shell-probe` (real `QuizRankedMatch`, real `useRankedMatch`, real `CanonicalArena`); headless Chromium under CDP throttling. Scripts are in the session scratchpad, not committed. |
+
+## Phase 2B3 objective
+
+Three presentation behaviours stopped being accidents of load speed:
+
+1. the pre-match intro is a **deliberate, repeatable beat** — at least 2 s of
+   VISIBLE card on every genuine fresh entry, measured from its real first
+   paint, followed by ~700 ms of locked, prepared question;
+2. the Ranked countdown **ticks like a clock** — each visible number occupies
+   one real second, anchored to the authoritative deadline;
+3. the match ends through a **real match-complete beat** instead of cutting
+   from the final answer straight to the end screen.
+
+The entry timing contract was corrected once after review; the section below
+is the final one, and the first draft's `ENTRY_INTRO_MAX_MS` is gone.
+
+## Intro timing contract
+
+**Corrected before merge.** The first draft measured the floor from a modelled
+`ENTRY_ROUTE_PAINT_MS = 300`, which left the bot path meeting it *exactly*
+(zero headroom), and capped the intro at `ENTRY_INTRO_MAX_MS = 2600`, which
+handed a fast queue entry's surplus to the locked preview instead — up to
+2119 ms of prepared question the player could not answer. Both are fixed
+below; `ENTRY_INTRO_MAX_MS` no longer exists.
+
+### The client contract
+
+```
+arenaRevealAt     = started_at − ENTRY_MIN_LEAD_MS          (the one fixed point)
+introVisibleUntil = arenaRevealAt
+subject to:  introVisibleUntil − firstVisibleAt >= ENTRY_INTRO_MIN_MS
+```
+
+`firstVisibleAt` is the card's **actual first paint on this device**, captured
+by the coordinator on its first eligible render. It is not a modelled
+estimate: it is what the floor is measured from, what the tests assert on, and
+what the card publishes as `data-intro-ms`, so the contract is checked against
+what the player saw.
+
+Because the reveal is pinned to `started_at`, **there is no ceiling on the
+intro**. Any surplus presentation budget goes to the card and the locked
+preview stays at its 700 ms. A longer card is presentation; a longer inert
+preview is a stall.
+
+| | value |
+|---|---|
+| minimum visible intro | `ENTRY_INTRO_MIN_MS` **2000 ms**, from the real first paint |
+| locked arena preview | `ENTRY_MIN_LEAD_MS` **700 ms** (unchanged since 2B1) |
+| intro ceiling | **none** |
+
+### The server keeps the floor
+
+`started_at` is written once inside the creation transaction and the client
+only ever CLIPS, so the floor is a property of `entry_lead_ms`: each path's
+lead is that path's own worst-reasonable spend **before the card can paint**,
+plus the presentation.
+
+```
+ENTRY_DISCOVERY_MS     2000   queue only — useRankedQueue POLL_MS, an upper
+                              bound that also absorbs that poll's round trip
+ENTRY_JOIN_RTT_MS       500   bot only — the create-and-return POST's round
+                              trip; the queue has no equivalent because the
+                              discovery bound already covers the same cost
+ENTRY_HANDOFF_MS        800   both — PlayScrollRecord DEFAULT_HANDOFF_MS
+ENTRY_ROUTE_PAINT_MS    400   both — the warm SPA route swap to the card's
+                              FIRST PAINT. MEASURED at 9–62 ms across four
+                              throttle profiles × five warm swaps; the
+                              constant is ~6× the worst of those, and the
+                              headroom is the point.
+
+ENTRY_INTRO_MIN_MS     2000
+ENTRY_ARENA_PREVIEW_MS  700
+ENTRY_PRESENTATION_MS  2700   identical on both paths
+
+queue        = 2000 + 800 + 400 + 2700 = 5900   (2B1: 4200)
+bot_playtest =  500 + 800 + 400 + 2700 = 4400   (2B1: 2200)
+everything else                        =    0   (unchanged)
+```
+
+Both paths therefore leave **exactly 2700 ms** once the card paints, on their
+worst-reasonable entry — the floor plus the preview. The two leads differ only
+in how the same "find out the match exists" cost is bounded: a poll period on
+one, a request on the other.
+
+**`ENTRY_JOIN_RTT_MS` is new.** 2B1 explicitly declined it ("padding it would
+be inventing time"), and under 2B1's model — where the lead only refunded real
+losses — that was right. Under 2B3 the presentation is a promise, and the bot
+path is the one path where no other term bounds that cost. It is a bound, not
+a measurement; Phase 1 measured 110–250 ms TTFB against production and
+bot-match creation does real question-bank work on top.
+
+**`MODULE_TITLE_MS` leaves the entry formula.** Round 1's orientation beat is
+the duel card now, not the module name in the header.
+
+**Extension rules.** 2B1's `useEntryPreparation` still keeps the card up while
+Round 1's *critical* media decodes, bounded by `min(ENTRY_PREP_CAP_MS 1500,
+msUntil(started_at) − 700)`. Slow loading may lengthen the presentation; it can
+never shorten the preview or move `started_at`. A lead that is short or already
+spent (a reload into a running round, a staff match with a zero lead) ends the
+card early or never shows it.
+
+## Countdown clock
+
+### Old root cause (two faults, one symptom)
+
+1. **The tick source was mount-anchored.** `QuizRankedMatch` ran
+   `setInterval(() => setTick(t => t + 1), 1000)` from mount, and the timer
+   value was recomputed from a raw `Date.now()` *during render*. The instant a
+   number was DUE to change (a property of the deadline) and the instant a
+   render happened to observe it were unrelated, and the offset was re-rolled
+   on every remount. Worse, the interval was not the only thing that
+   re-rendered: a poll landing between ticks flipped the digit early and the
+   interval flipped the next one on schedule, so intervals alternated
+   short/long.
+2. **Every poll adopted a raw clock skew.** `snapshotSkewMs = serverTime −
+   localNowAtReceipt`, and the server stamps `serverTime` before a round trip
+   that varies from poll to poll. Since `remaining = deadline − now − skew`, a
+   200 ms swing in the skew moved *every* boundary by 200 ms. This is the
+   dominant fault on a real network and is invisible on localhost — which is
+   why the probe alone never reproduced it.
+
+Audited and found already correct, so left alone: `Math.ceil` semantics,
+`projectTimer`'s `min(durationSeconds, …)` cap during the lead-in, the `0`
+clamp (no negative can render), timeout resolution (the backend resolves it;
+the display is never authoritative), and the fact that the desktop
+(`CentralStage` → `TimerDisplay`) and mobile (`MobileMatchBar` → `Clock`)
+clocks already read ONE `header.timer`.
+
+### New clock source
+
+`useCountdownNow(deadlineIso, skewMs)` returns a `nowMs` that changes **only
+at deadline-relative second boundaries**. `timerMath.msUntilSecondBoundary`
+gives the distance to the next one; the hook schedules a single `setTimeout`
+at it (+6 ms, so an early-firing timer cannot produce a duplicate render for
+one digit) and re-arms from there. `projectTimer` is unchanged and still pure —
+it simply stops being handed a `Date.now()` that every render re-rolled.
+
+### Second-boundary semantics (confirmed against the existing convention)
+
+`remainingSeconds` is a **ceiling**, as the arena has shipped since the mode
+did. "30" means *more than 29 s and at most 30 s remain*, and it occupies that
+whole second: a full 30 s round reads `30` at the instant it opens and holds it
+for 1000 ms. `1` lasts one real second; `0` appears only when truly expired;
+nothing negative can render.
+
+### Resync behaviour
+
+`timerMath.reconciledSkewMs` keeps the **highest** reading. The least-delayed
+round trip is the most accurate, and it is also the safe one — an overstated
+skew shows the player *less* time than they have, never more. A step DOWN
+larger than `SKEW_RESYNC_THRESHOLD_MS` (750 ms) is the clock itself moving and
+is adopted at once; ordinary latency noise never is. Round timestamps
+themselves are immutable (proved in 2B1: `started_at` is written once inside
+the creation transaction and no read path recomputes it), so there is nothing
+else for a later snapshot to correct.
+
+### Background-tab behaviour
+
+The hook listens for `visibilitychange` and, on return, clears its pending
+timer and takes one fresh sample. The value is derived from the clock, so that
+sample IS the correct remaining time — the missed seconds are **not** animated
+through.
+
+---
+
+## Module-transition contract
+
+Audited; the between-module window itself is unchanged (`module_transition_ms`
+= result hold 1500/2600 + `MODULE_TITLE_MS` 1400, and 2B1's swap gate still
+ends by `started_at − SWAP_MEDIA_MIN_LEAD_MS 1000`). One rule added:
+
+* `MODULE_TITLE_MIN_MS` **600 ms**. `moduleTitleWindowMs` now returns **0**
+  when the room left is below the floor, so the title is **skipped rather than
+  flashed**. A beat the player cannot read is worse than no beat.
+* Nothing is ever *extended* to reach the floor; the boundary stays the
+  server's. Under fast load the title plays its nominal beat; under a media
+  wait it shortens to the 850 ms the swap gate guarantees; under a late
+  discovery it plays not at all.
+* Measured (browser, production-shaped latency): identical before and after —
+  reveal ~900 ms, then `module-intro` ~1005–1030 ms. Part 3 adds a floor, not
+  a pacing change.
+
+---
+
+## Match-complete lifecycle
+
+### Before
+
+```
+snapshot carries match_over
+  → phase = "match_over" in the SAME render
+  → MatchOverFrame replaces the arena
+  → the final round captured with { hold: false } — its reveal never played
+  → a second effect released any hold in flight, for good measure
+```
+
+Measured in the browser: `server-completed@0 → end-screen@311`. The last answer
+of the duel was the one answer whose verdict the player never saw land.
+
+### After
+
+```
+snapshot carries match_over
+  → liveCompletion decided from sawMatchLiveRef, BEFORE any await
+  → the outro is CLAIMED in the same batch (phase = "match_outro";
+    the end screen cannot mount, input is closed)
+  → the result row and the final settlement are fetched
+  → the final round is captured WITH its ordinary reveal hold
+  → outro.ready → the beat presents for MATCH_OUTRO_MS
+  → phase = "match_over" → MatchOverFrame
+```
+
+Three defects had to be fixed for that sequence to hold:
+
+1. **`{ hold: false }`** on the final round — now `hold: liveCompletion &&
+   finalRoundUnseen`, where `finalRoundUnseen` is `resolvedRef.current !==
+   lastRound`. A played-out match settles its final round inside the
+   transaction that ends it, so nothing has captured it; a **forfeit**'s last
+   completed round was captured (and revealed) earlier, so it correctly gets
+   no second reveal.
+2. **The "a finished match releases any hold" effect** ran on the first render
+   that saw `matchOver`, which lands *after* the completion poll armed the
+   reveal — so the one hold the player most needed was guaranteed to be
+   cancelled. It now stands aside while an outro is owed.
+3. **The surface adopted the completion snapshot.** `active_round: null` ended
+   the final round's presentation before its settlement had even been fetched.
+   `canAdvanceSurface` now refuses a snapshot that is `matchOver` with no
+   active round: a completed match publishes no round to present.
+
+A browser run with production-shaped latency caught a fourth, which the jsdom
+tests could not: the end screen flashed for ~320 ms in the gap between the
+completion snapshot and the two reads behind it, then the arena came *back*.
+Claiming the outro in the same batch as the snapshot removes it; `ready` is
+what keeps the beat from announcing the end before the verdict it follows.
+
+## Outro presentation state
+
+* Controller phase **`match_outro`** (`MatchPhase`), from the instant the
+  completion is observed until the beat is spent.
+* Presentation phase **`match-outro`** (`RankedPresentationPhase`), published
+  as `data-presentation-phase`, for the beat itself only — ranked AFTER
+  `revealing`, so the final round's verdict plays first.
+* `MATCH_OUTRO_MS` **1200 ms**, one constant, retunable without touching the
+  state machine that plays it.
+* The arena renders it through a new optional `outro?: ReactNode` seam on
+  `CanonicalArena` — the same spirit as `guidance` and `recovering.intro`, so
+  the arena never learns what a duel's ending is. (`guidance` is the Daily's
+  seam and a boundary test forbids Ranked using it.)
+
+### Outro information contract
+
+`flow/matchOutro.ts` exposes one minimal typed payload, `MatchOutroView`:
+`id`, `matchId`, `result` (win/loss/draw — from `outcome`/`winnerUserId` only,
+never by comparing two scores), `terminalReason`, `viewerScore` /
+`opponentScore` (the engine's committed `finalScores`), `viewerLabel` /
+`opponentLabel`, `viewerRole` / `opponentRole` (the frozen seats),
+`finalRoundNumber`, `ratingDelta` (when the history row already carries one).
+
+Deliberately **not** included: the timeline, transcript and discovery list
+(the end SCREEN's material), the rails' score-animation state (a second
+authority over the same numbers) and any rating TIER (the client holds no
+thresholds).
+
+---
+
+## Replay protection
+
+| event | plays when | cannot replay because |
+|---|---|---|
+| fresh-match intro | `entry === "fresh"`, match not over, and the exit instant is still ahead | `useEntryIntro` is a one-way latch per mount; a recovery is not eligible at all; a spent lead yields `false` on the first render that sees it |
+| final round's reveal | the completion is live AND `resolvedRef.current !== lastRound` | `resolvedRef` is the same ref that stops a re-poll double-capturing a settlement |
+| match outro | `sawMatchLiveRef.current` — this mount observed at least one OPEN snapshot — and `outroStartedRef` is unset | both are refs; `stoppedRef` also ends polling at completion. A refresh or a reconnect onto a finished match reads `match_over` on its FIRST snapshot, so nothing is owed and nothing ever appears |
+
+The outro's id is deterministic (`<matchId>:outro`), as the 2A result cues are.
+
+---
+
+## Reduced motion
+
+`prefers-reduced-motion` and the app's own Settings → Reduce Motion
+(`useReducedMotionPreference` → `[data-reduced-motion="true"]`) change the
+ANIMATION and never the pacing:
+
+* **Intro** — unchanged duration; the card fades instead of travelling (2B2's
+  behaviour, now with the 2B3 minimum behind it). Tested.
+* **Module transitions** — the window is a pacing constant, untouched.
+* **Outro** — `MATCH_OUTRO_MS` either way; a 180 ms fade replaces the 260 ms
+  rise. Tested.
+
+---
+
+## Measurements
+
+Production builds under `vite preview`: **before** = `origin/main` (:8472),
+**after** = this branch (:8471). Headless Chromium, CDP throttling — phones
+1.6 Mbps / 150 ms / 4× CPU, desktop 9 Mbps / 40 ms.
+
+### Intro — deterministic on both paths, at every viewport
+
+`lead` models what the server's lead-in has LEFT by the time the card paints:
+`entry_lead_ms` less that path's own spend. Queue worst `5900 − 3200 = 2700`,
+bot worst `4400 − 1700 = 2700`; "typical" adds the slack a real entry usually
+has (discovery landing in ~1 s of its 2 s bound; a 200 ms join round trip).
+
+| viewport | path | visible intro | locked preview | `data-intro-ms` |
+|---|---|---|---|---|
+| 390×844, 4× CPU | queue worst | **2072 ms** | 677 ms | 2056 |
+| | queue typical | 3035 ms | 678 ms | 3046 |
+| | bot worst | **2071 ms** | 682 ms | 2047 |
+| | bot typical | 2332 ms | 679 ms | 2324 |
+| 360×800, 4× CPU | queue worst | **2062 ms** | 681 ms | 2043 |
+| | queue typical | 3027 ms | 676 ms | 3019 |
+| | bot worst | **2074 ms** | 677 ms | 2046 |
+| | bot typical | 2361 ms | 679 ms | 2347 |
+| 1440×900 | queue worst | **2024 ms** | 694 ms | 2021 |
+| | queue typical | 3023 ms | 695 ms | 3017 |
+| | bot worst | **2022 ms** | 690 ms | 2016 |
+| | bot typical | 2331 ms | 675 ms | 2312 |
+
+* Visible intro **≥ 2016 ms in all twelve runs**; never below the floor.
+* Locked preview **675–695 ms in all twelve runs** — including the surplus
+  cases, where the extra second went to the card and the preview did not move.
+* A 4×-throttled phone and an unthrottled desktop get the same beat to within
+  50 ms, and the queue and bot worst cases are within 50 ms of each other.
+* The card's own `data-intro-ms` agrees with the wall clock to within ~20 ms
+  everywhere, which is what makes the contract checkable from the DOM.
+* Input stayed tied to the server's instant in every run.
+
+**Against the first draft** (queue 5800 / bot 3800, ceiling 2600): the queue
+intro swung 2021–2596 ms and its preview reached 2119 ms; the bot worst case
+fell to ~1.7 s. **Against `origin/main`**: the queue intro swung 421–2428 ms
+and the bot card was 121–418 ms.
+
+### Countdown — real-clock cadence
+
+Ordinary run (no injected latency), gaps between visible changes:
+
+| viewport | n | min | max | avg |
+|---|---|---|---|---|
+| 390×844 | 6 | 997 | 1009 | **1001** |
+| 360×800 | 6 | 988 | 1015 | **1001** |
+| 1440×900 | 10 | 976 | 1018 | **1000** |
+
+Sample: `0:30@3647 → 0:29@5343 → 0:28@6345 → 0:27@7348 → 0:26@8349 →
+0:25@9351 → 0:24@10356 → …`. The first interval is longer by design: `30` is
+pinned through the lead-in by `projectTimer`'s duration cap and then owns its
+own second from `started_at`.
+
+**With production-shaped latency** (110–260 ms varying per poll, shimmed over
+the probe's interceptor — the probe alone answers instantly from the same
+clock and cannot reproduce the defect), 1440×900, 22 intervals each:
+
+| | min | max | avg | spread |
+|---|---|---|---|---|
+| before (`origin/main`) | **881 ms** | **1122 ms** | 997 | **241 ms** |
+| after (`rfx1/phase2b3`) | 981 ms | 1013 ms | 1000 | **32 ms** |
+
+### Module transition (browser, same latency)
+
+| | reveal | module-intro | total |
+|---|---|---|---|
+| before | 1569→2475 (906 ms) | 2475→3495 (1020 ms) | 3495 ms |
+| after | 1707→2609 (902 ms) | 2609→3639 (1030 ms) | 3639 ms |
+| after, media never settles | 1604→2519 (915 ms) | 2519→3515 (996 ms) | 3515 ms |
+
+Unchanged, as intended, and stable whether or not media ever loads.
+
+### Match complete (browser, same latency; ms from the completion snapshot)
+
+| | before | after | after, media never settles |
+|---|---|---|---|
+| final result feedback begins | — (never) | 850 | 717 |
+| outro begins | — | 2349 | 2234 |
+| end screen | **311** | 3557 | 3431 |
+| final reveal duration | 0 | **1499 ms** | 1517 ms |
+| outro duration | 0 | **1208 ms** | 1197 ms |
+
+No blank frame and no overlap in any run: exactly one of the arena and the end
+screen is mounted in every sample.
+
+Geometry: no document scroll and no nested scroll at any viewport. The 4 px
+horizontal overflow at 390/360 is the probe's own fixed state-picker toolbar —
+identical on `origin/main`, pre-existing, and on no product route (2B2's
+Remaining issue 5).
+
+---
+
+## Tests
+
+Frontend, new files:
+
+* `src/lib/ranked-core/timerMath.countdown.test.ts` (18) — ceiling semantics,
+  no negative, boundary arithmetic (whole second at a whole second, remainder
+  from an arbitrary instant, skew-corrected, null past the deadline, a 30 s
+  round walking exactly 30 boundaries), the module-title floor (nominal /
+  shortened / skipped / never below the swap gate's guarantee), the outro
+  constant's bounds, and the skew rule (seeds, keeps the highest, adopts a
+  real correction, bounds its error, holds the boundaries still).
+* `src/lib/ranked-core/flow/useCountdownNow.test.tsx` (6, fake timers) —
+  a stable `30 → 29 → 28 …` sequence with min = max = avg = 1000 ms;
+  transitions on deadline boundaries and not on mount + k·1000; twenty
+  rerenders cannot move the digit; a tiny resync produces no duplicate tick;
+  a backgrounded tab snaps to the truth and animates nothing; `0` is terminal
+  and `1` owns its second.
+* `src/pages/quiz-ranked/QuizRankedMatch.rfx1b3.test.tsx` (16, real controller
+  and real arena) — the intro holds its minimum with instant media and is
+  capped; the locked question is up before `started_at` and input opens AT it;
+  critical loading may extend, bounded by the preview margin; reduced motion
+  keeps the duration; a recovery and a spent lead play no intro. Desktop and
+  mobile show the same value from the same deadline, and a poll does not
+  restart the cadence. The ending: the exact sampled lifecycle
+  `answering → revealing → match-outro → end-screen` with each beat's
+  measured duration, no blank or overlapping state across the swap, no
+  end-screen flash under 250 ms of injected read latency, reduced motion
+  preserving the beat, no replay after it, and neither a refresh nor a
+  reconnect onto a completed match ever playing it.
+
+Frontend, updated: `flow/rankedFlow.test.ts` (the entry contract rewritten for
+the new formula — floor, ceiling, the server's hard clip, the holding
+boundary, unresolved vs unparseable), and `QuizRankedMatch.forfeit.test.tsx` /
+`QuizRankedMatch.revealBeat.test.tsx` (end-screen waits extended past the
+outro beat).
+
+Backend: `test_ranked_answerable_boundary.py` — the lead arithmetic rewritten
+term by term for both paths, plus
+`test_every_real_entry_path_can_pay_for_the_whole_presentation`, which is
+where the floor is actually proved: the frontend only ever clips, so
+"every fresh match gets the same minimum intro" IS the claim that each path's
+lead covers its own worst-reasonable client spend plus the presentation.
+
+### Results
+
+* Ranked suites: **131 files / 1623 tests passing**.
+* Whole frontend suite: **733 files / 11744 passing**; the 15 failing files /
+  79 failing tests are **byte-identical to the set on clean `origin/main`**,
+  verified by a full baseline run in a separate worktree. Zero regressions;
+  +43 tests, +3 files.
+* Production `vite build`: clean.
+* Backend Ranked suites: **86 passing**.
+  `test_ranked_prototype.py::test_two_human_match_defaults_to_production_and_not_bot`
+  fails identically with the branch stashed — the fresh worktree's empty stub
+  DB has no `quiz_questions`. Pre-existing and environmental.
+
+---
+
+## Files changed
+
+**Frontend** — new:
+`src/lib/ranked-core/flow/useCountdownNow.ts`,
+`src/lib/ranked-core/flow/matchOutro.ts`,
+plus the three test files above.
+
+Modified:
+* `src/lib/ranked-core/timerMath.ts` — `msUntilSecondBoundary`,
+  `SKEW_RESYNC_THRESHOLD_MS`, `reconciledSkewMs`;
+* `src/lib/ranked-core/pacing.ts` — `ENTRY_INTRO_MIN_MS`,
+  `entryIntroExitMs` (the reveal, pinned to `started_at`), `entryIntroHolding`
+  and `entryIntroDurationMs` (both on the real first paint),
+  `MODULE_TITLE_MIN_MS`, `MATCH_OUTRO_MS`, and the floor inside
+  `moduleTitleWindowMs`;
+* `src/lib/ranked-core/flow/useEntryIntro.ts` — the entry presentation
+  coordinator: the first-paint anchor, the local-instant exit, the latch, and
+  the `EntryIntroWindow` return carrying the measured `visibleMs`;
+* `src/components/ranked-arena/RankedEntryIntro.tsx` — the optional
+  `visibleMs` prop, published as `data-intro-ms` (measurement only; nothing
+  drawn changes);
+* `src/lib/ranked-core/flow/rankedFlow.ts` — the `match-outro` phase;
+* `src/pages/quiz-ranked/useRankedMatch.ts` — the `match_outro` phase, the
+  outro state and its two refs, the scoped final-round hold, the scoped
+  match-over release, the beat effect, `matchOutroId`, and the reconciled
+  skew;
+* `src/pages/quiz-ranked/QuizRankedMatch.tsx` — `useCountdownNow` feeding
+  `projectTimer`, the outro payload and placeholder, the surface guard for a
+  completed match;
+* `src/components/ranked-arena/CanonicalArena.tsx` — the optional `outro`
+  seam;
+* `src/index.css` — the placeholder's two rules and its reduced-motion
+  variant;
+* this handoff.
+
+**Backend** — `ranked_public/pacing.py` (`ENTRY_ROUTE_PAINT_MS`,
+`ENTRY_INTRO_MIN_MS`, `ENTRY_ARENA_PREVIEW_MS`, `ENTRY_PRESENTATION_MS`, and
+`_ENTRY_PATHS` rewritten) and `test_ranked_answerable_boundary.py`. Nothing
+else: `started_at` is still written once, inside the creation transaction, by
+the same `_open_segment` mechanism, and the configured answer window is
+unchanged — it simply begins later.
+
+---
+
+## Unresolved / notes
+
+1. **`ENTRY_JOIN_RTT_MS` 500 is a bound, not a measurement.** It is the only
+   term in either lead that was not either a client constant or measured in a
+   browser. Phase 1 measured 110–250 ms TTFB against production and bot-match
+   creation does question-bank work on top, so 500 ms is a generous upper
+   bound — but a production bot join that ever exceeded it would take the
+   difference out of the card. Worth one real-network measurement on mogzy.lol
+   before anyone tunes it down.
+2. **`ENTRY_ROUTE_PAINT_MS` 400 carries deliberate headroom.** The warm SPA
+   swap to the card's first paint measured 9–62 ms; the constant is ~6× the
+   worst of those and a test pins that multiple. It is the term that absorbs a
+   cold device, a GC pause or a slow first render, and it is the first place
+   to look if a real entry ever misses the floor.
+3. **`SWAP_MEDIA_MIN_LEAD_MS` is still 1000** (2B1 note 4, 2B2 issue 4). With
+   the 2B2 derivatives the gate rarely waits at all, and it is what makes
+   `MODULE_TITLE_MIN_MS` reachable rather than aspirational — a test pins that
+   relationship.
+4. **The probe cannot reproduce the clock defect on its own**: its scripted
+   server answers instantly from the same clock, so `snapshotSkewMs` reads ~0.
+   The latency shim in the scratchpad script is what puts the production round
+   trip back, and it must be installed AFTER the probe's own interceptor or it
+   is bypassed.
+5. **Round 1 no longer plays a module-title face.** 700 ms of preview is below
+   `MODULE_TITLE_MIN_MS`, so the title is skipped and the preview shows the
+   question and its clock. Deliberate — the duel card is round 1's orientation
+   beat now — but it is a visible change from 2B1.
+
+---
+
+## Final Round presentation contract
+
+**Trigger.** The PRESENTED round is the last module of the match, read from
+the match contract and never from a constant: `scoring.moduleNumber ===
+scoring.matchLength`. An hp match (and any deployment predating RP1) carries a
+null `matchLength`, cannot say which round is last, and is owed no warning —
+the truthful answer rather than a guess. The backend reaches the same
+conclusion independently from the frozen format snapshot
+(`_upcoming_presentation_flags`), so a seven-module format's round 7 is the
+final round and a hardcoded 10 never appears on either side.
+
+Three things must ALL hold, and each closes a different replay hole:
+
+1. the presented round is special;
+2. the server's lead-in still has room for the whole beat
+   (`specialTransitionWindowMs`) — which is what makes a reconnect or a late
+   discovery skip it silently;
+3. THIS MOUNT WATCHED THE ROUND ARRIVE (`advancedInto`, compared by ROUND
+   NUMBER, not by snapshot object — every poll returns a fresh object for the
+   same round and treating that as a transition let a refresh claim one it
+   never saw).
+
+**Duration.** `SPECIAL_TRANSITION_VISIBLE_MS["final-round"]` = **1300 ms**
+guaranteed visible, the lower end of the 1200-1500 the owner asked for.
+Measured 1501-1604 ms in the browser, because the beat absorbs the poll's
+leftover slack (below).
+
+**Interaction with the ordinary module transition — it REPLACES it.** A round
+that announces itself does not also need its module name in the header first;
+that is two intros back to back for one question, and it was the single
+biggest risk in adding these. The substitution is made in both places from the
+same two booleans: `module_transition_ms` substitutes the special term for
+`MODULE_TITLE_MS`, and `QuizRankedMatch` passes `moduleTitleWindowMs = 0` for
+the same round. Ordinary rounds are untouched — same 2900 ms, same
+`MODULE_TITLE_MIN_MS` floor, same cutoff.
+
+**Authoritative timing.** The beat lives inside the server-owned window
+between a settled round and the next one. `started_at` is still written once,
+by the same `_open_segment` mechanism, and the answer window still begins at
+it. Input is closed for the whole beat (`phase !== "active"`), and the beat
+ends `MODULE_TITLE_END_MARGIN_MS` before `started_at` — measured 127-143 ms
+early on every run.
+
+**Replay.** Never on a refresh, a reconnect, a resumed match already in the
+final round, or from polling and rerenders. A one-per-round latch (`playedFor`,
+a ref) plus the two conditions above.
+
+## Meta Reflex entry presentation contract
+
+**Old duration: 720 ms** (`STING_MS`), and non-blocking by necessity — when it
+shipped, the backend started card 1's deadline at the instant it CREATED the
+block, so anything that covered the card would have spent the player's own
+answer window. RFX1 2B1 removed that premise (`_open_segment` opens a round at
+`now + presentation_ms` and `start_card_deadline` anchors on the same
+instant), and 2B3 sizes the lead for a real mode-shift beat.
+
+**New duration: 1800 ms** guaranteed visible. Measured 2015-2168 ms in the
+browser, ending 132-139 ms before `started_at`.
+
+**Trigger.** The presented round's module is Meta Reflex: module id
+`item_cost_duel` AND version >= 4. The version is the only honest
+discriminator — v1-v3 share the id but are the legacy five-pair Item Cost
+Duel, an ordinary round owed no mode-shift beat — and it is the same rule the
+renderer applies with `servesVersion`. Plus the same three conditions as
+above.
+
+**It IS the existing sting, extended.** `useEntrySting` gained an optional
+`durationMs`; Ranked passes the coordinator's window and everything else (the
+Daily, every harness) keeps `STING_MS` and is byte-identical. No second popup
+was added. The window reaches the module through one optional
+`entryPresentationMs` prop on `ModuleViewportProps`.
+
+**Card 1 behaviour.** Visible and LOCKED underneath, exactly as round 1 is
+during its own preview: `started_at` is 1800 ms away, so `answerablePending`
+closes input and the backend would refuse a submission anyway. The sting keeps
+its `pointer-events: none` shape, which now costs nothing and means a clock
+error can only ever produce a harmless banner rather than a curtain over a
+live card.
+
+**Block behaviour and replay.** Once per BLOCK, before card 1 only. Cards 2-5
+share the block key and replay nothing. A reconnect into a running block finds
+its lead-in spent, reads a 0 window and shows nothing.
+
+## Special-transition priority — when the final round IS a Meta Reflex block
+
+**FINAL ROUND wins the message; META REFLEX wins the clock.** One beat, one
+phase, deterministic (`resolveSpecialTransition`, mirrored by
+`upcoming_round_kind` / `special_transition_ms`):
+
+* the higher-stakes word is shown, because a player at module 10 of 10 already
+  knows the modules differ, and two large warnings back to back for one
+  question is the failure this phase must not produce;
+* on the LONGER of the two durations (1800 ms), because the mode shift is
+  still happening and the player still has to re-orient before card 1;
+* never the two lengths back to back — a test pins `visible < 1300 + 1800`.
+
+The production ladder does not currently hit this case (Meta Reflex sits at
+modules 4 and 9 of 10), so it is contract correctness rather than a live path.
+The eventual design may want the Final Round card to also name the module; the
+payload carries it.
+
+## The server-owned budget for a special round
+
+```
+ordinary            1500 + 1400                      = 2900   (unchanged)
+final round         1500 + 1900 + 600 + 1300 + 150   = 5450
+Meta Reflex entry   1500 + 1900 + 600 + 1800 + 150   = 5950
+                     ^      ^      ^      ^      ^
+                     |      |      |      |      cutoff margin
+                     |      |      |      the beat's visible promise
+                     |      |      headroom (PRESENTATION_HEADROOM_MS)
+                     |      discovery: POLL_MS 1500 + one RTT 400
+                     result hold
+```
+
+**No ordinary round is lengthened by any of this.** The special terms are paid
+only by the two or three rounds in a match that actually announce themselves.
+
+Two terms were sized by browser measurement rather than assumption, and both
+were wrong on the first pass:
+
+* **discovery is the poll interval PLUS a round trip.** The reveal began
+  1798 ms after the server resolved on a throttled phone, not the 1500 ms
+  `POLL_MS` alone predicts, and those 298 ms were enough to cancel the beat.
+* **`PRESENTATION_HEADROOM_MS` is 600 ms, not 250.** A medium beat is
+  all-or-nothing, so an exact fit is a beat that jitter cancels — and browser
+  runs reproduced exactly that, the same build playing the beat on one run and
+  skipping it on the next. The term it covers is the gap between the reveal
+  hold's timer firing and the render that evaluates the window, measured at up
+  to ~190 ms on a 4x-throttled phone.
+
+**Which beat absorbs the slack.** The client can be anywhere in its poll
+interval when the server resolves. Handing all of that to the warning made a
+FINAL ROUND card sit for nearly three seconds on a lucky poll. So the RESULT
+BEAT absorbs first (`anchoredRevealHoldMs`'s new `absorbUpToMs`, capped at
+`REVEAL_HOLD_LEVEL_UP_MS` 2600) and the warning takes only what is left,
+floored at its promise. The player looks at their own result for longer when
+their poll was lucky; the announcement stays close to its intended length.
+Ordinary rounds pass no cap and are unchanged.
+
+## Measurements — the medium beats
+
+Production build under `vite preview`, the real `/dev/ranked-shell-probe`
+driven through a live round 1 -> round 2 transition, production-shaped latency
+(110-260 ms varying per poll) layered over the probe's own interceptor,
+headless Chromium under CDP throttling.
+
+| viewport | beat | result beat | warning | ends before `started_at` | overlap |
+|---|---|---|---|---|---|
+| 390x844, 4x CPU | Final Round | 1769→3407 | **1586 ms** | 140 ms | none |
+| | Meta Reflex | 1816→3407 | **2036 ms** | 132 ms | none |
+| 360x800, 4x CPU | Final Round | 1777→3411 | **1604 ms** | 127 ms | none |
+| | Meta Reflex | 1686→3407 | **2168 ms** | 139 ms | none |
+| 1440x900 | Final Round | 1877→3407 | **1501 ms** | 137 ms | none |
+| | Meta Reflex | 1870→3425 | **2015 ms** | 138 ms | none |
+
+Across six Final Round runs the beat measured 1426-1840 ms and ended 122-143 ms
+before `started_at` every time. No answer time is lost: input opens at the
+server's instant, and no sample ever had input open while a beat was up
+(`OVERLAP none`). No document scroll and no nested scroll at any viewport; the
+4 px horizontal overflow at 390/360 is the probe's own fixed toolbar,
+identical on `origin/main`.
+
+**A note on what the browser run covers for Meta Reflex.** The figures above
+are the coordinator's window (`data-special-transition`), which is the number
+the sting is fed synchronously. Driving the sting ELEMENT in the probe would
+need a full contract-valid `segment_state` that the overlay cannot fabricate
+by hand, so the element's own duration, its once-per-block behaviour, its
+reconnect skip and its reduced-motion duration are covered by the integration
+tests against the real fixtures instead.
+
+## Tests — the medium beats
+
+`src/lib/ranked-core/specialTransition.test.ts` (14) — the hierarchy is
+declared and every beat is in exactly one class; each duration is what the
+owner asked for; the budget carries the poll's latency and real headroom;
+final-round detection is from the match contract (10-of-10 yes, 9-of-10 no,
+7-of-7 yes, null length no); Meta Reflex by id AND version (v3 no, v5 yes);
+final+Meta Reflex is one beat with the higher-stakes word on the longer clock,
+deterministically; and the window is all-or-nothing, absorbs surplus, and
+reads 0 for a round the client is already in.
+
+`QuizRankedMatch.rfx1b3.test.tsx` gained 13 — the live transition triggers the
+beat with its deterministic id; it holds its duration, keeps input locked and
+ends before `started_at` while input still opens AT it; it REPLACES the module
+title (one run, no `module` face, nothing interactive underneath); no replay
+from polling or rerenders; a reconnect straight into the final round plays
+nothing; a REFRESH inside the final round's own lead-in plays nothing (the
+clock alone would allow it — the mount-advance guard refuses); reduced motion
+keeps the duration; an ordinary round keeps its ordinary transition. Meta
+Reflex: the beat plays before card 1 for its configured duration and is
+comfortably longer than the 720 ms it replaced, card 1 is never interactive
+underneath it, it plays once per block with cards 2-5 replaying nothing, a
+reconnect into a running block plays nothing, and reduced motion keeps the
+duration. Plus: a final round that is also Meta Reflex plays ONE beat, with
+`data-warning-ms` proving it took the Meta Reflex clock.
+
+Backend `test_ranked_answerable_boundary.py` gained 8 — a medium beat replaces
+the module title and never follows it; no ordinary round is lengthened; the
+budget is the beat plus the poll's own latency plus headroom; final round wins
+the message and Meta Reflex wins the clock; the visible promise survives the
+latest discovery with room to spare; the client constants are mirrored
+exactly; special rounds are detected from the frozen format (Meta Reflex at
+modules 4 and 9 of the real ladder, final at 10); a format with no
+`match_length` is owed no final warning; legacy v1-v3 is not a Meta Reflex
+entry; and an unreadable snapshot fails closed to no beat.
+
+**Results.** Ranked + Daily suites **137 files / 1774 tests passing**. Whole
+frontend suite 734 files / 11773 passing, failure set **byte-identical to
+clean `origin/main`**. Production build clean. Backend Ranked suites 61
+passing (plus the one pre-existing stub-DB failure).
+
+## Remaining design work
+
+Exactly four items, all the owner's, and none of them started here:
+
+1. **The Ranked Duel intro's visual and content design** — what the pre-match
+   presentation looks like and says. 2B2's duel card occupies the window
+   today; this phase only decided how long that window is.
+2. **The Meta Reflex warning's visual and content design** — the existing
+   720 ms sting now holds for 1800 ms, so its entrance animation finishes and
+   the element simply holds for the remainder. That is honest for a
+   placeholder and is exactly the thing to redesign.
+3. **The Final Round warning's visual and content design** — today a neutral
+   `FINAL ROUND / GET READY` placeholder in the arena's new `warning` overlay
+   seam, unstyled beyond being visible and testable. The words are
+   placeholder semantics, not approved copy.
+4. **The match outro's visual and content design** — today a neutral
+   `MATCH COMPLETE` placeholder in the focus column. `MatchOutroView` states
+   what authoritative material the design may draw on.
+
+None of these designs is complete, and nothing in this phase should be read as
+approving copy or composition for any of them.
+
+---
+
+# Phase 2B3 visual-design proposal
+
+Status: **proposal only. Nothing implemented, nothing merged, no timing or state
+changed.** This section is the design pass the 2B3 "Remaining design work" list
+asked for. Every measurement below was taken in a browser against
+`rfx1/phase2b3` under `vite preview`'s dev server at 1440x900 and 390x844,
+using the real `/dev/ranked-shell-probe` with `frame=0`. Where a surface cannot
+be driven in the probe it is described from source and said to be.
+
+## Current-state audit
+
+### 1. Ranked Duel intro — measured
+
+| | 1440x900 | 390x844 / 375x812 |
+|---|---|---|
+| card box | 693 x 327 px, `top: 10` | full column, ~440 px tall |
+| share of viewport | 48% wide, **36% tall** | ~90% wide, **52% tall** |
+| unused below | ~560 px of fully lit duel chamber | ~370 px of the same |
+
+* The card is a plain `.ranked-panel` — the identical border, gradient and
+  corner-glow chrome the arena uses for the question card, the bot module and
+  the unsupported-module notice. **Nothing about its frame says "this is a
+  bigger moment than a panel."** It is the minor beat's dressing on the major
+  beat.
+* `RANKED DUEL` is `.ranked-eyebrow--cyan`: **10 px, cyan, 0.28em tracking** —
+  the physically smallest type on the card, below both names and both role
+  labels. The title is currently the least prominent element in the title beat.
+* The status line (`Seating the duelists…` / `Preparing the first question…` /
+  `Take your mark.`) is `--ranked-muted` grey. The first two are loading
+  language. Only the third is duel language.
+* The `.ranked-academy` backdrop (`ranked-academy-duel-bg.webp`, a lit duel
+  chamber with banners and candles) is **fully painted and completely unused**
+  behind the card at both viewports. This is the largest wasted asset in the
+  beat.
+* Mascots, facing and labels are correct and should not change: `art="compact"`
+  384 px encodes, 4.5rem phone / 8.5rem desktop, both turned inward, role label
+  always written beside the art (the LC1 rule).
+* Motion is finished at **380 ms** (card 260 ms, seats 320 ms, VS 380 ms +120 ms
+  delay). The guaranteed window is 2000 ms, so **~1620 ms — 81% of the beat — is
+  a static hold** of a finished card.
+
+### 2. Meta Reflex warning — source-verified, and it has a real defect
+
+The sting cannot be photographed in the probe: it needs a contract-valid
+`segment_state` the probe cannot fabricate, exactly as the 2B3 measurements
+section already notes. It was read from
+`src/components/ranked-arena/MetaReflexSting.tsx` and `src/index.css:3890-3911`.
+
+**The keyframes are a complete in-AND-out cycle, hardcoded at 720 ms:**
+
+```
+mr-sting-left / -right / -mark
+  0%   off-axis, opacity 0
+  30%  centred, opacity 1
+  62%  centred, opacity 1
+  100% off-axis, OPACITY 0        ← fill-mode `both` holds this
+```
+
+`useEntrySting` now holds the element for **1800 ms**, but the CSS still ends
+at 720 ms with every child at `opacity: 0`. So the real Ranked beat is:
+
+```
+0 ─────── 720 ms ─────────────────────── 1800 ms
+  words in, hold, words OUT     1080 ms of a MOUNTED, INVISIBLE element
+                                 over a visible, locked, un-answerable card
+```
+
+**~60% of the Meta Reflex beat currently shows nothing at all.** Reduced motion
+is worse: `mr-sting-fade` is 620 ms and also ends at `opacity: 0`, leaving
+~1180 ms dark. The handoff's "the element simply holds for the remainder" is
+accurate about the element and optimistic about the pixels. This is the single
+highest-value fix in the four surfaces and it is a CSS-only change.
+
+Footprint: a 64 px (`h-16`) band pinned to `inset-x-0 top-0` of the module
+viewport, `pointer-events-none`, words at 24 px phone / 30 px desktop, gold
+`#e8c97a` META and cyan `#7fd6ef` REFLEX around an inline 4-point star drawn in
+SVG. **There is no Meta Reflex emblem asset in the repository** (the component
+says so itself).
+
+### 3. Final Round warning — measured by rendering its exact markup in the arena
+
+| | 1440x900 | 390x844 |
+|---|---|---|
+| box | **167 x 67 px** | **168 x 67 px** |
+| share of viewport area | **0.86%** | **1.6%** |
+| position | dead centre of `inset-0` overlay | dead centre |
+
+* It is `bg-card/90` + `border-border/60` + `font-mono text-sm
+  uppercase tracking-[0.2em]`. In the academy theme that renders as a small
+  dark-grey rounded rectangle with 14 px mono `FINAL ROUND` and 12 px muted
+  `GET READY`. **It reads as a developer tooltip**, not as a stakes beat.
+* **There is no scrim.** The arena behind it stays fully lit, so the eye is not
+  pulled to it at all — at 1440x900 it is genuinely easy to miss.
+* Being dead-centre puts it **on top of the answer tablets**, obscuring the
+  content of the round it is announcing rather than sitting clear of it.
+* The seam itself is right: `absolute inset-0 z-40 pointer-events-none`, last
+  child of the shell, centred. Only the dressing is placeholder.
+
+### 4. Match outro — measured
+
+| | 1440x900 | 390x844 |
+|---|---|---|
+| box | 609 x 46 px at `top: 708` | 342 x 46 px at `top: 728` |
+| where that is | **below the parchment folio**, on the unlit chamber floor | the bottom ~15% of the phone, beside the mobile bottom bar |
+| document height | **identical with and without it** (868 px both ways) | identical |
+
+The last row matters: the inline `outro` seam costs **zero** extra height and
+introduces **no** scroll on the one-screen mobile arena. That is a real property
+of the seam and any design that keeps the seam keeps it.
+
+Everything else about it is wrong for a closing beat:
+
+* It is the **last child of the focus column**, so it appears in the lowest,
+  darkest, least-attended part of both layouts — under the question, outside the
+  optical centre, at 46 px tall (0.6% of a 1440x900 viewport).
+* `bg-card/80` + muted foreground: it is quieter than the question above it.
+* **The copy is the end screen's own eyebrow, verbatim.** The screen that
+  arrives 1200 ms later opens with `MATCH COMPLETE` in gold, then `VICTORY` in
+  Cinzel at ~56 px, then `24 — 15` at ~64 px, then `+18 RATING · 10 MODULES
+  COMPLETE`, then both role mascots with names and roles.
+
+**The end screen already owns every candidate outro payload, at far larger
+scale, 1200 ms later.** An outro built from DUEL COMPLETE + result word + score
+is a 1200 ms thumbnail of the next screen.
+
+One structural fact makes the outro solvable. On desktop the end screen's
+centrepiece (`RankedResultDuel`) is:
+
+```
+[viewer mascot]   24 — 15   [opponent mascot]
+```
+
+and the intro is:
+
+```
+[viewer mascot]     VS      [opponent mascot]
+```
+
+**The same composition, with the score where the VS was.** The bookend is
+already half-built in shipped code; the outro's job is to be the move between
+those two states, over the arena the duel was actually played in — which is
+precisely the one thing the end screen structurally cannot do, because it
+replaces the arena entirely.
+
+---
+
+## Shared presentation language
+
+One language, three intensities. The intensity is carried by **four dials**, and
+a beat's class is defined by which dials it turns.
+
+| dial | major (intro, outro) | medium (Meta Reflex, Final Round) | minor (module title) |
+|---|---|---|---|
+| **scrim** over the arena | full-shell, to ~78% | full-shell, to ~55% | none |
+| **frame** | gold hairline rules above and below the title, full card width — no panel box | a single centred plate: navy-banner crop, 0 corner radius, gold top/bottom rule | none |
+| **title scale** | `clamp(2rem, 7vw, 3.25rem)` Cinzel | `clamp(1.375rem, 5vw, 2rem)` Cinzel | current 14 px |
+| **mascots** | both, inward, `art="compact"` | **never** | never |
+
+That last row is the rule that keeps the hierarchy legible without any other
+cue: **mascots appear on major beats only.** A player learns in one match that
+"both ghosts on screen" means the duel is starting or ending.
+
+### Typography
+
+* One face for every title: **Cinzel** via the existing `.ranked-title` class
+  (`font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif`,
+  `color: #f0e6d2`, gold text-shadow). No new font, no new class needed for the
+  major beats.
+* **Casing:** title case for major beats (`Ranked Duel`, `Duel Complete`), UPPER
+  with 0.18em tracking for medium beats (`FINAL ROUND`, `META REFLEX`). The
+  case difference is itself a hierarchy signal and costs nothing.
+* Eyebrows stay `.ranked-eyebrow` 10 px — but on the intro the eyebrow becomes
+  the **secondary** line (`Round 1 of 10`), never the title.
+* Names keep their current 13/16 px weight-600 treatment. Role labels keep
+  `.ranked-entry-intro__role` and the role accent colour.
+* **Nothing on a medium beat is smaller than 12 px.** `font-mono` leaves the
+  presentation vocabulary entirely; mono is the arena's data voice.
+
+### Framing
+
+* **Major beats use rules, not boxes.** A gold hairline above and below the
+  title (the `.ranked-panel::before` gradient, reused: `linear-gradient(90deg,
+  transparent, rgba(240,215,140,0.8), transparent)`) across the card's width.
+  Dropping the panel box is what lets the chamber backdrop do the framing —
+  which is the whole point of the scrim.
+* **Medium beats use one plate**, and the plate is a crop of the existing
+  `navy-banner2-768w.webp` cloth: a straight-sided horizontal band ~320 px wide
+  (phone) / ~460 px (desktop), ~96 px tall, with the gold rule top and bottom.
+  It is the only new CSS surface in the whole proposal and it is a background
+  crop of an asset already in the bundle.
+* **Role accents** (`#d5b66f` top, `#8fd0a0` jungle, `#7fd6ef` mid, `#e8b98a`
+  adc, `#c6a8e8` support) stay exactly where they are today: the seat glow and
+  the role label. They never colour a title. Titles are gold; results are
+  result-coloured (`RESULT_STYLE` in `MatchOverFrame` already owns those three
+  values and the outro should import them rather than restate them).
+* Parchment/vellum is **not** used on any of the four beats. Parchment is the
+  question surface's material in this arena; borrowing it for a presentation
+  beat would make the beat look like a question.
+
+### Motion
+
+Four verbs only, all already present in the codebase:
+
+| verb | where | ms |
+|---|---|---|
+| scrim fade | every beat | 180 in / 160 out |
+| seat travel (±10 px) | major beats | 320 |
+| centre scale (0.8 → 1) | VS, result word | 380 |
+| plate wipe (scaleX 0 → 1 from centre) | medium beats | 220 |
+
+**Intro and outro use inverse motion.** The intro's seats arrive from outside
+and the centre scales up; the outro's centre scales up and the seats settle
+*inward*. Same vocabulary, opposite direction — anticipation vs resolution.
+
+**Reduced motion** (`prefers-reduced-motion` and Settings → Reduce Motion, read
+through the existing `useReducedMotionPreference` → `data-reduced-motion`):
+every travel and scale becomes a 180 ms opacity fade. **Durations never change**
+— that is 2B3's rule and this proposal does not touch it. The one thing reduced
+motion must also fix is the Meta Reflex hole above: the reduced-motion keyframe
+must end at `opacity: 1`, not 0.
+
+---
+
+## Surface 1 — Ranked Duel intro
+
+**Purpose.** "The duel is beginning." Not "the app is loading."
+**Hierarchy.** Major.
+
+### Desktop composition (1440x900)
+
+Full-shell scrim to ~78%, so the chamber reads as depth behind the beat rather
+than as an empty room beside it. Centred on the shell's vertical axis, not
+pinned to the top:
+
+```
+                    ─────────────────────────────
+                            Ranked Duel
+                    ─────────────────────────────
+                           ROUND 1 OF 10
+
+       [mid mogzy →]           VS           [← top mogzy]
+          Mitchell                              Rivalmogz
+            MID                                   TOP
+```
+
+* Title `clamp(2rem, 7vw, 3.25rem)` Cinzel, gold, title case, between two gold
+  hairlines at the board's width. This is the dominant element — the inversion
+  of today's card.
+* Eyebrow moves **below** the title and becomes `ROUND 1 OF 10` (real data the
+  match contract already carries via `scoring.matchLength`). A bot match keeps
+  `Academy Duel` as the title and drops the round line.
+* Mascots grow to **10rem** (from 8.5rem) and move to the vertical centre.
+  Still `art="compact"`; the 384 px encode covers 10rem at 3x DPR with room.
+* VS becomes a **centred gold medallion**: the existing serif `VS` at 2.25rem
+  inside a 5rem ring drawn in CSS (`border: 1px solid rgba(213,182,111,.45)` +
+  the existing `radial-gradient` glow). **No new asset.** `play-seal.png` is
+  not reusable — it has the word PLAY baked into the art.
+* Role icons (`/assets/ranked/mogzy-role-icons/*.svg`) — **no.** The role label
+  is already written under each name; a third statement of the same fact is
+  clutter at this scale.
+* Statistics — **no.** Nothing the backend has before `started_at` is worth the
+  space, and the live projection redacts opponent identity by design.
+* No panel box. No status line in the primary design.
+
+### Mobile composition (390x844)
+
+Deliberately different, not scaled down. The phone's arena is one screen and
+the beat sits inside the existing presentation region — no scroll, no shell
+resize, header and bottom bar untouched.
+
+```
+                    Ranked Duel
+                 ─────────────────
+                   ROUND 1 OF 10
+
+    [mid mogzy →]     VS     [← top mogzy]
+       Mitchell                 Rivalmogz
+         MID                       TOP
+```
+
+* Title `clamp(1.75rem, 8vw, 2.25rem)`, **one hairline below it only** — two
+  rules at phone width eat the air the names need.
+* Mascots stay **5rem** (up from 4.5rem). The board stays the existing
+  three-track grid with the fixed centre, which is what keeps a long display
+  name from shifting the VS off the centre line.
+* VS medallion shrinks to a 3rem ring.
+* The block is **vertically centred in the presentation region**, which alone
+  removes the ~370 px void measured today.
+
+### Copy proposal
+
+| state | line |
+|---|---|
+| title (queue) | `Ranked Duel` |
+| title (bot) | `Academy Duel` |
+| second line | `ROUND 1 OF 10` — or nothing when `matchLength` is null |
+| status, `match-unresolved` only | `Seating the duelists…` |
+| status, `preparing` / `ready` | **removed from the primary design** |
+
+Loading still happens underneath; `useEntryPreparation` is untouched. The
+`preparing` sentence goes because it is the one line that talks about the
+client. `Seating the duelists…` survives only for the pre-snapshot state, where
+the card genuinely has no names to show — and it keeps its `role="status"`, so
+the screen-reader announcement is unchanged.
+
+### Asset usage
+
+Reused: the five `mascot/ranked/*-384.webp` role plates, `ranked-academy-
+duel-bg(.webp | -960w.webp)` (already painted, now framed by the scrim), the
+`.ranked-panel::before` gold-rule gradient, `.ranked-title`, the role accent
+palette, `NeutralSigil` for an unfrozen seat. **New assets required: none.**
+
+### Motion (fits the 2000 ms guaranteed window)
+
+```
+0      scrim fades in                                   180 ms
+120    seats arrive from their own sides                320 ms
+200    title + rules fade up 6 px                       300 ms
+340    VS medallion scales 0.8 → 1                      380 ms
+720    ── all motion complete ──
+720    medallion glow breathes once, 18s → 26s blur     900 ms   (NEW)
+1620   ── settled ──
+2000+  card removed at started_at − 700 ms; NO exit animation
+```
+
+The single added element is the 900 ms medallion breath, which exists only to
+give the 1620 ms static hold something alive in it. It is one
+`box-shadow`/`text-shadow` keyframe on an element that is already there.
+
+**Reduced motion:** scrim fade + one 180 ms card fade, no travel, no breath.
+Same 2000 ms.
+
+### Audio hook
+
+`ranked.duel.begin` — **does not exist**; a new registry entry in the `ranked`
+group. Fire once at the card's first paint (`firstVisibleAt`, which
+`useEntryIntro` already captures), `minReplayMs: 1000`. Do not reuse
+`ranked.opponent.found`; that already fires in the lobby, before this route.
+
+### Implementation complexity
+
+**Low.** One component's JSX and ~70 lines of CSS. No new state, no new prop
+beyond what `RankedEntryIntro` already receives, no asset work.
+
+### Open owner decisions
+
+1. Title case `Ranked Duel` vs all-caps `RANKED DUEL`.
+2. Keep or drop `ROUND 1 OF 10` as the second line.
+3. Whether the bot path shows the same composition or a visibly quieter one.
+
+---
+
+## Surface 2 — Meta Reflex warning
+
+**Purpose.** "Meta Reflex is starting now — stop reading, start recognising."
+**Hierarchy.** Medium. It must not read as a second match intro.
+
+### The change that matters most
+
+Fix the 1080 ms invisible tail first, independently of any styling decision.
+The sting's three keyframes must **end at their centred, opaque state** and the
+element must be given the coordinator's duration in CSS as well as in JS:
+
+```css
+.mr-sting__word--left  { animation-duration: var(--mr-sting-ms, 720ms); }
+/* 0% off-axis → 26% centred → 100% centred, opacity 1 */
+```
+
+`useEntrySting` already knows the window; publishing it as `--mr-sting-ms` on
+the element is a one-line change and makes the CSS honest about the JS. The
+Daily keeps 720 ms and stays byte-identical because the variable defaults to
+`720ms`.
+
+### Desktop and mobile composition
+
+Keep the existing wordmark **exactly as it is** — `META ✦ REFLEX`, gold and
+cyan, the inline 4-point star. It is the mode's identity and there is no reason
+to replace it. What changes is where it sits and what is behind it:
+
+* the band leaves `top: 0` and moves to the **vertical centre** of the module
+  viewport, so it is a beat rather than a header decoration;
+* a **55% scrim** over the arena for the duration, which is what separates a
+  medium beat from the minor module title;
+* a single line under the wordmark at 12 px, 0.18em tracking, `--ranked-muted`;
+* `pointer-events-none` is kept — it costs nothing now that input is closed by
+  `started_at`, and it means a clock error produces a harmless banner rather
+  than a curtain over a live card.
+
+Mobile is the same composition at 24 px words instead of 30 px, and the
+sub-line wraps to one line at 390 px. No mascots at either size — that is the
+medium-beat rule.
+
+### Motion — using the full 1800 ms deliberately
+
+```
+0     scrim to 55%                                    180 ms
+0     META from left, REFLEX from right, star scales  480 ms   (was 720 in+out)
+480   ── settled and STAYS settled ──
+620   sub-line fades up                               240 ms
+1100  star pulses once, scale 1 → 1.12 → 1            420 ms   (the anticipation beat)
+1560  scrim begins releasing                          240 ms
+1800  ── card 1 becomes answerable at started_at ──
+```
+
+The star pulse at 1100 ms is the "get ready" gesture the brief asks for. **No
+literal countdown**: three digits in 1800 ms would be a second clock next to
+the arena's real one, and the arena's clock is the only authoritative timer.
+
+**Reduced motion:** scrim + a 180 ms fade to the settled wordmark, held; the
+sub-line fades with it; **no pulse**. Duration unchanged at 1800 ms. The
+reduced-motion keyframe must end at `opacity: 1`.
+
+### Copy proposal
+
+```
+            META ✦ REFLEX
+        FIVE CARDS · FASTEST WINS
+```
+
+> Superseded at implementation: the second clause shipped as **`THINK FAST`**.
+> See the note under *Phase 2B3 visual implementation → Surface 2*.
+
+`META REFLEX` alone under-uses a 1800 ms beat; `META REFLEX — 5 CARDS` on one
+line makes the wordmark a label. Splitting it keeps the wordmark intact as
+identity and puts the instruction where a sub-line belongs. `FIVE CARDS` should
+be **derived from the segment's real card count**, not hardcoded — the block
+publishes it and a five-pair legacy block must never be described by a v4+
+sentence.
+
+### Asset usage
+
+Reused: the existing sting markup and its three keyframes, the inline SVG star,
+`navy-banner2-768w.webp` only if the owner wants the plate treatment here too
+(the proposal above does not use it — the scrim alone is enough for this beat).
+**New assets required: none.** A real Meta Reflex emblem would replace exactly
+one element (the inline star) if one is ever drawn; that is already the
+component's stated contract.
+
+### Audio hook
+
+`ranked.mode.shift` — **does not exist**; new `ranked`-group entry, fired at the
+beat's start. `ranked.meta.action` already exists but is the per-card action
+sound at `relativeGain: 0.62` and must not be reused for an entry beat.
+
+### Implementation complexity
+
+**Low**, and the largest single win in the pass: the keyframe fix alone converts
+1080 ms of nothing into 1080 ms of presentation without touching a line of
+timing or state code.
+
+### Open owner decisions
+
+1. Sub-line wording, and whether the card count is spelled (`FIVE`) or numeric.
+2. Whether the scrim is acceptable over a visible, locked card 1, or whether the
+   card should stay unscrimmed.
+
+---
+
+## Surface 3 — Final Round warning
+
+**Purpose.** "This is the last one." Stakes, instantly.
+**Hierarchy.** Medium. Owner has asked for popup/alert, not cinema.
+
+### Desktop and mobile composition — one plate, both viewports
+
+```
+        ╔══════════════════════════════════╗
+        ║          F I N A L  R O U N D    ║
+        ║              24 — 22             ║
+        ╚══════════════════════════════════╝
+```
+
+* A single **navy plate**: a straight-sided horizontal crop of
+  `navy-banner2-768w.webp` (the cloth's mid-band, where the sides are straight —
+  the same region `.ranked-banner`'s veil already targets), `border-radius: 0`,
+  with the gold hairline rule top and bottom.
+* **Desktop** 460 x 104 px; **mobile** 320 x 92 px. Against today's 167 x 67 px
+  that is 4.3x the desktop area and 2.7x the mobile area — enough to be a beat,
+  far short of the intro's 693 x 327.
+* **A 55% scrim behind it**, which today's placeholder has none of and which is
+  what actually creates the stakes. It also solves the overlap: the answer
+  tablets go dark behind the plate instead of competing with it through it.
+* Position: **centred horizontally, at 38% of the presentation region's height**
+  rather than at 50%. Dead centre puts the plate on the answer tablets; 38%
+  puts it over the question's headline area, which is where the eye already is.
+* No mascots. No parchment. No role colour.
+
+### Should the score be on it?
+
+**Yes, and it is the reason this beat earns a plate at all.** `FINAL ROUND` is
+a fact the round timeline already shows; `FINAL ROUND / 24 — 22` is a
+*situation*. Both numbers are already in the arena's header and rails, so this
+restates rather than reveals, and it reads in well under 1300 ms because it is
+two numbers in a shape the player has seen every round.
+
+One guard: the score line must be **omitted, not zeroed**, when the match has no
+committed score to show (an hp match, or a snapshot without `finalScores`). The
+plate then carries the title alone and is 72 px tall instead of 104.
+
+### Copy proposal
+
+```
+FINAL ROUND
+24 — 22
+```
+
+`GET READY` is dropped. It is the placeholder's second line, it says nothing the
+first line does not imply, and in a 1300-1800 ms window the score is worth more
+than an instruction.
+
+Alternatives for the owner, in order of preference: `FINAL ROUND` · `LAST
+ROUND` · `ROUND 10 OF 10`. The third is the most informative and the least
+dramatic.
+
+### Motion (fits the 1300 ms guaranteed window; measured 1426-1840 ms live)
+
+```
+0     scrim to 55%                                    180 ms
+80    plate wipes open, scaleX 0 → 1 from centre      220 ms
+260   title fades up 4 px                             200 ms
+420   score counts nothing — it simply fades in       220 ms
+640   ── settled ──
+1120  scrim begins releasing                          180 ms
+1300  ── ends 127-143 ms before started_at, as measured ──
+```
+
+**Reduced motion:** scrim + 180 ms fade of the whole plate, settled. Same 1300 ms.
+
+### Asset usage
+
+Reused: `navy-banner2-768w.webp` (already in the bundle and already preloaded by
+the arena chrome), `.ranked-panel::before`'s gold-rule gradient, `.ranked-title`,
+`--ranked-gold-bright`. **New assets required: none.**
+
+The plate crop is the one genuinely new CSS surface in this proposal
+(~15 lines: a `background-position`/`background-size` pair on the same cloth
+`.ranked-banner` already maps, minus the rod and point zones).
+
+### Audio hook
+
+`ranked.round.final` — **does not exist**; new `ranked`-group entry, fired at
+the beat's start. It must **not** reuse `ranked.module.start`, which is the
+ordinary per-module sound and would make the final round sound like every other
+round.
+
+### Implementation complexity
+
+**Low-medium.** One new small component, the plate CSS, and a scrim. The seam,
+the trigger, the duration, the replay guard and the module-title substitution
+are all already built and tested.
+
+### Open owner decisions
+
+1. Score on the plate: yes or no.
+2. `FINAL ROUND` vs `LAST ROUND` vs `ROUND 10 OF 10`.
+3. Whether the plate is navy cloth or a flat dark plate with the gold rules only
+   (cheaper, and arguably cleaner at 92 px on a phone).
+
+---
+
+## Surface 4 — Match outro
+
+**Purpose.** Emotional close, over the arena the duel was played in.
+**Hierarchy.** Major — but major in *weight*, not in *content*.
+**Constraint.** The end screen already owns `MATCH COMPLETE`, the result word at
+~56 px, the score at ~64 px, the rating delta, the module count and both
+mascots. The outro must not be a thumbnail of it.
+
+### The proposal: the VS becomes the score
+
+This is the one idea in the pass that is worth more than the sum of its parts,
+and it exists because the shipped code already set it up:
+
+```
+INTRO      [mid mogzy]     VS      [top mogzy]
+OUTRO      [mid mogzy]   24 — 15   [top mogzy]        ← over the dimmed arena
+END SCREEN [mid mogzy]   24 — 15   [top mogzy]        ← RankedResultDuel, full screen
+```
+
+The outro is the **frame that turns the intro's composition into the end
+screen's**, played over the arena. The end screen structurally cannot do this,
+because it replaces the arena. The outro is the only surface that can, and that
+— not the words — is its whole job.
+
+### Desktop and mobile composition
+
+* The seam **moves from the focus column to a full-shell overlay**. Today it is
+  the column's last child at `top: 708` on desktop and `top: 728` on a phone —
+  the darkest, lowest, least-attended strip of both layouts, and quieter than
+  the question above it. A closing beat cannot live there. It should use the
+  same overlay seam the `warning` uses (`absolute inset-0 z-40
+  pointer-events-none`), which is already built.
+* Full-shell scrim to **78%**, matching the intro. The final parchment stays
+  visible underneath, dimmed — the duel is being put away, not deleted.
+* Composition, centred, at both viewports:
+
+```
+                       Duel Complete
+                    ───────────────────
+                          VICTORY
+                          24 — 15
+       [mid mogzy →]                       [← top mogzy]
+```
+
+* `Duel Complete` in Cinzel at `clamp(1.5rem, 5vw, 2rem)` — deliberately
+  **smaller than the intro's title**, because the result word below it is the
+  emphasis.
+* The result word takes `RESULT_STYLE` from `MatchOverFrame` directly, so
+  victory/defeat/draw colouring is one authority rather than two.
+* Mascots return at **8rem** desktop / 4rem mobile — smaller than the intro's,
+  which is what stops the outro reading as a repeat of it.
+* No rating delta, no module count, no timeline, no discoveries, no accuracy.
+  All of that is the end screen's material and `MatchOutroView` already
+  deliberately excludes most of it.
+
+Mobile drops the second hairline and stacks the mascots **beside** the score
+rather than below it, keeping the three-track grid the intro uses.
+
+### Sequence (1200 ms — this is the tightest budget of the four)
+
+```
+0     scrim to 78%, arena dims                        180 ms
+60    "Duel Complete" + rule fade up 6 px             240 ms
+340   mascots settle INWARD (inverse of the intro)    280 ms
+420   result word scales 0.9 → 1                      320 ms
+560   score fades in beneath it                       200 ms   (NO count-up)
+760   ── settled ──
+1040  whole beat begins cross-fading                  160 ms
+1200  ── end screen ──
+```
+
+**The score must not animate its digits.** A count-up needs ~600 ms to read as
+one, which is half this budget, and the end screen shows the same number 1200 ms
+later — so a count-up would be an animation the player watches twice. It fades.
+
+**Result appears after `Duel Complete`**, by 420 ms, so the beat has a small
+arc: the duel ends, *then* you learn how. Showing both at 0 ms wastes the only
+dramatic structure 1200 ms can hold.
+
+**Reduced motion:** scrim + one 180 ms fade of the settled composition, held to
+1040 ms, then the same 160 ms cross-fade. `MATCH_OUTRO_MS` unchanged.
+
+### Copy proposal
+
+| line | copy |
+|---|---|
+| title | `Duel Complete` |
+| result | `VICTORY` / `DEFEAT` / `DRAW` |
+| score | `24 — 15` |
+
+`Duel Complete` rather than `MATCH COMPLETE` specifically because the end
+screen's gold eyebrow is already the literal string `MATCH COMPLETE`. Two
+different words for the same event 1200 ms apart is confusing; `Duel` also
+closes the loop with `Ranked Duel` at the top of the match, which is the
+bookend the brief asks for.
+
+A forfeit should say so. `MatchOutroView.terminalReason` is already carried and
+a forfeit that announces `VICTORY` with no explanation reads as a bug. Suggested:
+the result word stays, and the score line is replaced by `OPPONENT FORFEIT`.
+
+### Asset usage
+
+Reused: the five role plates (`art="compact"` again, at 8rem/4rem),
+`.ranked-title`, `RESULT_STYLE` from `MatchOverFrame`, the gold-rule gradient,
+the existing `warning` overlay seam. **New assets required: none.**
+
+### Audio hook
+
+**Already wired, and possibly mistimed.** `ranked.match.victory` /
+`.defeat` / `.draw` exist in the registry and `useRankedMatchSfx` emits them
+from `terminal: round.matchOver`, reading `m.publicRound` — the **raw** snapshot,
+not the surface-gated one. So the result sting fires on the completion snapshot,
+which is the instant the outro is *claimed*, and the outro does not present until
+`outro.ready` (after the result row and the final settlement are fetched) and
+after the final round's own reveal hold.
+
+The sting therefore probably lands **during the final round's verdict**, before
+the outro is on screen. This is a one-run browser check, not a claim — but if it
+holds, the fix is to emit the result sting on `presentationPhase ===
+"match-outro"` instead of on `matchOver`, and it costs nothing else.
+
+No new audio event is needed for this surface.
+
+### Implementation complexity
+
+**Medium** — the highest of the four, and entirely because of the seam move from
+the focus column to the overlay. The overlay seam already exists and is tested,
+so the move is mechanical; but `CanonicalArena` currently renders `outro` inline
+and `warning` overlaid, and the two would need to share a layer or the outro
+would need its own.
+
+### Open owner decisions
+
+1. **Does the outro move to the overlay seam?** Everything else in this proposal
+   depends on it, and it is the only structural change requested in the pass.
+2. `Duel Complete` vs `MATCH COMPLETE` vs result word alone.
+3. Whether a forfeit gets its own line.
+4. Whether the score appears at all, or whether the outro is title + result only
+   and the score is left entirely to the end screen.
+
+---
+
+## Mobile-specific differences, in one place
+
+The mobile arena's architecture is untouched by everything above: no page
+scroll, no horizontal overflow, no nested scroll, no shell resize, header and
+bottom bar unmoved. Every beat renders inside the existing presentation region.
+The inline outro seam was verified to add **zero** document height today; the
+overlay seam adds none by construction.
+
+| | phone differs from desktop by |
+|---|---|
+| intro | one hairline instead of two; title `clamp(1.75rem, 8vw, 2.25rem)`; mascots 5rem not 10rem; VS ring 3rem not 5rem; block vertically centred in the region |
+| Meta Reflex | words 24 px not 30 px; sub-line held to one line; band centred rather than at `top: 0` at both sizes |
+| Final Round | plate 320 x 92 not 460 x 104; score on its own line under the title |
+| outro | mascots 4rem not 8rem, flanking the score in the three-track grid rather than below it; second hairline dropped |
+
+---
+
+## Existing assets to reuse
+
+`mascot/ranked/{top,jg,mid,bot,sup}mogzy-384.webp` · `assets/ranked/ranked-
+academy-duel-bg.webp` + `-960w.webp` · `assets/ranked/navy-banner2-768w.webp` ·
+`.ranked-title` (Cinzel) · `.ranked-eyebrow` / `--cyan` ·
+`.ranked-panel::before`'s gold-rule gradient · the role accent palette in
+`roleIdentity.tsx` · `NeutralSigil` · `RESULT_STYLE` in `MatchOverFrame.tsx` ·
+the existing `MetaReflexSting` wordmark and its three keyframes · the
+`warning` overlay seam on `CanonicalArena`.
+
+## New assets actually required
+
+**None.** Every composition above is existing art plus CSS. Two things are
+worth noting as *optional* future art, neither of which blocks implementation:
+
+* a real **Meta Reflex emblem** to replace the inline 4-point star (the
+  component already documents this as the one element an emblem would replace);
+* a blank **wax seal / stamp** if the owner prefers a seal to the navy plate for
+  the Final Round. `assets/ranked/play-seal.png` **cannot** be reused — the word
+  PLAY is baked into the artwork.
+
+## Audio hook opportunities
+
+| beat | event | status |
+|---|---|---|
+| Ranked Duel intro | `ranked.duel.begin` | **new** — fire at the card's first paint |
+| Meta Reflex entry | `ranked.mode.shift` | **new** — do not reuse `ranked.meta.action` |
+| Final Round | `ranked.round.final` | **new** — do not reuse `ranked.module.start` |
+| Match outro | `ranked.match.{victory,defeat,draw}` | **exists**; verify it is not firing a beat early (see above) |
+
+No SFX implementation changes are proposed here. The three new entries are
+registry rows in the existing `ranked` group; authoring their voices is Audio
+Studio's job, and an unauthored row is silent rather than broken.
+
+## Recommended implementation order
+
+1. **Meta Reflex keyframe fix.** CSS only, no design approval needed, converts
+   ~1080 ms of invisible beat into visible beat, and fixes reduced motion's
+   ~1180 ms too. Ship this on its own.
+2. **Final Round plate.** Smallest surface, biggest visible delta (0.86% → 3.7%
+   of the viewport, plus a scrim), and its seam, trigger and timing are already
+   built and tested.
+3. **Ranked Duel intro.** One component, ~70 lines of CSS, no structural change,
+   no new props — and it establishes the shared language the outro then mirrors.
+4. **Match outro.** Last, because it depends on decision (1) in its own section
+   (the seam move) and because it is the only one that reads as a *reply* to
+   another beat — it should be designed against the shipped intro, not against a
+   proposal.
+5. **Audio rows**, after the four surfaces are visually settled, as one change.
+
+## Exact owner decisions needed before implementation
+
+1. **Does the match outro move from the inline focus-column seam to the
+   full-shell overlay seam?** Blocks surface 4 entirely.
+2. **Is the score shown on the Final Round plate?**
+3. **Title casing for major beats:** `Ranked Duel` / `Duel Complete`, or
+   `RANKED DUEL` / `DUEL COMPLETE`.
+4. **Outro title wording**, given the end screen's eyebrow is already
+   `MATCH COMPLETE`.
+5. **Is a 55-78% scrim over the arena acceptable** on all four beats — in
+   particular over card 1 of a Meta Reflex block, which is visible and locked
+   underneath.
+6. **Meta Reflex sub-line wording**, and whether the card count is spelled or
+   numeric.
+7. **Final Round plate material:** navy-cloth crop, or flat dark plate with gold
+   rules only.
+8. **Does a forfeit get its own outro line?**
+
+Nothing above is approved copy or approved composition.
+
+---
+
+# Phase 2B3 visual implementation
+
+Status: **implemented and committed on the existing `rfx1/phase2b3` frontend
+branch, rebased onto `origin/main` `412db656`. Not merged. Awaiting owner
+visual approval.** No backend change: the branch
+`rfx1/phase2b3-presentation-leadin` is untouched at `c501aa86`.
+
+**Not one timing or state contract moved.** `ENTRY_INTRO_MIN_MS`,
+`ENTRY_MIN_LEAD_MS`, both `entry_lead_ms` paths, the deadline-relative
+countdown, `reconciledSkewMs`, `module_transition_ms`,
+`SPECIAL_TRANSITION_VISIBLE_MS`, the Final-Round-wins-the-message rule,
+`MATCH_OUTRO_MS`, the result-feedback lifecycle, all three replay guards, the
+reduced-motion duration semantics, the preload architecture, the 2B2
+derivatives and the scoring are byte-for-byte what 2B3 shipped. The 32-test
+`QuizRankedMatch.rfx1b3.test.tsx` suite passes unchanged.
+
+## The shared beat vocabulary
+
+One language, three intensities, carried by four dials in `src/index.css`
+(`.ranked-beat`, `--major`, `--medium`):
+
+| dial | major (intro, outro) | medium (Meta Reflex, Final Round) | minor (module title) |
+|---|---|---|---|
+| scrim | `0.62 → 0.86` radial (outro: `0.92 → 0.97`) | flat `0.55` | none |
+| frame | gold hairlines, **no panel box** | one navy plate | none |
+| title | `clamp(2rem, 4.4vw, 3.25rem)` Cinzel | `clamp(1.5rem, 2.4vw, 2rem)` Cinzel | 14 px |
+| mascots | **both, inward** | **never** | never |
+
+The mascot row is the rule that makes the hierarchy legible with no other cue:
+both ghosts on screen means the duel is starting or ending.
+
+`.ranked-beat__rule` reuses `.ranked-panel::before`'s gold-hairline gradient;
+`.ranked-beat__title` reuses `.ranked-title` (Cinzel). Titles are gold;
+results take their colour from `MatchOverFrame`'s `RESULT_STYLE`, which is now
+exported so the outro and the end screen cannot disagree about what victory
+looks like.
+
+---
+
+## Surface 1 — Ranked Duel intro
+
+**Final content.** `RANKED DUEL` (`ACADEMY DUEL` on a bot match) · gold rule ·
+`[player mascot] name / role — VS medallion — role / name [opponent mascot]` ·
+`ROUND 1 OF {matchLength}`.
+
+**Loading language is gone from the primary presentation.** `Preparing the
+first question…` and `Take your mark.` are deleted. One sentence survives, for
+`match-unresolved` only — the state where the card genuinely has no names yet —
+and it keeps its `role="status"`. `useEntryPreparation` is untouched: loading
+still happens underneath, it just no longer narrates itself.
+
+**Desktop composition (1440×900, measured).** `1184 × 704` — **78% of the
+viewport height**, composition centred at 40%. It was `693 × 327` (36%), pinned
+to the top, inside a `.ranked-panel`: the minor beat's chrome on the major
+beat, with ~560 px of lit duel chamber unused beneath it. The panel box is
+gone, the academy backdrop now reads as depth through the scrim, mascots are
+`11rem`, the VS is a 5 rem CSS ring.
+
+**Mobile composition (390×844, measured).** `358 × 480`. Deliberately not the
+desktop scaled: ONE hairline instead of two, title `clamp(1.75rem, 8vw,
+2.25rem)`, mascots `5rem`, VS ring `3rem`. Vertically centred in the
+presentation region, which is what removed the ~370 px void.
+
+**Height is a `min()` against the viewport** (`min(44rem, calc(100vh - 10rem))`
+desktop, `min(30rem, calc(100svh - 13rem))` phone), so the beat fills the room
+it is in and can never ask for more than there is. Verified: no document
+scroll at 390×844, 360×800 or 1440×900.
+
+**Assets.** The five `mascot/ranked/*-384.webp` derivatives, the academy duel
+backdrop, `.ranked-title`, the gold-rule gradient, the role accent palette,
+`NeutralSigil`. **No new art.** The VS medallion is drawn in CSS — a test pins
+that it contains no `url(` at all, because `play-seal.png` has the word PLAY
+baked into the artwork and can never stand in as a generic seal.
+
+**Motion.** Scrim 180 · seats ±14 px 320 @120 · title 300 @200 · rule 320 @260
+· medallion scale 380 @340 · then a single 900 ms glow breath @760, whose only
+job is to give the long static hold something alive in it. All settled by
+~1660 ms inside the 2000 ms floor. **Nothing plays on exit** — an exit
+animation would be the frame budget the first question is owed.
+
+**Reduced motion.** `[data-reduced-motion="true"] *` → one 180 ms fade. Same
+composition, same words, **same duration**. Captured.
+
+**Audio hook.** `ranked.duel.begin`, fired once at the card's first paint from
+`useRankedPresentationSfx`, keyed `ranked:<matchId>:intro`.
+
+---
+
+## Surface 2 — Meta Reflex warning
+
+**The defect this fixes.** `mr-sting-left` / `-right` / `-mark` were a complete
+in-AND-OUT cycle hardcoded at **720 ms** with `animation-fill-mode: both` —
+which holds the LAST keyframe, and that keyframe was `opacity: 0`. 2B3 then
+held the ELEMENT for **1800 ms** without touching the CSS. So **~1080 ms — 60%
+of every Ranked mode-shift beat — was a mounted, fully transparent overlay over
+a locked card.** Reduced motion was worse: `mr-sting-fade` ran 620 ms and also
+ended at zero, leaving ~1180 ms dark.
+
+Every timing test passed throughout, because they assert milliseconds and the
+element WAS mounted for all of them.
+
+**The fix.** The keyframes are rewritten as percentages of whatever duration
+they are given — `0-18%` enter, `18-82%` **held centred and fully opaque**,
+`82-100%` leave into card 1 — and the duration comes from
+`var(--mr-sting-ms, 720ms)`, published by the component from the coordinator's
+own window. Verified in the browser: at the beat's midpoint the wordmark now
+computes `opacity: 1` and `transform: matrix(1,0,0,1,0,0)`.
+
+**The Daily is untouched.** The medium-beat staging is opt-in via
+`variant="beat"`; `<MetaReflexSting />` with no props still renders the
+original 64 px `top-0` band with no scrim and no sub-line, and the variable
+still defaults to 720 ms. A test pins the default variant's classes.
+
+**Final content.** `META ✦ REFLEX` — the existing wordmark, unchanged — over a
+55% scrim, centred in the module viewport rather than pinned to its top, with
+`FIVE CARDS · THINK FAST` beneath. No mascots. `pointer-events: none` is
+kept, so a clock error can only ever produce a harmless banner.
+
+**The card count is derived, not hardcoded.** `metaReflexSubline` reads
+`segmentState.challengeCount` and spells 1–10, so a four-card block reads
+`FOUR CARDS` and a block that publishes no usable count shows no sub-line at
+all rather than claiming five.
+
+> **The second clause was corrected, and the correction is approved.** The
+> design pass proposed `FASTEST WINS`; the Ranked Rules panel states *"Perfect
+> module, and first to finish +1 — miss one and there is no speed bonus,
+> however fast you were."* Speed is a bonus on a clean run, not the win
+> condition, so `FASTEST WINS` would have told the player to trade accuracy for
+> speed — the opposite of how the module scores. It ships as **`THINK FAST`**,
+> which keeps the urgency and claims nothing about the result. Copy only: the
+> layout, the animation, the 1800 ms window, the sting duration and the scoring
+> are untouched.
+
+**Motion.** Enter 0-18% · hold 18-82% · leave 82-100%, over the coordinator's
+full window. No countdown and no repeated pulses, per the brief.
+
+**Reduced motion.** `mr-sting-fade` rewritten to `0-14%` in, `14-86%` **held**,
+`86-100%` out, on the same `--mr-sting-ms`. Information and duration identical.
+
+**Audio hook.** `ranked.mode.shift`. Deliberately not `ranked.meta.action`,
+which is the per-card action sound and would make entering the mode sound like
+playing a card in it.
+
+---
+
+## Surface 3 — Final Round warning
+
+**Final content.** `FINAL ROUND` · `{viewerScore} — {opponentScore}`.
+`GET READY` is dropped.
+
+**Desktop (1440×900, measured).** A `460 × 154` navy plate — **5.5% of the
+viewport**, against the placeholder's `167 × 67` (**0.86%**) `font-mono`
+`bg-card/90` box that read as a developer tooltip. **Mobile (390×844):**
+`320 × 123`, 4.8%.
+
+**The scrim is what creates the stakes**, and the placeholder had none: the
+arena behind it stayed fully lit and at 1440×900 it was genuinely easy to miss.
+
+**Position is `34vh`, not dead centre.** Centring puts the plate ON the answer
+tablets, obscuring the content of the round it announces; 34vh clears the
+module header above and the prompt below, measured at both viewports.
+
+**The plate is a crop of the navy banner cloth** the arena rails already draw
+and the chrome already preloads (`navy-banner2-768w.webp`), zoomed to
+`260% / 600%` so only the flat middle of the cloth shows — at the first
+attempt's `108%` the crop still included the banner's two gold side trims and
+the plate read as a little scroll rather than a field of cloth. Gold hairline
+top and bottom, `border-radius: 0`. **No new art.**
+
+**The score is authoritative and never invented.** It is
+`combatants.player.score` / `.opponent.score` — the backend's settled
+cumulative totals, which `projectCombatants` fills only for a points match. An
+hp match hands the plate two nulls and it prints the title alone rather than
+`0 — 0`. A score of `0` renders as `0`; tests pin both cases.
+
+**No module title underneath.** Unchanged from 2B3 and still pinned by its own
+test: `moduleTitleWindowMs` is 0 for the same round, from the same two booleans
+the backend substitutes on.
+
+**Motion.** Scrim 180 · plate `scaleX` wipe 220 @80 · title 200 @260 · score
+fade 220 @420. Settled by 640 ms inside the 1300 ms promise.
+
+**Reduced motion.** 180 ms fade of the settled plate, same 1300 ms. Captured.
+
+**Audio hook.** `ranked.round.final`. Deliberately not `ranked.module.start`,
+which would make the final round sound like every other round.
+
+---
+
+## Surface 4 — Match outro
+
+**It moved to the full-shell overlay seam** (approved). `CanonicalArena`'s
+`outro` prop is no longer a focus-column slot; it shares the
+`pointer-events-none absolute inset-0 z-40` layer the warnings use. The
+placeholder measured `609 × 46` at `top: 708` of a 900 px desktop and
+`342 × 46` at `top: 728` of an 853 px phone — the lowest, darkest strip of both
+layouts, rendered quieter than the question above it.
+
+The column's DOM is byte-identical with and without an outro, which is what
+preserves the measured property that the seam adds **zero** document height.
+
+**Final content.** `DUEL COMPLETE` · gold rule · `VICTORY` / `DEFEAT` / `DRAW` ·
+`[player mascot] {score} — {score} [opponent mascot]`, plus `OPPONENT FORFEIT`
+when `terminalReason` says so.
+
+**`DUEL COMPLETE`, not `MATCH COMPLETE`** — the end screen's own gold eyebrow
+is already the literal string `MATCH COMPLETE`, and two different words for one
+event 1200 ms apart is confusing. `Duel` also closes the loop with `RANKED
+DUEL` at the top of the match.
+
+**The bookend.** Same three-track grid, same fixed centre, same
+`minmax(0, 1fr)` long-name protection as the intro's board:
+
+```
+INTRO   [mascot]     VS      [mascot]
+OUTRO   [mascot]   24 — 15   [mascot]     <- over the dimmed arena
+END     [mascot]   24 — 15   [mascot]     <- RankedResultDuel, full screen
+```
+
+The outro is the frame that turns the intro's composition into the end
+screen's, played over the arena — the one thing the end screen structurally
+cannot do, because it replaces the arena.
+
+**It does not duplicate the end screen.** No rating delta, no module count, no
+accuracy, no timeline, no discoveries; a test asserts none of those words
+appear. `MatchOutroView` already excluded most of them.
+
+**The result word is the backend's**, via `RESULT_STYLE` and
+`outroResultKey` — never a comparison of two scores. A test feeds a `loss`
+whose scores read as a win and asserts `DEFEAT`.
+
+**The outro's scrim is deeper than the intro's** (`0.92 → 0.97` vs
+`0.62 → 0.86`), and that is not decoration: the intro sits over the arena's
+empty placeholder, where letting the chamber read is the point, while the
+outro sits over a live arena — a question, four answer tablets, two rails. At
+the shared major value the tablets read straight through the result word,
+measured at 390×844.
+
+**`DUEL COMPLETE` is deliberately smaller than the result word** (30 px vs
+56 px on desktop). The intro's title IS its beat; the outro's title is the
+frame and the RESULT is the beat. *The first attempt at this silently did
+nothing: `.ranked-match-outro__heading` is one class and
+`.ranked-beat--major .ranked-beat__title` is two, so the shared rule won. The
+selector is two classes now.*
+
+**Motion, inside 1200 ms.** Scrim 180 · heading 240 @60 · mascots settle
+**inward** 280 @340 (the inverse of the intro's outward arrival — anticipation
+vs resolution) · result `scale(0.9→1)` 320 @420 · score fade 200 @560. Settled
+by ~960 ms, leaving room for the cross-fade into the end screen. **The score
+never counts up**: a count-up needs ~600 ms to read as one, half this budget,
+and the end screen prints the same number 1200 ms later.
+
+**Reduced motion.** 180 ms fade of the settled composition, same
+`MATCH_OUTRO_MS`.
+
+**Audio hook — an existing bug, fixed.** `ranked.match.victory` / `.defeat` /
+`.draw` fired from `terminal: round.matchOver`, read off `m.publicRound` — the
+RAW completion snapshot. That snapshot is what CLAIMS the outro; the beat does
+not present until the result row and the final settlement are fetched
+(`outro.ready`), after the final round's own reveal hold. So the sting landed
+during the last answer's verdict, under a still-live arena.
+
+`RankedSfxObservation` gained `outcomeMoment`, and the terminal gate now
+requires it. `QuizRankedMatch` passes `presentationPhase === "match-outro" ||
+m.phase === "match_over"` — both, deliberately, so a match that never presents
+an outro (a reconnect onto a finished one) cannot STRAND the sound.
+
+---
+
+## Mobile-specific adaptations
+
+| | phone differs from desktop by |
+|---|---|
+| intro | one hairline not two; title `clamp(1.75rem, 8vw, 2.25rem)`; mascots 5rem not 11rem; VS ring 3rem not 5rem; `min-height` uses `100svh` |
+| Meta Reflex | words 24 px not 30 px; sub-line held to one line |
+| Final Round | plate 320×92 not 460×104; same 34vh |
+| outro | mascots 4rem not 8rem; heading `clamp(1.125rem, 5.5vw, 1.5rem)` |
+
+**Verified at 390×844 and 360×800:** no document scroll, no horizontal
+overflow, no nested scroll, shell not resized, header and bottom controls
+untouched. With a 26-character display name at 360×800 the name ellipsises and
+the VS medallion sits **2 px** off the viewport centre — which is the arena
+shell's own centring, not the name moving it. The 4 px horizontal reading at
+those widths is the probe's own fixed toolbar, identical on `origin/main` and
+documented in 2B3.
+
+## Audio / event changes
+
+Three new `sfx-registry` rows in the `ranked` group — `ranked.duel.begin`,
+`ranked.mode.shift`, `ranked.round.final` — **deliberately voiceless**. The
+registry's own contract is that an entry with no `builtInGeneratorId` and no
+`builtInAssetVoices` is silent until an operator authors an Audio Studio
+binding, exactly as the migrated legacy UI semantics are. **No sound assets
+were added.** What the rows buy today is the seam: one canonical event name per
+beat, with policy, unlock, mute, cache and dedupe already applied, so giving
+them a voice later is an Audio Studio action rather than a code change.
+
+`useRankedPresentationSfx` is a second, tiny hook over the same `useSfx`
+policy layer rather than a second sound system. It exists because none of the
+three beats is in the snapshot stream `useRankedMatchSfx` observes: the intro
+plays while `publicRound` is still null, and the two warnings are the
+coordinator's decision rather than a field on any snapshot.
+
+## Files changed
+
+**New:** `RankedFinalRoundWarning.tsx`, `RankedMatchOutro.tsx`,
+`useRankedPresentationSfx.ts`, plus `rankedBeats.rfx1b3v.test.tsx`,
+`rankedBeats.css.rfx1b3v.test.ts`, `CanonicalArena.rfx1b3v.test.tsx`.
+
+**Modified:** `RankedEntryIntro.tsx` (composition, `matchLength`,
+`entryIntroStatus`) · `MetaReflexSting.tsx` (`--mr-sting-ms`, the `beat`
+variant, `metaReflexSubline`) · `metaReflexModule.tsx` (opts into `beat`,
+passes the window and the card count) · `CanonicalArena.tsx` (outro → overlay)
+· `MatchOverFrame.tsx` (`RESULT_STYLE` exported) · `QuizRankedMatch.tsx` (the
+two real beats, `matchLength`, `outcomeMoment`, the presentation hook) ·
+`useRankedMatchSfx.ts` + its test (`outcomeMoment`) · `sfx-registry.ts` ·
+`index.css` (the beat vocabulary, the four surfaces, the sting keyframes) ·
+`RankedShellProbe.tsx` (`?beat=` preview) · `QuizRankedMatch.rfx1b2.test.tsx`
+(the removed status line) · this handoff.
+
+## Screenshots
+
+Captured against `vite` dev on the real `/dev/ranked-shell-probe` with
+`frame=0`, at 1440×900 and 390×844, plus 360×800 for the long-name case:
+
+* Ranked Duel intro — desktop, mobile, mobile hp match (no `ROUND N`),
+  360×800 long name, **desktop reduced motion**;
+* Meta Reflex beat — desktop and mobile, animations paused at the beat's
+  midpoint to prove the hold is opaque;
+* Final Round — desktop, mobile, **desktop reduced motion**;
+* Match outro — desktop and mobile.
+
+The two beats that need a live round transition are reachable for review via
+the probe's new dev-only `?beat=final|outro|meta` preview (`&rm=1` for reduced
+motion, `&end=defeat|draw`, `&forfeit=1`). It mounts the real components with
+real-shaped payloads; it is a preview, not a simulation, and the beats' timing
+and replay protection remain covered by `QuizRankedMatch.rfx1b3.test.tsx`.
+
+## Tests
+
+**45 new assertions across three files**, covering the brief's list: both
+identities and roles; the opponent fallback without invented data; `ROUND 1 OF
+N` from the real match length and omitted when null; no loading copy as
+primary content; the Meta Reflex hold readable across the whole beat (asserted
+against the stylesheet, because jsdom computes no animation and a render test
+cannot see it); the Daily's sting unchanged; the authoritative Final Round
+score including `0` and including its absence; `GET READY` gone; the outro's
+authoritative outcome and score; the outro on the overlay layer and not in the
+column; no end-screen duplication; the forfeit line; long-name protection on
+both boards; reduced motion preserving information and duration on all four;
+and the result sting held until the outcome moment.
+
+**Results.** Ranked + Daily + ranked-core + probe: **142 files / 1847 tests
+passing**, zero failures. `src/lib/audio/sfx.test.tsx` fails 36/36 with
+`localStorage.clear is not a function` — verified identical with the registry
+reverted to `HEAD`, so it is the known environmental baseline, not this work.
+Production `vite build` clean in 17.7 s.
+
+## Unresolved
+
+1. **The three audio events are silent** until someone authors voices in Audio
+   Studio. Intended, and stated, but the beats have no sound today.
+2. **The intro's mobile card is 480 px of an 853 px viewport.** It fills its
+   region and introduces no scroll, but it is `min(30rem, …)` rather than
+   filling to the bottom bar; raising it is a one-line change if the owner
+   wants more.
+3. **The Meta Reflex wordmark stays 30 px on desktop.** It is the existing
+   identity and the brief said to keep it; it is modest against a 1440 px
+   arena.
+
+---
+
+# RFX1 — INTEGRATED AND COMPLETE
+
+Status: **merged and pushed to both deploy branches. RFX1 is closed.**
+
+Nothing in the sections above was rewritten; this is the integration record.
+
+## Integration SHAs
+
+| | before | method | after |
+|---|---|---|---|
+| Frontend `main` | `412db656` | **fast-forward** from `rfx1/phase2b3` | **`6ea81d40`** |
+| Backend `master` | `cffa85f0` | **`--no-ff` merge** of `rfx1/phase2b3-presentation-leadin` (`c501aa86`) | **`399c8e60`** |
+
+Both were integrated in dedicated detached worktrees
+(`mogsy-wt-rfx1-integ`, `lcs-wt-rfx1-integ`), because neither deploy branch was
+checked out anywhere and both primary checkouts hold unrelated branches with
+uncommitted work. No other worktree was touched.
+
+## Did either remote move?
+
+**Frontend: no.** `origin/main` was still `412db656` — the base this branch was
+rebased onto during the visual implementation — so the integration is a true
+fast-forward and `main`'s tree is **byte-identical to the approved tip
+`6ea81d40`** (`git diff 6ea81d40 main` is empty). No reconciliation, and no
+opportunity for one.
+
+**Backend: yes, by 9 commits** (ENVVIS1 batches 1–2A and its integration, GR1's
+gate-aware composition, items P8 target-mode shred), from base `35f11822` to
+`cffa85f0`.
+
+**Overlap: zero.** This branch touches exactly three files —
+`ranked_public/pacing.py`, `ranked_public/service.py`,
+`test_ranked_answerable_boundary.py` — and none of them appears in the upstream
+diff. The merge reported `Automatic merge went well` with no conflicted paths,
+and all three files were verified **byte-identical to `c501aa86`** in the merged
+tree before the merge commit was written. No reconciliation was needed and no
+timing constant was touched.
+
+## Final Phase 2B3 timing constants (unchanged by integration)
+
+```
+ENTRY_INTRO_MIN_MS        2000    guaranteed visible intro, from real first paint
+ENTRY_MIN_LEAD_MS          700    locked Round-1 preview
+ENTRY_PRESENTATION_MS     2700    the two together, identical on both paths
+  queue  entry_lead_ms    5900    = 2000 discovery + 800 handoff + 400 paint + 2700
+  bot    entry_lead_ms    4400    =  500 join RTT + 800 handoff + 400 paint + 2700
+intro ceiling             none    surplus goes to the card, never to the preview
+
+MODULE_TITLE_MS           1400    ordinary module transition (unchanged)
+MODULE_TITLE_MIN_MS        600    below this the title is SKIPPED, never flashed
+module_transition_ms      2900    ordinary round (unchanged)
+
+SPECIAL_TRANSITION_VISIBLE_MS
+  final-round             1300    measured 1426-1840 in browser
+  meta-reflex-entry       1800    measured 2015-2168 in browser
+PRESENTATION_HEADROOM_MS   600
+  final round budget      5450
+  Meta Reflex budget      5950
+
+MATCH_OUTRO_MS            1200
+SKEW_RESYNC_THRESHOLD_MS   750
+STING_MS                   720    the Daily's default; Ranked passes its window
+```
+
+## Verification run at integration
+
+**Frontend** — the focused RFX1 Phase 2B3 suites: `QuizRankedMatch.rfx1b3`,
+`QuizRankedMatch.rfx1b2`, `rankedBeats.rfx1b3v`, `rankedBeats.css.rfx1b3v`,
+`CanonicalArena.rfx1b3v`, `MetaReflexSting`, `specialTransition`,
+`timerMath.countdown`, `useRankedMatchSfx` — **9 files / 135 tests passing**.
+Production `vite build` clean in 19.1 s. Run against the branch worktree, whose
+tree was first proved identical to the merged `main`; the integration worktree
+has no `node_modules` of its own and symlinking a sibling's is the documented
+trap that fabricates ~250 failures.
+
+**Backend** — `test_ranked_answerable_boundary.py` **37 passing**, plus
+`test_ranked_prototype`, `test_ranked_public_queue`,
+`test_ranked_launch_readiness`, `test_ranked_public_queue_routes`:
+**59 passing, 1 failing**.
+
+That one failure is
+`test_ranked_prototype.py::test_two_human_match_defaults_to_production_and_not_bot`
+— `sqlite3.OperationalError: no such table: quiz_questions`. It is the fresh
+worktree's empty stub DB, not this work: **verified by checking the same
+worktree out at `cffa85f0` (pre-merge) and watching it fail identically.**
+
+## What shipped
+
+All four presentation surfaces, the countdown clock and the lead-in budget are
+live on both deploy branches:
+
+* **Ranked Duel intro** — deterministic ≥2000 ms floor from real first paint,
+  ~700 ms locked preview, `RANKED DUEL` / `ACADEMY DUEL`, both role mascots and
+  identities, VS medallion, `ROUND 1 OF N`, no loading language as primary
+  content.
+* **Countdown clock** — deadline-driven, second boundaries relative to the
+  deadline, `reconciledSkewMs` keeping the highest reading, one source for the
+  desktop and mobile clocks.
+* **Meta Reflex** — medium beat, 1800 ms floor on the server-owned budget,
+  once per block before card 1 only, `META ✦ REFLEX` / `{COUNT} CARDS · THINK
+  FAST`, keyframes that hold opaque instead of resting at `opacity: 0`, and the
+  Daily unaffected because the staging is opt-in via `variant="beat"`.
+* **Final Round** — medium beat replacing the ordinary module title,
+  `FINAL ROUND` plus the authoritative current score, no `GET READY`, no
+  mascots, ending before input opens.
+* **Final Round + Meta Reflex together** — one beat, Final Round's message on
+  Meta Reflex's clock.
+* **Match outro** — full-shell overlay after the final result reveal, ~1200 ms,
+  `DUEL COMPLETE`, the backend's outcome word, the authoritative final score,
+  both role mascots, fading into the existing end screen, and skipped entirely
+  on a refresh or reconnect into a completed match.
+* **Reduced motion** — every duration preserved; only the animation changes.
+* **Audio** — the three presentation event seams, and `ranked.match.victory`
+  aligned to the outro presentation moment rather than raw `matchOver`. No new
+  audio assets.
+
+## Deployment
+
+The backend deploys from `master` automatically; this push triggers one, and a
+deploy restarts the LIVE1 poller as usual.
+
+**The frontend does NOT reach mogzy.lol from this push.** `main` is the
+repository's branch; the live site is published from Lovable, so the owner must
+press **Publish** there before any of this is visible to players. Pushing is
+not deploying for this repo and never has been.
