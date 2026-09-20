@@ -1,25 +1,31 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: PHASE 1B2 — DATABASE SIDE FULLY CERTIFIED IN PRODUCTION. CODE SIDE NOT
-YET DEPLOYED.**
+**State: PHASE 1B2.5 — DATABASE CERTIFIED, CODE ON THE PRODUCTION REF,
+AWAITING ONE LOVABLE PUBLISH.**
 
 The schema is live in `kewgjwrzpzpeltwidvuc`, all eight certification items are
 closed from both the anon client path and privileged access, and the store was
 cleaned transactionally back to **zero rows** — a certified, empty baseline
 before the first real visitor (**§15.8**).
 
-The instrumented frontend is committed but sits on an **unpushed local branch**
-and therefore cannot reach production. **§15.15** is the review of that, and
-**B3 must not begin until it is resolved.**
+The instrumented frontend is now on **`origin/main` = `c67722ec`**, and the
+Lovable production ref was confirmed from direct evidence to be **`main`**
+(§16.4). The deployed bundle, measured directly, still predates B1 and writes
+to the non-existent `funnel_events` — so **one Lovable Publish is all that
+separates B2 from closure**, and the clean baseline cannot be contaminated
+meanwhile.
 
-Production baseline: **2026-09-20T11:27:52Z**, commit `f2c0da40`. Funnel data
-begins when the frontend ships; everything before is permanently zero (§5).
+Production baseline: **2026-09-20T11:27:52Z**. Funnel data begins when the
+frontend ships; everything before is permanently zero (§5).
 
 Sections 1–13 are the FUNNEL1A audit, retained unedited: they are the evidence
 the design rests on, and rewriting them to match the outcome would destroy the
-record of what was actually found. **§14 is the B1 contract and schema; §15 is
-the B2 instrumentation and the production certification — §15 is the current
-state.** Where a phase departed from a proposal in §9, it says so and says why.
+record of what was actually found. §14 is the B1 contract and schema, §15 the
+B2 instrumentation and database certification — **§16 is the current state.**
+Where a phase departed from a proposal in §9, it says so and says why.
+
+**SHA note:** every commit hash in §14 and §15 predates the B2.5 rebase and no
+longer resolves. The mapping is in §16.1; contents are unchanged.
 
 FUNNEL1A itself implemented, migrated, renamed and refactored nothing; that
 document and the audit behind it were its only deliverables.
@@ -1101,7 +1107,7 @@ suite and re-exercised here. No attribution logic exists outside
 | **Migration applied** | `supabase/migrations/20260920120000_funnel1b1_analytics_foundation.sql` |
 | **Applied by** | Privileged Lovable database access, out of band |
 | **Certification timestamp (UTC)** | **2026-09-20T11:27:52Z** (first smoke insert), run completed 11:28:07Z |
-| **Deployed commit** | **`f2c0da4017010dafc5675291caa3464aa2c627e3`** (`f2c0da40`) |
+| **Certified at commit** | `f2c0da40` pre-rebase, now **`2e9dc927`** after the B2.5 rebase onto `origin/main` (§16). Same tree for every analytics file; the rebase changed no content, only parentage |
 | **Baseline** | Funnel data begins at this timestamp. Everything before it is permanently zero — there is nothing to backfill (§5) |
 
 Project identity was confirmed before anything was written: `.env`
@@ -1267,7 +1273,7 @@ token refresh · every retired name refused and absent from `src/` · StrictMode
 and remount dedupe · the five attribution scenarios.
 
 **Regression verification.** The affected suites were run against a
-`9bedaae4` (B1 head) baseline worktree and against B2: **identical sets of 4
+`9bedaae4` (B1 head, now `4ad43b44`) baseline worktree and against B2: **identical sets of 4
 pre-existing failures** (`Quiz.hub.test.tsx` h1, two `lobby-preview` import-
 isolation scans, one `syntheticRankedHistory` scan), 441 → 536 passing. No
 regressions. `tsc --noEmit` shows the same 23 pre-existing errors in the same 15
@@ -1366,7 +1372,15 @@ half-shipped mistake.
 Admin analytics UI stays out of B3 unless explicitly scoped — but after B3 the
 data will finally exist to justify it.
 
-## 15.15 Integration / deployment state — THE INSTRUMENTED FRONTEND DOES NOT CURRENTLY REACH PRODUCTION
+## 15.15 Integration / deployment state — SUPERSEDED BY §16
+
+Retained as the record of the gap and of how it was measured. Its central
+claim — that the branch was unpushed and unreachable by any build — was
+resolved in FUNNEL1B2.5; its SHAs are pre-rebase. **Read §16 for current state.**
+Its final paragraph, about the deployed bundle still targeting `funnel_events`,
+was an inference at the time and has since been **verified directly** (§16.4).
+
+### (original, as written)
 
 Asked before authorising B3, and the answer is the most important line in this
 section, so it is first: **the schema half of FUNNEL1B2 is live in production;
@@ -1453,3 +1467,280 @@ does not exist in the shipped bundle** — the deployed build still writes to
 `funnel_events`, which still does not exist, and still fails silently. No
 partial or stale deploy can contaminate the clean baseline. But the window
 should be closed promptly rather than left open.
+
+---
+
+# 16. FUNNEL1B2.5 — Integration and production loop closure (IN PROGRESS)
+
+Closing the gap §15.15 identified: the certified analytics code existed only on
+an unpushed local branch. Phases 1–4 are complete and the code is now on the
+production ref. **Phases 5–6 are blocked on a Lovable Publish action this
+environment cannot perform** (§16.5).
+
+## 16.1 Phase 1 — reconciliation
+
+`origin/main` was re-fetched immediately before integration and had **not**
+moved since the previous check.
+
+| | |
+|---|---|
+| `origin/main` at start | `2f211a3bc00e9f8927da0dde6372540ff59e0dcd` |
+| Branch HEAD before | `5eda4cf8` (4 ahead, 5 behind) |
+| Changed-file overlap | **empty**, re-verified |
+| `git merge-tree --write-tree` | **clean** |
+| Method | **rebase** — lowest risk here, because the branch had never been pushed, so no shared history existed to rewrite |
+
+Rebase succeeded with no conflicts. No unrelated work was absorbed; the local
+divergent `mogsy` checkout was not touched.
+
+| Commit | Before | After |
+|---|---|---|
+| B1 schema + emitter | `9bedaae4` | **`4ad43b44`** |
+| B2 instrumentation | `f2c0da40` | **`2e9dc927`** |
+| B2 certification record | `9953af88` | **`a7264386`** |
+| B2 deploy-gap review | `5eda4cf8` | **`c67722ec`** |
+
+Reconciled branch HEAD: **`c67722ec3aef2f900651d540b986903f1f18540f`**, 4 ahead
+/ **0 behind** `origin/main`.
+
+Every SHA quoted in §14 and §15 predates this rebase. Contents are identical —
+the rebase changed parentage, not a single line — but the old hashes no longer
+resolve, so §15.8 and §15.11 were corrected in place rather than left to
+mislead.
+
+## 16.2 Phase 2 — focused verification after reconciliation
+
+```
+src/lib/analytics/analytics.test.ts                 48 passed
+src/lib/analytics/instrumentation.test.ts           24 passed
+src/test/funnel/canonicalSurfaces.test.tsx          23 passed
+src/test/security/funnel1b1AnalyticsSchema.test.ts  34 passed
+                                                   ───────────
+                                        analytics  129 passed / 0 failed
+
+affected surface suites (LolHub ×2, Quiz.hub, Auth ×2, DSA,
+components/auth, components/hud, onboarding-gate,
+lobby-preview, LeagueSwipeGame)          391 passed / 4 failed
+```
+
+The 4 failures are the **same four pre-existing ones** measured against the
+`9bedaae4` baseline in §15.11 (`Quiz.hub.test.tsx` h1, two `lobby-preview`
+import-isolation scans, one `syntheticRankedHistory` scan). Rebasing onto five
+new upstream commits changed nothing.
+
+`tsc --noEmit`: **23 errors across the same 15 files** — identical to baseline,
+none in any file this work touches. ESLint on every authored file: **clean**
+(exit 0).
+
+## 16.3 Phase 3 — remote integration
+
+Branch pushed and upstream configured:
+
+```
+* [new branch]  funnel1b1-analytics-foundation -> funnel1b1-analytics-foundation
+branch 'funnel1b1-analytics-foundation' set up to track 'origin/...'
+```
+
+`origin/funnel1b1-analytics-foundation` = `c67722ec`, verified to contain all
+four commits and all fourteen analytics artefacts (eleven `src/lib/analytics/`
+files, the two test suites, the certification script, the migration).
+
+**Then integrated to `main`.** The conditions the brief set were met and
+checked in order: the repo's established workflow integrates feature branches
+into `main` (both merge commits and direct pushes appear in its history);
+`origin/main` had not moved unexpectedly (still `2f211a3b` at the moment of the
+push); and the branch was **0 behind**, so `origin/main` was a strict ancestor
+and the push was a **fast-forward** — no history rewritten, nothing forced,
+each of the four commits individually revertible.
+
+```
+To https://github.com/mitcherrman/mogsy.git
+   2f211a3b..c67722ec  HEAD -> main
+```
+
+| | |
+|---|---|
+| `origin/main` before | `2f211a3b` |
+| **`origin/main` after** | **`c67722ec3aef2f900651d540b986903f1f18540f`** |
+
+Verified post-push: `origin/main` carries 11 files under `src/lib/analytics/`
+and `supabase/migrations/20260920120000_funnel1b1_analytics_foundation.sql`.
+
+## 16.4 Phase 4 — the Lovable deployment ref, from direct evidence
+
+**`Lovable production publishes from main.`**
+
+Established from evidence, not from the absence of CI files (the brief
+explicitly ruled that out):
+
+1. **Lovable's own GitHub bot writes to `main`.** `gpt-engineer-app[bot]` —
+   the Lovable/GPT-Engineer integration account — has **3,265 commits on
+   `origin/main`**, the most recent on 2026-09-17 ("Fixed stage sizing
+   regression"). A two-way sync of that volume onto one branch is the
+   integration itself, not a coincidence.
+2. **`origin/HEAD -> origin/main`** — `main` is the repository default.
+3. The repo has 40+ other remote branches and the bot has committed to none of
+   them in this history.
+
+### Current published SHA — and what could and could not be determined
+
+The published **SHA** is not externally observable: Lovable embeds no build
+identifier in the output, so reading it requires Lovable project metadata this
+environment has no access to. **That number must come from the Lovable
+project.**
+
+What *is* externally observable is far more useful, and it was measured
+directly against `https://mogzy.lol`:
+
+| Marker in the live entry bundle `assets/index-C2juFm5U.js` | Occurrences |
+|---|---|
+| `funnel_events` | **1** |
+| `analytics_events` | 0 |
+| `analytics_visitors` | 0 |
+| `mogzy.analytics.visitor` | 0 |
+| `hub_entered` | 0 |
+
+**The deployed site is still running the pre-B1 emitter, writing to
+`funnel_events` — a table that does not exist.** §15.15's closing paragraph
+predicted exactly this and called it an inference; it is now a measurement.
+Two consequences worth stating plainly:
+
+- B2 is definitively not deployed, whatever any dashboard says.
+- The clean zero-row baseline **cannot** be contaminated by the currently
+  deployed build, because that build targets a table Postgres does not have.
+  The pre-launch baseline is safe for as long as this bundle is live.
+
+## 16.5 Phase 5 — publish: BLOCKED, and it is the only thing blocking
+
+`origin/main` now contains B2, which was the precondition. Publishing is a
+Lovable action, and pushing to GitHub does **not** trigger it: the live bundle
+hash was polled three times over ~40s after the push and stayed
+`index-C2juFm5U.js`, with the pre-B1 contents above.
+
+**This environment cannot perform the publish** — it holds no Lovable
+credentials. The Lovable flow must be run by the owner or by the privileged
+operator, against ref `main`, commit `c67722ec`.
+
+### How to confirm the publish landed, without guessing
+
+```bash
+curl -s https://mogzy.lol/ | grep -oE 'src="/assets/index-[^"]+\.js"'
+```
+
+Two conditions, both required:
+
+1. the hash is **no longer `index-C2juFm5U.js`**; and
+2. the new bundle **contains `analytics_events` and `mogzy.analytics.visitor`,
+   and no longer contains `funnel_events`**.
+
+Condition 2 is the one that matters — a hash can change for unrelated reasons.
+
+## 16.6 Phase 6 — production loop closure: NOT YET RUN
+
+Cannot begin until §16.5 completes; running it against the current bundle would
+only re-prove that the old emitter writes nothing.
+
+The procedure, ready to execute:
+
+1. Clean visit to `https://mogzy.lol/?utm_source=production_loop_test&utm_medium=funnel1b25&utm_campaign=loop_closure`
+   from fresh browser storage, so the visit mints a new `visitor_id` and a new
+   session with that acquisition.
+2. Navigate **Landing → Hub (`/lol`) → Leaguecraft (`/quiz`)**. No gameplay.
+3. Expect exactly three canonical rows — `landing_viewed`, `hub_entered`,
+   `leaguecraft_opened` — sharing one `visitor_id` and one `session_id`, with
+   `first_utm_source = 'production_loop_test'` on the visitor row and
+   `utm_source = 'production_loop_test'` on the session row.
+4. Expect **zero** rows for `lol_landing_viewed` or any other retired name.
+
+The read-back needs privileged access. SQL:
+
+```sql
+-- the three canonical rows, in order, sharing one identity
+select e.event_name, e.route, e.visitor_id, e.session_id,
+       e.user_id, e.is_guest, e.source_system, e.occurred_at, e.received_at
+from public.analytics_events e
+join public.analytics_sessions s on s.session_id = e.session_id
+where s.utm_source = 'production_loop_test'
+order by e.received_at;
+-- expect exactly: landing_viewed, hub_entered, leaguecraft_opened
+--                 one distinct visitor_id, one distinct session_id
+--                 source_system='web' on all three
+
+-- first-touch and session attribution both carry the test campaign
+select v.visitor_id, v.first_utm_source, v.first_utm_medium, v.first_utm_campaign,
+       v.first_landing_path, v.first_referrer,
+       s.session_id, s.utm_source, s.landing_path
+from public.analytics_visitors v
+join public.analytics_sessions s on s.visitor_id = v.visitor_id
+where v.first_utm_source = 'production_loop_test';
+
+-- NO retired or misnamed event became canonical data
+select event_name, count(*)
+from public.analytics_events
+where event_name in ('lol_landing_viewed','lol_start_quiz_clicked',
+                     'quiz_guest_started','auth_signup_viewed_from_quiz',
+                     'auth_signup_completed_from_quiz','quiz_results_viewed')
+group by event_name;
+-- expect ZERO rows. The emitter refuses these names outright (§15.1), so any
+-- row here means a build predating B2 is live, not that the contract failed.
+
+-- whole-table sanity: nothing unexpected arrived alongside the test
+select event_name, count(*) from public.analytics_events
+group by event_name order by 2 desc;
+```
+
+### Cleanup — narrow predicates tied to the test campaign
+
+Preferred over tagging, so the pre-launch baseline returns to a true zero.
+
+```sql
+delete from public.analytics_events
+ where session_id in (select session_id from public.analytics_sessions
+                      where utm_source = 'production_loop_test');
+delete from public.analytics_sessions where utm_source = 'production_loop_test';
+delete from public.analytics_visitors where first_utm_source = 'production_loop_test';
+select count(*) as remaining from public.analytics_events;  -- expect 0
+```
+
+Every predicate keys on `production_loop_test`, which no real visitor can
+produce, so none of these can reach a genuine row.
+
+## 16.7 Completion state
+
+| # | Requirement | Status |
+|---|---|---|
+| 1 | Schema is live | ✅ certified both sides (§15.8) |
+| 2 | B2 code on the real production ref | ✅ `origin/main` = `c67722ec` |
+| 3 | Lovable has published that commit | ❌ **blocked — no Lovable access here** (§16.5) |
+| 4 | A real production visit emitted canonical analytics | ⛔ gated on 3 |
+| 5 | Live DB read-back confirms identity + attribution | ⛔ gated on 4 |
+| 6 | Retired/misnamed events did not pollute the dataset | ⛔ gated on 4 — though the deployed bundle currently cannot write at all (§16.4), so the dataset is intact by construction |
+| 7 | Test rows cleaned up | ⛔ gated on 4 |
+
+**FUNNEL1B2 is not yet closed.** Two of seven remain done; the other five are
+one Lovable Publish away, and nothing else stands between them.
+
+## 16.8 Remaining scope for FUNNEL1B3
+
+Unchanged from §15.14, minus the items B2.5 completed. B3 still must not start
+until §16.7 reads all ✅.
+
+1. **Regenerate `src/integrations/supabase/types.ts`** now that the tables
+   exist, then delete `AnalyticsDatabase` from `src/lib/analytics/schema.ts` and
+   point `analyticsDb` at `supabase` directly. That file documents its own
+   removal.
+2. **Railway → Supabase gameplay emission** — the real B3 subject. Decide §13.2
+   (webhook on completion, scheduled reconciliation, or an outbox table), then
+   emit `practice_quiz_*`, `ranked_*`, `mastery_*`, `dsa_*` over `service_role`
+   via `buildServerEventRow`, keyed per §14.9 — **match** for completions,
+   **participant** for per-player starts, or the unique index silently drops
+   four of five players.
+3. **Meta Reflex completion** is Supabase-side (`league_swipe_results`), so it
+   can be emitted by trigger or RPC without the Railway path.
+4. **A freshness assertion** — CI or Admin check that `max(received_at)` is
+   recent. The whole audit exists because a silent analytics outage ran for two
+   months; the diagnostics channel makes it visible in DEV, and this would make
+   it visible in production.
+5. **The uid-continuity-across-signup test** (§15.13.3).
+
+Admin analytics UI remains out of scope until the data exists to justify it.
