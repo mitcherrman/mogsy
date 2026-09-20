@@ -1706,3 +1706,21 @@ the window, second wake at the cutoff), plus the two test files.
 Backend: `ranked_public/pacing.py` (the traced bot derivation, documented) and
 `test_ranked_answerable_boundary.py`. **No behavioural backend change**: the
 lead-in values are unchanged.
+
+### Integration
+
+Merged on 2026-09-19, both with `--no-ff`, each merge content-identical to its
+approved tip:
+
+| | |
+|---|---|
+| Frontend | `rfx1/phase2b1` (approved tip **`5d83fd57`**) → `main` as merge **`98542527`**, over `origin/main` **`f2a3e766`**. The remote had not moved since the closeout; nothing to reconcile. |
+| Backend | `rfx1/phase2b1-round1-leadin` (approved tip **`0b2474f4`**) → `master` as merge **`295fd58f`**, over `origin/master` **`89b5ce4b`**. The remote moved twice during integration — an items commit (`57016334`, Jak'Sho / Anguish) and a Mastery setup-state commit (`89b5ce4b`) — with **no file overlap** either time. The branch was rebased onto the first (`cf747eca`, byte-identical content) and merged onto the second. |
+
+Verified on the merge results: queue lead-in 4200 ms, bot 2200 ms, every other
+creation source 0; frontend Ranked suites 127 files / 1717 tests passing; the
+production build clean; backend 117 tests passing across the Ranked suites and
+the moved items suite.
+
+Phase 2B1 is complete. Phase 2B2 (the visible entry intro on `view.entryPhase`,
+and the image derivatives analysed above) is next.
