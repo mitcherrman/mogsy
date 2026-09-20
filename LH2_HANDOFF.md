@@ -748,7 +748,8 @@ they are gameplay simulation state, not Mogzy quiz scoring.
   access while resolving the workspace config; no dependency/network changes
   were attempted.
 
-Backend commit: `0c33ef42` — `LH2.4 eradicate HP outcome scoring`.
+Backend commits: `0c33ef42` — `LH2.4 eradicate HP outcome scoring`; `0df11fdc`
+— `Remove obsolete scoring references`.
 
 Frontend/handoff commit: `ab23e50d` — `Document LH2.4 points-only scoring`.
 
