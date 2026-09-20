@@ -163,7 +163,10 @@ export default function GlobalHud() {
                 redesign. Contain is available whenever the brim tips are worth
                 more than the fill. */}
             <img
-              src="/mascot/mogzy-hat-transparent.png"
+              /* RFX1 2B2 — a 37px badge (28px on a phone). The 128px WebP is
+                 the same artwork at 4.3 KB instead of 850 KB; the source PNG
+                 has no other consumer, so this is a plain swap. */
+              src="/mascot/mogzy-hat-transparent-128.webp"
               alt=""
               draggable={false}
               className="h-full w-full translate-y-[5%] scale-110 object-cover object-center"

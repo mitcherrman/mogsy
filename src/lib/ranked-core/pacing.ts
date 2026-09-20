@@ -155,3 +155,40 @@ export function presentationCutoffAt(startedAtIso: string | null | undefined): s
   const t = Date.parse(startedAtIso);
   return Number.isNaN(t) ? null : new Date(t - MODULE_TITLE_END_MARGIN_MS).toISOString();
 }
+
+/**
+ * RFX1 2B2 — THE VISIBLE ENTRY INTRO'S EXIT.
+ *
+ * The intro occupies the server's Round-1 lead-in and nothing else. It starts
+ * when the arena mounts (the match is known, the first snapshot is not) and it
+ * is GONE by `started_at − ENTRY_MIN_LEAD_MS`, which is the same margin the
+ * 2B1 preparation wait already respects — so the first question is on screen,
+ * prepared and stable, for at least that long before input opens.
+ *
+ * It adds NO time of its own. `started_at` is the server's, written once at
+ * match creation; this only decides how much of the period already ahead of it
+ * is spent looking at a duel card rather than at a locked question. If the
+ * lead-in is short (a bot match seen late, a staff match with no lead, a
+ * reload into a running round) the exit instant is already in the past and the
+ * intro ends immediately — server timing wins, every time.
+ */
+export function entryIntroExitAt(startedAtIso: string | null | undefined): string | null {
+  if (!startedAtIso) return null;
+  const t = Date.parse(startedAtIso);
+  return Number.isNaN(t) ? null : new Date(t - ENTRY_MIN_LEAD_MS).toISOString();
+}
+
+/**
+ * Is the intro still inside its window? `msUntilAnswerable` is the
+ * skew-corrected time left until Round 1's `started_at`; null (no round yet,
+ * no start) means the match is still resolving, which IS an intro state.
+ */
+export function entryIntroHolding(msUntilAnswerable: number | null): boolean {
+  // `null` is "no round yet", which IS an intro state. `NaN` is an
+  // unparseable `started_at`, which is not: a window that cannot be proven to
+  // exist must not be held open, or a broken timestamp would leave the card
+  // on screen for the whole match.
+  if (msUntilAnswerable === null) return true;
+  if (Number.isNaN(msUntilAnswerable)) return false;
+  return msUntilAnswerable > ENTRY_MIN_LEAD_MS;
+}

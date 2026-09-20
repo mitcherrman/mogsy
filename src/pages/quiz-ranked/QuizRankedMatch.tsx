@@ -88,6 +88,9 @@ import {
 import {
   entryPrepBudgetMs, moduleTitleWindowMs, presentationCutoffAt,
 } from "@/lib/ranked-core/pacing";
+import { useEntryIntro } from "@/lib/ranked-core/flow/useEntryIntro";
+import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
+import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 
 /** RD1 — the opponent's column reads the viewer's standing from the other side. */
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
@@ -339,6 +342,39 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   const entryPreparing = useEntryPreparation(live, (round) => entryPrepBudgetMs(
     round.activeRound?.startedAt
       ? msUntilAnswerable(round.activeRound.startedAt, m.skewMs, Date.now()) : null));
+
+  /**
+   * RFX1 2B2 — THE VISIBLE ENTRY INTRO'S WINDOW.
+   *
+   * A FRESH entry (the lobby handed this arena a match it just joined) shows
+   * the duel card for the part of the server's Round-1 lead-in that is still
+   * ahead of it, and is out of the way by `started_at − ENTRY_MIN_LEAD_MS`.
+   * It replaces the 2B1 placeholder in the same slot; the preparation the
+   * placeholder was covering keeps running underneath it, unchanged.
+   *
+   * THE HOLD IS SERVER TIME AND NOTHING ELSE. There is no minimum duration
+   * timer and no local countdown: with no round yet the match is still
+   * resolving (which IS an intro state), and the moment a round exists the
+   * exit is a subtraction from ITS `started_at`. A lead-in that is already
+   * spent — a reload into a running round, a staff match created with a zero
+   * lead, a very late first snapshot — yields `false` on the first render
+   * that sees it, so the card cannot appear over a live question and cannot
+   * cost the player a millisecond of answer time.
+   *
+   * There is no flash to guard against: the card is up from the arena's FIRST
+   * paint, which on every real path precedes the first snapshot by the route
+   * transition plus one request.
+   */
+  const reducedMotion = useReducedMotionPreference();
+  // ENTRY ONLY, AND ONLY WHILE THERE IS SOMETHING TO ENTER. A match that is
+  // already over has no Round 1 to wait for and no `started_at` to exit on —
+  // and "no active round" is the same reading as "the match is still
+  // resolving", so without this a fresh entry into a finished match (the
+  // playtest host's terminal path) would hold the card over the result screen
+  // for ever.
+  const introEligible = entry === "fresh" && m.phase !== "match_over" && !m.result;
+  const entryIntroUp = useEntryIntro({
+    eligible: introEligible, startedAt: live?.activeRound?.startedAt, skewMs: m.skewMs });
 
   // 1s render tick so the skew-anchored timer counts down between polls.
   useEffect(() => {
@@ -723,7 +759,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
 
   // Nothing to draw yet. The arena owns the placeholder so the shell, the skin
   // and the geometry are the same ones the match will land in.
-  if (!m.publicRound || !combatants || entryPreparing) {
+  if (!m.publicRound || !combatants || entryPreparing || entryIntroUp) {
     // The arena has no snapshot yet. WHY it has none is the whole difference:
     // a fresh entry is one request away from its first round, and a recovery
     // is rebuilding a match this client had lost. Same panel, same geometry,
@@ -732,7 +768,33 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       <CanonicalArena view={null} chrome={chrome}
         recovering={entry === "fresh" || entryPreparing
           ? { eyebrow: "Ranked Duel", message: "Entering the arena…",
-              phase: m.publicRound ? "preparing" : "match-unresolved" }
+              phase: m.publicRound ? "preparing" : "match-unresolved",
+              // RFX1 2B2 — the duel card, for a FRESH entry only. A recovery
+              // keeps its own honest sentence: a player rejoining a match in
+              // progress is not being introduced to it.
+              intro: introEligible ? (
+                <RankedEntryIntro
+                  // The arena's own entry projection, not a second state
+                  // machine: `preparing` is real media in flight, and `ready`
+                  // is the first question prepared and waiting on the server.
+                  phase={projectEntryPhase({
+                    hasRound: !!m.publicRound,
+                    entryPreparing,
+                    msUntilAnswerable: m.publicRound?.activeRound?.startedAt
+                      ? msUntilAnswerable(
+                          m.publicRound.activeRound.startedAt, m.skewMs, Date.now())
+                      : null,
+                  })}
+                  // Null until the first snapshot names the seats. The card
+                  // draws its neutral treatment for whatever it does not know
+                  // yet and never waits for it.
+                  player={combatants ? {
+                    name: combatants.player.name, roleId: combatants.player.roleId } : null}
+                  opponent={combatants ? {
+                    name: combatants.opponent.name, roleId: combatants.opponent.roleId } : null}
+                  isBotMatch={m.publicRound?.playtest?.isBotMatch === true}
+                  reducedMotion={reducedMotion} />
+              ) : undefined }
           : { eyebrow: "Ranked Duel", message: "Recovering match…",
               phase: "match-unresolved" }} />
     );

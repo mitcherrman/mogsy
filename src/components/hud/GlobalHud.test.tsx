@@ -68,7 +68,7 @@ describe("GlobalHud chrome", () => {
     // meanings — asserting the src is what keeps them from converging again.
     renderHud();
     const img = screen.getByTestId("hud-home").querySelector("img");
-    expect(img?.getAttribute("src")).toBe("/mascot/mogzy-hat-transparent.png");
+    expect(img?.getAttribute("src")).toBe("/mascot/mogzy-hat-transparent-128.webp");
     // Decorative: the accessible name lives on the link, not the image.
     expect(img?.getAttribute("alt")).toBe("");
   });

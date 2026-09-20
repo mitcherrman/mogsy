@@ -202,6 +202,10 @@ export function RoleCrest({
         />
         {identity.role !== null ? (
           <RoleMascot
+            // RFX1 2B2: every crest draws this plate small — the stage slot is
+            // ~89-123 px and the rail frame smaller still — so the arena asks
+            // for the 384px encode. The lobby stage keeps the 1254px source.
+            art="compact"
             role={identity.role}
             // Both duelists face the arena centre: the left column's mascot
             // looks right, the mirrored right column's looks left. This is the
@@ -298,6 +302,7 @@ export function RoleCrest({
         // clipping at the border or forcing the frame to grow. Motion stays
         // inside the box; the box never changes size.
         <RoleMascot
+          art="compact"
           role={identity.role}
           facing={mirrored ? "left" : "right"}
           action={action}

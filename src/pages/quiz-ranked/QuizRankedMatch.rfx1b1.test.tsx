@@ -301,21 +301,30 @@ describe("RFX1 2B1 — the presentation cutoff: no intro survives started_at", (
 });
 
 describe("RFX1 2B1 Tier 2 — round 1 inside the server entry lead-in", () => {
-  it("prepares round 1's media behind the existing placeholder, bounded, then opens at started_at", async () => {
+  it("prepares round 1's media behind the entry presentation, bounded, then opens at started_at", async () => {
     imageMode = "never";
     backend.startedAt = Date.now() + 3000;
     const startedAt = backend.startedAt;
-    const mountedAt = Date.now();
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
     // The first question is known and its media requested...
     await waitFor(() => expect(firstRequest("round-1.png")).not.toBeNull(), { timeout: 1000 });
-    // ...while the arena still shows its placeholder, marked as preparing.
+    // ...while the arena shows the entry presentation, marked as preparing.
     expect(firstRequest("round-1.png")!.surface).toBeNull();
     expect(screen.getByTestId("ranked-recovering")).toHaveAttribute("data-entry-phase", "preparing");
-    // The wait is bounded (ENTRY_PREP_CAP_MS = 1500) even though nothing loads.
-    const grid = await screen.findByTestId("answer-grid", undefined, { timeout: 2500 });
-    expect(Date.now() - mountedAt).toBeLessThan(1500 + 400);
+    // RFX1 2B2 — the PREPARATION wait is still bounded by ENTRY_PREP_CAP_MS
+    // (1500) even though nothing loads: the card stops saying "preparing" and
+    // reports the question ready well inside the cap.
+    await waitFor(() => expect(screen.getByTestId("ranked-entry-intro"))
+      .toHaveAttribute("data-entry-phase", "ready"), { timeout: 2200 });
+    // The arena is revealed at the server-anchored exit — `started_at` less
+    // ENTRY_MIN_LEAD_MS (700) — which is LATER than the media wait and always
+    // BEFORE the authoritative start. The question is then on screen, stable
+    // and locked, for that whole margin.
+    const grid = await screen.findByTestId("answer-grid", undefined, { timeout: 3500 });
+    const revealedAt = Date.now();
     expect(grid).toBeInTheDocument();
+    expect(startedAt - revealedAt).toBeGreaterThan(300);
+    expect(startedAt - revealedAt).toBeLessThan(700 + 400);
     expect(screen.getByTestId("ranked-question")).toHaveAttribute("data-input-open", "false");
     let openedAt = 0;
     await waitFor(() => {
@@ -334,11 +343,14 @@ describe("RFX1 2B1 Tier 2 — round 1 inside the server entry lead-in", () => {
     expect(screen.getByTestId("ranked-question")).toHaveAttribute("data-input-open", "true");
   });
 
-  it("ends the wait as soon as round 1's critical media is ready", async () => {
+  it("ends the media wait as soon as round 1's critical media is ready", async () => {
     backend.startedAt = Date.now() + 3000;
     const mountedAt = Date.now();
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
-    await screen.findByTestId("answer-grid", undefined, { timeout: 1500 });
+    // Preparation itself still finishes the moment the art settles — the
+    // entry card says so — and only the ARENA's reveal waits for the server.
+    await waitFor(() => expect(screen.getByTestId("ranked-entry-intro"))
+      .toHaveAttribute("data-entry-phase", "ready"), { timeout: 1500 });
     expect(Date.now() - mountedAt).toBeLessThan(700);
   });
 });

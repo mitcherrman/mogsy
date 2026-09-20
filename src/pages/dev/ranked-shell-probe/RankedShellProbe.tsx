@@ -395,6 +395,14 @@ function publicFor(state: ProbeState, role: string | null) {
     ...p, role: i === 0 ? role : probe.opponentRole,
   }));
   payload.players = players;
+  // RFX1 2B2 — `?bot=1` on a LIVE round, not only on the end screen. The
+  // arena's bot vocabulary (the "vs Bot" note, `opponentLabelFor`, the entry
+  // card's Academy Duel eyebrow) all read this one field, and the probe could
+  // not reach any of it before.
+  if (probe.bot) {
+    payload.playtest = { question_bank_mode: "production", is_placeholder: false,
+      is_bot_match: true, session_preset: null };
+  }
   // R1 matches carry no progression layer, which is what puts the arena in
   // role vocabulary rather than legacy-class vocabulary. `?legacy=1` serves
   // the FLAG-OFF shape instead: both roles null, legacy thresholds — which is
@@ -497,9 +505,43 @@ const probe: {
   bot: boolean;
   rated: boolean;
   discoveries: boolean;
+  /**
+   * RFX1 2B2 — `?entry=fresh&lead=<ms>`: model a COLD ENTRY.
+   *
+   * The canned envelopes carry a fixed 2026-07-18 clock, which is fine for
+   * every state that is about layout and wrong for every state that is about
+   * TIME: a round whose `started_at` is years in the past is answerable on
+   * the first render, so the entry presentation the server's lead-in exists
+   * for can never be seen here. With a lead, the probe stamps `server_time`
+   * to the real clock and puts round 1's start `lead` ms ahead of the FIRST
+   * envelope it serves — the anchor is taken once, exactly as the backend
+   * writes `started_at` once inside the creation transaction, so repeated
+   * reads never move it.
+   */
+  entryFresh: boolean;
+  leadMs: number;
+  leadAnchorMs: number | null;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
-  discoveries: true };
+  discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null };
+
+/** Stamp a live clock and a future round-1 start onto a canned envelope. */
+function applyEntryLead<T extends { payload: Record<string, unknown>; server_time?: string }>(
+  env: T,
+): T {
+  if (probe.leadMs <= 0) return env;
+  if (probe.leadAnchorMs === null) probe.leadAnchorMs = Date.now() + probe.leadMs;
+  const startedAt = probe.leadAnchorMs;
+  env.server_time = new Date().toISOString();
+  env.payload.server_time = env.server_time;
+  const active = env.payload.active_round as Record<string, unknown> | null | undefined;
+  if (active) {
+    active.started_at = new Date(startedAt).toISOString();
+    const duration = Number(active.duration_seconds ?? 30) * 1000;
+    active.active_deadline = new Date(startedAt + duration).toISOString();
+  }
+  return env;
+}
 
 /**
  * RE1 — A FINISHED MATCH, module by module, for both seats.
@@ -712,7 +754,7 @@ function installInterceptor() {
         match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
         payload: {
           match_status: "active", match_over: false,
-          public: publicFor(probe.state, probe.role),
+          public: applyEntryLead(publicFor(probe.state, probe.role)),
           private: privateFor(probe.state),
           progression_pending_players: [], latest_resolved_round: null, result: null,
         },
@@ -738,7 +780,7 @@ function installInterceptor() {
     }
     if (path.endsWith("/private")) return json(privateFor(probe.state));
     if (path.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
-    if (/\/matches\/m1$/.test(path)) return json(publicFor(probe.state, probe.role));
+    if (/\/matches\/m1$/.test(path)) return json(applyEntryLead(publicFor(probe.state, probe.role)));
     return json({});
   }) as typeof window.fetch;
 }
@@ -768,6 +810,12 @@ export default function RankedShellProbe() {
   const viewerName = params.get("name");
   const pet = params.get("pet");
   probe.pet = pet && ["scorchclaw", "mosstomper", "gustwalker"].includes(pet) ? pet : null;
+  // RFX1 2B2 — the cold-entry model. `lead` is reset with the mount key below,
+  // so switching probe states re-anchors rather than replaying a spent lead.
+  probe.entryFresh = params.get("entry") === "fresh";
+  const lead = Number(params.get("lead") ?? "");
+  if (lead !== probe.leadMs) probe.leadAnchorMs = null;
+  probe.leadMs = Number.isFinite(lead) && lead > 0 ? lead : 0;
   // Remount the arena when the probe state changes so the canned round is
   // re-read; the controller caches its snapshot for the life of the mount.
   const [, force] = useState(0);
@@ -794,11 +842,13 @@ export default function RankedShellProbe() {
       {params.get("frame") === "0" ? (
         <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
           matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}
+          entry={probe.entryFresh ? "fresh" : "recovered"}
           chrome={<RankedRouteHeader size="wide" />} />
       ) : (
         <Frame size="wide">
           <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
-            matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName} />
+            matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}
+            entry={probe.entryFresh ? "fresh" : "recovered"} />
         </Frame>
       )}
     </div>

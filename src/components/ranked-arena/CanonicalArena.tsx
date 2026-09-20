@@ -74,6 +74,18 @@ export interface CanonicalArenaProps {
     message: string;
     /** RFX1 2B1 — which entry stage this placeholder stands in for (2B2 reads it). */
     phase?: "match-unresolved" | "preparing";
+    /**
+     * RFX1 2B2 — a mode's own ENTRY PRESENTATION, drawn in the placeholder's
+     * slot instead of the sentence.
+     *
+     * A slot, deliberately, and for the same reason `guidance` is one: the
+     * arena must not learn what a duel card, a VS treatment or an entry
+     * animation IS. Ranked supplies `RankedEntryIntro`; the Daily and every
+     * dev harness supply nothing and get the sentence they always got. The
+     * `message` stays REQUIRED so a mode always has a fallback and so this
+     * can never become the only way to fill the slot.
+     */
+    intro?: ReactNode;
   };
 }
 
@@ -188,14 +200,16 @@ export function CanonicalArena({
       <ArenaShell size="wide" header={chrome}>
         <section data-testid="ranked-recovering" className="ranked-shell"
           data-entry-phase={recovering?.phase}>
-          <div className="ranked-panel p-6 text-center space-y-1">
-            <div className="ranked-eyebrow ranked-eyebrow--cyan">
-              {recovering?.eyebrow ?? "Ranked Duel"}
+          {recovering?.intro ?? (
+            <div className="ranked-panel p-6 text-center space-y-1">
+              <div className="ranked-eyebrow ranked-eyebrow--cyan">
+                {recovering?.eyebrow ?? "Ranked Duel"}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {recovering?.message ?? "Recovering match…"}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {recovering?.message ?? "Recovering match…"}
-            </p>
-          </div>
+          )}
         </section>
       </ArenaShell>
     );

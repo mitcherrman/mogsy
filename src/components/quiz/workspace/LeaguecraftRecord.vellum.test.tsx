@@ -54,8 +54,19 @@ describe("the match-history parchment", () => {
         "/assets/ranked/parchment-match-history.png",
         "/assets/ranked/parchment.png",
         "/assets/ranked/play-seal.png",
-        "/assets/ranked/ranked-academy-duel-bg.png",
-        "/assets/ranked/ranked-vellum-texture.png",
+        // RFX1 2B2 — the Ranked chrome is WebP now. Same three drawings; the
+        // backdrop additionally has a phone encode chosen by media query.
+        "/assets/ranked/ranked-academy-duel-bg.webp",
+        "/assets/ranked/ranked-academy-duel-bg-960w.webp",
+        "/assets/ranked/ranked-vellum-texture.webp",
+        "/assets/ranked/navy-banner2-768w.webp",
+        // Subdirectories: the pattern above stops at the next `/`, so these
+        // two are the FOLDER, not a file. They were already referenced by
+        // `index.css` before this phase (the question motifs and the jungle
+        // atmosphere) and are listed so the rule reads as an allow-list of
+        // committed Ranked art rather than of top-level files only.
+        "/assets/ranked/question-accents",
+        "/assets/ranked/jungle_pets",
       ]).toContain(path);
     }
   });

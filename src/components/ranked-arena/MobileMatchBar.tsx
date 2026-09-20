@@ -73,7 +73,7 @@ function Crest({ rail, mirrored }: { rail: CombatantRail; mirrored: boolean }) {
           roleLayout ? role.accentSoft : "rgba(233,220,190,0.10)"}, transparent 78%)`,
       }}>
       {roleLayout && role.role !== null ? (
-        <RoleMascot role={role.role} facing={mirrored ? "left" : "right"}
+        <RoleMascot role={role.role} art="compact" facing={mirrored ? "left" : "right"}
           action={rail.reaction?.action ?? null} actionId={rail.reaction?.actionId ?? null}
           fit="cover" loading="eager"
           className="absolute inset-0 h-full w-full scale-[1.12]"

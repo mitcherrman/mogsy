@@ -47,10 +47,10 @@ describe("QuestionMotifLayer", () => {
       unmount();
     }
     expect(rule('.question-motif-layer[data-motif-art="champ-combat"]'))
-      .toContain('url("/assets/ranked/question-accents/champ-combat.png")');
+      .toContain('url("/assets/ranked/question-accents/champ-combat-704w.webp")');
     // The asset the rule points at is the one in the repo.
     expect(readFileSync(resolve(process.cwd(),
-      "public/assets/ranked/question-accents/champ-combat.png")).length).toBeGreaterThan(0);
+      "public/assets/ranked/question-accents/champ-combat-704w.webp")).length).toBeGreaterThan(0);
   });
 
   it("renders nothing for a null / absent motif", () => {
@@ -98,7 +98,7 @@ describe("QuestionMotifLayer", () => {
       '.question-surface-stack > .question-motif-layer[data-motif-art="champ-combat"]::before');
     expect(sheet).toContain("position: absolute");
     expect(sheet).toContain("inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x))");
-    expect(sheet).toContain('url("/assets/ranked/question-accents/champ-combat.png")');
+    expect(sheet).toContain('url("/assets/ranked/question-accents/champ-combat-704w.webp")');
     expect(sheet).toContain("opacity: 0.3");
     // The panel clips the bleed WITHOUT becoming a scroll container.
     expect(rule(".ranked-panel:has(.question-surface-stack.question-motif-host)"))

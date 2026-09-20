@@ -1724,3 +1724,496 @@ the moved items suite.
 
 Phase 2B1 is complete. Phase 2B2 (the visible entry intro on `view.entryPhase`,
 and the image derivatives analysed above) is next.
+
+---
+
+# Phase 2B2: Ranked asset optimization and the visible entry intro
+
+Status: **implemented and committed on one frontend branch. Not merged.**
+No backend change: the Round-1 lead-in contract from Phase 2B1 is untouched,
+and nothing here extends `started_at` or reduces the answer window.
+
+## Baselines
+
+| | |
+|---|---|
+| Frontend | `/Users/macmoney/mogsy-wt-rfx1-2b2`, branch `rfx1/phase2b2`, on `origin/main` **`b901ea0e`**. Phase 2B1 (merge `98542527`) is present and verified. `main` had moved one docs-only commit past the `368a60c3` named in the task; no overlap. |
+| Backend | unchanged. `master` `295fd58f` (the 2B1 merge) is the contract this phase assumes. |
+
+---
+
+## Part 1 — asset optimization
+
+The Phase 2B1 candidate table was re-measured against `origin/main` before
+anything was converted. Every figure in it held (±1%).
+
+### Method
+
+- Re-encoded with Pillow 12.3 (`method=6`), never overwriting a source.
+- Sized from MEASURED rendered dimensions plus DPR headroom, not from the
+  source. Where a bigger surface draws the same artwork, the original stays
+  and Ranked asks for a derivative by name.
+- WebP only. No AVIF: the second format buys ~15% more on art that is already
+  down 97%, and costs a decode path and a fallback.
+
+### Changed assets
+
+| old path (kept) | new path | old px | new px | old bytes | new bytes | change |
+|---|---|---|---|---|---|---|
+| `assets/ranked/ranked-vellum-texture.png` | `assets/ranked/ranked-vellum-texture.webp` | 1254x1254 | 1254x1254 | 2293 KB | 67.2 KB | −97.1% |
+| `assets/ranked/ranked-academy-duel-bg.png` | `assets/ranked/ranked-academy-duel-bg.webp` | 1672x940 | 1672x940 | 2041 KB | 95.3 KB | −95.3% |
+| `assets/ranked/ranked-academy-duel-bg.png` | `assets/ranked/ranked-academy-duel-bg-960w.webp` | 1672x940 | 960x540 | 2041 KB | 38.8 KB | −98.1% |
+| `assets/ranked/navy-banner2.png` | `assets/ranked/navy-banner2-768w.webp` | 959x1641 | 768x1314 | 1257 KB | 69.4 KB | −94.5% |
+| `mascot/ranked/topmogzy.png` | `mascot/ranked/topmogzy-384.webp` | 1254x1254 | 384x384 | 1023 KB | 24.0 KB | −97.7% |
+| `mascot/ranked/jgmogzy.png` | `mascot/ranked/jgmogzy-384.webp` | 1254x1254 | 384x384 | 866 KB | 19.5 KB | −97.7% |
+| `mascot/ranked/midmogzy.png` | `mascot/ranked/midmogzy-384.webp` | 1254x1254 | 384x384 | 948 KB | 21.0 KB | −97.8% |
+| `mascot/ranked/botmogzy.png` | `mascot/ranked/botmogzy-384.webp` | 1254x1254 | 384x384 | 876 KB | 23.0 KB | −97.4% |
+| `mascot/ranked/supmogzy.png` | `mascot/ranked/supmogzy-384.webp` | 1254x1254 | 384x384 | 859 KB | 17.9 KB | −97.9% |
+| `mascot/mogzy-mascot-base-v1.png` | `mascot/mogzy-mascot-base-v1-240.webp` | 1024x1536 | 240x360 | 2196 KB | 17.7 KB | −99.2% |
+| `mascot/mogzy-hat-transparent.png` | `mascot/mogzy-hat-transparent-128.webp` | 1254x1254 | 128x128 | 850 KB | 4.3 KB | −99.5% |
+| `mascot/mogzy-explaining-transparent.png` | `mascot/mogzy-explaining-transparent-192.webp` | 1024x1536 | 192x288 | 997 KB | 9.7 KB | −99.0% |
+| `mascot/mogzy-peeking-transparent.png` | `mascot/mogzy-peeking-transparent-192.webp` | 1024x1536 | 192x288 | 999 KB | 9.4 KB | −99.1% |
+| `mascot/mogzy-raising-hand-transparent.png` | `mascot/mogzy-raising-hand-transparent-192.webp` | 1024x1536 | 192x288 | 971 KB | 8.5 KB | −99.1% |
+| `assets/ranked/jungle_pets/jungle_grass_background.png` | `.../jungle_grass_background-960w.webp` | 1280x720 | 960x540 | 649 KB | 15.4 KB | −97.6% |
+| `assets/ranked/question-accents/champ-combat.png` | `.../champ-combat-704w.webp` | 1405x1119 | 704x561 | 1221 KB | 139.4 KB | −88.6% |
+
+**20.1 MB of source art → 580 KB of derivatives.** No original was deleted or
+overwritten; a test asserts every source still exists, because the lobby
+carousel, `MogzyHubGuide` and the welcome scenes still draw them large.
+
+### Usage scope, per asset
+
+| asset | scope | why |
+|---|---|---|
+| vellum, backdrop, banner, hat, jungle grass, champ-combat | **global swap** | every consumer draws them at or below the derivative's size; `index.css` / `GlobalHud` / `jungleAtmosphere` point at the WebP and nothing else references the PNG |
+| the five role plates | **Ranked-specific derivative** | the lobby's `RankedClassCarousel` draws them nearly full-bleed on a parchment stage; the arena draws the same five at 43–123 CSS px |
+| `mogzy-mascot-base-v1` | **HUD-specific derivative** | the HUD avatar is 75x112 inside a 36px circle; the hub guide draws the same portrait large |
+| the three Rules poses | **panel-specific derivative** | 56px portrait and 36px tab; `AcademyCommons`, `MogzyDock` and the welcome scenes draw them larger |
+
+### How a surface asks for a size
+
+Two optional props, both defaulting to the source, both falling back to the
+source when no derivative exists — so asking is always safe and a missing file
+is never a broken image:
+
+- `RoleMascot art="full" | "compact"` → `getRankedRoleMascotPath(role, scale)`;
+- `MogzyArt` / `MogzyMascot` `scale="full" | "compact"` →
+  `getMogzyArtAssetPath(asset, scale)`.
+
+`art`/`scale` is a statement about THIS host's box, never an inference: nothing
+in the component can see how big the box ended up. The arena hosts that pass
+`compact` are `roleIdentity.tsx` (both crests), `MobileMatchBar`,
+`RankedResultDuel` and the new `RankedEntryIntro`.
+
+### The backdrop is chosen by VIEWPORT, not by DPR
+
+`image-set(1x/2x)` was written first and reverted: a 390px phone at DPR 3 takes
+the LARGEST encode, which is the one case that can least afford it. `index.css`
+declares `--ranked-backdrop-image` on `.ranked-academy` and overrides it under
+`@media (max-width: 640px)`; `.ranked-academy::after` reads the variable, so
+exactly one file is ever requested.
+
+`rankedChrome.ts` gained `rankedBackdropUrl(viewportWidth)` and
+`RANKED_BACKDROP_NARROW_URL` so **Tier 1 warms the encode the stylesheet will
+paint**. Tests pin both URLs to the two `--ranked-backdrop-image` declarations.
+
+### Preload URL == render URL
+
+`rankedRoleMascotUrl` now returns the `compact` path, which is the exact string
+the arena's `<img>` carries. A test asserts the identity for all five roles,
+and the production waterfall below shows zero duplicate old+new requests.
+
+---
+
+## Part 2 — the visible entry intro
+
+`src/components/ranked-arena/RankedEntryIntro.tsx`, rendered through the
+existing placeholder slot: `CanonicalArena`'s `recovering` prop gained an
+optional `intro?: ReactNode`, a slot in the same spirit as `guidance`, so the
+arena never learns what a duel card is. `message` stays required, so a mode
+always has the fallback sentence and this can never become the only way to
+fill the slot. Ranked supplies the card; the Daily and every dev harness are
+byte-identical.
+
+### States
+
+`view.entryPhase` (`projectEntryPhase`, Phase 2B1) drives it directly. No
+second state machine, no invented clock, no percentage — `prepareImage`
+settles per URL and a byte count is not available to it.
+
+| entryPhase | card | status line |
+|---|---|---|
+| `match-unresolved` | neutral crests, "You" / "Opponent" | "Seating the duelists…" |
+| `preparing` | real names, roles and role mascots | "Preparing the first question…" |
+| `ready` | same | "Take your mark." |
+| `live` | never seen — the card is gone by then | — |
+
+`data-entry-phase`, `data-bot-match` and `data-reduced-motion` are published on
+the card, so the state is observable in a test and in the browser without
+reading copy.
+
+### Timing — it buys no time of its own
+
+- **Eligibility:** `entry === "fresh"` AND the match is not over. A recovery
+  keeps its honest "Recovering match…" sentence: a player rejoining a match in
+  progress is not being introduced to it.
+- **Exit:** `entryIntroExitAt(started_at)` = `started_at − ENTRY_MIN_LEAD_MS`
+  (700 ms), the same margin the 2B1 preparation wait already respects. A
+  second `useServerInstantWake` fires AT that instant, so the card comes down
+  then rather than on the next 1s tick or poll.
+- **No minimum-duration timer.** None is needed: the card is up from the
+  arena's FIRST paint, which on every real path precedes the first snapshot by
+  the route transition plus one request. A lead-in that is already spent — a
+  reload into a running round, a staff match created with a 0 lead, a very late
+  first snapshot — yields `false` on the first render that sees it. Server
+  timing wins every time.
+- **`useEntryIntro` is a one-way latch** (`flow/useEntryIntro.ts`), and the
+  latch is the whole point rather than defensive coding. The natural predicate
+  is "how long until Round 1 is answerable", and that reads `null` —
+  indistinguishable from "no round yet" — in three ordinary states: between a
+  settled round and the next, on a phased segment with no engine round, and on
+  a completed match. Derived alone, the card would drop over the arena every
+  time a round settled, and sit over the playtest host's result screen for
+  ever. Both are covered by tests.
+
+### Queue vs bot
+
+Both paths are the same code; only the server's lead differs.
+
+| | server lead | modelled client spend before the first snapshot | intro window |
+|---|---|---|---|
+| queue | 4200 ms | ~2400 ms (2 s discovery poll + 800 ms handoff) | ~1.1 s |
+| bot | 2200 ms | ~1400 ms (800 ms handoff + join/navigation/fetch) | ~0.1–0.7 s |
+
+The bot card is genuinely brief. Nothing was padded to make it longer: the
+2200 ms is the traced sum of the terms the bot path actually has (2B1
+closeout §2), and inventing time would be the one thing this phase must not do.
+See **Remaining issues**.
+
+### Identity
+
+Real information only. The viewer's own display name comes from the page
+(`viewerLabel`, "You" when the account has none); the opponent's is
+`opponentLabelFor` — "Opponent", or **"Bot"** on a bot match — because the live
+Ranked projection redacts participant names by design. A bot match titles
+itself **Academy Duel** rather than Ranked Duel. A seat whose role the match
+did not freeze draws the same neutral crest the arena rails draw, labelled
+"Duelist"; nothing waits for metadata the contract does not provide, and the
+LC1 rule holds — the role LABEL ships with every mascot.
+
+### Motion
+
+Entrance only, and short: the card fades and settles (260 ms), the two seats
+arrive from their own sides (320 ms) and the VS scales in (380 ms). **Nothing
+plays on exit** — an exit animation would be exactly the frame budget the first
+question is owed. `prefers-reduced-motion` drops the block entirely, and the
+app's own Settings → Reduce Motion is read through `useReducedMotionPreference`
+and answered by `[data-reduced-motion="true"]`: a plain 180 ms fade, same card,
+same words, same layout.
+
+### Layout
+
+Mobile: one row, 4.5rem figures, compact; it sits in the placeholder's slot at
+the top of the shell — where the question itself is about to appear — so the
+reveal is a swap in place and nothing travels. Desktop: 8.5rem figures, capped
+at 44rem and centred, so it reads as a card rather than a banner across a
+1440px arena. The global header and the mobile bottom controls are untouched.
+
+---
+
+## Performance measurements
+
+Production builds under `vite preview`: **before** = `origin/main` `b901ea0e`
+(:8461), **after** = this branch (:8462). Headless Chromium, CDP throttling —
+phone 1.6 Mbps / 150 ms / 4x CPU, desktop 9 Mbps / 40 ms. Request start from
+`Network.requestWillBeSent`; a request with no `loadingFinished` is reported as
+PENDING rather than as 0 bytes, which is the honest reading of the before-case.
+Scripts and screenshots are in the session scratchpad, not committed.
+
+### Initial Ranked image weight (one arena, both duelists, motif on desktop)
+
+| run | images requested | source bytes | finished in 20 s | transferred | still pending |
+|---|---|---|---|---|---|
+| before 390 | 12 | **12 422 KB** | 3 | 7.3 KB | **9** |
+| after 390 | 12 | **258 KB** | 12 | 265.6 KB | **0** |
+| before 360 | 12 | **12 422 KB** | 3 | 7.3 KB | **9** |
+| after 360 | 12 | **258 KB** | 12 | 265.6 KB | **0** |
+| before 1440 | 13 | **13 669 KB** | 13 | 13 676.9 KB | 0 |
+| after 1440 | 13 | **455 KB** | 13 | 462.9 KB | 0 |
+
+- Phone: **−97.9%**, and the difference is not only bytes. Before, the entire
+  Ranked chrome and BOTH duelist mascots were still in flight after 20 seconds
+  — they never arrived inside a match. After, the last image lands ~2.35 s
+  after its request.
+- Desktop: **−96.7%**; the last image moved from **16.65 s** to **2.20 s**.
+- **Request count is unchanged** (12 / 13 either way). No duplicate old+new
+  loading: the requested lists contain only derivative URLs, which is the
+  waterfall proof that no hidden component still holds a PNG reference.
+- Phone takes `ranked-academy-duel-bg-960w.webp` (38.8 KB) and desktop the full
+  `ranked-academy-duel-bg.webp` (95.3 KB) — one file each, never both.
+
+### Entry timing (ms from navigation; cold entry modelled as in 2B1)
+
+`?entry=fresh&lead=1800` models the queue path (4200 ms lead less the ~2400 ms
+already spent); `lead=800` models the bot path (2200 less ~1400).
+
+| run | intro first seen | intro last seen | question visible | input active | question before input |
+|---|---|---|---|---|---|
+| queue 390 (phone throttle) | 7205 | 8308 | 8397 | 9047 | **650 ms** |
+| queue 1440 | 1912 | 3007 | 3044 | 3741 | **697 ms** |
+| bot 390 (phone throttle) | 6057 | 6154 | 6238 | 6882 | **644 ms** |
+| bot 1440 | 1774 | 1869 | 1897 | 2604 | **707 ms** |
+
+- **`intro & input-open coexisting samples: 0` in every run**, sampled at 25 ms
+  across the boundary. The card is never up while input is open.
+- The arena is revealed 644–707 ms before input opens, i.e. at
+  `started_at − 700` as designed, and the full configured answer window still
+  follows the server's instant.
+- The observed phase sequence is `match-unresolved → ready`: with the optimized
+  assets, Round 1's critical media settles inside one 25 ms sample even on the
+  throttled phone, so `preparing` is real but rarely visible. It is asserted
+  directly in `QuizRankedMatch.rfx1b1.test.tsx` and `.rfx1b2.test.tsx`.
+
+### Slow-phone behaviour
+
+At 1.6 Mbps / 150 ms / 4x CPU the phone runs above ARE the slow-phone case.
+- Every optimized asset arrives; nothing is still downloading seconds into
+  gameplay, which is what the 9-pending before-run was.
+- With an `Image` that never settles at all (`rfx1b2` "decorative media never
+  blocks entry", and `rfx1b1`'s `imageMode = "never"`), the arena is still
+  revealed on the server's schedule and input still opens within 250 ms of
+  `started_at`. Decorative art cannot block entry.
+
+### Visual fidelity
+
+Matched production screenshots, animations frozen and reduced-motion on, so the
+only difference measured is the encode:
+
+| viewport | RMS difference | subpixels differing by more than 8/255 |
+|---|---|---|
+| 390x844 @3x | **0.68 / 255** | 6 141 of 8 887 320 (**0.069%**) |
+| 1440x900 @2x | **4.69 / 255** | 97 779 of 15 552 000 (**0.629%**) |
+
+At 8x amplification the only structure visible is (a) the champ-combat motif's
+pencil lines, which are drawn at 13–30% opacity under `grayscale(1)` and are
+indistinguishable side by side at 1:1, and (b) a sub-pixel chromatic fringe on
+the banner's gold embroidery. Side-by-side crops of the banner (rod, cloth
+folds, embroidered edge, point, mascot) and of the parchment with the motif
+were reviewed at 1:1 and are not tellable apart. The larger 1440 figure is the
+motif, which is desktop-only and hidden below 640 px.
+
+---
+
+## Browser verification
+
+Production build, real `QuizRankedMatch` and real arena through
+`/dev/ranked-shell-probe`. Screenshots captured:
+
+1. `b2-intro-mobile.png` — 390x844 @3x, queue duel (Jungle vs Mid);
+2. `b2-intro-desktop.png` — 1440x900 @2x, same;
+3. `b2-intro-mobile-bot.png` — 390x844, **Academy Duel**, "Bot", neutral crest;
+4. `b2-intro-desktop-bot.png` — 1440x900, same;
+5. `b2-intro-mobile-reduced.png` — reduced motion: identical information and
+   layout, no travel;
+6. `b2-q1-mobile.png`, `b2-q1-desktop.png` — the first question immediately
+   after the intro: parchment, mascots, header and answer grid all present and
+   stable at first paint, no pop-in.
+
+Geometry: no horizontal overflow, no document scroll and no nested scroll at
+1440x900 in every run. At 390/360 the probe's own fixed state-picker toolbar
+overflows horizontally — it does so identically on `origin/main` and is a probe
+artifact, not an arena one.
+
+### Probe additions (dev surface only)
+
+The probe's canned envelopes carry a fixed 2026-07-18 clock, so a round is
+answerable on the first render and the entry window could not be reached at
+all. Three small additions, all dev-only:
+- `?entry=fresh` passes `entry="fresh"` to the real controller;
+- `?lead=<ms>` stamps `server_time` to the real clock and anchors round 1's
+  `started_at` ONCE, `lead` ms ahead of the first envelope served — the same
+  write-once discipline the backend applies inside the creation transaction, so
+  repeated reads never move it;
+- `?bot=1` now also marks a LIVE round as a bot match (it previously applied
+  only to the end screen), which is what makes the arena's bot vocabulary
+  reachable in the probe at all.
+
+---
+
+## Tests
+
+New:
+- `src/lib/ranked-core/media/rankedAssets.rfx1b2.test.ts` (11): every
+  derivative exists; every SOURCE still exists; each arena plate is under
+  40 KB and is a different file from the lobby's; whole arena chrome under
+  250 KB desktop / 200 KB phone; **preload URL == render URL** for all five
+  roles; the backdrop encode matches the media query at 390 / 640 / 641 / 1440
+  and both URLs are pinned to the two `--ranked-backdrop-image` declarations;
+  a compact pose falls back to its source when no derivative exists; and the
+  replaced heavyweights are not requested — no Ranked chrome PNG is left in any
+  `url(...)` in `index.css`, the HUD and Rules scroll point at their own small
+  encodes, and all four arena role hosts pass `art="compact"`.
+- `src/pages/quiz-ranked/QuizRankedMatch.rfx1b2.test.tsx` (11, real
+  controller + real arena): the card is up on the first paint before any
+  request resolves and invents no identity; it names both duelists and draws
+  the 384px plates once the match resolves; a bot match is an **Academy Duel**
+  against **Bot** with the neutral crest; the arena is revealed a margin before
+  `started_at` and input opens AT `started_at`; **sampled across the boundary,
+  zero samples have the card up with input open and zero have it up at or after
+  `started_at`**; no card at all for a reload into a running round, for a fresh
+  entry whose lead-in is spent, or for a fresh entry into a finished match; the
+  card does not come back when a later round is between snapshots; media that
+  never loads does not block entry; reduced motion keeps every word.
+- `flow/rankedFlow.test.ts` (+5): `entryIntroHolding` holds above the margin,
+  is over AT it and past the start, treats `null` as an intro state and a
+  `NaN` start as no window; `entryIntroExitAt` is exactly
+  `started_at − ENTRY_MIN_LEAD_MS`; and `ENTRY_MIN_LEAD_MS >
+  MODULE_TITLE_END_MARGIN_MS`, so the card is gone strictly before the module
+  title's own cutoff.
+
+Updated (contract moved, behaviour deliberately superseded):
+- `QuizRankedMatch.rfx1b1.test.tsx` (2): the PREPARATION wait is still bounded
+  by `ENTRY_PREP_CAP_MS` — the card reports `ready` inside the cap even when
+  nothing loads — and the ARENA's reveal is now the later, server-anchored
+  instant. Both still assert input at `started_at`.
+- `QuizRankedMatch.entry.test.tsx`, `GlobalHud.test.tsx`,
+  `CombatantPanel.banner.test.tsx`, `QuestionMotifLayer.qf1.test.tsx`,
+  `QuizRankedMatch.sameRoleBot.test.tsx`, `warmRankedEntry.test.ts`: pinned
+  asset URLs moved to the derivatives.
+- `LeaguecraftRecord.vellum.test.tsx`: the allow-list gained the new chrome
+  paths, plus the two subdirectory prefixes (`question-accents`,
+  `jungle_pets`) that were **already** breaking this test on `origin/main`.
+
+### Results
+
+| | before (`origin/main` `b901ea0e`) | after |
+|---|---|---|
+| full `vitest run` | 16 files / 59 tests failing | 16 files / **58** tests failing |
+| new failures | — | **none** |
+| fixed | — | `LeaguecraftRecord.vellum` allow-list (pre-existing) |
+| `tsc --noEmit -p tsconfig.app.json` | 23 lines of output | 23 lines — identical, none in an RFX1 file |
+| `npm run build` | clean | clean (173/173 prerendered champion pages verified) |
+
+Failure SETS were compared, not totals, and both runs were made serially in
+matched worktrees with hardlinked `node_modules`. The 58 remaining failures are
+the documented pre-existing baseline (pglite security suites, Broadcast engine,
+ProPlayHub, consent/gate stores, admin panels and so on) and are untouched by
+this phase. Ranked-adjacent suites specifically: 184 files / 2802 tests, all
+passing.
+
+Phase 2A result feedback is unchanged and verified: `QuizRankedMatch.rfx1.test.tsx`
+(10 tests) passes, including the overlay, the kept selection, the
+one-presented-round rule and the reduced-motion wording.
+
+---
+
+## Files changed
+
+Assets (16 new files under `public/`, no original removed or overwritten):
+the three chrome encodes plus the 960w backdrop, five `*-384.webp` role plates,
+`mogzy-mascot-base-v1-240.webp`, `mogzy-hat-transparent-128.webp`, three
+`*-192.webp` Rules poses, `jungle_grass_background-960w.webp`,
+`champ-combat-704w.webp`.
+
+New source:
+- `src/components/ranked-arena/RankedEntryIntro.tsx`
+- `src/lib/ranked-core/flow/useEntryIntro.ts`
+- `src/lib/ranked-core/media/rankedAssets.rfx1b2.test.ts`
+- `src/pages/quiz-ranked/QuizRankedMatch.rfx1b2.test.tsx`
+
+Modified:
+- `src/components/mascot/mascot-assets.ts` — `MogzyArtScale`,
+  `MOGZY_ROLE_ASSETS_COMPACT`, `MOGZY_MASCOT_ASSETS_COMPACT`, and the `scale`
+  parameter on both path resolvers;
+- `src/components/mascot/RoleMascot.tsx` — the `art` prop;
+- `src/components/mascot/MogzyMascot.tsx` — the `scale` prop;
+- `src/components/ranked-arena/roleIdentity.tsx`,
+  `src/components/ranked-arena/MobileMatchBar.tsx`,
+  `src/pages/quiz-ranked/RankedResultDuel.tsx` — `art="compact"`;
+- `src/components/hud/GlobalHud.tsx`,
+  `src/components/hud/MogzyIdentityMenu.tsx`,
+  `src/components/ranked-rules/MogzyExplainsPanel.tsx` — small encodes;
+- `src/index.css` — the four chrome/motif references, the viewport-keyed
+  `--ranked-backdrop-image`, and the entry-intro rules;
+- `src/lib/question-surface/jungleAtmosphere.ts` — the 960w atmosphere;
+- `src/lib/ranked-core/media/rankedChrome.ts` — WebP chrome,
+  `rankedBackdropUrl`, `RANKED_BACKDROP_NARROW_URL/_MAX_PX`, compact mascot
+  warm;
+- `src/lib/ranked-core/media/roundMedia.ts` — the motif URL;
+- `src/lib/ranked-core/media/warmRankedEntry.ts` — comment only;
+- `src/lib/ranked-core/pacing.ts` — `entryIntroExitAt`, `entryIntroHolding`;
+- `src/components/ranked-arena/CanonicalArena.tsx` — the `recovering.intro` slot;
+- `src/pages/quiz-ranked/QuizRankedMatch.tsx` — eligibility, the latch hook and
+  the card;
+- `src/pages/dev/quiz-render/QuizRenderPage.tsx` — the backdrop WebP;
+- `src/pages/dev/ranked-shell-probe/RankedShellProbe.tsx` — `?entry=fresh`,
+  `?lead=`, live `?bot=1`;
+- the seven updated test files above;
+- this handoff.
+
+---
+
+## Remaining issues
+
+1. **The bot intro is short (~0.1–0.7 s).** The bot lead-in is 2200 ms and
+   about 1.4 s of it is spent before the client holds the payload, so the card
+   has only the remainder less the 700 ms reveal margin. It is honest and it
+   never flashes (the card is up from first paint, through the route
+   transition), but if the owner wants the bot card to read at the same weight
+   as the queue card, the fix is a BACKEND one — raise `entry_lead_ms(
+   "bot_playtest")` by ~1 s in `ranked_public/pacing.py` — not a frontend
+   wait. Nothing was padded here.
+2. **`champ-combat-704w.webp` is still 139 KB**, the largest remaining single
+   asset, because the artwork is a noisy pencil drawing that WebP compresses
+   poorly. It is desktop-only (the motif layer is `display:none` below 640 px)
+   and it is the one asset whose 8x-amplified diff shows structure. 1024w would
+   cost 285 KB for a difference not visible at 1:1; the current encode is the
+   one that was reviewed.
+3. **`src/assets/ranked/item-shopkeeper.png` (696 KB) was not converted.** It
+   is a bundled (not `public/`) Broadcast card backdrop whose rendered size is
+   set by the Broadcast composition rather than by Ranked, and 2B1 flagged it
+   as "check the Broadcast size first". Out of scope here; it is not on the
+   Ranked entry path.
+4. **`SWAP_MEDIA_MIN_LEAD_MS` was left at 1000** (2B1 note 4 suggested
+   revisiting it once assets are light). With the derivatives the gate now
+   rarely has anything to wait for, so it is inert rather than wrong; changing
+   it would be a pacing change in a phase that promised not to make one.
+5. The probe overflows horizontally at 390/360 because of its own fixed
+   state-picker toolbar. Pre-existing, identical on `origin/main`, and not on
+   any product route.
+
+---
+
+# RFX1 final state
+
+**Phase 1** audited the Ranked entry and round lifecycles and found two of the
+original premises wrong: the result overlay was not driven by one settlement,
+and Round 1 was not opened by the first read.
+
+**Phase 2A** made resolution sequencing and correctness feedback authoritative:
+one settlement drives the viewer's cue and the opponent's separate beat, the
+player's own pick survives the reveal alongside the correct answer, and N+1
+never shows over N.
+
+**Phase 2B1** gave Round 1 a real, server-owned lead-in — `entry_lead_ms`,
+4200 ms on the queue path and 2200 ms on the bot path, written ONCE inside the
+match creation transaction — which restored the 1.4–2.4 s of Round 1 that
+players had been losing before their first interaction. It added three tiers of
+targeted media preparation (persistent chrome and both mascots, the presented
+round, the next round under the previous reveal), all bounded by server
+instants, all anti-cheat clean, and a presentation cutoff so no intro face can
+survive `started_at`.
+
+**Phase 2B2** made the arena light enough for that lead-in to matter and gave
+the player something to look at during it. Ranked's initial image weight fell
+from **12.4 MB to 258 KB on a phone** and from **13.7 MB to 455 KB on desktop**
+— on a throttled phone the chrome and both duelist mascots used to still be in
+flight after 20 seconds and now land in about 2.3 s — with every original kept
+for the surfaces that draw it large. On top of that preparation, a Ranked /
+Academy Duel card names the match, both duelists and their roles, occupies the
+period the server already owned, and is gone by `started_at − 700 ms`.
+
+The invariant the whole workstream now holds: **the player sees the duel, then
+a prepared and stable first question, and input opens at the server's instant
+with the entire configured answer window still ahead of it.** Nothing the
+client does extends, shortens or anticipates that instant.

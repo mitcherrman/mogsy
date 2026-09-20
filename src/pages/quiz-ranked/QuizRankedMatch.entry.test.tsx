@@ -97,8 +97,12 @@ describe("a freshly created match is ENTERED, not recovered", () => {
     // the player actually sat in front of.
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
     const placeholder = screen.getByTestId("ranked-recovering");
-    expect(placeholder.textContent).toContain("Entering the arena");
+    // RFX1 2B2 — that window is now the duel card, which names the match the
+    // player is entering rather than a state the client is in.
+    expect(placeholder.textContent).toContain("Ranked Duel");
     expect(placeholder.textContent).not.toMatch(/recovering/i);
+    expect(screen.getByTestId("ranked-entry-intro"))
+      .toHaveAttribute("data-entry-phase", "match-unresolved");
   });
 
   it("creates no second match — entry is reads only", async () => {

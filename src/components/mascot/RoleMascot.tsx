@@ -61,7 +61,9 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 
-import { getRankedRoleArtFacing, getRankedRoleMascotPath } from "./mascot-assets";
+import {
+  getRankedRoleArtFacing, getRankedRoleMascotPath, type MogzyArtScale,
+} from "./mascot-assets";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 
 /** Which way the mascot is turned. `right` is the untouched artwork. */
@@ -186,6 +188,17 @@ export interface RoleMascotProps {
   loading?: "lazy" | "eager";
   /** Extra classes for the <img> itself (object-fit, crop position, opacity). */
   imageClassName?: string;
+  /**
+   * RFX1 Phase 2B2 — which ENCODE of the plate to request. Same drawing, same
+   * crop, same native facing; only the pixel budget differs.
+   *
+   * `full` (default) is the 1254px source, which the lobby stage needs. A host
+   * that draws the mascot small — the arena rails, the mobile crest, the
+   * result duel, the entry intro — passes `compact` for the 384px WebP. It is
+   * a statement about THIS host's box, so it lives with `fit` and `className`
+   * rather than being inferred: nothing here can see how big the box ended up.
+   */
+  art?: MogzyArtScale;
   /** Test hook for the outer box. */
   "data-testid"?: string;
 }
@@ -202,6 +215,7 @@ export function RoleMascot({
   alt,
   loading = "lazy",
   imageClassName,
+  art = "full",
   "data-testid": testId = "role-mascot",
 }: RoleMascotProps) {
   const actionRef = useRef<HTMLSpanElement | null>(null);
@@ -396,7 +410,7 @@ export function RoleMascot({
               style={{ "--role-mascot-plate": plateFlipped ? -1 : 1 } as CSSProperties}
             >
             <img
-              src={getRankedRoleMascotPath(role)}
+              src={getRankedRoleMascotPath(role, art)}
               alt={decorative ? "" : alt}
               aria-hidden={decorative ? true : undefined}
               draggable={false}
