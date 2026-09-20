@@ -19,11 +19,13 @@ export { CombatCalculationScenarioCard } from "./CombatCalculationScenarioCard";
 export { MatchupScenarioCard } from "./MatchupScenarioCard";
 export { SummonerSpellScenarioCard } from "./SummonerSpellScenarioCard";
 export { EnvironmentScenarioCard } from "./EnvironmentScenarioCard";
+export type { EnvironmentCardProps } from "./EnvironmentScenarioCard";
 export { CollectibleCard, SubjectPlaceholder, SubjectPlaceholderCard } from "./DefaultScenarioCard";
 export {
   classifySubject,
   deriveRevealSubject,
   getCombatCooldownSubject,
+  getEnvironmentScene,
   getEnvironmentSubject,
   getItemAnalysisSubject,
   getMatchupSubject,
@@ -36,6 +38,7 @@ export {
 export type {
   ClassifiedSubject,
   CombatCooldownSubject,
+  EnvironmentScene,
   EnvironmentSubject,
   ItemAnalysisSubject,
   MatchupSubject,

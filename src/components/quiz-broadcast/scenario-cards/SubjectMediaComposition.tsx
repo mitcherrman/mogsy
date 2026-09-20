@@ -123,6 +123,45 @@ export const ATMOSPHERE_JUNGLE_GROUND: AtmosphereSeating = {
 };
 
 /**
+ * ENVVIS1 Batch 1 — an environment SCENE, seated as the whole panel.
+ *
+ * WHY A FIFTH PRESET RATHER THAN ONE OF THE FOUR ABOVE
+ * A scene card has no focal subject: no portrait, no medallion, no echo,
+ * because the row it serves has no depictable entity — that absence is the
+ * entire reason the scene channel exists. So its art is not a place BESIDE the
+ * subject, which is what `DIM_SCENE`'s right-hand 54% crop is for; it is the
+ * picture. Seated at 54% it would leave the left of the panel flat black with
+ * a caption floating on it: the empty-rectangle failure this composition
+ * exists to prevent, arrived at from the other direction.
+ *
+ * Geometrically this is therefore `JUNGLE_GROUND` — full bleed, `object-cover`.
+ *
+ * EXPOSURE, and why it is not `JUNGLE_GROUND`'s
+ * Perceived weight is luminance x brightness x opacity, the arithmetic
+ * `ATMOSPHERE_DIM_SCENE` records. The measurement that preset carries is that
+ * `academy-hall.jpg` arrives at mean luminance 27.5, roughly a quarter of
+ * `Spellcaster.jpg`'s 102.0, because it is a night interior. `JUNGLE_GROUND`
+ * DARKENS its source (0.62 x 0.7 = 0.43) because jungle grass arrives bright;
+ * applied to the hall that lands it at ~11.9 and erases it, which is the exact
+ * failure `DIM_SCENE` was written to avoid.
+ *
+ * So the correction runs the same way `DIM_SCENE`'s does, at ground scale:
+ * 27.5 x 1.45 x 0.7 = ~27.9. That sits just above `DIM_SCENE`'s ~24.7 and
+ * inside the ~22.5-38.7 band the two approved atmospheres already span — a
+ * touch stronger, because here the art IS the subject rather than the setting,
+ * and still under the frame's readability gradient so the caption holds.
+ *
+ * Saturation is left at 1 for the reason `DIM_SCENE` states: the source is
+ * blue-and-candlelight, and desaturating it flattens the one thing separating
+ * it from the panel's own warm wash.
+ */
+export const ATMOSPHERE_SCENE_GROUND: AtmosphereSeating = {
+  className: "absolute inset-0 h-full w-full object-cover",
+  filter: "brightness(1.45)",
+  opacity: 0.7,
+};
+
+/**
  * Fades the atmosphere art into the panel's dark left and bottom rather than
  * letting it end on a cut-out edge. Two ramps intersected, so a corner gets
  * both. Shared by every subject: it is what makes the layer read as presence

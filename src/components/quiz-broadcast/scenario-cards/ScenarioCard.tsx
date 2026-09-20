@@ -56,6 +56,12 @@ function renderCard(selection: ScenarioSelection, revealed: boolean) {
       return <SummonerSpellScenarioCard subject={selection.spell} />;
     case "environment":
       return <EnvironmentScenarioCard subject={selection.environment} />;
+    // ENVVIS1 Batch 1 — the SAME card, its scene branch. A separate selection
+    // variant, because the two payloads are different shapes (a scene has no
+    // icon); deliberately not a separate component, because a fountain round
+    // and a turret round are the same panel with a different picture in it.
+    case "environment_scene":
+      return <EnvironmentScenarioCard scene={selection.scene} />;
     case "item_analysis":
       return <ItemAnalysisScenarioCard item={selection.item} revealed={revealed} />;
     case "champion_profile":

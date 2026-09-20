@@ -14,10 +14,12 @@
 
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
 import { getQuestionMediaEntities } from "./questionMediaEntities";
 import type {
   ClassifiedSubject,
   CombatCooldownSubject,
+  EnvironmentScene,
   EnvironmentSubject,
   ItemAnalysisSubject,
   MatchupSubject,
@@ -535,6 +537,51 @@ export function getEnvironmentSubject(question: QuizQuestion): EnvironmentSubjec
   };
 }
 
+/**
+ * ENVVIS1 Batch 1 — parse an environment SCENE, or null.
+ *
+ * A separate reader from `getEnvironmentSubject` because it reads a separate
+ * CHANNEL. The backend emits `assets.scene` for a row that has no safe entity
+ * subject, and it never emits both: `PublicPresentation` refuses a subject and
+ * a scene at once, so these two readers cannot both fire on one payload.
+ *
+ * WHY THE SPLIT IS WORTH A SECOND READER
+ * `assets.subject` asserts "this round is ABOUT this thing"; `assets.scene`
+ * asserts only "this round happens HERE". Folding a scene into the subject
+ * reader would merge those two claims at exactly the point the contract exists
+ * to keep them apart — and a client that knows only about subjects is meant to
+ * see a scene row as it saw it before this batch, a row with no premise media.
+ * That is what makes the new channel additive to every existing reader instead
+ * of a change in what `subject` means.
+ *
+ * THE ART IS REQUIRED, the mirror of the subject reader requiring an icon: a
+ * scene card IS its backdrop. With no art there is no picture to build and the
+ * honest answer is the compact band, which is exactly where a scene-less
+ * environment row already goes today. So an id this repo has no art for
+ * resolves to null rather than to an empty gold frame — which is also what
+ * keeps a backend scene vocabulary that runs ahead of the art from shipping
+ * blank cards.
+ */
+export function getEnvironmentScene(question: QuizQuestion): EnvironmentScene | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const scene = (meta.assets as Record<string, unknown> | undefined)?.scene as
+    | Record<string, unknown>
+    | undefined;
+  if (!scene || scene.type !== "scene") return null;
+
+  const id = typeof scene.id === "string" ? scene.id : "";
+  const name = typeof scene.name === "string" ? scene.name : "";
+  // The caption is the one optional field: it is a second label line, so a
+  // payload without one is a slightly plainer card rather than no card.
+  const caption = typeof scene.caption === "string" ? scene.caption : "";
+  if (!id || !name) return null;
+
+  const art = resolveEnvironmentSceneArt(id);
+  if (!art) return null;
+
+  return { id, name, caption, art: art.src };
+}
+
 export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubject | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
   const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
@@ -627,6 +674,7 @@ export function selectScenario(
   const spell = getSummonerSpellSubject(question);
   const item = getItemAnalysisSubject(question);
   const environment = getEnvironmentSubject(question);
+  const environmentScene = getEnvironmentScene(question);
   const explicit = getExplicitScenarioType(question);
 
   // Tier 1: explicit scenario_type (falls through when the payload is missing)
@@ -663,6 +711,22 @@ export function selectScenario(
   // so adding it cannot divert an item, a spell or a combat row.
   if (environment && !shouldHide) {
     return { card: "environment", key: `env-${question.id}`, environment };
+  }
+  // ENVVIS1 Batch 1 — the scene sits immediately AFTER the environment
+  // subject, and last in tier 2. That ordering is the frontend restatement of
+  // the backend's: a row with a depictable subject keeps it, because a
+  // portrait of the thing the prompt names is a stronger card than the place
+  // it stands in. In practice the two can never both be present (the contract
+  // refuses a subject and a scene at once), so this is belt and braces rather
+  // than a live tiebreak — but the belt is worth having, because it means a
+  // future contract relaxation degrades to "subject wins" instead of to
+  // whichever branch happens to be written first.
+  //
+  // Like the environment subject above it, this can only be reached by a
+  // payload no richer reader claimed, so adding it cannot divert an item, a
+  // spell, a matchup or a combat row.
+  if (environmentScene && !shouldHide) {
+    return { card: "environment_scene", key: `envscene-${question.id}`, scene: environmentScene };
   }
 
   // Tier 3: legacy SubjectPanel order, unchanged
