@@ -69,7 +69,12 @@ export interface CanonicalArenaProps {
    */
   guidance?: ReactNode;
   /** Copy for the null-view placeholder, which is a mode's own sentence. */
-  recovering?: { eyebrow: string; message: string };
+  recovering?: {
+    eyebrow: string;
+    message: string;
+    /** RFX1 2B1 — which entry stage this placeholder stands in for (2B2 reads it). */
+    phase?: "match-unresolved" | "preparing";
+  };
 }
 
 /** One flank. Ranked fills both with a duelist; a mode may supply a panel. */
@@ -181,7 +186,8 @@ export function CanonicalArena({
   if (!view) {
     return (
       <ArenaShell size="wide" header={chrome}>
-        <section data-testid="ranked-recovering" className="ranked-shell">
+        <section data-testid="ranked-recovering" className="ranked-shell"
+          data-entry-phase={recovering?.phase}>
           <div className="ranked-panel p-6 text-center space-y-1">
             <div className="ranked-eyebrow ranked-eyebrow--cyan">
               {recovering?.eyebrow ?? "Ranked Duel"}
@@ -270,6 +276,10 @@ export function CanonicalArena({
       data-testid="ranked-match"
       // RMOB2 — the phone one-screen composition keys off this (index.css).
       data-phone-arena={mobileDuel ? "true" : undefined} data-reveal-hold={view.revealHold ? "true" : "false"}
+      // RFX1 2B1 — the presentation the arena is in, observable without
+      // reading text: `module-intro` may never be up once input is open.
+      data-presentation-phase={view.presentationPhase}
+      data-entry-phase={view.entryPhase}
       // THE ONE BAND THAT IS NOT ALWAYS THERE, stated rather than assumed.
       // `--ranked-chrome-h` has to know whether the ability dock is mounted,
       // and CSS cannot see a sibling. This is not a new fact and not a new
@@ -390,6 +400,7 @@ export function CanonicalArena({
               result={header.centralResult ?? null}
               moduleTitle={header.moduleTitle ?? null}
               moduleEventId={header.moduleEventId ?? null}
+              moduleTitleWindowMs={header.moduleTitleWindowMs}
               standing={header.standing ?? null}
               event={header.duelEvent ?? null} />
           ) : (

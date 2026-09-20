@@ -44,7 +44,7 @@ import {
 } from "@/lib/ranked-core/settlementViews";
 import { projectCardBeat } from "@/lib/ranked-core/cardBeat";
 import {
-  centralCardResult, centralResult, liveModuleTitle,
+  MODULE_TITLE_MS, centralCardResult, centralResult, liveModuleTitle,
 } from "@/lib/ranked-core/centralStage";
 import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 import {
@@ -82,6 +82,12 @@ import {
   projectPresentationPhase, projectResultFeedback, upcomingRound,
 } from "@/lib/ranked-core/flow/rankedFlow";
 import { useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
+import {
+  prepareRoundCritical, projectEntryPhase, useEntryPreparation, useRankedMediaPreparation,
+} from "@/lib/ranked-core/media/useRankedMediaPreparation";
+import {
+  entryPrepBudgetMs, moduleTitleWindowMs, presentationCutoffAt,
+} from "@/lib/ranked-core/pacing";
 
 /** RD1 — the opponent's column reads the viewer's standing from the other side. */
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
@@ -234,7 +240,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
                             entry = "recovered",
                             paused = false, onSessionComplete,
                             onProgress }: QuizRankedMatchProps) {
-  const m = useRankedMatch(matchId, viewerUserId, { paused, entry });
+  const m = useRankedMatch(matchId, viewerUserId, {
+    paused, entry,
+    // RFX1 2B1: the reveal hold's bounded swap gate waits on this.
+    prepareRound: prepareRoundCritical,
+  });
   /** RMOB2 — what the viewer is called everywhere in the match. */
   const viewerLabel = viewerDisplayName?.trim() || "You";
   // RB3 — the reporting seam. An effect rather than a render-time call so a
@@ -318,6 +328,17 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   );
   if (canAdvanceSurface && live !== renderedRound) setRenderedRound(live);
   const surfaceRound = renderedRound ?? live;
+
+  // ── RFX1 Phase 2B1 — media preparation ─────────────────────────────────
+  // Tier 1 (chrome, both mascots), Tier 2 (the presented round) and Tier 3
+  // (`upcomingRound`, under the previous round's reveal) all start from state
+  // the arena already holds. Round 1 may keep the existing placeholder for a
+  // bounded moment while its critical media decodes — only inside the
+  // server's entry lead-in, never past `started_at − ENTRY_MIN_LEAD_MS`.
+  useRankedMediaPreparation({ live, presented: renderedRound });
+  const entryPreparing = useEntryPreparation(live, (round) => entryPrepBudgetMs(
+    round.activeRound?.startedAt
+      ? msUntilAnswerable(round.activeRound.startedAt, m.skewMs, Date.now()) : null));
 
   // 1s render tick so the skew-anchored timer counts down between polls.
   useEffect(() => {
@@ -620,6 +641,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // `started_at` rather than on the next 1s tick. One timeout, re-armed only
   // when the instant changes, cleared on unmount.
   useServerInstantWake(m.publicRound?.activeRound?.startedAt ?? null, m.skewMs);
+  // RFX1 2B1 — and once more a margin EARLIER, so the intro presentation is
+  // already gone when that instant arrives rather than being re-evaluated by
+  // the same render that opens input.
+  useServerInstantWake(
+    presentationCutoffAt(surfaceRound?.activeRound?.startedAt ?? null), m.skewMs);
   const presentationPhase = projectPresentationPhase({
     revealing,
     locked: m.phase === "locked",
@@ -697,16 +723,18 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
 
   // Nothing to draw yet. The arena owns the placeholder so the shell, the skin
   // and the geometry are the same ones the match will land in.
-  if (!m.publicRound || !combatants) {
+  if (!m.publicRound || !combatants || entryPreparing) {
     // The arena has no snapshot yet. WHY it has none is the whole difference:
     // a fresh entry is one request away from its first round, and a recovery
     // is rebuilding a match this client had lost. Same panel, same geometry,
     // honest sentence.
     return (
       <CanonicalArena view={null} chrome={chrome}
-        recovering={entry === "fresh"
-          ? { eyebrow: "Ranked Duel", message: "Entering the arena…" }
-          : { eyebrow: "Ranked Duel", message: "Recovering match…" }} />
+        recovering={entry === "fresh" || entryPreparing
+          ? { eyebrow: "Ranked Duel", message: "Entering the arena…",
+              phase: m.publicRound ? "preparing" : "match-unresolved" }
+          : { eyebrow: "Ranked Duel", message: "Recovering match…",
+              phase: "match-unresolved" }} />
     );
   }
 
@@ -1141,6 +1169,14 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // on the round rail neutral — so this face runs as the new round arrives.
       moduleTitle: liveModuleTitle(headerRound ?? m.publicRound),
       moduleEventId: headerRoundNumber,
+      // RFX1 2B1 — the title may not outlive the server's own start. A swap
+      // that waited for media shortens the title instead of leaving an intro
+      // face over a question the player may already be answering.
+      moduleTitleWindowMs: moduleTitleWindowMs(
+        m.publicRound?.activeRound
+          ? msUntilAnswerable(m.publicRound.activeRound.startedAt, m.skewMs, Date.now())
+          : null,
+        MODULE_TITLE_MS),
     },
     roundBeat: m.lastResolved ? {
       settlement: m.lastResolved,
@@ -1238,6 +1274,12 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     resultFeedback,
     presentationPhase,
     upcomingRound: nextRound,
+    entryPhase: projectEntryPhase({
+      hasRound: true,
+      entryPreparing,
+      msUntilAnswerable: m.publicRound?.activeRound
+        ? msUntilAnswerable(m.publicRound.activeRound.startedAt, m.skewMs, Date.now()) : null,
+    }),
   };
 
   return <CanonicalArena view={view} chrome={chrome} />;

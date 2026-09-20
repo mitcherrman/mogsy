@@ -81,3 +81,77 @@ export function anchoredRevealHoldMs(
   if (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)) return nominalMs;
   return Math.max(REVEAL_HOLD_MIN_MS, Math.min(nominalMs, msUntilNextAnswerable - titleMs));
 }
+
+/**
+ * RFX1 2B1 — the least time the next question stays on screen, locked, before
+ * it becomes answerable, when the swap waited for its media. The module title
+ * owns `MODULE_TITLE_MS` of the lead-in; the swap may borrow the part of it
+ * above this floor and never more.
+ */
+export const SWAP_MEDIA_MIN_LEAD_MS = 1000;
+
+/**
+ * How long the swap may still wait for the next round's critical media, given
+ * the server-anchored time left until that round's `started_at`. 0 when there
+ * is no budget (or no next round): the swap happens now and the media simply
+ * finishes loading on screen. It can never reach past `started_at`.
+ */
+export function swapMediaWaitMs(msUntilNextAnswerable: number | null): number {
+  if (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)) return 0;
+  return Math.max(0, msUntilNextAnswerable - SWAP_MEDIA_MIN_LEAD_MS);
+}
+
+/**
+ * RFX1 2B1 — ROUND 1's entry preparation. When round 1 arrives with a server
+ * lead-in still ahead of it, the arena may keep its existing "Entering the
+ * arena…" placeholder while round 1's critical media loads and decodes, for at
+ * most `ENTRY_PREP_CAP_MS`, and never later than `started_at −
+ * ENTRY_MIN_LEAD_MS`. With no lead-in left (a reload into a live round, an
+ * old backend) there is no wait at all.
+ */
+export const ENTRY_PREP_CAP_MS = 1500;
+export const ENTRY_MIN_LEAD_MS = 700;
+
+/** The entry wait budget for round 1, or 0 for none. */
+export function entryPrepBudgetMs(msUntilAnswerable: number | null): number {
+  if (msUntilAnswerable === null || Number.isNaN(msUntilAnswerable)) return 0;
+  return Math.max(0, Math.min(ENTRY_PREP_CAP_MS, msUntilAnswerable - ENTRY_MIN_LEAD_MS));
+}
+
+/**
+ * RFX1 2B1 closeout — THE PRESENTATION CUTOFF.
+ *
+ * Every intro face is off screen by `started_at − MODULE_TITLE_END_MARGIN_MS`.
+ * Once the server's instant arrives the arena must unmistakably be the live
+ * question: a module name still sitting in the header while the clock runs and
+ * input is open says "intro" about a round the player may already be
+ * answering.
+ *
+ * The margin is small on purpose — it buys the face's own fade-out, not a
+ * beat of its own.
+ */
+export const MODULE_TITLE_END_MARGIN_MS = 150;
+
+/**
+ * How long the module title may still play, given the server-anchored time
+ * left until `started_at`. Never longer than `MODULE_TITLE_MS`, and 0 when
+ * the round is already answerable — there is no intro to play over a live
+ * question.
+ */
+export function moduleTitleWindowMs(
+  msUntilAnswerable: number | null, nominalMs: number,
+): number {
+  if (msUntilAnswerable === null || Number.isNaN(msUntilAnswerable)) return nominalMs;
+  return Math.max(0, Math.min(nominalMs, msUntilAnswerable - MODULE_TITLE_END_MARGIN_MS));
+}
+
+/**
+ * The instant the arena must be out of its intro presentation: the server's
+ * `started_at` less `MODULE_TITLE_END_MARGIN_MS`, as an ISO string for
+ * `useServerInstantWake`. Null when there is no start to anchor to.
+ */
+export function presentationCutoffAt(startedAtIso: string | null | undefined): string | null {
+  if (!startedAtIso) return null;
+  const t = Date.parse(startedAtIso);
+  return Number.isNaN(t) ? null : new Date(t - MODULE_TITLE_END_MARGIN_MS).toISOString();
+}

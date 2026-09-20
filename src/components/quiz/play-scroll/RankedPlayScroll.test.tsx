@@ -94,6 +94,10 @@ vi.mock("@/lib/quiz/api", () => ({
   resolveQuizAssetUrl: (p?: string) => (p ? `http://assets.local/${p}` : undefined),
 }));
 
+const warmRankedEntry = vi.fn();
+vi.mock("@/lib/ranked-core/media/warmRankedEntry", () => ({
+  warmRankedEntry: (...args: unknown[]) => warmRankedEntry(...args),
+}));
 import RankedPlayScroll from "./RankedPlayScroll";
 import { isToastInteraction } from "./PlayScrollRecord";
 import type { RankedRole } from "@/lib/ranked-public/roles";
@@ -627,6 +631,17 @@ describe("Ranked Match", () => {
     await openRanked();
     await waitFor(() => expect(onEnterMatch).toHaveBeenCalledWith("rkm_go"));
     expect(onEnterMatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("RFX1 2B1 — warms the arena (Tier 1) at the matched beat, with the queued role", async () => {
+    warmRankedEntry.mockClear();
+    h.queue.state = "matched";
+    h.queue.matchId = "rkm_warm";
+    const { onEnterMatch } = renderScroll({ role: "support" });
+    await openRanked();
+    await waitFor(() => expect(onEnterMatch).toHaveBeenCalledWith("rkm_warm"));
+    expect(warmRankedEntry).toHaveBeenCalledTimes(1);
+    expect(warmRankedEntry).toHaveBeenCalledWith("support");
   });
 
   it("surfaces an unavailable queue instead of a dead button", async () => {
