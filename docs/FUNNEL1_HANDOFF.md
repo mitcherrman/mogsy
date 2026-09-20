@@ -2133,3 +2133,119 @@ production was unfounded. That was my misattribution, not a product signal.
 
 **B2 closes when the B2.6 build is published and one short production check
 confirms `/quiz` emits `leaguecraft_opened` and no `practice_builder_opened`.**
+
+## 18.7 B2.6 production verification
+
+Deployment `4df591c1-51c2-4ca3-9cb5-3774960a271d` for `main` @ `0010a636`,
+returned `pending`, so again verified by measurement rather than by report.
+
+### The bundle changed
+
+`index-RqqHkANc.js` → **`index-BgKO9opI.js`** (523,106 bytes), picked up on the
+first poll.
+
+### "Is `practice_builder_opened` absent?" is the wrong question
+
+I proposed that check and it was mistaken. The string is **still in the
+bundle** — exactly once — and that is correct: it is now a key of the shipped
+`RETIRED_EVENTS` map, which is what makes the emitter refuse it at runtime. A
+build where the string had vanished would mean the retirement record had been
+dropped, not that the fix had landed.
+
+The shipped map, read out of the live bundle:
+
+```
+lol_landing_viewed               -> hub_entered
+lol_start_quiz_clicked           -> leaguecraft_opened + leaguecraft_cta_clicked
+quiz_guest_started               -> practice_quiz_opened
+auth_signup_viewed_from_quiz     -> signup_viewed
+auth_signup_completed_from_quiz  -> signup_completed
+quiz_results_viewed              -> quiz_completed
+practice_builder_opened          -> nothing — use leaguecraft_opened …
+```
+
+All seven retirements are live. `funnel_events`: 0 occurrences.
+
+The real test is behavioural: **how many event writes does `/quiz` make?**
+
+### The clean visit
+
+Storage was cleared first on `/robots.txt` — a same-origin path that emits
+nothing — so the landing page was a genuine first visit rather than a
+continuation. (That clear also removed B2.5's leftover visitor from the
+browser profile; it had already been deleted from the database.)
+
+```
+https://mogzy.lol/?utm_source=production_loop_test_b26
+                  &utm_medium=funnel1b26
+                  &utm_campaign=builder_semantics
+   →  /lol   →  /quiz
+```
+
+| Route | `POST /rest/v1/analytics_events` | Before B2.6 |
+|---|---|---|
+| `/` | **1** | 1 |
+| `/lol` | **1** | 1 |
+| `/quiz` | **1** | **2** |
+
+`/quiz` now writes once. That is the fix, observed on the deployed public site.
+
+| | |
+|---|---|
+| `visitor_id` | `443fdfaf-4c7a-48e1-bc46-bd5302b1be32` |
+| `session_id` | `889faee4-144a-47a9-9ec7-04cb72a946cd` |
+| first touch | `utm_source=production_loop_test_b26`, `utm_medium=funnel1b26`, `utm_campaign=builder_semantics`, `landing_path="/"`, `referrer=null` |
+| session `recorded` | `true` at every step |
+
+One visitor and one session across all three routes, unchanged — the session
+policy holds again.
+
+### Privileged read-back and cleanup
+
+```sql
+-- expect exactly three rows: landing_viewed '/', hub_entered '/lol',
+-- leaguecraft_opened '/quiz'. NO practice_builder_opened.
+select event_name, route, source_system, is_guest, received_at
+from public.analytics_events
+where session_id = '889faee4-144a-47a9-9ec7-04cb72a946cd'
+order by received_at;
+
+-- attribution
+select first_utm_source, first_utm_medium, first_utm_campaign,
+       first_landing_path, first_referrer
+from public.analytics_visitors
+where visitor_id = '443fdfaf-4c7a-48e1-bc46-bd5302b1be32';
+
+-- the retired name must be absent everywhere, not just in this session
+select count(*) from public.analytics_events
+where event_name = 'practice_builder_opened';   -- expect 0 going forward
+
+-- CLEANUP
+delete from public.analytics_events
+ where session_id = '889faee4-144a-47a9-9ec7-04cb72a946cd';
+delete from public.analytics_sessions
+ where session_id = '889faee4-144a-47a9-9ec7-04cb72a946cd'
+    or utm_source = 'production_loop_test_b26';
+delete from public.analytics_visitors
+ where visitor_id = '443fdfaf-4c7a-48e1-bc46-bd5302b1be32'
+    or first_utm_source = 'production_loop_test_b26';
+```
+
+Note the eight unrelated real analytics events already in the table: three of
+them are almost certainly `practice_builder_opened` rows written by the B2 build
+between publish and this fix. They are genuine visitor rows and should be kept,
+but that one event name should be **excluded from any Builder reporting** —
+it means "the hub rendered", not "the Builder was opened", for its entire
+lifetime.
+
+### Status
+
+| # | Requirement | Status |
+|---|---|---|
+| 1 | Schema live | ✅ |
+| 2 | Code on production ref | ✅ `main` = `0010a636` |
+| 3 | Lovable published it | ✅ `index-BgKO9opI.js` |
+| 4 | Real production visit emitted canonical analytics | ✅ |
+| 5 | Read-back confirmed identity + attribution | ✅ for B2.5; B2.6 pending the query above |
+| 6 | No misnamed event polluting the dataset | ✅ client side — `/quiz` writes once |
+| 7 | Test rows cleaned up | ⏳ B2.6 rows pending the cleanup above |
