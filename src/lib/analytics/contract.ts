@@ -105,15 +105,18 @@ export type MacroEventName = (typeof MACRO_EVENTS)[number];
  * LEGACY_EVENT_ALIASES.
  */
 export const PRODUCT_EVENTS = [
-  "quiz_guest_started",
+  // B2: the Hub CTA into Leaguecraft. Diagnostic ONLY — canonical
+  // `leaguecraft_opened` is emitted on entry to /quiz itself, so that a visitor
+  // who arrives by direct link, internal navigation or browser history counts
+  // the same as one who clicked the book. Counting the CTA as the open was the
+  // original defect; keeping it as a separate name preserves "which door" without
+  // letting one door define the total.
+  "leaguecraft_cta_clicked",
   "quiz_question_answered",
   "quiz_completed",
-  "quiz_results_viewed",
   "quiz_signup_gate_shown",
   "quiz_signup_clicked",
   "quiz_guest_continue_clicked",
-  "auth_signup_viewed_from_quiz",
-  "auth_signup_completed_from_quiz",
   "hud_signup_chip_clicked",
   "hud_signup_menu_clicked",
   "practice_missed_started",
@@ -153,14 +156,40 @@ export type ProductEventName = (typeof PRODUCT_EVENTS)[number];
 export type AnalyticsEventName = MacroEventName | ProductEventName;
 
 /**
- * The two misnamed legacy events, resolved at the emitter so the call sites in
- * LolHub.tsx do not have to change in this phase. `lol_landing_viewed` has
- * fired on the Hub — not the landing — since the root entrance shipped; the
- * store records what actually happened.
+ * Legacy names that B2 removed from the codebase, and what replaced them.
+ *
+ * B1 translated the first two at the emitter, because the call sites could not
+ * be touched in a schema phase. B2 instruments the real surfaces, so the
+ * translation is gone and so are the call sites — a name is either emitted or
+ * it is not, and a reader of this file should never have to hold a rewrite rule
+ * in their head to know which.
+ *
+ * This map is kept as the RECORD of that decision, and it is asserted by a test
+ * that none of these names can be emitted any more. It is deliberately not a
+ * runtime alias table: mapping a retired name would let a reintroduced call
+ * site silently contribute to canonical counts again.
+ *
+ * Zero production rows exist for any of them (nothing was ever written — see
+ * docs/FUNNEL1_HANDOFF.md §5), so retirement costs no history.
  */
-export const LEGACY_EVENT_ALIASES: Readonly<Record<string, MacroEventName>> = {
-  lol_landing_viewed: "hub_entered",
-  lol_start_quiz_clicked: "leaguecraft_opened",
+export const RETIRED_EVENTS: Readonly<Record<string, string>> = {
+  // Fired on /lol, which is the Hub. Its name has claimed otherwise since the
+  // root entrance shipped, and `/` — the real landing — emitted nothing at all.
+  lol_landing_viewed: "hub_entered, emitted by LolHub; landing_viewed now comes from MogzyEntryV2",
+  // One CTA standing in for a page entry. Replaced by a true surface event at
+  // /quiz, with the click retained separately as leaguecraft_cta_clicked.
+  lol_start_quiz_clicked: "leaguecraft_opened (surface) + leaguecraft_cta_clicked (diagnostic)",
+  // Fired only when `isAnonymous`, so every signed-in practice start was
+  // invisible. The canonical event is unconditional and the row's own is_guest
+  // column carries what the name was trying to.
+  quiz_guest_started: "practice_quiz_opened",
+  // Quiz-scoped names on a global route, and the completion fired only on the
+  // email path and only when the user came from the quiz.
+  auth_signup_viewed_from_quiz: "signup_viewed, with entry_surface in metadata",
+  auth_signup_completed_from_quiz: "signup_completed, defined in analytics/signup.ts",
+  // Fired in the same block as quiz_completed with an identical payload.
+  // Counting both double-counted one moment.
+  quiz_results_viewed: "quiz_completed (the duplicate half is gone)",
 };
 
 const KNOWN_EVENTS = new Set<string>([...MACRO_EVENTS, ...PRODUCT_EVENTS]);

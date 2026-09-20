@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 
 import SEOHead from "@/components/SEOHead";
+import { useSurfaceEvent } from "@/lib/analytics";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
@@ -111,6 +112,24 @@ function TitleOrnamentBottom({ width }: { width: number }) {
 }
 
 export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
+  /**
+   * FUNNEL1B2 — the top of the funnel, which until now emitted nothing at all
+   * (docs/FUNNEL1_HANDOFF.md §6: `/` had no telemetry, and `lol_landing_viewed`
+   * was firing on the Hub instead). Everything downstream is a ratio against
+   * this number, so it is the one event that must be neither missed nor
+   * inflated.
+   *
+   * Gated on `seo === "root"` because this component is also mounted at its dev
+   * route, and a developer opening the prototype is not a landing.
+   *
+   * Once per session, not once per mount — see useSurfaceEvent. Attribution is
+   * initialized by the emitter itself, before the row is written: first touch
+   * and the session's acquisition context are captured from this very page
+   * view, which is the only moment the referrer and the campaign parameters are
+   * still on the URL.
+   */
+  useSurfaceEvent("landing_viewed", { enabled: seo === "root" });
+
   const navigate = useNavigate();
   const playLaunchChime = useLaunchChime();
   const prefersReducedMotion = useReducedMotion();

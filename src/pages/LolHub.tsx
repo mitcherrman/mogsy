@@ -20,6 +20,7 @@ import {
 } from "@/components/lol/hub-guide";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { useSurfaceEvent } from "@/lib/analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { useSfx } from "@/lib/audio/useSfx";
 import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
@@ -545,9 +546,18 @@ export default function LolHub() {
     };
   }, []);
 
-  // Funnel: landing view, once per mount.
+  // FUNNEL1B2: this is the HUB, and it now says so. The event that used to
+  // fire here was `lol_landing_viewed`, which has been a misnomer since the
+  // root entrance shipped — /lol has not been the landing page for a long
+  // time, and reporting it as one made the real landing (/) invisible while
+  // overstating the top of the funnel. `landing_viewed` now comes from
+  // MogzyEntryV2; this is `hub_entered`, and the two are separate steps.
+  //
+  // Once per session rather than once per mount: a visitor bouncing Hub →
+  // Leaguecraft → Hub is one hub entry, not three.
+  useSurfaceEvent("hub_entered");
+
   useEffect(() => {
-    trackFunnelEvent("lol_landing_viewed");
     // This semantic has no built-in voice, preserving the legacy path's
     // default-silent behavior while allowing an Audio Studio binding.
     canonicalSfx.play("hub.application.enter");
@@ -665,7 +675,12 @@ export default function LolHub() {
     // transition). Holding navigation for audio would be the wrong trade.
     sfxRef.current.play("bookRuffle");
     if (to === "/quiz") {
-      trackFunnelEvent("lol_start_quiz_clicked", { cta: "hub_book" });
+      // DIAGNOSTIC ONLY. This records which door was used, not that Leaguecraft
+      // was opened — canonical `leaguecraft_opened` fires on entry to /quiz
+      // itself, so a direct link, a bookmark or the browser's back button all
+      // count identically. Treating this click as the open was the original
+      // defect: it measured one CTA and called it a page.
+      trackFunnelEvent("leaguecraft_cta_clicked", { cta: "hub_book" });
     }
   };
 

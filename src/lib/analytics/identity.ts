@@ -61,6 +61,7 @@ import { isUuid, readJson, safeStorage, secureUuid, writeJson } from "./runtime"
 
 export const VISITOR_KEY = "mogzy.analytics.visitor.v1";
 export const SESSION_KEY = "mogzy.analytics.session.v1";
+export const VISITOR_FIRST_TOUCH_KEY = "mogzy.analytics.visitorFirstTouch.v1";
 
 /** The conventional 30 minutes. Exported so tests state the number, not a guess. */
 export const SESSION_INACTIVITY_MS = 30 * 60 * 1000;
@@ -78,8 +79,11 @@ type StoredSession = {
 export type VisitorState = {
   visitorId: string;
   /**
-   * True on the paint that minted it. The only moment the first-touch row is
-   * worth attempting — every later attempt is an ON CONFLICT DO NOTHING no-op.
+   * True on the call that minted it, and on no other.
+   *
+   * Informational only. It must NOT be used to decide whether to write the
+   * first-touch row — see isFirstTouchRecorded below for why that coupling was
+   * removed.
    */
   isNew: boolean;
   /**
@@ -209,6 +213,32 @@ export function getSession(options?: {
   };
 }
 
+/**
+ * Has this visitor's first-touch row been accepted by the database?
+ *
+ * B2 note — WHY THIS IS NOT `VisitorState.isNew`.
+ *
+ * `isNew` is a one-shot: it is true only on the call that mints the id, so ANY
+ * other caller reaching `getVisitor()` first consumes it. That is precisely
+ * what happened when useSurfaceEvent began resolving the session before
+ * emitting — `getSession()` resolves the visitor internally, so by the time
+ * `track()` looked, `isNew` was already false and the first-touch row was
+ * never written at all. Attribution silently stopped existing.
+ *
+ * A persisted flag cannot be consumed by an extra read, and it fixes a second,
+ * quieter defect at the same time: under `isNew` a first-touch insert that
+ * FAILED (offline on the landing page) was never retried, because the visitor
+ * was no longer new. Now it is retried on the next event, exactly as the
+ * session row is.
+ */
+export function isFirstTouchRecorded(visitorId: string): boolean {
+  return safeStorage.get(VISITOR_FIRST_TOUCH_KEY) === visitorId;
+}
+
+export function markFirstTouchRecorded(visitorId: string): void {
+  safeStorage.set(VISITOR_FIRST_TOUCH_KEY, visitorId);
+}
+
 /** Has the session row been accepted by the database? */
 export function isSessionRecorded(sessionId: string): boolean {
   const stored = loadSession();
@@ -236,5 +266,6 @@ export function resetIdentityForTests(): void {
   memory.ephemeral = false;
   memory.session = null;
   safeStorage.remove(VISITOR_KEY);
+  safeStorage.remove(VISITOR_FIRST_TOUCH_KEY);
   safeStorage.remove(SESSION_KEY);
 }

@@ -17,6 +17,9 @@ const resetLocalStorage = installLocalStorageStub();
 
 const mocks = vi.hoisted(() => ({
   trackFunnelEvent: vi.fn(),
+  // FUNNEL1B2: the canonical surface emitter, kept separate from the legacy
+  // diagnostic one so this file can tell a page entry from a CTA click.
+  trackSurface: vi.fn(),
   authUser: { id: "u1", is_anonymous: false } as { id: string; is_anonymous: boolean } | null,
   settingsLoading: false,
   // WHATSNEW2's master switch. OFF is production, so every pre-existing
@@ -76,6 +79,9 @@ vi.mock("@/hooks/useAppSettings", async () => {
 vi.mock("@/components/lol/LolPopoutStyleToggle", () => ({ default: () => null }));
 vi.mock("@/lib/funnel-analytics", () => ({
   trackFunnelEvent: mocks.trackFunnelEvent,
+}));
+vi.mock("@/lib/analytics", () => ({
+  useSurfaceEvent: (name: string) => mocks.trackSurface(name),
 }));
 vi.mock("@/lib/audio/usePlaySfx", () => ({
   usePlaySfx: () => ({ play: mocks.sfxPlay }),
@@ -524,9 +530,15 @@ describe("LolHub — navigation structure", () => {
     expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
   });
 
-  it("fires the landing funnel event and keeps the ad slot mounted", () => {
+  it("fires the canonical HUB event — not a landing event — and keeps the ad slot mounted", () => {
     renderHub();
-    expect(mocks.trackFunnelEvent).toHaveBeenCalledWith("lol_landing_viewed");
+    // FUNNEL1B2. This used to assert `lol_landing_viewed`, which is what /lol
+    // had been emitting since long after it stopped being the landing page.
+    // `landing_viewed` now belongs to MogzyEntryV2 at `/`, and this route
+    // reports what it actually is.
+    expect(mocks.trackSurface).toHaveBeenCalledWith("hub_entered");
+    expect(mocks.trackSurface).not.toHaveBeenCalledWith("landing_viewed");
+    expect(mocks.trackFunnelEvent).not.toHaveBeenCalledWith("lol_landing_viewed");
     expect(screen.getByTestId("ad-lol_hub_mid")).toBeTruthy();
   });
 });

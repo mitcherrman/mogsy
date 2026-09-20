@@ -48,10 +48,34 @@ const sources: DataSourceDef[] = [
     id: "user_signups",
     name: "User Signups Over Time",
     category: "Users",
-    description: "New user registrations per day",
+    description: "New user registrations per day (excludes guests and bots)",
+    /**
+     * FUNNEL1B2 data-quality fix (audit §8). This counted every `profiles` row
+     * that was not a bot — and `handle_new_user` inserts one for EVERY
+     * anonymous session, so the reported signup number included every guest who
+     * ever loaded the Hub. It was not a small skew: guests are the majority of
+     * traffic, and the number was visibly wrong on an admin dashboard.
+     *
+     * `is_anonymous = false` is the correction, and it is the whole correction.
+     * Deliberately scoped to this one source: the surrounding Arena-era
+     * dashboard has other problems, and bundling them into a funnel phase would
+     * have made a one-line fix unreviewable.
+     *
+     * Note this remains a `profiles` count, not the canonical signup metric.
+     * The canonical one is `analytics_events` where event_name =
+     * 'signup_completed' (see src/lib/analytics/signup.ts), which additionally
+     * distinguishes a guest upgrade from a brand-new account and survives the
+     * anonymous-profile purge. This filter makes the legacy chart honest; it
+     * does not make it the source of truth.
+     */
     fetch: async ({ days = 30 } = {}) => {
       const since = new Date(Date.now() - days * 86400000).toISOString();
-      const { data } = await supabase.from("profiles").select("created_at").gte("created_at", since).eq("is_bot", false);
+      const { data } = await supabase
+        .from("profiles")
+        .select("created_at")
+        .gte("created_at", since)
+        .eq("is_bot", false)
+        .eq("is_anonymous", false);
       const b = bucketByDay((data || []).map(r => r.created_at), days);
       return { labels: b.labels, datasets: [{ label: "Signups", values: b.counts }] };
     },

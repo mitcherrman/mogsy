@@ -8,6 +8,7 @@ import {
   type UpgradeResult,
 } from "@/lib/auth/account-upgrade";
 import { getE2EIdentity, e2eSession, e2eEnabled } from "@/lib/e2e/identity";
+import { observeAuthIdentity } from "@/lib/analytics";
 
 interface AuthContextType {
   user: User | null;
@@ -63,6 +64,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  /**
+   * FUNNEL1B2 — the single place a signup is recognised.
+   *
+   * `observeAuthIdentity` emits `signup_completed` on exactly one thing: the
+   * SAME account ceasing to be anonymous. It is deliberately here rather than
+   * in any signup UI, because the transition can complete long after every
+   * form has unmounted — a guest who takes the email-confirmation branch
+   * becomes registered when they click the link and come back, and no
+   * `submit()` callback is alive to see it.
+   *
+   * It is not a signup counter for every registered user it sees: a first
+   * sighting is a sign-in, and treating it otherwise would recreate the
+   * inflated number this work exists to replace (docs/FUNNEL1_HANDOFF.md §8).
+   * Brand-new accounts with no guest session are reported by the signup form
+   * itself. Both paths dedupe on the uid, so neither can fire twice.
+   *
+   * Runs on every identity change, including the initial resolve; the function
+   * is a no-op for anything that is not the transition.
+   */
+  useEffect(() => {
+    observeAuthIdentity(user);
+  }, [user]);
 
   useEffect(() => {
     let mounted = true;

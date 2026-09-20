@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BarChart3, Brain, Flame, Heart, Coins, HeartPulse, Shield, Swords } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
+import { useSurfaceEvent } from "@/lib/analytics";
 import { useChampionAssets, getChampionLoading } from "@/hooks/useChampionAssets";
 import { VISIBLE_LEAGUE_SWIPE_GAMES, type SwipeGameConfig } from "@/lib/league-swipe/api";
 import { META_REFLEX_NAME, META_REFLEX_TAGLINE } from "@/lib/league-swipe/branding";
@@ -17,6 +18,13 @@ const GAME_ICONS: Record<string, React.ElementType> = {
 
 /** Hub listing the Meta Reflex games — opinion votes and knowledge duels. */
 export default function LeagueSwipeHub() {
+  // FUNNEL1B2 — Meta Reflex entry. Play truth already exists in Supabase
+  // (`league_swipe_results`); what was missing was any record that someone
+  // reached the mode at all, so the drop-off between arriving and playing was
+  // invisible. Per-game opens are a game-picker detail and stay out of the
+  // macro funnel — the game slug is available on the result rows.
+  useSurfaceEvent("meta_reflex_opened");
+
   const { data: championAssets } = useChampionAssets();
 
   return (

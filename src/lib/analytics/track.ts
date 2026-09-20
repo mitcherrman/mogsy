@@ -26,7 +26,7 @@
 
 import {
   EVENT_NAME_PATTERN,
-  LEGACY_EVENT_ALIASES,
+  RETIRED_EVENTS,
   isKnownEvent,
   type AnalyticsEventName,
   type ServerEventIdentity,
@@ -42,7 +42,9 @@ import {
 import {
   getSession,
   getVisitor,
+  isFirstTouchRecorded,
   isSessionRecorded,
+  markFirstTouchRecorded,
   markSessionRecorded,
 } from "./identity";
 import { clamp, recordFailure, recordSent } from "./runtime";
@@ -91,13 +93,25 @@ export async function trackAsync(
   options: TrackOptions = {},
 ): Promise<void> {
   try {
-    const resolved = LEGACY_EVENT_ALIASES[eventName] ?? eventName;
+    const resolved = eventName;
 
     // Rejected by the database's CHECK, which the silent-fail contract would
     // then swallow. Caught here so the developer gets a named diagnostic
     // instead of a missing row.
     if (!EVENT_NAME_PATTERN.test(resolved)) {
       recordFailure("contract:event_name", `"${resolved}" is not a valid event name`);
+      return;
+    }
+    // A retired name is REFUSED, not translated. B1 translated two of these at
+    // the emitter because the call sites could not be touched yet; B2 removed
+    // the call sites, and a reintroduced one must fail loudly rather than
+    // quietly rejoin the dataset under a rewrite rule nobody can see.
+    const replacement = RETIRED_EVENTS[resolved];
+    if (replacement) {
+      recordFailure(
+        "contract:retired_event",
+        `"${resolved}" was retired in FUNNEL1B2 — use ${replacement}`,
+      );
       return;
     }
     if (!isKnownEvent(resolved)) {
@@ -111,14 +125,25 @@ export async function trackAsync(
     const visitor = getVisitor();
     const session = getSession({ touch, visitorId: visitor.visitorId });
 
-    // Attribution rows are written before the event, and only when they are
-    // new. Both are fire-and-forget and both tolerate failure: an event with
-    // no visitor row is still a countable event.
+    // Attribution rows are written before the event, and only until each has
+    // been confirmed. Both are fire-and-forget and both tolerate failure: an
+    // event with no visitor row is still a countable event.
+    //
+    // Gated on the PERSISTED confirmation rather than on `visitor.isNew` /
+    // `session.isNew`. Those are one-shot flags that any extra call to
+    // getVisitor()/getSession() consumes, which is not a theoretical risk —
+    // it is the bug B2 hit the moment useSurfaceEvent started resolving the
+    // session before emitting, and it silently disabled first-touch
+    // attribution entirely. The persisted flags also make both writes
+    // retryable, so a landing page loaded offline still gets its attribution
+    // on the next event instead of never.
     await Promise.all([
-      visitor.isNew ? recordFirstTouch(visitor.visitorId, touch) : Promise.resolve(),
-      session.isNew || !isSessionRecorded(session.sessionId)
-        ? recordSession(session.sessionId, visitor.visitorId, session.touch)
-        : Promise.resolve(),
+      isFirstTouchRecorded(visitor.visitorId)
+        ? Promise.resolve()
+        : recordFirstTouch(visitor.visitorId, touch),
+      isSessionRecorded(session.sessionId)
+        ? Promise.resolve()
+        : recordSession(session.sessionId, visitor.visitorId, session.touch),
     ]);
 
     const auth = await readAuthState();
@@ -229,7 +254,10 @@ async function insertOnce(
  * is a rarity (a lost response, a racing tab) rather than the norm.
  */
 async function recordFirstTouch(visitorId: string, touch: Touch): Promise<void> {
-  await insertOnce(ANALYTICS_VISITORS_TABLE, toFirstTouchRow(visitorId, touch));
+  const ok = await insertOnce(ANALYTICS_VISITORS_TABLE, toFirstTouchRow(visitorId, touch));
+  // A 23505 counts as success: the row is there, which is all this needed to
+  // establish. Retry stops either way.
+  if (ok) markFirstTouchRecorded(visitorId);
 }
 
 /**
@@ -289,27 +317,22 @@ export function trackVerificationFailed(
 }
 
 /**
- * Signup completion.
+ * B2 REMOVED `trackSignupCompleted` from this file.
  *
- * `upgradedFromGuest` is required, not optional, and that is the whole point
- * of the helper: it is the field that separates a real conversion from a
- * `profiles` row, and an optional field would be omitted at exactly the call
- * sites where it matters. See contract.isRegisteredUser for the definition
- * this is built on.
+ * B1 shipped it as a generic helper any caller could invoke. Once B2 made
+ * `signup_completed` a real metric, a freely-callable emitter became the most
+ * likely way to get TWO canonical rows for one signup — the brief's explicit
+ * prohibition — because nothing about the helper's signature said which of the
+ * two signup paths owned it, or that one of them is detected centrally.
+ *
+ * The event now has exactly one producer: src/lib/analytics/signup.ts, which
+ * holds the definition, the anonymous → registered detection, and the per-uid
+ * dedupe that makes a second row impossible. A test asserts that file is the
+ * only one in `src/` that emits the name.
+ *
+ * Use `reportDirectSignupCompleted` (brand-new account) or let
+ * `observeAuthIdentity` see the guest upgrade. There is no third way.
  */
-export function trackSignupCompleted(params: {
-  method: SignupMethod;
-  upgradedFromGuest: boolean;
-  entrySurface?: string;
-}): void {
-  track("signup_completed", {
-    metadata: {
-      method: params.method,
-      upgraded_from_guest: params.upgradedFromGuest,
-      entry_surface: params.entrySurface ?? null,
-    },
-  });
-}
 
 /**
  * Build the row a SERVER-AUTHORITATIVE event must carry.

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { track, useSurfaceEvent } from "@/lib/analytics";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Sparkles, Package, Swords, Target, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
@@ -330,6 +331,21 @@ const PLAY_RETURN_PARAM = "play";
 const ROLE_RETURN_PARAM = "role";
 
 export default function Quiz() {
+  /**
+   * FUNNEL1B2 — canonical entry into the Leaguecraft experience.
+   *
+   * Emitted from the ROUTE, not from a CTA. The audit's finding was that
+   * Leaguecraft "opens" were being inferred from one button on the Hub
+   * (`lol_start_quiz_clicked`), which silently excluded every visitor who
+   * arrived by direct link, bookmark, internal navigation or the back button —
+   * and made the Hub's CTA look like the only way in. The click is still
+   * recorded, as `leaguecraft_cta_clicked`, but it no longer defines the total.
+   *
+   * Note this is the /quiz PAGE, which is the hub composition; actually
+   * beginning a practice set is a separate event below.
+   */
+  useSurfaceEvent("leaguecraft_opened");
+
   const { user } = useAuth();
   // R1: the player's League role, shown beside — never merged into —
   // competitive rank on the Ranked hero. Best-effort and self-silencing: a
@@ -816,14 +832,28 @@ export default function Quiz() {
       soundQuizStarted();
       setQuestions(qs);
       setPhase("active");
-      if (isAnonymous) {
-        trackFunnelEvent("quiz_guest_started", { quiz_mode: "standard", set_id: set.name, total_questions: qs.length });
-      }
+      // FUNNEL1B2. This replaces `quiz_guest_started`, which fired only for
+      // anonymous users and therefore made every signed-in practice start
+      // invisible — the row's own `is_guest` column carries what that name was
+      // trying to say, and carries it for both populations.
+      //
+      // Deliberately NOT deduped per session: starting three practice sets is
+      // three events. `practice_quiz_opened` rather than `_started` because the
+      // contract reserves `_started` for Railway, which owns the truth
+      // (`quiz_sessions`); this is the browser's honest statement of intent.
+      track("practice_quiz_opened", {
+        metadata: {
+          quiz_mode: "standard",
+          entry: "question_set",
+          set_id: set.name,
+          total_questions: qs.length,
+        },
+      });
     } catch (err: any) {
       setPhase("error");
       setErrorMsg(err?.message || "Failed to load questions.");
     }
-  }, [startHistorySession, isAnonymous, soundQuizStarted]);
+  }, [startHistorySession, soundQuizStarted]);
 
   /**
    * PRAC1 — start a Practice session for one category-rail subject.
@@ -876,18 +906,21 @@ export default function Quiz() {
       soundQuizStarted();
       setQuestions(qs);
       setPhase("active");
-      if (isAnonymous) {
-        trackFunnelEvent("quiz_guest_started", {
+      // PRAC1 category-rail start. Same canonical event as the question-set
+      // path above, distinguished by `entry` rather than by a second name.
+      track("practice_quiz_opened", {
+        metadata: {
           quiz_mode: "standard",
+          entry: "category_rail",
           set_id: tile.full,
           total_questions: qs.length,
-        });
-      }
+        },
+      });
     } catch (err) {
       setPhase("error");
       setErrorMsg(err instanceof Error ? err.message : "Failed to load questions.");
     }
-  }, [startHistorySession, isAnonymous, soundQuizStarted]);
+  }, [startHistorySession, soundQuizStarted]);
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
@@ -1025,9 +1058,13 @@ export default function Quiz() {
         correct_count: score,
         total_questions: questions.length,
       };
+      // One moment, one event. `quiz_results_viewed` used to fire here too,
+      // from this same block and with this same payload — the results render
+      // immediately after completion in the same view, so the two names were
+      // describing one thing and anyone counting both would have doubled it.
+      // Retired in FUNNEL1B2; this remains diagnostic, and the counted truth
+      // for a completed practice quiz is Railway's `quiz_sessions.completed_at`.
       trackFunnelEvent("quiz_completed", completionPayload);
-      // Results render immediately after completion in the same view.
-      trackFunnelEvent("quiz_results_viewed", completionPayload);
       // First signup prompt appears after a completed quiz, not before.
       if (gateArmed.current && isAnonymous) {
         setShowGate(true);

@@ -26,6 +26,7 @@ import { resetGateState } from "@/lib/quiz/onboarding-gate";
 import { claimUsername } from "@/lib/identity/claim-username";
 import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
 import { useSfx } from "@/lib/audio/useSfx";
+import { trackSignupStarted } from "@/lib/analytics";
 
 export type UpgradePhase =
   | "idle"
@@ -151,6 +152,22 @@ export function useAccountUpgrade(
           return;
         }
       }
+
+      // FUNNEL1B2 — the guest-upgrade denominator, fired once every local check
+      // has passed and the network work is about to begin. A missing email or a
+      // rejected password returns above without counting, so this measures
+      // intent to sign up rather than intent to type.
+      //
+      // There is no matching `signup_completed` here on purpose: completion is
+      // detected centrally from the auth identity transition (see
+      // analytics/signup.ts), which also catches the guest who leaves in
+      // `verification_pending` and only becomes registered days later, when no
+      // callback of this hook is alive to see it.
+      trackSignupStarted({
+        entrySurface: "guest_upgrade",
+        fromGuest: true,
+        returnTo,
+      });
 
       submittingRef.current = true;
       setPhase("submitting");

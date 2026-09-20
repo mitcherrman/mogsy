@@ -15,6 +15,7 @@
  * fabricated progress.
  */
 import { useEffect, useState } from "react";
+import { useSurfaceEvent } from "@/lib/analytics";
 import { Link } from "react-router-dom";
 import {
   getProgress,
@@ -92,6 +93,12 @@ function recommend(sets: MasterySetSummary[], progress: Map<string, MasterySetPr
 }
 
 export default function MasteryJourneysPage() {
+  // FUNNEL1B2 — Champion Mastery entry. This route sits behind ProtectedRoute,
+  // so a guest can never reach it and `mastery_opened` will only ever carry
+  // is_guest = false. That is a product fact, not a gap in the telemetry, and
+  // any funnel drawn from guest traffic should expect this step to be empty.
+  useSurfaceEvent("mastery_opened");
+
   const [sets, setSets] = useState<MasterySetSummary[] | null>(null);
   const [progress, setProgress] = useState<Map<string, MasterySetProgress> | null>(null);
   const [progressFailed, setProgressFailed] = useState(false);

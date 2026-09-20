@@ -12,7 +12,11 @@ import SEOHead from "@/components/SEOHead";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { resetGateState } from "@/lib/quiz/onboarding-gate";
-import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import {
+  reportDirectSignupCompleted,
+  trackSignupStarted,
+  useSurfaceEvent,
+} from "@/lib/analytics";
 import { resolveReturnTo } from "@/lib/auth/auth-destination";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/lib/auth/password-policy";
 import { mapAuthError } from "@/lib/auth/auth-errors";
@@ -72,15 +76,32 @@ export default function Auth() {
 
   const isAnonymous = user?.is_anonymous === true;
   const [showLinkFlow, setShowLinkFlow] = useState(false);
-  const cameFromQuiz = initialMode === "signup" && safeReturnTo.startsWith("/quiz");
 
-  // Funnel: signup page viewed via the post-quiz gate, once per mount.
-  useEffect(() => {
-    if (cameFromQuiz) {
-      trackFunnelEvent("auth_signup_viewed_from_quiz", { returnTo: safeReturnTo });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /**
+   * Which product surface sent the visitor here. Derived from the returnTo the
+   * CTA encoded, which is the only thing that survives the navigation — and is
+   * exactly why it is recorded as metadata rather than as a separate event
+   * name per origin, which is how the vocabulary grew a `_from_quiz` suffix in
+   * the first place.
+   */
+  const signupEntrySurface = safeReturnTo.startsWith("/quiz/ranked")
+    ? "ranked"
+    : safeReturnTo.startsWith("/quiz")
+      ? "leaguecraft"
+      : safeReturnTo.startsWith("/lol")
+        ? "hub"
+        : "direct";
+
+  // FUNNEL1B2. This used to be `auth_signup_viewed_from_quiz`, fired only when
+  // the visitor arrived from /quiz — a quiz-scoped name on a global route,
+  // which made every other route into signup invisible and hid the Hub and
+  // Ranked gates entirely. The canonical event is unconditional for the signup
+  // mode, and WHERE they came from moves into metadata where it belongs.
+  useSurfaceEvent("signup_viewed", {
+    enabled: initialMode === "signup",
+    key: safeReturnTo,
+    metadata: { entry_surface: signupEntrySurface, return_to: safeReturnTo },
+  });
 
   // Guest-first onboarding: a guest arriving at "sign up" defaults into the
   // account-link flow so their anonymous quiz progress carries over.
@@ -247,6 +268,14 @@ export default function Auth() {
       // on the profile row it is already creating. That is the whole
       // carry-forward: no second write, no window where the account is
       // nameless, and nothing for the user to retype.
+      // FUNNEL1B2 — the denominator. Fired after validation passes and the
+      // request is actually going out, so a mistyped password is not counted as
+      // an attempt to sign up.
+      trackSignupStarted({
+        entrySurface: signupEntrySurface,
+        fromGuest: false,
+        returnTo: safeReturnTo,
+      });
       const { error, session } = await signUp(email, password, username);
       if (error) {
         playSfx("ui.feedback.error");
@@ -268,9 +297,22 @@ export default function Auth() {
           toast({ title: "Couldn't create your account", description: mapped.message, variant: "destructive" });
         }
       } else {
-        if (cameFromQuiz) {
-          trackFunnelEvent("auth_signup_completed_from_quiz", { returnTo: safeReturnTo, flow: "email_signup" });
-        }
+        // FUNNEL1B2 — a registered account created outright, with no guest
+        // session to upgrade (the isAnonymous guard above guarantees that).
+        // Reported explicitly because nothing downstream can tell this apart
+        // from an ordinary sign-in; the guest-upgrade case is detected centrally
+        // instead. See src/lib/analytics/signup.ts for why the two differ.
+        //
+        // This replaces `auth_signup_completed_from_quiz`, which fired only for
+        // visitors who came from /quiz — so most real signups were never
+        // counted, and the ones that were carried a name that made them look
+        // like a quiz feature.
+        reportDirectSignupCompleted({
+          userId: session?.user?.id ?? null,
+          method: "email",
+          entrySurface: signupEntrySurface,
+          returnTo: safeReturnTo,
+        });
         resetGateState();
         // handle_new_user() takes the name only if it was valid AND free. It
         // cannot report which, and it must not fail the signup to say so — an

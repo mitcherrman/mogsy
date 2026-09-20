@@ -57,6 +57,7 @@
  * be told the same thing is a longer way round to the same sentence.
  */
 import { useEffect, useState } from "react";
+import { useSurfaceEvent } from "@/lib/analytics";
 import { authHref } from "@/lib/auth/auth-destination";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
@@ -100,6 +101,19 @@ export function Frame({ children, size = "default" }:
 const RANKED_ROUTE = "/quiz/ranked";
 
 export default function QuizRankedPage() {
+  /**
+   * FUNNEL1B2 — meaningful entry into Ranked, and nothing more. This is NOT a
+   * match start: `ranked_started` / `ranked_completed` are reserved for
+   * Railway, which owns `ranked_matches` / `ranked_participants` and is the
+   * only party that can prove a match happened. The browser can honestly say
+   * the player arrived at Ranked, so that is all it says.
+   *
+   * Emitted above the account gate below, deliberately: a signed-out visitor
+   * reaching Ranked and being told to sign in is exactly the funnel step worth
+   * measuring, and suppressing it would hide the drop-off it exists to expose.
+   */
+  useSurfaceEvent("ranked_opened");
+
   const { user } = useAuth();
   const account = user && !(user as { is_anonymous?: boolean }).is_anonymous ? user : null;
 

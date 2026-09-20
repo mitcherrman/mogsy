@@ -26,16 +26,17 @@ import { track } from "@/lib/analytics";
 import type { ProductEventName } from "@/lib/analytics";
 
 /**
- * The legacy vocabulary, unchanged so existing call sites still type-check.
+ * B2 UPDATE. The two `lol_*` names this type used to accept are gone, along
+ * with the emitter-level rewrite rule that translated them. B1 could not touch
+ * the call sites in a schema phase; B2 instruments the real surfaces, so
+ * `hub_entered` and `leaguecraft_opened` now come from the places they describe
+ * and the misnamed originals are retired (see RETIRED_EVENTS). Six legacy names
+ * in total were retired or mapped — the emitter refuses them outright rather
+ * than translating, so a reintroduced call site fails loudly.
  *
- * The two `lol_*` names are still accepted here — they are what the call sites
- * pass — but they are NOT in the canonical contract, and the emitter maps them
- * before the row is written.
+ * What is left here is diagnostic product telemetry, which keeps its names.
  */
-export type FunnelEventName =
-  | "lol_landing_viewed"
-  | "lol_start_quiz_clicked"
-  | ProductEventName;
+export type FunnelEventName = ProductEventName;
 
 /**
  * Fire-and-forget funnel event.

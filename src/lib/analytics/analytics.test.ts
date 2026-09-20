@@ -64,8 +64,8 @@ import {
   MACRO_EVENTS,
   PRODUCT_EVENTS,
   EVENT_NAME_PATTERN,
-  LEGACY_EVENT_ALIASES,
-  isMacroEvent,
+  RETIRED_EVENTS,
+  isKnownEvent,
   isRegisteredUser,
 } from "./contract";
 import {
@@ -75,7 +75,7 @@ import {
   resetIdentityForTests,
 } from "./identity";
 import { getAnalyticsDiagnostics, resetAnalyticsDiagnostics } from "./runtime";
-import { buildServerEventRow, trackAsync, trackSignupCompleted } from "./track";
+import { buildServerEventRow, trackAsync } from "./track";
 
 let resetStorage: () => void;
 
@@ -505,16 +505,35 @@ describe("event contract", () => {
     expect(all).not.toContain("visitor_returned");
   });
 
-  it("maps the two misnamed legacy events onto correct macro names", async () => {
-    await trackAsync("lol_landing_viewed");
-    await trackAsync("lol_start_quiz_clicked");
+  /**
+   * B2 replaced B1's emitter-level alias table with outright refusal. The
+   * difference matters: an alias would let a reintroduced `lol_landing_viewed`
+   * call site quietly contribute to `hub_entered` again, which is the exact
+   * class of silent mis-definition the audit was about.
+   */
+  it("refuses every retired legacy name instead of translating it", async () => {
+    for (const retired of Object.keys(RETIRED_EVENTS)) {
+      await trackAsync(retired);
+    }
 
-    expect(eventRows().map((w) => w.row.event_name)).toEqual([
-      "hub_entered",
-      "leaguecraft_opened",
-    ]);
-    for (const target of Object.values(LEGACY_EVENT_ALIASES)) {
-      expect(isMacroEvent(target)).toBe(true);
+    expect(eventRows()).toHaveLength(0);
+    expect(
+      getAnalyticsDiagnostics().failures.filter((f) => f.op === "contract:retired_event"),
+    ).toHaveLength(Object.keys(RETIRED_EVENTS).length);
+  });
+
+  it("keeps every retired name out of the live vocabulary", () => {
+    for (const retired of Object.keys(RETIRED_EVENTS)) {
+      expect(isKnownEvent(retired), retired).toBe(false);
+    }
+  });
+
+  it("names a real replacement for each retired event", () => {
+    // The right-hand side is prose, but it must at least mention a name that
+    // still exists, or the record is pointing at nothing.
+    const live = [...MACRO_EVENTS, ...PRODUCT_EVENTS] as readonly string[];
+    for (const [retired, replacement] of Object.entries(RETIRED_EVENTS)) {
+      expect(live.some((name) => replacement.includes(name)), retired).toBe(true);
     }
   });
 
@@ -580,16 +599,11 @@ describe("signup definition", () => {
     expect(isRegisteredUser(undefined)).toBe(false);
   });
 
-  it("records whether a signup was a guest upgrade, so the two are never conflated", async () => {
-    trackSignupCompleted({ method: "email", upgradedFromGuest: true, entrySurface: "quiz_gate" });
-    await vi.waitFor(() => expect(eventRows()).toHaveLength(1));
-
-    expect(eventRows()[0].row.metadata).toEqual({
-      method: "email",
-      upgraded_from_guest: true,
-      entry_surface: "quiz_gate",
-    });
-  });
+  // B2 note: the `trackSignupCompleted` helper this used to exercise is gone.
+  // Emitting `signup_completed` is now the sole responsibility of
+  // analytics/signup.ts, so that one signup cannot produce two canonical rows;
+  // the guest-upgrade flag and both detection paths are covered in
+  // instrumentation.test.ts.
 });
 
 describe("server-authoritative rows", () => {

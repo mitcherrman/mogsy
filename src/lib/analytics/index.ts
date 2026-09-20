@@ -23,7 +23,6 @@ export {
   trackVerificationStarted,
   trackVerificationCompleted,
   trackVerificationFailed,
-  trackSignupCompleted,
   buildServerEventRow,
   type TrackOptions,
 } from "./track";
@@ -31,7 +30,7 @@ export {
 export {
   MACRO_EVENTS,
   PRODUCT_EVENTS,
-  LEGACY_EVENT_ALIASES,
+  RETIRED_EVENTS,
   VERIFICATION_TYPES,
   EVENT_NAME_PATTERN,
   isKnownEvent,
@@ -72,3 +71,15 @@ export {
   type AnalyticsVisitorInsert,
   type AnalyticsSessionInsert,
 } from "./schema";
+
+export {
+  useSurfaceEvent,
+  trackSurfaceOncePerSession,
+} from "./useSurfaceEvent";
+
+export {
+  observeAuthIdentity,
+  reportDirectSignupCompleted,
+  trackSignupStarted,
+  type ObservableUser,
+} from "./signup";
