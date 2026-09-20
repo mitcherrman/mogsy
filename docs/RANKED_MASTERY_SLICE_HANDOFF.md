@@ -1626,7 +1626,17 @@ Comparison base `~/lcs-wt-gr1-4a-base` @ `d90fd45b`.
   real-artifact round-trip was re-run at integration over 4 canonical state-aware artifacts
   (Ahri x2, Lux, Darius) — attach → serialize → read → verify — with **0 mismatches and 0 answer
   leaks**, a tampered `semantic_state_key` raising `StateIntegrityError`, and an intrinsic payload
-  gaining no key. Comparison base
+  gaining no key. A **wider arm** (`test_quiz_answer_safe_delivery`, `test_ranked_prototype`,
+  `test_ranked_launch_readiness` and all of `quiz/tests/`) was run on BOTH arms serially — never in
+  parallel, because concurrent runs share `lol_calc.db` and fabricate differences — and came back
+  **44 failed / 565 passed on each**, totals identical and every branch failure present in the
+  baseline set. Those 44 are pre-existing and DB/environment-dependent (`test_combat_lab_credits`
+  x15, `test_quiz_history` x10, `test_quiz_packs` x6, `test_missed_questions` x5, and others); none
+  of the files involved imports `setup_state`, `serving.state` or `mastery_state`. Note
+  `test_realistic_cooldown_builds.py::test_a_legacy_stored_state_rebuilds_but_is_never_newly_served`
+  fails on both arms and is **not** GR1 state: its "stored state" is a legacy champion-item build
+  (Ahri R with Horizon Focus under the retired `ARCHETYPE_ITEMS` pairing) hitting the realism
+  admission gate. Comparison base
   `~/lcs-wt-gr1-4b-base` @ `8227e4a3`, same symlinked `lol_calc.db`. Docs base `origin/main`
   **`84de68ef`**. Worktrees `~/lcs-wt-gr1-state4b` and `~/mogsy-wt-gr1-state4b`. **No frontend
   commit.**
