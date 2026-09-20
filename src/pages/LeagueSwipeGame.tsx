@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Coins, Flame, X } from "lucide-react";
+import { ChampionLevelBadge } from "@/components/ChampionLevelBadge";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -210,6 +211,12 @@ export default function LeagueSwipeGame() {
           unit: factualPool.unit,
           variant: game.statVariant,
           statLabel: game.statLabel ?? game.statVariant,
+          // MRLVL1: the level the backend measured this pool at. Carried on
+          // the matchup rather than read from `factualPool` at render time so
+          // the badge and the two values on screen always come from the same
+          // snapshot — a pool refetched mid-round cannot relabel a card that
+          // was dealt from the previous one.
+          championLevel: factualPool.championLevel,
         });
       }
       if (game.slug === "higher-base-stat" && championStats.length >= 2) {
@@ -460,10 +467,21 @@ export default function LeagueSwipeGame() {
         )}
       </div>
 
-      {/* Prompt */}
-      <h1 className="text-center text-lg md:text-2xl font-bold text-foreground mb-5">
-        {matchup?.prompt ?? game.prompt}
-      </h1>
+      {/* Prompt.
+          MRLVL1: the frozen champion level sits above the question, centred,
+          the same place and the same pill Ranked's Meta Reflex puts it — the
+          two surfaces render one shared component so the level cannot come to
+          mean two different things. It is NOT on either answer card, because
+          it applies to both champions. `ChampionLevelBadge` renders nothing
+          for a null level, so an opinion round, an item-cost round or a
+          backend that predates MRLVL1 produces exactly the markup it did
+          before. */}
+      <div className="mb-5 flex flex-col items-center gap-2">
+        <ChampionLevelBadge level={matchup?.championLevel} />
+        <h1 className="text-center text-lg md:text-2xl font-bold text-foreground">
+          {matchup?.prompt ?? game.prompt}
+        </h1>
+      </div>
 
       {/* Cards */}
       {!matchup ? (
