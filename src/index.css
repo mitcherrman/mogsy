@@ -15477,3 +15477,27 @@ html.hub-commons-in-view .hextech-ambience-layer {
   from { opacity: 0; transform: scale(0.8); }
   to { opacity: 1; transform: none; }
 }
+
+/* ── RFX1 2B3 — the match-complete beat ──────────────────────────────────
+   A NEUTRAL PLACEHOLDER. The outro's actual composition and copy are the
+   owner's design decision and are not made here; this exists so the
+   lifecycle is visible and testable, and it is deliberately unstyled beyond
+   sitting where the guidance seam sits.
+
+   The one rule that IS this phase's: REDUCE MOTION CHANGES THE ANIMATION,
+   NEVER THE PACING. The beat is `MATCH_OUTRO_MS` either way — a player who
+   turned motion off gets the same match-complete presentation, as a fade. */
+@media (prefers-reduced-motion: no-preference) {
+  .ranked-match-outro { animation: ranked-match-outro-in 260ms ease-out both; }
+}
+.ranked-match-outro[data-reduced-motion="true"] {
+  animation: ranked-match-outro-fade 180ms ease-out both;
+}
+@keyframes ranked-match-outro-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ranked-match-outro-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

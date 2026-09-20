@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
   swapMediaWaitMs,
+  MATCH_OUTRO_MS,
 } from "@/lib/ranked-core/pacing";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
@@ -31,6 +32,7 @@ import {
 } from "@/lib/ranked-public/contracts";
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
+import { reconciledSkewMs } from "@/lib/ranked-core/timerMath";
 import { useSfx } from "@/lib/audio/useSfx";
 
 const POLL_MS = 1500;
@@ -130,6 +132,14 @@ function idMappingFromRound(
 
 export type MatchPhase =
   | "recovering" | "active" | "reviewing" | "locked" | "progression"
+  /**
+   * RFX1 2B3 — the deliberate match-complete beat. Authoritatively over, but
+   * still PRESENTING: the final question and its result are on screen, input
+   * is closed, and the end screen has not mounted yet. Reached only by a
+   * client that watched the match complete; a refresh or a reconnect into a
+   * finished match goes straight to `match_over`.
+   */
+  | "match_outro"
   | "match_over" | "recovering_error" | "fatal";
 
 export interface MatchController {
@@ -245,6 +255,18 @@ export interface MatchController {
    * already moved on.
    */
   revealHold: boolean;
+  /**
+   * RFX1 2B3 — the match-complete presentation's identity, or null.
+   *
+   * Non-null for exactly the outro BEAT — not for the whole `match_outro`
+   * phase, which also covers the moment between observing the completion and
+   * holding the material it presents. DETERMINISTIC (`<matchId>:outro`)
+   * so a rerender or a poll keys onto the same event rather than restarting
+   * one. It is set only when this mount observed the LIVE transition into
+   * completion — the same discipline `revealHold` uses — so a refresh or a
+   * reconnect onto a completed match never plays it.
+   */
+  matchOutroId: string | null;
 }
 
 /**
@@ -323,6 +345,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     useState<number | null>(null);
   const [result, setResult] = useState<MatchResultView | null>(null);
   const [skewMs, setSkewMs] = useState(0);
+  /** The reconciled skew this match is holding; null until the first read. */
+  const skewSeenRef = useRef<number | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [answeredSelection, setAnsweredSelection] =
     useState<{ roundNumber: number; optionId: string } | null>(null);
@@ -337,6 +361,27 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const [error, setError] = useState<string | null>(null);
   const [contractError, setContractError] = useState<string | null>(null);
   const [revealHold, setRevealHold] = useState(false);
+  /**
+   * RFX1 2B3 — THE MATCH-COMPLETE PRESENTATION.
+   *
+   * `null` = not playing. Claimed the moment a live completion is observed
+   * (`ready: false`), armed once the final settlement and the result row are
+   * in hand (`ready: true`), and spent when its beat has run (`done: true`).
+   * It is STATE (the render must react to it) but its trigger is a ref, so a
+   * re-poll cannot start a second one.
+   */
+  const [outro, setOutro] =
+    useState<{ id: string; ready: boolean; done: boolean } | null>(null);
+  /**
+   * Has this mount ever seen the match OPEN? The whole of the replay
+   * protection. A refresh or a reconnect onto a finished match reads
+   * `match_over` on its FIRST snapshot, so this is still false and no outro
+   * is owed — the end screen is the stable state that match is in, and
+   * presenting a completion the player did not witness would be a lie.
+   */
+  const sawMatchLiveRef = useRef(false);
+  /** Started once, ever. A poll, a rerender and a retry cannot replay it. */
+  const outroStartedRef = useRef(false);
   // RFX1 2B1: the swap gate reads the LATEST round and preparer at the moment
   // the nominal hold expires, not the ones captured when it began.
   const latestRoundRef = useRef<PublicRoundView | null>(null);
@@ -381,7 +426,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const phase: MatchPhase = (() => {
     if (error) return "fatal";
     if (!publicRound) return "recovering";
-    if (matchOver) return "match_over";
+    if (matchOver) return outro && !outro.done ? "match_outro" : "match_over";
     if (iOweChoice) return "progression";
     // `hasSubmitted` is the SERVER's view of the viewer's submission. R3 never
     // shows "locked" from local state alone — a click in flight stays in the
@@ -594,7 +639,13 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     abortRef.current = controller;
     try {
       const pub = await api.getPublicRound(matchId, controller.signal);
-      const pubSkewMs = snapshotSkewMs(pub.serverTime, Date.now());
+      // RFX1 2B3 — reconciled, not adopted verbatim. See
+      // `timerMath.reconciledSkewMs`: the raw per-poll reading carries this
+      // response's travel time, and letting it through moved the countdown's
+      // second boundaries on every poll.
+      const pubSkewMs = reconciledSkewMs(
+        skewSeenRef.current, snapshotSkewMs(pub.serverTime, Date.now()));
+      skewSeenRef.current = pubSkewMs;
       setSkewMs(pubSkewMs);
       const active = pub.activeRound?.roundNumber ?? null;
       const previous = activeRoundRef.current;
@@ -638,18 +689,67 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
 
       if (pub.matchOver) {
         stoppedRef.current = true;
+        /**
+         * RFX1 2B3 — DID THIS CLIENT WATCH THE MATCH END?
+         *
+         * Decided off a ref this mount only ever sets on an OPEN snapshot.
+         * True for the player who was playing; false for a refresh, a
+         * reconnect, a history open or any other arrival onto an already
+         * finished match.
+         */
+        const liveCompletion = sawMatchLiveRef.current && !outroStartedRef.current;
+        /**
+         * AND CLAIMED IN THE SAME BATCH AS THE SNAPSHOT — before anything is
+         * awaited. `setPublicRound(pub)` above has already made `matchOver`
+         * true, and the result row and the final settlement are each a
+         * network round trip away. A browser run with production-shaped
+         * latency caught exactly that: the end screen appeared for ~320 ms,
+         * then the arena came BACK for the reveal and the outro. Stating the
+         * presentation in the same render that states the completion is what
+         * removes that flash; `ready` below is what keeps the beat itself
+         * waiting for the material it is about to present.
+         */
+        if (liveCompletion) {
+          outroStartedRef.current = true;
+          setOutro({ id: `${matchId}:outro`, ready: false, done: false });
+        }
         try {
           setResult(await api.getMatchResult(matchId, controller.signal));
         } catch { /* result read races match completion; retry next mount */ }
         const lastRound = pub.completedRounds;
-        // No hold on the final round: MatchOverFrame owns that moment and there
-        // is no "next question" to withhold.
+        /**
+         * THE FINAL ROUND NOW GETS ITS RESULT BEAT.
+         *
+         * It used to be captured with `hold: false`, on the reasoning that
+         * `MatchOverFrame` owned the moment — but that frame replaced the
+         * arena in the SAME render, so the last answer of the duel was the
+         * one answer whose verdict the player never saw land.
+         *
+         * ...AND ONLY WHEN THE FINAL ROUND IS ACTUALLY UNSEEN. `resolvedRef`
+         * is the last round whose settlement this mount has CAPTURED — the
+         * same ref that stops a re-poll double-capturing one.
+         *
+         *  * played out: N resolved and the match ended in the SAME
+         *    transaction, so `completedRounds === N` and nothing has captured
+         *    it. Its reveal has never played, and it is owed one.
+         *  * forfeited: the last completed round settled earlier and this
+         *    client already watched its reveal. Replaying it would be a
+         *    regression, so it is captured exactly as before, with no hold.
+         */
+        const finalRoundUnseen = lastRound > 0 && resolvedRef.current !== lastRound;
         if (lastRound > 0) {
           await captureResolved(lastRound, controller.signal,
-            idMappingFromRound(pub, viewerUserId), { hold: false });
+            idMappingFromRound(pub, viewerUserId),
+            { hold: liveCompletion && finalRoundUnseen });
         }
+        // Everything the ending has to present is now in hand (or failed to
+        // arrive, which is also an answer). The beat may run.
+        if (liveCompletion) setOutro((o) => (o ? { ...o, ready: true } : o));
         return;
       }
+      // Open, and observed open. Recorded AFTER the completion branch so the
+      // very snapshot that ends the match can never set it.
+      sawMatchLiveRef.current = true;
       if (active !== null) {
         try {
           setPrivatePlayer(await api.getPrivatePlayer(matchId, controller.signal));
@@ -710,7 +810,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       setPublicRound(resume.public);
       setPrivatePlayer(resume.private);
       setResult(resume.result);
-      setSkewMs(snapshotSkewMs(resume.serverTime, Date.now()));
+      {
+        const resumeSkew = reconciledSkewMs(
+          skewSeenRef.current, snapshotSkewMs(resume.serverTime, Date.now()));
+        skewSeenRef.current = resumeSkew;
+        setSkewMs(resumeSkew);
+      }
       activeRoundRef.current = resume.public.activeRound?.roundNumber ?? null;
       if (activeRoundRef.current !== null) setRoundNumber(activeRoundRef.current);
       if (resume.latestResolved) {
@@ -795,6 +900,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     stoppedRef.current = false;
     activeRoundRef.current = null;
     resolvedRef.current = null;
+    // Per MATCH: a different match is a different set of readings.
+    skewSeenRef.current = null;
     // Per MATCH, not per mount: switching `matchId` inside a mounted
     // controller must be able to recover the new match too.
     recoveredRef.current = false;
@@ -836,17 +943,30 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
-  // A finished match has no next question to withhold, so any hold in flight is
-  // released immediately and MatchOverFrame takes over.
+  /**
+   * A finished match has no NEXT question to withhold, so any hold in flight
+   * is released immediately and `MatchOverFrame` takes over.
+   *
+   * RFX1 2B3 — EXCEPT WHILE THE MATCH-COMPLETE PRESENTATION OWNS IT.
+   *
+   * This effect was the other half of the abrupt ending. It runs on the first
+   * render that sees `matchOver`, which lands AFTER the completion poll has
+   * armed the final round's reveal — so the one hold the player most needed
+   * was the one guaranteed to be cancelled, whatever `captureResolved` had
+   * just been told. While an outro is owed, the hold is the final round's
+   * result beat and this stands aside; once the beat is done, the release is
+   * exactly what it always was.
+   */
   useEffect(() => {
     if (!matchOver) return;
+    if (outro && !outro.done) return;
     if (revealTimerRef.current !== undefined) {
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
     }
     holdTokenRef.current += 1;
     setRevealHold(false);
-  }, [matchOver]);
+  }, [matchOver, outro]);
 
   // The server's ability draft is the authority; adopt it whenever it moves.
   // Compared against a ref rather than used directly so a local echo survives
@@ -1027,6 +1147,23 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     })();
   }, [matchId, submitting, poke]);
 
+  /**
+   * RFX1 2B3 — THE OUTRO'S BEAT, and its place in the sequence.
+   *
+   * It starts only once the ending's material is in hand (`ready`) AND the
+   * final round's ordinary result feedback has ENDED (`revealHold` false), so
+   * the lifecycle reads: final question → its normal verdict beat → the
+   * match-complete beat → the end screen. The effect is
+   * keyed on the outro's deterministic id, so a poll, a rerender or a parent
+   * state change cannot restart the timer or play the beat twice.
+   */
+  useEffect(() => {
+    if (!outro || !outro.ready || outro.done || revealHold) return;
+    const id = window.setTimeout(
+      () => setOutro((o) => (o && !o.done ? { ...o, done: true } : o)), MATCH_OUTRO_MS);
+    return () => window.clearTimeout(id);
+  }, [outro, revealHold]);
+
   return {
     phase, publicRound, roundNumber, privatePlayer, lastResolved, damageLog, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
@@ -1035,5 +1172,10 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
     submitSegmentChallenge, revealHold,
+    // READY, not merely claimed. The phase holds the end screen off from the
+    // instant the completion is observed; the PRESENTATION only begins once
+    // there is something to present, so the beat cannot announce the end of
+    // the match before the final verdict it follows has even arrived.
+    matchOutroId: outro && outro.ready && !outro.done ? outro.id : null,
   };
 }

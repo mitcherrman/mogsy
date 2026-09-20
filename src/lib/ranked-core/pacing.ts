@@ -133,16 +133,38 @@ export function entryPrepBudgetMs(msUntilAnswerable: number | null): number {
 export const MODULE_TITLE_END_MARGIN_MS = 150;
 
 /**
+ * RFX1 2B3 — THE MODULE TITLE'S PRESENTATION FLOOR.
+ *
+ * The between-module beat is a PRESENTATION with an intended duration, not a
+ * loading indicator whose length is whatever the network left over. Loading
+ * already happens underneath it (2B1's Tier 3 preparation and the swap gate),
+ * and the server already owns the window it sits in — but when a late
+ * discovery or a media wait squeezed the remainder, the title still played
+ * for whatever was left, which at 200 ms reads as a flicker rather than as a
+ * module name.
+ *
+ * Below this floor the title is SKIPPED instead of flashed. A beat the player
+ * cannot read is worse than no beat: it registers as something appearing and
+ * being missed. Nothing is extended to reach the floor — the boundary is the
+ * server's and this never moves it.
+ */
+export const MODULE_TITLE_MIN_MS = 600;
+
+/**
  * How long the module title may still play, given the server-anchored time
- * left until `started_at`. Never longer than `MODULE_TITLE_MS`, and 0 when
- * the round is already answerable — there is no intro to play over a live
- * question.
+ * left until `started_at`. Never longer than `MODULE_TITLE_MS`; 0 when the
+ * round is already answerable (there is no intro to play over a live
+ * question) and 0 when what remains is below `MODULE_TITLE_MIN_MS`.
  */
 export function moduleTitleWindowMs(
   msUntilAnswerable: number | null, nominalMs: number,
 ): number {
   if (msUntilAnswerable === null || Number.isNaN(msUntilAnswerable)) return nominalMs;
-  return Math.max(0, Math.min(nominalMs, msUntilAnswerable - MODULE_TITLE_END_MARGIN_MS));
+  const room = Math.min(nominalMs, msUntilAnswerable - MODULE_TITLE_END_MARGIN_MS);
+  // The floor applies to the room, never to the nominal beat: a caller that
+  // deliberately asks for a shorter title than the floor still gets it.
+  if (room < Math.min(nominalMs, MODULE_TITLE_MIN_MS)) return 0;
+  return Math.max(0, room);
 }
 
 /**
@@ -157,38 +179,110 @@ export function presentationCutoffAt(startedAtIso: string | null | undefined): s
 }
 
 /**
- * RFX1 2B2 — THE VISIBLE ENTRY INTRO'S EXIT.
+ * RFX1 2B3 — THE PRE-MATCH PRESENTATION CONTRACT.
  *
- * The intro occupies the server's Round-1 lead-in and nothing else. It starts
- * when the arena mounts (the match is known, the first snapshot is not) and it
- * is GONE by `started_at − ENTRY_MIN_LEAD_MS`, which is the same margin the
- * 2B1 preparation wait already respects — so the first question is on screen,
- * prepared and stable, for at least that long before input opens.
+ * WHAT CHANGED FROM 2B2, AND WHY
+ * ──────────────────────────────
+ * In 2B2 the intro was a loading cover that happened to be visible: it was up
+ * from the arena's first paint and came down at `started_at − 700 ms`, so its
+ * length was "whatever the server's lead-in had left after the client
+ * arrived". A fast machine got a long card, a slow one got a flash, and
+ * neither was a decision anybody made.
  *
- * It adds NO time of its own. `started_at` is the server's, written once at
- * match creation; this only decides how much of the period already ahead of it
- * is spent looking at a duel card rather than at a locked question. If the
- * lead-in is short (a bot match seen late, a staff match with no lead, a
- * reload into a running round) the exit instant is already in the past and the
- * intro ends immediately — server timing wins, every time.
+ * The intro is now PRESENTATION. Every fresh Ranked match is owed the same
+ * deliberate beat before its first question, and loading runs underneath it
+ * rather than defining it.
+ *
+ * THE THREE NUMBERS
+ * ─────────────────
+ *  * `ENTRY_INTRO_MIN_MS` — the beat the entry is owed, measured from the
+ *    instant the intro is FIRST VISIBLE (the arena's first paint). It is a
+ *    floor on presentation, and it is guaranteed by the SERVER's lead-in, not
+ *    by a timer here: see `ranked_public/pacing.py`, whose queue and bot leads
+ *    are the client's own entry path plus this floor plus the preview below.
+ *  * `ENTRY_INTRO_MAX_MS` — the ceiling. A client that arrived early has
+ *    slack; without a ceiling all of it would land on the card and the intro
+ *    would be visibly longer on a fast desktop than on a phone. Above the
+ *    ceiling the slack goes to the locked preview instead, where waiting reads
+ *    as anticipation rather than as a stall.
+ *  * `ENTRY_MIN_LEAD_MS` — the locked-arena preview: the prepared first
+ *    question on screen, visible and NOT answerable, before `started_at`.
+ *    Unchanged from 2B1, where the preparation wait already respected it.
+ *
+ * WHAT IS NOT NEGOTIABLE
+ * ──────────────────────
+ * `started_at` is the server's, written once inside the match-creation
+ * transaction. Nothing here moves it, and the ceiling below is a hard clip:
+ * if the lead-in is short or already spent — a reload into a running round, a
+ * staff match created with a zero lead, a very late first snapshot — the exit
+ * is in the past and the card never appears. The intro can only ever spend
+ * time the player was not going to be answering in.
  */
-export function entryIntroExitAt(startedAtIso: string | null | undefined): string | null {
-  if (!startedAtIso) return null;
-  const t = Date.parse(startedAtIso);
-  return Number.isNaN(t) ? null : new Date(t - ENTRY_MIN_LEAD_MS).toISOString();
+export const ENTRY_INTRO_MIN_MS = 2000;
+export const ENTRY_INTRO_MAX_MS = 2600;
+
+/**
+ * The instant the entry intro must be off screen, in local epoch ms.
+ *
+ * `startedAtMs` is Round 1's authoritative start, already skew-corrected into
+ * LOCAL time by the caller. `firstVisibleMs` is when the card first painted.
+ * Null when there is no start to anchor to — the match is still resolving,
+ * which is itself an intro state and is decided by `entryIntroHolding`.
+ */
+export function entryIntroExitMs(
+  startedAtMs: number | null, firstVisibleMs: number,
+): number | null {
+  if (startedAtMs === null || Number.isNaN(startedAtMs)) return null;
+  // The server's ceiling wins over the presentation's preference, always.
+  return Math.min(startedAtMs - ENTRY_MIN_LEAD_MS, firstVisibleMs + ENTRY_INTRO_MAX_MS);
 }
 
 /**
- * Is the intro still inside its window? `msUntilAnswerable` is the
- * skew-corrected time left until Round 1's `started_at`; null (no round yet,
- * no start) means the match is still resolving, which IS an intro state.
+ * Is the intro still inside its window?
+ *
+ * `null` for `startedAtMs` is "no round yet", which IS an intro state — the
+ * match is still resolving and there is nothing else to show. `NaN` is an
+ * unparseable `started_at`, which is not: a window that cannot be proven to
+ * exist must not be held open, or one broken timestamp would leave the card
+ * on screen for the whole match.
  */
-export function entryIntroHolding(msUntilAnswerable: number | null): boolean {
-  // `null` is "no round yet", which IS an intro state. `NaN` is an
-  // unparseable `started_at`, which is not: a window that cannot be proven to
-  // exist must not be held open, or a broken timestamp would leave the card
-  // on screen for the whole match.
-  if (msUntilAnswerable === null) return true;
-  if (Number.isNaN(msUntilAnswerable)) return false;
-  return msUntilAnswerable > ENTRY_MIN_LEAD_MS;
+export function entryIntroHolding(
+  startedAtMs: number | null, firstVisibleMs: number, nowMs: number,
+): boolean {
+  if (startedAtMs === null) return true;
+  if (Number.isNaN(startedAtMs)) return false;
+  const exit = entryIntroExitMs(startedAtMs, firstVisibleMs);
+  return exit !== null && nowMs < exit;
 }
+
+/**
+ * How much deliberate intro the server's lead-in actually bought, given when
+ * the client first painted the card. Measurement and tests read this; nothing
+ * in the product decides on it.
+ */
+export function entryIntroDurationMs(
+  startedAtMs: number | null, firstVisibleMs: number,
+): number {
+  const exit = entryIntroExitMs(startedAtMs, firstVisibleMs);
+  return exit === null ? 0 : Math.max(0, exit - firstVisibleMs);
+}
+
+/**
+ * RFX1 2B3 — THE MATCH-COMPLETE PRESENTATION BEAT.
+ *
+ * Between the final round's ordinary result feedback and the end screen there
+ * was NOTHING: the snapshot that carried `match_over` swapped the whole arena
+ * for the terminal frame in the same render, and the final question's own
+ * reveal was explicitly suppressed (`captureResolved(..., {hold: false})`).
+ * The duel's last answer was never seen to land.
+ *
+ * So the lifecycle now runs: final round resolves → its NORMAL result beat
+ * (the same `REVEAL_HOLD_MS` every other round gets) → this deliberate
+ * match-complete beat → the end screen.
+ *
+ * It is a presentation constant and nothing else: no score, no standing and
+ * no authority depends on it, and it is deliberately one number so the beat
+ * can be retuned when the outro is actually designed without touching the
+ * state machine that plays it.
+ */
+export const MATCH_OUTRO_MS = 1200;

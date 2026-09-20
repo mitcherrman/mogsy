@@ -68,6 +68,17 @@ export interface CanonicalArenaProps {
    * supplies none, and renders exactly the DOM it always has.
    */
   guidance?: ReactNode;
+  /**
+   * RFX1 2B3 — THE OUTRO SEAM. A node the mode renders inside the focus
+   * column while the match is authoritatively over but still being
+   * PRESENTED, before its end screen mounts.
+   *
+   * A slot, in the same spirit as `guidance` and `recovering.intro`: the
+   * arena never learns what a duel's ending is, only that a mode had
+   * something to say in that window. Optional, so every existing caller —
+   * the Daily, the staff duel, every dev harness — is byte-identical.
+   */
+  outro?: ReactNode;
   /** Copy for the null-view placeholder, which is a mode's own sentence. */
   recovering?: {
     eyebrow: string;
@@ -114,7 +125,7 @@ function Rail({ rail, progressionEnabled }:
 }
 
 export function CanonicalArena({
-  view, terminal = null, chrome, recovering, guidance,
+  view, terminal = null, chrome, recovering, guidance, outro,
 }: CanonicalArenaProps) {
   /**
    * The Meta Reflex transcript's disclosure, owned HERE rather than by the
@@ -753,6 +764,8 @@ export function CanonicalArena({
               Ranked passes nothing; React renders nothing; the column's DOM is
               byte-for-byte what it was. */}
           {guidance}
+          {/* The outro seam. Last, under the question the match ended on. */}
+          {outro}
         </div>
       </div>
 

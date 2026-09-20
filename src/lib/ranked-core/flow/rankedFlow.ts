@@ -22,6 +22,8 @@
  *                 screen (`revealHold`, which only live capture ever sets)
  *   module-intro  the presented round is the new one, but its authoritative
  *                 `started_at` has not arrived — the server-owned lead-in
+ *   match-outro   the match is authoritatively OVER, the final round's reveal
+ *                 has played, and the end screen has not mounted yet
  *
  * RESULT CUES
  *
@@ -49,7 +51,14 @@ import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type { PublicRoundView, SegmentSettlementView } from "@/lib/ranked-public/contracts";
 import { MODULE_TITLE_END_MARGIN_MS } from "../pacing";
 
-export type RankedPresentationPhase = "answering" | "waiting" | "revealing" | "module-intro";
+export type RankedPresentationPhase =
+  | "answering" | "waiting" | "revealing" | "module-intro"
+  /**
+   * RFX1 2B3 — the deliberate match-complete beat, after the final round's
+   * own reveal and before the end screen. Authoritative completion drives it;
+   * nothing here infers it.
+   */
+  | "match-outro";
 
 export type RoundVerdict = "correct" | "incorrect" | "timed_out";
 
@@ -87,8 +96,15 @@ export function projectPresentationPhase(args: {
    * face's own exit. Defaults to `MODULE_TITLE_END_MARGIN_MS`.
    */
   cutoffMarginMs?: number;
+  /**
+   * RFX1 2B3 — the controller's `matchOutroId !== null`. Ranked after
+   * `revealing` on purpose: the final round's own verdict beat plays FIRST,
+   * and the match-complete beat follows it.
+   */
+  matchOutro?: boolean;
 }): RankedPresentationPhase {
   if (args.revealing) return "revealing";
+  if (args.matchOutro) return "match-outro";
   if (args.presentedStartedAt) {
     const start = Date.parse(args.presentedStartedAt);
     const margin = args.cutoffMarginMs ?? MODULE_TITLE_END_MARGIN_MS;

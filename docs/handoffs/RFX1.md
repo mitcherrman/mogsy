@@ -2242,3 +2242,504 @@ The invariant the whole workstream now holds: **the player sees the duel, then
 a prepared and stable first question, and input opens at the server's instant
 with the entire configured answer window still ahead of it.** Nothing the
 client does extends, shortens or anticipates that instant.
+
+---
+
+# Phase 2B3: presentation timing, the countdown clock and match-outro plumbing
+
+Status: **implemented and committed on two scoped branches. Not merged.**
+No visual or copy design: the intro card is 2B2's, and the outro is a neutral
+`MATCH COMPLETE` placeholder that exists so the lifecycle is visible and
+testable. Both designs are explicitly left to the owner.
+
+## Baselines
+
+| | |
+|---|---|
+| Frontend | `/Users/macmoney/mogsy-wt-rfx1-2b3`, branch `rfx1/phase2b3`, on `origin/main` **`aa62fc22`**. Phase 2A / 2B1 / 2B2 all verified present (`RankedEntryIntro.tsx`, `flow/useEntryIntro.ts`, `projectEntryPhase`, `moduleTitleWindowMs`, `entry_lead_ms`). |
+| Backend | `/Users/macmoney/lcs-wt-rfx1-2b3`, branch `rfx1/phase2b3-presentation-leadin`, on `origin/master` **`1bddaf71`**. The 2B1 merge `295fd58f` is an ancestor. |
+| Method | Production `vite build` under `vite preview`; the real `/dev/ranked-shell-probe` (real `QuizRankedMatch`, real `useRankedMatch`, real `CanonicalArena`); headless Chromium under CDP throttling. Scripts are in the session scratchpad, not committed. |
+
+## Phase 2B3 objective
+
+Three presentation behaviours stopped being accidents of load speed:
+
+1. the pre-match intro is a **deliberate, repeatable beat** rather than a
+   loading cover whose length is whatever the entry path left over;
+2. the Ranked countdown **ticks like a clock** — each visible number occupies
+   one real second, anchored to the authoritative deadline;
+3. the match ends through a **real match-complete beat** instead of cutting
+   from the final answer straight to the end screen.
+
+---
+
+## Intro timing contract
+
+```
+intro exit = min( started_at − ENTRY_MIN_LEAD_MS ,
+                  firstVisibleAt + ENTRY_INTRO_MAX_MS )
+```
+
+| | value | owner |
+|---|---|---|
+| minimum presentation | `ENTRY_INTRO_MIN_MS` **2000 ms** | guaranteed by the SERVER's lead, not by a client timer |
+| ceiling | `ENTRY_INTRO_MAX_MS` **2600 ms** | client; surplus goes to the locked preview |
+| locked arena preview | `ENTRY_MIN_LEAD_MS` **700 ms** | unchanged from 2B1 |
+| queue server lead | **5800 ms** (was 4200) | `ranked_public/pacing.py` |
+| bot server lead | **3800 ms** (was 2200) | same |
+
+Backend arithmetic, term by term — each mirrors a real client constant:
+
+```
+ENTRY_DISCOVERY_MS   2000   useRankedQueue POLL_MS          (queue only)
+ENTRY_HANDOFF_MS      800   PlayScrollRecord DEFAULT_HANDOFF_MS
+ENTRY_ROUTE_PAINT_MS  300   SPA route swap → the arena's first paint
+ENTRY_INTRO_MIN_MS   2000   the deliberate intro beat
+ENTRY_ARENA_PREVIEW_MS 700  the prepared, locked question before started_at
+
+ENTRY_PRESENTATION_MS = 2000 + 700 = 2700   (identical on both paths)
+queue        = 2000 + 800 + 300 + 2700 = 5800
+bot_playtest =        800 + 300 + 2700 = 3800
+everything else                        =    0
+```
+
+`MODULE_TITLE_MS` **leaves** the entry formula. Round 1's orientation beat is
+now the duel card, not the module name in the header; with only 700 ms of
+preview the title window falls below its new floor and is skipped, so the
+preview shows the question and its clock. That is deliberate.
+
+**Extension rules.** The client only ever CLIPS. 2B1's `useEntryPreparation`
+still keeps the card up while Round 1's *critical* media decodes, bounded by
+`min(ENTRY_PREP_CAP_MS 1500, msUntil(started_at) − 700)` — so slow loading may
+lengthen the presentation and can never shorten the preview or move
+`started_at`. A lead that is short or already spent (a reload into a running
+round, a staff match with a zero lead) ends the card immediately or never
+shows it.
+
+**Why the bot lead rose.** 2B2's "Remaining issues" item 1 recorded that the
+bot card was 0.1–0.7 s. Under the old model that was honest — the bot path is
+genuinely shorter. Under the new one the presentation is owed to the PLAYER,
+not to the way the match was made, so both paths now carry the same
+`ENTRY_PRESENTATION_MS` and differ only by the discovery term.
+
+---
+
+## Countdown clock
+
+### Old root cause (two faults, one symptom)
+
+1. **The tick source was mount-anchored.** `QuizRankedMatch` ran
+   `setInterval(() => setTick(t => t + 1), 1000)` from mount, and the timer
+   value was recomputed from a raw `Date.now()` *during render*. The instant a
+   number was DUE to change (a property of the deadline) and the instant a
+   render happened to observe it were unrelated, and the offset was re-rolled
+   on every remount. Worse, the interval was not the only thing that
+   re-rendered: a poll landing between ticks flipped the digit early and the
+   interval flipped the next one on schedule, so intervals alternated
+   short/long.
+2. **Every poll adopted a raw clock skew.** `snapshotSkewMs = serverTime −
+   localNowAtReceipt`, and the server stamps `serverTime` before a round trip
+   that varies from poll to poll. Since `remaining = deadline − now − skew`, a
+   200 ms swing in the skew moved *every* boundary by 200 ms. This is the
+   dominant fault on a real network and is invisible on localhost — which is
+   why the probe alone never reproduced it.
+
+Audited and found already correct, so left alone: `Math.ceil` semantics,
+`projectTimer`'s `min(durationSeconds, …)` cap during the lead-in, the `0`
+clamp (no negative can render), timeout resolution (the backend resolves it;
+the display is never authoritative), and the fact that the desktop
+(`CentralStage` → `TimerDisplay`) and mobile (`MobileMatchBar` → `Clock`)
+clocks already read ONE `header.timer`.
+
+### New clock source
+
+`useCountdownNow(deadlineIso, skewMs)` returns a `nowMs` that changes **only
+at deadline-relative second boundaries**. `timerMath.msUntilSecondBoundary`
+gives the distance to the next one; the hook schedules a single `setTimeout`
+at it (+6 ms, so an early-firing timer cannot produce a duplicate render for
+one digit) and re-arms from there. `projectTimer` is unchanged and still pure —
+it simply stops being handed a `Date.now()` that every render re-rolled.
+
+### Second-boundary semantics (confirmed against the existing convention)
+
+`remainingSeconds` is a **ceiling**, as the arena has shipped since the mode
+did. "30" means *more than 29 s and at most 30 s remain*, and it occupies that
+whole second: a full 30 s round reads `30` at the instant it opens and holds it
+for 1000 ms. `1` lasts one real second; `0` appears only when truly expired;
+nothing negative can render.
+
+### Resync behaviour
+
+`timerMath.reconciledSkewMs` keeps the **highest** reading. The least-delayed
+round trip is the most accurate, and it is also the safe one — an overstated
+skew shows the player *less* time than they have, never more. A step DOWN
+larger than `SKEW_RESYNC_THRESHOLD_MS` (750 ms) is the clock itself moving and
+is adopted at once; ordinary latency noise never is. Round timestamps
+themselves are immutable (proved in 2B1: `started_at` is written once inside
+the creation transaction and no read path recomputes it), so there is nothing
+else for a later snapshot to correct.
+
+### Background-tab behaviour
+
+The hook listens for `visibilitychange` and, on return, clears its pending
+timer and takes one fresh sample. The value is derived from the clock, so that
+sample IS the correct remaining time — the missed seconds are **not** animated
+through.
+
+---
+
+## Module-transition contract
+
+Audited; the between-module window itself is unchanged (`module_transition_ms`
+= result hold 1500/2600 + `MODULE_TITLE_MS` 1400, and 2B1's swap gate still
+ends by `started_at − SWAP_MEDIA_MIN_LEAD_MS 1000`). One rule added:
+
+* `MODULE_TITLE_MIN_MS` **600 ms**. `moduleTitleWindowMs` now returns **0**
+  when the room left is below the floor, so the title is **skipped rather than
+  flashed**. A beat the player cannot read is worse than no beat.
+* Nothing is ever *extended* to reach the floor; the boundary stays the
+  server's. Under fast load the title plays its nominal beat; under a media
+  wait it shortens to the 850 ms the swap gate guarantees; under a late
+  discovery it plays not at all.
+* Measured (browser, production-shaped latency): identical before and after —
+  reveal ~900 ms, then `module-intro` ~1005–1030 ms. Part 3 adds a floor, not
+  a pacing change.
+
+---
+
+## Match-complete lifecycle
+
+### Before
+
+```
+snapshot carries match_over
+  → phase = "match_over" in the SAME render
+  → MatchOverFrame replaces the arena
+  → the final round captured with { hold: false } — its reveal never played
+  → a second effect released any hold in flight, for good measure
+```
+
+Measured in the browser: `server-completed@0 → end-screen@311`. The last answer
+of the duel was the one answer whose verdict the player never saw land.
+
+### After
+
+```
+snapshot carries match_over
+  → liveCompletion decided from sawMatchLiveRef, BEFORE any await
+  → the outro is CLAIMED in the same batch (phase = "match_outro";
+    the end screen cannot mount, input is closed)
+  → the result row and the final settlement are fetched
+  → the final round is captured WITH its ordinary reveal hold
+  → outro.ready → the beat presents for MATCH_OUTRO_MS
+  → phase = "match_over" → MatchOverFrame
+```
+
+Three defects had to be fixed for that sequence to hold:
+
+1. **`{ hold: false }`** on the final round — now `hold: liveCompletion &&
+   finalRoundUnseen`, where `finalRoundUnseen` is `resolvedRef.current !==
+   lastRound`. A played-out match settles its final round inside the
+   transaction that ends it, so nothing has captured it; a **forfeit**'s last
+   completed round was captured (and revealed) earlier, so it correctly gets
+   no second reveal.
+2. **The "a finished match releases any hold" effect** ran on the first render
+   that saw `matchOver`, which lands *after* the completion poll armed the
+   reveal — so the one hold the player most needed was guaranteed to be
+   cancelled. It now stands aside while an outro is owed.
+3. **The surface adopted the completion snapshot.** `active_round: null` ended
+   the final round's presentation before its settlement had even been fetched.
+   `canAdvanceSurface` now refuses a snapshot that is `matchOver` with no
+   active round: a completed match publishes no round to present.
+
+A browser run with production-shaped latency caught a fourth, which the jsdom
+tests could not: the end screen flashed for ~320 ms in the gap between the
+completion snapshot and the two reads behind it, then the arena came *back*.
+Claiming the outro in the same batch as the snapshot removes it; `ready` is
+what keeps the beat from announcing the end before the verdict it follows.
+
+## Outro presentation state
+
+* Controller phase **`match_outro`** (`MatchPhase`), from the instant the
+  completion is observed until the beat is spent.
+* Presentation phase **`match-outro`** (`RankedPresentationPhase`), published
+  as `data-presentation-phase`, for the beat itself only — ranked AFTER
+  `revealing`, so the final round's verdict plays first.
+* `MATCH_OUTRO_MS` **1200 ms**, one constant, retunable without touching the
+  state machine that plays it.
+* The arena renders it through a new optional `outro?: ReactNode` seam on
+  `CanonicalArena` — the same spirit as `guidance` and `recovering.intro`, so
+  the arena never learns what a duel's ending is. (`guidance` is the Daily's
+  seam and a boundary test forbids Ranked using it.)
+
+### Outro information contract
+
+`flow/matchOutro.ts` exposes one minimal typed payload, `MatchOutroView`:
+`id`, `matchId`, `result` (win/loss/draw — from `outcome`/`winnerUserId` only,
+never by comparing two scores), `terminalReason`, `viewerScore` /
+`opponentScore` (the engine's committed `finalScores`), `viewerLabel` /
+`opponentLabel`, `viewerRole` / `opponentRole` (the frozen seats),
+`finalRoundNumber`, `ratingDelta` (when the history row already carries one).
+
+Deliberately **not** included: the timeline, transcript and discovery list
+(the end SCREEN's material), the rails' score-animation state (a second
+authority over the same numbers) and any rating TIER (the client holds no
+thresholds).
+
+---
+
+## Replay protection
+
+| event | plays when | cannot replay because |
+|---|---|---|
+| fresh-match intro | `entry === "fresh"`, match not over, and the exit instant is still ahead | `useEntryIntro` is a one-way latch per mount; a recovery is not eligible at all; a spent lead yields `false` on the first render that sees it |
+| final round's reveal | the completion is live AND `resolvedRef.current !== lastRound` | `resolvedRef` is the same ref that stops a re-poll double-capturing a settlement |
+| match outro | `sawMatchLiveRef.current` — this mount observed at least one OPEN snapshot — and `outroStartedRef` is unset | both are refs; `stoppedRef` also ends polling at completion. A refresh or a reconnect onto a finished match reads `match_over` on its FIRST snapshot, so nothing is owed and nothing ever appears |
+
+The outro's id is deterministic (`<matchId>:outro`), as the 2A result cues are.
+
+---
+
+## Reduced motion
+
+`prefers-reduced-motion` and the app's own Settings → Reduce Motion
+(`useReducedMotionPreference` → `[data-reduced-motion="true"]`) change the
+ANIMATION and never the pacing:
+
+* **Intro** — unchanged duration; the card fades instead of travelling (2B2's
+  behaviour, now with the 2B3 minimum behind it). Tested.
+* **Module transitions** — the window is a pacing constant, untouched.
+* **Outro** — `MATCH_OUTRO_MS` either way; a 180 ms fade replaces the 260 ms
+  rise. Tested.
+
+---
+
+## Measurements
+
+Production builds under `vite preview`: **before** = `origin/main` (:8472),
+**after** = this branch (:8471). Headless Chromium, CDP throttling — phones
+1.6 Mbps / 150 ms / 4× CPU, desktop 9 Mbps / 40 ms.
+
+### Intro — the minimum holds, and the variance collapses
+
+Modelled as the server lead LESS the client spend before the arena's first
+paint (slow ≈3100 ms queue / 1400 ms bot, fast ≈1100 ms):
+
+| path | arrival | before → intro | after → intro | after → locked preview |
+|---|---|---|---|---|
+| queue | slow | **421 ms** | **2021 ms** | 700 ms |
+| queue | fast | 2428 ms | **2596 ms** (capped) | 2119 ms |
+| bot | slow | **121 ms** | 1722 ms | 701 ms |
+| bot | fast | 418 ms | **2026 ms** | 686 ms |
+
+Before, the queue intro swung **2007 ms** between a fast machine and a slow
+one and degenerated to a 0.4 s flash; the bot card was 0.1–0.4 s. After, the
+swing is **575 ms**, the floor is met and the surplus lands on the locked
+preview. (The bot "slow" row models a route paint 300 ms slower than
+`ENTRY_ROUTE_PAINT_MS`; see Unresolved.)
+
+### Intro — consistent across hardware (after, three viewports)
+
+| viewport | intro first visible | intro duration | arena reveal → input |
+|---|---|---|---|
+| 390×844, 4× CPU | 6029 ms | **2080 ms** | 678 ms |
+| 360×800, 4× CPU | 5978 ms | **2068 ms** | 678 ms |
+| 1440×900 | 1572 ms | **2075 ms** | 696 ms |
+
+A 4×-throttled phone and an unthrottled desktop get the same beat to within
+12 ms, and the locked preview lands on its 700 ms target.
+
+### Countdown — real-clock cadence
+
+Ordinary run (no injected latency), gaps between visible changes:
+
+| viewport | n | min | max | avg |
+|---|---|---|---|---|
+| 390×844 | 6 | 997 | 1009 | **1001** |
+| 360×800 | 6 | 988 | 1015 | **1001** |
+| 1440×900 | 10 | 976 | 1018 | **1000** |
+
+Sample: `0:30@3647 → 0:29@5343 → 0:28@6345 → 0:27@7348 → 0:26@8349 →
+0:25@9351 → 0:24@10356 → …`. The first interval is longer by design: `30` is
+pinned through the lead-in by `projectTimer`'s duration cap and then owns its
+own second from `started_at`.
+
+**With production-shaped latency** (110–260 ms varying per poll, shimmed over
+the probe's interceptor — the probe alone answers instantly from the same
+clock and cannot reproduce the defect), 1440×900, 22 intervals each:
+
+| | min | max | avg | spread |
+|---|---|---|---|---|
+| before (`origin/main`) | **881 ms** | **1122 ms** | 997 | **241 ms** |
+| after (`rfx1/phase2b3`) | 981 ms | 1013 ms | 1000 | **32 ms** |
+
+### Module transition (browser, same latency)
+
+| | reveal | module-intro | total |
+|---|---|---|---|
+| before | 1569→2475 (906 ms) | 2475→3495 (1020 ms) | 3495 ms |
+| after | 1707→2609 (902 ms) | 2609→3639 (1030 ms) | 3639 ms |
+| after, media never settles | 1604→2519 (915 ms) | 2519→3515 (996 ms) | 3515 ms |
+
+Unchanged, as intended, and stable whether or not media ever loads.
+
+### Match complete (browser, same latency; ms from the completion snapshot)
+
+| | before | after | after, media never settles |
+|---|---|---|---|
+| final result feedback begins | — (never) | 850 | 717 |
+| outro begins | — | 2349 | 2234 |
+| end screen | **311** | 3557 | 3431 |
+| final reveal duration | 0 | **1499 ms** | 1517 ms |
+| outro duration | 0 | **1208 ms** | 1197 ms |
+
+No blank frame and no overlap in any run: exactly one of the arena and the end
+screen is mounted in every sample.
+
+Geometry: no document scroll and no nested scroll at any viewport. The 4 px
+horizontal overflow at 390/360 is the probe's own fixed state-picker toolbar —
+identical on `origin/main`, pre-existing, and on no product route (2B2's
+Remaining issue 5).
+
+---
+
+## Tests
+
+Frontend, new files:
+
+* `src/lib/ranked-core/timerMath.countdown.test.ts` (18) — ceiling semantics,
+  no negative, boundary arithmetic (whole second at a whole second, remainder
+  from an arbitrary instant, skew-corrected, null past the deadline, a 30 s
+  round walking exactly 30 boundaries), the module-title floor (nominal /
+  shortened / skipped / never below the swap gate's guarantee), the outro
+  constant's bounds, and the skew rule (seeds, keeps the highest, adopts a
+  real correction, bounds its error, holds the boundaries still).
+* `src/lib/ranked-core/flow/useCountdownNow.test.tsx` (6, fake timers) —
+  a stable `30 → 29 → 28 …` sequence with min = max = avg = 1000 ms;
+  transitions on deadline boundaries and not on mount + k·1000; twenty
+  rerenders cannot move the digit; a tiny resync produces no duplicate tick;
+  a backgrounded tab snaps to the truth and animates nothing; `0` is terminal
+  and `1` owns its second.
+* `src/pages/quiz-ranked/QuizRankedMatch.rfx1b3.test.tsx` (16, real controller
+  and real arena) — the intro holds its minimum with instant media and is
+  capped; the locked question is up before `started_at` and input opens AT it;
+  critical loading may extend, bounded by the preview margin; reduced motion
+  keeps the duration; a recovery and a spent lead play no intro. Desktop and
+  mobile show the same value from the same deadline, and a poll does not
+  restart the cadence. The ending: the exact sampled lifecycle
+  `answering → revealing → match-outro → end-screen` with each beat's
+  measured duration, no blank or overlapping state across the swap, no
+  end-screen flash under 250 ms of injected read latency, reduced motion
+  preserving the beat, no replay after it, and neither a refresh nor a
+  reconnect onto a completed match ever playing it.
+
+Frontend, updated: `flow/rankedFlow.test.ts` (the entry contract rewritten for
+the new formula — floor, ceiling, the server's hard clip, the holding
+boundary, unresolved vs unparseable), and `QuizRankedMatch.forfeit.test.tsx` /
+`QuizRankedMatch.revealBeat.test.tsx` (end-screen waits extended past the
+outro beat).
+
+Backend: `test_ranked_answerable_boundary.py` — the lead arithmetic rewritten
+term by term for both paths, plus
+`test_every_real_entry_path_can_pay_for_the_whole_presentation`, which is
+where the floor is actually proved: the frontend only ever clips, so
+"every fresh match gets the same minimum intro" IS the claim that each path's
+lead covers its own worst-reasonable client spend plus the presentation.
+
+### Results
+
+* Ranked suites: **131 files / 1621 tests passing**.
+* Whole frontend suite: **733 files / 11742 passing**; the 15 failing files /
+  79 failing tests are **byte-identical to the set on clean `origin/main`**,
+  verified by a full baseline run in a separate worktree. Zero regressions;
+  +41 tests, +3 files.
+* Production `vite build`: clean.
+* Backend Ranked suites: **85 passing**.
+  `test_ranked_prototype.py::test_two_human_match_defaults_to_production_and_not_bot`
+  fails identically with the branch stashed — the fresh worktree's empty stub
+  DB has no `quiz_questions`. Pre-existing and environmental.
+
+---
+
+## Files changed
+
+**Frontend** — new:
+`src/lib/ranked-core/flow/useCountdownNow.ts`,
+`src/lib/ranked-core/flow/matchOutro.ts`,
+plus the three test files above.
+
+Modified:
+* `src/lib/ranked-core/timerMath.ts` — `msUntilSecondBoundary`,
+  `SKEW_RESYNC_THRESHOLD_MS`, `reconciledSkewMs`;
+* `src/lib/ranked-core/pacing.ts` — `ENTRY_INTRO_MIN_MS`,
+  `ENTRY_INTRO_MAX_MS`, `entryIntroExitMs`, `entryIntroHolding` (new
+  signature), `entryIntroDurationMs`, `MODULE_TITLE_MIN_MS`,
+  `MATCH_OUTRO_MS`, and the floor inside `moduleTitleWindowMs`;
+* `src/lib/ranked-core/flow/useEntryIntro.ts` — the entry presentation
+  coordinator: the first-paint anchor, the local-instant exit, the latch;
+* `src/lib/ranked-core/flow/rankedFlow.ts` — the `match-outro` phase;
+* `src/pages/quiz-ranked/useRankedMatch.ts` — the `match_outro` phase, the
+  outro state and its two refs, the scoped final-round hold, the scoped
+  match-over release, the beat effect, `matchOutroId`, and the reconciled
+  skew;
+* `src/pages/quiz-ranked/QuizRankedMatch.tsx` — `useCountdownNow` feeding
+  `projectTimer`, the outro payload and placeholder, the surface guard for a
+  completed match;
+* `src/components/ranked-arena/CanonicalArena.tsx` — the optional `outro`
+  seam;
+* `src/index.css` — the placeholder's two rules and its reduced-motion
+  variant;
+* this handoff.
+
+**Backend** — `ranked_public/pacing.py` (`ENTRY_ROUTE_PAINT_MS`,
+`ENTRY_INTRO_MIN_MS`, `ENTRY_ARENA_PREVIEW_MS`, `ENTRY_PRESENTATION_MS`, and
+`_ENTRY_PATHS` rewritten) and `test_ranked_answerable_boundary.py`. Nothing
+else: `started_at` is still written once, inside the creation transaction, by
+the same `_open_segment` mechanism, and the configured answer window is
+unchanged — it simply begins later.
+
+---
+
+## Unresolved / notes
+
+1. **The bot path's worst case is ~1.7 s, not 2.0 s.** The floor is measured
+   from the arena's first paint, and `ENTRY_ROUTE_PAINT_MS` models that at
+   300 ms. A cold, throttled phone that takes 600 ms to paint loses the
+   difference off the card, because the server's lead is fixed at creation.
+   Bounded and quantified; the lever is `ENTRY_ROUTE_PAINT_MS`, and raising it
+   costs nothing but a later `started_at`. Not raised here on speculation.
+2. **`ENTRY_INTRO_MAX_MS` 2600 sends surplus to the locked preview**, which on
+   a fast queue entry reached 2119 ms. A prepared question sitting locked for
+   two seconds reads as anticipation rather than as a stall, but it is the one
+   number in this contract that a design pass may want to revisit.
+3. **`SWAP_MEDIA_MIN_LEAD_MS` is still 1000** (2B1 note 4, 2B2 issue 4). With
+   the 2B2 derivatives the gate rarely waits at all, and it is what makes
+   `MODULE_TITLE_MIN_MS` reachable rather than aspirational — a test pins that
+   relationship.
+4. **The probe cannot reproduce the clock defect on its own**: its scripted
+   server answers instantly from the same clock, so `snapshotSkewMs` reads ~0.
+   The latency shim in the scratchpad script is what puts the production round
+   trip back, and it must be installed AFTER the probe's own interceptor or it
+   is bypassed.
+5. **Round 1 no longer plays a module-title face.** 700 ms of preview is below
+   `MODULE_TITLE_MIN_MS`, so the title is skipped and the preview shows the
+   question and its clock. Deliberate — the duel card is round 1's orientation
+   beat now — but it is a visible change from 2B1.
+
+---
+
+## Remaining design work
+
+Exactly two items, both the owner's, and neither started here:
+
+1. **The intro screen's visual and content design** — what the pre-match
+   presentation actually looks like and says. 2B2's duel card occupies the
+   window today; this phase only decided how long that window is.
+2. **The outro screen's visual and content design** — what the match-complete
+   beat actually looks like and says. Today it is a neutral `MATCH COMPLETE`
+   placeholder, unstyled beyond sitting in the focus column, rendered so the
+   lifecycle is visible and testable. `MatchOutroView` states what
+   authoritative material the design may draw on.
+
+Neither design is complete, and nothing in this phase should be read as
+approving copy or composition for either.

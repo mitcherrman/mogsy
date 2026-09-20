@@ -89,6 +89,8 @@ import {
   entryPrepBudgetMs, moduleTitleWindowMs, presentationCutoffAt,
 } from "@/lib/ranked-core/pacing";
 import { useEntryIntro } from "@/lib/ranked-core/flow/useEntryIntro";
+import { useCountdownNow } from "@/lib/ranked-core/flow/useCountdownNow";
+import { projectMatchOutro } from "@/lib/ranked-core/flow/matchOutro";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useRankedMatchSfx } from "./useRankedMatchSfx";
@@ -322,7 +324,19 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    */
   const [renderedRound, setRenderedRound] = useState<PublicRoundView | null>(null);
   const live = m.publicRound;
-  const canAdvanceSurface = live !== null && !m.revealHold && (
+  const canAdvanceSurface = live !== null && !m.revealHold
+    /**
+     * RFX1 2B3 — A COMPLETED MATCH PUBLISHES NO ROUND TO PRESENT.
+     *
+     * The snapshot that ends a match carries `active_round: null`, and the
+     * surface used to adopt it — which silently ended the final round's
+     * presentation before its settlement had even been fetched. The final
+     * question's own verdict then had nothing to attach to, which is half of
+     * why the ending felt like a cut. The arena keeps presenting the round
+     * the match ended on, right through its reveal and the outro beat; the
+     * end screen reads `m.publicRound` and is unaffected.
+     */
+    && !(live.matchOver && live.activeRound === null) && (
     // A real round is open, or this is the first snapshot we have ever seen, or
     // the segment itself changed (a phased segment legitimately has no engine
     // round, so waiting for one would pin the surface to the wrong module).
@@ -682,8 +696,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // No clock while a settled round is being revealed: N's clock has ended and
   // N+1's has not begun, and showing either over N's result is the mixed-round
   // state this replaces. The centre shows the result instead.
+  /**
+   * RFX1 2B3 — THE CLOCK'S ONLY `now`.
+   *
+   * Deadline-anchored and stable between second boundaries, so the displayed
+   * number is a pure function of the authoritative deadline and cannot be
+   * moved by a poll, a rerender or a remount. `projectTimer` is unchanged and
+   * still pure; it simply stops being handed a raw `Date.now()` that every
+   * render re-rolled. Desktop (`CentralStage`) and mobile (`MobileMatchBar`)
+   * both read the ONE `header.timer` built from it, so there is a single
+   * countdown projection on every viewport.
+   */
+  const countdownNow = useCountdownNow(
+    m.publicRound?.activeRound?.activeDeadline ?? null, m.skewMs);
   const timer = !revealing && m.publicRound
-    ? projectTimer(m.publicRound, m.skewMs, Date.now()) : null;
+    ? projectTimer(m.publicRound, m.skewMs, countdownNow) : null;
   // Wake EXACTLY at the live round's authoritative start, so input opens at
   // `started_at` rather than on the next 1s tick. One timeout, re-armed only
   // when the instant changes, cleared on unmount.
@@ -699,6 +726,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     presentedStartedAt: surfaceRound?.activeRound?.startedAt ?? null,
     skewMs: m.skewMs,
     nowMs: Date.now(),
+    matchOutro: m.matchOutroId !== null,
   });
   // Phase 2B seam: the authoritative next round, known but not yet presented.
   // Its media is what the preloader will prepare during the reveal.
@@ -1021,6 +1049,18 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     return <CanonicalArena view={null} terminal={terminal} chrome={chrome} />;
   }
 
+  /**
+   * RFX1 2B3 — the outro's authoritative payload, projected once. Null except
+   * during the beat, so nothing is computed for the 99% of a match that is
+   * not ending.
+   */
+  const matchOutro = m.matchOutroId && presentationPhase === "match-outro"
+    ? projectMatchOutro({
+      id: m.matchOutroId, matchId, viewerUserId, viewerLabel,
+      opponentLabel: m.publicRound ? opponentLabelFor(m.publicRound) : "Opponent",
+      pub: m.publicRound, result: m.result, ratingDelta,
+    })
+    : null;
   const opponentLabel = opponentPresenceLabel(m.presence);
   // "vs Bot" or "vs Opponent" — `opponentLabelFor` is the one place that
   // decides which, and it is deliberately the only distinction available:
@@ -1355,5 +1395,35 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     }),
   };
 
-  return <CanonicalArena view={view} chrome={chrome} />;
+  /**
+   * RFX1 2B3 — THE MATCH-COMPLETE BEAT, IN THE ARENA.
+   *
+   * It is gated on the PHASE and not merely on the outro's existence: the
+   * final round's own result beat runs first, and nothing announces the end
+   * of the match over a verdict the player is still reading.
+   *
+   * `match_outro` is not `match_over`, so this render is the ordinary arena:
+   * the final question and its reveal are still on screen, input is closed
+   * (`phase !== "active"`), and the end screen has not mounted. The beat is
+   * announced through the existing `guidance` seam and through the root's
+   * `data-presentation-phase`, which is already published.
+   *
+   * THE COPY AND THE LOOK BELOW ARE A PLACEHOLDER, deliberately. This phase
+   * ships the lifecycle, the timing and the payload; what the outro actually
+   * says and looks like is the owner's design decision and is not made here.
+   */
+  const outro = matchOutro;
+  return (
+    <CanonicalArena view={view} chrome={chrome}
+      outro={outro ? (
+        <section data-testid="ranked-match-outro" data-match-outro-id={outro.id}
+          data-match-outro-result={outro.result}
+          data-reduced-motion={reducedMotion ? "true" : "false"}
+          aria-live="polite"
+          className="ranked-match-outro rounded-lg border border-border/60 bg-card/80 px-4 py-3
+                     text-center font-mono text-sm uppercase tracking-[0.2em] text-muted-foreground">
+          Match complete
+        </section>
+      ) : undefined} />
+  );
 }
