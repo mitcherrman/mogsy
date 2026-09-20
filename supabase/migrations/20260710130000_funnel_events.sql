@@ -1,28 +1,68 @@
--- Lightweight funnel event tracking for the Mogsy LoL guest quiz funnel.
--- Mirrors the ad_events pattern: open inserts, admin-only reads, silent-fail client.
-CREATE TABLE public.funnel_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_name text NOT NULL,
-  route text,
-  viewport_w integer,
-  viewport_h integer,
-  is_guest boolean,
-  source text NOT NULL DEFAULT 'lol_funnel',
-  user_id uuid,
-  payload jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_funnel_events_created_at ON public.funnel_events (created_at);
-CREATE INDEX idx_funnel_events_event_name ON public.funnel_events (event_name);
-
-ALTER TABLE public.funnel_events ENABLE ROW LEVEL SECURITY;
-
--- Landing events can fire before the anonymous session exists, so allow anon inserts too.
-CREATE POLICY "Anyone can insert funnel events" ON public.funnel_events
-  FOR INSERT TO anon, authenticated
-  WITH CHECK (true);
-
-CREATE POLICY "Admins can read funnel events" ON public.funnel_events
-  FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'::app_role));
+-- TOMBSTONE — this migration was never applied and must never be applied.
+--
+-- It originally created public.funnel_events. FUNNEL1A proved three ways that
+-- the table does not exist in the production project (kewgjwrzpzpeltwidvuc)
+-- and never has — see docs/FUNNEL1_HANDOFF.md §5:
+--
+--   1. a read-only PostgREST probe returns 404 PGRST205 for funnel_events
+--      while its siblings in the same batch return 200;
+--   2. src/integrations/supabase/types.ts, regenerated 2026-09-14 — two months
+--      after this file was committed — does not contain the table;
+--   3. the emitter itself casts `supabase as any` to reach a table the
+--      generated types have never known about.
+--
+-- Migrations in this project are applied BY HAND through the Lovable Cloud SQL
+-- Editor. There is no automatic apply step and no schema_migrations ledger
+-- entry to reconcile, which is how this one came to be skipped: it sat
+-- immediately after two files that share a timestamp
+-- (20260710120000_broadcast_live_state.sql and 20260710120000_league_swipe.sql)
+-- and whatever push ran that batch did not include it.
+--
+--
+-- WHY THE FILE IS NEUTRALIZED RATHER THAN DELETED
+--
+-- Deleting it would be the tidier-looking move and the worse one. The file is
+-- referenced by name in the audit, in this project's history, and in any
+-- reader's memory of "the funnel migration"; a deletion leaves the next person
+-- to rediscover the same 404 from scratch. Keeping it as DDL is worse still —
+-- a replay of this folder in filename order would create a dead
+-- `funnel_events` table beside the live `analytics_events` one, which is
+-- precisely the duplicate-table outcome FUNNEL1B1 is required to avoid.
+--
+-- So: the ordering and the record survive, the DDL does not. This file is
+-- inert. Running it does nothing, and running it twice does nothing twice.
+--
+--
+-- WHAT REPLACED IT
+--
+-- 20260920120000_funnel1b1_analytics_foundation.sql — analytics_events,
+-- analytics_visitors and analytics_sessions. It is not a port of the shape
+-- below; there were zero rows to preserve and no read path to keep
+-- compatible, so the schema was designed rather than migrated. The ideas that
+-- survived are the open-insert/admin-read RLS posture and the silent-fail
+-- client contract. Everything else (visitor identity, sessions, attribution,
+-- server authority, idempotency) did not exist here.
+--
+--
+-- The original statements, for the record, commented out and not executed:
+--
+--   CREATE TABLE public.funnel_events (
+--     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--     event_name text NOT NULL,
+--     route text,
+--     viewport_w integer,
+--     viewport_h integer,
+--     is_guest boolean,
+--     source text NOT NULL DEFAULT 'lol_funnel',
+--     user_id uuid,
+--     payload jsonb,
+--     created_at timestamptz NOT NULL DEFAULT now()
+--   );
+--   CREATE INDEX idx_funnel_events_created_at ON public.funnel_events (created_at);
+--   CREATE INDEX idx_funnel_events_event_name ON public.funnel_events (event_name);
+--   ALTER TABLE public.funnel_events ENABLE ROW LEVEL SECURITY;
+--   CREATE POLICY "Anyone can insert funnel events" ON public.funnel_events
+--     FOR INSERT TO anon, authenticated WITH CHECK (true);
+--   CREATE POLICY "Admins can read funnel events" ON public.funnel_events
+--     FOR SELECT TO authenticated
+--     USING (public.has_role(auth.uid(), 'admin'::app_role));
