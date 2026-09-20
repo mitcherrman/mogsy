@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
+import { useSfx } from "@/lib/audio/useSfx";
 import {
   confirmationPrompt,
   disconnectIdentityLink,
@@ -81,6 +82,7 @@ function stamp(iso: string | null): string | null {
 
 export default function AccountConnections() {
   const { user } = useAuth();
+  const { play: playSfx } = useSfx();
   const navigate = useNavigate();
   const isGuest = !user || user.is_anonymous === true;
 
@@ -162,10 +164,12 @@ export default function AccountConnections() {
       abandon();
       await load();
       setNotice({ tone: "success", text: `${PROVIDER_NAME[preview.provider]} account connected.` });
+      playSfx("account.action.confirmed");
     } catch {
       const provider = preview.provider;
       abandon();
       setNotice(statusNotice(provider, "error"));
+      playSfx("ui.feedback.error");
     }
   };
 
@@ -178,6 +182,7 @@ export default function AccountConnections() {
     } catch {
       setBusy(null);
       setNotice(statusNotice(provider, "unavailable"));
+      playSfx("ui.feedback.error");
     }
   };
 
@@ -187,8 +192,10 @@ export default function AccountConnections() {
       await disconnectIdentityLink(provider);
       await load();
       setNotice({ tone: "success", text: `${PROVIDER_NAME[provider]} account disconnected.` });
+      playSfx("account.action.confirmed");
     } catch {
       setNotice({ tone: "error", text: `Could not disconnect ${PROVIDER_NAME[provider]}.` });
+      playSfx("ui.feedback.error");
     } finally {
       setBusy(null);
     }
@@ -215,6 +222,7 @@ export default function AccountConnections() {
       await setIdentityPreference(userId, provider, patch);
     } catch {
       setNotice({ tone: "error", text: "That preference could not be saved." });
+      playSfx("ui.feedback.error");
       await load();
     }
   };

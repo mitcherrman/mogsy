@@ -30,7 +30,8 @@ vi.mock("@/components/report/PageReportControl", () => ({
   default: () => <div data-testid="hud-page-report" />,
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
-vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
 
 import GlobalHud from "./GlobalHud";
 import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
@@ -146,6 +147,13 @@ describe("GlobalHud chrome", () => {
 });
 
 describe("GlobalHud home control — target and pop", () => {
+  it("requests one canonical navigation cue only on activation", () => {
+    renderHud();
+    expect(sfx.play).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("hud-home"));
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+    expect(sfx.play).toHaveBeenCalledWith("ui.navigation.activate");
+  });
   it("gives the home control a 44px hit target around a smaller mark", () => {
     renderHud();
     const home = screen.getByTestId("hud-home");

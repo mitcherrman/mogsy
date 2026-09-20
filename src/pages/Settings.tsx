@@ -13,7 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import SEOHead from "@/components/SEOHead";
 import TwoFactorAuth from "@/components/TwoFactorAuth";
-import UiSfxSettings from "@/components/UiSfxSettings";
 import AccountConnections from "@/components/settings/AccountConnections";
 import {
   setAutoMuteWhenInactive,
@@ -258,9 +257,6 @@ export default function Settings() {
             />
           </div>
         </motion.section>
-
-        {/* Sound Effects (main app UI SFX) */}
-        <UiSfxSettings />
 
         {/* Accessibility */}
         <motion.section

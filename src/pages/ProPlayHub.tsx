@@ -3,6 +3,7 @@ import { ArrowLeft, Trophy, Brain, BarChart3, Radio, Search, Swords } from "luci
 import SEOHead from "@/components/SEOHead";
 import HexPanelLink from "@/components/lol/HexPanelLink";
 import ProStatsExplorer from "@/components/pro-play/ProStatsExplorer";
+import { useSfx } from "@/lib/audio/useSfx";
 import {
   PRO_PLAY_GRAPHS_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
@@ -90,6 +91,7 @@ const MODULES: ProPlayModule[] = [
   },
 ];
 export default function ProPlayHub() {
+  const { play } = useSfx();
   return (
     <div className="min-h-screen bg-background">
       <SEOHead
@@ -130,6 +132,11 @@ export default function ProPlayHub() {
               description={m.description}
               Icon={m.Icon}
               accent="gold"
+              onClick={
+                m.to === PRO_PLAY_MATCHUP_ROUTE || m.to === PRO_PLAY_GRAPHS_ROUTE
+                  ? () => play("pro-play.analysis.open")
+                  : undefined
+              }
             />
           ))}
         </div>

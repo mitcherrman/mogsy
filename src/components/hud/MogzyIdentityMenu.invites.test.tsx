@@ -68,7 +68,7 @@ vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
-vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => ({ play: vi.fn() }) }));
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 
 // Stable identity: a fresh object per render would re-fire the bell's

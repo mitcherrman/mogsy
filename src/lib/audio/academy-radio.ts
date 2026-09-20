@@ -90,7 +90,7 @@ export const RADIO_DRIFT_TOLERANCE_SECONDS = 2;
 
 /**
  * Namespaced under `mogsy.` to match the storage prefix the app already uses
- * (`mogsy.uiSfx.v1`, `mogsy.knowledge_admin_key`). Only the visitor's own
+ * (`mogsy.audio.*`, `mogsy.knowledge_admin_key`). Only the visitor's own
  * choices are persisted — never a promise that audio may play on load.
  */
 export const RADIO_STORAGE_KEYS = {

@@ -19,6 +19,7 @@ export default function BroadcastSfxLayer({ snapshot }: { snapshot: EngineSnapsh
   const sfx: BroadcastSfx = snapshot.config.sfx ?? DEFAULT_SFX;
   const [blocked, setBlocked] = useState(false);
   const playedRef = useRef<Set<string>>(new Set());
+  const initialPhaseRef = useRef(`${snapshot.sessionId}:${snapshot.phase}:${snapshot.phaseStartedAt}`);
   const sfxRef = useRef(sfx);
   sfxRef.current = sfx;
 
@@ -30,39 +31,55 @@ export default function BroadcastSfxLayer({ snapshot }: { snapshot: EngineSnapsh
     if (playedRef.current.has(dedupeKey)) return;
     playedRef.current.add(dedupeKey);
     // Keep the dedupe set from growing unbounded on a 24/7 broadcast.
-    if (playedRef.current.size > 300) playedRef.current.clear();
-    void playBroadcastSfx(item.src, cfg.masterVolume * item.volume).then((res) => {
+    while (playedRef.current.size > 300) {
+      const oldest = playedRef.current.values().next().value as string | undefined;
+      if (!oldest) break;
+      playedRef.current.delete(oldest);
+    }
+    void playBroadcastSfx(event, cfg, dedupeKey).then((res) => {
       if (res === "blocked") setBlocked(true);
       else if (res === "played") setBlocked(false);
-    });
+    }).catch(() => {});
   }, []);
 
   const { phase, phaseStartedAt, phaseDurationMs } = snapshot;
 
   // Phase-entry sounds.
   useEffect(() => {
-    const key = `${phase}:${phaseStartedAt}`;
+    const phaseIdentity = `${snapshot.sessionId}:${phase}:${phaseStartedAt}`;
+    // Mounting onto a restored/live snapshot establishes a silent baseline.
+    if (phaseIdentity === initialPhaseRef.current) return;
+    const key = `broadcast:${phaseIdentity}`;
     if (phase === "question") tryPlay("questionStart", key);
     else if (phase === "reveal") {
-      tryPlay("reveal", key);
-      tryPlay("correctAnswer", `${key}:correct`);
+      // Reveal and correct-answer highlighting are one presentation moment.
+      // Prefer the specialized configured highlight; retain reveal as the
+      // legacy fallback, but never stack both files.
+      const cfg = sfxRef.current;
+      const correct = cfg.sounds.correctAnswer;
+      tryPlay(correct.enabled && correct.src.trim() ? "correctAnswer" : "reveal", key);
     } else if (phase === "transition") tryPlay("transition", key);
-  }, [phase, phaseStartedAt, tryPlay]);
+  }, [phase, phaseStartedAt, snapshot.sessionId, tryPlay]);
 
   // Countdown ticks — once per remaining second 3, 2, 1 of the question phase.
   useEffect(() => {
     if (phase !== "question" || phaseDurationMs <= 0) return;
+    const phaseIdentity = `${snapshot.sessionId}:${phase}:${phaseStartedAt}`;
+    if (phaseIdentity === initialPhaseRef.current) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     for (const n of [3, 2, 1]) {
       const fireAt = phaseStartedAt + phaseDurationMs - n * 1000;
       const delay = fireAt - Date.now();
       if (delay < -250) continue; // late joiner past this tick — skip it
       timers.push(
-        setTimeout(() => tryPlay("countdownTick", `${phaseStartedAt}:tick${n}`), Math.max(0, delay)),
+        setTimeout(
+          () => tryPlay("countdownTick", `broadcast:${snapshot.sessionId}:${phaseStartedAt}:tick${n}`),
+          Math.max(0, delay),
+        ),
       );
     }
     return () => timers.forEach(clearTimeout);
-  }, [phase, phaseStartedAt, phaseDurationMs, tryPlay]);
+  }, [phase, phaseStartedAt, phaseDurationMs, snapshot.sessionId, tryPlay]);
 
   const onUnlock = async () => {
     await unlockBroadcastAudio();

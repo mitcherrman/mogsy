@@ -10,6 +10,7 @@ import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
 import RankedPlayScroll from "@/components/quiz/play-scroll/RankedPlayScroll";
  
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+import { useSfx } from "@/lib/audio/useSfx";
 
 import LeaguecraftWorkspace, {
   parseWorkspaceHash,
@@ -382,6 +383,7 @@ export default function LeaguecraftHub({
    */
   trends?: React.ReactNode;
 }) {
+  const canonicalSfx = useSfx();
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
   const secondarySets = sets.filter((s) => s.id !== primarySet?.id);
 
@@ -430,6 +432,7 @@ export default function LeaguecraftHub({
    *  Writes the hash so the pane is shareable and the press is undoable. */
   const openWorkspace = useCallback(
     (mode: WorkspaceMode) => {
+      if (workspaceMode !== mode) canonicalSfx.play("leaguecraft.record.selection");
       setLocalMode(mode);
       // Re-selecting the pane that is already open must still travel — the
       // Recent Studies footer's whole job is to take the reader there — but
@@ -442,7 +445,7 @@ export default function LeaguecraftHub({
       navigate(workspaceHash(mode));
       goToSection(workspaceSectionRef.current);
     },
-    [hashMode, navigate],
+    [canonicalSfx, hashMode, navigate, workspaceMode],
   );
 
   /**

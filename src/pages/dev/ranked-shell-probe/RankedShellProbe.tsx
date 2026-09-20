@@ -430,7 +430,25 @@ function publicFor(state: ProbeState, role: string | null) {
   } else {
     payload.question = questionFor(state);
   }
-  return applyPoints(env);
+  const applied = applyPoints(env);
+  if (probe.sfxStep > 0 && probe.sfxStep < 5) {
+    const round = Math.max(1, probe.sfxStep);
+    const completed = round - 1;
+    const active = payload.active_round as Record<string, unknown> | null;
+    if (active) active.round_number = round;
+    payload.completed_rounds = completed;
+    env.round_number = round;
+    const publicPlayers = payload.players as Record<string, unknown>[];
+    publicPlayers[0].has_submitted = false;
+    publicPlayers[1].has_submitted = probe.sfxStep === 1;
+    const viewerScore = completed >= 2 ? 5 : completed >= 1 ? 2 : 0;
+    const opponentScore = completed >= 3 ? 4 : completed >= 1 ? 2 : 0;
+    return withPointsScoring(applied, {
+      moduleNumber: round, matchLength: 10, modulesCompleted: completed,
+      scores: { userA: viewerScore, userB: opponentScore },
+    });
+  }
+  return applied;
 }
 
 function privateFor(state: ProbeState) {
@@ -521,9 +539,11 @@ const probe: {
   entryFresh: boolean;
   leadMs: number;
   leadAnchorMs: number | null;
+  /** SFX1.5 browser-only live transition step; zero outside `?sfx=1`. */
+  sfxStep: number;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
-  discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null };
+  discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null, sfxStep: 0 };
 
 /** Stamp a live clock and a future round-1 start onto a canned envelope. */
 function applyEntryLead<T extends { payload: Record<string, unknown>; server_time?: string }>(
@@ -768,11 +788,26 @@ function installInterceptor() {
       return json({ status: "complete", match_id: "m1",
         forfeited: true, already_complete: false });
     }
+    // SFX1.5 — keep the visual-QA bench on the real challenge-ack contract so
+    // a Meta Reflex click reaches the same accepted-command boundary as live
+    // Ranked. The next public snapshot deliberately remains unchanged; this
+    // probe verifies interaction/audio/layout, not a second match engine.
+    const challenge = /\/segments\/(\d+)\/challenges\/(\d+)$/.exec(path);
+    if (challenge && (init?.method ?? "GET") === "POST") {
+      const segment = Number(challenge[1]);
+      const index = Number(challenge[2]);
+      return json({
+        status: "accepted", match_id: "m1", segment_number: segment,
+        challenge_index: index, idempotent: false, conflicting: false,
+        segment_resolved: false, next_challenge_index: index + 1,
+      });
+    }
     // RMOB2 — a settled module of a points state, so the resume backfill (the
     // real controller path) fills the recent-result history. Deterministic:
     // the viewer takes every module but each third, the opponent every other.
     const resolved = /\/rounds\/(\d+)\/resolved$/.exec(path);
-    if (resolved && probe.points && Number(resolved[1]) < probe.points.module) {
+    if (resolved && ((probe.points && Number(resolved[1]) < probe.points.module)
+      || (probe.sfxStep >= 2 && Number(resolved[1]) < probe.sfxStep))) {
       const round = Number(resolved[1]);
       return json({ schema_version: "ranked_duel.resolved_round.v2",
         projection_type: "resolved_round", match_id: "m1", round_number: round,
@@ -789,6 +824,7 @@ installInterceptor();
 
 export default function RankedShellProbe() {
   const [params, setParams] = useSearchParams();
+  const [sfxStep, setSfxStep] = useState(0);
   const state = (PROBE_STATES as readonly string[]).includes(params.get("q") ?? "")
     ? (params.get("q") as ProbeState) : "opts4";
   const role = params.get("role");
@@ -802,7 +838,10 @@ export default function RankedShellProbe() {
   probe.opponentRole = orole && orole !== "none" ? orole : null;
   probe.progressionOff = params.get("progression") === "0";
   const end = params.get("end");
-  probe.end = end === "victory" || end === "defeat" || end === "draw" ? end : null;
+  const sfxQa = params.get("sfx") === "1";
+  probe.sfxStep = sfxQa ? sfxStep : 0;
+  probe.end = sfxQa && sfxStep >= 5 ? "victory"
+    : end === "victory" || end === "defeat" || end === "draw" ? end : null;
   probe.gaps = (params.get("gap") ?? "").split(",").map(Number).filter((n) => n > 0);
   probe.bot = params.get("bot") === "1";
   probe.rated = params.get("rating") !== "0";
@@ -839,6 +878,13 @@ export default function RankedShellProbe() {
           </button>
         ))}
       </div>
+      {sfxQa && sfxStep < 5 ? (
+        <button type="button" data-testid="probe-sfx-advance"
+          className="pointer-events-auto fixed right-2 top-24 z-[61] rounded bg-cyan-700 px-3 py-2 text-xs text-white"
+          onClick={() => setSfxStep((step) => Math.min(5, step + 1))}>
+          Advance SFX fixture ({sfxStep}/5)
+        </button>
+      ) : null}
       {params.get("frame") === "0" ? (
         <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
           matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}

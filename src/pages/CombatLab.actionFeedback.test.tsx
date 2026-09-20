@@ -13,6 +13,10 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import CombatLab from "./CombatLab";
 
+const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
+
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: null, loading: false }),
 }));
@@ -97,7 +101,8 @@ function stubBackend({
       if (url.includes("/api/meta/combat-lab-actions")) return ok(actions);
       if (url.includes("/api/combat-lab/active") || url.includes("/api/combat-lab/basic-attack")) {
         calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null });
-        return ok(step ? step(n++) : { ok: true, result: { state: {}, events: [] } });
+        const response = step ? step(n++) : { ok: true, result: { state: {}, events: [] } };
+        return response instanceof Error ? Promise.reject(response) : ok(response);
       }
       return Promise.reject(new Error("offline in test"));
     }),
@@ -123,8 +128,36 @@ function stepResponse(damage: number, hp: number, max = DUMMY_HP) {
 }
 
 beforeEach(() => {
+  sfx.play.mockReset();
   vi.stubGlobal("localStorage", createStorage());
   localStorage.setItem(CONFIG_KEY, JSON.stringify({ champion: "Aatrox" }));
+});
+
+describe("Combat Lab semantic sound", () => {
+  it("keeps initial and restored setup silent", async () => {
+    stubBackend();
+    mount();
+    await screen.findByRole("button", { name: /^Basic Attack\s*Auto-attack the primary target$/i });
+    expect(sfx.play).not.toHaveBeenCalled();
+  });
+
+  it("sounds exactly one authoritative resolve after a valid combat action", async () => {
+    stubBackend({ step: () => stepResponse(107, 3893) });
+    mount();
+    fireEvent.click(basicAttack());
+    await waitFor(() => expect(sfx.play).toHaveBeenCalledWith("combat.simulation.resolve"));
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("sounds refusal, never resolve, when the request fails", async () => {
+    stubBackend({ step: () => new Error("backend refused") });
+    mount();
+    fireEvent.click(basicAttack());
+    await screen.findByText("backend refused");
+    expect(sfx.play).toHaveBeenCalledWith("ui.feedback.error");
+    expect(sfx.play).not.toHaveBeenCalledWith("combat.simulation.resolve");
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+  });
 });
 
 afterEach(() => {

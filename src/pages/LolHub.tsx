@@ -21,9 +21,9 @@ import {
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+import { useSfx } from "@/lib/audio/useSfx";
 import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
 import AcademyCommons from "@/components/lol/AcademyCommons";
-import { playUiSfx } from "@/lib/ui-sfx";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
@@ -240,6 +240,7 @@ function prefersReducedMotion(): boolean {
 }
 
 export default function LolHub() {
+  const canonicalSfx = useSfx();
   const { user } = useAuth();
   const { data: championAssets } = useChampionAssets();
   // One Patch Brief feed serves the desktop and mobile centerpieces alike.
@@ -547,10 +548,10 @@ export default function LolHub() {
   // Funnel: landing view, once per mount.
   useEffect(() => {
     trackFunnelEvent("lol_landing_viewed");
-    // appEnter SFX — playUiSfx skips this internally on a cold page load
-    // (no user gesture yet), so it only sounds after internal navigation.
-    playUiSfx("appEnter");
-  }, []);
+    // This semantic has no built-in voice, preserving the legacy path's
+    // default-silent behavior while allowing an Audio Studio binding.
+    canonicalSfx.play("hub.application.enter");
+  }, [canonicalSfx]);
 
   // Display name for the academy line. Anonymous users keep the "Summoner"
   // fallback and never hit the network; a signed-in user with no display_name
@@ -608,6 +609,34 @@ export default function LolHub() {
   const sfx = usePlaySfx();
   const sfxRef = useRef(sfx);
   sfxRef.current = sfx;
+  const lastKeyboardNavigationAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const destinationPreviewAtRef = useRef(new Map<HubGuideModeId, number>());
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") lastKeyboardNavigationAtRef.current = Date.now();
+    };
+    const onPointerDown = () => { lastKeyboardNavigationAtRef.current = Number.NEGATIVE_INFINITY; };
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, []);
+
+  const previewDestination = useCallback((guideId: HubGuideModeId, input: "pointer" | "keyboard") => {
+    if (input === "pointer") {
+      const fineHover = window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true;
+      if (!fineHover) return;
+    } else if (Date.now() - lastKeyboardNavigationAtRef.current > 1000) {
+      // Focus restored by code or the browser is not an authored interaction.
+      return;
+    }
+    const now = Date.now();
+    if (now - (destinationPreviewAtRef.current.get(guideId) ?? Number.NEGATIVE_INFINITY) < 320) return;
+    destinationPreviewAtRef.current.set(guideId, now);
+    canonicalSfx.play("hub.destination.focus");
+  }, [canonicalSfx]);
   useEffect(() => {
     if (!runEntrance) return;
     if (typeof window === "undefined") return;
@@ -635,7 +664,6 @@ export default function LolHub() {
     // keep sounding on the next page (verified by counting voices across the
     // transition). Holding navigation for audio would be the wrong trade.
     sfxRef.current.play("bookRuffle");
-    playUiSfx("sectionOpen");
     if (to === "/quiz") {
       trackFunnelEvent("lol_start_quiz_clicked", { cta: "hub_book" });
     }
@@ -693,8 +721,15 @@ export default function LolHub() {
       key={d.to}
       data-guide-mode={d.guideId}
       onMouseEnter={() => activateGuide(d.guideId)}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "touch") return;
+        previewDestination(d.guideId, "pointer");
+      }}
       onMouseLeave={deactivateGuide}
-      onFocus={() => activateGuide(d.guideId)}
+      onFocus={() => {
+        activateGuide(d.guideId);
+        previewDestination(d.guideId, "keyboard");
+      }}
       onBlur={deactivateGuide}
       className={`relative z-10 w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
       style={{

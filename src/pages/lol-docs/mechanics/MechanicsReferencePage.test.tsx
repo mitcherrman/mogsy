@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   FOUNTAIN,
@@ -16,6 +16,10 @@ import {
 } from "@/lib/mechanics-tables/fixtures";
 
 import MechanicsReferencePage from "./MechanicsReferencePage";
+
+const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
+
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
 
 const TABLES_BY_ID: Record<string, unknown> = {
   "base_systems.study.fountain": FOUNTAIN,
@@ -100,7 +104,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+beforeEach(() => {
+  sfx.play.mockReset();
+});
+
 describe("Mechanics Reference — the shelf", () => {
+  it("keeps initial and deep-linked reading state silent", async () => {
+    stubApi();
+    renderAt("/lol/docs/mechanics/structures/stats");
+    await screen.findByRole("heading", { level: 1, name: "Structure stats" });
+    expect(sfx.play).not.toHaveBeenCalled();
+  });
+
+  it("sounds one quiet reference cue for an intentional category opening", async () => {
+    stubApi();
+    renderAt("/lol/docs/mechanics");
+    fireEvent.click(await screen.findByRole("link", { name: /Minion waves/ }));
+    expect(sfx.play).toHaveBeenCalledOnce();
+    expect(sfx.play).toHaveBeenCalledWith("archives.reference.open");
+  });
+
   it("lists every published category as a link into it", async () => {
     stubApi();
     renderAt("/lol/docs/mechanics");

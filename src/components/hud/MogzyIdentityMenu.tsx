@@ -40,7 +40,7 @@ import { ADMIN_HOME_PATH } from "@/lib/admin/admin-registry";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { prefetchRoute } from "@/lib/route-prefetch";
-import { playUiSfx } from "@/lib/ui-sfx";
+import { useSfx } from "@/lib/audio/useSfx";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { signupHrefFor } from "@/lib/hud/identity";
 import { authHref } from "@/lib/auth/auth-destination";
@@ -210,6 +210,7 @@ const isLiveInvite = (invite: StatCheckInvite, nowMs: number) => {
  * account menu's Profile item sent them.
  */
 export default function MogzyIdentityMenu() {
+  const sfx = useSfx();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
@@ -723,7 +724,7 @@ export default function MogzyIdentityMenu() {
     onTouchStart: () => prefetchRoute(path),
     onClick: () => {
       closePanel();
-      playUiSfx("navClick");
+      sfx.play("ui.navigation.activate");
     },
   });
 
@@ -752,12 +753,12 @@ export default function MogzyIdentityMenu() {
     if (signingOut) return; // duplicate-activation guard
     setSigningOut(true);
     closePanel();
-    playUiSfx("navClick");
+    sfx.play("ui.identity.action");
     queryClient.clear();
     await signOut();
     navigate("/", { replace: true });
     setSigningOut(false);
-  }, [signingOut, closePanel, signOut, navigate]);
+  }, [signingOut, closePanel, signOut, navigate, sfx]);
 
   /**
    * The account action that closes the footer — Sign Out for an account, Sign
@@ -902,7 +903,7 @@ export default function MogzyIdentityMenu() {
         onMouseEnter={() => prefetchRoute("/profile")}
         onFocus={() => prefetchRoute("/profile")}
         onTouchStart={() => prefetchRoute("/profile")}
-        onClick={() => playUiSfx("navClick")}
+        onClick={() => sfx.play("ui.identity.action")}
         className={`${hudHitTarget} z-10`}
       >
         {/* The portrait's transformed visual group. Nothing here is in the
@@ -1022,7 +1023,7 @@ export default function MogzyIdentityMenu() {
               onFocus={() => prefetchRoute("/auth")}
               onClick={() => {
                 closePanel();
-                playUiSfx("navClick");
+                sfx.play("ui.identity.action");
                 trackFunnelEvent("hud_signup_menu_clicked", { returnTo: pathname });
               }}
               className="flex items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:bg-secondary"

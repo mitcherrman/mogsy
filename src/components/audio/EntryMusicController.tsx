@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 
+// Register the canonical SFX channel beside the independent music controllers.
+import "@/lib/audio/sfx";
+
 import {
   adoptAcademyRadioPlaylist,
   attemptRadioAutostart,
@@ -14,6 +17,7 @@ import {
   resolveRuntimePlaylist,
   subscribeAudioStudioRuntime,
 } from "@/lib/audio/audio-studio-runtime";
+import { loadSoundSettingsRuntime } from "@/lib/audio/sound-settings-runtime";
 
 /**
  * Academy Radio mount point.
@@ -44,6 +48,7 @@ export default function AcademyRadioController() {
     installFirstGestureUnlock();
     installRadioInactivityMonitor();
     void attemptRadioAutostart();
+    void loadSoundSettingsRuntime();
     const applyRuntime = (runtime = getAudioStudioRuntimeSnapshot()) => {
       const playlist = resolveRuntimePlaylist(runtime.config, "academy-radio");
       if (!playlist) return;

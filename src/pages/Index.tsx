@@ -1,54 +1,20 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { User } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { useSoundSettings, SoundSettings } from "@/hooks/useSoundSettings";
 import { useAuth } from "@/hooks/useAuth";
+import { useSfx } from "@/lib/audio/useSfx";
 
 
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const ctxRef = useRef<AudioContext | null>(null);
-  const { soundSettings } = useSoundSettings();
-  const settingsRef = useRef<SoundSettings>(soundSettings);
-  useEffect(() => { settingsRef.current = soundSettings; }, [soundSettings]);
+  const sfx = useSfx();
 
   const playLaunchSound = useCallback(() => {
-    if (!settingsRef.current.launch_chime) return;
-    try {
-      const ctx = ctxRef.current || new AudioContext();
-      ctxRef.current = ctx;
-      const t = ctx.currentTime;
-
-      const osc1 = ctx.createOscillator();
-      const g1 = ctx.createGain();
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(600, t);
-      osc1.frequency.exponentialRampToValueAtTime(1200, t + 0.15);
-      g1.gain.setValueAtTime(0.12, t);
-      g1.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-      osc1.connect(g1);
-      g1.connect(ctx.destination);
-      osc1.start(t);
-      osc1.stop(t + 0.35);
-
-      const osc2 = ctx.createOscillator();
-      const g2 = ctx.createGain();
-      osc2.type = "triangle";
-      osc2.frequency.setValueAtTime(900, t + 0.05);
-      osc2.frequency.exponentialRampToValueAtTime(1800, t + 0.2);
-      g2.gain.setValueAtTime(0.06, t + 0.05);
-      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      osc2.connect(g2);
-      g2.connect(ctx.destination);
-      osc2.start(t + 0.05);
-      osc2.stop(t + 0.4);
-    } catch {
-      /* silent */
-    }
-  }, []);
+    sfx.play("landing.enter");
+  }, [sfx]);
 
   const handleLogoClick = () => {
     playLaunchSound();

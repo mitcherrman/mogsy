@@ -91,6 +91,7 @@ import {
 import { useEntryIntro } from "@/lib/ranked-core/flow/useEntryIntro";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
+import { useRankedMatchSfx } from "./useRankedMatchSfx";
 
 /** RD1 — the opponent's column reads the viewer's standing from the other side. */
 const OPPOSITE_STANDING: Record<DuelStanding, DuelStanding> = {
@@ -331,6 +332,16 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   );
   if (canAdvanceSurface && live !== renderedRound) setRenderedRound(live);
   const surfaceRound = renderedRound ?? live;
+  useRankedMatchSfx({
+    matchId,
+    viewerUserId,
+    publicRound: m.publicRound,
+    surfaceRound,
+    lastResolved: m.lastResolved,
+    lastSegmentRoundNumber: m.lastSegmentRoundNumber,
+    revealHold: m.revealHold,
+    result: m.result,
+  });
 
   // ── RFX1 Phase 2B1 — media preparation ─────────────────────────────────
   // Tier 1 (chrome, both mascots), Tier 2 (the presented round) and Tier 3

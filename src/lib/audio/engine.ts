@@ -3,18 +3,22 @@ import type {
   ModeSoundtrackRequest,
   RadioController,
   RadioEngineSnapshot,
+  SfxController,
+  SfxPlayOptions,
 } from "./types";
+import type { SfxEvent } from "./sfx-registry";
 
 interface EngineState {
   radio: RadioController | null;
   mode: ModeSoundtrackController | null;
+  sfx: SfxController | null;
 }
 
 type EngineHost = typeof globalThis & { __mogzyAudioEngine__?: EngineState };
 
 function state(): EngineState {
   const host = globalThis as EngineHost;
-  host.__mogzyAudioEngine__ ??= { radio: null, mode: null };
+  host.__mogzyAudioEngine__ ??= { radio: null, mode: null, sfx: null };
   return host.__mogzyAudioEngine__;
 }
 
@@ -48,5 +52,33 @@ export const mogzyAudio = {
 
   releaseModeSoundtrack(owner: string): void {
     state().mode?.release(owner);
+  },
+
+  registerSfx(controller: SfxController) {
+    state().sfx = controller;
+    return () => {
+      if (state().sfx === controller) state().sfx = null;
+    };
+  },
+
+  getSfx(): SfxController | null {
+    return state().sfx;
+  },
+
+  /** Fire-and-forget by contract: sound is never load-bearing. */
+  playSfx(event: SfxEvent, options?: SfxPlayOptions): void {
+    try {
+      state().sfx?.play(event, options);
+    } catch {
+      // A controller bug degrades to silence, never to a broken application action.
+    }
+  },
+
+  stopSfx(event: SfxEvent): void {
+    try { state().sfx?.stop(event); } catch { /* optional sound stays optional */ }
+  },
+
+  preloadSfx(event: SfxEvent): void {
+    try { state().sfx?.preload(event); } catch { /* optional warm-up stays optional */ }
   },
 };

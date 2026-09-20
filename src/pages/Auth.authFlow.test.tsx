@@ -24,6 +24,9 @@ vi.mock("@/hooks/useAuth", () => ({
 const toast = vi.hoisted(() => vi.fn());
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }));
 
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
+
 const sb = vi.hoisted(() => ({
   signOut: vi.fn().mockResolvedValue({}),
   resend: vi.fn().mockResolvedValue({ error: null }),
@@ -258,6 +261,8 @@ describe("existing unverified account can still sign in", () => {
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith("/quiz/ranked", { replace: true }),
     );
+    expect(sfx.play).toHaveBeenCalledOnce();
+    expect(sfx.play).toHaveBeenCalledWith("account.action.confirmed");
   });
 });
 
@@ -352,5 +357,7 @@ describe("a guest signing in keeps their guest session (AUTH2 §6)", () => {
     const shown = JSON.stringify(toast.mock.calls);
     expect(shown).not.toContain("Invalid login credentials");
     expect(shown).toMatch(/wrong email or password/i);
+    expect(sfx.play).toHaveBeenCalledOnce();
+    expect(sfx.play).toHaveBeenCalledWith("ui.feedback.error");
   });
 });

@@ -34,8 +34,8 @@ export default function SfxSettings({ engine, snapshot }: { engine: BroadcastEng
       toast.message("No audio path set for this sound.");
       return;
     }
-    await unlockBroadcastAudio(); // test click is a user gesture — prime audio
-    const res = await playBroadcastSfx(item.src, sfx.masterVolume * item.volume);
+    await unlockBroadcastAudio(); // test click is a user gesture — prime canonical audio
+    const res = await playBroadcastSfx(key, sfx, `broadcast-preview:${key}:${Date.now()}`);
     if (res === "blocked") toast.message("Audio blocked — click again or interact with the page to enable audio.");
     else if (res === "error") toast.error(`Could not play "${item.src}". Check the file exists under public/.`);
   };

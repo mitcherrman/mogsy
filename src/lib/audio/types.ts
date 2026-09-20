@@ -1,3 +1,5 @@
+import type { SfxEvent } from "./sfx-registry";
+
 export interface RadioEngineSnapshot {
   isPlaying: boolean;
   isAudible: boolean;
@@ -56,4 +58,35 @@ export interface ModeSoundtrackController {
   setMuted: (muted: boolean) => void;
   setVolume: (volume: number) => void;
   setPlayAutomatically: (enabled: boolean) => void;
+}
+
+export interface SfxPlayOptions {
+  /** Stable server/game identity. The same id is rendered at most once. */
+  eventId?: string;
+  /** Optional authored window for continuous semantic effects such as writing. */
+  durationMs?: number;
+  /** Admin preview only; product callers must use persisted compatibility policy. */
+  bypassLegacySetting?: boolean;
+  /**
+   * Specialist-adapter seam for persisted product-owned asset bindings.
+   * Ordinary callers must request only semantic events; Quiz Broadcast owns
+   * the sole current adapter because its session config predates Audio Studio.
+   */
+  configuredAsset?: { src: string; relativeGain: number };
+}
+
+export interface SfxEngineSnapshot {
+  muted: boolean;
+  configReady: boolean;
+  contextState: "locked" | "running" | "suspended" | "unavailable";
+}
+
+export interface SfxController {
+  getSnapshot: () => SfxEngineSnapshot;
+  subscribe: (listener: () => void) => () => void;
+  play: (event: SfxEvent, options?: SfxPlayOptions) => void;
+  stop: (event: SfxEvent) => void;
+  preload: (event: SfxEvent) => void;
+  unlock: () => Promise<boolean>;
+  refreshMute: () => void;
 }

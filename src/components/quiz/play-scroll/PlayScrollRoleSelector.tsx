@@ -65,7 +65,7 @@
  *
  * The poke cue sits OUTSIDE the reduced-motion drop on purpose. `RoleMascot`
  * refuses the animation under `prefers-reduced-motion`; audio is a separate
- * preference (`useSoundSettings` plus the global mute), and a reader who asked
+ * preference (the canonical SFX controller plus the global mute), and a reader who asked
  * for less movement did not ask for silence — so poking still answers.
  */
 
