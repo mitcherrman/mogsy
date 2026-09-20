@@ -8,11 +8,12 @@ Ranked mode, no migration, no frontend change.
 
 | | SHA | Note |
 |---|---|---|
-| Backend base | `origin/master` **`8227e4a3`** | Fetched at the start of this phase. `8227e4a3` **is** Phase 4A — nothing has landed on master since. |
-| Backend commit | **`906e72c2`** | One commit, branch `gr1/setup-state-phase4b`, worktree `~/lcs-wt-gr1-state4b`. **NOT PUSHED.** |
+| Backend base | `origin/master` **`8227e4a3`** | The IMPLEMENTATION base. `8227e4a3` **is** Phase 4A. |
+| Integration base | `origin/master` **`92be472e`** | Master at integration time: one item-runtime commit past `8227e4a3` (`combat_area_membership`, `item_slow_authority` and friends), **zero `mastery/` overlap**. Rebased onto it; the Phase 4B patch is byte-identical before and after. |
+| Backend commit | **`dcfe8e2e`** | One commit (pre-rebase `906e72c2`), branch `gr1/setup-state-phase4b`, worktree `~/lcs-wt-gr1-state4b`. **INTEGRATED AND PUSHED to `origin/master`, 2026-09-20.** |
 | Comparison base | `~/lcs-wt-gr1-4b-base` @ `8227e4a3` | Clean detached worktree, same symlinked `lol_calc.db`, for the failure-set arm. |
 | Docs base | `origin/main` **`84de68ef`** | Fetched at the start of this phase; it is the Phase 4A docs commit. |
-| Docs commit | *(this file + the handoff)* | Branch `gr1/reusable-state-phase4b`, worktree `~/mogsy-wt-gr1-state4b`. **NOT PUSHED.** |
+| Docs commit | *(this file + the handoff)* | Branch `gr1/reusable-state-phase4b`, worktree `~/mogsy-wt-gr1-state4b`. **PUSHED to `origin/main`, 2026-09-20** (base `84de68ef`, which had not moved, so no docs rebase). |
 | Frontend | **none** | No frontend commit. The Lab's response shape did not change, so `masteryStatePreview.json` needs no recapture beyond the Phase 4A note that already covers it. |
 
 ### A naming note, so the phase list stays readable
@@ -516,5 +517,5 @@ external provider, no historical canonical snapshot. No DDL, no migration, no fr
 9. **The patch-identity mismatch** — a state's `DataBasisId` and a Mastery artifact's
    `patch_key_digest` are computed over different material and are not interchangeable.
 
-**Rollback:** `git revert 906e72c2`. Nothing is persisted, nothing to un-migrate, no production
+**Rollback:** `git revert dcfe8e2e`. Nothing is persisted, nothing to un-migrate, no production
 caller, and the one adjacent consumer is a route behind a flag that is off.
