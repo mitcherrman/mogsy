@@ -4188,3 +4188,131 @@ Production `vite build` clean in 17.7 s.
 3. **The Meta Reflex wordmark stays 30 px on desktop.** It is the existing
    identity and the brief said to keep it; it is modest against a 1440 px
    arena.
+
+---
+
+# RFX1 — INTEGRATED AND COMPLETE
+
+Status: **merged and pushed to both deploy branches. RFX1 is closed.**
+
+Nothing in the sections above was rewritten; this is the integration record.
+
+## Integration SHAs
+
+| | before | method | after |
+|---|---|---|---|
+| Frontend `main` | `412db656` | **fast-forward** from `rfx1/phase2b3` | **`6ea81d40`** |
+| Backend `master` | `cffa85f0` | **`--no-ff` merge** of `rfx1/phase2b3-presentation-leadin` (`c501aa86`) | **`399c8e60`** |
+
+Both were integrated in dedicated detached worktrees
+(`mogsy-wt-rfx1-integ`, `lcs-wt-rfx1-integ`), because neither deploy branch was
+checked out anywhere and both primary checkouts hold unrelated branches with
+uncommitted work. No other worktree was touched.
+
+## Did either remote move?
+
+**Frontend: no.** `origin/main` was still `412db656` — the base this branch was
+rebased onto during the visual implementation — so the integration is a true
+fast-forward and `main`'s tree is **byte-identical to the approved tip
+`6ea81d40`** (`git diff 6ea81d40 main` is empty). No reconciliation, and no
+opportunity for one.
+
+**Backend: yes, by 9 commits** (ENVVIS1 batches 1–2A and its integration, GR1's
+gate-aware composition, items P8 target-mode shred), from base `35f11822` to
+`cffa85f0`.
+
+**Overlap: zero.** This branch touches exactly three files —
+`ranked_public/pacing.py`, `ranked_public/service.py`,
+`test_ranked_answerable_boundary.py` — and none of them appears in the upstream
+diff. The merge reported `Automatic merge went well` with no conflicted paths,
+and all three files were verified **byte-identical to `c501aa86`** in the merged
+tree before the merge commit was written. No reconciliation was needed and no
+timing constant was touched.
+
+## Final Phase 2B3 timing constants (unchanged by integration)
+
+```
+ENTRY_INTRO_MIN_MS        2000    guaranteed visible intro, from real first paint
+ENTRY_MIN_LEAD_MS          700    locked Round-1 preview
+ENTRY_PRESENTATION_MS     2700    the two together, identical on both paths
+  queue  entry_lead_ms    5900    = 2000 discovery + 800 handoff + 400 paint + 2700
+  bot    entry_lead_ms    4400    =  500 join RTT + 800 handoff + 400 paint + 2700
+intro ceiling             none    surplus goes to the card, never to the preview
+
+MODULE_TITLE_MS           1400    ordinary module transition (unchanged)
+MODULE_TITLE_MIN_MS        600    below this the title is SKIPPED, never flashed
+module_transition_ms      2900    ordinary round (unchanged)
+
+SPECIAL_TRANSITION_VISIBLE_MS
+  final-round             1300    measured 1426-1840 in browser
+  meta-reflex-entry       1800    measured 2015-2168 in browser
+PRESENTATION_HEADROOM_MS   600
+  final round budget      5450
+  Meta Reflex budget      5950
+
+MATCH_OUTRO_MS            1200
+SKEW_RESYNC_THRESHOLD_MS   750
+STING_MS                   720    the Daily's default; Ranked passes its window
+```
+
+## Verification run at integration
+
+**Frontend** — the focused RFX1 Phase 2B3 suites: `QuizRankedMatch.rfx1b3`,
+`QuizRankedMatch.rfx1b2`, `rankedBeats.rfx1b3v`, `rankedBeats.css.rfx1b3v`,
+`CanonicalArena.rfx1b3v`, `MetaReflexSting`, `specialTransition`,
+`timerMath.countdown`, `useRankedMatchSfx` — **9 files / 135 tests passing**.
+Production `vite build` clean in 19.1 s. Run against the branch worktree, whose
+tree was first proved identical to the merged `main`; the integration worktree
+has no `node_modules` of its own and symlinking a sibling's is the documented
+trap that fabricates ~250 failures.
+
+**Backend** — `test_ranked_answerable_boundary.py` **37 passing**, plus
+`test_ranked_prototype`, `test_ranked_public_queue`,
+`test_ranked_launch_readiness`, `test_ranked_public_queue_routes`:
+**59 passing, 1 failing**.
+
+That one failure is
+`test_ranked_prototype.py::test_two_human_match_defaults_to_production_and_not_bot`
+— `sqlite3.OperationalError: no such table: quiz_questions`. It is the fresh
+worktree's empty stub DB, not this work: **verified by checking the same
+worktree out at `cffa85f0` (pre-merge) and watching it fail identically.**
+
+## What shipped
+
+All four presentation surfaces, the countdown clock and the lead-in budget are
+live on both deploy branches:
+
+* **Ranked Duel intro** — deterministic ≥2000 ms floor from real first paint,
+  ~700 ms locked preview, `RANKED DUEL` / `ACADEMY DUEL`, both role mascots and
+  identities, VS medallion, `ROUND 1 OF N`, no loading language as primary
+  content.
+* **Countdown clock** — deadline-driven, second boundaries relative to the
+  deadline, `reconciledSkewMs` keeping the highest reading, one source for the
+  desktop and mobile clocks.
+* **Meta Reflex** — medium beat, 1800 ms floor on the server-owned budget,
+  once per block before card 1 only, `META ✦ REFLEX` / `{COUNT} CARDS · THINK
+  FAST`, keyframes that hold opaque instead of resting at `opacity: 0`, and the
+  Daily unaffected because the staging is opt-in via `variant="beat"`.
+* **Final Round** — medium beat replacing the ordinary module title,
+  `FINAL ROUND` plus the authoritative current score, no `GET READY`, no
+  mascots, ending before input opens.
+* **Final Round + Meta Reflex together** — one beat, Final Round's message on
+  Meta Reflex's clock.
+* **Match outro** — full-shell overlay after the final result reveal, ~1200 ms,
+  `DUEL COMPLETE`, the backend's outcome word, the authoritative final score,
+  both role mascots, fading into the existing end screen, and skipped entirely
+  on a refresh or reconnect into a completed match.
+* **Reduced motion** — every duration preserved; only the animation changes.
+* **Audio** — the three presentation event seams, and `ranked.match.victory`
+  aligned to the outro presentation moment rather than raw `matchOver`. No new
+  audio assets.
+
+## Deployment
+
+The backend deploys from `master` automatically; this push triggers one, and a
+deploy restarts the LIVE1 poller as usual.
+
+**The frontend does NOT reach mogzy.lol from this push.** `main` is the
+repository's branch; the live site is published from Lovable, so the owner must
+press **Publish** there before any of this is visible to players. Pushing is
+not deploying for this repo and never has been.
