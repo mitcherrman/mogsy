@@ -927,7 +927,10 @@ export default function MogzyIdentityMenu() {
               spilling the whole full-body mascot across the HUD. */}
           <span className="relative block h-9 w-9 overflow-hidden rounded-full ring-1 ring-inset ring-[#c9a84c]/25">
             <img
-              src="/mascot/mogzy-mascot-base-v1.png"
+              /* RFX1 2B2 — the avatar draws this 75x112 inside a 36px circle.
+                 A HUD-sized 240x360 WebP; the 1024x1536 source stays for the
+                 hub guide and the welcome scenes. */
+              src="/mascot/mogzy-mascot-base-v1-240.webp"
               alt=""
               draggable={false}
               className="absolute -left-[60.4%] -top-[68.8%] h-auto w-[208.3%] max-w-none"

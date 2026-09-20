@@ -56,7 +56,7 @@ function DuelistFigure({ identity, mirrored }: { identity: RoleIdentity; mirrore
         style={{ backgroundImage:
           `radial-gradient(60% 55% at 50% 65%, ${identity.accentSoft}, transparent 72%)` }} />
       {identity.role !== null ? (
-        <RoleMascot role={identity.role} facing={mirrored ? "left" : "right"}
+        <RoleMascot role={identity.role} art="compact" facing={mirrored ? "left" : "right"}
           fit="cover" loading="eager" className={box}
           data-testid={`result-duelist-mascot${mirrored ? "-opponent" : ""}`} />
       ) : (

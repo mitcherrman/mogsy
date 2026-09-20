@@ -865,6 +865,17 @@
   /* Ink used on the parchment folio — the warm counterpart to --ranked-text. */
   --ranked-ink: #2c2417;
   --ranked-ink-muted: rgba(58,46,26,0.74);
+  /* RFX1 2B2 — which encode of the chamber backdrop this viewport loads. */
+  --ranked-backdrop-image: url("/assets/ranked/ranked-academy-duel-bg.webp");
+}
+
+/* Phones take the 960w encode. The rule is on the same selector that declares
+   the variable, so the ::after below is untouched and only ONE file is ever
+   requested — the custom property resolves before the background is fetched. */
+@media (max-width: 640px) {
+  .ranked-academy {
+    --ranked-backdrop-image: url("/assets/ranked/ranked-academy-duel-bg-960w.webp");
+  }
 }
 
 /* The academy hall. A FIXED layer rather than a tall background box: it cannot
@@ -887,7 +898,13 @@
     /* navy wash — the atmosphere sits BEHIND the UI, never competes with it */
     linear-gradient(180deg,
       rgba(7,17,31,0.74) 0%, rgba(7,17,31,0.60) 45%, rgba(4,10,20,0.86) 100%),
-    url("/assets/ranked/ranked-academy-duel-bg.png");
+    /* RFX1 2B2 — the chamber backdrop, chosen by VIEWPORT rather than by DPR.
+       `image-set(1x/2x)` would be wrong here: a 390px phone at DPR 3 would
+       take the LARGEST encode, which is the one case that can least afford it.
+       The layer is `cover` under two near-opaque washes, so the phone's 960w
+       (39 KB) is indistinguishable from the 1672w (95 KB) it replaces, and the
+       source PNG was 2.0 MB. See the media query below for the phone value. */
+    var(--ranked-backdrop-image);
   background-size: cover, cover, cover;
   background-position: center, center, center 40%;
   background-repeat: no-repeat;
@@ -1363,9 +1380,14 @@ html.reduce-motion .ranked-award-pop--bonus {
 }
 
 /* ===== RM1 — THE DUEL BANNER, AS THE PAINTED ASSET =======================
-   The Ranked Player Column's shell is `public/assets/ranked/navy-banner2.png`
-   — navy cloth with a gold embroidered edge, hung from a rod, coming to a
-   point. All of that is painted; none of it is drawn in CSS.
+   The Ranked Player Column's shell is the navy-banner2 artwork — navy cloth
+   with a gold embroidered edge, hung from a rod, coming to a point. All of
+   that is painted; none of it is drawn in CSS.
+
+   RFX1 2B2 serves it as `navy-banner2-768w.webp` (69 KB) rather than the
+   1.26 MB source PNG, which is kept in `public/assets/ranked/`. The geometry
+   below is untouched by that: every size here is a percentage of the ELEMENT
+   and of the artwork's 959x1641 aspect, never of the file's own pixels.
 
    ─────────────────────────────────────────────────────────────────────────
    THE ASSET HAS THREE ZONES, AND TWO OF THEM ARE RIGID
@@ -1448,7 +1470,7 @@ html.reduce-motion .ranked-award-pop--bonus {
      silhouette exactly. */
   background-image:
     linear-gradient(rgba(5,10,20,0.30), rgba(5,10,20,0.30)),
-    url("/assets/ranked/navy-banner2.png");
+    url("/assets/ranked/navy-banner2-768w.webp");
   background-repeat: no-repeat, no-repeat;
   background-origin: content-box;
   background-clip: content-box;
@@ -1468,7 +1490,7 @@ html.reduce-motion .ranked-award-pop--bonus {
   right: 0;
   pointer-events: none;
   z-index: 0;
-  background-image: url("/assets/ranked/navy-banner2.png");
+  background-image: url("/assets/ranked/navy-banner2-768w.webp");
   background-repeat: no-repeat;
   /* One horizontal mapping for all three layers — this is what keeps the rod,
      the trim and the point on the same vertical axis. */
@@ -2009,7 +2031,7 @@ html.reduce-motion .ranked-award-pop--bonus {
   background-image:
     linear-gradient(178deg,
       rgba(247,239,217,0.86) 0%, rgba(226,212,180,0.74) 46%, rgba(198,180,143,0.80) 100%),
-    url("/assets/ranked/ranked-vellum-texture.png");
+    url("/assets/ranked/ranked-vellum-texture.webp");
   /* The texture is stretched to the sheet rather than TILED. It carries a baked
      vignette, so repeating it drew a grid of dark seams down the middle of the
      folio (it read as a book gutter); stretched once, that same vignette lands
@@ -2671,7 +2693,7 @@ html.reduce-motion .ranked-award-pop--bonus {
 }
 /* Champion/Combat — champion_studies + combat_workings share one artwork. */
 .question-motif-layer[data-motif-art="champ-combat"] {
-  background-image: url("/assets/ranked/question-accents/champ-combat.png");
+  background-image: url("/assets/ranked/question-accents/champ-combat-704w.webp");
   background-size: auto 118%;
   background-position: center 30%;
   /* The drawing sits on grey paper. Lift that paper to parchment-light so the
@@ -2706,7 +2728,7 @@ html.reduce-motion .ranked-award-pop--bonus {
   content: "";
   position: absolute;
   inset: calc(-1 * var(--qm-bleed-y)) calc(-1 * var(--qm-bleed-x));
-  background-image: url("/assets/ranked/question-accents/champ-combat.png");
+  background-image: url("/assets/ranked/question-accents/champ-combat-704w.webp");
   background-repeat: no-repeat;
   /* 180% of (card width + its 1.35rem side margins) — the reviewed crop. */
   background-size: calc((100% - 2 * var(--qm-bleed-x) + 2.7rem) * 1.8) auto;
@@ -4059,7 +4081,7 @@ html.high-contrast * { text-shadow: none !important; }
       rgba(230, 217, 186, 0.8) 46%,
       rgba(203, 186, 150, 0.84) 100%
     ),
-    url("/assets/ranked/ranked-vellum-texture.png");
+    url("/assets/ranked/ranked-vellum-texture.webp");
   background-size: cover, 100% 100%;
   background-position: center, center;
   background-repeat: no-repeat, no-repeat;
@@ -12365,7 +12387,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   background-color: var(--dsr-vellum);
   background-image:
     linear-gradient(160deg, rgba(255, 252, 240, 0.75), rgba(226, 213, 184, 0.55)),
-    url("/assets/ranked/ranked-vellum-texture.png");
+    url("/assets/ranked/ranked-vellum-texture.webp");
   background-size: cover, 420px;
   background-blend-mode: normal, multiply;
   color: var(--dsr-ink);
@@ -14834,7 +14856,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   background-image:
     linear-gradient(178deg,
       rgba(247,239,217,0.88) 0%, rgba(228,214,182,0.76) 46%, rgba(200,182,145,0.82) 100%),
-    url("/assets/ranked/ranked-vellum-texture.png");
+    url("/assets/ranked/ranked-vellum-texture.webp");
   /* Stretched once rather than tiled, for the same reason the folio is: the
      texture carries a baked vignette, and repeating it draws a book-gutter
      seam down the middle of the sheet. */
@@ -15308,4 +15330,150 @@ html.hub-commons-in-view .hextech-ambience-layer {
   body:has([data-phone-arena="true"]) [data-testid="academy-radio-hud-prompt"] {
     display: none;
   }
+}
+
+/* ===== RFX1 Phase 2B2 — the Ranked entry intro =============================
+   The duel card the player sees during the server's Round-1 lead-in. It sits
+   in the placeholder's slot inside `.ranked-shell`, so it inherits the arena's
+   own width, padding and skin and changes no geometry when it goes.
+
+   EVERYTHING HERE IS PRESENTATION. Not one rule can hold the card up: the exit
+   instant is `started_at − ENTRY_MIN_LEAD_MS` and it is decided in
+   `QuizRankedMatch`, in server time. Every animation below is an ENTRANCE —
+   nothing plays on exit, because an exit animation would be exactly the frame
+   budget the first question is owed. */
+.ranked-entry-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1rem 1.1rem;
+  text-align: center;
+}
+.ranked-entry-intro__eyebrow { letter-spacing: 0.22em; }
+
+/* The board is a THREE-TRACK GRID with a fixed centre, not a flex row: the two
+   seats get identical space whatever their names are, so a long display name
+   on one side cannot shift the VS off the card's centre line. */
+.ranked-entry-intro__board {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 34rem;
+}
+.ranked-entry-intro__seat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+.ranked-entry-intro__glow {
+  position: absolute;
+  inset: 0.5rem -0.25rem 1.9rem;
+  border-radius: 1rem;
+  pointer-events: none;
+}
+/* 6:7, the arena crest's own slot shape, so the mascot is cropped exactly the
+   way the rails crop it and the figure reads at the same weight. */
+.ranked-entry-intro__figure {
+  position: relative;
+  display: block;
+  width: 4.5rem;
+  aspect-ratio: 6 / 7;
+}
+.ranked-entry-intro__name {
+  margin-top: 0.35rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ranked-text);
+}
+.ranked-entry-intro__role {
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ranked-entry-intro__versus {
+  align-self: center;
+  padding-bottom: 1.25rem;
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+  font-size: 1.125rem;
+  letter-spacing: 0.12em;
+  color: var(--ranked-gold-bright);
+  text-shadow: 0 0 18px rgba(201, 168, 76, 0.35);
+}
+.ranked-entry-intro__status {
+  font-size: 0.8125rem;
+  color: var(--ranked-muted);
+  min-height: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  /* CAPPED AND CENTRED, so it reads as a card rather than a banner across a
+     1440px arena. It stays in the placeholder's slot — the top of the shell,
+     where the question itself is about to appear — so the reveal is a swap in
+     place and nothing travels. */
+  .ranked-entry-intro {
+    gap: 1rem;
+    padding: 2rem 1.5rem 1.75rem;
+    max-width: 44rem;
+    margin-inline: auto;
+  }
+  .ranked-entry-intro__board { gap: 1.25rem; }
+  .ranked-entry-intro__figure { width: 8.5rem; }
+  .ranked-entry-intro__name { font-size: 1rem; }
+  .ranked-entry-intro__role { font-size: 0.75rem; }
+  .ranked-entry-intro__versus { font-size: 1.75rem; padding-bottom: 2rem; }
+  .ranked-entry-intro__status { font-size: 0.875rem; }
+}
+
+/* Entrance only, and short: the two seats arrive from their own sides and the
+   card settles. `motion-safe` is Tailwind's OS query; the app's own Settings →
+   Reduce Motion switch is read in React (`useReducedMotionPreference`) and
+   drops `data-reduced-motion` on the card, which the block below answers. */
+@media (prefers-reduced-motion: no-preference) {
+  .ranked-entry-intro { animation: ranked-entry-intro-in 260ms ease-out both; }
+  .ranked-entry-intro__seat[data-side="player"] {
+    animation: ranked-entry-seat-left 320ms ease-out both;
+  }
+  .ranked-entry-intro__seat[data-side="opponent"] {
+    animation: ranked-entry-seat-right 320ms ease-out both;
+  }
+  .ranked-entry-intro__versus {
+    animation: ranked-entry-versus 380ms 120ms ease-out both;
+  }
+}
+/* The app switch. Same card, same words, same information — only the travel
+   goes. It is a plain fade, so the card still arrives rather than appearing
+   with no transition at all. */
+.ranked-entry-intro[data-reduced-motion="true"],
+.ranked-entry-intro[data-reduced-motion="true"] .ranked-entry-intro__seat,
+.ranked-entry-intro[data-reduced-motion="true"] .ranked-entry-intro__versus {
+  animation: ranked-entry-intro-fade 180ms ease-out both;
+}
+@keyframes ranked-entry-intro-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ranked-entry-intro-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ranked-entry-seat-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ranked-entry-seat-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ranked-entry-versus {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: none; }
 }

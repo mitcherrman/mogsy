@@ -36,6 +36,33 @@ export const MOGZY_MASCOT_ASSETS = {
 
 export type MogzyMascotPose = keyof typeof MOGZY_MASCOT_ASSETS;
 
+/* -------------------------------------------------------------------------- */
+/* RFX1 Phase 2B2 — small-surface derivatives                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A request for the SIZE of a plate, never for a different picture.
+ *
+ * `full` is the source art, which several surfaces draw large (the hub guide,
+ * the welcome scenes, the lobby carousel). `compact` is the same drawing
+ * re-encoded for a surface that renders it small — the HUD's 75px avatar, the
+ * Rules scroll's 56px portrait, the arena's ~105px duelist. The derivative is
+ * sized with headroom for a 3x display and NOTHING else changes: same crop,
+ * same alpha, same facing.
+ *
+ * Every lookup FALLS BACK to the source, so adding a `compact` request to a
+ * surface is always safe and a missing derivative is never a broken image.
+ */
+export type MogzyArtScale = "full" | "compact";
+
+/** 192x288 WebP panel portraits: the three poses a small surface draws. */
+export const MOGZY_MASCOT_ASSETS_COMPACT: Partial<Record<MogzyMascotPose, string>> = {
+  base: "/mascot/mogzy-mascot-base-v1-240.webp",
+  explaining: "/mascot/mogzy-explaining-transparent-192.webp",
+  peeking: "/mascot/mogzy-peeking-transparent-192.webp",
+  raisingHand: "/mascot/mogzy-raising-hand-transparent-192.webp",
+};
+
 /**
  * Product guidance for selecting a Mogzy pose.
  *
@@ -253,10 +280,36 @@ export const MOGZY_ROLE_ASSETS: Record<RankedRole, string> = {
   support: "/mascot/ranked/supmogzy.png",
 };
 
+/**
+ * RFX1 Phase 2B2 — the ARENA-sized plates.
+ *
+ * The lobby draws these figures nearly full-bleed on a parchment stage; the
+ * arena draws the same five at roughly 43-105 CSS px. One 1254px PNG served
+ * both, which cost a phone about 1.8 MB for the two duelists alone, inside the
+ * entry window. These are 384px WebP re-encodes of the SAME artwork — same
+ * crop, same alpha, same native facing (`MOGZY_ROLE_ART_FACING` applies
+ * unchanged) — with headroom for a 3x phone and for the widest result-screen
+ * slot. The originals stay exactly where a surface draws them big.
+ */
+export const MOGZY_ROLE_ASSETS_COMPACT: Record<RankedRole, string> = {
+  top: "/mascot/ranked/topmogzy-384.webp",
+  jungle: "/mascot/ranked/jgmogzy-384.webp",
+  mid: "/mascot/ranked/midmogzy-384.webp",
+  adc: "/mascot/ranked/botmogzy-384.webp",
+  support: "/mascot/ranked/supmogzy-384.webp",
+};
+
 /** Path to the mascot art for a role. Total over the five canonical roles, so
- *  no surface ever has to fall back to the generic base portrait. */
-export function getRankedRoleMascotPath(role: RankedRole): string {
-  return MOGZY_ROLE_ASSETS[role];
+ *  no surface ever has to fall back to the generic base portrait.
+ *
+ *  `scale` asks for a SIZE, not a different picture; see `MogzyArtScale`. */
+export function getRankedRoleMascotPath(
+  role: RankedRole,
+  scale: MogzyArtScale = "full",
+): string {
+  return scale === "compact"
+    ? MOGZY_ROLE_ASSETS_COMPACT[role] ?? MOGZY_ROLE_ASSETS[role]
+    : MOGZY_ROLE_ASSETS[role];
 }
 
 /**
@@ -322,10 +375,15 @@ export type MogzyArtAsset =
       name: MogzyCompanion;
     };
 
-export function getMogzyArtAssetPath(asset: MogzyArtAsset): string {
+export function getMogzyArtAssetPath(
+  asset: MogzyArtAsset,
+  scale: MogzyArtScale = "full",
+): string {
   switch (asset.category) {
     case "mascot":
-      return MOGZY_MASCOT_ASSETS[asset.name];
+      return scale === "compact"
+        ? MOGZY_MASCOT_ASSETS_COMPACT[asset.name] ?? MOGZY_MASCOT_ASSETS[asset.name]
+        : MOGZY_MASCOT_ASSETS[asset.name];
 
     case "family":
       return MOGZY_FAMILY_ASSETS[asset.name];

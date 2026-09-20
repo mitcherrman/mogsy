@@ -190,8 +190,8 @@ const playing = (pid: string) =>
 
 describe("same-role bot match", () => {
   it.each([
-    ["jungle", "/mascot/ranked/jgmogzy.png"],
-    ["mid", "/mascot/ranked/midmogzy.png"],
+    ["jungle", "/mascot/ranked/jgmogzy-384.webp"],
+    ["mid", "/mascot/ranked/midmogzy-384.webp"],
   ])("a %s bot match draws %s on BOTH columns, facing each other", async (role, path) => {
     roles = { userA: role, userB: role };
     await mount();

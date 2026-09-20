@@ -6,6 +6,7 @@ import {
   type MogzyArtAsset,
   type MogzyClassCharacter,
   type MogzyCompanion,
+  type MogzyArtScale,
   type MogzyFamilyCharacter,
   type MogzyMascotPose,
 } from "./mascot-assets";
@@ -28,6 +29,18 @@ interface SharedMogzyArtProps extends NativeImageProps {
    * from nearby text.
    */
   decorative?: boolean;
+
+  /**
+   * RFX1 Phase 2B2 — which ENCODE of the artwork to request. Same drawing,
+   * same crop, same alpha; only the pixel budget differs.
+   *
+   * `full` (default) is the 1024x1536 source, which the hub guide and the
+   * welcome scenes draw large. A host that draws the art small — the HUD's
+   * 75px avatar, the Rules scroll's 56px portrait and its 36px tab — passes
+   * `compact`. Poses with no derivative fall back to the source, so this is
+   * always safe to ask for.
+   */
+  scale?: MogzyArtScale;
 }
 
 export interface MogzyArtProps extends SharedMogzyArtProps {
@@ -49,6 +62,7 @@ export function MogzyArt({
   asset,
   alt,
   decorative = false,
+  scale = "full",
   className,
   loading = "lazy",
   decoding = "async",
@@ -68,7 +82,7 @@ export function MogzyArt({
   return (
     <img
       {...imageProps}
-      src={getMogzyArtAssetPath(asset)}
+      src={getMogzyArtAssetPath(asset, scale)}
       alt={resolvedAlt}
       aria-hidden={decorative ? true : undefined}
       className={classes}

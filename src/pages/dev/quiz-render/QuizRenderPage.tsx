@@ -128,7 +128,7 @@ const ACADEMY_INK_BRASS = "#6d5626";
  *  and the live product are demonstrably the same room. Served from `public/`,
  *  and mounted as a real <img> so it participates in the harness's
  *  image-readiness wait and its missing-asset QA. */
-const ACADEMY_GROUND_SRC = "/assets/ranked/ranked-academy-duel-bg.png";
+const ACADEMY_GROUND_SRC = "/assets/ranked/ranked-academy-duel-bg.webp";
 
 /** Screenshot-only headroom over the format's nominal contentScale, so the
  *  quiz card can grow to fill the phone screen (the fit is still bounded by

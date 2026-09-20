@@ -174,7 +174,11 @@ describe("the duel banner is mounted from the approved asset", () => {
     CSS.indexOf("/* RP1 Step 4 — THE CUMULATIVE SCORE MOVING."));
 
   it("draws the cloth from the PNG, in two layers of the same file", () => {
-    expect(rules).toContain('url("/assets/ranked/navy-banner2.png")');
+    // RFX1 2B2 — the SAME artwork, re-encoded: a 768w WebP (69 KB) in place
+    // of the 1.26 MB PNG. The three-zone geometry below is unchanged, and it
+    // can be, because every size here is a percentage of the element rather
+    // than of the file's intrinsic pixels.
+    expect(rules).toContain('url("/assets/ranked/navy-banner2-768w.webp")');
     // THREE layers, because the asset has three zones and two of them are
     // rigid: a stretched rod and a stretched point both look wrong, so only
     // the cloth may give.

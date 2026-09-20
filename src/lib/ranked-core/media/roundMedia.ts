@@ -87,8 +87,9 @@ export interface RoundMediaOptions {
  * every path here still appears in the stylesheet.
  */
 export const MOTIF_ART_URLS: Readonly<Record<string, readonly string[]>> = {
-  champion_studies: ["/assets/ranked/question-accents/champ-combat.png"],
-  combat_workings: ["/assets/ranked/question-accents/champ-combat.png"],
+  // RFX1 2B2 — the 704w WebP `index.css` now paints (139 KB, was 1.2 MB).
+  champion_studies: ["/assets/ranked/question-accents/champ-combat-704w.webp"],
+  combat_workings: ["/assets/ranked/question-accents/champ-combat-704w.webp"],
   rift_field_guide: [
     "/assets/ranked/question-accents/minion.png",
     "/assets/ranked/question-accents/tower.png",

@@ -35,6 +35,8 @@ export function warmRankedEntry(role: RankedRole | null | undefined): void {
     // its chunks) is shared rather than fetched twice.
     void import("@/pages/quiz-ranked/QuizRankedPage").catch(() => { routeWarmed = false; });
   }
+  // The backdrop encode this VIEWPORT will paint — the lobby and the arena are
+  // the same window, so the warm and the render agree.
   prepareRankedChrome();
   void prepareImage(rankedRoleMascotUrl(role), { priority: "auto" });
 }

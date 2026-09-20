@@ -3,7 +3,8 @@ import {
   cardEventId, projectPresentationPhase, projectResultFeedback, resultEventId, upcomingRound,
 } from "./rankedFlow";
 import {
-  anchoredRevealHoldMs, MODULE_TITLE_END_MARGIN_MS, moduleTitleWindowMs,
+  anchoredRevealHoldMs, ENTRY_MIN_LEAD_MS, entryIntroExitAt, entryIntroHolding,
+  MODULE_TITLE_END_MARGIN_MS, moduleTitleWindowMs,
   REVEAL_HOLD_MIN_MS, REVEAL_HOLD_MS,
 } from "@/lib/ranked-core/pacing";
 import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
@@ -149,5 +150,46 @@ describe("RFX1 2B1 — the presentation cutoff", () => {
     expect(moduleTitleWindowMs(-1000, MODULE_TITLE_MS)).toBe(0);
     // No next round to anchor to: unchanged.
     expect(moduleTitleWindowMs(null, MODULE_TITLE_MS)).toBe(MODULE_TITLE_MS);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* RFX1 2B2 — the entry intro's window (the arithmetic; the controller-level  */
+/* behaviour is in QuizRankedMatch.rfx1b2.test.tsx).                          */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+describe("RFX1 2B2 — the entry intro's window", () => {
+  it("holds while the lead-in has more than the reveal margin left", () => {
+    expect(entryIntroHolding(ENTRY_MIN_LEAD_MS + 1)).toBe(true);
+    expect(entryIntroHolding(4200)).toBe(true);
+  });
+
+  it("is over AT the margin, and stays over past the start", () => {
+    expect(entryIntroHolding(ENTRY_MIN_LEAD_MS)).toBe(false);
+    expect(entryIntroHolding(ENTRY_MIN_LEAD_MS - 1)).toBe(false);
+    expect(entryIntroHolding(0)).toBe(false);
+    expect(entryIntroHolding(-5000)).toBe(false);
+  });
+
+  it("treats an unresolved match as an intro state, not as a finished one", () => {
+    // No round yet IS "match resolving"; the latch in `useEntryIntro` is what
+    // keeps this from reading the same way mid-match.
+    expect(entryIntroHolding(null)).toBe(true);
+    expect(entryIntroHolding(Number.NaN)).toBe(false);
+  });
+
+  it("puts the exit exactly ENTRY_MIN_LEAD_MS before the server's instant", () => {
+    const start = "2026-09-19T12:00:10.000Z";
+    expect(entryIntroExitAt(start))
+      .toBe(new Date(Date.parse(start) - ENTRY_MIN_LEAD_MS).toISOString());
+    expect(entryIntroExitAt(null)).toBeNull();
+    expect(entryIntroExitAt("not a date")).toBeNull();
+  });
+
+  it("leaves the arena ANSWERABLE before it, not at it", () => {
+    // The two margins are ordered: the intro is gone (700 ms) strictly before
+    // the module title's own cutoff (150 ms), which is itself before the
+    // start. Nothing presentational may outlive the instant.
+    expect(ENTRY_MIN_LEAD_MS).toBeGreaterThan(MODULE_TITLE_END_MARGIN_MS);
   });
 });

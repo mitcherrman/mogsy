@@ -236,6 +236,8 @@ export function MogzyExplainsPanel({
         <span className="mogzy-scroll-portrait -mt-0.5 block h-14 w-14 shrink-0">
           <MogzyMascot
             pose="explaining"
+            /* RFX1 2B2 — a 56px portrait. The 192x288 encode covers 3x. */
+            scale="compact"
             decorative
             loading="eager"
             className="h-full w-full object-contain"
@@ -328,6 +330,8 @@ export function MogzyExplainsPanel({
       <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full">
         <MogzyMascot
           pose={open ? "explaining" : prominent ? "raisingHand" : "peeking"}
+          /* RFX1 2B2 — a 36px tab portrait. */
+          scale="compact"
           decorative
           className="h-full w-full object-cover"
         />
