@@ -39,7 +39,8 @@ function sourceFiles(dir: string): string[] {
 const filesMatching = (re: RegExp) =>
   sourceFiles(ROOT)
     .filter((f) => re.test(readFileSync(f, "utf8")))
-    .map((f) => f.slice(ROOT.length + 1))
+    // POSIX separators, so the path-shaped assertions hold on Windows too.
+    .map((f) => f.slice(ROOT.length + 1).split("\\").join("/"))
     .sort();
 
 // ── A · the live Ranked route reaches the canonical arena ──────────────────
