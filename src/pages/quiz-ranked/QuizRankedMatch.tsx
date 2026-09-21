@@ -94,6 +94,7 @@ import { useEntryIntro } from "@/lib/ranked-core/flow/useEntryIntro";
 import { useCountdownNow } from "@/lib/ranked-core/flow/useCountdownNow";
 import { projectMatchOutro } from "@/lib/ranked-core/flow/matchOutro";
 import { useSpecialTransition } from "@/lib/ranked-core/flow/useSpecialTransition";
+import { hostedMatchSettled, type MatchHost } from "@/lib/ranked-core/flow/matchHost";
 import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
 import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
@@ -225,6 +226,13 @@ export interface QuizRankedMatchProps {
    * assert. The route supplies it; the arena renders it.
    */
   chrome?: ReactNode;
+  /**
+   * DCMOD-E — this match is one step of a parent flow that owns its entry and
+   * its close. See `MatchHost`: no duel intro card, no outro, no end screen,
+   * no Ranked rules scroll — the match is handed back after its final reveal.
+   * Absent for every ordinary match, which renders exactly as before.
+   */
+  host?: MatchHost;
 }
 
 /**
@@ -255,7 +263,8 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
   return (
     <>
       <RankedMatchArena {...props} />
-      <RankedRulesScroll />
+      {/* A hosted match's rules are its host's to explain. */}
+      {!props.host && <RankedRulesScroll />}
     </>
   );
 }
@@ -263,7 +272,7 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
 function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chrome,
                             entry = "recovered",
                             paused = false, onSessionComplete,
-                            onProgress }: QuizRankedMatchProps) {
+                            onProgress, host }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, {
     paused, entry,
     // RFX1 2B1: the reveal hold's bounded swap gate waits on this.
@@ -425,7 +434,8 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // resolving", so without this a fresh entry into a finished match (the
   // playtest host's terminal path) would hold the card over the result screen
   // for ever.
-  const introEligible = entry === "fresh" && m.phase !== "match_over" && !m.result;
+  // DCMOD-E: a hosted match was already introduced by its host.
+  const introEligible = entry === "fresh" && m.phase !== "match_over" && !m.result && !host;
   const entryIntro = useEntryIntro({
     eligible: introEligible, startedAt: live?.activeRound?.startedAt, skewMs: m.skewMs });
   const entryIntroUp = entryIntro.up;
@@ -758,6 +768,28 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     matchOutro: m.matchOutroId !== null,
   });
   /**
+   * DCMOD-E — THE HOSTED HANDBACK, at the instant the outro would have begun.
+   * Refs for the callbacks so a host re-rendering with a new closure neither
+   * re-fires the handback nor re-reports an unchanged phase.
+   */
+  const hostRef = useRef(host);
+  hostRef.current = host;
+  const hostSettled = host !== undefined && hostedMatchSettled({
+    presentationPhase, matchOver: m.phase === "match_over" });
+  const handedBackRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hostSettled || handedBackRef.current === matchId) return;
+    handedBackRef.current = matchId;
+    hostRef.current?.onMatchSettled({
+      matchId,
+      terminalReason: m.result?.terminalReason ?? null,
+      completionReason: m.result?.completionReason ?? null,
+    });
+  }, [hostSettled, matchId, m.result]);
+  useEffect(() => {
+    hostRef.current?.onPresentationPhase?.(presentationPhase);
+  }, [presentationPhase]);
+  /**
    * RFX1 2B3 — THE MEDIUM BEAT this round is owed, if any.
    *
    * Classified from the PRESENTED round, so a Final Round warning cannot
@@ -823,7 +855,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     // The result sting belongs to the outro beat, not to the completion
     // snapshot that claims it. `match_over` is included so a match that never
     // presents an outro — a reconnect onto a finished one — cannot strand it.
-    outcomeMoment: presentationPhase === "match-outro" || m.phase === "match_over",
+    // DCMOD-E: a hosted match has no outcome moment of its own — the result
+    // sting belongs to the host's close, not to each step of it.
+    outcomeMoment: !host
+      && (presentationPhase === "match-outro" || m.phase === "match_over"),
   });
   /**
    * RFX1 2B3 — the three PRESENTATION beats' own events. A separate hook
@@ -915,7 +950,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     return (
       <CanonicalArena view={null} chrome={chrome}
         recovering={entry === "fresh" || entryPreparing
-          ? { eyebrow: "Ranked Duel", message: "Entering the arena…",
+          ? { eyebrow: host?.eyebrow ?? "Ranked Duel", message: "Entering the arena…",
               phase: m.publicRound ? "preparing" : "match-unresolved",
               // RFX1 2B2 — the duel card, for a FRESH entry only. A recovery
               // keeps its own honest sentence: a player rejoining a match in
@@ -952,7 +987,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
                   matchLength={m.publicRound?.scoring?.matchLength ?? null}
                   reducedMotion={reducedMotion} />
               ) : undefined }
-          : { eyebrow: "Ranked Duel", message: "Recovering match…",
+          : { eyebrow: host?.eyebrow ?? "Ranked Duel", message: "Recovering match…",
               phase: "match-unresolved" }} />
     );
   }
@@ -983,6 +1018,15 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   const isBotMatch = m.publicRound.playtest?.isBotMatch === true;
   /** What the other duelist is called. See `opponentLabelFor`. */
   const otherLabel = opponentLabelFor(m.publicRound);
+
+  // DCMOD-E: a hosted match has no end screen. It has been handed back (the
+  // effect above), and holds the arena's placeholder until its host moves on.
+  if (m.phase === "match_over" && host) {
+    return (
+      <CanonicalArena view={null} chrome={chrome}
+        recovering={{ eyebrow: host.eyebrow, message: host.settlingMessage }} />
+    );
+  }
 
   if (m.phase === "match_over") {
     const reason = m.result?.terminalReason ?? "combat";
@@ -1172,7 +1216,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * during the beat, so nothing is computed for the 99% of a match that is
    * not ending.
    */
-  const matchOutro = m.matchOutroId && presentationPhase === "match-outro"
+  const matchOutro = m.matchOutroId && presentationPhase === "match-outro" && !host
     ? projectMatchOutro({
       id: m.matchOutroId, matchId, viewerUserId, viewerLabel,
       opponentLabel: m.publicRound ? opponentLabelFor(m.publicRound) : "Opponent",
