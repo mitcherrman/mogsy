@@ -265,7 +265,7 @@ export function useRankedQueue(): QueueController {
       // the handoff is not held up by whichever row settles last.
       if (resolved === "pairing") {
         const found = await api.getActiveMatch(controller.signal).catch(() => null);
-        if (found) {
+        if (found && found.host !== "daily_challenge") {
           setMatchId(found.matchId);
           setState("matched");
           stateRef.current = "matched";
@@ -312,7 +312,8 @@ export function useRankedQueue(): QueueController {
     stateRef.current = "pairing";
     setError(PAIRING_NOTICE);
     const found = await api.getActiveMatch(signal).catch(() => null);
-    if (found) {
+    // A Daily stage is the Daily page's to resume, never the queue's.
+    if (found && found.host !== "daily_challenge") {
       setMatchId(found.matchId);
       setState("matched");
       stateRef.current = "matched";
@@ -342,7 +343,7 @@ export function useRankedQueue(): QueueController {
    */
   const offerReconnect = useCallback(async (signal?: AbortSignal) => {
     const found = await api.getActiveMatch(signal).catch(() => null);
-    if (!found || !found.withinReconnectWindow) {
+    if (!found || !found.withinReconnectWindow || found.host === "daily_challenge") {
       setReconnectMatch(null);
       failuresRef.current = 0;
       clearTimer();

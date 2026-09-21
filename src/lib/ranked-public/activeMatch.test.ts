@@ -3,7 +3,7 @@
  * (including a bot match, which is never in the queue) after a full page reload.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getActiveMatch } from "./client";
+import { getActiveMatch, isDailyHosted } from "./client";
 
 function mockFetch(status: number, body: unknown) {
   return vi.fn().mockResolvedValue({
@@ -31,7 +31,7 @@ describe("getActiveMatch", () => {
     // which is what the compatibility default says.
     expect(found).toEqual({
       matchId: "rkb_abc", isBotMatch: true,
-      reconnectDeadline: null, withinReconnectWindow: true,
+      reconnectDeadline: null, withinReconnectWindow: true, host: null,
     });
     expect(String(fetchMock.mock.calls[0][0])).toContain("/api/ranked/active-match");
   });
@@ -42,7 +42,7 @@ describe("getActiveMatch", () => {
     }));
     expect(await getActiveMatch()).toEqual({
       matchId: "m1", isBotMatch: false,
-      reconnectDeadline: null, withinReconnectWindow: true,
+      reconnectDeadline: null, withinReconnectWindow: true, host: null,
     });
   });
 
@@ -59,8 +59,17 @@ describe("getActiveMatch", () => {
     expect(await getActiveMatch()).toEqual({
       matchId: "m9", isBotMatch: false,
       reconnectDeadline: "2026-08-23T12:00:45+00:00",
-      withinReconnectWindow: false,
+      withinReconnectWindow: false, host: null,
     });
+  });
+
+  it("marks a Daily parent run's child stage as Daily-hosted (DCMOD)", async () => {
+    vi.stubGlobal("fetch", mockFetch(200, { active_match: {
+      match_id: "dcr_1", is_bot_match: true, within_reconnect_window: true,
+      host: "daily_challenge" } }));
+    const found = await getActiveMatch();
+    expect(found?.host).toBe("daily_challenge");
+    expect(isDailyHosted(found)).toBe(true);
   });
 
   it("returns null when there is no active match", async () => {
