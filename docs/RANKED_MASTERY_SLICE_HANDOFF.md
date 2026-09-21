@@ -2225,6 +2225,48 @@ overlap). Comparison base `~/lcs-wt-gr1-stats-base` detached @ `c2634d8a`. Docs 
   for the same 28. Invariance re-proved vs `71919f50` (see the full record's Integration section).
 * **Rollback:** `git revert 1090633f`.
 
+## Reusable state — SLICE DISTRIBUTION / QUALITY EXPERIMENT, Generator Lab only (2026-09-21)
+
+Full record: [`gr1-champion-slice-distribution-experiment.md`](./gr1-champion-slice-distribution-experiment.md).
+Backend **`ded63efb`** on `origin/master` (authored `4e987b09` on `gr1/slice-distribution-experiment`), worktree `~/lcs-wt-gr1-dist`, parent
+`origin/master` **`a9085292`** (fast-forward of the brief's `1090633f`, items-only). Comparison base
+`~/lcs-wt-gr1-dist-base` detached @ `a9085292`. Docs on `gr1/slice-distribution-docs`, worktree
+`~/mogsy-wt-gr1-dist`, base `origin/main` `a9a7b45a`. **BOTH PUSHED 2026-09-21** (backend rebased onto `7130e8c1`, zero overlap). `balanced` stays EXPERIMENTAL; no decision taken. No frontend commit.
+
+* **What it is.** Measurement, not a decision. `slice_quality.py` (contract half, pure) reports
+  separate quality dimensions — state coverage, question variety (family mix, repeated metric /
+  subject), progression (clustering, adjacent same-metric pairs), replayability — with **no overall
+  score**, and declares nine Lab-only preference policies (ordered soft criteria + a state mode).
+  `slice_experiment.py` (consumer) runs profile × budget × seed × policy through the existing
+  universe / gate oracle / search. `composition.compose_preferred_gate_aware` is the SAME shared
+  gate-aware search over a caller-supplied **permutation** of the universe, so a policy can change
+  which feasible set is chosen but never whether one exists. `baseline` = the certified composition,
+  question for question.
+* **Scale.** Trusted arm (164 rank-bearing + 9 LEVEL = 173) × 5 profiles × b=3/4 × 9 policies × 24
+  seeds = 373,680 compositions; LEVEL-only arm × 12 seeds. Feasibility identical to baseline in
+  every cell; 0 exhausted searches; 0 final-verdict failures; 0 order violations.
+* **Findings.** The certified composer repeats a metric in **23–35%** (b=3) / **36–53%** (b=4) of
+  multi-state Slices, and asks the same metric at neighbouring levels in **20% / 31%** of Tight sets —
+  because subject spread has no cross-state memory and nothing reads the metric. The `balanced`
+  policy (new state > new metric > new subject > new family) cuts repeats to **≤ 0.7%**, adjacent
+  same-metric to **0**, raises mixed-family sets to **93–94%** (the rest is supply: 10 champions have
+  no cooldown question), at identical feasibility and unchanged coverage. **Checkpoint priority
+  dominates replayability:** Wide b=3 has a median of **2** state patterns in 24 seeds and Early b=3
+  hits [2,4,6] **74%** of the time; a soft checkpoint mode gives 10–21 patterns at small coverage
+  cost; spread-only does not help Early Phase. Tight vs Early and Wide vs Full are measurably
+  distinct, but strict-checkpoint Wide is effectively "Early + L11". b=4 adds coverage on broad
+  profiles and adds 12–18 points of repetition under baseline (none under `balanced`); Tight fits 3,
+  Full fits 4. **Every Snapshot underfill is a level-1 anchor** (5.35% of draws); redrawing the anchor
+  fixes 173/173. Distributions A / B / C / D (simulated, none registered) are 98.9–99.7% feasible —
+  the shortfall is all Snapshot-L1 — and the composition policy moves quality far more than the mix.
+* **Invariance.** 173 Mastery banks + 105 default/mixed profile diagnostics (one rendered through
+  production `publish`): 19.9 MB dumps `cmp`-identical vs base. `mastery/tests` 5/2641/14 → 5/2683/14,
+  failure SET identical, counts reconcile (+34 suite, +8 isolation). Integration arm 2/331 on both.
+* **Recommended next step:** version the profile composition with the `balanced` criteria as a new
+  Lab id (`composition.lab_profile_gate_aware.v2`, v1 kept), and take checkpoint strength per profile
+  and the level-1 Snapshot rule (redraw) to the owner with the numbers. Still no Ranked wiring.
+* **Rollback:** `git revert ded63efb`.
+
 ## Screenshots / artifacts
 
 `docs/audits/gr1-reusable-state-phase3/` — **8 PNGs (reusable state Phase 3, the
@@ -2596,7 +2638,17 @@ player is listed in [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3
 **Do not widen Phase 3 into a family-expansion project**; one family is the
 seam, and a second one before persistence exists buys nothing.
 
-**Current next task — pick ONE, and do NOT wire Ranked.** The second state-aware family now exists
+**Current next task — do NOT wire Ranked.** The profile distribution experiment is done (see the
+row above and [`gr1-champion-slice-distribution-experiment.md`](./gr1-champion-slice-distribution-experiment.md)
+§18). Recommended: **version the Lab profile composition with the `balanced` criteria**
+(new state > new metric > new subject > new family) as `composition.lab_profile_gate_aware.v2`,
+keeping v1 — the one change with a large measured benefit and no measured cost. Owner decisions the
+experiment now informs (none taken): repetition as soft penalty vs cap; checkpoint strength per
+profile (strict vs soft); budget per profile (evidence: Tight 3, Full 4); level-1 Snapshot (redraw
+fixes 173/173); the Ranked distribution. Still queued separately: the Mastery bank's mana-regen
+question for 28 manaless champions; a third family; the 9 rank-bearing gaps.
+
+**Superseded — pick ONE, and do NOT wire Ranked.** The second state-aware family now exists
 (see the row above and [`gr1-state-aware-champion-stats.md`](./gr1-state-aware-champion-stats.md)
 §19), which closes option (1) of the block below: with cooldown + stat, every profile fills almost
 everywhere, so the open questions are now variety and product policy rather than supply. Candidates,
