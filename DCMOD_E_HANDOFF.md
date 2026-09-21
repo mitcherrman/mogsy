@@ -4,11 +4,26 @@
 **Baseline:** `origin/main` @ `a9a7b45a` (contains RFX1 2A → 2B3, merge `ba710c6f`).
 Not merged anywhere.
 
-> Baseline note: the checked-out local branch (`envvis1-batch1-scene-channel` @
-> `30b75cbe`) and local `main` (`2e2f385b`) do **not** contain the RFX1/Ranked
-> presentation work; `origin/main` does (80 commits ahead). This branch was cut
-> from freshly fetched `origin/main`. `dcmod/d-hub` sits on the stale
-> `30b75cbe` — worth checking before D integrates.
+## ⚠ Baseline divergence — read before integrating
+
+* **Local starting branch was stale.** The checked-out local branch
+  (`envvis1-batch1-scene-channel`) was at `30b75cbe`, and local `main` at
+  `2e2f385b`. Neither contains the RFX1/Ranked presentation work that this
+  workstream was told to require.
+* **The instructions said STOP in that case. E did not stop.** It based this
+  branch on freshly fetched `origin/main` @ `a9a7b45a` instead (80 commits
+  ahead of `30b75cbe`; contains RFX1 2A → 2B3, merge `ba710c6f`).
+* **This was a local choice, not the shared orchestration baseline.** No
+  orchestrator supplied `a9a7b45a`. Other DCMOD workstreams may be on a
+  different base.
+* **Final integration MUST reconcile ancestry before cherry-picking or
+  merging.** Check this branch's base (`a9a7b45a`) against the integration
+  baseline first. Do not assume these commits apply cleanly to another base.
+* **Do not assume `dcmod/d-hub` is compatible.** It is based on the stale
+  `30b75cbe`, which lacks RFX1, so it does not share this branch's ancestry.
+* **E is parked.** No further DCMOD-E implementation should happen until the
+  integration orchestrator supplies the final frontend baseline. This branch
+  has not been rebased, and must not be rebased until then.
 
 ## 1. What this is
 
