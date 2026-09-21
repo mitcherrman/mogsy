@@ -260,6 +260,7 @@ export default function RankedLobbyHero({
   progress,
   ranked,
   onPlayRanked,
+  rankedAvailable = false,
   playButtonRef,
   playDisabled = false,
   rankedRole = null,
@@ -280,6 +281,7 @@ export default function RankedLobbyHero({
   progress: QuizProgress | null;
   ranked: RankedState;
   onPlayRanked: () => void;
+  rankedAvailable?: boolean;
   /** PLAY1: the seal's own node, so a closing match-entry record can put
    *  focus back where it came from. */
   playButtonRef?: React.RefObject<HTMLButtonElement | null>;
@@ -652,6 +654,7 @@ export default function RankedLobbyHero({
               onClick={onPlayRanked}
               disabled={playDisabled}
               buttonRef={playButtonRef}
+              rankedAvailable={rankedAvailable}
             />
           </div>
 

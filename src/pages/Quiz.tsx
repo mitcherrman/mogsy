@@ -43,6 +43,7 @@ import { authHref } from "@/lib/auth/auth-destination";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { useSfx } from "@/lib/audio/useSfx";
 import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
+import { useRankedAvailability } from "@/pages/quiz-ranked/useRankedAvailability";
 import { playModeVisibility } from "@/lib/quiz/playModes";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory";
@@ -339,6 +340,7 @@ export default function Quiz() {
   // RE1: the hub's competitive identity. Unavailable (older backend, guest,
   // failed request) stays null and the hero renders its neutral unranked state.
   const rankedProgression = useRankedProgression();
+  const rankedAvailability = useRankedAvailability();
   // LC1: the account's real recent Ranked rows. ONE fetch, shared by the
   // lobby's personal history list and the per-role tally under the carousel
   // — the hub components themselves still fetch nothing.
@@ -1472,6 +1474,7 @@ export default function Quiz() {
                  gone from this file entirely — see the handoff. */
               onPlayDailyChallenge={() => navigate("/quiz/daily-challenge")}
               playModes={playModeVisibility(appSettings.policy)}
+              rankedAvailabilityOpen={rankedAvailability.open}
               /* ARENA1 Step 5 §19 — the record's Daily clause reads DC2, the
                  same service the button beside it opens. There is no longer a
                  legacy payload for it to disagree with. */
