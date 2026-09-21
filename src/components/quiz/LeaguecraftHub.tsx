@@ -171,6 +171,7 @@ export default function LeaguecraftHub({
   onRequireAccount,
   onEnterMatch,
   onPlayDailyChallenge,
+  rankedAvailabilityOpen = true,
   playModes,
   dailyChallenge = null,
   playScrollOpenOnMount = false,
@@ -287,6 +288,8 @@ export default function LeaguecraftHub({
    * rather than guessing a route.
    */
   onPlayDailyChallenge: () => void;
+  /** Server-authoritative live-PvP availability. Unknown/failure is closed at the host. */
+  rankedAvailabilityOpen?: boolean;
   /** PLAY1: which entries the match-entry scroll offers (admin policy). */
   playModes: PlayModeVisibility;
   /** PLAY1: today's real Daily Challenge state, for the scroll's figure. */
@@ -488,6 +491,10 @@ export default function LeaguecraftHub({
   const sfx = usePlaySfx();
 
   const openPlay = useCallback(async () => {
+    if (!rankedAvailabilityOpen) {
+      onPlayDailyChallenge();
+      return;
+    }
     const committed = await onPlayRanked();
     /*
      * NO CUE FOR A WITHHELD OPEN, and no `error` either.
@@ -501,7 +508,7 @@ export default function LeaguecraftHub({
     if (!committed) return;
     sfx.play("scrollOpen");
     setPlayOpen(true);
-  }, [onPlayRanked, sfx]);
+  }, [onPlayDailyChallenge, onPlayRanked, rankedAvailabilityOpen, sfx]);
   // Focus is restored by the record itself, on its own unmount — see
   // `returnFocusTo`. Doing it here would race Radix's own restore.
   const closePlay = useCallback(() => setPlayOpen(false), []);
@@ -599,6 +606,7 @@ export default function LeaguecraftHub({
           progress={progress}
           ranked={ranked}
           onPlayRanked={openPlay}
+          rankedAvailable={rankedAvailabilityOpen}
           playDisabled={playDisabled}
           playButtonRef={playSealRef}
           rankedRole={rankedRole}
