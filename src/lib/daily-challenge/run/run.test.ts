@@ -152,13 +152,35 @@ describe("the flow projection", () => {
 describe("the Time Trial bank is the server's number", () => {
   const asOf = "2026-09-21T12:00:00.000Z";
   const t0 = Date.parse(asOf);
-  const bank = { totalMs: 90_000, remainingMs: 60_000, asOf, draining: true };
+  const bank = {
+    totalMs: 90_000, remainingMs: 60_000, asOf, draining: true,
+    answerableAt: null as string | null, deadline: null as string | null, answered: false,
+  };
 
   it("projects forward only while BOTH the server and the arena say answerable", () => {
     expect(projectTimeBank({ bank, nowMs: t0 + 5000, skewMs: 0, answerable: true })).toBe(55_000);
     expect(projectTimeBank({ bank, nowMs: t0 + 5000, skewMs: 0, answerable: false })).toBe(60_000);
     expect(projectTimeBank({ bank: { ...bank, draining: false }, nowMs: t0 + 5000, skewMs: 0, answerable: true }))
       .toBe(60_000);
+  });
+
+  it("a reading taken during a lead-in drains from the question's own answerable instant", () => {
+    // Read 1.5 s before the question opened: not draining AT as_of.
+    const lead = { ...bank, draining: false,
+      answerableAt: "2026-09-21T12:00:01.500Z", deadline: "2026-09-21T12:00:26.500Z" };
+    // Still in the lead-in: held.
+    expect(projectTimeBank({ bank: lead, nowMs: t0 + 1000, skewMs: 0, answerable: true })).toBe(60_000);
+    // 4 s after it opened: exactly 4 s spent — no re-read needed.
+    expect(projectTimeBank({ bank: lead, nowMs: t0 + 5500, skewMs: 0, answerable: true })).toBe(56_000);
+    // Held while the arena is not answerable, and once the player answered.
+    expect(projectTimeBank({ bank: lead, nowMs: t0 + 5500, skewMs: 0, answerable: false })).toBe(60_000);
+    expect(projectTimeBank({ bank: { ...lead, answered: true }, nowMs: t0 + 5500, skewMs: 0,
+      answerable: true })).toBe(60_000);
+    // Never past the question's deadline.
+    expect(projectTimeBank({ bank: lead, nowMs: t0 + 90_000, skewMs: 0, answerable: true })).toBe(35_000);
+    // A stale instant from an EARLIER question (before as_of) never drains.
+    expect(projectTimeBank({ bank: { ...lead, answerableAt: "2026-09-21T11:59:00.000Z" },
+      nowMs: t0 + 5000, skewMs: 0, answerable: true })).toBe(60_000);
   });
 
   it("corrects for clock skew and never projects below zero", () => {

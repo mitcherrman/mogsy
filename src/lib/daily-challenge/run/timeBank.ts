@@ -28,10 +28,24 @@ export function projectTimeBank(args: {
   answerable: boolean;
 }): number {
   const { bank, nowMs, skewMs, answerable } = args;
-  if (!bank.draining || !answerable) return bank.remainingMs;
+  if (!answerable) return bank.remainingMs;
   const asOf = Date.parse(bank.asOf);
   if (Number.isNaN(asOf)) return bank.remainingMs;
-  const elapsed = Math.max(0, nowMs + skewMs - asOf);
+  // Where the drain starts: `asOf` if the question was already answerable
+  // then; otherwise the question's own answerable instant, when the reading
+  // was taken during its lead-in (the bank did not move in between).
+  let start: number;
+  if (bank.draining) {
+    start = asOf;
+  } else {
+    const opens = bank.answerableAt ? Date.parse(bank.answerableAt) : NaN;
+    if (bank.answered || Number.isNaN(opens) || opens < asOf) return bank.remainingMs;
+    start = opens;
+  }
+  let end = nowMs + skewMs;
+  const deadline = bank.deadline ? Date.parse(bank.deadline) : NaN;
+  if (!Number.isNaN(deadline)) end = Math.min(end, deadline);
+  const elapsed = Math.max(0, end - start);
   return Math.max(0, bank.remainingMs - elapsed);
 }
 

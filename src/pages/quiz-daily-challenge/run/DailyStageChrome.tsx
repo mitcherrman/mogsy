@@ -28,7 +28,11 @@ export function TimeBankMeter({ bank, skewMs, childPhase }: {
   childPhase: RankedPresentationPhase | null;
 }) {
   const answerable = childPhase === "answering";
-  const holding = !bank.draining || !answerable;
+  // Draining is possible when the server said so at `asOf`, or when the
+  // reading was taken during a lead-in and names the question's own
+  // answerable instant (see `projectTimeBank`). Otherwise the display holds.
+  const canDrain = bank.draining || (bank.answerableAt !== null && !bank.answered);
+  const holding = !canDrain || !answerable;
   // A display tick, and only a display tick — and none at all while held.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {

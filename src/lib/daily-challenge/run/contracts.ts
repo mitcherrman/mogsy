@@ -59,6 +59,15 @@ export interface DailyTimeBank {
   remainingMs: number;
   asOf: string;
   draining: boolean;
+  /**
+   * The active question's own server instants (DCMOD integration). A reading
+   * taken during a lead-in says `draining: false`; these let the projection
+   * start the drain exactly when the question became answerable instead of
+   * freezing until some later re-read. Null when unknown.
+   */
+  answerableAt: string | null;
+  deadline: string | null;
+  answered: boolean;
 }
 
 /** B+ — Survival's mistakes. A count, never health. */
@@ -188,6 +197,9 @@ function readLive(v: unknown, l: string): DailyStageLive | null {
       remainingMs: int(b.remaining_ms, `${l}.time_bank.remaining_ms`),
       asOf: str(b.as_of, `${l}.time_bank.as_of`),
       draining: b.draining === true,
+      answerableAt: optStr(b.answerable_at, `${l}.time_bank.answerable_at`),
+      deadline: optStr(b.deadline, `${l}.time_bank.deadline`),
+      answered: b.answered === true,
     };
   }
   let strikes: DailyStrikes | null = null;
