@@ -107,6 +107,30 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
 const seal = () => screen.getByTestId("ranked-play-gem");
 
 describe("PLAY commits the role, then opens the record", () => {
+  it("starts Daily directly while live Ranked is closed", async () => {
+    const onPlayDailyChallenge = vi.fn();
+    const { onPlayRanked } = renderHub({
+      rankedAvailabilityOpen: false,
+      onPlayDailyChallenge,
+    });
+
+    fireEvent.click(seal());
+
+    expect(onPlayDailyChallenge).toHaveBeenCalledTimes(1);
+    expect(onPlayRanked).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("play-scroll")).toBeNull();
+    expect(screen.queryByTestId("ranked-available-badge")).toBeNull();
+  });
+
+  it("shows availability and opens the existing record while Ranked is open", async () => {
+    renderHub({ rankedAvailabilityOpen: true });
+    expect(screen.getByTestId("ranked-available-badge")).toBeTruthy();
+    expect(seal()).toHaveAccessibleName("Play");
+
+    fireEvent.click(seal());
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+  });
+
   it("asks the host to commit before anything opens", async () => {
     const { onPlayRanked } = renderHub();
     expect(screen.queryByTestId("play-scroll")).toBeNull();
