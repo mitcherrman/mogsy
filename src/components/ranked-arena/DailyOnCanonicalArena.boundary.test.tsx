@@ -189,13 +189,24 @@ describe("the Daily owns no game surface of its own", () => {
    * have grown. Its absence from this list is the guard against them returning
    * as a pair of buttons under the question.
    */
-  it("its remaining components are semantic content, and there are two", () => {
+  /*
+   * DCMOD-E — the parent run added the conversation this rule asks for. Its
+   * components are the Daily's BETWEEN-STAGE presentation, and none draws a
+   * game surface: the stage beats (intro / tag / short result), the one final
+   * completion, the header row handed to the arena as `chrome`, and the stage
+   * tag + ladder. Gameplay stays the canonical match, hosted via `MatchHost`.
+   */
+  it("its remaining components are semantic content or between-stage beats", () => {
     const components = DAILY_FILES()
       .filter((f) => f.endsWith(".tsx") && !f.endsWith("Page.tsx"))
       .map((f) => f.split("/").pop());
     expect(components).toEqual([
       "DailyChallengePanel.tsx",   // TODAY'S CHALLENGE — the right flank
       "DailyResultSummary.tsx",    // the finished day's own numbers
+      "DailyCompletion.tsx",       // DCMOD-E: the parent run's one close
+      "DailyRunBeats.tsx",         // DCMOD-E: Daily intro, stage tag, stage result
+      "DailyStageChrome.tsx",      // DCMOD-E: the header row over the arena
+      "StageTag.tsx",              // DCMOD-E: a stage's mode name, and the ladder
     ]);
   });
 
@@ -246,7 +257,14 @@ describe("the Daily imports its shared projections from lib, never from a page",
       ...sourceFiles(join(ROOT, "pages", "quiz-daily-challenge")),
       ...sourceFiles(join(ROOT, "lib", "daily-challenge")),
     ]) {
-      const src = codeOnly(readFileSync(file, "utf8"));
+      let src = codeOnly(readFileSync(file, "utf8"));
+      // DCMOD-E — the ONE allowed reach: the parent run HOSTS the canonical
+      // match (a component, not a projection), through the neutral `MatchHost`
+      // seam. Only this symbol, only from the page that routes the stages.
+      if (rel(file) === "pages/quiz-daily-challenge/run/DailyRunPage.tsx") {
+        src = src.replace(
+          'import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";', "");
+      }
       if (/from\s+["']@\/pages\/quiz-ranked/.test(src)) offenders.push(rel(file));
     }
     expect(offenders, [
