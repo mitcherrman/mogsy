@@ -34,7 +34,8 @@ function sourceFiles(dir: string): string[] {
   }
   return out;
 }
-const rel = (f: string) => f.slice(ROOT.length + 1);
+// POSIX separators, so the path-shaped assertions below hold on Windows too.
+const rel = (f: string) => f.slice(ROOT.length + 1).split("\\").join("/");
 
 /**
  * Source with its COMMENTS removed.
