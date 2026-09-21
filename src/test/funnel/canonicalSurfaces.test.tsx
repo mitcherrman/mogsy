@@ -218,7 +218,7 @@ describe("each canonical surface emits its own event, from its own file", () => 
     ["pages/quiz-ranked/QuizRankedPage.tsx", "ranked_opened"],
     ["pages/LeagueSwipeHub.tsx", "meta_reflex_opened"],
     ["pages/quiz-mastery/MasteryJourneysPage.tsx", "mastery_opened"],
-    ["pages/QuizDailyScoreAttack.tsx", "dsa_opened"],
+    // DCMOD retired the standalone Time Trial page, and with it `dsa_opened`.
     ["pages/Auth.tsx", "signup_viewed"],
   ];
 
@@ -234,7 +234,6 @@ describe("each canonical surface emits its own event, from its own file", () => 
       "ranked_opened",
       "meta_reflex_opened",
       "mastery_opened",
-      "dsa_opened",
     ];
     for (const event of surfaces) {
       const emitters = productionSources({ analyticsLibrary: false })

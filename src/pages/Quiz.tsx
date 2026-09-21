@@ -27,11 +27,8 @@ import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 // Daily Score Attack hub entry: shown instead of the legacy Daily card only
 // when the backend reports the new mode enabled (server feature flag).
-import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
 import PracticeBuilderPanel, { type BuilderPreset } from "@/components/quiz/builder/PracticeBuilderPanel";
 import PerformanceTrendsPane, { type TrendsPracticePreset } from "@/components/quiz/trends/PerformanceTrendsPane";
-import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackClient";
-import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { QUIZ_CATEGORY_ICONS } from "@/components/quiz/QuizCategoryStrip";
 import {
@@ -89,8 +86,6 @@ type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
  * This is a navigation/visibility decision, never a deletion.
  */
 type HubModuleFlags = {
-  /** Daily Score Attack ("Time Trial") card — lives at /quiz/daily. */
-  timeTrial: boolean;
   /** Standalone Stat Check entry — lives at /quiz/stat-check. */
   statCheck: boolean;
   /** Standalone Meta Reflex entry — lives at its own public /league-swipe URL. */
@@ -124,9 +119,8 @@ type HubModuleFlags = {
  * Three of these were flipped on, and each was already finished, already
  * Free, already deployed and merely unlinked:
  *
- *   timeTrial          `/quiz/daily` is a production route, the backend flag
- *                      is ON, and the mode awards XP and advances the daily
- *                      streak. It had no link anywhere in the product.
+ *   (timeTrial         retired by DCMOD: Time Trial is now a reusable
+ *                      ruleset played as a Daily Challenge stage.)
  *   knowledgeBreakdown per-category accuracy over the player's OWN record.
  *                      This page is its only host, so the flag was the only
  *                      route back to it.
@@ -140,7 +134,6 @@ type HubModuleFlags = {
  * navigation on the page twice. The packs came back; their old grid did not.
  */
 const HUB_MODULES: HubModuleFlags = {
-  timeTrial: true,
   statCheck: false,
   metaReflex: false,
   knowledgeBreakdown: true,
@@ -501,20 +494,6 @@ export default function Quiz() {
   }, [rankedRole]);
   const userId = user?.id || "anonymous";
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const today = await fetchScoreAttackToday();
-        if (!cancelled && today.enabled) setScoreAttackToday(today);
-        if (!cancelled && !today.enabled) trackFunnelEvent("dsa_legacy_fallback", { reason: "disabled" });
-      } catch {
-        // Feature disabled or unavailable: keep the legacy Daily experience.
-        if (!cancelled) trackFunnelEvent("dsa_legacy_fallback", { reason: "unavailable" });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
   const isAnonymous = !user || user.is_anonymous === true;
   /**
    * PLAY1 SOUND — the page owns exactly one cue: the signup CTA's.
@@ -641,7 +620,6 @@ export default function Quiz() {
     }
   }, []);
 
-  const [scoreAttackToday, setScoreAttackToday] = useState<DsaToday | null>(null);
   // DC2's own answer for today — the authority for the match record's Daily
   // clause. One read, no polling; unknown renders the ordinary clause.
   const dailyStatus = useDailyChallengeStatus();
@@ -1533,12 +1511,6 @@ export default function Quiz() {
               historyLoading={historyLoading}
               historyError={historyError}
               showPractice={HUB_MODULES.practicePanel}
-              /* PT1.7A: the mode is entered from the study row above the
-                 record, not from a card under it. The host keeps the
-                 availability probe and the funnel event; the hub only places
-                 the column. `scoreAttackToday` is null whenever the backend
-                 reports the mode disabled or unreachable, so a dark backend
-                 renders no entry rather than a dead one. */
               /* PT1.7B: the Builder sits with the other ways to start a
                  session. It draws its own paywall from the server's capability
                  answer, so the hub neither knows nor decides who may see it. */
@@ -1561,16 +1533,6 @@ export default function Quiz() {
                  itself draws the paywall from the server's answer, so no hub
                  flag and no client-side tier check decides who sees what. */
               trends={<PerformanceTrendsPane onPractiseWeakness={handlePractiseWeakness} />}
-              timeTrial={
-                HUB_MODULES.timeTrial && scoreAttackToday ? (
-                  <QuizScoreAttackCard
-                    today={scoreAttackToday}
-                    hasAccount={!isAnonymous}
-                    onPlay={() =>
-                      trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
-                  />
-                ) : null
-              }
               /* The lobby shows the UNSAVED choice; the account is written at
                  PLAY. See `pendingRankedRole`. */
               rankedRole={effectiveRankedRole}
@@ -1608,11 +1570,8 @@ export default function Quiz() {
                 components and data all remain live today.
                 ───────────────────────────────────────────────────────────── */}
 
-            {/* Time Trial USED to sit here, in a two-column row whose second
-                occupant no longer exists. It moved INTO the composition (the
-                study row beside the practice packs) rather than staying a
-                card appended under the record — see the `timeTrial` slot
-                above. `HUB_MODULES.timeTrial` is still the one switch. */}
+            {/* DCMOD: the standalone Time Trial is retired — it is a Daily
+                Challenge stage now (the `time_trial` ruleset). */}
 
             {/* Stat Check — the card game entrance, live at /quiz/stat-check. */}
             {HUB_MODULES.statCheck && (

@@ -57,6 +57,15 @@ vi.mock("@/pages/quiz-ranked/useRankedRole", () => ({
 vi.mock("@/pages/quiz-ranked/useRankedProgression", () => ({
   useRankedProgression: () => ({ progression: null, loadState: "ready" }),
 }));
+// This suite exercises the PLAY record, which DCMOD-D only opens while live
+// Ranked is available (closed/unknown fails closed straight to the Daily).
+// Pin the server decision open; the closed path is LeaguecraftHub.playCommit's.
+vi.mock("@/pages/quiz-ranked/useRankedAvailability", () => ({
+  useRankedAvailability: () => ({
+    open: true, state: "open" as const, reason: "test",
+    nextOpenAt: null, closesAt: null, serverTime: "2026-09-21T12:00:00Z",
+  }),
+}));
 vi.mock("@/pages/quiz-ranked/useRankedMatchHistory", () => ({
   useRankedMatchHistory: () => ({ entries: [], loadState: "ready" }),
 }));

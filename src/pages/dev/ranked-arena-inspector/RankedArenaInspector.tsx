@@ -22,11 +22,7 @@ import { DiscoveryReveal } from "@/components/ranked-arena/DiscoveryReveal";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
 import { GameResultsShell } from "@/components/game-results/GameResultsShell";
-import { buildTimeTrialResults } from "@/pages/dev/daily-score-attack/DailyScoreAttackResults";
 import { buildSessionResults } from "@/lib/quiz/sessionResults";
-import {
-  historyFixture, resultsFixture,
-} from "@/pages/dev/daily-score-attack/testFixtures";
 import { ResultContestants } from "@/components/game-results/ResultContestants";
 import { buildRankedResults } from "@/pages/quiz-ranked/rankedResultsModel";
 import type { MatchReviewView } from "@/lib/ranked-public/contracts";
@@ -1188,20 +1184,11 @@ function RankedResultScene({ rated }: { rated: boolean }) {
 }
 
 /**
- * THE TWO NON-ARENA MODES' RESULT SCREENS, on the same fixtures QA already
- * has. `GameResultsShell` is what Time Trial and the practice quiz render, so
- * they are visually checkable here — dark-academy skin, responsive behaviour,
- * three action weights — without a backend and without playing a run.
+ * THE NON-ARENA RESULT SCREEN (practice quiz), on a fixture. `GameResultsShell`
+ * is what the practice quiz renders, so it is visually checkable here without
+ * a backend. (The standalone Time Trial scene was retired with that mode by
+ * DCMOD — Time Trial is a Daily stage on the canonical arena now.)
  */
-function TimeTrialResultScene() {
-  const model = buildTimeTrialResults(resultsFixture(), historyFixture);
-  model.actions = {
-    primary: { label: "Try a practice run", onClick: () => {} },
-    secondary: { label: "Review Questions", onClick: () => {} },
-    tertiary: { label: "Back to Leaguecraft", onClick: () => {} },
-  };
-  return <GameResultsShell model={model} />;
-}
 
 const PRACTICE_ANSWERS = [
   ["Runes", true], ["Runes", true], ["Item Costs", false],
@@ -1544,8 +1531,6 @@ const STATES: InspectorState[] = [
     render: () => <RankedResultScene rated /> },
   { key: "results-full-bot", label: "RESULT — full composition vs Bot (unrated loss)",
     render: () => <RankedResultScene rated={false} /> },
-  { key: "results-time-trial", label: "RESULT — Time Trial (shared shell)",
-    render: () => <TimeTrialResultScene /> },
   { key: "results-practice", label: "RESULT — practice quiz (shared shell)",
     render: () => <PracticeResultScene /> },
   { key: "discovery-reveal", label: "Match over — new questions discovered",
