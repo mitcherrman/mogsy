@@ -15,10 +15,10 @@ Ranked, the current Slice, the cooldown family and its prompt are **byte-identic
 | | SHA | Note |
 |---|---|---|
 | Backend base | `origin/master` **`c2634d8a`** | As named in the brief; fetched at the start of the phase, did not move. |
-| Backend commit | **`81e5b24d`** | One commit on `gr1/state-aware-champion-stats`, worktree `~/lcs-wt-gr1-stats`. Authored on `c2634d8a`; `origin/master` moved once mid-phase (`a178a116`, Sundered Sky item lane — 9 files, **zero `mastery/` overlap**) and the branch was rebased onto it. **NOT PUSHED.** |
+| Backend commit | **`81e5b24d`** | One commit on `gr1/state-aware-champion-stats`, worktree `~/lcs-wt-gr1-stats`. Authored on `c2634d8a`; `origin/master` moved once mid-phase (`a178a116`, Sundered Sky item lane — 9 files, **zero `mastery/` overlap**) and the branch was rebased onto it. At integration (2026-09-21) rebased again onto `71919f50` (one items-only commit, zero file overlap) and **PUSHED to `origin/master` as `1090633f`**. |
 | Comparison base | `~/lcs-wt-gr1-stats-base` detached @ **`c2634d8a`** | Same symlinked `lol_calc.db`, for the invariance probe and the failure-set arm. |
 | Docs base | `origin/main` **`7d003128`** | As named in the brief; did not move. |
-| Docs commit | *(this commit — read it with `git log`)* | Branch `gr1/state-aware-champion-stats-docs`, worktree `~/mogsy-wt-gr1-stats`. **NOT PUSHED.** |
+| Docs commit | *(this commit — read it with `git log`)* | Branch `gr1/state-aware-champion-stats-docs`, worktree `~/mogsy-wt-gr1-stats`. **PUSHED to `origin/main`** (no rebase needed; `origin/main` still `7d003128`). |
 | Frontend | **none** | None was needed. |
 
 **Files: 10 — 3 new, 7 modified.**
@@ -519,7 +519,10 @@ condition. Feasibility is the existing `infeasibility` / `composition_feasibilit
   candidates include **"base mana regen"** for the **28** champions with no mana pool (it gates
   `base_mana` on the resource authority but not `base_mana_regen`; for the 6 energy champions the
   column holds energy regen). The state-aware path refuses it; the bank is unchanged here because
-  changing it would move live Mastery content.
+  changing it would move live Mastery content. **Integration recheck (2026-09-21): still present,
+  deliberately NOT fixed.** All 28 still carry `champion_base_stat:<Name>:mp5` *and*
+  `champion_stat_level:<Name>:mp5:lvl11` / `lvl18` in the live bank; the state-aware family admits
+  neither `resource` nor `resource_regen` for any of them. Tracked as a separate content-quality bug.
 * **Item-modified stats** (`.total`) — a separate family with a scenario binding.
 * **Form-dependent stats** (Mega Gnar, Kled/Skaarl) — no canonical per-form stat store.
 * **Attack speed at level** — derivable, but no certified projected fact.
@@ -543,3 +546,24 @@ condition. Feasibility is the existing `infeasibility` / `composition_feasibilit
 profiles, persistence of a served bundle, State Context UI.
 
 **Rollback:** revert the backend commit. Nothing persisted, no route, no migration, no frontend.
+
+## Integration (2026-09-21)
+
+Measurements above are implementation-time and kept as history. Integration recheck:
+
+* Backend rebased `81e5b24d` → **`1090633f`** onto `origin/master` `71919f50` (Cinderbloom item
+  lane, 14 item/runtime files, zero overlap with `mastery/`, stat authority, bank, composition or
+  Slice/Ranked paths). Pushed to `origin/master`.
+* `bank.py` diff re-audited: pure extraction into `level_stat_candidate` (same key, template, hint,
+  category, redundancy group, registry).
+* Invariance vs `71919f50`: 173 banks, 1,670 Practice `champion_stat_level` questions and 213 default
+  Lab diagnostics (173 LEVEL-arm Full Range b=4 + Ahri/Jarvan IV/Teemo/Garen × 5 profiles × b=3/4)
+  dump `cmp`-identical.
+* `mastery/tests` + Ranked/Slice suites: 5 failed / 2703 passed vs base 5 / 2611, failure SET
+  identical (audit_db ×3, per-question-reveal, phase4f format-for-creation — all pre-existing).
+* Supported metrics unchanged: health 173, MR 173, AD 172, armor 172, hp5 172, mana 145, mp5 145;
+  move speed / range / attack speed 0.
+* Roster (164 rank-arm + 9 LEVEL-arm = 173), cooldown-only → mixed: Snapshot b3 92→166, b4 28→166;
+  Tight 138/116→173/173; Early 146/130→173/173; Wide 155/146→173/173; Full 162/159→173/173.
+  Nine rank-gap champions in LEVEL mode: 0 → feasible on all 5 profiles × b=3/4.
+
