@@ -58,7 +58,14 @@
 > (GR1 reusable state **gate-aware composition — the reusable publication PREFLIGHT beside the gate,
 > a second EXPERIMENTAL Lab policy that only composes sets the gate will accept, and an explicit
 > structured infeasibility when none exists. Backend `0ce7b531` INTEGRATED AND PUSHED to `origin/master`; the gate
-> itself is unchanged and remains the final authority**).
+> itself is unchanged and remains the final authority**) and
+> [`docs/gr1-champion-state-sequence-source.md`](./gr1-champion-state-sequence-source.md)
+> (GR1 **the first production Champion `StateSequenceSource`, `champion.progression.legal_advance.v1`
+> — integrated `e7436166`, wired into nothing**) and
+> [`docs/gr1-champion-slice-profiles.md`](./gr1-champion-slice-profiles.md)
+> (GR1 **Champion Slice Profiles — scope breadth vs question budget; five certified profiles
+> (snapshot / tight / early_phase / wide / full_range_sample), checkpoint/spread state preference,
+> a third Lab composition policy. Backend `c2634d8a` PUSHED to `origin/master`; Generator Lab only**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -98,6 +105,7 @@
 | **GR1 reusable state — sequence + window mechanics** | **IMPLEMENTED, INTEGRATED AND PUSHED, 2026-09-20. Pure contract code; wired into nothing.** Backend **`6073e035`** (rebase of `3a202eb9`) on `gr1/reusable-state-sequence-window`, base `origin/master` **`09d58a98`** (zero file overlap across the 5 intervening commits), worktree `~/lcs-wt-gr1-seq`; **`origin/master` is now `6073e035`.** Docs base `origin/main` **`7bc6581b`**, docs commit *(this commit; a commit cannot embed its own SHA — read it with `git log`)*, worktree `~/mogsy-wt-gr1-seq`. **9 files, all inside `mastery/`** — 4 new, 5 modified; no route, no generator, no Ranked module, no frontend, no migration, no DDL. Three new modules in the isolation guard's **CONTRACT** half, so the sequence layer provably reads no data and carries no game-rule number (integer literals restricted to `{0,1,2}`, no float, no QWER letter): **`sequence.py`** (a `StateNode` holds a TEMPLATE — never a resolved state, never a question; ordered dense ordinals; identity is the template's SPECIFIED axes with `template_ref`, label, `setup_source` and basis excluded; a sequence refuses a mixed kind, champion set, ruleset or basis, and adjacent nodes need not differ at all), **transitions DERIVED by diffing adjacent templates over the existing CLOSED axis vocabulary** with side association kept (`SideChange` names its champion) and absence explicit (`absent_before` — unspecified is not zero), a supplied-but-wrong transition set refused; **`window.py`** (`StateWindow` is contiguous, inclusive, fail-closed on every out-of-range span, valid at one node, and carries **no question selection** — `max_nodes` is a STATE count), plus ONE deterministic testing policy `window.contiguous_seeded.v1` that positions the span by a `content_hash` offset over every legal start (so it does **not** bias to the first state) and supports a containment `anchor`; **`sequence_source.py`** (the replaceable `StateSequenceSource` Protocol, `LiteralSequenceSource`, and **`default_sequence_registry()` is EMPTY — asserted**, so `rule.haste_ladder.v1` is unregistered and no production caller can obtain a sequence). **One side permutation governs the whole run** rather than per-node canonicalization, which is what keeps a MIRROR matchup's sides attached to their own progressions. Identity: one material, two encodings — readable `sseq.v1:` key and the design's compact `sseq_` digest — plus `strans_` per transition and `swin_` per window composition (seed included only when the policy declares it material; **no candidate id, because no question exists at this layer**). The resolution seam `resolve_window_states` is **PREPARED and unwired**: each node resolves independently through the existing `resolve_state`, a refusal names the node, and there is no partial result. Generator Lab: **backend JSON `window.diagnostic()` only, no new endpoint** — the Lab router's route set is pinned by exact set equality and widening it for an inspection a pure function provides was the wrong trade. `mastery/tests` failure **SET** byte-identical to base (5 failed, 2179 → **2266** passed; +87 reconciles exactly as 72 new tests + 15 new parametrised isolation cases); 9 Ranked/Mastery-slice integration files **269 passed on both arms**. One existing test edited on purpose: Phase 4B's "no sequence exists yet" scope guard, narrowed to "the sequence layer arrived and persistence gained nothing from it". See [`gr1-reusable-state-sequence-window.md`](./gr1-reusable-state-sequence-window.md) and the section below. |
 | **GR1 reusable state — window composition** | **IMPLEMENTED AND PUSHED to `origin/master`, 2026-09-20. Generator Lab only, nothing persisted.** Backend **`aa9e2ea5`** on `origin/master` (authored `93f3e28f` on base `dd97112b` -- two item-runtime commits past the sequence/window phase's `6073e035`, **zero `mastery/` overlap** -- then rebased clean onto `21cf0c71` and pushed), worktree `~/lcs-wt-gr1-compose`; comparison base `~/lcs-wt-gr1-compose-base` @ `dd97112b`. Docs base `origin/main` **`1b4f60ea`**, worktree `~/mogsy-wt-gr1-compose`. **6 files, all inside `mastery/setup_state/` or `mastery/tests/`** — 3 new, 3 modified; no route, no generator, no Ranked module, no serving file, no frontend, no migration. This is the phase the sequence/window record named as its own boundary, and it connects the pieces for the first time: `StateWindow → resolve_window_states → the EXISTING Phase 3 state-aware cooldown candidates per resolved state → ONE deduplicated multi-state universe → ONE composed set → the first MULTI-STATE FrozenStateBundle`. **No identity rule was added:** collapse is keyed on `candidate_id()`, which is already the repository's semantic question identity, and every producing state is kept BESIDE it in `source_ordinals` and never inside it — so two builds resolving to 20 haste are ONE question produced by two states, 20 vs 40 haste stay two, a rank change stays two, and **Ahri Q r3→r4→r4 collapses to one because Ahri's Q cooldown is FLAT**. One identity carrying two answers is **refused** (`candidate_answer_conflict`), never won by whichever was read last. **A state that resolves but has nothing askable is a recorded `BarrenState` in the family's own words** — producers ∪ barren is every window node, asserted — while a state that cannot RESOLVE still fails the whole window naming its node. The EXPERIMENTAL policy `composition.lab_window_coverage.v1` groups by presentation state, spreads each state's near-identical variants apart, then round-robins across the window from a seeded offset: deterministic, budget independent of the state count, no state contributing more than `ceil(budget/groups)`, no duplicates, no filler, and **budget > supply returns the whole universe**. Final order is `(primary_ordinal, family_id, candidate_key)` — **the seed chooses WHICH questions, never their order**. The multi-state bundle needed **no type change**: only the states a selected question needs are included, densely remapped from zero, each step bound to its presentation state with its binding, answer metric and digests, round-tripping exactly and verifying with `sqlite3.connect` made to raise. `FrozenTransition` is populated **only** where it can be honest — contiguous included states, one side — and is left empty with a stated reason otherwise, because a partial tuple cannot be told from an absent change. **Recorded finding:** the production publication gate **refuses** a composed set that is three questions about one ability (`PublicationBlocked: request 'recall_ability_cooldown' asked for 3, only 2 available`); that refusal is correct, is not routed around, is asserted by a test, and is why rendering is optional — **a Slice policy that ignores the gate's diversity rule will compose sets that cannot be served.** **No endpoint was added** (the Lab route set is pinned by exact set equality); the surface is `window_lab.window_diagnostic()`, backend JSON only. `mastery/tests` failure **SET** byte-identical to base (5 failed, 2266 → **2337** passed pre-commit, **2344**/7 skipped post-commit; +71 reconciles as 63 new tests + 8 new parametrised isolation cases); focused setup_state arm **431 passed**; the 9-file Ranked/Mastery arm is **2 failed, 213 passed**, both failures `test_mastery_ranked_capsule`'s pinned ids/digests and **identical on a clean base worktree**. See [`gr1-reusable-state-window-composition.md`](./gr1-reusable-state-window-composition.md) and the section below. |
 | **GR1 reusable state — gate-aware composition** | **IMPLEMENTED, INTEGRATED AND PUSHED, 2026-09-20. Generator Lab only, nothing persisted, and the publication gate is UNCHANGED.** Backend **`0ce7b531`** on branch `gr1/gate-aware-composition`, implementation base `origin/master` **`35f11822`**, rebased at integration onto **`e886fd5f`** (one unrelated commit, zero overlap) and PUSHED to `origin/master`; worktree `~/lcs-wt-gr1-gate`; comparison base `~/lcs-wt-gr1-gate-base` @ `35f11822`. Docs implementation base `origin/main` **`8a38fcbb`**, rebased onto **`1f0133f9`** and PUSHED to `origin/main`; worktree `~/mogsy-wt-gr1-gate`. **8 files — 2 new, 6 modified**; no route, no generator, no Ranked module, no serving file, no frontend, no migration, no DDL. This closes the blocker the window-composition phase named as not optional. **The refusal's mechanism, reproduced rather than inferred:** it is NOT a diversity rule — it is `require_distinct_effective_question` on the manifest's own `RepetitionPolicy`, which `gate_snapshot` applies through `adapter.dedupe_by_effective_question`. The state-aware prompt names the HASTE, not the rank, so `W r2` and `W r3` at 20 haste render the same prompt with the same empty numeric options and collapse to ONE player question; `W r4` renders `single_choice` with options and survives. Two survive, the plan asks three, `SELECTION_UNDER_FILLED` fires. **The seam:** a NEW `mastery/publication_gate/preflight.py` — pure, I/O-free, deterministic, no DB write, no artifact — that answers "would publication accept this set?" by calling the module that OWNS each rule: `gate.evaluate` (unary eligibility), the adapter's `effective_question_key` (pairwise uniqueness, and only when the recipe asks), and the resolver's new public `candidates_matching` (set-level request availability). **No gate constant is copied and no rule is restated**, so relaxing a rule AT ITS OWNER moves the composer's feasibility in the same commit — asserted by a test. `window_lab.lab_manifest()` is the ONE recipe builder both the preflight and `publish` use, so a feasibility answer can never describe a plan publication does not resolve. **All three rules are HARD** (`policy_ineligible`, `effective_question_collision`, `request_under_filled`, `nothing_publishable` — the complete code set, asserted); coverage/diversity/progression stay SOFT and live with the composition policy, so no production rule was demoted. **The policy** `composition.lab_window_gate_aware.v1` (a NEW id, not a revision) orders the whole universe by the COVERAGE policy's own walk — its first N entries ARE the naive set, asserted — then takes the lexicographically earliest combination the oracle accepts, which is the feasible set deviating least from the coverage answer; where the coverage answer is publishable it returns **exactly that answer**. `composition.py` stays in the CONTRACT half and **cannot import the gate**, so the consumer half injects the oracle and holds the search's node budget. **Bounded exhaustive DFS** with unary + pairwise pruning read off the oracle's declared structures: within `SEARCH_NODE_BUDGET = 20000` verdicts, if a feasible set of size N exists it is found; an exhausted search reports itself and **never becomes a false "no"**. In practice every suite case resolves in ONE verdict. **An infeasible budget returns NO set** — `NoFeasibleComposition` carries requested budget, the gate's own words, `maximum_feasible_count`, per-state/subject/family counts and unused candidates, and a test proves the reported maximum actually composes AND publishes. Nothing is shortened, no filler exists, no rule is relaxed to reach a count. **The known case `SEQ_B`@3 is GENUINELY infeasible** (that universe holds three candidates, two of which are one player question) and is reported as such with `maximum_feasible_count=2`; a new fixture `SEQ_ALT`@`seed="eta"`@3 is the feasible-alternative case — the coverage policy composes `W r2/r3/r4` and the gate refuses it, the gate-aware policy composes `E flat, W r2, W r4` and the production path publishes all three. The guarantee is checked against an INDEPENDENT exhaustive `itertools.combinations` search at every budget. **The gate is still the authority:** every set is re-judged by `publish`; a tampered set is refused; an oracle stubbed to say "yes" to everything makes the composer return the monotonous triple and `publish` refuses it anyway; and `gate.py` is byte-identical, pinned by a test on its refusal wording. **The FrozenStateBundle is built only from the accepted selection** — rejected combinations leave no trace (asserted disjoint), and an infeasible request builds no bundle at all. **No endpoint added** (Lab route set pinned by exact set equality); the diagnostic gains `gate_aware`, `publication_constraints`, `composition_feasibility` and `naive_composition`, and ONLY when asked — `gate_aware` defaults to False so every existing caller is byte-identical. `mastery/tests` failure **SET** byte-identical to base (5 failed, 2337 → **2380** passed pre-commit, **2387**/7 skipped post-commit; +43 is exactly the new file, and no isolation case was added because no `setup_state` module was); focused arm **1 failed, 1251 passed** (the failure is in the base set); the 9-file Ranked/Mastery arm is **2 failed, 213 passed**, identical to the base worktree. See [`gr1-reusable-state-gate-aware-composition.md`](./gr1-reusable-state-gate-aware-composition.md) and the section below. |
+| **GR1 Champion Slice Profiles** | **IMPLEMENTED AND INTEGRATED, 2026-09-21 — backend `origin/master` `c2634d8a`, docs `origin/main`. Generator Lab only; no route, no Ranked wiring, nothing persisted.** Backend **`c2634d8a`** on `gr1/champion-slice-profiles` (worktree `~/lcs-wt-gr1-prof`), parent `origin/master` **`d5fbacd6`** (the brief's `e7436166` + one items-only commit, zero `mastery/` overlap). Docs on `gr1/champion-slice-profiles-docs` (worktree `~/mogsy-wt-gr1-prof`), base `origin/main` `4cf0b247`. A Slice is no longer one window size: a `ChampionSliceProfile` = scope + sampling + anchor policy + **question budget**, and the budget never enters the scope's identity. Five certified profiles; `mastery/tests` failure SET identical to base (5 pre-existing). See [`gr1-champion-slice-profiles.md`](./gr1-champion-slice-profiles.md). |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -2092,6 +2100,82 @@ rebased onto **`1f0133f9`** and **PUSHED to `origin/main`**; worktree `~/mogsy-w
 * **Rollback:** `git revert 0ce7b531`. Nothing persisted, no production caller, no route, no
   migration, no frontend.
 
+## Reusable state — CHAMPION SLICE PROFILES, Generator Lab only (2026-09-21)
+
+Full record: [`gr1-champion-slice-profiles.md`](./gr1-champion-slice-profiles.md). Backend
+**`c2634d8a`** on `gr1/champion-slice-profiles`, worktree `~/lcs-wt-gr1-prof`, parent
+`origin/master` **`d5fbacd6`** (the brief's `e7436166` moved once mid-phase — Immolate target
+multipliers, zero `mastery/` overlap — and the branch was rebased before committing). Comparison base
+`~/lcs-wt-gr1-base` detached @ `d5fbacd6`. Docs on `gr1/champion-slice-profiles-docs`, worktree
+`~/mogsy-wt-gr1-prof`, base `origin/main` **`4cf0b247`** (the brief's `884e96a5` had moved three
+commits). **NEITHER PUSHED.** No frontend commit.
+
+* **What it is.** The owner's direction that a Slice must not mean one fixed window size, made a
+  contract. **Scope breadth** (which states are eligible) and **question budget** (how many
+  questions) are independent inputs of a `ChampionSliceProfile`; the budget is in `profile_key` and
+  never in `scope_key`, so budgets 3 and 4 over one profile select the identical window, eligible
+  ordinals and state preference (asserted for every profile).
+
+* **Five certified profiles** (`slice_profile.certified_profile(name, question_budget=…)`):
+  `snapshot` (one exact state, several questions — first-class), `tight` (3-state local span around
+  a seeded or requested anchor, dense/local), `early_phase` (level band 1–6), `wide` (level band
+  1–11), `full_range_sample` (the whole run the source supplied). The three broad ones sample with
+  **checkpoint/spread**. None is a Ranked preset; `parse_mastery_slice_config` refuses every profile
+  name.
+
+* **The audit finding that shaped it.** `StateWindow` already separated states from questions and
+  is contiguous by contract, so every profile scope IS a window and "window" kept its meaning; a
+  `SliceScope` sits above it. What was missing was spread: the coverage walk starts at a seeded
+  offset in window order, so a broad window with a small budget clustered on adjacent states. The
+  new `composition.lab_profile_gate_aware.v1` walks the **existing** gate-aware search (extracted,
+  shared, behaviourally unchanged for both old policies) over the profile's STATE preference, and a
+  shared question may now be **presented at any state that produces it** (`presentation_ordinal`,
+  default `None` = the old earliest-producer rule; refused if not a producer). Without that, a spread
+  profile could never represent a later state whose questions all first appeared earlier.
+
+* **Scope is sequence-based.** Full range = whatever run the source supplied (monkeypatching the
+  rules to grant more levels grows it, no code edit). A band is a request checked against the nodes'
+  own values: a run missing a bound, a non-contiguous band, or an axis the run does not state is
+  **refused**, never clamped. The certified requests (3, 6, 11) live in ONE named assignment,
+  `_CERTIFIED_SCOPE_REQUESTS`, and the contract-half number guard was deliberately given exactly one
+  named exemption for it (mirroring its existing slot-letter exemption) rather than routed around.
+
+* **Checkpoints are read off the sequence's derived transitions** — a non-routine axis change, a key
+  activated (a slot's first point, an item appearing), a key removed (components consumed). A pure
+  level run has no signal anywhere and falls back to spread + seed; nothing reads "level 6" as an
+  ultimate.
+
+* **Results (level source; "ranks" = a stated, attributed harness skill order).** Ahri full range b=3
+  → levels 2/10/18, b=4 → 2/6/10/18; Jarvan IV feasible on 8 of 10 profile×budget cells (its seed-`alpha` snapshot state holds 2); **Teemo**
+  (flat) has 2 semantic questions across 18 states and every profile underfills with
+  `semantic_supply_below_budget`; **Karma** (fail-closed rank run) takes every profile in LEVEL mode
+  and reports the family's own `required_axis_absent`. Roster (164 rank-bearing): full range b=3
+  **162/164**, early phase b=3 146, snapshot b=4 only **28** — the cooldown family's ≤1 question per
+  learned ability, not a profile defect. Seed variation is real on Full Range (13–15 distinct
+  question sets over 24 seeds for Jarvan) and deliberately concentrated on Early Phase / Wide by
+  checkpoint priority.
+
+* **Structured infeasibility.** `run_profile` returns `infeasibility` with the gate's own
+  `limiting_codes`, a separate `supply_codes` (`semantic_supply_below_budget` — the preflight
+  synthesises its recipe from the selection and cannot phrase it; the gate was not touched),
+  `requested_budget` and `feasible_count`. No filler, no repeat, no silent shrink; `compose_profile`
+  raises instead. A stubbed yes-oracle still cannot get the monotonous triple past `publish`.
+
+* **Tests.** New `test_gr1_champion_slice_profiles.py`: **93 passed**. Isolation guard 102 → 108.
+  `mastery/tests`: base 5 failed / 2457 passed / 14 skipped, branch 5 failed / 2563 passed / 7
+  skipped — failure SET identical by name, counts reconcile exactly. Ranked/Mastery integration arm
+  identical on both (2 pre-existing pinned-capsule failures).
+
+* **Recorded, not built: State Context UI** — hover (desktop) / tap (mobile) context icons for
+  champion, level, ability, items, runes/shards; an item such as Malignance opens a compact canonical
+  item preview from the same authority as the question. No frontend code.
+
+* **Deliberately unwired:** no Ranked, no route, no `mastery_slice` mode, no persistence, no
+  `mastery_state` writer, no migration, no new family, no Full, no Matchup profile, cooldown prompt
+  untouched, `progression.py` byte-identical, contract-half `default_sequence_registry()` empty.
+
+* **Rollback:** `git revert c2634d8a`.
+
 ## Screenshots / artifacts
 
 `docs/audits/gr1-reusable-state-phase3/` — **8 PNGs (reusable state Phase 3, the
@@ -2463,7 +2547,20 @@ player is listed in [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3
 **Do not widen Phase 3 into a family-expansion project**; one family is the
 seam, and a second one before persistence exists buys nothing.
 
-**Current next task — a PRODUCT window policy, or persisting a multi-state bundle on a served
+**Current next task — pick ONE of the Slice-profile phase's next options, and do NOT wire Ranked.**
+Champion Slice Profiles now exist (see the row above and
+[`gr1-champion-slice-profiles.md`](./gr1-champion-slice-profiles.md) §19), which closes item 1 of
+the superseded block below: there is now a product-shaped window/scope policy, in the Lab. The
+candidates, none started: **(1)** a second state-aware family (stats / resource cost / ratio) — the
+biggest lever on Snapshot and Tight and the real test that profiles are not cooldown-shaped;
+**(2)** the owner's prompt-rank content decision; **(3)** a Lab-only profile-distribution experiment
+(profile × seed × roster) to inform which profiles Ranked could carry; **(4)** persisting a
+multi-state bundle on a served segment — still only once something can produce a state-aware segment
+for players; **(5)** closing the 9 rank-bearing gaps upstream. Still open for the owner: which
+profiles enter Ranked and with what weights, how strongly checkpoints should concentrate vs seed
+replayability, whether an unfillable budget refuses / re-draws / ships fewer, Snapshot's tier.
+
+**Superseded — a PRODUCT window policy, or persisting a multi-state bundle on a served
 segment. Nothing else, and NOT both at once.** The real source now exists (see the row above and
 [`gr1-champion-state-sequence-source.md`](./gr1-champion-state-sequence-source.md) §15), so the
 first of the two items below is **CLOSED** and the machinery is no longer fitted to a fixture. What
