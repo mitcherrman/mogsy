@@ -70,12 +70,14 @@ describe("every mode's route reaches CanonicalArena", () => {
     expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain("<CanonicalArena");
   });
 
-  it("the Daily does", () => {
-    expect(read("App.tsx"))
+  it("the Daily does — every stage is a hosted canonical Ranked match", () => {
+    const app = read("App.tsx");
+    expect(app)
       .toMatch(/path="\/quiz\/daily-challenge"[\s\S]{0,200}QuizDailyChallengePage/);
-    const page = read("pages/quiz-daily-challenge/QuizDailyChallengePage.tsx");
-    expect(page).toContain('from "@/components/ranked-arena/CanonicalArena"');
-    expect(page).toContain("<CanonicalArena");
+    expect(app).toContain('import("./pages/quiz-daily-challenge/run/DailyRunPage")');
+    const page = read("pages/quiz-daily-challenge/run/DailyRunPage.tsx");
+    expect(page).toContain("<QuizRankedMatch");
+    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain("<CanonicalArena");
   });
 });
 
@@ -201,8 +203,6 @@ describe("the Daily owns no game surface of its own", () => {
       .filter((f) => f.endsWith(".tsx") && !f.endsWith("Page.tsx"))
       .map((f) => f.split("/").pop());
     expect(components).toEqual([
-      "DailyChallengePanel.tsx",   // TODAY'S CHALLENGE — the right flank
-      "DailyResultSummary.tsx",    // the finished day's own numbers
       "DailyCompletion.tsx",       // DCMOD-E: the parent run's one close
       "DailyRunBeats.tsx",         // DCMOD-E: Daily intro, stage tag, stage result
       "DailyStageChrome.tsx",      // DCMOD-E: the header row over the arena
@@ -237,14 +237,33 @@ describe("the Daily owns no game surface of its own", () => {
     ].join(" ")).toEqual([]);
   });
 
-  it("stayed a controller: it still owns the transport, the rules and the run", () => {
-    const page = read("pages/quiz-daily-challenge/QuizDailyChallengePage.tsx");
-    expect(page).toContain("useDailyChallengeRun");
-    expect(page).toContain("dailyArenaView");
-    // The controller and its transport are untouched by the migration.
-    expect(DAILY_FILES()).toContain("lib/daily-challenge/client.ts");
-    expect(DAILY_FILES()).toContain("lib/daily-challenge/contracts.ts");
-    expect(DAILY_FILES()).toContain("pages/quiz-daily-challenge/useDailyChallengeRun.ts");
+  /*
+   * DCMOD integration — the DC2 in-page engine (its controller, transport,
+   * card views and arena view model) is RETIRED, not kept "for compatibility".
+   * The parent run is the only Daily runtime; the lobby's status reads it too.
+   */
+  it("the parent run is the ONLY Daily runtime", () => {
+    expect(DAILY_FILES()).toEqual([
+      "lib/daily-challenge/run/client.ts",
+      "lib/daily-challenge/run/contracts.ts",
+      "lib/daily-challenge/run/fixtures.ts",
+      "lib/daily-challenge/run/flow.ts",
+      "lib/daily-challenge/run/stageIdentity.ts",
+      "lib/daily-challenge/run/timeBank.ts",
+      "lib/daily-challenge/status.ts",
+      "lib/daily-challenge/useDailyChallengeStatus.ts",
+      "pages/quiz-daily-challenge/run/DailyCompletion.tsx",
+      "pages/quiz-daily-challenge/run/DailyRunBeats.tsx",
+      "pages/quiz-daily-challenge/run/DailyRunPage.tsx",
+      "pages/quiz-daily-challenge/run/DailyStageChrome.tsx",
+      "pages/quiz-daily-challenge/run/StageTag.tsx",
+      "pages/quiz-daily-challenge/run/useDailyRun.ts",
+    ]);
+    const src = dailySource();
+    for (const gone of ["/api/daily-challenge", "useDailyChallengeRun", "dailyArenaView"]) {
+      expect(src, `the retired DC2 Daily came back: ${gone}`).not.toContain(gone);
+    }
+    expect(read("lib/daily-challenge/status.ts")).toContain("httpDailyRunTransport");
   });
 });
 
@@ -274,15 +293,11 @@ describe("the Daily imports its shared projections from lib, never from a page",
     ].join(" ")).toEqual([]);
   });
 
-  it("reuses the canonical registry and the canonical timeline projection", () => {
-    const view = read("pages/quiz-daily-challenge/dailyArenaView.ts");
-    expect(view).toContain('from "@/lib/ranked-core/modules/registry"');
-    expect(view).toContain("rendererForSegment");
-    expect(view).toContain('from "@/lib/ranked-core/roundTimeline"');
-    expect(view).toContain("projectRoundTimeline");
-    // The segment identity is the production constant, not a literal.
-    expect(read("pages/quiz-daily-challenge/dailyChallengeViews.ts"))
-      .toContain("LEGACY_SEGMENT");
+  it("builds no arena view model of its own — the hosted match does", () => {
+    const src = dailySource();
+    for (const forbidden of ["rendererForSegment", "projectRoundTimeline", "ArenaViewModel"]) {
+      expect(src, `${forbidden} belongs to the hosted canonical match`).not.toContain(forbidden);
+    }
   });
 
   it("resolves no asset path, no media and no metadata of its own", () => {
@@ -294,9 +309,6 @@ describe("the Daily imports its shared projections from lib, never from a page",
       expect(src, `${forbidden} is canonical infrastructure the arena reaches`)
         .not.toContain(forbidden);
     }
-    // What it DOES do is hand the card's own frozen art to that infrastructure.
-    expect(read("pages/quiz-daily-challenge/dailyChallengeViews.ts"))
-      .toContain("presentation: card.media");
   });
 });
 
@@ -372,24 +384,5 @@ describe("the Daily invents no second player", () => {
       expect(src, `the Daily must not name "${pvp}"`)
         .not.toMatch(new RegExp(`\\b${pvp.toLowerCase()}\\b`));
     }
-  });
-
-  /**
-   * The header's second note slot is `presenceNote` — historically "what the
-   * opponent is doing". The Daily fills it, which is allowed (the contract
-   * says the slots carry whatever short line a mode has), so what matters is
-   * WHAT it puts there. It is a description of the CARD.
-   */
-  it("puts a card descriptor in the header's second note slot, never a player", () => {
-    const view = read("pages/quiz-daily-challenge/dailyArenaView.ts");
-    expect(view).toContain("presenceNote: cardNote(card)");
-    expect(view).toMatch(/function cardNote\(card: DcCard \| null\)/);
-  });
-
-  it("fills its right flank with a PANEL, and its terminal with one column", () => {
-    const view = read("pages/quiz-daily-challenge/dailyArenaView.ts");
-    expect(view).toMatch(/right:\s*\{\s*kind:\s*"panel"/);
-    expect(view).toMatch(/opponent:\s*null/);
-    expect(view).toContain("reveal: null");
   });
 });

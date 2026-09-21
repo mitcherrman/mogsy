@@ -241,8 +241,8 @@ describe("no production mode offers a confirm step", () => {
       "components/ranked-arena/AnswerGrid.tsx",
       "components/question-surface/InteractiveScenarioSurface.tsx",
       "pages/quiz-ranked/QuizRankedMatch.tsx",
-      "pages/quiz-daily-challenge/QuizDailyChallengePage.tsx",
-      "pages/quiz-daily-challenge/dailyArenaView.ts",
+      // DCMOD: the Daily hosts QuizRankedMatch; its own page renders no answers.
+      "pages/quiz-daily-challenge/run/DailyRunPage.tsx",
     ]) {
       const src = read(file);
       expect(src, `${file} reached for the confirm strip`)
@@ -257,8 +257,8 @@ describe("no production mode offers a confirm step", () => {
     // and the Daily's adapter both state it false explicitly. A mode that
     // flipped it would be
     // introducing the second click this guard exists to prevent.
-    expect(read("pages/quiz-daily-challenge/dailyArenaView.ts"))
-      .toContain("canChangeAnswer: false");
+    // DCMOD: the Daily's stages ARE canonical Ranked matches, so Ranked's
+    // projection is the only one left to state it.
     expect(read("pages/quiz-ranked/rankedViews.ts")).toContain("canChangeAnswer");
   });
 });

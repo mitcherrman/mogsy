@@ -8,7 +8,6 @@
  * as the DC2 client: the client sends no user id, no date and no result.
  */
 import { ensureBackendAuthToken, getBackendAuthHeaders } from "@/lib/backend-auth";
-import { DAILY_CHALLENGE_API_BASE } from "../client";
 import { DailyRun, DailyRunParseError, readDailyRun, readDailyToday } from "./contracts";
 
 export interface DailyRunTransport {
@@ -24,11 +23,11 @@ export interface DailyRunTransport {
 }
 
 export type DailyRunErrorCode =
-  | "SESSION_REQUIRED" | "DAILY_RUN_NOT_FOUND" | "DAILY_RUN_CONFLICT"
+  | "SESSION_REQUIRED" | "ACCOUNT_REQUIRED" | "DAILY_RUN_NOT_FOUND" | "DAILY_RUN_CONFLICT"
   | "DAILY_RUN_CHILD_UNAVAILABLE" | "DAILY_RUN_INTEGRITY" | "DAILY_RUN_NOT_WIRED";
 
 const KNOWN: ReadonlySet<string> = new Set<DailyRunErrorCode>([
-  "SESSION_REQUIRED", "DAILY_RUN_NOT_FOUND", "DAILY_RUN_CONFLICT",
+  "SESSION_REQUIRED", "ACCOUNT_REQUIRED", "DAILY_RUN_NOT_FOUND", "DAILY_RUN_CONFLICT",
   "DAILY_RUN_CHILD_UNAVAILABLE", "DAILY_RUN_INTEGRITY", "DAILY_RUN_NOT_WIRED",
 ]);
 
@@ -47,6 +46,9 @@ export class DailyRunApiError extends Error {
 export const isDailyRunAborted = (e: unknown): boolean =>
   e instanceof DailyRunApiError ? e.kind === "aborted" : (e as { name?: string })?.name === "AbortError";
 
+export const DAILY_RUN_API_BASE =
+  (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) ?? "http://127.0.0.1:8000";
+
 const BASE_PATH = "/api/daily-run";
 
 async function request<T>(path: string, parse: (json: unknown) => T,
@@ -55,7 +57,7 @@ async function request<T>(path: string, parse: (json: unknown) => T,
   const headers: Record<string, string> = { ...(await getBackendAuthHeaders()) };
   let response: Response;
   try {
-    response = await fetch(`${DAILY_CHALLENGE_API_BASE}${path}`, { method, headers, signal });
+    response = await fetch(`${DAILY_RUN_API_BASE}${path}`, { method, headers, signal });
   } catch (e) {
     if ((e as { name?: string })?.name === "AbortError") {
       throw new DailyRunApiError("aborted", 0, "request aborted");

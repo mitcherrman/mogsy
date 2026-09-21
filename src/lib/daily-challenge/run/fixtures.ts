@@ -40,6 +40,15 @@ export const FIVE_STAGE_DAY: FixtureStageSpec[] = [
   FOUR_STAGE_DAY[3],
 ];
 
+/** Real DCMOD-C ids, as B freezes them (Review is not a content set). */
+const FIXTURE_CONTENT_SET: Record<DailyStageKind, string | null> = {
+  time_trial: "champion_fundamentals",
+  standard: "champion_mastery",
+  survival: "item_fundamentals",
+  weak_areas: "weak_areas",
+  review: null,
+};
+
 export function wireStage(spec: FixtureStageSpec, index: number, overrides: Wire = {}): Wire {
   return {
     stage_index: index,
@@ -48,7 +57,7 @@ export function wireStage(spec: FixtureStageSpec, index: number, overrides: Wire
     ruleset_id: spec.ruleset?.ruleset_id ?? null,
     ruleset: spec.ruleset
       ? { time_bank_ms: null, max_strikes: null, ...spec.ruleset } : null,
-    content_set_id: `daily:2026-09-21:v1:${spec.kind}`,
+    content_set_id: FIXTURE_CONTENT_SET[spec.kind],
     content: spec.content ?? null,
     status: "pending",
     child_match_id: null,
