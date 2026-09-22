@@ -405,7 +405,7 @@ describe("the Match Header says three things on the left and one on the right", 
     expect(left.indexOf("header.eyebrow")).toBeLessThan(left.indexOf("ranked-presence"));
     expect(left.indexOf("ranked-presence")).toBeLessThan(left.indexOf("ranked-header-title"));
     // And the mode's name stopped carrying the opponent on its back.
-    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain('eyebrow: "Ranked Duel"');
+    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain('eyebrow: host ? "" : "Ranked Duel"');
     expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain("opponentVersusLabel");
   });
 
