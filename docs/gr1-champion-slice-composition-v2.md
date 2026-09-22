@@ -12,10 +12,10 @@ are untouched. **v2 is not the default anywhere.** A caller gets it only by nami
 | | SHA | Note |
 |---|---|---|
 | Backend base | `origin/master` **`b5c37f48`** | The brief named `ded63efb`; `origin/master` had moved one commit (`b5c37f48`, Hatefog item arbitration, 11 files, **zero `mastery/` overlap**). Did not move during the phase. |
-| Backend commit | **`3f18a75f`** | One commit on `gr1/slice-composition-v2`, worktree `~/lcs-wt-gr1-v2`. **NOT PUSHED.** |
+| Backend commit | **`666281e5`** on `origin/master` | **PUSHED 2026-09-22.** Authored as `3f18a75f` on `b5c37f48`; rebased clean (zero file overlap) over `b5d15c1f` (item charge/recharge) and `9495b9eb`/`5c273fdd` (FUNNEL1B3 analytics hooks in `mastery/publication/sessions.py` + `ranked_public/service.py`, composition untouched) and pushed. Re-verified on the final base: pinned v1 digests unchanged, focused setup_state/GR1 suite failure set identical to base, 173 banks + default v1 diagnostics + publish renders + progression diagnostics digest-identical branch vs base. |
 | Comparison base | `~/lcs-wt-gr1-v2-base` detached @ `b5c37f48` | Same symlinked read-only `lol_calc.db`. |
 | Docs base | `origin/main` **`45a322d4`** | As named in the brief; did not move. |
-| Docs commit | *(this commit — `git log`)* | Branch `gr1/slice-composition-v2-docs`, worktree `~/mogsy-wt-gr1-v2`. **NOT PUSHED.** |
+| Docs commit | *(this commit — `git log`)* | Branch `gr1/slice-composition-v2-docs`, worktree `~/mogsy-wt-gr1-v2`; rebased onto `origin/main` `2780b8bc` and pushed. |
 | Frontend | **none** | |
 
 **Files: 6 backend. 1 new, 5 modified, all inside `mastery/setup_state/` or `mastery/tests/`.**
@@ -363,7 +363,7 @@ failure SET identical by name, all pre-existing, none repaired:
   ::test_json_roundtrips_and_schema; test_mastery_per_question_reveal.py::test_reveal_needs_no_new_persistence;
   test_phase4f_ranked_mastery_slice.py::test_format_for_creation_is_unaffected_by_this_module
 counts reconcile: 2683 + 50 (new suite) = 2733.
-after committing 3f18a75f: the four GR1 suites carrying committed-footprint guards
+after committing 3f18a75f (pushed as `666281e5`): the four GR1 suites carrying committed-footprint guards
   (v2, experiment, profiles, stats): 256 passed.
 
 Ranked / Mastery integration arm (the 12 files the stats phase used):
@@ -394,5 +394,5 @@ experimental `balanced_soft` is already v2's criteria plus soft checkpoints. The
 replayability vs coverage numbers to the owner. The level-1 Snapshot rule is the other owner call that must precede
 any Ranked distribution. Ranked wiring stays later.
 
-**Rollback:** `git revert 3f18a75f`. Nothing is persisted, and there is no route, migration or
+**Rollback:** `git revert 666281e5` (authored as `3f18a75f`). Nothing is persisted, and there is no route, migration or
 frontend change.
