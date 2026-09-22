@@ -1,23 +1,22 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: FUNNEL1B2 CLOSED and live. FUNNEL1B3 + B3.1 IMPLEMENTED, AWAITING
-SECRET CONFIG AND DEPLOY.**
+**State: FUNNEL1B2 CLOSED and live. FUNNEL1B3 MERGED AND DEPLOYED to production
+(`5c273fdd`); one real Practice session run through it. Awaiting the privileged
+read-back to certify Practice (§23.7); Ranked spot-check remaining (§23.8).**
 
 The web funnel is in production and proven end to end (§19). The gameplay half
 — authoritative milestones emitted from Railway through a transactional outbox
-— is built and tested on branch `funnel1b3-gameplay-analytics` @ `f43dcd7d`.
+— is merged to backend `master` at `5c273fdd` and live in production.
 
 **B3.1 corrected its delivery seam** (§21): Railway no longer needs a
 service-role key, which Lovable Cloud does not expose anyway. It posts to a
 dedicated `railway-analytics-ingest` edge function holding one narrow secret,
 and the privileged credential never leaves Lovable Cloud.
 
-**Not deployed, and B3.2 found why.** The token is in Railway and the digest is
-pinned in the source, but the `railway-analytics-ingest` edge function itself
-**returns 404 in production** — the Lovable publish shipped the frontend and
-not the function. Deploying it is the single blocker; see **§22**. Until then Railway records
-every milestone durably and delivers nothing, which is the safe direction.
-**§20 is the design; §21 is the current state; FUNNEL1C is scoped in §20.13.**
+**Deployed.** The ingest function passed its production smoke (§23.1), B3 was
+replayed onto current `master` with no conflicts and zero new test failures, and
+went live at 11:26:46 UTC on 2026-09-22 (§23.5).
+**§20 is the design, §21 the delivery seam, §23 the current state; FUNNEL1C is scoped in §20.13.**
 
 The schema is live in `kewgjwrzpzpeltwidvuc`, all eight certification items are
 closed from both the anon client path and privileged access, and the store was
@@ -3228,3 +3227,266 @@ For step 2 the raw Railway token also has to reach whoever runs the smoke test
 
 **B3 is NOT closed.** Nothing regressed — the web funnel (§19) is live and
 unaffected, and the backend is exactly where §21 left it.
+
+---
+
+# 23. FUNNEL1B3.3 — Reconciled onto current master, deployed, Practice run
+
+§22's blocker is resolved: the ingest function was deployed out of band and has
+passed the full server-to-server smoke. B3 is now **merged, deployed and serving
+in production**, and one real Practice session has been driven through it. The
+privileged database read-back is the last step (§23.7).
+
+## 23.1 Production edge smoke — certified (out of band, recorded here)
+
+Run against the production `railway-analytics-ingest` with the real Railway
+secret, which this environment has never held:
+
+```
+no bearer                       → 401
+correct bearer + invalid event  → 422
+correct bearer + valid event    → 200 stored
+exact replay                    → 200 duplicate
+```
+
+Read-back proved exactly one row — `practice_quiz_started`,
+`source_system='railway'`, `source_entity_type='quiz_session'`, `user_id` null —
+and it was deleted afterwards. The temporary Railway pre-deploy smoke command
+has been removed and was not recreated. The digest and function are unchanged
+by this phase.
+
+> **Digest note.** §22.1 recorded the pinned digest at `cd07d67f` as
+> `30d4d910…a6e9`. It was re-pinned upstream before the smoke passed, and
+> `main` now carries **`38c2f2ec…5577`** — the value production authenticated
+> against. §22.1 is an accurate record of `cd07d67f` and is *not* the canonical
+> value; do not restore it.
+
+## 23.2 Base and reconciliation method
+
+| | |
+|---|---|
+| Current `origin/master` at start | `b5d15c1fa1f8478f594dd4b92a6045ec24b40a1a` |
+| B3's original base | `cffa85f0` |
+| `master` movement since that base | 16 commits (Ranked RFX1, GR1/mastery, items/combat) |
+| Files touched by BOTH master and B3 | **1** — `ranked_public/service.py` |
+
+**Method: replay, not merge.** A fresh isolated worktree from `origin/master`,
+then the two B3 commits cherry-picked onto it — `98cd42da` (B3) and `f43dcd7d`
+(B3.1). The stale branch was not merged wholesale; the owner's divergent local
+checkout was not touched.
+
+**Conflicts: none.** Both cherry-picks applied cleanly. Master's only change to
+the shared file (`c501aa86`, "derive the between-round lead from the UPCOMING
+round's type") is inside `_resolve`; B3's seams are in `create_match_rows`,
+`_commit_result` and `_terminate_disconnect`.
+
+**A clean textual merge is not proof of a correct one**, so the seams were
+re-verified semantically on the reconciled tree:
+
+- `mark_match_complete` has exactly **2** callers on current master (the two
+  terminal paths), and **each** is followed by `_record_ranked_completion`.
+  No completion path bypasses analytics.
+- `rp.insert_participant` has **1** call site, matched by **1**
+  `RANKED_STARTED` record.
+- Master's new `_resolve` code adds **no** terminal write (no
+  `mark_match_complete`, `insert_result` or `completed_at`).
+
+The integration seam did not change, so nothing new was invented.
+
+## 23.3 Focused tests
+
+```
+B3 tests:              51 passed   (test_funnel1b3_gameplay_analytics.py)
+affected tests:        122 passed, 8 failed
+                       (ranked service, ranked history, ranked rating,
+                        DSA lifecycle, mastery e2e)
+pre-existing failures: 8   — the IDENTICAL set on pristine b5d15c1f
+new failures:          0
+```
+
+The failure sets were diffed name by name, not just counted: same eight on
+both, none new, none fixed.
+
+**Worth flagging, and not ours:** seven of those eight are in
+`test_ranked_public_rating.py`, and they **passed** at B3's original base
+`cffa85f0`. So current `master` itself carries an unrelated ranked-rating test
+regression introduced somewhere in the sixteen commits since. It predates this
+integration and was left untouched.
+
+API startup/router registration was checked **at the router level**, because
+enumerating `app.routes` in this environment is non-deterministic (8, 9 and 65
+across runs of identical code — an import-time environment artefact, and the
+variance itself is the proof it is not B3). Deterministically: the health router
+exposes `/api/admin/analytics/health`, the quiz router exposes both session
+routes, `api_server.py` includes the health router, and both startup hooks
+(`outbox.ensure_schema`, `start_drainer`) are present.
+
+## 23.4 Integration
+
+Fast-forward, nothing forced, `origin/master` re-fetched and confirmed unmoved
+immediately before the push:
+
+```
+b5d15c1f..5c273fdd  HEAD -> master
+```
+
+**Integration SHA: `5c273fddc9b205e11614f247599aadfc15c2da30`**
+(`9495b9eb` B3, `5c273fdd` B3.1).
+
+## 23.5 Railway deployment — live
+
+This environment has no Railway credentials, so the deployment was observed
+from outside, using a detector that needs none: **`/api/admin/analytics/health`
+exists only in the B3 build.** On the old build it is 404; on B3 it is
+admin-gated and answers 403.
+
+```
+11:21:00 → 11:25:35 UTC   analytics-health 404   api-health 200   (old build)
+11:26:06 → 11:26:15 UTC   analytics-health 502   api-health 502   (container swap)
+11:26:46 UTC              analytics-health 403   api-health 200   (B3 LIVE)
+                          {"detail":"Admin authorization required"}
+```
+
+About forty seconds of 502 — a normal container swap, not a startup crash: the
+new process came up and served both the new route and the existing health
+endpoint. **No gameplay startup regression is visible from outside.**
+
+**Not observed from here, and still owed:** the Railway deployment ID, build
+logs, the startup log line for the outbox migration against `/data/lol_calc.db`,
+confirmation that `RAILWAY_ANALYTICS_INGEST_SECRET` is present, and absence of a
+401/422/5xx drain loop. All need Railway access. `/api/version` did not help —
+it returns a hardcoded label (`hp-source-fix-local-001`), not a commit.
+
+The analytics health **body** was not read: it requires an admin session, and
+the 403 is the correct response to an anonymous caller.
+
+## 23.6 Practice certification — gameplay run, read-back pending
+
+**Expected, written down before running:**
+
+```
+1 × practice_quiz_started
+1 × practice_quiz_completed
+same quiz_session entity id at both ends
+source_system = 'railway'
+user_id = the guest's anonymous Supabase uid, is_guest = true
+```
+
+**Run**, through the normal production application — `https://mogzy.lol`, fresh
+storage, as a guest, "Jack of All Trades Practice", ten questions answered to
+the results screen. No shortcut, no direct API call.
+
+Observed in the page's own resource timeline, on the **production** backend:
+
+```
+POST /api/quiz/sessions                   ← authoritative start
+POST /api/quiz/sessions/259/complete      ← authoritative completion
+```
+
+| | |
+|---|---|
+| `quiz_session` entity id | **`259`** |
+| Supabase uid (anonymous guest) | `bec74784-fb0e-4ba2-9e7f-aa96e4c42669` |
+| Browser `visitor_id` | `96ae42bd-0999-4722-ab73-8762097670a8` |
+| Completed | ~2026-09-22T11:28:43Z |
+
+Both calls reached the new build (it went live at 11:26:46), so each wrote its
+row and its outbox event in one transaction, and the drainer (15s) should have
+delivered both within a pass or two.
+
+## 23.7 Remaining privileged read-back
+
+```sql
+-- A. the authoritative pair: expect EXACTLY two rows
+select event_name, source_system, source_entity_type, source_entity_id,
+       user_id, is_guest, occurred_at, received_at, metadata
+from public.analytics_events
+where source_system = 'railway'
+  and source_entity_type = 'quiz_session'
+  and source_entity_id = '259'
+order by occurred_at;
+-- expect: practice_quiz_started, practice_quiz_completed
+--         user_id = bec74784-fb0e-4ba2-9e7f-aa96e4c42669, is_guest = true
+--         received_at >= occurred_at, both ~11:27–11:29 UTC
+
+-- B. no duplicate authoritative rows, anywhere
+select event_name, source_entity_type, source_entity_id, count(*)
+from public.analytics_events
+where source_system = 'railway'
+group by 1,2,3 having count(*) > 1;
+-- expect ZERO rows.
+
+-- C. THE PAYOFF: acquisition and gameplay on one uid, from two systems
+select event_name, source_system, route, received_at
+from public.analytics_events
+where user_id = 'bec74784-fb0e-4ba2-9e7f-aa96e4c42669'
+order by received_at;
+-- expect browser rows (hub_entered, leaguecraft_opened, practice_quiz_opened
+-- — source_system 'web') FOLLOWED BY the two 'railway' rows, all on the same
+-- uid. That join is what FUNNEL1 was built to make possible.
+
+-- D. no browser-authored completion
+select count(*) from public.analytics_events
+where source_system = 'web'
+  and event_name in ('practice_quiz_started','practice_quiz_completed');
+-- expect 0.
+```
+
+Railway-side, with an admin session: `GET /api/admin/analytics/health` → expect
+`ok: true`, `outbox.unsent: 0`, `dead_lettered: 0`, `counters.auth_failures: 0`,
+a recent `last_sent_at`, and `gameplay_seen: true`.
+
+**Cleanup: none.** Session 259 is a genuine gameplay session played through the
+real product, not a synthetic row. The brief says not to delete genuine
+certification rows, and deleting it would also desynchronise Railway's
+`quiz_sessions` from Supabase.
+
+## 23.8 Ranked certification — explicit remaining item
+
+Not run, and not manufactured.
+
+Ranked requires a **registered** account (`QuizRankedPage` gates on a
+non-anonymous identity), and this environment can only act as a guest —
+creating an account is outside what it is permitted to do. A bot match is an
+admin testing lever. So the smallest honest Ranked case needs a human with a
+registered account.
+
+When it is run, the expectation is fixed by the frozen contract:
+
+| Match | `ranked_started` | `ranked_completed` |
+|---|---|---|
+| human vs human | **2** rows | **2** rows |
+| human vs bot | **1** row (the human) | **1** row |
+
+entity ids `<match_id>:<user_id>`, never one row per match, and a replayed
+terminal (e.g. a second forfeit) adding **nothing**. Those properties are
+covered against the real ranked service in `test_funnel1b3_gameplay_analytics.py`;
+what remains is the production spot-check.
+
+## 23.9 Remaining risks
+
+1. **The read-back in §23.7 has not run.** Until it does, the claim that the
+   rows *landed* is inferred from the endpoint calls and the deploy, not
+   observed.
+2. **Railway internals are unobserved from here** (§23.5): deployment ID, logs,
+   the outbox migration line, the secret's presence.
+3. **Current `master` has a pre-existing ranked-rating test regression**
+   (§23.3). Unrelated to FUNNEL1, but it should be looked at.
+4. Unchanged from §21.11: the drainer runs per process (idempotent, untested at
+   concurrency); dead-lettered rows are counted, not paged; the ingest's only
+   gate is the secret; SQLite durability is whatever `/data` provides; Meta
+   Reflex has no authoritative event; the frontend type shim remains.
+
+## 23.10 B3 status
+
+```
+implementation complete           ✅  merged at 5c273fdd, zero new test failures
+deployed to production            ✅  B3-only route live at 11:26:46 UTC
+production Practice exercised     ✅  session 259, start + complete through the real app
+production Practice certified     ⏳  pending the §23.7 read-back
+Ranked production spot-check      ⏳  remaining — needs a registered account
+```
+
+**B3 is technically complete and deployed. It is not yet formally certified:**
+one privileged query stands between it and closing Practice, and Ranked needs a
+human with an account. Neither is an architectural question.
