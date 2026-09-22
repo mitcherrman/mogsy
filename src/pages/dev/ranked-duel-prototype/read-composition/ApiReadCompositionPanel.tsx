@@ -388,13 +388,6 @@ export function ApiReadCompositionPanel({ dispatch }: { dispatch: Dispatch<DuelA
             {owner.lockedAbilityIds.length > 0 && ` · locked: ${owner.lockedAbilityIds.join(", ")}`}
           </div>
           <div className="text-muted-foreground">
-            Level 2:{" "}
-            {owner.level2ChoiceMade
-              ? `made (${owner.level2Choice})`
-              : `pending (${owner.level2Options.join(", ")})`}{" "}
-            · Level 3: {owner.level3Unlocked ? (owner.level3FinalUnlockId ?? "unlocked") : "not yet"}
-          </div>
-          <div className="text-muted-foreground">
             Current charges:{" "}
             {Object.entries(owner.remainingCharges)
               .map(([id, n]) => `${id} ${n === null ? "—" : n}`)

@@ -48,18 +48,11 @@ describe("adaptPrivatePlayer", () => {
       "tank.brace": 2,
       "tank.barrier": 1,
     });
-    expect(a.level3Unlocked).toBe(true);
-    expect(a.level3FinalUnlockId).toBe("tank.barrier");
   });
 
-  it("maps the pending and confirmed Level 2 choice states exactly", () => {
-    const pending = adaptPrivatePlayer(env("private-level2-pending"), FIXTURE_OWNER_ID);
-    expect(pending.level2ChoiceMade).toBe(false);
-    expect(pending.level2Choice).toBeNull();
-    expect(pending.level2Options).toEqual(["tank.brace", "tank.barrier"]);
-    const chosen = adaptPrivatePlayer(env("private-level2-chosen"), FIXTURE_OWNER_ID);
-    expect(chosen.level2ChoiceMade).toBe(true);
-    expect(chosen.level2Choice).toBe("tank.brace");
+  it("carries no Level 2 / Level 3 progression fields (leveling is retired)", () => {
+    const a = adaptPrivatePlayer(env("private-max-level"), FIXTURE_OWNER_ID);
+    expect(Object.keys(a).filter((k) => /level[23]/i.test(k))).toEqual([]);
   });
 
   it("exposes only the SHARED timer, never a personal one", () => {

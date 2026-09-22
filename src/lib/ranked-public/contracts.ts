@@ -692,11 +692,6 @@ export interface PrivatePlayerView extends PublicRoundView {
   ownerPlayerId: string;
   ownSelection: { phase: string | null; selectedAbilityId: string | null };
   ownAbilities: PrivateAbilitySource & {
-    level2ChoiceMade: boolean;
-    level2Choice: string | null;
-    level2Options: string[];
-    level3FinalUnlockId: string | null;
-    level3Unlocked: boolean;
   };
 }
 
@@ -1458,11 +1453,6 @@ export function readPrivatePlayer(body: unknown): PrivatePlayerView {
       unlockedAbilityIds: strList(ab.unlocked_ability_ids, "unlocked_ability_ids"),
       lockedAbilityIds: strList(ab.locked_ability_ids, "locked_ability_ids"),
       remainingCharges: charges,
-      level2ChoiceMade: bool(ab.level2_choice_made, "level2_choice_made"),
-      level2Choice: nstr(ab.level2_choice, "level2_choice"),
-      level2Options: strList(ab.level2_options, "level2_options"),
-      level3FinalUnlockId: nstr(ab.level3_final_unlock_id, "level3_final_unlock_id"),
-      level3Unlocked: bool(ab.level3_unlocked, "level3_unlocked"),
     },
   };
 }

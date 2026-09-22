@@ -96,11 +96,6 @@ export interface BackendOwnSelection {
 export interface BackendOwnAbilities {
   unlocked_ability_ids: string[];
   locked_ability_ids: string[];
-  level2_choice_made: boolean;
-  level2_choice: string | null;
-  level2_options: string[];
-  level3_final_unlock_id: string | null;
-  level3_unlocked: boolean;
   /** Owner's CURRENT live charges; null = uncharged use policy. */
   remaining_charges: Record<string, number | null>;
 }

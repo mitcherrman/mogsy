@@ -205,7 +205,6 @@ describe("private surface", () => {
     fireEvent.click(screen.getByTestId("comp-load-private"));
     const section = await screen.findByTestId("comp-private-section");
     expect(section).toHaveTextContent("Private owner alice");
-    expect(section).toHaveTextContent(/Level 2: made \(tank\.brace\)/);
     expect(section).toHaveTextContent(/Current charges: tank\.fortify 2/);
     // Opponent-private and resolved data absent from the private section.
     for (const banned of [/\bbob\b/, /opponent/i, /damage/i, /outcome/i]) {
@@ -267,7 +266,7 @@ describe("private surface", () => {
     pending[0](jsonResponse(privateEnv("private-max-level"))); // stale
     pending[1](jsonResponse(privateEnv("private-idle")));
     const section = await screen.findByTestId("comp-private-section");
-    expect(section).toHaveTextContent(/Level 3: not yet/); // #2 (idle) state
+    expect(section).toHaveTextContent(/Unlocked:/); // #2 (idle) state rendered
     expect(section.textContent).not.toMatch(/tank\.barrier 1/); // not #1's max-level charges
   });
 });

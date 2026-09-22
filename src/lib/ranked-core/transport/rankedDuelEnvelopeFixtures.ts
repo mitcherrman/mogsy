@@ -199,11 +199,6 @@ export const getPublicEnvelopeScenario = (key: string) =>
 const OWN_ABILITIES_L1 = {
   unlocked_ability_ids: ["tank.fortify"],
   locked_ability_ids: ["tank.brace", "tank.barrier"],
-  level2_choice_made: false,
-  level2_choice: null,
-  level2_options: ["tank.brace", "tank.barrier"],
-  level3_final_unlock_id: null,
-  level3_unlocked: false,
   remaining_charges: { "tank.fortify": 2 },
 };
 
@@ -299,11 +294,6 @@ export const PRIVATE_ENVELOPE_SCENARIOS = [
       own_abilities: {
         unlocked_ability_ids: ["tank.fortify", "tank.brace"],
         locked_ability_ids: ["tank.barrier"],
-        level2_choice_made: true,
-        level2_choice: "tank.brace",
-        level2_options: ["tank.brace", "tank.barrier"],
-        level3_final_unlock_id: null,
-        level3_unlocked: false,
         remaining_charges: { "tank.fortify": 2, "tank.brace": 3 },
       },
     }),
@@ -319,11 +309,6 @@ export const PRIVATE_ENVELOPE_SCENARIOS = [
       own_abilities: {
         unlocked_ability_ids: ["tank.fortify", "tank.brace", "tank.barrier"],
         locked_ability_ids: [],
-        level2_choice_made: true,
-        level2_choice: "tank.brace",
-        level2_options: ["tank.brace", "tank.barrier"],
-        level3_final_unlock_id: "tank.barrier",
-        level3_unlocked: true,
         remaining_charges: { "tank.fortify": 2, "tank.brace": 2, "tank.barrier": 1 },
       },
       own_carryover: { ...OWN_CARRYOVER_NONE, consecutive_correct: 2 },
