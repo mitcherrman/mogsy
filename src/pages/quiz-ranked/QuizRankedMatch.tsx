@@ -1371,7 +1371,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     header: {
       // LINE 1 of the left block. The opponent moved to its own line below, so
       // the mode's name is no longer carrying a second fact on its back.
-      eyebrow: "Ranked Duel",
+      // DCMOD — a HOSTED match is one step of its host's flow, not a Ranked
+      // duel: it names no mode here (empty = the line is not drawn).
+      eyebrow: host ? "" : "Ranked Duel",
       // RP1 — a points match names its MODULE and its length, both read off
       // the backend's scoring block; an hp match keeps "Round N", because it
       // has no length and a "/ 10" here would be this client inventing one.
@@ -1403,7 +1405,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // there are any. `opponentPresenceLabel` is null for a healthy match now,
       // so the identity line shows; when the opponent drops it takes over,
       // because at that point the state IS the more important fact about them.
-      presenceNote: opponentLabel ?? opponentVersusLabel,
+      // DCMOD — a hosted step draws no "vs Bot" / "vs Opponent" identity line
+      // (that is duel framing); an ABNORMAL presence state is still news.
+      presenceNote: opponentLabel ?? (host ? null : opponentVersusLabel),
       timer,
       timerLabel: "Shared round timer",
       /**
@@ -1523,7 +1527,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     // and a dead network are indistinguishable at the server. The arena places
     // it (end of the status row, or its own slim row on a module-owned round)
     // and never learns what it means.
-    hudAction: (
+    // DCMOD — a hosted step has no Ranked "Forfeit Match": conceding a duel is
+    // Ranked's sentence, and the step belongs to its host's flow.
+    hudAction: host ? null : (
       <ForfeitControl onForfeit={m.forfeit} disabled={m.submitting}
         className="shrink-0 pt-0.5" />
     ),

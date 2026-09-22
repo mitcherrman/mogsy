@@ -402,7 +402,7 @@ export function CanonicalArena({
         {/* `justify-self-center` centres the BLOCK over the left Player
             Column; the lines inside it stay left-aligned to each other. */}
         <div className="flex min-w-0 flex-col justify-center gap-px lg:justify-self-center">
-          <div className="ranked-eyebrow">{header.eyebrow}</div>
+          {header.eyebrow && <div className="ranked-eyebrow">{header.eyebrow}</div>}
           {header.presenceNote && (
             <p data-testid="ranked-presence"
               className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">

@@ -114,7 +114,7 @@ export type ArenaRail =
 
 /** The header strip: who/where/when, and the clock. */
 export interface ArenaHeaderView {
-  /** Small gold label above the title. */
+  /** Small gold label above the title. Empty = not drawn (a hosted step). */
   eyebrow: string;
   /** "Round 3", "Preparing match…". */
   title: string;

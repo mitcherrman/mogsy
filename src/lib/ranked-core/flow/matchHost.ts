@@ -7,7 +7,7 @@
  * the introduction before it and the closing state after it.
  *
  * This is the neutral seam for that. It names no mode. A host that supplies it
- * gets exactly three differences from an ordinary Ranked match, and nothing in
+ * gets exactly four differences from an ordinary Ranked match, and nothing in
  * the arena, the renderers, the answer path, the timer or the settlement
  * changes:
  *
@@ -18,6 +18,9 @@
  *      and then the match is handed back to the host.
  *   3. COPY — the placeholder's eyebrow is the host's, and Ranked's own rules
  *      scroll (Ranked's copy about Ranked's scoring) is not mounted.
+ *   4. CHROME — the arena header names no mode ("Ranked Duel") and no
+ *      opponent ("vs Bot"), and there is no "Forfeit Match" control: those
+ *      present the step as a Ranked duel, which a hosted step is not.
  *
  * The handback happens at the SAME presentation instant the outro would have
  * started: after the final reveal, never before it, and on a recovered match

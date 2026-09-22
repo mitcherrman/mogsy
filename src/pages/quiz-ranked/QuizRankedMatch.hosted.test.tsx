@@ -324,3 +324,49 @@ describe("DCMOD-E — a hosted match is handed back, never closed by Ranked", ()
     await screen.findByTestId("ranked-match-over", undefined, { timeout: 8000 });
   }, 30000);
 });
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* DCMOD — a hosted step does not present itself as a Ranked duel             */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+const duelLabel = () => Array.from(document.querySelectorAll(".ranked-eyebrow"))
+  .some((el) => /ranked duel/i.test(el.textContent ?? ""));
+const versusLine = () => /vs/i.test(screen.queryByTestId("ranked-presence")?.textContent ?? "");
+
+describe("DCMOD — hosted chrome", () => {
+  it("a hosted Bot Ranked step draws no RANKED DUEL / vs Bot label and no Forfeit control",
+    async () => {
+      startedAt = Date.now() - 4000;
+      isBotMatch = true;
+      render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" host={hostOf()} />);
+      await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
+      expect(duelLabel()).toBe(false);
+      expect(screen.queryByText(/ranked duel/i)).toBeNull();
+      expect(versusLine()).toBe(false);
+      expect(screen.queryByText(/vs bot/i)).toBeNull();
+      expect(screen.queryByTestId("ranked-forfeit")).toBeNull();
+      expect(screen.queryByText(/forfeit/i)).toBeNull();
+      // Everything else about the step is the canonical match.
+      expect(screen.getByTestId("ranked-header-title")).toBeInTheDocument();
+      expect(screen.getByTestId("submission-status")).toBeInTheDocument();
+    }, 25000);
+
+  it("an ordinary Bot Ranked match (no host) keeps both", async () => {
+    startedAt = Date.now() - 4000;
+    isBotMatch = true;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
+    expect(duelLabel()).toBe(true);
+    expect(screen.getByTestId("ranked-presence")).toHaveTextContent(/vs bot/i);
+    expect(screen.getByTestId("ranked-forfeit")).toHaveTextContent(/forfeit match/i);
+  }, 25000);
+
+  it("an ordinary queue match (no host) keeps RANKED DUEL, vs Opponent and Forfeit", async () => {
+    startedAt = Date.now() - 4000;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
+    await screen.findByTestId("answer-grid", undefined, { timeout: 8000 });
+    expect(duelLabel()).toBe(true);
+    expect(screen.getByTestId("ranked-presence")).toHaveTextContent(/^vs /i);
+    expect(screen.getByTestId("ranked-forfeit")).toBeInTheDocument();
+  }, 25000);
+});
