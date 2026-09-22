@@ -671,21 +671,9 @@ export interface PublicRoundView {
   segment: SegmentMeta;
   /** Owner state of the active multi-challenge segment; null for quiz. */
   segmentState: SegmentStateView | null;
-  progressionPendingPlayers: string[];
-  /**
-   * R1: can a level-up EVER be due in this match? Derived by the backend from
-   * the match's own FROZEN config, so it answers for the match as created and
-   * never for how the server is configured now.
-   *
-   * This — and ONLY this — decides whether legacy ability/progression UI may
-   * render. Role, class, XP, the feature flag, and whether a choice happens to
-   * be pending right now are all wrong signals for that question.
-   *
-   * Compatibility-safe: an older backend that does not send the field at all
-   * reads as `true`, so a client that ships ahead of the backend keeps showing
-   * the progression UI that legacy matches require rather than hiding it.
-   */
-  progressionEnabled: boolean;
+  // There is no leveling system: `progression_pending_players` and
+  // `progression_enabled` are retired. An older backend that still sends them
+  // is tolerated — the reader simply never looks at either key.
   /**
    * RP1 — the match's scoring block, or `null` when the backend does not send
    * one at all.
@@ -792,20 +780,6 @@ function readPresence(value: unknown): PresenceView | null {
  */
 function readRole(value: unknown): RankedRole | null {
   return isRankedRole(value) ? value : null;
-}
-
-/**
- * R1 `progression_enabled`, parsed COMPATIBILITY-SAFE.
- *
- * Only an explicit `false` hides the legacy progression UI. Absent, null, or
- * any non-boolean reads as `true`, because the field is absent exactly when
- * this client is talking to a backend that predates R1 — and on such a
- * backend every match is a legacy match whose ability tray and Level 2 choice
- * are mandatory. Defaulting to `false` here would wedge a reconnecting player
- * on an old match waiting for a choice control the client had hidden.
- */
-function readProgressionEnabled(value: unknown): boolean {
-  return value !== false;
 }
 
 function readPlayer(value: unknown, i: number): PublicRoundPlayer {
@@ -985,9 +959,6 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     question: readQuestion(payload.question),
     segment: readSegment(payload.segment),
     segmentState: readSegmentState(payload.segment_state),
-    progressionPendingPlayers: Array.isArray(payload.progression_pending_players)
-      ? strList(payload.progression_pending_players, "progression_pending_players") : [],
-    progressionEnabled: readProgressionEnabled(payload.progression_enabled),
     scoring: readScoring(payload.scoring),
     presence: readPresence(payload.presence),
     playtest: readPlaytest(payload.playtest),
@@ -2002,12 +1973,6 @@ export interface ResumeView {
   matchOver: boolean;
   public: PublicRoundView;
   private: PrivatePlayerView;
-  progressionPendingPlayers: string[];
-  /** R1, mirrored at the resume top level exactly as
-   * `progressionPendingPlayers` already is, so a reconnecting client can
-   * settle "does this match have progression at all" without reaching into
-   * the embedded public projection. Same compatibility-safe parse. */
-  progressionEnabled: boolean;
   latestResolved: Record<string, unknown> | null;  // resolved v2 envelope
   result: MatchResultView | null;
 }
@@ -2021,9 +1986,6 @@ export function readResume(body: unknown): ResumeView {
     matchOver: bool(p.match_over, "match_over"),
     public: readPublicRound(p.public),
     private: readPrivatePlayer(p.private),
-    progressionPendingPlayers: Array.isArray(p.progression_pending_players)
-      ? strList(p.progression_pending_players, "progression_pending_players") : [],
-    progressionEnabled: readProgressionEnabled(p.progression_enabled),
     latestResolved: p.latest_resolved_round === null || p.latest_resolved_round === undefined
       ? null : rec(p.latest_resolved_round, "latest_resolved_round"),
     result: p.result === null || p.result === undefined ? null : readMatchResult(p.result),

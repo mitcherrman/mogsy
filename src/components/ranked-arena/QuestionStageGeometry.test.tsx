@@ -405,7 +405,7 @@ describe("the Match Header says three things on the left and one on the right", 
     expect(left.indexOf("header.eyebrow")).toBeLessThan(left.indexOf("ranked-presence"));
     expect(left.indexOf("ranked-presence")).toBeLessThan(left.indexOf("ranked-header-title"));
     // And the mode's name stopped carrying the opponent on its back.
-    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain('eyebrow: "Ranked Duel"');
+    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain('eyebrow: host ? "" : "Ranked Duel"');
     expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain("opponentVersusLabel");
   });
 
@@ -968,7 +968,7 @@ describe("Ranked inherits the stage", () => {
           match_id: "m1", round_number: 1, server_time: "2026-08-23T12:00:00+00:00",
           payload: { match_status: "active", match_over: false,
             public: publicRoundV2(), private: privatePlayerV2("userA"),
-            progression_pending_players: [], latest_resolved_round: null, result: null },
+            latest_resolved_round: null, result: null },
         });
       }
       if (u.endsWith("/private")) return json(privatePlayerV2("userA"));
@@ -1033,10 +1033,6 @@ describe("every term between the card and the timeline is still reserved", () =>
     // It is `hidden md:flex` and a fixed plate; a wrapping beat used to push
     // everything below it down by a row.
     expect(arena()).toContain('className="hidden md:flex"');
-  });
-
-  it("the level-2 choice is still overlaid rather than inserted", () => {
-    expect(arena()).toContain('className={hasSurface ? "absolute inset-x-0 top-0 z-20" : ""}');
   });
 
   it("the timeline is still the arena's floor, mounted unconditionally", () => {

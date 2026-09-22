@@ -50,7 +50,6 @@ let cfg: {
 
 function shape<E extends { payload: Record<string, unknown> }>(env: E): E {
   const p = env.payload;
-  p.progression_enabled = false;
   p.match_over = true;
   p.match_status = "complete";
   p.winner_id = cfg.winner;
@@ -141,9 +140,9 @@ beforeEach(() => {
         schema_version: "ranked_duel.resume.v1", projection_type: "resume",
         match_id: "m1", round_number: 10, server_time: T,
         payload: {
-          match_status: "complete", match_over: true, progression_enabled: false,
+          match_status: "complete", match_over: true,
           public: shape(publicRoundV2()), private: shape(privatePlayerV2("userA")),
-          progression_pending_players: [], latest_resolved_round: null,
+          latest_resolved_round: null,
           result: resultRow(),
         },
       });

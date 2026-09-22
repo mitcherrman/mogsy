@@ -38,7 +38,6 @@ export function publicRoundV2(over = false) {
         question_id: "q1", prompt: "Which item grants Immolate?",
         options: ["Sunfire Aegis", "Heartsteel", "Thornmail", "Randuin's Omen"],
         category: "items" },
-      progression_pending_players: [],
       presence: {
         participant_status: "connected", opponent_connection_state: "connected",
         reconnect_grace_deadline: null, own_reconnect_grace_deadline: null },

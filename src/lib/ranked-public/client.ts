@@ -528,10 +528,6 @@ export const submitSegmentChallenge = (
       signal,
     });
 
-export const chooseLevelTwo = (matchId: string, abilityId: string, signal?: AbortSignal) =>
-  request(`/api/ranked/matches/${encodeURIComponent(matchId)}/progression/level-two-choice`,
-    raw, { method: "POST", body: { ability_id: abilityId }, signal });
-
 export const sendPresence = (matchId: string, signal?: AbortSignal): Promise<HeartbeatView> =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/presence`, readHeartbeat,
     { method: "POST", signal });

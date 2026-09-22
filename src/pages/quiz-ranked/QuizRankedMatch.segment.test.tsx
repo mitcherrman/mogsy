@@ -68,7 +68,6 @@ beforeEach(() => {
         payload: {
           match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [],
           latest_resolved_round: backend.resolvedPayload === null ? null : {
             schema_version: "ranked_duel.resolved_round.v2",
             projection_type: "resolved_round", match_id: "m1", round_number: 3,
@@ -240,7 +239,7 @@ describe("QuizRankedMatch — multi-challenge segment", () => {
     backend.segmentState = null;
     await mount();
     expect(screen.getByTestId("ranked-question")).toBeInTheDocument();
-    expect(screen.getByTestId("ranked-abilities")).toBeInTheDocument();
+    expect(screen.getByTestId("submission-status")).toBeInTheDocument();
     expect(screen.queryByTestId("icd-ability-phase")).toBeNull();
   });
 

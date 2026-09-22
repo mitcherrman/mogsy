@@ -17,7 +17,7 @@ import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { CentralStage } from "@/components/ranked-arena/CentralStage";
 import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
-import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import { LevelUpPanel } from "@/pages/dev/ranked-duel-prototype/staff-duel/LevelUpPanel";
 import { DiscoveryReveal } from "@/components/ranked-arena/DiscoveryReveal";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";

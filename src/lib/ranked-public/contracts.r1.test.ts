@@ -1,10 +1,10 @@
 /**
- * R1 contract parsing: League role identity and the progression signal.
+ * R1 contract parsing: League role identity, and the retired progression keys.
  *
- * The version-skew cases are the point of this file. Frontend and backend
- * deploy independently (Lovable / Railway), so a build of this client will
- * certainly run against a backend that has never heard of R1 — and the parse
- * has to fail SAFE there, showing legacy progression UI rather than hiding it.
+ * There is no leveling system any more. `progression_enabled` and
+ * `progression_pending_players` are gone from the backend, and the reader
+ * must TOLERATE both their absence and (from an older deployment) their
+ * presence, without surfacing either.
  */
 
 import { describe, expect, it } from "vitest";
@@ -22,49 +22,48 @@ function publicWith(patch: Record<string, unknown>) {
   return body;
 }
 
-describe("R1 — progression_enabled", () => {
-  it("parses an explicit false (an R1 no-progression match)", () => {
-    expect(readPublicRound(publicWith({ progression_enabled: false })).progressionEnabled)
-      .toBe(false);
+describe("retired progression keys", () => {
+  const resume = (patch: Record<string, unknown>) => ({
+    schema_version: "ranked_duel.resume.v1",
+    projection_type: "resume",
+    match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
+    payload: {
+      match_status: "active", match_over: false,
+      public: publicWith(patch), private: privatePlayerV2(),
+      latest_resolved_round: null, result: null, presence: null,
+      ...patch,
+    },
   });
 
-  it("parses an explicit true (a legacy match)", () => {
-    expect(readPublicRound(publicWith({ progression_enabled: true })).progressionEnabled)
-      .toBe(true);
-  });
-
-  it("VERSION SKEW: an absent field reads as true, never false", () => {
-    // The shipped fixtures carry no `progression_enabled` at all — exactly
-    // what a pre-R1 backend sends. Reading that as `false` would hide the
-    // ability tray and the Level 2 choice on matches that require them.
+  it("parses a public projection that carries neither key", () => {
     const body = clone(publicRoundV2());
-    expect("progression_enabled" in body.payload).toBe(false);
-    expect(readPublicRound(body).progressionEnabled).toBe(true);
+    const payload = body.payload as Record<string, unknown>;
+    delete payload.progression_pending_players;
+    delete payload.progression_enabled;
+    const view = readPublicRound(body);
+    expect(view.matchId).toBeTruthy();
+    expect("progressionEnabled" in view).toBe(false);
+    expect("progressionPendingPlayers" in view).toBe(false);
   });
 
-  it("a null or malformed value also reads as true (fail safe, not fail closed)", () => {
-    expect(readPublicRound(publicWith({ progression_enabled: null })).progressionEnabled)
-      .toBe(true);
-    expect(readPublicRound(publicWith({ progression_enabled: "no" })).progressionEnabled)
-      .toBe(true);
+  it("ignores both keys when an older backend still sends them", () => {
+    const view = readPublicRound(publicWith({
+      progression_enabled: true, progression_pending_players: ["userA"],
+    }));
+    expect("progressionEnabled" in view).toBe(false);
+    expect("progressionPendingPlayers" in view).toBe(false);
   });
 
-  it("is mirrored on the resume payload, with the same safe default", () => {
-    const resume = (patch: Record<string, unknown>) => ({
-      schema_version: "ranked_duel.resume.v1",
-      projection_type: "resume",
-      match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
-      payload: {
-        match_status: "active", match_over: false,
-        public: publicWith(patch), private: privatePlayerV2(),
-        progression_pending_players: [],
-        latest_resolved_round: null, result: null, presence: null,
-        ...patch,
-      },
-    });
-    expect(readResume(resume({ progression_enabled: false })).progressionEnabled).toBe(false);
-    expect(readResume(resume({ progression_enabled: true })).progressionEnabled).toBe(true);
-    expect(readResume(resume({})).progressionEnabled).toBe(true);
+  it("parses a resume payload with or without the keys", () => {
+    const bare = readResume(resume({}));
+    expect(bare.matchStatus).toBe("active");
+    expect("progressionEnabled" in bare).toBe(false);
+    expect("progressionPendingPlayers" in bare).toBe(false);
+    const legacy = readResume(resume({
+      progression_enabled: false, progression_pending_players: ["userA"],
+    }));
+    expect("progressionEnabled" in legacy).toBe(false);
+    expect("progressionPendingPlayers" in legacy).toBe(false);
   });
 });
 

@@ -29,7 +29,6 @@ import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
 import { msUntilAnswerable } from "@/lib/ranked-core/timerMath";
 import { RankedRulesScroll } from "@/components/ranked-rules/RankedRulesScroll";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
-import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type {
@@ -333,7 +332,6 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    *  thresholds, so no tier is derived from it anywhere. */
   const ratingAfter = historyRow?.ratingAfter ?? null;
   const [tick, setTick] = useState(0);
-  const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
 
   /**
    * The snapshot the QUESTION SURFACE renders from — deliberately laggier than
@@ -993,19 +991,16 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   }
 
   /**
-   * R1 — the ONE signal that decides whether legacy ability/progression UI may
-   * render, read off THIS match's own frozen projection.
-   *
-   * Deliberately not derived from role, class, XP, the feature flag, or
-   * whether a Level 2 choice happens to be pending: all five are wrong for an
-   * in-flight or historical match. A pre-R1 match reports `true` forever and
-   * keeps every control it has always had — including for a player who
-   * reconnects into one that is waiting on a Level 2 choice. A backend that
-   * does not send the field at all also reads `true` (see the contract's
-   * compatibility-safe parse), so shipping this client ahead of the backend
-   * hides nothing.
+   * There is NO leveling system. The match projection no longer carries
+   * `progression_enabled` (nor `progression_pending_players`), so no match has
+   * a level/XP layer: no level badge, no XP meter, no level wording. The
+   * arena's `progressionEnabled` input is kept — it is the one switch those
+   * legacy pieces already obey — and is simply always off here: the value
+   * every R1 / points match already reported. The ability hotbar keeps its
+   * existing gate on it (a points match carries no HP-era ability copy), so
+   * nothing about the hotbar's presentation changes for such a match.
    */
-  const progressionEnabled = m.publicRound.progressionEnabled;
+  const progressionEnabled = false;
   /**
    * RB2 — is the opponent server-controlled?
    *
@@ -1258,7 +1253,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // Visibility is a CONTENT question ("does this player have anything to arm?"),
   // deliberately NOT an availability question. Gating the tray's existence on
   // `canSelectAbility` unmounted it every time the window closed — between
-  // rounds, and for the whole of a level-2 choice — which removed ~140px from
+  // rounds — which removed ~140px from
   // the middle of the HUD and slid the status panel up under the cursor. The
   // tray now stays mounted and renders its own disabled state (AbilityTray
   // already surfaces `disabledReasons.ability` for exactly this).
@@ -1281,14 +1276,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   const moduleLabel = moduleProgressLabel(headerRound ?? m.publicRound);
   // A phased segment in its ability window legitimately has no engine round
   // and therefore no shared timer — that is the phase, not a transition gap.
-  const inTransition = !revealing && !timer && m.phase !== "progression" && !m.segmentState;
-
-  // The Level 2 overlay is gated on the SAME signal. `phase === "progression"`
-  // is already structurally unreachable on an R1 match (a match frozen with a
-  // single level threshold can never put a player in
-  // `progression_pending_players`), so this is defence in depth — but it is
-  // the check that keeps the two answers from ever disagreeing.
-  const isProgression = m.phase === "progression" && progressionEnabled;
+  const inTransition = !revealing && !timer && !m.segmentState;
 
   /**
    * POINT1 — the per-card result of a block in flight. Hoisted out of the view
@@ -1383,7 +1371,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     header: {
       // LINE 1 of the left block. The opponent moved to its own line below, so
       // the mode's name is no longer carrying a second fact on its back.
-      eyebrow: "Ranked Duel",
+      // DCMOD — a HOSTED match is one step of its host's flow, not a Ranked
+      // duel: it names no mode here (empty = the line is not drawn).
+      eyebrow: host ? "" : "Ranked Duel",
       // RP1 — a points match names its MODULE and its length, both read off
       // the backend's scoring block; an hp match keeps "Round N", because it
       // has no length and a "/ 10" here would be this client inventing one.
@@ -1415,7 +1405,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // there are any. `opponentPresenceLabel` is null for a healthy match now,
       // so the identity line shows; when the opponent drops it takes over,
       // because at that point the state IS the more important fact about them.
-      presenceNote: opponentLabel ?? opponentVersusLabel,
+      // DCMOD — a hosted step draws no "vs Bot" / "vs Opponent" identity line
+      // (that is duel framing); an ABNORMAL presence state is still news.
+      presenceNote: opponentLabel ?? (host ? null : opponentVersusLabel),
       timer,
       timerLabel: "Shared round timer",
       /**
@@ -1508,18 +1500,6 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       inputOpen,
       hasContent: question !== null || moduleOwnsSubmission,
     },
-    progression: isProgression ? {
-      options: (m.privatePlayer?.ownAbilities.level2Options ?? []).map((id) => ({
-        id, name: abilityName(id), description: abilityDescription(id),
-      })),
-      pendingOptionId: pendingLevel2,
-      busy: m.submitting,
-      onSelectOption: (id) => {
-        if (m.submitting || pendingLevel2 !== null) return;  // double-click safe
-        setPendingLevel2(id);
-        m.chooseLevelTwo(id);
-      },
-    } : null,
     abilityHud: showAbilityTray ? {
       abilities,
       selectedAbilityId: m.selectedAbilityId,
@@ -1547,7 +1527,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     // and a dead network are indistinguishable at the server. The arena places
     // it (end of the status row, or its own slim row on a module-owned round)
     // and never learns what it means.
-    hudAction: (
+    // DCMOD — a hosted step has no Ranked "Forfeit Match": conceding a duel is
+    // Ranked's sentence, and the step belongs to its host's flow.
+    hudAction: host ? null : (
       <ForfeitControl onForfeit={m.forfeit} disabled={m.submitting}
         className="shrink-0 pt-0.5" />
     ),

@@ -69,7 +69,6 @@ function discoveriesBody(over: Partial<Record<string, unknown>> = {}) {
 }
 
 function apply(payload: Record<string, unknown>) {
-  payload.progression_enabled = false;
   for (const p of payload.players as Record<string, unknown>[]) {
     p.role = p.player_id === "userA" ? "top" : null;
   }
@@ -106,9 +105,8 @@ beforeEach(() => {
         match_id: "m1", round_number: 1, server_time: "2026-09-03T12:00:00+00:00",
         payload: {
           match_status: over ? "complete" : "active", match_over: over,
-          progression_enabled: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [], latest_resolved_round: null,
+          latest_resolved_round: null,
           result: over ? matchResultV1("combat") : null,
         },
       });

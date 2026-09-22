@@ -46,7 +46,6 @@ const POINTS = {
 };
 
 function shape<T extends { payload: Record<string, unknown> }>(env: T): T {
-  env.payload.progression_enabled = false;
   for (const p of env.payload.players as Record<string, unknown>[]) p.role = "top";
   return withPointsScoring(env, POINTS) as T;
 }
@@ -74,9 +73,9 @@ beforeEach(() => {
         schema_version: "ranked_duel.resume.v1", projection_type: "resume",
         match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
         payload: {
-          match_status: "active", match_over: false, progression_enabled: false,
+          match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [], latest_resolved_round: null, result: null,
+          latest_resolved_round: null, result: null,
         },
       });
     }

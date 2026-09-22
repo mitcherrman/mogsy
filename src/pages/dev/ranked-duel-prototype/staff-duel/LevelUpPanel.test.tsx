@@ -2,10 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import {
   InteractionPermissions,
-  LevelUpOptionView,
   NO_INTERACTIONS,
 } from "@/lib/ranked-core/viewTypes";
-import { LevelUpPanel } from "./LevelUpPanel";
+import { LevelUpPanel, type LevelUpOptionView } from "./LevelUpPanel";
 
 // Deliberately non-Tank options: the panel must be class-neutral.
 const OPTIONS: LevelUpOptionView[] = [
