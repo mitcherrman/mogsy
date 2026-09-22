@@ -76,7 +76,12 @@
 > [`docs/gr1-champion-slice-composition-v2.md`](./gr1-champion-slice-composition-v2.md)
 > (GR1 **certified composition v2, `composition.lab_profile_gate_aware.v2` — the `balanced` variety
 > preference as a second certified Lab policy beside an unchanged v1. Backend pushed `666281e5`;
-> v1 still the default; Generator Lab only, not wired to Ranked**).
+> v1 still the default; Generator Lab only, not wired to Ranked**) and
+> [`docs/gr1-player-serving-champion-slice.md`](./gr1-player-serving-champion-slice.md)
+> (GR1 **first PLAYABLE state-aware Champion Slice, `mastery_slice.state_aware.v1`. It is wired
+> into the real Ranked carrier behind `module_config.slice_policy` and the `state_slice` bot
+> preset, and it persists the bundle in `segment_private_json`. Backend `ba53f818` is PUSHED to
+> `origin/master`**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -2316,6 +2321,55 @@ base `~/lcs-wt-gr1-v2-base` detached @ `b5c37f48`. Docs on `gr1/slice-compositio
   `publish`) + one progression diagnostic: 21.8 MB dumps `cmp`-identical vs base.
 * **Tests.** New suite 50 passed; regression failure SET identical to base (see the doc §14).
 * **Rollback:** `git revert 3f18a75f`.
+
+## Reusable state — FIRST PLAYABLE STATE-AWARE CHAMPION SLICE (2026-09-22)
+
+Full record: [`gr1-player-serving-champion-slice.md`](./gr1-player-serving-champion-slice.md).
+Backend **`ba53f818`** is on `gr1/player-serving-slice` (worktree `~/lcs-wt-gr1-serve`). It was
+authored on `cf5c1fd5`, rebased onto `9ebe7310` as `46c8b64d`, then rebased cleanly (zero
+conflicts) onto the repaired `origin/master` `ef01ed2d` and **pushed**. There is no frontend commit.
+
+Two standalone upstream commits landed on master first and are NOT part of the feature:
+**`62c20fbd`** (the missing `projections` import) and **`ef01ed2d`** (the `match_length` test
+fixtures).
+
+* **Entry point.** `MasterySliceModule.generate_segment` branches when a champion config carries
+  `"slice_policy": "mastery_slice.state_aware.v1"`. The branch goes through
+  `ranked_modules/mastery_state_slice.py` (the only Ranked importer of `mastery/setup_state/`) to
+  `setup_state/slice_serving.compose_state_slice`. That runs progression
+  (`champion.progression.legal_advance.v1`), then a provisional profile, then `run_profile` with
+  **v2**, then `publish_composed` (the production gate), then bind and verify. It returns an
+  ordinary `PublishedArtifact`. Everything downstream is unchanged: grading, bot, reveal,
+  resolution, attempts, review.
+* **Switch.** An absent key or `"legacy"` is the legacy Slice, byte-identical. The Builder shows an
+  optional "Slice policy" enum in Champion mode. The bot playtest path, which leaves the public
+  format alone, is the session preset **`state_slice`** (unrated, 5 registry-derived champions ×
+  3 questions). It is API-reachable today, with no frontend button. **⚠️ Its gate is admin OR any
+  Mogzy Premium account, not admin/playtester** — `_authorize_preset` returns early for every
+  preset that is not exactly `PRESET_PLAYTEST`. See the phase doc §2 for the one-line narrowing;
+  it is an open owner decision, not a bug introduced by this phase.
+* **Provisional defaults** (see the doc §3). Weights: snapshot 1, the other four 2 each. The budget
+  is the segment's `challenge_count` (3). Anchor redraws 2, attempts 8. Rank progression uses a
+  stated *legal* order where the rules declare ranks, and level-only for the 9 rank-gap champions.
+  No items, so cooldowns are at 0 AH.
+* **Fallback.** Bounded, deterministic attempts. If they run out, the segment falls back to the
+  legacy Champion Slice, and the record says so. An integrity or persistence failure fails closed.
+  A short module is never served.
+* **Persistence / review.** `segment_private_json["mastery_state"]` holds the verified block (zero
+  DDL, about 13.5 KB), plus a private `state_slice` diagnostic. After resolution, review adds a
+  verified, answer-free `mastery_state` view. A corrupt block is refused, not repaired.
+* **Roster smoke.** Re-run on the final rebase: 1,730 segments (173 champions × 10 seeds, budget
+  5), all full-budget, 0 crashes, 0 legacy fallbacks, 0 leaks, 0 missing state blocks, all 1,730
+  reviews verified, and all 1,730 regenerated identically. 21 Snapshot underfills were redrawn.
+  Seeds were picked from a 40-seed probe because the profile is a function of the seed alone, not
+  of the champion.
+* **Tests.** 54 pass (45 unit + 9 end-to-end). The `mastery/tests` failure set is identical to
+  base (11 pre-existing either side); the branch adds 58 net passing tests. Legacy output is
+  byte-identical to base across 120 cases.
+* **The upstream break is fixed** on master as `62c20fbd`. Separately, the 21/21 failure of
+  `test_ranked_mastery_artifact_persistence.py` turned out *not* to be that import at all — those
+  tests died earlier, in fixture construction, on the `match_length` drift repaired by `ef01ed2d`.
+* **Rollback:** `git revert ba53f818`. Nothing is migrated; the two upstream commits stand alone.
 
 ## Screenshots / artifacts
 
