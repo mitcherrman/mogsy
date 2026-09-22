@@ -248,13 +248,6 @@ export interface InteractionPermissions {
   disabledReasons?: Record<string, string>;
 }
 
-/** A level-progression ability option (Level 2 choice / Level 3 unlock). */
-export interface LevelUpOptionView {
-  id: string;
-  name: string;
-  description: string;
-}
-
 /** Everything locked — safe default while loading or between rounds. */
 export const NO_INTERACTIONS: InteractionPermissions = Object.freeze({
   canSelectAnswer: false,

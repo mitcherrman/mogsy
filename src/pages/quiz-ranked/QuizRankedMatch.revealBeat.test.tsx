@@ -11,7 +11,7 @@
  *        adapted, so reveals survive resume and timeout-resolved rounds, and
  *        the opponent is never nameless;
  *  1.4 — the reveal is introduced BEFORE the next round becomes interactive,
- *        is not suppressed by an owed level-2 choice, and needs no click.
+ *        is not suppressed by a level change, and needs no click.
  *
  * Authority is never asserted locally: every phase change here still comes from
  * a backend snapshot, and the hold only withholds a CLICK.
@@ -34,7 +34,6 @@ interface Backend {
   /** Round the server currently reports as active. */
   activeRound: number;
   hasSubmitted: boolean;
-  progressionPending: string[];
   /** Resolved payloads keyed by round number. */
   resolved: Record<number, unknown>;
   /** What /resume replays as `latest_resolved_round`. */
@@ -88,7 +87,6 @@ function resolvedPayload(round: number, opts: { leveledUp?: boolean; timedOut?: 
 function publicBody() {
   const body = publicRoundV2();
   const payload = body.payload as Record<string, unknown>;
-  payload.progression_pending_players = backend.progressionPending;
   payload.completed_rounds = backend.activeRound - 1;
   payload.match_over = backend.matchOver;
   (payload.active_round as Record<string, unknown>).round_number = backend.activeRound;
@@ -106,7 +104,6 @@ function publicBody() {
 function privateBody() {
   const body = privatePlayerV2("userA");
   const payload = body.payload as Record<string, unknown>;
-  payload.progression_pending_players = backend.progressionPending;
   for (const p of payload.players as Record<string, unknown>[]) {
     if (p.player_id === "userA") p.has_submitted = backend.hasSubmitted;
   }
@@ -115,7 +112,7 @@ function privateBody() {
 
 beforeEach(() => {
   backend = {
-    activeRound: 1, hasSubmitted: false, progressionPending: [],
+    activeRound: 1, hasSubmitted: false,
     resolved: {}, latestResolved: null, resolvedRequests: [],
     submissions: [], leveledUp: false, matchOver: false,
   };
@@ -128,7 +125,6 @@ beforeEach(() => {
         payload: {
           match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: backend.progressionPending,
           latest_resolved_round: backend.latestResolved, result: null,
         },
       });
@@ -351,24 +347,19 @@ describe("RA1 1.4 — the reveal beat", () => {
     expect(backend.submissions.length).toBe(submissionsDuringHold);
   });
 
-  it("still shows the reveal when a level-2 choice is owed", async () => {
+  it("still shows the result when the settlement reports a level change", async () => {
     await mount();
     advanceRound({ leveledUp: true });
-    backend.progressionPending = ["userA"];
 
-    await screen.findByTestId("ranked-progression", undefined, { timeout: 4000 });
-    // The level-2 choice still works WITHOUT the bottom bar, and the result
-    // that explains it is still on screen — in the top strip, where it now
-    // lives, alongside the two columns. The bar used to be the only place a
-    // level-up was explained, which is why it survived this state; the HUD
-    // beat and the columns cover it.
+    // There is no leveling system: a settlement that still carries a level
+    // change is presented like any other — the result in the top strip,
+    // both columns on screen, and no choice of any kind.
+    await screen.findByTestId("ranked-last-result", undefined, { timeout: 4000 });
     expect(screen.queryByTestId("reveal-panel")).toBeNull();
-    expect(screen.getByTestId("ranked-last-result")).toBeInTheDocument();
-    // HP stays on screen alongside both, so the result reads as one moment.
     expect(screen.getByTestId("combatant-userA")).toBeInTheDocument();
     expect(screen.getByTestId("combatant-userB")).toBeInTheDocument();
-    // ...and the choice itself is still offered.
-    expect(screen.getByTestId("ranked-progression")).toBeInTheDocument();
+    expect(screen.queryByTestId("ranked-progression")).toBeNull();
+    expect(screen.queryByTestId("level-up-panel")).toBeNull();
   });
 
   it("never holds a click the player already made — one-click answer is intact", async () => {

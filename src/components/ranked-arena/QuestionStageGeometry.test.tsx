@@ -44,8 +44,6 @@ import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type { InteractionPermissions, QuestionView } from "@/lib/ranked-core/viewTypes";
 import { CanonicalArena } from "./CanonicalArena";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
-import { dailyArenaView } from "@/pages/quiz-daily-challenge/dailyArenaView";
-import { parseRun, rawRun } from "@/pages/quiz-daily-challenge/testFixtures";
 import {
   metaReflexCards, metaReflexSegmentMeta, metaReflexState,
   privatePlayerV2, publicRoundV2,
@@ -407,7 +405,7 @@ describe("the Match Header says three things on the left and one on the right", 
     expect(left.indexOf("header.eyebrow")).toBeLessThan(left.indexOf("ranked-presence"));
     expect(left.indexOf("ranked-presence")).toBeLessThan(left.indexOf("ranked-header-title"));
     // And the mode's name stopped carrying the opponent on its back.
-    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain('eyebrow: "Ranked Duel"');
+    expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain('eyebrow: host ? "" : "Ranked Duel"');
     expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain("opponentVersusLabel");
   });
 
@@ -552,11 +550,9 @@ describe("transient state cannot change Match Shell geometry", () => {
     // none, so the conditional slot renders nothing and costs no height.
     expect(mode).not.toContain("Playtest · Placeholder");
     expect(mode).toContain("playtestNote: null");
-    // The SLOT survives, because the Daily Challenge uses it for its theme —
-    // deleting it would have taken a real line off another mode's header.
+    // The SLOT survives on the arena (a mode-supplied, optional line).
     const arena = read("components/ranked-arena/CanonicalArena.tsx");
     expect(arena).toContain("header.playtestNote");
-    expect(read("pages/quiz-daily-challenge/dailyArenaView.ts")).toContain("playtestNote:");
   });
 
   it("gives Meta Reflex ONE reserved box for every phase of a block", () => {
@@ -972,7 +968,7 @@ describe("Ranked inherits the stage", () => {
           match_id: "m1", round_number: 1, server_time: "2026-08-23T12:00:00+00:00",
           payload: { match_status: "active", match_over: false,
             public: publicRoundV2(), private: privatePlayerV2("userA"),
-            progression_pending_players: [], latest_resolved_round: null, result: null },
+            latest_resolved_round: null, result: null },
         });
       }
       if (u.endsWith("/private")) return json(privatePlayerV2("userA"));
@@ -991,107 +987,10 @@ describe("Ranked inherits the stage", () => {
   });
 });
 
-describe("the Daily inherits the stage", () => {
-  afterEach(cleanup);
-
-  /** The Daily's OWN adapter, unmodified, on the arena. */
-  function dailyView(kind: "open" | "learning") {
-    const run = parseRun(rawRun({
-      cards: [{
-        sequence: 1, prompt: "Which item grants Immolate?",
-        scoreLocked: kind === "learning",
-        scoreOutcome: kind === "learning" ? "wrong_answer" : null,
-        eliminated: kind === "learning" ? [1] : [],
-        attemptCount: kind === "learning" ? 1 : 0,
-      }],
-    }));
-    return dailyArenaView({
-      run, today: null, card: run.cards[0], held: false, beat: null,
-      busy: false, error: null, timer: null, skewMs: 0, displayName: "Challenger",
-      targetPanel: <div>target</div>, onAnswer: () => {},
-    });
-  }
-
-  it.each(["open", "learning"] as const)(
-    "draws a %s card on the canonical stage", (kind) => {
-      render(<CanonicalArena view={dailyView(kind)} />);
-      stageSection();
-      // The Daily's own seams are live inside the shared regions rather than
-      // beside them: the retry surface is the canonical grid.
-      expect(screen.getByTestId("answer-grid")).toBeInTheDocument();
-      if (kind === "learning") {
-        expect(screen.getByTestId("answer-grid")
-          .querySelector('[data-choice-state="eliminated"]')).not.toBeNull();
-      }
-    });
-
-  it("keeps the reserved answer region when the retry seam strikes an option", () => {
-    // Elimination is the one thing that changes the tablets between two views
-    // of the SAME card, and it must not change the region they sit in.
-    const open = render(<CanonicalArena view={dailyView("open")} />);
-    const before = regionsOf(screen.getByTestId("scenario-surface"));
-    open.unmount();
-    render(<CanonicalArena view={dailyView("learning")} />);
-    expect(regionsOf(screen.getByTestId("scenario-surface"))).toEqual(before);
-  });
-});
-
-describe("Meta Reflex keeps the same outer footprint", () => {
-  afterEach(cleanup);
-
-  /** A live v4 block, read through the REAL reader and the REAL viewport. */
-  function metaReflexView() {
-    const raw = publicRoundV2();
-    const payload = raw.payload as Record<string, unknown>;
-    const pub = readPublicRound({
-      ...raw,
-      payload: {
-        ...payload, question: null, segment: metaReflexSegmentMeta(),
-        segment_state: { ...metaReflexState(0), block: { cards: metaReflexCards() } },
-      },
-    });
-    const base = dailyArenaView({
-      run: parseRun(rawRun({ cards: [{ sequence: 1 }] })), today: null,
-      card: null, held: false, beat: null, busy: false, error: null,
-      timer: null, skewMs: 0, displayName: "You",
-      targetPanel: <div>target</div>, onAnswer: () => {},
-    });
-    return {
-      ...base,
-      surface: {
-        ...base.surface, renderer: rendererForSegment(pub.segment),
-        publicRound: pub, segmentState: pub.segmentState,
-        ownsSubmission: true, hasContent: true,
-      },
-    };
-  }
-
-  it("renders its block INSIDE the same stage an ordinary round gets", () => {
-    render(<CanonicalArena view={metaReflexView()} />);
-    const section = screen.getByTestId("ranked-question");
-    // The SAME section, with the SAME class: the block's outer footprint is the
-    // arena's, so a match that alternates ordinary rounds and blocks keeps one
-    // card size. What the block does INSIDE it is the block's own business —
-    // it composes two choice cards, not a band/prompt/answers stack, so it has
-    // no `data-surface-region` and needs none.
-    expect(section.className).toContain("ranked-question-stage");
-    expect(screen.getByTestId("mr-block")).toBeInTheDocument();
-    expect(section.querySelectorAll("[data-surface-region]")).toHaveLength(0);
-    // The stage is a FLOOR, so a block shorter than it is given room rather
-    // than stretched, and a longer one would extend the card rather than clip.
-    expect(section.getAttribute("style")).toBeNull();
-  });
-
-  it("is the one viewport the arena's HUD row is withheld from", () => {
-    // Documented exception, and it PREDATES this phase: a block owns its own
-    // submission, so the arena renders no ability tray and no status line
-    // beside it — which puts the timeline one HUD row higher than an ordinary
-    // round's. The card footprint above it is identical either way.
-    render(<CanonicalArena view={metaReflexView()} />);
-    expect(screen.queryByTestId("submission-status")).toBeNull();
-    expect(screen.getByTestId("ranked-round-timeline")).toBeInTheDocument();
-  });
-});
+// DCMOD integration: the DC2 Daily adapter these two suites were built on is
+// retired — every Daily stage is now a hosted canonical Ranked match, so the
+// Daily inherits the stage by BEING a Ranked match. Meta Reflex's footprint is
+// covered through QuizRankedMatch (bottomInvariant / metaReflex suites).
 
 describe("every term between the card and the timeline is still reserved", () => {
   // The timeline's Y is the SUM of the reserved boxes above it. The stage is
@@ -1134,10 +1033,6 @@ describe("every term between the card and the timeline is still reserved", () =>
     // It is `hidden md:flex` and a fixed plate; a wrapping beat used to push
     // everything below it down by a row.
     expect(arena()).toContain('className="hidden md:flex"');
-  });
-
-  it("the level-2 choice is still overlaid rather than inserted", () => {
-    expect(arena()).toContain('className={hasSurface ? "absolute inset-x-0 top-0 z-20" : ""}');
   });
 
   it("the timeline is still the arena's floor, mounted unconditionally", () => {

@@ -65,6 +65,7 @@ export default function RankedPlayGem({
   label = "Play",
   className = "",
   buttonRef,
+  rankedAvailable = false,
 }: {
   onClick: () => void;
   disabled?: boolean;
@@ -75,6 +76,7 @@ export default function RankedPlayGem({
    * seal is not a generic control anyone else composes.
    */
   buttonRef?: RefObject<HTMLButtonElement | null>;
+  rankedAvailable?: boolean;
   /**
    * The accessible name. NOT the visible word — that is baked into the art;
    * see THE BAKED WORD above. Keep it one word, and keep it "Play".
@@ -117,6 +119,15 @@ export default function RankedPlayGem({
       {/* The accessible name. Visually hidden because the art already says
           the word; see THE BAKED WORD above. */}
       <span className="lc-seal__label sr-only">{label}</span>
+      {rankedAvailable && (
+        <span
+          aria-hidden="true"
+          data-testid="ranked-available-badge"
+          className="absolute -right-4 -top-2 rounded-full border border-[#8b641f]/50 bg-[#f2dfaa] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-[#4a2f0d] shadow-sm"
+        >
+          Ranked available
+        </span>
+      )}
     </button>
   );
 }

@@ -45,6 +45,15 @@ vi.mock("@/lib/quiz/onboarding-gate", () => ({
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: async () => "test-token",
 }));
+// The Ranked CTA test exercises the PLAY record, which DCMOD-D only opens while
+// live Ranked is available (closed/unknown fails closed straight to the Daily).
+// Pin the server decision open; the closed path is LeaguecraftHub.playCommit's.
+vi.mock("@/pages/quiz-ranked/useRankedAvailability", () => ({
+  useRankedAvailability: () => ({
+    open: true, state: "open" as const, reason: "test",
+    nextOpenAt: null, closesAt: null, serverTime: "2026-09-21T12:00:00Z",
+  }),
+}));
 
 // Mirrors the shape the backend actually serves at /api/quiz/sets, including
 // the catalog-wide set the "Practice Questions" primary action opens.

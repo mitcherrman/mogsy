@@ -84,7 +84,6 @@ beforeEach(() => {
         payload: {
           match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [],
           latest_resolved_round: backend.resolvedPayload === null ? null : {
             schema_version: "ranked_duel.resolved_round.v2",
             projection_type: "resolved_round", match_id: "m1",
@@ -214,7 +213,8 @@ describe("Meta Reflex in the Ranked shell", () => {
       await waitFor(() => expect(screen.queryByTestId("mr-block")).toBeNull(),
         { timeout: 6000 });
       expect(screen.getByTestId("ranked-question")).toBeInTheDocument();
-      expect(screen.getByTestId("ranked-abilities")).toBeInTheDocument();
+      // The HUD row is back (the status line); a points match has no hotbar.
+      expect(screen.getByTestId("submission-status")).toBeInTheDocument();
       expect(screen.getByTestId("ranked-match")).toBe(shell);
       // The next round is live and the block's result is still in the HUD —
       // still with nothing at the bottom.

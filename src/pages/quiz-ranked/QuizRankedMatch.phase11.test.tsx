@@ -7,9 +7,8 @@
  * contract at the arena level, where the props are actually wired, rather
  * than only at the component level.
  *
- * The fetch harness is deliberately the same one
- * `QuizRankedMatch.progression.test.tsx` uses — one R1 backend fake, not two
- * that could disagree about what a no-progression match looks like.
+ * There is no leveling system any more, so the backend fake below sends no
+ * progression keys at all — exactly what the live backend now sends.
  */
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -23,11 +22,7 @@ import { QuizRankedMatch } from "./QuizRankedMatch";
 import { privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
 
 interface Backend {
-  /** null = the field is ABSENT, i.e. a pre-R1 backend. */
-  progressionEnabled: boolean | null;
-  progressionPending: string[];
   roles: Record<string, string | null>;
-  progressionChoices: unknown[];
 }
 let backend: Backend;
 
@@ -37,10 +32,6 @@ const json = (body: unknown, status = 200) =>
   });
 
 function applyR1(payload: Record<string, unknown>) {
-  if (backend.progressionEnabled !== null) {
-    payload.progression_enabled = backend.progressionEnabled;
-  }
-  payload.progression_pending_players = backend.progressionPending;
   for (const p of payload.players as Record<string, unknown>[]) {
     const role = backend.roles[p.player_id as string];
     if (role !== undefined) p.role = role;
@@ -61,10 +52,7 @@ const privateBody = () => {
 
 beforeEach(() => {
   backend = {
-    progressionEnabled: false,
-    progressionPending: [],
     roles: { userA: "jungle", userB: "support" },
-    progressionChoices: [],
   };
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
     const u = String(url);
@@ -72,12 +60,8 @@ beforeEach(() => {
       const payload: Record<string, unknown> = {
         match_status: "active", match_over: false,
         public: publicBody(), private: privateBody(),
-        progression_pending_players: backend.progressionPending,
         latest_resolved_round: null, result: null,
       };
-      if (backend.progressionEnabled !== null) {
-        payload.progression_enabled = backend.progressionEnabled;
-      }
       return json({
         schema_version: "ranked_duel.resume.v1", projection_type: "resume",
         match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
@@ -87,11 +71,6 @@ beforeEach(() => {
     if (u.endsWith("/private")) return json(privateBody());
     if (u.includes("/presence")) {
       return json({ status: "active", match_id: "m1", active: true });
-    }
-    if (u.includes("/level-two-choice")) {
-      backend.progressionChoices.push(JSON.parse(init.body as string));
-      backend.progressionPending = [];
-      return json({ status: "confirmed" });
     }
     if (/\/matches\/m1$/.test(u) && (init.method ?? "GET") === "GET") {
       return json(publicBody());
@@ -212,16 +191,20 @@ describe("Phase 11 — mirrored role columns", () => {
     expect(document.body.textContent).not.toMatch(/tank|mage|marksman/i);
   });
 
-  it("falls back to the class identity ONLY on a genuine pre-R1 match", async () => {
-    // No roles on the wire AND no `progression_enabled` — i.e. a backend that
-    // predates R1, whose matches have no role layer at all and whose only
-    // identity IS the combat class. Deliberately unchanged.
-    backend.progressionEnabled = null;
+  it("never falls back to a combat class, even with no roles and no progression keys", async () => {
+    // Formerly the "genuine pre-R1 match" (no roles AND no
+    // `progression_enabled`) fell back to the class identity. There is no
+    // leveling system and that key is retired, so its absence no longer
+    // means anything: a role-less match is still a role match.
     backend.roles = {};
     await mount();
-    expect(screen.queryByTestId("role-crest")).toBeNull();
-    expect(screen.getByTestId("combatant-userA")
-      .querySelector('[data-testid="class-portrait"]')).toBeTruthy();
+    for (const id of ["combatant-userA", "combatant-userB"]) {
+      const panel = screen.getByTestId(id);
+      expect(panel.querySelector('[data-testid="role-crest"]'))
+        .toHaveAttribute("data-role", "none");
+      expect(panel.querySelector('[data-testid="class-portrait"]')).toBeNull();
+    }
+    expect(document.body.textContent).not.toMatch(/tank|mage|marksman/i);
   });
 });
 

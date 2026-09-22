@@ -42,7 +42,6 @@ describe("readPrivatePlayer", () => {
     expect(view.ownerPlayerId).toBe("userA");
     expect(view.ownAbilities.unlockedAbilityIds).toEqual(["tank.fortify"]);
     expect(view.ownAbilities.remainingCharges["tank.fortify"]).toBe(3);
-    expect(view.ownAbilities.level2Options).toEqual(["tank.brace", "tank.barrier"]);
     // No opponent private state is present.
     expect(JSON.stringify(view.ownAbilities)).not.toMatch(/userB/);
   });

@@ -111,7 +111,7 @@ beforeEach(() => {
         match_id: "m1", round_number: backend.activeRound, server_time: iso(Date.now()),
         payload: {
           match_status: "active", match_over: false, public: publicBody(), private: privateBody(),
-          progression_pending_players: [], latest_resolved_round: backend.latestResolved, result: null,
+          latest_resolved_round: backend.latestResolved, result: null,
         },
       });
     }

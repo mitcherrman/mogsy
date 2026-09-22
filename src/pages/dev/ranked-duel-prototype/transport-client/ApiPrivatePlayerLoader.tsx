@@ -155,14 +155,6 @@ function PrivatePlayerSummary({ owner }: { owner: AdaptedPrivatePlayer }) {
         {owner.lockedAbilityIds.length > 0 && ` · locked: ${owner.lockedAbilityIds.join(", ")}`}
       </div>
       <div className="text-muted-foreground">
-        Level 2 choice:{" "}
-        {owner.level2ChoiceMade
-          ? `made (${owner.level2Choice})`
-          : `pending (options: ${owner.level2Options.join(", ")})`}
-        {" · Level 3 final unlock: "}
-        {owner.level3Unlocked ? (owner.level3FinalUnlockId ?? "unlocked") : "not yet"}
-      </div>
-      <div className="text-muted-foreground">
         Remaining charges:{" "}
         {charges.length > 0
           ? charges.map(([id, n]) => `${id} ${n === null ? "—" : n}`).join(" · ")

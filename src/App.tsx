@@ -190,16 +190,10 @@ const StatCheckRoomPage = lazy(() => import("./pages/dev/stat-check/online/StatC
 const StatCheckModeSelectPage = lazy(() => import("./pages/stat-check/StatCheckModeSelectPage"));
 const StatCheckBotPage = lazy(() => import("./pages/stat-check/StatCheckBotPage"));
 
-// Dev-only prototype — Daily Score Attack against the feature-flagged
-// backend; not linked from any navigation.
-const DailyScoreAttackPage = lazy(() => import("./pages/dev/daily-score-attack/DailyScoreAttackPage"));
-
-// Production Daily Score Attack surface (feature-flagged server-side; the
-// Quiz hub only links here when the backend reports the mode enabled).
-const QuizDailyScoreAttack = lazy(() => import("./pages/QuizDailyScoreAttack"));
-// DC1 Phase 5. A DIFFERENT mode from QuizDailyScoreAttack above: that one is
-// Time Trial at /quiz/daily and is untouched. This is the Daily Challenge.
-const QuizDailyChallengePage = lazy(() => import("./pages/quiz-daily-challenge/QuizDailyChallengePage"));
+// DCMOD: the Daily Challenge is a parent run of canonical Ranked child stages.
+// The standalone score-attack Time Trial (/quiz/daily) is retired: Time Trial
+// is a reusable ruleset played as one of the Daily's stages.
+const QuizDailyChallengePage = lazy(() => import("./pages/quiz-daily-challenge/run/DailyRunPage"));
 
 // Public Ranked route (F1.5) — allowlisted/feature-gated server-side; the
 // page fails closed on backend disabled/ineligible via typed error codes.
@@ -556,7 +550,7 @@ const App = () => (
                   <Route path="/lol/combat-battles/:slug" element={<Suspense fallback={<RouteFallback />}><CombatBattleDetail /></Suspense>} />
                   <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
                   <Route path="/quiz/matchup" element={<Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense>} />
-                  <Route path="/quiz/daily" element={<Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense>} />
+                  <Route path="/quiz/daily" element={<Navigate to="/quiz/daily-challenge" replace />} />
                   <Route path="/quiz/daily-challenge" element={<Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense>} />
                   {/* RB3 — the guided playtest. A separate route so canonical
                       Ranked is untouched and the whole session can be removed
@@ -646,7 +640,6 @@ const App = () => (
                   <Route path="/quiz/stat-check/bot" element={<Suspense fallback={<RouteFallback />}><StatCheckBotPage /></Suspense>} />
                   <Route path="/quiz/stat-check/private" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
-                  <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />
                   <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />

@@ -59,7 +59,7 @@
 import { useEffect, useState } from "react";
 import { useSurfaceEvent } from "@/lib/analytics";
 import { authHref } from "@/lib/auth/auth-destination";
-import { Link, Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
 import { RankedRouteHeader } from "./RankedRouteHeader";
 import { Button } from "@/components/ui/button";
@@ -156,6 +156,7 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
     return typeof state?.matchId === "string" ? state.matchId : null;
   });
   const [discoveredMatchId, setDiscoveredMatchId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [discoveryDone, setDiscoveryDone] = useState(false);
 
   // Reconnect after a full page reload, and the ONLY way to rediscover an
@@ -174,11 +175,19 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
     if (handoffMatchId) { setDiscoveryDone(true); return; }
     const controller = new AbortController();
     getActiveMatch(controller.signal)
-      .then((found) => { if (found) setDiscoveredMatchId(found.matchId); })
+      .then((found) => {
+        if (!found) return;
+        // DCMOD: a Daily stage resumes inside its parent run, not as Ranked.
+        if (found.host === "daily_challenge") {
+          navigate("/quiz/daily-challenge", { replace: true });
+          return;
+        }
+        setDiscoveredMatchId(found.matchId);
+      })
       .catch(() => { /* not recoverable — fall through to the lobby */ })
       .finally(() => setDiscoveryDone(true));
     return () => controller.abort();
-  }, [handoffMatchId]);
+  }, [handoffMatchId, navigate]);
 
   const liveMatchId = handoffMatchId ?? discoveredMatchId;
 

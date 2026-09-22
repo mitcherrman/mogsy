@@ -24,11 +24,6 @@ export interface AdaptedPrivatePlayer {
   // --- eligibility & progression (owner only) ---
   unlockedAbilityIds: string[];
   lockedAbilityIds: string[];
-  level2ChoiceMade: boolean;
-  level2Choice: string | null;
-  level2Options: string[];
-  level3FinalUnlockId: string | null;
-  level3Unlocked: boolean;
   /** Owner's CURRENT live charges — pass-through, never calculated. */
   remainingCharges: Record<string, number | null>;
   // --- owner carryover & Combat Lab data ---
@@ -63,11 +58,6 @@ export function adaptPrivatePlayer(
     selectedAbilityId: payload.own_selection.selected_ability_id,
     unlockedAbilityIds: [...payload.own_abilities.unlocked_ability_ids],
     lockedAbilityIds: [...payload.own_abilities.locked_ability_ids],
-    level2ChoiceMade: payload.own_abilities.level2_choice_made,
-    level2Choice: payload.own_abilities.level2_choice,
-    level2Options: [...payload.own_abilities.level2_options],
-    level3FinalUnlockId: payload.own_abilities.level3_final_unlock_id,
-    level3Unlocked: payload.own_abilities.level3_unlocked,
     remainingCharges: { ...payload.own_abilities.remaining_charges },
     pendingEffects: {
       fortify: payload.own_carryover.pending_fortify,

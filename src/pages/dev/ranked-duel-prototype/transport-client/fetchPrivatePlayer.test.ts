@@ -214,15 +214,6 @@ describe("fetchPrivatePlayer — owner-scoped pass-through at the call site", ()
     });
   });
 
-  it("Level 2 pending and confirmed choice states pass through", async () => {
-    const pending = await fetchAndAdapt("private-level2-pending");
-    expect(pending.level2ChoiceMade).toBe(false);
-    expect(pending.level2Options).toEqual(["tank.brace", "tank.barrier"]);
-    const chosen = await fetchAndAdapt("private-level2-chosen");
-    expect(chosen.level2ChoiceMade).toBe(true);
-    expect(chosen.level2Choice).toBe("tank.brace");
-  });
-
   it("carryover flags, streak, and the separate Combat Lab delta pass through", async () => {
     const maxed = await fetchAndAdapt("private-max-level");
     expect(maxed.pendingEffects).toEqual({

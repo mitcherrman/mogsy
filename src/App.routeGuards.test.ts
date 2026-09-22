@@ -14,7 +14,8 @@ function firstElementFor(path: string): string | null {
   return m ? m[1] : null;
 }
 
-const UNGATED_QUIZ = ["/quiz", "/quiz/daily", "/quiz/daily-challenge", "/quiz/matchup", "/quiz/ranked"];
+// DCMOD: /quiz/daily is now a redirect to /quiz/daily-challenge (Time Trial retired).
+const UNGATED_QUIZ = ["/quiz", "/quiz/daily-challenge", "/quiz/matchup", "/quiz/ranked"];
 
 describe("TUT1 — no Ranked tutorial gate survives", () => {
   it("opens every normal quiz gameplay / hub route directly, with no tutorial gate", () => {

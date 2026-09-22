@@ -3,9 +3,7 @@
  *
  * What these assert is the CLICK COUNT and where authority lives:
  *   * clicking a quiz answer submits it — there is no Lock In / Confirm button;
- *   * the ability tray is optional, independently editable, and hidden when it
- *     has nothing actionable to offer;
- *   * a progression choice applies on the first click;
+ *   * there is no ability tray (no leveling layer means no hotbar);
  *   * nothing advances the match on a local click alone.
  */
 
@@ -22,14 +20,12 @@ import { privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
 interface Backend {
   submissions: unknown[];
   abilityDrafts: unknown[];
-  progressionChoices: unknown[];
   /** Server-held ability draft, echoed back through own_selection. */
   ownAbilityId: string | null;
   ownSelectionPhase: string;
   /** The viewer's own charges, keyed by ability id. */
   charges: Record<string, number | null>;
   hasSubmitted: boolean;
-  progressionPending: string[];
 }
 let backend: Backend;
 
@@ -41,7 +37,6 @@ const json = (body: unknown, status = 200) =>
 function publicBody() {
   const body = publicRoundV2();
   const payload = body.payload as Record<string, unknown>;
-  payload.progression_pending_players = backend.progressionPending;
   for (const p of payload.players as Record<string, unknown>[]) {
     if (p.player_id === "userA") p.has_submitted = backend.hasSubmitted;
   }
@@ -51,7 +46,6 @@ function publicBody() {
 function privateBody() {
   const body = privatePlayerV2("userA");
   const payload = body.payload as Record<string, unknown>;
-  payload.progression_pending_players = backend.progressionPending;
   payload.own_selection = {
     phase: backend.ownSelectionPhase, selected_ability_id: backend.ownAbilityId,
   };
@@ -65,10 +59,9 @@ function privateBody() {
 
 beforeEach(() => {
   backend = {
-    submissions: [], abilityDrafts: [], progressionChoices: [],
+    submissions: [], abilityDrafts: [],
     ownAbilityId: null, ownSelectionPhase: "open",
     charges: { "tank.fortify": 3 }, hasSubmitted: false,
-    progressionPending: [],
   };
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
     const u = String(url);
@@ -79,7 +72,6 @@ beforeEach(() => {
         payload: {
           match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: backend.progressionPending,
           latest_resolved_round: null, result: null,
         },
       });
@@ -98,11 +90,6 @@ beforeEach(() => {
       backend.abilityDrafts.push(body);
       backend.ownAbilityId = body.ability_id;
       return json({ status: "accepted" });
-    }
-    if (u.includes("/level-two-choice")) {
-      backend.progressionChoices.push(JSON.parse(init.body as string));
-      backend.progressionPending = [];
-      return json({ status: "confirmed" });
     }
     if (/\/matches\/m1$/.test(u) && (init.method ?? "GET") === "GET") {
       return json(publicBody());
@@ -184,69 +171,23 @@ describe("R3 quiz answers lock on one click", () => {
 });
 
 describe("R3 quiz abilities are optional and non-blocking", () => {
-  it("writes the ability on its own route, with no answer implied", async () => {
+  it("draws no ability hotbar: with no leveling layer, no match has one", async () => {
+    // The hotbar was gated on the match's `progression_enabled`, and every
+    // R1 / points match already reported `false`. That key is retired along
+    // with the leveling system, so the gate is permanently off: even a
+    // private projection that still lists a charged ability draws no tray,
+    // and nothing is written to the ability route.
     await mount();
-    fireEvent.click(await screen.findByTestId("ability-tank.fortify"));
-    await waitFor(() => expect(backend.abilityDrafts).toHaveLength(1));
-    expect(backend.abilityDrafts[0]).toEqual({ ability_id: "tank.fortify" });
-    expect(backend.submissions).toHaveLength(0);
-  });
-
-  it("stays editable while waiting for the opponent", async () => {
-    backend.hasSubmitted = true;   // answered; round still open
-    await mount();
-    const tray = await screen.findByTestId("ranked-abilities");
-    expect(tray).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("ability-tank.fortify"));
-    await waitFor(() => expect(backend.abilityDrafts).toHaveLength(1));
-  });
-
-  it("offers a clear control only once something is armed", async () => {
-    await mount();
-    // Nothing armed: No Ability is the implicit default and needs no button.
-    expect(screen.queryByTestId("ability-none")).not.toBeNull();
-    fireEvent.click(screen.getByTestId("ability-none"));
-    await waitFor(() => expect(backend.abilityDrafts).toHaveLength(1));
-    expect(backend.abilityDrafts[0]).toEqual({ ability_id: null });
-  });
-
-  it("keeps the tray mounted but inert once the selection window is locked", async () => {
-    // RA1 1.5: the tray used to be UNMOUNTED here. The window locks at every
-    // round close, so the HUD lost ~140px on every round boundary and the
-    // status panel slid up under the player's cursor. It now holds its place
-    // and goes disabled instead — availability is a state, not a layout event.
-    backend.ownSelectionPhase = "locked";
-    await mount();
-    expect(await screen.findByTestId("ranked-abilities")).toBeInTheDocument();
-    expect(screen.getByTestId("ability-tank.fortify")).toBeDisabled();
-    expect(screen.getByTestId("ability-none")).toBeDisabled();
+    await findAnswerOptions();
+    expect(screen.queryByTestId("ranked-abilities")).toBeNull();
+    expect(screen.queryByTestId("ability-tank.fortify")).toBeNull();
+    expect(backend.abilityDrafts).toHaveLength(0);
   });
 
   it("hides the tray when every ability is out of charges", async () => {
     backend.charges = { "tank.fortify": 0 };
     await mount();
     expect(screen.queryByTestId("ranked-abilities")).toBeNull();
-  });
-});
-
-describe("R3 progression applies on one click", () => {
-  it("submits the choice immediately, with no confirm button", async () => {
-    backend.progressionPending = ["userA"];
-    await mount();
-    expect(await screen.findByTestId("ranked-progression")).toBeInTheDocument();
-    expect(screen.queryByTestId("level-confirm")).toBeNull();
-    const options = screen.getAllByTestId(/^level-option-/);
-    fireEvent.click(options[0]);
-    await waitFor(() => expect(backend.progressionChoices).toHaveLength(1));
-  });
-
-  it("is safe against a double activation", async () => {
-    backend.progressionPending = ["userA"];
-    await mount();
-    const options = await screen.findAllByTestId(/^level-option-/);
-    fireEvent.click(options[0]);
-    fireEvent.click(options[1] ?? options[0]);
-    await waitFor(() => expect(backend.progressionChoices).toHaveLength(1));
   });
 });
 

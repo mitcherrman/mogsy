@@ -86,26 +86,18 @@ export function moduleProgressLabel(pub: PublicRoundView): string | null {
  *
  * A match-level question, answered once and applied to both combatants — see
  * `CombatantView.identityMode` for why the per-participant answer is the wrong
- * one. Two independent signals, either of which settles it:
- *
- *  * any participant carries a League role — a match cannot have frozen a role
- *    for one seat and be a pre-R1 match; and
- *  * the match's own frozen config reports no progression layer, which is the
- *    R1 signal (`level_thresholds=(0,)` → `max_level == 1`). This catches the
- *    R1 match where NEITHER seat has a role, which a role sniff alone would
- *    misread as pre-R1 and dress in combat classes.
- *
- * `progressionEnabled` is parsed compatibility-safe (absent/null ⇒ `true`), so
- * a backend that predates R1 answers "legacy" here, and a flag-off match —
- * which the backend gives pre-R1 semantics exactly, legacy thresholds and both
- * roles NULL — also answers "legacy". Neither changes shape.
+ * one. Every match speaks roles now. The only way a match used to answer
+ * "legacy class" was a projection with no role on either seat AND a
+ * progression layer (`progression_enabled`), and there is no leveling system
+ * any more: that key is retired and no match has a progression layer. A
+ * role-less participant (a bot) gets the NEUTRAL role label from the panel,
+ * never its combat class.
  *
  * Nothing here maps a class to a role or a role to a class in either
  * direction; it only chooses which vocabulary the match is allowed to use.
  */
-function matchIdentityMode(pub: PublicRoundView): "role" | "legacy_class" {
-  if (pub.players.some((p) => p.role !== null)) return "role";
-  return pub.progressionEnabled ? "legacy_class" : "role";
+function matchIdentityMode(_pub: PublicRoundView): "role" | "legacy_class" {
+  return "role";
 }
 
 /**
@@ -299,7 +291,7 @@ export function projectAbilityPermissions(
  *
  * `locked` is deliberately NOT consulted (RA1 1.5). It flips to true at every
  * round close, and keying visibility off it unmounted the tray on every round
- * boundary and for the whole of a level-2 choice — tearing ~140px out of the
+ * boundary — tearing ~140px out of the
  * middle of the HUD and sliding the status panel up under the player's cursor.
  * A locked round now renders the tray in its own disabled state instead, which
  * AbilityTray already supports (see `permissions.disabledReasons.ability`).

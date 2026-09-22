@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
-import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import { LevelUpPanel } from "./LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";

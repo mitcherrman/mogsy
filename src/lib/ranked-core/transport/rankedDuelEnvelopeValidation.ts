@@ -260,11 +260,6 @@ const OWN_SELECTION_FIELDS = ["phase", "selected_ability_id"] as const;
 const OWN_ABILITIES_FIELDS = [
   "unlocked_ability_ids",
   "locked_ability_ids",
-  "level2_choice_made",
-  "level2_choice",
-  "level2_options",
-  "level3_final_unlock_id",
-  "level3_unlocked",
   "remaining_charges",
 ] as const;
 const OWN_CARRYOVER_FIELDS = [
@@ -300,11 +295,6 @@ export function validatePrivatePlayerEnvelope(
   requireExactKeys(ab, OWN_ABILITIES_FIELDS, "own_abilities");
   strArray(ab.unlocked_ability_ids, "own_abilities.unlocked_ability_ids");
   strArray(ab.locked_ability_ids, "own_abilities.locked_ability_ids");
-  bool(ab.level2_choice_made, "own_abilities.level2_choice_made");
-  if (ab.level2_choice !== null) str(ab.level2_choice, "own_abilities.level2_choice");
-  strArray(ab.level2_options, "own_abilities.level2_options");
-  if (ab.level3_final_unlock_id !== null) str(ab.level3_final_unlock_id, "own_abilities.level3_final_unlock_id");
-  bool(ab.level3_unlocked, "own_abilities.level3_unlocked");
   if (!isRecord(ab.remaining_charges)) fail("own_abilities.remaining_charges must be an object");
   for (const [k, v] of Object.entries(ab.remaining_charges as Record<string, unknown>)) {
     if (v !== null && (typeof v !== "number" || v < 0)) {

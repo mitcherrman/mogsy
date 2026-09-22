@@ -110,7 +110,6 @@ function shape<T2 extends { payload: Record<string, unknown> }>(env: T2): T2 {
     // The final round settled INSIDE the transaction that ended the match —
     // which is exactly why it is the one round whose reveal had never played.
   }
-  payload.progression_enabled = false;
   payload.server_time = iso(Date.now());
   (env as unknown as Record<string, unknown>).server_time = iso(Date.now());
   for (const p of payload.players as Record<string, unknown>[]) {
@@ -198,7 +197,7 @@ beforeEach(() => {
           match_over: overMatch || liveOver,
           public: shape(publicRoundV2(overMatch || liveOver)),
           private: shape(privatePlayerV2("userA")),
-          progression_pending_players: [], latest_resolved_round: null,
+          latest_resolved_round: null,
           result: overMatch ? matchResultPointsV1({ userA: 18, userB: 12 }) : null,
         },
       });

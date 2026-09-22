@@ -103,7 +103,7 @@ function resumeEnvelope() {
     payload: {
       match_status: "active", match_over: false,
       public: resumePublic(), private: privatePlayerV2("userA"),
-      progression_pending_players: [], latest_resolved_round: null, result: null,
+      latest_resolved_round: null, result: null,
     },
   };
 }

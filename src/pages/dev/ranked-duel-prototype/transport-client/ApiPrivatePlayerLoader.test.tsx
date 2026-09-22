@@ -33,8 +33,6 @@ describe("ApiPrivatePlayerLoader", () => {
     const summary = await screen.findByTestId("private-player-summary");
     expect(summary).toHaveTextContent("Owner alice · mock-match-001 · round 3");
     expect(summary).toHaveTextContent(/Unlocked: tank\.fortify, tank\.brace, tank\.barrier/);
-    expect(summary).toHaveTextContent(/Level 2 choice: made \(tank\.brace\)/);
-    expect(summary).toHaveTextContent(/Level 3 final unlock: tank\.barrier/);
     expect(summary).toHaveTextContent(
       /Remaining charges: tank\.fortify 2 · tank\.brace 2 · tank\.barrier 1/,
     );

@@ -117,7 +117,7 @@ describe("the live arena's scroll ownership", () => {
           payload: {
             match_status: "active", match_over: false,
             public: publicRoundV2(), private: privatePlayerV2("userA"),
-            progression_pending_players: [], latest_resolved_round: null, result: null,
+            latest_resolved_round: null, result: null,
           },
         });
       }
@@ -208,7 +208,7 @@ describe("the live arena's scroll ownership", () => {
     expect(kids[kids.length - 1]).toBe(screen.getByTestId("ranked-round-timeline"));
     expect(hudIndex).toBe(kids.length - 2);
     const focus = screen.getByTestId("ranked-focus-column");
-    for (const hud of ["ranked-abilities", "submission-status"]) {
+    for (const hud of ["submission-status"]) {
       expect(focus.contains(screen.getByTestId(hud))).toBe(false);
     }
   });

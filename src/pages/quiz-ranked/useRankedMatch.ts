@@ -2,7 +2,7 @@
  * Public Ranked live-match controller (F1.5). Owns the match id, single-flight
  * public/private polling with backoff+abort, skew-anchored timer input,
  * resolved-round capture, the select→review→confirm-atomic submission flow,
- * the Level 2 gate, a separate presence heartbeat, and recovery/terminal
+ * a separate presence heartbeat, and recovery/terminal
  * states. The backend is authoritative for every combat value; this computes
  * none. Modeled on the staff session + DSA recovery patterns but JWT-only —
  * no participant token or admin key.
@@ -134,7 +134,7 @@ function idMappingFromRound(
 }
 
 export type MatchPhase =
-  | "recovering" | "active" | "reviewing" | "locked" | "progression"
+  | "recovering" | "active" | "reviewing" | "locked"
   /**
    * RFX1 2B3 — the deliberate match-complete beat. Authoritatively over, but
    * still PRESENTING: the final question and its result are on screen, input
@@ -207,7 +207,6 @@ export interface MatchController {
   answer: (optionId: string, answerIndex: number) => void;
   /** Arm/change/clear the round's ability. Never blocks or gates the answer. */
   selectAbility: (id: string | null) => void;
-  chooseLevelTwo: (abilityId: string) => void;
   /**
    * RG1 — concede the match, deliberately.
    *
@@ -423,14 +422,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const hasSubmitted =
     (privatePlayer?.ownerPlayerId === viewerUserId && privatePlayer?.players.find(
       (p) => p.playerId === viewerUserId)?.hasSubmitted) || ownPublic?.hasSubmitted || false;
-  const iOweChoice = (publicRound?.progressionPendingPlayers ?? []).includes(viewerUserId);
   const matchOver = publicRound?.matchOver || result !== null;
 
   const phase: MatchPhase = (() => {
     if (error) return "fatal";
     if (!publicRound) return "recovering";
     if (matchOver) return outro && !outro.done ? "match_outro" : "match_over";
-    if (iOweChoice) return "progression";
     // `hasSubmitted` is the SERVER's view of the viewer's submission. R3 never
     // shows "locked" from local state alone — a click in flight stays in the
     // active phase with its controls disabled until the backend confirms.
@@ -1154,22 +1151,6 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       });
     }, [runSegmentAction, matchId, segmentState, playSfx]);
 
-  const chooseLevelTwo = useCallback((abilityId: string) => {
-    if (!matchId || submitting) return;
-    setSubmitting(true); setActionError(null);
-    (async () => {
-      try {
-        await api.chooseLevelTwo(matchId, abilityId);
-        setSubmitting(false);
-        poke();
-      } catch (e) {
-        setSubmitting(false);
-        setActionError(e instanceof Error ? e.message : "choice failed");
-        poke();
-      }
-    })();
-  }, [matchId, submitting, poke]);
-
   const forfeit = useCallback(() => {
     if (!matchId || submitting) return;
     setSubmitting(true); setActionError(null);
@@ -1210,7 +1191,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     phase, publicRound, roundNumber, privatePlayer, lastResolved, damageLog, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, answeredSelection, selectedAbilityId, submitting, abilityBusy, actionError,
-    error, contractError, retry, roundLive, answer, selectAbility, chooseLevelTwo,
+    error, contractError, retry, roundLive, answer, selectAbility,
     forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
     submitSegmentChallenge, revealHold,

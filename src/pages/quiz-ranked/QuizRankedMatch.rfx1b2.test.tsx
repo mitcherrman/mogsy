@@ -41,7 +41,6 @@ function shape<T extends { payload: Record<string, unknown> }>(env: T): T {
     payload.winner_id = "userA";
     payload.completion_reason = "segments_complete";
   }
-  payload.progression_enabled = false;
   payload.server_time = iso(Date.now());
   (env as unknown as Record<string, unknown>).server_time = iso(Date.now());
   for (const p of payload.players as Record<string, unknown>[]) {
@@ -91,7 +90,7 @@ beforeEach(() => {
         payload: {
           match_status: overMatch ? "complete" : "active", match_over: overMatch,
           public: shape(publicRoundV2(overMatch)), private: shape(privatePlayerV2("userA")),
-          progression_pending_players: [], latest_resolved_round: null,
+          latest_resolved_round: null,
           result: overMatch ? matchResultPointsV1({ userA: 18, userB: 12 }) : null,
         },
       });

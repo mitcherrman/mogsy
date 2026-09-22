@@ -42,7 +42,6 @@ const json = (body: unknown) => new Response(JSON.stringify(body), {
 
 /** An R1 match: no progression layer, and a role frozen per participant. */
 function apply(payload: Record<string, unknown>) {
-  payload.progression_enabled = false;
   for (const p of payload.players as Record<string, unknown>[]) {
     p.role = roles[p.player_id as string] ?? null;
   }
@@ -70,9 +69,9 @@ beforeEach(() => {
         schema_version: "ranked_duel.resume.v1", projection_type: "resume",
         match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
         payload: {
-          match_status: "active", match_over: false, progression_enabled: false,
+          match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [], latest_resolved_round: null, result: null,
+          latest_resolved_round: null, result: null,
         },
       });
     }

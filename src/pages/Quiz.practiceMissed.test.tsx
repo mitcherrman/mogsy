@@ -48,11 +48,6 @@ vi.mock("@/lib/quiz/onboarding-gate", () => ({
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: async () => "test-token",
 }));
-vi.mock("@/pages/dev/daily-score-attack/dailyScoreAttackClient", () => ({
-  fetchToday: async () => {
-    throw new Error("disabled in this suite");
-  },
-}));
 
 const SETS = [
   { id: 3, name: "Champion Basics", description: "Kits", question_count: 522 },

@@ -111,6 +111,15 @@ vi.mock("@/lib/quiz/api", () => ({
 vi.mock("@/pages/quiz-ranked/useRankedProgression", () => ({
   useRankedProgression: () => ({ loadState: "unavailable" as const, progression: null }),
 }));
+// This suite exercises the OPEN Ranked paths. DCMOD-D deliberately fails
+// closed when availability is unresolved, so pin the server decision open
+// rather than letting these role tests navigate to Daily Challenge.
+vi.mock("@/pages/quiz-ranked/useRankedAvailability", () => ({
+  useRankedAvailability: () => ({
+    open: true, state: "open" as const, reason: "test",
+    nextOpenAt: null, closesAt: null, serverTime: "2026-09-21T12:00:00Z",
+  }),
+}));
 vi.mock("@/pages/quiz-ranked/useRankedMatchHistory", () => ({
   useRankedMatchHistory: () => ({ loadState: "ready" as const, entries: [], limit: 20 }),
 }));

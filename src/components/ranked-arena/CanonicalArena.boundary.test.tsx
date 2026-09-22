@@ -39,7 +39,8 @@ function sourceFiles(dir: string): string[] {
 const filesMatching = (re: RegExp) =>
   sourceFiles(ROOT)
     .filter((f) => re.test(readFileSync(f, "utf8")))
-    .map((f) => f.slice(ROOT.length + 1))
+    // POSIX separators, so the path-shaped assertions hold on Windows too.
+    .map((f) => f.slice(ROOT.length + 1).split("\\").join("/"))
     .sort();
 
 // ── A · the live Ranked route reaches the canonical arena ──────────────────
@@ -64,7 +65,6 @@ describe("the Ranked route renders through CanonicalArena", () => {
           payload: {
             match_status: "active", match_over: false,
             public: round, private: privatePlayerV2("userA"),
-            progression_pending_players: [], progression_enabled: true,
             latest_resolved_round: null, result: null,
           },
         } : round;
@@ -240,8 +240,8 @@ describe("no production mode offers a confirm step", () => {
       "components/ranked-arena/AnswerGrid.tsx",
       "components/question-surface/InteractiveScenarioSurface.tsx",
       "pages/quiz-ranked/QuizRankedMatch.tsx",
-      "pages/quiz-daily-challenge/QuizDailyChallengePage.tsx",
-      "pages/quiz-daily-challenge/dailyArenaView.ts",
+      // DCMOD: the Daily hosts QuizRankedMatch; its own page renders no answers.
+      "pages/quiz-daily-challenge/run/DailyRunPage.tsx",
     ]) {
       const src = read(file);
       expect(src, `${file} reached for the confirm strip`)
@@ -256,8 +256,8 @@ describe("no production mode offers a confirm step", () => {
     // and the Daily's adapter both state it false explicitly. A mode that
     // flipped it would be
     // introducing the second click this guard exists to prevent.
-    expect(read("pages/quiz-daily-challenge/dailyArenaView.ts"))
-      .toContain("canChangeAnswer: false");
+    // DCMOD: the Daily's stages ARE canonical Ranked matches, so Ranked's
+    // projection is the only one left to state it.
     expect(read("pages/quiz-ranked/rankedViews.ts")).toContain("canChangeAnswer");
   });
 });

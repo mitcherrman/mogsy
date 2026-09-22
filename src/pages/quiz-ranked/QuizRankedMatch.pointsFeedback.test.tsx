@@ -93,7 +93,6 @@ function resolvedPayload(round: number) {
 }
 
 function shape<T extends { payload: Record<string, unknown> }>(env: T): T {
-  env.payload.progression_enabled = false;
   for (const p of env.payload.players as Record<string, unknown>[]) p.role = "top";
   (env.payload.active_round as Record<string, unknown>).round_number = backend.activeRound;
   env.payload.completed_rounds = backend.activeRound - 1;
@@ -118,9 +117,9 @@ beforeEach(() => {
         schema_version: "ranked_duel.resume.v1", projection_type: "resume",
         match_id: "m1", round_number: backend.activeRound, server_time: T,
         payload: {
-          match_status: "active", match_over: false, progression_enabled: false,
+          match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [], latest_resolved_round: null, result: null,
+          latest_resolved_round: null, result: null,
         },
       });
     }

@@ -57,6 +57,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "RANKED_INVALID_PROGRESSION_CHOICE", "RANKED_ROUND_NOT_RESOLVED", "RANKED_MATCH_NOT_COMPLETE",
   "RANKED_INTEGRITY_ERROR",
   "RANKED_QUEUE_DISABLED", "RANKED_QUEUE_NOT_ELIGIBLE", "RANKED_ACTIVE_MATCH_EXISTS",
+  "RANKED_QUEUE_CLOSED",
   "RANKED_ALREADY_QUEUED",
   "RANKED_QUESTION_POOL_UNAVAILABLE", "RANKED_CANNOT_CANCEL", "RANKED_INVALID_CLASS",
   "RANKED_RATE_LIMITED",
@@ -182,6 +183,44 @@ async function request<T>(path: string, parse: (json: unknown) => T,
 
 const raw = (json: unknown) => json as Record<string, unknown>;
 
+export interface RankedAvailabilityView {
+  open: boolean;
+  state: "open" | "closed";
+  reason: string;
+  nextOpenAt: string | null;
+  closesAt: string | null;
+  serverTime: string | null;
+}
+
+function readRankedAvailability(json: unknown): RankedAvailabilityView {
+  if (!json || typeof json !== "object") throw new Error("availability envelope required");
+  const env = json as Record<string, unknown>;
+  if (env.schema_version !== "ranked_duel.availability.v1") {
+    throw new Error("unsupported availability schema");
+  }
+  const payload = env.payload;
+  if (!payload || typeof payload !== "object") throw new Error("availability payload required");
+  const p = payload as Record<string, unknown>;
+  if (typeof p.open !== "boolean" || (p.state !== "open" && p.state !== "closed") ||
+      typeof p.reason !== "string") throw new Error("invalid availability payload");
+  const nullableString = (value: unknown, field: string) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value !== "string") throw new Error(`${field} must be a string or null`);
+    return value;
+  };
+  return {
+    open: p.open,
+    state: p.state,
+    reason: p.reason,
+    nextOpenAt: nullableString(p.next_open_at, "next_open_at"),
+    closesAt: nullableString(p.closes_at, "closes_at"),
+    serverTime: nullableString(env.server_time, "server_time"),
+  };
+}
+
+export const getRankedAvailability = (signal?: AbortSignal): Promise<RankedAvailabilityView> =>
+  request("/api/ranked/availability", readRankedAvailability, { signal });
+
 // ------------------------------------------------ League role identity (R1)
 
 /**
@@ -293,7 +332,16 @@ export interface ActiveMatchInfo {
    */
   reconnectDeadline: string | null;
   withinReconnectWindow: boolean;
+  /**
+   * DCMOD — who HOSTS this match. `"daily_challenge"` marks a Daily parent
+   * run's child stage: it is resumed by the Daily page (which owns its entry
+   * and close), never entered as an ordinary Ranked match.
+   */
+  host: "daily_challenge" | null;
 }
+
+export const isDailyHosted = (found: ActiveMatchInfo | null): boolean =>
+  found?.host === "daily_challenge";
 
 export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | null> =>
   request("/api/ranked/active-match", (json) => {
@@ -307,6 +355,7 @@ export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | 
       reconnectDeadline: typeof m.reconnect_deadline === "string"
         ? m.reconnect_deadline : null,
       withinReconnectWindow: m.within_reconnect_window !== false,
+      host: m.host === "daily_challenge" ? "daily_challenge" : null,
     };
   }, { signal });
 
@@ -478,10 +527,6 @@ export const submitSegmentChallenge = (
         : { item_id: choice.itemId },
       signal,
     });
-
-export const chooseLevelTwo = (matchId: string, abilityId: string, signal?: AbortSignal) =>
-  request(`/api/ranked/matches/${encodeURIComponent(matchId)}/progression/level-two-choice`,
-    raw, { method: "POST", body: { ability_id: abilityId }, signal });
 
 export const sendPresence = (matchId: string, signal?: AbortSignal): Promise<HeartbeatView> =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/presence`, readHeartbeat,
