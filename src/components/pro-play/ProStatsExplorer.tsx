@@ -1,6 +1,21 @@
 /**
  * Public Pro Play statistics explorer — the table on /lol/pro-play.
  *
+ * ONE PRODUCT, THREE CONCEPTS (PSE-UNIFY, 2026-09-22):
+ *
+ *   Search   — find an entity or context by name, from the first paint:
+ *              "Faker", "Gen.G", "Ahri", "LCK", "Worlds 2025". Choosing a
+ *              result APPLIES it as a filter (`ExplorerSearch`).
+ *   View     — Players | Teams | Champions: what ONE ROW of the table is.
+ *              Nothing else on the page asks that question.
+ *   Filters  — which population is counted: year, league/event, patch, role,
+ *              minimum games, and the player / team / champion Search set.
+ *              Every active one is a visible, removable chip. The URL is the
+ *              only state.
+ *
+ * Then the table: the sortable statistical result for that row type and
+ * population. It is not a second search, entity browser or graph builder.
+ *
  * Lives INLINE on the hub, below the module grid. It is deliberately not a
  * route: `?view=players` and the filters are query params on the hub URL, so
  * a filtered table is a shareable /lol/pro-play link and the back button walks
@@ -17,21 +32,14 @@
  * Sorting and pagination are SERVER-side: the corpus is ~12k players and
  * 1.07M player-games, so the client never holds enough rows to sort them.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { proPlayProfileUrl } from "@/lib/pro-play/routes";
-import {
-  EntityFilterCombobox,
-  FilterCombobox,
-  type EntitySearcher,
-} from "@/components/pro-play/FilterCombobox";
-import {
-  ENTITY_AUTOCOMPLETE_MIN_CHARS,
-  searchEntitySuggestions,
-  suggestionHint,
-} from "@/lib/pro-play/researchApi";
+import { FilterCombobox, type ComboOption } from "@/components/pro-play/FilterCombobox";
+import ExplorerSearch from "@/components/pro-play/ExplorerSearch";
 import { useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   BarChart3,
@@ -39,9 +47,10 @@ import {
   ChevronRight,
   LineChart,
   Loader2,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -50,7 +59,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getChampionIcon, useChampionAssets } from "@/hooks/useChampionAssets";
 import {
   getProStats,
@@ -60,6 +68,15 @@ import {
   type ProStatsTeamRow,
   type ProStatsView,
 } from "@/lib/pro-play/statsApi";
+import {
+  competitionHint,
+  competitionIndex,
+  competitionLabel,
+  competitionNoun,
+  roleLabel,
+  type ExplorerResult,
+  type ProStatsFilterOptionsWithCompetitions,
+} from "@/lib/pro-play/explorerSearch";
 import { graphHandoff } from "@/lib/pro-play/graphHandoff";
 import { useSfx } from "@/lib/audio/useSfx";
 
@@ -72,14 +89,6 @@ const nf = new Intl.NumberFormat("en-US");
 /** Sample-size floors offered in the UI. The API accepts any value up to
  *  its own ceiling, so a shared link carrying 30 still works. */
 const MIN_GAMES_OPTIONS = ["5", "10", "20", "50"];
-
-/** ONE CHARACTER. The prefix type-ahead answers from the first keystroke; it
- *  is a different endpoint from `/search`, whose two-character floor stays
- *  where it is for good reason. */
-const ENTITY_MIN_CHARS = ENTITY_AUTOCOMPLETE_MIN_CHARS;
-
-/** Enough to choose from without turning the menu into a second table. */
-const ENTITY_SUGGESTION_LIMIT = 12;
 
 /** The single place a missing statistic becomes visible text. Null means "we
  *  have no data", which is not zero and must never be shown as zero. */
@@ -412,25 +421,46 @@ const VIEWS: Record<ProStatsView, ViewConfig> = {
 
 const VIEW_KEYS = Object.keys(VIEWS) as ProStatsView[];
 
-/** Text filters are debounced and matched exactly, so they live in local
- *  state until they settle and only then reach the URL. */
-const TEXT_FILTERS = ["player", "team"] as const;
-/** Filters backed by an option list. */
-const LIST_FILTERS = [
+/** Every URL filter key. Player / team / champion are set by Search and
+ *  shown as chips; the rest also have a control in the filter bar. */
+const ALL_FILTERS = [
   "year",
   "league",
   "patch",
   "role",
-  "champion",
   "min_games",
+  "player",
+  "team",
+  "champion",
 ] as const;
-const ALL_FILTERS = [...LIST_FILTERS, ...TEXT_FILTERS] as const;
 
 type FilterKey = (typeof ALL_FILTERS)[number];
+
+/** Order the chips read in: population first, then the entity narrowing. */
+const CHIP_ORDER: FilterKey[] = [
+  "league",
+  "year",
+  "patch",
+  "role",
+  "team",
+  "player",
+  "champion",
+  "min_games",
+];
+
+type Chip = {
+  key: FilterKey;
+  noun: string;
+  value: string;
+  profile?: string;
+};
 
 export default function ProStatsExplorer() {
   const { play } = useSfx();
   const [searchParams, setSearchParams] = useSearchParams();
+  // Small screens fold the filter bar behind one button so Search stays the
+  // first thing on the screen; from `sm` up the bar is always open.
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const read = (key: string) => searchParams.get(key) ?? "";
   const viewParam = searchParams.get("view") as ProStatsView | null;
@@ -446,48 +476,42 @@ export default function ProStatsExplorer() {
   const dir = searchParams.get("dir") === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
 
-  // PLAYER AND TEAM ARE SELECTIONS NOW, NOT FREE TEXT. They used to be typed
-  // strings settling on a debounce before becoming a request; a reader had to
-  // already know the exact canonical spelling ("Doran (Choi Hyeon-joon)") for
-  // the filter to match anything at all. A suggestion carries the canonical
-  // key, so the value reaching the URL is exact the moment it is chosen and
-  // there is nothing to debounce. The URL contract is unchanged: the same
-  // `player=` / `team=` keys, holding the same `player_lp_page` / `team_key`.
-  //
-  // The label is remembered only for DISPLAY. On a cold URL — a refresh, a
-  // shared link, Back — there is no remembered label and the control shows
-  // the canonical key itself, which is a true and readable name for both
-  // kinds ("Gen.G"; "Doran (Choi Hyeon-joon)"). It is never sent anywhere.
+  // The label Search showed for a chosen player/team, remembered only for
+  // DISPLAY. On a cold URL (refresh, shared link, Back) the chip shows the
+  // canonical key itself, which is a true and readable name for every kind
+  // ("Gen.G"; "Doran (Choi Hyeon-joon)"). It is never sent anywhere.
   const [entityLabels, setEntityLabels] = useState<Record<string, string>>({});
-  const rememberLabel = (key: string, label?: string) => {
-    if (!key || !label) return;
-    setEntityLabels((prev) => (prev[key] === label ? prev : { ...prev, [key]: label }));
-  };
-
-  const playerSearch = useCallback<EntitySearcher>(
-    async (q, signal) =>
-      (await searchEntitySuggestions("player", q, ENTITY_SUGGESTION_LIMIT, signal)).map(
-        (r) => ({ value: r.key, label: r.display_name || r.key, hint: suggestionHint(r) }),
-      ),
-    [],
-  );
-  const teamSearch = useCallback<EntitySearcher>(
-    async (q, signal) =>
-      (await searchEntitySuggestions("team", q, ENTITY_SUGGESTION_LIMIT, signal)).map(
-        (r) => ({ value: r.key, label: r.display_name || r.key, hint: suggestionHint(r) }),
-      ),
-    [],
-  );
 
   /** Any filter change resets to page 1: page 4 of the old slice is
-   *  meaningless in the new one. */
-  const setFilter = (key: FilterKey, value: string) => {
+   *  meaningless in the new one. One history entry per change, so Back
+   *  walks the filter history. */
+  const updateFilters = (patch: Partial<Record<FilterKey, string>>) => {
     const next = new URLSearchParams(searchParams);
-    if (value) next.set(key, value);
-    else next.delete(key);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
     next.delete("page");
     if (!next.get("view")) next.set("view", view);
     setSearchParams(next);
+  };
+  const setFilter = (key: FilterKey, value: string) => updateFilters({ [key]: value });
+
+  /** SEARCH WRITES THE SAME STATE EVERY CONTROL WRITES. A result's filters
+   *  land in the URL as ordinary filter params — there is no second, hidden
+   *  search state — so the chip, the table, refresh and Back all agree. */
+  const applySearchResult = (result: ExplorerResult) => {
+    const patch: Partial<Record<FilterKey, string>> = {};
+    for (const [key, value] of Object.entries(result.filters)) {
+      if (value !== undefined && value !== null) patch[key as FilterKey] = String(value);
+    }
+    if (result.kind === "player" || result.kind === "team" || result.kind === "champion") {
+      const key = result.filters[result.kind];
+      if (key && result.label && result.label !== key) {
+        setEntityLabels((prev) => ({ ...prev, [key]: result.label }));
+      }
+    }
+    updateFilters(patch);
   };
 
   const setSort = (key: string) => {
@@ -507,8 +531,8 @@ export default function ProStatsExplorer() {
     setSearchParams(next);
   };
 
-  /** Switching view keeps the filters (they mean the same thing on both
-   *  sides) and drops only what cannot survive: the page, and a sort the new
+  /** Switching view keeps the filters (they mean the same thing on every
+   *  view) and drops only what cannot survive: the page, and a sort the new
    *  view has no column for. */
   const setView = (next: ProStatsView) => {
     const params = new URLSearchParams(searchParams);
@@ -530,8 +554,6 @@ export default function ProStatsExplorer() {
   };
 
   const clearAll = () => {
-    // Player and Team live in the URL now, so clearing it clears them; there
-    // is no separate local text state left to reset.
     setSearchParams(new URLSearchParams({ view }));
   };
 
@@ -550,53 +572,83 @@ export default function ProStatsExplorer() {
       page,
       pageSize: PAGE_SIZE,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [searchParams, sort, dir, page],
   );
 
-  const { data, isPending, isFetching, isError, error, refetch } = useQuery({
+  const {
+    data,
+    isPending,
+    isFetching,
+    isPlaceholderData,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["pro-play-stats", view, query],
     queryFn: ({ signal }) => getProStats(view, query, signal),
     staleTime: 5 * 60 * 1000,
-    placeholderData: (prev) => prev,
+    // Keep the previous rows on screen while a new filter loads — but ONLY
+    // for the same view. A Players page shown under Team columns would be a
+    // table of em dashes pretending to be data.
+    placeholderData: (prev) => (prev && prev.view === view ? prev : undefined),
   });
 
-  const { data: options, isPending: optionsPending } = useQuery({
+  const {
+    data: options,
+    isPending: optionsPending,
+    isError: optionsError,
+  } = useQuery({
     queryKey: ["pro-play-stats", "filters"],
-    queryFn: ({ signal }) => getProStatsFilterOptions(signal),
+    queryFn: ({ signal }) =>
+      getProStatsFilterOptions(signal) as Promise<ProStatsFilterOptionsWithCompetitions>,
     staleTime: 60 * 60 * 1000,
   });
+  // A failed option list must not leave the controls spinning forever: the
+  // chips, Search and the table all still work without it.
+  const optionsLoading = optionsPending && !optionsError;
 
-  // The filters endpoint returns leagues most-played first, and that order is
-  // worth keeping: it is a better default than alphabetical and `rankOptions`
-  // preserves it within each match tier.
-  const leagueOptions = useMemo(
-    () => (options?.leagues ?? []).map((l) => ({ value: l, label: l })),
+  const competitions = useMemo(
+    () => competitionIndex(options?.competitions),
     [options],
   );
 
+  // Leagues most-played first (the server's order), shown by the name a
+  // reader uses — "LCK", "Worlds" — with the region, the official name and
+  // the years beneath. The official name still MATCHES when typed.
+  const leagueOptions = useMemo<ComboOption[]>(() => {
+    if (options?.competitions?.length) {
+      return options.competitions.map((c) => ({
+        value: c.slug,
+        label: c.code,
+        hint: competitionHint(c),
+        keywords: c.code !== c.name ? [c.name] : undefined,
+      }));
+    }
+    return (options?.leagues ?? []).map((l) => ({ value: l, label: l }));
+  }, [options]);
+
+  // Rows are only ever shown for the CURRENT request. While a new one is in
+  // flight the previous rows stay, dimmed and marked, rather than vanishing.
   const rows = data?.rows ?? [];
   const coverage = data?.coverage;
-  const activeCount = ALL_FILTERS.filter((k) => read(k)).length;
+  const updating = isFetching && isPlaceholderData;
 
   // An all-time ranking over every player is too expensive to serve, so a
   // request that names no scope at all comes back scoped to the latest
-  // season. The SELECT MUST SHOW THAT YEAR. Reading it from the URL alone
-  // left the control saying "All" while the rows underneath were one
-  // season — the table then claimed to be something it was not, which is
-  // worse than the restriction it was hiding.
+  // season. The control MUST SHOW THAT YEAR rather than "All".
   const effectiveYear =
-    read("year") || (data?.filters.year ? String(data.filters.year) : "");
-  const yearWasDefaulted = !read("year") && data?.filters.year != null;
+    read("year") || (data && !isPlaceholderData && data.filters.year ? String(data.filters.year) : "");
+  const yearWasDefaulted =
+    !read("year") && !isPlaceholderData && data?.filters.year != null;
 
-  // Built from the EFFECTIVE filters the server echoed, never from the URL.
-  // The year can be defaulted and the free-text player/team fields settle on
-  // a debounce, so the URL is briefly ahead of the rows; a graph built from
-  // it would be scoped to something the reader is not looking at. Null means
-  // the current scope names no single subject -- a ranking of every player is
-  // not a graph -- and the action is withheld rather than pointed somewhere.
+  // Built from the EFFECTIVE filters the server echoed, never from the URL,
+  // so a graph can never be scoped to something the reader is not looking
+  // at. Null means the scope names no single subject and the action is
+  // withheld rather than pointed somewhere.
   const handoff = useMemo(
     () =>
-      data
+      data && !isPlaceholderData
         ? graphHandoff({
             view,
             year: data.filters.year,
@@ -609,17 +661,46 @@ export default function ProStatsExplorer() {
             minGames: data.filters.min_games || null,
           })
         : null,
-    [data, view],
+    [data, view, isPlaceholderData],
   );
+
+  const chips: Chip[] = CHIP_ORDER.filter((key) => read(key)).map((key) => {
+    const value = read(key);
+    switch (key) {
+      case "league":
+        return {
+          key,
+          noun: competitionNoun(competitions, value),
+          value: competitionLabel(competitions, value),
+        };
+      case "role":
+        return { key, noun: "Role", value: roleLabel(value) };
+      case "min_games":
+        return { key, noun: "Min. games", value: `${value}+` };
+      case "player":
+      case "team":
+      case "champion":
+        return {
+          key,
+          noun: key[0].toUpperCase() + key.slice(1),
+          value: entityLabels[value] ?? value,
+          profile: proPlayProfileUrl(key, value),
+        };
+      default:
+        return { key, noun: key === "year" ? "Year" : "Patch", value };
+    }
+  });
+  const activeCount = chips.length;
+  const panelFilterCount = ["year", "league", "patch", "role", "min_games"].filter((k) =>
+    read(k),
+  ).length;
 
   return (
     <section className="mt-10" aria-labelledby="pro-stats-heading">
       <header className="mb-4">
         <div className="mb-2 flex items-center gap-3">
           {/* Deliberately smaller than the page header's 10x10 chip and
-              3xl title. This is a section OF /lol/pro-play, and matching the
-              hub's own heading made it read as a second page that happened to
-              start halfway down. */}
+              3xl title. This is a section OF /lol/pro-play. */}
           <span
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/10"
             aria-hidden="true"
@@ -636,126 +717,159 @@ export default function ProStatsExplorer() {
         <p className="text-muted-foreground">{config.blurb}</p>
       </header>
 
-      {/* View switch. A segmented pair rather than another card: it selects
-          what the section below is about, so it sits with the table, not in
-          the hub's module grid. */}
+      {/* ------------------------------------------------ search · view · filters */}
       <div
-        className="mb-3 inline-flex rounded-lg border border-[#c9a84c]/30 bg-card/60 p-0.5"
-        role="tablist"
-        aria-label="Statistics view"
+        className="mb-4 space-y-3 rounded-xl border border-[#c9a84c]/20 bg-card/60 p-3"
+        data-testid="explorer-controls"
       >
-        {VIEW_KEYS.map((key) => {
-          const active = key === view;
-          return (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setView(key)}
-              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-[#c9a84c]/15 text-[#c9a84c]"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {VIEWS[key].label}
-            </button>
-          );
-        })}
-      </div>
+        {/* SEARCH — first, full width, usable before anything else loads. */}
+        <ExplorerSearch onApply={applySearchResult} />
 
-      {/* ---------------------------------------------------------- filters */}
-      <div className="mb-4 rounded-xl border border-border bg-card/60 p-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+        {/* VIEW — the ONE control that decides what a row is. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span
+              className="text-[11px] uppercase tracking-wide text-muted-foreground"
+              id="pro-stats-view-label"
+            >
+              View
+            </span>
+            <div
+              className="inline-flex rounded-lg border border-[#c9a84c]/30 bg-background/40 p-0.5"
+              role="tablist"
+              aria-labelledby="pro-stats-view-label"
+              data-testid="stats-view-selector"
+            >
+              {VIEW_KEYS.map((key) => {
+                const active = key === view;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setView(key)}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 ${
+                      active
+                        ? "bg-[#c9a84c]/15 text-[#c9a84c]"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {VIEWS[key].label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((o) => !o)}
+            aria-expanded={filtersOpen}
+            aria-controls="pro-stats-filter-bar"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+            data-testid="stats-filters-toggle"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+            Filters{panelFilterCount ? ` · ${panelFilterCount}` : ""}
+          </button>
+        </div>
+
+        {/* FILTERS — the population. Never "All" before the option list
+            exists: a control that cannot be used yet says so. */}
+        <div
+          id="pro-stats-filter-bar"
+          className={`${filtersOpen ? "grid" : "hidden"} grid-cols-2 gap-2 sm:grid sm:grid-cols-3 lg:grid-cols-5`}
+          data-testid="stats-filter-bar"
+          aria-busy={optionsLoading || undefined}
+        >
           <FilterSelect
             label="Year"
             value={effectiveYear}
             onChange={(v) => setFilter("year", v)}
             options={(options?.years ?? []).map(String)}
+            loading={optionsLoading}
           />
-          {/* 323 leagues. A native <select> renders the whole corpus at
-              whatever height it likes, which covered most of the viewport and
-              offered no way to search it. */}
           <FilterCombobox
-            label="League"
+            label="League / Event"
             value={read("league")}
             onChange={(v) => setFilter("league", v)}
             options={leagueOptions}
-            loading={optionsPending}
-            searchPlaceholder="Search leagues…"
+            loading={optionsLoading}
+            searchPlaceholder="LCK, LPL, Worlds, MSI…"
           />
           <FilterSelect
             label="Patch"
             value={read("patch")}
             onChange={(v) => setFilter("patch", v)}
             options={options?.patches ?? []}
+            loading={optionsLoading}
           />
           <FilterSelect
             label="Role"
             value={read("role")}
             onChange={(v) => setFilter("role", v)}
             options={options?.roles ?? []}
+            optionLabel={roleLabel}
+            loading={optionsLoading}
           />
+          {/* Explicit, never automatic: a hidden floor would make the table
+              quietly disagree with its own row count. Its options are fixed,
+              so it is usable immediately. */}
           <FilterSelect
-            label="Champion"
-            value={read("champion")}
-            onChange={(v) => setFilter("champion", v)}
-            options={options?.champions ?? []}
-          />
-          {/* Explicit, never automatic. Every rate column ranked 1-3 game
-              players above established ones, but a hidden floor would have
-              made the table quietly disagree with its own row count -- so
-              the user sets the sample size and can always see it. */}
-          <FilterSelect
-            label="Min Games"
+            label="Min. games"
             value={read("min_games")}
             onChange={(v) => setFilter("min_games", v)}
             options={MIN_GAMES_OPTIONS}
             anyLabel="Any"
             optionLabel={(v) => `${v}+`}
           />
-          <EntityFilterCombobox
-            label="Player"
-            value={read("player")}
-            displayLabel={entityLabels[read("player")]}
-            onChange={(v, label) => {
-              rememberLabel(v, label);
-              setFilter("player", v);
-            }}
-            search={playerSearch}
-            minChars={ENTITY_MIN_CHARS}
-            plural="players"
-          />
-          <EntityFilterCombobox
-            label="Team"
-            value={read("team")}
-            displayLabel={entityLabels[read("team")]}
-            onChange={(v, label) => {
-              rememberLabel(v, label);
-              setFilter("team", v);
-            }}
-            search={teamSearch}
-            minChars={ENTITY_MIN_CHARS}
-            plural="teams"
-          />
         </div>
+
+        {/* ACTIVE FILTERS — every filter in the URL, visible and removable.
+            Search adds to this row; nothing it applies is invisible. */}
         {(activeCount > 0 || yearWasDefaulted || handoff) && (
-          <div className="mt-2 space-y-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              {/* Says why the year filled itself in, and how to look wider.
-                  Without this the snap to a season reads as a broken control
-                  rather than the deliberate scope it is. */}
-              <p className="text-xs text-muted-foreground">
-                {yearWasDefaulted
-                  ? "Showing the latest season. Pick a league, champion, player or team to look across every year."
-                  : " "}
-              </p>
-              <div className="flex flex-wrap items-center gap-4">
-                {/* Secondary by construction: a text link beside "Clear
-                    filters", not a button, not a card, and not repeated on
-                    every row. It carries the SCOPE the table is showing, so
-                    it belongs with the filters rather than with the data. */}
+          <div className="space-y-1.5 border-t border-border/50 pt-2.5">
+            <div className="flex flex-wrap items-center gap-1.5" data-testid="active-filters">
+              {yearWasDefaulted ? (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#c9a84c]/35 px-2.5 py-0.5 text-xs text-muted-foreground"
+                  data-testid="active-filter-default-year"
+                  title="No year, league, patch, player, team or champion is set, so the table shows the latest season."
+                >
+                  Latest season · {data?.filters.year}
+                </span>
+              ) : null}
+              {chips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex items-center gap-1 rounded-full border border-[#c9a84c]/35 bg-[#c9a84c]/10 py-0.5 pl-2.5 pr-1 text-xs"
+                  data-testid={`active-filter-${chip.key}`}
+                >
+                  <span className="text-muted-foreground">{chip.noun}</span>
+                  {chip.profile ? (
+                    <Link
+                      to={chip.profile}
+                      className="font-medium text-foreground underline-offset-2 hover:underline"
+                      title={`Open ${chip.value} profile`}
+                    >
+                      {chip.value}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-foreground">{chip.value}</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setFilter(chip.key, "")}
+                    aria-label={`Remove ${chip.noun} ${chip.value}`}
+                    className="ml-0.5 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-[#c9a84c]/15 hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" aria-hidden />
+                  </button>
+                </span>
+              ))}
+              <span className="ml-auto flex flex-wrap items-center gap-4">
+                {/* Secondary by construction: a text link beside "Clear all".
+                    It carries the SCOPE the table is showing. */}
                 {handoff && (
                   <Link
                     to={handoff.href}
@@ -773,15 +887,19 @@ export default function ProStatsExplorer() {
                     onClick={clearAll}
                     className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
                   >
-                    Clear filters
+                    Clear all
                   </button>
                 )}
-              </div>
+              </span>
             </div>
+            {yearWasDefaulted ? (
+              <p className="text-xs text-muted-foreground">
+                Showing the latest season. Pick a league, champion, player or
+                team to look across every year.
+              </p>
+            ) : null}
             {/* The graph is a different product with a narrower vocabulary.
-                Naming what stays behind is the whole reason the action is safe
-                to offer: a reader who sees "Role Mid" listed here knows the
-                graph is not the table with different paint. */}
+                Naming what stays behind is what makes the action safe. */}
             {handoff && handoff.dropped.length > 0 && (
               <p className="text-xs text-muted-foreground">
                 Graph this covers {handoff.transferred.join(" · ")}. Staying
@@ -793,14 +911,6 @@ export default function ProStatsExplorer() {
       </div>
 
       {/* -------------------------------------------------- aggregate strip */}
-      {/* Five tiles never divide evenly into two or three columns, so a
-          hairline "gap-px over a background" grid would paint a phantom sixth
-          cell on narrow screens. Each tile carries its own border instead. */}
-      {/* THE STRIP USED TO RENDER NOTHING UNTIL `data` ARRIVED. Five tiles'
-          worth of height appeared out of nowhere when the request landed, and
-          until then the space above the table was simply blank — half of why
-          a slow first load read as "broken" rather than "loading". It now
-          holds its own shape and says what it is doing. */}
       {isPending ? (
         <div
           className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
@@ -822,16 +932,15 @@ export default function ProStatsExplorer() {
           ))}
         </div>
       ) : null}
-      {data && (
+      {data && !isError && (
         <div
-          className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+          className={`mb-4 grid grid-cols-2 gap-2 transition-opacity sm:grid-cols-3 lg:grid-cols-5 ${
+            updating ? "opacity-50" : ""
+          }`}
           role="group"
           aria-label={`${config.label} summary`}
+          aria-busy={updating || undefined}
         >
-          {/* "With stats" used to sit here. It is a caveat, not a headline
-              statistic, and the pager already states it in words whenever
-              anything is actually missing — twice made it look like a
-              data-quality readout rather than a table about players. */}
           {config.strip.map((tile) => (
             <Stat
               key={tile.label}
@@ -843,13 +952,38 @@ export default function ProStatsExplorer() {
       )}
 
       {/* ------------------------------------------------------------ table */}
-      {/* No scroll wrapper here: ui/table.tsx already wraps the table in
-          `relative w-full overflow-auto`, and nesting a second scroller makes
-          the inner one unreachable on touch. Eleven columns overflow on a
-          phone and scroll inside that wrapper; the PAGE never scrolls
-          sideways. */}
-      <div className="rounded-xl border border-border bg-card/60">
-        <Table>
+      {/* FOUR STATES, NEVER CONFUSED: loading (skeleton rows + a visible
+          caption), results, zero results (says so, offers the way out), and
+          error (says so, offers a retry). An empty table body is never shown
+          on its own. */}
+      <div
+        className="relative rounded-xl border border-border bg-card/60"
+        data-testid="stats-table"
+        data-state={
+          isPending ? "loading" : isError ? "error" : rows.length === 0 ? "empty" : updating ? "updating" : "ready"
+        }
+        aria-busy={isPending || updating || undefined}
+      >
+        {isPending ? (
+          <div
+            className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground"
+            role="status"
+            data-testid="stats-table-loading"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#c9a84c]" aria-hidden />
+            Loading {config.heading.toLowerCase()}… Search above already works.
+          </div>
+        ) : updating ? (
+          <div
+            className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground"
+            role="status"
+            data-testid="stats-table-updating"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#c9a84c]" aria-hidden />
+            Updating for the new filters…
+          </div>
+        ) : null}
+        <Table className={updating ? "opacity-45 transition-opacity" : "transition-opacity"}>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               {config.columns.map((col) => {
@@ -889,13 +1023,8 @@ export default function ProStatsExplorer() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {/* `bg-muted` is rgb(23,34,48) against a card that resolves to
-                about rgb(11,19,28) on this theme, and `animate-pulse` halves
-                that already-thin contrast twice a second. The bars WERE
-                rendering; they just could not be seen, which is the other
-                half of why the load looked like an empty table.
-                `bg-muted-foreground/20` sits well clear of the card at both
-                ends of the pulse. */}
+            {/* `bg-muted-foreground/20` sits clear of the card at both ends of
+                the pulse; `bg-muted` did not and read as an empty table. */}
             {isPending &&
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`} data-testid="stats-skeleton-row">
@@ -907,24 +1036,21 @@ export default function ProStatsExplorer() {
                 </TableRow>
               ))}
 
-            {/* Screen readers get no signal from a pulsing div. */}
-            {isPending && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={config.columns.length} className="sr-only">
-                  <span role="status">Loading {config.unit}…</span>
-                </TableCell>
-              </TableRow>
-            )}
-
             {!isPending && isError && (
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={config.columns.length}
                   className="py-10 text-center"
+                  data-testid="stats-table-error"
                 >
-                  <p className="mb-3 text-sm text-muted-foreground">
+                  <p className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <AlertTriangle className="h-4 w-4 text-[#c9a84c]" aria-hidden />
+                    Couldn’t load {config.heading.toLowerCase()}.
+                  </p>
+                  <p className="mb-3 text-xs text-muted-foreground">
                     {(error as Error)?.message ??
-                      "Statistics are unavailable right now."}
+                      "Statistics are unavailable right now."}{" "}
+                    Your filters are kept.
                   </p>
                   <Button variant="outline" size="sm" onClick={() => refetch()}>
                     Try again
@@ -934,17 +1060,30 @@ export default function ProStatsExplorer() {
             )}
 
             {!isPending && !isError && rows.length === 0 && (
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={config.columns.length}
-                  className="py-10 text-center text-sm text-muted-foreground"
+                  className="py-10 text-center"
+                  data-testid="stats-table-empty"
                 >
-                  {`No ${config.unit} match these filters.`}
+                  <p className="mb-1 text-sm font-medium text-foreground">
+                    {`No ${config.unit} match these filters.`}
+                  </p>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    The data loaded; this combination has no games. Remove a
+                    filter above to widen it.
+                  </p>
+                  {activeCount > 0 ? (
+                    <Button variant="outline" size="sm" onClick={clearAll}>
+                      Clear all filters
+                    </Button>
+                  ) : null}
                 </TableCell>
               </TableRow>
             )}
 
-            {!isError &&
+            {!isPending &&
+              !isError &&
               rows.map((row) => (
                 <TableRow key={config.rowKey(row)}>
                   {config.columns.map((col) => (
@@ -963,7 +1102,7 @@ export default function ProStatsExplorer() {
         </Table>
 
         {/* ------------------------------------------ coverage + pagination */}
-        {data && data.total_rows > 0 && (
+        {data && !isError && data.total_rows > 0 && (
           <nav
             className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-3"
             aria-label={`${config.label} statistics pagination`}
@@ -995,7 +1134,7 @@ export default function ProStatsExplorer() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={data.page <= 1}
+                disabled={data.page <= 1 || updating}
                 onClick={() => setPage(data.page - 1)}
                 className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 disabled:opacity-40"
               >
@@ -1005,7 +1144,7 @@ export default function ProStatsExplorer() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={data.page >= data.total_pages}
+                disabled={data.page >= data.total_pages || updating}
                 onClick={() => setPage(data.page + 1)}
                 className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 disabled:opacity-40"
               >
@@ -1032,6 +1171,14 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * A native select over a server-supplied list.
+ *
+ * WHILE THE LIST IS LOADING IT SAYS SO AND CANNOT BE USED. It used to render
+ * "All" with an empty list — a control that looked ready, offered nothing,
+ * and made a loading page read as an empty one. A value already in the URL
+ * is still shown while loading, so a shared link reads correctly at once.
+ */
 function FilterSelect({
   label,
   value,
@@ -1039,6 +1186,7 @@ function FilterSelect({
   options,
   anyLabel = "All",
   optionLabel = (v: string) => v,
+  loading = false,
 }: {
   label: string;
   value: string;
@@ -1046,7 +1194,9 @@ function FilterSelect({
   options: string[];
   anyLabel?: string;
   optionLabel?: (value: string) => string;
+  loading?: boolean;
 }) {
+  const shown = loading ? (value ? [value] : []) : options;
   return (
     <label className="flex flex-col gap-1">
       <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -1056,40 +1206,17 @@ function FilterSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        className="h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        disabled={loading}
+        aria-busy={loading || undefined}
+        className="h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-progress disabled:opacity-60"
       >
-        <option value="">{anyLabel}</option>
-        {options.map((option) => (
+        <option value="">{loading ? "Loading…" : anyLabel}</option>
+        {shown.map((option) => (
           <option key={option} value={option}>
             {optionLabel(option)}
           </option>
         ))}
       </select>
-    </label>
-  );
-}
-
-function FilterText({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Any"
-        aria-label={label}
-        className="h-9"
-      />
     </label>
   );
 }

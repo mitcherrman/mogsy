@@ -358,7 +358,7 @@ describe("url state", () => {
     // League is a searchable combobox now, not a native <select>: a
     // fireEvent.change on the trigger would silently do nothing and this test
     // would pass while asserting about a control that never moved.
-    const league = screen.getByRole("combobox", { name: /League/i });
+    const league = screen.getByRole("combobox", { name: "League / Event" });
     fireEvent.pointerDown(league, { button: 0, pointerType: "mouse" });
     fireEvent.click(league);
     const option = await screen.findByRole("option", { name: /Tencent LoL Pro League/ });
@@ -402,7 +402,7 @@ describe("min games", () => {
   it("renders the control and defaults to Any", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    const control = screen.getByLabelText("Min Games");
+    const control = screen.getByLabelText("Min. games");
     expect(control).toBeInTheDocument();
     expect(control).toHaveValue("");
     expect(within(control as HTMLSelectElement).getByText("Any")).toBeInTheDocument();
@@ -413,7 +413,7 @@ describe("min games", () => {
   it("offers the documented thresholds", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    const control = within(screen.getByLabelText("Min Games") as HTMLSelectElement);
+    const control = within(screen.getByLabelText("Min. games") as HTMLSelectElement);
     for (const label of ["5+", "10+", "20+", "50+"]) {
       expect(control.getByText(label)).toBeInTheDocument();
     }
@@ -422,7 +422,7 @@ describe("min games", () => {
   it("sends the floor and records it in the URL", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    fireEvent.change(screen.getByLabelText("Min Games"), {
+    fireEvent.change(screen.getByLabelText("Min. games"), {
       target: { value: "20" },
     });
     await waitFor(() => expect(lastSearch).toContain("min_games=20"));
@@ -434,7 +434,7 @@ describe("min games", () => {
   it("resets to page 1 when the floor changes", async () => {
     renderExplorer("/lol/pro-play?page=4");
     await screen.findByText("Faker");
-    fireEvent.change(screen.getByLabelText("Min Games"), {
+    fireEvent.change(screen.getByLabelText("Min. games"), {
       target: { value: "10" },
     });
     await waitFor(() => expect(lastSearch).not.toContain("page=4"));
@@ -444,8 +444,8 @@ describe("min games", () => {
   it("clears back to Any", async () => {
     renderExplorer("/lol/pro-play?min_games=50");
     await screen.findByText("Faker");
-    expect(screen.getByLabelText("Min Games")).toHaveValue("50");
-    fireEvent.change(screen.getByLabelText("Min Games"), {
+    expect(screen.getByLabelText("Min. games")).toHaveValue("50");
+    fireEvent.change(screen.getByLabelText("Min. games"), {
       target: { value: "" },
     });
     await waitFor(() => expect(lastSearch).not.toContain("min_games"));
@@ -454,7 +454,7 @@ describe("min games", () => {
   it("keeps the other filters when the floor changes", async () => {
     renderExplorer("/lol/pro-play?year=2025&role=Mid&sort=kda&dir=desc");
     await screen.findByText("Faker");
-    fireEvent.change(screen.getByLabelText("Min Games"), {
+    fireEvent.change(screen.getByLabelText("Min. games"), {
       target: { value: "20" },
     });
     await waitFor(() => expect(lastSearch).toContain("min_games=20"));
@@ -670,7 +670,7 @@ describe("switching views", () => {
     getProStats.mockResolvedValue(teamsResponse());
     renderExplorer("/lol/pro-play?view=teams");
     await screen.findByText("T1");
-    fireEvent.change(screen.getByLabelText("Min Games"), {
+    fireEvent.change(screen.getByLabelText("Min. games"), {
       target: { value: "20" },
     });
     await waitFor(() => expect(lastQuery()).toMatchObject({ minGames: 20 }));
@@ -849,7 +849,7 @@ describe("champions view", () => {
     getProStats.mockResolvedValue(championsResponse());
     renderExplorer("/lol/pro-play?view=champions");
     await screen.findByText("Ryze");
-    fireEvent.change(screen.getByLabelText("Min Games"), {
+    fireEvent.change(screen.getByLabelText("Min. games"), {
       target: { value: "20" },
     });
     await waitFor(() => expect(lastQuery()).toMatchObject({ minGames: 20 }));

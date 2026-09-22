@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Brain, BarChart3, Radio, Search, Swords } from "lucide-react";
+import { ArrowLeft, Trophy, Brain, BarChart3, Radio, Swords } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import HexPanelLink from "@/components/lol/HexPanelLink";
 import ProStatsExplorer from "@/components/pro-play/ProStatsExplorer";
@@ -10,7 +10,6 @@ import {
   PRO_PLAY_MATCHUP_ROUTE,
   PRO_PLAY_QUIZ_ROUTE,
   PRO_PLAY_ROUTE,
-  PRO_PLAY_SEARCH_ROUTE,
 } from "@/lib/pro-play/routes";
 
 /**
@@ -21,11 +20,9 @@ import {
  * no placeholder "coming soon" tiles, because an empty promise is worse than a
  * short page.
  *
- * Two of the five — Matchup Explorer and Search Pro Play — are admin-gated at
- * the DESTINATION (`AdminAuthGate` on the page itself). They are listed here
- * anyway, by product decision: the hub states what Pro Play is, and the gate,
- * not the hub, decides who may read each surface. That is why this file does
- * no authorization of its own.
+ * Any gate lives at the DESTINATION, never here: the hub states what Pro
+ * Play is, and the page itself decides who may read it. That is why this
+ * file does no authorization of its own.
  *
  * NOT to be confused with /lol/premium, which is the paid-subscription page. This
  * area is professional-play content and lives at /lol/pro-play.
@@ -70,12 +67,13 @@ const MODULES: ProPlayModule[] = [
       "Deep-dive into team matchups — lanes, players, champion pools, historical performance and mechanics.",
     Icon: Swords,
   },
-  {
-    to: PRO_PLAY_SEARCH_ROUTE,
-    title: "Search Pro Play",
-    description: "Find players, teams and champions across Mogzy's Pro Play data.",
-    Icon: Search,
-  },
+  // "Search Pro Play" is no longer a module tile. The Stats Explorer on this
+  // same page opens with one universal search (players, teams, champions,
+  // leagues, events) that applies straight to the table and offers each
+  // entity's profile, so a second search entrance here asked the same
+  // question twice. The route itself stays — see `PRO_PLAY_SEARCH_ROUTE` —
+  // for profile breadcrumbs, shared `?q=` links, disambiguation and the
+  // explorer search's own "All results" link.
   {
     to: PRO_PLAY_GRAPHS_ROUTE,
     title: "Explore Pro Data",
