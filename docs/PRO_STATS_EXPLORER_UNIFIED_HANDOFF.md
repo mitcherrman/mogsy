@@ -230,3 +230,21 @@ Backend: `pro_authority/competition_search.py` (new),
 4. A never-read slice is still cold the first time (~4–16 s). The loading
    state is explicit and Search works meanwhile; precomputing every slice is
    not justified by the data.
+
+## 11. Deploy state (2026-09-22)
+
+* **Backend `master` = `cf5c1fd5`**, live on Railway ~6 min after push.
+  Measured right after the deploy: `/stats/filters` 0.29 s, default
+  `/stats/players` 0.19 s, `/stats/teams` 0.67 s, `/stats/lookup?q=Faker`
+  0.24 s; default `/stats/champions` 5.8 s once (the warm-up had not yet
+  reached it), then 0.20–0.25 s. Before: 10.9 s / 14.6 s / 5.1 s.
+* Production lookups verified: LCK, LPL, LEC, LTA, LCP → the right
+  `league_slug`; Worlds, MSI → events; "Worlds 2025" → league + year (94
+  players); Faker, Chovy, T1, Gen.G, Ahri, K'Sante, Dr. Mundo (corpus key
+  `Dr Mundo`), Kai'Sa → the right canonical keys. `/filters` carries 323
+  competitions.
+* **Frontend `main` = `51c8a7df`.** **Not yet published** at the time of
+  writing: mogzy.lol still serves `index-CGHnGHUc.js` / `ProPlayHub-BvB869do.js`
+  (old hub with the Search tile). The owner must press Publish in Lovable.
+  Check: the live ProPlayHub chunk (or a chunk it imports) contains
+  `explorer-search-input` and no longer contains `Search Pro Play`.
