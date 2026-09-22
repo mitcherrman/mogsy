@@ -24,11 +24,28 @@ runtimes. Points-only; Survival's 3 lives are strikes, never HP.
 
 ## Merge-gate pass (2026-09-22)
 Reconciled onto current deploy heads (merge commits, no force-push):
-backend `origin/master` through `b5d15c1f` (two Combat Lab items commits,
-`b5c37f48` and `b5d15c1f`; no file overlap with this branch; their own item
-tests give identical results on pristine master - canonical `champion_stats`
-absent from the test fixture); frontend `origin/main` unchanged at
-`45a322d4`.
+backend `origin/master` through `5c273fdd`, frontend `origin/main`
+unchanged at `45a322d4`.
+- `b5c37f48`, `b5d15c1f` (Combat Lab items): no file overlap; their item
+  tests give identical results on pristine master (canonical `champion_stats`
+  absent from the test fixture).
+- `9495b9eb` + `5c273fdd` FUNNEL1B3 (authoritative gameplay analytics
+  outbox) — real overlap, reconciled:
+  - it added `dsa_*` emission inside `daily_score_attack/service.py`, which
+    this branch retires: the deletion stands (modify/delete resolved as
+    delete). The `dsa_*` names stay in the analytics taxonomy; the Daily
+    parent run emits no authoritative funnel event yet — a FUNNEL decision
+    (not invented here).
+  - it records `ranked_started`/`ranked_completed` per human participant and
+    asserts `is_guest=False` because "a ranked match requires a registered
+    account". Daily children are not Ranked play (and may now be guests), so
+    they emit neither: `create_match_rows(host=...)` skips `ranked_started`
+    for a hosted child (the factory passes `host="daily_challenge"`) and
+    `_record_ranked_completion` skips a match bound to a Daily stage.
+    Ordinary Ranked/Bot matches are unchanged
+    (`test_daily_children_emit_no_ranked_funnel_events`).
+  - `test_funnel1b3_gameplay_analytics.py`: 51/51 on this branch and on
+    pristine master.
 
 1. **Guest first Daily.** A verified anonymous (guest) Supabase session can
    start, play and finish the Daily - no signup first. The host decides
@@ -289,11 +306,15 @@ Backend (env `RANKED_PUBLIC_ENABLED=1 RANKED_FORMATS_ENABLED=1
 RANKED_RATELIMIT_ENABLED=0`): DCMOD A/B/C/D + `test_dcmod_integration_daily`
 (33, incl. guest funnel, ownership, live-Ranked identity unchanged,
 readiness planner) + `test_dcmod_retired_daily` + availability + queue routes
-+ points-only + `test_ranked_no_level_two` (11): **189 passed**.
-Broad Ranked set vs pristine master: master 437 failed / 2299 passed;
-branch 426 failed / 2161 passed (fewer tests: obsolete ones deleted). The
-only node-level "new" failure is a renamed test whose original fails
-identically on master (`quiz_questions` fixture gap).
++ points-only + `test_ranked_no_level_two` (11) + FUNNEL1B3 (51):
+**241 passed** (after the final master merge).
+Broad Ranked set vs pristine master `b5d15c1f`: master 437 failed / 2299
+passed; branch 426 failed / 2161 passed (fewer tests: obsolete ones
+deleted). Against `5c273fdd` the full-run baseline reported 175 failed /
+469 skipped because of an ORDER-DEPENDENT skip in six media/premise files;
+run standalone those six files fail identically on both trees (262 = 262,
+zero new). The only node-level "new" failure is a renamed test whose
+original fails identically on master (`quiz_questions` fixture gap).
 HP-era cleanup: ~91 functions + ~20 parametrized cases deleted (HP/damage/
 outcome/Level-2 preservation), many rewritten to points-only, both
 non-importing modules import again; item-cost-duel client/flow tests that
