@@ -124,7 +124,7 @@ function arena(over: Partial<ArenaViewModel> = {}): ArenaViewModel {
       reveal: null, onSelect: () => {}, ownsSubmission: false,
       inputOpen: true, hasContent: false,
     },
-    progression: null, abilityHud: null, status: null, hudAction: null,
+    abilityHud: null, status: null, hudAction: null,
     timeline, revealHold: false, progressionEnabled: false,
     ...over,
   };

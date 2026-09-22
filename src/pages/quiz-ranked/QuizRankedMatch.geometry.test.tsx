@@ -232,7 +232,7 @@ describe("the live arena's status slots", () => {
           match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
           payload: { match_status: "active", match_over: false,
             public: publicRoundV2(), private: privatePlayerV2("userA"),
-            progression_pending_players: [], latest_resolved_round: null, result: null },
+            latest_resolved_round: null, result: null },
         });
       }
       if (u.endsWith("/private")) return json(privatePlayerV2("userA"));
@@ -288,10 +288,10 @@ describe("the live arena's status slots", () => {
       [{ ...locked[0], locked: false, exhausted: true }], null)).toBe(false);
   });
 
-  it("keeps the HUD row mounted through a level-2 choice", async () => {
+  it("keeps the HUD row mounted for the whole match", async () => {
     await mountArena();
-    // The row used to unmount entirely during progression, tearing its whole
-    // height out of the middle of the page.
+    // The row used to unmount entirely during the (now retired) progression
+    // phase, tearing its whole height out of the middle of the page.
     // ARENA1 Step 3: same gate, same rule — the flag is `surface.ownsSubmission`
     // on the view model now, and the row it guards is in CanonicalArena.
     const source = readFileSync(
@@ -323,13 +323,5 @@ describe("R1 geometry: a no-progression match reclaims the ability row", () => {
     // what stops the HUD resizing between "Submitting…" and an error.
     expect(arena()).toContain("{!surface.ownsSubmission && (");
     expect(arena()).not.toContain("!surface.ownsSubmission && progressionEnabled && (");
-  });
-
-  it("hides the level-2 overlay without touching the flow it overlays", () => {
-    // The overlay is absolutely positioned over the question, so hiding it
-    // moves nothing — the question surface keeps its box either way.
-    // `hasSurface` is the same condition the old inline expression spelled out:
-    // a resolved renderer AND something for it to draw.
-    expect(arena()).toContain('className={hasSurface ? "absolute inset-x-0 top-0 z-20" : ""}');
   });
 });

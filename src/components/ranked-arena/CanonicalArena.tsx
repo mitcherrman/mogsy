@@ -26,7 +26,6 @@ import { useMemo, useState } from "react";
 import { AbilityTray } from "./AbilityTray";
 import { ArenaShell } from "./ArenaShell";
 import { CombatantPanel } from "./CombatantPanel";
-import { LevelUpPanel } from "./LevelUpPanel";
 import { MobileBottomBar } from "./MobileBottomBar";
 import { MobileMatchBar } from "./MobileMatchBar";
 import { MatchOverFrame } from "./MatchOverFrame";
@@ -38,7 +37,6 @@ import { CardResultBeat } from "./CardResultBeat";
 import { CentralStage } from "./CentralStage";
 import { RoundResultBeat } from "./RoundResultBeat";
 import { QuestionResultOverlay } from "./QuestionResultOverlay";
-import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import { arenaReportSnapshot } from "@/lib/ranked-core/reportSnapshot";
 import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import type {
@@ -243,7 +241,7 @@ export function CanonicalArena({
     );
   }
 
-  const { header, surface, progression, abilityHud, status, hudAction, timeline } = view;
+  const { header, surface, abilityHud, status, hudAction, timeline } = view;
   // Capitalised local: a JSX tag cannot carry a non-null assertion, and the
   // module's viewport is the one element here whose TYPE comes from the mode.
   const Viewport = surface.renderer?.Viewport ?? null;
@@ -621,35 +619,6 @@ export function CanonicalArena({
 
         <div data-testid="ranked-focus-column"
           className="relative col-span-2 flex flex-col gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:min-h-0">
-          {/* The level-2 choice is OVERLAID on the question rather than
-              inserted above it. In flow it added ~192px to the middle of the
-              page the instant a round resolved, pushing the question, the
-              ability tray and the status panel down under the player's cursor.
-              The panel is opaque and sits in the same place the question does,
-              so it reads as the focal control without moving anything. */}
-          {progression && (
-            <section data-testid="ranked-progression"
-              // Overlaid on the question so nothing below it moves — EXCEPT
-              // when the focus column has no surface at all (a phased segment
-              // between engine rounds): overlaying an empty column would hang
-              // the panel over whatever sits beneath, so it renders in flow
-              // there (the column was empty; nothing shifts).
-              className={hasSurface ? "absolute inset-x-0 top-0 z-20" : ""}>
-              <LevelUpPanel
-                event={{
-                  kind: "level2-choice",
-                  options: progression.options,
-                  // R3: the pending id marks the choice IN FLIGHT, not one awaiting
-                  // a confirmation click. The server's acceptance is what ends the
-                  // progression phase, so nothing is confirmed locally.
-                  pendingOptionId: progression.pendingOptionId, confirmedOptionId: null,
-                }}
-                permissions={{ ...NO_INTERACTIONS, canSelectAbility: !progression.busy }}
-                onSelectOption={progression.onSelectOption}
-                gatesNextRound
-              />
-            </section>
-          )}
           {hasSurface && (
             <section data-testid="ranked-question"
               // Always mounted AND always in flow. During the reveal beat the
@@ -681,7 +650,7 @@ export function CanonicalArena({
                 // RFX1: a reveal that carries a result overlay is NOT dimmed —
                 // the overlay is the treatment, and dimming the stage would dim
                 // the overlay (its child) and the tablets it is explaining.
-                (view.revealHold && !view.resultFeedback?.viewer) || progression
+                view.revealHold && !view.resultFeedback?.viewer
                   ? "opacity-60" : "opacity-100"}`}>
               {/* THE QUESTION'S BOX. It takes the card's height and there is
                   NOTHING to scroll inside it — no `overflow`, no clipping, no
@@ -792,8 +761,8 @@ export function CanonicalArena({
 
       {/* Lower HUD: the OPTIONAL ability hotbar plus ONE inline status line.
           There is no Lock In button — clicking an answer submits it.
-          The row is rendered for the whole match, INCLUDING a level-2 choice:
-          unmounting it there tore ~230px out of the middle of the page.
+          The row is rendered for the whole match: unmounting it between
+          rounds tore ~230px out of the middle of the page.
 
           Phase 2 compact layout: the old side-by-side status CARD duplicated
           state already visible in the answer grid (selected answer) and the
@@ -869,7 +838,7 @@ export function CanonicalArena({
           Nothing else follows the HUD row in any active state: not an ordinary
           round's result, not a settled Meta Reflex block's, not during a
           transition. The strip is mounted continuously — through the reveal
-          beat, through a block settlement and through a level-2 choice — which
+          beat and through a block settlement — which
           is what makes it the arena's floor rather than another thing that
           appears and disappears down here. */}
       {/* RMOB2 — the phone's bottom row: Report · a 5-node window of THIS

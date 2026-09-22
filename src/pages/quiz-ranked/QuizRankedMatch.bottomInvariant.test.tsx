@@ -114,7 +114,6 @@ beforeEach(() => {
         payload: {
           match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [],
           latest_resolved_round: null, result: null,
         },
       });

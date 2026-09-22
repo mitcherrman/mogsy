@@ -10,14 +10,23 @@
  *
  * No tutorial copy lives here; directors layer their own instruction around
  * the panel and drive it through permissions.
+ *
+ * DEV/STAFF ONLY. There is no leveling system in the product any more: this
+ * panel left `src/components/ranked-arena` with the Level 2 choice and lives
+ * on only for the staff duel prototype and the arena inspector that still
+ * model the retired progression layer. Nothing in the live app imports it.
  */
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Lock } from "lucide-react";
-import {
-  InteractionPermissions,
-  LevelUpOptionView,
-} from "@/lib/ranked-core/viewTypes";
+import type { InteractionPermissions } from "@/lib/ranked-core/viewTypes";
+
+/** A level-progression ability option (Level 2 choice / Level 3 unlock). */
+export interface LevelUpOptionView {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export type LevelUpEventView =
   | {

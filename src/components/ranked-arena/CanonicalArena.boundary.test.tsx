@@ -65,7 +65,6 @@ describe("the Ranked route renders through CanonicalArena", () => {
           payload: {
             match_status: "active", match_over: false,
             public: round, private: privatePlayerV2("userA"),
-            progression_pending_players: [], progression_enabled: true,
             latest_resolved_round: null, result: null,
           },
         } : round;

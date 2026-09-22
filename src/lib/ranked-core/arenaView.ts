@@ -34,7 +34,7 @@ import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 export type { ArenaCardBeat };
 import type { PointsFeedbackView } from "./pointsFeedback";
 import type {
-  AbilityView, CombatantView, InteractionPermissions, LevelUpOptionView,
+  AbilityView, CombatantView, InteractionPermissions,
   MascotReaction, PlayerSlot, ResolvedCombatantView, ResolvedRoundView,
   RoundHistoryEntry, RoundTimelineView, TimerView,
 } from "./viewTypes";
@@ -287,15 +287,6 @@ export interface ArenaSurfaceView {
   surfaceSettings?: Partial<SurfaceSettings>;
 }
 
-/** The level-progression choice, overlaid on the question. */
-export interface ArenaProgressionView {
-  options: LevelUpOptionView[];
-  /** The choice in flight; the server's acceptance ends the phase. */
-  pendingOptionId: string | null;
-  busy: boolean;
-  onSelectOption: (optionId: string) => void;
-}
-
 /** The optional ability hotbar under the question. */
 export interface ArenaAbilityHud {
   abilities: AbilityView[];
@@ -373,7 +364,6 @@ export interface ArenaViewModel {
   left: ArenaRail;
   right: ArenaRail;
   surface: ArenaSurfaceView;
-  progression: ArenaProgressionView | null;
   abilityHud: ArenaAbilityHud | null;
   status: ArenaStatusLine | null;
   /**

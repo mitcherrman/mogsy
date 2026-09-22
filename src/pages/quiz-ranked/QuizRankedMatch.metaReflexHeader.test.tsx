@@ -102,7 +102,6 @@ beforeEach(() => {
         payload: {
           match_status: "active", match_over: false,
           public: publicBody(), private: privateBody(),
-          progression_pending_players: [],
           latest_resolved_round: backend.resolvedPayload === null ? null : {
             schema_version: "ranked_duel.resolved_round.v2",
             projection_type: "resolved_round", match_id: "m1",
@@ -359,8 +358,11 @@ describe("the red text below the block that is SUPPOSED to be there", () => {
   it("is the forfeit control, and it is always present", async () => {
     backend.segmentState = metaReflexState(0);
     await mount();
+    // The forfeit control is persistent (red on hover, by design).
+    expect(screen.getByTestId("ranked-forfeit")).toBeInTheDocument();
+    // With no leveling layer the combatant columns no longer paint any red
+    // of their own, so the inventory may be empty — but never a message.
     const reds = Array.from(document.querySelectorAll(".text-destructive"));
-    expect(reds.length).toBeGreaterThan(0);
     // Print the inventory rather than guess at it: every red element in the
     // live arena must be accounted for, and today they are all the opponent's
     // own chrome or the forfeit control — never a message.

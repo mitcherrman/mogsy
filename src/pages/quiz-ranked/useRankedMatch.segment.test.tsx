@@ -70,7 +70,6 @@ function resumeEnvelope() {
     payload: {
       match_status: "active", match_over: false,
       public: publicBody(), private: privateBody(),
-      progression_pending_players: [],
       latest_resolved_round: backend.resolvedPayload === null ? null : {
         schema_version: "ranked_duel.resolved_round.v2",
         projection_type: "resolved_round", match_id: "m1", round_number: 3,
