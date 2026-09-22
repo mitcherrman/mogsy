@@ -11,6 +11,55 @@ canonical Bot Ranked children, D's scheduled Ranked availability, and E's
 Daily arena on `/quiz/daily-challenge`. Retire the old Daily and score-attack
 runtimes. Points-only; Survival's 3 lives are strikes, never HP.
 
+## PRODUCT LOCK (owner, merge gate 2026-09-22)
+- **Daily Challenge is Mogzy's daily sampler across ALL content Mogzy can
+  provide, as each source becomes production-ready**: Champion / Item /
+  League Fundamentals, Champion Mastery, Matchup, combat calculations, Pro
+  Play, and current/future generators.
+- **GR1 does not alter the Daily product plan.** GR1 builds/audits Champion
+  Mastery, Matchup and related generators so they can join the Daily.
+- **Any current exclusion is a readiness limitation, not a product
+  restriction.** The planner is generic: it assigns whatever content is
+  Daily-ready for a stage today (see "Daily readiness" below).
+
+## Merge-gate pass (2026-09-22)
+Reconciled onto current deploy heads (merge commits, no force-push):
+backend `origin/master` through `b5d15c1f` (two Combat Lab items commits,
+`b5c37f48` and `b5d15c1f`; no file overlap with this branch; their own item
+tests give identical results on pristine master - canonical `champion_stats`
+absent from the test fixture); frontend `origin/main` unchanged at
+`45a322d4`.
+
+1. **Guest first Daily.** A verified anonymous (guest) Supabase session can
+   start, play and finish the Daily - no signup first. The host decides
+   access: `/api/daily-run` requires only a verified session; the Ranked
+   per-match routes use `require_match_identity`, which admits the guest ONLY
+   for a match bound to a Daily run (membership still enforced); live Ranked,
+   the queue and every ordinary bot match keep the account-only rule.
+   At the END, an anonymous player's completion shows the app's existing
+   signup gate ("Save today's Daily Challenge", no guest dismissal) ->
+   `/auth?mode=signup&returnTo=/quiz/daily-challenge` -> the existing
+   `AccountUpgradePanel`, which converts the guest IN PLACE on the same user
+   id, so the finished run (already stored under that id) is kept. No second
+   account system.
+2. **Daily readiness (planner stays generic).** `daily_challenge/wiring.py`
+   `stage_readiness(content, kind)` = C compatibility + C resolves it for the
+   stage's ruleset today + every segment yields REVIEWABLE misses (a
+   replayable `quiz:` ref). `readiness_report()` exposes the per-(set, stage)
+   verdict with its reason. Nothing is Fundamentals-only.
+3. **Level-2 progression removed globally** (Ranked, Bot Ranked, Daily): new
+   matches never level; legacy `(0,30,66)` matches replay single-level and
+   stored choices are ignored; no pending state, gate, route
+   (`level-two-choice` in Ranked and the staff prototype), schema, bot pick,
+   projection keys (`progression_pending_players`, `progression_enabled`,
+   `own_abilities.level2_*/level3_*`) or frontend Level-2 UI remain.
+   `ranked_progression_choices` stays as a dormant table.
+4. **Daily-hosted chrome.** Via the existing `host` seam only: a hosted child
+   shows no "Ranked Duel" label, no "vs Bot/Opponent" line, no Forfeit
+   control. Ordinary Ranked is unchanged.
+5. **HP-era tests cleaned** and three real LH2.4-port collisions fixed (see
+   Merge-gate verification).
+
 ## Exact starting refs
 - backend  `origin/master` = `ded63efb4e8678f835b0557b8a4f0767db989280`
 - frontend `origin/main`   = `45a322d4527ae449b6c817ae039c0303117b837a`
@@ -75,9 +124,12 @@ master under other SHAs and were skipped.
     `sha256(daily-content:v1|seed|kind|id)`; DFS most-constrained-first,
     first unused candidate, backtracking → deterministic one-to-one matching;
     none → `InvalidContentAssignment` → 503, nothing frozen. B freezes it in
-    `content_assignments_json` once per day. Today's matrix: Time Trial and
-    Survival draw two distinct Fundamentals; Standard rotates over the rest
-    (third Fundamentals, Champion Mastery, Matchup — seen over 90 days).
+    `content_assignments_json` once per day. "Resolves now" is the Daily
+    readiness gate (`stage_readiness`: compatible + resolvable + reviewable
+    misses). With today's matrix Time Trial and Survival draw two distinct
+    rapid-recall sets and Standard rotates over every Standard-ready set;
+    Champion Mastery / Matchup join Standard's rotation as soon as they are
+    Daily-ready (`test_focus_content_joins_the_rotation_once_it_meets_the_contract`).
   - **DailyWeakAreasGate**: False unless the user has a COMPLETED official
     Daily with `completed_at <` this run's cutoff; then C's
     `has_weak_areas_evidence(cur, user, cutoff, exclude, minimum=3)`.
@@ -119,8 +171,8 @@ master under other SHAs and were skipped.
   (the Ranked page hands a Daily child back to the Daily; the queue ignores
   it), and Daily children excluded from Ranked history.
 - API: `/api/daily-run` (B's routes) registered + `migrate_add_daily_runs`;
-  requires a signed-in non-anonymous account (children are Ranked matches);
-  503 `DAILY_RUN_NOT_WIRED` when Ranked is disabled.
+  requires a verified session - a guest (anonymous) session is allowed (see
+  Merge-gate 1); 503 `DAILY_RUN_NOT_WIRED` when Ranked is disabled.
 - Frontend: `/quiz/daily-challenge` → E's `run/DailyRunPage` (hosted
   `QuizRankedMatch` via `MatchHost`); Hub Daily status reads
   `GET /api/daily-run/today`; `/quiz/daily` redirects to the Daily; D's
@@ -232,23 +284,79 @@ Harness lived in scratch space only; nothing of it is committed.
   the same child/stage straight into the arena, no intro/tag replay.
 
 
+## Merge-gate verification (2026-09-22)
+Backend (env `RANKED_PUBLIC_ENABLED=1 RANKED_FORMATS_ENABLED=1
+RANKED_RATELIMIT_ENABLED=0`): DCMOD A/B/C/D + `test_dcmod_integration_daily`
+(33, incl. guest funnel, ownership, live-Ranked identity unchanged,
+readiness planner) + `test_dcmod_retired_daily` + availability + queue routes
++ points-only + `test_ranked_no_level_two` (11): **189 passed**.
+Broad Ranked set vs pristine master: master 437 failed / 2299 passed;
+branch 426 failed / 2161 passed (fewer tests: obsolete ones deleted). The
+only node-level "new" failure is a renamed test whose original fails
+identically on master (`quiz_questions` fixture gap).
+HP-era cleanup: ~91 functions + ~20 parametrized cases deleted (HP/damage/
+outcome/Level-2 preservation), many rewritten to points-only, both
+non-importing modules import again; item-cost-duel client/flow tests that
+asserted the retired v1 lane (`correct_item_id`, quiz v1) deleted (41
+functions) - the lane is v4 Meta Reflex, covered by the meta-reflex suites.
+Real bugs fixed from the LH2.4 port colliding with newer master:
+Meta Reflex points settlement `damage=` -> `points=` (TypeError on every
+block settlement); builder catalog quiz v2 key / removed `SegmentSpec.scoring`;
+ICD test format v4 block missing `families`.
+Frontend: Daily / quiz-ranked / ranked-arena / ranked-core / ranked-public /
+dev duel prototype / Hub suites: only known baseline failures remain
+(QuestionStageGeometry x3, AnswerGrid.elimination x2, QuestionTimeline x14,
+playModeCard x2, Quiz.rankedRole Practice x1 - all fail on origin/main).
+`tsc`: 25 errors, all in untouched files. `vite build`: passes.
+
+Live smoke (real server + real frontend, fixture DB, HS256 test auth, E2E
+identity): a guest started the first Daily from Hub PLAY (Ranked closed) with
+no signup; played Standard -> Time Trial -> Survival -> Review; no Level-2
+interruption anywhere; the hosted header showed no Ranked Duel / vs Bot /
+Forfeit; the Time Trial bank drained only while answerable and held flat
+(70 000 ms) through reveal/transition; Survival ended `strikes_exhausted` on
+the 3rd mistake (readout 3 -> 2 -> 1 "mistakes left"; the bot's mistakes
+ended nothing); Review served exactly the three allocated refs in order; the
+finished day showed the save gate (hit-test confirmed on top) -> Create
+Account -> `/auth?mode=signup&returnTo=/quiz/daily-challenge` "Save your
+progress... on the same profile" (no credentials submitted). Ordinary Bot
+Ranked for a signed-in player still shows "Ranked Duel - vs Bot" + Forfeit
+and plays with no Level-2 prompt. `readiness_report` lists the Fundamentals
+ready for all three stages and Mastery/Matchup unavailable with concrete
+reasons.
+
 ## Current state
-Both branches pushed (see report). Deploy branches untouched.
+Both integration branches pushed (frontend head when written: `7981b034`).
+Deploy branches untouched.
 
 ## Remaining blockers / next action
 - Owner review + merge of both branches together (backend first: the new
   frontend needs `/api/daily-run`).
-- Prune the LH2.4-stale HP-era tests (179 + 2 modules) in a dedicated cleanup;
-  they fail identically at the LH2.4 commit.
+- **Content not Daily-ready today (readiness, not product):**
+  - Champion Mastery / Matchup (Standard only in the V1 matrix): their
+    Mastery-slice segments are multi-card applied chains whose misses carry
+    per-card concept refs inside a generated chain - Review cannot yet replay
+    one exactly (`review_contract` gap). Where no quality-eligible focus or
+    corpus exists they are also `unresolvable`. They join the rotation as
+    soon as a Review ref contract for Mastery cards exists (or the content
+    yields `quiz:` refs), with no planner change. Matchup is additionally
+    deferred inside GR1.
+  - Combat calculations, Pro Play: no content-set catalog entry / resolver
+    branch yet (C's architecture: add a catalog entry + resolver branch +
+    its compatibility row).
 - Invite IA: with Ranked closed, PLAY bypasses the popup, so Invite is not
   reachable from the seal (known D follow-up; not invented here).
-- Anonymous players cannot play the Daily now (403 `ACCOUNT_REQUIRED`,
-  message "Sign in to play…") because every stage is a Ranked match.
-- Mastery/Matchup Standard stages contribute no Review items (multi-card
-  rounds carry no `quiz:` ref). Review replays quiz questions only.
-- The hosted child still shows Ranked's "RANKED DUEL / vs bot" strip label,
-  the Level-2 ability choice (existing RFX progression, with its existing
-  "damage"/"shield" ability copy) and a "Forfeit match" link — existing
-  canonical Ranked chrome, left as-is; product may want host-aware copy.
+- Anonymous players can play every Daily, not only the first; the save gate
+  shows at the end of any anonymous Daily. If later Dailies should REQUIRE
+  an account, that is a small host-policy check in `require_player`.
+- The ability hotbar was gated on `progression_enabled`, which no longer
+  exists, so it never renders in Ranked (it already never rendered in points
+  matches frozen without progression). Ability effects themselves are
+  HP-era and out of scope; product may want a follow-up.
+- Level-2 remnants intentionally left in dev-only pages (the local duel
+  prototype's own model, arena-inspector samples, shell-probe switch) and in
+  docs (`docs/ranked-public-service.md`, `TANK_BALANCE_EXPERIMENT_SPEC.md`).
+- `package-lock.json` on origin/main is out of sync with `package.json`
+  (drizzle deps), so `npm ci` refuses; pre-existing, not touched here.
 - dc2_*/dsa_* tables remain dormant for the Content Factory export and
   production audit scripts; drop once those are retired.
