@@ -114,10 +114,10 @@ export default function AdminUserDirectory({
             </p>
           </div>
           <Link
-            to="/admin/directory"
+            to="/admin/people?section=users"
             className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Admin directory
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> People
           </Link>
         </header>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { authHref } from "@/lib/auth/auth-destination";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, X, BarChart3, PieChart, LineChart, AreaChart, RefreshCw, Clock } from "lucide-react";
@@ -262,11 +262,12 @@ export default function AdminData() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/admin")} className="shrink-0">
+            <Button variant="ghost" size="icon" aria-label="Back to Arena" onClick={() => navigate("/admin/arena?section=operations")} className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <BarChart3 className="h-5 w-5 text-primary" />
-            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground">Admin Data</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground">Arena Data Graphs</h1>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Archived</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -284,6 +285,23 @@ export default function AdminData() {
             </Button>
           </div>
         </div>
+
+        {/* FUNNEL1C — this page is the retired voting product's graph builder.
+            It is not Mogzy product analytics, and nothing here feeds
+            Admin › Analytics. */}
+        <p
+          className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground"
+          data-testid="arena-data-archived-notice"
+        >
+          <strong className="text-foreground">Archived — Match &amp; Rank era.</strong> Matches, Elo,
+          Items, Comments and legacy ad graphs describe the retired voting product. The Users
+          counts below read <code>profiles</code>, which holds one row per guest session. Current
+          Mogzy visitors, sessions, signups and retention live in{" "}
+          <Link to="/admin/analytics" className="text-primary underline-offset-2 hover:underline">
+            Admin › Analytics
+          </Link>
+          .
+        </p>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

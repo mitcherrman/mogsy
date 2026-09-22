@@ -1,8 +1,9 @@
 # FUNNEL1 — Analytics & Funnel Reality Audit (Phase 1A)
 
-**State: FUNNEL1B2 CLOSED and live. FUNNEL1B3 MERGED AND DEPLOYED to production
-(`5c273fdd`); one real Practice session run through it. Awaiting the privileged
-read-back to certify Practice (§23.7); Ranked spot-check remaining (§23.8).**
+**State: FUNNEL1B2 CLOSED and live. FUNNEL1B3 DEPLOYED and Practice certified
+in production (`5c273fdd`; session 259 read back). FUNNEL1C / ADMIN2 IMPLEMENTED:
+Admin IA simplified and the canonical Analytics area built at `/admin/analytics`
+(§24). Ranked production spot-check remaining (§23.8).**
 
 The web funnel is in production and proven end to end (§19). The gameplay half
 — authoritative milestones emitted from Railway through a transactional outbox
@@ -3490,3 +3491,218 @@ Ranked production spot-check      ⏳  remaining — needs a registered account
 **B3 is technically complete and deployed. It is not yet formally certified:**
 one privileged query stands between it and closing Practice, and Ranked needs a
 human with an account. Neither is an architectural question.
+
+
+---
+
+# 24. FUNNEL1C / ADMIN2 — Admin IA simplified; canonical Analytics built
+
+Two jobs in one phase: the FUNNEL1C admin reporting surface, and a deliberate
+cleanup of the Admin information architecture so that surface lands in a
+console with **one canonical path per job**. Frontend only. The analytics
+ingest architecture (§20–§23) was not touched.
+
+Production facts this phase relies on, recorded as given by the owner: the
+edge-function certification passed (401 / 422 / 200 stored / 200 duplicate),
+and production Practice session `259` was read back — `practice_quiz_started`
+and `practice_quiz_completed` exactly once each, same `quiz_session`,
+`source_system='railway'`, guest attribution intact. §23.7's Practice item is
+therefore closed; Ranked (§23.8) remains.
+
+## 24.1 Audit — every Admin surface, classified
+
+Base: frontend `origin/main` at `57344a41`.
+
+| Surface | Was | Verdict | Now |
+|---|---|---|---|
+| `admin-registry.ts` | canonical registry | **CANONICAL** | the only inventory |
+| `admin-directory.ts` (+ `AdminDirectory` page, `AdminDirectoryCard`) | second hand-maintained registry, rendered at `/admin/legacy-directory` | **REMOVE** | deleted; every path it advertised is in the registry (frozen list asserted by test) |
+| `/admin/directory` | redirect → All Tools | **REDIRECT** | unchanged |
+| `/admin/legacy-directory` | old directory page | **REDIRECT** | → `/admin/all-tools` |
+| Legacy 17-tab dashboard (`pages/Admin.tsx`, `/admin/legacy-dashboard`) | preserved shell, advertised from Overview "Escape hatches" | **REMOVE** | deleted; → `/admin`. Every tab had a canonical home (People: users, directory, invites, comments, reports, mod config, feedback, notifications, push · Arena: collections, bots, promoted, ranks · Operations: banners, tutorials, settings, onboarding, CSV); every header button a registered route |
+| Admin Overview | counts + attention + area grid + escape hatches | **CANONICAL**, slimmed | platform counts, attention queue, six shortcuts |
+| `AdminStats` | Arena-era counters on Overview | **ARCHIVED** | `ArenaArchiveStats` on the Arena page; its "Users" counter (all non-bot `profiles`, i.e. inflated by guests) dropped |
+| `/admin/data` (34-graph builder, `admin-data-sources.ts`) | "Analytics Graphs" under Operations › Data Operations | **ARCHIVED** | `/admin/arena/data-graphs` ("Arena Data Graphs", labelled archived, points to Analytics); `/admin/data` redirects |
+| Image-click analytics | Arena-era (`image_clicks`) | **ARCHIVED** | Arena counters only; no longer described as an Operations capability |
+| `AdminDemoAnalytics` (`/admin/demo-analytics`) | "Demo Analytics" under Leaguecraft › Diagnostics | **MERGE/rename** | "Premium Trends Preview" at `/admin/premium-preview` (Leaguecraft › Premium Preview); old path redirects. Backend `/api/admin/demo-analytics/*` unchanged |
+| `/quiz/diagnostics` | a *second* "Quiz Diagnostics" under Leaguecraft | **DEVELOPER** | "Quiz API Inspector" under Developer › Inspectors. The operator job is `/admin/quiz-content?tab=diagnostics` |
+| Quiz Review consolidation (`/admin/quiz-content`) | canonical; Diagnostics a tab; old paths redirect | **CANONICAL** | untouched |
+| "Ranked Question Bank" registry card | second entry for `/admin/quiz-content?tab=review` | **MERGE** | removed; Quiz Review notes it covers Ranked; Ranked › Question Bank still cross-links |
+| "Ranked Duel Prototype (fixture)" Developer card | second entry for `/dev/ranked-duel` | **MERGE** | removed; one home under Ranked › Matches (Staff Duel Creator), fixture mode noted |
+| "Blog Post Editor" card | second entry for `/admin/blog` | **MERGE** | folded into Blog CMS (`/admin/blog/:id` recorded as its route) |
+| `/admin/diagnostics` (Site Diagnostics) | Operations › Health | **CANONICAL** | probe list updated (no retired paths) |
+| `/admin/about` (Internal Docs) | Operations › Docs, stale | **CANONICAL** (flagged stale) | unchanged; All Tools is the inventory of record |
+| `/admin/play`, `/admin/gaming`, `/admin/demo` | Arena | **ARCHIVED** | unchanged |
+| `/moderator` | separate moderator-role app | **CANONICAL** | unchanged (different audience/gate) |
+| `/admin/users` vs People › Users | two user directories | **CANONICAL ×2**, noted | different jobs (identity/friend-link vs account management); consolidation remains ADMIN1B |
+| Operations › Data Operations | "Analytics graphs, CSV export and image-click analytics" | renamed | **Data Maintenance** — CSV export only |
+| Area-section tools with `?section=` paths | `kind: "route"` | reclassified | `kind: "panel"` (they are sections of one page, not destinations) |
+
+No capability was found without a safe canonical home, so nothing was held
+back on that ground.
+
+## 24.2 Final IA
+
+```
+Overview        /admin              counts · attention · shortcuts · All Tools tab
+Analytics       /admin/analytics    NEW — the one product-analytics destination
+People          /admin/people
+Leaguecraft     /admin/leaguecraft  Questions · Reports & Overrides · Mastery · Premium Preview
+Ranked          /admin/ranked
+Simulation      /admin/simulation
+Game Data       /admin/game-data
+Studio          /admin/studio
+Operations      /admin/operations   Configuration · Health & Jobs · Patch Ops · Data Maintenance · Docs · Danger Zone
+Developer       /admin/developer    prototypes · inspectors · harnesses (engineering only)
+Arena [Archived] /admin/arena       retired voting product, incl. archived data graphs + counters
+```
+
+Redirects (one hop each, asserted): `/admin/directory` and
+`/admin/legacy-directory` → `/admin/all-tools`; `/admin/legacy-dashboard` →
+`/admin`; `/admin/data` → `/admin/arena/data-graphs`; `/admin/demo-analytics`
+→ `/admin/premium-preview`. Existing quiz aliases unchanged.
+
+## 24.3 Analytics — sections and read path
+
+`/admin/analytics?section=<id>&range=<preset>` — both URL-backed, so every view
+is linkable. Sections: **Overview · Acquisition · Engagement · Accounts ·
+Retention · Sources · System Health**. One range control: **Today (UTC) · 7
+days (default) · 30 days · All time**; windows are half-open `[start, now]`,
+UTC, and grouped on `received_at` (DB clock, §14.3).
+
+Read path (`src/lib/admin/analytics/loadAnalytics.ts`): Supabase only, never a
+live join against Railway. In-range `analytics_events`; **all-time**
+`analytics_sessions` and `analytics_visitors` (new/returning need history).
+Paged 1,000 rows at a time to a 50,000-row cap per table; past the cap the page
+shows a *truncated* warning instead of silently sampling. Plus `latest
+received_at` for web, railway, and each of the eight authoritative names. The
+Railway outbox probe (`GET /api/admin/analytics/health`) is read on System
+Health only; its ingest endpoint URL and `last_error` are not rendered.
+
+All metrics are pure functions in `src/lib/admin/analytics/metrics.ts`, which
+reads only the three analytics tables — no `profiles`, no Arena table, no ad
+ledger (asserted by a source-scan test and a render test).
+
+## 24.4 Metric definitions (as implemented)
+
+| Metric | Definition |
+|---|---|
+| Visitors | distinct `visitor_id` with a session started, or a browser event received, in range |
+| Sessions | sessions started in range ∪ sessions with a browser event in range |
+| New visitors | first-seen in range; first-seen = earlier of `first_seen_at` and the visitor's first session |
+| Returning visitors | has a session in range that is not their first-ever session (a new visitor can also be returning) |
+| Repeat sessions | sessions in range that are not the visitor's first-ever session |
+| Signed-in users | distinct `user_id` with an in-range event where `is_guest = false` |
+| Guest / signed-in sessions | signed-in = any in-range event with `is_guest = false`; guest = the rest |
+| Engaged sessions | in-range sessions with a mode-open event |
+| Engaged visitors | visitors with a mode-open, or linked (via `user_id` on their browser events) to a Railway `*_started` in range |
+| Signups | `signup_completed` events; split by `metadata.upgraded_from_guest` |
+| Viewed → created | of visitors with `signup_viewed`, those who also have `signup_completed` |
+| D1 | cohort = first seen in range; eligible when first_seen + 48h ≤ now; retained if a session starts in [+24h, +48h) |
+| D7 | eligible when first_seen + 8d ≤ now; retained if a session starts in [+7d, +8d) |
+| Funnel steps | distinct visitors reaching each step in range, **not forced into order** (direct links skip Landing/Hub); read against range visitors |
+| Gameplay opened | browser `*_opened` (visitors and events) |
+| Gameplay started / completed | `source_system = 'railway'` rows only; a web row with those names is never counted (flagged in Health) |
+| Sources | first touch from `analytics_visitors`, session touch from `analytics_sessions`; source = utm_source → referrer host → `(direct)`; same-site → `(internal)` |
+
+Rates and shares show as `k / n` below **20** in the denominator and as a
+percentage only from 20 up. Unavailable metrics say so (Verification: "not yet
+instrumented"; Meta Reflex start/complete: no authoritative emitter; D1/D7:
+"insufficient history" with the too-recent count) — never a fabricated zero.
+An empty store shows an explicit "true zero, not a failed read" notice.
+
+System Health integrity checks (each should be 0): browser rows with a
+Railway-only name · duplicate Railway (event, entity) · Railway rows without an
+entity key · browser rows without a visitor id · sessions without a visitor
+row. Gap signal: browser opens for Railway-backed modes received after the
+latest Railway event (warning at ≥10, or any when no Railway event has ever
+arrived).
+
+## 24.5 Files changed
+
+New: `src/lib/admin/analytics/{range,metrics,loadAnalytics}.ts`,
+`src/lib/admin/analytics/metrics.test.ts`,
+`src/pages/admin/areas/AdminAnalyticsPage.tsx`,
+`src/components/admin/ArenaArchiveStats.tsx` (renamed from `AdminStats.tsx`).
+
+Deleted: `src/pages/Admin.tsx`, `src/lib/admin/admin-directory.ts` (+ test),
+`src/pages/admin/AdminDirectory.tsx` (+ test),
+`src/components/admin/AdminDirectoryCard.tsx` (+ test).
+
+Edited: `src/App.tsx`, `src/lib/route-prefetch.ts`,
+`src/lib/admin/admin-registry.ts`, `src/lib/admin/adminOpsApi.ts`,
+`src/pages/admin/areas/{AdminOverviewPage,AdminArenaPage}.tsx`,
+`src/components/admin/shell/AdminShell.tsx` (comment),
+`src/pages/AdminData.tsx`, `src/pages/AdminDiagnostics.tsx`,
+`src/pages/admin/{AdminDemoAnalytics,AdminPlatformPolicies,AdminUserDirectory}.tsx`,
+tests: `admin-registry.test.ts`, `admin-registry.routes.test.ts`,
+`AdminShell.areas.test.tsx`, `AdminUserDirectory.route.test.tsx`.
+
+## 24.6 Tests
+
+New/updated coverage: canonical registry (11 areas, Analytics beside
+Overview, 7 sections), route ⇄ registry agreement, each redirect and
+single-hop redirects, no legacy shell mounted or advertised, no duplicate
+route destination or tool title, a single "Quiz Diagnostics", Analytics is
+the only thing titled Analytics, retired directory paths all preserved;
+range parsing/UTC/half-open semantics; funnel reach and non-ordering;
+gameplay branches, the authority rule and Ranked per-participant grain;
+signup funnel/split; verification by type and unavailable state; new vs
+returning; D1/D7 eligibility and windows; sources classification; integrity
+checks and gap warning; empty states; paged reads (short page, truncation,
+error); Arena/legacy exclusion (event names, source scan, render-time table
+spy).
+
+Results (see §24.9 for the full-suite comparison): focused Admin + analytics
+suite — 935 tests, 932 pass; the 3 failures are the pre-existing baseline
+failures (`AdminUsers.phase1` "renders selected-user feedback",
+`AdminPlatformPolicies` "navbar policy is stored, not consumed",
+`AdminQuizReview.proPlay` "--review-key"), identical on `origin/main`.
+Typecheck: identical to baseline (16 files with pre-existing errors, same
+counts, none new).
+
+## 24.9 Full-suite comparison
+
+Base: frontend `origin/main` at `57344a41` (a second worktree at the same
+commit; `origin/main` moved to `e51d9786` mid-phase, which is NOT this base).
+
+The whole suite in one process OOMs a worker on this machine **on both trees**
+(V8 `FatalError`, then `ERR_IPC_CHANNEL_CLOSED`), so it was run in per-directory
+chunks with `--max-old-space-size=8192`.
+
+```
+focused Admin + analytics   935 tests   932 pass, 3 fail  == baseline's 3
+typecheck (tsc app)         identical to 57344a41: same 16 files, same counts
+production build            vite build OK (17.5s)
+full suite, chunked         every branch-only failure reproduced on 57344a41
+```
+
+The chunked run first showed 13 extra failures (`pro-play/StatsFilterUx`,
+two `ranked-arena/*.boundary`, `quiz-ranked/QuizRankedMatch.rfx1b3`). They came
+from comparing against the newer `e51d9786`: re-run against the true base
+`57344a41`, both trees fail the same 8 + 5. **No test regressed in this phase.**
+
+Pre-existing baseline failures, unchanged: `AdminUsers.phase1` "renders
+selected-user feedback", `AdminPlatformPolicies` "navbar policy is stored, not
+consumed", `AdminQuizReview.proPlay` "--review-key", plus the 13 above.
+
+## 24.7 Known instrumentation gaps
+
+1. **Verification** — contract ready, no emitter (no verification UI). Shown
+   as "not yet instrumented"; `VERIFICATION_EMITTERS_LIVE` flips it once VERIFY ships.
+2. **Meta Reflex** — browser open only; no authoritative start/complete (§20.1).
+3. **Ranked** production spot-check (§23.8) still needs a registered human account.
+4. **Visitor identity is per browser storage** — returning/D1/D7 are floors.
+5. **Engaged-visitor linking** of Railway starts relies on a browser event
+   carrying the same `user_id` in range; a Railway start whose user has no
+   in-range browser row counts in Engagement but not in the visitor funnel.
+6. **Client-side aggregation ceiling** — 50k rows per table; past it the page
+   says "truncated". Next step at that scale: SQL views / RPCs.
+7. Supabase types for the analytics tables are still the `schema.ts` shim (§20.9).
+
+## 24.8 Next task
+
+Run the Ranked production spot-check (§23.8). Then, when volume warrants,
+move the Analytics aggregates into SQL views behind the same metric
+definitions (`metrics.ts` is the spec and its tests the acceptance suite).
+ADMIN1B (consolidating `/admin/users` with People › Users) remains open.

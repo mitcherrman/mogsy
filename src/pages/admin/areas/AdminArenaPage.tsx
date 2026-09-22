@@ -17,6 +17,7 @@ import AdminCollections from "@/components/admin/AdminCollections";
 import AdminBots from "@/components/admin/AdminBots";
 import AdminPromotedLeagues from "@/components/admin/AdminPromotedLeagues";
 import AdminRankSettings from "@/components/admin/AdminRankSettings";
+import ArenaArchiveStats from "@/components/admin/ArenaArchiveStats";
 import {
   AdminAreaHeader,
   AdminPanel,
@@ -80,7 +81,12 @@ export default function AdminArenaPage() {
           <strong className="text-foreground">Archived.</strong> These tools administer the retired
           Mogsy voting product. They are fully preserved and still work — every route resolves
           exactly as before. Archived means labelled, not removed and not scheduled for removal.
+          None of its numbers feed Admin › Analytics.
         </p>
+      </div>
+
+      <div className="mb-4">
+        <ArenaArchiveStats />
       </div>
 
       {section.id === "collections" && (

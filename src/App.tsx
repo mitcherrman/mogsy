@@ -50,7 +50,6 @@ const Leaderboard = R.Leaderboard.Component;
 const SwipePreset = R.SwipePreset.Component;
 const Settings = R.Settings.Component;
 const Referral = R.Referral.Component;
-const Admin = R.Admin.Component;
 const Shop = R.Shop.Component;
 const EloCheck = R.EloCheck.Component;
 const SwipeLeagues = R.SwipeLeagues.Component;
@@ -135,18 +134,16 @@ const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRun
 const KnowledgeHistory = lazy(() => import("./pages/admin/knowledge/KnowledgeHistory"));
 const PatchOpsDetail = lazy(() => import("./pages/admin/knowledge/PatchOpsDetail"));
 
-// Admin Directory — the pre-reorganization tool index. Retained as a component
-// so nothing is deleted; /admin/directory now redirects to Overview › All Tools.
-const AdminDirectory = lazy(() => import("./pages/admin/AdminDirectory"));
-
 // -------------------------------------------------------------------------
 // The unified Admin application (Admin Architecture reorganization).
-// One shell, ten top-level areas, depth never beyond area → page → tab.
+// One shell, eleven top-level areas, depth never beyond area → page → tab.
 // The shell is navigation only: every destination keeps the gate it already
 // had (AdminRoute / AdminAuthGate / RLS / require_admin), unchanged.
 // -------------------------------------------------------------------------
 const AdminShell = lazy(() => import("./components/admin/shell/AdminShell"));
 const AdminOverviewPage = lazy(() => import("./pages/admin/areas/AdminOverviewPage"));
+// FUNNEL1C — the one product-analytics destination.
+const AdminAnalyticsPage = lazy(() => import("./pages/admin/areas/AdminAnalyticsPage"));
 const AdminAllToolsPage = lazy(() => import("./pages/admin/areas/AdminAllToolsPage"));
 const AdminPeoplePage = lazy(() => import("./pages/admin/areas/AdminPeoplePage"));
 const AdminLeaguecraftPage = lazy(() => import("./pages/admin/areas/AdminLeaguecraftPage"));
@@ -439,22 +436,23 @@ const App = () => (
                   <Route path="/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminShell /></Suspense></AdminRoute>}>
                     <Route index element={<Suspense fallback={<RouteFallback />}><AdminOverviewPage /></Suspense>} />
                     <Route path="all-tools" element={<Suspense fallback={<RouteFallback />}><AdminAllToolsPage /></Suspense>} />
-                    {/* /admin/directory kept as a permanent compatibility alias: it is
-                        the only admin link the HUD has ever had, so bookmarks exist. */}
+                    <Route path="analytics" element={<Suspense fallback={<RouteFallback />}><AdminAnalyticsPage /></Suspense>} />
+                    {/* Bookmark compatibility only — redirects, never destinations.
+                        /admin/directory was the only admin link the HUD ever had.
+                        FUNNEL1C deleted the second registry (admin-directory.ts)
+                        and the legacy 17-tab dashboard: every tab of it had a
+                        canonical home, so both old pages redirect to theirs. */}
                     <Route path="directory" element={<Navigate to="/admin/all-tools" replace />} />
-                    {/* The pre-reorganization directory page itself, preserved rather
-                        than deleted. All Tools supersedes it; this stays reachable so
-                        the migration removes nothing. */}
-                    <Route path="legacy-directory" element={<Suspense fallback={<RouteFallback />}><AdminDirectory /></Suspense>} />
-                    {/* The original 17-tab dashboard, preserved unchanged. Its tabs all
-                        have canonical homes now; this stays so a mis-migration cannot
-                        cost a capability. Retire only with owner approval. */}
-                    <Route path="legacy-dashboard" element={<Admin />} />
+                    <Route path="legacy-directory" element={<Navigate to="/admin/all-tools" replace />} />
+                    <Route path="legacy-dashboard" element={<Navigate to="/admin" replace />} />
                     <Route path="people" element={<Suspense fallback={<RouteFallback />}><AdminPeoplePage /></Suspense>} />
                     <Route path="users" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminUserDirectory /></Suspense></AdminRoute>} />
-                    {/* PT1.9 — synthetic Free/Premium analytics comparison.
-                        master_admin only, exactly as the user directory is. */}
-                    <Route path="demo-analytics" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminDemoAnalytics /></Suspense></AdminRoute>} />
+                    {/* PT1.9 — synthetic Free/Premium Performance Trends preview.
+                        master_admin only, exactly as the user directory is.
+                        FUNNEL1C renamed it off "demo-analytics", which read as a
+                        second analytics destination; the old path redirects. */}
+                    <Route path="premium-preview" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminDemoAnalytics /></Suspense></AdminRoute>} />
+                    <Route path="demo-analytics" element={<Navigate to="/admin/premium-preview" replace />} />
                     {/* Pro Play data coverage — read-only reconciliation of the
                         historical pro corpus. master_admin, as the other
                         backend-authority admin reads are. */}
@@ -471,7 +469,10 @@ const App = () => (
                         inside the shell. Their own guards are redundant under the
                         layout gate and are therefore not repeated. */}
                     <Route path="play" element={<Suspense fallback={<RouteFallback />}><AdminPlay /></Suspense>} />
-                    <Route path="data" element={<Suspense fallback={<RouteFallback />}><AdminData /></Suspense>} />
+                    {/* The retired voting product's graph builder, archived under
+                        Arena (FUNNEL1C). /admin/data redirects for bookmarks. */}
+                    <Route path="arena/data-graphs" element={<Suspense fallback={<RouteFallback />}><AdminData /></Suspense>} />
+                    <Route path="data" element={<Navigate to="/admin/arena/data-graphs" replace />} />
                     <Route path="demo" element={<Suspense fallback={<RouteFallback />}><AdminDemo /></Suspense>} />
                     <Route path="gaming" element={<Suspense fallback={<RouteFallback />}><AdminGaming /></Suspense>} />
                     <Route path="blog" element={<Suspense fallback={<RouteFallback />}><AdminBlog /></Suspense>} />

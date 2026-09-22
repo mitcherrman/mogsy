@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import AdminRoute from "@/components/AdminRoute";
-import { ADMIN_DIRECTORY_ITEMS } from "@/lib/admin/admin-directory";
+import { ADMIN_TOOLS } from "@/lib/admin/admin-registry";
 
 let authState: { user: { id: string } | null; loading: boolean } = {
   user: { id: "user-1" },
@@ -90,8 +90,8 @@ describe("/admin/users authorization", () => {
     expect(container.textContent).not.toContain("USER DIRECTORY CONTENT");
   });
 
-  it("is advertised in the admin directory registry as master_admin only", () => {
-    const entry = ADMIN_DIRECTORY_ITEMS.find((i) => i.path === "/admin/users");
+  it("is advertised in the canonical admin registry as master_admin only", () => {
+    const entry = ADMIN_TOOLS.find((t) => t.path === "/admin/users");
     expect(entry).toBeTruthy();
     expect(entry!.requiredRole).toBe("master_admin");
     expect(entry!.dangerLevel).not.toBe("none");
