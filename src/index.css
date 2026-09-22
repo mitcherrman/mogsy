@@ -14914,6 +14914,20 @@ html.hub-commons-in-view .hextech-ambience-layer {
   max-width: 78ch;
 }
 
+/* ---- L11. The board follows the scope rail directly ----------------------
+   The "Each player's own record / Lane Study" tab above the board was removed
+   (owner-approved LIVE4 cleanup): the hero, the scope rail and every plate's
+   own lane heading already say what the board is. With the tab gone the
+   parchment sits straight under the scope / swap controls — no tab rule and
+   no body padding in between. Width, scale and the lane headings are
+   untouched. */
+.proplay-dossier .dossier-section--board {
+  margin-top: 0;
+}
+.proplay-dossier .dossier-controls + .dossier-section--board {
+  margin-top: 0.15rem;
+}
+
 /* ===== Mogzy's explanation scroll (Ranked Rules) ===========================
    A SELF-CONTAINED parchment surface, and deliberately not `.ranked-folio`.
 

@@ -328,11 +328,11 @@ export function TeamBoard({
           would invent a series score, so nothing renders unless the server
           says this is not head-to-head. */}
       {data.head_to_head === false ? (
-        <DossierSection
-          title="Lane Study"
-          eyebrow="Each player's own record"
-          testId="dossier-lane-study"
-        >
+        // LIVE4 cleanup: no titled tab above the board. The hero, the scope
+        // rail and each plate's own lane heading already say what this is,
+        // so the parchment starts directly under the scope / swap controls.
+        // The no-head-to-head guarantee is still printed as fine print below.
+        <section className="dossier-section dossier-section--board" data-testid="dossier-lane-study">
           <BoardSelectionProvider value={boardSelection}>
             <div className="dossier-lanes" data-testid="lane-board">
               {data.lanes.map((row) => (
@@ -370,9 +370,8 @@ export function TeamBoard({
               onChange(withMeeting(selection, next))
             }
           />
-          {/* The no-head-to-head guarantee is carried by the section's own
-              eyebrow and by this one line, not by a boxed disclaimer above ten
-              records. The server's sentence is still printed verbatim — it is
+          {/* The no-head-to-head guarantee is carried by this one line, not
+              by a boxed disclaimer above ten records. The server's sentence is still printed verbatim — it is
               the exact wording the semantics are guaranteed in. */}
           <FinePrint testId="dossier-side-by-side-note">{data.notes.side_by_side}</FinePrint>
           {/* Two separate server sentences, rendered separately. Joining them
@@ -380,7 +379,7 @@ export function TeamBoard({
               exact words the pool semantics are guaranteed in. */}
           <FinePrint testId="dossier-pool-fineprint">{data.notes.pool}</FinePrint>
           <FinePrint testId="dossier-pool-bound-fineprint">{data.notes.pool_bound}</FinePrint>
-        </DossierSection>
+        </section>
       ) : null}
 
       {/* STEP 4. The times these two teams played, and the meeting a reader
