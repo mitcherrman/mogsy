@@ -381,3 +381,95 @@ Deploy branches untouched.
   (drizzle deps), so `npm ci` refuses; pre-existing, not touched here.
 - dc2_*/dsa_* tables remain dormant for the Content Factory export and
   production audit scripts; drop once those are retired.
+
+## PRODUCTION MERGE (2026-09-22)
+Supersedes "Current state" above: both integration branches are now on the
+deploy branches and live. Normal merge commits only; **no force-push** in
+either repo; no tags.
+
+### Backend (League_Combat_Simulator)
+- Pre-merge `origin/master`: `cf5c1fd5` (moved past the handoff's `5c273fdd`
+  by 4 commits: `666281e5` GR1 composition v2 (Lab only), `1b3b83df` +
+  `0a8b4389` Pro Stats explorer + warm-up, `cf5c1fd5` PSE docs).
+- Late reconciliation: `origin/master` merged into `dcmod/integrate-daily`
+  as `9071f292` (from approved tip `76803e65`). Textual overlap only in
+  `api_server.py` (Pro Stats warm-up thread in `lifespan`) and `conftest.py`
+  (`PRO_STATS_WARMUP=0`); auto-merged, both sides kept. No semantic overlap:
+  composition v2 is not the default and Daily does not use `mastery/setup_state`.
+- Master merge: **`9ebe7310`** (`--no-ff` of `9071f292`; tree identical to
+  the tested integration tree). Pushed `cf5c1fd5..9ebe7310`.
+- Final gate on `9071f292` (env `RANKED_PUBLIC_ENABLED=1 RANKED_FORMATS_ENABLED=1
+  RANKED_RATELIMIT_ENABLED=0`): DCMOD A/B/C/D, `test_dcmod_integration_daily`,
+  `test_dcmod_retired_daily`, `test_ranked_availability`,
+  `test_ranked_public_queue_routes`, `test_lh24_points_only_scoring`,
+  `test_ranked_no_level_two`, `test_funnel1b3_gameplay_analytics`:
+  **241 passed**. Import smoke: `api_server` imports; OpenAPI lists
+  `/api/daily-run/*`, `/api/ranked/availability`, `/api/admin/analytics/health`.
+  Newly arrived master suites: `test_pro_play_explorer_search` passes;
+  `mastery/tests/test_gr1_slice_composition_v2.py` cannot run locally on
+  either tree (needs a populated `lol_calc.db`; `champion_abilities` absent /
+  DB unopenable on pristine master too) and its `test_the_footprint` is a
+  branch-scope git-diff check. Environmental, not a regression.
+- Railway: new build serving ~9 min after push. Production checks:
+  `/api/health` 200; `/api/ranked/availability` 200 (`open:false`,
+  `reason:not_configured`); `/api/daily-run/today` 401 `SESSION_REQUIRED`
+  unauthenticated (was 404 before deploy) and 200 with a guest session;
+  `/api/admin/analytics/health` 403 "Admin authorization required" (same as
+  before deploy); no 5xx over repeated polling. Startup completed (new routes
+  served). Railway logs NOT inspected (no CLI/log access in this pass):
+  migration lines, analytics-drainer start and drainer auth failures are
+  unverified from logs.
+
+### Frontend (mogsy)
+- Pre-merge `origin/main`: `adda486e` (moved past `2780b8bc`: GR1 docs
+  `20d6161d`/`57344a41`, Pro Play explorer `ba107e42`, `1f031926`,
+  `0c327987`, `51c8a7df`, `adda486e`). Zero file overlap.
+- Late reconciliation: `origin/main` merged into `dcmod/integrate-daily` as
+  `8e2104be` (from approved tip `0947a04c`), then `ea2f8da9` test-only:
+  `Quiz.hub.test.tsx` pins Ranked availability open for its PLAY-record test
+  (same pin as `Quiz.playScroll`; that test already failed at `0947a04c`
+  because closed Ranked correctly bypasses the popup).
+- Main merge: **`e51d9786`** (`--no-ff` of `ea2f8da9`; tree identical).
+  Pushed `adda486e..e51d9786` from a detached worktree (local `main` has 3
+  unrelated unpushed commits and was not touched).
+- Tests on `ea2f8da9`: Daily (lib run, page, boundary, entry), hosted /
+  noLevelTwo / forfeit QuizRankedMatch, Hub playCommit, Quiz.playScroll,
+  Quiz.hub, RankedPlayScroll, useRankedAvailability, activeMatch, pro-play
+  suites: all pass except `Quiz.hub` "keeps exactly one h1", which fails
+  identically on `origin/main`. `vite build` passes (`DailyRunPage` chunk).
+- Deploy: mogzy.lol served the new bundle (`index-C-P8Xdve.js`, contains
+  `DailyRunPage`) ~7 min after push.
+
+### Production smoke (mogzy.lol, guest, built-in browser)
+1. Hub loads (anonymous guest profile). PASS
+2. Ranked closed: no "Ranked available" badge; PLAY -> `/quiz/daily-challenge`
+   directly, no popup. PASS
+3. Guest began the Daily with no signup (session `is_anonymous: true`). PASS
+4. Hosted match: no Level-2 prompt, no "Ranked Duel", no "vs Bot", no
+   Forfeit control, points only. PASS
+5. Time Trial encountered (League Fundamentals): completed normally,
+   11 answered, `segments_complete`. Bank drain was not timed by hand. PASS
+6. Survival (Item Fundamentals): "MISTAKES LEFT" readout, ended
+   `strikes_exhausted` after 3 misses; no HP. PASS
+7. Review stage served 3 items; final "DAILY CHALLENGE COMPLETE" recap
+   (Standard, Time Trial, Survival "out of mistakes", Review). PASS
+8. Guest completion showed "Save today's Daily Challenge" -> Create Account
+   -> `/auth?mode=signup&returnTo=/quiz/daily-challenge` "Save your
+   progress ... on the same profile". Nothing submitted. PASS
+9. Ranked-open popup: not testable, production schedule is closed
+   (`not_configured`); schedule not altered.
+
+### Observations (recorded only, no change made)
+- Production Standard stage (Champion Fundamentals) ended
+  `segments_complete` after **4** rounds while the round ribbon showed 10
+  slots. Likely production content depth (prod `/api/quiz/sets` reports
+  Champion Basics `question_count: 0`); readiness item to confirm, not a
+  merge defect.
+- mogzy.lol logs several 403 resource loads in the console on the Hub
+  (pre-existing, not investigated).
+- `/api/live-esports/health` reports hot DB 676.8 MB, over `max_mb` 512
+  (unrelated to DCMOD).
+- Open follow-ups from above unchanged: Mastery/Matchup Review ref contract,
+  Combat calculations / Pro Play content-set entries, Invite entry with
+  Ranked closed, ability hotbar, dormant `dc2_*`/`dsa_*` tables,
+  package-lock drift, Railway log verification of migrations + drainer.
