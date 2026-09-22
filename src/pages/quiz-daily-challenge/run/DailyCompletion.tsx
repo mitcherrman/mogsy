@@ -11,6 +11,7 @@
  * grade this client invented. A finished day offers no replay: the backend
  * holds one official run per player per day.
  */
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
 import { isPerfect, reviewStage } from "@/lib/daily-challenge/run/contracts";
@@ -94,7 +95,9 @@ export function DailyCompletion({ run, saveRequired = false }: {
           Back to Leaguecraft
         </Link>
       </div>
-      {saveRequired && (
+      {/* Portaled: the beat section is its own stacking context, which would
+          trap the gate's fixed overlay beneath the recap. */}
+      {saveRequired && typeof document !== "undefined" && createPortal(
         <div data-testid="daily-save-gate">
           <QuizSignUpGate
             progress={null}
@@ -108,7 +111,8 @@ export function DailyCompletion({ run, saveRequired = false }: {
               "Your Ranked standing and history",
             ]}
           />
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   );
