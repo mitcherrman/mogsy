@@ -18,6 +18,12 @@ const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
 
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
 
+// Every test mounts the whole explorer (Radix popovers, cmdk, the search
+// combobox). Under a full-suite run the first popover in a file absorbs the
+// cold module-transform cost and brushed the 5 s default; the budget is set
+// here, the same way the other heavy-render suites do it.
+vi.setConfig({ testTimeout: 20_000 });
+
 vi.mock("@/hooks/useChampionAssets", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/useChampionAssets")>()),
   useChampionAssets: () => ({

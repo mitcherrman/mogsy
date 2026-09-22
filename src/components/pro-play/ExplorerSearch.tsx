@@ -64,6 +64,7 @@ export default function ExplorerSearch({
     // A type-ahead that retries three times with backoff leaves "Searching…"
     // on screen for seconds after the answer is already "unavailable".
     retry: 1,
+    retryDelay: 300,
     // Keep the last answer on screen while the next keystroke's is in
     // flight, so the list refines rather than flashing empty.
     placeholderData: (prev) => prev,

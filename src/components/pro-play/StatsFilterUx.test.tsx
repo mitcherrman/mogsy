@@ -29,6 +29,12 @@ import type {
   ProStatsCompetition,
 } from "@/lib/pro-play/explorerSearch";
 
+// Every test mounts the whole explorer (Radix popovers, cmdk, the search
+// combobox). Under a full-suite run the first popover in a file absorbs the
+// cold module-transform cost and brushed the 5 s default; the budget is set
+// here, the same way the other heavy-render suites do it.
+vi.setConfig({ testTimeout: 20_000 });
+
 vi.mock("@/hooks/useChampionAssets", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/useChampionAssets")>()),
   useChampionAssets: () => ({ data: { ok: true, champions: {} } }),
@@ -596,7 +602,10 @@ describe("universal search", () => {
     renderExplorer();
     await screen.findByText("Faker");
     typeSearch("Faker");
-    expect(await screen.findByTestId("explorer-search-error")).toBeInTheDocument();
+    // One retry (300 ms) after the debounce, then the error line.
+    expect(
+      await screen.findByTestId("explorer-search-error", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("stats-table")).toHaveAttribute("data-state", "ready");
   });
 });
