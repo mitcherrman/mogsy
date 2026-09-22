@@ -108,7 +108,6 @@ describe("ProPlayHub", () => {
         PRO_PLAY_LIVE_ROUTE,
         PRO_PLAY_MATCHUP_ROUTE,
         PRO_PLAY_QUIZ_ROUTE,
-        PRO_PLAY_SEARCH_ROUTE,
       ].sort(),
     );
   });
@@ -119,15 +118,25 @@ describe("ProPlayHub", () => {
     expect(link.getAttribute("href")).toBe(PRO_PLAY_MATCHUP_ROUTE);
   });
 
-  it("offers Search Pro Play, pointing at the search route", () => {
+  it("has no separate Search tile — the explorer's universal search replaces it", () => {
+    // PSE-UNIFY: the Stats Explorer on this page opens with one search over
+    // players, teams, champions, leagues and events. A second search entrance
+    // asked the same question twice. The ROUTE is kept (profile breadcrumbs,
+    // shared ?q= links, the explorer search's "All results") — only the tile
+    // is gone.
     renderHub();
-    const link = screen.getByRole("link", { name: /Search Pro Play/i });
-    expect(link.getAttribute("href")).toBe(PRO_PLAY_SEARCH_ROUTE);
+    expect(screen.queryByRole("link", { name: /Search Pro Play/i })).toBeNull();
+    expect(
+      screen.getAllByRole("link").some((a) => a.getAttribute("href") === PRO_PLAY_SEARCH_ROUTE),
+    ).toBe(false);
+    expect(PRO_PLAY_SEARCH_ROUTE).toBe("/lol/pro-play/search");
+    expect(screen.getByTestId("pro-stats-explorer")).toBeTruthy();
   });
 
   it("puts the research surfaces above the quiz, and Matchup Explorer first", () => {
     // The order is the product hierarchy: what is happening now, then the
-    // deep pre-match surface, then the two ways to browse, then the game.
+    // deep pre-match surface, then the graphs, then the game. (Search now
+    // lives in the Stats Explorer below the tiles.)
     // Matchup Explorer must never sit below the exploratory graphs again.
     renderHub();
     const order = screen
@@ -137,7 +146,6 @@ describe("ProPlayHub", () => {
     expect(order).toEqual([
       PRO_PLAY_LIVE_ROUTE,
       PRO_PLAY_MATCHUP_ROUTE,
-      PRO_PLAY_SEARCH_ROUTE,
       PRO_PLAY_GRAPHS_ROUTE,
       PRO_PLAY_QUIZ_ROUTE,
     ]);

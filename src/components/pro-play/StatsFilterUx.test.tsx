@@ -1,27 +1,39 @@
 /**
  * The Stats Explorer's filter controls and its first-load state.
  *
- * THREE OWNER-REPORTED PRODUCTION DEFECTS, one describe block each:
+ * OWNER-REPORTED PRODUCTION DEFECTS, one describe block each:
  *
- *   1. a slow first load looked like an empty table rather than a loading one;
- *   2. League was a native <select> over 323 leagues, so opening it covered
- *      the viewport and could not be searched;
- *   3. Player and Team looked like search boxes and produced no suggestions,
- *      so only someone who already knew the canonical spelling could use them.
+ *   1. a slow first load looked like an empty table rather than a loading one,
+ *      with filters reading "All" before they could be used;
+ *   2. League was a native <select> over 323 leagues keyed by formal names
+ *      ("LoL Champions Korea") nobody types;
+ *   3. finding a player, team, champion, league or event meant knowing which
+ *      control to open first (PSE-UNIFY: one universal search now).
  *
- * The load-bearing assertions are the ones about IDENTITY: a suggestion must
- * put the canonical `player_lp_page` / `team_key` into the URL, never the
- * display name. Two players in the real corpus share the handle "Doran".
+ * The load-bearing assertions are the ones about IDENTITY: a search result
+ * must put the canonical `player_lp_page` / `team_key` / `league_slug` into
+ * the URL, never the display name. Two players in the real corpus share the
+ * handle "Doran", and "LCK" is not a stored league.
  */
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ProStatsExplorer from "./ProStatsExplorer";
 import { rankOptions } from "./FilterCombobox";
 import type { ProStatsPlayerRow, ProStatsResponse } from "@/lib/pro-play/statsApi";
-import type { SearchResult } from "@/lib/pro-play/researchApi";
+import type {
+  ExplorerGroup,
+  ExplorerResult,
+  ProStatsCompetition,
+} from "@/lib/pro-play/explorerSearch";
+
+// Every test mounts the whole explorer (Radix popovers, cmdk, the search
+// combobox). Under a full-suite run the first popover in a file absorbs the
+// cold module-transform cost and brushed the 5 s default; the budget is set
+// here, the same way the other heavy-render suites do it.
+vi.setConfig({ testTimeout: 20_000 });
 
 vi.mock("@/hooks/useChampionAssets", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/useChampionAssets")>()),
@@ -30,10 +42,8 @@ vi.mock("@/hooks/useChampionAssets", async (importOriginal) => ({
 
 const getProStats = vi.fn();
 const getProStatsFilterOptions = vi.fn();
-// MOCK THE FUNCTION THE COMPONENT CALLS, not the one underneath it.
-// `searchEntitySuggestions` calls `searchEntities` through a module-internal
-// reference, so mocking the latter does nothing at all.
-const searchEntitySuggestions = vi.fn();
+// MOCK THE FUNCTION THE COMPONENT CALLS, not the fetch underneath it.
+const lookupExplorer = vi.fn();
 
 vi.mock("@/lib/pro-play/statsApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/pro-play/statsApi")>();
@@ -44,11 +54,11 @@ vi.mock("@/lib/pro-play/statsApi", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/pro-play/researchApi", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/pro-play/researchApi")>();
+vi.mock("@/lib/pro-play/explorerSearch", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/pro-play/explorerSearch")>();
   return {
     ...actual,
-    searchEntitySuggestions: (...a: unknown[]) => searchEntitySuggestions(...a),
+    lookupExplorer: (...a: unknown[]) => lookupExplorer(...a),
   };
 });
 
@@ -78,17 +88,53 @@ function response(rows: ProStatsPlayerRow[]): ProStatsResponse {
   };
 }
 
-function entity(kind: "player" | "team", key: string, display: string, extra: Partial<SearchResult> = {}): SearchResult {
+function result(
+  kind: ExplorerResult["kind"],
+  key: string,
+  label: string,
+  filters: ExplorerResult["filters"],
+  extra: Partial<ExplorerResult> = {},
+): ExplorerResult {
   return {
-    kind, key, display_name: display, handle: display, match_type: "handle",
-    matched_on: display, source: "registry_handle", in_registry: true,
-    games: 500, last_played_at: null, has_pro_play_facts: true, ...extra,
-  } as SearchResult;
+    kind, key, label, filters, match_type: "exact",
+    has_profile: kind === "player" || kind === "team" || kind === "champion",
+    ...extra,
+  };
 }
+
+const GROUP_LABEL: Record<ExplorerResult["kind"], string> = {
+  player: "Players", team: "Teams", champion: "Champions", league: "Leagues", event: "Events",
+};
+
+function lookupOf(...results: ExplorerResult[]) {
+  const groups: ExplorerGroup[] = [];
+  for (const r of results) {
+    let g = groups.find((x) => x.kind === r.kind);
+    if (!g) {
+      g = { kind: r.kind, label: GROUP_LABEL[r.kind], results: [] };
+      groups.push(g);
+    }
+    g.results.push(r);
+  }
+  return { schema_version: 1, query: "", groups };
+}
+
+const COMPETITIONS: ProStatsCompetition[] = [
+  { slug: "Tencent LoL Pro League", code: "LPL", name: "Tencent LoL Pro League", region: "China", kind: "league", tier: 0, note: null, curated: true, games: 9000, first_year: 2013, last_year: 2026 },
+  { slug: "LoL Champions Korea", code: "LCK", name: "LoL Champions Korea", region: "Korea", kind: "league", tier: 0, note: null, curated: true, games: 8000, first_year: 2015, last_year: 2026 },
+  { slug: "World Championship", code: "Worlds", name: "World Championship", region: "International", kind: "event", tier: 0, note: null, curated: true, games: 1200, first_year: 2011, last_year: 2025 },
+];
 
 let lastSearch = "";
 function LocationProbe() {
   lastSearch = useLocation().search;
+  return null;
+}
+
+let navigateTo: (delta: number) => void = () => {};
+function HistoryProbe() {
+  const navigate = useNavigate();
+  navigateTo = (delta) => navigate(delta);
   return null;
 }
 
@@ -98,7 +144,11 @@ function renderExplorer(entry = "/lol/pro-play") {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
-          <Route path="/lol/pro-play" element={<><ProStatsExplorer /><LocationProbe /></>} />
+          <Route
+            path="/lol/pro-play"
+            element={<><ProStatsExplorer /><LocationProbe /><HistoryProbe /></>}
+          />
+          <Route path="/lol/pro-play/player/:key" element={<div>player profile page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -111,7 +161,7 @@ function renderExplorer(entry = "/lol/pro-play") {
  *  existing explorer suite drives the same controls this way. Radix opens the
  *  popover on pointerdown, so a bare click() never reaches it. */
 function openTrigger(name: string) {
-  const trigger = screen.getByRole("combobox", { name: new RegExp(name, "i") });
+  const trigger = screen.getByRole("combobox", { name });
   fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
   fireEvent.click(trigger);
 }
@@ -141,14 +191,16 @@ beforeEach(() => {
   lastSearch = "";
   getProStats.mockReset();
   getProStatsFilterOptions.mockReset();
-  searchEntitySuggestions.mockReset();
+  lookupExplorer.mockReset();
   getProStats.mockResolvedValue(response([ROW]));
   getProStatsFilterOptions.mockResolvedValue({
     schema_version: 1, leagues: LEAGUES, patches: ["26.13"],
     champions: ["Ahri"], roles: ["Mid"], years: [2026, 2025],
   });
-  searchEntitySuggestions.mockResolvedValue([]);
+  lookupExplorer.mockResolvedValue(lookupOf());
 });
+
+const LEAGUE = "League / Event";
 
 afterEach(cleanup);
 
@@ -172,7 +224,7 @@ describe("first load", () => {
   it("announces loading to assistive technology", async () => {
     getProStats.mockReturnValue(new Promise(() => {}));
     renderExplorer();
-    expect(await screen.findByRole("status")).toHaveTextContent(/Loading players/i);
+    expect(await screen.findByRole("status")).toHaveTextContent(/Loading player statistics/i);
   });
 
   it("shows the real empty state only once the request has completed", async () => {
@@ -188,7 +240,7 @@ describe("first load", () => {
     expect(await screen.findByText("Faker")).toBeInTheDocument();
     let release: (v: unknown) => void = () => {};
     getProStats.mockReturnValue(new Promise((r) => { release = r; }));
-    await openFilter("League");
+    await openFilter(LEAGUE);
     pick(within(menu()).getByRole("option", { name: /World Championship/ }));
     // Mid-refetch: the old row is still on screen and no empty state appeared.
     expect(screen.getByText("Faker")).toBeInTheDocument();
@@ -228,15 +280,15 @@ describe("league combobox", () => {
   it("opens a searchable menu rather than a native select", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("League");
-    expect(within(menu()).getByPlaceholderText(/Search leagues/i)).toBeInTheDocument();
+    await openFilter(LEAGUE);
+    expect(within(menu()).getByPlaceholderText(/LCK, LPL, Worlds/i)).toBeInTheDocument();
     expect(optionTexts()).toContain("World Championship");
   });
 
   it("bounds the option list so it can scroll internally", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("League");
+    await openFilter(LEAGUE);
     // The cap is what stops 323 leagues covering the viewport.
     const list = menu().querySelector("[cmdk-list]");
     expect(list?.className).toMatch(/max-h-/);
@@ -245,8 +297,8 @@ describe("league combobox", () => {
   it("filters live as the user types, without Enter", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("League");
-    typeInto(within(menu()).getByPlaceholderText(/Search leagues/i), "wo");
+    await openFilter(LEAGUE);
+    typeInto(within(menu()).getByPlaceholderText(/LCK, LPL, Worlds/i), "wo");
     await waitFor(() => expect(optionTexts()).not.toContain("Arabian League"));
     expect(optionTexts()[1]).toBe("World Championship");
   });
@@ -254,7 +306,7 @@ describe("league combobox", () => {
   it("selecting a league writes it to the URL and closes the menu", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("League");
+    await openFilter(LEAGUE);
     pick(within(menu()).getByRole("option", { name: /World Championship/ }));
     await waitFor(() => expect(lastSearch).toContain("league=World+Championship"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -263,7 +315,7 @@ describe("league combobox", () => {
   it("offers All, which clears the league", async () => {
     renderExplorer("/lol/pro-play?league=World%20Championship");
     await screen.findByText("Faker");
-    await openFilter("League");
+    await openFilter(LEAGUE);
     pick(within(menu()).getByRole("option", { name: /^All$/ }));
     await waitFor(() => expect(lastSearch).not.toContain("league="));
   });
@@ -271,8 +323,8 @@ describe("league combobox", () => {
   it("is keyboard navigable", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("League");
-    const input = within(menu()).getByPlaceholderText(/Search leagues/i);
+    await openFilter(LEAGUE);
+    const input = within(menu()).getByPlaceholderText(/LCK, LPL, Worlds/i);
     typeInto(input, "wo");
     await waitFor(() => expect(optionTexts()).toContain("World Championship"));
     fireEvent.keyDown(input, { key: "ArrowDown" });
@@ -284,180 +336,409 @@ describe("league combobox", () => {
     renderExplorer("/lol/pro-play?league=World%20Championship");
     await screen.findByText("Faker");
     expect(
-      screen.getByRole("combobox", { name: /League/i }),
+      screen.getByRole("combobox", { name: LEAGUE }),
     ).toHaveTextContent("World Championship");
   });
 });
 
 // ---------------------------------------------------------------------------
-// 3. Player / Team autocomplete
+// 3. Loading model — never "ready" before it is
 // ---------------------------------------------------------------------------
 
-describe("entity autocomplete", () => {
-  it("asks the canonical entity search, scoped to the kind", async () => {
-    searchEntitySuggestions.mockResolvedValue([entity("player", "Doran (Choi Hyeon-joon)", "Doran", { primary_role: "Top", declared_current_team: "T1", games: 893 })]);
+const searchBox = () => screen.getByTestId("explorer-search-input");
+
+function typeSearch(text: string) {
+  fireEvent.focus(searchBox());
+  fireEvent.change(searchBox(), { target: { value: text } });
+}
+
+async function searchAndPick(text: string, label: RegExp) {
+  typeSearch(text);
+  const panel = await screen.findByTestId("explorer-search-panel");
+  const option = await within(panel).findByRole("option", { name: label });
+  fireEvent.click(option);
+}
+
+describe("loading model", () => {
+  it("says Loading… on filters whose options have not arrived, and disables them", async () => {
+    getProStatsFilterOptions.mockReturnValue(new Promise(() => {}));
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("Player");
-    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "Do");
-    await waitFor(() => expect(searchEntitySuggestions).toHaveBeenCalled());
-    expect(searchEntitySuggestions.mock.calls.at(-1)?.[0]).toBe("player");
-    expect(searchEntitySuggestions.mock.calls.at(-1)?.[1]).toBe("Do");
+    for (const label of ["Patch", "Role"]) {
+      const select = screen.getByLabelText(label) as HTMLSelectElement;
+      expect(select).toBeDisabled();
+      expect(select.options[0].textContent).toBe("Loading…");
+      expect(within(select).queryByText("All")).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole("combobox", { name: LEAGUE })).toHaveTextContent("Loading…");
+    // Min. games has a fixed list: usable at once.
+    expect(screen.getByLabelText("Min. games")).not.toBeDisabled();
   });
 
-  it("typing 'Do' offers Doran, with a line that disambiguates the two of them", async () => {
-    searchEntitySuggestions.mockResolvedValue([entity("player", "Doran (Choi Hyeon-joon)", "Doran", { primary_role: "Top", declared_current_team: "T1", games: 893 })]);
-    renderExplorer();
+  it("shows a value already in the URL while its option list loads", async () => {
+    getProStatsFilterOptions.mockReturnValue(new Promise(() => {}));
+    renderExplorer("/lol/pro-play?patch=26.13");
     await screen.findByText("Faker");
-    await openFilter("Player");
-    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "Do");
-    expect(await within(menu()).findByText("Doran")).toBeInTheDocument();
-    expect(within(menu()).getByText(/Top · T1 · 893 games/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Patch")).toHaveValue("26.13");
   });
 
-  it("selecting writes the CANONICAL key, not the display name", async () => {
-    searchEntitySuggestions.mockResolvedValue([entity("player", "Doran (Choi Hyeon-joon)", "Doran")]);
+  it("the Year control never says All while the table is still loading", async () => {
+    getProStats.mockReturnValue(new Promise(() => {}));
+    getProStatsFilterOptions.mockReturnValue(new Promise(() => {}));
+    renderExplorer();
+    const year = (await screen.findByLabelText("Year")) as HTMLSelectElement;
+    expect(year.options[year.selectedIndex].textContent).toBe("Loading…");
+  });
+
+  it("the filter controls come alive once options arrive", async () => {
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("Player");
-    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "Do");
-    await within(menu()).findByText("Doran");
-    pick(within(menu()).getByRole("option", { name: /Doran/ }));
-    // THE ASSERTION THIS FILE EXISTS FOR: "Doran" alone is ambiguous and does
-    // not match anything in the stats corpus; the lp_page does.
-    // Parsed, not string-matched: URLSearchParams encodes a space as "+",
-    // so a decodeURIComponent check would compare against the wrong thing.
+    await waitFor(() => expect(screen.getByLabelText("Patch")).not.toBeDisabled());
+    expect((screen.getByLabelText("Patch") as HTMLSelectElement).options[0].textContent).toBe("All");
+  });
+
+  it("marks the table loading, then ready, then empty — never confusing them", async () => {
+    let release: (v: unknown) => void = () => {};
+    getProStats.mockReturnValueOnce(new Promise((r) => { release = r; }));
+    renderExplorer();
+    const table = await screen.findByTestId("stats-table");
+    expect(table).toHaveAttribute("data-state", "loading");
+    expect(screen.getByTestId("stats-table-loading")).toHaveTextContent(/Loading player statistics/i);
+    expect(screen.queryByTestId("stats-table-empty")).not.toBeInTheDocument();
+    release(response([ROW]));
+    await waitFor(() => expect(table).toHaveAttribute("data-state", "ready"));
+  });
+
+  it("zero results is its own state, with a way out", async () => {
+    getProStats.mockResolvedValue(response([]));
+    renderExplorer("/lol/pro-play?patch=26.13");
+    const empty = await screen.findByTestId("stats-table-empty");
+    expect(empty).toHaveTextContent(/No players match these filters/);
+    expect(empty).toHaveTextContent(/The data loaded/);
+    expect(screen.getByTestId("stats-table")).toHaveAttribute("data-state", "empty");
+    fireEvent.click(within(empty).getByRole("button", { name: /Clear all filters/i }));
+    await waitFor(() => expect(lastSearch).not.toContain("patch="));
+  });
+
+  it("an error is its own state, distinct from loading and from empty", async () => {
+    getProStats.mockRejectedValue(new Error("Statistics are unavailable right now."));
+    renderExplorer();
+    const err = await screen.findByTestId("stats-table-error");
+    expect(err).toHaveTextContent(/Couldn’t load player statistics/);
+    expect(screen.getByTestId("stats-table")).toHaveAttribute("data-state", "error");
+    expect(screen.queryByTestId("stats-table-empty")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("stats-skeleton-row")).not.toBeInTheDocument();
+    expect(within(err).getByRole("button", { name: /Try again/i })).toBeInTheDocument();
+  });
+
+  it("marks stale rows as updating while a new filter loads", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    getProStats.mockReturnValue(new Promise(() => {}));
+    fireEvent.change(screen.getByLabelText("Min. games"), { target: { value: "10" } });
+    expect(await screen.findByTestId("stats-table-updating")).toBeInTheDocument();
+    expect(screen.getByTestId("stats-table")).toHaveAttribute("data-state", "updating");
+    expect(screen.getByText("Faker")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Universal search
+// ---------------------------------------------------------------------------
+
+describe("universal search", () => {
+  it("is usable before the statistics table has answered", async () => {
+    getProStats.mockReturnValue(new Promise(() => {}));
+    getProStatsFilterOptions.mockReturnValue(new Promise(() => {}));
+    lookupExplorer.mockResolvedValue(
+      lookupOf(result("player", "Faker", "Faker", { player: "Faker" }, { hint: "Mid · T1 · 1,400 games" })),
+    );
+    renderExplorer();
+    expect(screen.getByTestId("stats-table")).toHaveAttribute("data-state", "loading");
+    expect(searchBox()).not.toBeDisabled();
+    await searchAndPick("Faker", /Faker/);
+    await waitFor(() => expect(new URLSearchParams(lastSearch).get("player")).toBe("Faker"));
+  });
+
+  it("is the page's only search box, with the universal placeholder", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    expect(screen.getAllByTestId("explorer-search-input")).toHaveLength(1);
+    expect(searchBox()).toHaveAttribute(
+      "placeholder",
+      "Search players, teams, champions, leagues, events…",
+    );
+    // The old per-field entity pickers are gone.
+    expect(screen.queryByRole("combobox", { name: "Player" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Team" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Champion")).not.toBeInTheDocument();
+  });
+
+  it("asks nothing for an empty box", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    fireEvent.focus(searchBox());
+    await new Promise((r) => setTimeout(r, 200));
+    expect(lookupExplorer).not.toHaveBeenCalled();
+  });
+
+  it("groups results by kind and labels each group", async () => {
+    lookupExplorer.mockResolvedValue(
+      lookupOf(
+        result("league", "LoL Champions Korea", "LCK", { league: "LoL Champions Korea" }, { hint: "Korea · LoL Champions Korea · 2015–2026" }),
+        result("player", "Faker", "Faker", { player: "Faker" }),
+      ),
+    );
+    renderExplorer();
+    await screen.findByText("Faker");
+    typeSearch("LCK");
+    const panel = await screen.findByTestId("explorer-search-panel");
+    expect(await within(panel).findByText("Leagues")).toBeInTheDocument();
+    expect(within(panel).getByText("Players")).toBeInTheDocument();
+    expect(within(panel).getByText(/Korea · LoL Champions Korea/)).toBeInTheDocument();
+    expect(lookupExplorer.mock.calls.at(-1)?.[0]).toBe("LCK");
+  });
+
+  it.each([
+    ["Faker", result("player", "Faker", "Faker", { player: "Faker" }), "player", "Faker"],
+    ["Gen.G", result("team", "Gen.G", "Gen.G", { team: "Gen.G" }), "team", "Gen.G"],
+    ["Ahri", result("champion", "Ahri", "Ahri", { champion: "Ahri" }), "champion", "Ahri"],
+    ["LCK", result("league", "LoL Champions Korea", "LCK", { league: "LoL Champions Korea" }), "league", "LoL Champions Korea"],
+    ["LPL", result("league", "Tencent LoL Pro League", "LPL", { league: "Tencent LoL Pro League" }), "league", "Tencent LoL Pro League"],
+    ["Worlds", result("event", "World Championship", "Worlds", { league: "World Championship" }), "league", "World Championship"],
+  ])("%s applies its canonical filter", async (query, hit, param, value) => {
+    lookupExplorer.mockResolvedValue(lookupOf(hit));
+    renderExplorer();
+    await screen.findByText("Faker");
+    await searchAndPick(query, new RegExp(hit.label.replace(".", "\\.")));
+    await waitFor(() => expect(new URLSearchParams(lastSearch).get(param)).toBe(value));
+    await waitFor(() =>
+      expect(getProStats.mock.calls.at(-1)?.[1]).toMatchObject({ [param]: value }),
+    );
+    expect(new URLSearchParams(lastSearch).get("page")).toBeNull();
+  });
+
+  it("an event edition applies the event AND its year", async () => {
+    lookupExplorer.mockResolvedValue(
+      lookupOf(result("event", "World Championship|2025", "Worlds 2025", { league: "World Championship", year: 2025 })),
+    );
+    getProStatsFilterOptions.mockResolvedValue({
+      schema_version: 1, leagues: LEAGUES, patches: [], champions: [], roles: [], years: [2026, 2025],
+      competitions: COMPETITIONS,
+    });
+    renderExplorer();
+    await screen.findByText("Faker");
+    await searchAndPick("Worlds 2025", /Worlds 2025/);
+    await waitFor(() => {
+      const params = new URLSearchParams(lastSearch);
+      expect(params.get("league")).toBe("World Championship");
+      expect(params.get("year")).toBe("2025");
+    });
+    expect(await screen.findByTestId("active-filter-league")).toHaveTextContent(/Event\s*Worlds/);
+    expect(screen.getByTestId("active-filter-year")).toHaveTextContent(/Year\s*2025/);
+  });
+
+  it("writes the CANONICAL key and shows the friendly name on the chip", async () => {
+    lookupExplorer.mockResolvedValue(
+      lookupOf(result("player", "Doran (Choi Hyeon-joon)", "Doran", { player: "Doran (Choi Hyeon-joon)" }, { hint: "Top · T1 · 893 games" })),
+    );
+    renderExplorer();
+    await screen.findByText("Faker");
+    await searchAndPick("Do", /Doran/);
     await waitFor(() =>
       expect(new URLSearchParams(lastSearch).get("player")).toBe("Doran (Choi Hyeon-joon)"),
     );
-    expect(new URLSearchParams(lastSearch).get("player")).not.toBe("Doran");
+    expect(screen.getByTestId("active-filter-player")).toHaveTextContent(/Player\s*Doran/);
   });
 
-  it("shows the friendly name on the control once selected", async () => {
-    searchEntitySuggestions.mockResolvedValue([entity("player", "Doran (Choi Hyeon-joon)", "Doran")]);
+  it("is keyboard operable: arrows move, Enter applies", async () => {
+    lookupExplorer.mockResolvedValue(
+      lookupOf(
+        result("player", "Faker", "Faker", { player: "Faker" }),
+        result("player", "Fate (Yoo Su-hyeok)", "Fate", { player: "Fate (Yoo Su-hyeok)" }),
+      ),
+    );
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("Player");
-    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "Do");
-    await within(menu()).findByText("Doran");
-    pick(within(menu()).getByRole("option", { name: /Doran/ }));
+    typeSearch("Fa");
+    await screen.findByRole("option", { name: /Fate/ });
+    fireEvent.keyDown(searchBox(), { key: "ArrowDown" });
+    fireEvent.keyDown(searchBox(), { key: "Enter" });
     await waitFor(() =>
-      expect(screen.getByRole("combobox", { name: /Player/i })).toHaveTextContent("Doran"),
+      expect(new URLSearchParams(lastSearch).get("player")).toBe("Fate (Yoo Su-hyeok)"),
     );
   });
 
-  it("suggests from ONE character — the owner's D -> Doran", async () => {
-    searchEntitySuggestions.mockResolvedValue([
-      entity("player", "Deft", "Deft", { games: 900 }),
-      entity("player", "Doran (Choi Hyeon-joon)", "Doran", { games: 893 }),
+  it("offers each entity's profile without forcing navigation", async () => {
+    lookupExplorer.mockResolvedValue(
+      lookupOf(
+        result("player", "Faker", "Faker", { player: "Faker" }),
+        result("league", "LoL Champions Korea", "LCK", { league: "LoL Champions Korea" }, { has_profile: false }),
+      ),
+    );
+    renderExplorer();
+    await screen.findByText("Faker");
+    typeSearch("F");
+    const panel = await screen.findByTestId("explorer-search-panel");
+    await within(panel).findByRole("option", { name: /Faker/ });
+    const profiles = within(panel).getAllByTestId("explorer-search-profile");
+    expect(profiles).toHaveLength(1);
+    expect(profiles[0]).toHaveAttribute("href", "/lol/pro-play/player/Faker");
+    expect(within(panel).getByTestId("explorer-search-all")).toHaveAttribute(
+      "href",
+      "/lol/pro-play/search?q=F",
+    );
+  });
+
+  it("says so when nothing matches", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    typeSearch("zzqq");
+    expect(await screen.findByTestId("explorer-search-empty")).toHaveTextContent(/zzqq/);
+  });
+
+  it("says so when search is down, and the table is unaffected", async () => {
+    lookupExplorer.mockRejectedValue(new Error("down"));
+    renderExplorer();
+    await screen.findByText("Faker");
+    typeSearch("Faker");
+    // One retry (300 ms) after the debounce, then the error line.
+    expect(
+      await screen.findByTestId("explorer-search-error", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("stats-table")).toHaveAttribute("data-state", "ready");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Active filters, URL, history
+// ---------------------------------------------------------------------------
+
+describe("active filters", () => {
+  beforeEach(() => {
+    getProStatsFilterOptions.mockResolvedValue({
+      schema_version: 1, leagues: LEAGUES, patches: ["26.13"],
+      champions: ["Ahri"], roles: ["Top", "Jungle", "Mid", "Bot", "Support"], years: [2026, 2025],
+      competitions: COMPETITIONS,
+    });
+  });
+
+  it("shows every filter in the URL as a chip, leagues by their common name", async () => {
+    renderExplorer("/lol/pro-play?league=LoL%20Champions%20Korea&year=2026&player=Faker&role=Bot&min_games=10");
+    await screen.findByText("Faker", { selector: "a[data-testid='player-profile-link']" });
+    expect(await screen.findByTestId("active-filter-league")).toHaveTextContent(/League\s*LCK/);
+    expect(screen.getByTestId("active-filter-year")).toHaveTextContent(/Year\s*2026/);
+    expect(screen.getByTestId("active-filter-player")).toHaveTextContent(/Player\s*Faker/);
+    expect(screen.getByTestId("active-filter-role")).toHaveTextContent(/Role\s*Bot \(ADC\)/);
+    expect(screen.getByTestId("active-filter-min_games")).toHaveTextContent(/10\+/);
+    // Refresh-safe: the request carries the canonical values.
+    expect(getProStats.mock.calls.at(-1)?.[1]).toMatchObject({
+      league: "LoL Champions Korea", year: 2026, player: "Faker", role: "Bot", minGames: 10,
+    });
+  });
+
+  it("the defaulted season is visible but not a removable filter", async () => {
+    renderExplorer();
+    expect(await screen.findByTestId("active-filter-default-year")).toHaveTextContent(/Latest season · 2026/);
+    expect(screen.queryByTestId("active-filter-year")).not.toBeInTheDocument();
+  });
+
+  it("removing a chip removes exactly that filter", async () => {
+    renderExplorer("/lol/pro-play?league=LoL%20Champions%20Korea&player=Faker");
+    const chip = await screen.findByTestId("active-filter-player");
+    fireEvent.click(within(chip).getByRole("button", { name: /Remove Player Faker/ }));
+    await waitFor(() => {
+      const params = new URLSearchParams(lastSearch);
+      expect(params.get("player")).toBeNull();
+      expect(params.get("league")).toBe("LoL Champions Korea");
+    });
+  });
+
+  it("Clear all removes every filter and keeps the view", async () => {
+    renderExplorer("/lol/pro-play?view=teams&league=LoL%20Champions%20Korea&team=T1");
+    await screen.findByTestId("active-filter-team");
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    await waitFor(() => expect(lastSearch).toBe("?view=teams"));
+  });
+
+  it("an entity chip links to that entity's profile", async () => {
+    renderExplorer("/lol/pro-play?player=Faker");
+    const chip = await screen.findByTestId("active-filter-player");
+    expect(within(chip).getByRole("link", { name: "Faker" })).toHaveAttribute(
+      "href",
+      "/lol/pro-play/player/Faker",
+    );
+  });
+
+  it("Back and Forward walk the search-applied filters", async () => {
+    lookupExplorer.mockImplementation(async (q: string) =>
+      q.startsWith("F")
+        ? lookupOf(result("player", "Faker", "Faker", { player: "Faker" }))
+        : lookupOf(result("league", "LoL Champions Korea", "LCK", { league: "LoL Champions Korea" })),
+    );
+    renderExplorer();
+    await screen.findByText("Faker");
+    await searchAndPick("Faker", /Faker/);
+    await waitFor(() => expect(lastSearch).toContain("player=Faker"));
+    await searchAndPick("LCK", /LCK/);
+    await waitFor(() => expect(lastSearch).toContain("league="));
+    act(() => navigateTo(-1));
+    await waitFor(() => {
+      expect(lastSearch).toContain("player=Faker");
+      expect(lastSearch).not.toContain("league=");
+    });
+    act(() => navigateTo(1));
+    await waitFor(() => expect(lastSearch).toContain("league="));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. One View selector, League-native names
+// ---------------------------------------------------------------------------
+
+describe("view and naming", () => {
+  it("has exactly one Players / Teams / Champions control", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    const tablists = screen.getAllByRole("tablist");
+    expect(tablists).toHaveLength(1);
+    expect(within(tablists[0]).getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      "Players",
+      "Teams",
+      "Champions",
     ]);
+    expect(screen.getByTestId("stats-view-selector")).toBe(tablists[0]);
+  });
+
+  it("lists leagues by the name a reader uses, and still matches the official one", async () => {
+    getProStatsFilterOptions.mockResolvedValue({
+      schema_version: 1, leagues: LEAGUES, patches: [], champions: [], roles: [], years: [2026],
+      competitions: COMPETITIONS,
+    });
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("Player");
-    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "D");
-    // The old two-character floor showed "Keep typing" here. It must not.
-    expect(await within(menu()).findByText("Doran")).toBeInTheDocument();
-    expect(within(menu()).queryByText(/Keep typing/i)).not.toBeInTheDocument();
+    await openFilter(LEAGUE);
+    expect(within(menu()).getByRole("option", { name: /^LCK/ })).toHaveTextContent(
+      /Korea · LoL Champions Korea · 2015–2026/,
+    );
+    typeInto(within(menu()).getByPlaceholderText(/LCK, LPL, Worlds/i), "champions korea");
+    await waitFor(() => expect(optionTexts().some((t) => t.startsWith("LCK"))).toBe(true));
+    pick(within(menu()).getByRole("option", { name: /^LCK/ }));
     await waitFor(() =>
-      expect(searchEntitySuggestions.mock.calls.at(-1)?.[1]).toBe("D"),
+      expect(new URLSearchParams(lastSearch).get("league")).toBe("LoL Champions Korea"),
     );
   });
 
-  it("suggests Faker from 'F' and Gen.G from 'G'", async () => {
-    searchEntitySuggestions.mockResolvedValue([entity("player", "Faker", "Faker")]);
+  it("labels Bot as Bot (ADC) and still sends Bot", async () => {
+    getProStatsFilterOptions.mockResolvedValue({
+      schema_version: 1, leagues: [], patches: [], champions: [],
+      roles: ["Top", "Jungle", "Mid", "Bot", "Support"], years: [2026],
+    });
     renderExplorer();
     await screen.findByText("Faker");
-    await openFilter("Player");
-    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "F");
-    expect(await within(menu()).findByRole("option", { name: /Faker/ })).toBeInTheDocument();
-  });
-
-  it("caps the request so one character cannot pull a directory page", async () => {
-    searchEntitySuggestions.mockResolvedValue([entity("team", "Gen.G", "Gen.G")]);
-    renderExplorer();
-    await screen.findByText("Faker");
-    await openFilter("Team");
-    typeInto(within(menu()).getByPlaceholderText(/Search team/i), "G");
-    await waitFor(() => expect(searchEntitySuggestions).toHaveBeenCalled());
-    const [kind, q, limit] = searchEntitySuggestions.mock.calls.at(-1)!;
-    expect(kind).toBe("team");
-    expect(q).toBe("G");
-    expect(limit).toBeLessThanOrEqual(20);
-  });
-
-  it("still asks nothing for an empty box", async () => {
-    renderExplorer();
-    await screen.findByText("Faker");
-    await openFilter("Player");
-    expect(within(menu()).getByText(/Type to search players/i)).toBeInTheDocument();
-    expect(searchEntitySuggestions).not.toHaveBeenCalled();
-  });
-
-  it("reports a genuine empty result", async () => {
-    renderExplorer();
-    await screen.findByText("Faker");
-    await openFilter("Player");
-    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "zzqq");
-    expect(await within(menu()).findByText(/No players found/i)).toBeInTheDocument();
-  });
-
-  it("a slow early keystroke cannot overwrite a later one", async () => {
-    let releaseSlow: (v: unknown) => void = () => {};
-    searchEntitySuggestions
-      .mockReturnValueOnce(new Promise((r) => { releaseSlow = r; }))
-      .mockResolvedValue([entity("player", "Faker", "Faker")]);
-    renderExplorer();
-    await screen.findByText("Faker");
-    await openFilter("Player");
-    const input = within(menu()).getByPlaceholderText(/Search player/i);
-    typeInto(input, "Do");
-    // Let the first query actually LEAVE. Without this the debounce cancels
-    // it and only one request is ever made, so there is no stale response to
-    // race and the test proves nothing.
-    await waitFor(() => expect(searchEntitySuggestions).toHaveBeenCalledTimes(1));
-    typeInto(input, "Fa");
-    await waitFor(() => expect(searchEntitySuggestions).toHaveBeenCalledTimes(2));
-    await within(menu()).findByRole("option", { name: /Faker/ });
-    // The stale response lands last and must be ignored.
-    releaseSlow([entity("player", "Doran (Choi Hyeon-joon)", "Doran")]);
-    await waitFor(() => expect(within(menu()).queryByText("Doran")).not.toBeInTheDocument());
-    expect(within(menu()).getByRole("option", { name: /Faker/ })).toBeInTheDocument();
-  });
-
-  it("teams use team_key and offer Gen.G for 'Gen'", async () => {
-    searchEntitySuggestions.mockResolvedValue([entity("team", "Gen.G", "Gen.G", { region: "Korea", games: 1035 })]);
-    renderExplorer();
-    await screen.findByText("Faker");
-    await openFilter("Team");
-    typeInto(within(menu()).getByPlaceholderText(/Search team/i), "Gen");
-    await within(menu()).findByText("Gen.G");
-    pick(within(menu()).getByRole("option", { name: /Gen\.G/ }));
-    await waitFor(() => expect(lastSearch).toContain("team=Gen.G"));
-    expect(searchEntitySuggestions.mock.calls.at(-1)?.[0]).toBe("team");
-  });
-
-  it("restores a selected player from the URL, showing the canonical key", async () => {
-    renderExplorer("/lol/pro-play?player=Doran%20(Choi%20Hyeon-joon)");
-    await screen.findByText("Faker");
-    // Cold URL: no remembered label, so the key itself is shown. It is a true
-    // name for the entity and unambiguous, which a bare "Doran" would not be.
-    expect(screen.getByRole("combobox", { name: /Player/i })).toHaveTextContent(
-      "Doran (Choi Hyeon-joon)",
-    );
-    expect(getProStats.mock.calls[0]?.[1]).toMatchObject({ player: "Doran (Choi Hyeon-joon)" });
-  });
-
-  it("restores a selected team from the URL", async () => {
-    renderExplorer("/lol/pro-play?team=Gen.G");
-    await screen.findByText("Faker");
-    expect(screen.getByRole("combobox", { name: /Team/i })).toHaveTextContent("Gen.G");
-    expect(getProStats.mock.calls[0]?.[1]).toMatchObject({ team: "Gen.G" });
-  });
-
-  it("clearing a selection removes it from the URL", async () => {
-    renderExplorer("/lol/pro-play?team=Gen.G");
-    await screen.findByText("Faker");
-    fireEvent.click(screen.getByRole("button", { name: /^Clear Team$/ }));
-    await waitFor(() => expect(lastSearch).not.toContain("team="));
+    const role = await screen.findByLabelText("Role");
+    await waitFor(() => expect(within(role).getByText("Bot (ADC)")).toBeInTheDocument());
+    fireEvent.change(role, { target: { value: "Bot" } });
+    await waitFor(() => expect(new URLSearchParams(lastSearch).get("role")).toBe("Bot"));
   });
 });

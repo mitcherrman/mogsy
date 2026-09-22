@@ -52,6 +52,9 @@ export type ComboOption = {
   label: string;
   /** Secondary line — role, team, game count. Never used for matching. */
   hint?: string;
+  /** Extra spellings that MATCH but are not shown as the label — a league's
+   *  official name behind its code ("LoL Champions Korea" behind "LCK"). */
+  keywords?: string[];
 };
 
 /**
@@ -69,13 +72,22 @@ export function rankOptions(options: ComboOption[], query: string): ComboOption[
   if (!q) return options;
   const prefix: ComboOption[] = [];
   const contains: ComboOption[] = [];
-  for (const option of options) {
-    const label = option.label.toLowerCase();
-    if (label.startsWith(q)) prefix.push(option);
-    else if (label.includes(q)) contains.push(option);
+  const tier = (text: string): 0 | 1 | 2 => {
+    const t = text.toLowerCase();
+    if (t.startsWith(q)) return 0;
     // A word-start match reads as a prefix to a human ("champ" -> "World
     // Championship"), so it is promoted above a mid-word substring.
-    else if (label.split(/[\s.\-/]+/).some((w) => w.startsWith(q))) prefix.push(option);
+    if (t.split(/[\s.\-/]+/).some((w) => w.startsWith(q))) return 0;
+    if (t.includes(q)) return 1;
+    return 2;
+  };
+  for (const option of options) {
+    const best = Math.min(
+      tier(option.label),
+      ...(option.keywords ?? []).map(tier),
+    );
+    if (best === 0) prefix.push(option);
+    else if (best === 1) contains.push(option);
   }
   return [...prefix, ...contains];
 }
@@ -303,7 +315,9 @@ export function FilterCombobox({
           anchorRef={anchorRef}
           field={label}
           open={open}
-          label={selected?.label ?? (value || anyLabel)}
+          // Never "All" before the list exists: that reads as a ready control
+          // with nothing chosen, when nothing CAN be chosen yet.
+          label={selected?.label ?? (value || (loading ? "Loading…" : anyLabel))}
           selected={Boolean(value)}
           onClear={() => onChange("")}
         />
@@ -359,7 +373,14 @@ export function FilterCombobox({
                           )}
                           aria-hidden
                         />
-                        <span className="truncate">{option.label}</span>
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate">{option.label}</span>
+                          {option.hint ? (
+                            <span className="truncate text-[11px] text-muted-foreground">
+                              {option.hint}
+                            </span>
+                          ) : null}
+                        </span>
                       </CommandItem>
                     ))}
                   </CommandGroup>

@@ -2015,15 +2015,27 @@ describe("roster semantics", () => {
 
 describe("side-by-side semantics", () => {
   it("names the comparison accurately and never 'head-to-head'", async () => {
-    // The boxed label is gone; the section's own eyebrow now says what the five
-    // plates ARE, and the server's denial still prints beneath them as fine
-    // print — see the next test. The negative guarantee is unchanged.
+    // LIVE4 cleanup: the "Each player's own record / Lane Study" tab above the
+    // board is gone — the server's denial still prints beneath the plates as
+    // fine print (next test). The negative guarantee is unchanged.
     await renderBoard();
-    expect(screen.getByTestId("dossier-lane-study")).toHaveTextContent(
-      /each player's own record/i,
-    );
+    const board = screen.getByTestId("dossier-lane-study");
+    expect(within(board).getByTestId("lane-board")).toBeInTheDocument();
+    expect(within(board).getByTestId("dossier-side-by-side-note")).toBeInTheDocument();
     expect(screen.queryByText(/head-to-head record of/i)).toBeNull();
     expect(document.body.textContent).not.toMatch(/versus record|series score/i);
+  });
+
+  it("has no standalone Lane Study title block between the controls and the board", async () => {
+    await renderBoard();
+    const board = screen.getByTestId("dossier-lane-study");
+    expect(board.querySelector(".dossier-tab")).toBeNull();
+    expect(board).not.toHaveTextContent(/each player's own record/i);
+    expect(screen.queryByText(/^Lane Study$/)).toBeNull();
+    // The board follows the scope / swap controls directly.
+    expect(screen.getByTestId("dossier-controls").nextElementSibling).toBe(board);
+    // Lane headings are preserved.
+    expect(within(board).getAllByText(/^top$/i).length).toBeGreaterThan(0);
   });
 
   it("prints the server's side-by-side sentence", async () => {

@@ -664,3 +664,13 @@ below the Overall-vs-opponent table. It must not become a fabricated
 head-to-head: joining two independent sides is exactly the reading the whole
 contract has been built to refuse, so any such section has to restrict to games
 the two champions were actually on opposite sides of, and say so.
+
+## Pro Stats Explorer unified (PSE-UNIFY, 2026-09-22)
+
+The `/lol/pro-play` statistics table is now one Search / View / Filters
+product: a universal search (players, teams, champions, leagues, events) usable
+before the table loads, one Players | Teams | Champions view selector, filters
+as visible chips, League-native names (LCK, Worlds) from a backend alias
+authority, and an explicit loading / empty / error model. The hub's separate
+"Search Pro Play" tile was removed; the `/lol/pro-play/search` route stays.
+Full write-up: `docs/PRO_STATS_EXPLORER_UNIFIED_HANDOFF.md`.

@@ -4560,3 +4560,38 @@ A published build has `Continue studying` and `pool-legend` present and
    deliberate trade — a 113px card that states its own numbers is worth more
    than a 50px one that does not — recorded here so the next pass knows it was
    chosen rather than missed.
+
+## 21. LIVE4 final cleanup — the Lane Study tab is gone (2026-09-22)
+
+One owner-approved change, nothing else reopened.
+
+**Removed:** the archival tab that sat between the scope / swap controls and
+the parchment board — eyebrow `EACH PLAYER'S OWN RECORD`, title `Lane Study`.
+Nothing replaces it. The hero, the scope rail, each plate's own lane heading
+(`TOP`, `JUNGLE`, …) and the player identities already say what the board is.
+
+**How:** `ProPlayMatchupTeam.tsx` renders the board inside a plain
+`<section class="dossier-section dossier-section--board"
+data-testid="dossier-lane-study">` instead of `<DossierSection title eyebrow>`,
+so there is no tab and no tab rule. The test id is kept so every existing
+board test still finds the board. `index.css` gains block **L11**
+(`.dossier-section--board`: no top margin; directly after
+`.dossier-controls` it sits `0.15rem` below them) at the end of the LIVE4
+block. The board therefore moves up by the tab's height plus the old
+section-body padding.
+
+**Unchanged:** width (`max-w-[1600px]`), board scale, horizontal champion
+cards, lane headings, the drawer, the hero's vertical rhythm, Matchup Study,
+Continue Studying, Meeting/Game, every href and selection. The no-head-to-head
+guarantee is still printed — the server's `side_by_side` sentence stays as fine
+print under the plates, as before.
+
+**Tests** (`ProPlayMatchupTeam.test.tsx`, 300 passed): the old eyebrow
+assertion now checks the board and its fine print instead; a new test asserts
+no `.dossier-tab` inside the board, no "Each player's own record", no
+standalone "Lane Study", that the board is the controls' next sibling, and that
+the `TOP` heading is still present.
+
+**Not visually verified in production:** the route is admin-gated and this
+pass does not sign in on the owner's behalf. Check after publishing: the board
+should start directly beneath `Swap sides`.

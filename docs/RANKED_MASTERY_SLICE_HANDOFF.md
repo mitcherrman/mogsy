@@ -69,7 +69,14 @@
 > [`docs/gr1-state-aware-champion-stats.md`](./gr1-state-aware-champion-stats.md)
 > (GR1 **state-aware Champion stats — the EXISTING `champion_stat_level` as the second state-aware
 > family, one mixed candidate universe with the cooldown family. Backend `1090633f` pushed to
-> `origin/master`; Generator Lab only**).
+> `origin/master`; Generator Lab only**) and
+> [`docs/gr1-champion-slice-distribution-experiment.md`](./gr1-champion-slice-distribution-experiment.md)
+> (GR1 **Slice distribution / quality experiment — measurements only; `balanced` experimental.
+> Backend `ded63efb` pushed**) and
+> [`docs/gr1-champion-slice-composition-v2.md`](./gr1-champion-slice-composition-v2.md)
+> (GR1 **certified composition v2, `composition.lab_profile_gate_aware.v2` — the `balanced` variety
+> preference as a second certified Lab policy beside an unchanged v1. Backend pushed `666281e5`;
+> v1 still the default; Generator Lab only, not wired to Ranked**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -111,6 +118,7 @@
 | **GR1 reusable state — gate-aware composition** | **IMPLEMENTED, INTEGRATED AND PUSHED, 2026-09-20. Generator Lab only, nothing persisted, and the publication gate is UNCHANGED.** Backend **`0ce7b531`** on branch `gr1/gate-aware-composition`, implementation base `origin/master` **`35f11822`**, rebased at integration onto **`e886fd5f`** (one unrelated commit, zero overlap) and PUSHED to `origin/master`; worktree `~/lcs-wt-gr1-gate`; comparison base `~/lcs-wt-gr1-gate-base` @ `35f11822`. Docs implementation base `origin/main` **`8a38fcbb`**, rebased onto **`1f0133f9`** and PUSHED to `origin/main`; worktree `~/mogsy-wt-gr1-gate`. **8 files — 2 new, 6 modified**; no route, no generator, no Ranked module, no serving file, no frontend, no migration, no DDL. This closes the blocker the window-composition phase named as not optional. **The refusal's mechanism, reproduced rather than inferred:** it is NOT a diversity rule — it is `require_distinct_effective_question` on the manifest's own `RepetitionPolicy`, which `gate_snapshot` applies through `adapter.dedupe_by_effective_question`. The state-aware prompt names the HASTE, not the rank, so `W r2` and `W r3` at 20 haste render the same prompt with the same empty numeric options and collapse to ONE player question; `W r4` renders `single_choice` with options and survives. Two survive, the plan asks three, `SELECTION_UNDER_FILLED` fires. **The seam:** a NEW `mastery/publication_gate/preflight.py` — pure, I/O-free, deterministic, no DB write, no artifact — that answers "would publication accept this set?" by calling the module that OWNS each rule: `gate.evaluate` (unary eligibility), the adapter's `effective_question_key` (pairwise uniqueness, and only when the recipe asks), and the resolver's new public `candidates_matching` (set-level request availability). **No gate constant is copied and no rule is restated**, so relaxing a rule AT ITS OWNER moves the composer's feasibility in the same commit — asserted by a test. `window_lab.lab_manifest()` is the ONE recipe builder both the preflight and `publish` use, so a feasibility answer can never describe a plan publication does not resolve. **All three rules are HARD** (`policy_ineligible`, `effective_question_collision`, `request_under_filled`, `nothing_publishable` — the complete code set, asserted); coverage/diversity/progression stay SOFT and live with the composition policy, so no production rule was demoted. **The policy** `composition.lab_window_gate_aware.v1` (a NEW id, not a revision) orders the whole universe by the COVERAGE policy's own walk — its first N entries ARE the naive set, asserted — then takes the lexicographically earliest combination the oracle accepts, which is the feasible set deviating least from the coverage answer; where the coverage answer is publishable it returns **exactly that answer**. `composition.py` stays in the CONTRACT half and **cannot import the gate**, so the consumer half injects the oracle and holds the search's node budget. **Bounded exhaustive DFS** with unary + pairwise pruning read off the oracle's declared structures: within `SEARCH_NODE_BUDGET = 20000` verdicts, if a feasible set of size N exists it is found; an exhausted search reports itself and **never becomes a false "no"**. In practice every suite case resolves in ONE verdict. **An infeasible budget returns NO set** — `NoFeasibleComposition` carries requested budget, the gate's own words, `maximum_feasible_count`, per-state/subject/family counts and unused candidates, and a test proves the reported maximum actually composes AND publishes. Nothing is shortened, no filler exists, no rule is relaxed to reach a count. **The known case `SEQ_B`@3 is GENUINELY infeasible** (that universe holds three candidates, two of which are one player question) and is reported as such with `maximum_feasible_count=2`; a new fixture `SEQ_ALT`@`seed="eta"`@3 is the feasible-alternative case — the coverage policy composes `W r2/r3/r4` and the gate refuses it, the gate-aware policy composes `E flat, W r2, W r4` and the production path publishes all three. The guarantee is checked against an INDEPENDENT exhaustive `itertools.combinations` search at every budget. **The gate is still the authority:** every set is re-judged by `publish`; a tampered set is refused; an oracle stubbed to say "yes" to everything makes the composer return the monotonous triple and `publish` refuses it anyway; and `gate.py` is byte-identical, pinned by a test on its refusal wording. **The FrozenStateBundle is built only from the accepted selection** — rejected combinations leave no trace (asserted disjoint), and an infeasible request builds no bundle at all. **No endpoint added** (Lab route set pinned by exact set equality); the diagnostic gains `gate_aware`, `publication_constraints`, `composition_feasibility` and `naive_composition`, and ONLY when asked — `gate_aware` defaults to False so every existing caller is byte-identical. `mastery/tests` failure **SET** byte-identical to base (5 failed, 2337 → **2380** passed pre-commit, **2387**/7 skipped post-commit; +43 is exactly the new file, and no isolation case was added because no `setup_state` module was); focused arm **1 failed, 1251 passed** (the failure is in the base set); the 9-file Ranked/Mastery arm is **2 failed, 213 passed**, identical to the base worktree. See [`gr1-reusable-state-gate-aware-composition.md`](./gr1-reusable-state-gate-aware-composition.md) and the section below. |
 | **GR1 Champion Slice Profiles** | **IMPLEMENTED AND INTEGRATED, 2026-09-21 — backend `origin/master` `c2634d8a`, docs `origin/main`. Generator Lab only; no route, no Ranked wiring, nothing persisted.** Backend **`c2634d8a`** on `gr1/champion-slice-profiles` (worktree `~/lcs-wt-gr1-prof`), parent `origin/master` **`d5fbacd6`** (the brief's `e7436166` + one items-only commit, zero `mastery/` overlap). Docs on `gr1/champion-slice-profiles-docs` (worktree `~/mogsy-wt-gr1-prof`), base `origin/main` `4cf0b247`. A Slice is no longer one window size: a `ChampionSliceProfile` = scope + sampling + anchor policy + **question budget**, and the budget never enters the scope's identity. Five certified profiles; `mastery/tests` failure SET identical to base (5 pre-existing). See [`gr1-champion-slice-profiles.md`](./gr1-champion-slice-profiles.md). |
 | **GR1 state-aware Champion stats** | **INTEGRATED AND PUSHED, 2026-09-21. Generator Lab only; no route, no Ranked wiring, nothing persisted.** Backend **`1090633f`** on `origin/master` (implementation commit `81e5b24d`) on `gr1/state-aware-champion-stats` (worktree `~/lcs-wt-gr1-stats`), authored on `origin/master` `c2634d8a` and rebased onto **`a178a116`** (one items-only commit landed mid-phase, zero `mastery/` overlap). Docs on `gr1/state-aware-champion-stats-docs` (worktree `~/mogsy-wt-gr1-stats`), base `origin/main` `7d003128`. The existing `champion_stat_level` is the second state-aware family (same family id, the bank's own constructor, answer = the state's `<stat>.at_level`); an opt-in `families=` mixes it with cooldowns in one universe. Snapshot b=4 (rank arm) 28 → **157**/164; LEVEL source 0 → **173**/173 on every non-Snapshot profile. Practice/Mastery/default Lab byte-identical. See [`gr1-state-aware-champion-stats.md`](./gr1-state-aware-champion-stats.md). |
+| **GR1 Champion Slice composition v2** | **CERTIFIED FOR THE LAB AND PUSHED, 2026-09-22. Generator Lab only; v1 remains the default everywhere; no Ranked wiring.** Backend **`666281e5`** on `origin/master` (authored `3f18a75f` on `b5c37f48`, rebased clean over three unrelated commits); worktree `~/lcs-wt-gr1-v2`; comparison base `~/lcs-wt-gr1-v2-base`. Docs on `gr1/slice-composition-v2-docs` (worktree `~/mogsy-wt-gr1-v2`), rebased onto `origin/main` `2780b8bc` and pushed. `composition.lab_profile_gate_aware.v2` = v1's walk re-ranked by the experiment's `balanced` criteria (ONE shared implementation) before the SAME gate-aware search. v1 byte-identical (13,840 roster records, 0 mismatches). Feasibility v2 == v1 in every cell and against exhaustive enumeration. Multi-state repeated metric 34.9% → 0.1% (historical roster measurement at `b5c37f48`). **Known limit kept, not fixed:** 16 residual Tight repeats (0.12%) from greedy ordering, each with a repeat-free feasible set by brute force. Checkpoint, Snapshot and Ranked-distribution decisions stay open. See [`gr1-champion-slice-composition-v2.md`](./gr1-champion-slice-composition-v2.md). |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## GR1 × QCA8 — accidental Mastery mode regression, CORRECTED (2026-09-19)
@@ -2267,6 +2275,48 @@ Backend **`ded63efb`** on `origin/master` (authored `4e987b09` on `gr1/slice-dis
   and the level-1 Snapshot rule (redraw) to the owner with the numbers. Still no Ranked wiring.
 * **Rollback:** `git revert ded63efb`.
 
+## Reusable state — CHAMPION SLICE COMPOSITION v2, Generator Lab only (2026-09-22)
+
+Full record: [`gr1-champion-slice-composition-v2.md`](./gr1-champion-slice-composition-v2.md).
+Backend **`3f18a75f`** on `gr1/slice-composition-v2`, worktree `~/lcs-wt-gr1-v2`, parent `origin/master`
+**`b5c37f48`** (the brief's `ded63efb` + one Hatefog items commit, zero `mastery/` overlap). Comparison
+base `~/lcs-wt-gr1-v2-base` detached @ `b5c37f48`. Docs on `gr1/slice-composition-v2-docs`, worktree
+`~/mogsy-wt-gr1-v2`, base `origin/main` `45a322d4`. **Neither pushed.** No frontend commit.
+
+* **Why v2 exists.** The experiment showed the certified composer repeats a metric in 23–53% of
+  multi-state Slices because nothing reads `answer_metric` and every stat shares one subject bucket,
+  and that the `balanced` ordering removes it at identical feasibility. v2 certifies exactly that
+  ordering as a new Lab id; v1 is kept.
+* **Exact v1 → v2 difference.** One step: v1's profile walk is re-ranked by
+  `composition.variety_preference_order` under `new_state > new_metric > new_subject > new_family`
+  (ties → v1's position, i.e. checkpoint/profile preference and the seed), then handed to the SAME
+  `_gate_aware_from_order`. Scope, strict checkpoints, presentation states, the search and its bound,
+  the gate, the final `(ordinal, family_id, candidate_key)` order: all v1's. All preferences are
+  soft; a repeated FAMILY is never itself a penalty. `slice_quality.quality_order` now delegates to
+  the same function (historical equivalence of all 9 experimental policies asserted).
+* **Identity.** `composition.lab_profile_gate_aware.v2`; `PROFILE_COMPOSITION_POLICIES = (v1, v2)`;
+  `compose_profile_questions(policy_id=)` refuses anything else; `compose_preferred_gate_aware`
+  refuses both. `run_profile` / `profile_diagnostic` take `composition_policy=` and **default to v1**.
+* **v1 unchanged.** 13,840 roster records (173 × 5 profiles × b=3/4 × 8 seeds) equal to base in every
+  field; selections and two default diagnostics hash-pinned in the suite.
+* **Feasibility.** v2 == v1 in all 13,840 cells (feasible, `feasible_count`, limiting and supply
+  codes); 0 exhausted; identical `verdicts_evaluated`; 1,748 compositions agree with brute-force
+  enumeration through the gate. The only infeasible cells (168 per policy) are level-1 Snapshots.
+* **Quality.** Multi-state sets with a repeated metric **34.9% → 0.1%** (4,066 repeats → 16);
+  adjacent same-metric 7.5% → 0; mixed families 82.7% → 93.7%; LEVEL arm 50.3% → 0%. Snapshot:
+  0% repeats under both; mixed 76.8% → 93.7% at b=3. Coverage preserved (state count ≥ v1).
+* **Known limit (0.12%).** v2 is a greedy order, not a set optimum: 16 Tight sets anchored on
+  levels 1–3 re-ask E because level 1 offers only E; a repeat-free 3-state set was publishable in
+  each (brute force). Pinned by a test; closing it is a v3 (set-level search) question.
+* **Bundles.** 3,420 feasible v2 runs frozen: 0 findings, exact round trip, correct `derived_used`
+  narrowing, 3,195 multi-family; offline verification asserted.
+* **Diagnostic.** `window_lab.profile_policy_comparison(...)` — v1 and v2 side by side (ids, families,
+  metrics/subjects, presentation levels, repetition, feasibility, final gate verdict). No route.
+* **Invariance.** 173 banks + 240 default v1 profile diagnostics (two rendered via production
+  `publish`) + one progression diagnostic: 21.8 MB dumps `cmp`-identical vs base.
+* **Tests.** New suite 50 passed; regression failure SET identical to base (see the doc §14).
+* **Rollback:** `git revert 3f18a75f`.
+
 ## Screenshots / artifacts
 
 `docs/audits/gr1-reusable-state-phase3/` — **8 PNGs (reusable state Phase 3, the
@@ -2638,7 +2688,17 @@ player is listed in [`gr1-reusable-state-phase3.md`](./gr1-reusable-state-phase3
 **Do not widen Phase 3 into a family-expansion project**; one family is the
 seam, and a second one before persistence exists buys nothing.
 
-**Current next task — do NOT wire Ranked.** The profile distribution experiment is done (see the
+**Current next task — do NOT wire Ranked.** Composition v2 is certified for the Lab (see the row
+above and [`gr1-champion-slice-composition-v2.md`](./gr1-champion-slice-composition-v2.md) §15–16).
+v2 is NOT the default and nothing player-facing names it. Recommended next: **the checkpoint-strength
+decision for Early / Wide / Full, measured over v2** (strict vs soft — the experiment's
+`balanced_soft` already IS v2's criteria + soft checkpoints, so no code is needed to measure it), and
+the **level-1 Snapshot** rule (refuse / redraw / permit level-1 stats). Both are owner calls that
+precede any Ranked distribution. Also open: whether to close v2's 0.12% greedy limit with a
+set-level v3; the Ranked distribution; the bank's manaless mana-regen question; a third family; the
+9 rank-bearing gaps.
+
+**Superseded (2026-09-22, v2 now exists) — do NOT wire Ranked.** The profile distribution experiment is done (see the
 row above and [`gr1-champion-slice-distribution-experiment.md`](./gr1-champion-slice-distribution-experiment.md)
 §18). Recommended: **version the Lab profile composition with the `balanced` criteria**
 (new state > new metric > new subject > new family) as `composition.lab_profile_gate_aware.v2`,
