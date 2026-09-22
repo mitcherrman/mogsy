@@ -131,7 +131,8 @@ export function DailyRunPage({
         <StageResultBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
         <DailyStageChrome run={run} stage={flow.stage} />);
     case "complete":
-      return shell(<DailyCompletion run={run} />);
+      return shell(<DailyCompletion run={run}
+        saveRequired={(user as { is_anonymous?: boolean } | null)?.is_anonymous === true} />);
     case "stage-play": {
       if (!viewerUserId) {
         return shell(

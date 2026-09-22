@@ -12,9 +12,23 @@ interface Props {
   returnTo?: string;
   /** When provided, shows a "Keep Playing as Guest" option that closes the gate. */
   onDismiss?: () => void;
+  /** Host copy (e.g. the Daily Challenge's save-your-run prompt). */
+  heading?: string;
+  description?: string;
+  benefits?: string[];
 }
 
-export default function QuizSignUpGate({ progress, actionCount, returnTo = "/quiz", onDismiss }: Props) {
+const DEFAULT_BENEFITS = [
+  "Save your score & XP", "Keep your streaks", "Appear on leaderboards",
+  "Unlock more quiz features later",
+];
+
+export default function QuizSignUpGate({
+  progress, actionCount, returnTo = "/quiz", onDismiss,
+  heading = "Save your score?",
+  description = "Create a free account to track your League quiz progress, streaks, and results.",
+  benefits = DEFAULT_BENEFITS,
+}: Props) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,16 +62,13 @@ export default function QuizSignUpGate({ progress, actionCount, returnTo = "/qui
         </div>
 
         <h2 className="text-center text-xl font-bold text-[#f5e9c8] mb-1">
-          Save your score?
+          {heading}
         </h2>
         <p className="text-center text-sm text-muted-foreground mb-4">
-          Create a free account to track your League quiz progress, streaks, and results.
+          {description}
         </p>
         <ul className="mx-auto mb-5 w-fit space-y-1 text-xs text-muted-foreground">
-          <li>✦ Save your score &amp; XP</li>
-          <li>✦ Keep your streaks</li>
-          <li>✦ Appear on leaderboards</li>
-          <li>✦ Unlock more quiz features later</li>
+          {benefits.map((b) => <li key={b}>✦ {b}</li>)}
         </ul>
 
         {/* Stats row */}

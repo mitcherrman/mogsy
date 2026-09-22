@@ -15,14 +15,29 @@ import { Link } from "react-router-dom";
 import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
 import { isPerfect, reviewStage } from "@/lib/daily-challenge/run/contracts";
 import { stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
+import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import { StageTag } from "./StageTag";
+
+/** Where a guest lands back after the in-place account upgrade. */
+export const DAILY_SAVE_RETURN_TO = "/quiz/daily-challenge";
 
 const ENDED_BY: Record<string, string> = {
   time_bank_exhausted: "bank ran out",
   strikes_exhausted: "out of mistakes",
 };
 
-export function DailyCompletion({ run }: { run: DailyRun }) {
+/**
+ * `saveRequired` — the player is on an anonymous guest session. Owner
+ * decision: a guest may play their first Daily without signing up and is
+ * asked to sign up at the END to save it. The prompt is the app's existing
+ * signup gate; "Create Account" routes through `/auth?mode=signup`, whose
+ * `AccountUpgradePanel` converts the guest IN PLACE (same user id), so the
+ * finished run — already stored under that id — is kept. There is no "keep
+ * playing as guest" here: saving is the point of the end of the first Daily.
+ */
+export function DailyCompletion({ run, saveRequired = false }: {
+  run: DailyRun; saveRequired?: boolean;
+}) {
   const perfect = isPerfect(run);
   const review = reviewStage(run);
   return (
@@ -79,6 +94,22 @@ export function DailyCompletion({ run }: { run: DailyRun }) {
           Back to Leaguecraft
         </Link>
       </div>
+      {saveRequired && (
+        <div data-testid="daily-save-gate">
+          <QuizSignUpGate
+            progress={null}
+            actionCount={0}
+            returnTo={DAILY_SAVE_RETURN_TO}
+            heading="Save today's Daily Challenge"
+            description="Create a free account to keep this run and your Daily progress."
+            benefits={[
+              "Keep today's Daily results",
+              "Weak Areas built from your history from tomorrow",
+              "Your Ranked standing and history",
+            ]}
+          />
+        </div>
+      )}
     </section>
   );
 }

@@ -12,7 +12,11 @@ import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "userA" } }) }));
+const mockAuth = vi.hoisted(() => ({
+  user: { id: "userA", is_anonymous: false } as { id: string; is_anonymous: boolean },
+}));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => mockAuth }));
+vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 vi.mock("@/pages/quiz-ranked/QuizRankedMatch", () => ({
   QuizRankedMatch: () => { throw new Error("the stand-in is injected in these tests"); },
 }));
@@ -61,6 +65,7 @@ async function playStage(t: FixtureTransport, result = wireResult()) {
 }
 
 beforeEach(() => {
+  mockAuth.user = { id: "userA", is_anonymous: false };
   vi.useFakeTimers({ shouldAdvanceTime: false });
   lastHost = null;
   mounts.length = 0;
@@ -367,5 +372,50 @@ describe("a stage that cannot open", () => {
     await flush(10);
     expect(t.calls.filter((c) => c.startsWith("launch"))).toHaveLength(2);
     expect(phase()).toBe("stage-play");
+  });
+});
+
+describe("a guest's first Daily (owner decision: sign up at the END to save)", () => {
+  const finishedDay = () => createFixtureTransport(FOUR_STAGE_DAY, {
+    existing: wireRun(FOUR_STAGE_DAY, { status: "completed", outcome: "reviewed", current_stage_index: null }, {
+      0: { status: "completed", result: wireResult() },
+      1: { status: "completed", result: wireResult() },
+      2: { status: "completed", result: wireResult() },
+      3: { status: "completed", result: wireResult({ misses: 0 }) },
+    }),
+  });
+
+  it("a guest starts the Daily with no signup step in front of it", async () => {
+    mockAuth.user = { id: "guest-1", is_anonymous: true };
+    const t = createFixtureTransport(FOUR_STAGE_DAY);
+    mount(t);
+    await flush();
+    const begin = screen.getByRole("button", { name: /begin/i });
+    await act(async () => { begin.click(); });
+    await flush(10);
+    expect(t.calls).toContain("startToday");
+    expect(q("daily-save-gate")).toBeNull();
+    expect(screen.queryByText(/create account/i)).toBeNull();
+  });
+
+  it("a guest's finished day ends on the signup-to-save gate, routed to the in-place upgrade", async () => {
+    mockAuth.user = { id: "guest-1", is_anonymous: true };
+    mount(finishedDay());
+    await flush();
+    expect(phase()).toBe("complete");
+    const gate = screen.getByTestId("daily-save-gate");
+    expect(within(gate).getByText("Save today's Daily Challenge")).toBeInTheDocument();
+    expect(within(gate).getByRole("button", { name: "Create Account" })).toBeInTheDocument();
+    // Saving is the point of the end of the first Daily: no guest dismissal.
+    expect(within(gate).queryByRole("button", { name: /keep playing as guest/i })).toBeNull();
+    // The recap is still the page behind it.
+    expect(screen.getByTestId("daily-run-complete")).toBeInTheDocument();
+  });
+
+  it("a signed-in player's finished day has no save gate", async () => {
+    mount(finishedDay());
+    await flush();
+    expect(phase()).toBe("complete");
+    expect(q("daily-save-gate")).toBeNull();
   });
 });

@@ -74,9 +74,6 @@ function messageFor(e: unknown): string {
         return "This stage couldn't open. Try again.";
       case "SESSION_REQUIRED":
         return "We couldn't start a session. Check your connection and try again.";
-      case "ACCOUNT_REQUIRED":
-        // Every stage is a canonical Ranked match, which needs an account.
-        return "Sign in to play today's Daily Challenge.";
       default:
         break;
     }
