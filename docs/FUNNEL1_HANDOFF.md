@@ -3252,7 +3252,14 @@ exact replay                    → 200 duplicate
 Read-back proved exactly one row — `practice_quiz_started`,
 `source_system='railway'`, `source_entity_type='quiz_session'`, `user_id` null —
 and it was deleted afterwards. The temporary Railway pre-deploy smoke command
-has been removed and was not recreated. The digest and function are unchanged.
+has been removed and was not recreated. The digest and function are unchanged
+by this phase.
+
+> **Digest note.** §22.1 recorded the pinned digest at `cd07d67f` as
+> `30d4d910…a6e9`. It was re-pinned upstream before the smoke passed, and
+> `main` now carries **`38c2f2ec…5577`** — the value production authenticated
+> against. §22.1 is an accurate record of `cd07d67f` and is *not* the canonical
+> value; do not restore it.
 
 ## 23.2 Base and reconciliation method
 
