@@ -94,8 +94,15 @@ async function request<T>(
   reader: (raw: unknown) => T,
   options: { method?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
+  // USERS1 — the write boundary. A mutating call is the visitor doing
+  // something the backend attributes to their verified JWT subject, so an
+  // identity is established here, at the moment it becomes necessary. Reads
+  // stay identity-free: they were the page-load paths that turned every
+  // browser into a row in auth.users.
   const headers: Record<string, string> = {
-    ...(await getBackendAuthHeaders()),
+    ...(await getBackendAuthHeaders(
+      (options.method ?? "GET") === "GET" ? undefined : { mint: "stat_check_room" },
+    )),
   };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   let response: Response;

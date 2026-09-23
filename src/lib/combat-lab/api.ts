@@ -405,7 +405,16 @@ export function getEventLabel(e: TimelineEvent): string {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const authHeaders = await getBackendAuthHeaders();
+  // USERS1 — the write boundary. A mutating call is the visitor doing
+  // something the backend attributes to their verified JWT subject, so an
+  // identity is established here, at the moment it becomes necessary. Reads
+  // stay identity-free: they were the page-load paths that turned every
+  // browser into a row in auth.users.
+  // Combat Lab's simulations are metered per identity (see `credits` below),
+  // so a run needs one; browsing the champion/item metadata does not.
+  const authHeaders = await getBackendAuthHeaders(
+    (init?.method ?? "GET") === "GET" ? undefined : { mint: "combat_lab_run" },
+  );
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {

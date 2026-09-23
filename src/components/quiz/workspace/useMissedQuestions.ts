@@ -23,7 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { quizApi, type MissedQuestion, type MissedQuestionsResponse } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
-import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import { getExistingBackendAuthToken } from "@/lib/backend-auth";
 
 export const MISSED_QUESTIONS_PAGE_SIZE = 25;
 export const GUEST_SESSION_ERROR = "We couldn’t start a guest session. Please try again.";
@@ -61,7 +61,7 @@ export function useMissedQuestions({
       setLoading(true);
       setError(null);
       try {
-        const token = await ensureBackendAuthToken();
+        const token = await getExistingBackendAuthToken();
         if (!token) {
           if (!cancelled) setError(GUEST_SESSION_ERROR);
           return;

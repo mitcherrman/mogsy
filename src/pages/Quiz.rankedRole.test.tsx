@@ -70,7 +70,10 @@ vi.mock("@/lib/quiz/onboarding-gate", () => ({
   hasSoftNudgeBeenSeen: () => true,
   markSoftNudgeSeen: () => {},
 }));
-vi.mock("@/lib/backend-auth", () => ({ ensureBackendAuthToken: async () => "test-token" }));
+vi.mock("@/lib/backend-auth", () => ({
+  ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
+}));
 
 const sfx = vi.hoisted(() => ({ play: vi.fn() }));
 

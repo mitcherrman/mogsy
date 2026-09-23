@@ -114,7 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
     });
 
-    // Initialize: get session, check settings, maybe sign in anonymously
+    // Initialize: resolve whatever session this browser already has. Nothing
+    // here creates one — see the USERS1 note below.
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -134,22 +135,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // No user — check if we should sign in anonymously
-      const { data: settingsData } = await supabase
-        .from("app_settings")
-        .select("key, value")
-        .eq("key", "require_auth");
-
-      const requireAuth = settingsData?.[0]
-        ? (settingsData[0].value as any)?.enabled ?? true
-        : true;
-
-      if (!requireAuth) {
-        // Sign in anonymously before resolving loading
-        await supabase.auth.signInAnonymously();
-        // onAuthStateChange will set user/session
-      }
-
+      // USERS1 — NO ANONYMOUS SIGN-IN HERE, AND NONE ANYWHERE ON A PAGE LOAD.
+      //
+      // This branch used to read the `require_auth` app_setting and, when it
+      // was disabled (which it is in production), call signInAnonymously()
+      // before resolving `loading`. Every browser that rendered any page of
+      // Mogzy therefore became a row in auth.users: crawlers, preview
+      // environments, agent runs, automated QA and the same handful of humans
+      // over and over. ~5,000 identities, essentially all of them page loads.
+      //
+      // A page visit is not a user account. A visitor without a session is a
+      // legitimate, fully supported state that the rest of the product already
+      // handles — ProtectedRoute lets everyone through while require_auth is
+      // off, the analytics store grants INSERT to the `anon` role so the whole
+      // funnel is still recorded, and the Academy register already has a
+      // device-local half precisely because "there is very often no session at
+      // /welcome" (lib/welcome/academy-registration.ts).
+      //
+      // An identity is created at a WRITE boundary and nowhere else. There is
+      // exactly one function that does it and it documents every caller:
+      // lib/auth/anonymous-identity.ts.
       if (mounted) {
         setLoading(false);
       }

@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import StudyHistoryLedger from "@/components/quiz/workspace/StudyHistoryLedger";
 import { quizApi, type QuizHistoryResponse } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
-import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import { getExistingBackendAuthToken } from "@/lib/backend-auth";
 
 const GUEST_SESSION_ERROR = "We couldn’t start a guest session. Please try again.";
 
@@ -40,7 +40,7 @@ export default function LolHistory() {
       try {
         // Guest-first: the history endpoint is JWT-only, so guarantee a
         // Supabase session (anonymous if need be) has a token before calling.
-        const token = await ensureBackendAuthToken();
+        const token = await getExistingBackendAuthToken();
         if (!token) {
           if (!cancelled) setError(GUEST_SESSION_ERROR);
           return;

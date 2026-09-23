@@ -55,7 +55,10 @@ vi.mock("@/lib/quiz/onboarding-gate", () => ({
   hasSoftNudgeBeenSeen: () => true,
   markSoftNudgeSeen: () => {},
 }));
-vi.mock("@/lib/backend-auth", () => ({ ensureBackendAuthToken: async () => "test-token" }));
+vi.mock("@/lib/backend-auth", () => ({
+  ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
+}));
 
 const SETS = [{ id: 1, name: "Item Build Paths", description: "Recipes", question_count: 120 }];
 

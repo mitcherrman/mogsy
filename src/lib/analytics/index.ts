@@ -20,6 +20,7 @@
 export {
   track,
   trackAsync,
+  promoteSessionToHuman,
   trackVerificationStarted,
   trackVerificationCompleted,
   trackVerificationFailed,
@@ -83,3 +84,19 @@ export {
   trackSignupStarted,
   type ObservableUser,
 } from "./signup";
+
+export {
+  classifyTraffic,
+  canPromoteToHuman,
+  isTrafficClass,
+  resolveTrafficMarker,
+  TRAFFIC_CLASSES,
+  TRAFFIC_MARKER_KEY,
+  TRAFFIC_QUERY_CLASS,
+  TRAFFIC_QUERY_SOURCE,
+  UNKNOWN_TRAFFIC,
+  type TrafficClass,
+  type TrafficSignal,
+} from "./traffic";
+
+export { installHumanSignalWatcher } from "./humanSignal";

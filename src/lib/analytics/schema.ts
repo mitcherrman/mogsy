@@ -85,10 +85,45 @@ export type AnalyticsSessionInsert = {
   utm_campaign?: string | null;
   utm_content?: string | null;
   utm_term?: string | null;
+  /**
+   * USERS1. The session's traffic class, written once at insert. A client may
+   * write 'automation', 'internal' or 'unknown'; the RLS WITH CHECK refuses
+   * 'human', which is reachable only through analytics_promote_session_human.
+   */
+  traffic_class?: "automation" | "internal" | "unknown";
+  traffic_source?: string | null;
+  classification_reason?: string | null;
 };
 
-export type AnalyticsSessionRow = Required<AnalyticsSessionInsert> & {
+export type AnalyticsSessionRow = Required<
+  Omit<AnalyticsSessionInsert, "traffic_class">
+> & {
   started_at: string;
+  /**
+   * Wider than the Insert type on purpose: 'human' is a value the database can
+   * hold and a client can never write. The asymmetry IS the integrity rule
+   * (see the USERS1 migration §2), so it is expressed in the types too.
+   */
+  traffic_class: "human" | "automation" | "internal" | "unknown";
+};
+
+/**
+ * public.analytics_traffic_overrides — USERS1.
+ *
+ * The operator's correction to a visitor's derived class, kept in its own
+ * table so the observation (on the session rows) is never edited. Admin-only,
+ * both ways.
+ */
+export type AnalyticsTrafficOverrideInsert = {
+  visitor_id: string;
+  traffic_class: "human" | "automation" | "internal" | "unknown";
+  traffic_source?: string | null;
+  reason?: string | null;
+  set_by?: string | null;
+};
+
+export type AnalyticsTrafficOverrideRow = Required<AnalyticsTrafficOverrideInsert> & {
+  set_at: string;
 };
 
 export type AnalyticsDatabase = {
@@ -112,9 +147,21 @@ export type AnalyticsDatabase = {
         Update: never;
         Relationships: [];
       };
+      analytics_traffic_overrides: {
+        Row: AnalyticsTrafficOverrideRow;
+        Insert: AnalyticsTrafficOverrideInsert;
+        Update: Partial<AnalyticsTrafficOverrideInsert>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      /** USERS1 — the only write path to traffic_class = 'human'. */
+      analytics_promote_session_human: {
+        Args: { p_session_id: string; p_reason?: string | null };
+        Returns: boolean;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
@@ -130,3 +177,4 @@ export const analyticsDb = supabase as unknown as SupabaseClient<AnalyticsDataba
 export const ANALYTICS_EVENTS_TABLE = "analytics_events" as const;
 export const ANALYTICS_VISITORS_TABLE = "analytics_visitors" as const;
 export const ANALYTICS_SESSIONS_TABLE = "analytics_sessions" as const;
+export const ANALYTICS_TRAFFIC_OVERRIDES_TABLE = "analytics_traffic_overrides" as const;

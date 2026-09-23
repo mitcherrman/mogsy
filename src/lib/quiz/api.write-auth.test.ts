@@ -14,6 +14,7 @@ const getBackendAuthHeaders = vi.fn();
 
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: (...args: unknown[]) => ensureBackendAuthToken(...args),
+  getExistingBackendAuthToken: (...args: unknown[]) => ensureBackendAuthToken(...args),
   getBackendAuthHeaders: (...args: unknown[]) => getBackendAuthHeaders(...args),
 }));
 vi.mock("@/lib/knowledge-admin/key", () => ({ getAdminKey: () => "test-admin-key" }));

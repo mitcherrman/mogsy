@@ -36,6 +36,7 @@ import { MAX_EDITOR_TEAM_SIZE } from "@/lib/combat-lab/team-sim/draft";
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer test-token" }),
   ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
 }));
 
 afterEach(() => {

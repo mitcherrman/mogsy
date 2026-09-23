@@ -70,9 +70,16 @@ type ReqInit = RequestInit & { admin?: boolean; signal?: AbortSignal };
 
 async function request<T>(path: string, init?: ReqInit): Promise<T> {
   const url = `${BATTLES_API_BASE_URL}${path}`;
+  // USERS1 — the write boundary. A mutating call is the visitor doing
+  // something the backend attributes to their verified JWT subject, so an
+  // identity is established here, at the moment it becomes necessary. Reads
+  // stay identity-free: they were the page-load paths that turned every
+  // browser into a row in auth.users.
+  // Admin calls carry their own credentials and never mint anything.
+  const mints = !init?.admin && (init?.method ?? "GET") !== "GET";
   const authHeaders = init?.admin
     ? await buildAdminHeaders(url)
-    : await getBackendAuthHeaders();
+    : await getBackendAuthHeaders(mints ? { mint: "combat_battles_prediction" } : undefined);
   const res = await fetch(url, {
     ...init,
     headers: {

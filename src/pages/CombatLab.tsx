@@ -119,8 +119,6 @@ import {
   type CombatLabCreditStatus,
   CombatLabCreditsExhaustedError,
 } from "@/lib/combat-lab/api";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import CombatLabToolbar from "@/components/combat-lab/CombatLabToolbar";
 import { useInputHistory } from "@/hooks/useInputHistory";
 import { useSectionNavigation, type SectionDef } from "@/hooks/useSectionNavigation";
@@ -627,14 +625,12 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
 /* ─────────────── page ─────────────── */
 
 export default function CombatLab() {
-  const { user } = useAuth();
 
-  // Ensure anonymous session so combat lab usage is tracked under a stable user_id.
-  useEffect(() => {
-    if (!user) {
-      supabase.auth.signInAnonymously();
-    }
-  }, [user]);
+  // USERS1 removed an anonymous sign-in here. Its stated purpose was "so
+  // combat lab usage is tracked under a stable user_id" — which analytics now
+  // does properly, against the first-party visitor id, with no auth identity
+  // involved. Combat Lab persists nothing attributed to auth.uid(); its API
+  // client sends a token only if one already exists (getBackendAuthHeaders).
 
   const [champions, setChampions] = useState<Champion[]>([]);
   const [items, setItems] = useState<Item[]>([]);

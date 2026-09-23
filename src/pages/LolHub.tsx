@@ -336,13 +336,15 @@ export default function LolHub() {
   const isAnonymous = !user || user.is_anonymous === true;
   const { settings } = useAppSettings();
 
-  // Mark hub visited (suppresses /quiz → hub redirect this session) and ensure anon session.
+  // Mark hub visited — suppresses the /quiz → hub redirect for this session.
+  //
+  // USERS1 removed the `signInAnonymously()` that used to sit here. Entering
+  // the hub is navigation, not a product write: nothing on this page persists
+  // anything attributed to auth.uid(), and the hub's analytics are recorded
+  // against the first-party visitor id with no session at all.
   useEffect(() => {
     markHubVisited();
-    if (!user) {
-      supabase.auth.signInAnonymously();
-    }
-  }, [user]);
+  }, []);
 
   // Arm the desktop two-screen snap for as long as the hub is mounted, and
   // disarm it on the way out so no other route inherits it. Mobile uses the

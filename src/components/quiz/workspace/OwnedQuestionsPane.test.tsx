@@ -44,6 +44,7 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: vi.fn().mockResolvedValue("token"),
+  getExistingBackendAuthToken: vi.fn().mockResolvedValue("token"),
   getBackendAuthHeaders: vi.fn().mockResolvedValue({}),
 }));
 

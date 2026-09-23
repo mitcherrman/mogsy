@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { quizApi, categoryLabel, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
-import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import { getExistingBackendAuthToken } from "@/lib/backend-auth";
 import {
   META_REFLEX_NAME,
   META_REFLEX_ROUTE,
@@ -604,7 +604,10 @@ export default function Quiz() {
   const loadRecentHistory = useCallback(async () => {
     setHistoryError(null);
     try {
-      const token = await ensureBackendAuthToken();
+      // USERS1 — a READ. A visitor with no identity has no history, which is
+      // an answer; creating an account to discover it is the pollution this
+      // workstream removed.
+      const token = await getExistingBackendAuthToken();
       if (!token) {
         setHistoryError("sign-in required");
         setRecentHistory(null);
@@ -731,12 +734,12 @@ export default function Quiz() {
     loadRecentHistory();
   }, [loadRecentHistory]);
 
-  // Ensure anonymous session and load gate config on mount.
+  // Load the gate config on mount.
+  //
+  // USERS1 removed the `signInAnonymously()` that used to open this effect.
+  // Opening Leaguecraft is not a write. The identity is minted when the
+  // visitor actually starts a quiz, by authedRequest in lib/quiz/api.ts.
   useEffect(() => {
-    if (!user) {
-      supabase.auth.signInAnonymously();
-    }
-
     supabase
       .from("app_settings")
       .select("value")
@@ -756,7 +759,6 @@ export default function Quiz() {
           setGateConfig(defaults);
         }
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Hub redirect: if enabled and user hasn't come from /lol this session, send them there.

@@ -17,6 +17,7 @@
  */
 
 import { clamp } from "./runtime";
+import { UNKNOWN_TRAFFIC, type TrafficSignal } from "./traffic";
 
 /** The five UTM parameters, plus the two things that matter as much as they do. */
 export type Touch = {
@@ -128,12 +129,26 @@ export function toFirstTouchRow(visitorId: string, touch: Touch) {
   };
 }
 
-/** Shape written to public.analytics_sessions. */
+/**
+ * Shape written to public.analytics_sessions.
+ *
+ * USERS1 added the traffic classification here rather than to the event row:
+ * one browsing session is one verdict, and the session row is the only place
+ * that grain exists. 'human' is never written from a client — the RLS WITH
+ * CHECK refuses it — so this function narrows the class it will emit and a
+ * `human` signal arriving here (a session restored from storage after
+ * promotion) is written as `unknown` and re-promoted by the RPC.
+ */
 export function toSessionRow(
   sessionId: string,
   visitorId: string,
   touch: Touch,
+  traffic: TrafficSignal = UNKNOWN_TRAFFIC,
 ) {
+  const writable =
+    traffic.trafficClass === "automation" || traffic.trafficClass === "internal"
+      ? traffic.trafficClass
+      : ("unknown" as const);
   return {
     session_id: sessionId,
     visitor_id: visitorId,
@@ -144,5 +159,8 @@ export function toSessionRow(
     utm_campaign: touch.utm_campaign,
     utm_content: touch.utm_content,
     utm_term: touch.utm_term,
+    traffic_class: writable,
+    traffic_source: traffic.trafficSource,
+    classification_reason: traffic.classificationReason,
   };
 }

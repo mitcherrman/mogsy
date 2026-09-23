@@ -4,8 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Coins, Flame, X } from "lucide-react";
 import { ChampionLevelBadge } from "@/components/ChampionLevelBadge";
 import SEOHead from "@/components/SEOHead";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { ensureAnonymousIdentity } from "@/lib/auth/anonymous-identity";
 import { useChampionAssets, getChampionLoading } from "@/hooks/useChampionAssets";
 import {
   fetchChampionNames,
@@ -94,13 +93,8 @@ export default function LeagueSwipeGame() {
   const [searchParams] = useSearchParams();
   const search = searchParams.toString();
   const game = getSwipeGame(gameSlug);
-  const { user } = useAuth();
   const { data: championAssets } = useChampionAssets();
 
-  // Anonymous session so votes attribute to a stable user id (same as LolHub).
-  useEffect(() => {
-    if (!user) supabase.auth.signInAnonymously();
-  }, [user]);
 
   const { data: championNames = NO_CHAMPION_NAMES } = useQuery({
     queryKey: ["league-swipe", "champion-names"],
@@ -319,6 +313,16 @@ export default function LeagueSwipeGame() {
       // retry/offline-queue path must carry this local value through.
       if (!submissionId.current) submissionId.current = newSubmissionId();
       const attemptId = submissionId.current;
+
+      // USERS1 — THIS is Meta Reflex's auth boundary, and it moved here from a
+      // mount effect. A vote is a durable, per-voter write: the RPC keys
+      // `league_swipe_preferences` on auth.uid(), so a caller with no session
+      // has its play logged but cannot hold a preference or move the community
+      // ranking (see 20260813120300_meta_reflex_vote_rpc_v2.sql, which spells
+      // this branch out). Minting on page load instead created an account for
+      // everyone who merely looked at the game. Awaited, so the RPC below runs
+      // with the identity rather than a tick before it.
+      await ensureAnonymousIdentity("meta_reflex_vote");
 
       const agg = await recordSwipeResult({
         // The SUPABASE game, which is not always this mode's route slug: the

@@ -54,6 +54,7 @@ import {
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer test-token" }),
   ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
 }));
 
 vi.setConfig({ testTimeout: 45_000, hookTimeout: 45_000 });

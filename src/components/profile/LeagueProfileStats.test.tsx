@@ -12,6 +12,7 @@ import type { QuizHistoryEntry, QuizProgress } from "@/lib/quiz/api";
 
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: vi.fn(async () => "token"),
+  getExistingBackendAuthToken: vi.fn(async () => "token"),
 }));
 
 const mocks = vi.hoisted(() => ({

@@ -47,6 +47,7 @@ vi.mock("@/lib/quiz/onboarding-gate", () => ({
 }));
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
 }));
 
 const SETS = [

@@ -53,7 +53,11 @@ const BASE_PATH = "/api/daily-run";
 
 async function request<T>(path: string, parse: (json: unknown) => T,
                           method: "GET" | "POST", signal?: AbortSignal): Promise<T> {
-  await ensureBackendAuthToken();
+  // USERS1 — a GET is a read and must never create an identity. `readToday`
+  // runs on the Leaguecraft hub for every visitor, so minting here was one of
+  // the page-load paths that filled auth.users. A POST is the person starting
+  // or advancing a run, which is a genuine write boundary.
+  if (method === "POST") await ensureBackendAuthToken();
   const headers: Record<string, string> = { ...(await getBackendAuthHeaders()) };
   let response: Response;
   try {

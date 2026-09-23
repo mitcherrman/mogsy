@@ -147,7 +147,9 @@ export async function submitTeamSimulation(
   request: TeamSimulationRequest,
   idempotencyKey: string
 ): Promise<SimulationOutcome> {
-  const authHeaders = await getBackendAuthHeaders();
+  // USERS1 — a billable, idempotency-keyed run is charged to an identity, so
+  // one is established here rather than on page load.
+  const authHeaders = await getBackendAuthHeaders({ mint: "team_sim_run" });
 
   let response: Response;
   try {
@@ -227,6 +229,9 @@ const RECOVERABLE_STATUSES: readonly RecoverableStatus[] = [
  * paid-request surface nobody asked it to.
  */
 export async function fetchRecoverableRequests(): Promise<RecoverableListing> {
+  // USERS1 — deliberately does NOT mint. This is a read, and its own docstring
+  // already states the rule: "a signed-out visitor has nothing to recover".
+  // Creating an identity in order to discover that would be exactly backwards.
   const authHeaders = await getBackendAuthHeaders();
 
   let response: Response;
@@ -260,6 +265,8 @@ export async function fetchRecoverableRequests(): Promise<RecoverableListing> {
 export async function recoverSimulation(
   recoveryId: string
 ): Promise<SimulationOutcome> {
+  // USERS1 — no mint either. A recovery handle only exists for an account that
+  // already ran the simulation, so the identity necessarily predates the call.
   const authHeaders = await getBackendAuthHeaders();
   // The handle is opaque and server-minted, but it is going into a PATH, so it
   // is encoded rather than trusted to be path-safe.

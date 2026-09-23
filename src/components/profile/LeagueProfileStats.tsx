@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
 import { categoryLabel, quizApi, type QuizCategoryStat, type QuizHistoryEntry } from "@/lib/quiz/api";
-import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import { getExistingBackendAuthToken } from "@/lib/backend-auth";
 import { deriveProfileStats, pickBestCategory } from "@/lib/profile/view-model";
 import type { ProfileConfig } from "@/hooks/useProfileConfig";
 
@@ -133,7 +133,7 @@ export default function LeagueProfileStats({
     queryKey: ["quiz-history", userId],
     queryFn: async (): Promise<QuizHistoryEntry[] | null> => {
       try {
-        const token = await ensureBackendAuthToken();
+        const token = await getExistingBackendAuthToken();
         if (!token) return null;
         const res = await quizApi.getHistory();
         return res?.results ?? null;

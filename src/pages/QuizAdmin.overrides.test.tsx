@@ -21,6 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
   getBackendAuthHeaders: async () => ({}),
 }));
 vi.mock("@/lib/knowledge-admin/key", () => ({ getAdminKey: () => "test-key" }));

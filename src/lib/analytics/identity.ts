@@ -58,6 +58,7 @@ import {
   type Touch,
 } from "./attribution";
 import { isUuid, readJson, safeStorage, secureUuid, writeJson } from "./runtime";
+import { classifyTraffic, isTrafficClass, UNKNOWN_TRAFFIC, type TrafficSignal } from "./traffic";
 
 export const VISITOR_KEY = "mogzy.analytics.visitor.v1";
 export const SESSION_KEY = "mogzy.analytics.session.v1";
@@ -74,6 +75,16 @@ type StoredSession = {
   touch: Touch;
   /** Whether the session row has been accepted by the database yet. */
   recorded: boolean;
+  /**
+   * USERS1 — the session's traffic class, decided once when the session starts
+   * and carried for its whole life. It is stored beside the session rather than
+   * recomputed per event because the session row is written once: a later event
+   * cannot revise what was inserted, and a value that drifted between events
+   * would describe nothing.
+   */
+  traffic?: TrafficSignal;
+  /** Whether this session has already been promoted to 'human'. */
+  humanPromoted?: boolean;
 };
 
 export type VisitorState = {
@@ -102,6 +113,8 @@ export type SessionState = {
   /** True on the paint that started it — the only moment to write the row. */
   isNew: boolean;
   touch: Touch;
+  /** USERS1 — how this session was classified when it started. */
+  traffic: TrafficSignal;
 };
 
 /**
@@ -146,7 +159,13 @@ function loadSession(): StoredSession | null {
     typeof stored.lastActivityAt === "number" &&
     typeof stored.startedAt === "number"
   ) {
-    return { ...stored, touch: stored.touch ?? EMPTY_TOUCH };
+    return {
+      ...stored,
+      touch: stored.touch ?? EMPTY_TOUCH,
+      // Sessions stored before USERS1 have no class. `unknown` is the honest
+      // verdict on them, and it is also what the database defaulted them to.
+      traffic: isTrafficClass(stored.traffic?.trafficClass) ? stored.traffic : { ...UNKNOWN_TRAFFIC },
+    };
   }
   return memory.session;
 }
@@ -166,6 +185,8 @@ export function getSession(options?: {
   now?: number;
   touch?: Touch;
   visitorId?: string;
+  /** Injectable so classification can be tested as a rule, not as an environment. */
+  traffic?: TrafficSignal;
 }): SessionState {
   const now = options?.now ?? Date.now();
   const visitorId = options?.visitorId ?? getVisitor().visitorId;
@@ -190,10 +211,12 @@ export function getSession(options?: {
         startedAt: existing.startedAt,
         isNew: false,
         touch: existing.touch,
+        traffic: existing.traffic ?? { ...UNKNOWN_TRAFFIC },
       };
     }
   }
 
+  const traffic = options?.traffic ?? classifyTraffic();
   const started: StoredSession = {
     id: secureUuid(),
     visitorId,
@@ -201,6 +224,7 @@ export function getSession(options?: {
     lastActivityAt: now,
     touch,
     recorded: false,
+    traffic,
   };
   saveSession(started);
 
@@ -210,6 +234,7 @@ export function getSession(options?: {
     startedAt: now,
     isNew: true,
     touch,
+    traffic,
   };
 }
 
@@ -257,6 +282,34 @@ export function markSessionRecorded(sessionId: string): void {
   const stored = loadSession();
   if (stored && stored.id === sessionId && !stored.recorded) {
     saveSession({ ...stored, recorded: true });
+  }
+}
+
+/**
+ * USERS1 — has this session already been promoted to 'human'?
+ *
+ * Promotion is a one-way, once-per-session write (see traffic.ts and the
+ * migration). The flag is persisted beside the session so a reload does not
+ * re-fire the RPC on the next click, and so a session that genuinely predates
+ * the feature is not repeatedly re-promoted.
+ */
+export function isSessionHumanPromoted(sessionId: string): boolean {
+  const stored = loadSession();
+  return Boolean(stored && stored.id === sessionId && stored.humanPromoted);
+}
+
+export function markSessionHumanPromoted(sessionId: string): void {
+  const stored = loadSession();
+  if (stored && stored.id === sessionId && !stored.humanPromoted) {
+    saveSession({
+      ...stored,
+      humanPromoted: true,
+      traffic: {
+        trafficClass: "human",
+        trafficSource: stored.traffic?.trafficSource ?? null,
+        classificationReason: "trusted human input event",
+      },
+    });
   }
 }
 

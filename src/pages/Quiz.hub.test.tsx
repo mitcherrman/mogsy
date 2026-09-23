@@ -44,6 +44,7 @@ vi.mock("@/lib/quiz/onboarding-gate", () => ({
 }));
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
 }));
 // The Ranked CTA test exercises the PLAY record, which DCMOD-D only opens while
 // live Ranked is available (closed/unknown fails closed straight to the Daily).

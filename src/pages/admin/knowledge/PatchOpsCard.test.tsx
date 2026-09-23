@@ -32,6 +32,7 @@ vi.mock("@/hooks/useAuth", () => ({
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({}),
   ensureBackendAuthToken: async () => null,
+  getExistingBackendAuthToken: async () => null,
 }));
 
 const json = (body: unknown, status = 200) =>

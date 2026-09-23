@@ -45,6 +45,7 @@ vi.mock("@/lib/quiz/onboarding-gate", () => ({
 }));
 vi.mock("@/lib/backend-auth", () => ({
   ensureBackendAuthToken: async () => "test-token",
+  getExistingBackendAuthToken: async () => "test-token",
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer jwt" }),
 }));
 // The lobby's own Ranked reads. The role is the one under test.

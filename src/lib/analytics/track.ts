@@ -43,10 +43,13 @@ import {
   getSession,
   getVisitor,
   isFirstTouchRecorded,
+  isSessionHumanPromoted,
   isSessionRecorded,
   markFirstTouchRecorded,
+  markSessionHumanPromoted,
   markSessionRecorded,
 } from "./identity";
+import { canPromoteToHuman, type TrafficSignal } from "./traffic";
 import { clamp, recordFailure, recordSent } from "./runtime";
 import {
   ANALYTICS_EVENTS_TABLE,
@@ -143,7 +146,7 @@ export async function trackAsync(
         : recordFirstTouch(visitor.visitorId, touch),
       isSessionRecorded(session.sessionId)
         ? Promise.resolve()
-        : recordSession(session.sessionId, visitor.visitorId, session.touch),
+        : recordSession(session.sessionId, visitor.visitorId, session.touch, session.traffic),
     ]);
 
     const auth = await readAuthState();
@@ -271,10 +274,11 @@ async function recordSession(
   sessionId: string,
   visitorId: string,
   touch: Touch,
+  traffic?: TrafficSignal,
 ): Promise<void> {
   const ok = await insertOnce(
     ANALYTICS_SESSIONS_TABLE,
-    toSessionRow(sessionId, visitorId, touch),
+    toSessionRow(sessionId, visitorId, touch, traffic),
   );
   // A 23505 counts as success here too, and deliberately: it means the first
   // attempt landed and only its response was lost, so the retry has confirmed
@@ -370,4 +374,52 @@ export function buildServerEventRow(params: {
     verification_type: null,
     metadata: params.metadata ?? null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// USERS1 — promotion to 'human'
+// ---------------------------------------------------------------------------
+
+/**
+ * Move this session from `unknown` to `human`, once.
+ *
+ * Called by the human-signal watcher (humanSignal.ts) on the first trusted
+ * pointer or key event. Everything about it is deliberately narrow:
+ *
+ *  · it never runs for a session that is already classified (automation,
+ *    internal, or already human) — only `unknown` is promotable, and the
+ *    database enforces that as well as this function does;
+ *  · it never runs in a driver-controlled browser, because CDP-dispatched
+ *    input is reported as trusted and `isTrusted` alone would promote every
+ *    Playwright run into the audience;
+ *  · it is fire-and-forget and non-fatal, exactly like every other write in
+ *    this module. A promotion that fails leaves the session `unknown`, which
+ *    is still inside the default KPI population.
+ */
+export async function promoteSessionToHuman(reason = "trusted human input event"): Promise<boolean> {
+  try {
+    if (!canPromoteToHuman()) return false;
+    const session = getSession();
+    if (session.traffic.trafficClass !== "unknown") return false;
+    if (isSessionHumanPromoted(session.sessionId)) return false;
+
+    // The session row must exist before it can be promoted. If it has not been
+    // accepted yet the next event will write it, and the next human input will
+    // try again.
+    if (!isSessionRecorded(session.sessionId)) return false;
+
+    const { data, error } = await analyticsDb.rpc("analytics_promote_session_human", {
+      p_session_id: session.sessionId,
+      p_reason: reason,
+    });
+    if (error) {
+      recordFailure("rpc:analytics_promote_session_human", error.message);
+      return false;
+    }
+    markSessionHumanPromoted(session.sessionId);
+    return data === true;
+  } catch (error) {
+    recordFailure("rpc:analytics_promote_session_human", error);
+    return false;
+  }
 }
