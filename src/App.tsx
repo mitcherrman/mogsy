@@ -125,9 +125,8 @@ const PatchOpsDetail = lazy(() => import("./pages/admin/knowledge/PatchOpsDetail
 const AdminShell = lazy(() => import("./components/admin/shell/AdminShell"));
 const AdminOverviewPage = lazy(() => import("./pages/admin/areas/AdminOverviewPage"));
 // FUNNEL1C — the one product-analytics destination.
-const AdminAnalyticsPage = lazy(() => import("./pages/admin/areas/AdminAnalyticsPage"));
 const AdminAllToolsPage = lazy(() => import("./pages/admin/areas/AdminAllToolsPage"));
-const AdminPeoplePage = lazy(() => import("./pages/admin/areas/AdminPeoplePage"));
+const AdminUsersPage = lazy(() => import("./pages/admin/areas/AdminUsersPage"));
 const AdminLeaguecraftPage = lazy(() => import("./pages/admin/areas/AdminLeaguecraftPage"));
 const AdminRankedPage = lazy(() => import("./pages/admin/areas/AdminRankedPage"));
 const AdminSimulationPage = lazy(() => import("./pages/admin/areas/AdminSimulationPage"));
@@ -389,12 +388,16 @@ const App = () => (
                   <Route path="/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminShell /></Suspense></AdminRoute>}>
                     <Route index element={<Suspense fallback={<RouteFallback />}><AdminOverviewPage /></Suspense>} />
                     <Route path="all-tools" element={<Suspense fallback={<RouteFallback />}><AdminAllToolsPage /></Suspense>} />
-                    <Route path="analytics" element={<Suspense fallback={<RouteFallback />}><AdminAnalyticsPage /></Suspense>} />
-                    <Route path="people" element={<Suspense fallback={<RouteFallback />}><AdminPeoplePage /></Suspense>} />
-                    {/* FUNNEL1C/ADMIN2 — the master-only identity directory is
-                        now the Identities view of People › Users, so accounts
-                        have one visible home. Bookmarks land on that view. */}
-                    <Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />
+                    {/* USERS1 — ONE audience domain. `Analytics` and `People`
+                        were the same operator question split by which table
+                        each half happened to read, and neither could reach the
+                        other's records. They are gone as destinations: /admin/
+                        users is the whole of it, and the two old paths redirect
+                        for bookmarks only. They are not peer concepts any more
+                        and nothing in the product advertises them. */}
+                    <Route path="users" element={<Suspense fallback={<RouteFallback />}><AdminUsersPage /></Suspense>} />
+                    <Route path="analytics" element={<Navigate to="/admin/users" replace />} />
+                    <Route path="people" element={<Navigate to="/admin/users?section=accounts" replace />} />
                     {/* PT1.9 — synthetic Free/Premium Performance Trends preview.
                         master_admin only, exactly as the user directory is.
                         FUNNEL1C renamed it off "demo-analytics", which read as a

@@ -54,7 +54,7 @@ describe("Admin Quiz Review console shell", () => {
   });
 
   it("leaves every other admin page in the reading column", () => {
-    renderAt("/admin/people");
+    renderAt("/admin/users");
     expect(main().className).toContain("max-w-7xl");
   });
 
@@ -64,12 +64,12 @@ describe("Admin Quiz Review console shell", () => {
   });
 
   it("keeps the floating overlay on an ordinary admin page", () => {
-    renderAt("/admin/people");
+    renderAt("/admin/users");
     expect(screen.queryByTestId("friends-drawer")).not.toBeNull();
   });
 
   it("mounts no theme switcher anywhere — PT2E deleted it", () => {
-    for (const path of ["/admin/quiz-content", "/admin/people", "/profile"]) {
+    for (const path of ["/admin/quiz-content", "/admin/users", "/profile"]) {
       renderAt(path);
       expect(screen.queryByTestId("theme-switcher")).toBeNull();
       cleanup();

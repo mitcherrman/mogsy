@@ -103,7 +103,7 @@ beforeEach(() => {
 /** Open the selected user's Account tab. Nothing is expanded. */
 async function openAccountTab() {
   render(
-    <MemoryRouter initialEntries={[`/admin/people?section=users&user=${PROFILE_ID}`]}>
+    <MemoryRouter initialEntries={[`/admin/users?section=accounts&user=${PROFILE_ID}`]}>
       <AdminUsers isMasterAdmin />
     </MemoryRouter>,
   );

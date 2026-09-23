@@ -25,14 +25,15 @@ import type {
 } from "./metrics";
 import { AUTHORITATIVE_EVENTS } from "./metrics";
 import type { AnalyticsRange } from "./range";
+import type { TrafficOverride } from "./traffic";
 
 export const PAGE_SIZE = 1000;
 export const ROW_CAP = 50_000;
 
 const EVENT_COLUMNS =
-  "event_name, received_at, visitor_id, session_id, user_id, is_guest, source_system, source_entity_type, source_entity_id, verification_type, metadata";
+  "event_name, received_at, route, visitor_id, session_id, user_id, is_guest, source_system, source_entity_type, source_entity_id, verification_type, metadata";
 const SESSION_COLUMNS =
-  "session_id, visitor_id, started_at, landing_path, referrer, utm_source, utm_medium, utm_campaign";
+  "session_id, visitor_id, started_at, landing_path, referrer, utm_source, utm_medium, utm_campaign, traffic_class, traffic_source, classification_reason";
 const VISITOR_COLUMNS =
   "visitor_id, first_seen_at, first_landing_path, first_referrer, first_utm_source, first_utm_medium, first_utm_campaign";
 
@@ -41,6 +42,18 @@ export interface LoadedAnalytics {
   latest: LatestReceived;
   truncated: { events: boolean; sessions: boolean; visitors: boolean };
   loadedAt: number;
+  /**
+   * USERS1 — operator corrections to a visitor's derived traffic class.
+   *
+   * Read separately and applied at classification time rather than joined,
+   * because the observation (on the session rows) is never edited: "what did
+   * we detect" and "what did we decide" have to stay two answerable questions.
+   * A failure to read them is NOT a failure to load analytics — the page falls
+   * back to the observed classes and says nothing, because an override table
+   * that does not exist yet (the migration has not been applied) must not take
+   * the whole surface down.
+   */
+  overrides: TrafficOverride[];
 }
 
 type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
@@ -107,6 +120,7 @@ export async function loadAnalytics(range: AnalyticsRange): Promise<LoadedAnalyt
 
   return {
     dataset: { events: events.rows, sessions: sessions.rows, visitors: visitors.rows },
+    overrides: await readTrafficOverrides(),
     latest: {
       web,
       railway,
@@ -115,4 +129,21 @@ export async function loadAnalytics(range: AnalyticsRange): Promise<LoadedAnalyt
     truncated: { events: events.truncated, sessions: sessions.truncated, visitors: visitors.truncated },
     loadedAt: Date.now(),
   };
+}
+
+/**
+ * Operator traffic overrides. Never throws — see LoadedAnalytics.overrides.
+ */
+async function readTrafficOverrides(): Promise<TrafficOverride[]> {
+  try {
+    const { data, error } = await analyticsDb
+      .from("analytics_traffic_overrides")
+      .select("visitor_id, traffic_class, traffic_source, reason, set_at")
+      .order("set_at", { ascending: false })
+      .range(0, PAGE_SIZE - 1);
+    if (error) return [];
+    return (data ?? []) as TrafficOverride[];
+  } catch {
+    return [];
+  }
 }

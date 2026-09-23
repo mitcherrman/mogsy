@@ -576,7 +576,14 @@ describe("legacy Arena / Match & Rank analytics are excluded", () => {
   });
 
   it("reads no Arena-era or legacy table anywhere in the analytics read path", () => {
-    for (const file of ["metrics.ts", "loadAnalytics.ts", "range.ts", "../../../pages/admin/areas/AdminAnalyticsPage.tsx"]) {
+    for (const file of [
+      "metrics.ts",
+      "loadAnalytics.ts",
+      "range.ts",
+      "traffic.ts",
+      "population.ts",
+      "../../../components/admin/users/AudienceSections.tsx",
+    ]) {
       const src = readFileSync(resolve(__dirname, file), "utf8");
       const code = src.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
       for (const table of [

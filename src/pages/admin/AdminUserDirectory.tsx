@@ -2,7 +2,7 @@
 // Admin · User Identities — the master-admin identity directory.
 //
 // FUNNEL1C/ADMIN2: this is no longer its own destination. It renders as the
-// master-only "Identities" view of People › Users (`embedded`), so accounts
+// master-only "Identities" view of Users › Accounts (`embedded`), so accounts
 // have ONE visible home; /admin/users redirects to that view. The standalone
 // chrome below (page wrapper, SEOHead, back link) is kept for the non-embedded
 // render so the component stays usable on its own.
@@ -47,7 +47,7 @@ export { ADMIN_USERS_PATH };
 interface AdminUserDirectoryProps {
   /** Render cap and "Show more" increment. Overridable for tests. */
   pageSize?: number;
-  /** Rendered inside People › Users: no page wrapper, SEO head or back link. */
+  /** Rendered inside Users › Accounts: no page wrapper, SEO head or back link. */
   embedded?: boolean;
 }
 
@@ -120,7 +120,7 @@ export default function AdminUserDirectory({
         </p>
       </div>
       <Link
-        to="/admin/people?section=users"
+        to="/admin/users?section=accounts"
         className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> People

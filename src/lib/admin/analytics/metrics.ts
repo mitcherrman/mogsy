@@ -27,6 +27,8 @@ import { DAY_MS, inRange, type AnalyticsRange } from "./range";
 export interface AnalyticsEventRecord {
   event_name: string;
   received_at: string;
+  /** USERS1 — read so a record's activity timeline can say WHERE each event happened. */
+  route?: string | null;
   visitor_id: string | null;
   session_id: string | null;
   user_id: string | null;
@@ -47,6 +49,15 @@ export interface AnalyticsSessionRecord {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
+  /**
+   * USERS1. Optional on the type because a row written before the migration
+   * has none, and because this module must keep computing correctly on a
+   * dataset that predates classification. Absent reads as `unknown`, which is
+   * inside the default population — see analytics/traffic.ts.
+   */
+  traffic_class?: string | null;
+  traffic_source?: string | null;
+  classification_reason?: string | null;
 }
 
 export interface AnalyticsVisitorRecord {
@@ -295,7 +306,33 @@ export interface OverviewMetrics {
   d7: RetentionRate;
 }
 
-export function computeOverview(ds: AnalyticsDataset, range: AnalyticsRange, now: number): OverviewMetrics {
+/**
+ * USERS1 — the SETS behind the Overview tiles.
+ *
+ * Every headline number on Users › Overview is `.size` of one of these, and
+ * every drill-down ("Visitors: 12" → which twelve?) is the set itself. They
+ * are computed once, here, so the list can never disagree with the number it
+ * was reached from — which is the failure mode a separately-written "fetch the
+ * visitors for this metric" query would eventually produce.
+ */
+export interface OverviewPopulations {
+  visitors: Set<string>;
+  newVisitors: Set<string>;
+  returningVisitors: Set<string>;
+  engagedVisitors: Set<string>;
+  signedInUsers: Set<string>;
+  /** Visitors with a signup_completed event in range. */
+  signupVisitors: Set<string>;
+  activeSessionIds: Set<string>;
+  repeatSessionIds: Set<string>;
+  engagedSessionIds: Set<string>;
+  signedInSessionIds: Set<string>;
+}
+
+export function computeOverviewPopulations(
+  ds: AnalyticsDataset,
+  range: AnalyticsRange,
+): OverviewPopulations {
   const sessions = indexSessions(ds);
   const byVisitor = sessionsByVisitor(sessions);
   const firstSeen = firstSeenByVisitor(ds, sessions);
@@ -306,19 +343,19 @@ export function computeOverview(ds: AnalyticsDataset, range: AnalyticsRange, now
   for (const id of active) visitors.add(sessions.get(id)!.visitor_id);
   for (const e of web) if (e.visitor_id) visitors.add(e.visitor_id);
 
-  let newVisitors = 0;
+  const newVisitors = new Set<string>();
   for (const v of visitors) {
     const f = firstSeen.get(v);
-    if (f !== undefined && inRange(f, range)) newVisitors += 1;
+    if (f !== undefined && inRange(f, range)) newVisitors.add(v);
   }
 
-  const returning = new Set<string>();
-  let repeatSessions = 0;
+  const returningVisitors = new Set<string>();
+  const repeatSessionIds = new Set<string>();
   for (const id of active) {
     const s = sessions.get(id)!;
     if (isRepeat(s, byVisitor)) {
-      repeatSessions += 1;
-      returning.add(s.visitor_id);
+      repeatSessionIds.add(id);
+      returningVisitors.add(s.visitor_id);
     }
   }
 
@@ -329,26 +366,45 @@ export function computeOverview(ds: AnalyticsDataset, range: AnalyticsRange, now
 
   const signedInSessionIds = new Set<string>();
   const engagedSessionIds = new Set<string>();
+  const signupVisitors = new Set<string>();
   const modeOpens = new Set(MODE_OPEN_EVENTS);
   for (const e of web) {
+    if (e.event_name === "signup_completed" && e.visitor_id) signupVisitors.add(e.visitor_id);
     if (!e.session_id || !active.has(e.session_id)) continue;
     if (e.is_guest === false) signedInSessionIds.add(e.session_id);
     if (modeOpens.has(e.event_name)) engagedSessionIds.add(e.session_id);
   }
 
+  return {
+    visitors,
+    newVisitors,
+    returningVisitors,
+    engagedVisitors: engagedVisitorSet(ds, range),
+    signedInUsers,
+    signupVisitors,
+    activeSessionIds: active,
+    repeatSessionIds,
+    engagedSessionIds,
+    signedInSessionIds,
+  };
+}
+
+export function computeOverview(ds: AnalyticsDataset, range: AnalyticsRange, now: number): OverviewMetrics {
+  const p = computeOverviewPopulations(ds, range);
   const retention = computeRetention(ds, range, now);
+  const web = webEventsInRange(ds, range);
 
   return {
-    visitors: visitors.size,
-    sessions: active.size,
-    newVisitors,
-    returningVisitors: returning.size,
-    repeatSessions,
-    signedInUsers: signedInUsers.size,
-    signedInSessions: signedInSessionIds.size,
-    guestSessions: active.size - signedInSessionIds.size,
-    engagedSessions: engagedSessionIds.size,
-    engagedVisitors: engagedVisitorSet(ds, range).size,
+    visitors: p.visitors.size,
+    sessions: p.activeSessionIds.size,
+    newVisitors: p.newVisitors.size,
+    returningVisitors: p.returningVisitors.size,
+    repeatSessions: p.repeatSessionIds.size,
+    signedInUsers: p.signedInUsers.size,
+    signedInSessions: p.signedInSessionIds.size,
+    guestSessions: p.activeSessionIds.size - p.signedInSessionIds.size,
+    engagedSessions: p.engagedSessionIds.size,
+    engagedVisitors: p.engagedVisitors.size,
     signups: web.filter((e) => e.event_name === "signup_completed").length,
     d1: retention.d1,
     d7: retention.d7,

@@ -8,10 +8,10 @@ import AdminUsers from "./AdminUsers";
  * Users tab can hand a selected account to THIS page instead of growing its own
  * notes / roles / account-actions implementation. Reading a search param needs
  * a router in scope. The component only ever mounts inside one in production
- * (`/admin` and `/admin/people`), so this wrapper matches reality rather than
+ * (`/admin` and `/admin/users`), so this wrapper matches reality rather than
  * papering over a new requirement.
  */
-const mount = (ui: React.ReactElement, path = "/admin/people?section=users") =>
+const mount = (ui: React.ReactElement, path = "/admin/users?section=accounts") =>
   render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
 
 const profile = {
@@ -82,7 +82,7 @@ describe("COM1-2 · the ?user deep link", () => {
   it("preselects the profile the Community drawer handed over", async () => {
     mount(
       <AdminUsers isMasterAdmin />,
-      `/admin/people?section=users&user=${profile.id}`,
+      `/admin/users?section=accounts&user=${profile.id}`,
     );
     // No click: the detail view opens because the URL named this account. This
     // is what lets the drawer's Users tab be an entry point rather than a
@@ -94,7 +94,7 @@ describe("COM1-2 · the ?user deep link", () => {
   it("ignores a profile id that is not in the directory", async () => {
     mount(
       <AdminUsers isMasterAdmin />,
-      "/admin/people?section=users&user=99999999-9999-4999-8999-999999999999",
+      "/admin/users?section=accounts&user=99999999-9999-4999-8999-999999999999",
     );
     await screen.findByText("Mogzy Owner");
     // The list renders; nothing is selected, and nothing throws.

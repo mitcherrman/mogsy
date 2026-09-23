@@ -90,13 +90,21 @@ function PlatformCounts() {
       hint: "profiles, non-anonymous, non-bot",
     },
     {
+      // USERS1 — this tile used to say "Guest identities", which read as an
+      // audience number and was not one: it counted anonymous rows in
+      // `profiles`, i.e. one per browser that had ever loaded a page. It is
+      // now named for what it actually is, and it should stay near zero,
+      // because since USERS1 an anonymous identity is created only when
+      // someone performs a write. A number climbing here again means
+      // something is minting identities on a page load — see
+      // lib/auth/anonymous-identity.ts.
       id: "guests",
-      label: "Guest identities",
+      label: "Anonymous auth identities",
       value: renderCount(snap.guests),
-      hint: "anonymous profiles; reduced by the anonymous purge",
+      hint: "profiles.is_anonymous — created at a write, not at a page view",
     },
-    { id: "sessions", label: "Sessions · 7d", value: renderCount(snap.sessions7d), hint: "analytics_sessions" },
-    { id: "new-visitors", label: "New visitors · 7d", value: renderCount(snap.newVisitors7d), hint: "analytics_visitors" },
+    { id: "new-visitors", label: "Visitors · 7d", value: renderCount(snap.newVisitors7d), hint: "analytics_visitors — the audience number" },
+    { id: "sessions", label: "Sessions · 7d", value: renderCount(snap.sessions7d), hint: "analytics_sessions, all traffic classes" },
     {
       id: "last-event",
       label: "Last analytics event",
@@ -113,14 +121,14 @@ function PlatformCounts() {
   return (
     <AdminPanel
       title="Platform"
-      description="Current counts. Visitor, session and funnel detail lives in Analytics."
+      description="Current counts, all traffic classes. A visitor is a browser; an account is an auth identity; the two are never the same number. Filtered detail lives in Users."
       testId="admin-overview-platform"
       action={
         <Link
-          to="/admin/analytics"
+          to="/admin/users"
           className="inline-flex items-center gap-1 text-[11px] text-primary underline-offset-2 hover:underline"
         >
-          Open Analytics <ArrowUpRight className="h-3 w-3" aria-hidden />
+          Open Users <ArrowUpRight className="h-3 w-3" aria-hidden />
         </Link>
       }
     >
@@ -172,9 +180,9 @@ function AttentionQueue() {
 
 /** A few high-value jobs — not an index of everything (that is All Tools). */
 const OVERVIEW_SHORTCUTS: Array<{ id: string; label: string; to: string }> = [
-  { id: "analytics", label: "Analytics", to: "/admin/analytics" },
+  { id: "analytics", label: "Audience", to: "/admin/users" },
   { id: "quiz-review", label: "Quiz Review", to: "/admin/quiz-content?tab=review" },
-  { id: "users", label: "User Accounts", to: "/admin/people?section=users" },
+  { id: "users", label: "Accounts", to: "/admin/users?section=accounts" },
   { id: "ranked", label: "Ranked Overview", to: "/admin/ranked?section=overview" },
   { id: "health", label: "Health & Jobs", to: "/admin/operations?section=health" },
   { id: "all-tools", label: "All Tools", to: ADMIN_ALL_TOOLS_PATH },

@@ -1,20 +1,28 @@
 // ---------------------------------------------------------------------------
-// Admin › Analytics — FUNNEL1C. The one product-analytics destination.
+// The audience sections of Admin › Users.
 //
-// What are users doing, where are they coming from, and are they returning?
+// FUNNEL1C wrote these as the whole of a standalone /admin/analytics page.
+// USERS1 kept every one of them and moved them here, because Analytics and
+// People were the same operator domain split by which table they happened to
+// read. The page that composes them — with the shared date range, the traffic
+// filter, the visitor list and the record detail — is
+// pages/admin/areas/AdminUsersPage.tsx.
 //
-// One page, seven URL-driven sections (?section=), one shared date range
-// (?range=), so every view is linkable. Every number comes from
-// lib/admin/analytics/metrics.ts, which reads only analytics_events,
-// analytics_sessions and analytics_visitors — no Arena / Match & Rank table can
-// reach this page. Browser signals and Railway-confirmed gameplay are labelled
-// as different kinds of fact everywhere they appear.
+// Every number still comes from lib/admin/analytics/metrics.ts, which reads
+// only analytics_events, analytics_sessions and analytics_visitors. Browser
+// signals and Railway-confirmed gameplay are labelled as different kinds of
+// fact everywhere they appear.
+//
+// WHAT USERS1 ADDED: the sections receive a dataset that has ALREADY been
+// narrowed to the chosen traffic population (see analytics/traffic.ts), so
+// every metric here honours the filter without knowing it exists — and the
+// headline tiles are now links into the visitor list behind them.
 //
 // Operator console, not a marketing dashboard: numbers and tables, no
 // decorative charts. The one time series (daily activity) is a table.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,37 +57,116 @@ import {
 } from "@/lib/admin/analytics/range";
 import { cn } from "@/lib/utils";
 
+// --- Drill-down ------------------------------------------------------------
+
+/**
+ * USERS1 — how a number becomes a list.
+ *
+ * The page supplies one function: "open the visitor list for this population".
+ * A tile that names a population renders its value as a button; a tile that
+ * does not (a rate, a freshness reading) renders exactly as before. Passing it
+ * through context rather than as a prop on every section keeps the section
+ * signatures unchanged, and means a tile deep inside a table can drill without
+ * six components forwarding a callback they do not otherwise care about.
+ *
+ * The population keys are the ones lib/admin/analytics/population.ts resolves,
+ * so a tile cannot offer a drill-down that has no implementation.
+ */
+export const DrillContext = createContext<((population: string) => void) | null>(null);
+
+export function useDrill(): ((population: string) => void) | null {
+  return useContext(DrillContext);
+}
+
+/**
+ * The acquisition funnel's steps, mapped to the event each one counts.
+ *
+ * `returned` is the one step that is not an event — it is derived from session
+ * history — so it drills to the returning-visitor population instead.
+ */
+const FUNNEL_POPULATIONS: Record<string, string | undefined> = {
+  landing: "event:landing_viewed",
+  hub: "event:hub_entered",
+  leaguecraft: "event:leaguecraft_opened",
+  engaged: "engaged_visitors",
+  account: "event:signup_completed",
+  verification: "event:verification_completed",
+  returned: "returning_visitors",
+};
+
+/** A number that opens its own population, for use inside a table cell. */
+export function DrillValue({
+  id,
+  population,
+  value,
+}: {
+  id: string;
+  population?: string;
+  value: ReactNode;
+}) {
+  const onDrill = useDrill();
+  if (!population || !onDrill) return <>{value}</>;
+  return (
+    <button
+      type="button"
+      data-testid={`analytics-drill-${id}`}
+      onClick={() => onDrill(population)}
+      className="tabular-nums underline decoration-dotted underline-offset-4 hover:text-primary"
+      title="Show the visitors behind this number"
+    >
+      {value}
+    </button>
+  );
+}
+
 // --- Primitives ------------------------------------------------------------
 
-function Metric({
+export function Metric({
   id,
   label,
   value,
   definition,
   muted,
+  drill,
 }: {
   id: string;
   label: string;
   value: ReactNode;
   definition?: string;
   muted?: boolean;
+  /** A population key from analytics/population.ts. Makes the value clickable. */
+  drill?: string;
 }) {
+  const onDrill = useDrill();
+  const clickable = Boolean(drill && onDrill);
   return (
     <div className="rounded-md border border-border bg-muted/20 px-3 py-2" data-testid={`analytics-metric-${id}`}>
       <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className={cn("text-base font-semibold tabular-nums", muted && "text-sm font-medium text-muted-foreground")}>
-        {value}
+        {clickable ? (
+          <button
+            type="button"
+            data-testid={`analytics-drill-${id}`}
+            onClick={() => onDrill!(drill!)}
+            className="underline decoration-dotted underline-offset-4 hover:text-primary"
+            title="Show the visitors behind this number"
+          >
+            {value}
+          </button>
+        ) : (
+          value
+        )}
       </dd>
       {definition && <dd className="mt-0.5 text-[10px] leading-snug text-muted-foreground/80">{definition}</dd>}
     </div>
   );
 }
 
-function MetricGrid({ children }: { children: ReactNode }) {
+export function MetricGrid({ children }: { children: ReactNode }) {
   return <dl className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">{children}</dl>;
 }
 
-function Table({
+export function Table({
   head,
   rows,
   testId,
@@ -126,7 +213,7 @@ function Table({
 }
 
 /** Where a number comes from. The distinction the whole page is organised around. */
-function Kind({ kind }: { kind: "browser" | "railway" }) {
+export function Kind({ kind }: { kind: "browser" | "railway" }) {
   return (
     <span
       className={cn(
@@ -139,14 +226,14 @@ function Kind({ kind }: { kind: "browser" | "railway" }) {
   );
 }
 
-function Unavailable({ children }: { children: ReactNode }) {
+export function Unavailable({ children }: { children: ReactNode }) {
   return <span className="text-[11px] font-normal text-muted-foreground">{children}</span>;
 }
 
-const pctOf = (n: number, total: number) =>
+export const pctOf = (n: number, total: number) =>
   total >= MIN_RATE_SAMPLE && total > 0 ? `${Math.round((n / total) * 100)}%` : "—";
 
-function retentionValue(r: RetentionRate) {
+export function retentionValue(r: RetentionRate) {
   if (r.eligible === 0) {
     return <Unavailable>Insufficient history{r.tooRecent > 0 ? ` (${r.tooRecent} too recent)` : ""}</Unavailable>;
   }
@@ -161,9 +248,9 @@ function retentionValue(r: RetentionRate) {
   );
 }
 
-const fmtTime = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "never");
+export const fmtTime = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "never");
 
-function ageLabel(iso: string | null, now: number) {
+export function ageLabel(iso: string | null, now: number) {
   if (!iso) return "—";
   const s = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
   if (s < 90) return `${s}s ago`;
@@ -174,28 +261,28 @@ function ageLabel(iso: string | null, now: number) {
 
 // --- Sections --------------------------------------------------------------
 
-interface SectionProps {
+export interface SectionProps {
   loaded: LoadedAnalytics;
   range: AnalyticsRange;
   now: number;
 }
 
-function OverviewSection({ loaded, range, now }: SectionProps) {
+export function OverviewSection({ loaded, range, now }: SectionProps) {
   const m = useMemo(() => computeOverview(loaded.dataset, range, now), [loaded, range, now]);
   const daily = useMemo(() => computeDaily(loaded.dataset, range), [loaded, range]);
   return (
     <div className="space-y-4" data-testid="analytics-section-overview">
       <AdminPanel title="Summary" description="Every tile states its definition. Nothing here is estimated.">
         <MetricGrid>
-          <Metric id="visitors" label="Visitors" value={m.visitors} definition={METRIC_DEFINITIONS.visitors} />
-          <Metric id="sessions" label="Sessions" value={m.sessions} definition={METRIC_DEFINITIONS.sessions} />
-          <Metric id="new-visitors" label="New visitors" value={m.newVisitors} definition={METRIC_DEFINITIONS.newVisitors} />
-          <Metric id="returning-visitors" label="Returning visitors" value={m.returningVisitors} definition={METRIC_DEFINITIONS.returningVisitors} />
+          <Metric id="visitors" label="Visitors" value={m.visitors} definition={METRIC_DEFINITIONS.visitors} drill="visitors" />
+          <Metric id="sessions" label="Sessions" value={m.sessions} definition={METRIC_DEFINITIONS.sessions} drill="sessions" />
+          <Metric id="new-visitors" label="New visitors" value={m.newVisitors} definition={METRIC_DEFINITIONS.newVisitors} drill="new_visitors" />
+          <Metric id="returning-visitors" label="Returning visitors" value={m.returningVisitors} definition={METRIC_DEFINITIONS.returningVisitors} drill="returning_visitors" />
           <Metric id="signed-in-users" label="Signed-in users" value={m.signedInUsers} definition={METRIC_DEFINITIONS.signedInUsers} />
           <Metric id="guest-sessions" label="Guest sessions" value={m.guestSessions} definition={METRIC_DEFINITIONS.guestSessions} />
-          <Metric id="engaged-sessions" label="Engaged sessions" value={m.engagedSessions} definition={METRIC_DEFINITIONS.engagedSessions} />
-          <Metric id="engaged-visitors" label="Engaged visitors" value={m.engagedVisitors} definition={METRIC_DEFINITIONS.engagedVisitors} />
-          <Metric id="signups" label="Signups" value={m.signups} definition={METRIC_DEFINITIONS.signups} />
+          <Metric id="engaged-sessions" label="Engaged sessions" value={m.engagedSessions} definition={METRIC_DEFINITIONS.engagedSessions} drill="engaged_sessions" />
+          <Metric id="engaged-visitors" label="Engaged visitors" value={m.engagedVisitors} definition={METRIC_DEFINITIONS.engagedVisitors} drill="engaged_visitors" />
+          <Metric id="signups" label="Signups" value={m.signups} definition={METRIC_DEFINITIONS.signups} drill="signups" />
           <Metric id="d1" label="D1 retention" value={retentionValue(m.d1)} definition={METRIC_DEFINITIONS.d1} />
           <Metric id="d7" label="D7 retention" value={retentionValue(m.d7)} definition={METRIC_DEFINITIONS.d7} />
         </MetricGrid>
@@ -211,7 +298,7 @@ function OverviewSection({ loaded, range, now }: SectionProps) {
   );
 }
 
-function AcquisitionSection({ loaded, range, now }: SectionProps) {
+export function AcquisitionSection({ loaded, range, now }: SectionProps) {
   const steps = useMemo(() => computeFunnel(loaded.dataset, range, now), [loaded, range, now]);
   const total = useMemo(() => computeOverview(loaded.dataset, range, now).visitors, [loaded, range, now]);
   return (
@@ -225,7 +312,11 @@ function AcquisitionSection({ loaded, range, now }: SectionProps) {
           head={["Step", "Visitors", "% of visitors", "Definition"]}
           rows={steps.map((s) => [
             <span key="l" className="font-medium">{s.label}</span>,
-            s.visitors === null ? <Unavailable key="u">Unavailable</Unavailable> : s.visitors,
+            s.visitors === null ? (
+              <Unavailable key="u">Unavailable</Unavailable>
+            ) : (
+              <DrillValue key="v" id={`funnel-${s.id}`} population={FUNNEL_POPULATIONS[s.id]} value={s.visitors} />
+            ),
             s.visitors === null ? "—" : pctOf(s.visitors, total),
             <span key="d" className="text-muted-foreground">{s.unavailableReason ?? s.definition}</span>,
           ])}
@@ -239,7 +330,7 @@ function AcquisitionSection({ loaded, range, now }: SectionProps) {
   );
 }
 
-function EngagementSection({ loaded, range }: SectionProps) {
+export function EngagementSection({ loaded, range }: SectionProps) {
   const modes = useMemo(() => computeGameplay(loaded.dataset, range), [loaded, range]);
   const na = (text = "Not instrumented") => <Unavailable>{text}</Unavailable>;
   return (
@@ -257,7 +348,7 @@ function EngagementSection({ loaded, range }: SectionProps) {
           head={["Mode", "Opened (visitors)", "Opened (events)", "Started", "Started users", "Guest starts", "Completed", "Completion", "Grain"]}
           rows={modes.map((m) => [
             <span key="m" className="font-medium" data-testid={`analytics-mode-${m.mode.id}`}>{m.mode.label}</span>,
-            m.openedVisitors,
+            <DrillValue key="ov" id={`mode-${m.mode.id}`} population={`mode:${m.mode.id}`} value={m.openedVisitors} />,
             m.openedEvents,
             m.started === null ? na() : m.started,
             m.startedUsers === null ? "—" : m.startedUsers,
@@ -272,7 +363,7 @@ function EngagementSection({ loaded, range }: SectionProps) {
   );
 }
 
-function AccountsSection({ loaded, range, now }: SectionProps) {
+export function AccountsSection({ loaded, range, now }: SectionProps) {
   const a = useMemo(() => computeAccounts(loaded.dataset, range), [loaded, range]);
   const o = useMemo(() => computeOverview(loaded.dataset, range, now), [loaded, range, now]);
   return (
@@ -317,7 +408,7 @@ function AccountsSection({ loaded, range, now }: SectionProps) {
   );
 }
 
-function RetentionSection({ loaded, range, now }: SectionProps) {
+export function RetentionSection({ loaded, range, now }: SectionProps) {
   const r = useMemo(() => computeRetention(loaded.dataset, range, now), [loaded, range, now]);
   return (
     <div className="space-y-4" data-testid="analytics-section-retention">
@@ -326,9 +417,9 @@ function RetentionSection({ loaded, range, now }: SectionProps) {
         description="Derived from session history (analytics_sessions grouped by visitor), never from a click. Sessions use a 30-minute inactivity window; a route change never starts one."
       >
         <MetricGrid>
-          <Metric id="cohort" label="New visitors (cohort)" value={r.cohortSize} definition={METRIC_DEFINITIONS.newVisitors} />
-          <Metric id="returning" label="Returning visitors" value={r.returningVisitors} definition={METRIC_DEFINITIONS.returningVisitors} />
-          <Metric id="repeat-sessions" label="Repeat sessions" value={r.repeatSessions} definition={METRIC_DEFINITIONS.repeatSessions} />
+          <Metric id="cohort" label="New visitors (cohort)" value={r.cohortSize} drill="new_visitors" definition={METRIC_DEFINITIONS.newVisitors} />
+          <Metric id="returning" label="Returning visitors" value={r.returningVisitors} drill="returning_visitors" definition={METRIC_DEFINITIONS.returningVisitors} />
+          <Metric id="repeat-sessions" label="Repeat sessions" value={r.repeatSessions} drill="repeat_sessions" definition={METRIC_DEFINITIONS.repeatSessions} />
           <Metric
             id="sessions-per-visitor"
             label="Sessions per visitor"
@@ -373,7 +464,7 @@ function Breakdown({ b, testId }: { b: SourceBreakdown; testId: string }) {
   );
 }
 
-function SourcesSection({ loaded, range }: SectionProps) {
+export function SourcesSection({ loaded, range }: SectionProps) {
   const s = useMemo(() => computeSources(loaded.dataset, range), [loaded, range]);
   return (
     <div className="space-y-4" data-testid="analytics-section-sources">
@@ -447,7 +538,7 @@ function OutboxPanel() {
   );
 }
 
-function HealthSection({ loaded, range, now }: SectionProps) {
+export function HealthSection({ loaded, range, now }: SectionProps) {
   const h = useMemo(() => computeHealth(loaded.dataset, range, loaded.latest), [loaded, range]);
   const anomaly = (n: number) => (n === 0 ? "0" : <span className="font-semibold text-amber-300">{n}</span>);
   return (
@@ -503,136 +594,3 @@ function HealthSection({ loaded, range, now }: SectionProps) {
   );
 }
 
-// --- Page ------------------------------------------------------------------
-
-type LoadState =
-  | { s: "loading" }
-  | { s: "ok"; loaded: LoadedAnalytics; range: AnalyticsRange; now: number }
-  | { s: "error"; message: string };
-
-function RangeBar({
-  preset,
-  onChange,
-  onRefresh,
-  busy,
-}: {
-  preset: RangePreset;
-  onChange: (p: RangePreset) => void;
-  onRefresh: () => void;
-  busy: boolean;
-}) {
-  return (
-    <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="analytics-range">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Range</span>
-      {RANGE_PRESETS.map((p) => (
-        <button
-          key={p}
-          type="button"
-          aria-pressed={p === preset}
-          data-testid={`analytics-range-${p}`}
-          onClick={() => onChange(p)}
-          className={cn(
-            "rounded-md border px-2 py-0.5 text-[11px] font-medium",
-            p === preset
-              ? "border-primary bg-primary/10 text-foreground"
-              : "border-border bg-card text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {RANGE_LABELS[p]}
-        </button>
-      ))}
-      <Button size="sm" variant="outline" className="ml-auto h-7 gap-1 text-[11px]" onClick={onRefresh} disabled={busy}>
-        <RefreshCw className={cn("h-3 w-3", busy && "animate-spin")} aria-hidden /> Refresh
-      </Button>
-    </div>
-  );
-}
-
-export default function AdminAnalyticsPage() {
-  const area = ADMIN_AREAS_BY_ID.analytics;
-  const [section, setSection] = useAreaSection(area);
-  const [params, setParams] = useSearchParams();
-  const preset = parseRangePreset(params.get("range"));
-  const [nonce, setNonce] = useState(0);
-  const [state, setState] = useState<LoadState>({ s: "loading" });
-
-  useEffect(() => {
-    let cancelled = false;
-    const now = Date.now();
-    const range = resolveRange(preset, now);
-    setState({ s: "loading" });
-    loadAnalytics(range)
-      .then((loaded) => !cancelled && setState({ s: "ok", loaded, range, now }))
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setState({
-          s: "error",
-          message:
-            err instanceof Error && err.message
-              ? `Could not read analytics: ${err.message}`
-              : "Could not read analytics.",
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [preset, nonce]);
-
-  const setPreset = (p: RangePreset) => {
-    const next = new URLSearchParams(params);
-    next.set("range", p);
-    setParams(next, { replace: false });
-  };
-
-  const truncated =
-    state.s === "ok" && Object.entries(state.loaded.truncated).filter(([, t]) => t).map(([k]) => k);
-
-  return (
-    <div data-testid="admin-area-analytics">
-      <AdminAreaHeader area={area} active={section} onSelect={setSection} />
-      <RangeBar preset={preset} onChange={setPreset} onRefresh={() => setNonce((n) => n + 1)} busy={state.s === "loading"} />
-
-      {state.s === "loading" && (
-        <p className="rounded-md border border-dashed border-border p-6 text-center text-xs text-muted-foreground" data-testid="analytics-loading">
-          Reading analytics…
-        </p>
-      )}
-
-      {state.s === "error" && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-xs text-destructive" data-testid="analytics-error">
-          {state.message}
-        </p>
-      )}
-
-      {state.s === "ok" && (
-        <>
-          <p className="mb-3 text-[10px] text-muted-foreground" data-testid="analytics-loaded-at">
-            {RANGE_LABELS[preset]} · read {new Date(state.loaded.loadedAt).toLocaleTimeString()} ·{" "}
-            {state.loaded.dataset.events.length} events, {state.loaded.dataset.sessions.length} sessions,{" "}
-            {state.loaded.dataset.visitors.length} visitors loaded
-          </p>
-          {truncated && truncated.length > 0 && (
-            <p className="mb-3 flex items-start gap-1.5 rounded-md border border-amber-400/40 bg-amber-400/5 p-3 text-[11px] text-amber-300" data-testid="analytics-truncated">
-              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-              {truncated.join(", ")} exceeded {ROW_CAP.toLocaleString()} rows and were truncated. Numbers
-              below are computed on a partial read — move these aggregates into SQL views.
-            </p>
-          )}
-          {state.loaded.dataset.events.length === 0 && state.loaded.dataset.sessions.length === 0 && (
-            <p className="mb-3 rounded-md border border-dashed border-border p-3 text-[11px] text-muted-foreground" data-testid="analytics-empty">
-              No analytics rows exist yet. Every count below is a true zero, not a failed read — System
-              Health shows whether events are arriving at all.
-            </p>
-          )}
-          {section.id === "overview" && <OverviewSection loaded={state.loaded} range={state.range} now={state.now} />}
-          {section.id === "acquisition" && <AcquisitionSection loaded={state.loaded} range={state.range} now={state.now} />}
-          {section.id === "engagement" && <EngagementSection loaded={state.loaded} range={state.range} now={state.now} />}
-          {section.id === "accounts" && <AccountsSection loaded={state.loaded} range={state.range} now={state.now} />}
-          {section.id === "retention" && <RetentionSection loaded={state.loaded} range={state.range} now={state.now} />}
-          {section.id === "sources" && <SourcesSection loaded={state.loaded} range={state.range} now={state.now} />}
-          {section.id === "health" && <HealthSection loaded={state.loaded} range={state.range} now={state.now} />}
-        </>
-      )}
-    </div>
-  );
-}

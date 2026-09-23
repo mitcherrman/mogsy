@@ -14,7 +14,7 @@
 //
 // Nothing new is authorised here and no admin business logic is duplicated.
 // Anything this tab does not do — admin notes, roles, ban/unban, account
-// actions, notifications, reports — lives in ONE place, `/admin/people`, and
+// actions, notifications, reports — lives in ONE place, `/admin/users`, and
 // this tab links a selected user straight into it rather than growing a second
 // implementation that could drift from the first.
 //
@@ -58,7 +58,7 @@ export const COMMUNITY_USERS_PAGE_SIZE = 25;
 
 /** The canonical full user-management surface for one selected profile. */
 export function adminPeopleHref(profileId: string): string {
-  return `/admin/people?section=users&user=${encodeURIComponent(profileId)}`;
+  return `/admin/users?section=accounts&user=${encodeURIComponent(profileId)}`;
 }
 
 interface Props {
@@ -120,7 +120,7 @@ export default function CommunityUsersTab({
         <span>
           Admin view. Inspection, friend linking and bot state only — notes, roles, account
           actions and moderation stay in{" "}
-          <Link to="/admin/people?section=users" className="underline underline-offset-2">
+          <Link to="/admin/users?section=accounts" className="underline underline-offset-2">
             Admin · People
           </Link>
           .

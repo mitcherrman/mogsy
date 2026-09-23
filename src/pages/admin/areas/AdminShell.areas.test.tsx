@@ -76,9 +76,8 @@ vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => admin
 
 import AdminShell from "@/components/admin/shell/AdminShell";
 import AdminOverviewPage from "./AdminOverviewPage";
-import AdminAnalyticsPage from "./AdminAnalyticsPage";
 import AdminAllToolsPage from "./AdminAllToolsPage";
-import AdminPeoplePage from "./AdminPeoplePage";
+import AdminUsersPage from "./AdminUsersPage";
 import AdminLeaguecraftPage from "./AdminLeaguecraftPage";
 import AdminRankedPage from "./AdminRankedPage";
 import AdminSimulationPage from "./AdminSimulationPage";
@@ -107,8 +106,7 @@ function renderAdmin(path: string) {
         <Route path="/admin" element={<AdminShell />}>
           <Route index element={<AdminOverviewPage />} />
           <Route path="all-tools" element={<AdminAllToolsPage />} />
-          <Route path="analytics" element={<AdminAnalyticsPage />} />
-          <Route path="people" element={<AdminPeoplePage />} />
+          <Route path="users" element={<AdminUsersPage />} />
           <Route path="leaguecraft" element={<AdminLeaguecraftPage />} />
           <Route path="ranked" element={<AdminRankedPage />} />
           <Route path="simulation" element={<AdminSimulationPage />} />
@@ -122,9 +120,11 @@ function renderAdmin(path: string) {
           <Route path="blog" element={<div data-testid="stub-blog" />} />
           <Route path="blog/:id" element={<div data-testid="stub-blog-editor" />} />
           <Route path="combat-battles" element={<div data-testid="stub-battles" />} />
-          {/* /admin/users is a redirect now (FUNNEL1C): the identity directory
-              is the master-only Identities view of People › Users. */}
-          <Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />
+          {/* USERS1 — People and Analytics are redirects now. They are not
+              peer destinations and nothing advertises them; the paths resolve
+              only so an old bookmark lands somewhere true. */}
+          <Route path="analytics" element={<Navigate to="/admin/users" replace />} />
+          <Route path="people" element={<Navigate to="/admin/users?section=accounts" replace />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -149,8 +149,7 @@ describe("1 · every top-level area renders", () => {
   const areaPaths: Array<[string, string, string]> = [
     ["Overview", "/admin", "admin-area-overview"],
     ["All Tools", "/admin/all-tools", "admin-area-all-tools"],
-    ["Analytics", "/admin/analytics", "admin-area-analytics"],
-    ["People", "/admin/people", "admin-area-people"],
+    ["Users", "/admin/users", "admin-area-users"],
     ["Leaguecraft", "/admin/leaguecraft", "admin-area-leaguecraft"],
     ["Ranked", "/admin/ranked", "admin-area-ranked"],
     ["Simulation", "/admin/simulation", "admin-area-simulation"],
@@ -166,7 +165,7 @@ describe("1 · every top-level area renders", () => {
   });
 
   it("renders one flat, never-paginated area rail on every page", async () => {
-    renderAdmin("/admin/people");
+    renderAdmin("/admin/users");
     const nav = await screen.findByTestId("admin-shell-nav");
     for (const area of ADMIN_AREAS) {
       expect(within(nav).getByTestId(`admin-nav-${area.id}`), area.id).toBeTruthy();
@@ -179,7 +178,7 @@ describe("1 · every top-level area renders", () => {
     renderAdmin("/admin/ranked");
     const link = await screen.findByTestId("admin-nav-ranked");
     expect(link.getAttribute("data-active")).toBe("true");
-    expect(screen.getByTestId("admin-nav-people").getAttribute("data-active")).toBe("false");
+    expect(screen.getByTestId("admin-nav-users").getAttribute("data-active")).toBe("false");
   });
 
   it("keeps the rail anchored on the pages an area adopted", async () => {
@@ -207,49 +206,49 @@ describe("1 · every top-level area renders", () => {
 
 describe("2 · Admin Users remains available, and only once", () => {
   it("mounts the deployed AdminUsers panel under People › Users", async () => {
-    renderAdmin("/admin/people?section=users");
-    expect(await screen.findByTestId("people-users-accounts")).toBeTruthy();
+    renderAdmin("/admin/users?section=accounts");
+    expect(await screen.findByTestId("users-accounts-list")).toBeTruthy();
     // The real component: its search field is part of Admin Users Phase 1.
     await waitFor(() => expect(rpcCalls).toContain("admin_list_profiles"));
   });
 
   it("exposes exactly one Users interface — the browser is a view of it, not a peer", async () => {
-    renderAdmin("/admin/people?section=users");
-    const subtabs = await screen.findByTestId("people-users-subtabs");
-    expect(within(subtabs).getByTestId("people-users-subtabs-accounts")).toBeTruthy();
-    expect(within(subtabs).getByTestId("people-users-subtabs-browser")).toBeTruthy();
+    renderAdmin("/admin/users?section=accounts");
+    const subtabs = await screen.findByTestId("users-accounts-subtabs");
+    expect(within(subtabs).getByTestId("users-accounts-subtabs-accounts")).toBeTruthy();
+    expect(within(subtabs).getByTestId("users-accounts-subtabs-browser")).toBeTruthy();
     // Accounts is the default view; the profile browser is not rendered beside it.
-    expect(screen.queryByTestId("people-users-browser")).toBeNull();
+    expect(screen.queryByTestId("users-accounts-browser")).toBeNull();
   });
 
   // FUNNEL1C/ADMIN2 — /admin/users was a second account browser in navigation.
   it("offers the master-only identity directory as a third VIEW, deep-linkable", async () => {
-    renderAdmin("/admin/people?section=users&view=identities");
-    expect(await screen.findByTestId("people-users-identities")).toBeTruthy();
+    renderAdmin("/admin/users?section=accounts&view=identities");
+    expect(await screen.findByTestId("users-accounts-identities")).toBeTruthy();
     // One destination: the other views are not rendered beside it.
-    expect(screen.queryByTestId("people-users-accounts")).toBeNull();
-    expect(screen.queryByTestId("people-users-browser")).toBeNull();
-    const subtabs = screen.getByTestId("people-users-subtabs");
-    expect(within(subtabs).getByTestId("people-users-subtabs-identities")).toBeTruthy();
+    expect(screen.queryByTestId("users-accounts-list")).toBeNull();
+    expect(screen.queryByTestId("users-accounts-browser")).toBeNull();
+    const subtabs = screen.getByTestId("users-accounts-subtabs");
+    expect(within(subtabs).getByTestId("users-accounts-subtabs-identities")).toBeTruthy();
   });
 
   it("does not advertise the identity view to a non-master admin", async () => {
     supabase.from.mockImplementation((table: string) =>
       buildQuery(table === "user_roles" ? [{ user_id: "u1", role: "admin" }] : []),
     );
-    renderAdmin("/admin/people?section=users&view=identities");
-    const subtabs = await screen.findByTestId("people-users-subtabs");
-    expect(within(subtabs).queryByTestId("people-users-subtabs-identities")).toBeNull();
-    expect(screen.queryByTestId("people-users-identities")).toBeNull();
+    renderAdmin("/admin/users?section=accounts&view=identities");
+    const subtabs = await screen.findByTestId("users-accounts-subtabs");
+    expect(within(subtabs).queryByTestId("users-accounts-subtabs-identities")).toBeNull();
+    expect(screen.queryByTestId("users-accounts-identities")).toBeNull();
     // It falls back to Accounts rather than rendering an empty section.
-    expect(screen.getByTestId("people-users-accounts")).toBeTruthy();
+    expect(screen.getByTestId("users-accounts-list")).toBeTruthy();
   });
 });
 
 describe("3 · Account Actions behaviour is preserved", () => {
   it("navigating to Users performs no auth action and deletes nothing", async () => {
-    renderAdmin("/admin/people?section=users");
-    await screen.findByTestId("people-users-accounts");
+    renderAdmin("/admin/users?section=accounts");
+    await screen.findByTestId("users-accounts-list");
     await waitFor(() => expect(rpcCalls).toContain("admin_list_profiles"));
     // Account Actions are edge-function calls; delete-profile is a table delete.
     // Rendering the panel must trigger neither.
@@ -260,16 +259,16 @@ describe("3 · Account Actions behaviour is preserved", () => {
   it("keeps the master-only gate on role editing by passing isMasterAdmin through", async () => {
     // AdminUsers receives the same prop the legacy dashboard passed. The role
     // read is the same user_roles query; nothing new decides authorization.
-    renderAdmin("/admin/people?section=users");
-    await screen.findByTestId("people-users-accounts");
+    renderAdmin("/admin/users?section=accounts");
+    await screen.findByTestId("users-accounts-list");
     await waitFor(() => expect(supabase.from).toHaveBeenCalledWith("user_roles"));
   });
 });
 
 describe("4 · Feedback remains reachable", () => {
   it("renders the feedback queue under People › Feedback", async () => {
-    renderAdmin("/admin/people?section=feedback");
-    expect(await screen.findByTestId("people-feedback")).toBeTruthy();
+    renderAdmin("/admin/users?section=moderation&view=feedback");
+    expect(await screen.findByTestId("users-moderation-feedback")).toBeTruthy();
   });
 
   it("also surfaces feedback from the Overview attention queue", async () => {
@@ -452,7 +451,7 @@ describe("10 · Operations and Danger Zone execute nothing by navigation", () =>
     renderAdmin("/admin/operations?section=danger-zone");
     await screen.findByTestId("operations-danger-zone");
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(links).toContain("/admin/people?section=users");
+    expect(links).toContain("/admin/users?section=accounts");
   });
 
   it("shows all three configuration authorities without migrating any", async () => {
@@ -492,7 +491,7 @@ describe("11 & 12 · legacy shells are retired, not advertised", () => {
     expect(screen.getByTestId("admin-overview-shortcuts")).toBeTruthy();
     expect(screen.queryByTestId("admin-overview-areas")).toBeNull();
     expect(screen.queryByText(/Img Clicks|Image clicks/i)).toBeNull();
-    expect(screen.getByTestId("admin-overview-shortcut-analytics").getAttribute("href")).toBe("/admin/analytics");
+    expect(screen.getByTestId("admin-overview-shortcut-analytics").getAttribute("href")).toBe("/admin/users");
   });
 
   it("lists every registered tool in All Tools, developer entries included", async () => {
@@ -525,16 +524,16 @@ describe("13 & 14 · LEGACY1 · the moderator panel is deleted, not linked", () 
   });
 
   it("is not advertised from People, whose Moderation section is the one home", async () => {
-    renderAdmin("/admin/people?section=moderation");
-    await screen.findByTestId("admin-area-people");
+    renderAdmin("/admin/users?section=moderation");
+    await screen.findByTestId("admin-area-users");
     expect(screen.queryByTestId("people-moderator-link")).toBeNull();
     const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href") ?? "");
     expect(hrefs).not.toContain("/moderator");
     // The capability that mattered — comment moderation, reports and the
     // moderator roster — is here, as views of one destination.
-    const subtabs = screen.getByTestId("people-moderation-subtabs");
-    expect(within(subtabs).getByTestId("people-moderation-subtabs-mod-config")).toBeTruthy();
-    expect(screen.getByTestId("people-moderation-comments")).toBeTruthy();
+    const subtabs = screen.getByTestId("users-moderation-subtabs");
+    expect(within(subtabs).getByTestId("users-moderation-subtabs-mod-config")).toBeTruthy();
+    expect(screen.getByTestId("users-moderation-comments")).toBeTruthy();
   });
 });
 
@@ -638,7 +637,7 @@ describe("18 · no tutorial admin surface survives", () => {
 
 // --- FUNNEL1C · Analytics ----------------------------------------------------
 
-describe("FUNNEL1C · Analytics is a first-class area", () => {
+describe("USERS1 · Users is the one audience domain", () => {
   it("sits directly under Overview in the rail", async () => {
     renderAdmin("/admin");
     const nav = await screen.findByTestId("admin-shell-nav");
@@ -646,25 +645,58 @@ describe("FUNNEL1C · Analytics is a first-class area", () => {
       .getAllByRole("link")
       .map((a) => a.getAttribute("data-testid"))
       .filter((id): id is string => Boolean(id?.startsWith("admin-nav-")));
-    expect(ids.slice(0, 2)).toEqual(["admin-nav-overview", "admin-nav-analytics"]);
+    expect(ids.slice(0, 2)).toEqual(["admin-nav-overview", "admin-nav-users"]);
   });
 
-  it("renders every section with the shared range control and an honest empty state", async () => {
-    for (const section of ["overview", "acquisition", "engagement", "accounts", "retention", "sources", "health"]) {
+  // The audience sections keep FUNNEL1C's own test ids — they are the same
+  // components, moved. `activity` renders `analytics-section-engagement` and
+  // `traffic-health` renders `analytics-section-health` for that reason.
+  it("renders every audience section with the shared range control and an honest empty state", async () => {
+    const sections: Array<[string, string]> = [
+      ["overview", "analytics-section-overview"],
+      ["acquisition", "analytics-section-acquisition"],
+      ["activity", "analytics-section-engagement"],
+      ["retention", "analytics-section-retention"],
+      ["traffic-health", "analytics-section-health"],
+    ];
+    for (const [section, testId] of sections) {
       cleanup();
-      renderAdmin(`/admin/analytics?section=${section}&range=30d`);
-      expect(await screen.findByTestId(`analytics-section-${section}`), section).toBeTruthy();
+      renderAdmin(`/admin/users?section=${section}&range=30d`);
+      expect(await screen.findByTestId(testId), section).toBeTruthy();
       expect(screen.getByTestId("analytics-range-30d").getAttribute("aria-pressed")).toBe("true");
       expect(screen.getByTestId("analytics-empty")).toBeTruthy();
     }
   });
 
+  // USERS1 — the traffic filter is the control the whole workstream exists
+  // for. It defaults to human + unknown and it is on every audience section.
+  it("defaults the traffic filter to human + unknown and offers all six populations", async () => {
+    renderAdmin("/admin/users?section=overview");
+    await screen.findByTestId("analytics-section-overview");
+    expect(screen.getByTestId("users-traffic-human_unknown").getAttribute("aria-pressed")).toBe("true");
+    for (const f of ["human", "unknown", "automation", "internal", "all"]) {
+      expect(screen.getByTestId(`users-traffic-${f}`), f).toBeTruthy();
+      expect(screen.getByTestId(`users-traffic-${f}`).getAttribute("aria-pressed")).toBe("false");
+    }
+  });
+
+  it("renders the visitor list, which is where every metric drills to", async () => {
+    renderAdmin("/admin/users?section=visitors");
+    expect(await screen.findByTestId("users-section-visitors")).toBeTruthy();
+    expect(screen.getByTestId("users-visitors-empty")).toBeTruthy();
+  });
+
   it("reads nothing from Arena-era tables", async () => {
     supabase.from.mockClear();
-    renderAdmin("/admin/analytics?section=overview");
+    renderAdmin("/admin/users?section=overview");
     await screen.findByTestId("analytics-section-overview");
     const tables = supabase.from.mock.calls.map((c) => c[0] as string);
     expect(tables.length).toBeGreaterThan(0);
-    for (const t of tables) expect(t, t).toMatch(/^analytics_(events|sessions|visitors)$/);
+    // USERS1 adds one analytics table to the read path — the operator traffic
+    // overrides — and `user_roles`, which is the area's own gate read (Users
+    // hosts the master-only account views) and not a source of any number.
+    for (const t of tables) {
+      expect(t, t).toMatch(/^(analytics_(events|sessions|visitors|traffic_overrides)|user_roles)$/);
+    }
   });
 });

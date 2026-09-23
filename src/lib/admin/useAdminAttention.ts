@@ -36,7 +36,7 @@ const SOURCES: Array<{
     id: "admin-notifications",
     // Per admin, not site-wide: this is what THIS operator has not yet seen.
     label: "My unread admin notifications",
-    to: "/admin/people?section=notifications",
+    to: "/admin/operations?section=notifications",
     hint: "Feedback arrivals, user reports and moderator delete requests you have not read.",
     load: async () => {
       // `.eq("is_read", false)` used to count a single global boolean, so the
@@ -55,7 +55,7 @@ const SOURCES: Array<{
   {
     id: "user-reports",
     label: "Pending user reports",
-    to: "/admin/people?section=moderation",
+    to: "/admin/users?section=moderation",
     hint: "The user_reports queue.",
     load: async () => {
       const { count, error } = await supabase
@@ -69,7 +69,7 @@ const SOURCES: Array<{
   {
     id: "comment-reports",
     label: "Comment reports",
-    to: "/admin/people?section=moderation",
+    to: "/admin/users?section=moderation",
     hint: "The comment_reports queue — a separate table from user reports.",
     load: async () => {
       const { count, error } = await supabase
@@ -82,7 +82,7 @@ const SOURCES: Array<{
   {
     id: "feedback",
     label: "Open feedback",
-    to: "/admin/people?section=feedback",
+    to: "/admin/users?section=moderation&view=feedback",
     hint: "Unarchived feedback, read through admin_list_feedback.",
     load: async () => {
       const { data, error } = await supabase.rpc("admin_list_feedback", {

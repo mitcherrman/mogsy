@@ -7,7 +7,7 @@
  * admin role) and nothing renders while the check is in flight.
  *
  * FUNNEL1C/ADMIN2 retired /admin/users as a destination — browsing accounts had
- * three entries under People › Users. It is now that section's master-only
+ * three entries under Users › Accounts. It is now that section's master-only
  * "Identities" view, so this file also asserts the redirect and the registry
  * entry that replaced it.
  */
@@ -100,29 +100,33 @@ describe("master_admin route authorization", () => {
 describe("the user directory is one view of People, not a second destination", () => {
   const appSource = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
 
-  it("redirects /admin/users to the Identities view", () => {
+  // USERS1 gave /admin/users to the Users AREA. The identity directory keeps
+  // its deep link as a VIEW of that area's Accounts section — which is the
+  // same guarantee this test always made: there is no second destination for
+  // browsing accounts, and the standalone page is not mounted anywhere.
+  it("mounts the Users area at /admin/users, with no standalone directory page", () => {
     expect(appSource).toContain(
-      '<Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />',
+      '<Route path="users" element={<Suspense fallback={<RouteFallback />}><AdminUsersPage /></Suspense>} />',
     );
     expect(appSource).not.toContain("<AdminUserDirectory />");
   });
 
   it("advertises one destination for accounts, with the identity view as a panel of it", () => {
-    expect(ADMIN_TOOLS.filter((t) => t.path === "/admin/users")).toHaveLength(0);
+    // Exactly one tool owns /admin/users as a ROUTE — the Users area — and the
+    // account browsers are panels of it rather than peers of it.
+    expect(
+      ADMIN_TOOLS.filter((t) => t.kind === "route" && t.path === "/admin/users").map((t) => t.id),
+    ).toEqual(["product-analytics"]);
     const entry = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
     expect(entry).toBeTruthy();
     expect(entry.kind).toBe("panel");
-    expect(entry.area).toBe("people");
-    expect(entry.section).toBe("users");
-    expect(entry.path).toBe("/admin/people?section=users&view=identities");
+    expect(entry.area).toBe("users");
+    expect(entry.section).toBe("accounts");
+    expect(entry.path).toBe("/admin/users?section=accounts&view=identities");
     // The master-only requirement it always enforced is still advertised.
     expect(entry.requiredRole).toBe("master_admin");
     expect(entry.dangerLevel).not.toBe("none");
     expect(entry.warning).toBeTruthy();
-    // And the old path is recorded as a redirect owned by that entry.
-    expect(legacyRouteMap().find((r) => r.from === "/admin/users")?.toolId).toBe(
-      "people-user-identities",
-    );
   });
 
   it("keeps the identity-only capabilities in the registry description", () => {

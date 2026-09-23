@@ -55,11 +55,10 @@ const ERADICATED_PATHS = [
 ];
 
 describe("admin registry — structure", () => {
-  it("declares the ten-area architecture in order, Analytics beside Overview", () => {
+  it("declares the nine-area architecture in order, Users beside Overview", () => {
     expect(ADMIN_AREAS.map((a) => a.label)).toEqual([
       "Overview",
-      "Analytics",
-      "People",
+      "Users",
       "Leaguecraft",
       "Ranked",
       "Simulation",
@@ -311,12 +310,12 @@ describe("admin registry — helpers", () => {
 describe("accounts have exactly one destination", () => {
   const identities = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
 
-  it("keeps the identity directory under People › Users as a panel", () => {
+  it("keeps the identity directory under Users › Accounts as a panel", () => {
     expect(identities).toBeTruthy();
-    expect(identities.area).toBe("people");
-    expect(identities.section).toBe("users");
+    expect(identities.area).toBe("users");
+    expect(identities.section).toBe("accounts");
     expect(identities.kind).toBe("panel");
-    expect(identities.path).toBe("/admin/people?section=users&view=identities");
+    expect(identities.path).toBe("/admin/users?section=accounts&view=identities");
   });
 
   it("records the master-admin authority it already enforces, without changing it", () => {
@@ -329,14 +328,16 @@ describe("accounts have exactly one destination", () => {
   });
 
   it("advertises no second account-browsing route", () => {
+    // USERS1 — /admin/users is now the Users AREA, not a second directory, so
+    // the only route under it is the area itself. Accounts, Profile browser,
+    // Roles & access and Identities are views of that one destination.
     const routes = ADMIN_TOOLS.filter(
       (t) => t.kind === "route" && /^\/admin\/users/.test(t.path ?? ""),
-    );
-    expect(routes).toEqual([]);
-    // Accounts, Profile browser and Identities are views of ONE destination.
-    const userTools = toolsForSection("people", "users").filter((t) => t.kind === "panel");
+    ).map((t) => t.path);
+    expect(routes).toEqual(["/admin/users"]);
+    const userTools = toolsForSection("users", "accounts").filter((t) => t.kind === "panel");
     const bases = new Set(userTools.map((t) => t.path?.split("?")[0]));
-    expect([...bases]).toEqual(["/admin/people"]);
+    expect([...bases]).toEqual(["/admin/users"]);
   });
 });
 
@@ -364,7 +365,10 @@ describe("FUNNEL1C — a single Admin inventory", () => {
   it("keeps only the redirects whose destination is a current surface", () => {
     const map = new Map(legacyRouteMap().map((r) => [r.from, r.to]));
     expect(map.get("/admin/demo-analytics")).toBe("/admin/premium-preview");
-    expect(map.get("/admin/users")).toBe("/admin/people?section=users&view=identities");
+    // USERS1 — People and Analytics are gone as destinations; the two old
+    // paths redirect for bookmarks and are advertised nowhere.
+    expect(map.get("/admin/analytics")).toBe("/admin/users");
+    expect(map.get("/admin/analytics?section=health")).toBe("/admin/users?section=traffic-health");
     // LEGACY1 deleted the redirects that existed only to keep a dead concept
     // reachable. A redirect to nowhere is not compatibility, it is a rumour.
     for (const gone of [
@@ -401,26 +405,58 @@ describe("FUNNEL1C — a single Admin inventory", () => {
   });
 });
 
-describe("FUNNEL1C — Analytics is first-class and unambiguous", () => {
-  it("is a live area beside Overview with the seven sections", () => {
-    const area = ADMIN_AREAS_BY_ID.analytics;
+describe("USERS1 — Users is the one audience domain", () => {
+  it("is a live area beside Overview with the eight sections", () => {
+    const area = ADMIN_AREAS_BY_ID.users;
     expect(area.kind).toBe("live");
-    expect(area.path).toBe("/admin/analytics");
-    expect(ADMIN_AREA_IDS.indexOf("analytics")).toBe(ADMIN_AREA_IDS.indexOf("overview") + 1);
+    expect(area.path).toBe("/admin/users");
+    expect(ADMIN_AREA_IDS.indexOf("users")).toBe(ADMIN_AREA_IDS.indexOf("overview") + 1);
     expect(area.sections.map((s) => s.id)).toEqual([
       "overview",
-      "acquisition",
-      "engagement",
+      "visitors",
       "accounts",
+      "activity",
+      "acquisition",
       "retention",
-      "sources",
-      "health",
+      "moderation",
+      "traffic-health",
     ]);
   });
 
-  it("is the only destination called Analytics", () => {
+  it("has removed People and Analytics as areas entirely", () => {
+    expect(ADMIN_AREA_IDS).not.toContain("people");
+    expect(ADMIN_AREA_IDS).not.toContain("analytics");
+    for (const tool of ADMIN_TOOLS) {
+      expect(tool.path ?? "", tool.id).not.toMatch(/^\/admin\/(people|analytics)/);
+    }
+  });
+
+  it("puts every audience and account capability in Users", () => {
+    const users = toolsForArea("users").map((t) => t.id);
+    for (const id of [
+      "product-analytics",
+      "analytics-system-health",
+      "users-visitors",
+      "users-detail",
+      "people-users",
+      "people-user-identities",
+      "people-invites",
+      "people-comments",
+      "people-feedback",
+    ]) {
+      expect(users, id).toContain(id);
+    }
+  });
+
+  it("moved the notification consoles to Operations, which is where an operator queue belongs", () => {
+    const ops = toolsForArea("operations").map((t) => t.id);
+    expect(ops).toContain("people-admin-notifications");
+    expect(ops).toContain("people-push");
+  });
+
+  it("is the only destination that reports product analytics", () => {
     const named = ADMIN_TOOLS.filter((t) => /analytics/i.test(t.title));
-    for (const tool of named) expect(tool.area, tool.id).toBe("analytics");
+    for (const tool of named) expect(tool.area, tool.id).toBe("users");
     const premium = ADMIN_TOOLS.find((t) => t.id === "premium-trends-preview")!;
     expect(premium.title).not.toMatch(/analytics/i);
     expect(premium.path).toBe("/admin/premium-preview");

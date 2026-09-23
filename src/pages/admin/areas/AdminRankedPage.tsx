@@ -259,12 +259,12 @@ export default function AdminRankedPage() {
                   <p>
                     <strong className="text-foreground">Existing primitives.</strong> Cohort
                     invitation via{" "}
-                    <AdminCrossLink to="/admin/people?section=roles-access" label="People › Roles & Access" />
+                    <AdminCrossLink to="/admin/users?section=accounts&view=access" label="Users › Accounts › Roles & access" />
                     ; controlled matchmaking via POST /api/ranked/test-matches with its
                     experiment_arm; bot testing via the existing player-authenticated bot-match
                     endpoint; readiness via launch-readiness; telemetry via rating-status; feedback
                     via{" "}
-                    <AdminCrossLink to="/admin/people?section=feedback" label="People › Feedback" />,
+                    <AdminCrossLink to="/admin/users?section=moderation&view=feedback" label="Users › Moderation › Feedback" />,
                     tagged rather than becoming a fourth report queue; and session lifecycle
                     vocabulary modelled on{" "}
                     <AdminCrossLink to="/admin/simulation?section=battles" label="Simulation › Combat Battles" />.

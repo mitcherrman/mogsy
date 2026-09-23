@@ -99,12 +99,11 @@ function adminShellBlock(): string {
 const basePath = (p: string) => p.split("?")[0];
 
 describe("registry ⇄ router agreement", () => {
-  it("declares the ten area routes plus the All Tools entry point", () => {
+  it("declares the nine area routes plus the All Tools entry point", () => {
     for (const path of [
       "/admin",
       "/admin/all-tools",
-      "/admin/analytics",
-      "/admin/people",
+      "/admin/users",
       "/admin/leaguecraft",
       "/admin/ranked",
       "/admin/simulation",
@@ -199,9 +198,20 @@ describe("registry ⇄ router agreement", () => {
     expect(appSource).not.toContain("R.Admin.Component");
   });
 
-  it("mounts Analytics inside the Admin shell, under the same gate", () => {
+  it("mounts Users inside the Admin shell, under the same gate", () => {
     const shellBlock = adminShellBlock();
-    expect(shellBlock).toContain('<Route path="analytics" element={<Suspense fallback={<RouteFallback />}><AdminAnalyticsPage /></Suspense>} />');
+    expect(shellBlock).toContain('<Route path="users" element={<Suspense fallback={<RouteFallback />}><AdminUsersPage /></Suspense>} />');
+  });
+
+  // USERS1 — People and Analytics are not peer destinations any more. The two
+  // paths resolve only so a bookmark does not 404; nothing advertises them,
+  // and neither has a page of its own to mount.
+  it("keeps /admin/users and /admin/analytics as redirects and nothing else", () => {
+    const shellBlock = adminShellBlock();
+    expect(shellBlock).toContain('<Route path="analytics" element={<Navigate to="/admin/users" replace />} />');
+    expect(shellBlock).toContain('<Route path="people" element={<Navigate to="/admin/users?section=accounts" replace />} />');
+    expect(appSource).not.toContain("AdminAnalyticsPage");
+    expect(appSource).not.toContain("AdminPeoplePage");
   });
 
   it("keeps the Premium Trends Preview master-admin only at its new path", () => {

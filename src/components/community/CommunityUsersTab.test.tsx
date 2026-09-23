@@ -10,7 +10,7 @@
  *   - the friend link is the EXISTING `admin_link_friendship` RPC, confirmed,
  *     audited and master-admin-checked server-side,
  *   - bot state is the EXISTING `admin_update_bot_profile` RPC,
- *   - everything it does not implement is a link to `/admin/people`, carrying a
+ *   - everything it does not implement is a link to `/admin/users`, carrying a
  *     `profiles.id` and never an auth uid.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -195,7 +195,7 @@ describe("selecting a user", () => {
     const link = await screen.findByTestId("community-users-manage-link");
     // The deep link carries a `profiles.id` — the identifier already in every
     // /user/:profileId URL — and never an auth uid.
-    expect(link.getAttribute("href")).toBe("/admin/people?section=users&user=p-human");
+    expect(link.getAttribute("href")).toBe("/admin/users?section=accounts&user=p-human");
     expect(link.getAttribute("href")).not.toContain("auth-");
   });
 

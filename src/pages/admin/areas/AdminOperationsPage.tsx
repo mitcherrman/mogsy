@@ -21,6 +21,8 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
 import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
 import AdminBanners from "@/components/admin/AdminBanners";
+import AdminNotifications from "@/components/admin/AdminNotifications";
+import AdminPushNotifications from "@/components/admin/AdminPushNotifications";
 import {
   AdminAreaHeader,
   AdminCrossLink,
@@ -249,7 +251,7 @@ function DangerZone({ isMasterAdmin }: { isMasterAdmin: boolean }) {
         <ul className="space-y-1.5 text-[11px] text-muted-foreground">
           <li>
             Purge anonymous users —{" "}
-            <AdminCrossLink to="/admin/people?section=users" label="People › Users" />, master-only
+            <AdminCrossLink to="/admin/users?section=accounts" label="Users › Accounts" />, master-only
             button, unchanged. {!isMasterAdmin && "(Hidden for your role, exactly as before.)"}
           </li>
           <li>
@@ -305,6 +307,53 @@ function DataOps({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   );
 }
 
+/**
+ * USERS1 moved these here out of the dissolved People area.
+ *
+ * The admin inbox is an operator queue and the push console is an operator
+ * action; neither is a fact about the audience, so neither belongs in Users.
+ * Both components, and both of their gates, are unchanged.
+ */
+function NotificationsSection() {
+  const [view, setView] = useState<"inbox" | "push">("inbox");
+  return (
+    <div className="space-y-4" data-testid="operations-notifications">
+      <div className="mb-3 flex flex-wrap gap-1" role="tablist" data-testid="operations-notifications-subtabs">
+        {([
+          { id: "inbox", label: "Admin inbox (inbound)" },
+          { id: "push", label: "Push campaigns (outbound)" },
+        ] as const).map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="tab"
+            aria-selected={view === o.id}
+            data-testid={`operations-notifications-subtabs-${o.id}`}
+            onClick={() => setView(o.id)}
+            className={cn(
+              "rounded-md border px-2 py-0.5 text-[11px] font-medium",
+              view === o.id
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border bg-card text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {view === "inbox" ? (
+        <div data-testid="operations-notifications-inbox">
+          <AdminNotifications />
+        </div>
+      ) : (
+        <div data-testid="operations-notifications-push">
+          <AdminPushNotifications />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminOperationsPage() {
   const area = ADMIN_AREAS_BY_ID.operations;
   const [section, setSection] = useAreaSection(area);
@@ -341,6 +390,8 @@ export default function AdminOperationsPage() {
           <AdminToolGrid tools={toolsForSection("operations", "patch-ops")} />
         </div>
       )}
+
+      {section.id === "notifications" && <NotificationsSection />}
 
       {section.id === "data-ops" && <DataOps isMasterAdmin={isMasterAdmin} />}
 
