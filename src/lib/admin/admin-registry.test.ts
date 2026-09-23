@@ -4,7 +4,8 @@
 // The load-bearing test here is "supersedes the pre-migration directory": it
 // asserts that every destination the old hand-maintained registry advertised
 // is still present in the new one. That is the mechanical form of the absolute
-// product rule — no admin capability may disappear.
+// product rule — no admin capability may disappear. FUNNEL1C deleted that old
+// registry (admin-directory.ts), so its path list is frozen below as data.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
@@ -21,12 +22,29 @@ import {
   toolsForArea,
   toolsForSection,
 } from "./admin-registry";
-import { ADMIN_DIRECTORY_ITEMS } from "./admin-directory";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+/**
+ * Every path the deleted admin-directory.ts advertised (items, legacy aliases
+ * and child actions), frozen at the commit that deleted it.
+ */
+const RETIRED_DIRECTORY_PATHS = [
+  "/admin", "/admin/about", "/admin/blog", "/admin/combat-battles", "/admin/data", "/admin/demo",
+  "/admin/diagnostics", "/admin/directory", "/admin/gaming", "/admin/knowledge", "/admin/knowledge/health",
+  "/admin/knowledge/queue", "/admin/knowledge/rundown", "/admin/platform-policies", "/admin/play",
+  "/admin/quiz-broadcast", "/admin/quiz-broadcast/view", "/admin/quiz-builder", "/admin/quiz-content",
+  "/admin/quiz-content?tab=diagnostics", "/admin/quiz-content?tab=review", "/admin/quiz-review",
+  "/admin/quiz-video-export", "/admin/users", "/admin/workspace", "/broadcast/live-view",
+  "/combat-lab/diagnostics", "/dev/content-studio", "/dev/quiz-render", "/dev/ranked-duel", "/moderator",
+  "/quiz/admin", "/quiz/diagnostics",
+];
 
 describe("admin registry — structure", () => {
-  it("declares the chosen ten-area architecture in order", () => {
+  it("declares the eleven-area architecture in order, Analytics beside Overview", () => {
     expect(ADMIN_AREAS.map((a) => a.label)).toEqual([
       "Overview",
+      "Analytics",
       "People",
       "Leaguecraft",
       "Ranked",
@@ -158,11 +176,9 @@ describe("admin registry — capability preservation", () => {
       if (tool.path) registryPaths.add(tool.path.split("?")[0]);
       for (const legacy of tool.legacyRoutes ?? []) registryPaths.add(legacy.split("?")[0]);
     }
-    for (const item of ADMIN_DIRECTORY_ITEMS) {
-      const paths = [item.path, ...(item.legacyAliases ?? []), ...(item.childActions ?? []).map((c) => c.path)];
-      for (const path of paths) {
-        expect(registryPaths.has(path.split("?")[0]), `${item.id} lost ${path}`).toBe(true);
-      }
+    registryPaths.add("/admin"); // the Admin home — the Overview tool's own path
+    for (const path of RETIRED_DIRECTORY_PATHS) {
+      expect(registryPaths.has(path.split("?")[0]), `lost ${path}`).toBe(true);
     }
   });
 
@@ -229,7 +245,7 @@ describe("admin registry — helpers", () => {
   it("searches titles, paths and old locations", () => {
     expect(searchAdminTools("launch-readiness").map((t) => t.id)).toContain("ranked-overview");
     expect(searchAdminTools("/admin/blog").map((t) => t.id)).toContain("blog-cms");
-    expect(searchAdminTools("17-tab").map((t) => t.id)).toContain("legacy-admin-dashboard");
+    expect(searchAdminTools("17-tab").map((t) => t.id)).toEqual(["overview-dashboard"]);
     expect(searchAdminTools("").length).toBe(ADMIN_TOOLS.length);
     expect(searchAdminTools("zzzz-no-such-tool").length).toBe(0);
   });
@@ -237,42 +253,143 @@ describe("admin registry — helpers", () => {
 
 
 // ---------------------------------------------------------------------------
-// ADMIN1A — /admin/users registration.
+// ADMIN1A → FUNNEL1C/ADMIN2 — the master-admin user directory.
 //
-// The route was live and master-gated but absent from this registry entirely
-// (it survived only in the superseded admin-directory). Consequence: it did not
-// appear in All Tools, and because the shell resolves the active area from
-// registry tool paths, visiting it highlighted no area at all.
+// ADMIN1A registered /admin/users, a live master-gated route the registry had
+// never listed. FUNNEL1C removed it as a DESTINATION: three ways to browse
+// accounts lived under People › Users, so it became that section's master-only
+// Identities view and the path became a redirect.
 // ---------------------------------------------------------------------------
 
-describe("the master-admin user directory is a registered destination", () => {
-  const tool = ADMIN_TOOLS.find((t) => t.path === "/admin/users");
+describe("accounts have exactly one destination", () => {
+  const identities = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
 
-  it("is registered under People › Users as a route", () => {
-    expect(tool, "/admin/users is not in ADMIN_TOOLS").toBeTruthy();
-    expect(tool!.area).toBe("people");
-    expect(tool!.section).toBe("users");
-    expect(tool!.kind).toBe("route");
+  it("keeps the identity directory under People › Users as a panel", () => {
+    expect(identities).toBeTruthy();
+    expect(identities.area).toBe("people");
+    expect(identities.section).toBe("users");
+    expect(identities.kind).toBe("panel");
+    expect(identities.path).toBe("/admin/people?section=users&view=identities");
   });
 
-  it("records the master-admin gate it already enforces, without changing it", () => {
-    // Descriptive only — AdminRoute roles={["master_admin"]} is the real gate.
-    expect(tool!.requiredRole).toBe("master_admin");
-    expect(tool!.authorization).toMatch(/master_admin/);
+  it("records the master-admin authority it already enforces, without changing it", () => {
+    expect(identities.requiredRole).toBe("master_admin");
+    expect(identities.authorization).toMatch(/master_admin|is_master_admin/);
   });
 
   it("is searchable in All Tools", () => {
-    const hits = searchAdminTools("user directory").map((t) => t.id);
-    expect(hits).toContain(tool!.id);
+    expect(searchAdminTools("identities").map((t) => t.id)).toContain(identities.id);
   });
 
-  it("does not duplicate the account-management surface", () => {
-    // Two distinct destinations with two distinct purposes. Consolidating them
-    // is ADMIN1B; making them tellable apart is ADMIN1A.
-    const accounts = ADMIN_TOOLS.filter((t) => t.path === "/admin/people?section=users");
-    expect(accounts.length).toBeGreaterThan(0);
-    expect(ADMIN_TOOLS.filter((t) => t.path === "/admin/users")).toHaveLength(1);
-    const titles = new Set([tool!.title, ...accounts.map((t) => t.title)]);
-    expect(titles.size).toBe(1 + accounts.length);
+  it("advertises no second account-browsing route", () => {
+    const routes = ADMIN_TOOLS.filter(
+      (t) => t.kind === "route" && /^\/admin\/users/.test(t.path ?? ""),
+    );
+    expect(routes).toEqual([]);
+    // Accounts, Profile browser and Identities are views of ONE destination.
+    const userTools = toolsForSection("people", "users").filter((t) => t.kind === "panel");
+    const bases = new Set(userTools.map((t) => t.path?.split("?")[0]));
+    expect([...bases]).toEqual(["/admin/people"]);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// FUNNEL1C / ADMIN2 — one authority, one path per job.
+// ---------------------------------------------------------------------------
+
+describe("FUNNEL1C — a single Admin inventory", () => {
+  it("has deleted the second hand-maintained registry", () => {
+    expect(existsSync(resolve(__dirname, "admin-directory.ts"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "../../pages/admin/AdminDirectory.tsx"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "../../pages/Admin.tsx"))).toBe(false);
+  });
+
+  it("advertises no legacy shell as a destination", () => {
+    const ids = ADMIN_TOOLS.map((t) => t.id);
+    expect(ids).not.toContain("legacy-admin-dashboard");
+    expect(ids).not.toContain("legacy-admin-directory");
+    for (const tool of ADMIN_TOOLS) {
+      expect(tool.path ?? "", tool.id).not.toMatch(/legacy-(dashboard|directory)/);
+    }
+  });
+
+  it("keeps the retired paths as redirects owned by their canonical home", () => {
+    const map = new Map(legacyRouteMap().map((r) => [r.from, r.to]));
+    expect(map.get("/admin/legacy-dashboard")).toBe("/admin");
+    expect(map.get("/admin/legacy-directory")).toBe(ADMIN_ALL_TOOLS_PATH);
+    expect(map.get("/admin/directory")).toBe(ADMIN_ALL_TOOLS_PATH);
+    expect(map.get("/admin/data")).toBe("/admin/arena/data-graphs");
+    expect(map.get("/admin/demo-analytics")).toBe("/admin/premium-preview");
+  });
+
+  it("gives every navigable destination exactly one canonical tool", () => {
+    // Panels may share their area-page URL; a ROUTE is a destination and must be unique.
+    const routes = ADMIN_TOOLS.filter((t) => t.kind === "route" && t.path).map((t) => t.path!);
+    const dupes = routes.filter((p, i) => routes.indexOf(p) !== i);
+    expect(dupes).toEqual([]);
+  });
+
+  it("never lists a path both as a destination and as someone else's redirect", () => {
+    const destinations = new Set(ADMIN_TOOLS.map((t) => t.path?.split("?")[0]).filter(Boolean));
+    for (const { from, toolId, to } of legacyRouteMap()) {
+      if (from.split("?")[0] === to.split("?")[0]) continue; // a tool's own path, recorded as kept
+      expect(destinations.has(from), `${toolId}: ${from} is both a redirect and a destination`).toBe(false);
+    }
+  });
+
+  it("has no two tools with the same title", () => {
+    const titles = ADMIN_TOOLS.map((t) => t.title);
+    const dupes = titles.filter((x, i) => titles.indexOf(x) !== i);
+    expect(dupes).toEqual([]);
+  });
+});
+
+describe("FUNNEL1C — Analytics is first-class and unambiguous", () => {
+  it("is a live area beside Overview with the seven sections", () => {
+    const area = ADMIN_AREAS_BY_ID.analytics;
+    expect(area.kind).toBe("live");
+    expect(area.path).toBe("/admin/analytics");
+    expect(ADMIN_AREA_IDS.indexOf("analytics")).toBe(ADMIN_AREA_IDS.indexOf("overview") + 1);
+    expect(area.sections.map((s) => s.id)).toEqual([
+      "overview",
+      "acquisition",
+      "engagement",
+      "accounts",
+      "retention",
+      "sources",
+      "health",
+    ]);
+  });
+
+  it("is the only destination called Analytics", () => {
+    const named = ADMIN_TOOLS.filter((t) => /analytics/i.test(t.title));
+    for (const tool of named) expect(tool.area, tool.id).toBe("analytics");
+    const premium = ADMIN_TOOLS.find((t) => t.id === "premium-trends-preview")!;
+    expect(premium.title).not.toMatch(/analytics/i);
+    expect(premium.path).toBe("/admin/premium-preview");
+  });
+
+  it("does not make Operations the home of product analytics", () => {
+    const ops = ADMIN_AREAS_BY_ID.operations;
+    for (const section of ops.sections) {
+      expect(`${section.label} ${section.summary}`, section.id).not.toMatch(/image-click|analytics graphs/i);
+    }
+    expect(toolsForArea("operations").filter((t) => /analytics/i.test(t.title))).toEqual([]);
+  });
+
+  it("archives the Match & Rank graph builder under Arena", () => {
+    const graphs = ADMIN_TOOLS.find((t) => t.id === "arena-data-graphs")!;
+    expect(graphs.area).toBe("arena");
+    expect(graphs.disposition).toBe("ARCHIVE");
+  });
+
+  it("has exactly one operator Quiz Diagnostics, and the old inspector is Developer-only", () => {
+    expect(ADMIN_TOOLS.filter((t) => t.title === "Quiz Diagnostics").map((t) => t.path)).toEqual([
+      "/admin/quiz-content?tab=diagnostics",
+    ]);
+    const inspector = ADMIN_TOOLS.find((t) => t.path === "/quiz/diagnostics")!;
+    expect(inspector.area).toBe("developer");
+    expect(inspector.developerOnly).toBe(true);
   });
 });

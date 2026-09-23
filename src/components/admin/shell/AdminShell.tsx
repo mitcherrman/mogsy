@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
 // AdminShell — the one canonical Admin navigation shell.
 //
-// Renders the area rail (Overview · People · Leaguecraft · Ranked · Simulation
-// · Game Data · Studio · Operations · Developer · Arena) around an <Outlet />.
+// Renders the area rail (Overview · Analytics · People · Leaguecraft · Ranked ·
+// Simulation · Game Data · Studio · Operations · Developer · Arena) around an
+// <Outlet />.
 // Every /admin destination renders inside it, so navigation is identical from
 // every page and depth never exceeds area → page → tab.
 //

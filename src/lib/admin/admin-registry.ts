@@ -27,6 +27,7 @@ export const ADMIN_ALL_TOOLS_PATH = "/admin/all-tools";
 
 export const ADMIN_AREA_IDS = [
   "overview",
+  "analytics",
   "people",
   "leaguecraft",
   "ranked",
@@ -80,7 +81,7 @@ export const ADMIN_AREAS: AdminArea[] = [
     path: "/admin",
     kind: "live",
     description:
-      "Control room: platform counts, the cross-domain attention queue, and the complete tool index.",
+      "Control room: platform counts, the cross-domain attention queue, and a few high-value shortcuts.",
     sections: [
       {
         id: "dashboard",
@@ -94,6 +95,26 @@ export const ADMIN_AREAS: AdminArea[] = [
         summary: "Every registered Admin destination, searchable.",
         path: ADMIN_ALL_TOOLS_PATH,
       },
+    ],
+  },
+  {
+    // FUNNEL1C. The one product-analytics destination: what users are doing,
+    // where they come from, and whether they return. Deliberately NOT a
+    // section of Operations — Operations is tooling, this is the product.
+    id: "analytics",
+    label: "Analytics",
+    path: "/admin/analytics",
+    kind: "live",
+    description:
+      "What users are doing, where they come from, and whether they return — computed only from analytics_events, analytics_sessions and analytics_visitors.",
+    sections: [
+      { id: "overview", label: "Overview", summary: "Headline visitors, sessions, engagement, signups and retention for the range." },
+      { id: "acquisition", label: "Acquisition", summary: "Landing → Hub → Leaguecraft → Engaged → Account → Verification → Returned." },
+      { id: "engagement", label: "Engagement", summary: "Independent gameplay branches: browser opens vs Railway-confirmed starts and completions." },
+      { id: "accounts", label: "Accounts", summary: "Signup funnel, guest vs signed-in usage, account creation and verification." },
+      { id: "retention", label: "Retention", summary: "New vs returning, repeat sessions, D1 and D7 from session history." },
+      { id: "sources", label: "Sources", summary: "First-touch and session-touch UTM source, medium, campaign and referrer." },
+      { id: "health", label: "System Health", summary: "Analytics data integrity: freshness, browser vs Railway counts, ingestion gaps." },
     ],
   },
   {
@@ -121,7 +142,11 @@ export const ADMIN_AREAS: AdminArea[] = [
       { id: "questions", label: "Questions", summary: "The unified Builder / Review / Ranked Duel workspace." },
       { id: "reports", label: "Reports & Overrides", summary: "User-reported questions and authoritative answer overrides." },
       { id: "mastery", label: "Mastery", summary: "Mastery artifacts and coverage." },
-      { id: "diagnostics", label: "Diagnostics", summary: "Quiz engine QA inspection over production state." },
+      {
+        id: "premium-preview",
+        label: "Premium Preview",
+        summary: "Free-vs-Premium Performance Trends, rendered on a synthetic demo account.",
+      },
     ],
   },
   {
@@ -189,12 +214,17 @@ export const ADMIN_AREAS: AdminArea[] = [
     label: "Operations",
     path: "/admin/operations",
     kind: "live",
-    description: "Configuration, health, scheduled jobs, data operations, internal docs and the Danger Zone.",
+    description:
+      "Operational tooling: configuration, health and jobs, patch operations, data maintenance, internal docs and the Danger Zone. Product analytics live in Analytics.",
     sections: [
       { id: "configuration", label: "Configuration", summary: "All three configuration stores, labelled by authority." },
       { id: "health", label: "Health & Jobs", summary: "Route probes, database status and scheduled job state." },
       { id: "patch-ops", label: "Patch Operations", summary: "Patch intake, staging and production apply state." },
-      { id: "data-ops", label: "Data Operations", summary: "Analytics graphs, CSV export and image-click analytics." },
+      {
+        id: "data-ops",
+        label: "Data Maintenance",
+        summary: "Admin CSV export. Product analytics live in Analytics; the retired voting product's graphs live in Arena.",
+      },
       { id: "docs", label: "Internal Docs", summary: "The internal architecture reference." },
       { id: "danger-zone", label: "Danger Zone", summary: "Destructive and high-impact operations, documented not armed." },
     ],
@@ -224,7 +254,11 @@ export const ADMIN_AREAS: AdminArea[] = [
     sections: [
       { id: "collections", label: "Collections & Leagues", summary: "Preset items, league bots and promoted leagues." },
       { id: "presentation", label: "Presentation", summary: "Themes and Arena rank settings." },
-      { id: "operations", label: "Arena Operations", summary: "Play layout, gaming config and the demo studio." },
+      {
+        id: "operations",
+        label: "Arena Operations",
+        summary: "Play layout, gaming config, the demo studio and the archived Match & Rank data graphs.",
+      },
     ],
   },
 ];
@@ -329,12 +363,12 @@ export const ADMIN_TOOLS: AdminTool[] = [
     path: "/admin",
     oldLocation: "/admin (legacy 17-tab dashboard shell)",
     disposition: "MERGE",
-    legacyRoutes: ["/admin"],
+    legacyRoutes: ["/admin/legacy-dashboard"],
     dangerLevel: "none",
     status: "Production",
     authorization: "AdminRoute (admin, master_admin) — unchanged.",
     notes:
-      "The legacy dashboard's tabs are redistributed to People, Operations and Arena. The dashboard itself stays reachable at /admin/legacy-dashboard.",
+      "FUNNEL1C retired the legacy 17-tab dashboard: every tab already had a canonical home (People, Operations, Arena) and every header button a registered destination. /admin/legacy-dashboard now redirects here.",
   },
   {
     id: "all-tools",
@@ -347,47 +381,49 @@ export const ADMIN_TOOLS: AdminTool[] = [
     path: ADMIN_ALL_TOOLS_PATH,
     oldLocation: "/admin/directory",
     disposition: "REDIRECT",
-    legacyRoutes: ["/admin/directory"],
+    legacyRoutes: ["/admin/directory", "/admin/legacy-directory"],
     dangerLevel: "none",
     status: "Production",
     authorization: "AdminRoute + AdminAuthGate — unchanged from /admin/directory.",
     notes:
-      "Sourced from this registry rather than a second hand-written list. Unlike /admin/directory it no longer hides development entries in production builds — it labels them instead.",
+      "Sourced from this registry — the only Admin inventory. FUNNEL1C deleted the second hand-written one (admin-directory.ts) and its page; /admin/directory and /admin/legacy-directory both redirect here.",
+  },
+  // =========================================================================
+  // ANALYTICS
+  // =========================================================================
+  {
+    id: "product-analytics",
+    title: "Product Analytics",
+    description:
+      "Visitors, sessions, the acquisition funnel, gameplay branches, accounts, retention and sources, under one shared date range.",
+    area: "analytics",
+    section: "overview",
+    kind: "route",
+    path: "/admin/analytics",
+    oldLocation: "none — FUNNEL1C. No acquisition-analytics destination existed before (handoff §7).",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    authorization:
+      "Inherits the /admin layout gate (AdminRoute admin, master_admin); SELECT on analytics_* is granted to admin / master_admin only by RLS.",
+    notes:
+      "Reads Supabase only. Gameplay starts/completions are counted from source_system = 'railway' rows only; browser rows are intent.",
   },
   {
-    id: "legacy-admin-directory",
-    title: "Legacy Admin Directory",
+    id: "analytics-system-health",
+    title: "Analytics System Health",
     description:
-      "The pre-reorganization hand-maintained tool index, preserved unchanged. All Tools supersedes it.",
-    area: "overview",
-    section: "all-tools",
-    kind: "route",
-    path: "/admin/legacy-directory",
-    oldLocation: "/admin/directory",
-    disposition: "DEFERRED",
+      "Latest event received, browser vs Railway counts, authoritative freshness per event, integrity anomalies, and the Railway outbox probe.",
+    area: "analytics",
+    section: "health",
+    kind: "panel",
+    path: "/admin/analytics?section=health",
+    oldLocation: "GET /api/admin/analytics/health — a probe with no UI (handoff §20.7)",
+    disposition: "KEEP",
     dangerLevel: "none",
-    status: "Legacy",
-    authorization: "AdminRoute + AdminAuthGate — unchanged.",
-    notes:
-      "DEFERRED — STILL ACCESSIBLE. Kept so this migration deletes nothing. It still hides development entries in production builds, which is exactly the blind spot All Tools fixes.",
-  },
-  {
-    id: "legacy-admin-dashboard",
-    title: "Legacy Admin Dashboard",
-    description:
-      "The original 17-tab dashboard, preserved unchanged as a compatibility surface while the migration is reviewed.",
-    area: "overview",
-    section: "all-tools",
-    kind: "route",
-    path: "/admin/legacy-dashboard",
-    oldLocation: "/admin",
-    disposition: "DEFERRED",
-    legacyRoutes: ["/admin"],
-    dangerLevel: "none",
-    status: "Legacy",
-    authorization: "AdminRoute (admin, master_admin) plus its own user_roles read — unchanged.",
-    notes:
-      "DEFERRED — STILL ACCESSIBLE. Every tab it hosts now has a canonical home; this page remains so no capability can be lost to a mis-migration. Retire only with owner approval.",
+    status: "Production",
+    authorization:
+      "Supabase reads as above; the outbox probe is backend require_admin and never returns a credential.",
   },
 
   // =========================================================================
@@ -428,24 +464,25 @@ export const ADMIN_TOOLS: AdminTool[] = [
       'Merged under Users as a secondary view rather than a peer tab. Ends the "Directory" naming collision with the tool index.',
   },
   {
-    id: "people-user-directory",
-    title: "User Directory (identity)",
+    id: "people-user-identities",
+    title: "User Identities",
     description:
-      "Master-admin directory of accounts: newest first, filters (including Premium and Discord contact consent), verified Discord/Riot identities, and Add to My Friends. Observation and friend linking only — no email, no entitlement control, no deletion.",
+      "The master-only Identities view of People › Users: newest first, filters (including Premium and Discord contact consent), verified Discord/Riot identities with contact consent, bot state, and Add to My Friends. Observation and friend linking only — no email, no entitlement control, no deletion.",
     area: "people",
     section: "users",
-    kind: "route",
-    path: "/admin/users",
-    oldLocation: "ADM2 /admin/users — a live route that this registry never listed",
-    disposition: "KEEP",
+    kind: "panel",
+    path: "/admin/people?section=users&view=identities",
+    oldLocation: "/admin/users — a second account browser in navigation",
+    disposition: "MERGE",
+    legacyRoutes: ["/admin/users"],
     dangerLevel: "caution",
     warning: "Add to My Friends writes a real accepted friendship on your own profile.",
     status: "Production",
     requiredRole: "master_admin",
     authorization:
-      "AdminRoute roles={[\"master_admin\"]} + AdminAuthGate + admin_list_profiles / admin_list_identity_links RLS — unchanged by ADMIN1A, which only registered the path.",
+      "Unchanged authority: AdminAuthGate + admin_list_profiles / admin_list_identity_links, which raise unless the caller is an admin and re-check is_master_admin server-side. The view is advertised only to master admins, exactly as the standalone route was gated.",
     notes:
-      "ADMIN1A registered it so the shell can highlight People and All Tools can list it. It remains a SECOND directory alongside User Accounts; consolidating the two is ADMIN1B.",
+      "FUNNEL1C/ADMIN2 closed ADMIN1B: browsing accounts had three entries (Accounts, Profile browser and this). It is now the third VIEW of one destination, deep-linkable at ?view=identities, and /admin/users redirects there. What it alone offers — verified Discord/Riot identity lines with contact consent, bot state toggle, Add to My Friends — is preserved unchanged.",
   },
   {
     id: "people-invites",
@@ -616,23 +653,24 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Consolidated to two tabs. Quiz Builder and Ranked Duel Review are DELETED, not hidden: both frontend subsystems, the builder's API client, and the backend builder routes/services are gone. The one capability worth keeping was extracted to components/question-preview/QuestionPreviewPanel (GET-only client), which Quiz Review hosts inline on Ranked candidate rows.",
   },
   {
-    id: "leaguecraft-demo-analytics",
-    title: "Demo Analytics (Free vs Premium)",
+    id: "premium-trends-preview",
+    title: "Premium Trends Preview",
     description:
-      "One synthetic study record, rendered by the shipped Performance Trends pane as a Free account sees it and as a Premium account sees it, side by side.",
+      "One synthetic study record, rendered by the shipped Performance Trends pane as a Free account sees it and as a Premium account sees it, side by side. A product-tier preview — not acquisition analytics.",
     area: "leaguecraft",
-    section: "diagnostics",
+    section: "premium-preview",
     kind: "route",
-    path: "/admin/demo-analytics",
-    oldLocation: "PT1.9 — new",
-    disposition: "KEEP",
+    path: "/admin/premium-preview",
+    oldLocation: "/admin/demo-analytics (\"Demo Analytics\", PT1.9)",
+    disposition: "MOVE",
+    legacyRoutes: ["/admin/demo-analytics"],
     dangerLevel: "none",
     status: "Production",
     requiredRole: "master_admin",
     authorization:
       "AdminRoute roles={[\"master_admin\"]} + backend require_admin on /api/admin/demo-analytics/*. The route accepts ONLY the demo subjects in services/demo_identity.py, whose ids are in a namespace a Supabase auth uuid cannot occupy, so no real account is nameable.",
     notes:
-      "Read-only. Switching Free/Premium selects between FREE_CAPABILITY and PREMIUM_CAPABILITY and changes nothing that is stored — no entitlement is resolved, written or implied. The record is seeded out of band by scripts/seed_demo_analytics.py and is excluded from every cross-user aggregate.",
+      "FUNNEL1C renamed it: \"Analytics\" in its name was ambiguous next to the real Analytics area. The backend API keeps its /api/admin/demo-analytics/* path. Read-only. Switching Free/Premium selects between FREE_CAPABILITY and PREMIUM_CAPABILITY and changes nothing that is stored — no entitlement is resolved, written or implied. The record is seeded out of band by scripts/seed_demo_analytics.py and is excluded from every cross-user aggregate.",
   },
   {
     id: "quiz-diagnostics-tab",
@@ -667,6 +705,8 @@ export const ADMIN_TOOLS: AdminTool[] = [
     warning: "Approvals publish questions to the live quiz.",
     status: "Production",
     authorization: "Inherits the workspace gate — unchanged.",
+    notes:
+      "Also the Ranked question bank: Ranked candidates and fallbacks are reviewed here by source/family filter. FUNNEL1C removed the separate \"Ranked Question Bank\" card, a second registry entry for this same destination; Ranked › Question Bank cross-links here.",
   },
   {
     id: "quiz-admin-hub",
@@ -741,22 +781,24 @@ export const ADMIN_TOOLS: AdminTool[] = [
     notes: "DEFERRED — STILL ACCESSIBLE via the API. Documented here so it stops being invisible.",
   },
   {
-    id: "quiz-diagnostics",
-    title: "Quiz Diagnostics",
-    description: "Quiz QA inspection over production quiz state; links onward into Reports & Overrides.",
-    area: "leaguecraft",
-    section: "diagnostics",
+    id: "quiz-api-inspector",
+    title: "Quiz API Inspector",
+    description:
+      "The original engineering inspector for the quiz API: connectivity, sets, questions, stats and achievements JSON. Not the Quiz Diagnostics tab, which is the operator surface.",
+    area: "developer",
+    section: "inspectors",
     kind: "route",
     path: "/quiz/diagnostics",
-    oldLocation: "/quiz/diagnostics — ungated public URL, listed only in dev builds",
-    disposition: "KEEP",
+    oldLocation: "/quiz/diagnostics — listed as a second \"Quiz Diagnostics\" under Leaguecraft",
+    disposition: "DEVELOPER-ONLY",
     legacyRoutes: ["/quiz/diagnostics"],
     dangerLevel: "none",
-    status: "Internal",
+    status: "Development",
+    developerOnly: true,
     authorization:
       "UNCHANGED — the route keeps its current gate. Adding one is an access change and an owner decision (Atlas §N).",
     notes:
-      "Now listed in production builds instead of vanishing, so an operator can find it. Its authorization is untouched.",
+      "FUNNEL1C moved it to Developer and renamed it: two destinations both titled Quiz Diagnostics was a duplicate path to an ambiguous job. The operator job is /admin/quiz-content?tab=diagnostics. Its authorization is untouched.",
   },
 
   // =========================================================================
@@ -769,7 +811,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Launch-readiness verdict per gate, rating status, and the live Railway flag state — read from the running process.",
     area: "ranked",
     section: "overview",
-    kind: "route",
+    kind: "panel",
     path: "/admin/ranked?section=overview",
     oldLocation: "GET /api/ranked/launch-readiness — reachable only with curl",
     disposition: "MOVE",
@@ -785,7 +827,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Result counts by status, active rating policy version, and the rating / forfeit flags.",
     area: "ranked",
     section: "settings",
-    kind: "route",
+    kind: "panel",
     path: "/admin/ranked?section=settings",
     oldLocation: "GET /api/ranked/rating-status — no UI",
     disposition: "MOVE",
@@ -800,7 +842,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Read-only mirror of the Ranked Railway environment flags, sourced from launch-readiness rather than re-implemented.",
     area: "ranked",
     section: "settings",
-    kind: "route",
+    kind: "panel",
     path: "/admin/ranked?section=settings",
     oldLocation: "Railway environment variables — visible nowhere in the product",
     disposition: "MOVE",
@@ -809,24 +851,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization: "Read-only projection of require_admin data. Railway values are never written from Admin.",
     notes:
       "Deliberately read-only: making these editable would create a fourth configuration authority.",
-  },
-  {
-    id: "ranked-question-bank",
-    title: "Ranked Question Bank",
-    description:
-      "Ranked question review, inside the unified Quiz Review surface.",
-    area: "ranked",
-    section: "question-bank",
-    kind: "route",
-    path: "/admin/quiz-content?tab=review",
-    oldLocation: "/admin/quiz-content?tab=ranked-duel — a tab that has been retired",
-    disposition: "KEEP",
-    dangerLevel: "caution",
-    warning: "Review decisions publish question content to the live quiz.",
-    status: "Production",
-    authorization: "AdminRoute + AdminAuthGate; backend require_admin — unchanged.",
-    notes:
-      "The separate Ranked Duel Review workflow is retired. Ranked questions are reviewed in Quiz Review through the source_type/family filters and the 'All sources' universe view, which already surfaces ranked_candidate and ranked_fallback provenance.",
   },
   {
     id: "ranked-staff-duel",
@@ -847,7 +871,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization:
       "UNCHANGED — the route carries no gate today and this reorganization adds none. Gating it is an access change and an owner decision (Atlas §N).",
     notes:
-      "Given a discoverable home under Ranked › Matches with its danger stated. Relocating the route itself would change who can reach it, which is explicitly out of scope.",
+      "Given a discoverable home under Ranked › Matches with its danger stated. The same page also has a local fixture (mock-state) mode; FUNNEL1C removed its separate Developer entry so the route has one canonical home. Relocating the route itself would change who can reach it, which is explicitly out of scope.",
   },
   {
     id: "ranked-test-matches",
@@ -873,7 +897,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Bot-match configuration and status. The endpoint itself is player-authenticated and stays that way — this administers it, it does not call it.",
     area: "ranked",
     section: "matches",
-    kind: "route",
+    kind: "panel",
     path: "/admin/ranked?section=matches",
     oldLocation: "No admin surface — RANKED_BOT_ENABLED visible only via launch-readiness",
     disposition: "MOVE",
@@ -919,7 +943,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "The Playtests operations home: the existing primitives a playtest is assembled from, and the named gaps that remain.",
     area: "ranked",
     section: "playtests",
-    kind: "route",
+    kind: "panel",
     path: "/admin/ranked?section=playtests",
     oldLocation: "Does not exist — the primitives are scattered across five places",
     disposition: "MOVE",
@@ -936,7 +960,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Quiescence worker enablement, sweep counts, and maintenance pause state, read from launch-readiness.",
     area: "ranked",
     section: "settings",
-    kind: "route",
+    kind: "panel",
     path: "/admin/ranked?section=settings",
     oldLocation: "Railway env + the pause file — visible nowhere",
     disposition: "MOVE",
@@ -1317,35 +1341,19 @@ export const ADMIN_TOOLS: AdminTool[] = [
   {
     id: "blog-cms",
     title: "Blog CMS",
-    description: "Blog post list: create, duplicate, publish, draft and delete.",
+    description:
+      "Blog post list — create, duplicate, publish, draft and delete — and the block / rich-text post editor it opens.",
     area: "studio",
     section: "blog",
     kind: "route",
     path: "/admin/blog",
-    oldLocation: "/admin/blog",
+    oldLocation: "/admin/blog; editor at /admin/blog/:id",
     disposition: "KEEP",
-    legacyRoutes: ["/admin/blog"],
+    legacyRoutes: ["/admin/blog", "/admin/blog/:id"],
     dangerLevel: "mutates-production",
     warning: "Publishes and unpublishes public blog content.",
     status: "Production",
     authorization: "AdminRoute — unchanged.",
-  },
-  {
-    id: "blog-editor",
-    title: "Blog Post Editor",
-    description: "The block and rich-text post editor.",
-    area: "studio",
-    section: "blog",
-    kind: "route",
-    path: "/admin/blog",
-    oldLocation: "/admin/blog/:id",
-    disposition: "KEEP",
-    legacyRoutes: ["/admin/blog/:id"],
-    dangerLevel: "caution",
-    warning: "Edits public blog content.",
-    status: "Production",
-    authorization: "AdminRoute — unchanged.",
-    notes: "Reached from the list and from the in-context edit link on a published post, which stays.",
   },
   {
     id: "academy-updates",
@@ -1602,7 +1610,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Read-only view of the backend flag state the running process reports, with its authority labelled.",
     area: "operations",
     section: "configuration",
-    kind: "route",
+    kind: "panel",
     path: "/admin/operations?section=configuration",
     oldLocation: "Railway environment variables — visible nowhere in the product",
     disposition: "MOVE",
@@ -1635,7 +1643,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "GET /api/admin/db/status — live database summary, core table row counts, identity DB wiring and the restore limits.",
     area: "operations",
     section: "health",
-    kind: "route",
+    kind: "panel",
     path: "/admin/operations?section=health",
     oldLocation: "Backend endpoint with no frontend consumer",
     disposition: "MOVE",
@@ -1681,21 +1689,25 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "DEFERRED — STILL ACCESSIBLE. Documented so the capability is visible; its published output is linked from Game Data › Mechanics.",
   },
   {
-    id: "data-ops-graphs",
-    title: "Analytics Graphs",
-    description: "Configurable analytics graphs over profiles, matches and league memberships.",
-    area: "operations",
-    section: "data-ops",
+    id: "arena-data-graphs",
+    title: "Arena Data Graphs",
+    description:
+      "The retired voting product's configurable graphs: matches, Elo & rank, items, comments and the legacy ad ledger. Not Mogzy product analytics.",
+    area: "arena",
+    section: "operations",
     kind: "route",
-    path: "/admin/data",
-    oldLocation: "/admin/data — linked only from the master-only header strip on /admin",
-    disposition: "KEEP",
+    path: "/admin/arena/data-graphs",
+    oldLocation: "/admin/data (\"Analytics Graphs\" under Operations › Data Operations)",
+    disposition: "ARCHIVE",
     legacyRoutes: ["/admin/data"],
     dangerLevel: "caution",
     warning: "Reads production user data.",
-    status: "Internal",
+    requiredRole: "master_admin",
+    status: "Legacy",
     authorization:
-      "AdminRoute (admin, master_admin) — unchanged. The page always admitted any admin; only the LINK to it was master-only.",
+      "Inherits the /admin layout gate; the page itself admits master_admin only (its own user_roles check) — unchanged.",
+    notes:
+      "FUNNEL1C archived it under Arena: most of its graphs are Match & Rank era, and its Users graphs read profiles (one row per guest session). Current product metrics are Analytics.",
   },
   {
     id: "data-ops-csv",
@@ -1772,24 +1784,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
   // =========================================================================
   // DEVELOPER
   // =========================================================================
-  {
-    id: "dev-ranked-duel-fixture",
-    title: "Ranked Duel Prototype (fixture)",
-    description: "Local mock-state Ranked Duel prototype. The same page also hosts the live staff duel creator.",
-    area: "developer",
-    section: "prototypes",
-    kind: "route",
-    path: "/dev/ranked-duel",
-    oldLocation: "/dev/ranked-duel — fixture mode",
-    disposition: "DEVELOPER-ONLY",
-    legacyRoutes: ["/dev/ranked-duel"],
-    dangerLevel: "none",
-    status: "Prototype",
-    developerOnly: true,
-    authorization: "UNCHANGED — no route gate.",
-    notes:
-      "Fixture mode is a prototype; the same route's Live mode is production administration and is listed under Ranked › Matches.",
-  },
   {
     id: "dev-stat-check",
     title: "Stat Check Prototype",

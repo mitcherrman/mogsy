@@ -5,6 +5,7 @@
 //   GET /api/ranked/launch-readiness   the per-gate Ranked readiness verdict
 //   GET /api/ranked/rating-status      rating backlog + policy/flag state
 //   GET /api/admin/db/status           live database summary and restore limits
+//   GET /api/admin/analytics/health    FUNNEL1B3 outbox delivery state (FUNNEL1C)
 //
 // READS ONLY. Nothing here writes, and nothing here is added to the backend:
 // all three routes already exist behind `require_admin` and are unchanged.
@@ -56,6 +57,30 @@ export interface DbStatus {
   };
 }
 
+/**
+ * FUNNEL1B3 authoritative-analytics delivery state (routes/analytics_health.py).
+ * Only the fields Admin renders are typed; the endpoint never includes a
+ * credential, and Admin does not render the ingest endpoint URL either.
+ */
+export interface AnalyticsHealth {
+  ok: boolean;
+  problems: string[];
+  gameplay_seen: boolean;
+  configured?: boolean;
+  enabled?: boolean;
+  drainer_alive?: boolean;
+  stale_after_seconds?: number;
+  last_drain_at?: string | number | null;
+  outbox?: {
+    total?: number;
+    unsent?: number;
+    oldest_unsent_age_seconds?: number | null;
+    abandoned?: number;
+    dead_lettered?: number;
+  };
+  counters?: Record<string, number | string | null>;
+}
+
 /** A read that failed, described well enough to render honestly. */
 export class AdminOpsError extends Error {
   readonly status: number | null;
@@ -96,6 +121,8 @@ export const fetchLaunchReadiness = () =>
 export const fetchRatingStatus = () => adminGet<RatingStatus>("/api/ranked/rating-status");
 
 export const fetchDbStatus = () => adminGet<DbStatus>("/api/admin/db/status");
+
+export const fetchAnalyticsHealth = () => adminGet<AnalyticsHealth>("/api/admin/analytics/health");
 
 /** Human label for a readiness verdict. */
 export function verdictLabel(verdict: LaunchReadiness["verdict"]): string {

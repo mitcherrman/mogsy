@@ -3,7 +3,10 @@
 //
 // The canonical home for the people-facing tabs of the dissolved 17-tab
 // dashboard. It MOUNTS the same components those tabs mounted, with the same
-// props: there is exactly one Users interface in the product and this is it.
+// props: there is exactly one Users destination in the product and this is it.
+// FUNNEL1C/ADMIN2 folded the master-only identity directory (/admin/users) in
+// as the third view of Users rather than leaving a second account browser in
+// navigation; that path now redirects to ?section=users&view=identities.
 // The deployed Admin Users Phase 1 UX (read-first inspection, Account Actions,
 // delete confirmation, per-user Feedback) is untouched.
 //
@@ -14,7 +17,9 @@
 // ---------------------------------------------------------------------------
 
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AdminUsers from "@/components/admin/AdminUsers";
+import AdminUserDirectory from "@/pages/admin/AdminUserDirectory";
 import AdminProfileDirectory from "@/components/admin/AdminProfileDirectory";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminComments from "@/components/admin/AdminComments";
@@ -74,7 +79,15 @@ export default function AdminPeoplePage() {
   const area = ADMIN_AREAS_BY_ID.people;
   const [section, setSection] = useAreaSection(area);
   const { isMasterAdmin } = useAdminRoles();
-  const [usersView, setUsersView] = useState("accounts");
+  // URL-backed so the identity view keeps a deep link of its own — it is what
+  // /admin/users redirects to, and what the registry advertises.
+  const [params, setParams] = useSearchParams();
+  const usersView = params.get("view") ?? "accounts";
+  const setUsersView = (id: string) => {
+    const next = new URLSearchParams(params);
+    next.set("view", id);
+    setParams(next, { replace: false });
+  };
   const [modView, setModView] = useState("comments");
   const [notifView, setNotifView] = useState("inbox");
 
@@ -91,15 +104,24 @@ export default function AdminPeoplePage() {
             options={[
               { id: "accounts", label: "Accounts" },
               { id: "browser", label: "Profile browser" },
+              // Master-only, exactly as /admin/users was. Advertised only to
+              // the role that can use it; the RPCs re-check server-side.
+              ...(isMasterAdmin ? [{ id: "identities", label: "Identities" }] : []),
             ]}
           />
-          {usersView === "accounts" ? (
-            <div data-testid="people-users-accounts">
-              <AdminUsers isMasterAdmin={isMasterAdmin} />
-            </div>
-          ) : (
+          {usersView === "browser" && (
             <div data-testid="people-users-browser">
               <AdminProfileDirectory />
+            </div>
+          )}
+          {usersView === "identities" && isMasterAdmin && (
+            <div data-testid="people-users-identities">
+              <AdminUserDirectory embedded />
+            </div>
+          )}
+          {usersView !== "browser" && !(usersView === "identities" && isMasterAdmin) && (
+            <div data-testid="people-users-accounts">
+              <AdminUsers isMasterAdmin={isMasterAdmin} />
             </div>
           )}
           <AdminPanel

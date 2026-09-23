@@ -11,7 +11,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import type { AdminAuthContextValue } from "@/lib/admin-auth/types";
 
 // --- mocks -----------------------------------------------------------------
@@ -74,6 +74,7 @@ vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => admin
 
 import AdminShell from "@/components/admin/shell/AdminShell";
 import AdminOverviewPage from "./AdminOverviewPage";
+import AdminAnalyticsPage from "./AdminAnalyticsPage";
 import AdminAllToolsPage from "./AdminAllToolsPage";
 import AdminPeoplePage from "./AdminPeoplePage";
 import AdminLeaguecraftPage from "./AdminLeaguecraftPage";
@@ -105,6 +106,7 @@ function renderAdmin(path: string) {
         <Route path="/admin" element={<AdminShell />}>
           <Route index element={<AdminOverviewPage />} />
           <Route path="all-tools" element={<AdminAllToolsPage />} />
+          <Route path="analytics" element={<AdminAnalyticsPage />} />
           <Route path="people" element={<AdminPeoplePage />} />
           <Route path="leaguecraft" element={<AdminLeaguecraftPage />} />
           <Route path="ranked" element={<AdminRankedPage />} />
@@ -120,10 +122,10 @@ function renderAdmin(path: string) {
           <Route path="blog" element={<div data-testid="stub-blog" />} />
           <Route path="blog/:id" element={<div data-testid="stub-blog-editor" />} />
           <Route path="combat-battles" element={<div data-testid="stub-battles" />} />
-          <Route path="legacy-dashboard" element={<div data-testid="stub-legacy" />} />
-          {/* ADMIN1A registered /admin/users, which was a live master-gated
-              route the registry had never listed — so the rail went blank on it. */}
-          <Route path="users" element={<div data-testid="stub-user-directory" />} />
+          <Route path="arena/data-graphs" element={<div data-testid="stub-arena-data" />} />
+          {/* /admin/users is a redirect now (FUNNEL1C): the identity directory
+              is the master-only Identities view of People › Users. */}
+          <Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -148,6 +150,7 @@ describe("1 · every top-level area renders", () => {
   const areaPaths: Array<[string, string, string]> = [
     ["Overview", "/admin", "admin-area-overview"],
     ["All Tools", "/admin/all-tools", "admin-area-all-tools"],
+    ["Analytics", "/admin/analytics", "admin-area-analytics"],
     ["People", "/admin/people", "admin-area-people"],
     ["Leaguecraft", "/admin/leaguecraft", "admin-area-leaguecraft"],
     ["Ranked", "/admin/ranked", "admin-area-ranked"],
@@ -189,8 +192,7 @@ describe("1 · every top-level area renders", () => {
       ["/admin/blog", "studio"],
       ["/admin/blog/abc-123", "studio"],
       ["/admin/combat-battles", "simulation"],
-      ["/admin/legacy-dashboard", "overview"],
-      ["/admin/users", "people"],
+      ["/admin/arena/data-graphs", "arena"],
     ];
     for (const [path, areaId] of owned) {
       cleanup();
@@ -221,6 +223,29 @@ describe("2 · Admin Users remains available, and only once", () => {
     expect(within(subtabs).getByTestId("people-users-subtabs-browser")).toBeTruthy();
     // Accounts is the default view; the profile browser is not rendered beside it.
     expect(screen.queryByTestId("people-users-browser")).toBeNull();
+  });
+
+  // FUNNEL1C/ADMIN2 — /admin/users was a second account browser in navigation.
+  it("offers the master-only identity directory as a third VIEW, deep-linkable", async () => {
+    renderAdmin("/admin/people?section=users&view=identities");
+    expect(await screen.findByTestId("people-users-identities")).toBeTruthy();
+    // One destination: the other views are not rendered beside it.
+    expect(screen.queryByTestId("people-users-accounts")).toBeNull();
+    expect(screen.queryByTestId("people-users-browser")).toBeNull();
+    const subtabs = screen.getByTestId("people-users-subtabs");
+    expect(within(subtabs).getByTestId("people-users-subtabs-identities")).toBeTruthy();
+  });
+
+  it("does not advertise the identity view to a non-master admin", async () => {
+    supabase.from.mockImplementation((table: string) =>
+      buildQuery(table === "user_roles" ? [{ user_id: "u1", role: "admin" }] : []),
+    );
+    renderAdmin("/admin/people?section=users&view=identities");
+    const subtabs = await screen.findByTestId("people-users-subtabs");
+    expect(within(subtabs).queryByTestId("people-users-subtabs-identities")).toBeNull();
+    expect(screen.queryByTestId("people-users-identities")).toBeNull();
+    // It falls back to Accounts rather than rendering an empty section.
+    expect(screen.getByTestId("people-users-accounts")).toBeTruthy();
   });
 });
 
@@ -299,7 +324,7 @@ describe("6 · legacy collection and bot tooling remains reachable", () => {
     renderAdmin("/admin/arena?section=operations");
     await screen.findByTestId("admin-area-arena");
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    for (const path of ["/admin/play", "/admin/gaming", "/admin/demo"]) {
+    for (const path of ["/admin/play", "/admin/gaming", "/admin/demo", "/admin/arena/data-graphs"]) {
       expect(links, path).toContain(path);
     }
   });
@@ -434,15 +459,30 @@ describe("10 · Operations and Danger Zone execute nothing by navigation", () =>
 
 // --- 11–12. Legacy routes ---------------------------------------------------
 
-describe("11 & 12 · legacy admin surfaces stay reachable", () => {
-  it("keeps the legacy dashboard and legacy directory linked from Overview and All Tools", async () => {
+describe("11 & 12 · legacy shells are retired, not advertised", () => {
+  it("advertises neither the legacy dashboard nor the legacy directory anywhere", async () => {
     renderAdmin("/admin");
-    await screen.findByTestId("admin-overview-legacy-dashboard");
+    await screen.findByTestId("admin-area-overview");
+    expect(screen.queryByTestId("admin-overview-legacy-dashboard")).toBeNull();
+    expect(screen.queryByText(/Legacy Admin Dashboard/i)).toBeNull();
+    expect(screen.queryByText(/Escape hatches/i)).toBeNull();
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.filter((h) => /legacy-(dashboard|directory)/.test(h))).toEqual([]);
     cleanup();
     renderAdmin("/admin/all-tools");
     await screen.findByTestId("admin-all-tools");
-    expect(screen.getByTestId("admin-tool-legacy-admin-dashboard")).toBeTruthy();
-    expect(screen.getByTestId("admin-tool-legacy-admin-directory")).toBeTruthy();
+    expect(screen.queryByTestId("admin-tool-legacy-admin-dashboard")).toBeNull();
+    expect(screen.queryByTestId("admin-tool-legacy-admin-directory")).toBeNull();
+  });
+
+  it("keeps Overview small: counts, attention and a few shortcuts — no area grid, no Arena counters", async () => {
+    renderAdmin("/admin");
+    await screen.findByTestId("admin-overview-platform");
+    expect(screen.getByTestId("admin-attention-queue")).toBeTruthy();
+    expect(screen.getByTestId("admin-overview-shortcuts")).toBeTruthy();
+    expect(screen.queryByTestId("admin-overview-areas")).toBeNull();
+    expect(screen.queryByText(/Img Clicks|Image clicks/i)).toBeNull();
+    expect(screen.getByTestId("admin-overview-shortcut-analytics").getAttribute("href")).toBe("/admin/analytics");
   });
 
   it("lists every registered tool in All Tools, developer entries included", async () => {
@@ -519,7 +559,7 @@ describe("16 · Developer tools remain reachable and are labelled", () => {
   it("lists prototypes with an explicit Developer label", async () => {
     renderAdmin("/admin/developer?section=prototypes");
     await screen.findByTestId("admin-area-developer");
-    expect(screen.getByTestId("admin-tool-devlabel-dev-ranked-duel-fixture")).toBeTruthy();
+    expect(screen.getByTestId("admin-tool-devlabel-dev-stat-check")).toBeTruthy();
     expect(screen.getByTestId("developer-mastery-prototypes")).toBeTruthy();
   });
 
@@ -605,5 +645,39 @@ describe("18 · no tutorial admin surface survives", () => {
     expect(onboarding.textContent).toMatch(/none is migrated/i);
     // Listing is a read. Rendering must write nothing.
     expect(deleteCalled).not.toHaveBeenCalled();
+  });
+});
+
+
+// --- FUNNEL1C · Analytics ----------------------------------------------------
+
+describe("FUNNEL1C · Analytics is a first-class area", () => {
+  it("sits directly under Overview in the rail", async () => {
+    renderAdmin("/admin");
+    const nav = await screen.findByTestId("admin-shell-nav");
+    const ids = within(nav)
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("data-testid"))
+      .filter((id): id is string => Boolean(id?.startsWith("admin-nav-")));
+    expect(ids.slice(0, 2)).toEqual(["admin-nav-overview", "admin-nav-analytics"]);
+  });
+
+  it("renders every section with the shared range control and an honest empty state", async () => {
+    for (const section of ["overview", "acquisition", "engagement", "accounts", "retention", "sources", "health"]) {
+      cleanup();
+      renderAdmin(`/admin/analytics?section=${section}&range=30d`);
+      expect(await screen.findByTestId(`analytics-section-${section}`), section).toBeTruthy();
+      expect(screen.getByTestId("analytics-range-30d").getAttribute("aria-pressed")).toBe("true");
+      expect(screen.getByTestId("analytics-empty")).toBeTruthy();
+    }
+  });
+
+  it("reads nothing from Arena-era tables", async () => {
+    supabase.from.mockClear();
+    renderAdmin("/admin/analytics?section=overview");
+    await screen.findByTestId("analytics-section-overview");
+    const tables = supabase.from.mock.calls.map((c) => c[0] as string);
+    expect(tables.length).toBeGreaterThan(0);
+    for (const t of tables) expect(t, t).toMatch(/^analytics_(events|sessions|visitors)$/);
   });
 });

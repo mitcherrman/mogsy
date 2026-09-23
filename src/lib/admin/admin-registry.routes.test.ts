@@ -87,10 +87,11 @@ const DECLARED = declaredPaths(appSource);
 const basePath = (p: string) => p.split("?")[0];
 
 describe("registry ⇄ router agreement", () => {
-  it("declares the ten area routes plus the two entry points", () => {
+  it("declares the eleven area routes plus the All Tools entry point", () => {
     for (const path of [
       "/admin",
       "/admin/all-tools",
+      "/admin/analytics",
       "/admin/people",
       "/admin/leaguecraft",
       "/admin/ranked",
@@ -138,14 +139,42 @@ describe("registry ⇄ router agreement", () => {
     );
   });
 
-  it("keeps the pre-migration directory page mounted, not deleted", () => {
-    expect(DECLARED.has("/admin/legacy-directory")).toBe(true);
-    expect(appSource).toContain("<AdminDirectory />");
+  // FUNNEL1C — retired shells are redirects for bookmarks, never destinations.
+  const REDIRECTS: Array<[string, string]> = [
+    ["directory", "/admin/all-tools"],
+    ["legacy-directory", "/admin/all-tools"],
+    ["legacy-dashboard", "/admin"],
+    ["data", "/admin/arena/data-graphs"],
+    ["demo-analytics", "/admin/premium-preview"],
+  ];
+
+  it.each(REDIRECTS)("redirects /admin/%s to %s", (from, to) => {
+    expect(appSource).toContain(`<Route path="${from}" element={<Navigate to="${to}" replace />} />`);
   });
 
-  it("keeps the legacy 17-tab dashboard mounted", () => {
-    expect(DECLARED.has("/admin/legacy-dashboard")).toBe(true);
-    expect(appSource).toMatch(/path="legacy-dashboard" element=\{<Admin \/>\}/);
+  it("redirects in one hop: no redirect lands on another redirect", () => {
+    const froms = new Set(REDIRECTS.map(([f]) => `/admin/${f}`));
+    for (const [, to] of REDIRECTS) {
+      expect(froms.has(to), `${to} is itself a redirect`).toBe(false);
+      expect(DECLARED.has(to), `${to} is not a declared route`).toBe(true);
+    }
+  });
+
+  it("no longer mounts the legacy dashboard or the old directory page", () => {
+    expect(appSource).not.toContain("<AdminDirectory />");
+    expect(appSource).not.toMatch(/element=\{<Admin \/>\}/);
+    expect(appSource).not.toContain("R.Admin.Component");
+  });
+
+  it("mounts Analytics inside the Admin shell, under the same gate", () => {
+    const shellStart = appSource.indexOf('<Route path="/admin" element={<AdminRoute>');
+    const shellEnd = appSource.indexOf('<Route path="/moderator"');
+    const shellBlock = appSource.slice(shellStart, shellEnd);
+    expect(shellBlock).toContain('<Route path="analytics" element={<Suspense fallback={<RouteFallback />}><AdminAnalyticsPage /></Suspense>} />');
+  });
+
+  it("keeps the Premium Trends Preview master-admin only at its new path", () => {
+    expect(appSource).toMatch(/path="premium-preview" element=\{<AdminRoute roles=\{\["master_admin"\]\}>/);
   });
 
   it("keeps every quiz workspace alias resolving, now onto the Review tab", () => {

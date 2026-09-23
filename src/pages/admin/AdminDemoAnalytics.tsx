@@ -167,15 +167,15 @@ export default function AdminDemoAnalytics() {
   return (
     <div className="space-y-4" data-testid="admin-demo-analytics">
       <SEOHead
-        title="Mogzy Admin · Demo analytics"
+        title="Mogzy Admin · Premium Trends Preview"
         description="Compare the Free and Premium presentations of Performance Trends against a synthetic record."
-        path="/admin/demo-analytics"
+        path="/admin/premium-preview"
         noindex
       />
 
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-semibold">Demo analytics</h1>
+          <h1 className="text-lg font-semibold">Premium Trends Preview</h1>
           <span
             className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive"
             data-testid="demo-page-badge"

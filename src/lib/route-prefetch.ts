@@ -50,7 +50,6 @@ export const Routes = {
   SwipePreset: lazyWithRetry(() => import("@/pages/SwipePreset")),
   Settings: lazyWithRetry(() => import("@/pages/Settings")),
   Referral: lazyWithRetry(() => import("@/pages/Referral")),
-  Admin: lazyWithRetry(() => import("@/pages/Admin")),
   Shop: lazyWithRetry(() => import("@/pages/Shop")),
   EloCheck: lazyWithRetry(() => import("@/pages/EloCheck")),
   SwipeLeagues: lazyWithRetry(() => import("@/pages/SwipeLeagues")),

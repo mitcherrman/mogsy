@@ -1,5 +1,11 @@
 // ---------------------------------------------------------------------------
-// Admin · Users — the master-admin user directory.
+// Admin · User Identities — the master-admin identity directory.
+//
+// FUNNEL1C/ADMIN2: this is no longer its own destination. It renders as the
+// master-only "Identities" view of People › Users (`embedded`), so accounts
+// have ONE visible home; /admin/users redirects to that view. The standalone
+// chrome below (page wrapper, SEOHead, back link) is kept for the non-embedded
+// render so the component stays usable on its own.
 //
 // Registered under `AdminRoute roles={["master_admin"]}` in App.tsx and
 // additionally wrapped in the shared AdminAuthGate, so nothing renders before
@@ -41,10 +47,13 @@ export { ADMIN_USERS_PATH };
 interface AdminUserDirectoryProps {
   /** Render cap and "Show more" increment. Overridable for tests. */
   pageSize?: number;
+  /** Rendered inside People › Users: no page wrapper, SEO head or back link. */
+  embedded?: boolean;
 }
 
 export default function AdminUserDirectory({
   pageSize = DIRECTORY_PAGE_SIZE,
+  embedded = false,
 }: AdminUserDirectoryProps = {}) {
   const [profiles, setProfiles] = useState<AdminDirectoryProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,34 +101,46 @@ export default function AdminUserDirectory({
     setCap(pageSize);
   };
 
+  const header = embedded ? (
+    <p className="mb-4 text-[11px] text-muted-foreground" data-testid="admin-users-embedded-note">
+      Newest accounts first, with verified Discord / Riot identities. Observation and friend
+      linking only — no deletion, no role changes. Account management, entitlements and Account
+      Actions are on the Accounts view.
+    </p>
+  ) : (
+    <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-1">
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <Users className="h-5 w-5 text-primary" aria-hidden />
+          User Identities
+        </h1>
+        <p className="text-xs text-muted-foreground">
+          Newest accounts first. Observation and friend linking only — no deletion,
+          no role changes.
+        </p>
+      </div>
+      <Link
+        to="/admin/people?section=users"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> People
+      </Link>
+    </header>
+  );
+
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6">
-      <SEOHead
-        title="Mogzy Admin · Users"
-        description="Private administration user directory."
-        path={ADMIN_USERS_PATH}
-        noindex
-      />
+    <div className={embedded ? "w-full" : "mx-auto w-full max-w-4xl px-4 py-6"}>
+      {!embedded && (
+        <SEOHead
+          title="Mogzy Admin · User Identities"
+          description="Private administration user directory."
+          path={ADMIN_USERS_PATH}
+          noindex
+        />
+      )}
 
       <AdminAuthGate>
-        <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h1 className="flex items-center gap-2 text-lg font-semibold">
-              <Users className="h-5 w-5 text-primary" aria-hidden />
-              Users
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Newest accounts first. Observation and friend linking only — no deletion,
-              no role changes.
-            </p>
-          </div>
-          <Link
-            to="/admin/directory"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Admin directory
-          </Link>
-        </header>
+        {header}
 
         <div className="mb-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
