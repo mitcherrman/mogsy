@@ -110,13 +110,12 @@ export async function ensureAnonymousIdentity(
         console.warn(`[auth:anonymous] mint failed (${reason})`, error.message);
       }
 
-      // A concurrent sign-in elsewhere may land the session a tick later via
-      // onAuthStateChange — poll briefly before giving up.
-      for (let i = 0; i < 10; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        const { data: retry } = await supabase.auth.getSession();
-        if (retry.session) return retry.session;
-      }
+      // The predecessor polled getSession() ten times at 200ms here, because a
+      // concurrent sign-in from AuthProvider's boot sequence could land the
+      // session a tick later. AuthProvider no longer signs anyone in, and the
+      // single-flight guard above covers every remaining caller — so there is
+      // nothing left to wait for, and waiting two seconds before giving up
+      // would delay the very write the visitor is waiting on.
       return null;
     } catch {
       return null;

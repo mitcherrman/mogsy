@@ -175,8 +175,10 @@ describe("1 · every top-level area renders", () => {
   });
 
   it("marks the active area for the current route", async () => {
+    // USERS1 — Ranked is a section of Leaguecraft, so the rail marks
+    // Leaguecraft. The rail has one entry per AREA and Ranked is not one.
     renderAdmin("/admin/leaguecraft?section=ranked");
-    const link = await screen.findByTestId("admin-nav-ranked");
+    const link = await screen.findByTestId("admin-nav-leaguecraft");
     expect(link.getAttribute("data-active")).toBe("true");
     expect(screen.getByTestId("admin-nav-users").getAttribute("data-active")).toBe("false");
   });

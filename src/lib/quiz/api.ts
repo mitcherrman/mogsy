@@ -1,5 +1,9 @@
 import { getAdminKey } from "@/lib/knowledge-admin/key";
-import { getBackendAuthHeaders, ensureBackendAuthToken } from "@/lib/backend-auth";
+import {
+  getBackendAuthHeaders,
+  ensureBackendAuthToken,
+  getExistingBackendAuthToken,
+} from "@/lib/backend-auth";
 import type { AssetStatus } from "./assetStatus";
 import type { RenderProvenance } from "@/lib/quiz-screenshot/types";
 
@@ -264,14 +268,30 @@ export class QuizAuthRequiredError extends Error {
  * it returns `{}` whenever the Supabase session has not landed yet, which is
  * exactly the state a page is in for the first few hundred ms after mount.
  *
- * `ensureBackendAuthToken()` establishes a session — signing in anonymously if
- * the visitor is a guest — and waits for it, so guest play is preserved while
- * the tokenless window is closed. If no session can be established at all we
- * throw rather than send a request that would be silently misattributed under
- * the legacy fallback (or 401 under enforcement).
+ * For a WRITE, `ensureBackendAuthToken()` establishes a session — signing in
+ * anonymously if the visitor is a guest — and waits for it, so guest play is
+ * preserved while the tokenless window is closed. If no session can be
+ * established at all we throw rather than send a request that would be
+ * silently misattributed under the legacy fallback (or 401 under enforcement).
  */
 export async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await ensureBackendAuthToken();
+  // USERS1 — a READ does not create an identity, a WRITE does.
+  //
+  // This helper was minting for every call, and several of its callers are
+  // reads that run on the Leaguecraft hub's own mount (the builder catalog,
+  // the weakness report, saved sets). That is how /quiz was still creating an
+  // account for a visitor who had done nothing but arrive — the last of the
+  // page-load paths, and the one that survived deleting the four obvious
+  // mount effects.
+  //
+  // A guest reading their own data gets null and the caller's existing
+  // QuizAuthRequiredError path, which every call site already handles as
+  // "sign-in required". A guest WRITING still gets an identity, which is the
+  // guest-first guarantee this helper was built for.
+  const method = (init?.method ?? "GET").toUpperCase();
+  const token = method === "GET"
+    ? await getExistingBackendAuthToken()
+    : await ensureBackendAuthToken();
   if (!token) throw new QuizAuthRequiredError(path);
   return request<T>(path, {
     ...init,

@@ -209,6 +209,18 @@ async function readAuthState(): Promise<{ userId: string | null; isGuest: boolea
 const PG_UNIQUE_VIOLATION = "23505";
 
 /**
+ * PostgREST: "could not find the '<col>' column ... in the schema cache".
+ *
+ * Which is what a browser gets when the frontend has shipped and the migration
+ * has not. USERS1 added three columns to analytics_sessions, and if that
+ * ordering slips the session row is REJECTED ENTIRELY — the visit vanishes
+ * from the store rather than losing only its classification. The deploy order
+ * is documented (USERS1_HANDOFF.md), but documentation is not a mechanism, and
+ * this exact failure is the one FUNNEL1 §5 exists because of.
+ */
+const PGRST_UNKNOWN_COLUMN = "PGRST204";
+
+/**
  * A plain INSERT whose only expected failure — the row is already there — is
  * treated as success.
  *
@@ -233,15 +245,20 @@ const PG_UNIQUE_VIOLATION = "23505";
  * tables have an INSERT policy and no UPDATE policy, so a second write CANNOT
  * revise the first even if this code tried to.
  */
+/** Set by insertOnce so recordSession can tell a schema gap from a real failure. */
+let lastFailureWasUnknownColumn = false;
+
 async function insertOnce(
   table: typeof ANALYTICS_VISITORS_TABLE | typeof ANALYTICS_SESSIONS_TABLE,
   row: Record<string, unknown>,
 ): Promise<boolean> {
+  lastFailureWasUnknownColumn = false;
   try {
     const { error } = await analyticsDb.from(table).insert(row as never);
     if (!error) return true;
     // The row is already recorded. That is the intended end state, not a fault.
     if ((error as { code?: string }).code === PG_UNIQUE_VIOLATION) return true;
+    lastFailureWasUnknownColumn = (error as { code?: string }).code === PGRST_UNKNOWN_COLUMN;
     recordFailure(`insert:${table}`, error.message);
     return false;
   } catch (error) {
@@ -276,10 +293,16 @@ async function recordSession(
   touch: Touch,
   traffic?: TrafficSignal,
 ): Promise<void> {
-  const ok = await insertOnce(
-    ANALYTICS_SESSIONS_TABLE,
-    toSessionRow(sessionId, visitorId, touch, traffic),
-  );
+  const row = toSessionRow(sessionId, visitorId, touch, traffic);
+  let ok = await insertOnce(ANALYTICS_SESSIONS_TABLE, row);
+
+  // The classification columns do not exist yet. Record the SESSION rather
+  // than nothing: an unclassified session reads as `unknown`, which is inside
+  // the default population, and a lost session is unrecoverable.
+  if (!ok && lastFailureWasUnknownColumn) {
+    const { traffic_class: _c, traffic_source: _s, classification_reason: _r, ...legacy } = row;
+    ok = await insertOnce(ANALYTICS_SESSIONS_TABLE, legacy);
+  }
   // A 23505 counts as success here too, and deliberately: it means the first
   // attempt landed and only its response was lost, so the retry has confirmed
   // what it set out to confirm.
