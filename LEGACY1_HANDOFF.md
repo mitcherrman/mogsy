@@ -1,7 +1,8 @@
 # LEGACY1 — Eradicate retired Mogsy architecture from active code
 
-**State: PHASES 1–9 COMPLETE on `legacy1/eradicate-retired-mogsy`. Phase 10
-(reconcile onto current `origin/main`, push) is the next task.**
+**State: PHASES 1–10 COMPLETE on `legacy1/eradicate-retired-mogsy`, pushed and
+verified. The only step left is merging to `main`, which is the owner's call
+because `main` is the production ref.**
 
 Read this file first. It records what retired Mogsy architecture was found in
 the active codebase, what was deleted, and what deliberately stayed. Where it
@@ -293,11 +294,30 @@ typecheck error is new — the five that disappeared were in deleted files.
 4. `src/test/security/pt2cProfileFrameAuthority.test.ts` OOMs when run alone, on
    `origin/main` as well. Pre-existing; not investigated here.
 
+## Integration (Phase 10)
+
+`origin/main` did **not** move during this workstream — it is still `cf9f5a8a`,
+so there was nothing to reconcile and no newer work to preserve. The branch is
+pushed:
+
+```
+branch pushed   legacy1/eradicate-retired-mogsy
+commits         84eca41f  delete the retired Mogsy voting product
+                6edcab4a  delete the retired economy, and the flag
+                a64b3651  guards, docs, and the last of the stale references
+diff vs main    152 files changed, 1141 insertions(+), 29360 deletions(-)
+```
+
+**Merging to `main` is deliberately left to the owner.** `main` is the Lovable
+production ref (FUNNEL1 §16.4), so a fast-forward publishes a 29k-line deletion
+to the live site. Everything is verified and the branch is ready; the last step
+is one the owner should take knowingly. `git merge --ff-only
+legacy1/eradicate-retired-mogsy` on `main` is all it needs.
+
 ## Next task
 
-Phase 10: fetch current `origin/main`, check whether it moved, reconcile
-preserving all newer work, rerun the focused suites and the build if anything
-overlaps, then push. After that, the natural follow-on is the Admin IA question
-the owner raised — People + Analytics possibly collapsing into Users, Ranked
-moving inside Leaguecraft — which is now answerable against a surface that
-contains only current product.
+Merge, then delete the two deployed edge functions in the Supabase dashboard
+(Unresolved #1). After that the natural follow-on is the Admin IA question the
+owner raised — People + Analytics possibly collapsing into Users, Ranked moving
+inside Leaguecraft — which is now answerable against a surface that contains
+only current product.
