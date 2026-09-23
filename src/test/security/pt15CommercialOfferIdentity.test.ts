@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PREMIUM_MATRIX, freeBenefits, premiumBenefits } from "@/lib/premium/matrix";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -320,21 +320,20 @@ describe("the frontend ships no subscription price, coupon or founder claim", ()
     expect(offers).not.toContain("pro_grant");
   });
 
-  it("resolves the Shop's Pro state through the PT1.4 rule, not raw is_pro", () => {
-    const shop = readFileSync(join(SRC, "pages/Shop.tsx"), "utf8");
-    // Still the PT1.4 rule; `isEffectiveProForSelf` is that rule plus the
-    // admin-controlled global Premium ACCESS window, which is only ever folded
-    // in at a SELF gate. The pure `isEffectivePro` stays reserved for admin
-    // surfaces rendering other people's rows.
-    expect(shop).toContain(
-      "const effectivePro = isEffectiveProForSelf(profile, globalPremiumAccess);");
-    expect(code(shop)).not.toContain("profile?.is_pro");
+  // LEGACY1 deleted /shop with the retired voting product, so there is no
+  // second commercial surface left to check this rule on. The rule itself is
+  // unchanged and still asserted on /lol/premium below: `isEffectiveProForSelf`
+  // is the PT1.4 rule plus the admin-controlled global Premium ACCESS window,
+  // folded in only at a SELF gate, while the pure `isEffectivePro` stays
+  // reserved for admin surfaces rendering other people's rows.
+  it("has no second commercial surface: /shop is deleted", () => {
+    expect(existsSync(join(SRC, "pages/Shop.tsx"))).toBe(false);
   });
 
   it("never renders a private offer", () => {
     const offers = readFileSync(join(SRC, "lib/pro/offers.ts"), "utf8");
     expect(offers).toMatch(/founding_playtester[\s\S]*?visibility: "private"/);
-    const surfaces = ["pages/Shop.tsx", "pages/LolPremium.tsx"];
+    const surfaces = ["pages/LolPremium.tsx"];
     for (const s of surfaces) {
       expect(readFileSync(join(SRC, s), "utf8")).not.toContain("founding_playtester");
     }

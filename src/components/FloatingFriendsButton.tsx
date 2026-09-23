@@ -24,11 +24,11 @@
  * user's client never issues it.
  *
  * REACHABILITY (COM1-2)
- * The trigger used to be `hidden sm:flex`, and the HUD's Friends entry sits
- * inside `{!LEAGUE_ONLY_MODE && …}` — which is false in production. Between
- * them, a phone had NO way to open this drawer unless a friend-request
- * notification happened to be waiting. The trigger is now visible at every
- * width.
+ * The trigger used to be `hidden sm:flex`, and the HUD's only other Friends
+ * entry sat behind the retired product's flag, so it never rendered (LEGACY1
+ * has since deleted it). Between them, a phone had NO way to open this drawer
+ * unless a friend-request notification happened to be waiting. The trigger is
+ * now visible at every width.
  *
  * THE BOTTOM-LEFT SLOT (COM1-2B)
  * It used to be shared. `FloatingScrollButton` — a legacy Mogzy page-scroll

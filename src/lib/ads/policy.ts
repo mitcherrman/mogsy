@@ -70,7 +70,7 @@ export function classifyBlockedRoute(route: string): RouteCategory {
   const path = route.split("?")[0].replace(/\/+$/, "") || "/";
   const starts = (prefix: string) => path === prefix || path.startsWith(prefix + "/");
 
-  if (starts("/admin") || starts("/moderator") || starts("/quiz/admin") || starts("/secret-room")) {
+  if (starts("/admin") || starts("/quiz/admin") || starts("/secret-room")) {
     return "admin";
   }
   if (
@@ -84,7 +84,6 @@ export function classifyBlockedRoute(route: string): RouteCategory {
   if (
     starts("/auth") ||
     starts("/reset-password") ||
-    starts("/shop") ||
     starts("/lol/premium") || // Premium checkout/upsell
     starts("/lol/pro") || // legacy Premium URL; redirects, but never ad-bearing
     starts("/settings") // account management

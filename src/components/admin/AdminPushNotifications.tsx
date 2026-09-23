@@ -59,8 +59,8 @@ const NOTIFICATION_TYPES = [
   { value: "update", label: "App Update", icon: Zap, description: "Feature update" },
   { value: "warning", label: "Warning", icon: AlertTriangle, description: "Important warning" },
   { value: "spotlight", label: "Spotlight", icon: Crown, description: "Spotlight user/item" },
-  // LoL product types — the only user-visible types (besides update/warning)
-  // while LEAGUE_ONLY_MODE is on. See MogzyIdentityMenu allowlist.
+  // League product types — the user-visible ones besides update/warning.
+  // See the MogzyIdentityMenu allowlist.
   { value: "lol_quiz", label: "League Quiz", icon: Star, description: "League quiz updates / new questions" },
   { value: "quiz_broadcast", label: "Quiz Broadcast", icon: Megaphone, description: "Live quiz broadcast announcement" },
   { value: "combat_lab", label: "Combat Lab", icon: Zap, description: "Combat Lab / simulator update" },

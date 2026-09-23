@@ -108,7 +108,7 @@ describe("containment", () => {
 
   it.each([
     ["SEO noindex", "pages/UserProfile.tsx"],
-    ["admin analytics filtering", "lib/admin-data-sources.ts"],
+    ["admin analytics", "lib/admin/analytics/metrics.ts"],
     ["admin CSV export", "lib/admin-csv-export.ts"],
     ["route authorization", "components/AdminRoute.tsx"],
     ["admin session authorization", "lib/admin-auth/AdminAuthProvider.tsx"],
@@ -120,7 +120,6 @@ describe("containment", () => {
   });
 
   it.each([
-    "components/admin/AdminBots.tsx",
     "components/admin/AdminUserCard.tsx",
     "pages/admin/AdminUserDirectory.tsx",
   ])("master-admin surface %s never consults it either", (file) => {

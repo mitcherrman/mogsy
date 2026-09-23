@@ -1410,8 +1410,8 @@ export default function Quiz() {
             reachable, so on the hub the row is not rendered at all rather than
             being shrunk:
 
-              League Hub   Redundant. LEAGUE_ONLY_MODE is on, which makes
-                           LEAGUE_HOME_ROUTE `/lol` and points the HUD's
+              League Hub   Redundant. LEAGUE_HOME_ROUTE is `/lol`, which points
+                           the HUD's
                            always-present top-left home control at exactly this
                            destination (asserted in GlobalHud.test.tsx). The
                            shell's own floating back pill was already retired in

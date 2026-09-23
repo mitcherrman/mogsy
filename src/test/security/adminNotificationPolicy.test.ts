@@ -116,18 +116,15 @@ describe("trigger-owned notification paths still work", () => {
 });
 
 describe("client write surface", () => {
-  it("has exactly one direct admin_notifications insert, the moderator delete request", () => {
+  // LEGACY1: there used to be exactly one — AdminPlay.tsx raising a
+  // mod_delete_request from the retired voting product's play-layout editor.
+  // That page is deleted, so the client write surface is now empty and every
+  // admin_notifications row comes from a trigger or a SECURITY DEFINER path.
+  it("has no direct admin_notifications insert at all", () => {
     const offenders = walkSourceFiles(SRC_DIR).filter(file => {
       const src = readFileSync(file, "utf8");
       return /from\(["']admin_notifications["']\)\s*\.\s*insert/.test(src.replace(/\s+/g, " "));
     });
-    expect(offenders.map(f => f.replace(SRC_DIR, "src"))).toEqual(["src/pages/AdminPlay.tsx"]);
-  });
-
-  it("that one insert only ever raises a mod_delete_request", () => {
-    const src = readFileSync(join(SRC_DIR, "pages", "AdminPlay.tsx"), "utf8");
-    const at = src.indexOf('from("admin_notifications")');
-    expect(at).toBeGreaterThan(-1);
-    expect(src.slice(at, at + 400)).toContain('type: "mod_delete_request"');
+    expect(offenders.map(f => f.replace(SRC_DIR, "src"))).toEqual([]);
   });
 });

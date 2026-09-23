@@ -5,6 +5,11 @@ in production (`5c273fdd`; session 259 read back). FUNNEL1C / ADMIN2 IMPLEMENTED
 Admin IA simplified and the canonical Analytics area built at `/admin/analytics`
 (§24). Ranked production spot-check remaining (§23.8).**
 
+> **§24 is partly superseded — read §25 first.** LEGACY1 deleted the retired
+> Mogsy voting product that §24 archived, so §24's `ARCHIVE` verdicts are a
+> record of what that phase decided, not a description of the codebase.
+> Everything §24 says about Analytics is still current.
+
 The web funnel is in production and proven end to end (§19). The gameplay half
 — authoritative milestones emitted from Railway through a transactional outbox
 — is merged to backend `master` at `5c273fdd` and live in production.
@@ -3769,3 +3774,41 @@ production build          vite build OK (21.2s)
 
 No manual publish or deploy was performed: whatever normal `main` workflow does
 is what runs.
+
+---
+
+# 25. SUPERSEDED BY LEGACY1 — read this before acting on §24
+
+**§24 archived the retired Mogsy voting product. LEGACY1 deleted it.**
+
+The owner's rule changed after §24 shipped: historical preservation is no longer
+the priority, because agents kept finding the archive and building against it as
+if it were current architecture. Everything §24 recorded as `ARCHIVE` — the
+`/admin/arena` area, its Collections / League Bots / Promoted Leagues / Arena
+Ranks panels, `ArenaArchiveStats`, the archived Match & Rank data graphs at
+`/admin/arena/data-graphs`, and the `/admin/play`, `/admin/gaming`,
+`/admin/demo` shells — is **gone from the codebase**, along with the retired
+user product behind `LEAGUE_ONLY_MODE` (that flag is deleted too), `/moderator`,
+`/admin/about`, the `/admin/directory`, `/admin/legacy-directory`,
+`/admin/legacy-dashboard` and `/admin/data` redirects, and the diamond economy.
+
+What that means for reading §24:
+
+* Its **verdict column is history, not current state.** `ARCHIVED` there means
+  "this is what FUNNEL1C decided"; LEGACY1 then deleted the same surface.
+* The Final IA in §24.2 is current **minus** the `Arena [Archived]` line, and
+  **plus** Studio › Audio (`/admin/audio-studio`) — the Audio Studio was the
+  ninth tab of `/admin/gaming` and had to be rehomed before that shell could go.
+* Operations no longer has a **Docs** section: `/admin/about` is deleted and All
+  Tools is the inventory of record, as §24.1 already said it was.
+* `docs/ADMIN_MIGRATION_LEDGER.md` and its generator are deleted. Its premise —
+  "Lost: 0" — is the premise LEGACY1 deliberately retired.
+
+Everything §24 says about **Analytics** is unchanged and still current:
+`analytics_events` / `analytics_sessions` / `analytics_visitors`, the Railway
+authority rule, the metric definitions in `metrics.ts`, and the read path.
+LEGACY1 touched none of it, and the Ranked production spot-check (§23.8) is
+still the open item.
+
+**`LEGACY1_HANDOFF.md` at the repository root is the record of what was deleted
+and of the database residue that intentionally stayed.**

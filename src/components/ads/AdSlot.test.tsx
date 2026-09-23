@@ -111,7 +111,7 @@ describe("AdSlot", () => {
   });
 
   it("renders nothing on admin/auth/dev/policy routes even when enabled", () => {
-    for (const route of ["/admin", "/auth", "/dev/ranked-duel", "/privacy", "/shop"]) {
+    for (const route of ["/admin", "/auth", "/dev/ranked-duel", "/privacy", "/settings"]) {
       const { container, unmount } = mount({}, route);
       expect(container.innerHTML).toBe("");
       unmount();

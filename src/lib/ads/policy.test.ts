@@ -86,13 +86,11 @@ describe("resolveAdPolicy", () => {
   it.each([
     ["/auth", "auth_or_checkout"],
     ["/reset-password", "auth_or_checkout"],
-    ["/shop", "auth_or_checkout"],
     ["/lol/premium", "auth_or_checkout"],
     ["/lol/pro", "auth_or_checkout"], // legacy Premium URL
     ["/settings", "auth_or_checkout"],
     ["/admin", "admin"],
     ["/admin/quiz-broadcast", "admin"],
-    ["/moderator", "admin"],
     ["/quiz/admin", "admin"],
     ["/dev/ranked-duel", "developer_route"],
     ["/quiz/diagnostics", "developer_route"],
