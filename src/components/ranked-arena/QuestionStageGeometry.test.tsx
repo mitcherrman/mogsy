@@ -413,8 +413,11 @@ describe("the Match Header says three things on the left and one on the right", 
     // Third line of a block whose first two lines are the mode and the
     // opponent — the position already says what the number is, so the word was
     // a label on a label.
+    // The denominator is the stage's PLAN (`plannedRoundTotal`), not the raw
+    // frozen length — a rapid-recall stage's is a candidate ceiling. The
+    // figure's shape is unchanged: "n / total", never "Module n".
     const views = read("pages/quiz-ranked/rankedViews.ts");
-    expect(views).toContain("`${scoring.moduleNumber} / ${scoring.matchLength}`");
+    expect(views).toContain("`${scoring.moduleNumber} / ${total}`");
     expect(views).not.toContain("`Module ${scoring.moduleNumber}");
   });
 

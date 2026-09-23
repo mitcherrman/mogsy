@@ -686,6 +686,22 @@ export interface PublicRoundView {
   scoring: MatchScoringView | null;
   presence: PresenceView | null;
   playtest?: PlaytestMeta | null;
+  /**
+   * DCMOD-A — which RULESET is governing the viewer's stage, or null for an
+   * ordinary (standard) match. Absent on a payload that predates the block,
+   * which reads the same as null: standard.
+   *
+   * It is read for ONE question — is `scoring.matchLength` a plan or a
+   * ceiling? — see `plannedRoundTotal`. The per-viewer bank/strike ledger
+   * rides in the same block server-side; the Daily reads that from its own
+   * run snapshot, so nothing but the id is lifted here.
+   */
+  ruleset?: StageRulesetView | null;
+}
+
+/** The governing ruleset's identity. See `PublicRoundView.ruleset`. */
+export interface StageRulesetView {
+  rulesetId: string;
 }
 
 export interface PrivatePlayerView extends PublicRoundView {
@@ -957,7 +973,22 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     scoring: readScoring(payload.scoring),
     presence: readPresence(payload.presence),
     playtest: readPlaytest(payload.playtest),
+    ruleset: readStageRuleset(payload.ruleset),
   };
+}
+
+/**
+ * The governing ruleset, or null.
+ *
+ * A block with no readable `ruleset_id` reads as null rather than as a guess:
+ * "not told" and "standard" render the same finite plan, and the only thing
+ * this id may do is WITHHOLD a denominator the stage cannot honour.
+ */
+function readStageRuleset(v: unknown): StageRulesetView | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  return typeof o.ruleset_id === "string" && o.ruleset_id
+    ? { rulesetId: o.ruleset_id } : null;
 }
 
 /**

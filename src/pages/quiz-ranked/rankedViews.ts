@@ -12,6 +12,7 @@ import {
   questionViewFromPublicQuestion,
 } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
+import { plannedRoundTotal } from "@/lib/ranked-core/stagePlan";
 import { quizModule } from "@/lib/ranked-core/modules/quizModule";
 import type { ScenarioSource } from "@/lib/question-surface/contract";
 import {
@@ -69,16 +70,22 @@ export function isPointsMatch(pub: PublicRoundView): boolean {
  *
  * A points match whose length is somehow null still names its module rather
  * than claiming a denominator it was not given.
+ *
+ * A RAPID-RECALL STAGE IS ONE OF THOSE NULLS. Time Trial and Survival freeze
+ * `matchLength` as the content's candidate CEILING (Item Fundamentals: 377),
+ * not as a number of questions anyone will play — the bank or the strikes end
+ * the stage. `plannedRoundTotal` is the one place that distinction is made.
  */
 export function moduleProgressLabel(pub: PublicRoundView): string | null {
   const scoring = pub.scoring;
   if (!scoring || scoring.model !== "points") return null;
+  const total = plannedRoundTotal(pub);
   // NO "MODULE" PREFIX. The figure now sits as the third line of the header's
   // left block, under "Ranked Duel" and the opponent — a position that already
   // says what it is, which makes the word a label on a label.
-  return scoring.matchLength === null
+  return total === null
     ? `${scoring.moduleNumber}`
-    : `${scoring.moduleNumber} / ${scoring.matchLength}`;
+    : `${scoring.moduleNumber} / ${total}`;
 }
 
 /**
