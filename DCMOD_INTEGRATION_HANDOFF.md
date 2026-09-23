@@ -571,3 +571,25 @@ ranked-public / Daily suites 2016 passed with only the documented baseline
 failures (QuestionStageGeometry x3, AnswerGrid.elimination x2 — all fail on
 `origin/main`). `tsc`: 20 errors, all in untouched files, none in the changed
 ones. `vite build` passes.
+
+### Deploy + production verification (2026-09-22)
+Backend: integration `f3a993a7` -> master merge **`796f90a2`** (origin/master
+had moved to `ea532316`, unrelated item-accounting work, no overlap; merged
+clean). Frontend: integration `f79c4fe2` (after merging `origin/main`
+`3d1dfb58`, FUNNEL1C/ADMIN2, no overlap) -> main merge **`465eb1e4`**.
+Normal merge commits, no force-push.
+
+* Backend live: `/api/quiz/sets` now reads Champion Basics **2897** (was 0),
+  All Current Questions 3442, Item Knowledge 416, New Player Basics 129 —
+  every set counts the runtime pool it actually serves from;
+  `/api/quiz/questions?set=Champion Basics` serves as before. Health 200,
+  `/api/daily-run/today` 401 unauthenticated, `/api/ranked/availability` 200,
+  analytics health 403 unchanged, no 5xx.
+* Frontend live (bundle `index-DZBVyDvp.js`, ~17 min after push).
+* ONE DAILY STANDARD STAGE, fresh guest, real production: Stage 1 STANDARD /
+  Item Fundamentals (a six-slot curriculum) drew **exactly six** round nodes
+  and counted `1 / 6` -> `6 / 6`, then ended. The ten-slot bar is gone and the
+  strip agrees with the header.
+* The rapid-recall half, same run: Stage 2 SURVIVAL / Champion Fundamentals
+  shows NO `n / N` denominator at all (it read `1 / 377` before) and keeps the
+  sliding window, with the "MISTAKES LEFT" readout unchanged.
