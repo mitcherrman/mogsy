@@ -11,7 +11,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import type { AdminAuthContextValue } from "@/lib/admin-auth/types";
 
 // --- mocks -----------------------------------------------------------------
@@ -123,9 +123,9 @@ function renderAdmin(path: string) {
           <Route path="blog/:id" element={<div data-testid="stub-blog-editor" />} />
           <Route path="combat-battles" element={<div data-testid="stub-battles" />} />
           <Route path="arena/data-graphs" element={<div data-testid="stub-arena-data" />} />
-          {/* ADMIN1A registered /admin/users, which was a live master-gated
-              route the registry had never listed — so the rail went blank on it. */}
-          <Route path="users" element={<div data-testid="stub-user-directory" />} />
+          {/* /admin/users is a redirect now (FUNNEL1C): the identity directory
+              is the master-only Identities view of People › Users. */}
+          <Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -193,7 +193,6 @@ describe("1 · every top-level area renders", () => {
       ["/admin/blog/abc-123", "studio"],
       ["/admin/combat-battles", "simulation"],
       ["/admin/arena/data-graphs", "arena"],
-      ["/admin/users", "people"],
     ];
     for (const [path, areaId] of owned) {
       cleanup();
@@ -224,6 +223,29 @@ describe("2 · Admin Users remains available, and only once", () => {
     expect(within(subtabs).getByTestId("people-users-subtabs-browser")).toBeTruthy();
     // Accounts is the default view; the profile browser is not rendered beside it.
     expect(screen.queryByTestId("people-users-browser")).toBeNull();
+  });
+
+  // FUNNEL1C/ADMIN2 — /admin/users was a second account browser in navigation.
+  it("offers the master-only identity directory as a third VIEW, deep-linkable", async () => {
+    renderAdmin("/admin/people?section=users&view=identities");
+    expect(await screen.findByTestId("people-users-identities")).toBeTruthy();
+    // One destination: the other views are not rendered beside it.
+    expect(screen.queryByTestId("people-users-accounts")).toBeNull();
+    expect(screen.queryByTestId("people-users-browser")).toBeNull();
+    const subtabs = screen.getByTestId("people-users-subtabs");
+    expect(within(subtabs).getByTestId("people-users-subtabs-identities")).toBeTruthy();
+  });
+
+  it("does not advertise the identity view to a non-master admin", async () => {
+    supabase.from.mockImplementation((table: string) =>
+      buildQuery(table === "user_roles" ? [{ user_id: "u1", role: "admin" }] : []),
+    );
+    renderAdmin("/admin/people?section=users&view=identities");
+    const subtabs = await screen.findByTestId("people-users-subtabs");
+    expect(within(subtabs).queryByTestId("people-users-subtabs-identities")).toBeNull();
+    expect(screen.queryByTestId("people-users-identities")).toBeNull();
+    // It falls back to Accounts rather than rendering an empty section.
+    expect(screen.getByTestId("people-users-accounts")).toBeTruthy();
   });
 });
 

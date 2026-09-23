@@ -1,18 +1,23 @@
 /**
- * /admin/users route gate.
+ * The master-admin route gate, and where the user directory went.
  *
- * The directory is master-admin only. AdminRoute resolves that through the
- * server-side `has_role` RPC, so this suite asserts three things:
- *   1. a plain `admin` is refused — master_admin is NOT satisfied by has_role
- *      being permissive about the admin role;
- *   2. nothing from the page renders while the check is in flight (no flash);
- *   3. the registry entry advertises the same requirement the router enforces.
+ * `AdminRoute roles={["master_admin"]}` still guards /admin/premium-preview and
+ * /admin/knowledge, and this suite pins its behaviour: a plain `admin` is
+ * refused (master_admin is NOT satisfied by has_role being permissive about the
+ * admin role) and nothing renders while the check is in flight.
+ *
+ * FUNNEL1C/ADMIN2 retired /admin/users as a destination — browsing accounts had
+ * three entries under People › Users. It is now that section's master-only
+ * "Identities" view, so this file also asserts the redirect and the registry
+ * entry that replaced it.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import AdminRoute from "@/components/AdminRoute";
-import { ADMIN_TOOLS } from "@/lib/admin/admin-registry";
+import { ADMIN_TOOLS, legacyRouteMap } from "@/lib/admin/admin-registry";
 
 let authState: { user: { id: string } | null; loading: boolean } = {
   user: { id: "user-1" },
@@ -35,10 +40,10 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 function renderGuarded() {
   return render(
-    <MemoryRouter initialEntries={["/admin/users"]}>
+    <MemoryRouter initialEntries={["/admin/premium-preview"]}>
       <Routes>
         <Route
-          path="/admin/users"
+          path="/admin/premium-preview"
           element={
             <AdminRoute roles={["master_admin"]}>
               <div data-testid="users-page">USER DIRECTORY CONTENT</div>
@@ -59,7 +64,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("/admin/users authorization", () => {
+describe("master_admin route authorization", () => {
   it("renders for a master_admin", async () => {
     grantedRoles = new Set(["master_admin"]);
     renderGuarded();
@@ -90,11 +95,40 @@ describe("/admin/users authorization", () => {
     expect(container.textContent).not.toContain("USER DIRECTORY CONTENT");
   });
 
-  it("is advertised in the canonical admin registry as master_admin only", () => {
-    const entry = ADMIN_TOOLS.find((t) => t.path === "/admin/users");
+});
+
+describe("the user directory is one view of People, not a second destination", () => {
+  const appSource = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
+
+  it("redirects /admin/users to the Identities view", () => {
+    expect(appSource).toContain(
+      '<Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />',
+    );
+    expect(appSource).not.toContain("<AdminUserDirectory />");
+  });
+
+  it("advertises one destination for accounts, with the identity view as a panel of it", () => {
+    expect(ADMIN_TOOLS.filter((t) => t.path === "/admin/users")).toHaveLength(0);
+    const entry = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
     expect(entry).toBeTruthy();
-    expect(entry!.requiredRole).toBe("master_admin");
-    expect(entry!.dangerLevel).not.toBe("none");
-    expect(entry!.warning).toBeTruthy();
+    expect(entry.kind).toBe("panel");
+    expect(entry.area).toBe("people");
+    expect(entry.section).toBe("users");
+    expect(entry.path).toBe("/admin/people?section=users&view=identities");
+    // The master-only requirement it always enforced is still advertised.
+    expect(entry.requiredRole).toBe("master_admin");
+    expect(entry.dangerLevel).not.toBe("none");
+    expect(entry.warning).toBeTruthy();
+    // And the old path is recorded as a redirect owned by that entry.
+    expect(legacyRouteMap().find((r) => r.from === "/admin/users")?.toolId).toBe(
+      "people-user-identities",
+    );
+  });
+
+  it("keeps the identity-only capabilities in the registry description", () => {
+    const entry = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
+    for (const capability of [/discord/i, /riot/i, /consent/i, /friend/i]) {
+      expect(entry.description, String(capability)).toMatch(capability);
+    }
   });
 });

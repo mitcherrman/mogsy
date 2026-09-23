@@ -163,7 +163,6 @@ const AdminPlatformPolicies = lazy(() => import("./pages/admin/AdminPlatformPoli
 const AdminAcademyUpdates = lazy(() => import("./pages/admin/AdminAcademyUpdates"));
 
 // ADM2 Phase A — master-admin user and bot directory.
-const AdminUserDirectory = lazy(() => import("./pages/admin/AdminUserDirectory"));
 
 // PT1.9 — master-admin Free-vs-Premium analytics preview over a synthetic
 // record. Same gate as the user directory; not linked from any consumer nav.
@@ -446,7 +445,10 @@ const App = () => (
                     <Route path="legacy-directory" element={<Navigate to="/admin/all-tools" replace />} />
                     <Route path="legacy-dashboard" element={<Navigate to="/admin" replace />} />
                     <Route path="people" element={<Suspense fallback={<RouteFallback />}><AdminPeoplePage /></Suspense>} />
-                    <Route path="users" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminUserDirectory /></Suspense></AdminRoute>} />
+                    {/* FUNNEL1C/ADMIN2 — the master-only identity directory is
+                        now the Identities view of People › Users, so accounts
+                        have one visible home. Bookmarks land on that view. */}
+                    <Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />
                     {/* PT1.9 — synthetic Free/Premium Performance Trends preview.
                         master_admin only, exactly as the user directory is.
                         FUNNEL1C renamed it off "demo-analytics", which read as a

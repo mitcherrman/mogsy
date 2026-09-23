@@ -253,43 +253,43 @@ describe("admin registry — helpers", () => {
 
 
 // ---------------------------------------------------------------------------
-// ADMIN1A — /admin/users registration.
+// ADMIN1A → FUNNEL1C/ADMIN2 — the master-admin user directory.
 //
-// The route was live and master-gated but absent from this registry entirely
-// (it survived only in the superseded admin-directory). Consequence: it did not
-// appear in All Tools, and because the shell resolves the active area from
-// registry tool paths, visiting it highlighted no area at all.
+// ADMIN1A registered /admin/users, a live master-gated route the registry had
+// never listed. FUNNEL1C removed it as a DESTINATION: three ways to browse
+// accounts lived under People › Users, so it became that section's master-only
+// Identities view and the path became a redirect.
 // ---------------------------------------------------------------------------
 
-describe("the master-admin user directory is a registered destination", () => {
-  const tool = ADMIN_TOOLS.find((t) => t.path === "/admin/users");
+describe("accounts have exactly one destination", () => {
+  const identities = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
 
-  it("is registered under People › Users as a route", () => {
-    expect(tool, "/admin/users is not in ADMIN_TOOLS").toBeTruthy();
-    expect(tool!.area).toBe("people");
-    expect(tool!.section).toBe("users");
-    expect(tool!.kind).toBe("route");
+  it("keeps the identity directory under People › Users as a panel", () => {
+    expect(identities).toBeTruthy();
+    expect(identities.area).toBe("people");
+    expect(identities.section).toBe("users");
+    expect(identities.kind).toBe("panel");
+    expect(identities.path).toBe("/admin/people?section=users&view=identities");
   });
 
-  it("records the master-admin gate it already enforces, without changing it", () => {
-    // Descriptive only — AdminRoute roles={["master_admin"]} is the real gate.
-    expect(tool!.requiredRole).toBe("master_admin");
-    expect(tool!.authorization).toMatch(/master_admin/);
+  it("records the master-admin authority it already enforces, without changing it", () => {
+    expect(identities.requiredRole).toBe("master_admin");
+    expect(identities.authorization).toMatch(/master_admin|is_master_admin/);
   });
 
   it("is searchable in All Tools", () => {
-    const hits = searchAdminTools("user directory").map((t) => t.id);
-    expect(hits).toContain(tool!.id);
+    expect(searchAdminTools("identities").map((t) => t.id)).toContain(identities.id);
   });
 
-  it("does not duplicate the account-management surface", () => {
-    // Two distinct destinations with two distinct purposes. Consolidating them
-    // is ADMIN1B; making them tellable apart is ADMIN1A.
-    const accounts = ADMIN_TOOLS.filter((t) => t.path === "/admin/people?section=users");
-    expect(accounts.length).toBeGreaterThan(0);
-    expect(ADMIN_TOOLS.filter((t) => t.path === "/admin/users")).toHaveLength(1);
-    const titles = new Set([tool!.title, ...accounts.map((t) => t.title)]);
-    expect(titles.size).toBe(1 + accounts.length);
+  it("advertises no second account-browsing route", () => {
+    const routes = ADMIN_TOOLS.filter(
+      (t) => t.kind === "route" && /^\/admin\/users/.test(t.path ?? ""),
+    );
+    expect(routes).toEqual([]);
+    // Accounts, Profile browser and Identities are views of ONE destination.
+    const userTools = toolsForSection("people", "users").filter((t) => t.kind === "panel");
+    const bases = new Set(userTools.map((t) => t.path?.split("?")[0]));
+    expect([...bases]).toEqual(["/admin/people"]);
   });
 });
 
