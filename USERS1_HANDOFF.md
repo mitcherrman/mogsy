@@ -61,8 +61,8 @@ every builder READ the workspace issues on mount.
 
 The last one was found by **loading the running app**, not by reading it:
 after the four obvious mount effects were deleted, `/quiz` still produced an
-`sb-…-auth-token` in localStorage. That is why step 5 of the deploy order
-below is a real check and not a formality.
+`sb-…-auth-token` in localStorage. That is why the signed-out check in the
+deploy order below is a real check and not a formality.
 
 **That is the whole explanation for ~5,000 anonymous identities.** One per
 browser that had ever rendered a page: crawlers, previews, agent runs,
