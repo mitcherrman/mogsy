@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import SEOHead from "@/components/SEOHead";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
-import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { resetGateState } from "@/lib/quiz/onboarding-gate";
 import {
   reportDirectSignupCompleted,
@@ -65,7 +65,7 @@ export default function Auth() {
   const { play: playSfx } = useSfx();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite");
-  const defaultReturnTo = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/home";
+  const defaultReturnTo = LEAGUE_HOME_ROUTE;
 
   // Only allow safe same-origin relative paths (blocks //evil.com open
   // redirects). `explicit` records whether the user really was heading

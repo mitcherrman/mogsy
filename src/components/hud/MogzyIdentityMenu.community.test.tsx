@@ -99,8 +99,9 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import MogzyIdentityMenu from "./MogzyIdentityMenu";
-import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 
 const openPanel = () => fireEvent.click(screen.getByTestId("hud-notifications-trigger"));
 
@@ -114,10 +115,17 @@ afterEach(() => {
 });
 
 describe("HUD · Community entry", () => {
-  it("production really is League-only — the guard this entry sits outside of", () => {
-    // If this ever flips, the legacy "Friends" entry starts rendering too and
-    // the panel grows a duplicate door. Worth knowing loudly.
-    expect(LEAGUE_ONLY_MODE).toBe(true);
+  it("is the only Community door — LEGACY1 deleted the duplicate", () => {
+    // The second "Friends" entry lived behind LEAGUE_ONLY_MODE, which was false
+    // in production and is now deleted along with the product it guarded.
+    const source = readFileSync(resolve(__dirname, "MogzyIdentityMenu.tsx"), "utf8");
+    expect(source).not.toMatch(/LEAGUE_ONLY_MODE/);
+    // The surviving dispatches are this entry and a friend-request
+    // notification opening the drawer it refers to — not a second door.
+    expect(source).not.toMatch(/>\s*Friends\s*</);
+    render(<MogzyIdentityMenu />);
+    openPanel();
+    expect(screen.queryByText("Friends")).toBeNull();
   });
 
   it("renders in League mode for a signed-in user", () => {

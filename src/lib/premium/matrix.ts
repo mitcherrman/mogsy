@@ -520,21 +520,11 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
       "INTENT VERIFIED, NOT ASSUMED (PT1.13B). docs/advertising.md records a real, deliberately preserved AdSense account (ca-pub-9823769047605421) previously declined for site readiness rather than configuration, lists 'request review' as owner action 5 and 'after approval: enable flags deliberately' as owner action 7, and src/lib/ads/houseAds.ts already ships a creative titled 'Go ad-free with Mogzy Premium'. So this is a real intended benefit rather than a stale row — but it is worth nothing until the owner completes those actions, and the caveat says so on the page.",
     userFacingSummary: "No ads, once ads launch.",
   },
-  {
-    id: "card-animations",
-    group: "profile",
-    label: "Animated card styles",
-    free: "The standard card style.",
-    premium: "Animated styles for the cards you play with.",
-    status: "partial",
-    enforcement: "unreachable",
-    enforcementNote:
-      "Play.tsx:721 gates animations on an admin-configured pro_only flag and the picker is built, but /play, /swipe and /swipe-game all redirect to /lol under LEAGUE_ONLY_MODE, so no reader can reach the surface they decorate.",
-    differentiator: true,
-    discrepancy:
-      "ANNOUNCED ON THE OWNER'S INSTRUCTION, AND THE WEAKEST ROW ON THE PAGE. Unlike every other Coming soon item, this one is not waiting on its own implementation — it is built. It is waiting on LEAGUE_ONLY_MODE being lifted, i.e. on the whole Swipe/Play product family being un-hidden, for which no phase is scoped. Announcing it commits us to that. Worth revisiting: if Swipe is not coming back, this row should return to internal-only rather than sit on the page indefinitely.",
-    userFacingSummary: "Animated styles for the cards you play with.",
-  },
+  // LEGACY1 deleted the "Animated card styles" row. It promised animated
+  // styles for "the cards you play with" — the retired voting product's swipe
+  // cards, whose picker, animations and routes are all deleted. Its own note
+  // said the row was waiting on that product being un-hidden; it is not coming
+  // back, so the promise is withdrawn rather than left on the sales page.
 
   // ──────────────────────────── claimed on the sales page, nonexistent
   {

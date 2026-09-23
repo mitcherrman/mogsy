@@ -37,8 +37,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
 import { ADMIN_HOME_PATH } from "@/lib/admin/admin-registry";
-import { useAppSettings } from "@/hooks/useAppSettings";
-import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { useSfx } from "@/lib/audio/useSfx";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
@@ -50,7 +48,7 @@ import { hudHitTarget, hudPopVisual } from "@/lib/hud/chrome";
 /**
  * Types the bell is allowed to render, stated explicitly.
  *
- * This replaces the previous LEAGUE_ONLY_MODE-derived allowlist, which was
+ * This replaces the previous league-mode-derived allowlist, which was
  * opaque about *why* a type was hidden and — because it listed only LoL product
  * types — silently discarded every automatically generated notification. All
  * four database triggers write into user_notifications, and none of the four
@@ -215,7 +213,6 @@ export default function MogzyIdentityMenu() {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const [signingOut, setSigningOut] = useState(false);
-  const { settings } = useAppSettings();
   // Backend-verified admin authorization only; never inferred from the user
   // object, roles, or storage. The item exists in the DOM only after
   // authorization resolves positively — no placeholder, no reserved slot.
@@ -801,13 +798,12 @@ export default function MogzyIdentityMenu() {
 
   const utilityFooter = (
     <div className="shrink-0 border-t border-border bg-card p-1">
-      {/* COM1-2 / P1-2. The SECOND way into the Community drawer, and in League
-          mode the only one that is part of the navigation rather than a
-          floating overlay. The legacy "Friends" entry further down sits inside
-          `{!LEAGUE_ONLY_MODE && …}` — false in production — so before this,
-          a phone whose viewport hid the floating trigger could reach the drawer
-          only by receiving a friend-request notification. This entry is not
-          gated: the drawer is a League surface now. */}
+      {/* COM1-2 / P1-2. The way into the Community drawer that is part of the
+          navigation rather than a floating overlay. Before this, a phone whose
+          viewport hid the floating trigger could reach the drawer only by
+          receiving a friend-request notification: the other "Friends" entry was
+          behind the retired product's flag and never rendered. LEGACY1 deleted
+          that one, so this is the only navigation entry. */}
       <button
         type="button"
         data-testid="hud-community-item"
@@ -843,41 +839,11 @@ export default function MogzyIdentityMenu() {
         </Link>
       )}
 
-      {/* Legacy full-Mogsy surfaces, carried over from the account menu under
-          the same guard. LEAGUE_ONLY_MODE is true today, so none of this
-          renders; it exists so flipping the flag back restores the same set of
-          entry points the navbar and then the account menu exposed, rather
-          than silently losing them in this refactor. */}
-      {!LEAGUE_ONLY_MODE && (
-        <>
-          {settings.nav_tab_mode === "play" ? (
-            <Link to="/play" {...footerLinkProps("/play")} className={footerItemClass}>
-              Play
-            </Link>
-          ) : (
-            <Link to="/swipe" {...footerLinkProps("/swipe")} className={footerItemClass}>
-              Swipe
-            </Link>
-          )}
-          <Link to="/lol" {...footerLinkProps("/lol")} className={footerItemClass}>
-            League Hub
-          </Link>
-          <Link to="/shop" {...footerLinkProps("/shop")} className={footerItemClass}>
-            Shop
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              closePanel();
-              window.dispatchEvent(new CustomEvent("open-friends-panel"));
-            }}
-            className={footerItemClass}
-          >
-            <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Friends
-          </button>
-        </>
-      )}
+      {/* LEGACY1 deleted the dead branch that used to sit here: Play / Swipe /
+          Shop / Friends entry points for the retired Mogsy product, held behind
+          the retired product's flag so that flipping it would restore them.
+          The product they pointed at is deleted, so there is nothing to
+          restore. */}
     </div>
   );
 

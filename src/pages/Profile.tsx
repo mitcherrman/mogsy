@@ -22,8 +22,6 @@ import {
   profileThemeRequiresPremium,
   DEFAULT_PROFILE_THEME,
 } from "@/lib/profile-themes";
-import FavoritesEditor from "@/components/FavoritesEditor";
-import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { useProfileConfig } from "@/hooks/useProfileConfig";
 import LeagueProfileStats from "@/components/profile/LeagueProfileStats";
 import ProfileConfigPanel from "@/components/profile/ProfileConfigPanel";
@@ -64,8 +62,6 @@ export default function Profile() {
   // recoloured the Academy entrance and every non-League page. The provider no
   // longer knows about themes at all.
   const [activeThemeId, setActiveThemeId] = useState(DEFAULT_PROFILE_THEME);
-  const [boostActive, setBoostActive] = useState(false);
-  const [boostCredits, setBoostCredits] = useState(0);
   const [nameError, setNameError] = useState("");
   const [ageWarning, setAgeWarning] = useState("");
   const [socialErrors, setSocialErrors] = useState<Record<string, string>>({});
@@ -74,10 +70,10 @@ export default function Profile() {
   const [isModerator, setIsModerator] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
   const { config, setOption, resetConfig } = useProfileConfig();
-  // Legacy Mogzy modules (boost/frames/favorites) are hidden in League-only
-  // mode. Only admin/dev users (moderator+) see the toggle to re-enable them;
-  // the role check also guards against a stale localStorage value.
-  const showLegacy = !LEAGUE_ONLY_MODE || (config.showLegacyMogsy && isModerator);
+  // LEGACY1 deleted the "Legacy Mogsy Modules" escape hatch that used to live
+  // here (a localStorage flag, moderator-gated, that re-enabled the exposure
+  // Boost sidebar and the Favorites editor). Both belonged to the retired
+  // voting product and its currency, so there is nothing left to re-enable.
   // Same guest convention as Quiz.tsx / Settings.tsx: anonymous Supabase
   // sessions are real users but must not get persistent-profile editing UI.
   const isGuest = !user || user.is_anonymous === true;
@@ -161,8 +157,6 @@ export default function Profile() {
       setIsPro(isEffectiveProForSelf(profile, await fetchGlobalPremiumAccess()));
       setSelectedFrame(profile.profile_frame || "default");
       setActiveThemeId(profile.custom_theme || DEFAULT_PROFILE_THEME);
-      setBoostCredits(profile.boost_credits || 0);
-      setBoostActive(profile.active_boost_until ? new Date(profile.active_boost_until) > new Date() : false);
       const socials = (profile.socials as any) || {};
       setForm({
         displayName: profile.display_name || "",
@@ -339,18 +333,6 @@ export default function Profile() {
         await supabase.from("profiles").update({ avatar_url: "" }).eq("id", profileId);
       }
     }
-  };
-
-  const handleActivateBoost = async () => {
-    if (!profileId || boostCredits <= 0) return;
-    const { error } = await supabase.rpc("activate_boost");
-    if (error) {
-      toast({ title: "Boost failed", description: "No boost credits available.", variant: "destructive" });
-      return;
-    }
-    setBoostActive(true);
-    setBoostCredits((c) => c - 1);
-    toast({ title: "⚡ Boost activated!", description: "You'll appear 3x more often for 24 hours." });
   };
 
   const hasFormErrors = !!nameError || Object.values(socialErrors).some(Boolean);
@@ -536,29 +518,10 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {isModerator && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon" aria-label="Account security"
-                  onClick={() => navigate("/moderator")}
-                  className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8 sm:h-10 sm:w-10"
-                  title="Moderator Panel"
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                </Button>
-              )}
-              {!LEAGUE_ONLY_MODE && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon" aria-label="Open referral"
-                  onClick={() => navigate("/referral")}
-                  className="text-muted-foreground hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
-                >
-                  <Gift className="h-4 w-4" />
-                </Button>
-              )}
+              {/* LEGACY1 removed two shortcuts from this row: the Moderator
+                  Panel (that page is deleted — moderation lives in Admin ›
+                  People) and the Referral entry, which was already behind the
+                  retired product's flag. */}
               <Button
                 type="button"
                 variant="ghost"
@@ -739,7 +702,6 @@ export default function Profile() {
               config={config}
               setOption={setOption}
               resetConfig={resetConfig}
-              showLegacyOption={!LEAGUE_ONLY_MODE || isModerator}
             />
           </div>
           )}
@@ -747,39 +709,6 @@ export default function Profile() {
           {!isGuest && editMode && (
           <form id="profile-edit-form" aria-label="Edit profile" onSubmit={handleSave}>
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-              {/* Left sidebar: Exposure Boost (legacy Mogzy — hidden in League-only mode) */}
-              {showLegacy && (
-              <div className="lg:w-56 shrink-0 order-2 lg:order-1">
-                <div className="sticky top-20 rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-primary" />
-                    <h3 className="font-bold text-sm text-foreground">Boost</h3>
-                  </div>
-                  {boostActive ? (
-                    <div className="text-center space-y-2">
-                      <div className="text-2xl">⚡</div>
-                      <p className="text-xs text-primary font-medium">Boost active!</p>
-                      <p className="text-[10px] text-muted-foreground">3x more visibility for 24h</p>
-                    </div>
-                  ) : boostCredits > 0 ? (
-                    <div className="space-y-2 text-center">
-                      <p className="text-xs text-muted-foreground">{boostCredits} credit{boostCredits > 1 ? "s" : ""}</p>
-                      <Button type="button" size="sm" className="w-full text-xs" onClick={handleActivateBoost}>
-                        <Zap className="h-3 w-3 mr-1" /> Activate
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-2">
-                      <p className="text-xs text-muted-foreground">No credits</p>
-                      <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={() => navigate("/shop")}>
-                        Get Boosts
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              )}
-
               {/* Center: Main profile form */}
               <div className="flex-1 min-w-0 order-1 lg:order-2 space-y-4 sm:space-y-6">
                 {/* Photos */}
@@ -1002,9 +931,6 @@ export default function Profile() {
                 </div>
                 )}
 
-                {/* Favorites (legacy Mogzy — hidden in League-only mode) */}
-                {showLegacy && <FavoritesEditor profileId={profileId} />}
-
                 {/* Save / Cancel */}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button type="submit" variant="hero" size="lg" className="flex-1" disabled={saving || hasFormErrors}>
@@ -1016,9 +942,18 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Right sidebar: Profile Frame (legacy) + Theme */}
+              {/* Right sidebar: Profile Frame (staff preview) + Theme.
+
+                  The frame picker is STAFF-ONLY and was already unreachable for
+                  a normal reader before LEGACY1: it sat behind the deleted
+                  "Legacy Mogsy Modules" toggle. `profile_frame` itself is
+                  current — PT2C owns its authority and Admin › People can set
+                  it — so the picker is kept here rather than deleted, gated on
+                  the moderator check alone. Whether Premium should get a frame
+                  picker of its own is a product decision, recorded in
+                  LEGACY1_HANDOFF.md, not something this cleanup invents. */}
               <div className="lg:w-56 shrink-0 order-3">
-                {showLegacy && (
+                {isModerator && (
                 <div className="sticky top-20 rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Crown className="h-5 w-5 text-primary" />
@@ -1061,7 +996,7 @@ export default function Profile() {
                     <div className="text-center space-y-2">
                       <div className="w-12 h-12 mx-auto rounded-full bg-secondary ring-4 ring-primary/30" />
                       <p className="text-[10px] text-muted-foreground">Unlock premium frames</p>
-                      <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={() => navigate("/shop")}>
+                      <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={() => navigate("/lol/premium")}>
                         <Crown className="h-3 w-3 mr-1" /> Go Premium
                       </Button>
                     </div>
@@ -1073,7 +1008,7 @@ export default function Profile() {
                     opens it. It is not an application theme: the League
                     surfaces, the Academy rooms and the admin console all keep
                     their own design regardless of what is chosen here. */}
-                <div className={`sticky ${showLegacy ? "top-[22rem] mt-4" : "top-20"} rounded-2xl border border-border bg-card p-4 space-y-3`}>
+                <div className={`sticky ${isModerator ? "top-[22rem] mt-4" : "top-20"} rounded-2xl border border-border bg-card p-4 space-y-3`}>
                   <div className="flex items-center gap-2">
                     <Palette className="h-5 w-5 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Profile Theme</h3>

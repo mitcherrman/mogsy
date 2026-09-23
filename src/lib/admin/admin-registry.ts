@@ -1519,7 +1519,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
   {
     id: "app-settings",
     title: "App Settings",
-    description: "maintenance_mode, nav_tab_mode, favorites_mode and shop_ad_config.",
+    description: "The require_auth platform switch. LEGACY1 deleted the rest — every other row this panel wrote belonged to the retired voting product.",
     area: "operations",
     section: "configuration",
     kind: "panel",

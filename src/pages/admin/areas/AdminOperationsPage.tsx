@@ -116,7 +116,7 @@ function ConfigurationSection({ isMasterAdmin }: { isMasterAdmin: boolean }) {
         <>
           <AdminPanel
             title="App settings"
-            description="maintenance_mode, nav_tab_mode, favorites_mode and shop_ad_config. Master-only in the UI, exactly as before."
+            description="The require_auth platform switch. Master-only in the UI, exactly as before."
             testId="operations-app-settings"
           >
             <AdminSettings />

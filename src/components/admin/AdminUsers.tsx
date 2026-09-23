@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Search, ChevronDown, ChevronRight, User, Crown, Shield, Diamond,
+  Search, ChevronDown, ChevronRight, User, Crown, Shield,
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
@@ -59,12 +59,6 @@ interface Profile {
   stripe_current_period_end: string | null;
   is_bot: boolean | null;
   is_anonymous: boolean | null;
-  diamonds: number | null;
-  elo_shields: number | null;
-  reveals: number | null;
-  rewinds: number | null;
-  boost_credits: number | null;
-  active_boost_until: string | null;
   profile_frame: string | null;
   admin_notes: string | null;
   is_flagged_underage: boolean | null;
@@ -302,7 +296,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       case "oldest": list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break;
       case "last_seen_recent": list.sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime()); break;
       case "last_seen_oldest": list.sort((a, b) => new Date(a.last_seen_at || 0).getTime() - new Date(b.last_seen_at || 0).getTime()); break;
-      case "most_diamonds": list.sort((a, b) => (b.diamonds ?? 0) - (a.diamonds ?? 0)); break;
       case "name_az": list.sort((a, b) => a.display_name.localeCompare(b.display_name)); break;
     }
 
@@ -329,13 +322,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setNewNoteText("");
     const formData = {
       display_name: profile.display_name,
-      diamonds: profile.diamonds,
-      elo_shields: profile.elo_shields,
-      reveals: profile.reveals,
-      rewinds: profile.rewinds,
-      boost_credits: profile.boost_credits,
       profile_frame: profile.profile_frame,
-      active_boost_until: profile.active_boost_until,
       ads_enabled: profile.ads_enabled,
     };
     setEditForm(formData);
@@ -594,13 +581,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         display_name: editForm.display_name,
         // PT1.4: is_pro is Stripe-owned and is deliberately NOT writable here.
         // A comped/playtester entitlement is a grant — see setProGrant below.
-        diamonds: editForm.diamonds,
-        elo_shields: editForm.elo_shields,
-        reveals: editForm.reveals,
-        rewinds: editForm.rewinds,
-        boost_credits: editForm.boost_credits,
         profile_frame: editForm.profile_frame,
-        active_boost_until: editForm.active_boost_until,
         ads_enabled: editForm.ads_enabled,
       } as any)
       .eq("id", selectedUser.id);
@@ -683,11 +664,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       pro_offer_acquired_at: p.pro_offer_acquired_at,
       pro_offer_price_id: p.pro_offer_price_id,
       is_bot: p.is_bot,
-      diamonds: p.diamonds,
-      elo_shields: p.elo_shields,
-      reveals: p.reveals,
-      rewinds: p.rewinds,
-      boost_credits: p.boost_credits,
       profile_frame: p.profile_frame,
     });
     if (error) { toast.error("Restore failed: " + error.message); return; }
@@ -1152,21 +1128,18 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {["diamonds", "elo_shields", "reveals", "rewinds", "boost_credits"].map((key) => (
-                    <div key={key} className="space-y-1">
-                      <Label className="text-[10px] capitalize">{key.replace(/_/g, " ")}</Label>
-                      <Input type="number" value={(editForm as any)[key] ?? 0} onChange={(e) => setEditForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
-                    </div>
-                  ))}
-                </div>
                 <div className="flex flex-wrap gap-5">
                   <label className="flex items-center gap-2 text-xs"><Switch checked={editForm.ads_enabled ?? true} onCheckedChange={(c) => setEditForm((f) => ({ ...f, ads_enabled: c }))} /> Ads Enabled</label>
                   <Button onClick={saveUser} disabled={saving || !hasChanges} size="sm">{saving ? "Saving…" : "Save Profile Changes"}</Button>
                 </div>
 
-                {/* ADMIN1A: the Premium grant no longer lives in this legacy economy
-                    editor. It has its own section above, outside this collapsible. */}
+                {/* ADMIN1A: the Premium grant has its own section above, outside
+                    this collapsible. LEGACY1 then deleted what was left of the
+                    retired economy editor here — diamonds, ELO shields, reveals,
+                    rewinds, boost credits and the boost expiry. Mogzy has no
+                    product currency, so an admin control that mints one is a
+                    retired concept rather than a capability. The columns survive
+                    in `profiles` as historical residue with no reader. */}
                 {isMasterAdmin && !isSelectedMaster && (
                   <div className="space-y-2 border-t border-border pt-3">
                     <h5 className="text-xs font-bold">Role and access changes</h5>
@@ -1697,7 +1670,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="oldest">Oldest First</SelectItem>
             <SelectItem value="last_seen_recent">Recently Active</SelectItem>
             <SelectItem value="last_seen_oldest">Least Recently Active</SelectItem>
-            <SelectItem value="most_diamonds">Most Diamonds</SelectItem>
             <SelectItem value="name_az">Name A-Z</SelectItem>
           </SelectContent>
         </Select>
@@ -1789,8 +1761,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                       <title>{`Premium — ${describePremiumProvenance(p).sourceLabel}`}</title>
                     </Crown>
                   )}
-                  <Diamond className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{p.diamonds ?? 0}</span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </button>

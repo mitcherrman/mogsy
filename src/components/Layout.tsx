@@ -13,7 +13,6 @@ import { useSocialSync } from "@/hooks/useSocialSync";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
-import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
 import { PRO_PLAY_MATCHUP_ROUTE } from "@/lib/pro-play/routes";
 import { StartupSurface } from "@/components/startup/StartupShells";
@@ -114,16 +113,11 @@ export default function Layout() {
   const showFriendsDrawer = !isStatCheckSurface && !isAdminConsole;
 
   // After first paint, warm the chunks the user is most likely to visit next.
-  // In League-only mode /home, /play, /swipe and /shop are <Navigate> stubs that
-  // redirect to /lol, so warming their chunks downloads code nothing can render.
-  // /profile is not league-gated and stays reachable, so it stays warmed.
+  // LEGACY1 deleted /home, /play, /swipe and /shop with the retired product, so
+  // /profile is what is left to warm from inside the shell.
   useEffect(() => {
     if (loading || settingsLoading) return;
-    prefetchLikelyRoutes(
-      LEAGUE_ONLY_MODE
-        ? ["/profile"]
-        : ["/home", "/play", "/swipe", "/profile", "/shop"],
-    );
+    prefetchLikelyRoutes(["/profile"]);
   }, [loading, settingsLoading]);
 
   // Authority gate — unchanged policy: nothing inside the shell renders until

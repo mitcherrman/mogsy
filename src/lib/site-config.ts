@@ -12,10 +12,13 @@ export const SITE_NAME = "Mogzy";
 // support@mogzy.lol alias is configured — see docs/advertising.md owner tasks.
 export const SUPPORT_EMAIL = "support@mogsy.app";
 
-// ─── LEAGUE-ONLY PUBLIC MODE ───
-// Temporary: public users only see the League of Legends experience
-// (LoL hub, quiz, combat lab, broadcast). Non-League sections stay in the
-// codebase but are hidden from navigation and their routes redirect to
-// LEAGUE_HOME_ROUTE. Flip to false to restore the full Mogsy app.
-export const LEAGUE_ONLY_MODE = true;
+// ─── THE PRODUCT'S HOME ───
+// Mogzy is the League of Legends product: the League hub, Leaguecraft, Ranked,
+// Daily Challenge, Study Hall, Champion Mastery, Meta Reflex, Pro Play and
+// Combat Lab. There is no second product behind a flag.
+//
+// LEGACY1 deleted LEAGUE_ONLY_MODE along with the pre-Mogzy Mogsy voting
+// product it hid. That flag was permanently true, every route it gated
+// redirected here, and its presence implied a restorable product that no longer
+// exists. Do not reintroduce it.
 export const LEAGUE_HOME_ROUTE = "/lol";

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Shield, FileText, Info, Mail, Lock, MessageSquarePlus } from "lucide-react";
-import { SITE_NAME, LEAGUE_ONLY_MODE } from "@/lib/site-config";
+import { SITE_NAME } from "@/lib/site-config";
 
 const links = [
   { to: "/about", label: "About", icon: Info },
@@ -54,9 +54,7 @@ export default function Footer() {
           <div className="max-w-sm">
             <div className="text-lg font-bold tracking-tight text-foreground">{SITE_NAME}</div>
             <p className="mt-2 text-sm text-muted-foreground">
-              {LEAGUE_ONLY_MODE
-                ? "League of Legends quizzes, game knowledge, and esports trivia."
-                : "Community-driven ranking games, quizzes, and competitions for gamers everywhere."}
+              League of Legends quizzes, game knowledge, and esports trivia.
             </p>
           </div>
           <nav

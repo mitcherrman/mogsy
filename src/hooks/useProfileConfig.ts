@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 
 /**
- * Per-device customization for the Mogsy League profile page.
+ * Per-device customization for the Mogzy profile page.
  * Stored in localStorage so users can toggle sections on/off without any
- * backend changes. Legacy Mogsy modules (boost, frames, favorites) stay in
- * the codebase and can be re-enabled here even while LEAGUE_ONLY_MODE is on.
+ * backend changes. LEGACY1 removed the `showLegacyMogsy` escape hatch: the
+ * boost, favorites and legacy-frame modules it re-enabled are deleted.
  */
 export interface ProfileConfig {
   showQuizProgress: boolean;
@@ -13,8 +13,6 @@ export interface ProfileConfig {
   showQuickActions: boolean;
   showPhotos: boolean;
   showSocials: boolean;
-  /** Old generic Mogsy modules: boost, pro frames, favorites editor. */
-  showLegacyMogsy: boolean;
 }
 
 export const DEFAULT_PROFILE_CONFIG: ProfileConfig = {
@@ -24,7 +22,6 @@ export const DEFAULT_PROFILE_CONFIG: ProfileConfig = {
   showQuickActions: true,
   showPhotos: true,
   showSocials: true,
-  showLegacyMogsy: false,
 };
 
 const STORAGE_KEY = "mogsy.profileConfig.v1";

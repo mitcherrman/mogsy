@@ -10,20 +10,14 @@ import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/UserAvatar";
 import TierBadge from "@/components/TierBadge";
 import SEOHead from "@/components/SEOHead";
-import { getTierFromElo, getTierFromPercentile, getTierColor, getTierBgColor, getTierIcon, DEFAULT_TIER_CONFIG, type TierConfig } from "@/lib/mock-data";
 import {
-  ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
-  Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
+  ArrowLeft, Crown, Calendar,
   UserPlus, UserCheck, Clock, Bookmark, BookmarkCheck, Ban,
 } from "lucide-react";
 import FriendActionMenu from "@/components/FriendActionMenu";
 import { cn } from "@/lib/utils";
-import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
-import ProfileFavoriteCards from "@/components/ProfileFavoriteCards";
 import { getThemeById } from "@/lib/profile-themes";
 import ThemeOverlay from "@/components/ThemeOverlay";
-import RecentMatchups from "@/components/RecentMatchups";
-import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { fetchLeagueProfile } from "@/lib/league-profiles";
 import { BrainCircuit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -38,50 +32,12 @@ interface ProfileData {
   // stats are requested only for the signed-in viewer.
   display_name: string | null;
   avatar_url: string | null;
-  age: number | null;
-  location: string | null;
-  status_message: string | null;
-  socials: Record<string, string> | null;
   is_pro: boolean | null;
   is_bot: boolean | null;
   profile_frame: string | null;
-  active_boost_until: string | null;
   created_at: string | null;
   custom_theme: string | null;
 }
-
-interface LeagueStat {
-  league_id: string;
-  league_name: string;
-  category: string;
-  elo: number;
-  matches_played: number;
-  rank: number;
-  total_members: number;
-  tier: string;
-}
-
-interface Photo {
-  url: string;
-  sort_order: number | null;
-}
-
-interface FavoriteItem {
-  id: string;
-  type: "preset_item" | "user_profile";
-  name: string;
-  image_url: string | null;
-  subtitle?: string;
-}
-
-const socialConfig: Record<string, { icon: React.ElementType; label: string }> = {
-  instagram: { icon: Instagram, label: "Instagram" },
-  tiktok: { icon: ExternalLink, label: "TikTok" },
-  youtube: { icon: Youtube, label: "YouTube" },
-  x: { icon: Twitter, label: "X" },
-  twitch: { icon: Twitch, label: "Twitch" },
-  website: { icon: Globe, label: "Website" },
-};
 
 /**
  * What a League-facing profile may read about ANOTHER user is now fixed by the
@@ -93,6 +49,12 @@ const socialConfig: Record<string, { icon: React.ElementType; label: string }> =
  * still editable by their owner, but they never reach a League surface — UI,
  * query, metadata, JSON-LD or social preview. The former
  * LEAGUE_PROFILE_COLUMNS constant is gone with the view read it belonged to.
+ *
+ * LEGACY1 went further and deleted the dead branches themselves. This page used
+ * to carry a full second rendering of that dating/voting profile — photos,
+ * age, location, bio, socials, swipe Elo stats, league leaderboards, favorites,
+ * matchups, a league comment — behind `!LEAGUE_ONLY_MODE`, which was false in
+ * production and is now deleted along with the product it guarded.
  *
  * `custom_theme` WAS in that list and no longer is (PT2E). It belonged there
  * while the value was a sitewide theme, which was not profile content at all.
@@ -279,15 +241,7 @@ export default function UserProfile() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [leagueStats, setLeagueStats] = useState<LeagueStat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [topComment, setTopComment] = useState<{ content: string; league_name: string } | null>(null);
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-  const [bestCompeteTier, setBestCompeteTier] = useState<string>("unranked");
-  const [tierConfig, setTierConfig] = useState<TierConfig[]>(DEFAULT_TIER_CONFIG);
-  const [rankEnabled, setRankEnabled] = useState(true);
   // The VIEWER's own public profile id, read from their own `profiles` row —
   // which RLS permits. This is how own-profile detection works now: compare
   // profile ids, never the viewed profile's user_id (which is no longer read).
@@ -315,244 +269,31 @@ export default function UserProfile() {
   const loadProfile = async () => {
     setLoading(true);
 
-    // Load rank config
-    const { data: rankData } = await supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "rank_tiers")
-      .maybeSingle();
-    let localTierConfig = DEFAULT_TIER_CONFIG;
-    let localRankEnabled = true;
-    if (rankData?.value) {
-      const val = rankData.value as any;
-      localRankEnabled = val.enabled ?? true;
-      if (Array.isArray(val.tiers) && val.tiers.length > 0) {
-        localTierConfig = val.tiers;
-      }
-    }
-    setTierConfig(localTierConfig);
-    setRankEnabled(localRankEnabled);
-
-    // Fetch profile. League surfaces read the restricted RPC, which is the only
-    // path that can see another user's row at all (public_profiles is
-    // security_invoker, so RLS resolves it to zero rows and this page 404'd for
-    // everyone but yourself). The legacy Mogsy profile keeps its full view read
-    // so nothing about it changes.
-    let profileData: unknown = null;
-    if (LEAGUE_ONLY_MODE) {
-      profileData = await fetchLeagueProfile(profileId);
-    } else {
-      const { data } = await supabase
-        .from("public_profiles")
-        .select("*")
-        .eq("id", profileId)
-        .single();
-      profileData = data;
-    }
+    // The restricted RPC is the only path that can see another user's row at
+    // all (public_profiles is security_invoker, so RLS resolves it to zero rows
+    // and this page 404'd for everyone but yourself). LEGACY1 deleted the
+    // second branch, which read the full view for the retired dating profile.
+    const profileData = await fetchLeagueProfile(profileId);
 
     if (!profileData) {
       setLoading(false);
       return;
     }
     setProfile(profileData as unknown as ProfileData);
-
-    // League-only mode: identity + League CTAs only. No swipe-league stats,
-    // favorites or comments — and no profile photos, which are legacy dating
-    // media. The rows stay in `profile_photos`; we simply never read them, so
-    // `photos` remains empty and the avatar renders instead.
-    if (LEAGUE_ONLY_MODE) {
-      setLoading(false);
-      return;
-    }
-
-    // Fetch photos, league memberships, and top comment in parallel
-    const [photosRes, membershipsRes, commentsRes] = await Promise.all([
-      supabase
-        .from("profile_photos")
-        .select("url, sort_order")
-        .eq("profile_id", profileId!)
-        .order("sort_order"),
-      supabase
-        .from("league_memberships")
-        .select("league_id, elo, matches_played")
-        .eq("profile_id", profileId!),
-      supabase
-        .from("comments")
-        .select("content, league_id")
-        .eq("profile_id", profileId!)
-        .eq("is_hidden", false)
-        .order("created_at", { ascending: false })
-        .limit(1),
-    ]);
-
-    if (photosRes.data) {
-      setPhotos(photosRes.data);
-    }
-
-    // Process league stats with ranks
-    if (membershipsRes.data && membershipsRes.data.length > 0) {
-      const leagueIds = membershipsRes.data.map((m) => m.league_id);
-      const { data: leagues } = await supabase
-        .from("leagues")
-        .select("id, name, type, category")
-        .in("id", leagueIds);
-
-      const leagueMap = new Map((leagues || []).map((l) => [l.id, { name: l.name, type: l.type, category: (l as any).category || "Other" }]));
-
-      // Get ranks for each league
-      const statsPromises = membershipsRes.data.map(async (m) => {
-        const { count: higherCount } = await supabase
-          .from("league_memberships")
-          .select("*", { count: "exact", head: true })
-          .eq("league_id", m.league_id)
-          .gt("elo", m.elo);
-
-        const { count: totalCount } = await supabase
-          .from("league_memberships")
-          .select("*", { count: "exact", head: true })
-          .eq("league_id", m.league_id);
-
-        const leagueInfo = leagueMap.get(m.league_id);
-        const rank = (higherCount || 0) + 1;
-        const total = totalCount || 0;
-        const isCompete = leagueInfo?.type === "user";
-
-        // Use percentile tier for compete leagues, elo-based for collections
-        const tier = (isCompete && localRankEnabled)
-          ? getTierFromPercentile(rank - 1, total, localTierConfig)
-          : getTierFromElo(m.elo);
-
-        return {
-          league_id: m.league_id,
-          league_name: leagueInfo?.name || "Unknown",
-          category: leagueInfo?.category || "Other",
-          elo: m.elo,
-          matches_played: m.matches_played,
-          rank,
-          total_members: total,
-          tier,
-        };
-      });
-
-      const stats = await Promise.all(statsPromises);
-      setLeagueStats(stats.sort((a, b) => b.elo - a.elo));
-
-      // Determine best compete league tier
-      const competeTiers = stats
-        .filter(s => leagueMap.get(s.league_id)?.type === "user")
-        .map(s => s.tier);
-      const tierRank: Record<string, number> = { diamond: 5, gold: 4, silver: 3, bronze: 2, unranked: 1 };
-      const best = competeTiers.reduce((best, t) => (tierRank[t] || 0) > (tierRank[best] || 0) ? t : best, "unranked");
-      setBestCompeteTier(best);
-    }
-
-    // Top comment
-    if (commentsRes.data && commentsRes.data.length > 0) {
-      const comment = commentsRes.data[0];
-      let leagueName = "";
-      if (comment.league_id) {
-        const { data: league } = await supabase
-          .from("leagues")
-          .select("name")
-          .eq("id", comment.league_id)
-          .single();
-        leagueName = league?.name || "";
-      }
-      setTopComment({ content: comment.content, league_name: leagueName });
-    }
-
-    // Load favorites
-    await loadFavorites(profileId!);
-
     setLoading(false);
   };
 
-  const loadFavorites = async (pid: string) => {
-    // Check admin setting for mode
-    const { data: settingData } = await supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "favorites_mode")
-      .maybeSingle();
-    
-    const mode = (settingData?.value as any)?.mode || "manual";
+  // LEGACY1 deleted ~200 lines of unreachable loading here: profile photos,
+  // league_memberships ranked by Elo, the per-league leaderboard, a comments
+  // lookup and the profile_favorites / matches favorites reader. All of it ran
+  // only after the early return above, which production never reached. A League
+  // profile is identity plus LeaguePublicProfile, and always was.
+  //
+  // profile_photos, profile_favorites, league_memberships and preset_items keep
+  // their rows; nothing on this page reads them any more.
 
-    if (mode === "manual") {
-      // Load manually pinned favorites
-      const { data: favData } = await supabase
-        .from("profile_favorites")
-        .select("*")
-        .eq("profile_id", pid)
-        .order("sort_order")
-        .limit(5);
-
-      if (favData && favData.length > 0) {
-        const items: FavoriteItem[] = [];
-        for (const fav of favData) {
-          if (fav.item_type === "preset_item") {
-            const { data: item } = await supabase
-              .from("preset_items")
-              .select("id, name, image_url")
-              .eq("id", fav.item_id)
-              .maybeSingle();
-            if (item) items.push({ id: item.id, type: "preset_item", name: item.name, image_url: item.image_url });
-          } else {
-            const { data: prof } = await supabase
-              .from("public_profiles")
-              .select("id, display_name, avatar_url")
-              .eq("id", fav.item_id)
-              .maybeSingle();
-            if (prof && prof.id) items.push({ id: prof.id, type: "user_profile", name: prof.display_name || "User", image_url: prof.avatar_url });
-          }
-        }
-        setFavorites(items);
-      }
-    } else {
-      // Auto mode: get top items user voted for in preset matches
-      // Since matches don't track the voter for presets, we look at user match wins
-      const { data: matchData } = await supabase
-        .from("matches")
-        .select("winner_item_id")
-        .not("winner_item_id", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (matchData && matchData.length > 0) {
-        const counts = new Map<string, number>();
-        for (const m of matchData) {
-          if (m.winner_item_id) {
-            counts.set(m.winner_item_id, (counts.get(m.winner_item_id) || 0) + 1);
-          }
-        }
-        const topIds = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id);
-        
-        if (topIds.length > 0) {
-          const { data: items } = await supabase
-            .from("preset_items")
-            .select("id, name, image_url")
-            .in("id", topIds);
-          if (items) {
-            setFavorites(items.map((item) => ({
-              id: item.id,
-              type: "preset_item" as const,
-              name: item.name,
-              image_url: item.image_url,
-            })));
-          }
-        }
-      }
-    }
-  };
-
-  // Determine best ELO for overall tier
-  const bestElo = leagueStats.length > 0 ? Math.max(...leagueStats.map((s) => s.elo)) : 1200;
-  const overallTier = getTierFromElo(bestElo);
-  const totalMatches = leagueStats.reduce((sum, s) => sum + s.matches_played, 0);
-  const isBoosted = profile?.active_boost_until ? new Date(profile.active_boost_until) > new Date() : false;
   const frame = profile?.profile_frame && frameClasses[profile.profile_frame] ? frameClasses[profile.profile_frame] : "";
   const memberSince = profile?.created_at ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "";
-  const socials = (profile?.socials || {}) as Record<string, string>;
-  const activeSocials = Object.entries(socials).filter(([, v]) => v && v.trim());
   const theme = getThemeById(profile?.custom_theme || "default");
 
   // Own-profile detection: the viewer's own profile id vs the route's.
@@ -570,7 +311,7 @@ export default function UserProfile() {
   // rank, category progress and achievements are hidden on other people's
   // profiles and unchanged on your own. Restoring them cross-user needs a
   // profile-id-keyed public-stats endpoint; deliberately not added here.
-  const targetUserId = LEAGUE_ONLY_MODE && isOwnProfile ? user?.id ?? null : null;
+  const targetUserId = isOwnProfile ? user?.id ?? null : null;
   const { data: quizProgress } = useQuery({
     queryKey: ["quiz-progress", targetUserId],
     queryFn: () => quizApi.getProgress(targetUserId!),
@@ -617,11 +358,7 @@ export default function UserProfile() {
       <SEOHead
         noindex={!!profile.is_bot || !profile.display_name}
         title={`${profile.display_name || "User"} — Mogzy`}
-        description={
-          LEAGUE_ONLY_MODE
-            ? `View ${profile.display_name}'s Mogzy League profile. League quiz, Combat Lab and game knowledge.`
-            : `View ${profile.display_name}'s profile on Mogzy. ${profile.status_message || ""}`
-        }
+        description={`View ${profile.display_name}'s Mogzy League profile. League quiz, Combat Lab and game knowledge.`}
         image={profile.avatar_url || undefined}
         jsonLd={{
           "@context": "https://schema.org",
@@ -630,8 +367,6 @@ export default function UserProfile() {
             "@type": "Person",
             name: profile.display_name || "User",
             image: profile.avatar_url || undefined,
-            description: LEAGUE_ONLY_MODE ? undefined : profile.status_message || undefined,
-            address: LEAGUE_ONLY_MODE ? undefined : profile.location || undefined,
           },
         }}
       />
@@ -656,31 +391,22 @@ export default function UserProfile() {
           >
             {/* Avatar / Photo circles */}
             <div className="relative mb-4">
-              {!LEAGUE_ONLY_MODE && photos.length > 0 ? (
-                <ProfilePhotoCircles photos={photos} />
-              ) : (
-                <div
-                  className={cn(
-                    "w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden",
-                    frame || cn("ring-4", theme.styles.accentRing)
-                  )}
-                >
-                  {profile.avatar_url && !profile.avatar_url.includes("dicebear") ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt={profile.display_name || ""}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <UserAvatar name={profile.display_name || ""} size="xl" />
-                  )}
-                </div>
-              )}
-              {isBoosted && (
-                <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-yellow-500 flex items-center justify-center animate-pulse shadow-lg">
-                  <Zap className="h-4 w-4 text-yellow-950" />
-                </div>
-              )}
+              <div
+                className={cn(
+                  "w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden",
+                  frame || cn("ring-4", theme.styles.accentRing)
+                )}
+              >
+                {profile.avatar_url && !profile.avatar_url.includes("dicebear") ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.display_name || ""}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <UserAvatar name={profile.display_name || ""} size="xl" />
+                )}
+              </div>
             </div>
 
             {/* Name with crown */}
@@ -691,22 +417,6 @@ export default function UserProfile() {
               <h1 className={cn("text-2xl sm:text-3xl font-extrabold", theme.styles.nameColor || "text-foreground")}>
                 {profile.display_name || "Anonymous"}
               </h1>
-            </div>
-
-            {/* Age and location are legacy dating fields: never on a League profile. */}
-            <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
-              {!LEAGUE_ONLY_MODE && profile.age && (
-                <span className={cn("text-sm", theme.styles.mutedColor || "text-muted-foreground")}>{profile.age} years old</span>
-              )}
-              {!LEAGUE_ONLY_MODE && profile.age && profile.location && (
-                <span className={cn("opacity-40", theme.styles.mutedColor || "text-muted-foreground")}>·</span>
-              )}
-              {!LEAGUE_ONLY_MODE && profile.location && (
-                <span className={cn("text-sm flex items-center gap-1", theme.styles.mutedColor || "text-muted-foreground")}>
-                  <MapPin className="h-3 w-3" />
-                  {profile.location}
-                </span>
-              )}
             </div>
 
             {/* Prominent rank badge */}
@@ -730,38 +440,12 @@ export default function UserProfile() {
                   <BrainCircuit className="h-3.5 w-3.5" />
                 </div>
               )}
-              {rankEnabled && bestCompeteTier !== "unranked" && (
-                <div className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-extrabold uppercase tracking-wider border-2",
-                  getTierBgColor(bestCompeteTier),
-                  getTierColor(bestCompeteTier)
-                )}>
-                  <span className="text-lg">{getTierIcon(bestCompeteTier)}</span>
-                  <span>{bestCompeteTier}</span>
-                  <Trophy className="h-4 w-4" />
-                </div>
-              )}
-              {rankEnabled && bestCompeteTier === "unranked" && leagueStats.length > 0 && (
-                <TierBadge tier="unranked" />
-              )}
               {profile.is_pro && (
                 <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold", theme.styles.textAccent || "text-primary", "bg-primary/10 border border-primary/30")}>
                   <Crown className="h-3 w-3" /> PRO
                 </span>
               )}
             </div>
-
-            {/* Status — legacy dating bio, hidden from League profiles. */}
-            {!LEAGUE_ONLY_MODE && profile.status_message && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className={cn("mt-3 text-sm italic max-w-md", theme.styles.textColor || "text-foreground/70")}
-              >
-                "{profile.status_message}"
-              </motion.p>
-            )}
 
             {/* Friend & Save Buttons */}
             {user && profileId && (
@@ -780,183 +464,18 @@ export default function UserProfile() {
       {/* Content */}
       <div className="container mx-auto max-w-2xl px-4 pb-12 space-y-5 relative z-20">
 
-        {/* Favorites */}
-        {favorites.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
-          >
-            <h2 className={cn("text-sm font-bold mb-2 flex items-center gap-1.5", theme.styles.headingColor || "text-foreground")}>
-              <Heart className={cn("h-3.5 w-3.5", theme.styles.iconAccent || "text-primary")} />
-              Favorites
-            </h2>
-            <ProfileFavoriteCards items={favorites} />
-          </motion.div>
-        )}
+        {/* The public League profile: stats, badges, takes and the CTA. */}
+        <LeaguePublicProfile
+          userId={targetUserId}
+          displayName={profile.display_name || "This player"}
+          isOwnProfile={isOwnProfile}
+          themeStyles={theme.styles}
+        />
 
-        {/* League-only mode: lean public League profile (stats, badges, takes, CTA) */}
-        {LEAGUE_ONLY_MODE && (
-          <LeaguePublicProfile
-            userId={targetUserId}
-            displayName={profile.display_name || "This player"}
-            isOwnProfile={isOwnProfile}
-            themeStyles={theme.styles}
-          />
-        )}
+        {/* LEGACY1 removed four blocks that could not render: Recent Matchups,
+            the swipe-Elo quick stats row, the per-league leaderboard and the
+            legacy socials list. Each was gated on the retired product's flag. */}
 
-        {/* Recent Matchups (legacy Mogsy — hidden in League-only mode) */}
-        {!LEAGUE_ONLY_MODE && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-        >
-          <RecentMatchups profileId={profileId!} themeStyles={theme.styles} />
-        </motion.div>
-        )}
-
-        {/* Quick stats row (legacy swipe Elo — hidden in League-only mode) */}
-        {!LEAGUE_ONLY_MODE && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-3 gap-3"
-        >
-          <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
-            <Trophy className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
-            <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{bestElo}</p>
-            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Best AURA</p>
-          </div>
-          <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
-            <Swords className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
-            <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{totalMatches}</p>
-            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Matches</p>
-          </div>
-          <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
-            <Shield className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
-            <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{leagueStats.length}</p>
-            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Leagues</p>
-          </div>
-        </motion.div>
-        )}
-
-
-        {/* League Leaderboard */}
-        {leagueStats.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
-          >
-            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>Leaderboards by Category</h2>
-            <div className="space-y-4">
-              {Object.entries(
-                leagueStats.reduce((acc, stat) => {
-                  const key = stat.category || "Other";
-                  (acc[key] ||= []).push(stat);
-                  return acc;
-                }, {} as Record<string, typeof leagueStats>)
-              )
-                .sort((a, b) => {
-                  const maxA = Math.max(...a[1].map((s) => s.elo));
-                  const maxB = Math.max(...b[1].map((s) => s.elo));
-                  return maxB - maxA;
-                })
-                .map(([category, stats]) => (
-                  <div key={category}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={cn("text-[11px] font-bold uppercase tracking-wider", theme.styles.textAccent || "text-primary")}>
-                        {category}
-                      </span>
-                      <span className={cn("text-[10px]", theme.styles.mutedColor || "text-muted-foreground")}>
-                        {stats.length} {stats.length === 1 ? "league" : "leagues"}
-                      </span>
-                      <div className={cn("flex-1 h-px", theme.styles.innerBorder || "bg-border")} />
-                    </div>
-                    <div className="space-y-2">
-                      {stats.map((stat) => (
-                        <button
-                          key={stat.league_id}
-                          onClick={() => navigate(`/leaderboard/${stat.league_id}`)}
-                          className={cn("w-full flex items-center justify-between p-3 rounded-lg border transition-colors text-left", theme.styles.innerBg || "bg-background/50", theme.styles.innerBorder || "border-border", "hover:opacity-90")}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs shrink-0", theme.styles.textAccent || "text-primary", theme.styles.innerBg || "bg-primary/10")}>
-                              #{stat.rank}
-                            </div>
-                            <div className="min-w-0">
-                              <p className={cn("text-sm font-semibold truncate", theme.styles.textColor || "text-foreground")}>{stat.league_name}</p>
-                              <p className={cn("text-[10px]", theme.styles.mutedColor || "text-muted-foreground")}>
-                                {stat.matches_played} matches · {stat.total_members} members
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <TierBadge tier={stat.tier} className="text-[9px] px-1.5 py-0" />
-                            <span className={cn("text-sm font-bold", theme.styles.textColor || "text-foreground")}>{stat.elo}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Socials — legacy dating links, hidden from League profiles. */}
-        {!LEAGUE_ONLY_MODE && activeSocials.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
-          >
-            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>Socials</h2>
-            <div className="flex flex-wrap gap-2">
-              {activeSocials.map(([key, value]) => {
-                const config = socialConfig[key];
-                if (!config) return null;
-                const Icon = config.icon;
-                return (
-                  <a
-                    key={key}
-                    href={/^https?:\/\//i.test(String(value).trim()) ? value : "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors border", theme.styles.innerBg || "bg-background/50", theme.styles.innerBorder || "border-border", theme.styles.mutedColor || "text-muted-foreground", "hover:opacity-80")}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {config.label}
-                  </a>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Latest comment */}
-        {topComment && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
-          >
-            <h2 className={cn("text-sm font-bold mb-2 flex items-center gap-1.5", theme.styles.headingColor || "text-foreground")}>
-              <MessageSquare className={cn("h-3.5 w-3.5", theme.styles.iconAccent || "text-primary")} />
-              Latest Comment
-            </h2>
-            <p className={cn("text-sm italic", theme.styles.textColor || "text-foreground/80")}>"{topComment.content}"</p>
-            {topComment.league_name && (
-              <p className={cn("text-[10px] mt-1", theme.styles.mutedColor || "text-muted-foreground")}>in {topComment.league_name}</p>
-            )}
-          </motion.div>
-        )}
 
         {/* Member since */}
         {memberSince && (
@@ -972,21 +491,6 @@ export default function UserProfile() {
         )}
       </div>
 
-      {/* Photo lightbox */}
-      {selectedPhoto && (
-        <div
-          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setSelectedPhoto(null)}
-        >
-          <motion.img
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            src={selectedPhoto}
-            alt=""
-            className="max-w-full max-h-[80vh] rounded-xl object-contain"
-          />
-        </div>
-      )}
     </div>
   );
 }

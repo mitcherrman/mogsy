@@ -10,7 +10,7 @@ import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { isGuestUser, signupHrefFor } from "@/lib/hud/identity";
 import { hudChipSurface, hudHitTarget, hudPopVisual } from "@/lib/hud/chrome";
 import { useHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
-import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { useSfx } from "@/lib/audio/useSfx";
 
@@ -52,9 +52,8 @@ import { useSfx } from "@/lib/audio/useSfx";
  *  - Academy Radio              → the `hud` variant (one trigger, full panel);
  *  - notification bell          → the chevron of the identity compound;
  *  - Quiz tab                   → in-product: the hub's Leaguecraft book;
- *  - non-League navbar surfaces (Play/Swipe tabs, shop pill, Friends and
- *    Theme) → the same footer, gated exactly as before (`nav_tab_mode`,
- *    LEAGUE_ONLY_MODE, LoL section).
+ *  - the retired product's navbar surfaces (Play/Swipe tabs, shop pill, Theme)
+ *    were deleted with it by LEGACY1; Community is in the footer.
  */
 
 /** The cluster's own glass, on the box that takes the pointer back from the
@@ -65,7 +64,7 @@ const hudChip = `pointer-events-auto ${hudChipSurface}`;
 
 export default function GlobalHud() {
   const sfx = useSfx();
-  const homeRoute = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/";
+  const homeRoute = LEAGUE_HOME_ROUTE;
   const { pathname } = useLocation();
   const { user } = useAuth();
   const hubCollapsed = useHubFloatingControlsCollapsed();

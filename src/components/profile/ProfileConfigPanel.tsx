@@ -13,7 +13,6 @@ const OPTIONS: { key: keyof ProfileConfig; label: string; description: string }[
   { key: "showQuickActions", label: "Quick Actions", description: "Shortcuts into quiz, Combat Lab, hub, docs and tier list." },
   { key: "showPhotos", label: "Photos", description: "Profile photo upload and rotation." },
   { key: "showSocials", label: "Social Links", description: "Instagram, YouTube, Twitch and other links." },
-  { key: "showLegacyMogsy", label: "Legacy Mogsy Modules", description: "Old boost, frames and favorites sections." },
 ];
 
 /**
@@ -24,16 +23,13 @@ export default function ProfileConfigPanel({
   config,
   setOption,
   resetConfig,
-  showLegacyOption = false,
 }: {
   config: ProfileConfig;
   setOption: <K extends keyof ProfileConfig>(key: K, value: ProfileConfig[K]) => void;
   resetConfig: () => void;
-  /** Admin/dev only: expose the toggle that re-enables old Mogsy modules. */
-  showLegacyOption?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const options = OPTIONS.filter((o) => o.key !== "showLegacyMogsy" || showLegacyOption);
+  const options = OPTIONS;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="rounded-2xl border border-border bg-card">

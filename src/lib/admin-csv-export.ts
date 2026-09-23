@@ -1,3 +1,19 @@
+// ---------------------------------------------------------------------------
+// Admin CSV export (Operations › Data Maintenance).
+//
+// An operator-triggered dump of the account-side tables Supabase owns. It is
+// NOT product analytics: visitors, sessions, funnel and gameplay live in Admin
+// › Analytics, computed from analytics_events / analytics_sessions /
+// analytics_visitors and the Railway-authoritative rows.
+//
+// LEGACY1 removed every section that summarised the retired voting product —
+// leagues and league memberships, preset items and their win rates, matches,
+// Aura Check games, global Elo snapshots, swipe-animation usage, and the
+// per-profile currency columns (diamonds, boosts, ELO shields, reveals,
+// rewinds). Those tables still exist; this export simply no longer presents
+// them as current product state.
+// ---------------------------------------------------------------------------
+
 import { supabase } from "@/integrations/supabase/client";
 import { isEffectivePro } from "@/lib/pro/entitlement";
 
@@ -11,7 +27,7 @@ export async function exportAdminCSV() {
   };
 
   // Users
-  const { data: profiles } = await supabase.from("profiles").select("id, display_name, created_at, is_pro, pro_grant_kind, pro_grant_expires_at, is_bot, is_anonymous, location, custom_theme, swipe_animation, onboarding_completed, last_seen_at, diamonds, boost_credits, elo_shields, reveals, rewinds, age, profile_frame");
+  const { data: profiles } = await supabase.from("profiles").select("id, display_name, created_at, is_pro, pro_grant_kind, pro_grant_expires_at, is_bot, is_anonymous, custom_theme, onboarding_completed, last_seen_at, profile_frame");
   const users = (profiles || []).filter(p => !p.is_bot);
   const bots = (profiles || []).filter(p => p.is_bot);
   add("User Summary", ["Metric", "Value"], [
@@ -24,66 +40,15 @@ export async function exportAdminCSV() {
     ["Active (7d)", String(users.filter(u => u.last_seen_at && Date.now() - new Date(u.last_seen_at).getTime() < 7 * 86400000).length)],
   ]);
 
-  // Theme distribution
+  // Profile theme distribution
   const themeCount = new Map<string, number>();
   for (const u of users) { const t = u.custom_theme || "default"; themeCount.set(t, (themeCount.get(t) || 0) + 1); }
   add("Theme Usage", ["Theme", "Users"], Array.from(themeCount.entries()).sort((a, b) => b[1] - a[1]).map(([t, c]) => [t, String(c)]));
 
-  // Animation distribution
-  const animCount = new Map<string, number>();
-  for (const u of users) { const a = u.swipe_animation || "default"; animCount.set(a, (animCount.get(a) || 0) + 1); }
-  add("Animation Usage", ["Animation", "Users"], Array.from(animCount.entries()).sort((a, b) => b[1] - a[1]).map(([a, c]) => [a, String(c)]));
-
-  // Leagues
-  const { data: leagues } = await supabase.from("leagues").select("id, name, category, subcategory, type");
-  const { data: memberships } = await supabase.from("league_memberships").select("league_id, elo");
-  const { data: allMatches } = await supabase.from("matches").select("league_id, winner_item_id, loser_item_id, winner_profile_id, loser_profile_id");
-  const { data: allItems } = await supabase.from("preset_items").select("id, name, elo, league_id");
-  
-  const leagueMembers = new Map<string, number>();
-  const leagueAvgElo = new Map<string, { sum: number; count: number }>();
-  for (const m of memberships || []) {
-    leagueMembers.set(m.league_id, (leagueMembers.get(m.league_id) || 0) + 1);
-    const e = leagueAvgElo.get(m.league_id) || { sum: 0, count: 0 };
-    e.sum += m.elo; e.count++;
-    leagueAvgElo.set(m.league_id, e);
-  }
-  const leagueMatchCount = new Map<string, number>();
-  for (const m of allMatches || []) leagueMatchCount.set(m.league_id, (leagueMatchCount.get(m.league_id) || 0) + 1);
-
-  add("Leagues", ["Name", "Category", "Subcategory", "Type", "Members", "Matches", "Avg Elo"],
-    (leagues || []).map(l => [
-      l.name, l.category || "", l.subcategory || "", l.type,
-      String(leagueMembers.get(l.id) || 0),
-      String(leagueMatchCount.get(l.id) || 0),
-      String(leagueAvgElo.has(l.id) ? Math.round(leagueAvgElo.get(l.id)!.sum / leagueAvgElo.get(l.id)!.count) : 1200),
-    ])
-  );
-
-  // Items with win rates
-  const itemWins = new Map<string, number>();
-  const itemTotal = new Map<string, number>();
-  for (const m of allMatches || []) {
-    if (m.winner_item_id) { itemWins.set(m.winner_item_id, (itemWins.get(m.winner_item_id) || 0) + 1); itemTotal.set(m.winner_item_id, (itemTotal.get(m.winner_item_id) || 0) + 1); }
-    if (m.loser_item_id) { itemTotal.set(m.loser_item_id, (itemTotal.get(m.loser_item_id) || 0) + 1); }
-  }
-  const leagueNameMap = new Map((leagues || []).map(l => [l.id, l.name]));
-  add("Items", ["Name", "League", "Elo", "Matches", "Win Rate %"],
-    (allItems || []).map(i => [
-      i.name, leagueNameMap.get(i.league_id) || "", String(i.elo),
-      String(itemTotal.get(i.id) || 0),
-      itemTotal.has(i.id) && (itemTotal.get(i.id)! > 0)
-        ? String(Math.round(((itemWins.get(i.id) || 0) / itemTotal.get(i.id)!) * 100))
-        : "N/A",
-    ])
-  );
-
-  // Matches summary
-  add("Match Summary", ["Metric", "Value"], [
-    ["Total Matches", String((allMatches || []).length)],
-    ["Item Matches", String((allMatches || []).filter(m => m.winner_item_id).length)],
-    ["User Matches", String((allMatches || []).filter(m => m.winner_profile_id).length)],
-  ]);
+  // Profile frame distribution
+  const frameCount = new Map<string, number>();
+  for (const u of users) { const f = u.profile_frame || "default"; frameCount.set(f, (frameCount.get(f) || 0) + 1); }
+  add("Profile Frames", ["Frame", "Users"], Array.from(frameCount.entries()).sort((a, b) => b[1] - a[1]).map(([f, c]) => [f, String(c)]));
 
   // Purchases
   const { data: purchases } = await supabase.from("purchases").select("item_type, amount_cents");
@@ -91,7 +56,7 @@ export async function exportAdminCSV() {
   for (const p of purchases || []) purchaseCount.set(p.item_type, (purchaseCount.get(p.item_type) || 0) + 1);
   add("Purchases", ["Type", "Count"], Array.from(purchaseCount.entries()).map(([t, c]) => [t, String(c)]));
 
-  // Comments
+  // Comments (blog post discussion) and reactions
   const { data: comments } = await supabase.from("comments").select("id", { count: "exact", head: true });
   const { data: reactions } = await supabase.from("comment_reactions").select("id", { count: "exact", head: true });
   add("Comments & Reactions", ["Metric", "Value"], [
@@ -107,28 +72,13 @@ export async function exportAdminCSV() {
     ["Total Redemptions", String(invRedeems || 0)],
   ]);
 
-  // Aura check
-  const { data: eloGames } = await supabase.from("elo_check_games").select("is_correct");
-  const correct = (eloGames || []).filter(g => g.is_correct).length;
-  add("Aura Check", ["Metric", "Value"], [
-    ["Total Games", String((eloGames || []).length)],
-    ["Correct", String(correct)],
-    ["Accuracy %", (eloGames || []).length > 0 ? String(Math.round((correct / (eloGames || []).length) * 100)) : "N/A"],
-  ]);
-
-  // Elo snapshots summary
-  const { data: snapshots } = await supabase.from("global_elo_snapshots").select("id", { count: "exact", head: true });
-  add("Elo Snapshots", ["Metric", "Value"], [
-    ["Total Snapshots", String(snapshots || 0)],
-  ]);
-
   // Build & download
   const csv = sections.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `mogsy-stats-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `mogzy-accounts-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

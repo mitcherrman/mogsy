@@ -6,38 +6,13 @@ import {
   type PlatformPolicy,
 } from "@/lib/platform-policy/policy";
 
-export interface CardStatsConfig {
-  position: "bottom-center" | "bottom-left" | "bottom-right" | "below-name" | "overlay-bottom";
-  show_aura: boolean;
-  show_rank: boolean;
-  show_global: boolean;
-  show_elo_change: boolean;
-  aura_label: string;
-  rank_label: string;
-  font_size: string;
-  font_weight: string;
-  color_scheme: "default" | "muted" | "accent" | "custom";
-  use_default_layout: boolean;
-}
-
-export const DEFAULT_CARD_STATS_CONFIG: CardStatsConfig = {
-  position: "bottom-center",
-  show_aura: true,
-  show_rank: true,
-  show_global: true,
-  show_elo_change: true,
-  aura_label: "Aura",
-  rank_label: "#",
-  font_size: "xs",
-  font_weight: "semibold",
-  color_scheme: "default",
-  use_default_layout: true,
-};
+// LEGACY1 — this hook used to also carry `card_stats_config` (the retired
+// voting product's card stat overlay) and `nav_tab_mode` (its Play/Swipe navbar
+// switch). Both product surfaces are deleted and nothing read either value any
+// more, so the rows are historical residue with no reader rather than settings.
 
 interface AppSettings {
   require_auth: boolean;
-  card_stats_config: CardStatsConfig;
-  nav_tab_mode: "play" | "swipe";
   /**
    * Admin-controlled global platform policy (Combat Sim tokens + tutorial).
    * Read from the same app_settings rows the backend reads, so there is exactly
@@ -48,16 +23,13 @@ interface AppSettings {
 
 const defaults: AppSettings = {
   require_auth: true,
-  card_stats_config: DEFAULT_CARD_STATS_CONFIG,
-  nav_tab_mode: "play",
   policy: DEFAULT_PLATFORM_POLICY,
 };
 
 // `app_settings.value` is a Json column and each key stores its own object
-// shape. These describe the two single-field rows this hook reads, so a typo in
-// a property name is a compile error instead of a silent `undefined`.
+// shape. This describes the single-field row this hook reads, so a typo in a
+// property name is a compile error instead of a silent `undefined`.
 type RequireAuthValue = { enabled?: boolean };
-type NavTabModeValue = { mode?: AppSettings["nav_tab_mode"] };
 
 export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(defaults);
@@ -72,10 +44,6 @@ export function useAppSettings() {
           const s = { ...defaults };
           for (const row of data) {
             if (row.key === "require_auth") s.require_auth = (row.value as RequireAuthValue | null)?.enabled ?? true;
-            if (row.key === "card_stats_config") {
-              s.card_stats_config = { ...DEFAULT_CARD_STATS_CONFIG, ...(row.value as Partial<CardStatsConfig> | null) };
-            }
-            if (row.key === "nav_tab_mode") s.nav_tab_mode = (row.value as NavTabModeValue | null)?.mode ?? "play";
           }
           // Policy rows are parsed by the shared pure contract, not inline, so
           // the guard, the hub, the admin panel, and the tests agree by
