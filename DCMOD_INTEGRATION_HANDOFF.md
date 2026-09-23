@@ -473,3 +473,101 @@ either repo; no tags.
   Combat calculations / Pro Play content-set entries, Invite entry with
   Ranked closed, ability hotbar, dormant `dc2_*`/`dsa_*` tables,
   package-lock drift, Railway log verification of migrations + drainer.
+
+## POST-LAUNCH AUDIT — Daily Standard stage length (2026-09-22)
+
+Production showed a TEN-slot round bar over a Daily Standard stage (Champion
+Fundamentals) that completed after FOUR questions, and `/api/quiz/sets`
+reported Champion Basics with `question_count: 0`. Two separate display
+defects; the Daily's content and its backend contract were correct throughout.
+No Daily redesign, no content-universe or GR1 change, no padding.
+
+### Finding 1 — the round bar was never told the plan (UI was wrong)
+* `content_sets/fundamentals.py` declares Champion Fundamentals as FOUR
+  curriculum slots, so the resolved Standard format freezes
+  `match_length = len(segment_pattern) = 4`. Four questions is the
+  curriculum, not a shortfall, not candidate exhaustion, not a thin corpus.
+* `src/lib/ranked-core/roundTimeline.ts` has had a finite-plan branch
+  ("the strip IS the plan") since ARENA1, but the ONE production call site
+  (`QuizRankedMatch.tsx`) never passed `totalRounds`. The projection therefore
+  fell back to its indefinite window — `TIMELINE_VISIBLE_NODES = 9` plus one
+  off-edge buffer node = the ten slots seen — which is independent of
+  `match_length`. The header counter, which does read the server field,
+  correctly said "1 / 4" beside it; the two disagreed because they had
+  different sources.
+* Not a cause: catalog counts, provider depth, clean-depth, candidate
+  exhaustion, `match_length`, missing canonical data. The child match and the
+  server contract were right.
+
+### Finding 2 — `match_length` means two different things
+Rulesets do not touch length (`apply_ruleset`), but the CONTENT RESOLVER sets
+it per ruleset (`content_sets/resolver.py`):
+* standard/review: `match_length` = the plan (== `len(segment_pattern)`);
+* time_trial/survival: the pattern CYCLES and `match_length` is the clean
+  CANDIDATE CEILING (`content_sets/depth.py`) — production Survival on Item
+  Fundamentals froze 377, and the header read "1 / 377".
+The client was never told which reading it had, so a blanket fix would have
+drawn a 377-slot strip. `plannedRoundTotal` now makes that distinction from
+the `ruleset` block the server ALREADY publishes per viewer
+(`ranked_public/projections._ruleset_view` -> `ruleset_id`), which the
+frontend simply never parsed. A rapid-recall stage is open-ended to the
+client — the shape an hp match has always had — so it keeps the sliding
+window and drops the denominator. Nothing invents, shortens or pads a length.
+
+### Finding 3 — Champion Basics `0` was a COUNT PROJECTION BUG
+`/api/quiz/sets` counted stored `quiz_questions` rows only, while the serving
+path (`/api/quiz/questions?set=`) draws stored rows AND runtime-composed keys
+(`_runtime_keys_for_pull`, QCA4). Champion Basics is entirely runtime-backed,
+so it advertised 0 while production genuinely served `champion_stat_level`
+questions from it (verified live). This breaks the endpoint's own stated
+invariant ("question_count must equal what the serving path can hand out") in
+the opposite direction to the DC1 over-advertising defect. Fixed by counting
+the same runtime pool the pull uses, narrowed per set exactly as the SQL join
+narrows. It is UNRELATED to the Daily: the Daily draws from
+`quiz.runtime_casual` and the certified shared-bank pools, never from
+`quiz_questions`.
+
+### Files changed
+Backend (League_Combat_Simulator) — no product/runtime change to Daily:
+* `routes/quiz.py` — sets listing counts the runtime pool too (Finding 3).
+* `test_dcmod_stage_length_contract.py` (new, 23 tests) — what a resolved
+  stage's `match_length` MEANS, per ruleset.
+* `test_quiz_sets_active_count.py` — 3 tests for the runtime-backed count.
+
+Frontend (mogsy):
+* `src/lib/ranked-core/stagePlan.ts` (new) — `plannedRoundTotal`: the one
+  place that decides plan vs ceiling.
+* `src/lib/ranked-public/contracts.ts` — parse the `ruleset` block's
+  `ruleset_id` (absent/unreadable reads as null = standard).
+* `src/pages/quiz-ranked/QuizRankedMatch.tsx` — pass `totalRounds` to
+  `projectRoundTimeline`; entry card takes the plan, not the raw length.
+* `src/pages/quiz-ranked/rankedViews.ts` — `moduleProgressLabel` counts
+  against the plan; a rapid-recall stage shows the module number alone.
+* `src/lib/ranked-core/stagePlan.test.ts` (new, 13 tests).
+* `src/components/ranked-arena/QuestionStageGeometry.test.tsx` — its source
+  assertion follows the new expression (intent unchanged: no "MODULE" word).
+
+### Authoritative behaviour now
+* Standard / Review: the strip draws exactly `match_length` slots — four for
+  Champion Fundamentals — and the counter reads "n / 4". The displayed total
+  IS the playable stage length.
+* Time Trial / Survival: open-ended. Sliding window, module number with no
+  denominator; the stage ends on the bank, the strikes, or genuine candidate
+  exhaustion, and the ceiling is never drawn or advertised.
+* No repeat padding anywhere: a Standard plan's slot sources are distinct and
+  `match_length <= len(pattern)`, so the cycling index never comes round; a
+  rapid-recall corpus too thin for one lap is REFUSED (`ContentUnavailable`),
+  never padded.
+
+### Tests
+Backend: `test_dcmod_stage_length_contract` 23 passed;
+`test_quiz_sets_active_count` 10 passed (7 existing + 3 new); DCMOD A/B/C/D +
+integration + retired + no-Level-2 + points-only + the quiz-route suites:
+283 passed / 7 skipped. Full `test_quiz*`/`test_qca*` sweep vs unmodified
+HEAD with deterministic ordering: 166 failing nodes on BOTH trees, byte-
+identical lists — zero new failures (they need a populated `lol_calc.db`).
+Frontend: `stagePlan` 13 passed; ranked-core / quiz-ranked / ranked-arena /
+ranked-public / Daily suites 2016 passed with only the documented baseline
+failures (QuestionStageGeometry x3, AnswerGrid.elimination x2 — all fail on
+`origin/main`). `tsc`: 20 errors, all in untouched files, none in the changed
+ones. `vite build` passes.

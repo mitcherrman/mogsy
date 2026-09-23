@@ -74,6 +74,7 @@ import {
   EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
   type ObservedRoundKinds,
 } from "@/lib/ranked-core/roundTimeline";
+import { plannedRoundTotal } from "@/lib/ranked-core/stagePlan";
 import { useMatchDiscoveries } from "./useMatchDiscoveries";
 import { useRankedMatch } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
@@ -692,6 +693,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     // The arena maps the viewer to p1 everywhere (see `idMappingFromRound`),
     // which is the same slot the top result beat reads.
     viewerSlot: "p1",
+    // THE STRIP IS THE PLAN when the server froze one. Null (an hp match, or
+    // a rapid-recall stage whose length is a candidate ceiling) keeps the
+    // indefinite sliding window. See `plannedRoundTotal`.
+    totalRounds: plannedRoundTotal(m.publicRound),
   }) : null),
   [m.publicRound, m.roundNumber, m.damageLog, segmentRoundNumber, nextObservedKinds]);
   // The active segment's module renderer. A v2 payload or a legacy round has
@@ -982,7 +987,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
                   // RFX1 2B3 — the secondary line is REAL MATCH DATA. Null on
                   // an hp match and on any deployment predating RP1, and the
                   // card omits the line rather than guessing a length.
-                  matchLength={m.publicRound?.scoring?.matchLength ?? null}
+                  // A rapid-recall stage answers null here too: its length is
+                  // a candidate ceiling, and "Round 1 of 377" would be the
+                  // card guessing at a stage the bank will end. See
+                  // `plannedRoundTotal`.
+                  matchLength={plannedRoundTotal(m.publicRound)}
                   reducedMotion={reducedMotion} />
               ) : undefined }
           : { eyebrow: host?.eyebrow ?? "Ranked Duel", message: "Recovering match…",
