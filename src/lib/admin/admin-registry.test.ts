@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// Registry invariants and the capability-preservation proof.
+// Registry invariants, and LEGACY1's retired-concept guards.
 //
-// The load-bearing test here is "supersedes the pre-migration directory": it
-// asserts that every destination the old hand-maintained registry advertised
-// is still present in the new one. That is the mechanical form of the absolute
-// product rule — no admin capability may disappear. FUNNEL1C deleted that old
-// registry (admin-directory.ts), so its path list is frozen below as data.
+// This file USED to carry a capability-preservation proof: every destination
+// the pre-migration directory advertised had to still exist. LEGACY1 retired
+// that rule on the owner's instruction — preserving the Mogsy voting product
+// is no longer the goal, deleting it is — so the frozen path list is now split
+// into two: paths that must still resolve, and paths that must NOT come back.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
@@ -26,22 +26,36 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
- * Every path the deleted admin-directory.ts advertised (items, legacy aliases
- * and child actions), frozen at the commit that deleted it.
+ * CURRENT destinations that the pre-migration directory also advertised. Each
+ * one is part of Mogzy today and must keep resolving.
  */
-const RETIRED_DIRECTORY_PATHS = [
-  "/admin", "/admin/about", "/admin/blog", "/admin/combat-battles", "/admin/data", "/admin/demo",
-  "/admin/diagnostics", "/admin/directory", "/admin/gaming", "/admin/knowledge", "/admin/knowledge/health",
-  "/admin/knowledge/queue", "/admin/knowledge/rundown", "/admin/platform-policies", "/admin/play",
+const PRESERVED_DIRECTORY_PATHS = [
+  "/admin", "/admin/blog", "/admin/combat-battles",
+  "/admin/diagnostics", "/admin/knowledge", "/admin/knowledge/health",
+  "/admin/knowledge/queue", "/admin/knowledge/rundown", "/admin/platform-policies",
   "/admin/quiz-broadcast", "/admin/quiz-broadcast/view", "/admin/quiz-builder", "/admin/quiz-content",
   "/admin/quiz-content?tab=diagnostics", "/admin/quiz-content?tab=review", "/admin/quiz-review",
   "/admin/quiz-video-export", "/admin/users", "/admin/workspace", "/broadcast/live-view",
-  "/combat-lab/diagnostics", "/dev/content-studio", "/dev/quiz-render", "/dev/ranked-duel", "/moderator",
+  "/combat-lab/diagnostics", "/dev/content-studio", "/dev/quiz-render", "/dev/ranked-duel",
   "/quiz/admin", "/quiz/diagnostics",
 ];
 
+/**
+ * LEGACY1 — retired paths. The registry must not name any of these again, as a
+ * destination OR as a redirect: the surfaces behind them are deleted, and an
+ * entry here is exactly how a future agent mistakes a dead product for a live
+ * one. `/admin/about` and `/moderator` are on this list deliberately: their
+ * capabilities are gone (Internal Docs) or covered by People › Moderation.
+ */
+const ERADICATED_PATHS = [
+  "/admin/about", "/admin/arena", "/admin/arena/data-graphs", "/admin/data", "/admin/demo",
+  "/admin/directory", "/admin/gaming", "/admin/legacy-dashboard", "/admin/legacy-directory",
+  "/admin/play", "/moderator", "/shop", "/swipe", "/swipe-game", "/play", "/home", "/elo-check",
+  "/referral", "/multiplayer", "/swipe-leagues",
+];
+
 describe("admin registry — structure", () => {
-  it("declares the eleven-area architecture in order, Analytics beside Overview", () => {
+  it("declares the ten-area architecture in order, Analytics beside Overview", () => {
     expect(ADMIN_AREAS.map((a) => a.label)).toEqual([
       "Overview",
       "Analytics",
@@ -53,18 +67,18 @@ describe("admin registry — structure", () => {
       "Studio",
       "Operations",
       "Developer",
-      "Arena",
     ]);
     expect(ADMIN_AREA_IDS.length).toBe(ADMIN_AREAS.length);
   });
 
-  it("marks Arena archived and Developer as engineering, and nothing else", () => {
-    expect(ADMIN_AREAS_BY_ID.arena.kind).toBe("archived");
-    expect(ADMIN_AREAS_BY_ID.arena.badge).toBe("Archived");
+  it("marks Developer as engineering, and has no archived area at all", () => {
     expect(ADMIN_AREAS_BY_ID.developer.kind).toBe("developer");
     const live = ADMIN_AREAS.filter((a) => a.kind === "live").map((a) => a.id);
-    expect(live).not.toContain("arena");
     expect(live).not.toContain("developer");
+    // LEGACY1: the retired voting product was deleted rather than archived, so
+    // "archived" is no longer a kind an area can have.
+    expect(ADMIN_AREAS.map((a) => a.kind)).not.toContain("archived");
+    expect(ADMIN_AREA_IDS).not.toContain("arena");
   });
 
   it("exports the canonical entry points", () => {
@@ -170,15 +184,26 @@ describe("admin registry — safety metadata", () => {
 });
 
 describe("admin registry — capability preservation", () => {
-  it("supersedes the pre-migration directory: every advertised path survives", () => {
+  it("keeps every CURRENT destination the pre-migration directory advertised", () => {
     const registryPaths = new Set<string>();
     for (const tool of ADMIN_TOOLS) {
       if (tool.path) registryPaths.add(tool.path.split("?")[0]);
       for (const legacy of tool.legacyRoutes ?? []) registryPaths.add(legacy.split("?")[0]);
     }
     registryPaths.add("/admin"); // the Admin home — the Overview tool's own path
-    for (const path of RETIRED_DIRECTORY_PATHS) {
+    for (const path of PRESERVED_DIRECTORY_PATHS) {
       expect(registryPaths.has(path.split("?")[0]), `lost ${path}`).toBe(true);
+    }
+  });
+
+  it("LEGACY1 guard: names no eradicated path as a destination or a redirect", () => {
+    const named = new Set<string>();
+    for (const tool of ADMIN_TOOLS) {
+      if (tool.path) named.add(tool.path.split("?")[0]);
+      for (const legacy of tool.legacyRoutes ?? []) named.add(legacy.split("?")[0]);
+    }
+    for (const path of ERADICATED_PATHS) {
+      expect(named.has(path), `${path} is back in the registry`).toBe(false);
     }
   });
 
@@ -204,32 +229,53 @@ describe("admin registry — capability preservation", () => {
     }
   });
 
-  it("preserves the three quiz workspace aliases and the directory alias", () => {
+  it("preserves the three quiz workspace aliases", () => {
     const froms = legacyRouteMap().map((r) => r.from);
     for (const alias of [
       "/admin/quiz-builder",
       "/admin/quiz-review",
       "/admin/workspace",
-      "/admin/directory",
     ]) {
       expect(froms, alias).toContain(alias);
     }
   });
 
-  it("keeps the moderator panel intact and does not restore its Users tab", () => {
-    const mod = ADMIN_TOOLS.find((t) => t.id === "moderator-panel")!;
-    expect(mod.disposition).toBe("KEEP");
-    expect(mod.path).toBe("/moderator");
-    expect(mod.requiredRole).toBe("moderator+");
-    expect(mod.description).not.toMatch(/\bUsers\b/);
-    expect(mod.authorization).toMatch(/unchanged/i);
+  it("LEGACY1 guard: registers no retired voting-product tool", () => {
+    const ids = ADMIN_TOOLS.map((t) => t.id);
+    for (const id of [
+      "arena-collections",
+      "arena-bots",
+      "arena-promoted",
+      "arena-ranks",
+      "arena-play-layout",
+      "arena-gaming",
+      "arena-demo",
+      "arena-data-graphs",
+      "arena-preset-items-orphan",
+      "arena-swipe-ad-override",
+      "shop-grant-diamonds",
+      "moderator-panel",
+      "internal-docs",
+    ]) {
+      expect(ids, id).not.toContain(id);
+    }
+    // And no tool may advertise minting the retired currency.
+    for (const tool of ADMIN_TOOLS) {
+      expect(`${tool.title} ${tool.description}`, tool.id).not.toMatch(/diamond/i);
+    }
   });
 
-  it("does not mount the orphaned preset-items editor", () => {
-    const orphan = ADMIN_TOOLS.find((t) => t.id === "arena-preset-items-orphan")!;
-    expect(orphan.kind).toBe("gap");
-    expect(orphan.path).toBeUndefined();
-    expect(orphan.disposition).toBe("DEFERRED");
+  it("LEGACY1: Audio Studio kept its capability and gained its own home", () => {
+    const audio = ADMIN_TOOLS.find((t) => t.id === "audio-studio")!;
+    expect(audio).toBeTruthy();
+    expect(audio.area).toBe("studio");
+    expect(audio.section).toBe("audio");
+    expect(audio.kind).toBe("route");
+    expect(audio.path).toBe("/admin/audio-studio");
+    expect(audio.disposition).toBe("MOVE");
+    // Its old home was the retired shell — recorded, not resurrected.
+    expect(audio.oldLocation).toMatch(/admin\/gaming/);
+    expect(audio.authorization).toMatch(/audio_event_bindings|audio_assets/);
   });
 });
 
@@ -246,6 +292,7 @@ describe("admin registry — helpers", () => {
     expect(searchAdminTools("launch-readiness").map((t) => t.id)).toContain("ranked-overview");
     expect(searchAdminTools("/admin/blog").map((t) => t.id)).toContain("blog-cms");
     expect(searchAdminTools("17-tab").map((t) => t.id)).toEqual(["overview-dashboard"]);
+    expect(searchAdminTools("audio").map((t) => t.id)).toContain("audio-studio");
     expect(searchAdminTools("").length).toBe(ADMIN_TOOLS.length);
     expect(searchAdminTools("zzzz-no-such-tool").length).toBe(0);
   });
@@ -314,13 +361,22 @@ describe("FUNNEL1C — a single Admin inventory", () => {
     }
   });
 
-  it("keeps the retired paths as redirects owned by their canonical home", () => {
+  it("keeps only the redirects whose destination is a current surface", () => {
     const map = new Map(legacyRouteMap().map((r) => [r.from, r.to]));
-    expect(map.get("/admin/legacy-dashboard")).toBe("/admin");
-    expect(map.get("/admin/legacy-directory")).toBe(ADMIN_ALL_TOOLS_PATH);
-    expect(map.get("/admin/directory")).toBe(ADMIN_ALL_TOOLS_PATH);
-    expect(map.get("/admin/data")).toBe("/admin/arena/data-graphs");
     expect(map.get("/admin/demo-analytics")).toBe("/admin/premium-preview");
+    expect(map.get("/admin/users")).toBe("/admin/people?section=users&view=identities");
+    // LEGACY1 deleted the redirects that existed only to keep a dead concept
+    // reachable. A redirect to nowhere is not compatibility, it is a rumour.
+    for (const gone of [
+      "/admin/legacy-dashboard",
+      "/admin/legacy-directory",
+      "/admin/directory",
+      "/admin/data",
+      "/admin/about",
+    ]) {
+      expect(map.has(gone), gone).toBe(false);
+    }
+    expect(ADMIN_ALL_TOOLS_PATH).toBe("/admin/all-tools");
   });
 
   it("gives every navigable destination exactly one canonical tool", () => {
@@ -378,10 +434,10 @@ describe("FUNNEL1C — Analytics is first-class and unambiguous", () => {
     expect(toolsForArea("operations").filter((t) => /analytics/i.test(t.title))).toEqual([]);
   });
 
-  it("archives the Match & Rank graph builder under Arena", () => {
-    const graphs = ADMIN_TOOLS.find((t) => t.id === "arena-data-graphs")!;
-    expect(graphs.area).toBe("arena");
-    expect(graphs.disposition).toBe("ARCHIVE");
+  it("LEGACY1 deleted the Match & Rank graph builder outright", () => {
+    expect(ADMIN_TOOLS.find((t) => t.id === "arena-data-graphs")).toBeUndefined();
+    expect(existsSync(resolve(__dirname, "../admin-data-sources.ts"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "../../pages/AdminData.tsx"))).toBe(false);
   });
 
   it("has exactly one operator Quiz Diagnostics, and the old inspector is Developer-only", () => {

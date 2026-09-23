@@ -38,33 +38,13 @@ function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
 }
 
 export const Routes = {
-  Index: lazyWithRetry(() => import("@/pages/Index")),
-  Home: lazyWithRetry(() => import("@/pages/Home")),
   Auth: lazyWithRetry(() => import("@/pages/Auth")),
-  Play: lazyWithRetry(() => import("@/pages/Play")),
   Profile: lazyWithRetry(() => import("@/pages/Profile")),
-  Swipe: lazyWithRetry(() => import("@/pages/Swipe")),
-  SwipeHub: lazyWithRetry(() => import("@/pages/SwipeHub")),
-  Leagues: lazyWithRetry(() => import("@/pages/Leagues")),
-  Leaderboard: lazyWithRetry(() => import("@/pages/Leaderboard")),
-  SwipePreset: lazyWithRetry(() => import("@/pages/SwipePreset")),
   Settings: lazyWithRetry(() => import("@/pages/Settings")),
-  Referral: lazyWithRetry(() => import("@/pages/Referral")),
-  Shop: lazyWithRetry(() => import("@/pages/Shop")),
-  EloCheck: lazyWithRetry(() => import("@/pages/EloCheck")),
-  SwipeLeagues: lazyWithRetry(() => import("@/pages/SwipeLeagues")),
   UserProfile: lazyWithRetry(() => import("@/pages/UserProfile")),
   ResetPassword: lazyWithRetry(() => import("@/pages/ResetPassword")),
-  AdminPlay: lazyWithRetry(() => import("@/pages/AdminPlay")),
-  AdminData: lazyWithRetry(() => import("@/pages/AdminData")),
-  AdminDemo: lazyWithRetry(() => import("@/pages/AdminDemo")),
-  AdminGaming: lazyWithRetry(() => import("@/pages/AdminGaming")),
   SecretRoom: lazyWithRetry(() => import("@/pages/SecretRoom")),
-  Moderator: lazyWithRetry(() => import("@/pages/Moderator")),
   CustomLink: lazyWithRetry(() => import("@/pages/CustomLink")),
-  // Multiplayer / MultiplayerGame are deliberately absent: the legacy team
-  // lobby is retired and its routes redirect. Declaring them here would keep
-  // emitting their chunks even though nothing can navigate to them.
   Feedback: lazyWithRetry(() => import("@/pages/Feedback")),
   BlogIndex: lazyWithRetry(() => import("@/pages/blog/BlogIndex")),
   BlogPost: lazyWithRetry(() => import("@/pages/blog/BlogPost")),
@@ -105,7 +85,6 @@ export const Routes = {
   ProPlayTeamProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayTeamProfile")),
   ProPlayChampionProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayChampionProfile")),
   ProPlayMatchup: lazyWithRetry(() => import("@/pages/pro-play/ProPlayMatchup")),
-  AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
   AdminQuizBroadcast: lazyWithRetry(() => import("@/pages/admin/AdminQuizBroadcast")),
   QuizBroadcastView: lazyWithRetry(() => import("@/pages/admin/QuizBroadcastView")),
@@ -122,14 +101,8 @@ export const Routes = {
 
 /** Map URL path → list of route keys to warm. Supports basic prefix matching. */
 const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Routes)[] }> = [
-  { test: (p) => p === "/home", keys: ["Home"] },
-  { test: (p) => p === "/play", keys: ["Play"] },
-  { test: (p) => p === "/swipe", keys: ["SwipeHub", "SwipePreset", "Swipe"] },
-  { test: (p) => p === "/swipe-game", keys: ["Swipe"] },
-  { test: (p) => p.startsWith("/swipe/preset"), keys: ["SwipePreset"] },
   { test: (p) => p === "/profile", keys: ["Profile"] },
   { test: (p) => p === "/settings", keys: ["Settings"] },
-  { test: (p) => p === "/shop", keys: ["Shop"] },
   { test: (p) => p === "/combat-lab", keys: ["CombatLab"] },
   { test: (p) => p === "/combat-lab/diagnostics", keys: ["CombatLabDiagnostics"] },
   { test: (p) => p === "/quiz", keys: ["Quiz"] },
@@ -185,12 +158,9 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
     test: (p) => p === "/lol/pro-play/matchup",
     keys: ["ProPlayMatchup", "ProPlayPlayerProfile", "ProPlayTeamProfile"],
   },
-  { test: (p) => p === "/leaderboard" || p.startsWith("/leaderboard/"), keys: ["Leaderboard"] },
-  { test: (p) => p.startsWith("/leagues/"), keys: ["Leagues"] },
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },
   { test: (p) => p.startsWith("/blog/"), keys: ["BlogPost"] },
   { test: (p) => p === "/feedback", keys: ["Feedback"] },
-  { test: (p) => p === "/referral", keys: ["Referral"] },
 ];
 
 const warmed = new Set<string>();

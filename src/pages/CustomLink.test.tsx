@@ -4,8 +4,6 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import CustomLink from "./CustomLink";
 
 const mocks = vi.hoisted(() => ({
-  /** rpc("resolve_custom_link") result */
-  resolved: null as unknown,
   invite: null as null | { code: string },
 }));
 
@@ -24,20 +22,14 @@ vi.mock("@/integrations/supabase/client", () => ({
       });
       return chain;
     },
-    rpc: (name: string) =>
-      name === "resolve_custom_link"
-        ? Promise.resolve({ data: mocks.resolved, error: null })
-        : Promise.resolve({ data: null, error: null }),
   },
 }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null, loading: false }) }));
 
 function mount(slug: string) {
   return render(
     <MemoryRouter initialEntries={[`/${slug}`]}>
       <Routes>
         <Route path="/:slug" element={<CustomLink />} />
-        <Route path="/swipe/preset/:id" element={<div data-testid="preset-page" />} />
         <Route path="/auth" element={<div data-testid="auth-page" />} />
       </Routes>
     </MemoryRouter>,
@@ -46,7 +38,6 @@ function mount(slug: string) {
 
 describe("CustomLink catch-all", () => {
   beforeEach(() => {
-    mocks.resolved = null;
     mocks.invite = null;
   });
   afterEach(cleanup);
@@ -62,11 +53,21 @@ describe("CustomLink catch-all", () => {
     });
   });
 
-  it("recognized custom links still resolve and redirect", async () => {
-    mocks.resolved = [{ destination_type: "league", league_id: "league-1" }];
+  it("an active invite code sends the visitor to signup carrying that code", async () => {
+    mocks.invite = { code: "JOINME01" };
+    mount("joinme01");
+    await waitFor(() => {
+      expect(screen.getByTestId("auth-page")).toBeInTheDocument();
+    });
+  });
+
+  // LEGACY1: the retired voting product's slug destinations are gone. A slug
+  // that used to resolve to a swipe league or a "curated" /home config is now
+  // simply not found — there is no page left for it to reach.
+  it("no longer resolves retired custom-link destinations", async () => {
     mount("known-league-link");
     await waitFor(() => {
-      expect(screen.getByTestId("preset-page")).toBeInTheDocument();
+      expect(screen.getByText(/page not found/i)).toBeInTheDocument();
     });
   });
 });

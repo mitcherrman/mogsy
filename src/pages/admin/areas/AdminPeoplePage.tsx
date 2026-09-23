@@ -176,17 +176,6 @@ export default function AdminPeoplePage() {
               <AdminModeratorConfig />
             </div>
           )}
-          <AdminPanel
-            title="Moderator panel"
-            description="The moderator workspace is preserved exactly as deployed, at its own route and with its own gate. Narrowing it to the RLS-authorized subset would be a visible behaviour change for real moderators and is an owner decision, not a navigation one."
-            testId="people-moderator-link"
-          >
-            <AdminCrossLink
-              to="/moderator"
-              label="/moderator"
-              note="Collections · Bots · Comments · Invites · Aura Check"
-            />
-          </AdminPanel>
         </div>
       )}
 

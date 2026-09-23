@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { AuthProvider } from "./hooks/useAuth";
 import { AdminAuthProvider } from "./lib/admin-auth/AdminAuthProvider";
 import { PremiumSessionProvider } from "./hooks/usePremiumSession";
@@ -34,35 +34,18 @@ import {
   TEAM_SIM_DEV_ROUTE,
   TEAM_SIM_ROUTE,
 } from "@/lib/combat-lab/team-sim/featureGate";
-import { Suspense, type ReactElement } from "react";
+import { Suspense } from "react";
 import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
 
-const Index = R.Index.Component;
-const Home = R.Home.Component;
 const Auth = R.Auth.Component;
-const Play = R.Play.Component;
 const Profile = R.Profile.Component;
-const Swipe = R.Swipe.Component;
-const SwipeHub = R.SwipeHub.Component;
-const Leagues = R.Leagues.Component;
-const Leaderboard = R.Leaderboard.Component;
-const SwipePreset = R.SwipePreset.Component;
 const Settings = R.Settings.Component;
-const Referral = R.Referral.Component;
-const Shop = R.Shop.Component;
-const EloCheck = R.EloCheck.Component;
-const SwipeLeagues = R.SwipeLeagues.Component;
 const UserProfile = R.UserProfile.Component;
 const ResetPassword = R.ResetPassword.Component;
 // Anonymous -> permanent account confirmation callback (Concern B).
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
-const AdminPlay = R.AdminPlay.Component;
-const AdminData = R.AdminData.Component;
-const AdminDemo = R.AdminDemo.Component;
-const AdminGaming = R.AdminGaming.Component;
 const SecretRoom = R.SecretRoom.Component;
-const Moderator = R.Moderator.Component;
 const CustomLink = R.CustomLink.Component;
 // Multiplayer / MultiplayerGame are intentionally NOT bound here. The legacy
 // team lobby is retired: its routes redirect now, so the components — and the
@@ -110,7 +93,6 @@ const ProPlayPlayerProfile = R.ProPlayPlayerProfile.Component;
 const ProPlayTeamProfile = R.ProPlayTeamProfile.Component;
 const ProPlayChampionProfile = R.ProPlayChampionProfile.Component;
 const ProPlayMatchup = R.ProPlayMatchup.Component;
-const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
 const QuizBroadcastView = R.QuizBroadcastView.Component;
@@ -153,10 +135,12 @@ const AdminGameDataPage = lazy(() => import("./pages/admin/areas/AdminGameDataPa
 const AdminStudioPage = lazy(() => import("./pages/admin/areas/AdminStudioPage"));
 const AdminOperationsPage = lazy(() => import("./pages/admin/areas/AdminOperationsPage"));
 const AdminDeveloperPage = lazy(() => import("./pages/admin/areas/AdminDeveloperPage"));
-const AdminArenaPage = lazy(() => import("./pages/admin/areas/AdminArenaPage"));
 
 // Admin Platform Policies — the global platform switches.
 const AdminPlatformPolicies = lazy(() => import("./pages/admin/AdminPlatformPolicies"));
+
+// LEGACY1 — Audio Studio, rehomed out of the deleted /admin/gaming shell.
+const AdminAudioStudio = lazy(() => import("./pages/admin/AdminAudioStudio"));
 
 // WHATSNEW2 — the owner's Academy Updates desk: write, publish, withdraw, and
 // the surface's master switch. Database-backed; no code edit publishes a notice.
@@ -329,14 +313,6 @@ const teamSimElement = (
   </TeamSimErrorBoundary>
 );
 
-/**
- * League-only public mode: wraps non-League route elements so they redirect
- * to the League hub while the flag is on. Components stay in the codebase —
- * flip LEAGUE_ONLY_MODE in site-config.ts to restore them.
- */
-const leagueGate = (element: ReactElement) =>
-  LEAGUE_ONLY_MODE ? <Navigate to={LEAGUE_HOME_ROUTE} replace /> : element;
-
 function AuthQuerySyncBridge() {
   useAuthQuerySync();
   return null;
@@ -366,22 +342,14 @@ const App = () => (
           <BrowserRouter>
               <AcademyRadioController />
               <Routes>
-                {/* Root entrance. In League-only mode the Academy entry screen IS
-                    the homepage: it renders outside <Layout /> so no navbar or
-                    footer appears, and its call to action navigates on to
-                    LEAGUE_HOME_ROUTE. This deliberately does not use leagueGate,
-                    which redirects to /lol — the entrance replaces that redirect.
-                    With LEAGUE_ONLY_MODE off, / falls back to the legacy Mogsy
-                    landing exactly as before, so the flag keeps its meaning. */}
+                {/* Root entrance. The Academy entry screen IS the homepage: it
+                    renders outside <Layout /> so no navbar or footer appears, and
+                    its call to action navigates on to LEAGUE_HOME_ROUTE. LEGACY1
+                    deleted the pre-Mogzy Mogsy landing that used to sit behind a
+                    flag here, so there is one entrance and no second branch. */}
                 <Route
                   path="/"
-                  element={
-                    LEAGUE_ONLY_MODE ? (
-                      <Suspense fallback={<StartupSurface pathname="/" />}><MogzyEntryV2 seo="root" /></Suspense>
-                    ) : (
-                      <Suspense fallback={<RouteLoader />}><Index /></Suspense>
-                    )
-                  }
+                  element={<Suspense fallback={<StartupSurface pathname="/" />}><MogzyEntryV2 seo="root" /></Suspense>}
                 />
                 {/* HI1 Academy introduction. A real route, not modal state: it
                     survives refresh and direct navigation, and it stays reachable
@@ -390,9 +358,6 @@ const App = () => (
                     entrance decides who is sent here; opening it directly is
                     always honoured. */}
                 <Route path="/welcome" element={<Suspense fallback={<StartupSurface pathname="/welcome" />}><AcademyWelcomePage /></Suspense>} />
-                {/* Isolated preview of the legacy pre-Mogzy entry screen (src/pages/Index.tsx).
-                    Ungated on purpose — inspection only, not a production route. */}
-                <Route path="/dev/legacy-entry" element={<Suspense fallback={<RouteLoader />}><Index /></Suspense>} />
                 {/* Dev-only V2 entrance concept. Full-screen and layout-free like the
                     original, so it sits outside <Layout /> alongside the legacy route. */}
                 <Route path="/dev/mogzy-entry-v2" element={<Suspense fallback={<StartupSurface pathname="/dev/mogzy-entry-v2" />}><MogzyEntryV2 /></Suspense>} />
@@ -400,19 +365,8 @@ const App = () => (
                 <Route path="/auth/callback" element={<Suspense fallback={<RouteLoader />}><AuthCallback /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
                 <Route element={<Layout />}>
-                  <Route path="/home" element={leagueGate(<ProtectedRoute><Home /></ProtectedRoute>)} />
-                  <Route path="/play" element={leagueGate(<ProtectedRoute><Play /></ProtectedRoute>)} />
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/referral" element={leagueGate(<ProtectedRoute><Referral /></ProtectedRoute>)} />
-                  <Route path="/swipe" element={leagueGate(<ProtectedRoute><SwipeHub /></ProtectedRoute>)} />
-                  <Route path="/swipe-game" element={leagueGate(<ProtectedRoute><Swipe /></ProtectedRoute>)} />
-                  <Route path="/leagues/:type" element={leagueGate(<ProtectedRoute><Leagues /></ProtectedRoute>)} />
-                  <Route path="/leaderboard/:leagueId" element={leagueGate(<Leaderboard />)} />
-                  <Route path="/swipe/preset/:leagueId" element={leagueGate(<SwipePreset />)} />
-                  <Route path="/shop" element={leagueGate(<ProtectedRoute><Shop /></ProtectedRoute>)} />
-                  <Route path="/swipe-leagues" element={leagueGate(<ProtectedRoute><SwipeLeagues /></ProtectedRoute>)} />
-                  <Route path="/elo-check" element={leagueGate(<ProtectedRoute><EloCheck /></ProtectedRoute>)} />
                   {/* Authenticated-only: a signed-out visitor cannot read any
                       profile row under current RLS, so an unprotected route
                       could only ever render "Profile not found". */}
@@ -436,14 +390,6 @@ const App = () => (
                     <Route index element={<Suspense fallback={<RouteFallback />}><AdminOverviewPage /></Suspense>} />
                     <Route path="all-tools" element={<Suspense fallback={<RouteFallback />}><AdminAllToolsPage /></Suspense>} />
                     <Route path="analytics" element={<Suspense fallback={<RouteFallback />}><AdminAnalyticsPage /></Suspense>} />
-                    {/* Bookmark compatibility only — redirects, never destinations.
-                        /admin/directory was the only admin link the HUD ever had.
-                        FUNNEL1C deleted the second registry (admin-directory.ts)
-                        and the legacy 17-tab dashboard: every tab of it had a
-                        canonical home, so both old pages redirect to theirs. */}
-                    <Route path="directory" element={<Navigate to="/admin/all-tools" replace />} />
-                    <Route path="legacy-directory" element={<Navigate to="/admin/all-tools" replace />} />
-                    <Route path="legacy-dashboard" element={<Navigate to="/admin" replace />} />
                     <Route path="people" element={<Suspense fallback={<RouteFallback />}><AdminPeoplePage /></Suspense>} />
                     {/* FUNNEL1C/ADMIN2 — the master-only identity directory is
                         now the Identities view of People › Users, so accounts
@@ -466,20 +412,12 @@ const App = () => (
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
                     <Route path="operations" element={<Suspense fallback={<RouteFallback />}><AdminOperationsPage /></Suspense>} />
                     <Route path="developer" element={<Suspense fallback={<RouteFallback />}><AdminDeveloperPage /></Suspense>} />
-                    <Route path="arena" element={<Suspense fallback={<RouteFallback />}><AdminArenaPage /></Suspense>} />
-                    {/* Existing admin pages, unchanged except that they now render
-                        inside the shell. Their own guards are redundant under the
-                        layout gate and are therefore not repeated. */}
-                    <Route path="play" element={<Suspense fallback={<RouteFallback />}><AdminPlay /></Suspense>} />
-                    {/* The retired voting product's graph builder, archived under
-                        Arena (FUNNEL1C). /admin/data redirects for bookmarks. */}
-                    <Route path="arena/data-graphs" element={<Suspense fallback={<RouteFallback />}><AdminData /></Suspense>} />
-                    <Route path="data" element={<Navigate to="/admin/arena/data-graphs" replace />} />
-                    <Route path="demo" element={<Suspense fallback={<RouteFallback />}><AdminDemo /></Suspense>} />
-                    <Route path="gaming" element={<Suspense fallback={<RouteFallback />}><AdminGaming /></Suspense>} />
+                    {/* LEGACY1 — the Audio Studio's own home. It used to be the
+                        ninth tab of /admin/gaming, the retired voting product's
+                        config shell; that shell is deleted and this is not. */}
+                    <Route path="audio-studio" element={<Suspense fallback={<RouteFallback />}><AdminAudioStudio /></Suspense>} />
                     <Route path="blog" element={<Suspense fallback={<RouteFallback />}><AdminBlog /></Suspense>} />
                     <Route path="blog/:id" element={<Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense>} />
-                    <Route path="about" element={<Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense>} />
                     <Route path="diagnostics" element={<Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense>} />
                     <Route path="platform-policies" element={<Suspense fallback={<RouteFallback />}><AdminPlatformPolicies /></Suspense>} />
                     <Route path="academy-updates" element={<Suspense fallback={<RouteFallback />}><AdminAcademyUpdates /></Suspense>} />
@@ -493,13 +431,6 @@ const App = () => (
                         the same require_admin every other admin read uses. */}
                     <Route path="ranked/generator-lab" element={<Suspense fallback={<RouteFallback />}><MasteryGeneratorLab /></Suspense>} />
                   </Route>
-                  <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteFallback />}><Moderator /></Suspense></AdminRoute>} />
-                  {/* Retired legacy team lobby. Previously leagueGate'd (which
-                      already redirected in League-only mode); now an explicit
-                      redirect so the intent is permanent rather than a side
-                      effect of the flag. */}
-                  <Route path="/multiplayer" element={<Navigate to={LEAGUE_HOME_ROUTE} replace />} />
-                  <Route path="/multiplayer/game/:gameId" element={<Navigate to={LEAGUE_HOME_ROUTE} replace />} />
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />

@@ -56,9 +56,7 @@ export function AdminAreaHeader({
             <span
               className={cn(
                 "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                area.kind === "archived"
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-amber-400/10 text-amber-300",
+                "bg-amber-400/10 text-amber-300",
               )}
               data-testid={`admin-area-badge-${area.id}`}
             >

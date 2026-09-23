@@ -90,8 +90,8 @@ export default function AdminAllToolsPanel() {
         <p className="mt-2 text-[11px] text-muted-foreground" data-testid="admin-all-tools-count">
           Showing {results.length} of {ADMIN_TOOLS.length}. Ledger: {counts.KEEP} kept ·{" "}
           {counts.MOVE} moved · {counts.MERGE} merged · {counts.REDIRECT} redirected ·{" "}
-          {counts.ARCHIVE} archived · {counts["DEVELOPER-ONLY"]} developer-only ·{" "}
-          {counts.DEFERRED} deferred but still accessible · 0 lost.
+          {counts["DEVELOPER-ONLY"]} developer-only · {counts.DEFERRED} deferred but still
+          accessible.
         </p>
       </AdminPanel>
 

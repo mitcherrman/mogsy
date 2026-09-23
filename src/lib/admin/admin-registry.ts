@@ -7,8 +7,8 @@
 // where a capability lives. It stays descriptive: it never registers routes.
 // Route registration remains in App.tsx, and `admin-registry.routes.test.ts`
 // asserts the two agree, which is what stops the drift the Admin Atlas
-// documented across `admin-directory.ts`, `/admin/about` §14 and
-// `/admin/diagnostics`.
+// documented across the hand-maintained inventories LEGACY1 finished deleting
+// (`admin-directory.ts`, `/admin/about`) and `/admin/diagnostics`.
 //
 // AUTHORIZATION NOTE — read before editing.
 // Nothing in this file grants, checks or changes authorization. `requiredRole`
@@ -20,7 +20,7 @@
 
 /** Canonical Admin home. The HUD entry point. */
 export const ADMIN_HOME_PATH = "/admin";
-/** The tool index — successor to `/admin/directory`, which redirects here. */
+/** The tool index, and the only Admin inventory. */
 export const ADMIN_ALL_TOOLS_PATH = "/admin/all-tools";
 
 // --- Areas -----------------------------------------------------------------
@@ -36,16 +36,16 @@ export const ADMIN_AREA_IDS = [
   "studio",
   "operations",
   "developer",
-  "arena",
 ] as const;
 export type AdminAreaId = (typeof ADMIN_AREA_IDS)[number];
 
 /**
- * How an area is presented. `live` areas are the working application;
- * `developer` is engineering-only tooling; `archived` is the retired voting
- * product, preserved and labelled but never presented as an active product.
+ * How an area is presented. `live` areas are the working application and
+ * `developer` is engineering-only tooling. There is no third kind: LEGACY1
+ * deleted the retired voting product rather than keeping it as an archive, so
+ * every area in this registry is part of the current Mogzy product.
  */
-export type AdminAreaKind = "live" | "developer" | "archived";
+export type AdminAreaKind = "live" | "developer";
 
 export interface AdminAreaSection {
   /** Stable tab id — appears in the URL as ?section=<id>. */
@@ -68,7 +68,7 @@ export interface AdminArea {
   /** Short label used in the sidebar when the full label is long. */
   path: string;
   kind: AdminAreaKind;
-  /** Rendered next to the label for non-live areas ("Archived", "Engineering"). */
+  /** Rendered next to the label for non-live areas ("Engineering"). */
   badge?: string;
   description: string;
   sections: AdminAreaSection[];
@@ -207,6 +207,7 @@ export const ADMIN_AREAS: AdminArea[] = [
       { id: "broadcast", label: "Broadcast", summary: "The live broadcast control room and its capture surfaces." },
       { id: "video-social", label: "Video & Social", summary: "Video export commands, render harness, content studio." },
       { id: "graphics", label: "Graphics", summary: "Stat-graphic and race-video explorers." },
+      { id: "audio", label: "Audio", summary: "Cue policy and uploaded sound replacements." },
     ],
   },
   {
@@ -223,9 +224,8 @@ export const ADMIN_AREAS: AdminArea[] = [
       {
         id: "data-ops",
         label: "Data Maintenance",
-        summary: "Admin CSV export. Product analytics live in Analytics; the retired voting product's graphs live in Arena.",
+        summary: "Admin CSV export. Product analytics live in Analytics.",
       },
-      { id: "docs", label: "Internal Docs", summary: "The internal architecture reference." },
       { id: "danger-zone", label: "Danger Zone", summary: "Destructive and high-impact operations, documented not armed." },
     ],
   },
@@ -243,31 +243,13 @@ export const ADMIN_AREAS: AdminArea[] = [
       { id: "harnesses", label: "Harnesses", summary: "Render and capture harnesses." },
     ],
   },
-  {
-    id: "arena",
-    label: "Arena",
-    path: "/admin/arena",
-    kind: "archived",
-    badge: "Archived",
-    description:
-      "The retired Mogsy voting product. Every tool is preserved and still works — it is labelled archived, not removed.",
-    sections: [
-      { id: "collections", label: "Collections & Leagues", summary: "Preset items, league bots and promoted leagues." },
-      { id: "presentation", label: "Presentation", summary: "Themes and Arena rank settings." },
-      {
-        id: "operations",
-        label: "Arena Operations",
-        summary: "Play layout, gaming config, the demo studio and the archived Match & Rank data graphs.",
-      },
-    ],
-  },
 ];
 
 export const ADMIN_AREAS_BY_ID: Record<AdminAreaId, AdminArea> = Object.fromEntries(
   ADMIN_AREAS.map((a) => [a.id, a]),
 ) as Record<AdminAreaId, AdminArea>;
 
-/** Live areas, then Developer, then the archived Arena — the nav order. */
+/** Live areas, then Developer — the nav order. */
 export const ADMIN_NAV_AREAS = ADMIN_AREAS;
 
 // --- Tools -----------------------------------------------------------------
@@ -280,7 +262,6 @@ export const ADMIN_NAV_AREAS = ADMIN_AREAS;
  *  MOVE            — same capability, new canonical home.
  *  MERGE           — folded into a destination that already covered it.
  *  REDIRECT        — its old path now redirects to the new canonical home.
- *  ARCHIVE         — preserved and working, presented under Arena as archived.
  *  DEVELOPER-ONLY  — classified as engineering tooling and homed in Developer.
  *  DEFERRED        — not migrated in this pass; still reachable exactly as before.
  */
@@ -289,7 +270,6 @@ export type AdminDisposition =
   | "MOVE"
   | "MERGE"
   | "REDIRECT"
-  | "ARCHIVE"
   | "DEVELOPER-ONLY"
   | "DEFERRED";
 
@@ -363,12 +343,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     path: "/admin",
     oldLocation: "/admin (legacy 17-tab dashboard shell)",
     disposition: "MERGE",
-    legacyRoutes: ["/admin/legacy-dashboard"],
     dangerLevel: "none",
     status: "Production",
     authorization: "AdminRoute (admin, master_admin) — unchanged.",
     notes:
-      "FUNNEL1C retired the legacy 17-tab dashboard: every tab already had a canonical home (People, Operations, Arena) and every header button a registered destination. /admin/legacy-dashboard now redirects here.",
+      "FUNNEL1C deleted the legacy 17-tab dashboard; LEGACY1 deleted the /admin/legacy-dashboard redirect that outlived it. This is the only Admin home.",
   },
   {
     id: "all-tools",
@@ -381,12 +360,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     path: ADMIN_ALL_TOOLS_PATH,
     oldLocation: "/admin/directory",
     disposition: "REDIRECT",
-    legacyRoutes: ["/admin/directory", "/admin/legacy-directory"],
     dangerLevel: "none",
     status: "Production",
-    authorization: "AdminRoute + AdminAuthGate — unchanged from /admin/directory.",
+    authorization: "AdminRoute + AdminAuthGate — unchanged.",
     notes:
-      "Sourced from this registry — the only Admin inventory. FUNNEL1C deleted the second hand-written one (admin-directory.ts) and its page; /admin/directory and /admin/legacy-directory both redirect here.",
+      "Sourced from this registry — the only Admin inventory. FUNNEL1C deleted the second hand-written one (admin-directory.ts) and its page; LEGACY1 deleted the redirects that survived it.",
   },
   // =========================================================================
   // ANALYTICS
@@ -488,19 +466,18 @@ export const ADMIN_TOOLS: AdminTool[] = [
     id: "people-invites",
     title: "Invite Links",
     description:
-      "Invite link creation and management, including the grant_admin / grant_moderator switches and nested custom links.",
+      "Invite link creation and management, including the grant_admin / grant_moderator switches.",
     area: "people",
     section: "roles-access",
     kind: "panel",
     path: "/admin/people?section=roles-access",
-    oldLocation: "/admin → Invites tab (page 2); also /moderator → Invites",
+    oldLocation: "/admin → Invites tab (page 2)",
     disposition: "MOVE",
     dangerLevel: "mutates-production",
     warning:
       "Role-granting invites promote whoever redeems them. redeem_invite_link writes to user_roles.",
     status: "Production",
     authorization: "AdminRoute (admin, master_admin); invite_links RLS is admin-only — unchanged.",
-    notes: "Still also present in /moderator, which is preserved as-is (see the /moderator entry).",
   },
   {
     id: "people-custom-links",
@@ -525,7 +502,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     section: "moderation",
     kind: "panel",
     path: "/admin/people?section=moderation",
-    oldLocation: "/admin → Comments tab (page 2); also /moderator → Comments",
+    oldLocation: "/admin → Comments tab (page 2)",
     disposition: "MOVE",
     dangerLevel: "caution",
     warning: "Hiding or deleting a comment changes public content immediately.",
@@ -608,26 +585,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     authorization: "AdminRoute (admin, master_admin) — unchanged.",
     notes: 'Placed beside the admin inbox and explicitly labelled outbound, ending the "Notifications" name collision.',
-  },
-  {
-    id: "moderator-panel",
-    title: "Moderator Panel",
-    description:
-      "The moderator workspace: Collections, Bots, Comments, Invites and Aura Check. Preserved exactly as deployed.",
-    area: "people",
-    section: "moderation",
-    kind: "route",
-    path: "/moderator",
-    oldLocation: "/moderator",
-    disposition: "KEEP",
-    legacyRoutes: ["/moderator"],
-    dangerLevel: "none",
-    requiredRole: "moderator+",
-    status: "Production",
-    authorization:
-      "AdminRoute (moderator, admin, master_admin) plus its own user_roles read — unchanged. No RLS, role or capability change.",
-    notes:
-      "Kept, not dissolved. Narrowing it to the RLS-authorized subset is a visible behaviour change for real moderators and is an owner decision, not a navigation decision. It adopts the shared Admin shell chrome only.",
   },
 
   // =========================================================================
@@ -1512,6 +1469,31 @@ export const ADMIN_TOOLS: AdminTool[] = [
     notes: "Produces published assets. Gains its first navigation entry.",
   },
 
+  {
+    // LEGACY1. This is a CURRENT capability (SFX1's canonical audio_assets /
+    // audio_event_bindings stores) that had no home of its own: it was the
+    // ninth tab of /admin/gaming, the retired voting product's config shell.
+    // Deleting that shell without moving this first would have deleted a live
+    // operator surface, so it was rehomed before the shell was removed.
+    id: "audio-studio",
+    title: "Audio Studio",
+    description:
+      "Sound-effect cue policy and uploaded replacements: which cues play, and which asset each one uses.",
+    area: "studio",
+    section: "audio",
+    kind: "route",
+    path: "/admin/audio-studio",
+    oldLocation: "/admin/gaming → Sounds tab (the retired Gaming Config shell)",
+    disposition: "MOVE",
+    dangerLevel: "caution",
+    warning: "Writes live cue policy and asset bindings for every player.",
+    status: "Production",
+    authorization:
+      "AdminRoute (admin, master_admin) via the /admin layout route, plus RLS on audio_assets, audio_event_bindings and app_settings — byte-for-byte the gate it had under /admin/gaming.",
+    notes:
+      "Saving publishes the new snapshot to mounted players without a reload (SFX1.6). Visitor mute stays independent.",
+  },
+
   // =========================================================================
   // OPERATIONS
   // =========================================================================
@@ -1601,7 +1583,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     authorization: "AdminRoute (admin, master_admin) — unchanged.",
     notes:
-      "Placed in Operations rather than Arena: banners configure the live site, not the retired voting product.",
+      "Banners configure the live site.",
   },
   {
     id: "railway-flags-view",
@@ -1689,27 +1671,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "DEFERRED — STILL ACCESSIBLE. Documented so the capability is visible; its published output is linked from Game Data › Mechanics.",
   },
   {
-    id: "arena-data-graphs",
-    title: "Arena Data Graphs",
-    description:
-      "The retired voting product's configurable graphs: matches, Elo & rank, items, comments and the legacy ad ledger. Not Mogzy product analytics.",
-    area: "arena",
-    section: "operations",
-    kind: "route",
-    path: "/admin/arena/data-graphs",
-    oldLocation: "/admin/data (\"Analytics Graphs\" under Operations › Data Operations)",
-    disposition: "ARCHIVE",
-    legacyRoutes: ["/admin/data"],
-    dangerLevel: "caution",
-    warning: "Reads production user data.",
-    requiredRole: "master_admin",
-    status: "Legacy",
-    authorization:
-      "Inherits the /admin layout gate; the page itself admits master_admin only (its own user_roles check) — unchanged.",
-    notes:
-      "FUNNEL1C archived it under Arena: most of its graphs are Match & Rank era, and its Users graphs read profiles (one row per guest session). Current product metrics are Analytics.",
-  },
-  {
     id: "data-ops-csv",
     title: "Admin CSV Export",
     description: "Exports the admin data set as CSV.",
@@ -1724,23 +1685,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
     requiredRole: "master_admin",
     status: "Production",
     authorization: "Master-only exactly as before — the same isMasterAdmin gate on the same action.",
-  },
-  {
-    id: "internal-docs",
-    title: "Internal Docs",
-    description: "The hand-written internal architecture and route reference.",
-    area: "operations",
-    section: "docs",
-    kind: "route",
-    path: "/admin/about",
-    oldLocation: "/admin/about",
-    disposition: "KEEP",
-    legacyRoutes: ["/admin/about"],
-    dangerLevel: "none",
-    status: "Legacy",
-    authorization: "AdminRoute — unchanged.",
-    notes:
-      "Its §14 route inventory is stale and omits ten current admin pages. Left as-is; All Tools is now the derived inventory of record.",
   },
   {
     id: "db-restore",
@@ -1818,22 +1762,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
     notes: "All ten remain registered and reachable; the index links each one.",
   },
   {
-    id: "dev-legacy-entry",
-    title: "Legacy Entry Preview",
-    description: "Preview of the retired pre-Mogzy landing page.",
-    area: "developer",
-    section: "prototypes",
-    kind: "route",
-    path: "/dev/legacy-entry",
-    oldLocation: "/dev/legacy-entry — unlisted",
-    disposition: "DEVELOPER-ONLY",
-    legacyRoutes: ["/dev/legacy-entry"],
-    dangerLevel: "none",
-    status: "Prototype",
-    developerOnly: true,
-    authorization: "UNCHANGED — no route gate.",
-  },
-  {
     id: "dev-entry-v2",
     title: "Entry Screen Concept",
     description: "The entry-screen concept; the same component serves the root route in League-only mode.",
@@ -1866,174 +1794,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization: "Refuses outside DEV builds — unchanged.",
   },
 
-  // =========================================================================
-  // ARENA (archived)
-  // =========================================================================
-  {
-    id: "arena-collections",
-    title: "Collections",
-    description: "Leagues, preset items, preset item images and matches for the retired voting product.",
-    area: "arena",
-    section: "collections",
-    kind: "panel",
-    path: "/admin/arena?section=collections",
-    oldLocation: "/admin → Collections tab (page 1); also /moderator → Collections",
-    disposition: "ARCHIVE",
-    dangerLevel: "caution",
-    warning: "Writes preset item and league data.",
-    status: "Legacy",
-    authorization: "AdminRoute (admin, master_admin) — unchanged. Also still in /moderator, unchanged.",
-  },
-  {
-    id: "arena-bots",
-    title: "League Bots",
-    description: "Bot profile creation and deletion for the voting product. Unrelated to Ranked Bot.",
-    area: "arena",
-    section: "collections",
-    kind: "panel",
-    path: "/admin/arena?section=collections",
-    oldLocation: "/admin → Bots tab (page 1); also /moderator → Bots",
-    disposition: "ARCHIVE",
-    dangerLevel: "caution",
-    warning: "Creates and deletes real profile rows.",
-    status: "Legacy",
-    authorization: "AdminRoute (admin, master_admin) — unchanged.",
-    notes: 'Renamed "League Bots" to end the name collision with Ranked Bot, which is a different concept entirely.',
-  },
-  {
-    id: "arena-promoted",
-    title: "Promoted Leagues",
-    description: "League promotion flags.",
-    area: "arena",
-    section: "collections",
-    kind: "panel",
-    path: "/admin/arena?section=collections",
-    oldLocation: "/admin → Promoted tab (page 1)",
-    disposition: "ARCHIVE",
-    dangerLevel: "caution",
-    warning: "Changes which leagues are promoted to users.",
-    status: "Legacy",
-    authorization: "AdminRoute (admin, master_admin) — unchanged.",
-  },
-  {
-    id: "arena-ranks",
-    title: "Arena Ranks",
-    description: "Rank thresholds for the voting product. A different concept from Ranked tiers.",
-    area: "arena",
-    section: "presentation",
-    kind: "panel",
-    path: "/admin/arena?section=presentation",
-    oldLocation: "/admin → Ranks tab (page 4, master-only)",
-    disposition: "ARCHIVE",
-    dangerLevel: "caution",
-    warning: "Changes rank thresholds for every user of the voting product.",
-    requiredRole: "master_admin",
-    status: "Legacy",
-    authorization: "Master-only in the UI exactly as before.",
-    notes: 'Renamed "Arena Ranks" to end the name collision with Ranked tier configuration.',
-  },
-  {
-    id: "arena-play-layout",
-    title: "Play Layout",
-    description:
-      "Play-hub layout editor: top-level items, categories, compete leagues, card stats and multiplayer settings.",
-    area: "arena",
-    section: "operations",
-    kind: "route",
-    path: "/admin/play",
-    oldLocation: "/admin/play — linked only from the master-only header strip",
-    disposition: "ARCHIVE",
-    legacyRoutes: ["/admin/play"],
-    dangerLevel: "caution",
-    warning: "Writes the live play-hub layout.",
-    status: "Legacy",
-    authorization:
-      "AdminRoute (admin, master_admin) — unchanged. Its internal moderator branch remains unreachable, exactly as before.",
-  },
-  {
-    id: "arena-gaming",
-    title: "Gaming Config",
-    description:
-      "Nine tabs: swipe games, swipe tab, first game, aura check, multiplayer, league display, ads, animations and sounds.",
-    area: "arena",
-    section: "operations",
-    kind: "route",
-    path: "/admin/gaming",
-    oldLocation: "/admin/gaming — linked only from the master-only header strip",
-    disposition: "ARCHIVE",
-    legacyRoutes: ["/admin/gaming"],
-    dangerLevel: "caution",
-    warning: "Writes live game and advertising configuration.",
-    status: "Legacy",
-    authorization: "AdminRoute (admin, master_admin) — unchanged.",
-    notes:
-      "Its Aura Check tab is the same component /moderator mounts, and its Multiplayer tab configures a feature whose user routes now redirect. Both preserved.",
-  },
-  {
-    id: "arena-demo",
-    title: "Demo Studio",
-    description: "Card and preset presentation sandbox.",
-    area: "arena",
-    section: "operations",
-    kind: "route",
-    path: "/admin/demo",
-    oldLocation: "/admin/demo",
-    disposition: "ARCHIVE",
-    legacyRoutes: ["/admin/demo"],
-    dangerLevel: "none",
-    status: "Legacy",
-    authorization:
-      "AdminRoute (admin, master_admin) — unchanged. Its moderator and demo_access branches remain unreachable, exactly as before.",
-  },
-  {
-    id: "arena-preset-items-orphan",
-    title: "Preset Items Editor (orphaned)",
-    description:
-      "A 405-line preset item editor with seven write paths. Imported by nothing and reachable from nowhere.",
-    area: "arena",
-    section: "collections",
-    kind: "gap",
-    oldLocation: "components/admin/AdminPresetItems.tsx — zero imports anywhere in src/",
-    disposition: "DEFERRED",
-    dangerLevel: "caution",
-    warning: "Seven unreviewed write paths against preset item data.",
-    status: "Legacy",
-    authorization: "n/a — not mounted anywhere.",
-    notes:
-      "DEFERRED — deliberately NOT mounted. It is unreachable today, so mounting it would ADD a capability rather than preserve one. The file is untouched; recorded here so it is no longer invisible. Owner decision.",
-  },
-  {
-    id: "arena-swipe-ad-override",
-    title: "Swipe Staff Ad Override",
-    description: "Staff QA override of the ad gate on the swipe pages.",
-    area: "arena",
-    section: "operations",
-    kind: "embedded",
-    path: "/swipe-game",
-    oldLocation: "/swipe-game, /swipe/preset/:id — inline user_roles read",
-    disposition: "KEEP",
-    dangerLevel: "none",
-    status: "Legacy",
-    authorization: "Inline user_roles read (admin / master_admin / moderator) — unchanged.",
-    notes: "Kept in place; documented so it is visible to an inventory.",
-  },
-  {
-    id: "shop-grant-diamonds",
-    title: "Grant Diamonds",
-    description: "Direct economy mutation embedded in the shop.",
-    area: "people",
-    section: "users",
-    kind: "embedded",
-    path: "/shop",
-    oldLocation: "/shop — inline user_roles read",
-    disposition: "KEEP",
-    dangerLevel: "mutates-production",
-    warning: "Mints currency directly into a user's balance.",
-    status: "Production",
-    authorization: "Inline user_roles read — unchanged.",
-    notes:
-      "Kept in place as a contextual affordance. Whether it moves into Users is an owner decision (IA §O.7); it is recorded here so it is no longer invisible.",
-  },
   {
     id: "blog-edit-fab",
     title: "Blog Post Edit Link",
@@ -2125,7 +1885,6 @@ export function dispositionCounts(): Record<AdminDisposition, number> {
     MOVE: 0,
     MERGE: 0,
     REDIRECT: 0,
-    ARCHIVE: 0,
     "DEVELOPER-ONLY": 0,
     DEFERRED: 0,
   } as Record<AdminDisposition, number>;

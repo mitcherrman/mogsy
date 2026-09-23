@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Operations — configuration, health, jobs, data operations, docs, Danger Zone.
+// Operations — configuration, health, jobs, data operations, Danger Zone.
 //
 // Configuration is the one place all three configuration stores are visible
 // together. It does NOT unify them: no setting is migrated, no fourth
@@ -343,20 +343,6 @@ export default function AdminOperationsPage() {
       )}
 
       {section.id === "data-ops" && <DataOps isMasterAdmin={isMasterAdmin} />}
-
-      {section.id === "docs" && (
-        <div className="space-y-4">
-          <AdminToolGrid tools={toolsForSection("operations", "docs")} />
-          <p className={cn("text-[11px] text-muted-foreground")}>
-            The hand-written inventory in Internal Docs is stale and omits ten current admin pages.
-            The derived inventory of record is now{" "}
-            <Link to="/admin/all-tools" className="text-primary underline-offset-2 hover:underline">
-              All Tools
-            </Link>
-            .
-          </p>
-        </div>
-      )}
 
       {section.id === "danger-zone" && <DangerZone isMasterAdmin={isMasterAdmin} />}
     </div>

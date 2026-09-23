@@ -1,3 +1,30 @@
+// ---------------------------------------------------------------------------
+// Admin · Invite Links (People › Roles & Access).
+//
+// What an invite link does today: it grants a ROLE or an entitlement on signup
+// — admin, moderator, or Premium — and it records who redeemed it.
+//
+// LEGACY1 removed everything else this panel used to carry, all of it part of
+// the retired Mogsy voting product and none of it reachable any more:
+//
+//   · the currency grants (diamonds, boosts, ELO shields, reveals, rewinds) —
+//     Mogzy has no product currency, so an admin tool that mints one is a
+//     retired concept, not a capability
+//   · the "User Referral Program" reward table — /referral is deleted
+//   · "Recommended Categories" (Anime, Movies, Food …) — those fed the swipe
+//     hub's "Suggested For You", and the swipe product is deleted
+//   · the nested Custom URL Slugs editor (AdminCustomLinks) — every slug
+//     destination it could write was a swipe league or the retired /home
+//
+// The columns behind the removed controls still exist in `invite_links` and
+// `user_invite_settings` and are documented as historical residue in
+// LEGACY1_HANDOFF.md. Nothing here reads or writes them now, so a new link
+// simply leaves them at their database defaults.
+//
+// AUTHORIZATION unchanged: rendered inside the /admin layout gate, and
+// invite_links / invite_redemptions RLS remains admin-only.
+// ---------------------------------------------------------------------------
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -5,11 +32,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Link2, Copy, Trash2, Users, Shield, Plus, ChevronDown, ChevronUp, Gift, Clock, User } from "lucide-react";
+import { Copy, Trash2, Shield, Plus, ChevronDown, ChevronUp, Gift, Clock, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import AdminCustomLinks from "./AdminCustomLinks";
 import { SITE_URL } from "@/lib/site-config";
 
 interface InviteLink {
@@ -20,13 +45,6 @@ interface InviteLink {
   grant_admin: boolean;
   grant_moderator: boolean;
   grant_pro: boolean;
-  grant_diamonds: number;
-  grant_boost_credits: number;
-  grant_elo_shields: number;
-  grant_reveals: number;
-  grant_rewinds: number;
-  recommended_categories: string[];
-  recommended_league_ids: string[];
   max_uses: number | null;
   times_used: number;
   is_active: boolean;
@@ -46,18 +64,6 @@ interface Redemption {
   link_code?: string;
 }
 
-interface UserInviteSettings {
-  id: string;
-  reward_diamonds: number;
-  reward_boost_credits: number;
-  reward_elo_bonus: number;
-  referrer_diamonds: number;
-  referrer_boost_credits: number;
-  is_enabled: boolean;
-}
-
-const ALL_CATEGORIES = ["Anime", "Movies", "Video Games", "Celebrities", "Sports", "Food", "Other"];
-
 function generateCode(): string {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
@@ -66,7 +72,6 @@ export default function AdminInviteLinks() {
   const { user } = useAuth();
   const [links, setLinks] = useState<InviteLink[]>([]);
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
-  const [userSettings, setUserSettings] = useState<UserInviteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -77,12 +82,6 @@ export default function AdminInviteLinks() {
     grant_admin: false,
     grant_moderator: false,
     grant_pro: false,
-    grant_diamonds: 0,
-    grant_boost_credits: 0,
-    grant_elo_shields: 0,
-    grant_reveals: 0,
-    grant_rewinds: 0,
-    recommended_categories: [] as string[],
     max_uses: "",
     expires_days: "",
   });
@@ -90,14 +89,12 @@ export default function AdminInviteLinks() {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [{ data: linksData }, { data: settingsData }, { data: redemptionData }] = await Promise.all([
+    const [{ data: linksData }, { data: redemptionData }] = await Promise.all([
       supabase.from("invite_links").select("*").order("created_at", { ascending: false }),
-      supabase.from("user_invite_settings").select("*").limit(1).single(),
       supabase.from("invite_redemptions").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
     const allLinks = (linksData as InviteLink[]) || [];
     setLinks(allLinks);
-    setUserSettings(settingsData as UserInviteSettings | null);
 
     // Enrich redemptions with user names and link info
     const rData = (redemptionData || []) as Redemption[];
@@ -140,12 +137,6 @@ export default function AdminInviteLinks() {
       created_by_user_id: user.id,
       grant_admin: form.grant_admin,
       grant_pro: form.grant_pro,
-      grant_diamonds: form.grant_diamonds,
-      grant_boost_credits: form.grant_boost_credits,
-      grant_elo_shields: form.grant_elo_shields,
-      grant_reveals: form.grant_reveals,
-      grant_rewinds: form.grant_rewinds,
-      recommended_categories: form.recommended_categories,
       max_uses: form.max_uses ? parseInt(form.max_uses) : null,
       expires_at: expiresAt,
       grant_moderator: form.grant_moderator,
@@ -158,8 +149,6 @@ export default function AdminInviteLinks() {
       setShowCreate(false);
       setForm({
         label: "", grant_admin: false, grant_moderator: false, grant_pro: false,
-        grant_diamonds: 0, grant_boost_credits: 0, grant_elo_shields: 0,
-        grant_reveals: 0, grant_rewinds: 0, recommended_categories: [],
         max_uses: "", expires_days: "",
       });
       loadAll();
@@ -179,31 +168,6 @@ export default function AdminInviteLinks() {
     toast.success("Link deleted");
   };
 
-  const saveUserSettings = async () => {
-    if (!userSettings) return;
-    setSaving(true);
-    const { error } = await supabase.from("user_invite_settings").update({
-      reward_diamonds: userSettings.reward_diamonds,
-      reward_boost_credits: userSettings.reward_boost_credits,
-      reward_elo_bonus: userSettings.reward_elo_bonus,
-      referrer_diamonds: userSettings.referrer_diamonds,
-      referrer_boost_credits: userSettings.referrer_boost_credits,
-      is_enabled: userSettings.is_enabled,
-      updated_at: new Date().toISOString(),
-    }).eq("id", userSettings.id);
-    if (error) toast.error("Failed to save"); else toast.success("Settings saved");
-    setSaving(false);
-  };
-
-  const toggleCategory = (cat: string) => {
-    setForm((f) => ({
-      ...f,
-      recommended_categories: f.recommended_categories.includes(cat)
-        ? f.recommended_categories.filter((c) => c !== cat)
-        : [...f.recommended_categories, cat],
-    }));
-  };
-
   if (loading) return null;
 
   return (
@@ -219,7 +183,7 @@ export default function AdminInviteLinks() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Create custom invite links that grant specific rewards, roles, and category recommendations to new users.
+          Create invite links that grant a role or Premium access to whoever signs up with them.
         </p>
 
         {/* Create New Admin Link */}
@@ -242,7 +206,7 @@ export default function AdminInviteLinks() {
                 {/* Grants */}
                 <div className="space-y-3">
                   <h5 className="text-xs font-bold text-foreground flex items-center gap-1">
-                    <Gift className="h-3 w-3" /> Signup Rewards
+                    <Gift className="h-3 w-3" /> Signup Grants
                   </h5>
                   <div className="flex gap-4">
                      <div className="flex items-center gap-2">
@@ -257,38 +221,6 @@ export default function AdminInviteLinks() {
                        <Switch checked={form.grant_pro} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_pro: v }))} />
                        <Label className="text-xs">Grant Premium</Label>
                      </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { key: "grant_diamonds", label: "Diamonds" },
-                      { key: "grant_boost_credits", label: "Boosts" },
-                      { key: "grant_elo_shields", label: "ELO Shields" },
-                      { key: "grant_reveals", label: "Reveals" },
-                      { key: "grant_rewinds", label: "Rewinds" },
-                    ].map(({ key, label }) => (
-                      <div key={key}>
-                        <Label className="text-[10px] text-muted-foreground">{label}</Label>
-                        <Input type="number" min={0} value={(form as any)[key]}
-                          onChange={(e) => setForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Categories */}
-                <div>
-                  <Label className="text-xs font-bold">Recommended Categories</Label>
-                  <p className="text-[10px] text-muted-foreground mb-2">These appear in "Suggested For You" for new users.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {ALL_CATEGORIES.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => toggleCategory(cat)}
-                        className={`text-xs rounded-full px-3 py-1 border transition-all ${form.recommended_categories.includes(cat) ? "border-primary bg-primary/10 text-primary font-bold" : "border-border text-muted-foreground"}`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
                   </div>
                 </div>
 
@@ -362,57 +294,6 @@ export default function AdminInviteLinks() {
           </div>
         )}
       </div>
-
-      {/* ─── Divider ─── */}
-      <div className="border-t border-border" />
-
-      {/* ─── SECTION 3: User Referral Program Settings ─── */}
-      {userSettings && (
-        <div className="space-y-4">
-          <h3 className="font-bold text-foreground flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" /> User Referral Program
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Configure what users and their referrals earn when someone signs up via a user's personal referral link.
-          </p>
-
-          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-bold">Referral Program Enabled</Label>
-              <Switch
-                checked={userSettings.is_enabled}
-                onCheckedChange={(v) => setUserSettings({ ...userSettings, is_enabled: v })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { key: "reward_diamonds", label: "New User Gets (Diamonds)" },
-                { key: "reward_boost_credits", label: "New User Gets (Boosts)" },
-                { key: "referrer_diamonds", label: "Referrer Gets (Diamonds)" },
-                { key: "referrer_boost_credits", label: "Referrer Gets (Boosts)" },
-                { key: "reward_elo_bonus", label: "New User ELO Bonus" },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <Label className="text-xs text-muted-foreground">{label}</Label>
-                  <Input type="number" min={0} value={(userSettings as any)[key] ?? 0}
-                    onChange={(e) => setUserSettings({ ...userSettings, [key]: parseInt(e.target.value) || 0 })} />
-                </div>
-              ))}
-            </div>
-
-            <Button size="sm" disabled={saving} onClick={saveUserSettings} className="w-full">
-              {saving ? "Saving..." : "Save Referral Settings"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Divider ─── */}
-      <div className="border-t border-border" />
-
-      {/* ─── SECTION 4: Custom URL Slugs ─── */}
-      <AdminCustomLinks />
     </div>
   );
 }
@@ -470,14 +351,6 @@ function LinkCard({
                 {link.grant_admin && <><span className="text-muted-foreground">Grants Admin:</span><span className="text-primary font-bold">Yes</span></>}
                 {(link as any).grant_moderator && <><span className="text-muted-foreground">Grants Moderator:</span><span className="text-blue-500 font-bold">Yes</span></>}
                 {link.grant_pro && <><span className="text-muted-foreground">Grants Premium:</span><span className="text-primary font-bold">Yes</span></>}
-                {link.grant_diamonds > 0 && <><span className="text-muted-foreground">Diamonds:</span><span>{link.grant_diamonds}</span></>}
-                {link.grant_boost_credits > 0 && <><span className="text-muted-foreground">Boosts:</span><span>{link.grant_boost_credits}</span></>}
-                {link.grant_elo_shields > 0 && <><span className="text-muted-foreground">ELO Shields:</span><span>{link.grant_elo_shields}</span></>}
-                {link.grant_reveals > 0 && <><span className="text-muted-foreground">Reveals:</span><span>{link.grant_reveals}</span></>}
-                {link.grant_rewinds > 0 && <><span className="text-muted-foreground">Rewinds:</span><span>{link.grant_rewinds}</span></>}
-                {link.recommended_categories.length > 0 && (
-                  <><span className="text-muted-foreground">Categories:</span><span>{link.recommended_categories.join(", ")}</span></>
-                )}
                 {link.expires_at && <><span className="text-muted-foreground">Expires:</span><span>{new Date(link.expires_at).toLocaleDateString()}</span></>}
               </div>
               <div className="flex gap-2 pt-1">

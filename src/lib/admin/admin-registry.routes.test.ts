@@ -3,10 +3,11 @@
 //
 // The Admin Atlas found three parallel hand-written route lists — the old
 // directory registry, /admin/about §14 and /admin/diagnostics — and all three
-// had drifted from the router. This test is the mechanism that stops the new
-// registry becoming the fourth: it reads src/App.tsx and asserts that every
-// path the registry advertises is actually declared, and that every legacy
-// admin route still resolves.
+// had drifted from the router. FUNNEL1C and LEGACY1 deleted the first two;
+// this test is the mechanism that stops the registry becoming their successor:
+// it reads src/App.tsx and asserts that every path the registry advertises is
+// actually declared, that every surviving legacy route resolves, and (LEGACY1)
+// that no retired route is declared at all.
 //
 // It reads the router SOURCE rather than rendering it, because rendering App
 // needs Supabase, the auth providers and the network. A source assertion still
@@ -83,11 +84,22 @@ function declaredPaths(source: string): Set<string> {
 
 const DECLARED = declaredPaths(appSource);
 
+/**
+ * The /admin layout route's own block. LEGACY1 deleted /moderator, which used
+ * to be the marker for where the block ended, so the end is now found from the
+ * block's own closing </Route> instead of from whatever happened to follow it.
+ */
+function adminShellBlock(): string {
+  const start = appSource.indexOf('<Route path="/admin" element={<AdminRoute>');
+  const close = appSource.indexOf("</Route>", start);
+  return appSource.slice(start, close === -1 ? undefined : close);
+}
+
 /** Registry paths are navigation targets; strip the query the tab carries. */
 const basePath = (p: string) => p.split("?")[0];
 
 describe("registry ⇄ router agreement", () => {
-  it("declares the eleven area routes plus the All Tools entry point", () => {
+  it("declares the ten area routes plus the All Tools entry point", () => {
     for (const path of [
       "/admin",
       "/admin/all-tools",
@@ -100,9 +112,40 @@ describe("registry ⇄ router agreement", () => {
       "/admin/studio",
       "/admin/operations",
       "/admin/developer",
-      "/admin/arena",
+      "/admin/audio-studio",
     ]) {
       expect(DECLARED.has(path), `App.tsx is missing ${path}`).toBe(true);
+    }
+  });
+
+  // LEGACY1 — the retired voting product's routes are deleted, not redirected.
+  // A declared route is a promise that something is there; these promise a
+  // product that no longer exists.
+  it("declares no retired route, as a destination or a redirect", () => {
+    for (const path of [
+      "/admin/arena",
+      "/admin/arena/data-graphs",
+      "/admin/play",
+      "/admin/gaming",
+      "/admin/demo",
+      "/admin/data",
+      "/admin/about",
+      "/admin/directory",
+      "/admin/legacy-directory",
+      "/admin/legacy-dashboard",
+      "/moderator",
+      "/home",
+      "/play",
+      "/swipe",
+      "/swipe-game",
+      "/swipe-leagues",
+      "/shop",
+      "/elo-check",
+      "/referral",
+      "/multiplayer",
+      "/dev/legacy-entry",
+    ]) {
+      expect(DECLARED.has(path), `App.tsx still declares ${path}`).toBe(false);
     }
   });
 
@@ -133,18 +176,8 @@ describe("registry ⇄ router agreement", () => {
     expect(missing).toEqual([]);
   });
 
-  it("redirects /admin/directory rather than deleting it", () => {
-    expect(appSource).toMatch(
-      /path="directory"\s+element=\{<Navigate to="\/admin\/all-tools" replace \/>\}/,
-    );
-  });
-
-  // FUNNEL1C — retired shells are redirects for bookmarks, never destinations.
+  // Redirects that survive LEGACY1: each one lands on a CURRENT surface.
   const REDIRECTS: Array<[string, string]> = [
-    ["directory", "/admin/all-tools"],
-    ["legacy-directory", "/admin/all-tools"],
-    ["legacy-dashboard", "/admin"],
-    ["data", "/admin/arena/data-graphs"],
     ["demo-analytics", "/admin/premium-preview"],
   ];
 
@@ -167,9 +200,7 @@ describe("registry ⇄ router agreement", () => {
   });
 
   it("mounts Analytics inside the Admin shell, under the same gate", () => {
-    const shellStart = appSource.indexOf('<Route path="/admin" element={<AdminRoute>');
-    const shellEnd = appSource.indexOf('<Route path="/moderator"');
-    const shellBlock = appSource.slice(shellStart, shellEnd);
+    const shellBlock = adminShellBlock();
     expect(shellBlock).toContain('<Route path="analytics" element={<Suspense fallback={<RouteFallback />}><AdminAnalyticsPage /></Suspense>} />');
   });
 
@@ -197,18 +228,9 @@ describe("authorization is unchanged by the reorganization", () => {
     expect(appSource).toMatch(/path="\/admin\/knowledge"[\s\S]{0,200}?roles=\{\["master_admin"\]\}/);
   });
 
-  it("keeps /moderator on its own moderator-inclusive gate", () => {
-    expect(appSource).toContain(
-      '<Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}>',
-    );
-  });
-
   it("keeps the chrome-free broadcast capture view outside the Admin shell", () => {
     // Inside the shell it would gain navigation chrome and break OBS capture.
-    const shellStart = appSource.indexOf('<Route path="/admin" element={<AdminRoute>');
-    const shellEnd = appSource.indexOf('<Route path="/moderator"');
-    const shellBlock = appSource.slice(shellStart, shellEnd);
-    expect(shellBlock).not.toContain("quiz-broadcast/view");
+    expect(adminShellBlock()).not.toContain("quiz-broadcast/view");
     expect(appSource).toContain('<Route path="/admin/quiz-broadcast/view"');
   });
 

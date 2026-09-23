@@ -9,6 +9,8 @@
 // The route table itself is certified separately by admin-registry.routes.test.
 // ---------------------------------------------------------------------------
 
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
@@ -84,7 +86,6 @@ import AdminGameDataPage from "./AdminGameDataPage";
 import AdminStudioPage from "./AdminStudioPage";
 import AdminOperationsPage from "./AdminOperationsPage";
 import AdminDeveloperPage from "./AdminDeveloperPage";
-import AdminArenaPage from "./AdminArenaPage";
 import { ADMIN_AREAS, ADMIN_TOOLS } from "@/lib/admin/admin-registry";
 
 const authorized: AdminAuthContextValue = {
@@ -115,14 +116,12 @@ function renderAdmin(path: string) {
           <Route path="studio" element={<AdminStudioPage />} />
           <Route path="operations" element={<AdminOperationsPage />} />
           <Route path="developer" element={<AdminDeveloperPage />} />
-          <Route path="arena" element={<AdminArenaPage />} />
+          <Route path="audio-studio" element={<div data-testid="stub-audio-studio" />} />
           {/* Stand-ins for the existing admin pages the shell adopted. Their
               real elements are unchanged; what matters here is the path. */}
-          <Route path="play" element={<div data-testid="stub-play" />} />
           <Route path="blog" element={<div data-testid="stub-blog" />} />
           <Route path="blog/:id" element={<div data-testid="stub-blog-editor" />} />
           <Route path="combat-battles" element={<div data-testid="stub-battles" />} />
-          <Route path="arena/data-graphs" element={<div data-testid="stub-arena-data" />} />
           {/* /admin/users is a redirect now (FUNNEL1C): the identity directory
               is the master-only Identities view of People › Users. */}
           <Route path="users" element={<Navigate to="/admin/people?section=users&view=identities" replace />} />
@@ -159,7 +158,6 @@ describe("1 · every top-level area renders", () => {
     ["Studio", "/admin/studio", "admin-area-studio"],
     ["Operations", "/admin/operations", "admin-area-operations"],
     ["Developer", "/admin/developer", "admin-area-developer"],
-    ["Arena", "/admin/arena", "admin-area-arena"],
   ];
 
   it.each(areaPaths)("%s renders at %s", async (_label, path, testId) => {
@@ -188,11 +186,10 @@ describe("1 · every top-level area renders", () => {
     // Following a cross-link out to an existing admin page must not blank the
     // rail: the registry says which area owns that path.
     const owned: Array<[string, string]> = [
-      ["/admin/play", "arena"],
       ["/admin/blog", "studio"],
       ["/admin/blog/abc-123", "studio"],
       ["/admin/combat-battles", "simulation"],
-      ["/admin/arena/data-graphs", "arena"],
+      ["/admin/audio-studio", "studio"],
     ];
     for (const [path, areaId] of owned) {
       cleanup();
@@ -310,23 +307,36 @@ describe("5 · Leaguecraft and quiz admin remain reachable", () => {
   });
 });
 
-describe("6 · legacy collection and bot tooling remains reachable", () => {
-  it("mounts Collections, League Bots and Promoted Leagues under Arena", async () => {
-    renderAdmin("/admin/arena?section=collections");
-    const subtabs = await screen.findByTestId("arena-collections-subtabs");
-    expect(within(subtabs).getByTestId("arena-collections-subtabs-collections")).toBeTruthy();
-    expect(within(subtabs).getByTestId("arena-collections-subtabs-bots")).toBeTruthy();
-    expect(within(subtabs).getByTestId("arena-collections-subtabs-promoted")).toBeTruthy();
-    expect(screen.getByTestId("arena-collections")).toBeTruthy();
+describe("6 · LEGACY1 · the retired voting product is gone from Admin", () => {
+  it("advertises no Arena rail entry, area page or tool anywhere", async () => {
+    renderAdmin("/admin");
+    const nav = await screen.findByTestId("admin-shell-nav");
+    expect(within(nav).queryByTestId("admin-nav-arena")).toBeNull();
+    expect(within(nav).queryByText(/arena/i)).toBeNull();
+
+    cleanup();
+    renderAdmin("/admin/all-tools");
+    await screen.findByTestId("admin-all-tools");
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href") ?? "");
+    for (const dead of [
+      "/admin/arena",
+      "/admin/arena/data-graphs",
+      "/admin/play",
+      "/admin/gaming",
+      "/admin/demo",
+      "/admin/data",
+      "/admin/about",
+      "/moderator",
+      "/shop",
+    ]) {
+      expect(hrefs, dead).not.toContain(dead);
+    }
   });
 
-  it("keeps the legacy Arena pages linked, not removed", async () => {
-    renderAdmin("/admin/arena?section=operations");
-    await screen.findByTestId("admin-area-arena");
-    const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    for (const path of ["/admin/play", "/admin/gaming", "/admin/demo", "/admin/arena/data-graphs"]) {
-      expect(links, path).toContain(path);
-    }
+  it("offers no admin control for the retired currency", async () => {
+    renderAdmin("/admin/all-tools");
+    await screen.findByTestId("admin-all-tools");
+    expect(screen.queryByText(/diamond/i)).toBeNull();
   });
 });
 
@@ -493,65 +503,51 @@ describe("11 & 12 · legacy shells are retired, not advertised", () => {
     }
   });
 
-  it("reports a zero-loss ledger", async () => {
+  it("reports the ledger without an archive column", async () => {
     renderAdmin("/admin/all-tools");
     const count = await screen.findByTestId("admin-all-tools-count");
-    expect(count.textContent).toMatch(/0 lost/);
     expect(count.textContent).toMatch(/deferred but still accessible/);
+    // LEGACY1 retired the preservation framing: nothing is archived any more,
+    // and "0 lost" was a promise this workstream deliberately broke.
+    expect(count.textContent).not.toMatch(/archived/i);
+    expect(count.textContent).not.toMatch(/0 lost/);
   });
 });
 
 // --- 13–14. Moderator -------------------------------------------------------
 
-describe("13 & 14 · moderator", () => {
-  it("does not regain the Users panel that Admin Users Phase 1 removed", async () => {
-    const Moderator = (await import("@/pages/Moderator")).default;
-    render(
-      <MemoryRouter>
-        <Moderator />
-      </MemoryRouter>,
-    );
-    const panel = await screen.findByTestId("moderator-panel");
-    expect(within(panel).queryByTestId("moderator-tab-users")).toBeNull();
-    expect(within(panel).queryByText(/^Users$/)).toBeNull();
+describe("13 & 14 · LEGACY1 · the moderator panel is deleted, not linked", () => {
+  it("no longer exists as a page", () => {
+    expect(
+      existsSync(resolve(__dirname, "../../Moderator.tsx")),
+      "src/pages/Moderator.tsx is back",
+    ).toBe(false);
   });
 
-  it("keeps all five legitimate moderator tools, unpaginated", async () => {
-    const Moderator = (await import("@/pages/Moderator")).default;
-    render(
-      <MemoryRouter>
-        <Moderator />
-      </MemoryRouter>,
-    );
-    const panel = await screen.findByTestId("moderator-panel");
-    for (const tab of ["collections", "bots", "comments", "invite-links", "elo-check"]) {
-      expect(within(panel).getByTestId(`moderator-tab-${tab}`), tab).toBeTruthy();
-    }
-  });
-
-  it("keeps /moderator linked from People rather than dissolving it", async () => {
+  it("is not advertised from People, whose Moderation section is the one home", async () => {
     renderAdmin("/admin/people?section=moderation");
-    const panel = await screen.findByTestId("people-moderator-link");
-    expect(within(panel).getByRole("link").getAttribute("href")).toBe("/moderator");
+    await screen.findByTestId("admin-area-people");
+    expect(screen.queryByTestId("people-moderator-link")).toBeNull();
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs).not.toContain("/moderator");
+    // The capability that mattered — comment moderation, reports and the
+    // moderator roster — is here, as views of one destination.
+    const subtabs = screen.getByTestId("people-moderation-subtabs");
+    expect(within(subtabs).getByTestId("people-moderation-subtabs-mod-config")).toBeTruthy();
+    expect(screen.getByTestId("people-moderation-comments")).toBeTruthy();
   });
 });
 
 // --- 15–16. Arena and Developer labelling -----------------------------------
 
-describe("15 · Arena is reachable and labelled archived", () => {
-  it("labels the area and states that nothing was removed", async () => {
-    renderAdmin("/admin/arena");
-    expect((await screen.findByTestId("admin-area-badge-arena")).textContent).toBe("Archived");
-    const notice = screen.getByTestId("admin-arena-archived-notice");
-    expect(notice.textContent).toMatch(/fully preserved/i);
-    expect(notice.textContent).toMatch(/not removed/i);
-  });
-
-  it("separates Arena from the live areas in the rail", async () => {
+describe("15 · LEGACY1 · every rail entry is a current product area", () => {
+  it("has no archived area and no Archived badge", async () => {
     renderAdmin("/admin");
     const nav = await screen.findByTestId("admin-shell-nav");
-    const arena = within(nav).getByTestId("admin-nav-arena");
-    expect(arena.textContent).toMatch(/Archived/);
+    expect(within(nav).queryByText(/Archived/i)).toBeNull();
+    for (const area of ADMIN_AREAS) {
+      expect(area.kind, area.id).not.toBe("archived");
+    }
   });
 });
 
@@ -594,15 +590,6 @@ describe("17 · navigation advertises nothing the viewer cannot use", () => {
     renderAdmin("/admin/operations?section=data-ops");
     await screen.findByTestId("admin-area-operations");
     expect(screen.queryByTestId("operations-csv-export")).toBeNull();
-  });
-
-  it("hides master-only Arena presentation panels from a non-master admin", async () => {
-    renderAdmin("/admin/arena?section=presentation");
-    expect(await screen.findByTestId("arena-presentation-master-only")).toBeTruthy();
-    // PT2E deleted the Themes panel and its registry entry; Arena Ranks is now
-    // the whole of Presentation, and it is still master-gated.
-    expect(screen.queryByTestId("arena-themes")).toBeNull();
-    expect(screen.queryByTestId("arena-ranks")).toBeNull();
   });
 
   it("labels every master-gated registry entry so the rail never over-promises", () => {

@@ -2,8 +2,9 @@
 // AdminShell — the one canonical Admin navigation shell.
 //
 // Renders the area rail (Overview · Analytics · People · Leaguecraft · Ranked ·
-// Simulation · Game Data · Studio · Operations · Developer · Arena) around an
-// <Outlet />.
+// Simulation · Game Data · Studio · Operations · Developer) around an
+// <Outlet />. LEGACY1 removed the archived Arena rail entry with the retired
+// voting product it pointed at, so every rail entry is current Mogzy.
 // Every /admin destination renders inside it, so navigation is identical from
 // every page and depth never exceeds area → page → tab.
 //
@@ -64,7 +65,6 @@ function AreaLink({ area, pathname }: { area: AdminArea; pathname: string }) {
         "flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium",
         "border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground",
         active && "border-primary/40 bg-primary/10 text-foreground",
-        area.kind === "archived" && !active && "text-muted-foreground/70",
       )}
     >
       <span className="truncate">{area.label}</span>
@@ -72,9 +72,7 @@ function AreaLink({ area, pathname }: { area: AdminArea; pathname: string }) {
         <span
           className={cn(
             "shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide",
-            area.kind === "archived"
-              ? "bg-muted text-muted-foreground"
-              : "bg-amber-400/10 text-amber-300",
+            "bg-amber-400/10 text-amber-300",
           )}
         >
           {area.badge}
@@ -88,7 +86,6 @@ export default function AdminShell() {
   const { pathname } = useLocation();
   const live = ADMIN_NAV_AREAS.filter((a) => a.kind === "live");
   const developer = ADMIN_NAV_AREAS.filter((a) => a.kind === "developer");
-  const archived = ADMIN_NAV_AREAS.filter((a) => a.kind === "archived");
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-4 sm:py-6">
@@ -115,14 +112,6 @@ export default function AdminShell() {
             <div className="hidden lg:my-2 lg:block lg:border-t lg:border-border" aria-hidden />
 
             {developer.map((area) => (
-              <div key={area.id} className="shrink-0 lg:shrink">
-                <AreaLink area={area} pathname={pathname} />
-              </div>
-            ))}
-
-            <div className="hidden lg:my-2 lg:block lg:border-t lg:border-border" aria-hidden />
-
-            {archived.map((area) => (
               <div key={area.id} className="shrink-0 lg:shrink">
                 <AreaLink area={area} pathname={pathname} />
               </div>
