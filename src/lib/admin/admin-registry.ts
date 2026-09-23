@@ -29,7 +29,6 @@ export const ADMIN_AREA_IDS = [
   "overview",
   "users",
   "leaguecraft",
-  "ranked",
   "simulation",
   "game-data",
   "studio",
@@ -46,6 +45,22 @@ export type AdminAreaId = (typeof ADMIN_AREA_IDS)[number];
  */
 export type AdminAreaKind = "live" | "developer";
 
+/**
+ * USERS1 — a section may hold VIEWS.
+ *
+ * Added so Ranked could move inside Leaguecraft without being flattened. A
+ * section with views renders a second, in-page switch (?view=<id>), and a tool
+ * names the view it belongs to with `subsection`. Without this the six Ranked
+ * operator views would have collapsed into one tab and eleven tools would have
+ * been listed together — a merge that loses navigation is not a merge, it is a
+ * demotion.
+ */
+export interface AdminAreaView {
+  id: string;
+  label: string;
+  summary: string;
+}
+
 export interface AdminAreaSection {
   /** Stable tab id — appears in the URL as ?section=<id>. */
   id: string;
@@ -59,6 +74,8 @@ export interface AdminAreaSection {
   path?: string;
   /** Descriptive only: the gate the section's contents already enforce. */
   requiredRole?: AdminRequiredRole;
+  /** In-page views of this one section, switched with ?view=<id>. */
+  views?: AdminAreaView[];
 }
 
 export interface AdminArea {
@@ -139,22 +156,25 @@ export const ADMIN_AREAS: AdminArea[] = [
         label: "Premium Preview",
         summary: "Free-vs-Premium Performance Trends, rendered on a synthetic demo account.",
       },
-    ],
-  },
-  {
-    id: "ranked",
-    label: "Ranked",
-    path: "/admin/ranked",
-    kind: "live",
-    description:
-      "The Ranked operator surface: readiness, the question bank, match and bot testing, and flag state.",
-    sections: [
-      { id: "overview", label: "Overview", summary: "Launch readiness, rating status and live flag state." },
-      { id: "format-builder", label: "Format Builder", summary: "The ordered module cycle for Admin Bot Ranked and Public Ranked." },
-      { id: "question-bank", label: "Question Bank", summary: "Ranked Duel candidate review, validation and export." },
-      { id: "matches", label: "Matches & Testing", summary: "Staff duels, test matches and bot-match administration." },
-      { id: "playtests", label: "Playtests", summary: "Playtest operations home, built on existing primitives." },
-      { id: "settings", label: "Ratings & Settings", summary: "Rating policy and the read-only Railway flag mirror." },
+      {
+        // USERS1 — Ranked is a Leaguecraft MODE, and it was a top-level Admin
+        // area only because it arrived late and needed somewhere to live. Its
+        // six operator views and all eleven of its tools are preserved
+        // verbatim as views of this section; nothing about Ranked gameplay,
+        // its backend, its flags or its gates is touched. /admin/ranked
+        // redirects here.
+        id: "ranked",
+        label: "Ranked",
+        summary: "The Ranked operator surface: readiness, format, question bank, matches, playtests and rating policy.",
+        views: [
+          { id: "overview", label: "Overview", summary: "Launch readiness, rating status and live flag state." },
+          { id: "format-builder", label: "Format Builder", summary: "The ordered module cycle for Admin Bot Ranked and Public Ranked." },
+          { id: "question-bank", label: "Question Bank", summary: "Ranked Duel candidate review, validation and export." },
+          { id: "matches", label: "Matches & Testing", summary: "Staff duels, test matches and bot-match administration." },
+          { id: "playtests", label: "Playtests", summary: "Playtest operations home, built on existing primitives." },
+          { id: "settings", label: "Ratings & Settings", summary: "Rating policy and the read-only Railway flag mirror." },
+        ],
+      },
     ],
   },
   {
@@ -301,6 +321,8 @@ export interface AdminTool {
   area: AdminAreaId;
   /** Section id within the area (must exist in that area's `sections`). */
   section: string;
+  /** View id within that section, when the section declares views. */
+  subsection?: string;
   kind: AdminToolKind;
   /** Navigable path. Absent for `backend` and `gap` tools. */
   path?: string;
@@ -513,7 +535,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization:
       "Unchanged authority: AdminAuthGate + admin_list_profiles / admin_list_identity_links, which raise unless the caller is an admin and re-check is_master_admin server-side. The view is advertised only to master admins, exactly as the standalone route was gated.",
     notes:
-      "FUNNEL1C/ADMIN2 closed ADMIN1B: browsing accounts had three entries (Accounts, Profile browser and this). It is now the third VIEW of one destination, deep-linkable at ?view=identities, and /admin/users redirects there. What it alone offers — verified Discord/Riot identity lines with contact consent, bot state toggle, Add to My Friends — is preserved unchanged.",
+      "FUNNEL1C/ADMIN2 closed ADMIN1B: browsing accounts had three entries (Accounts, Profile browser and this). It is now the third VIEW of one destination, deep-linkable at ?view=identities. USERS1 gave /admin/users to the Users area itself, and this view lives at ?section=accounts&view=identities. What it alone offers — verified Discord/Riot identity lines with contact consent, bot state toggle, Add to My Friends — is preserved unchanged.",
   },
   {
     id: "people-invites",
@@ -531,21 +553,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Role-granting invites promote whoever redeems them. redeem_invite_link writes to user_roles.",
     status: "Production",
     authorization: "AdminRoute (admin, master_admin); invite_links RLS is admin-only — unchanged.",
-  },
-  {
-    id: "people-custom-links",
-    title: "Custom Links",
-    description: "Short custom link management, previously nested inside the Invites panel.",
-    area: "users",
-    section: "accounts",
-    kind: "panel",
-    path: "/admin/users?section=accounts&view=access",
-    oldLocation: "/admin → Invites → nested AdminCustomLinks",
-    disposition: "MOVE",
-    dangerLevel: "caution",
-    warning: "Custom links resolve at the site root and are publicly reachable.",
-    status: "Production",
-    authorization: "Unchanged — the component keeps its own queries and RLS.",
   },
   {
     id: "people-comments",
@@ -742,8 +749,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Mastery Generator Lab",
     description:
       "Run the production Mastery generators — Champion, Matchup and applied combat chain — and inspect what they produce, rendered exactly as a player would see it.",
-    area: "ranked",
-    section: "question-bank",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "question-bank",
     kind: "route",
     path: "/admin/ranked/generator-lab",
     oldLocation: "none — generated Mastery content had no admin surface at all",
@@ -819,10 +827,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Ranked Overview",
     description:
       "Launch-readiness verdict per gate, rating status, and the live Railway flag state — read from the running process.",
-    area: "ranked",
-    section: "overview",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "overview",
     kind: "panel",
-    path: "/admin/ranked?section=overview",
+    path: "/admin/leaguecraft?section=ranked&view=overview",
     oldLocation: "GET /api/ranked/launch-readiness — reachable only with curl",
     disposition: "MOVE",
     dangerLevel: "none",
@@ -835,10 +844,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Rating Status",
     description:
       "Result counts by status, active rating policy version, and the rating / forfeit flags.",
-    area: "ranked",
-    section: "settings",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "settings",
     kind: "panel",
-    path: "/admin/ranked?section=settings",
+    path: "/admin/leaguecraft?section=ranked&view=settings",
     oldLocation: "GET /api/ranked/rating-status — no UI",
     disposition: "MOVE",
     dangerLevel: "none",
@@ -850,10 +860,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Ranked Feature Flags",
     description:
       "Read-only mirror of the Ranked Railway environment flags, sourced from launch-readiness rather than re-implemented.",
-    area: "ranked",
-    section: "settings",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "settings",
     kind: "panel",
-    path: "/admin/ranked?section=settings",
+    path: "/admin/leaguecraft?section=ranked&view=settings",
     oldLocation: "Railway environment variables — visible nowhere in the product",
     disposition: "MOVE",
     dangerLevel: "none",
@@ -867,8 +878,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Staff Duel Creator",
     description:
       "Creates real backend ranked matches for two staff testers via POST /api/admin/ranked-duels.",
-    area: "ranked",
-    section: "matches",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "matches",
     kind: "route",
     path: "/dev/ranked-duel",
     oldLocation: "/dev/ranked-duel → 'Live staff duel' — an ungated public URL",
@@ -888,8 +900,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Test Match Creation",
     description:
       "POST /api/ranked/test-matches — binds two verified accounts into a match and accepts an experiment_arm.",
-    area: "ranked",
-    section: "matches",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "matches",
     kind: "backend",
     oldLocation: "Backend endpoint with no frontend consumer",
     disposition: "DEFERRED",
@@ -905,10 +918,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Ranked Bot Matches",
     description:
       "Bot-match configuration and status. The endpoint itself is player-authenticated and stays that way — this administers it, it does not call it.",
-    area: "ranked",
-    section: "matches",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "matches",
     kind: "panel",
-    path: "/admin/ranked?section=matches",
+    path: "/admin/leaguecraft?section=ranked&view=matches",
     oldLocation: "No admin surface — RANKED_BOT_ENABLED visible only via launch-readiness",
     disposition: "MOVE",
     dangerLevel: "none",
@@ -921,8 +935,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Match Inspector",
     description:
       "Per-match administrative read of a Ranked match. No such endpoint exists — player-scoped reads only.",
-    area: "ranked",
-    section: "matches",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "matches",
     kind: "gap",
     oldLocation: "Does not exist",
     disposition: "DEFERRED",
@@ -936,8 +951,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Queue Inspection",
     description:
       "Operator view of the live Ranked queue. GET/POST/DELETE /api/ranked/queue is player-scoped; no admin queue read exists.",
-    area: "ranked",
-    section: "overview",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "overview",
     kind: "gap",
     oldLocation: "Does not exist",
     disposition: "DEFERRED",
@@ -951,10 +967,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Playtests",
     description:
       "The Playtests operations home: the existing primitives a playtest is assembled from, and the named gaps that remain.",
-    area: "ranked",
-    section: "playtests",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "playtests",
     kind: "panel",
-    path: "/admin/ranked?section=playtests",
+    path: "/admin/leaguecraft?section=ranked&view=playtests",
     oldLocation: "Does not exist — the primitives are scattered across five places",
     disposition: "MOVE",
     dangerLevel: "none",
@@ -968,10 +985,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     title: "Lifecycle Worker State",
     description:
       "Quiescence worker enablement, sweep counts, and maintenance pause state, read from launch-readiness.",
-    area: "ranked",
-    section: "settings",
+    area: "leaguecraft",
+    section: "ranked",
+    subsection: "settings",
     kind: "panel",
-    path: "/admin/ranked?section=settings",
+    path: "/admin/leaguecraft?section=ranked&view=settings",
     oldLocation: "Railway env + the pause file — visible nowhere",
     disposition: "MOVE",
     dangerLevel: "none",

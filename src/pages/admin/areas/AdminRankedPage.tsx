@@ -1,5 +1,16 @@
 // ---------------------------------------------------------------------------
-// Ranked — the first administrative home Ranked has ever had.
+// Ranked — the Ranked operator surface, now a section of Leaguecraft.
+//
+// USERS1 moved it. Ranked is a Leaguecraft MODE; it was a top-level Admin area
+// only because it arrived late and needed somewhere to live, and a sidebar
+// that lists a product beside one of its own modes is describing the order the
+// features shipped in rather than the product. Everything below is unchanged —
+// the six views, all eleven tools, every endpoint, every gate — it is reached
+// at /admin/leaguecraft?section=ranked now, and the six views are ?view=
+// instead of ?section=. /admin/ranked redirects.
+//
+// Nothing about Ranked GAMEPLAY is touched by this. No flag, no rating policy,
+// no backend route, no player-facing surface.
 //
 // Of thirteen Ranked admin capabilities, exactly one was discoverable before
 // this page: candidate review, as a tab inside a quiz workspace. Three existed
@@ -20,18 +31,16 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2, AlertTriangle, XCircle, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import {
-  AdminAreaHeader,
   AdminCrossLink,
   AdminPanel,
   AdminToolGrid,
-  useAreaSection,
 } from "@/components/admin/shell/AdminAreaPage";
 import {
   AdminOpsError,
@@ -42,8 +51,12 @@ import {
   type RatingStatus,
 } from "@/lib/admin/adminOpsApi";
 import { ADMIN_AREAS_BY_ID, toolsForSection } from "@/lib/admin/admin-registry";
-import RankedFormatBuilder from "@/pages/admin/ranked/RankedFormatBuilder";
 import { cn } from "@/lib/utils";
+import RankedFormatBuilder from "@/pages/admin/ranked/RankedFormatBuilder";
+
+/** Ranked's tools, still grouped by the view each one belongs to. */
+const rankedTools = (view: string) =>
+  toolsForSection("leaguecraft", "ranked").filter((t) => t.subsection === view);
 
 type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "error"; message: string };
 
@@ -178,15 +191,46 @@ function RatingStatusPanel({ nonce }: { nonce: number }) {
   );
 }
 
+/** The six views, declared by the registry so navigation and tools agree. */
+const RANKED_SECTION = ADMIN_AREAS_BY_ID.leaguecraft.sections.find((s) => s.id === "ranked")!;
+
 export default function AdminRankedPage() {
-  const area = ADMIN_AREAS_BY_ID.ranked;
-  const [section, setSection] = useAreaSection(area);
+  const [params, setParams] = useSearchParams();
+  const views = RANKED_SECTION.views ?? [];
+  const requested = params.get("view");
+  const view = views.find((v) => v.id === requested) ?? views[0];
+  const setView = (id: string) => {
+    const next = new URLSearchParams(params);
+    next.set("view", id);
+    setParams(next, { replace: false });
+  };
+  const section = view;
   const [nonce, setNonce] = useState(0);
   const refresh = () => setNonce((n) => n + 1);
 
   return (
     <div data-testid="admin-area-ranked">
-      <AdminAreaHeader area={area} active={section} onSelect={setSection} />
+      <div className="mb-3 flex flex-wrap gap-1" role="tablist" data-testid="leaguecraft-ranked-views">
+        {views.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            role="tab"
+            aria-selected={v.id === view.id}
+            title={v.summary}
+            data-testid={`leaguecraft-ranked-views-${v.id}`}
+            onClick={() => setView(v.id)}
+            className={cn(
+              "rounded-md border px-2 py-0.5 text-[11px] font-medium",
+              v.id === view.id
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border bg-card text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
 
       <AdminAuthGate>
         <div className="space-y-4">
@@ -195,7 +239,7 @@ export default function AdminRankedPage() {
           {section.id === "overview" && (
             <>
               <LaunchReadinessPanel nonce={nonce} onRefresh={refresh} />
-              <AdminToolGrid tools={toolsForSection("ranked", "overview")} />
+              <AdminToolGrid tools={rankedTools("overview")} />
             </>
           )}
 
@@ -228,7 +272,7 @@ export default function AdminRankedPage() {
                   note="champion · matchup · applied chain — generates live, saves nothing"
                 />
               </AdminPanel>
-              <AdminToolGrid tools={toolsForSection("ranked", "question-bank")} />
+              <AdminToolGrid tools={rankedTools("question-bank")} />
             </>
           )}
 
@@ -244,7 +288,7 @@ export default function AdminRankedPage() {
                   note="creates real ranked matches; the page's admin-key field is the only gate on that route"
                 />
               </AdminPanel>
-              <AdminToolGrid tools={toolsForSection("ranked", "matches")} />
+              <AdminToolGrid tools={rankedTools("matches")} />
             </>
           )}
 
@@ -281,14 +325,14 @@ export default function AdminRankedPage() {
                   </p>
                 </div>
               </AdminPanel>
-              <AdminToolGrid tools={toolsForSection("ranked", "playtests")} />
+              <AdminToolGrid tools={rankedTools("playtests")} />
             </>
           )}
 
           {section.id === "settings" && (
             <>
               <RatingStatusPanel nonce={nonce} />
-              <AdminToolGrid tools={toolsForSection("ranked", "settings")} />
+              <AdminToolGrid tools={rankedTools("settings")} />
             </>
           )}
         </div>

@@ -55,12 +55,11 @@ const ERADICATED_PATHS = [
 ];
 
 describe("admin registry — structure", () => {
-  it("declares the nine-area architecture in order, Users beside Overview", () => {
+  it("declares the eight-area architecture in order, Users beside Overview", () => {
     expect(ADMIN_AREAS.map((a) => a.label)).toEqual([
       "Overview",
       "Users",
       "Leaguecraft",
-      "Ranked",
       "Simulation",
       "Game Data",
       "Studio",
@@ -280,8 +279,8 @@ describe("admin registry — capability preservation", () => {
 
 describe("admin registry — helpers", () => {
   it("scopes tools by area and section", () => {
-    expect(toolsForArea("ranked").length).toBeGreaterThan(0);
-    for (const tool of toolsForArea("ranked")) expect(tool.area).toBe("ranked");
+    expect(toolsForArea("leaguecraft").length).toBeGreaterThan(0);
+    for (const tool of toolsForArea("leaguecraft")) expect(tool.area).toBe("leaguecraft");
     for (const tool of toolsForSection("operations", "danger-zone")) {
       expect(tool.section).toBe("danger-zone");
     }

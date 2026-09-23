@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // Leaguecraft — quiz content, corrections, mastery and engine diagnostics.
 //
+// USERS1 folded RANKED in as a section: Ranked is a Leaguecraft mode, and a
+// sidebar that listed it beside Leaguecraft was describing the order the
+// features shipped in, not the product. All six of its operator views and all
+// eleven of its tools came with it, unchanged.
+//
 // The unified /admin/quiz-content workspace is deliberately NOT split or
 // re-mounted here: Builder and Review were consolidated on purpose and the
 // consolidation works. This area cross-links it and adds the one thing that
@@ -14,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminPanel } from "@/components/admin/shell/AdminAreaPage";
 import AdminRegistryAreaPage from "./AdminRegistryAreaPage";
+import AdminRankedPage from "./AdminRankedPage";
 
 function MasteryDigestLookup() {
   const [digest, setDigest] = useState("");
@@ -57,7 +63,15 @@ export default function AdminLeaguecraftPage() {
   return (
     <AdminRegistryAreaPage
       areaId="leaguecraft"
-      sectionExtras={{ mastery: <MasteryDigestLookup /> }}
+      sectionExtras={{
+        mastery: <MasteryDigestLookup />,
+        // USERS1 — Ranked is a mode of this product, not a peer of it. The
+        // whole operator surface is mounted here unchanged; it brings its own
+        // six views and its own tool grids, so the hub's grid is suppressed
+        // for this section (the tools are already inside it).
+        ranked: <AdminRankedPage />,
+      }}
+      sectionsWithOwnTools={["ranked"]}
     />
   );
 }

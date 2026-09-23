@@ -128,7 +128,6 @@ const AdminOverviewPage = lazy(() => import("./pages/admin/areas/AdminOverviewPa
 const AdminAllToolsPage = lazy(() => import("./pages/admin/areas/AdminAllToolsPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/areas/AdminUsersPage"));
 const AdminLeaguecraftPage = lazy(() => import("./pages/admin/areas/AdminLeaguecraftPage"));
-const AdminRankedPage = lazy(() => import("./pages/admin/areas/AdminRankedPage"));
 const AdminSimulationPage = lazy(() => import("./pages/admin/areas/AdminSimulationPage"));
 const AdminGameDataPage = lazy(() => import("./pages/admin/areas/AdminGameDataPage"));
 const AdminStudioPage = lazy(() => import("./pages/admin/areas/AdminStudioPage"));
@@ -409,7 +408,10 @@ const App = () => (
                         backend-authority admin reads are. */}
                     <Route path="pro-play-coverage" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
-                    <Route path="ranked" element={<Suspense fallback={<RouteFallback />}><AdminRankedPage /></Suspense>} />
+                    {/* USERS1 — Ranked is a section of Leaguecraft now, not an
+                        area. The path resolves so bookmarks land somewhere
+                        true; it is advertised nowhere. */}
+                    <Route path="ranked" element={<Navigate to="/admin/leaguecraft?section=ranked" replace />} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />

@@ -24,13 +24,22 @@ export default function AdminRegistryAreaPage({
   areaId,
   /** Extra content rendered above the tool grid, per section id. */
   sectionExtras,
+  /**
+   * Sections whose extra content already renders its own tool grids, so the
+   * hub must not render them a second time. Ranked is the one case: it groups
+   * its eleven tools by view, and a flat grid beside them would list every
+   * tool twice with less information.
+   */
+  sectionsWithOwnTools,
 }: {
   areaId: AdminAreaId;
   sectionExtras?: Partial<Record<string, ReactNode>>;
+  sectionsWithOwnTools?: string[];
 }) {
   const area = ADMIN_AREAS_BY_ID[areaId];
   const [section, setSection] = useAreaSection(area);
-  const tools = toolsForSection(areaId, section.id);
+  const ownsTools = sectionsWithOwnTools?.includes(section.id) ?? false;
+  const tools = ownsTools ? [] : toolsForSection(areaId, section.id);
 
   return (
     <div data-testid={`admin-area-${areaId}`}>

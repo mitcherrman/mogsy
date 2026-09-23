@@ -108,7 +108,8 @@ function renderAdmin(path: string) {
           <Route path="all-tools" element={<AdminAllToolsPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="leaguecraft" element={<AdminLeaguecraftPage />} />
-          <Route path="ranked" element={<AdminRankedPage />} />
+          {/* USERS1 — Ranked is a section of Leaguecraft; the path redirects. */}
+          <Route path="ranked" element={<Navigate to="/admin/leaguecraft?section=ranked" replace />} />
           <Route path="simulation" element={<AdminSimulationPage />} />
           <Route path="game-data" element={<AdminGameDataPage />} />
           <Route path="studio" element={<AdminStudioPage />} />
@@ -151,7 +152,6 @@ describe("1 · every top-level area renders", () => {
     ["All Tools", "/admin/all-tools", "admin-area-all-tools"],
     ["Users", "/admin/users", "admin-area-users"],
     ["Leaguecraft", "/admin/leaguecraft", "admin-area-leaguecraft"],
-    ["Ranked", "/admin/ranked", "admin-area-ranked"],
     ["Simulation", "/admin/simulation", "admin-area-simulation"],
     ["Game Data", "/admin/game-data", "admin-area-game-data"],
     ["Studio", "/admin/studio", "admin-area-studio"],
@@ -175,7 +175,7 @@ describe("1 · every top-level area renders", () => {
   });
 
   it("marks the active area for the current route", async () => {
-    renderAdmin("/admin/ranked");
+    renderAdmin("/admin/leaguecraft?section=ranked");
     const link = await screen.findByTestId("admin-nav-ranked");
     expect(link.getAttribute("data-active")).toBe("true");
     expect(screen.getByTestId("admin-nav-users").getAttribute("data-active")).toBe("false");
@@ -343,7 +343,7 @@ describe("6 · LEGACY1 · the retired voting product is gone from Admin", () => 
 
 describe("7 · Ranked Admin home renders", () => {
   it("renders the readiness surface and reports a failed read honestly", async () => {
-    renderAdmin("/admin/ranked?section=overview");
+    renderAdmin("/admin/leaguecraft?section=ranked&view=overview");
     expect(await screen.findByTestId("ranked-launch-readiness")).toBeTruthy();
     await waitFor(() =>
       expect(screen.getByText(/could not reach the admin backend/i)).toBeTruthy(),
@@ -366,14 +366,14 @@ describe("7 · Ranked Admin home renders", () => {
           }),
       } as unknown as Response),
     );
-    renderAdmin("/admin/ranked?section=overview");
+    renderAdmin("/admin/leaguecraft?section=ranked&view=overview");
     const verdict = await screen.findByTestId("ranked-verdict");
     expect(verdict.textContent).toMatch(/ready with restrictions/i);
     expect(screen.getByText(/RANKED_PUBLIC_ENABLED master flag/)).toBeTruthy();
   });
 
   it("distinguishes existing functionality from named future gaps", async () => {
-    renderAdmin("/admin/ranked?section=matches");
+    renderAdmin("/admin/leaguecraft?section=ranked&view=matches");
     await screen.findByTestId("admin-area-ranked");
     // The staff duel exists and is linked.
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
@@ -386,7 +386,7 @@ describe("7 · Ranked Admin home renders", () => {
   });
 
   it("gives Playtests a home without inventing a playtest backend", async () => {
-    renderAdmin("/admin/ranked?section=playtests");
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
     const panel = await screen.findByTestId("ranked-playtests");
     expect(within(panel).getByText(/existing primitives/i)).toBeTruthy();
     expect(within(panel).getByText(/future gaps/i)).toBeTruthy();
@@ -398,7 +398,8 @@ describe("8 & 9 · normal Ranked and Ranked Bot access are untouched", () => {
   it("adds no allowlist, cohort or restriction to player Ranked access", () => {
     // Every Ranked registry entry either reads state or documents a capability.
     // None of them describes restricting player access.
-    const ranked = ADMIN_TOOLS.filter((t) => t.area === "ranked");
+    // USERS1 — Ranked is a section of Leaguecraft now; the tools are the same eleven.
+    const ranked = ADMIN_TOOLS.filter((t) => t.section === "ranked");
     expect(ranked.length).toBeGreaterThan(0);
     for (const tool of ranked) {
       expect(tool.authorization, tool.id).not.toMatch(
@@ -413,7 +414,7 @@ describe("8 & 9 · normal Ranked and Ranked Bot access are untouched", () => {
   it("makes no write call while rendering any Ranked section", async () => {
     for (const section of ["overview", "question-bank", "matches", "playtests", "settings"]) {
       cleanup();
-      renderAdmin(`/admin/ranked?section=${section}`);
+      renderAdmin(`/admin/leaguecraft?section=ranked&view=${section}`);
       await screen.findByTestId("admin-area-ranked");
     }
     for (const call of fetchSpy.mock.calls) {
