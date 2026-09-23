@@ -3534,7 +3534,7 @@ Base: frontend `origin/main` at `57344a41`.
 | `/admin/about` (Internal Docs) | Operations › Docs, stale | **CANONICAL** (flagged stale) | unchanged; All Tools is the inventory of record |
 | `/admin/play`, `/admin/gaming`, `/admin/demo` | Arena | **ARCHIVED** | unchanged |
 | `/moderator` | separate moderator-role app | **CANONICAL** | unchanged (different audience/gate) |
-| `/admin/users` vs People › Users | two user directories | **CANONICAL ×2**, noted | different jobs (identity/friend-link vs account management); consolidation remains ADMIN1B |
+| `/admin/users` vs People › Users | two user directories | **MERGE** (§24.10) | folded in as the master-only **Identities** view of People › Users; `/admin/users` redirects |
 | Operations › Data Operations | "Analytics graphs, CSV export and image-click analytics" | renamed | **Data Maintenance** — CSV export only |
 | Area-section tools with `?section=` paths | `kind: "route"` | reclassified | `kind: "panel"` (they are sections of one page, not destinations) |
 
@@ -3560,7 +3560,8 @@ Arena [Archived] /admin/arena       retired voting product, incl. archived data 
 Redirects (one hop each, asserted): `/admin/directory` and
 `/admin/legacy-directory` → `/admin/all-tools`; `/admin/legacy-dashboard` →
 `/admin`; `/admin/data` → `/admin/arena/data-graphs`; `/admin/demo-analytics`
-→ `/admin/premium-preview`. Existing quiz aliases unchanged.
+→ `/admin/premium-preview`; `/admin/users` →
+`/admin/people?section=users&view=identities`. Existing quiz aliases unchanged.
 
 ## 24.3 Analytics — sections and read path
 
@@ -3705,4 +3706,66 @@ consumed", `AdminQuizReview.proPlay` "--review-key", plus the 13 above.
 Run the Ranked production spot-check (§23.8). Then, when volume warrants,
 move the Analytics aggregates into SQL views behind the same metric
 definitions (`metrics.ts` is the spec and its tests the acceptance suite).
-ADMIN1B (consolidating `/admin/users` with People › Users) remains open.
+ADMIN1B is closed by §24.10.
+
+## 24.10 `/admin/users` — reviewed, merged (ADMIN1B closed)
+
+The one IA point §24.1 left open. Reviewed against the owner's rule: are these
+genuinely distinct operator workflows?
+
+**They substantially overlap.** Both browse accounts with search, filters and
+newest-first ordering. `AdminUsers` (People › Users › Accounts, 1.8k lines) is
+the account-management workhorse — email, entitlement provenance, grant/revoke,
+roles, notes, per-user feedback, Account Actions including deletion and the
+anonymous purge. `AdminUserDirectory` (240 lines) added only three things on
+top of a second, smaller browser: verified Discord / Riot identity lines with
+contact consent, the bot state toggle, and Add to My Friends. That is a
+sub-view of one job, not a second job — and with the Profile browser it made
+**three** account browsers under one section.
+
+**Decision: People is the single visible entry.**
+
+* `/admin/people?section=users` keeps three views — Accounts · Profile browser ·
+  **Identities** — through the sub-tab switch that already existed.
+* The sub-tab is now **URL-backed** (`?view=`), so Identities keeps a deep link
+  of its own; that link is what the registry advertises.
+* The Identities tab is advertised **only to master admins**, exactly as the
+  route was gated. Authorization is otherwise untouched: `admin_list_profiles`
+  and `admin_list_identity_links` raise unless the caller is an admin and
+  re-check `is_master_admin` server-side.
+* `/admin/users` is a **redirect** to that view — compatibility only, never a
+  navigation destination.
+* `AdminUserDirectory` gained an `embedded` mode (no page wrapper, SEO head or
+  back link). Nothing it does was removed.
+* Registry: `people-user-directory` → `people-user-identities`, `kind: panel`,
+  disposition **MERGE**, `/admin/users` recorded as its legacy route.
+* Tests: the old route-gate suite became
+  `src/pages/admin/AdminMasterAdminRoute.test.tsx` — the `master_admin`
+  `AdminRoute` behaviour it pinned still guards `/admin/premium-preview` and
+  `/admin/knowledge` — plus the redirect and registry assertions; the areas
+  suite covers the view being deep-linkable for a master admin and absent for a
+  plain admin.
+
+## 24.11 Integration onto current `origin/main`
+
+The phase was built on `57344a41`; `origin/main` moved 31 commits during it
+(PSE-UNIFY pro-play explorer, the DCMOD Daily Challenge integration), so the
+branch was **not** pushed as-is. Both FUNNEL1C commits were cherry-picked onto
+a fresh worktree from current `origin/main` = **`1b9ff1e5`**.
+
+```
+conflicts                 none — both commits auto-merged
+overlap with newer main   src/App.tsx, src/lib/admin/admin-registry.ts only
+newer work preserved      every route declared on main still declared; every
+                          registry id on main still present except the nine this
+                          phase deliberately removed or renamed
+focused Admin+analytics   939 tests, 936 pass; the 3 failures reproduce on
+                          1b9ff1e5 itself (AdminUsers.phase1 "renders selected-user
+                          feedback", AdminPlatformPolicies "navbar policy",
+                          AdminQuizReview.proPlay "--review-key")
+typecheck                 identical to 1b9ff1e5
+production build          vite build OK (21.2s)
+```
+
+No manual publish or deploy was performed: whatever normal `main` workflow does
+is what runs.
