@@ -100,6 +100,85 @@ automated QA, and the same handful of humans over and over.
 
 ---
 
+## The four registered accounts — classified, and none deleted
+
+Block A was run in production on 2026-09-23. All four are accounted for and
+**none of them is to be deleted.**
+
+| Account | Email | Classification | Verdict |
+|---|---|---|---|
+| mitcherrman | `mlmitchaman@gmail.com` | `REAL_OWNER` | keep — owner, premium, created 2026-02-21 |
+| Alastair | `alastairigpark@gmail.com` | `REAL_USER` | keep — the friend, created 2026-08-22 |
+| Test | `bobbungo2@gmail.com` | `OWNER_TEST` | keep — this is the account Phase 16 certification signs in as |
+| Timmy | `contact.mogzy.lol@gmail.com` | `AUTOMATION_TEST` | keep — **`is_bot = true`** |
+
+"Timmy" is the one that needed a second look. It is the classification the
+brief expected to be disposable, and it is the one that must NOT be removed: it
+is a **bot profile**, the identity Ranked bot matches and the bot roster are
+built on (`admin_update_bot_profile`, `botLabels`, ADM2 Phase A). Deleting it
+would break a current product surface. It is also non-anonymous, so the purge
+predicate never reaches it.
+
+So the expected count was three humans and the real answer is four accounts,
+zero deletions. That is the brief's own rule working: nothing is removed merely
+because a number was expected.
+
+### The pre-flight that this makes mandatory
+
+The purge edge function selects on **`profiles.is_anonymous`**, not on
+`auth.users.is_anonymous`. Those two flags are written by different systems and
+can disagree — which is precisely why AUTH2 added `ensureProfilePermanent()`,
+whose own comment reads: *"when they disagree the admin purge believes the
+profile and deletes a real account."*
+
+Against ~5,031 rows and four survivors, that is a one-shot unrecoverable risk.
+Block C now opens with **C0**, which returns every account whose auth row says
+permanent and whose profile row still says anonymous, plus the repair, plus a
+named check that all four survivors sit outside the purge set. It is not
+optional and block C says so.
+
+---
+
+## Anonymous dependency audit
+
+```
+anonymous auth users   ~5,031
+anonymous profiles     ~5,031     one profile per identity, as handle_new_user() guarantees
+analytics_visitors        157     <- the real audience-shaped number, and 3 days old
+analytics_sessions        159
+analytics_events          178
+```
+
+**The 32:1 ratio is the finding.** The anonymous identities accumulated over
+seven months of page loads; the analytics store has only existed since FUNNEL1C
+shipped. There is no world in which 5,031 of those are people.
+
+What references them:
+
+* **Seven foreign keys to `auth.users`** — `profiles`,
+  `leagues.created_by_user_id`, `user_roles`, `champion_images.updated_by`,
+  `user_identity_links`, `identity_link_attempts`, `identity_link_pending` —
+  every one `ON DELETE CASCADE` or `SET NULL`. **A purge cannot leave a broken
+  FK.**
+* Everything else stores a plain uuid with no constraint, including
+  `analytics_events.user_id`, which FUNNEL1B1 made a value rather than a key
+  *specifically so this purge could happen* without taking history with it. The
+  residue is orphaned rows, not broken references.
+* Verdicts: anonymous `profiles` → `SAFE_TO_DELETE` (cascades). Analytics →
+  `ANALYTICS_RESET` (all 494 rows, below). Meta Reflex preferences/votes held
+  by anonymous voters → `SAFE_TO_DELETE`; this is pre-launch playtest
+  sentiment, and block A4 measures how much of it exists before you decide.
+  The four registered accounts and every bot → `CURRENT_DATA_TO_PRESERVE`.
+
+### The analytics reset is now trivially cheap
+
+178 events, 159 sessions, 157 visitors — all of it written before the
+classification columns existed, and most of it this workstream's and LEGACY1's
+own automation. There is nothing to salvage by filtering, and a clean baseline
+beats trying to classify it retroactively.
+
+---
+
 ## Identity lifecycle AFTER
 
 ```
@@ -444,27 +523,16 @@ All of it is in **`docs/USERS1_PRODUCTION_SQL.md`**, in order:
 
 | | What | Who |
 |---|---|---|
-| **A** | Audit, READ ONLY. The four registered accounts in full, the anonymous count and its shape, what anonymous identities ever did that persisted, every FK and non-FK reference to a user id, current analytics volume. | **owner — not yet run** |
+| **A** | Audit, READ ONLY. | **RUN 2026-09-23 — results above** |
 | **B** | Apply `20260923120000_users1_traffic_classification.sql`. Additive and safe to apply before the frontend ships. | **owner — not yet run** |
 | **C** | Purge the anonymous identities, then reset the three analytics tables. **Destructive.** Must not run until the new build is live, or automation recreates them within a day. Preferred purge path is the existing admin-gated `purge-anonymous-users` edge function (Users › Accounts), not raw SQL — `auth.users` has side tables the Auth API owns. | **owner — not yet run** |
 | **D** | Certification read-back: what the smoke traffic produced and how it was classified. | **owner — not yet run** |
 
 ### Phases deliberately NOT completed, and why
 
-* **Phase 2 — classify the four registered accounts.** Needs block A. The brief
-  is explicit that no registered account may be deleted without classification,
-  and that an ambiguous one is preserved. **Nothing in this branch deletes or
-  modifies any registered account**, so that rule cannot be violated by merging
-  it.
-* **Phase 3 — anonymous dependency audit.** Blocks A4/A5/A6 answer it. What the
-  repository can already say: seven foreign keys reference `auth.users`
-  (`profiles`, `leagues.created_by_user_id`, `user_roles`,
-  `champion_images.updated_by`, `user_identity_links`,
-  `identity_link_attempts`, `identity_link_pending`), all `ON DELETE CASCADE`
-  or `SET NULL`, so a purge cannot leave a broken FK. Everything else stores a
-  plain uuid (including `analytics_events.user_id`, deliberately), so the
-  residue is orphaned rows, not broken references.
-* **Phase 8 — production cleanup.** Block C, after the deploy.
+* **Phase 8 — production cleanup.** Block C, after the deploy. Nothing in this
+  branch deletes or modifies any account, so merging it cannot violate the
+  "never delete without classification" rule.
 * **Phase 16 — production certification.** Block D, after the smoke visits.
 
 ### Deploy
@@ -542,9 +610,8 @@ reported to the diagnostics channel — non-fatal, never silent.
 
 ## Next task
 
-1. Run block A and paste the output back, so the four registered accounts can
-   be classified before anything touches them.
-2. Merge, publish, then run blocks B, C and D in the deploy order above.
+1. Merge, apply block B, publish, then run blocks C and D in the deploy order
+   above. **C0 first, every time.**
 3. LEGACY1's two open items are still open: delete the deployed
    `snapshot-global-elo` and `populate-preset-images` edge functions in the
    Supabase dashboard.

@@ -11,7 +11,17 @@ automation will immediately mint the accounts again.
 
 ---
 
-## A — audit (READ ONLY). Run first, paste the output back.
+## A — audit (READ ONLY). **RUN — results recorded below.**
+
+```
+registered auth users   4, all four classified, NONE to be deleted (USERS1_HANDOFF.md)
+analytics_events        178
+analytics_sessions      159
+analytics_visitors      157
+anonymous auth users    ~5,031   (anonymous profiles ~5,031)
+```
+
+Retained as the re-audit recipe.
 
 ```sql
 -- A1. Headline identity counts.
@@ -132,41 +142,112 @@ policies — it drops nothing and rewrites no row.
 Do not run this before the frontend stops minting an anonymous user per page
 load, or the count will be back within a day.
 
+### C0 — the pre-flight, and it is not optional
+
+The purge deletes by **`profiles.is_anonymous`**, not by `auth.users.is_anonymous`
+(`supabase/functions/purge-anonymous-users/index.ts:65`). Those two flags are
+written by different systems and CAN disagree — that is the entire reason
+AUTH2 added `ensureProfilePermanent()`, whose own comment says: *"when they
+disagree the admin purge believes the profile and deletes a real account."*
+
+With ~5,031 rows about to be deleted and exactly four accounts that must
+survive, that is a one-shot, unrecoverable risk. **Run this first. If it
+returns any row, repair those rows and re-run it before going further.**
+
 ```sql
--- C1. RECORD THE BEFORE-NUMBERS. Paste the output into USERS1_HANDOFF.md.
+-- C0a. Any REAL account whose profile still claims to be anonymous.
+--      Expected: ZERO ROWS. Each row returned is an account the purge
+--      would delete.
+select p.id as profile_id, p.user_id, p.display_name, p.is_bot,
+       u.email, u.is_anonymous as auth_says_anonymous,
+       p.is_anonymous          as profile_says_anonymous
+from public.profiles p
+join auth.users u on u.id = p.user_id
+where p.is_anonymous = true
+  and u.is_anonymous = false;
+
+-- C0b. THE REPAIR, if and only if C0a returned rows. Same write
+--      ensureProfilePermanent() makes, applied in bulk.
+-- update public.profiles p
+--    set is_anonymous = false
+--   from auth.users u
+--  where u.id = p.user_id
+--    and p.is_anonymous = true
+--    and u.is_anonymous = false;
+
+-- C0c. The four accounts, named, must be outside the purge set.
+--      Expected: four rows, every would_be_purged = false.
+select u.email, p.display_name, p.is_bot,
+       p.is_anonymous as would_be_purged
+from auth.users u
+join public.profiles p on p.user_id = u.id
+where u.email in (
+  'mlmitchaman@gmail.com',      -- REAL_OWNER
+  'alastairigpark@gmail.com',   -- REAL_USER
+  'bobbungo2@gmail.com',        -- OWNER_TEST
+  'contact.mogzy.lol@gmail.com' -- AUTOMATION_TEST, is_bot — Ranked bot identity
+);
+```
+
+### C1 — record the before-numbers
+
+```sql
 select
   (select count(*) from auth.users where is_anonymous)     as anon_before,
   (select count(*) from auth.users where not is_anonymous) as registered_before,
+  (select count(*) from public.profiles where is_anonymous) as anon_profiles_before,
   (select count(*) from public.analytics_events)           as events_before,
   (select count(*) from public.analytics_sessions)         as sessions_before,
   (select count(*) from public.analytics_visitors)         as visitors_before;
+-- expect registered_before = 4, and it must still be 4 in C4.
+```
 
--- C2. Purge the anonymous identities.
---     PREFERRED PATH: Admin › Users › Accounts › "Purge all anonymous", which
---     calls the existing admin-gated `purge-anonymous-users` edge function and
---     deletes through the Auth API (auth.users rows have side tables the API
---     owns). Use this SQL only if that fails, and only with the API route
---     unavailable — deleting straight out of auth.users bypasses Supabase's own
---     bookkeeping.
---
--- delete from auth.users where is_anonymous;   -- last resort, see above
+### C2 — purge the anonymous identities
 
--- C3. Analytics reset — a clean launch baseline.
---     Children first is irrelevant here (no FKs between the three), but the
---     order is kept deliberate and the whole thing is one transaction.
+**Use the UI, not SQL.** Admin › Users › Accounts › "Purge all anonymous"
+calls the existing admin-gated `purge-anonymous-users` edge function, which
+deletes through the Auth API. `auth.users` has side tables the Auth API owns;
+deleting straight out of the table bypasses Supabase's own bookkeeping.
+
+It deletes one account per request, so ~5,031 will take a while and may need
+more than one run. The function reports `count` and `total` — if they differ,
+run it again and check the `errors` list.
+
+```sql
+-- LAST RESORT ONLY, if the edge function cannot be made to work. The
+-- predicate is auth-side on purpose: after C0 the two flags agree, and this
+-- one cannot be fooled by a mislabelled profile.
+-- delete from auth.users where is_anonymous = true;
+```
+
+### C3 — analytics reset
+
+178 events, 159 sessions, 157 visitors. All of it predates the classification
+columns and most of it is this workstream's own automation, so there is nothing
+to salvage by filtering.
+
+```sql
 begin;
   delete from public.analytics_events;
   delete from public.analytics_sessions;
   delete from public.analytics_visitors;
 commit;
+```
 
--- C4. AFTER-NUMBERS.
+Nothing else is touched. Railway's gameplay databases are not analytics and are
+not in scope.
+
+### C4 — the after-numbers
+
+```sql
 select
-  (select count(*) from auth.users where is_anonymous)     as anon_after,
-  (select count(*) from auth.users where not is_anonymous) as registered_after,
-  (select count(*) from public.analytics_events)           as events_after,
-  (select count(*) from public.analytics_sessions)         as sessions_after,
-  (select count(*) from public.analytics_visitors)         as visitors_after;
+  (select count(*) from auth.users where is_anonymous)      as anon_after,
+  (select count(*) from auth.users where not is_anonymous)  as registered_after,
+  (select count(*) from public.profiles where is_anonymous) as anon_profiles_after,
+  (select count(*) from public.analytics_events)            as events_after,
+  (select count(*) from public.analytics_sessions)          as sessions_after,
+  (select count(*) from public.analytics_visitors)          as visitors_after;
+-- registered_after MUST be 4. If it is not, stop and say so.
 ```
 
 ---
