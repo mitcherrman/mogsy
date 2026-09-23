@@ -1,8 +1,8 @@
 # LEGACY1 — Eradicate retired Mogsy architecture from active code
 
-**State: PHASES 1–10 COMPLETE on `legacy1/eradicate-retired-mogsy`, pushed and
-verified. The only step left is merging to `main`, which is the owner's call
-because `main` is the production ref.**
+**State: MERGED TO `main` at `5df5bb64` (fast-forward from `cf9f5a8a`) and
+verified. The live site has NOT been republished yet — nothing in the repo
+publishes, so someone must press Publish in Lovable. See Integration below.**
 
 Read this file first. It records what retired Mogsy architecture was found in
 the active codebase, what was deleted, and what deliberately stayed. Where it
@@ -294,30 +294,83 @@ typecheck error is new — the five that disappeared were in deleted files.
 4. `src/test/security/pt2cProfileFrameAuthority.test.ts` OOMs when run alone, on
    `origin/main` as well. Pre-existing; not investigated here.
 
-## Integration (Phase 10)
+## Integration (Phase 10) — MERGED
 
-`origin/main` did **not** move during this workstream — it is still `cf9f5a8a`,
-so there was nothing to reconcile and no newer work to preserve. The branch is
-pushed:
+`origin/main` never moved during this workstream, so there was nothing to
+reconcile and no newer work to preserve. The owner approved integration and
+`main` was fast-forwarded.
 
 ```
-branch pushed   legacy1/eradicate-retired-mogsy
-commits         84eca41f  delete the retired Mogsy voting product
-                6edcab4a  delete the retired economy, and the flag
-                a64b3651  guards, docs, and the last of the stale references
-diff vs main    152 files changed, 1141 insertions(+), 29360 deletions(-)
+main before      cf9f5a8a410a1f04209a4244c7d5877d5f31f0f3
+main after       5df5bb64ec8bed9a2a2d7294541ab2eb3d4c479a
+                 (verified twice: git rev-parse origin/main and
+                  git ls-remote origin refs/heads/main)
+relationship     fast-forward only — 4 ahead, 0 behind, ancestry checked with
+                 git merge-base --is-ancestor before pushing
+commits on main  84eca41f  delete the retired Mogsy voting product
+                 6edcab4a  delete the retired economy, and the flag
+                 a64b3651  guards, docs, and the last of the stale references
+                 5df5bb64  record integration state in the handoff
+diff             152 files changed, 1141 insertions(+), 29360 deletions(-)
 ```
 
-**Merging to `main` is deliberately left to the owner.** `main` is the Lovable
-production ref (FUNNEL1 §16.4), so a fast-forward publishes a 29k-line deletion
-to the live site. Everything is verified and the branch is ready; the last step
-is one the owner should take knowingly. `git merge --ff-only
-legacy1/eradicate-retired-mogsy` on `main` is all it needs.
+The SHA was pushed straight to `refs/heads/main`, so no local branch was checked
+out and the unrelated dirty working tree in the main clone was never touched.
+
+### Production publish — NOT YET DONE, and it needs a human
+
+**The merge is on `main`; the live site is still running the old build.**
+
+```
+live bundle      assets/index-DZBVyDvp.js  — contains {id:"arena",…kind:"archived"},
+                 i.e. the pre-LEGACY1 build
+polled           93 checks over 31 minutes after the push; the hash never changed
+repo-side CI     none — the repository has no .github/workflows at all
+```
+
+So nothing in the repo publishes. `main` is the Lovable production ref
+(FUNNEL1 §16.4), but a push that originates **outside** Lovable syncs the code
+without republishing the live domain. **Someone has to press Publish in the
+Lovable project.** Until then `mogzy.lol` keeps serving the retired product.
+
+There is nothing to fix and nothing to re-verify in the code for this: the same
+build was produced locally from this exact tree and behaves correctly (below).
+
+### Smoke verification
+
+Signed-out, against the **merged build** served from its own `vite build` output
+(`assets/index-CNGu3N3o.js` — asserted to contain no `kind:"archived"` and to
+declare `/admin/audio-studio`). This is the artifact `main` now produces; it is
+NOT the currently published bundle.
+
+```
+current surfaces
+  /                    renders the Academy entrance
+  /lol                 renders the Mogzy Academy hub
+  /quiz                renders Leaguecraft (Ranked standing, placement)
+  /admin               gated — bounces a signed-out visitor to /
+  /admin/analytics     route resolves, AdminRoute gate holds it
+  /admin/studio        gated — bounces a signed-out visitor to /
+  /admin/audio-studio  route resolves, AdminRoute gate holds it
+
+retired surfaces — all ten render the 404 with noindex,nofollow
+  /admin/arena · /admin/play · /admin/gaming · /admin/demo · /moderator ·
+  /shop · /leagues · /leagues/preset · /leaderboard · /leaderboard/abc123
+```
+
+Admin **contents** cannot be verified from a signed-out browser, and signing in
+as an admin is the owner's to do. The equivalent proof is
+`AdminShell.areas.test.tsx`, which renders every area with an authorized admin
+and asserts the ten-area rail, the absence of an Arena entry and of any
+`/moderator` link, and that `Moderator.tsx` is gone — 56 tests passing.
 
 ## Next task
 
-Merge, then delete the two deployed edge functions in the Supabase dashboard
-(Unresolved #1). After that the natural follow-on is the Admin IA question the
-owner raised — People + Analytics possibly collapsing into Users, Ranked moving
-inside Leaguecraft — which is now answerable against a surface that contains
-only current product.
+1. **Press Publish in Lovable** so the live site stops serving the retired
+   product, then re-check that `mogzy.lol`'s bundle no longer contains
+   `kind:"archived"` and that `/admin/arena` and `/moderator` 404 in production.
+2. Delete the two deployed edge functions in the Supabase dashboard
+   (Unresolved #1).
+3. Then the Admin IA question the owner raised — People + Analytics possibly
+   collapsing into Users, Ranked moving inside Leaguecraft — which is now
+   answerable against a surface that contains only current product.
