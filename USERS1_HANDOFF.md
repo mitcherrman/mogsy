@@ -1,5 +1,51 @@
 # USERS1 — Clean audience identity, and one Users domain
 
+## Production continuation — 2026-09-24
+
+Current owner-confirmed state:
+
+```
+frontend merged to main and published
+Block B applied
+C0 permanent-auth/profile mismatch gate: 0
+
+registered auth users: 4 (all preserved)
+anonymous auth users:  5060
+anonymous profiles:    5060
+analytics events:       194
+analytics sessions:     174
+analytics visitors:     169
+```
+
+The first C2 code audit found a real safety blocker in the deployed
+`purge-anonymous-users` implementation: it selected only
+`profiles.is_anonymous`, did not independently verify the Auth user was also
+anonymous, and relied on the data API's implicit result cap rather than an
+explicit batch. Do not run the production purge until the hardened function in
+this tree is deployed.
+
+The hardened implementation keeps the existing Admin workflow and adds:
+
+* an explicit 250-profile batch with concurrency limited to five;
+* `auth.admin.getUserById()` immediately before every delete and a refusal when
+  `auth.users.is_anonymous` is not true;
+* a second, named denylist for the four preserved registered emails;
+* deletion only through `auth.admin.deleteUser()`;
+* `count`, `total`, `attempted`, `remaining`, and `errors` in every successful
+  response, including the zero-row response;
+* Admin toast reporting that tells the owner whether to run the next batch or
+  stop and review errors.
+
+C2, C3, C4, smoke traffic, and Block D remain unrun pending deployment of that
+hardening. The final private/incognito token check is intentionally deferred
+until the end and remains mandatory before USERS1 can be closed:
+
+```text
+signed out in a private/incognito window, visit /, /lol, /quiz;
+confirm Local Storage does not contain
+sb-kewgjwrzpzpeltwidvuc-auth-token
+```
+
 **State: CODE COMPLETE on `users1/audience-identity`, NOT merged, NOT deployed.
 Three things need a human with production access, in this order — see
 [Production, and what is still outstanding](#production-and-what-is-still-outstanding).**

@@ -1,5 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const BATCH_SIZE = 250;
+const DELETE_CONCURRENCY = 5;
+
+// USERS1 production survivors. The auth-side `is_anonymous` check below is the
+// authoritative safety gate; this denylist is a second, named guard against a
+// future metadata regression involving any account the launch plan preserves.
+const PRESERVED_REGISTERED_EMAILS = new Set([
+  "mlmitchaman@gmail.com",
+  "alastairigpark@gmail.com",
+  "bobbungo2@gmail.com",
+  "contact.mogzy.lol@gmail.com",
+]);
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -58,11 +71,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get all anonymous profiles
-    const { data: anonProfiles, error: fetchError } = await serviceClient
+    // Fetch one explicit batch. Supabase's data API has a server-side row cap;
+    // relying on that implicit cap made the old function appear to process
+    // "all" rows while silently stopping at the first page.
+    const { data: anonProfiles, error: fetchError, count: total } = await serviceClient
       .from("profiles")
-      .select("id, user_id, display_name")
-      .eq("is_anonymous", true);
+      .select("id, user_id, display_name", { count: "exact" })
+      .eq("is_anonymous", true)
+      .order("created_at", { ascending: true })
+      .range(0, BATCH_SIZE - 1);
 
     if (fetchError) {
       return new Response(JSON.stringify({ error: fetchError.message }), {
@@ -73,36 +90,83 @@ Deno.serve(async (req) => {
 
     if (!anonProfiles || anonProfiles.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No anonymous users to purge", count: 0 }),
+        JSON.stringify({
+          message: "No anonymous users to purge",
+          count: 0,
+          total: total ?? 0,
+          attempted: 0,
+          remaining: 0,
+          errors: [],
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     let deletedCount = 0;
     const errors: string[] = [];
+    let cursor = 0;
 
-    for (const profile of anonProfiles) {
-      try {
-        // Delete auth user (cascades profile deletion via FK)
-        const { error: deleteError } = await serviceClient.auth.admin.deleteUser(
-          profile.user_id
-        );
-        if (deleteError) {
-          errors.push(`${profile.display_name}: ${deleteError.message}`);
-        } else {
-          deletedCount++;
+    // Bound concurrency to avoid an Auth Admin rate-limit burst while still
+    // keeping a 250-row invocation comfortably within the function timeout.
+    const worker = async () => {
+      while (cursor < anonProfiles.length) {
+        const profile = anonProfiles[cursor++];
+        try {
+          // Never trust the profile flag alone. C0 should already guarantee
+          // agreement, but the function independently proves the auth record is
+          // anonymous immediately before issuing the irreversible delete.
+          const { data: authData, error: authError } =
+            await serviceClient.auth.admin.getUserById(profile.user_id);
+          if (authError || !authData?.user) {
+            errors.push(
+              `${profile.display_name} (${profile.user_id}): auth verification failed: ${authError?.message ?? "user not found"}`
+            );
+            continue;
+          }
+
+          const email = authData.user.email?.toLowerCase();
+          if (!authData.user.is_anonymous || (email && PRESERVED_REGISTERED_EMAILS.has(email))) {
+            errors.push(
+              `${profile.display_name} (${profile.user_id}): blocked because the auth user is registered or preserved`
+            );
+            continue;
+          }
+
+          // Auth Admin owns all auth side-table cleanup; never delete auth.users
+          // directly from SQL.
+          const { error: deleteError } = await serviceClient.auth.admin.deleteUser(
+            profile.user_id
+          );
+          if (deleteError) {
+            errors.push(`${profile.display_name} (${profile.user_id}): ${deleteError.message}`);
+          } else {
+            deletedCount++;
+          }
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          errors.push(`${profile.display_name} (${profile.user_id}): ${message}`);
         }
-      } catch (e) {
-        errors.push(`${profile.display_name}: ${e.message}`);
       }
-    }
+    };
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(DELETE_CONCURRENCY, anonProfiles.length) },
+        () => worker()
+      )
+    );
+
+    const totalBefore = total ?? anonProfiles.length;
+    const remaining = Math.max(totalBefore - deletedCount, 0);
 
     return new Response(
       JSON.stringify({
-        message: `Purged ${deletedCount} anonymous users`,
+        message: `Purged ${deletedCount} of ${totalBefore} anonymous users; ${remaining} remain`,
         count: deletedCount,
-        total: anonProfiles.length,
-        errors: errors.length > 0 ? errors : undefined,
+        total: totalBefore,
+        attempted: anonProfiles.length,
+        remaining,
+        errors,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

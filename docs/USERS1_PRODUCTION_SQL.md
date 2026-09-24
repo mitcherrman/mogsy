@@ -209,9 +209,13 @@ calls the existing admin-gated `purge-anonymous-users` edge function, which
 deletes through the Auth API. `auth.users` has side tables the Auth API owns;
 deleting straight out of the table bypasses Supabase's own bookkeeping.
 
-It deletes one account per request, so ~5,031 will take a while and may need
-more than one run. The function reports `count` and `total` — if they differ,
-run it again and check the `errors` list.
+The function processes an explicit batch of at most 250 profiles per invocation,
+with five Auth Admin operations in flight. Before every irreversible delete it
+reads the corresponding Auth user and refuses the row unless both the profile
+and Auth user say anonymous; the four named preserved emails are also denied.
+It reports `count`, `total`, `attempted`, `remaining`, and `errors`. Run it again
+while `remaining` is non-zero. If `errors` is non-empty, stop and review it
+before retrying.
 
 ```sql
 -- LAST RESORT ONLY, if the edge function cannot be made to work. The

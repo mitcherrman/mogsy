@@ -679,7 +679,16 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       if (error || data?.error) {
         toast.error(data?.error || error?.message || "Purge failed");
       } else {
-        toast.success(data?.message || "Anonymous users purged");
+        const errorCount = Array.isArray(data?.errors) ? data.errors.length : 0;
+        const summary = data?.message || `Purged ${data?.count ?? 0} of ${data?.total ?? 0} anonymous users`;
+        if (errorCount > 0) {
+          toast.warning(`${summary}. ${errorCount} error${errorCount === 1 ? "" : "s"}; stop and review before retrying.`);
+          console.error("purge-anonymous-users errors", data.errors);
+        } else if ((data?.remaining ?? 0) > 0) {
+          toast.success(`${summary}. Run the purge again to process the next batch.`);
+        } else {
+          toast.success(summary);
+        }
         fetchProfiles();
       }
     } catch {
