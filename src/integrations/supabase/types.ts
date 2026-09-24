@@ -310,10 +310,13 @@ export type Database = {
       }
       analytics_sessions: {
         Row: {
+          classification_reason: string | null
           landing_path: string | null
           referrer: string | null
           session_id: string
           started_at: string
+          traffic_class: string
+          traffic_source: string | null
           utm_campaign: string | null
           utm_content: string | null
           utm_medium: string | null
@@ -322,10 +325,13 @@ export type Database = {
           visitor_id: string
         }
         Insert: {
+          classification_reason?: string | null
           landing_path?: string | null
           referrer?: string | null
           session_id: string
           started_at?: string
+          traffic_class?: string
+          traffic_source?: string | null
           utm_campaign?: string | null
           utm_content?: string | null
           utm_medium?: string | null
@@ -334,15 +340,45 @@ export type Database = {
           visitor_id: string
         }
         Update: {
+          classification_reason?: string | null
           landing_path?: string | null
           referrer?: string | null
           session_id?: string
           started_at?: string
+          traffic_class?: string
+          traffic_source?: string | null
           utm_campaign?: string | null
           utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
+      analytics_traffic_overrides: {
+        Row: {
+          reason: string | null
+          set_at: string
+          set_by: string | null
+          traffic_class: string
+          traffic_source: string | null
+          visitor_id: string
+        }
+        Insert: {
+          reason?: string | null
+          set_at?: string
+          set_by?: string | null
+          traffic_class: string
+          traffic_source?: string | null
+          visitor_id: string
+        }
+        Update: {
+          reason?: string | null
+          set_at?: string
+          set_by?: string | null
+          traffic_class?: string
+          traffic_source?: string | null
           visitor_id?: string
         }
         Relationships: []
@@ -3854,6 +3890,10 @@ export type Database = {
           _profile_id: string
         }
         Returns: Json
+      }
+      analytics_promote_session_human: {
+        Args: { p_reason?: string; p_session_id: string }
+        Returns: boolean
       }
       apply_pro_grant: {
         Args: {
