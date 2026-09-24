@@ -45,3 +45,35 @@ describe("DC-SURV-UX — the Survival finish signal is server truth", () => {
     expect(plannedRoundTotal(view)).toBeNull();
   });
 });
+
+describe("DC-LANE-C — own_stage_finished / live_strikes are the published answer", () => {
+  it("own_stage_finished true ends the stage at once, even mid-block with own_finished false", () => {
+    expect(survivalHumanFinished(surv({ strikes: 2, liveStrikes: 3, ownStageFinished: true }),
+      seg({ ownFinished: false, ownChallengesCompleted: 1 }))).toBe(true);
+  });
+  it("own_stage_finished false wins over the legacy early-stop inference", () => {
+    expect(survivalHumanFinished(surv({ strikes: 1, liveStrikes: 1, ownStageFinished: false }),
+      seg({ ownFinished: true, ownChallengesCompleted: 1, challengeCount: 1 }))).toBe(false);
+  });
+  it("displays the live strike count, not the settled one", () => {
+    expect(survivalStatus(surv({ strikes: 1, liveStrikes: 3 })))
+      .toEqual({ answered: 0, strikesUsed: 3, maxStrikes: 3 });
+  });
+  it("reads both fields off the wire", () => {
+    const env = publicRoundV2(false) as { payload: Record<string, unknown> };
+    env.payload.ruleset = { ruleset_id: "survival", max_strikes: 3, strikes: 2, questions_settled: 12,
+      stage_ended: false, live_strikes: 3, own_stage_finished: true };
+    const view = readPublicRound(env);
+    expect(view.ruleset?.liveStrikes).toBe(3);
+    expect(view.ruleset?.ownStageFinished).toBe(true);
+    expect(survivalHumanFinished(view, null)).toBe(true);
+    expect(survivalStatus(view)?.strikesUsed).toBe(3);
+  });
+  it("an older payload without the fields reads them as null", () => {
+    const env = publicRoundV2(false) as { payload: Record<string, unknown> };
+    env.payload.ruleset = { ruleset_id: "survival", max_strikes: 3, strikes: 0 };
+    const view = readPublicRound(env);
+    expect(view.ruleset?.liveStrikes).toBeNull();
+    expect(view.ruleset?.ownStageFinished).toBeNull();
+  });
+});

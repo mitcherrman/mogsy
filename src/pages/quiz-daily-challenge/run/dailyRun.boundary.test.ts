@@ -55,8 +55,22 @@ describe("the Daily parent run hosts the canonical match and nothing else", () =
 
   it("offers no manual progression control between stages", () => {
     const src = source();
-    for (const banned of ["Next stage", "Next Stage", "Continue", "Skip"]) {
+    for (const banned of ["Next stage", "Next Stage", "Skip"]) {
       expect(src, `the Daily run grew a "${banned}" control`).not.toContain(banned);
     }
+  });
+
+  /**
+   * DC-LANE-C — the stage result's Continue is the one control, and it moves
+   * PRESENTATION only: it lives on the stage result, and the handler behind
+   * it never reaches the transport, so it cannot advance the parent run.
+   */
+  it("Continue lives only on the stage result and never advances the server", () => {
+    const withContinue = RUN_FILES.filter((f) => /\bContinue\b/.test(codeOnly(readFileSync(f, "utf8"))));
+    expect(withContinue.map((f) => f.split(/[\\/]/).pop())).toEqual(["DailyStageResult.tsx"]);
+    const hook = codeOnly(readFileSync(join(ROOT, "pages/quiz-daily-challenge/run/useDailyRun.ts"), "utf8"));
+    const body = hook.slice(hook.indexOf("const continueFromResult"), hook.indexOf("const retry"));
+    expect(body.length).toBeGreaterThan(0);
+    expect(body).not.toMatch(/transport|sync|launch|ask\(/);
   });
 });

@@ -7,7 +7,8 @@
  * match (`MatchHost`) so the Daily owns what surrounds each stage:
  *
  *   entry ─► Daily intro ─► stage tag ─► [canonical match] ─► stage result
- *         ─► next stage tag ─► … ─► Review ─► the one final completion
+ *         ─(Continue)─► next stage tag ─► … ─► Review ─► Review's result
+ *         ─(Continue)─► the one final completion
  *
  * The child match is keyed on its id, so each stage is a clean mount of the
  * same arena; between stages the Daily's own beats hold the same shell, so
@@ -24,7 +25,8 @@ import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
 import type { MatchHost } from "@/lib/ranked-core/flow/matchHost";
 import { httpDailyRunTransport, type DailyRunTransport } from "@/lib/daily-challenge/run/client";
 import { DailyStageChrome } from "./DailyStageChrome";
-import { DailyIntroBeat, StageIntroBeat, StageResultBeat } from "./DailyRunBeats";
+import { DailyIntroBeat, StageIntroBeat } from "./DailyRunBeats";
+import { DailyStageResult, type StageResultPlacement } from "./DailyStageResult";
 import { DailyCompletion } from "./DailyCompletion";
 import { useDailyRun } from "./useDailyRun";
 
@@ -47,11 +49,17 @@ export function DailyRunPage({
   transport = httpDailyRunTransport,
   StageMatch = CanonicalStageMatch,
   viewerUserId: viewerOverride,
+  stageResultPlacement,
 }: {
   transport?: DailyRunTransport;
   StageMatch?: ComponentType<StageMatchProps>;
   /** Test seam; production reads the signed-in (or anonymous) session. */
   viewerUserId?: string;
+  /**
+   * DC-LANE-C — an optional unit between a stage's result and its Continue
+   * (a future monetization placement). Unset in production today.
+   */
+  stageResultPlacement?: StageResultPlacement;
 }) {
   const dc = useDailyRun(transport);
   const { user } = useAuth();
@@ -130,7 +138,9 @@ export function DailyRunPage({
     case "stage-settling":
     case "stage-result": {
       const beat = shell(
-        <StageResultBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
+        <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
+          onContinue={flow.phase === "stage-result" ? dc.continueFromResult : undefined}
+          placement={stageResultPlacement} />,
         <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} />);
       // DC-SURV-UX — the player is out but the child is still settling: keep
       // it connected (its reads let the server finish the match) and hidden.

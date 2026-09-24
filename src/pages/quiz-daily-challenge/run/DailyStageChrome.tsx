@@ -112,7 +112,8 @@ function RulesetReadout({ stage, skewMs, childPhase, survival }: {
     // Both sources are the server's own ledger; the higher reading is simply
     // the more recent one (strikes never go down within a stage).
     const max = live?.strikes?.max ?? survival?.maxStrikes ?? stage.ruleset.maxStrikes ?? null;
-    const used = Math.max(live?.strikes?.used ?? 0, survival?.strikesUsed ?? 0);
+    const daily = live?.strikes ? Math.max(live.strikes.used, live.strikes.live ?? 0) : 0;
+    const used = Math.max(daily, survival?.strikesUsed ?? 0);
     return max ? <StrikesMeter strikes={{ used, max }} answered={survival?.answered ?? null} /> : null;
   }
   return null;

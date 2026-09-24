@@ -711,6 +711,18 @@ export interface StageRulesetView {
   strikes?: number | null;
   questionsSettled?: number | null;
   stageEnded?: boolean;
+  /**
+   * DC-LANE-C — the LIVE sibling of `strikes`: the settled ledger plus the
+   * mistakes already known inside the player's unsettled module. A server
+   * projection; the client never adds to it. Null when absent.
+   */
+  liveStrikes?: number | null;
+  /**
+   * DC-LANE-C — the server says this player's ruleset stage is over (strike
+   * allowance spent, or a bank drained), possibly one settlement before the
+   * ledger folds it. Null when the payload predates the field.
+   */
+  ownStageFinished?: boolean | null;
 }
 
 export interface PrivatePlayerView extends PublicRoundView {
@@ -1004,6 +1016,8 @@ function readStageRuleset(v: unknown): StageRulesetView | null {
     strikes: n(o.strikes),
     questionsSettled: n(o.questions_settled),
     stageEnded: o.stage_ended === true,
+    liveStrikes: n(o.live_strikes),
+    ownStageFinished: typeof o.own_stage_finished === "boolean" ? o.own_stage_finished : null,
   };
 }
 

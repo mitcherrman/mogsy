@@ -33,7 +33,7 @@ import {
   DailyRunApiError, isDailyRunAborted, type DailyRunTransport,
 } from "@/lib/daily-challenge/run/client";
 import {
-  DAILY_INTRO_MS, STAGE_INTRO_MIN_MS, STAGE_RESULT_MS,
+  DAILY_INTRO_MS, STAGE_INTRO_MIN_MS,
   projectDailyFlow, stageCompletedBetween, type DailyFlowView,
 } from "@/lib/daily-challenge/run/flow";
 import { runSkewMs } from "@/lib/daily-challenge/run/timeBank";
@@ -69,6 +69,8 @@ export interface DailyRunState {
   onChildSurvivalStatus: (status: SurvivalStatus) => void;
   /** The active Survival child's status as its match last reported it. */
   survival: SurvivalStatus | null;
+  /** DC-LANE-C — the stage result's Continue. Presentation only. */
+  continueFromResult: () => void;
 }
 
 function messageFor(e: unknown): string {
@@ -140,13 +142,11 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
       setFinishedChild(null);
       setSurvival(null);
       setChildPhase(null);
-      // Review closes the day: it goes straight to the one final completion.
-      if (done.kind !== "review") {
-        setResultFor(done.id);
-        after(STAGE_RESULT_MS, () => setResultFor((cur) => (cur === done.id ? null : cur)));
-      }
+      // DC-LANE-C — every finished stage, Review included, gets its result
+      // screen; the player leaves it with Continue (`continueFromResult`).
+      setResultFor(done.id);
     }
-  }, [after]);
+  }, []);
 
   const ask = useCallback(async (work: () => Promise<DailyRun>, quiet = false): Promise<DailyRun | null> => {
     if (!quiet) { setBusy(true); setError(null); }
@@ -283,6 +283,13 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
     setSurvival(status);
   }, []);
 
+  // DC-LANE-C — leave the stage result. The parent has ALREADY advanced (the
+  // result only exists after it did), so this moves presentation only: the
+  // next stage's tag, or the day's completion.
+  const continueFromResult = useCallback(() => {
+    setResultFor(null);
+  }, []);
+
   const retry = useCallback(() => {
     setError(null);
     const r = runRef.current;
@@ -304,6 +311,6 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
   return {
     load, run, flow, busy, error, skewMs, childPhase, childEntry,
     start, retry, onChildSettled, onChildPhase,
-    onChildPlayerFinished, onChildSurvivalStatus, survival,
+    onChildPlayerFinished, onChildSurvivalStatus, survival, continueFromResult,
   };
 }

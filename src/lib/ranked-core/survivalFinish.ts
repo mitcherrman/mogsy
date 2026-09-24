@@ -17,6 +17,11 @@
  *
  * `own_finished` ALONE is not the signal: every one-card Splash module sets it
  * the moment it is answered, right or wrong.
+ *
+ * DC-LANE-C — the server now publishes the answer directly:
+ * `ruleset.own_stage_finished` (and `ruleset.live_strikes`, the strike count
+ * including the unsettled module). When the payload carries it, it is the
+ * whole answer; the inference above is kept only for payloads that predate it.
  */
 import type { PublicRoundView, SegmentStateView } from "@/lib/ranked-public/contracts";
 
@@ -30,9 +35,12 @@ export function survivalHumanFinished(
   pub: PublicRoundView | null | undefined,
   state: SegmentStateView | null | undefined,
 ): boolean {
-  if (!isSurvival(pub) || !state?.ownFinished) return false;
+  if (!isSurvival(pub)) return false;
+  const r = pub!.ruleset!;
+  if (typeof r.ownStageFinished === "boolean") return r.ownStageFinished || r.stageEnded === true;
+  if (!state?.ownFinished) return false;
   if (state.ownChallengesCompleted < state.challengeCount) return true;
-  return pub?.ruleset?.stageEnded === true;
+  return r.stageEnded === true;
 }
 
 /** The status a host shows for Survival: progress and strikes, no denominator. */
@@ -47,7 +55,8 @@ export function survivalStatus(pub: PublicRoundView | null | undefined): Surviva
   const r = pub!.ruleset!;
   return {
     answered: r.questionsSettled ?? null,
-    strikesUsed: r.strikes ?? null,
+    // The live count when published (it already includes the settled one).
+    strikesUsed: r.liveStrikes ?? r.strikes ?? null,
     maxStrikes: r.maxStrikes ?? null,
   };
 }
