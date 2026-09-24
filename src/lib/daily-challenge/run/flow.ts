@@ -57,10 +57,18 @@ export interface DailyFlowLatches {
   settledChild: string | null;
   /** The completed stage whose result interstitial is on screen. */
   resultFor: string | null;
+  /**
+   * DC-SURV-UX — the child whose PLAYER is done (Survival's third strike)
+   * though the match itself may still be settling. Presentation only: it
+   * moves the page to the settling beat, and the parent still advances only
+   * when the server says so.
+   */
+  finishedChild?: string | null;
 }
 
 export const NO_LATCHES: DailyFlowLatches = {
   dailyIntroUp: false, stageIntroFor: null, settledChild: null, resultFor: null,
+  finishedChild: null,
 };
 
 export interface DailyFlowView {
@@ -69,6 +77,12 @@ export interface DailyFlowView {
   stage: DailyStage | null;
   /** The child match to mount, only in `stage-play`. */
   childMatchId: string | null;
+  /**
+   * DC-SURV-UX — in `stage-settling` only: a child whose player is done but
+   * whose match has not handed back yet. The page keeps it connected, out of
+   * sight, so the server can settle it; nothing of it is presented.
+   */
+  settlingChildMatchId?: string | null;
 }
 
 export function projectDailyFlow(run: DailyRun, latches: DailyFlowLatches): DailyFlowView {
@@ -89,6 +103,9 @@ export function projectDailyFlow(run: DailyRun, latches: DailyFlowLatches): Dail
   // The child has been handed back and the parent has not advanced past it yet.
   if (latches.settledChild && stage.childMatchId === latches.settledChild) {
     return { phase: "stage-settling", stage, childMatchId: null };
+  }
+  if (latches.finishedChild && stage.childMatchId === latches.finishedChild) {
+    return { phase: "stage-settling", stage, childMatchId: null, settlingChildMatchId: stage.childMatchId };
   }
 
   const playable = stage.status === "in_progress" && stage.childMatchId !== null;

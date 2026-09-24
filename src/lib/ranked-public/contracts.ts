@@ -702,6 +702,15 @@ export interface PublicRoundView {
 /** The governing ruleset's identity. See `PublicRoundView.ruleset`. */
 export interface StageRulesetView {
   rulesetId: string;
+  /**
+   * DC-SURV-UX — the viewer's own SETTLED ledger, as the server published it.
+   * Optional and null when absent (an older payload, a bank-only ruleset).
+   * Read for display and for the Survival finish signal; never recomputed.
+   */
+  maxStrikes?: number | null;
+  strikes?: number | null;
+  questionsSettled?: number | null;
+  stageEnded?: boolean;
 }
 
 export interface PrivatePlayerView extends PublicRoundView {
@@ -987,8 +996,15 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
 function readStageRuleset(v: unknown): StageRulesetView | null {
   if (!v || typeof v !== "object") return null;
   const o = v as Record<string, unknown>;
-  return typeof o.ruleset_id === "string" && o.ruleset_id
-    ? { rulesetId: o.ruleset_id } : null;
+  if (typeof o.ruleset_id !== "string" || !o.ruleset_id) return null;
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : null);
+  return {
+    rulesetId: o.ruleset_id,
+    maxStrikes: n(o.max_strikes),
+    strikes: n(o.strikes),
+    questionsSettled: n(o.questions_settled),
+    stageEnded: o.stage_ended === true,
+  };
 }
 
 /**

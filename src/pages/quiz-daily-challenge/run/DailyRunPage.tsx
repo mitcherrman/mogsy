@@ -56,14 +56,16 @@ export function DailyRunPage({
   const dc = useDailyRun(transport);
   const { user } = useAuth();
   const viewerUserId = viewerOverride ?? user?.id ?? null;
-  const { onChildSettled, onChildPhase } = dc;
+  const { onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus } = dc;
 
   const host = useMemo<MatchHost>(() => ({
     eyebrow: DAILY_EYEBROW,
     settlingMessage: "Stage complete…",
     onMatchSettled: (s) => onChildSettled(s.matchId),
     onPresentationPhase: onChildPhase,
-  }), [onChildSettled, onChildPhase]);
+    onPlayerFinished: onChildPlayerFinished,
+    onSurvivalStatus: onChildSurvivalStatus,
+  }), [onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus]);
 
   const run = dc.run;
   const flow = dc.flow;
@@ -126,10 +128,30 @@ export function DailyRunPage({
         <StageIntroBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
         <DailyStageChrome run={run} stage={flow.stage} />);
     case "stage-settling":
-    case "stage-result":
-      return shell(
+    case "stage-result": {
+      const beat = shell(
         <StageResultBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
-        <DailyStageChrome run={run} stage={flow.stage} />);
+        <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} />);
+      // DC-SURV-UX — the player is out but the child is still settling: keep
+      // it connected (its reads let the server finish the match) and hidden.
+      // It presents nothing — the arena itself shows only its placeholder —
+      // and its ordinary handback is what the parent syncs on.
+      if (!flow.settlingChildMatchId || !viewerUserId) return beat;
+      return (
+        <>
+          {beat}
+          <div hidden aria-hidden data-testid="daily-settling-child">
+            <StageMatch
+              key={flow.settlingChildMatchId}
+              matchId={flow.settlingChildMatchId}
+              viewerUserId={viewerUserId}
+              entry={dc.childEntry}
+              host={host}
+              chrome={null} />
+          </div>
+        </>
+      );
+    }
     case "complete":
       return shell(<DailyCompletion run={run}
         saveRequired={(user as { is_anonymous?: boolean } | null)?.is_anonymous === true} />);
@@ -150,7 +172,7 @@ export function DailyRunPage({
             entry={dc.childEntry}
             host={host}
             chrome={<DailyStageChrome run={run} stage={flow.stage}
-              skewMs={dc.skewMs} childPhase={dc.childPhase} />} />
+              skewMs={dc.skewMs} childPhase={dc.childPhase} survival={dc.survival} />} />
         </div>
       );
     }

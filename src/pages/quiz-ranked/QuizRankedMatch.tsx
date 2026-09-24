@@ -95,6 +95,7 @@ import { useCountdownNow } from "@/lib/ranked-core/flow/useCountdownNow";
 import { projectMatchOutro } from "@/lib/ranked-core/flow/matchOutro";
 import { useSpecialTransition } from "@/lib/ranked-core/flow/useSpecialTransition";
 import { hostedMatchSettled, type MatchHost } from "@/lib/ranked-core/flow/matchHost";
+import { survivalHumanFinished, survivalStatus } from "@/lib/ranked-core/survivalFinish";
 import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
 import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
@@ -793,6 +794,28 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     hostRef.current?.onPresentationPhase?.(presentationPhase);
   }, [presentationPhase]);
   /**
+   * DC-SURV-UX — a hosted Survival stage ends for the PLAYER at strike 3, not
+   * when the bot has finished its remaining cards. Server truth only (see
+   * `survivalHumanFinished`); the match stays connected so it settles, and
+   * the ordinary handback above still fires when it does.
+   */
+  const survivalOver = host !== undefined && m.phase !== "match_over"
+    && survivalHumanFinished(m.publicRound, m.segmentState ?? m.publicRound?.segmentState);
+  const finishedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!survivalOver || finishedRef.current === matchId) return;
+    finishedRef.current = matchId;
+    hostRef.current?.onPlayerFinished?.(matchId);
+  }, [survivalOver, matchId]);
+  const survival = survivalStatus(m.publicRound);
+  const survivalKey = survival
+    ? `${survival.answered}|${survival.strikesUsed}|${survival.maxStrikes}` : null;
+  useEffect(() => {
+    if (survival) hostRef.current?.onSurvivalStatus?.(survival);
+    // Keyed on the values, not the object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [survivalKey]);
+  /**
    * RFX1 2B3 — THE MEDIUM BEAT this round is owed, if any.
    *
    * Classified from the PRESENTED round, so a Final Round warning cannot
@@ -1025,7 +1048,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
 
   // DCMOD-E: a hosted match has no end screen. It has been handed back (the
   // effect above), and holds the arena's placeholder until its host moves on.
-  if (m.phase === "match_over" && host) {
+  if ((m.phase === "match_over" || survivalOver) && host) {
     return (
       <CanonicalArena view={null} chrome={chrome}
         recovering={{ eyebrow: host.eyebrow, message: host.settlingMessage }} />

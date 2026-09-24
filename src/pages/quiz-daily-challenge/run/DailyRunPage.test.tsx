@@ -419,3 +419,89 @@ describe("a guest's first Daily (owner decision: sign up at the END to save)", (
     expect(q("daily-save-gate")).toBeNull();
   });
 });
+
+describe("DC-SURV-UX — Survival ends for the player at strike 3", () => {
+  const survivalDay = (live: unknown = { strikes: { used: 2, max: 3 } }) => createFixtureTransport(FOUR_STAGE_DAY, {
+    existing: wireRun(FOUR_STAGE_DAY, { current_stage_index: 2 }, {
+      0: { status: "completed", result: wireResult() },
+      1: { status: "completed", result: wireResult() },
+      2: { status: "in_progress", child_match_id: "child-2", live },
+    }),
+  });
+
+  it("shows answered and strikes out of 3 — never a module denominator", async () => {
+    const t = survivalDay();
+    mount(t);
+    await flush();
+    await act(async () => { lastHost!.onSurvivalStatus!({ answered: 12, strikesUsed: 2, maxStrikes: 3 }); });
+    const chrome = screen.getByTestId("daily-stage-chrome");
+    expect(within(chrome).getByTestId("daily-survival-answered")).toHaveTextContent("12 answered");
+    expect(within(chrome).getByTestId("daily-strikes-count")).toHaveTextContent("2 / 3");
+    expect(chrome).not.toHaveTextContent(/\/\s*175|of 175|\b12\s*\/\s*\d+/);
+  });
+
+  it("0/3, 1/3, 2/3 and 3/3 are distinguishable, from the server's ledger", async () => {
+    const t = survivalDay(null);
+    mount(t);
+    await flush();
+    const seen: string[] = [];
+    for (const used of [0, 1, 2, 3]) {
+      await act(async () => { lastHost!.onSurvivalStatus!({ answered: 4, strikesUsed: used, maxStrikes: 3 }); });
+      const s = screen.getByTestId("daily-strikes");
+      const spent = within(s).getAllByTestId("daily-strike-mark").map((m) => m.getAttribute("data-spent") === "true" ? "x" : "o").join("");
+      seen.push(`${spent} ${screen.getByTestId("daily-strikes-count").textContent} ${s.getAttribute("data-strikes-out")}`);
+    }
+    expect(seen).toEqual(["ooo 0 / 3 false", "xoo 1 / 3 false", "xxo 2 / 3 false", "xxx 3 / 3 true"]);
+  });
+
+  it("player finished → the stage beat goes up at once; the parent advances only when the server does", async () => {
+    const t = survivalDay();
+    mount(t);
+    await flush();
+    expect(phase()).toBe("stage-play");
+    const syncsBefore = t.calls.filter((c) => c === "sync").length;
+
+    await act(async () => { lastHost!.onPlayerFinished!("child-2"); });
+    // Immediately out of gameplay, into the Daily's own stage beat — pending.
+    expect(phase()).toBe("stage-settling");
+    const beat = screen.getByTestId("daily-stage-result");
+    expect(beat).toHaveAttribute("data-pending", "true");
+    expect(beat).not.toHaveTextContent(/victory|defeat/i);
+    // The child stays connected, out of sight, so the server can settle it.
+    const hidden = screen.getByTestId("daily-settling-child");
+    expect(hidden).toHaveAttribute("hidden");
+    expect(within(hidden).getByTestId("fake-stage-match")).toHaveAttribute("data-match-id", "child-2");
+    // Nothing invented: no sync-driven advance, still on stage 3, no Review.
+    await flush(5000);
+    expect(t.calls.filter((c) => c === "sync").length).toBe(syncsBefore);
+    expect(t.wire().current_stage_index).toBe(2);
+    expect(q("daily-stage-intro")).toBeNull();
+
+    // The server settles the child; the ordinary handback drives the sync.
+    t.finishActiveChild(wireResult({ ended_by: "strikes_exhausted", correct: 9, answered: 12 }));
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-2", terminalReason: "combat", completionReason: "strikes_exhausted" }); });
+    await flush(10);
+    expect(phase()).toBe("stage-result");
+    expect(q("daily-settling-child")).toBeNull();
+    expect(screen.getByTestId("daily-stage-result-ended")).toHaveTextContent("Out of mistakes");
+    expect(screen.getByTestId("daily-stage-result-next")).toHaveTextContent(/review/i);
+    await flush(STAGE_RESULT_MS + 10);
+    expect(phase()).toBe("stage-intro");
+    expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-stage-kind", "review");
+  });
+
+  it("outside Survival the flow is unchanged: no settling child, ordinary handback", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY, {
+      existing: wireRun(FOUR_STAGE_DAY, {}, { 0: { status: "in_progress", child_match_id: "child-0" } }),
+    });
+    mount(t);
+    await flush();
+    expect(phase()).toBe("stage-play");
+    expect(q("daily-survival-answered")).toBeNull();
+    t.finishActiveChild(wireResult());
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-0", terminalReason: "combat", completionReason: null }); });
+    await flush(10);
+    expect(phase()).toBe("stage-result");
+    expect(q("daily-settling-child")).toBeNull();
+  });
+});

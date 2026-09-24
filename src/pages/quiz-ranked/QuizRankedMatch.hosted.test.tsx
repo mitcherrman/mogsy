@@ -61,6 +61,8 @@ let isBotMatch: boolean;
 let moduleNumber: number;
 let matchLength: number | null;
 let segmentOverride: Record<string, unknown> | null;
+/** DC-SURV-UX — the public `ruleset` block, or null for a standard match. */
+let rulesetOverride: Record<string, unknown> | null;
 /** The round the server currently reports as active. */
 let activeRound: number;
 /** Round-trip cost on the two reads the ending needs. Production has one. */
@@ -141,9 +143,10 @@ function shape<T2 extends { payload: Record<string, unknown> }>(env: T2): T2 {
     });
     payload.segment_state = metaReflexState(
       (segmentOverride.challenge_index as number) ?? 0,
-      { segment_number: activeRound });
+      { segment_number: activeRound, ...(segmentOverride.state as object ?? {}) });
     payload.question = null;
   }
+  payload.ruleset = rulesetOverride;
   return env;
 }
 
@@ -166,6 +169,7 @@ beforeEach(() => {
   moduleNumber = 1;
   matchLength = 10;
   segmentOverride = null;
+  rulesetOverride = null;
   activeRound = 1;
   endingLatencyMs = 0;
   startedAt = Date.now() + LEAD_ON_ARRIVAL;
@@ -369,4 +373,96 @@ describe("DCMOD — hosted chrome", () => {
     expect(screen.getByTestId("ranked-presence")).toHaveTextContent(/^vs /i);
     expect(screen.getByTestId("ranked-forfeit")).toBeInTheDocument();
   }, 25000);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* DC-SURV-UX — Survival ends for the PLAYER at strike 3                      */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+const survivalRuleset = (strikes: number, over: Record<string, unknown> = {}) => ({
+  ruleset_id: "survival", version: 1, time_bank_ms: null, time_bank_remaining_ms: null,
+  time_bank_draining: false, max_strikes: 3, strikes, questions_settled: 12,
+  stage_ended: false, ended_reason: null, ...over,
+});
+
+/** A five-card block in play: the human on card `index`, the bot on none. */
+function survivalBlock(index: number, state: Record<string, unknown> = {}) {
+  activeRound = 2;
+  moduleNumber = 2;
+  matchLength = 175;
+  segmentOverride = { challenge_index: index, state };
+}
+
+describe("DC-SURV-UX — a hosted Survival stage", () => {
+  it("own_finished = false: gameplay stays up and the player is not reported finished", async () => {
+    startedAt = Date.now() - 4000;
+    rulesetOverride = survivalRuleset(1);
+    survivalBlock(1);
+    const finished: string[] = [];
+    const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await screen.findByTestId("ranked-match", undefined, { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(finished).toEqual([]);
+    expect(screen.queryByTestId("ranked-match")).not.toBeNull();
+  }, 25000);
+
+  it("strike 3 mid-block: gameplay ends at once, the rest of the block and the bot's cards are never drawn, and the parent is not told the match settled", async () => {
+    startedAt = Date.now() - 4000;
+    // Card 2 of 5 was the third strike: PRE-4 stops the block. The bot has
+    // not finished, so the segment (and the match) is NOT settled.
+    rulesetOverride = survivalRuleset(2);
+    survivalBlock(2, {
+      own_finished: true, own_challenges_completed: 2, own_next_challenge_index: 5,
+      own_card_index: null, own_card_started_at: null, own_card_deadline: null,
+      opponent_challenges_completed: 1, opponent_finished: false,
+    });
+    const finished: string[] = [];
+    const statuses: unknown[] = [];
+    const host = hostOf({
+      onPlayerFinished: (id) => { finished.push(id); },
+      onSurvivalStatus: (st) => { statuses.push(st); },
+    });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await waitFor(() => expect(finished).toEqual(["m1"]), { timeout: 8000 });
+    // The arena presents only the host's placeholder — no question, no card,
+    // no opponent progress.
+    expect(screen.queryByTestId("ranked-match")).toBeNull();
+    expect(screen.queryByTestId("answer-grid")).toBeNull();
+    expect(document.body).toHaveTextContent("Stage complete…");
+    // Not settled: the handback waits for the server.
+    expect(host.settled).toEqual([]);
+    // Server truth relayed, not recomputed.
+    expect(statuses).toContainEqual({ answered: 12, strikesUsed: 2, maxStrikes: 3 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(finished).toHaveLength(1);
+  }, 25000);
+
+  it("a one-card finish that is not the third strike is NOT the end: own_finished alone is not the signal", async () => {
+    startedAt = Date.now() - 4000;
+    rulesetOverride = survivalRuleset(1);
+    survivalBlock(5); // every card played; own_finished true; ledger not ended
+    const finished: string[] = [];
+    const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await screen.findByTestId("ranked-match", undefined, { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(finished).toEqual([]);
+  }, 25000);
+
+  it("Standard and Time Trial never report a player finish, whatever own_finished says", async () => {
+    for (const rs of [null, { ruleset_id: "time_trial", stage_ended: false }]) {
+      startedAt = Date.now() - 4000;
+      rulesetOverride = rs;
+      survivalBlock(2, { own_finished: true, own_challenges_completed: 2 });
+      const finished: string[] = [];
+      const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+      const { unmount } = render(
+        <QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+      await screen.findByTestId("ranked-match", undefined, { timeout: 8000 });
+      await new Promise((r) => setTimeout(r, 200));
+      expect(finished).toEqual([]);
+      unmount();
+    }
+  }, 40000);
 });

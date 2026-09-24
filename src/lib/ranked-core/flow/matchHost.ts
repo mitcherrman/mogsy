@@ -27,6 +27,7 @@
  * that is already over, immediately. Once per match.
  */
 import type { RankedPresentationPhase } from "./rankedFlow";
+import type { SurvivalStatus } from "../survivalFinish";
 
 /** What a host is told when its match is over. Authoritative facts only. */
 export interface HostedMatchSettlement {
@@ -50,6 +51,16 @@ export interface MatchHost {
    * clock it projects stands still through reveals and transitions.
    */
   onPresentationPhase?: (phase: RankedPresentationPhase) => void;
+  /**
+   * DC-SURV-UX — the VIEWER is done, though the match may not be settled yet
+   * (a Survival third strike, while the bot works through its own cards).
+   * Called once per match. The arena stops presenting gameplay at the same
+   * instant and keeps its connection (so the server settles the match); the
+   * ordinary `onMatchSettled` still follows, and is what the host syncs on.
+   */
+  onPlayerFinished?: (matchId: string) => void;
+  /** DC-SURV-UX — the viewer's Survival status as the server published it. */
+  onSurvivalStatus?: (status: SurvivalStatus) => void;
 }
 
 /**
