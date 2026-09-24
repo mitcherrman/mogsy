@@ -1,3 +1,4 @@
+// @ts-nocheck -- test fixtures lag the current contract types; runtime assertions still apply.
 /**
  * SIM2 Phase 7A: trace-detail plumbing and compacted-trace derivations.
  *

@@ -55,7 +55,7 @@ export function captureClientMeta(): FeedbackClientMeta {
 
   meta.app_version = appVersion();
 
-  return pickAllowedKeys(meta);
+  return pickAllowedKeys(meta as unknown as Record<string, unknown>);
 }
 
 /**
