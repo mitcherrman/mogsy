@@ -334,6 +334,7 @@ export function traceReport(response: TeamSimulationResponse): TraceReport {
 export const TRACE_DETAIL_LABELS: Record<TraceDetail, string> = {
   summary: "Summary",
   standard: "Standard",
+  calculation: "Calculation",
   full: "Full",
 };
 
