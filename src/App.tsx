@@ -130,6 +130,7 @@ const AdminUsersPage = lazy(() => import("./pages/admin/areas/AdminUsersPage"));
 const AdminLeaguecraftPage = lazy(() => import("./pages/admin/areas/AdminLeaguecraftPage"));
 const AdminSimulationPage = lazy(() => import("./pages/admin/areas/AdminSimulationPage"));
 const AdminGameDataPage = lazy(() => import("./pages/admin/areas/AdminGameDataPage"));
+const ContentAtlasPage = lazy(() => import("./pages/admin/ContentAtlasPage"));
 const AdminStudioPage = lazy(() => import("./pages/admin/areas/AdminStudioPage"));
 const AdminOperationsPage = lazy(() => import("./pages/admin/areas/AdminOperationsPage"));
 const AdminDeveloperPage = lazy(() => import("./pages/admin/areas/AdminDeveloperPage"));
@@ -414,6 +415,7 @@ const App = () => (
                     <Route path="ranked" element={<Navigate to="/admin/leaguecraft?section=ranked" replace />} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
+                    <Route path="content-atlas" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
                     <Route path="operations" element={<Suspense fallback={<RouteFallback />}><AdminOperationsPage /></Suspense>} />
                     <Route path="developer" element={<Suspense fallback={<RouteFallback />}><AdminDeveloperPage /></Suspense>} />

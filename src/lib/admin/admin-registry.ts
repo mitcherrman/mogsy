@@ -201,6 +201,7 @@ export const ADMIN_AREAS: AdminArea[] = [
       { id: "pro-data", label: "Pro Data", summary: "Pro roster candidate review and the published roster wiki." },
       { id: "esports", label: "Esports", summary: "The LIVE1 feed, its daily job and link health." },
       { id: "mechanics", label: "Mechanics & Items", summary: "Canonical mechanics and item authority surfaces." },
+      { id: "content-atlas", label: "Content Atlas", summary: "Read-only family, capability, supply and question inspection.", path: "/admin/content-atlas", requiredRole: "master_admin" },
     ],
   },
   {
@@ -1139,6 +1140,21 @@ export const ADMIN_TOOLS: AdminTool[] = [
   // =========================================================================
   // GAME DATA
   // =========================================================================
+  {
+    id: "content-atlas",
+    title: "Content Atlas",
+    description: "Browse every question family, capability, layered supply count, reachability path and safe real-question preview.",
+    area: "game-data",
+    section: "content-atlas",
+    kind: "route",
+    path: "/admin/content-atlas",
+    oldLocation: "ATLAS1 human architecture document",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    requiredRole: "master_admin",
+    status: "Internal",
+    authorization: "AdminRoute master_admin plus backend require_admin. Read-only endpoints only.",
+  },
   {
     id: "knowledge-admin",
     title: "Champion Knowledge Base",
