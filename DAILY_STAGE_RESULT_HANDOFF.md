@@ -472,3 +472,226 @@ The stage result's prop is renamed `onContinue` → `onProceed` so the page carr
 4. **Survival.** Once `own_stage_finished` is set, the arena already stops presenting gameplay (the hosted placeholder), so no later transition can play. Add one test asserting no `journey-beat` after the finish signal.
 5. **Timing.** Confirm J2's `beat.until` ordering against `reveal_window_ms` and Standard's block deadline (§4.5), and adjust `holdPrevious` if the server sequences them differently.
 6. **Certify.** Re-run the browser widths (375, 390, 1024, 1280, 1440) on a real Bot match with a J2 Journey, run the focused suites and the build, and commit locally.
+
+---
+
+# JOURNEY-UI2 — the Journey board on the REAL backend contract (J2)
+
+Frontend only. Local commits on `dclane-c/daily-stage-result`, not pushed.
+- **Code commit:** `f57a097c2c8e3d3b68438f54205dc505d7a5a224`. This handoff update is the commit after it.
+- **Builds on:**
+  - C2 Journey board `507445dc`
+  - C2 handoff `8d2ef937`
+  - Daily stage result `26ed7f0c`
+- **Backend consumed:** `League_Combat_Simulator` `journey2/core` @ `52e9d929` (JOURNEY2), read-only. **J3 does not exist yet:** no branch, no handoff. Everything below stops at a clean adapter boundary (§2), and nothing guesses J3's wire.
+- **Daily is not production-enabled for Journey.** J2's `journey_slice` is not requestable by the Daily yet (J2 §3), and nothing here changes the Daily run.
+
+## 1. Backend contract consumed (J2, verified by real capture)
+A Journey segment's `segment_state.challenges` public view is a **reached prefix**:
+
+```
+challenges: {
+  prompt, challenge_count,               // challenge_count = the whole module (5 / 3)
+  challenges: [ ...reached children only... ],
+  journey: {
+    journey_version: "mastery_journey.v1", recipe_id, recipe_version,
+    title, role, arc_type, plan, child_count,
+    children: [ {index, child_id, engine: champion|matchup|combat, domains,
+                 state: {player|opponent: {champion, level, ranks:{Q..R}, items:[names]}},
+                 premise: {ability_damage?: {ability_name, champion, slot, damage_type,
+                                              flat_by_rank[], ratios[{stat,label,ratio}]}},
+                 withheld: [{fact, what, slot, champion, established_in_child}],
+                 asks: {engine, family, metric, subject_ref, subject, withheld: true},
+                 reinforces: [i...]} ],
+    transitions: [ {transition_id, kind: level|purchase|recall, note, beat_ms, before_child,
+                    changes: [{side, champion, level:[from,to]|null,
+                               ranks:{slot:[from,to]}, items_added:[{item_id,name,cost}]}]} ],
+    open_delays_ms: [ ... ] } }
+```
+
+**Cursor semantics** (J2 `segment_flow.journey_cursor`), as observed:
+- A child appears only once it **opens**.
+- During a transition **beat**:
+  - `own_next_challenge_index` has advanced;
+  - the next child is **absent** from `challenges`;
+  - the transition is present;
+  - `own_card_started_at` is the future instant the server opens that child.
+- A Survival stop exposes exactly the **played** prefix.
+
+The Combat premise is the child's structured `prompt_semantics.scenario` pairs, plus the Journey block's `premise.ability_damage` when the formula is **stated**, or a `withheld` marker naming the teaching child when it is **recalled**. Reveals are the existing `own_challenge_reveals` (`correct_answer`, verbatim `explanation`).
+
+**Real fixtures, all generated from J2:** `src/lib/journey/__fixtures__/j2/`, with provenance in `CAPTURE.md` and the harness in `capture_journey_test.py.txt`. They are 8 sequences of exact `GET /matches/{id}/public` envelopes, captured from real Bot matches on the canonical DB at each moment (lead-in, child open, reveal, beat, next open, Survival stop, pooled block). Coverage:
+- all six J2 recipes: Olaf/Jarvan IV, Volibear/Garen, Zed/Ahri, Lucian/Caitlyn, Senna/Pyke, Ahri/Syndra;
+- a Survival strike-out on child 2 of 3;
+- a Standard v1 pooled block.
+
+The R1 launch recipes named in the brief (Volibear/Lee Sin, Olaf/Sett, Pantheon/Leona, ...) **do not exist yet** in any backend branch, so no fixture was invented for them. Zed/Ahri and Lucian/Caitlyn exist in J2 and are captured.
+
+## 2. The adapter boundary (the only provisional part)
+| Layer | File | Swaps for J3? |
+|---|---|---|
+| J2 wire reader: typed allowlist, fail-closed | `src/lib/journey/j2.ts` | **Yes.** Add `j3.ts` beside it |
+| Adapter: wire + viewer cursor -> board view model + per-child context | `src/lib/journey/adapter.ts` | **Yes.** Add a J3 branch |
+| Board view model + board / rails / sheet / beat components | `lib/journey/contract.ts` types, `components/journey/*` | No |
+| Parse hook | `ranked-public/contracts.ts` `readSegmentState` -> `segmentState.journey` | One line (which reader) |
+
+**What the adapter shows, and from where** (all server values, nothing computed):
+- **Board sides:** the latest reached child's node state.
+- **During a beat:** the node after the transition. The transition's own lossless `changes` (level `[from,to]`, ranks `[from,to]`, `items_added`) are applied as given.
+- **Focus:** from the current child's `asks`. Champion: the subject and slot. Matchup: both sides' slot. Combat: attacker and target by the asked subject.
+- **Withheld `?`:** a Champion "stat at level" ask (`base_armor` / `base_attack_damage` / `base_health` / `base_magic_resist`) puts `?` on the asked side.
+- **Marks:** a transition's marks show only while the child it precedes is on screen.
+- **Beat instant:** `beat.until = own_card_started_at`, only while that child is still unexposed.
+
+**What J2 does not publish, so the board does not show it** (no guessing):
+- **Max rank:** ranks print as a number on the ability tile, never pips of a guessed length.
+- **Numeric item ids on the state:** icons resolve for items that arrived in a transition (`item_id`); otherwise a monogram.
+- **Ability names on the state.**
+- **Per-side public stats and stat deltas:** J2 has no stat on the node. The Combat stats live in the child's premise (section 5).
+- **Learner-state semantics:** the backend's `reinforces` link is rendered ("Builds on step N"). "Newly introduced / newly revealed" are J3's, and are not inferred.
+
+## 3. Journey State Board integration (C2 design, unchanged)
+- **Module level:** `masterySliceModule` wraps every branch (question, beat, between children, waiting) in one `JourneyModuleStage`, so the board mounts **once per Journey** and persists across children. This is proven by a test holding the same band DOM node from child 1 to 5 on a real capture.
+  - The existing reveal hold drives `holdPrevious`.
+  - `skewMs` is threaded from the viewport.
+- **Media region:** the Journey child draws **no** band of its own (`JourneyChild`), and inside `.journey-question` the motif art and the structural views' progress/identity row (`data-mastery-meta`) are hidden. The board owns step, champions and art, so nothing is drawn twice. **Non-Journey modules take the untouched `OrdinaryChild` path.**
+- **Rails:** `QuizRankedMatch` sets `rail.journey = journeyRailsFor(segmentState.journey, cursor)[side]` only while the live segment carries a Journey block.
+  - Desktop banners show the champion crest in the mascot's exact box.
+  - The phone match bar shows the champion with a level corner.
+  - Without a Journey: the exact existing UI (asserted).
+- **State sheet:** reads the same board view model. There is no extra fetch, withheld stays withheld, and nothing unpublished is printed ("rank 1", never "rank 1 / null").
+- **Height budget** (desktop, height-locked card):
+  - the Journey band is capped at 12.5rem from `lg` (what the band density needs);
+  - the stage's region reserves are released **inside `.journey-question` only**;
+  - the Journey question is the one region that may scroll when a long served reveal exceeds the card;
+  - the board never shrinks.
+
+## 4. Matchup rendering
+- **Per-side context:** `comparison_semantics.side_contexts` is now read (`sideContexts`, optional; the key pin was updated deliberately — it is structural, like `context`).
+- **Prompt:** when the two sides' ranks differ, each side names its own ("...: Garen E (Judgment) [rank 1] or Volibear E ... [same at every rank]?"). Identical sides keep the old sentence byte for byte. **There is no shared-rank assumption.**
+- **Side strip:** a Journey-only `JourneyMatchupSides` strip shows each champion's ability and **own** rank, in the **board's** side order (the Journey player left), whatever the backend's A/B order.
+- **Reveal:** the backend's explanation verbatim. It states both exact values ("Jarvan IV ... 120 seconds. Olaf ... 100 seconds.").
+
+## 5. Combat rendering
+- **Explicit renderer:** `JourneyCombatQuestion` shows the **served** premise in compact rows:
+  - attacker: ability, slot and rank; AD / bonus AD / lethality / armor pen; level and items;
+  - target: level, items, **armor**;
+  - any unrecognised premise key: humanised, never dropped;
+  - the formula: **stated** (flat by rank with the current rank underlined, plus each served ratio), **recalled** ("Formula: recall it — ... stated in step N"; the numbers are **not** restated), or absent;
+  - a rounding instruction, only when served.
+- **Question sentence:** built from the structured semantics, never from prose.
+- **Answer:** through the Ranked prose surface.
+- **Arithmetic: none.** The one conversion is presentational: a ratio coefficient written as a percentage (1 -> 100%).
+- **Desktop duplicates:** from `lg`, level/items (which the board above also shows) are not repeated.
+- **Reveal:** the backend's explanation verbatim ("110.268 damage, which rounds to 110 for this question"). J2 serves **no structured derivation** (raw -> effective armor -> mitigation -> final), so none is rendered and none is computed. **J3 dependency.**
+
+## 6. Timing behavior
+- **The client owns no clock.**
+- **Beat:** the beat is the server's. The next child is not in the payload until it opens, so there is no question to enable early (J2 also refuses an early submit).
+  - The board veils the question area until `own_card_started_at` (skew-corrected).
+  - After that, "Step N of M is opening..." holds until the next poll exposes the child.
+- **Between children:** a reveal hold ending before the next child opens now reads "Step N ... is opening...". It used to fall through to "Mastery Slice complete / Waiting for the opponent", which was wrong mid-Journey and is fixed.
+- **Marks:** the level-up badge, rank digits, new-item rims and R unlocks stay for the whole following child.
+- **Standard pooled clock:** the existing header clock shows the server's **one block deadline**. On J2 v1 that is 150 s plus reveal compensation ("2:21 of 2:37" on the real block capture): one clock, never five.
+  - Holding the display still during reveal/transition needs a server field. J2's v1 block extends its deadline instead, and does not add beats (J2 section 7.2). **J3 dependency.**
+  - Nothing is paused or recomputed locally.
+
+## 7. Survival termination
+- `live_strikes` / `own_stage_finished` (public ruleset) and the Daily equivalents are consumed as before (DC-SURV-UX / Lane C).
+- When `own_stage_finished` flips mid-Journey, the hosted arena leaves gameplay at once. There is no board and no beat, the hidden child keeps polling for settlement, and **no transition or future child is shown**.
+- **Tested on the real stop capture, through the real `QuizRankedMatch`:**
+  - the stop itself;
+  - the deferred C2 regression: a transition present on the wire at the moment of the stop still never plays.
+- The stopped Journey view is the played prefix only, with no pending child.
+
+## 8. Tests
+**New:**
+- `lib/journey/j2.adapter.test.ts` (28):
+  - every real snapshot parses through the real `readPublicRound`;
+  - the `cost` carve-out is exactly one path wide (`cost` anywhere else still fails the walk);
+  - unknown or answer-bearing Journey keys fail the read;
+  - an unwithheld `asks` fails;
+  - adapter cursor/beat/marks/focus/withheld/Combat/Survival on real data;
+  - no child's answer on its own board before its reveal (6 recipes);
+  - an out-of-order prefix fails.
+- `lib/ranked-core/modules/masterySliceModule.journey.test.tsx` (23, real captures through the real viewport):
+  - persistence;
+  - media ownership;
+  - ordinary slices untouched;
+  - **answer leaks:**
+    - future child text is not rendered;
+    - a future item transition is not rendered before its beat;
+    - current-child premises do not appear before reach;
+    - the withheld answer is in neither the board DOM nor the State sheet DOM;
+    - a previously revealed fact appears later only when served;
+    - no unanswered child's answer on board or sheet, across 6 recipes;
+  - server-timed beat, level-6 beat, between-children message;
+  - Matchup per-side;
+  - Combat stated/recalled;
+  - verbatim reveal;
+  - Survival stop.
+- `pages/quiz-ranked/QuizRankedMatch.hosted.test.tsx` (+3, real captures through the real hosted `QuizRankedMatch`):
+  - Journey crests replace the role mascots, and the board is present;
+  - the real Survival stop leaves gameplay with no board and no beat;
+  - **no transition after `own_stage_finished`**.
+
+**Updated deliberately:**
+- `features/mastery/contracts/comparisonSemantics.test.ts` (`sideContexts` in the structural key pin).
+- The C2 inspector Journey states now render real captures.
+
+**Focused regression:** journey, ranked-arena, question-surface, quiz-broadcast, game-results, ranked-core, ranked-public, daily-challenge, question-surface lib, quiz-daily-challenge, quiz-ranked, arena inspector, features/mastery.
+- **224 of 227 files, 2904 of 2910 tests.**
+- **The 6 failures are the known pre-existing set, identical by name to C2's and base `fe33aaa7`'s**, and their offender arrays keep their base lengths:
+  - `QuestionMotifLayer.qf1` (1)
+  - `AnswerGrid.elimination` (2)
+  - `QuestionStageGeometry` (3)
+
+**Other checks:**
+- `npm run build` passes. The harness is a 6 kB lazy chunk; captures load on demand via `import.meta.glob`.
+- `tsc`: the same 20 pre-existing errors, none in a touched file.
+- **Noted, not touched (pre-existing):** `QuizRankedMatch.hosted.test.tsx:348` has a literal backspace inside a regex (`/^\bvs\b/` was mangled).
+
+## 9. Browser certification (real captures, real arena, `/dev/journey-arena`)
+Every snapshot of all 8 captures (85 per width) was replayed at each width. For each one I measured: page overflow, card body fit, board and side overflow, the Journey question's internal scroll, phone band height, phone crest and match bar.
+
+| Width | Result |
+|---|---|
+| **1440x900** | No overflow of any kind. The Journey question scrolls <= 25 px, only during Volibear's Combat reveals. |
+| **1280x800** | No overflow. The Journey question scrolls 19-109 px only while a Combat reveal's long served explanation is up; the card never clips. |
+| **1024x768** | No overflow; the card body fits (546/546) at every step. Worst case is a Combat reveal: the question scrolls about 105 px while the board keeps its 200 px band. |
+| **390x844** | No overflow (scrollWidth 390). The band is a constant 127 px (no jump). Champion crest in the match bar at every step. |
+| **375x812** | No overflow (scrollWidth 375). The band is a constant 121 px. Crests present. |
+
+**Also checked visually:**
+- the board persisting;
+- the server-timed recall beat with the veiled next step;
+- the level-6 beat raising both levels and unlocking both Rs;
+- Matchup per-side ranks;
+- the Combat premise with a stated formula, and with a recalled one;
+- the phone State sheet (both sides, no gaps printed);
+- the pooled block clock;
+- the Survival stop placeholder.
+
+## 10. Remaining backend dependencies (J2 -> J3)
+1. **Blocker for going live:** J2's public route raises on its own guard (`answer_safety` bans `cost`) as soon as a purchase transition is visible: `items_added[].cost`. The frontend accepts `cost` at that path only; the backend must scope its guard or rename the key.
+2. A public per-side **stat** projection and **stat deltas** (e.g. "Armor 51.59 -> 91.59", "AH 0 -> 10") on the node/transition. J2 has neither; the board is ready for both.
+3. **Max rank**, ability names and numeric item ids on the node state (for pips and icons).
+4. A structured **Combat derivation** on the reveal (raw -> effective armor -> mitigation -> final), in served numbers.
+5. **Learner semantics** (newly introduced / newly revealed / reinforced) as fields. Also J2's ledger policy (`introduced_only`, reveals do not establish) versus J3's "established once stated OR revealed".
+6. **Standard's pooled active clock:** 150 s active time with reveal/transition beats **not** consumed, plus a field the display can hold still during a beat. J2 leaves Standard untouched, and its v1 block adds no beats.
+7. The J2 Survival carrier's post-match **review gating** to the played prefix (J2 section 7.1).
+8. The **R1 launch recipes**, when they exist; recapture with the same harness.
+
+## 11. Exact final integration task (when J3 lands: JOURNEY-UI3)
+1. **Capture J3:** re-run `__fixtures__/j2/capture_journey_test.py.txt` against the J3 branch into `__fixtures__/j3/` (Standard v2 or the new pooled clock, Survival stop, every R1 recipe), with **no guard narrowing** (J3 fixes item 1).
+2. **Reader:** add `src/lib/journey/j3.ts` (typed allowlist) and a J3 branch in `adapter.ts`. Map:
+   - stats and deltas -> `JourneySide.stats` / `stat_delta` events;
+   - `max_rank` -> pips;
+   - item ids -> icons;
+   - learner semantics -> the board's focus/marks only if J3 sends them;
+   - pooled-clock hold field -> the header timer's `paused`.
+
+   Keep `j2.ts` until the backend retires J2.
+3. **Combat reveal:** render the served derivation steps in order (raw -> effective armor -> mitigation -> final), verbatim numbers, in `JourneyCombatQuestion`'s reveal.
+4. **Daily:** after J3's `journey_slice` is requestable (J2 section 8), run the Daily Standard M10 and Survival slots end to end in a real Bot match. Confirm the hosted flow, stage result and Survival stop, and re-certify 375/390/1024/1280/1440.
+5. Run the focused suites (compare against the 6 known failures) and the build, commit locally, and do not push.
