@@ -102,7 +102,10 @@ export function ComparisonQuestionView({
   return (
     <section aria-label="Question" data-testid="mastery-comparison-question"
       className={`space-y-4${motifHostClass(question.questionMotif)}`}>
-      <div className="space-y-3">
+      {/* JOURNEY-UI2 — `data-mastery-meta`: progress + identity row. Inside a
+          Journey the module's board already states both (step, champions), so
+          `.journey-question` hides this block; everywhere else it is drawn. */}
+      <div className="space-y-3" data-mastery-meta>
         <MasteryProgress index={question.sequenceIndex} total={total} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2" data-testid="mastery-comparison-header">

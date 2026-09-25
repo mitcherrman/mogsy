@@ -83,7 +83,23 @@ function abilitySubjectLabel(
  * would imply a dependence that provably is not there. Stating no rank there
  * is the difference between stating a rank and fabricating one.
  */
+/**
+ * JOURNEY-UI2 — do the two sides stand at DIFFERENT ranks? Only then does the
+ * prompt name each side's rank; identical side contexts keep the shared
+ * phrasing byte-for-byte.
+ */
+export function sidesDiffer(cs: MasteryComparisonSemantics): boolean {
+  const s = cs.sideContexts;
+  return !!s && s[0].abilityRank !== s[1].abilityRank;
+}
+
+/** "rank 2", or the plain truth for a value that does not move with rank. */
+export function sideRankText(rank: number | null): string {
+  return rank === null ? "same at every rank" : `rank ${rank}`;
+}
+
 function rankPrefix(cs: MasteryComparisonSemantics): string {
+  if (sidesDiffer(cs)) return "";
   if (cs.rankIndependent) return "";
   const rank = cs.context.abilityRank;
   return rank === null || rank === undefined ? "" : `At rank ${rank}, `;
@@ -102,8 +118,11 @@ function afterPrefix(prefix: string, word: string): string {
  * misleading prompt.
  */
 export function formatComparisonPrompt(cs: MasteryComparisonSemantics): string {
-  const a = abilitySubjectLabel(cs, cs.championADisplay, cs.abilityNameA);
-  const b = abilitySubjectLabel(cs, cs.championBDisplay, cs.abilityNameB);
+  // Sides at different ranks name their OWN rank — never one shared rank.
+  const own = (label: string, i: 0 | 1) =>
+    (sidesDiffer(cs) ? `${label} [${sideRankText(cs.sideContexts![i].abilityRank)}]` : label);
+  const a = own(abilitySubjectLabel(cs, cs.championADisplay, cs.abilityNameA), 0);
+  const b = own(abilitySubjectLabel(cs, cs.championBDisplay, cs.abilityNameB), 1);
   const prefix = rankPrefix(cs);
   switch (cs.template) {
     case "compare_ability_cooldown":

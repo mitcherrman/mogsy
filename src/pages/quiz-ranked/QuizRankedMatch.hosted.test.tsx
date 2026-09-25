@@ -8,6 +8,8 @@
  * Harness copied from `QuizRankedMatch.rfx1b3.test.tsx`, the suite whose beats
  * these assertions are the hosted complement of.
  */
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,6 +65,8 @@ let matchLength: number | null;
 let segmentOverride: Record<string, unknown> | null;
 /** DC-SURV-UX — the public `ruleset` block, or null for a standard match. */
 let rulesetOverride: Record<string, unknown> | null;
+/** JOURNEY-UI2 — a REAL captured Journey `segment` + `segment_state` (J2). */
+let journeyEnvelope: { segment: unknown; segment_state: unknown } | null;
 /** The round the server currently reports as active. */
 let activeRound: number;
 /** Round-trip cost on the two reads the ending needs. Production has one. */
@@ -146,6 +150,11 @@ function shape<T2 extends { payload: Record<string, unknown> }>(env: T2): T2 {
       { segment_number: activeRound, ...(segmentOverride.state as object ?? {}) });
     payload.question = null;
   }
+  if (journeyEnvelope && !done) {
+    payload.segment = journeyEnvelope.segment;
+    payload.segment_state = journeyEnvelope.segment_state;
+    payload.question = null;
+  }
   payload.ruleset = rulesetOverride;
   return env;
 }
@@ -170,6 +179,7 @@ beforeEach(() => {
   matchLength = 10;
   segmentOverride = null;
   rulesetOverride = null;
+  journeyEnvelope = null;
   activeRound = 1;
   endingLatencyMs = 0;
   startedAt = Date.now() + LEAD_ON_ARRIVAL;
@@ -465,4 +475,62 @@ describe("DC-SURV-UX — a hosted Survival stage", () => {
       unmount();
     }
   }, 40000);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* JOURNEY-UI2 — a hosted Journey, on REAL J2 captures                         */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+function capture(name: string, label: string) {
+  const all = JSON.parse(readFileSync(join(resolve(process.cwd(), "src/lib/journey/__fixtures__/j2"),
+    `${name}.json`), "utf8")) as { label: string; envelope: { payload: Record<string, unknown> } }[];
+  const s = all.find((x) => x.label === label);
+  if (!s) throw new Error(`${name}: ${label}`);
+  return s.envelope.payload;
+}
+
+describe("JOURNEY-UI2 — a hosted Journey module", () => {
+  it("a live Journey: champion crests replace the role mascots, and the board is in the arena", async () => {
+    startedAt = Date.now() - 4000;
+    const p = capture("olaf.standard.v2", "child1-open");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+    await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+    expect(screen.getByTestId("journey-crest-subject")).toHaveAccessibleName(/^Olaf, level 6/);
+    expect(screen.getByTestId("journey-crest-opponent")).toHaveAccessibleName(/^Jarvan IV, level 6/);
+    expect(screen.queryByTestId("role-crest")).toBeNull();
+  }, 25000);
+
+  it("Survival stop mid-Journey (real capture): gameplay ends at once — no board, no beat, no future child", async () => {
+    startedAt = Date.now() - 4000;
+    const p = capture("volibear.survival.stop", "child1-reveal");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    rulesetOverride = p.ruleset as Record<string, unknown>;
+    expect(rulesetOverride.own_stage_finished).toBe(true);
+    const finished: string[] = [];
+    const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await waitFor(() => expect(finished).toEqual(["m1"]), { timeout: 8000 });
+    expect(screen.queryByTestId("ranked-match")).toBeNull();
+    expect(screen.queryByTestId("journey-board")).toBeNull();
+    expect(screen.queryByTestId("journey-beat")).toBeNull();
+    expect(document.body).toHaveTextContent("Stage complete…");
+    expect(host.settled).toEqual([]);
+  }, 25000);
+
+  it("no transition after own_stage_finished — even with a transition on the wire", async () => {
+    startedAt = Date.now() - 4000;
+    // The recall beat's segment state, as if strike 3 had just landed.
+    const p = capture("olaf.standard.v2", "child3-beat");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    rulesetOverride = survivalRuleset(3, { live_strikes: 3, own_stage_finished: true, stage_ended: false });
+    const finished: string[] = [];
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered"
+      host={hostOf({ onPlayerFinished: (id) => { finished.push(id); } })} />);
+    await waitFor(() => expect(finished).toEqual(["m1"]), { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(screen.queryByTestId("journey-beat")).toBeNull();
+    expect(screen.queryByTestId("journey-board")).toBeNull();
+    expect(document.body.textContent).not.toContain("Caulfield");
+  }, 25000);
 });

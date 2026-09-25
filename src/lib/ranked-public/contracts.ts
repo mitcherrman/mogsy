@@ -27,6 +27,8 @@ import {
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
+import { readJourneyJ2, type JourneyJ2 } from "@/lib/journey/j2";
+import { JourneyContractError } from "@/lib/journey/contract";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -581,6 +583,12 @@ export interface SegmentStateView {
    * response-time arithmetic were computed against.
    */
   revealWindowMs: number | null;
+  /**
+   * JOURNEY-UI2 — a Mastery Journey segment's public block (J2), REACHED
+   * PREFIX only, read with its own typed allowlist (`lib/journey/j2.ts`).
+   * `null` for every other segment.
+   */
+  journey?: JourneyJ2 | null;
 }
 
 /**
@@ -1408,6 +1416,17 @@ function readSegmentState(v: unknown): SegmentStateView | null {
   const preReveal: Record<string, unknown> = { ...o };
   delete preReveal[SETTLED_REVEAL_KEY];
   delete preReveal[CHALLENGE_REVEAL_KEY];
+  // JOURNEY-UI2 — the Journey block is LIFTED OUT of the generic walk and
+  // read on its own terms, like the two carve-outs above: J2 narrates an
+  // item's gold as `items_added[].cost`, a key the walk bans everywhere (an
+  // item-cost-duel answer). The J2 reader is an exact allowlist, so `cost` is
+  // legal at that one path and every other key of the block is still checked
+  // — including every banned one, which is not in any allowlist.
+  const journeyRaw = readJourneyRaw(o.challenges);
+  if (journeyRaw !== undefined && preReveal.challenges && typeof preReveal.challenges === "object") {
+    const { journey: _lifted, ...rest } = preReveal.challenges as Record<string, unknown>;
+    preReveal.challenges = rest;
+  }
   assertSegmentIsPreRevealSafe(preReveal);
   const ability = rec(o.own_ability, "segment_state.own_ability");
   const unavailable: Record<string, string> = {};
@@ -1469,7 +1488,26 @@ function readSegmentState(v: unknown): SegmentStateView | null {
       o[CHALLENGE_REVEAL_KEY],
       num(o.own_next_challenge_index, "own_next_challenge_index")),
     revealWindowMs: nnum(o.reveal_window_ms, "reveal_window_ms"),
+    journey: readJourneyBlock(journeyRaw),
   };
+}
+
+function readJourneyRaw(challenges: unknown): unknown {
+  if (!challenges || typeof challenges !== "object" || Array.isArray(challenges)) return undefined;
+  return (challenges as Record<string, unknown>).journey;
+}
+
+/** Fail-closed like the walk it replaces for this block: off-contract = no parse. */
+function readJourneyBlock(raw: unknown): JourneyJ2 | null {
+  if (raw === undefined || raw === null) return null;
+  try {
+    return readJourneyJ2(raw);
+  } catch (e) {
+    if (e instanceof JourneyContractError) {
+      throw new RankedPublicParseError(`segment_state.challenges.journey: ${e.message}`);
+    }
+    throw e;
+  }
 }
 
 function readPlaytest(v: unknown): PlaytestMeta | null {

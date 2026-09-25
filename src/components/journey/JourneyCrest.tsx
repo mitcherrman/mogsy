@@ -54,11 +54,17 @@ function BannerCrestBody({ identity }: { identity: JourneyRailIdentity }) {
             <span className={`text-[0.5625rem] font-black leading-none ${a.rank === 0 ? "text-white/35" : "text-[#e8c97a]"}`}>
               {a.slot}
             </span>
-            <span className="flex gap-[1px]">
-              {Array.from({ length: a.maxRank }, (_, i) => (
-                <span key={i} className={`block h-[3px] w-[3px] rounded-full ${i < a.rank ? "bg-[#e8c97a]" : "bg-white/15"}`} />
-              ))}
-            </span>
+            {a.maxRank === null ? (
+              <span className={`text-[0.5625rem] font-bold leading-none ${a.rank === 0 ? "text-white/35" : "text-white"}`}>
+                {a.rank === 0 ? "–" : a.rank}
+              </span>
+            ) : (
+              <span className="flex gap-[1px]">
+                {Array.from({ length: a.maxRank }, (_, i) => (
+                  <span key={i} className={`block h-[3px] w-[3px] rounded-full ${i < a.rank ? "bg-[#e8c97a]" : "bg-white/15"}`} />
+                ))}
+              </span>
+            )}
           </span>
         ))}
       </span>

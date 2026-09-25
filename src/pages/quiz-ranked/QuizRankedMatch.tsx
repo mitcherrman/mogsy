@@ -96,6 +96,7 @@ import { projectMatchOutro } from "@/lib/ranked-core/flow/matchOutro";
 import { useSpecialTransition } from "@/lib/ranked-core/flow/useSpecialTransition";
 import { hostedMatchSettled, type MatchHost } from "@/lib/ranked-core/flow/matchHost";
 import { survivalHumanFinished, survivalStatus } from "@/lib/ranked-core/survivalFinish";
+import { journeyRailsFor } from "@/lib/journey/rail";
 import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
 import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
@@ -1361,6 +1362,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       ? { round, count: seen.count + 1 } : { round, count: 1 };
   }
 
+  /**
+   * JOURNEY-UI2 — while the live segment is a Mastery Journey, each flank
+   * shows its Journey champion (the viewer's side is the Journey's player, the
+   * opponent's side its opponent) in the role mascot's box. Absent for every
+   * other module, which therefore renders exactly as it always has.
+   */
+  const journeySeg = m.segmentState ?? m.publicRound?.segmentState ?? null;
+  const journeyRails = journeySeg?.journey
+    ? journeyRailsFor(journeySeg.journey, {
+      ownNextChallengeIndex: journeySeg.ownNextChallengeIndex,
+      ownCardStartedAt: journeySeg.ownCardStartedAt,
+      ownFinished: journeySeg.ownFinished,
+    })
+    : null;
+
   /** Ranked fills both flanks with a duelist. */
   const rail = (which: "player" | "opponent"): ArenaRail => {
     const c = combatants[which];
@@ -1393,6 +1409,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       leadPulseId: duelState?.leadChange
         && duelState.leadChange.newLeader === (which === "player" ? "viewer" : "opponent")
         ? duelState.leadChange.eventId : null,
+      journey: journeyRails ? journeyRails[which === "player" ? "subject" : "opponent"] : null,
     };
   };
 

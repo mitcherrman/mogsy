@@ -1,99 +1,82 @@
 /**
- * JOURNEY-UI1 — dev-only full-arena harness for the Journey state board.
+ * JOURNEY-UI2 — dev-only harness: REAL J2 captures, replayed through the REAL
+ * client path.
  *
- * The REAL `CanonicalArena` — banner flanks on a desktop, the phone match bar
- * below `lg`, the fixed stage height, the question card — fed a fixture view,
- * with a fixture module whose viewport is the real `JourneyModuleStage` above
- * the real `InteractiveScenarioSurface` (its own band switched off with
- * `mediaScale: "none"`, so there is exactly one media band: the board).
+ * Each step is one captured `GET /matches/{id}/public` envelope from a real
+ * Bot match on the canonical DB (`lib/journey/__fixtures__/j2`). It goes
+ * through the production parser (`readPublicRound`), the production module
+ * renderer (`masterySliceModule`, which mounts the Journey board) and the
+ * production `CanonicalArena` (banner flanks with the Journey crest on a
+ * desktop, the phone match bar below `lg`).
  *
- * THE SERVER IS SIMULATED EXPLICITLY. Stepping to a child plays the part of a
- * poll that has just moved the viewer: the fixture's transition gets its
- * canonical `beat.until` stamped from the step instant (`withBeat`), and the
- * board, the beat gate and the rails react to that exactly as they will to
- * the backend's own instant. No engine, no controller, no fetch.
+ * THE SERVER IS SIMULATED ONLY IN TIME. Server "now" is pinned to the
+ * snapshot's own capture instant (`skewMs`) and runs on in real time, so a
+ * beat snapshot ends at the server's own `own_card_started_at`. "Play" steps
+ * to the next capture after the captured gap — the next poll. Nothing is
+ * invented: no fixture value, no clock, no state.
  *
- *   /dev/journey-arena?arc=a&step=2      (arc: a | c | f; step: 0-based)
+ * A Survival snapshot whose ruleset says `own_stage_finished` renders the way
+ * the hosted Daily arena does at that instant: gameplay gone, the host's
+ * placeholder up (`QuizRankedMatch`'s DC-SURV-UX branch).
+ *
+ *   /dev/journey-arena?capture=olaf&step=6
  */
-import { createContext, useContext, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
-import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
-import { JourneyModuleStage } from "@/components/journey/JourneyModuleStage";
-import { readJourneyPublicState, type JourneyPublicState } from "@/lib/journey/contract";
-import { journeyRailIdentity } from "@/lib/journey/rail";
-import { withBeat } from "@/lib/journey/fixtures";
+import { masterySliceModule } from "@/lib/ranked-core/modules/masterySliceModule";
+import { readPublicRound, type PublicRoundView } from "@/lib/ranked-public/contracts";
+import { journeyRailsFor } from "@/lib/journey/rail";
+import { J2_CAPTURES, loadCapture, type CaptureKey, type CaptureSnapshot } from "@/lib/journey/realFixtures";
 import type { ArenaRail, ArenaViewModel } from "@/lib/ranked-core/arenaView";
-import type { ModuleRenderer } from "@/lib/ranked-core/modules/types";
-import { NO_INTERACTIONS, type CombatantView, type QuestionView } from "@/lib/ranked-core/viewTypes";
-import { JOURNEY_HARNESS_ARCS, type HarnessArc } from "./journeyHarnessFixtures";
+import { NO_INTERACTIONS, type CombatantView } from "@/lib/ranked-core/viewTypes";
 
 const combatant = (over: Partial<CombatantView>): CombatantView => ({
   playerId: "you", name: "You", tag: "Jungle", side: "player", classId: "tank",
-  roleId: "jungle", identityMode: "role", score: 14,
+  roleId: "jungle", identityMode: "role", score: 0,
   hp: 150, maxHp: 170, xp: 0, level: 1, nextLevelThreshold: null,
   currentLevelThreshold: 0, hasSubmitted: false, abilityWindow: null,
   hasAbilitySelected: false, ...over,
 });
 
-function rail(state: JourneyPublicState, which: "player" | "opponent"): ArenaRail {
-  return {
+export function journeyArenaView(round: PublicRoundView, at: string, skewMs: number): ArenaViewModel {
+  const seg = round.segmentState!;
+  const rails = seg.journey ? journeyRailsFor(seg.journey, {
+    ownNextChallengeIndex: seg.ownNextChallengeIndex,
+    ownCardStartedAt: seg.ownCardStartedAt, ownFinished: seg.ownFinished,
+  }) : null;
+  const rail = (which: "player" | "opponent"): ArenaRail => ({
     kind: "combatant",
     combatant: which === "player" ? combatant({})
-      : combatant({ playerId: "opp", name: "Bot", side: "opponent", roleId: "top", tag: "Top", score: 11 }),
-    presentation: "banner",
-    damage: [],
-    outcome: null, damageDealt: null, feedback: null, reaction: null, award: null,
-    journey: journeyRailIdentity(state, which === "player" ? "subject" : "opponent"),
-  };
-}
-
-interface StageInput { state: JourneyPublicState; question: QuestionView; step: number }
-const StageContext = createContext<StageInput | null>(null);
-
-/** The fixture module: the real Journey stage over the real question surface. */
-function JourneyFixtureViewport() {
-  const input = useContext(StageContext);
-  const [selected, setSelected] = useState<string | null>(null);
-  if (!input) return null;
-  return (
-    <JourneyModuleStage state={input.state}>
-      <InteractiveScenarioSurface key={input.step} question={input.question}
-        selectedOptionId={selected} permissions={{ ...NO_INTERACTIONS, canSelectAnswer: true, canChangeAnswer: true }}
-        onSelectOption={(option) => setSelected(option.id)} variant="competitive"
-        settings={{ mediaScale: "none" }} scenarioSource={null} />
-    </JourneyModuleStage>
-  );
-}
-
-const JOURNEY_FIXTURE_MODULE: ModuleRenderer = {
-  moduleId: "journey_fixture",
-  moduleVersion: 1,
-  ownsSubmission: true,
-  Viewport: JourneyFixtureViewport,
-  projectQuestion: () => null,
-  summaryLabel: () => null,
-};
-
-function arenaView(state: JourneyPublicState): ArenaViewModel {
+      : combatant({ playerId: "opp", name: "Bot", side: "opponent", roleId: "top", tag: "Top" }),
+    presentation: "banner", damage: [], outcome: null, damageDealt: null, feedback: null,
+    reaction: null, award: null,
+    journey: rails ? rails[which === "player" ? "subject" : "opponent"] : null,
+  });
+  // The header clock shows the SERVER's deadline for this snapshot: a card
+  // deadline under per-child clocks, the one pooled block deadline otherwise.
+  const deadline = seg.ownCardDeadline ?? seg.challengeDeadline;
+  const started = seg.ownCardStartedAt ?? seg.challengeStartedAt;
+  const now = Date.parse(at);
+  const total = deadline && started ? Math.round((Date.parse(deadline) - Date.parse(started)) / 1000) : 0;
+  const remaining = deadline ? Math.max(0, Math.round((Date.parse(deadline) - now) / 1000)) : 0;
   return {
     header: {
-      eyebrow: "", title: `Module 10 / 10`, transitionNote: null,
-      playtestNote: null, presenceNote: null,
-      timer: { durationSeconds: 150, remainingSeconds: 118, paused: false, urgent: false },
-      timerLabel: "Journey timer",
+      eyebrow: "", title: "Module 10 / 10", transitionNote: null, playtestNote: null, presenceNote: null,
+      timer: { durationSeconds: total, remainingSeconds: Math.min(remaining, total), paused: false, urgent: false },
+      timerLabel: seg.ownCardDeadline ? "Card timer" : "Pooled Journey time",
       centralResult: null, moduleTitle: null, moduleEventId: null,
     },
     roundBeat: null, segmentBeat: null, cardBeat: null,
-    left: rail(state, "player"), right: rail(state, "opponent"),
+    left: rail("player"), right: rail("opponent"),
     surface: {
-      renderer: JOURNEY_FIXTURE_MODULE,
-      publicRound: null as never, segmentState: null, selection: null,
-      permissions: NO_INTERACTIONS, actions: { submitChallenge: () => {}, busy: false, error: null },
-      skewMs: 0, reveal: null, onSelect: () => {}, ownsSubmission: true,
+      renderer: masterySliceModule,
+      publicRound: round, segmentState: seg, selection: null,
+      permissions: NO_INTERACTIONS,
+      actions: { submitChallenge: () => {}, busy: false, error: null },
+      skewMs, reveal: null, onSelect: () => {}, ownsSubmission: true,
       inputOpen: true, hasContent: true,
     },
     abilityHud: null, status: null, hudAction: null,
-    // The module rail: one node, module 10, current.
     timeline: {
       visibleNodes: 1, anchorIndex: 0, windowStart: 9, currentIndex: 0, currentRoundNumber: 10,
       anchored: true,
@@ -104,54 +87,71 @@ function arenaView(state: JourneyPublicState): ArenaViewModel {
   } as ArenaViewModel;
 }
 
-function readParams(): { arc: HarnessArc; step: number } {
+function readParams(): { capture: CaptureKey; step: number } {
   const p = new URLSearchParams(window.location.search);
-  const arcKey = (p.get("arc") ?? "a") as keyof typeof JOURNEY_HARNESS_ARCS;
-  const arc = JOURNEY_HARNESS_ARCS[arcKey] ?? JOURNEY_HARNESS_ARCS.a;
-  const step = Math.min(Math.max(0, Number(p.get("step") ?? "0") || 0), arc.steps.length - 1);
-  return { arc, step };
+  const c = (p.get("capture") ?? "olaf") as CaptureKey;
+  return { capture: c in J2_CAPTURES ? c : "olaf", step: Math.max(0, Number(p.get("step") ?? "1") || 0) };
 }
 
 export default function JourneyArenaHarness() {
   const initial = useMemo(readParams, []);
-  const [arc, setArc] = useState<HarnessArc>(initial.arc);
+  const [capture, setCapture] = useState<CaptureKey>(initial.capture);
+  const [snaps, setSnaps] = useState<CaptureSnapshot[] | null>(null);
   const [step, setStep] = useState(initial.step);
-  // The simulated poll instant: when the viewer "arrived" on this child.
-  const [arrivedAt, setArrivedAt] = useState(() => Date.now() - 60_000);
+  const [shownAt, setShownAt] = useState(() => Date.now());
+  const [playing, setPlaying] = useState(false);
 
-  const go = (next: number) => {
-    setStep(next);
-    setArrivedAt(Date.now());
-  };
-  const s = arc.steps[step];
-  const state = useMemo(() => readJourneyPublicState(withBeat(s.wire, arrivedAt)), [s, arrivedAt]);
-  const input = useMemo(() => ({ state, question: s.question, step }), [state, s, step]);
+  useEffect(() => {
+    let alive = true;
+    setSnaps(null);
+    void loadCapture(capture).then((s) => { if (alive) setSnaps(s); });
+    return () => { alive = false; };
+  }, [capture]);
 
+  const go = (n: number) => { setStep(n); setShownAt(Date.now()); };
+  const snap: CaptureSnapshot | null = snaps ? snaps[Math.min(step, snaps.length - 1)] : null;
+  const round = useMemo(() => (snap ? readPublicRound(snap.envelope) : null), [snap]);
+  // Server now = the capture instant, running on from the moment it was shown.
+  const skewMs = snap ? Date.parse(snap.at) - shownAt : 0;
+
+  useEffect(() => {
+    if (!playing || !snaps || step >= snaps.length - 1) return;
+    const gap = Date.parse(snaps[step + 1].at) - Date.parse(snaps[step].at);
+    const id = window.setTimeout(() => go(step + 1), Math.min(Math.max(gap, 600), 4000));
+    return () => window.clearTimeout(id);
+  }, [playing, snaps, step]);
+
+  const stopped = round?.ruleset?.ownStageFinished === true;
+  const chrome = (
+    <p className="text-sm font-semibold">
+      Daily Challenge · Module 10 · J2 capture: {capture} · {snap?.label ?? "…"}
+    </p>
+  );
   return (
-    <div data-testid="journey-arena-harness" className="relative">
-      <nav aria-label="Journey fixture controls"
-        className="fixed bottom-2 left-1/2 z-[60] flex -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-md border border-white/15 bg-black/80 px-2 py-1 text-[11px] text-white">
-        {Object.entries(JOURNEY_HARNESS_ARCS).map(([key, a]) => (
-          <button key={key} type="button" data-testid={`harness-arc-${key}`}
-            className={`rounded px-1.5 ${a === arc ? "bg-white/20" : ""}`}
-            onClick={() => { setArc(a); setStep(0); setArrivedAt(Date.now() - 60_000); }}>
-            {a.label}
-          </button>
-        ))}
-        <span className="px-1 text-white/40">|</span>
+    <div data-testid="journey-arena-harness" data-capture={capture} data-label={snap?.label} className="relative">
+      <nav aria-label="Journey capture controls"
+        className="fixed bottom-2 left-1/2 z-[60] flex max-w-[96vw] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-md border border-white/15 bg-black/85 px-2 py-1 text-[11px] text-white">
+        <select data-testid="harness-capture" value={capture} className="bg-black"
+          onChange={(e) => { setCapture(e.target.value as CaptureKey); go(1); }}>
+          {Object.keys(J2_CAPTURES).map((k) => <option key={k} value={k}>{k}</option>)}
+        </select>
         <button type="button" data-testid="harness-prev" disabled={step === 0} onClick={() => go(step - 1)}
-          className="rounded px-1.5 disabled:opacity-30">◀</button>
-        <span data-testid="harness-step">{step + 1}/{arc.steps.length}</span>
-        <button type="button" data-testid="harness-next" disabled={step === arc.steps.length - 1}
-          onClick={() => go(step + 1)} className="rounded px-1.5 disabled:opacity-30">▶</button>
-        <button type="button" data-testid="harness-replay" onClick={() => go(step)} className="rounded px-1.5">
-          Replay beat
+          className="px-1.5 disabled:opacity-30">◀</button>
+        <span data-testid="harness-step">{step + 1}/{snaps?.length ?? "…"} {snap?.label}</span>
+        <button type="button" data-testid="harness-next" disabled={!snaps || step >= snaps.length - 1}
+          onClick={() => go(step + 1)} className="px-1.5 disabled:opacity-30">▶</button>
+        <button type="button" data-testid="harness-play" onClick={() => setPlaying((p) => !p)} className="px-1.5">
+          {playing ? "Pause" : "Play"}
         </button>
       </nav>
-      <StageContext.Provider value={input}>
-        <CanonicalArena view={arenaView(state)}
-          chrome={<p className="text-sm font-semibold">Daily Challenge · Standard · Module 10 (fixture)</p>} />
-      </StageContext.Provider>
+      {!round || !snap ? (
+        <p className="p-8 text-sm text-muted-foreground">Loading capture…</p>
+      ) : stopped ? (
+        <CanonicalArena view={null} chrome={chrome}
+          recovering={{ eyebrow: "Daily Challenge", message: "Stage complete…" }} />
+      ) : (
+        <CanonicalArena key={capture} view={journeyArenaView(round, snap.at, skewMs)} chrome={chrome} />
+      )}
     </div>
   );
 }

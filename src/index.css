@@ -16109,3 +16109,49 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-side { row-gap: 8px; }
   .journey-side__champion { font-size: 0.875rem; line-height: 1.1rem; }
 }
+/* JOURNEY-UI2 — a rank printed on the ability tile (a contract without max rank). */
+.journey-rank-digit { font-size: 0.5625rem; }
+/* JOURNEY-UI2 — the Journey question inside the Ranked stage.
+   The stage's region reserves (`--qs-*-h`) are sized for ONE surface filling
+   the card, and pin its answer tablets for that layout. A Journey child sits
+   BELOW the module's board, so those reserves would double-count: they are
+   released for the nested surface only, which then takes its content height.
+   Ordinary rounds are untouched — the tokens are reset on `.journey-question`
+   alone. */
+.journey-question {
+  --qs-media-h: 0px;
+  --qs-prompt-h: 0px;
+  --qs-answers-h: 0px;
+}
+/* The Journey band's height from `lg`: exactly what the band-density board
+   needs (measured 184-191px), so the child question below keeps the rest of a
+   height-locked card. (Inline max-height is `ScenarioMediaBand`'s, hence the
+   priority; the region cap still applies through `min`.) */
+@media (min-width: 1024px) {
+  .journey-band { max-height: min(12.5rem, 100%) !important; }
+}
+/* JOURNEY-UI2 — a structural Mastery view's progress + identity block is the
+   board's job inside a Journey (step N of M, both champions). */
+.journey-question [data-mastery-meta] { display: none; }
+/* JOURNEY-UI2 — in the height-locked desktop card the board keeps its band
+   and the Journey QUESTION is the one region that yields: a long served reveal
+   or a wrapped premise scrolls inside it instead of being clipped by the
+   card. Below `lg` the page scrolls, so nothing here applies. */
+@media (min-width: 1024px) {
+  .ranked-question-stage .journey-viewport {
+    display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto;
+  }
+  .ranked-question-stage .journey-viewport > .journey-stage {
+    flex: 1 1 auto; min-height: 0;
+  }
+  .ranked-question-stage .journey-stage > .journey-band { flex: 0 0 auto; }
+  .ranked-question-stage .journey-stage > .journey-question {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  }
+}
+/* JOURNEY-UI2 — the question-motif art is scenario media; inside a Journey
+   the board is the scenario art, and the motif's oversized decorative
+   pseudo-element would otherwise give the scrollable question a phantom
+   scroll range. */
+.journey-question .question-motif-layer { display: none; }
+.journey-question { overflow-x: hidden; }

@@ -63,7 +63,7 @@ export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, ch
   return (
     <MasteryAssetsProvider>
       <div data-testid="journey-stage" data-journey-key={board.journeyKey}
-        data-beat={beatActive ? "active" : "idle"} className="journey-stage flex flex-col gap-3">
+        data-beat={beatActive ? "active" : "idle"} className="journey-stage flex flex-col gap-2">
         <ScenarioMediaBand key={board.journeyKey} aspect="band" compact data-band-kind="journey"
           className="journey-band">
           <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}>

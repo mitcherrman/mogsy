@@ -95,7 +95,8 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
   const url = resolveAssetUrl(ability.icon) ?? getAbilityIconUrl(champion, ability.slot as AbilitySlot);
   const changed = rankFrom !== null || unlocked;
   const label = `${champion} ${ability.slot}${ability.name ? ` (${ability.name})` : ""}: ${
-    locked ? "not learned" : `rank ${ability.rank} of ${ability.maxRank}`}${
+    locked ? "not learned" : ability.maxRank !== null
+      ? `rank ${ability.rank} of ${ability.maxRank}` : `rank ${ability.rank}`}${
     rankFrom !== null ? `, up from ${rankFrom}` : ""}${unlocked ? ", just unlocked" : ""}`;
   return (
     <span role="img" aria-label={label} title={label}
@@ -117,7 +118,18 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
         {locked && (
           <Lock aria-hidden className="absolute h-[45%] w-[45%] text-white/70" strokeWidth={2.5} />
         )}
+        {ability.maxRank === null && !locked && (
+          // The contract states the rank but not the maximum (J2): the rank is
+          // printed ON the tile, top-left, rather than as pips of a length this
+          // client would have to guess — and on the tile it costs no height.
+          <span aria-hidden data-testid={`journey-pips-${side}-${ability.slot}`} data-rank-only="true"
+            className={`journey-rank-digit absolute left-0 top-0 rounded-br-[4px] px-[3px] font-black leading-[0.8rem] ${
+              rankFrom !== null || unlocked ? "bg-[#8fd0a0] text-[#0d2418]" : "bg-black/80 text-[#f3dca0]"}`}>
+            {ability.rank}
+          </span>
+        )}
       </span>
+      {ability.maxRank === null ? null : (
       <span aria-hidden className="flex gap-[2px]" data-testid={`journey-pips-${side}-${ability.slot}`}>
         {Array.from({ length: ability.maxRank }, (_, i) => (
           <span key={i} data-filled={i < ability.rank ? "true" : "false"}
@@ -127,6 +139,7 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
               : "bg-white/15"}`} />
         ))}
       </span>
+      )}
     </span>
   );
 }

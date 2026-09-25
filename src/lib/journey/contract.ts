@@ -53,7 +53,9 @@ export interface JourneyAbility {
   slot: AbilitySlot;
   /** 0 = not learned (an R before 6 is locked, not missing). */
   rank: number;
-  maxRank: number;
+  /** Null when the contract does not publish it (J2): the board then prints the
+   *  rank as a number instead of drawing pips of a guessed length. */
+  maxRank: number | null;
   name: string | null;
   /** Public asset path, when the server states one. */
   icon: string | null;
@@ -62,7 +64,8 @@ export interface JourneyAbility {
 export interface JourneyItem {
   /** 0..5 — the slot is the item's place on the board, fixed. */
   slot: number;
-  itemId: number;
+  /** Null when the contract names the item only (J2 state carries names). */
+  itemId: number | null;
   name: string;
   icon: string | null;
 }
@@ -140,7 +143,9 @@ export interface JourneyFocus {
 }
 
 export interface JourneyPublicState {
-  contract: typeof JOURNEY_PUBLIC_CONTRACT;
+  /** Which wire this view was read from: the provisional fixture contract, or
+   *  a real backend version adapted by `adapter.ts` (e.g. "mastery_journey.v1"). */
+  contract: string;
   /** Opaque and stable for the whole Journey — the board's mount key. */
   journeyKey: string;
   plan: "standard" | "survival";

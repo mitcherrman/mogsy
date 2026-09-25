@@ -40,7 +40,9 @@ function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneyS
           <div key={a.slot} className="contents" data-testid={`journey-sheet-ability-${id}-${a.slot}`}>
             <dt className="font-black text-[#e8c97a]">{a.slot}</dt>
             <dd className="text-white/85">
-              {a.name ?? "—"} · {a.rank === 0 ? "not learned" : `rank ${a.rank} / ${a.maxRank}`}
+              {a.name ? `${a.name} · ` : ""}
+              {a.rank === 0 ? "not learned"
+                : a.maxRank !== null ? `rank ${a.rank} / ${a.maxRank}` : `rank ${a.rank}`}
             </dd>
           </div>
         ))}
@@ -59,7 +61,8 @@ function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneyS
           </ul>
         )}
       </div>
-      <div>
+      {(side.stats.length > 0 || side.vitals) && (
+      <div data-testid={`journey-sheet-stats-${id}`}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stats</p>
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 text-xs">
           {side.stats.map((s) => {
@@ -93,6 +96,7 @@ function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneyS
           )}
         </dl>
       </div>
+      )}
     </section>
   );
 }

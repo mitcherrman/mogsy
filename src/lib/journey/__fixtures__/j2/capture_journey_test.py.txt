@@ -1,0 +1,207 @@
+"""JOURNEY-UI2 capture harness (scratchpad; NOT part of the backend repo).
+
+Drives REAL Bot matches on a seeded copy of the canonical DB (J2 @ 52e9d929)
+and records the exact envelope the frontend polls (`GET /matches/{id}/public`
+composition: project_public + segment_state_for + ruleset_state_for) at each
+moment of a Journey: child open, reveal, transition beat, next child open,
+finish / Survival stop. Private answers are written to a SEPARATE file, used by
+frontend tests only to assert that they are ABSENT from the rendered DOM.
+"""
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime, timedelta
+
+import pytest
+
+from ranked_modules import mastery_config as MC
+
+OUT = os.environ["JOURNEY_CAPTURE_OUT"]
+SEED = "journey-ui2-capture"
+RECIPES = {
+    "olaf": ("jungle.olaf_vs_jarvan.first_recall", ("Olaf", "Jarvan IV")),
+    "volibear": ("top.volibear_vs_garen.defensive_purchase", ("Volibear", "Garen")),
+    "zed": ("mid.zed_vs_ahri.penetration", ("Zed", "Ahri")),
+    "lucian": ("bot.lucian_vs_caitlyn.first_back", ("Lucian", "Caitlyn")),
+    "senna": ("support.senna_vs_pyke.level_six", ("Senna", "Pyke")),
+    "ahri": ("mid.ahri_vs_syndra.level_six", ("Ahri", "Syndra")),
+}
+ALL_CHAMPS = tuple(sorted({c for _, cs in RECIPES.values() for c in cs}))
+
+
+@pytest.fixture
+def ranked_db(tmp_path, monkeypatch):
+    canonical = os.environ["LOL_CALC_DB_PATH"]
+    monkeypatch.setenv("RANKED_PUBLIC_ENABLED", "1")
+    monkeypatch.setenv("RANKED_FORMATS_ENABLED", "1")
+    monkeypatch.setenv("LOL_CALC_DB_PATH", canonical)
+    monkeypatch.setenv("RANKED_RATELIMIT_ENABLED", "0")
+    monkeypatch.setenv("RANKED_MASTERY_REVEAL_WINDOW_MS", "1750")
+    monkeypatch.delenv("RANKED_BOT_ENABLED", raising=False)
+    from migrate_quiz_attempts_v2 import migrate as migrate_attempts
+    from test_gr1_combatq1_ranked_serving import COMBAT_TABLES
+    from test_gr1_player_serving_slice import _copy_tables
+    from test_ranked_mastery_on_demand import (
+        E2E_CHAMPIONS, _clone_champion_tables, _seeded_db)
+    path = _seeded_db()
+    migrate_attempts(path)
+    _clone_champion_tables(path, champions=tuple(set(E2E_CHAMPIONS + ALL_CHAMPS)))
+    _copy_tables(path, COMBAT_TABLES)
+    return path
+
+
+def _narrow_guard(original):
+    """J2 DEFECT WORKAROUND, capture-only: the public guard bans the key
+    cost, and J2's purchase transition carries narration cost at
+    challenges.journey.transitions[].changes[].items_added[].cost. Check a
+    COPY with exactly that key path removed, so every other key -- cost
+    anywhere else included -- is still enforced by the real guard."""
+    import copy
+
+    def guarded(payload, label="payload"):
+        clone = copy.deepcopy(payload)
+        journey = ((clone.get("challenges") or {}).get("journey")
+                   if isinstance(clone, dict) else None)
+        for t in (journey or {}).get("transitions", []) or []:
+            for change in t.get("changes", []) or []:
+                for item in change.get("items_added", []) or []:
+                    item.pop("cost", None)
+        return original(clone, label)
+    return guarded
+
+
+def _envelope(db, mid, user, at):
+    from ranked_public import projections, service
+    if not getattr(projections, "_ui2_narrowed", False):
+        projections.assert_pre_reveal_safe = _narrow_guard(
+            projections.assert_pre_reveal_safe)
+        projections._ui2_narrowed = True
+    reh = service.get_rehydrated(db, mid, user, at)
+    seg = service.segment_state_for(db, reh, user, now=at)
+    rules = service.ruleset_state_for(db, reh, user, at)
+    return projections.project_public(reh, at, None, seg, viewer_user_id=user,
+                                      ruleset_state=rules)
+
+
+def _format(db, fid, recipe_id, plan, count, *, v2=True, ruleset=None):
+    from ranked_formats import RankedFormat, SegmentSpec
+    from ranked_formats.schema import SCORING_MODEL_POINTS
+    from ranked_public import format_config
+    cfg = MC.journey_config(recipe_id, 1, plan, SEED)
+    if v2:
+        spec = SegmentSpec(module_id="mastery_slice", module_version=2,
+                           challenge_count=count, card_timer_seconds=30.0,
+                           timer_seconds=None, speed_bonus_points=1,
+                           module_config=cfg)
+    else:
+        spec = SegmentSpec(module_id="mastery_slice", module_version=1,
+                           challenge_count=count, timer_seconds=150.0,
+                           module_config=cfg)
+    kw = dict(format_id=fid, format_version=1, status="active",
+              segment_pattern=(spec,), bot_eligible=True, rating_eligible=False,
+              scoring_model=SCORING_MODEL_POINTS, match_length=1)
+    if ruleset is not None:
+        kw["ruleset"] = ruleset
+    fmt = RankedFormat(**kw).validate()
+    format_config.save_config(db, "public", fmt)
+
+
+def _dump(name, snaps, answers):
+    os.makedirs(OUT, exist_ok=True)
+    with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8") as fh:
+        json.dump(snaps, fh, indent=1, sort_keys=True, default=str)
+    with open(os.path.join(OUT, f"{name}.answers.json"), "w", encoding="utf-8") as fh:
+        json.dump(answers, fh, indent=1, default=str)
+
+
+def _walk_v2(db, key, plan, count, *, wrong=(), stop_after=None, ruleset=None):
+    from ranked_public import service
+    from test_ranked_mastery_artifact_persistence import A, T0, _payloads
+    recipe_id = RECIPES[key][0]
+    _format(db, f"ui2-{key}-{plan}", recipe_id, plan, count, ruleset=ruleset)
+    mid = service.create_bot_match(db, match_id=f"ui2-{key}-{plan}",
+                                   human_user_id=A, human_class="tank",
+                                   now=T0).get("match_id", f"ui2-{key}-{plan}")
+    _public, private = _payloads(db, mid)
+    answers = [{"index": i, "correct_answer": c["correct_answer"],
+                "answer_options": c.get("answer_options")}
+               for i, c in enumerate(private["challenges"])]
+    snaps = []
+    at = T0 + timedelta(seconds=1)
+    snaps.append({"label": "child0-open", "at": at.isoformat(),
+                  "envelope": _envelope(db, mid, A, at)})
+    started = snaps[-1]["envelope"]["payload"]["segment_state"]["own_card_started_at"]
+    t = datetime.fromisoformat(started)
+    live0 = t + timedelta(seconds=1)
+    snaps.append({"label": "child0-live", "at": live0.isoformat(),
+                  "envelope": _envelope(db, mid, A, live0)})
+    reveal_ms = 1750
+    delays = private.get("journey", {})  # private block has no delays; read public
+    pub_delays = _public.get("journey", {}).get("open_delays_ms", [])
+    for index in range(count):
+        t += timedelta(seconds=4)
+        row = private["challenges"][index]
+        choice = row["correct_answer"]
+        if index in wrong:
+            choice = next(o for o in row["answer_options"] if o != choice)
+        service.submit_challenge(db, mid, A, 1, index, {"selected": choice}, t)
+        rev = t + timedelta(milliseconds=500)
+        snaps.append({"label": f"child{index}-reveal", "at": rev.isoformat(),
+                      "envelope": _envelope(db, mid, A, rev)})
+        if stop_after is not None and index == stop_after:
+            break
+        if index == count - 1:
+            break
+        delay = int(pub_delays[index + 1]) if index + 1 < len(pub_delays) else 0
+        if delay:
+            beat = t + timedelta(milliseconds=reveal_ms + delay // 2)
+            snaps.append({"label": f"child{index + 1}-beat", "at": beat.isoformat(),
+                          "envelope": _envelope(db, mid, A, beat)})
+        opened = t + timedelta(milliseconds=reveal_ms + delay + 100)
+        snaps.append({"label": f"child{index + 1}-open", "at": opened.isoformat(),
+                      "envelope": _envelope(db, mid, A, opened)})
+        t = datetime.fromisoformat(
+            snaps[-1]["envelope"]["payload"]["segment_state"]["own_card_started_at"])
+    return snaps, answers
+
+
+@pytest.mark.parametrize("key", list(RECIPES))
+def test_capture_standard_v2(ranked_db, key):
+    # Child 1 answered WRONG on purpose: state still advances (correctness-free).
+    snaps, answers = _walk_v2(ranked_db, key, "standard", 5, wrong=(1,))
+    _dump(f"{key}.standard.v2", snaps, answers)
+
+
+def test_capture_survival_stop(ranked_db):
+    from ranked_rulesets import survival
+    # Two strikes allowed: two wrong answers end the stage on child 2 of 3,
+    # MID-Journey, with child 3 never reached.
+    snaps, answers = _walk_v2(ranked_db, "volibear", "survival", 3, wrong=(0, 1),
+                              stop_after=1, ruleset=survival(max_strikes=2))
+    _dump("volibear.survival.stop", snaps, answers)
+
+
+def test_capture_standard_block_clock(ranked_db):
+    """Standard's POOLED clock (v1 block, 150 s): one deadline for the module."""
+    from ranked_public import service
+    from test_ranked_mastery_artifact_persistence import A, T0, _payloads
+    _format(ranked_db, "ui2-olaf-block", RECIPES["olaf"][0], "standard", 5, v2=False)
+    mid = service.create_bot_match(ranked_db, match_id="ui2-olaf-block",
+                                   human_user_id=A, human_class="tank",
+                                   now=T0).get("match_id", "ui2-olaf-block")
+    _public, private = _payloads(ranked_db, mid)
+    snaps = []
+    t = T0 + timedelta(seconds=1)
+    snaps.append({"label": "child0-open", "at": t.isoformat(),
+                  "envelope": _envelope(ranked_db, mid, A, t)})
+    for index in range(3):
+        t += timedelta(seconds=6)
+        service.submit_challenge(ranked_db, mid, A, 1, index, {
+            "selected": private["challenges"][index]["correct_answer"]}, t)
+        after = t + timedelta(seconds=1)
+        snaps.append({"label": f"child{index + 1}-open", "at": after.isoformat(),
+                      "envelope": _envelope(ranked_db, mid, A, after)})
+    answers = [{"index": i, "correct_answer": c["correct_answer"]}
+               for i, c in enumerate(private["challenges"])]
+    _dump("olaf.standard.block", snaps, answers)
