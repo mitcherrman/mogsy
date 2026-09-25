@@ -66,11 +66,12 @@ function SidePanel({ state, side, marks }: {
   const newSlots = new Set(side.items.map((it) => it.slot).filter((s) => marks.newItems.has(markKey(id, s))));
   // Compact priority: what the question is about, then what just changed.
   const ranked = [...side.stats].sort((a, b) => {
-    const score = (key: string) => (focus.stats.has(key) ? 2 : 0) + (marks.stat.has(markKey(id, key)) ? 1 : 0);
+    const changed = (key: string) => marks.stat.has(markKey(id, key)) || marks.gain.has(markKey(id, key));
+    const score = (key: string) => (focus.stats.has(key) ? 2 : 0) + (changed(key) ? 1 : 0);
     return score(b.key) - score(a.key);
   });
   const compactKeys = new Set(ranked
-    .filter((s) => focus.stats.has(s.key) || marks.stat.has(markKey(id, s.key)))
+    .filter((s) => focus.stats.has(s.key) || marks.stat.has(markKey(id, s.key)) || marks.gain.has(markKey(id, s.key)))
     .slice(0, COMPACT_STAT_LIMIT).map((s) => s.key));
   const level = marks.level[id] ?? null;
   return (
@@ -116,6 +117,7 @@ function SidePanel({ state, side, marks }: {
             data-compact={compactKeys.has(s.key) ? "true" : "false"}>
             <StatChip side={id} stat={s}
               delta={marks.stat.get(markKey(id, s.key)) ?? null}
+              gain={marks.gain.get(markKey(id, s.key)) ?? null}
               focused={focus.stats.has(s.key)} />
           </span>
         ))}

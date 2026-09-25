@@ -21,8 +21,13 @@
  *
  * The answer itself goes through the Ranked prose surface (`ProseChallenge`,
  * its own media band off: the Journey board owns the media region), and the
- * reveal is the backend's own text — J2 serves no structured derivation (raw
- * damage → effective armor → mitigation → final); that is a J3 field.
+ * reveal is the backend's own text. Neither J2 nor J3 serves a structured
+ * derivation (raw damage → effective armor → mitigation → final), so none is
+ * drawn and none is computed; prose is never parsed to rebuild one.
+ *
+ * JOURNEY-UI3 — a J3 child may RECALL the target's armor (scenario value
+ * `"recalled"`): it is drawn as "recall · revealed in step N", from the
+ * child's own recall list. The number is not on the wire and is never shown.
  */
 import type { ReactNode } from "react";
 import type { MasterySliceChallengeView } from "@/lib/ranked-public/contracts";
@@ -119,12 +124,24 @@ export function JourneyCombatPremise({ premise, journey, precisionInstruction = 
   precisionInstruction?: string | null;
 }) {
   const pairs = new Map(premise.pairs.map(([k, v]) => [k, v] as const));
+  // What the board above already shows (from `lg`): levels, items, and — on
+  // J3 — the attacker's stated premise stats. The phone keeps them all.
+  const onBoard = (k: string) => ON_BOARD.has(k) || (journey?.boardStats ?? []).includes(k);
   const target = pairs.get("target");
   const known = new Set<string>([...ATTACKER_KEYS, ...TARGET_KEYS]);
   // A premise key this build does not name is still shown — nothing dropped.
   const others = premise.pairs.filter(([k]) => !known.has(k));
   const formula = journey?.formula && journey.formula.slot === premise.slot ? journey.formula : null;
   const recalled = journey?.recalled.find((w) => w.what === "ability_damage" && w.slot === premise.slot) ?? null;
+  // JOURNEY-UI3 — a RECALLED target armor: the scenario says "recalled" and the
+  // number is nowhere on the wire. Name the step that taught it, never a value.
+  const armorRecall = journey?.recalled.find((w) => w.what === "target_armor") ?? null;
+  const factValue = (k: string, v: string | number): ReactNode => (k === "target_armor" && v === "recalled"
+    ? (
+      <span data-testid="journey-combat-target_armor-recall" className="normal-case">
+        recall{armorRecall ? ` · ${armorRecall.source ?? "taught"} in step ${armorRecall.establishedInChild + 1}` : ""}
+      </span>
+    ) : shown(k, v));
   return (
     <section data-testid="journey-combat-premise" aria-label="Combat premise"
       className="space-y-[3px] rounded-lg border border-[#d4b35a]/35 bg-[#07111f] px-2.5 py-1.5 text-white">
@@ -134,7 +151,7 @@ export function JourneyCombatPremise({ premise, journey, precisionInstruction = 
           value={`${premise.ability || premise.slot}${premise.rank !== null ? ` · rank ${premise.rank}` : ""}`} />
         {ATTACKER_KEYS.filter((k) => pairs.has(k)).map((k) => (
           <Fact key={k} testId={`journey-combat-${k}`} label={LABEL[k]} value={shown(k, pairs.get(k)!)}
-            onBoard={ON_BOARD.has(k)} />
+            onBoard={onBoard(k)} />
         ))}
       </div>
       <div data-testid="journey-combat-target" className="flex flex-wrap items-center gap-1">
@@ -142,8 +159,8 @@ export function JourneyCombatPremise({ premise, journey, precisionInstruction = 
           {target !== undefined ? `→ ${target}` : "Target"}
         </span>
         {TARGET_KEYS.filter((k) => k !== "target" && pairs.has(k)).map((k) => (
-          <Fact key={k} testId={`journey-combat-${k}`} label={LABEL[k]} value={shown(k, pairs.get(k)!)}
-            emphasis={k === "target_armor"} onBoard={ON_BOARD.has(k)} />
+          <Fact key={k} testId={`journey-combat-${k}`} label={LABEL[k]} value={factValue(k, pairs.get(k)!)}
+            emphasis={k === "target_armor"} onBoard={onBoard(k)} />
         ))}
         {others.map(([k, v]) => <Fact key={k} testId={`journey-combat-${k}`} label={humanize(k)} value={String(v)} />)}
       </div>
@@ -165,7 +182,7 @@ export function JourneyCombatPremise({ premise, journey, precisionInstruction = 
         ) : recalled ? (
           <span data-formula="recalled" className="text-white/80">
             <span className="font-bold text-[#f3dca0]">Formula: recall it</span>
-            {" "}— {premise.ability || premise.slot}'s damage numbers were stated in step {recalled.establishedInChild + 1}.
+            {" "}— {premise.ability || premise.slot}'s damage numbers were {recalled.source === "revealed" ? "revealed" : "stated"} in step {recalled.establishedInChild + 1}.
           </span>
         ) : (
           <span data-formula="absent" className="text-white/55">The formula is not part of this question's premise.</span>

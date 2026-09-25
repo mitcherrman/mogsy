@@ -1,7 +1,7 @@
 /**
  * JOURNEY-UI1 — Journey public-state FIXTURES, in wire shape (`journey.public.v0`).
  *
- * WHERE THE NUMBERS COME FROM. Levels, items, gold costs and every stat value
+ * WHERE THE NUMBERS COME FROM. Levels, items and every stat value
  * below are copied from the backend's canonical-DB probe in
  * `JOURNEY1_HANDOFF.md` §7 (arcs A, C and F). None is computed here. Ability
  * RANKS other than the ones §7 states are illustrative UI data — in production
@@ -91,10 +91,10 @@ export const ARC_A_CHILD_2 = arcA({
   jarvan: N1_J4, olaf: N0_OLAF,
   transition: {
     from_node: "n0", to_node: "n1",
-    label: "Jarvan IV buys Caulfield's Warhammer (1050g)",
+    label: "Jarvan IV buys Caulfield's Warhammer",
     events: [
       { kind: "purchase", side: "subject", group: "recall",
-        items: [{ slot: 0, item_id: 3133, name: "Caulfield's Warhammer", cost: 1050 }] },
+        items: [{ slot: 0, item_id: 3133, name: "Caulfield's Warhammer" }] },
       { kind: "stat_delta", side: "subject", key: "bonus_attack_damage", from: 0, to: 20 },
       { kind: "stat_delta", side: "subject", key: "ability_haste", from: 0, to: 10 },
     ],
@@ -126,10 +126,10 @@ export const ARC_A_CHILD_4 = arcA({
   jarvan: N1_J4, olaf: N2_OLAF,
   transition: {
     from_node: "n1", to_node: "n2",
-    label: "Olaf buys Chain Vest (800g)",
+    label: "Olaf buys Chain Vest",
     events: [
       { kind: "purchase", side: "opponent", group: null,
-        items: [{ slot: 0, item_id: 1031, name: "Chain Vest", cost: 800 }] },
+        items: [{ slot: 0, item_id: 1031, name: "Chain Vest" }] },
       { kind: "stat_delta", side: "opponent", key: "armor", from: 51.59, to: 91.59 },
     ],
     beat: { ms: 1600, until: null },
@@ -157,14 +157,14 @@ export const ARC_A_ALT_LEVEL_UP = arcA({
   olaf: OLAF(7, OLAF_ABILITIES(4, 0, 2, 1), [item(0, 1031, "Chain Vest")], [stat("armor", 95.349)]),
   transition: {
     from_node: "n2", to_node: "n3",
-    label: "Level 7 · Jarvan IV adds Serrated Dirk (1000g)",
+    label: "Level 7 · Jarvan IV adds Serrated Dirk",
     events: [
       { kind: "level", side: "subject", from: 6, to: 7 },
       { kind: "level", side: "opponent", from: 6, to: 7 },
       { kind: "ability_rank", side: "subject", slot: "Q", from: 3, to: 4 },
       { kind: "ability_rank", side: "opponent", slot: "Q", from: 3, to: 4 },
       { kind: "purchase", side: "subject", group: null,
-        items: [{ slot: 1, item_id: 3134, name: "Serrated Dirk", cost: 1000 }] },
+        items: [{ slot: 1, item_id: 3134, name: "Serrated Dirk" }] },
       { kind: "stat_delta", side: "subject", key: "bonus_attack_damage", from: 20, to: 40 },
       { kind: "stat_delta", side: "subject", key: "lethality", from: 0, to: 10 },
       { kind: "stat_delta", side: "opponent", key: "armor", from: 91.59, to: 95.349 },

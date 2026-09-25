@@ -68,7 +68,7 @@ import {
   abilityTrayIsUseful, isPointsMatch, moduleProgressLabel,
   opponentLabelFor, opponentPresenceLabel, projectAbilities,
   projectAbilityPermissions, projectCombatants,
-  projectPermissions, projectTimer,
+  projectPermissions, projectTimer, projectJourneyTimer,
 } from "./rankedViews";
 import {
   EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
@@ -751,10 +751,18 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * both read the ONE `header.timer` built from it, so there is a single
    * countdown projection on every viewport.
    */
+  // JOURNEY-UI3 — a Journey module's clock is its OWN budget (Standard's pooled
+  // active time, Survival's per-child window), read from the segment state —
+  // never the round's projected block deadline. Ticks anchor on the child's
+  // own deadline so each digit is a real second of THAT clock.
+  const clockSeg = m.segmentState ?? m.publicRound?.segmentState ?? null;
+  const journeyClock = !revealing && clockSeg?.journey ? clockSeg : null;
   const countdownNow = useCountdownNow(
-    m.publicRound?.activeRound?.activeDeadline ?? null, m.skewMs);
+    (journeyClock ? journeyClock.ownCardDeadline : null)
+      ?? m.publicRound?.activeRound?.activeDeadline ?? null, m.skewMs);
   const timer = !revealing && m.publicRound
-    ? projectTimer(m.publicRound, m.skewMs, countdownNow) : null;
+    ? (projectJourneyTimer(journeyClock, m.skewMs, countdownNow)
+      ?? projectTimer(m.publicRound, m.skewMs, countdownNow)) : null;
   // Wake EXACTLY at the live round's authoritative start, so input opens at
   // `started_at` rather than on the next 1s tick. One timeout, re-armed only
   // when the instant changes, cleared on unmount.
@@ -1458,7 +1466,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // (that is duel framing); an ABNORMAL presence state is still news.
       presenceNote: opponentLabel ?? (host ? null : opponentVersusLabel),
       timer,
-      timerLabel: "Shared round timer",
+      timerLabel: journeyClock ? "Journey timer" : "Shared round timer",
       /**
        * RM1 Pass 2B — THE VIEWER'S RESULT, in the header's focal display.
        *

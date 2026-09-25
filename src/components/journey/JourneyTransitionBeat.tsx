@@ -6,9 +6,9 @@
  * one short line per event, staged across the beat in the server's order:
  *
  *     FIRST BACK
- *     Jarvan IV recalls · Caulfield's Warhammer (1050g)
- *     Jarvan IV · Bonus AD 0 → 20
- *     Jarvan IV · AH 0 → 10
+ *     Zed buys Serrated Dirk
+ *     Zed · +20 AD (Serrated Dirk)
+ *     Zed · +10 Lethality (Serrated Dirk)
  *
  * Absolutely positioned inside the board's own box, so it adds no height and
  * moves nothing. Mounted only while the beat runs; the lasting delta chips on
@@ -24,6 +24,9 @@ import { eventDelaysMs, eventLine } from "@/lib/journey/beat";
 function stampFor(state: JourneyPublicState): string {
   const events = state.transition?.events ?? [];
   if (events.some((e) => e.kind === "purchase" && e.group === "recall")) return "Recall";
+  // J3 narrates some purchases as a first back to base: a presentation label
+  // the recipe chose, not a recall mechanic (J3 retired canonical recall).
+  if (events.some((e) => e.kind === "purchase" && e.group === "first_back")) return "First back";
   if (events.some((e) => e.kind === "ability_unlock")) return "Ultimate unlocked";
   if (events.some((e) => e.kind === "level")) return "Level up";
   if (events.some((e) => e.kind === "purchase")) return "Purchase";

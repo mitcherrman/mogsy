@@ -47,7 +47,7 @@ describe("public-state safety — a typed allowlist, not a banned-word list", ()
     const s = readJourneyPublicState(ARC_C_CHILD_0_WITHHELD);
     const armor = journeySide(s, "opponent").stats[0];
     // The reader's own marker: the wire carried no `value` key (asserted below).
-    expect(armor).toEqual({ key: "armor", withheld: true, value: null });
+    expect(armor).toEqual({ key: "armor", withheld: true, value: null, withheldReason: "asked" });
     const wireArmor = (((ARC_C_CHILD_0_WITHHELD as Wire).sides as Wire[])[1].stats as Wire[])[0];
     expect("value" in wireArmor).toBe(false);
   });
@@ -129,6 +129,12 @@ describe("public-state safety — a typed allowlist, not a banned-word list", ()
     rejects({ ...(ARC_A_CHILD_1 as Wire), contract: "journey.public.v9" }, /unsupported contract/);
   });
 
+  it("REFUSES item gold on a purchase event — the view model carries none (JOURNEY-UI3)", () => {
+    const w = JSON.parse(JSON.stringify(ARC_A_CHILD_2)) as Wire;
+    (((w.transition as Wire).events as Wire[])[0].items as Wire[])[0].cost = 1050;
+    expect(() => readJourneyPublicState(w)).toThrow(/does not allow: "cost"/);
+  });
+
   it("the tolerant reader returns null for a malformed block instead of throwing", () => {
     expect(tryReadJourneyPublicState(null)).toBeNull();
     expect(tryReadJourneyPublicState({ contract: "journey.public.v0" })).toBeNull();
@@ -161,7 +167,7 @@ describe("the beat and its lasting marks", () => {
     const s = readJourneyPublicState(ARC_A_CHILD_2);
     const name = (side: "subject" | "opponent") => journeySide(s, side).championName;
     expect(s.transition!.events.map((e) => eventLine(e, name))).toEqual([
-      "Jarvan IV recalls · Caulfield's Warhammer (1050g)",
+      "Jarvan IV recalls · Caulfield's Warhammer",
       "Jarvan IV · Bonus AD 0 → 20",
       "Jarvan IV · AH 0 → 10",
     ]);
@@ -180,5 +186,9 @@ describe("the beat and its lasting marks", () => {
     expect(formatStatValue(91.59, "armor")).toBe("91.59");
     expect(formatStatValue(20, "bonus_attack_damage")).toBe("20");
     expect(formatStatValue(30, "armor_penetration_percent")).toBe("30%");
+    // JOURNEY-UI3 — J3 states attack damage with FOUR decimals; every digit stays.
+    expect(formatStatValue(70.1625, "attack_damage")).toBe("70.1625");
+    expect(formatStatValue(68.8675, "attack_damage")).toBe("68.8675");
+    expect(formatStatValue(0.1 + 0.2, "armor")).toBe("0.3");   // float noise only is stripped
   });
 });

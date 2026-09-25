@@ -40,8 +40,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { adaptJourneyJ2 } from "@/lib/journey/adapter";
-import { JourneyContractError } from "@/lib/journey/contract";
+import { journeyViewFor } from "@/lib/journey/adapter";
 import { JourneyModuleStage } from "@/components/journey/JourneyModuleStage";
 import {
   MasterySliceChallengeSurface,
@@ -139,7 +138,14 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
   const settled = windowMs && windowMs > 0 ? state.ownChallengeReveals : [];
   const latest: MasteryChallengeReveal | null =
     settled.length > 0 ? settled[settled.length - 1] : null;
-  const holding = latest !== null && latest.challengeIndex > dismissed
+  // JOURNEY-UI3 — a Journey (J3) publishes WHICH card the server is still
+  // revealing. A reconnect after that window used to replay the last reveal in
+  // full while the next child was open and the POOLED clock was running (seen
+  // in the width sweep: child 4's reveal over child 5's board at 1:56). For a
+  // Journey the hold is entered only while the server is still revealing it.
+  const serverStillRevealing = !state.journey
+    || (latest !== null && state.ownRevealingCardIndex === latest.challengeIndex);
+  const holding = latest !== null && latest.challengeIndex > dismissed && serverStillRevealing
     ? latest : null;
 
   // ONE timer, keyed on the held challenge's own index — so a duplicate poll,
@@ -168,22 +174,14 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
     setPending((p) => (p !== null && p !== serverIndex ? null : p));
   }, [serverIndex]);
 
-  // JOURNEY-UI2 — a Journey segment: ONE board for the whole module, mounted
+  // JOURNEY-UI2/UI3 — a Journey segment: ONE board for the whole module, mounted
   // around every branch below (question, beat, waiting) so it never remounts
   // between children. Fed the server's reached-prefix public block only.
-  const journey = useMemo(() => {
-    if (!state.journey) return null;
-    try {
-      return adaptJourneyJ2(state.journey, {
-        ownNextChallengeIndex: state.ownNextChallengeIndex,
-        ownCardStartedAt: state.ownCardStartedAt,
-        ownFinished: state.ownFinished,
-      });
-    } catch (e) {
-      if (e instanceof JourneyContractError) return null;
-      throw e;
-    }
-  }, [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished]);
+  const journey = useMemo(() => journeyViewFor(state.journey, {
+    ownNextChallengeIndex: state.ownNextChallengeIndex,
+    ownCardStartedAt: state.ownCardStartedAt,
+    ownFinished: state.ownFinished,
+  }), [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished]);
   const inJourney = (node: ReactNode) => (journey
     ? (
       <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}>

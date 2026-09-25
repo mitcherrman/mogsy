@@ -79,6 +79,14 @@ export interface JourneyStat {
   key: JourneyStatKey;
   withheld: boolean;
   value: number | null;
+  /**
+   * JOURNEY-UI3 — WHY a withheld stat has no value: `asked` (this question asks
+   * it; drawn as `?`) or `recalled` (an earlier step established it and this
+   * question relies on the learner remembering it). Null when not withheld.
+   */
+  withheldReason?: "asked" | "recalled" | null;
+  /** For a `recalled` stat: the step that established it, and how. */
+  recalledFrom?: { child: number; source: "stated" | "revealed" } | null;
 }
 
 /** Tracked vitals. Absent = the Journey does not track them and nothing is drawn. */
@@ -107,12 +115,22 @@ export type JourneyEvent =
   | { kind: "ability_unlock"; side: JourneySideId; slot: AbilitySlot }
   | {
     kind: "purchase"; side: JourneySideId;
-    /** `recall` groups a back-to-base purchase; `null` is a plain purchase. */
-    group: "recall" | null;
-    items: { slot: number; itemId: number; name: string; cost: number | null }[];
+    /**
+     * Presentation grouping only: `first_back` (J3's narration of a purchase as
+     * a first back to base), `recall` (the provisional v0 / J2 spelling), or
+     * `null` for a plain purchase. Never a gold or timing claim — the view
+     * model carries NO item gold at all (JOURNEY-UI3).
+     */
+    group: "first_back" | "recall" | null;
+    items: { slot: number; itemId: number | null; name: string }[];
   }
   | { kind: "item_removed"; side: JourneySideId; itemId: number; name: string }
-  | { kind: "stat_delta"; side: JourneySideId; key: JourneyStatKey; from: number; to: number };
+  | { kind: "stat_delta"; side: JourneySideId; key: JourneyStatKey; from: number; to: number }
+  /**
+   * JOURNEY-UI3 — J3's item stat line: a DELTA ("+20 attack damage from
+   * Serrated Dirk"), never a total. The client adds it to nothing.
+   */
+  | { kind: "stat_change"; side: JourneySideId; key: JourneyStatKey; delta: number; source: string | null };
 
 export interface JourneyTransition {
   fromNode: string;
@@ -230,7 +248,7 @@ function readStat(v: unknown, l: string): JourneyStat {
     // The whole point: a withheld value must not EXIST in the public payload.
     // Not null, not zero, not hidden — absent.
     if ("value" in o) fail(`${l} is withheld but carries a value; the server must omit it`);
-    return { key, withheld: true, value: null };
+    return { key, withheld: true, value: null, withheldReason: "asked" };
   }
   if (o.withheld !== undefined && o.withheld !== false) fail(`${l}.withheld must be a boolean`);
   return { key, withheld: false, value: num(o.value, `${l}.value`) };
@@ -301,13 +319,14 @@ function readEvent(v: unknown, l: string): JourneyEvent {
       const o = shape(v, l, ["kind", "side", "group", "items"], ["kind", "side", "items"]);
       const group = o.group === undefined || o.group === null ? null
         : o.group === "recall" ? "recall" as const : fail(`${l}.group must be "recall" or null`);
+      // No `cost`: item gold is never public (JOURNEY-UI3 / J3 §12.6), and an
+      // unknown key fails the read like any other.
       const items = arr(o.items, `${l}.items`).map((it, i) => {
-        const p = shape(it, `${l}.items[${i}]`, ["slot", "item_id", "name", "cost"], ["slot", "item_id", "name"]);
+        const p = shape(it, `${l}.items[${i}]`, ["slot", "item_id", "name"]);
         return {
           slot: int(p.slot, `${l}.items[${i}].slot`, 0, INVENTORY_SLOTS - 1),
           itemId: int(p.item_id, `${l}.items[${i}].item_id`, 1),
           name: str(p.name, `${l}.items[${i}].name`),
-          cost: p.cost === null || p.cost === undefined ? null : int(p.cost, `${l}.items[${i}].cost`, 0),
         };
       });
       if (items.length === 0) fail(`${l}.items must not be empty`);

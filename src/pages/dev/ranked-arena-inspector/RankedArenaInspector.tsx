@@ -1335,9 +1335,9 @@ const SPELL_COOLDOWN_SCENARIO = {
 } as unknown as QuizQuestion;
 
 /**
- * JOURNEY-UI2 — the Journey board on the real question card, fed a REAL J2
- * capture (a `GET /matches/{id}/public` envelope from a real Bot match,
- * `lib/journey/__fixtures__/j2`) through the production parser and the
+ * JOURNEY-UI2/UI3 — the Journey board on the real question card, fed a REAL J3
+ * capture (a `GET /api/ranked/matches/{id}` envelope from a real Bot match,
+ * `lib/journey/__fixtures__/j3`) through the production parser and the
  * production `masterySliceModule` viewport. Server now is pinned to the
  * capture instant, so a beat capture plays its server-timed beat once. The
  * full arena (banners, phone match bar, autoplay) is `/dev/journey-arena`.
@@ -1626,23 +1626,23 @@ const STATES: InspectorState[] = [
       question={{ ...ITEM_Q, prompt: "Whose W has the longer cooldown at rank 1?" }}
       scenarioSource={SLICE_MATCHUP_SCENARIO} selected={null} /> },
 
-  // --- JOURNEY-UI2: the Journey board on REAL J2 captures ---
-  { key: "journey-matchup", label: "Journey (J2) — Matchup, per-side ranks",
-    render: () => <JourneyBench capture="volibear" label="child1-open" /> },
-  { key: "journey-withheld", label: "Journey (J2) — asked stat withheld (Garen armor ?)",
-    render: () => <JourneyBench capture="volibear" label="child0-reveal" /> },
-  { key: "journey-combat", label: "Journey (J2) — Combat, formula stated",
-    render: () => <JourneyBench capture="olaf" label="child2-open" /> },
-  { key: "journey-recall-beat", label: "Journey (J2) — recall beat (server-timed)",
-    render: () => <JourneyBench capture="olaf" label="child3-beat" /> },
-  { key: "journey-after-purchase", label: "Journey (J2) — child after the purchase (marks kept)",
-    render: () => <JourneyBench capture="olaf" label="child3-open" /> },
-  { key: "journey-combat-recalled", label: "Journey (J2) — Combat, formula recalled",
-    render: () => <JourneyBench capture="olaf" label="child4-open" /> },
-  { key: "journey-level-up", label: "Journey (J2) — level 6 beat (both sides, R unlocks)",
-    render: () => <JourneyBench capture="volibear" label="child4-beat" /> },
-  { key: "journey-lethality", label: "Journey (J2) — Combat after Serrated Dirk",
+  // --- JOURNEY-UI3: the Journey board on REAL J3 captures ---
+  { key: "journey-matchup", label: "Journey (J3) — Matchup, per-side ranks",
+    render: () => <JourneyBench capture="olaf" label="child1-open" /> },
+  { key: "journey-withheld", label: "Journey (J3) — asked stat withheld (Lee Sin armor ?)",
+    render: () => <JourneyBench capture="voli" label="child0-live" /> },
+  { key: "journey-combat", label: "Journey (J3) — Combat, formula stated, armor recalled",
+    render: () => <JourneyBench capture="voli" label="child2-open" /> },
+  { key: "journey-purchase-beat", label: "Journey (J3) — first-back purchase beat (server-timed)",
+    render: () => <JourneyBench capture="zed" label="child3-beat" /> },
+  { key: "journey-after-purchase", label: "Journey (J3) — child after the purchase (marks kept)",
     render: () => <JourneyBench capture="zed" label="child3-open" /> },
+  { key: "journey-combat-recalled", label: "Journey (J3) — Combat, formula recalled",
+    render: () => <JourneyBench capture="voli" label="child4-open" /> },
+  { key: "journey-level-up", label: "Journey (J3) — level 6 beat (both sides, R unlocks)",
+    render: () => <JourneyBench capture="pantheon" label="child3-beat" /> },
+  { key: "journey-armor-stated", label: "Journey (J3) — Combat at level 6, armor stated",
+    render: () => <JourneyBench capture="pantheon" label="child4-open" /> },
 
   // --- shared InteractiveScenarioSurface ---
   { key: "surface-text-fallback", label: "Surface — compact band (no source)",

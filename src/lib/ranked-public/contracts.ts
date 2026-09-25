@@ -27,7 +27,7 @@ import {
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
-import { readJourneyJ2, type JourneyJ2 } from "@/lib/journey/j2";
+import { isJourneyJ3, readJourneyJ3, type JourneyJ3 } from "@/lib/journey/j3";
 import { JourneyContractError } from "@/lib/journey/contract";
 
 export class RankedPublicParseError extends Error {
@@ -584,11 +584,23 @@ export interface SegmentStateView {
    */
   revealWindowMs: number | null;
   /**
-   * JOURNEY-UI2 — a Mastery Journey segment's public block (J2), REACHED
-   * PREFIX only, read with its own typed allowlist (`lib/journey/j2.ts`).
-   * `null` for every other segment.
+   * JOURNEY-UI3 — a Mastery Journey segment's public block (J3,
+   * `journey_public_state.v1`), REACHED PREFIX only. It passes the generic
+   * pre-reveal walk like every other key AND its own typed allowlist
+   * (`lib/journey/j3.ts`). `null` for every other segment.
    */
-  journey?: JourneyJ2 | null;
+  journey?: JourneyJ3 | null;
+  /**
+   * JOURNEY3 — POOLED ACTIVE answer time (Standard's Journey module). All
+   * three are null unless the segment pools its clock. The server derives
+   * them from its frozen chain: `activeTimeRemainingMs` is what the pool has
+   * left NOW, and it is `running` only while the viewer's card is open —
+   * during a reveal or a transition beat it is paused BY CONSTRUCTION. The
+   * client renders these and never pauses anything itself.
+   */
+  activeTimeMs?: number | null;
+  activeTimeRemainingMs?: number | null;
+  activeTimeRunning?: boolean | null;
 }
 
 /**
@@ -1416,17 +1428,12 @@ function readSegmentState(v: unknown): SegmentStateView | null {
   const preReveal: Record<string, unknown> = { ...o };
   delete preReveal[SETTLED_REVEAL_KEY];
   delete preReveal[CHALLENGE_REVEAL_KEY];
-  // JOURNEY-UI2 — the Journey block is LIFTED OUT of the generic walk and
-  // read on its own terms, like the two carve-outs above: J2 narrates an
-  // item's gold as `items_added[].cost`, a key the walk bans everywhere (an
-  // item-cost-duel answer). The J2 reader is an exact allowlist, so `cost` is
-  // legal at that one path and every other key of the block is still checked
-  // — including every banned one, which is not in any allowlist.
+  // JOURNEY-UI3 — the Journey block is NOT lifted out of the walk. UI2 had to
+  // (J2 narrated item gold as `items_added[].cost`, a banned key); J3 publishes
+  // no gold anywhere, so the block now meets the SAME walk as every other key
+  // and then its own exact allowlist (`readJourneyBlock`). A `cost` anywhere in
+  // it — the old J2 path included — fails the whole segment.
   const journeyRaw = readJourneyRaw(o.challenges);
-  if (journeyRaw !== undefined && preReveal.challenges && typeof preReveal.challenges === "object") {
-    const { journey: _lifted, ...rest } = preReveal.challenges as Record<string, unknown>;
-    preReveal.challenges = rest;
-  }
   assertSegmentIsPreRevealSafe(preReveal);
   const ability = rec(o.own_ability, "segment_state.own_ability");
   const unavailable: Record<string, string> = {};
@@ -1489,6 +1496,11 @@ function readSegmentState(v: unknown): SegmentStateView | null {
       num(o.own_next_challenge_index, "own_next_challenge_index")),
     revealWindowMs: nnum(o.reveal_window_ms, "reveal_window_ms"),
     journey: readJourneyBlock(journeyRaw),
+    // Optional on the wire: a pre-JOURNEY3 backend sends none of the three.
+    activeTimeMs: nnum(o.active_time_ms, "active_time_ms"),
+    activeTimeRemainingMs: nnum(o.active_time_remaining_ms, "active_time_remaining_ms"),
+    activeTimeRunning: o.active_time_running === null || o.active_time_running === undefined
+      ? null : bool(o.active_time_running, "active_time_running"),
   };
 }
 
@@ -1497,11 +1509,20 @@ function readJourneyRaw(challenges: unknown): unknown {
   return (challenges as Record<string, unknown>).journey;
 }
 
-/** Fail-closed like the walk it replaces for this block: off-contract = no parse. */
-function readJourneyBlock(raw: unknown): JourneyJ2 | null {
+/**
+ * Fail-closed: off-contract = no parse. Only the J3 public-state contract is
+ * a Journey this client plays; the superseded J2 block (no
+ * `public_state_contract`) is refused here — its isolated reader lives in
+ * `lib/journey/j2.ts` for its own tests only.
+ */
+function readJourneyBlock(raw: unknown): JourneyJ3 | null {
   if (raw === undefined || raw === null) return null;
+  if (!isJourneyJ3(raw)) {
+    throw new RankedPublicParseError(
+      "segment_state.challenges.journey: not a journey_public_state.v1 block");
+  }
   try {
-    return readJourneyJ2(raw);
+    return readJourneyJ3(raw);
   } catch (e) {
     if (e instanceof JourneyContractError) {
       throw new RankedPublicParseError(`segment_state.challenges.journey: ${e.message}`);

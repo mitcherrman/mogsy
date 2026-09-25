@@ -65,14 +65,21 @@ export function isJourneyStatKey(v: unknown): v is JourneyStatKey {
 }
 
 /**
- * The server's number, printed. Up to three decimals because canonical
- * premises carry them (an armor of 44.195 is stated as 44.195 in the question
- * text, and the board must not disagree with the prompt by rounding it);
+ * The server's number, printed with EVERY digit it has: canonical premises
+ * carry them (an armor of 44.195, an attack damage of 70.1625 — J3 states the
+ * latter with four decimals), and the board must not disagree with the
+ * premise by rounding it. `toPrecision(12)` only strips binary float noise;
  * trailing zeros are dropped. Formatting only — never arithmetic.
  */
 export function formatStatValue(value: number, key: JourneyStatKey): string {
   const text = Number.isInteger(value)
     ? String(value)
-    : value.toFixed(3).replace(/\.?0+$/, "");
+    : String(Number(value.toPrecision(12)));
   return JOURNEY_STAT_META[key].unit === "percent" ? `${text}%` : text;
+}
+
+/** A server DELTA, signed ("+20", "-5", "+10%"). Formatting only. */
+export function formatStatGain(delta: number, key: JourneyStatKey): string {
+  const text = formatStatValue(Math.abs(delta), key);
+  return `${delta < 0 ? "-" : "+"}${text}`;
 }

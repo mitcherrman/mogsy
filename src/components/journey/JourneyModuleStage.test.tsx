@@ -75,7 +75,7 @@ describe("the transition beat is the server's, and gates the next question", () 
     // Still mounted — its box is held, so nothing lays out when it opens.
     expect(screen.getByTestId("child-question")).toBeInTheDocument();
     expect(within(screen.getByTestId("journey-beat")).getAllByTestId("journey-beat-line").map((l) => l.textContent))
-      .toEqual(["Jarvan IV recalls · Caulfield's Warhammer (1050g)", "Jarvan IV · Bonus AD 0 → 20", "Jarvan IV · AH 0 → 10"]);
+      .toEqual(["Jarvan IV recalls · Caulfield's Warhammer", "Jarvan IV · Bonus AD 0 → 20", "Jarvan IV · AH 0 → 10"]);
 
     act(() => { vi.advanceTimersByTime(1799); });
     expect(isInert()).toBe(true);

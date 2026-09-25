@@ -1,0 +1,32 @@
+[
+ {
+  "index": 0,
+  "correct_answer": "50",
+  "answer_options": [
+   "63",
+   "57",
+   "47",
+   "50"
+  ]
+ },
+ {
+  "index": 1,
+  "correct_answer": "83",
+  "answer_options": [
+   "53",
+   "83",
+   "63",
+   "73"
+  ]
+ },
+ {
+  "index": 2,
+  "correct_answer": "75",
+  "answer_options": [
+   "55",
+   "65",
+   "60",
+   "75"
+  ]
+ }
+]

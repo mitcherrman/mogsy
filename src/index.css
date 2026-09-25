@@ -16149,9 +16149,30 @@ html.hub-commons-in-view .hextech-ambience-layer {
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
   }
 }
+/* JOURNEY-UI3 — the surface wrapper centres short content (auto block
+   margins; `lg:my-auto` on desktop, the stage's own rule on a phone). During a
+   transition beat the next child is not in the payload yet, so the module
+   shows a one-line placeholder and the whole board slid down to the card's
+   middle (measured: 1440 band y 133 → 262, 390 band y 159 → 332, and back).
+   A Journey takes the body from the top instead, at every width, so its board
+   never moves between children. */
+.ranked-question-stage [data-testid="ranked-question-body"] > :has(> .journey-viewport) {
+  margin-top: 0; margin-bottom: 0; flex: 1 1 auto;
+}
 /* JOURNEY-UI2 — the question-motif art is scenario media; inside a Journey
    the board is the scenario art, and the motif's oversized decorative
    pseudo-element would otherwise give the scrollable question a phantom
    scroll range. */
 .journey-question .question-motif-layer { display: none; }
 .journey-question { overflow-x: hidden; }
+/* JOURNEY-UI3 — J3's board states the premise stats, so from `lg` the child's
+   question gives the height-locked card back: its category row is the board's
+   job (Journey · step N of M), and its heading steps down one size. Measured
+   at 1024x768: without this a live Combat child pushed "Lock in" 35px below
+   the card's fold. Below `lg` the page scrolls and nothing here applies. */
+@media (min-width: 1024px) {
+  .journey-question [data-testid="question-meta-row"] { display: none; }
+  .ranked-academy .ranked-folio .journey-question [data-testid="scenario-surface"] > header h2 {
+    font-size: 1rem; line-height: 1.25;
+  }
+}

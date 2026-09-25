@@ -14,7 +14,7 @@
 import type { JourneyPublicState, JourneySide } from "@/lib/journey/contract";
 import { journeySide } from "@/lib/journey/contract";
 import { eventLine, markKey, transitionMarks } from "@/lib/journey/beat";
-import { formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
+import { formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
@@ -71,9 +71,13 @@ function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneyS
               <div key={s.key} className="contents" data-testid={`journey-sheet-stat-${id}-${s.key}`}>
                 <dt className="text-white/70">{JOURNEY_STAT_META[s.key].long}</dt>
                 <dd className="text-right font-bold tabular-nums text-white">
-                  {s.withheld || s.value === null ? "? — asked in this question"
+                  {s.withheld && s.withheldReason === "recalled"
+                    ? `recall it${s.recalledFrom ? ` — ${s.recalledFrom.source} in step ${s.recalledFrom.child + 1}` : ""}`
+                    : s.withheld || s.value === null ? "? — asked in this question"
                     : delta ? `${formatStatValue(delta.from, s.key)} → ${formatStatValue(delta.to, s.key)}`
-                      : (s.value === null ? "" : formatStatValue(s.value, s.key))}
+                      : (s.value === null ? "" : `${formatStatValue(s.value, s.key)}${
+                        marks.gain.has(markKey(id, s.key))
+                          ? ` (${formatStatGain(marks.gain.get(markKey(id, s.key))!, s.key)} from the last change)` : ""}`)}
                 </dd>
               </div>
             );

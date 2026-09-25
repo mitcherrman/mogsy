@@ -17,7 +17,7 @@
 import type {
   AbilitySlot, JourneyEvent, JourneyPublicState, JourneySideId, JourneyTransition,
 } from "./contract";
-import { formatStatValue, JOURNEY_STAT_META, type JourneyStatKey } from "./stats";
+import { formatStatGain, formatStatValue, JOURNEY_STAT_META, type JourneyStatKey } from "./stats";
 
 /** Is the canonical beat still running at this server time? */
 export function beatActiveAt(transition: JourneyTransition | null, serverNowMs: number): boolean {
@@ -42,6 +42,8 @@ export interface JourneyMarks {
   unlocked: Set<string>;
   newItems: Set<string>;
   stat: Map<string, { from: number; to: number }>;
+  /** JOURNEY-UI3 — J3 item stat lines: the server's DELTA per `side:stat`. */
+  gain: Map<string, number>;
 }
 
 const k = (side: JourneySideId, key: string | number) => `${side}:${key}`;
@@ -49,7 +51,7 @@ const k = (side: JourneySideId, key: string | number) => `${side}:${key}`;
 /** What the transition into this node changed, keyed `side:fact`. */
 export function transitionMarks(transition: JourneyTransition | null): JourneyMarks {
   const marks: JourneyMarks = {
-    level: {}, rank: new Set(), unlocked: new Set(), newItems: new Set(), stat: new Map(),
+    level: {}, rank: new Set(), unlocked: new Set(), newItems: new Set(), stat: new Map(), gain: new Map(),
   };
   for (const e of transition?.events ?? []) {
     if (e.kind === "level") marks.level[e.side] = { from: e.from, to: e.to };
@@ -57,6 +59,10 @@ export function transitionMarks(transition: JourneyTransition | null): JourneyMa
     if (e.kind === "ability_unlock") marks.unlocked.add(k(e.side, e.slot));
     if (e.kind === "purchase") e.items.forEach((it) => marks.newItems.add(k(e.side, it.slot)));
     if (e.kind === "stat_delta") marks.stat.set(k(e.side, e.key), { from: e.from, to: e.to });
+    // Two item lines on one stat (e.g. two items both granting AD) are listed
+    // separately in the beat; the chip's mark shows the first one only, so it
+    // never presents a sum the server did not send.
+    if (e.kind === "stat_change" && !marks.gain.has(k(e.side, e.key))) marks.gain.set(k(e.side, e.key), e.delta);
   }
   return marks;
 }
@@ -85,7 +91,7 @@ export function eventLine(e: JourneyEvent, name: (side: JourneySideId) => string
     case "ability_unlock":
       return `${who} · ${e.slot} unlocked`;
     case "purchase": {
-      const names = e.items.map((it) => (it.cost !== null ? `${it.name} (${it.cost}g)` : it.name)).join(", ");
+      const names = e.items.map((it) => it.name).join(", ");
       return e.group === "recall" ? `${who} recalls · ${names}` : `${who} buys ${names}`;
     }
     case "item_removed":
@@ -94,6 +100,8 @@ export function eventLine(e: JourneyEvent, name: (side: JourneySideId) => string
       const meta = JOURNEY_STAT_META[e.key as JourneyStatKey];
       return `${who} · ${meta.short} ${formatStatValue(e.from, e.key)} → ${formatStatValue(e.to, e.key)}`;
     }
+    case "stat_change":
+      return `${who} · ${formatStatGain(e.delta, e.key)} ${JOURNEY_STAT_META[e.key].short}${e.source ? ` (${e.source})` : ""}`;
   }
 }
 

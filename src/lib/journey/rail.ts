@@ -10,9 +10,8 @@
 import type { AbilitySlot, JourneyPublicState, JourneySideId } from "./contract";
 import { journeySide } from "./contract";
 import { transitionMarks } from "./beat";
-import { adaptJourneyJ2, type JourneyCursor } from "./adapter";
-import { JourneyContractError } from "./contract";
-import type { JourneyJ2 } from "./j2";
+import { journeyViewFor, type JourneyCursor } from "./adapter";
+import type { JourneyJ3 } from "./j3";
 
 export interface JourneyRailIdentity {
   side: JourneySideId;
@@ -40,17 +39,12 @@ export function journeyRailIdentity(state: JourneyPublicState, side: JourneySide
 
 /** Both flanks' identity from a live Journey block, or null (no board yet / unreadable). */
 export function journeyRailsFor(
-  journey: JourneyJ2, cursor: JourneyCursor,
+  journey: JourneyJ3, cursor: JourneyCursor,
 ): Record<JourneySideId, JourneyRailIdentity> | null {
-  try {
-    const view = adaptJourneyJ2(journey, cursor);
-    if (!view) return null;
-    return {
-      subject: journeyRailIdentity(view.board, "subject"),
-      opponent: journeyRailIdentity(view.board, "opponent"),
-    };
-  } catch (e) {
-    if (e instanceof JourneyContractError) return null;
-    throw e;
-  }
+  const view = journeyViewFor(journey, cursor);
+  if (!view) return null;
+  return {
+    subject: journeyRailIdentity(view.board, "subject"),
+    opponent: journeyRailIdentity(view.board, "opponent"),
+  };
 }

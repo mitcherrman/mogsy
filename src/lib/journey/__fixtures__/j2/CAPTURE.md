@@ -1,4 +1,6 @@
-# J2 capture provenance (JOURNEY-UI2)
+# J2 capture provenance (JOURNEY-UI2) — RETIRED from gameplay by JOURNEY-UI3
+
+> **JOURNEY-UI3:** J3 replaced this wire. The production parser now REFUSES a J2 Journey block (no `public_state_contract`, and its `cost` key fails the generic pre-reveal walk). Only `olaf.standard.v2.json` is kept, for the ISOLATED J2 reader test (`lib/journey/j2.adapter.test.ts`). The other J2 captures were removed; the real captures now live in `../j3/`.
 
 These files are **real backend output**, not hand-written fixtures.
 

@@ -1,9 +1,9 @@
 /**
- * JOURNEY-UI2 — dev-only harness: REAL J2 captures, replayed through the REAL
- * client path.
+ * JOURNEY-UI2/UI3 — dev-only harness: REAL J3 captures, replayed through the
+ * REAL client path.
  *
- * Each step is one captured `GET /matches/{id}/public` envelope from a real
- * Bot match on the canonical DB (`lib/journey/__fixtures__/j2`). It goes
+ * Each step is one captured `GET /api/ranked/matches/{id}` envelope from a real
+ * Bot match on the canonical DB (`lib/journey/__fixtures__/j3`). It goes
  * through the production parser (`readPublicRound`), the production module
  * renderer (`masterySliceModule`, which mounts the Journey board) and the
  * production `CanonicalArena` (banner flanks with the Journey crest on a
@@ -19,14 +19,15 @@
  * the hosted Daily arena does at that instant: gameplay gone, the host's
  * placeholder up (`QuizRankedMatch`'s DC-SURV-UX branch).
  *
- *   /dev/journey-arena?capture=olaf&step=6
+ *   /dev/journey-arena?capture=zed&step=6
  */
 import { useEffect, useMemo, useState } from "react";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import { masterySliceModule } from "@/lib/ranked-core/modules/masterySliceModule";
 import { readPublicRound, type PublicRoundView } from "@/lib/ranked-public/contracts";
 import { journeyRailsFor } from "@/lib/journey/rail";
-import { J2_CAPTURES, loadCapture, type CaptureKey, type CaptureSnapshot } from "@/lib/journey/realFixtures";
+import { J3_CAPTURES, loadCapture, type CaptureKey, type CaptureSnapshot } from "@/lib/journey/realFixtures";
+import { projectJourneyTimer } from "@/pages/quiz-ranked/rankedViews";
 import type { ArenaRail, ArenaViewModel } from "@/lib/ranked-core/arenaView";
 import { NO_INTERACTIONS, type CombatantView } from "@/lib/ranked-core/viewTypes";
 
@@ -52,18 +53,13 @@ export function journeyArenaView(round: PublicRoundView, at: string, skewMs: num
     reaction: null, award: null,
     journey: rails ? rails[which === "player" ? "subject" : "opponent"] : null,
   });
-  // The header clock shows the SERVER's deadline for this snapshot: a card
-  // deadline under per-child clocks, the one pooled block deadline otherwise.
-  const deadline = seg.ownCardDeadline ?? seg.challengeDeadline;
-  const started = seg.ownCardStartedAt ?? seg.challengeStartedAt;
-  const now = Date.parse(at);
-  const total = deadline && started ? Math.round((Date.parse(deadline) - Date.parse(started)) / 1000) : 0;
-  const remaining = deadline ? Math.max(0, Math.round((Date.parse(deadline) - now) / 1000)) : 0;
+  // The header clock is the production Journey clock (`projectJourneyTimer`):
+  // Standard's pooled active time, Survival's per-child window.
+  const timer = projectJourneyTimer(seg, skewMs, Date.now());
   return {
     header: {
       eyebrow: "", title: "Module 10 / 10", transitionNote: null, playtestNote: null, presenceNote: null,
-      timer: { durationSeconds: total, remainingSeconds: Math.min(remaining, total), paused: false, urgent: false },
-      timerLabel: seg.ownCardDeadline ? "Card timer" : "Pooled Journey time",
+      timer, timerLabel: "Journey timer",
       centralResult: null, moduleTitle: null, moduleEventId: null,
     },
     roundBeat: null, segmentBeat: null, cardBeat: null,
@@ -89,8 +85,8 @@ export function journeyArenaView(round: PublicRoundView, at: string, skewMs: num
 
 function readParams(): { capture: CaptureKey; step: number } {
   const p = new URLSearchParams(window.location.search);
-  const c = (p.get("capture") ?? "olaf") as CaptureKey;
-  return { capture: c in J2_CAPTURES ? c : "olaf", step: Math.max(0, Number(p.get("step") ?? "1") || 0) };
+  const c = (p.get("capture") ?? "zed") as CaptureKey;
+  return { capture: c in J3_CAPTURES ? c : "zed", step: Math.max(0, Number(p.get("step") ?? "1") || 0) };
 }
 
 export default function JourneyArenaHarness() {
@@ -121,10 +117,12 @@ export default function JourneyArenaHarness() {
     return () => window.clearTimeout(id);
   }, [playing, snaps, step]);
 
-  const stopped = round?.ruleset?.ownStageFinished === true;
+  // Strike 3, or the match already settled (the last child's answer completes
+  // a one-module capture): the hosted Daily shows its placeholder here.
+  const stopped = round?.ruleset?.ownStageFinished === true || (round !== null && !round.segmentState);
   const chrome = (
     <p className="text-sm font-semibold">
-      Daily Challenge · Module 10 · J2 capture: {capture} · {snap?.label ?? "…"}
+      Daily Challenge · Journey · J3 capture: {capture} · {snap?.label ?? "…"}
     </p>
   );
   return (
@@ -133,7 +131,7 @@ export default function JourneyArenaHarness() {
         className="fixed bottom-2 left-1/2 z-[60] flex max-w-[96vw] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-md border border-white/15 bg-black/85 px-2 py-1 text-[11px] text-white">
         <select data-testid="harness-capture" value={capture} className="bg-black"
           onChange={(e) => { setCapture(e.target.value as CaptureKey); go(1); }}>
-          {Object.keys(J2_CAPTURES).map((k) => <option key={k} value={k}>{k}</option>)}
+          {Object.keys(J3_CAPTURES).map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
         <button type="button" data-testid="harness-prev" disabled={step === 0} onClick={() => go(step - 1)}
           className="px-1.5 disabled:opacity-30">◀</button>

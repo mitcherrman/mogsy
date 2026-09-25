@@ -65,7 +65,7 @@ let matchLength: number | null;
 let segmentOverride: Record<string, unknown> | null;
 /** DC-SURV-UX — the public `ruleset` block, or null for a standard match. */
 let rulesetOverride: Record<string, unknown> | null;
-/** JOURNEY-UI2 — a REAL captured Journey `segment` + `segment_state` (J2). */
+/** JOURNEY-UI2/UI3 — a REAL captured Journey `segment` + `segment_state` (J3). */
 let journeyEnvelope: { segment: unknown; segment_state: unknown } | null;
 /** The round the server currently reports as active. */
 let activeRound: number;
@@ -478,34 +478,100 @@ describe("DC-SURV-UX — a hosted Survival stage", () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════ */
-/* JOURNEY-UI2 — a hosted Journey, on REAL J2 captures                         */
+/* JOURNEY-UI3 — a hosted Journey, on REAL J3 captures                         */
 /* ══════════════════════════════════════════════════════════════════════════ */
 
-function capture(name: string, label: string) {
-  const all = JSON.parse(readFileSync(join(resolve(process.cwd(), "src/lib/journey/__fixtures__/j2"),
-    `${name}.json`), "utf8")) as { label: string; envelope: { payload: Record<string, unknown> } }[];
+type CapturePayload = Record<string, unknown>;
+function captureSnap(name: string, label: string) {
+  const all = JSON.parse(readFileSync(join(resolve(process.cwd(), "src/lib/journey/__fixtures__/j3"),
+    `${name}.json`), "utf8")) as { label: string; at: string; envelope: { payload: CapturePayload } }[];
   const s = all.find((x) => x.label === label);
   if (!s) throw new Error(`${name}: ${label}`);
-  return s.envelope.payload;
+  return s;
 }
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(\+00:00|Z)$/;
+/**
+ * The capture, moved in time so its capture instant is NOW: every server
+ * instant keeps its distance from the moment it was read. Nothing else moves.
+ */
+function capture(name: string, label: string): CapturePayload {
+  const s = captureSnap(name, label);
+  const shift = Date.now() - Date.parse(s.at);
+  const walk = (v: unknown): unknown => {
+    if (typeof v === "string" && ISO.test(v)) return new Date(Date.parse(v) + shift).toISOString();
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(s.envelope.payload) as CapturePayload;
+}
+const clockText = () => screen.getAllByTestId("timer-value")[0];
 
-describe("JOURNEY-UI2 — a hosted Journey module", () => {
+describe("JOURNEY-UI3 — a hosted Journey module", () => {
   it("a live Journey: champion crests replace the role mascots, and the board is in the arena", async () => {
     startedAt = Date.now() - 4000;
-    const p = capture("olaf.standard.v2", "child1-open");
+    const p = capture("zed.standard", "child1-open");
     journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
     await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
-    expect(screen.getByTestId("journey-crest-subject")).toHaveAccessibleName(/^Olaf, level 6/);
-    expect(screen.getByTestId("journey-crest-opponent")).toHaveAccessibleName(/^Jarvan IV, level 6/);
+    expect(screen.getByTestId("journey-crest-subject")).toHaveAccessibleName(/^Zed, level 3/);
+    expect(screen.getByTestId("journey-crest-opponent")).toHaveAccessibleName(/^Ahri, level 3/);
     expect(screen.queryByTestId("role-crest")).toBeNull();
   }, 25000);
 
-  it("Survival stop mid-Journey (real capture): gameplay ends at once — no board, no beat, no future child", async () => {
+  it("Standard: the header is the POOLED Journey clock — the server's remainder, never the round deadline", async () => {
     startedAt = Date.now() - 4000;
-    const p = capture("volibear.survival.stop", "child1-reveal");
+    // Child 2 open for 2 s: 140 s of 150 left and running (the round's own
+    // deadline in this fixture is 30 s away — it must NOT be what is shown).
+    const p = capture("zed.standard", "child1-live");
     journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
-    rulesetOverride = p.ruleset as Record<string, unknown>;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+    await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+    await waitFor(() => expect(clockText()).toHaveTextContent(/^2:(19|20)$/), { timeout: 4000 });
+    expect(clockText()).toHaveAttribute("data-timer-state", "running");
+    // (The clock's secondary line shows the duel standing, which outranks the
+    // "of 2:30 Journey time" note in the existing header — see the handoff.)
+  }, 25000);
+
+  it("Standard: during a reveal and during a transition beat the pool is HELD (server `running: false`)", async () => {
+    startedAt = Date.now() - 4000;
+    for (const label of ["child2-reveal", "child3-beat"]) {
+      const p = capture("zed.standard", label);
+      expect((p.segment_state as CapturePayload).active_time_running).toBe(false);
+      expect((p.segment_state as CapturePayload).active_time_remaining_ms).toBe(126_000);
+      journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+      const { unmount } = render(
+        <QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+      await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+      await waitFor(() => expect(clockText()).toHaveTextContent("2:06"), { timeout: 4000 });
+      expect(clockText()).toHaveAttribute("data-timer-state", "paused");
+      // A second later it has not moved: nothing burns while nothing is answerable.
+      await new Promise((r) => setTimeout(r, 1100));
+      expect(clockText()).toHaveTextContent("2:06");
+      unmount();
+    }
+  }, 40000);
+
+  it("Survival: the header is the CHILD's own 30 s window, not the block", async () => {
+    startedAt = Date.now() - 4000;
+    const p = capture("olaf.survival", "child1-live");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+    await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+    await waitFor(() => expect(clockText()).toHaveTextContent(/^0:(27|28)$/), { timeout: 4000 });
+    // The round's projected block deadline here is ~51 s; the child's is 30 s.
+    expect(clockText()).not.toHaveTextContent(/^0:(4|5)\d$/);
+  }, 25000);
+
+  it("Survival strike-out mid-Journey (real capture): gameplay ends at once — no board, no beat, no future child", async () => {
+    startedAt = Date.now() - 4000;
+    // The strike lands on child 2 of 3. The capture's own post-strike read is a
+    // settled match (the bot had already finished), so the live child's segment
+    // state is paired with the post-strike ruleset the server returned.
+    const live = capture("pantheon.survival.strikeout", "child1-live");
+    const after = capture("pantheon.survival.strikeout", "child1-reveal");
+    journeyEnvelope = { segment: live.segment, segment_state: live.segment_state };
+    rulesetOverride = after.ruleset as Record<string, unknown>;
     expect(rulesetOverride.own_stage_finished).toBe(true);
     const finished: string[] = [];
     const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
@@ -520,8 +586,8 @@ describe("JOURNEY-UI2 — a hosted Journey module", () => {
 
   it("no transition after own_stage_finished — even with a transition on the wire", async () => {
     startedAt = Date.now() - 4000;
-    // The recall beat's segment state, as if strike 3 had just landed.
-    const p = capture("olaf.standard.v2", "child3-beat");
+    // The purchase beat's segment state, as if strike 3 had just landed.
+    const p = capture("zed.standard", "child3-beat");
     journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
     rulesetOverride = survivalRuleset(3, { live_strikes: 3, own_stage_finished: true, stage_ended: false });
     const finished: string[] = [];
@@ -531,6 +597,6 @@ describe("JOURNEY-UI2 — a hosted Journey module", () => {
     await new Promise((r) => setTimeout(r, 300));
     expect(screen.queryByTestId("journey-beat")).toBeNull();
     expect(screen.queryByTestId("journey-board")).toBeNull();
-    expect(document.body.textContent).not.toContain("Caulfield");
+    expect(document.body.textContent).not.toContain("Serrated Dirk");
   }, 25000);
 });

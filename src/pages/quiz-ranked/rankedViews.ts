@@ -19,7 +19,7 @@ import {
   permissionsForSubmissionPhase,
   restrictPermissions,
 } from "@/lib/ranked-core/permissions";
-import { msUntilAnswerable, remainingSeconds } from "@/lib/ranked-core/timerMath";
+import { msUntilAnswerable, remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
 import {
   AbilityView,
   InteractionPermissions,
@@ -32,7 +32,7 @@ import {
 } from "@/lib/ranked-core/viewTypes";
 import { rankedRoleLabel } from "@/lib/ranked-public/roles";
 import type {
-  PresenceView, PrivatePlayerView, PublicRoundView, ScoringModel,
+  PresenceView, PrivatePlayerView, PublicRoundView, ScoringModel, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 
 /**
@@ -214,6 +214,57 @@ export function projectTimer(pub: PublicRoundView, skewMs: number, nowMs: number
     urgent: remaining > 0 && remaining <= 5,
     modifierNotices: active.pressureApplied ? ["-5s first-answer pressure applied"] : undefined,
   };
+}
+
+/**
+ * JOURNEY-UI3 — THE CLOCK OF A JOURNEY MODULE, from the segment state's own
+ * timing fields. Null for every segment that is not a Journey (the round clock
+ * above is unchanged for them).
+ *
+ * Why not the round clock: a Journey's round `active_deadline` is the server's
+ * PROJECTED end of the whole block. It moves with every reveal and beat, so a
+ * countdown to it ticks through reveals, jumps between polls, and in Survival
+ * shows the block (~95 s) instead of the child's 30 s.
+ *
+ *   * STANDARD (pooled, `active_time_*`): the pool's remainder. While the
+ *     server says the pool is not running (a reveal, a beat, the lead-in),
+ *     `own_card_deadline` is the NEXT child's open + remainder, so
+ *     `min(remainder, deadline − now)` holds exactly at the remainder until
+ *     the server's own open instant and counts down after it — with no
+ *     client pause, and without waiting for a poll to learn the card opened.
+ *     `paused` is the server's `running: false`, and only until that instant.
+ *   * SURVIVAL (per child, `card_timer_ms`): the child's own window,
+ *     `min(card timer, deadline − now)` — full and still until the child opens.
+ *
+ * Presentation only: a local zero decides nothing; the server settles expiry.
+ */
+export function projectJourneyTimer(seg: SegmentStateView | null | undefined, skewMs: number,
+                                    nowMs: number): TimerView | null {
+  if (!seg?.journey) return null;
+  const deadline = seg.ownCardDeadline;
+  const opensAt = seg.ownCardStartedAt ? Date.parse(seg.ownCardStartedAt) : null;
+  const serverNow = nowMs + skewMs;
+  if (seg.activeTimeMs !== null && seg.activeTimeMs !== undefined
+      && seg.activeTimeRemainingMs !== null && seg.activeTimeRemainingMs !== undefined) {
+    const held = seg.activeTimeRemainingMs;
+    const left = seg.ownFinished || !deadline ? held : Math.min(held, remainingMs(deadline, skewMs, nowMs));
+    const paused = seg.activeTimeRunning === false && !seg.ownFinished
+      && (opensAt === null || serverNow < opensAt);
+    const remaining = Math.max(0, Math.ceil(left / 1000));
+    return {
+      durationSeconds: Math.round(seg.activeTimeMs / 1000),
+      remainingSeconds: remaining,
+      paused,
+      urgent: !paused && remaining > 0 && remaining <= 10,
+    };
+  }
+  if (seg.cardTimerMs !== null && seg.cardTimerMs !== undefined && deadline) {
+    const total = Math.round(seg.cardTimerMs / 1000);
+    const remaining = Math.min(total, remainingSeconds(deadline, skewMs, nowMs));
+    return { durationSeconds: total, remainingSeconds: remaining, paused: false,
+      urgent: remaining > 0 && remaining <= 5 };
+  }
+  return null;
 }
 
 /** Snapshot clock skew: server-clock offset relative to the local clock at

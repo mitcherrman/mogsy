@@ -36,6 +36,7 @@ import {
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
 import { reconciledSkewMs } from "@/lib/ranked-core/timerMath";
+import { msUntilServerInstant } from "@/lib/ranked-core/flow/useServerInstantWake";
 import { useSfx } from "@/lib/audio/useSfx";
 
 const POLL_MS = 1500;
@@ -1096,6 +1097,41 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
 
   const segmentState = publicRound?.segmentState ?? null;
   const segmentNumber = segmentState?.segmentNumber ?? null;
+
+  /**
+   * JOURNEY-UI3 — POLL AT THE JOURNEY'S SERVER INSTANTS.
+   *
+   * A Journey child is not in the payload until the server opens it, and a
+   * transition is not published until its beat starts. On the ordinary 1.5 s
+   * cadence the client learned both up to 1.5 s late — measured in a real
+   * Daily: the next child appeared 0.5–1.0 s after the server opened it (the
+   * pooled clock already running on an empty "opening…" placeholder), and a
+   * 2.5 s purchase beat was visible for 1.25 s. So, for a Journey only:
+   *
+   *   * one poll AT `own_card_started_at` (the server's open instant), and
+   *   * one poll when a new reveal's frozen window (`reveal_window_ms`) ends —
+   *     the instant the server publishes the transition, if there is one.
+   *
+   * Poll SCHEDULING only: nothing is opened, paused or decided here; the
+   * snapshot those polls return is the only thing that moves the Journey.
+   */
+  const journeyOpensAt = segmentState?.journey ? segmentState.ownCardStartedAt : null;
+  useEffect(() => {
+    if (!journeyOpensAt) return;
+    const delay = msUntilServerInstant(journeyOpensAt, skewMs, Date.now());
+    if (delay <= 0) return;
+    const id = window.setTimeout(poke, delay + 60);
+    return () => window.clearTimeout(id);
+  }, [journeyOpensAt, skewMs, poke]);
+  const journeyRevealing = segmentState?.journey ? segmentState.ownRevealingCardIndex : null;
+  const journeyRevealMs = segmentState?.journey ? segmentState.revealWindowMs : null;
+  useEffect(() => {
+    if (journeyRevealing === null || !journeyRevealMs) return;
+    // First observed right after the submit that settled it: its window ends
+    // one frozen reveal later (a late first sighting only makes this poll early).
+    const id = window.setTimeout(poke, journeyRevealMs + 80);
+    return () => window.clearTimeout(id);
+  }, [journeyRevealing, journeyRevealMs, poke]);
 
   const runSegmentAction = useCallback(
     (action: (segment: number) => Promise<unknown>, onAccepted?: (segment: number) => void) => {

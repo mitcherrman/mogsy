@@ -20,7 +20,7 @@ import { Lock } from "lucide-react";
 import type {
   AbilitySlot, JourneyAbility, JourneyItem, JourneySide, JourneyStat,
 } from "@/lib/journey/contract";
-import { formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
+import { formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import { getAbilityIconUrl } from "@/lib/combat-lab/abilityIcons";
 import { resolveAssetUrl } from "@/hooks/useChampionAssets";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
@@ -185,27 +185,44 @@ export function InventorySlots({ side, items, newSlots, focusSlots }: {
  *   delta    "Armor 51.59 → 91.59"   (the server's from/to, kept all child long)
  *   withheld "Armor ?"                (the value is NOT in the payload)
  */
-export function StatChip({ side, stat, delta = null, focused = false }: {
+export function StatChip({ side, stat, delta = null, gain = null, focused = false }: {
   side: JourneySide["side"];
   stat: JourneyStat;
   delta?: { from: number; to: number } | null;
+  /**
+   * JOURNEY-UI3 — the server's item DELTA on this stat (J3 `stat_change`). The
+   * chip takes the existing "changed" face; the number itself is in its label,
+   * the State sheet and the beat line. It is never added to anything, and it
+   * takes no extra width (a badge here overflowed the chip at every width).
+   */
+  gain?: number | null;
   focused?: boolean;
 }) {
   const meta = JOURNEY_STAT_META[stat.key];
   const value = stat.withheld ? null : stat.value;
-  const face = value === null ? "withheld" : delta ? "delta" : "plain";
+  const recalled = stat.withheld && stat.withheldReason === "recalled";
+  const face = recalled ? "recalled" : value === null ? "withheld" : delta ? "delta" : gain !== null ? "gained" : "plain";
+  const from = stat.recalledFrom ? `step ${stat.recalledFrom.child + 1}` : null;
   return (
     <span data-testid={`journey-stat-${side}-${stat.key}`} data-face={face}
+      data-gain={gain !== null && value !== null ? gain : undefined}
       data-focus={focused ? "true" : undefined}
-      aria-label={value === null ? `${meta.long}: asked in this question`
+      aria-label={recalled ? `${meta.long}: recall it${from ? ` from ${from}` : ""}`
+        : value === null ? `${meta.long}: asked in this question`
         : delta ? `${meta.long}: ${formatStatValue(delta.from, stat.key)} to ${formatStatValue(delta.to, stat.key)}`
-          : `${meta.long}: ${formatStatValue(value, stat.key)}`}
+          : `${meta.long}: ${formatStatValue(value, stat.key)}${gain !== null ? ` (${formatStatGain(gain, stat.key)} from the last change)` : ""}`}
       className={`journey-chip inline-flex shrink-0 items-baseline gap-1 whitespace-nowrap rounded-md border px-1.5 font-semibold uppercase tracking-[0.12em] ${
-        face === "delta" ? "journey-chip--delta" : face === "withheld"
+        face === "delta" || face === "gained" ? "journey-chip--delta" : face === "withheld" || face === "recalled"
           ? "border-dashed border-[#e8c97a]/60 bg-[#e8c97a]/10" : "border-[#d4b35a]/30 bg-black/50"} ${
         focused ? "journey-focus" : ""}`}>
       <span className="text-white/70">{meta.short}</span>
-      {value === null ? (
+      {recalled ? (
+        // The number is NOT on the wire: this question relies on the learner
+        // remembering it. Say where it came from; never print a value.
+        <span className="font-black normal-case tracking-normal text-[#f3dca0]" data-testid={`journey-stat-${side}-${stat.key}-recall`}>
+          recall{from ? ` · ${from}` : ""}
+        </span>
+      ) : value === null ? (
         <span className="font-black text-[#f3dca0]">?</span>
       ) : delta ? (
         <>
