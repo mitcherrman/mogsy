@@ -172,10 +172,26 @@ export interface HistoryQuestion {
   outcome: string;
   /** 1-based position within the stage, in the stage's persisted order. */
   reviewPosition: number;
+  /**
+   * HUB2.1 — the occurrence. `roundNumber` is the one-based Ranked
+   * round/module occurrence of the stage's child match; `challengeIndex` is the
+   * zero-based question position inside that round. The pair, not the
+   * canonical ref, identifies an occurrence: a ref may repeat. Null only for
+   * a record that predates the projection.
+   */
+  roundNumber: number | null;
+  challengeIndex: number | null;
   category: string | null;
   family: string | null;
   concept: string | null;
   subjectLabel: string | null;
+}
+
+/** One Ranked round/module occurrence of a stage and the questions it settled,
+ *  in `challengeIndex` order. */
+export interface HistoryRound {
+  roundNumber: number;
+  questions: HistoryQuestion[];
 }
 
 export interface HistoryStage {
@@ -193,7 +209,14 @@ export interface HistoryStage {
    *  content. The only link between History and the review endpoint. */
   reviewMatchId: string | null;
   basic: StageBasic;
+  /** Every question occurrence, ordered `roundNumber`, then `challengeIndex`. */
   questions: HistoryQuestion[];
+  /**
+   * The occurrences grouped by round, ascending. Null when any question lacks
+   * its round ordinal, in which case the stage's round structure is unknown
+   * and nothing is inferred from its question count.
+   */
+  rounds: HistoryRound[] | null;
   capability: AnalyticsCapability;
   analytics: StageAnalytics | null;
 }
@@ -245,6 +268,8 @@ const num = (v: unknown, l: string): number =>
 const nnum = (v: unknown, l: string): number | null => (v === null || v === undefined ? null : num(v, l));
 const int = (v: unknown, l: string): number =>
   typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : fail(`${l} must be a non-negative integer`);
+const posInt = (v: unknown, l: string): number =>
+  typeof v === "number" && Number.isInteger(v) && v >= 1 ? v : fail(`${l} must be a positive integer`);
 const bool = (v: unknown, l: string): boolean => (typeof v === "boolean" ? v : fail(`${l} must be a boolean`));
 /** An opaque identity that may arrive as a string or a number. */
 const nid = (v: unknown, l: string): string | null =>
@@ -413,11 +438,47 @@ function readQuestion(v: unknown, l: string): HistoryQuestion {
     canonicalRef: nstr(r.canonical_ref, `${l}.canonical_ref`),
     outcome: str(r.outcome, `${l}.outcome`),
     reviewPosition: int(r.review_position, `${l}.review_position`),
+    roundNumber: r.round_number === null || r.round_number === undefined
+      ? null : posInt(r.round_number, `${l}.round_number`),
+    challengeIndex: r.challenge_index === null || r.challenge_index === undefined
+      ? null : int(r.challenge_index, `${l}.challenge_index`),
     category: nstr(r.category, `${l}.category`),
     family: nstr(r.family, `${l}.family`),
     concept: nstr(r.concept, `${l}.concept`),
     subjectLabel: subject ? nstr(subject.label, `${l}.subject.label`) : null,
   };
+}
+
+/**
+ * Order and group a stage's question occurrences by HUB2.1's ordinals:
+ * `round_number` ascending, then `challenge_index` ascending. Nothing is
+ * de-duplicated — two occurrences of one canonical ref are two questions —
+ * and no grouping is guessed from family, type or count. A duplicate
+ * (round, challenge) pair is a contract violation.
+ */
+function occurrences(
+  questions: HistoryQuestion[],
+  l: string,
+): { questions: HistoryQuestion[]; rounds: HistoryRound[] | null } {
+  if (questions.some((q) => q.roundNumber === null || q.challengeIndex === null)) {
+    return { questions, rounds: null };
+  }
+  const ordered = questions
+    .slice()
+    .sort((a, b) => a.roundNumber! - b.roundNumber! || a.challengeIndex! - b.challengeIndex!);
+  const rounds: HistoryRound[] = [];
+  for (const q of ordered) {
+    const last = rounds[rounds.length - 1];
+    if (last && last.roundNumber === q.roundNumber) {
+      if (last.questions[last.questions.length - 1].challengeIndex === q.challengeIndex) {
+        fail(`${l}.questions repeat round ${q.roundNumber} challenge ${q.challengeIndex}`);
+      }
+      last.questions.push(q);
+    } else {
+      rounds.push({ roundNumber: q.roundNumber!, questions: [q] });
+    }
+  }
+  return { questions: ordered, rounds };
 }
 
 function readStage(v: unknown, l: string): HistoryStage {
@@ -453,7 +514,7 @@ function readStage(v: unknown, l: string): HistoryStage {
       accuracy: nnum(basic.accuracy, `${l}.basic.accuracy`),
       endedBy: nstr(basic.ended_by, `${l}.basic.ended_by`),
     },
-    questions: arr(r.questions, `${l}.questions`).map((q, i) => readQuestion(q, `${l}.questions[${i}]`)),
+    ...occurrences(arr(r.questions, `${l}.questions`).map((q, i) => readQuestion(q, `${l}.questions[${i}]`)), l),
     capability,
     analytics,
   };

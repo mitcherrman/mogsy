@@ -4,7 +4,7 @@
  * `__fixtures__/hub2-history-v1.golden.json` is not hand-written: it is the
  * JSON HUB2's own `GET /api/history/v1` route returned (FastAPI TestClient
  * over `routes/history.py` → `history/daily.project`, backend
- * `codex/history-analytics-b` @ 856563ff) for seeded in-memory Daily runs —
+ * `codex/history-analytics-b` @ HUB2.1 59cceea2) for seeded in-memory Daily runs —
  * Free, Premium, entitlement-unavailable, newcomer, empty, a three-page
  * cursor walk and an invalid cursor. See HUB4_HANDOFF.md for how to
  * regenerate it.
@@ -31,6 +31,7 @@ describe("HUB4 parser — every real HUB2 page parses", () => {
     "unavailable_page_1",
     "premium_newcomer",
     "empty",
+    "occurrences",
   ]) {
     it(key, () => {
       const page = readHistoryPage(G[key]);
@@ -125,6 +126,73 @@ describe("HUB4 parser — analytics are the server's numbers, not recomputed", (
     expect(survival.historicalSamples).toBe(5);
     const weak = record.stages[3].analytics!;
     expect(weak.selectedThemes).toEqual(["family"]);
+  });
+});
+
+type Q = Record<string, unknown>;
+const occStage = (wire: Wire) => (wire.items[0].stages as { questions: Q[] }[])[0].questions;
+
+describe("HUB4.1 parser — HUB2.1 round/challenge occurrences (real route output)", () => {
+  const stages = readHistoryPage(G.occurrences).items[0].stages;
+
+  it("reads round_number and challenge_index on every question", () => {
+    for (const stage of stages) {
+      expect(stage.questions.map((q) => [q.roundNumber, q.challengeIndex])).toEqual([
+        [1, 0], [1, 1], [2, 0], [3, 0], [3, 1],
+      ]);
+    }
+  });
+
+  it("groups by round ascending, challenge ascending: Standard and Survival alike", () => {
+    expect(stages.map((s) => s.kind)).toEqual(["standard", "survival"]);
+    for (const stage of stages) {
+      expect(stage.rounds!.map((r) => [r.roundNumber, r.questions.map((q) => q.challengeIndex)])).toEqual([
+        [1, [0, 1]], [2, [0]], [3, [0, 1]],
+      ]);
+      // Five question results, three module occurrences.
+      expect(stage.questions.length).toBe(5);
+      expect(stage.rounds!.length).toBe(3);
+    }
+  });
+
+  it("keeps a repeated canonical ref as two occurrences", () => {
+    const [first, second] = stages[0].rounds![0].questions;
+    expect(first.canonicalRef).toBe("quiz:repeat");
+    expect(second.canonicalRef).toBe("quiz:repeat");
+    expect(first.questionResultId).not.toBe(second.questionResultId);
+  });
+
+  it("orders by the ordinals, not by the array it was given", () => {
+    const wire = clone(G.occurrences);
+    occStage(wire).reverse();
+    const stage = readHistoryPage(wire).items[0].stages[0];
+    expect(stage.questions.map((q) => [q.roundNumber, q.challengeIndex])).toEqual([
+      [1, 0], [1, 1], [2, 0], [3, 0], [3, 1],
+    ]);
+    expect(stage.rounds!.map((r) => r.roundNumber)).toEqual([1, 2, 3]);
+  });
+
+  it("orders rounds numerically (10 after 9), and a ref repeated across rounds stays twice", () => {
+    const wire = clone(G.occurrences);
+    const qs = occStage(wire);
+    qs[0].round_number = 10;
+    qs[2].round_number = 9;
+    qs[0].canonical_ref = "quiz:again";
+    qs[4].canonical_ref = "quiz:again";
+    const stage = readHistoryPage(wire).items[0].stages[0];
+    expect(stage.rounds!.map((r) => r.roundNumber)).toEqual([1, 3, 9, 10]);
+    expect(stage.questions.filter((q) => q.canonicalRef === "quiz:again").length).toBe(2);
+  });
+
+  it("refuses two results claiming one occurrence", () => {
+    const wire = clone(G.occurrences);
+    occStage(wire)[1].challenge_index = 0;
+    expect(() => readHistoryPage(wire)).toThrow(/repeat round 1 challenge 0/);
+  });
+
+  it("the older scenarios carry the ordinals too (one question per round there)", () => {
+    const stage = readHistoryPage(G.premium_page_1).items[0].stages[0];
+    expect(stage.rounds!.length).toBe(stage.questions.length);
   });
 });
 

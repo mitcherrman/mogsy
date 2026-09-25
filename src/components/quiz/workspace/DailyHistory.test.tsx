@@ -44,6 +44,11 @@ interface StageOver {
   ended_by?: string;
   capability?: Cap;
   analytics?: Json;
+  /** HUB2.1 occurrences as [round_number, challenge_index] per question, in
+   *  wire order. Default: one question per round. */
+  occurrences?: [number, number][];
+  /** Canonical refs per question, in wire order. */
+  refs?: string[];
 }
 interface RunOver {
   stages?: StageOver[];
@@ -60,7 +65,7 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const RULESET: Record<string, string> = { standard: "standard", time_trial: "time_trial", survival: "survival", weak_areas: "standard", review: "standard" };
 
 function wireStage(runId: string, order: number, kind: string, over: StageOver = {}) {
-  const answered = over.answered ?? 3;
+  const answered = over.occurrences?.length ?? over.answered ?? 3;
   const correct = over.correct ?? 2;
   return {
     stage_id: `${runId}:${order}:${kind}`,
@@ -82,9 +87,11 @@ function wireStage(runId: string, order: number, kind: string, over: StageOver =
     },
     questions: Array.from({ length: answered }, (_, i) => ({
       question_result_id: `qr-${runId}-${order}-${i}`,
-      canonical_ref: `quiz:secret_family.key${i}`,
+      canonical_ref: over.refs?.[i] ?? `quiz:secret_family.key${i}`,
       outcome: i < correct ? "correct" : "incorrect",
       review_position: i + 1,
+      round_number: over.occurrences ? over.occurrences[i][0] : i + 1,
+      challenge_index: over.occurrences ? over.occurrences[i][1] : 0,
       exact_question_key: `secret_family.key${i}`,
       family: "secret_family",
       concept: null,
@@ -440,6 +447,80 @@ describe("HUB4 Question — HUB3's QuestionTimeline, fed by review_identity", ()
     fireEvent.click(icon);
     const dialog = await screen.findByRole("dialog");
     expect(dialog.textContent).toContain("Daily prompt 1");
+  });
+});
+
+// ============================================================ HUB4.1 OCCURRENCES
+
+describe("HUB4.1 — timeline positions are HUB2.1 round occurrences, not question results", () => {
+  const positions = (stage: HTMLElement) => within(stage).getAllByTestId("timeline-icon");
+  const totalOf = (stage: HTMLElement) =>
+    Number(within(stage).getByTestId("question-timeline").dataset.total);
+
+  it("Standard: five question results in three rounds hold three positions before the review loads", async () => {
+    const run = wireRun("s", ["standard"], {
+      stages: [{ occurrences: [[1, 0], [1, 1], [2, 0], [3, 0], [3, 1]], correct: 3 }],
+    });
+    const { source } = sourceOf({ first: page([run]) });
+    renderHub(source);
+    await waitFor(() => expect(runs().length).toBe(1));
+    const stage = stagesOf(runs()[0])[0];
+    expect(totalOf(stage)).toBe(3);
+    expect(positions(stage).length).toBe(3);
+    expect(positions(stage).every((i) => i.dataset.loaded === "false")).toBe(true);
+    // The Free C/A stays question-grain.
+    expect(within(stage).getByTestId("daily-stage-result").textContent).toContain("3/5");
+  });
+
+  it("Survival: several questions in one round are one position", async () => {
+    const run = wireRun("v", ["survival"], {
+      stages: [{ occurrences: [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [6, 1], [6, 2]], correct: 7 }],
+    });
+    const { source } = sourceOf({ first: page([run]) });
+    renderHub(source);
+    await waitFor(() => expect(runs().length).toBe(1));
+    expect(totalOf(stagesOf(runs()[0])[0])).toBe(6);
+  });
+
+  it("repeated refs in different occurrences are not collapsed into fewer positions", async () => {
+    const run = wireRun("r", ["standard"], {
+      stages: [{
+        occurrences: [[2, 0], [1, 0], [3, 0]],
+        refs: ["quiz:same", "quiz:same", "quiz:same"],
+        correct: 2,
+      }],
+    });
+    const { source } = sourceOf({ first: page([run]) });
+    renderHub(source);
+    await waitFor(() => expect(runs().length).toBe(1));
+    expect(totalOf(stagesOf(runs()[0])[0])).toBe(3);
+  });
+
+  it("the loaded review replaces the placeholders on the SAME canonical timeline", async () => {
+    getMatchReview.mockImplementation(async (matchId: string) => reviewOf(matchId, 3));
+    const run = wireRun("s", ["standard"], {
+      stages: [{ occurrences: [[1, 0], [1, 1], [2, 0], [3, 0], [3, 1]], correct: 3 }],
+    });
+    const { source } = sourceOf({ first: page([run]) });
+    renderHub(source, { signedIn: true, hasAccount: true });
+    await waitFor(() => expect(runs().length).toBe(1));
+    const stage = () => stagesOf(runs()[0])[0];
+    await waitFor(() => expect(positions(stage()).every((i) => i.dataset.loaded === "true")).toBe(true));
+    expect(getMatchReview.mock.calls[0][0]).toBe("m-s-0");
+    expect(totalOf(stage())).toBe(3);
+    expect(within(stage()).getByTestId("question-timeline").dataset.matchId).toBe("m-s-0");
+  });
+
+  it("a stage without round ordinals holds no invented positions", async () => {
+    const run = wireRun("x", ["standard"]);
+    for (const q of run.stages[0].questions as Json[]) {
+      delete q.round_number;
+      delete q.challenge_index;
+    }
+    const { source } = sourceOf({ first: page([run]) });
+    renderHub(source);
+    await waitFor(() => expect(runs().length).toBe(1));
+    expect(within(stagesOf(runs()[0])[0]).queryByTestId("question-timeline")).toBeNull();
   });
 });
 

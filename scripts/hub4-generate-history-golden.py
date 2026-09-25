@@ -1,5 +1,6 @@
 """HUB4 real-shape certification: drive HUB2's actual GET /api/history/v1
 route (routes/history.py -> history/daily.project) through FastAPI's
+(HUB2.1 @ 59cceea2: questions carry round_number / challenge_index)
 TestClient against seeded in-memory data, and write the JSON responses.
 
 Read-only against the backend worktree: it imports modules and seeds an
@@ -127,6 +128,25 @@ def main():
 
     empty = client_for(hub2_tests._db(), "e", Cap(True))
     out["empty"] = empty.get("/api/history/v1").json()
+
+    # HUB2.1 occurrences: Standard and Survival rounds that settle several
+    # questions, a canonical ref repeated across occurrences, and rows
+    # INSERTED out of order so ordering must come from the ordinals.
+    occ_conn = hub2_tests._db()
+    hub2_tests._run(occ_conn, 1, user="o", stages=("standard", "survival"),
+                    completed="2026-09-01T18:00:00+00:00",
+                    answers=(True, False, True, False, True))
+    layout = [(3, 1), (1, 0), (2, 0), (1, 1), (3, 0)]  # 3 rounds for 5 questions
+    for stage_index in (0, 1):
+        for qindex, (round_number, challenge_index) in enumerate(layout):
+            occ_conn.execute(
+                "UPDATE ranked_segment_child_results SET round_number=?, challenge_index=?, "
+                "canonical_question_ref=CASE WHEN ? IN (1, 3) THEN 'quiz:repeat' "
+                "ELSE canonical_question_ref END WHERE question_result_id=?",
+                (round_number, challenge_index, qindex, f"qr-1-{stage_index}-{qindex}"))
+    occ_conn.commit()
+    occurrences = client_for(occ_conn, "o", Cap(False))
+    out["occurrences"] = occurrences.get("/api/history/v1").json()
 
     # One page per line: diffable per scenario, half the size of indent=2.
     lines = [f"  {json.dumps(k)}: {json.dumps(out[k], sort_keys=True, separators=(',', ':'))}"

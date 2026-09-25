@@ -204,9 +204,12 @@ function StageRow({
           <QuestionTimeline
             className={layout.timeline}
             matchId={stage.reviewMatchId ?? ""}
-            // The review is the authority on its rounds once it lands; until
-            // then the stage's question count holds the rail's place.
-            roundCount={stage.questions.length}
+            // One timeline position per Ranked round/module occurrence
+            // (HUB2.1 `round_number`), never one per question result: a
+            // Standard or Survival round can settle several questions, and
+            // the review draws them in one card. The review is the authority
+            // once it lands; without round ordinals nothing holds the place.
+            roundCount={stage.rounds?.length ?? 0}
             review={review}
           />
         )}

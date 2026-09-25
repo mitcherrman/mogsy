@@ -28,7 +28,7 @@ Turn the Ranked Hub's lower workspace into one player-facing History surface:
 
 ## HUB2 contract consumed
 
-- **Endpoint:** `GET /api/history/v1?limit=&cursor=`, backend `codex/history-analytics-b` @ `856563ff`.
+- **Endpoint:** `GET /api/history/v1?limit=&cursor=`, backend `codex/history-analytics-b` @ **HUB2.1 `59cceea2b1126f770fc87fc804ef1f821a3599de`** (HUB4 `5744311d` consumed HUB2 `856563ff`; HUB4.1 moved to HUB2.1).
   - `schema_version: 1`.
   - Analytics policy `history-daily-v1`.
   - Read from the implemented code (`history/daily.py`, `routes/history.py`), not from the spec.
@@ -124,6 +124,7 @@ A plain arrival at `/quiz` never scrolls. The canonicalising replace does not sc
   The terminal notes and stage names are the Daily's own wording (`DailyCompletion`, `stageIdentity`).
 - **Questions:**
   - Every stage carries HUB3's `QuestionTimeline`, unforked, fed by `review_identity.match_id` through the shared `useMatchReviews` loader (2 concurrent reads, in display order).
+  - Timeline positions are Ranked round/module occurrences, not question results (HUB4.1, below).
   - Icons can be opened with nothing expanded and no Premium.
   - Desktop uses a Popover; touch uses HUB3's Sheet.
   - `QuestionReviewCard` is untouched.
@@ -267,18 +268,77 @@ These are the same set HUB3 documented.
 - **To regenerate:** see `scripts/hub4-generate-history-golden.py`. It needs FastAPI and httpx; run it with the backend worktree as the working directory.
 - **Not performed:** a real account against a running backend with persisted staged Daily runs. There was no such environment. This remains the real-account certification step.
 
+## HUB4.1 — HUB2.1 question occurrences
+
+HUB2.1 (`59cceea2`) adds two fields to every `stage.questions[]` item. Schema version stays 1.
+
+- `round_number` — the one-based Ranked round/module occurrence in the stage's child match.
+- `challenge_index` — the zero-based question position inside that round.
+
+The `(round_number, challenge_index)` pair is the occurrence identity. A canonical ref is a learning identity and may repeat. The review link is unchanged: `stage.review_identity.match_id`.
+
+**The bug this fixes (HUB4 `5744311d`).** Before a stage's review loaded, `QuestionTimeline` received `roundCount = stage.questions.length`.
+
+- A Standard round (Meta Reflex, slice) or a Survival slice settles several questions but is one review round, drawn as one icon and one card.
+- So the pre-review rail showed one placeholder per question result (e.g. 5 for a 3-round stage, ~21 for a 10-round Standard stage), then shrank when the review arrived.
+
+**Now:**
+
+- **Parser** (`contracts.ts`):
+  - Reads both ordinals; `round_number` must be a positive integer and `challenge_index` a non-negative one.
+  - Orders `stage.questions` by `round_number` ascending, then `challenge_index` ascending, from the ordinals rather than the array order.
+  - Exposes `stage.rounds` as `[{ roundNumber, questions }]`, grouped the same way.
+  - Nothing is de-duplicated: a repeated canonical ref stays as distinct occurrences.
+  - No grouping is inferred from family, type or count.
+  - Two results claiming one `(round, challenge)` pair is a contract error.
+  - If any question lacks the ordinals, `rounds` is `null` (structure unknown).
+- **Stage row:** `roundCount = stage.rounds.length`, one position per round occurrence. With `rounds` null, no placeholders are invented; the timeline appears when the review loads.
+- **Unchanged:**
+  - Once the review loads, HUB3's `QuestionTimeline` and the review flow are the authority, as before (not forked).
+  - C/A and all analytics stay question-grain and server-computed.
+
+**Golden:** regenerated through HUB2.1's real route. It adds an `occurrences` scenario with Standard and Survival stages:
+
+- 5 results in 3 rounds (`[1,0] [1,1] [2,0] [3,0] [3,1]`);
+- `quiz:repeat` at two occurrences;
+- rows inserted out of order.
+
+The earlier scenarios are unchanged apart from the new fields and `as_of`.
+
+**Tests (HUB4.1):**
+
+- `contracts.test.ts` 32/32, including:
+  - real-route ordinals;
+  - Standard/Survival grouping;
+  - repeated ref;
+  - reversed-array ordering;
+  - numeric order (9 before 10) with a cross-round repeated ref;
+  - duplicate-occurrence refusal.
+- `DailyHistory.test.tsx` 43/43. The new cases:
+  - Standard 5 results / 3 rounds → 3 positions before review;
+  - Survival 8 results / 6 rounds → 6;
+  - repeated refs are not collapsed;
+  - the review loads into the same timeline (`m-s-0`, 3 positions);
+  - no invented positions without ordinals.
+- Workspace + History scope: **239/239, 10 files**.
+  - On the first parallel run, two untouched HUB3 Popover tests in `QuestionReviewHost.test.tsx` failed. They passed in isolation (50/50 with `QuestionTimeline.test.tsx`) and on the rerun of the full scope.
+  - These are the slow jsdom Popover tests HUB3 documented.
+- Broad scope (the same 120 files as before): **1902 passed / 8 failed**.
+  - 7 are the baseline failures listed below.
+  - The 8th is the same untouched HUB3 Popover test, which hit its own hard 60s per-test limit while that file took 141s under the parallel run. It is a load timeout, not a result of this patch.
+- Visual check (temporary, uncommitted preview feed of the `occurrences` scenario, reviews not loaded):
+  - 320×568 touch: each 5-result stage shows 3 positions with no paging arrows; 0 overflow, 0 clipped.
+  - 1280×720: 3 positions, one-line layout, 0 overflow.
+  - The old code would have shown 5 positions (paged at 320).
+
 ## HUB2 follow-ups (non-blocking; for the backend owner)
 
-1. **Question grain vs rounds.** Question projections drop `round_number` / `challenge_index`, and review rounds ≠ question rows for Standard (~21 rows vs 10 rounds) and Survival.
-   - Before a stage's review arrives, its timeline shows `questions.length` placeholders; the review then becomes authoritative.
-   - Icon outcomes appear once the review loads, as with Ranked rows.
-   - Exposing `round_number` (or a round count) would make the placeholder count exact.
-2. **Skipped stages.** `daily_run_stages.status` is not projected, so a skipped stage cannot say "Not needed". It renders "—".
-3. **Display labels.** `family` and `concept` are internal slugs, and `category` is a family slug for slice questions.
+1. **Skipped stages.** `daily_run_stages.status` is not projected, so a skipped stage cannot say "Not needed". It renders "—".
+2. **Display labels.** `family` and `concept` are internal slugs, and `category` is a family slug for slice questions.
    - HUB4 formats slugs with `formatQuestionFamily` and never prints concepts.
    - Projected display labels would be better.
-4. **Survival strikes.** `strikes_used` is only in Premium analytics. Free shows the terminal note only.
-5. **Stage comparison.** Stage analytics carry a sample count and group performance, but no comparison value such as a previous stage's score.
+3. **Survival strikes.** `strikes_used` is only in Premium analytics. Free shows the terminal note only.
+4. **Stage comparison.** Stage analytics carry a sample count and group performance, but no comparison value such as a previous stage's score.
 
 ## Left for HUB5
 
