@@ -24,6 +24,7 @@ import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
+import { EMPTY_HISTORY_SOURCE } from "@/lib/history/historyApi";
 import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
 import type { QuestionLibraryState } from "@/components/quiz/workspace/useQuestionLibrary";
 import {
@@ -175,6 +176,9 @@ export default function LobbyPreviewPage() {
           /* Frozen reviews, so the question timelines and their popovers draw
              from a fixed set and this page never reaches the network. */
           rankedReviewPreview={profile === "timmy" ? TIMMY_MATCH_REVIEWS : undefined}
+          /* HUB4: History's Daily runs, offline. Empty until HUB5 derives
+             Timmy's staged Daily runs through the real History parser. */
+          dailyHistorySource={EMPTY_HISTORY_SOURCE}
           rankedRole={role}
           onSelectRankedRole={setRole}
           rankedProgression={state.progression}

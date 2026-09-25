@@ -225,7 +225,7 @@ describe("arriving from the retired /quiz/ranked menu", () => {
     fireEvent.click(screen.getByTestId("play-scroll-close"));
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
     // A re-render must not resurrect the record from the same router state.
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
   });
 

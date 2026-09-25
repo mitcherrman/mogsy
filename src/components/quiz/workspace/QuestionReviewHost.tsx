@@ -65,7 +65,14 @@ export function useFittingPageSize(
     const measure = () => {
       const width = el.clientWidth;
       if (width <= 0) return setSize(max);
-      const fit = Math.floor((width - reserved + gap) / (slot + gap));
+      // HUB4: the geometry is stated in px at a 16px root, but the icons and
+      // gaps are rem-sized, so enlarged text (200% text zoom) grows them. Scale
+      // by the live root size, or a touch row at 200% pages three 88px icons
+      // into room for three 44px ones and pushes the page sideways. Where no
+      // root size is readable the stated geometry stands.
+      const root = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const k = Number.isFinite(root) && root > 0 ? root / 16 : 1;
+      const fit = Math.floor((width - reserved * k + gap * k) / ((slot + gap) * k));
       setSize(Math.max(1, Math.min(max, fit)));
     };
     measure();

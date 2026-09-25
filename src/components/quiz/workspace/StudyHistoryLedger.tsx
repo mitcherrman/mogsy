@@ -340,11 +340,7 @@ export default function StudyHistoryLedger({
     : null;
   const bestAccuracy = accuracies.length ? Math.round(Math.max(...accuracies)) : null;
 
-  return (
-    /* The ownership index covers every question card inside the record, so it
-       is provided once around the whole ledger rather than threaded through
-       four levels of row/timeline/popover props. */
-    <OwnedQuestionIndexProvider value={ownership}>
+  const ledger = (
     <div className={className} data-testid="study-history">
       {/* The scope line. It is ABOVE the rows on purpose: a reader has to know
           what window they are looking at before they read it, not after. */}
@@ -527,6 +523,17 @@ export default function StudyHistoryLedger({
         </div>
       )}
     </div>
-    </OwnedQuestionIndexProvider>
+  );
+
+  /* The ownership index covers every question card inside the record, so it
+     is provided once around the whole ledger rather than threaded through
+     four levels of row/timeline/popover props. HUB4: only when this ledger
+     owns the read — a host that provides one index for a wider record
+     (History's Daily runs AND these rows) passes `ownsCollection={false}` and
+     its own provider reaches these cards unshadowed. */
+  return ownsCollection ? (
+    <OwnedQuestionIndexProvider value={ownership}>{ledger}</OwnedQuestionIndexProvider>
+  ) : (
+    ledger
   );
 }

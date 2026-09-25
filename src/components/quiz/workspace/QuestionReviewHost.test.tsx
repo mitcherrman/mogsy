@@ -257,6 +257,19 @@ describe("HISTORY-D — the timeline pages by what fits", () => {
     expect(icons()).toHaveLength(5);
   });
 
+  it("HUB4: at 200% text the rem-sized targets double, so the fit halves instead of overflowing", () => {
+    coarse = true;
+    width = 336; // five 44px targets fit at a 16px root…
+    document.documentElement.style.fontSize = "32px";
+    try {
+      render(<QuestionTimeline matchId="m1" roundCount={8} review={review("m1", 8)} />);
+      // …but at 32px each target is 88px: (336 - 184 + 4) / 92 = 1.
+      expect(screen.getByTestId("question-timeline")).toHaveAttribute("data-page-size", "1");
+    } finally {
+      document.documentElement.style.fontSize = "";
+    }
+  });
+
   it("is labelled as a group of the match's questions", () => {
     render(<QuestionTimeline matchId="m1" roundCount={3} review={null} />);
     expect(screen.getByRole("group", { name: "Match questions" })).toBeInTheDocument();

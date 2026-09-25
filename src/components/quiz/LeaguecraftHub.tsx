@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, HelpCircle, Library, RotateCcw, ScrollText } from "lucide-react";
@@ -13,12 +13,20 @@ import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { useSfx } from "@/lib/audio/useSfx";
 
 import LeaguecraftWorkspace, {
-  parseWorkspaceHash,
-  workspaceHash,
-  type WorkspaceMode,
+  HISTORY_HASH,
+  parseHistoryHash,
 } from "@/components/quiz/workspace/LeaguecraftWorkspace";
 import StudyHistoryLedger from "@/components/quiz/workspace/StudyHistoryLedger";
 import ReviewPane from "@/components/quiz/workspace/ReviewPane";
+import DailyHistorySection from "@/components/quiz/workspace/DailyHistorySection";
+import PracticeWeaknesses from "@/components/quiz/workspace/PracticeWeaknesses";
+import { useDailyHistory } from "@/components/quiz/workspace/useDailyHistory";
+import {
+  OwnedQuestionIndexProvider,
+  useOwnedQuestionIndex,
+} from "@/components/quiz/workspace/ownedQuestionIndex";
+import type { TrendsPracticePreset } from "@/components/quiz/trends/RecurringWeaknesses";
+import type { HistorySource } from "@/lib/history/historyApi";
 import type { QuestionLibraryState } from "@/components/quiz/workspace/useQuestionLibrary";
 import { SectionHeading } from "@/components/quiz/workspace/primitives";
 import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
@@ -189,7 +197,8 @@ export default function LeaguecraftHub({
   builder,
   rankedHistoryPreview,
   rankedReviewPreview,
-  trends,
+  dailyHistorySource,
+  onPractiseWeakness,
   reviewState,
   ownedQuestionsPreview,
   rankedRole = null,
@@ -363,8 +372,22 @@ export default function LeaguecraftHub({
    */
   rankedHistoryPreview?: readonly MatchHistoryEntryView[];
   /** Frozen review payloads by match id, for the same fixture host. Absent in
-   *  production, where the ledger loads reviews itself. */
+   *  production, where the ledger loads reviews itself. HUB4: a Daily stage's
+   *  questions are its child match's review, so the same map serves both. */
   rankedReviewPreview?: Readonly<Record<string, MatchReviewView>>;
+  /**
+   * HUB4 — where History's Daily runs come from. Production passes nothing
+   * and reads `GET /api/history/v1` for a signed-in account; a host that must
+   * not fetch (`/dev/lobby-preview`) passes an offline source, which is also
+   * the seam deterministic fixtures plug into.
+   */
+  dailyHistorySource?: HistorySource;
+  /**
+   * HUB4 — the recurring-weakness hand-off to the Practice Builder, kept from
+   * the retired Trends pane and now offered inside History's Owned & Missed
+   * section. Omit it and the weaknesses list without the action.
+   */
+  onPractiseWeakness?: (preset: TrendsPracticePreset) => void;
   /**
    * MALT: a pre-resolved missed-question bank for the Review pane, for a host
    * that must not fetch. `/dev/lobby-preview` is the only caller — its whole
@@ -378,13 +401,6 @@ export default function LeaguecraftHub({
    * and REVIEW reads the real collection when a reader opens it.
    */
   ownedQuestionsPreview?: QuestionLibraryState;
-  /**
-   * PT1.8 — the Performance Trends pane's body, supplied by the host exactly
-   * as `builder` is. The hub neither knows nor decides who may see it: the
-   * pane draws its own paywall from the server's capability answer, and the
-   * workspace mounts it only while its tab is the open one.
-   */
-  trends?: React.ReactNode;
 }) {
   const canonicalSfx = useSfx();
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
@@ -396,59 +412,60 @@ export default function LeaguecraftHub({
   // whatever had focus when the dialog mounted — `document.body` on every
   // browser that does not focus a button on click.
   const playSealRef = useRef<HTMLButtonElement | null>(null);
-  /* ─── MALT: THE HISTORY / REVIEW WORKSPACE ──────────────────────────────
-     The lower workspace's open pane is ADDRESSABLE — `/quiz#history` and
-     `/quiz#review` — so a link from anywhere in the product can open the
-     record on the question it means, and so the back button undoes a tab
-     switch instead of leaving the page.
-
-     The hash is the single source of truth and local state is only its
-     fallback, which is what keeps back/forward honest: a `navigate` on a tab
-     press pushes an entry, and popping it re-reads the hash below rather than
-     restoring a stale piece of component state. No router change is involved
-     — this is the hash the router already carries.
+  /* ─── HUB4: ONE HISTORY SURFACE, ADDRESSABLE AT #history ────────────────
+     History is the lower workspace's only surface, at `/quiz#history`. The
+     two hashes that used to name peer tabs still land: `#review` opens the
+     Owned & Missed section and focuses it, `#trends` opens the newest Daily
+     run's analysis and focuses it. Either is then canonicalised to
+     `#history` with `replace`, so old links keep working and the history
+     stack never holds a hash that names nothing. Any other hash is not the
+     workspace's and is left alone.
 
      ONLY AN EXPLICIT HASH SCROLLS. A reader who merely lands on /quiz must
      not be thrown past the ceremonial first screen they arrived for, so
-     arrival scrolls only when the URL actually named a pane, and only once
-     per hash. */
+     arrival scrolls only when the URL actually named the record, and only
+     once per arrival — the canonicalising replace does not scroll again. */
   const { hash } = useLocation();
   const navigate = useNavigate();
   const workspaceSectionRef = useRef<HTMLElement | null>(null);
-  const hashMode = useMemo(() => parseWorkspaceHash(hash), [hash]);
-  const [localMode, setLocalMode] = useState<WorkspaceMode>("history");
-  const workspaceMode = hashMode ?? localMode;
-  const arrivedFor = useRef<WorkspaceMode | null>(null);
+  const hashTarget = useMemo(() => parseHistoryHash(hash), [hash]);
+  const arrived = useRef(false);
+  const [questionsOpen, setQuestionsOpen] = useState(false);
+  const [questionsFocus, setQuestionsFocus] = useState<number | null>(null);
+  const [analysisFocus, setAnalysisFocus] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!hashMode) {
-      arrivedFor.current = null;
+    if (!hashTarget) {
+      arrived.current = false;
       return;
     }
-    setLocalMode(hashMode);
-    if (arrivedFor.current === hashMode) return;
-    arrivedFor.current = hashMode;
-    goToSection(workspaceSectionRef.current);
-  }, [hashMode]);
-
-  /** Open a pane FROM THE PAGE — a tab press, or Recent Studies' own footer.
-   *  Writes the hash so the pane is shareable and the press is undoable. */
-  const openWorkspace = useCallback(
-    (mode: WorkspaceMode) => {
-      if (workspaceMode !== mode) canonicalSfx.play("leaguecraft.record.selection");
-      setLocalMode(mode);
-      // Re-selecting the pane that is already open must still travel — the
-      // Recent Studies footer's whole job is to take the reader there — but
-      // must not stack another identical history entry to back out of.
-      if (hashMode === mode) {
-        goToSection(workspaceSectionRef.current);
-        return;
-      }
-      arrivedFor.current = mode;
-      navigate(workspaceHash(mode));
+    if (hashTarget === "review") {
+      setQuestionsOpen(true);
+      setQuestionsFocus(Date.now());
+    } else if (hashTarget === "trends") {
+      setAnalysisFocus(Date.now());
+    }
+    if (!arrived.current) {
+      arrived.current = true;
       goToSection(workspaceSectionRef.current);
-    },
-    [canonicalSfx, hashMode, navigate, workspaceMode],
+    }
+    if (hashTarget !== "history") navigate({ hash: HISTORY_HASH }, { replace: true });
+  }, [hashTarget, navigate]);
+
+  /* History's Daily runs. Account-bound, so read only for a signed-in account
+     — a guest has no staged Daily record and the server would refuse them —
+     or from a host's own offline source. */
+  const daily = useDailyHistory(
+    !!dailyHistorySource || (hasAccount && signedIn),
+    dailyHistorySource,
+  );
+  const rankedRows = rankedHistoryPreview ?? matchHistory;
+  /* ONE read of the question collection for the whole record — Daily stages
+     and Ranked rows alike — so every question card can state its lifetime
+     ownership. Only for a real account with question rows to annotate. */
+  const ownership = useOwnedQuestionIndex(
+    hasAccount && signedIn && !rankedReviewPreview && !dailyHistorySource &&
+      (rankedRows.length > 0 || daily.records.length > 0),
   );
 
   /**
@@ -793,18 +810,50 @@ export default function LeaguecraftHub({
         tabIndex={-1}
         className="flex flex-col outline-none [@media(min-height:880px)]:mt-6"
         data-testid="hub-record-section"
-        aria-label="Leaguecraft record"
+        aria-label="History"
       >
         <SectionHeading
           icon={Library}
-          title="Leaguecraft Record"
+          title="History"
           hint="What I have studied, and the questions I own."
         />
         <LeaguecraftWorkspace
           className="mt-1.5"
-          mode={workspaceMode}
-          onModeChange={openWorkspace}
-          history={
+          questionsOpen={questionsOpen}
+          onQuestionsOpenChange={(open) => {
+            canonicalSfx.play("leaguecraft.record.selection");
+            setQuestionsOpen(open);
+          }}
+          questionsFocusSignal={questionsFocus}
+          /* Rendered only while the section is open. Neither source is read
+             on an ordinary lobby load: the missed bank is Pro-gated, and the
+             collection needs a real account — `hasAccount` lets OWNED say so
+             locally instead of spending a request to be told 403. */
+          questions={
+            <>
+              <ReviewPane
+                enabled={questionsOpen}
+                hasAccount={hasAccount && signedIn}
+                /* The legacy hash on purpose: after sign-in it reopens this
+                   section, then canonicalises to #history. */
+                signInHref={authHref("/quiz#review")}
+                missedState={reviewState}
+                ownedState={ownedQuestionsPreview}
+              />
+              <PracticeWeaknesses
+                enabled={questionsOpen && hasAccount && signedIn}
+                source={analyticsSource}
+                onPractise={onPractiseWeakness}
+              />
+            </>
+          }
+        >
+          <OwnedQuestionIndexProvider value={ownership}>
+            <DailyHistorySection
+              daily={daily}
+              frozenReviews={rankedReviewPreview}
+              openAnalysisSignal={analysisFocus}
+            />
             <StudyHistoryLedger
               history={history}
               loading={historyLoading}
@@ -814,45 +863,17 @@ export default function LeaguecraftHub({
                  never a Ranked match. */
               onStartPractice={primarySet ? () => onSelectSet(primarySet) : undefined}
               /* One record: the account's real Ranked rows, or the frozen
-                 fixture set when a preview host supplied one. */
-              rankedEntries={rankedHistoryPreview ?? matchHistory}
+                 fixture set when a preview host supplied one. Daily child
+                 matches are never among them — the server excludes them. */
+              rankedEntries={rankedRows}
               rankedReviews={rankedReviewPreview}
-              /* PT1.2: lets each question card carry its lifetime ownership.
-                 One read for the whole record, and only for a real account —
-                 the collection endpoint refuses a guest/anonymous session. */
-              ownsCollection={hasAccount && signedIn}
+              /* The ownership index is provided above, once for Daily and
+                 Ranked together, so the ledger does not read its own. */
+              ownsCollection={false}
               signInHref={authHref("/quiz#history")}
             />
-          }
-          /* Mounted only while Review is the open pane. Neither source is
-             read on an ordinary lobby load: the missed bank is Pro-gated, and
-             the collection needs a real account — `hasAccount` lets OWNED say
-             so locally instead of spending a request to be told 403. */
-          review={
-            <ReviewPane
-              enabled={workspaceMode === "review"}
-              hasAccount={hasAccount && signedIn}
-              signInHref={authHref("/quiz#review")}
-              missedState={reviewState}
-              ownedState={ownedQuestionsPreview}
-            />
-          }
-          /* Mounted only while Trends is the open pane, for the same reason
-             Review is: its reads are account-bound and nobody who has not
-             opened the pane should spend a request on them. */
-          trends={
-            trends && isValidElement(trends)
-              ? cloneElement(trends as React.ReactElement<{
-                  hasAccount?: boolean; signInHref?: string;
-                }>, {
-                  /* Same answer Review already gets. A guest is told to sign
-                     in rather than being sent to the server to be refused. */
-                  hasAccount: hasAccount && signedIn,
-                  signInHref: authHref("/quiz#trends"),
-                })
-              : (trends ?? null)
-          }
-        />
+          </OwnedQuestionIndexProvider>
+        </LeaguecraftWorkspace>
       </section>
 
       {/* The match-entry record. Mounted only while it is open, so the Ranked

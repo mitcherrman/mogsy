@@ -10,7 +10,7 @@
  * that none of it disturbs the approved first screen.
  */
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigationType } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import type { QuizHistoryResponse, MissedQuestionsResponse } from "@/lib/quiz/api";
@@ -116,7 +116,7 @@ function renderHub(
  * Everything they assert about it is unchanged.
  */
 const openReview = () => {
-  fireEvent.click(screen.getByTestId("workspace-tab-review"));
+  fireEvent.click(screen.getByTestId("history-questions-toggle"));
   fireEvent.click(screen.getByTestId("review-source-missed"));
 };
 
@@ -519,41 +519,39 @@ describe("MALT — Review", () => {
     // dead primary action inside the lobby, a scroll below real play
     // entrances, is worse than no action at all.
     expect(screen.queryByRole("button", { name: /Practice missed/i })).toBeNull();
-    const panel = screen.getByTestId("workspace-panel-review");
+    const panel = screen.getByTestId("history-questions");
     for (const button of within(panel).queryAllByRole("button")) {
       expect(button.textContent).not.toMatch(/practice|retry|try these again/i);
     }
   });
 });
 
-describe("MALT — moving between the two", () => {
-  it("switches panes, and exposes them as tabs rather than as destinations", async () => {
+describe("HUB4 — one History surface", () => {
+  it("has no top-level tabs: no tablist, no Review tab, no Trends tab", () => {
     const { container } = renderHub();
-    const tablist = screen.getByTestId("workspace-tablist");
-    expect(tablist.getAttribute("role")).toBe("tablist");
-    expect(screen.getByTestId("workspace-tab-history").getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByTestId("workspace-tab-review").getAttribute("aria-selected")).toBe("false");
-
-    openReview();
-    await waitFor(() =>
-      expect(
-        container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
-      ).toBe("review"),
-    );
-    expect(screen.queryByTestId("study-history-row")).toBeNull();
-    expect(screen.getByTestId("workspace-panel-review")).toBeTruthy();
-
-    fireEvent.click(screen.getByTestId("workspace-tab-history"));
-    await waitFor(() => expect(screen.getAllByTestId("study-history-row").length).toBe(3));
-    expect(screen.queryByTestId("missed-question")).toBeNull();
+    expect(container.querySelector('[role="tablist"][data-testid="workspace-tablist"]')).toBeNull();
+    expect(screen.queryByTestId("workspace-tab-history")).toBeNull();
+    expect(screen.queryByTestId("workspace-tab-review")).toBeNull();
+    expect(screen.queryByTestId("workspace-tab-trends")).toBeNull();
+    expect(container.querySelectorAll('[data-testid="leaguecraft-workspace"]').length).toBe(1);
+    expect(
+      container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-surface"),
+    ).toBe("history");
+    expect(screen.getByRole("heading", { name: "History" })).toBeTruthy();
   });
 
-  it("moves between panes from the keyboard", async () => {
+  it("keeps the record on screen while Owned & Missed is open beside it", async () => {
     renderHub();
-    fireEvent.keyDown(screen.getByTestId("workspace-tab-history"), { key: "ArrowRight" });
-    await waitFor(() =>
-      expect(screen.getByTestId("workspace-tab-review").getAttribute("aria-selected")).toBe("true"),
-    );
+    const toggle = screen.getByTestId("history-questions-toggle");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.getByTestId("history-questions")).toBeTruthy());
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.getAttribute("aria-controls")).toBe(screen.getByTestId("history-questions").id);
+    // History did not go anywhere — this is a section of it, not a pane.
+    expect(screen.getAllByTestId("study-history-row").length).toBe(3);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.queryByTestId("history-questions")).toBeNull());
   });
 
   it("is NOT called Admin Review — the player's review is their own mistakes", () => {
@@ -562,62 +560,88 @@ describe("MALT — moving between the two", () => {
     expect(record.textContent).not.toMatch(/admin/i);
     expect(record.textContent).not.toMatch(/moderat/i);
   });
+
+  it("no longer mounts the retired Trends pane", () => {
+    const { container } = renderHub({}, ["/quiz#trends"]);
+    expect(container.querySelector('[data-testid="trends-pane"]')).toBeNull();
+    expect(container.querySelector('[data-testid="workspace-panel-trends"]')).toBeNull();
+  });
 });
 
-describe("MALT — the workspace is addressable", () => {
-  it("opens Review directly from /quiz#review", async () => {
-    const { container } = renderHub({}, ["/quiz#review"]);
-    await waitFor(() =>
-      expect(
-        container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
-      ).toBe("review"),
-    );
-    // PT1.2: REVIEW opens on OWNED — the Free source — so arriving at
-    // `#review` no longer reads the Pro-gated bank. It is one chip away.
-    expect(getMissedQuestions).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("review-source-missed"));
-    await waitFor(() => expect(getMissedQuestions).toHaveBeenCalled());
-    // …and it takes the reader there rather than leaving them on the lobby
-    // wondering what changed four screens down.
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+/** The hash the router is on, as the hub sees it. */
+function HashProbe() {
+  const { hash } = useLocation();
+  const type = useNavigationType();
+  return <span data-testid="hash-probe" data-nav={type}>{hash}</span>;
+}
+
+function renderAt(entry: string, over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = {}) {
+  return render(
+    <MemoryRouter initialEntries={[entry]}>
+      <LeaguecraftHub
+        progress={{ rank_name: "Bronze" }}
+        ranked={{ placementMatchesRemaining: 0, isPlaced: true, estimatedGain: 20, estimatedLoss: 15 }}
+        onPlayRanked={() => true}
+        onEnterMatch={() => {}}
+        onPlayDailyChallenge={() => {}}
+        playModes={{ ranked: true, daily: true, invite: true }}
+        sets={[]}
+        setsLoading={false}
+        onSelectSet={() => {}}
+        onRefreshSets={() => {}}
+        history={HISTORY}
+        historyLoading={false}
+        historyError={null}
+        rankedProgression={null}
+        {...over}
+      />
+      <HashProbe />
+    </MemoryRouter>,
+  );
+}
+
+describe("HUB4 — History is addressable, and old links still land", () => {
+  it("#history takes the reader to History", async () => {
+    renderAt("/quiz#history");
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled());
+    expect(screen.getByTestId("hash-probe").textContent).toBe("#history");
+    expect(screen.queryByTestId("history-questions")).toBeNull();
   });
 
-  it("opens History from /quiz#history, and ignores a hash that names nothing", async () => {
-    const { container } = renderHub({}, ["/quiz#history"]);
-    await waitFor(() =>
-      expect(
-        container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
-      ).toBe("history"),
-    );
-    cleanup();
-    vi.mocked(Element.prototype.scrollIntoView).mockClear();
-    const plain = renderHub({}, ["/quiz#somethingelse"]).container;
-    expect(
-      plain.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
-    ).toBe("history");
-    // A hash that names no pane must not throw a reader past the first screen.
+  it("#review opens and focuses Owned & Missed, then canonicalises to #history", async () => {
+    renderAt("/quiz#review");
+    await waitFor(() => expect(screen.getByTestId("history-questions")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("hash-probe").textContent).toBe("#history"));
+    expect(document.activeElement).toBe(screen.getByTestId("history-questions"));
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+    // PT1.2: OWNED opens first, so arriving does not read the Pro-gated bank.
+    expect(getMissedQuestions).not.toHaveBeenCalled();
+  });
+
+  it("#trends canonicalises to #history and opens no retired pane", async () => {
+    renderAt("/quiz#trends");
+    await waitFor(() => expect(screen.getByTestId("hash-probe").textContent).toBe("#history"));
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("trends-pane")).toBeNull();
+    expect(screen.queryByTestId("history-questions")).toBeNull();
+  });
+
+  it("canonicalises with replace, so back never lands on the legacy hash", async () => {
+    renderAt("/quiz#trends");
+    await waitFor(() => expect(screen.getByTestId("hash-probe").textContent).toBe("#history"));
+    expect(screen.getByTestId("hash-probe").dataset.nav).toBe("REPLACE");
+  });
+
+  it("an unknown hash keeps the default and does not scroll", () => {
+    renderAt("/quiz#somethingelse");
+    expect(screen.getByTestId("hash-probe").textContent).toBe("#somethingelse");
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    expect(screen.getByTestId("history-record")).toBeTruthy();
+    expect(screen.queryByTestId("history-questions")).toBeNull();
   });
 
   it("does not scroll a reader who merely arrived at /quiz", () => {
-    renderHub();
+    renderAt("/quiz");
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
-  });
-
-  it("makes a tab press undoable — back returns to the pane before it", async () => {
-    const { container } = renderHub();
-    const mode = () =>
-      container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode");
-    openReview();
-    await waitFor(() => expect(mode()).toBe("review"));
-    window.history.back();
-    // MemoryRouter owns its own stack, so the assertion that matters here is
-    // that the pane is driven by the URL and not by state the router cannot
-    // reach: re-rendering at the previous entry restores History.
-    cleanup();
-    const back = renderHub({}, ["/quiz"]).container;
-    expect(
-      back.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
-    ).toBe("history");
   });
 });
