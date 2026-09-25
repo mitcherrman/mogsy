@@ -695,3 +695,330 @@ Every snapshot of all 8 captures (85 per width) was replayed at each width. For 
 3. **Combat reveal:** render the served derivation steps in order (raw -> effective armor -> mitigation -> final), verbatim numbers, in `JourneyCombatQuestion`'s reveal.
 4. **Daily:** after J3's `journey_slice` is requestable (J2 section 8), run the Daily Standard M10 and Survival slots end to end in a real Bot match. Confirm the hosted flow, stage result and Survival stop, and re-certify 375/390/1024/1280/1440.
 5. Run the focused suites (compare against the 6 known failures) and the build, commit locally, and do not push.
+
+
+---
+
+# JOURNEY-UI3 — the Journey on the ACTUAL J3 contract, played through the real Daily
+
+Frontend only. Local commits on `dclane-c/daily-stage-result`, **not pushed**.
+- **Base:** `68fa8230e568a222d33dc86bb043a58a66d215e1` (UI2 handoff tip; UI2 code `f57a097c`, C2 board `507445dc`, C2 handoff `8d2ef937`).
+- **Final:** the code commit and this handoff commit after it (`git log --oneline -3`).
+- **Backend tested:** `League_Combat_Simulator` `journey3/daily` @ `174747b60e6ca73190de88297b75c097806d4ecb`, read-only. Every capture, both live Daily runs and every finding below are against this SHA.
+- **J4 (`journey4/catalog-reconcile`) finished during this task, at `a273a2165842cc181df5b90b43da8e3ce04dd559`.** The final recipe recapture was run against it (§1.1).
+  - All five reconciled recipes were captured in both plans, plus a strike-out and an exhaustion.
+  - J4 changed **content only**; the public contract is unchanged.
+  - Every J4 snapshot passes the production parser, the J3 reader, the adapter and the leak invariants.
+  - The live Daily runs (§7, §8) were played on J3 `174747b6` (with J3's reconstructed recipes). **A live replay on J4 was not done**; the J4 content was certified through captures and the harness.
+
+## 1. Captured J3 contract (real HTTP, no guard narrowing)
+Harness: `src/lib/journey/__fixtures__/j3/capture_journey3_test.py.txt` (provenance in `j3/CAPTURE.md`). Each snapshot is the JSON the real route `GET /api/ranked/matches/{id}` returned (FastAPI TestClient over `api_server.app`, canonical DB read-only). The Bot matches' only module is **the Daily's own Journey module**, built by the Daily recipe's spec builders (`_journey_spec`: v2, 5 children, `active_time_seconds=150`; `_survival_journey_spec`: v2, 3 children, 30 s). The backend's public guard ran **unmodified**.
+
+Captures: the five launch recipes × Standard and × Survival (10); a Survival **strike-out inside the Journey** (strike 3 on child 2 of 3); a Standard **pool exhaustion**; and `review.reask.json`, the real Daily Review child read from the live stack (§6, B3).
+
+`segment_state.challenges.journey` (reached prefix only):
+```
+{ journey_version: "mastery_journey.v1", public_state_contract: "journey_public_state.v1",
+  ledger_policy, reveal_policy, recipe_id, recipe_version, title, role, arc_type, plan, child_count,
+  children: [ { index, child_id, engine, domains,
+      state: { contract, state_version, state_key,
+               sides: { player|opponent: { side, champion_id, champion, level,
+                          abilities: [{slot, name, rank, unlocked}],   // E,Q,R,W order on the wire
+                          inventory: [{item_id, name}],               // NO cost
+                          stats: { <premise stat>: number | "recalled" } } },
+               focus: {engine, objective, side|sides, slot|stat, target_side?},
+               withheld: [{side, field: "stats.armor" | "abilities.Q.cooldown" | ..., reason: asked|recalled,
+                           fact?, established_in_child?}] },
+      premise: {ability_damage?: {ability_name, champion, slot, damage_type, flat_by_rank, ratios}},
+      withheld: [{fact, what: ability_damage|target_armor, champion, side?|slot?, source: stated|revealed,
+                  established_in_child}],
+      asks: {engine, family, metric, subject_ref, subject, withheld: true},
+      learner: {established: [{fact, kind, label, source, value, child}], relies_on: [...], states: [...]},
+      reinforces: [i...] } ],
+  transitions: [ { transition_id, kind: level|purchase, presentation: first_back|null, note, beat_ms,
+                   before_child, state_version,
+                   events: [ level_up{side,from,to} | ability_rank_up{side,slot,from,to,unlocked}
+                           | item_acquired{side,item_id,name} | stat_change{side,stat,delta,source} ],
+                   changes: [lossless legacy record; items_added {item_id, name} only] } ],
+  open_delays_ms: [...] }
+```
+Pooled clock fields on the segment state: `active_time_ms` (150000), `active_time_remaining_ms`, `active_time_running`; `card_timer_ms` is null, and `own_card_deadline` = open + remainder (during a reveal or beat it is the NEXT child's open + remainder). Survival: `card_timer_ms` 30000.
+
+Daily Review re-ask (`reask: true`): `{journey_version, reask, public_state_contract, children: [one child, no child_id], transitions: [], open_delays_ms: [0]}`. It is self-contained (nothing recalled). It is not in J3's §10 contract; it was found in play (B3).
+
+### 1.1 Final recipe recapture on J4 (`a273a216`)
+`__fixtures__/j4/` (provenance in `j4/CAPTURE.md`) holds the same harness run with J4's recipe ids, through the real HTTP route with no guard narrowing. It has 12 files: the five R1 recipes × Standard and × Survival, plus a strike-out and an exhaustion. What changed for the frontend:
+- **Two transitions can now precede ONE child.** J-A child 5 has level + purchase, played as one 3.5 s beat. Pantheon child 5 has level + first-back purchase. The adapter groups them and sums the beat (tested).
+- The recipe ids lost their suffixes (e.g. `bot.lucian_vs_caitlyn`). The titles are "Lucian vs Caitlyn" etc.
+- Otherwise the same vocabulary. `j4.recapture.test.ts` runs every J4 snapshot through parse → no gold → adapt → a server-only beat → no unrevealed answer on the board.
+
+### Field status (the brief's list)
+| Wanted | Status |
+|---|---|
+| champion identity, level, ranks, ability names, unlocked | **exists** |
+| item ids (icons) | **exists** (`inventory[].item_id`) |
+| per-side public stats | **exists**, but only the stats this child's premise states |
+| withheld / recalled markers | **exists** (`state.withheld`, with reason and teaching child) |
+| stat deltas | **exists as DELTAS** (`stat_change.delta`), never totals. Rendered as "+20 AD (Serrated Dirk)" and "▲20"; no total is computed |
+| state version / key | **exists** (used for keys, not displayed) |
+| focus / combat roles | **exists** (`state.focus`) |
+| learner semantics (stated / revealed / relied-on) | **exists**. Rendered only as recall provenance ("recall · revealed in step 1") |
+| max rank | **missing**: ranks still print as numbers (unchanged from UI2) |
+| structured Combat working | **missing**: prose only (§4) |
+| item gold | **absent by design** (J3 §12.6) |
+
+## 2. J2 adapter status and the cost blocker
+- **The J2 cost blocker is gone on the real HTTP route.** Every purchase-transition envelope (`*.standard` child3-beat, `*.survival` child2-beat) passes the backend guard. No capture has a `cost`, `price` or `gold` key anywhere (a test checks every file).
+- **UI2's accommodation is removed, which makes the contract stricter.** The Journey block is **no longer lifted out** of the generic pre-reveal walk (`ranked-public/contracts.ts`). It goes through the same walk as every other key, then through J3's exact allowlist. A `cost` reintroduced anywhere in the block (changes, events or sides) now fails the whole segment (tested).
+- **Production parses J3 only.** A block without `public_state_contract` (J2) is refused with `not a journey_public_state.v1 block`. `j2.ts` and `adaptJourneyJ2` are kept **isolated**, with their own test and one kept J2 capture; the other J2 captures were deleted.
+- **The view model carries no item gold at all.** The v0 fixture reader now refuses `cost` too, and gold is gone from the beat lines.
+- The generic answer-safety guards are untouched.
+
+## 3. Pooled clock (server-authoritative)
+`projectJourneyTimer` (`pages/quiz-ranked/rankedViews.ts`) is used by `QuizRankedMatch` only while the live segment is a Journey.
+- **Standard.** The digits are `min(active_time_remaining_ms, own_card_deadline − server now)`.
+  - While a child is open, it ticks down to that child's deadline.
+  - During a reveal or beat, the server's deadline is the NEXT child's open + remainder. The display therefore **holds exactly at the server's remainder** and starts counting at the server's own open instant, with no client pause and no poll needed.
+  - `paused` (the existing "Paused" face) is the server's `running: false`, and only until that instant.
+  - Exhaustion shows 0.
+- **Survival.** `min(card_timer_ms, own_card_deadline − now)`: the child's own 30 s, full and still until it opens. The old header showed the round's projected block (~95 s).
+- **Why the round clock was wrong.** For a pooled Journey the round's `active_deadline` is the projected end of the block. It moves with every reveal and beat (captured: 2:36 → 2:42 → 2:37 → 2:45), so the old header ticked through reveals and jumped between polls.
+- The ticks are anchored on the child's own deadline (`useCountdownNow`).
+- **Measured live** in a real Daily, module 10:
+  - the clock ran only while a child was answerable;
+  - at each submit it froze (e.g. 2:13 held through the 1.75 s reveal, and 2:17 held through the reveal plus the 2.5 s Pickaxe beat);
+  - it resumed at the server's open instant;
+  - a reconnect (page reload mid-Journey) showed the server's remainder;
+  - exhaustion (run 1, child 4 left open) ended the Journey on child 4, child 5 was never presented, and the Daily moved on to the stage result.
+- The clock's secondary line still shows the duel standing ("TIED", "BEHIND BY 22 PTS") rather than "of 2:30 Journey time". The boundary guard (`DailyOnCanonicalArena.boundary`) forbids Ranked from supplying `timerNotes`, so no note was added (see §9, comprehension).
+
+## 4. Combat reveal
+- **What J3 sends, structured:**
+  - the formula disclosure: either stated (`premise.ability_damage`) or a `withheld` formula recall naming the teaching child;
+  - the attacker's stats;
+  - the target's armor: a stated number, or `"recalled"` with the teaching child and its source;
+  - penetration, levels and items.
+- **The reveal is still server prose only.** Example: `"... ability physical damage after armor at Caitlyn target, 4 target level, none target items, recalled target armor, ...: 83.548 damage, which rounds to 84 for this question."`
+- **No structured working is served.** J3 has no raw → effective armor → mitigation → final breakdown, so none is rendered, none is computed, and no prose is parsed. **Backend follow-up:** a structured `working` on the Combat reveal.
+- **How a recalled target armor is rendered:**
+  - premise: "recall · revealed in step 1";
+  - board chip: "recall · step 1";
+  - state sheet: "recall it — revealed in step 1".
+- **How a recalled formula is rendered:** "Formula: recall it — ... stated in step 3".
+
+## 5. Learner state
+- **Correctness is never read.** The adapter does not look at reveals; a test flips every `is_correct` and the view does not change. Progression is the server cursor.
+- The ledger's "revealed" provenance is rendered where a question relies on it (§4).
+- `learner.established` values are **not** shown, because a recall question asks the player to remember them.
+- Verified on the wire: child 1 was answered wrong in every Standard capture, and child 2's `learner.established` still lists child 1's fact with `source: revealed`.
+
+## 6. Code changes (frontend)
+| Area | Change |
+|---|---|
+| `lib/journey/j3.ts` (new) | Typed allowlist reader for J3 and for the Review re-ask shape. Cross-checks: an asked stat is absent, `"recalled"` appears only where the state names a recall, stats come from the closed vocabulary, children are a contiguous prefix, and the retired `recall` kind is refused. |
+| `lib/journey/adapter.ts` | `adaptJourneyJ3`: the board comes from the latest reached child; the beat from typed events; withheld and recalled stats; focus; child context including the recall `source` and `boardStats`. The J2 adapter is isolated. |
+| `lib/journey/contract.ts`, `beat.ts`, `stats.ts` | Stat `withheldReason` / `recalledFrom`; a `stat_change` event; the purchase group `first_back`; no gold; the formatter keeps every served digit. |
+| `ranked-public/contracts.ts` | The Journey block goes through the generic walk and then the J3 reader; the pooled-clock fields are parsed. |
+| `components/journey/*` | Recalled-stat face, the "▲N" corner badge, the "First back" stamp, the sheet's recall text, and the Combat premise's recall display and on-board de-duplication. |
+| `rankedViews.ts`, `QuizRankedMatch.tsx` | The Journey clock (§3). |
+| `useRankedMatch.ts` | Journey server-instant polls (B1). |
+| `masterySliceModule.tsx` | J3 adapter; for a Journey, the reveal hold is gated on the server's revealing index (B10). |
+| `SegmentTranscript.tsx` | A `mastery_slice` settlement is named "Mastery" (B2). |
+| `index.css` | From `lg`, inside `.journey-question` only: the category row is hidden and the heading is 1rem (B5). At every width, a Journey's surface wrapper is not vertically centred (B9). |
+| dev harness / inspector | J3 captures and the production clock. |
+
+## 7. Standard end-to-end (the real frontend Daily flow)
+**The live stack:**
+- Backend: the real `api_server.app`, served by a scratch h11 ASGI server (uvicorn is not installed), over **J3's own `canonical_daily` fixture chain**.
+  - Real: the Daily routes, planner, recipes, Ranked service, bot, pooled clock and Survival ruleset.
+  - The Journey is composed by the REAL `compose_journey` on the canonical DB.
+  - Splash and MR content are stubbed exactly as the Daily fixture stubs them.
+  - The clock is real UTC time.
+- Frontend: the real frontend (`vite`, `VITE_E2E_AUTH=1`) in the browser.
+- None of the harness is committed.
+
+**Run 2 (clean, after the fixes):**
+1. Daily entry: "Today's Challenge" → Begin → Standard.
+2. The frozen format, read from the DB, is `quiz quiz quiz quiz MR quiz quiz quiz MR mastery_slice(journey, 5, 150 s)` = **S S S S MR S S S MR JOURNEY**.
+   - Module 10 is `bot.lucian_vs_caitlyn.lane_pressure`, today's rotation head, as J3 predicts.
+   - The header reads "10 / 10 · FINAL".
+   - The Journey is ONE module on the timeline (node 10), with its five children inside it.
+3. Module 10 opens with a 2.9 s lead-in, the clock held at 2:30 (paused).
+   - The board mounted once and stayed the same node through all five children.
+   - Champion crests replaced the role mascots.
+4. The five children, with 4 s think time each:
+   - Caitlyn's armor at level 4, shown as `?` → answered 38 ✓.
+   - Matchup, Q cooldown, Lucian Q rank 2 vs Caitlyn Q rank 2 in board order → reveal "...9 seconds. ...8 seconds. Lucian wins by 1 seconds." ✓
+   - Combat with a stated formula and recalled armor → 84 ✓.
+   - **First-back beat** (Pickaxe): stamp "First back", "+25 AD (Pickaxe)", visible 2.3 s of 2.5 s.
+   - Combat with a recalled formula and recalled armor → 102 ✓.
+   - **Purchase beat** (Caitlyn's Cloth Armor): visible 1.9 s of 2.0 s.
+   - Combat with the armor stated → 92 ✓.
+5. The DB has five child records, all `correct`. The header settlement reads "Mastery ... +5".
+6. The Daily stage result: "STAGE COMPLETE · Standard · 6 / 10 correct · Answered 10 · 60% · 24 pts · 11 for review · Up next Time Trial · Continue". There is no Victory or Defeat.
+7. Continue → Time Trial → its result ("Time's up · The bank ran out") → Continue → Survival → Review → "Daily Challenge Complete" (Standard 6/10, Time Trial 0/4, Survival 4/6 out of mistakes, Review 3/3).
+
+**Run 1 (before the fixes):**
+- It found bugs B1, B2 and B3.
+- It exercised pool **exhaustion** and a **reconnect** live. A Vite hot reload crashed the page mid-child-4; that is a dev-only Fast Refresh hook-order artefact. The reload landed on the settled Standard result, with child 4 `timeout` and child 5 absent.
+
+## 8. Survival end-to-end
+**Run 2:**
+1. Splash 1 was answered wrong on purpose (strike 1); Splash 2–5 were correct.
+2. Slot 6 is the Journey: the same recipe, **3 children, 30 s each**. The header showed 0:30, held through reveals, then counting down.
+3. Child 1 wrong (strike 2), child 2 wrong → **strike 3 mid-Journey**.
+4. Within 400 ms the arena was gone and the Survival result was shown: "OUT OF STRIKES · 4 correct · Answered 6 · 67% · Finish: Out of mistakes · 3 for review".
+5. **Child 3 and its Pickaxe transition never rendered.**
+6. DB: the Journey rows are (6,0 incorrect) and (6,1 incorrect), and there is nothing for child 2.
+7. Match review (`GET .../review`): `journey_reached_children: 2`, challenges [0, 1], 2 Journey children, transitions [] — the reached prefix only.
+
+**Run 1 (with the B1 fix):** the beat was visible 2.30 s of 2.5 s, and the child was exposed 0.10 s after the server opened it.
+
+## 9. ACTUAL PLAY FINDINGS
+### Bugs
+- **B1 (fixed): poll latency burned pooled time and truncated beats.**
+  - On the 1.5 s poll, a child appeared 0.5–1.0 s after the server opened it. The clock was already running over "Step N is opening...".
+  - The 2.5 s purchase beat was visible for only 1.25 s, because the transition is published when the beat starts.
+  - Fix: for a Journey, poll at `own_card_started_at` and at the end of each new reveal window.
+  - After the fix: the child is visible ≤ 0.1 s after it opens, and the beats are visible 2.3 s of 2.5 s and 1.9 s of 2.0 s.
+- **B2 (fixed): the header named a Journey "Item Cost Duel".** `segmentTitle` treated every settled segment as an ICD or Meta Reflex block, so a `mastery_slice` v2 settlement read "Item Cost Duel loss: you 2/3...". It now reads "Mastery", the live header's existing name.
+- **B3 (fixed): Daily Review could not play a re-asked Journey child.** Review re-asks a Journey miss as a one-child `reask: true` block. The strict reader refused the unknown key, so the Review match showed "This match needs a newer client" and then timed out. The reader now accepts that exact shape.
+- **B4 (fixed): the board rounded a served premise.** It showed "AD 70.162" beside the premise's "70.1625"; J3 states four decimals.
+- **B5 (fixed): at 1024×768, a live Combat child's answers were cut off** and "Lock in" sat 57 px below the card's fold. J3's premise card repeated every stat the board now shows. Fix: the on-board de-duplication (UI2's own rule, extended to J3's board stats), plus, from `lg` inside `.journey-question`, a hidden category row and a 1rem heading.
+- **B6 (fixed, found on the wire): the header clock** (§3). It ticked through reveals and beats, and in Survival it showed the block instead of the child's 30 s.
+- **B9 (fixed): the board jumped during every transition beat.** During a beat the next child is not in the payload yet, so the module shows a one-line placeholder. The arena's surface wrapper centres short content (auto block margins), so the whole board slid to the middle of the card and back: 1440 band y 133 → 262 → 133, and 390 band y 159 → 332 → 159. A Journey now takes the body from the top at every width (a `:has(> .journey-viewport)` rule), and the band position is constant through reveal → placeholder → beat → next child (§10).
+- **B10 (fixed): a reconnect replayed the last reveal over an open child.** On a fresh mount, UI2's reveal hold re-armed for the latest settled child and showed its reveal for a full 1.75 s. This happened even when the server had already opened the next child: the board showed child 5 and the pooled clock was running, while the question area showed child 4's reveal (found in the width sweep). For a Journey, the hold is now entered only while the server's `own_revealing_card_index` still names that child. A reconnect during the real reveal still shows it (tested both ways).
+- **B7 (open, Daily chrome): "STRIKES 0/3" after a Survival strike-out.** The stage chrome resets to 0 on the result screen right after "Out of strikes".
+- **B8 (open, not reproduced): the Time Trial arena stayed on "BANK 0:40"** after the server had already ended the stage (`time_bank_exhausted`, `own_stage_finished`). A reload showed the result. Run 2 did not reproduce it. This is outside the Journey.
+- **Not a product finding:** in run 1, Survival reached Review about 1 s after I restarted my automation. I cannot rule out that the harness clicked Continue.
+
+### Comprehension issues
+- **The Combat reveal is a label dump** (§4), and it never states the recalled armor value it used. A player who got it wrong cannot see why.
+- **One change has two names.** The beat says "+25 AD (Pickaxe)" (a `stat_change` on `attack_damage`), while the next premise and the board show "Bonus AD 25".
+- **The clock's meaning is not shown.** Nothing on screen says the Standard clock is ONE 150 s pool for five questions; the secondary line shows the duel standing instead. Survival's per-child clock looks the same.
+- **Duel framing inside the Daily arena header:** "Mastery loss: you 5/5 · opp 5/5 · +5".
+- **The stage summary mixes grains.** "Answered 10 / 6 correct" counts the five-question Journey as one module, while "For review 11" counts questions.
+- **Two answer CTAs in one Journey.** Structural children use "Submit answer" (radio buttons); Combat children use "Lock in answer" (tablets).
+- Copy: "Lucian wins by 1 seconds."
+- **The beat repeats its note.** For a single purchase, the stamp's label ("Zed buys Serrated Dirk.") and the first event line ("ZED BUYS SERRATED DIRK") say the same thing. Both are served (`note` and `item_acquired`); presentation was left as is.
+- **A board state is not shown during a beat.** J3 publishes the next child's premise stats only when that child opens, so the band's stat row is empty for the beat (by design, rather than showing stale numbers). Only the event lines carry the deltas at that moment.
+
+### Pacing issues
+- **The final child's reveal is never shown.**
+  - Module 10 is the last module, so the last answer completes the match.
+  - The arena hands back to the stage result 1.5 s later (measured), with no reveal of child 5; its explanation is never seen.
+  - The same happens for the Survival child that strikes out and for the Survival Journey's last child.
+- **Measured cadence** (Standard, 4 s think time): answer → 1.75 s reveal → beat where present (2.5 s or 2.0 s) → next child. The lead-in before child 1 is 2.9 s, with the clock held.
+- Once polled on time (B1), the beats fit their windows.
+
+### Content issues
+Observed in play on J3's reconstructed recipes, then re-checked against J4's reconciled captures:
+- **Survival repeats Standard.** The day's Survival slot 6 is the same recipe, and its first question was identical to Standard's (same text, same four options). This is J3's blocker 4, confirmed in play on J3. It was not re-verified live on J4.
+- **J3 reconstruction:** every recipe opened with "the opponent's armor at level N". **J4 (R1):** four of five open with a cooldown of the Journey's own ability. Only S-A keeps the armor lesson.
+- **Combat density on one ability** (J4):
+  - Zed Standard is 3 Combat children on E (Survival: 3 of 3 Combat on E);
+  - Lucian Standard is 3 Combat children on Q;
+  - Pantheon Standard is 3 Combat children on E.
+  - In J3 the Lucian recipe was likewise 3 of 5 on Q.
+- The **Matchup** child now comes last in J4's J-A and M-A (R vs R), right after the level-6 beat.
+
+## 10. Browser certification
+**Automated sweep.** Playwright drove headless Edge through the real `/dev/journey-arena` (production parser, `masterySliceModule`, `CanonicalArena`) with a fresh page load per snapshot. Live children were probed after the reveal hold had expired. The run covered every snapshot of all 23 captures (12 J3 + 11 J4) at each width: 418 snapshots per width, 329 of them showing a board. It measured:
+- page overflow;
+- board and side overflow;
+- answers or lock-in horizontally outside the card;
+- (desktop) any answer control below the visible question area;
+- truncated chips;
+- band size and **band y-position**;
+- the Journey question's internal scroll.
+
+| Width | Board snapshots | Issues | Band (w×h) | Band y | Live-question scroll | Reveal scroll |
+|---|---|---|---|---|---|---|
+| 375×812 | 329 | 0 | 337×121 (constant) | 159 (constant) | 0 | 0 |
+| 390×844 | 329 | 0 | 352×127 (constant) | 159 (316) / 139 (13)* | 0 | 0 |
+| 1024×768 | 329 | 4 × 2 px** | 446×200 (constant) | 127 (constant) | ≤ 2 px | ≤ 97 px |
+| 1280×800 | 329 | 0 | 584×208 (constant) | 127 (constant) | 0 | ≤ 41 px |
+| 1440×900 | 329 | 0 | 584×200 (constant) | 133 (constant) | 0 | 0 |
+
+\* The 13 are the dev harness's own chrome line wrapping for longer capture labels. Production's Daily chrome is one fixed line.
+\*\* In J4's Volibear cooldown-under-haste child (structural, 4 options), the Submit button's box ends 2 px inside the scroll area. It is fully visible in the screenshot, so this is not clipping.
+- Reveals may scroll inside the Journey question (a long served Combat explanation), as UI2 allowed. The board never shrinks.
+- The harness's settled-match stand-in (`CanonicalArena view={null}`) overflows by 4 px at 375/390. That is harness-only: production shows `DailyRunPage`'s own settling screen. Separately, the **Daily page shell** itself has a 4 px `scrollWidth` excess at 375 in the pane (no element box exceeds the viewport). It is pre-existing and outside the Journey; not chased.
+- Before the fixes, the same sweep found B5 (1024 Combat answers below the fold), a chip overflow from a delta badge (replaced by the chip's "changed" face), and, in a targeted beat measurement, B9 (the board jump).
+
+**Visually inspected** (headless screenshots, the harness pane, and the live pane):
+- Champion fact with a withheld stat: 375 (harness) and 1440 (live Daily).
+- Matchup, per-side: 1440 (live Daily).
+- Combat with a stated formula and recalled armor: 1024 before and after B5 (harness), 1440 (live Daily).
+- Combat with a recalled formula: 1440 (harness); this is the shot that exposed B10.
+- The reveal, with the pooled clock "2:06 · Paused": 1440 (harness).
+- The purchase ("First back") beat, with its "Board updating…" veil: 1440 (harness); this exposed B9.
+- The level-6 beat: 390 (harness).
+- The J4 double-transition beat ("Both champions reach level 6. · Lee Sin buys Cloth Armor."): 1440 (harness).
+- The J4 structural child at 1024 (the 2 px case).
+- The Survival child clock (0:30) and the Survival strike-out: live, 1440.
+- The Daily stage results (Standard, Time Trial, Survival "Out of strikes", Review) and "Daily Challenge Complete": live, 1440.
+- The completed day at 375: live.
+
+**Not visually inspected at phone widths in the live flow:** the stage results. They are Lane C's certified component, unchanged here.
+
+
+## 11. Tests
+**New or rewritten** (all on real captures):
+- `lib/journey/j3.adapter.test.ts` (59):
+  - every J3 capture through `readPublicRound`;
+  - **the J2 cost blocker:** a real purchase transition passes the guard, the walk and the allowlist; no gold key anywhere (every file); a `cost` reintroduced in changes, events or sides fails the whole segment; the J2 block is refused;
+  - allowlist refusals: answer-bearing keys, an asked stat with a value, an unnamed `"recalled"`, a non-vocabulary stat, an unwithheld ask, retired `recall`, a broken prefix;
+  - adapter: board, withheld `?`, recalled provenance, **learner** (a wrong answer still teaches; the view is independent of `is_correct`), transition absent before its reveal and present during its beat, typed events and deltas, marks persisting, level/unlock, no transition after `own_finished` or exhaustion, no unrevealed answer as a board value in any capture;
+  - the Review re-ask (parse, board, refusals).
+- `lib/journey/j4.recapture.test.ts` (14): the contract invariants over every J4 snapshot, plus the double transition grouped into one beat.
+- `pages/quiz-ranked/journeyTimer.test.ts` (8): **pooled clock**:
+  - it counts only while open, is held through a reveal and through a beat, and resumes at the server's open instant;
+  - a reconnect reads the same remainder;
+  - the round deadline is not used;
+  - exhaustion shows 0;
+  - Survival shows 30 s per child;
+  - a non-Journey segment gets no Journey clock.
+- `lib/ranked-core/modules/masterySliceModule.journey.test.tsx` (25):
+  - the board persists child 1 → 5, owns the media region, and ordinary slices are untouched;
+  - **answer-withholding**: no future child, transition or premise shown; `?` on both the board and the sheet; a recalled armor with no number; no unanswered answer on the board or sheet for all five recipes;
+  - **the server-timed beat / reveal hold**;
+  - **Matchup per-side ranks**, in board order even when the wire lists the opponent first, with a verbatim reveal of both values;
+  - **the Combat renderer**: stated formula, recalled formula and armor, the exact served digits on the board, on-board de-dup, a verbatim reveal, and no working rendered;
+  - the Review re-ask renders;
+  - **reconnect** while the next child is open does not replay the old reveal, and a reconnect during the server's reveal still shows it (B10).
+- `pages/quiz-ranked/QuizRankedMatch.hosted.test.tsx` (+6, rewritten on J3, through the real **hosted `QuizRankedMatch`**):
+  - crests;
+  - the pooled clock digits, both running and held (reveal, beat);
+  - Survival's per-child clock;
+  - **a Survival strike-out mid-Journey** leaves gameplay with no board, no beat and no future child;
+  - no transition after `own_stage_finished`.
+- `lib/journey/j2.adapter.test.ts` (5): the isolated J2 reader, and production refusing J2.
+- `components/ranked-arena/SegmentTranscript.test.tsx` (+1): a `mastery_slice` block is "Mastery".
+- Deliberate pin updates:
+  - `contract.test.ts` and `JourneyModuleStage.test.tsx`: gold removed from the beat lines; `withheldReason`; the formatter keeps four decimals (+1 test).
+
+**Daily module ordering, result transition and Continue** are covered by the existing Daily suites (inside the focused set) and were verified live (§7). **Responsive geometry** was checked by the browser sweep (§10).
+
+**Focused regression.** The suites: journey, ranked-arena, question-surface, quiz-broadcast, game-results, ranked-core, ranked-public, daily-challenge, question-surface lib, quiz-daily-challenge, quiz-ranked, arena inspector, features/mastery.
+- On the final code: **230 files, 2975 tests, 2969 passed.**
+- **The 6 failures are the known pre-existing set, identical by name to C2/UI2:** `QuestionMotifLayer.qf1` (1), `AnswerGrid.elimination` (2), `QuestionStageGeometry` (3).
+- A mid-task run caught one new failure, `DailyOnCanonicalArena.boundary` (Ranked must not supply `timerNotes`). It was fixed by removing the note, not by relaxing the guard.
+
+**Other checks:**
+- `tsc -p tsconfig.app.json`: no error in any touched file (the pre-existing unrelated errors remain).
+- `npm run build` passes on the final code (`built in 26.56s`, the champion prerender verified). The build's line-ending rewrite of `public/sitemap.xml` was reverted and is not committed.
+- The J3 and J4 capture envelopes are emitted as **lazy** chunks, fetched only by `/dev/journey-arena` and the inspector. This is the same `import.meta.glob` pattern UI2 used for J2. The `answers/` subfolders are not globbed, so no private answer ships.
+
+
+## 12. Remaining backend follow-ups / blockers
+1. **R1 recapture: done on captures (J4 `a273a216`, §1.1).** Still pending: a **live** Daily replay on J4, i.e. module 10 and a Survival Journey in the real browser flow. It needs no code change; the contract is identical.
+2. A structured Combat reveal working (§4).
+3. `max_rank` on the public state, for pips.
+4. Optional: a public "reveal window ends at" instant, so the client can poll the beat's publication exactly. Today it uses the submit time plus the frozen window.
+5. Product decisions:
+   - showing the final child's reveal before the hand-back (§9, pacing);
+   - the Survival/Standard repetition;
+   - labelling the clock;
+   - naming the stat (AD vs bonus AD).
+6. Daily chrome B7 (frontend, Daily lane).
