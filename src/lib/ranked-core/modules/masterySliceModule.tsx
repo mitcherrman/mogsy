@@ -39,7 +39,9 @@
 // required fields of the contract.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { journeyViewFor } from "@/lib/journey/adapter";
+import { JourneyModuleStage } from "@/components/journey/JourneyModuleStage";
 import {
   MasterySliceChallengeSurface,
   ProseChallenge,
@@ -103,9 +105,10 @@ function toQuestionReveal(
   };
 }
 
-function MasterySliceChallengePhase({ state, actions }: {
+function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
   state: SegmentStateView;
   actions: ModuleViewportProps["actions"];
+  skewMs?: number;
 }) {
   const challenges: MasterySliceChallengeView[] =
     state.block?.contract === "mastery_slice" ? state.block.challenges : [];
@@ -135,7 +138,14 @@ function MasterySliceChallengePhase({ state, actions }: {
   const settled = windowMs && windowMs > 0 ? state.ownChallengeReveals : [];
   const latest: MasteryChallengeReveal | null =
     settled.length > 0 ? settled[settled.length - 1] : null;
-  const holding = latest !== null && latest.challengeIndex > dismissed
+  // JOURNEY-UI3 — a Journey (J3) publishes WHICH card the server is still
+  // revealing. A reconnect after that window used to replay the last reveal in
+  // full while the next child was open and the POOLED clock was running (seen
+  // in the width sweep: child 4's reveal over child 5's board at 1:56). For a
+  // Journey the hold is entered only while the server is still revealing it.
+  const serverStillRevealing = !state.journey
+    || (latest !== null && state.ownRevealingCardIndex === latest.challengeIndex);
+  const holding = latest !== null && latest.challengeIndex > dismissed && serverStillRevealing
     ? latest : null;
 
   // ONE timer, keyed on the held challenge's own index — so a duplicate poll,
@@ -164,8 +174,41 @@ function MasterySliceChallengePhase({ state, actions }: {
     setPending((p) => (p !== null && p !== serverIndex ? null : p));
   }, [serverIndex]);
 
+  // JOURNEY-UI2/UI3 — a Journey segment: ONE board for the whole module, mounted
+  // around every branch below (question, beat, waiting) so it never remounts
+  // between children. Fed the server's reached-prefix public block only.
+  const journey = useMemo(() => journeyViewFor(state.journey, {
+    ownNextChallengeIndex: state.ownNextChallengeIndex,
+    ownCardStartedAt: state.ownCardStartedAt,
+    ownFinished: state.ownFinished,
+  }), [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished]);
+  const inJourney = (node: ReactNode) => (journey
+    ? (
+      <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}>
+        {node}
+      </JourneyModuleStage>
+    ) : node);
+
+  // JOURNEY-UI2 — the transition beat: the server has moved the viewer on, but
+  // the next child is NOT in the reached prefix until it opens. There is no
+  // question to show, only the board's change; nothing here opens it early.
+  // Also the gap between a reveal hold ending here and the server exposing
+  // the next child (with or without a transition): the Journey is not over,
+  // so it never says "complete".
+  if (journey && !current && !state.ownFinished) {
+    const next = journey.pendingChildIndex ?? serverIndex;
+    return inJourney(
+      <div data-testid="journey-next-pending" data-child-index={next}
+        className="flex min-h-[8rem] items-center justify-center text-sm text-muted-foreground" role="status">
+        {journey.pendingChildIndex !== null
+          ? `Step ${next + 1} of ${state.challengeCount} opens after the update…`
+          : `Step ${next + 1} of ${state.challengeCount} is opening…`}
+      </div>,
+    );
+  }
+
   if ((state.ownFinished && !revealed) || !current) {
-    return (
+    return inJourney(
       <div className="space-y-2" data-testid="mastery-slice-waiting">
         <h4 className="font-semibold">Mastery Slice complete</h4>
         <p className="text-sm text-muted-foreground" role="status">
@@ -173,7 +216,7 @@ function MasterySliceChallengePhase({ state, actions }: {
             ? "Both players are done — scoring the segment…"
             : `Waiting for the opponent (${state.opponentChallengesCompleted} of ${state.challengeCount} done)…`}
         </p>
-      </div>
+      </div>,
     );
   }
 
@@ -185,17 +228,21 @@ function MasterySliceChallengePhase({ state, actions }: {
   const path = renderPathFor(current);
   const reveal = holding && revealed ? toQuestionReveal(holding, revealed) : null;
 
-  return (
+  return inJourney(
     // `data-challenge-index` names which challenge is actually on screen — the
     // answered one during its reveal hold, the server's next one otherwise.
-    <div className="space-y-3" data-testid="mastery-slice-challenge-phase"
+    <div className={journey ? "space-y-2" : "space-y-3"} data-testid="mastery-slice-challenge-phase"
          data-render-path={path}
          data-challenge-index={current.challengeIndex}
          data-revealing={reveal ? "true" : undefined}>
-      <p className="text-xs text-muted-foreground" data-testid="mastery-slice-opponent-progress">
-        Opponent: {state.opponentChallengesCompleted} of {state.challengeCount} done
-        {state.opponentFinished ? " — finished" : ""}
-      </p>
+      {/* JOURNEY-UI2 — a Journey's card is height-budgeted around its board;
+          the opponent's progress stays on the flanks' status there. */}
+      {!journey && (
+        <p className="text-xs text-muted-foreground" data-testid="mastery-slice-opponent-progress">
+          Opponent: {state.opponentChallengesCompleted} of {state.challengeCount} done
+          {state.opponentFinished ? " — finished" : ""}
+        </p>
+      )}
       {/* THE SHARED SURFACE. The same component the Admin Generator Lab
           draws a challenge with, so "is this what a player would see?" is
           answered by identity rather than by resemblance. Keyed on the
@@ -208,12 +255,13 @@ function MasterySliceChallengePhase({ state, actions }: {
         submitting={submitting}
         onSubmit={onSubmit}
         reveal={reveal}
+        journey={journey ? journey.children[current.challengeIndex] ?? null : null}
       />
-    </div>
+    </div>,
   );
 }
 
-function MasterySliceViewport({ segmentState, actions }: ModuleViewportProps) {
+function MasterySliceViewport({ segmentState, actions, skewMs }: ModuleViewportProps) {
   if (!segmentState) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="mastery-slice-loading">
@@ -222,8 +270,10 @@ function MasterySliceViewport({ segmentState, actions }: ModuleViewportProps) {
     );
   }
   return (
-    <div className="space-y-3">
-      <MasterySliceChallengePhase state={segmentState} actions={actions} />
+    // JOURNEY-UI2 — a Journey fills the height-locked card: `journey-viewport`
+    // lets its question area be the one region that scrolls (index.css).
+    <div className={segmentState.journey ? "journey-viewport space-y-3" : "space-y-3"}>
+      <MasterySliceChallengePhase state={segmentState} actions={actions} skewMs={skewMs} />
       {actions.error && (
         <p role="alert" data-testid="mastery-slice-error" className="text-sm text-destructive">
           {actions.error}

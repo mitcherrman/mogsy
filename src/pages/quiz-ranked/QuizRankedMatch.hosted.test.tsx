@@ -8,6 +8,8 @@
  * Harness copied from `QuizRankedMatch.rfx1b3.test.tsx`, the suite whose beats
  * these assertions are the hosted complement of.
  */
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -61,6 +63,10 @@ let isBotMatch: boolean;
 let moduleNumber: number;
 let matchLength: number | null;
 let segmentOverride: Record<string, unknown> | null;
+/** DC-SURV-UX — the public `ruleset` block, or null for a standard match. */
+let rulesetOverride: Record<string, unknown> | null;
+/** JOURNEY-UI2/UI3 — a REAL captured Journey `segment` + `segment_state` (J3). */
+let journeyEnvelope: { segment: unknown; segment_state: unknown } | null;
 /** The round the server currently reports as active. */
 let activeRound: number;
 /** Round-trip cost on the two reads the ending needs. Production has one. */
@@ -141,9 +147,15 @@ function shape<T2 extends { payload: Record<string, unknown> }>(env: T2): T2 {
     });
     payload.segment_state = metaReflexState(
       (segmentOverride.challenge_index as number) ?? 0,
-      { segment_number: activeRound });
+      { segment_number: activeRound, ...(segmentOverride.state as object ?? {}) });
     payload.question = null;
   }
+  if (journeyEnvelope && !done) {
+    payload.segment = journeyEnvelope.segment;
+    payload.segment_state = journeyEnvelope.segment_state;
+    payload.question = null;
+  }
+  payload.ruleset = rulesetOverride;
   return env;
 }
 
@@ -166,6 +178,8 @@ beforeEach(() => {
   moduleNumber = 1;
   matchLength = 10;
   segmentOverride = null;
+  rulesetOverride = null;
+  journeyEnvelope = null;
   activeRound = 1;
   endingLatencyMs = 0;
   startedAt = Date.now() + LEAD_ON_ARRIVAL;
@@ -368,5 +382,221 @@ describe("DCMOD — hosted chrome", () => {
     expect(duelLabel()).toBe(true);
     expect(screen.getByTestId("ranked-presence")).toHaveTextContent(/^vs /i);
     expect(screen.getByTestId("ranked-forfeit")).toBeInTheDocument();
+  }, 25000);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* DC-SURV-UX — Survival ends for the PLAYER at strike 3                      */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+const survivalRuleset = (strikes: number, over: Record<string, unknown> = {}) => ({
+  ruleset_id: "survival", version: 1, time_bank_ms: null, time_bank_remaining_ms: null,
+  time_bank_draining: false, max_strikes: 3, strikes, questions_settled: 12,
+  stage_ended: false, ended_reason: null, ...over,
+});
+
+/** A five-card block in play: the human on card `index`, the bot on none. */
+function survivalBlock(index: number, state: Record<string, unknown> = {}) {
+  activeRound = 2;
+  moduleNumber = 2;
+  matchLength = 175;
+  segmentOverride = { challenge_index: index, state };
+}
+
+describe("DC-SURV-UX — a hosted Survival stage", () => {
+  it("own_finished = false: gameplay stays up and the player is not reported finished", async () => {
+    startedAt = Date.now() - 4000;
+    rulesetOverride = survivalRuleset(1);
+    survivalBlock(1);
+    const finished: string[] = [];
+    const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await screen.findByTestId("ranked-match", undefined, { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(finished).toEqual([]);
+    expect(screen.queryByTestId("ranked-match")).not.toBeNull();
+  }, 25000);
+
+  it("strike 3 mid-block: gameplay ends at once, the rest of the block and the bot's cards are never drawn, and the parent is not told the match settled", async () => {
+    startedAt = Date.now() - 4000;
+    // Card 2 of 5 was the third strike: PRE-4 stops the block. The bot has
+    // not finished, so the segment (and the match) is NOT settled.
+    rulesetOverride = survivalRuleset(2);
+    survivalBlock(2, {
+      own_finished: true, own_challenges_completed: 2, own_next_challenge_index: 5,
+      own_card_index: null, own_card_started_at: null, own_card_deadline: null,
+      opponent_challenges_completed: 1, opponent_finished: false,
+    });
+    const finished: string[] = [];
+    const statuses: unknown[] = [];
+    const host = hostOf({
+      onPlayerFinished: (id) => { finished.push(id); },
+      onSurvivalStatus: (st) => { statuses.push(st); },
+    });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await waitFor(() => expect(finished).toEqual(["m1"]), { timeout: 8000 });
+    // The arena presents only the host's placeholder — no question, no card,
+    // no opponent progress.
+    expect(screen.queryByTestId("ranked-match")).toBeNull();
+    expect(screen.queryByTestId("answer-grid")).toBeNull();
+    expect(document.body).toHaveTextContent("Stage complete…");
+    // Not settled: the handback waits for the server.
+    expect(host.settled).toEqual([]);
+    // Server truth relayed, not recomputed.
+    expect(statuses).toContainEqual({ answered: 12, strikesUsed: 2, maxStrikes: 3 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(finished).toHaveLength(1);
+  }, 25000);
+
+  it("a one-card finish that is not the third strike is NOT the end: own_finished alone is not the signal", async () => {
+    startedAt = Date.now() - 4000;
+    rulesetOverride = survivalRuleset(1);
+    survivalBlock(5); // every card played; own_finished true; ledger not ended
+    const finished: string[] = [];
+    const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await screen.findByTestId("ranked-match", undefined, { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(finished).toEqual([]);
+  }, 25000);
+
+  it("Standard and Time Trial never report a player finish, whatever own_finished says", async () => {
+    for (const rs of [null, { ruleset_id: "time_trial", stage_ended: false }]) {
+      startedAt = Date.now() - 4000;
+      rulesetOverride = rs;
+      survivalBlock(2, { own_finished: true, own_challenges_completed: 2 });
+      const finished: string[] = [];
+      const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+      const { unmount } = render(
+        <QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+      await screen.findByTestId("ranked-match", undefined, { timeout: 8000 });
+      await new Promise((r) => setTimeout(r, 200));
+      expect(finished).toEqual([]);
+      unmount();
+    }
+  }, 40000);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* JOURNEY-UI3 — a hosted Journey, on REAL J3 captures                         */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+type CapturePayload = Record<string, unknown>;
+function captureSnap(name: string, label: string) {
+  const all = JSON.parse(readFileSync(join(resolve(process.cwd(), "src/lib/journey/__fixtures__/j3"),
+    `${name}.json`), "utf8")) as { label: string; at: string; envelope: { payload: CapturePayload } }[];
+  const s = all.find((x) => x.label === label);
+  if (!s) throw new Error(`${name}: ${label}`);
+  return s;
+}
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(\+00:00|Z)$/;
+/**
+ * The capture, moved in time so its capture instant is NOW: every server
+ * instant keeps its distance from the moment it was read. Nothing else moves.
+ */
+function capture(name: string, label: string): CapturePayload {
+  const s = captureSnap(name, label);
+  const shift = Date.now() - Date.parse(s.at);
+  const walk = (v: unknown): unknown => {
+    if (typeof v === "string" && ISO.test(v)) return new Date(Date.parse(v) + shift).toISOString();
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(s.envelope.payload) as CapturePayload;
+}
+const clockText = () => screen.getAllByTestId("timer-value")[0];
+
+describe("JOURNEY-UI3 — a hosted Journey module", () => {
+  it("a live Journey: champion crests replace the role mascots, and the board is in the arena", async () => {
+    startedAt = Date.now() - 4000;
+    const p = capture("zed.standard", "child1-open");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+    await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+    expect(screen.getByTestId("journey-crest-subject")).toHaveAccessibleName(/^Zed, level 3/);
+    expect(screen.getByTestId("journey-crest-opponent")).toHaveAccessibleName(/^Ahri, level 3/);
+    expect(screen.queryByTestId("role-crest")).toBeNull();
+  }, 25000);
+
+  it("Standard: the header is the POOLED Journey clock — the server's remainder, never the round deadline", async () => {
+    startedAt = Date.now() - 4000;
+    // Child 2 open for 2 s: 140 s of 150 left and running (the round's own
+    // deadline in this fixture is 30 s away — it must NOT be what is shown).
+    const p = capture("zed.standard", "child1-live");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+    await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+    await waitFor(() => expect(clockText()).toHaveTextContent(/^2:(19|20)$/), { timeout: 4000 });
+    expect(clockText()).toHaveAttribute("data-timer-state", "running");
+    // (The clock's secondary line shows the duel standing, which outranks the
+    // "of 2:30 Journey time" note in the existing header — see the handoff.)
+  }, 25000);
+
+  it("Standard: during a reveal and during a transition beat the pool is HELD (server `running: false`)", async () => {
+    startedAt = Date.now() - 4000;
+    for (const label of ["child2-reveal", "child3-beat"]) {
+      const p = capture("zed.standard", label);
+      expect((p.segment_state as CapturePayload).active_time_running).toBe(false);
+      expect((p.segment_state as CapturePayload).active_time_remaining_ms).toBe(126_000);
+      journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+      const { unmount } = render(
+        <QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+      await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+      await waitFor(() => expect(clockText()).toHaveTextContent("2:06"), { timeout: 4000 });
+      expect(clockText()).toHaveAttribute("data-timer-state", "paused");
+      // A second later it has not moved: nothing burns while nothing is answerable.
+      await new Promise((r) => setTimeout(r, 1100));
+      expect(clockText()).toHaveTextContent("2:06");
+      unmount();
+    }
+  }, 40000);
+
+  it("Survival: the header is the CHILD's own 30 s window, not the block", async () => {
+    startedAt = Date.now() - 4000;
+    const p = capture("olaf.survival", "child1-live");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
+    await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+    await waitFor(() => expect(clockText()).toHaveTextContent(/^0:(27|28)$/), { timeout: 4000 });
+    // The round's projected block deadline here is ~51 s; the child's is 30 s.
+    expect(clockText()).not.toHaveTextContent(/^0:(4|5)\d$/);
+  }, 25000);
+
+  it("Survival strike-out mid-Journey (real capture): gameplay ends at once — no board, no beat, no future child", async () => {
+    startedAt = Date.now() - 4000;
+    // The strike lands on child 2 of 3. The capture's own post-strike read is a
+    // settled match (the bot had already finished), so the live child's segment
+    // state is paired with the post-strike ruleset the server returned.
+    const live = capture("pantheon.survival.strikeout", "child1-live");
+    const after = capture("pantheon.survival.strikeout", "child1-reveal");
+    journeyEnvelope = { segment: live.segment, segment_state: live.segment_state };
+    rulesetOverride = after.ruleset as Record<string, unknown>;
+    expect(rulesetOverride.own_stage_finished).toBe(true);
+    const finished: string[] = [];
+    const host = hostOf({ onPlayerFinished: (id) => { finished.push(id); } });
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
+    await waitFor(() => expect(finished).toEqual(["m1"]), { timeout: 8000 });
+    expect(screen.queryByTestId("ranked-match")).toBeNull();
+    expect(screen.queryByTestId("journey-board")).toBeNull();
+    expect(screen.queryByTestId("journey-beat")).toBeNull();
+    expect(document.body).toHaveTextContent("Stage complete…");
+    expect(host.settled).toEqual([]);
+  }, 25000);
+
+  it("no transition after own_stage_finished — even with a transition on the wire", async () => {
+    startedAt = Date.now() - 4000;
+    // The purchase beat's segment state, as if strike 3 had just landed.
+    const p = capture("zed.standard", "child3-beat");
+    journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
+    rulesetOverride = survivalRuleset(3, { live_strikes: 3, own_stage_finished: true, stage_ended: false });
+    const finished: string[] = [];
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered"
+      host={hostOf({ onPlayerFinished: (id) => { finished.push(id); } })} />);
+    await waitFor(() => expect(finished).toEqual(["m1"]), { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(screen.queryByTestId("journey-beat")).toBeNull();
+    expect(screen.queryByTestId("journey-board")).toBeNull();
+    expect(document.body.textContent).not.toContain("Serrated Dirk");
   }, 25000);
 });

@@ -27,6 +27,8 @@ import {
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
+import { isJourneyJ3, readJourneyJ3, type JourneyJ3 } from "@/lib/journey/j3";
+import { JourneyContractError } from "@/lib/journey/contract";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -581,6 +583,24 @@ export interface SegmentStateView {
    * response-time arithmetic were computed against.
    */
   revealWindowMs: number | null;
+  /**
+   * JOURNEY-UI3 — a Mastery Journey segment's public block (J3,
+   * `journey_public_state.v1`), REACHED PREFIX only. It passes the generic
+   * pre-reveal walk like every other key AND its own typed allowlist
+   * (`lib/journey/j3.ts`). `null` for every other segment.
+   */
+  journey?: JourneyJ3 | null;
+  /**
+   * JOURNEY3 — POOLED ACTIVE answer time (Standard's Journey module). All
+   * three are null unless the segment pools its clock. The server derives
+   * them from its frozen chain: `activeTimeRemainingMs` is what the pool has
+   * left NOW, and it is `running` only while the viewer's card is open —
+   * during a reveal or a transition beat it is paused BY CONSTRUCTION. The
+   * client renders these and never pauses anything itself.
+   */
+  activeTimeMs?: number | null;
+  activeTimeRemainingMs?: number | null;
+  activeTimeRunning?: boolean | null;
 }
 
 /**
@@ -702,6 +722,27 @@ export interface PublicRoundView {
 /** The governing ruleset's identity. See `PublicRoundView.ruleset`. */
 export interface StageRulesetView {
   rulesetId: string;
+  /**
+   * DC-SURV-UX — the viewer's own SETTLED ledger, as the server published it.
+   * Optional and null when absent (an older payload, a bank-only ruleset).
+   * Read for display and for the Survival finish signal; never recomputed.
+   */
+  maxStrikes?: number | null;
+  strikes?: number | null;
+  questionsSettled?: number | null;
+  stageEnded?: boolean;
+  /**
+   * DC-LANE-C — the LIVE sibling of `strikes`: the settled ledger plus the
+   * mistakes already known inside the player's unsettled module. A server
+   * projection; the client never adds to it. Null when absent.
+   */
+  liveStrikes?: number | null;
+  /**
+   * DC-LANE-C — the server says this player's ruleset stage is over (strike
+   * allowance spent, or a bank drained), possibly one settlement before the
+   * ledger folds it. Null when the payload predates the field.
+   */
+  ownStageFinished?: boolean | null;
 }
 
 export interface PrivatePlayerView extends PublicRoundView {
@@ -987,8 +1028,17 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
 function readStageRuleset(v: unknown): StageRulesetView | null {
   if (!v || typeof v !== "object") return null;
   const o = v as Record<string, unknown>;
-  return typeof o.ruleset_id === "string" && o.ruleset_id
-    ? { rulesetId: o.ruleset_id } : null;
+  if (typeof o.ruleset_id !== "string" || !o.ruleset_id) return null;
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : null);
+  return {
+    rulesetId: o.ruleset_id,
+    maxStrikes: n(o.max_strikes),
+    strikes: n(o.strikes),
+    questionsSettled: n(o.questions_settled),
+    stageEnded: o.stage_ended === true,
+    liveStrikes: n(o.live_strikes),
+    ownStageFinished: typeof o.own_stage_finished === "boolean" ? o.own_stage_finished : null,
+  };
 }
 
 /**
@@ -1378,6 +1428,12 @@ function readSegmentState(v: unknown): SegmentStateView | null {
   const preReveal: Record<string, unknown> = { ...o };
   delete preReveal[SETTLED_REVEAL_KEY];
   delete preReveal[CHALLENGE_REVEAL_KEY];
+  // JOURNEY-UI3 — the Journey block is NOT lifted out of the walk. UI2 had to
+  // (J2 narrated item gold as `items_added[].cost`, a banned key); J3 publishes
+  // no gold anywhere, so the block now meets the SAME walk as every other key
+  // and then its own exact allowlist (`readJourneyBlock`). A `cost` anywhere in
+  // it — the old J2 path included — fails the whole segment.
+  const journeyRaw = readJourneyRaw(o.challenges);
   assertSegmentIsPreRevealSafe(preReveal);
   const ability = rec(o.own_ability, "segment_state.own_ability");
   const unavailable: Record<string, string> = {};
@@ -1439,7 +1495,40 @@ function readSegmentState(v: unknown): SegmentStateView | null {
       o[CHALLENGE_REVEAL_KEY],
       num(o.own_next_challenge_index, "own_next_challenge_index")),
     revealWindowMs: nnum(o.reveal_window_ms, "reveal_window_ms"),
+    journey: readJourneyBlock(journeyRaw),
+    // Optional on the wire: a pre-JOURNEY3 backend sends none of the three.
+    activeTimeMs: nnum(o.active_time_ms, "active_time_ms"),
+    activeTimeRemainingMs: nnum(o.active_time_remaining_ms, "active_time_remaining_ms"),
+    activeTimeRunning: o.active_time_running === null || o.active_time_running === undefined
+      ? null : bool(o.active_time_running, "active_time_running"),
   };
+}
+
+function readJourneyRaw(challenges: unknown): unknown {
+  if (!challenges || typeof challenges !== "object" || Array.isArray(challenges)) return undefined;
+  return (challenges as Record<string, unknown>).journey;
+}
+
+/**
+ * Fail-closed: off-contract = no parse. Only the J3 public-state contract is
+ * a Journey this client plays; the superseded J2 block (no
+ * `public_state_contract`) is refused here — its isolated reader lives in
+ * `lib/journey/j2.ts` for its own tests only.
+ */
+function readJourneyBlock(raw: unknown): JourneyJ3 | null {
+  if (raw === undefined || raw === null) return null;
+  if (!isJourneyJ3(raw)) {
+    throw new RankedPublicParseError(
+      "segment_state.challenges.journey: not a journey_public_state.v1 block");
+  }
+  try {
+    return readJourneyJ3(raw);
+  } catch (e) {
+    if (e instanceof JourneyContractError) {
+      throw new RankedPublicParseError(`segment_state.challenges.journey: ${e.message}`);
+    }
+    throw e;
+  }
 }
 
 function readPlaytest(v: unknown): PlaytestMeta | null {

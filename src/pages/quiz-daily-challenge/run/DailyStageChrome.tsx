@@ -18,6 +18,7 @@ import type { RankedPresentationPhase } from "@/lib/ranked-core/flow/rankedFlow"
 import type { DailyRun, DailyStage, DailyStrikes, DailyTimeBank } from "@/lib/daily-challenge/run/contracts";
 import { stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
 import { formatBank, projectTimeBank } from "@/lib/daily-challenge/run/timeBank";
+import type { SurvivalStatus } from "@/lib/ranked-core/survivalFinish";
 import { StageTag } from "./StageTag";
 
 const LEAGUECRAFT_HREF = "/quiz";
@@ -57,15 +58,28 @@ export function TimeBankMeter({ bank, skewMs, childPhase }: {
   );
 }
 
-export function StrikesMeter({ strikes }: { strikes: DailyStrikes }) {
+/**
+ * DC-SURV-UX — Survival's status: how far the player has got, and the strikes.
+ * No denominator: the stage has no length a player is meant to reach, and
+ * the server's module ceiling is never shown as a target.
+ */
+export function StrikesMeter({ strikes, answered = null }: { strikes: DailyStrikes; answered?: number | null }) {
   const left = Math.max(0, strikes.max - strikes.used);
+  const out = strikes.used >= strikes.max;
   return (
     <div data-testid="daily-strikes" data-strikes-used={String(strikes.used)}
       data-strikes-max={String(strikes.max)} data-strikes-remaining={String(left)}
+      data-strikes-out={out ? "true" : "false"}
       aria-label={`${left} of ${strikes.max} mistakes left`}
       className="flex items-center gap-2">
-      <span className="text-[0.625rem] uppercase tracking-[0.18em] text-[var(--ranked-muted,#a8a29e)]">
-        Mistakes left
+      {answered !== null && (
+        <span data-testid="daily-survival-answered" className="whitespace-nowrap font-mono text-xs tabular-nums">
+          {answered} answered
+          <span aria-hidden className="px-1 text-[var(--ranked-muted,#a8a29e)]">·</span>
+        </span>
+      )}
+      <span className="hidden text-[0.625rem] uppercase tracking-[0.18em] text-[var(--ranked-muted,#a8a29e)] sm:inline">
+        Strikes
       </span>
       <span aria-hidden className="flex gap-1">
         {Array.from({ length: strikes.max }, (_, i) => (
@@ -78,35 +92,44 @@ export function StrikesMeter({ strikes }: { strikes: DailyStrikes }) {
           </span>
         ))}
       </span>
+      <span data-testid="daily-strikes-count" className="whitespace-nowrap font-mono text-xs tabular-nums">
+        {Math.min(strikes.used, strikes.max)} / {strikes.max}
+      </span>
     </div>
   );
 }
 
 /** The ruleset's number for the active stage, from the server's live state. */
-function RulesetReadout({ stage, skewMs, childPhase }: {
+function RulesetReadout({ stage, skewMs, childPhase, survival }: {
   stage: DailyStage; skewMs: number; childPhase: RankedPresentationPhase | null;
+  survival: SurvivalStatus | null;
 }) {
   const live = stage.live;
   if (stage.ruleset?.id === "time_trial" && live?.timeBank) {
     return <TimeBankMeter bank={live.timeBank} skewMs={skewMs} childPhase={childPhase} />;
   }
   if (stage.ruleset?.id === "survival") {
-    const strikes = live?.strikes
-      ?? (stage.ruleset.maxStrikes ? { used: 0, max: stage.ruleset.maxStrikes } : null);
-    return strikes ? <StrikesMeter strikes={strikes} /> : null;
+    // Both sources are the server's own ledger; the higher reading is simply
+    // the more recent one (strikes never go down within a stage).
+    const max = live?.strikes?.max ?? survival?.maxStrikes ?? stage.ruleset.maxStrikes ?? null;
+    const daily = live?.strikes ? Math.max(live.strikes.used, live.strikes.live ?? 0) : 0;
+    const used = Math.max(daily, survival?.strikesUsed ?? 0);
+    return max ? <StrikesMeter strikes={{ used, max }} answered={survival?.answered ?? null} /> : null;
   }
   return null;
 }
 
-export function DailyStageChrome({ run, stage, skewMs = 0, childPhase = null }: {
+export function DailyStageChrome({ run, stage, skewMs = 0, childPhase = null, survival = null }: {
   run: DailyRun;
   stage: DailyStage | null;
   skewMs?: number;
   childPhase?: RankedPresentationPhase | null;
+  /** The active Survival child's reported status (DC-SURV-UX). */
+  survival?: SurvivalStatus | null;
 }) {
   const content = stage ? stageContentLine(stage) : null;
   return (
-    <header data-testid="daily-stage-chrome" className={arenaHeaderRowClass("wide")}>
+    <header data-testid="daily-stage-chrome" className={`${arenaHeaderRowClass("wide")} flex-wrap`}>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
         <h1 className="ranked-title text-lg font-bold leading-tight">Daily Challenge</h1>
         {stage && (
@@ -124,8 +147,8 @@ export function DailyStageChrome({ run, stage, skewMs = 0, childPhase = null }: 
           </>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-4">
-        {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase} />}
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-1">
+        {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase} survival={survival} />}
         <Link to={LEAGUECRAFT_HREF} className="text-sm text-muted-foreground underline">
           Back to Quiz
         </Link>

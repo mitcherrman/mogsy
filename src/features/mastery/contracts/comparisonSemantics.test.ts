@@ -78,6 +78,10 @@ describe("readComparisonSemantics", () => {
         "dimension",
         "metric",
         "rankIndependent",
+        // JOURNEY-UI2 — each side's own FACT CONTEXT (rank / level / form),
+        // exactly as structural as `context`: it says at which rank each side
+        // is asked, never either side's value, a winner or a tie.
+        "sideContexts",
         "subjectRef",
         "template",
         "unit",
@@ -87,6 +91,7 @@ describe("readComparisonSemantics", () => {
     expect(cs.abilityNameA).toBe("");
     expect(cs.abilityNameB).toBe("");
     expect(cs.rankIndependent).toBe(false);
+    expect(cs.sideContexts).toBeNull();
   });
 });
 

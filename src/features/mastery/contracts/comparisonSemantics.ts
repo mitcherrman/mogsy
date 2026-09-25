@@ -71,6 +71,14 @@ export interface MasteryComparisonSemantics {
    * drawn at rank 1, so stating that rank is true of it as well.
    */
   readonly rankIndependent: boolean;
+  /**
+   * JOURNEY-UI2 — each side's OWN context, `[A, B]`, when the backend states
+   * it (`side_contexts`). A Journey compares each champion at its own rank —
+   * one side can be rank 1 while the other's value does not move with rank
+   * (`abilityRank: null`) — so a single shared `context` cannot describe it.
+   * Null when absent (every older payload).
+   */
+  readonly sideContexts?: readonly [MasteryFactContext, MasteryFactContext] | null;
 }
 
 export function readComparisonSemantics(
@@ -94,7 +102,18 @@ export function readComparisonSemantics(
     abilityNameB:
       p.ability_name_b === undefined ? "" : str(p.ability_name_b, `${label}.ability_name_b`),
     rankIndependent: p.rank_independent === true,
+    sideContexts: readSideContexts(p.side_contexts, `${label}.side_contexts`),
   };
+}
+
+function readSideContexts(
+  v: unknown, label: string,
+): readonly [MasteryFactContext, MasteryFactContext] | null {
+  if (v === undefined || v === null) return null;
+  if (!Array.isArray(v) || v.length !== 2) {
+    throw new MasteryContractParseError("expected two side contexts", label);
+  }
+  return [readFactContext(v[0], `${label}[0]`), readFactContext(v[1], `${label}[1]`)];
 }
 
 /** Fail-closed guard for a template the comparison renderer does not (yet)

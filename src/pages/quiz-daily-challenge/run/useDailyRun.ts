@@ -27,12 +27,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RankedPresentationPhase } from "@/lib/ranked-core/flow/rankedFlow";
 import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
+import type { SurvivalStatus } from "@/lib/ranked-core/survivalFinish";
 import { currentStage } from "@/lib/daily-challenge/run/contracts";
 import {
   DailyRunApiError, isDailyRunAborted, type DailyRunTransport,
 } from "@/lib/daily-challenge/run/client";
 import {
-  DAILY_INTRO_MS, STAGE_INTRO_MIN_MS, STAGE_RESULT_MS,
+  DAILY_INTRO_MS, STAGE_INTRO_MIN_MS,
   projectDailyFlow, stageCompletedBetween, type DailyFlowView,
 } from "@/lib/daily-challenge/run/flow";
 import { runSkewMs } from "@/lib/daily-challenge/run/timeBank";
@@ -63,6 +64,13 @@ export interface DailyRunState {
   retry: () => void;
   onChildSettled: (matchId: string) => void;
   onChildPhase: (phase: RankedPresentationPhase) => void;
+  /** DC-SURV-UX — the active child's player is done (Survival's third strike). */
+  onChildPlayerFinished: (matchId: string) => void;
+  onChildSurvivalStatus: (status: SurvivalStatus) => void;
+  /** The active Survival child's status as its match last reported it. */
+  survival: SurvivalStatus | null;
+  /** DC-LANE-C — the stage result's Continue. Presentation only. */
+  continueFromResult: () => void;
 }
 
 function messageFor(e: unknown): string {
@@ -94,6 +102,8 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
   const [settledChild, setSettledChild] = useState<string | null>(null);
   const [resultFor, setResultFor] = useState<string | null>(null);
   const [childPhase, setChildPhase] = useState<RankedPresentationPhase | null>(null);
+  const [finishedChild, setFinishedChild] = useState<string | null>(null);
+  const [survival, setSurvival] = useState<SurvivalStatus | null>(null);
 
   const mounted = useRef(true);
   const runRef = useRef<DailyRun | null>(null);
@@ -129,14 +139,14 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
     const done = stageCompletedBetween(prev, next);
     if (done) {
       setSettledChild(null);
+      setFinishedChild(null);
+      setSurvival(null);
       setChildPhase(null);
-      // Review closes the day: it goes straight to the one final completion.
-      if (done.kind !== "review") {
-        setResultFor(done.id);
-        after(STAGE_RESULT_MS, () => setResultFor((cur) => (cur === done.id ? null : cur)));
-      }
+      // DC-LANE-C — every finished stage, Review included, gets its result
+      // screen; the player leaves it with Continue (`continueFromResult`).
+      setResultFor(done.id);
     }
-  }, [after]);
+  }, []);
 
   const ask = useCallback(async (work: () => Promise<DailyRun>, quiet = false): Promise<DailyRun | null> => {
     if (!quiet) { setBusy(true); setError(null); }
@@ -264,6 +274,22 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
     void ask(() => transport.readRun(r.runId), true);
   }, [ask, transport]);
 
+  // DC-SURV-UX — the player is out; the match is still settling server-side.
+  // Only the presentation moves. The parent advances on the ordinary handback.
+  const onChildPlayerFinished = useCallback((matchId: string) => {
+    setFinishedChild(matchId);
+  }, []);
+  const onChildSurvivalStatus = useCallback((status: SurvivalStatus) => {
+    setSurvival(status);
+  }, []);
+
+  // DC-LANE-C — leave the stage result. The parent has ALREADY advanced (the
+  // result only exists after it did), so this moves presentation only: the
+  // next stage's tag, or the day's completion.
+  const continueFromResult = useCallback(() => {
+    setResultFor(null);
+  }, []);
+
   const retry = useCallback(() => {
     setError(null);
     const r = runRef.current;
@@ -275,14 +301,16 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
   }, [settledChild, sync, launch]);
 
   const flow = useMemo(() => (run ? projectDailyFlow(run, {
-    dailyIntroUp, stageIntroFor, settledChild, resultFor,
-  }) : null), [run, dailyIntroUp, stageIntroFor, settledChild, resultFor]);
+    dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild,
+  }) : null), [run, dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild]);
 
-  const childEntry = flow?.childMatchId && freshChildren.current.has(flow.childMatchId)
+  const activeChild = flow?.childMatchId ?? flow?.settlingChildMatchId ?? null;
+  const childEntry = activeChild && freshChildren.current.has(activeChild)
     ? "fresh" : "recovered";
 
   return {
     load, run, flow, busy, error, skewMs, childPhase, childEntry,
     start, retry, onChildSettled, onChildPhase,
+    onChildPlayerFinished, onChildSurvivalStatus, survival, continueFromResult,
   };
 }
