@@ -236,8 +236,19 @@ export function projectTimer(pub: PublicRoundView, skewMs: number, nowMs: number
  *   * SURVIVAL (per child, `card_timer_ms`): the child's own window,
  *     `min(card timer, deadline − now)` — full and still until the child opens.
  *
+ * JOURNEY5 — THE FINAL REVEAL. After the last reached child settles the server
+ * holds the block open for one reveal window with `own_finished` true, no card
+ * deadline, `active_time_running: false` and `own_revealing_card_index` set.
+ * Standard shows the pool's frozen remainder, PAUSED. Survival has no next
+ * child whose window could be shown, so it shows no clock at all
+ * (`isJourneyFinalReveal` keeps the round's projected block deadline off it).
+ *
  * Presentation only: a local zero decides nothing; the server settles expiry.
  */
+export function isJourneyFinalReveal(seg: SegmentStateView | null | undefined): boolean {
+  return !!seg?.journey && seg.ownFinished && seg.ownRevealingCardIndex !== null;
+}
+
 export function projectJourneyTimer(seg: SegmentStateView | null | undefined, skewMs: number,
                                     nowMs: number): TimerView | null {
   if (!seg?.journey) return null;
@@ -248,8 +259,8 @@ export function projectJourneyTimer(seg: SegmentStateView | null | undefined, sk
       && seg.activeTimeRemainingMs !== null && seg.activeTimeRemainingMs !== undefined) {
     const held = seg.activeTimeRemainingMs;
     const left = seg.ownFinished || !deadline ? held : Math.min(held, remainingMs(deadline, skewMs, nowMs));
-    const paused = seg.activeTimeRunning === false && !seg.ownFinished
-      && (opensAt === null || serverNow < opensAt);
+    const paused = seg.activeTimeRunning === false && (isJourneyFinalReveal(seg)
+      || (!seg.ownFinished && (opensAt === null || serverNow < opensAt)));
     const remaining = Math.max(0, Math.ceil(left / 1000));
     return {
       durationSeconds: Math.round(seg.activeTimeMs / 1000),

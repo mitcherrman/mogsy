@@ -41,6 +41,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { journeyViewFor } from "@/lib/journey/adapter";
+import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 import { JourneyModuleStage } from "@/components/journey/JourneyModuleStage";
 import {
   MasterySliceChallengeSurface,
@@ -105,10 +106,29 @@ function toQuestionReveal(
   };
 }
 
-function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
+/**
+ * JOURNEY5-LIVE — THE INSTANT THE SERVER'S CHALLENGE OPENS, or null.
+ *
+ * A per-card segment exposes a card only when it opens, except while the
+ * previous card's reveal runs (then `own_card_started_at` names the NEXT
+ * card's open). A BLOCK-clocked segment — Daily Review's one-child re-ask —
+ * publishes its challenge with the round, during the round's lead-in, and the
+ * server refuses (409 `RANKED_CARD_NOT_OPEN`) an answer before the round's
+ * `started_at`. The latest of the instants that apply is the one to wait for.
+ */
+function challengeOpensAt(state: SegmentStateView, roundStartedAt: string | null): string | null {
+  const instants = [state.challengeStartedAt, roundStartedAt,
+    state.ownCardIndex === state.ownNextChallengeIndex ? state.ownCardStartedAt : null]
+    .filter((x): x is string => typeof x === "string" && !Number.isNaN(Date.parse(x)));
+  if (instants.length === 0) return null;
+  return instants.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a));
+}
+
+function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt = null }: {
   state: SegmentStateView;
   actions: ModuleViewportProps["actions"];
   skewMs?: number;
+  roundStartedAt?: string | null;
 }) {
   const challenges: MasterySliceChallengeView[] =
     state.block?.contract === "mastery_slice" ? state.block.challenges : [];
@@ -143,8 +163,19 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
   // full while the next child was open and the POOLED clock was running (seen
   // in the width sweep: child 4's reveal over child 5's board at 1:56). For a
   // Journey the hold is entered only while the server is still revealing it.
+  //
+  // JOURNEY5 — the FINAL child is revealed the same way. The server now holds
+  // the block open for one more reveal window after the last reached child
+  // settles: `own_finished` is already true (no card left), while
+  // `own_revealing_card_index` names that child until `own_reveal_until`. So
+  // the gate below is unchanged, and `own_finished` alone never skips the
+  // reveal (the "complete" branch further down yields to `revealed`). A
+  // snapshot whose `own_reveal_until` has already passed is not a live reveal:
+  // a fresh mount on it must not replay one (B10).
+  const revealUntilMs = state.ownRevealUntil ? Date.parse(state.ownRevealUntil) : Number.NaN;
   const serverStillRevealing = !state.journey
-    || (latest !== null && state.ownRevealingCardIndex === latest.challengeIndex);
+    || (latest !== null && state.ownRevealingCardIndex === latest.challengeIndex
+      && (Number.isNaN(revealUntilMs) || revealUntilMs > Date.now() + skewMs));
   const holding = latest !== null && latest.challengeIndex > dismissed && serverStillRevealing
     ? latest : null;
 
@@ -173,6 +204,12 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
   useEffect(() => {
     setPending((p) => (p !== null && p !== serverIndex ? null : p));
   }, [serverIndex]);
+  // JOURNEY5-LIVE — shown, but not answerable, until the server opens it;
+  // one re-render at that instant (skew-corrected), exactly as the arena does
+  // for a round's `started_at`.
+  const opensAt = challengeOpensAt(state, roundStartedAt);
+  useServerInstantWake(opensAt, skewMs);
+  const notOpen = opensAt !== null && msUntilServerInstant(opensAt, skewMs, Date.now()) > 0;
 
   // JOURNEY-UI2/UI3 — a Journey segment: ONE board for the whole module, mounted
   // around every branch below (question, beat, waiting) so it never remounts
@@ -195,12 +232,18 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
   // Also the gap between a reveal hold ending here and the server exposing
   // the next child (with or without a transition): the Journey is not over,
   // so it never says "complete".
-  if (journey && !current && !state.ownFinished) {
-    const next = journey.pendingChildIndex ?? serverIndex;
+  //
+  // JOURNEY5-LIVE — and the LEAD-IN, before child 1 opens: the block is there
+  // but its reached prefix is empty, so there is no board yet (`journey` is
+  // null) and no challenge. A Journey that has not reached a child cannot be
+  // complete, whatever the counters say, so it reads as opening too.
+  const leadIn = !!state.journey && state.journey.children.length === 0 && !current;
+  if (leadIn || (journey && !current && !state.ownFinished)) {
+    const next = journey?.pendingChildIndex ?? serverIndex;
     return inJourney(
       <div data-testid="journey-next-pending" data-child-index={next}
         className="flex min-h-[8rem] items-center justify-center text-sm text-muted-foreground" role="status">
-        {journey.pendingChildIndex !== null
+        {journey && journey.pendingChildIndex !== null
           ? `Step ${next + 1} of ${state.challengeCount} opens after the update…`
           : `Step ${next + 1} of ${state.challengeCount} is opening…`}
       </div>,
@@ -222,8 +265,18 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
 
   const submitting = actions.busy || pending !== null;
   const onSubmit = (answer: PlayerAnswer) => {
-    setPending(serverIndex);
-    actions.submitChallenge(serverIndex, { selected: answer });
+    // Never sent before the challenge opens (the input is inert until then).
+    if (notOpen || pending !== null) return;
+    const index = serverIndex;
+    setPending(index);
+    const result = actions.submitChallenge(index, { selected: answer });
+    // A refused or failed submission stored nothing: release "Locking in…"
+    // so the player can answer again (a refused 409 is not their fault).
+    if (result && typeof (result as Promise<boolean>).then === "function") {
+      void (result as Promise<boolean>).then((accepted) => {
+        if (!accepted) setPending((p) => (p === index ? null : p));
+      });
+    }
   };
   const path = renderPathFor(current);
   const reveal = holding && revealed ? toQuestionReveal(holding, revealed) : null;
@@ -234,7 +287,10 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
     <div className={journey ? "space-y-2" : "space-y-3"} data-testid="mastery-slice-challenge-phase"
          data-render-path={path}
          data-challenge-index={current.challengeIndex}
-         data-revealing={reveal ? "true" : undefined}>
+         data-revealing={reveal ? "true" : undefined}
+         data-not-open={!reveal && notOpen ? "true" : undefined}
+         // React 18 has no boolean `inert`; the attribute's presence is what counts.
+         {...(!reveal && notOpen ? { inert: "" } : {})}>
       {/* JOURNEY-UI2 — a Journey's card is height-budgeted around its board;
           the opponent's progress stays on the flanks' status there. */}
       {!journey && (
@@ -256,12 +312,13 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0 }: {
         onSubmit={onSubmit}
         reveal={reveal}
         journey={journey ? journey.children[current.challengeIndex] ?? null : null}
+        combatWorking={reveal && holding ? holding.combatWorking ?? null : null}
       />
     </div>,
   );
 }
 
-function MasterySliceViewport({ segmentState, actions, skewMs }: ModuleViewportProps) {
+function MasterySliceViewport({ segmentState, actions, skewMs, publicRound }: ModuleViewportProps) {
   if (!segmentState) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="mastery-slice-loading">
@@ -273,7 +330,8 @@ function MasterySliceViewport({ segmentState, actions, skewMs }: ModuleViewportP
     // JOURNEY-UI2 — a Journey fills the height-locked card: `journey-viewport`
     // lets its question area be the one region that scrolls (index.css).
     <div className={segmentState.journey ? "journey-viewport space-y-3" : "space-y-3"}>
-      <MasterySliceChallengePhase state={segmentState} actions={actions} skewMs={skewMs} />
+      <MasterySliceChallengePhase state={segmentState} actions={actions} skewMs={skewMs}
+        roundStartedAt={publicRound?.activeRound?.startedAt ?? null} />
       {actions.error && (
         <p role="alert" data-testid="mastery-slice-error" className="text-sm text-destructive">
           {actions.error}

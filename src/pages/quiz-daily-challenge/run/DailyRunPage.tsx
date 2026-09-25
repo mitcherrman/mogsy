@@ -77,6 +77,8 @@ export function DailyRunPage({
 
   const run = dc.run;
   const flow = dc.flow;
+  // B7 — the stage's last server-reported strike count (see `strikesSeen`).
+  const strikesFloor = flow?.stage ? dc.strikesSeen[flow.stage.id] ?? null : null;
 
   const shell = (children: ReactNode, header: ReactNode = null) => (
     <ArenaShell size="wide" header={header ?? (run
@@ -141,7 +143,7 @@ export function DailyRunPage({
         <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
           onProceed={flow.phase === "stage-result" ? dc.continueFromResult : undefined}
           placement={stageResultPlacement} />,
-        <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} />);
+        <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} strikesFloor={strikesFloor} />);
       // DC-SURV-UX — the player is out but the child is still settling: keep
       // it connected (its reads let the server finish the match) and hidden.
       // It presents nothing — the arena itself shows only its placeholder —
@@ -182,7 +184,8 @@ export function DailyRunPage({
             entry={dc.childEntry}
             host={host}
             chrome={<DailyStageChrome run={run} stage={flow.stage}
-              skewMs={dc.skewMs} childPhase={dc.childPhase} survival={dc.survival} />} />
+              skewMs={dc.skewMs} childPhase={dc.childPhase} survival={dc.survival}
+              strikesFloor={strikesFloor} />} />
         </div>
       );
     }

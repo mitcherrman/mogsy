@@ -171,7 +171,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.segmentMeta = icdSegmentMeta({ phase: "challenges", challenge_index: 1 });
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 3" }));
+    act(() => { void result.current.submitSegmentChallenge(1, { itemId: "Item 3" }); });
     await settle();
     expect(backend.challengeSubmits).toEqual([
       { index: 1, body: { item_id: "Item 3" } },
@@ -184,7 +184,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.segmentMeta = metaReflexSegmentMeta({ challenge_index: 1 });
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, { cardId: "c1:left" }));
+    act(() => { void result.current.submitSegmentChallenge(1, { cardId: "c1:left" }); });
     await settle();
     expect(sfx.play).toHaveBeenCalledWith("ranked.meta.action", {
       eventId: "ranked:m1:segment:4:card:1:action",
@@ -210,7 +210,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     }) as unknown as typeof fetch);
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, { cardId: "c1:left" }));
+    act(() => { void result.current.submitSegmentChallenge(1, { cardId: "c1:left" }); });
     await settle();
     expect(sfx.play).not.toHaveBeenCalled();
   });
@@ -220,7 +220,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.nextChallengeIndex = 2;
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 3" }));
+    act(() => { void result.current.submitSegmentChallenge(1, { itemId: "Item 3" }); });
     await settle();
     // The ack said "next is 2", but the controller still reports 1 because the
     // SNAPSHOT still says 1. Only the authoritative state moves the segment.
@@ -248,7 +248,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.segmentState = icdChallengeState(1);
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 3" }));
+    act(() => { void result.current.submitSegmentChallenge(1, { itemId: "Item 3" }); });
     await settle();
     expect(result.current.actionError).toBeNull();
   });
@@ -271,7 +271,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.segmentState = icdChallengeState(1);
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 99" }));
+    act(() => { void result.current.submitSegmentChallenge(1, { itemId: "Item 99" }); });
     await settle();
     expect(result.current.actionError).toMatch(/not in this pair/);
   });

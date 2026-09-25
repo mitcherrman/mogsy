@@ -12,7 +12,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readPublicRound } from "@/lib/ranked-public/contracts";
 import type { CaptureSnapshot } from "@/lib/journey/realFixtures";
-import { projectJourneyTimer, projectTimer } from "./rankedViews";
+import { isJourneyFinalReveal, projectJourneyTimer, projectTimer } from "./rankedViews";
 
 const DIR = resolve(process.cwd(), "src/lib/journey/__fixtures__/j3");
 const snap = (n: string, label: string): CaptureSnapshot => {
@@ -86,4 +86,29 @@ it("a segment that is not a Journey keeps the round clock (null here)", () => {
   const e = JSON.parse(JSON.stringify(s.envelope));
   delete e.payload.segment_state.challenges.journey;
   expect(projectJourneyTimer(readPublicRound(e).segmentState, 0, Date.parse(s.at))).toBeNull();
+});
+
+describe("JOURNEY5 — the final reveal window (derived from real J4 captures)", () => {
+  it("Standard: the pool's frozen remainder, PAUSED, and it does not move", async () => {
+    const { pantheonStandardFinalWindow } = await import("@/lib/journey/__fixtures__/j5/finalWindow");
+    const s = pantheonStandardFinalWindow("correct");
+    const seg = readPublicRound(s.envelope).segmentState;
+    expect(isJourneyFinalReveal(seg)).toBe(true);
+    const t0 = projectJourneyTimer(seg, 0, Date.parse(s.at));
+    expect(t0).toMatchObject({ durationSeconds: 150, remainingSeconds: 110, paused: true, urgent: false });
+    expect(projectJourneyTimer(seg, 0, Date.parse(s.at) + 1_500)!.remainingSeconds).toBe(110);
+  });
+
+  it("Survival: no child clock is left to show, so there is none (and the round's is not used)", async () => {
+    const { pantheonSurvivalFinalChild } = await import("@/lib/journey/__fixtures__/j5/finalWindow");
+    const s = pantheonSurvivalFinalChild();
+    const seg = readPublicRound(s.envelope).segmentState;
+    expect(isJourneyFinalReveal(seg)).toBe(true);
+    expect(projectJourneyTimer(seg, 0, Date.parse(s.at))).toBeNull();
+  });
+
+  it("exhaustion is not a final reveal (no revealing index): 0, not paused — unchanged", () => {
+    const { round } = at("voli.standard.exhaust", "child1-timeout");
+    expect(isJourneyFinalReveal(round.segmentState)).toBe(false);
+  });
 });

@@ -631,3 +631,73 @@ describe("DC-LANE-C — the Daily's own live read ends Survival play", () => {
     expect(screen.getByTestId("result-headline")).toHaveTextContent("Out of strikes");
   });
 });
+
+describe("B7 — a Survival strike-out's chrome stays 3/3 until the stage result takes over", () => {
+  const survivalDay = () => createFixtureTransport(FOUR_STAGE_DAY, {
+    existing: wireRun(FOUR_STAGE_DAY, { current_stage_index: 2 }, {
+      0: { status: "completed", result: wireResult() },
+      1: { status: "completed", result: wireResult() },
+      2: { status: "in_progress", child_match_id: "child-2",
+           live: { strikes: { used: 0, live: 0, max: 3 }, own_stage_finished: false } },
+    }),
+  });
+  const count = () => screen.getByTestId("daily-strikes-count").textContent;
+
+  it("strike 1, 2, 3 → gameplay exit → result: never 0/3 after strike 3 (every render watched)", async () => {
+    const t = survivalDay();
+    mount(t);
+    await flush();
+    expect(phase()).toBe("stage-play");
+    expect(count()).toBe("0 / 3");
+
+    // Each strike: the arena relays the child's server status, and the Daily's
+    // own live read (triggered by the phase change) reports the same ledger.
+    const strike = async (n: number, extra: Record<string, unknown> = {}) => {
+      t.setLive({ strikes: { used: n - 1, live: n, max: 3 }, own_stage_finished: false, ...extra });
+      await act(async () => { lastHost!.onSurvivalStatus!({ answered: 2 + n, strikesUsed: n, maxStrikes: 3 }); });
+      await act(async () => { lastHost!.onPresentationPhase!(n % 2 ? "revealing" : "answering"); });
+      await flush(500);
+    };
+    await strike(1);
+    expect(count()).toBe("1 / 3");
+    await strike(2);
+    expect(count()).toBe("2 / 3");
+
+    // Watch every text the strike counter shows from here on.
+    const seen: string[] = [];
+    const record = () => {
+      for (const el of document.querySelectorAll("[data-testid='daily-strikes-count']")) seen.push(el.textContent ?? "");
+    };
+    const obs = new MutationObserver(record);
+    obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+
+    await strike(3, { own_stage_finished: true });
+    record();
+    expect(count()).toBe("3 / 3");
+    // Strike 3 ends gameplay at once (the arena's own signal; the Daily's
+    // own_stage_finished says the same).
+    await act(async () => { lastHost!.onPlayerFinished!("child-2"); });
+    await flush(10);
+    record();
+    expect(phase()).toBe("stage-settling");
+    expect(count()).toBe("3 / 3");
+
+    // The canonical settlement: the parent advances, the completed stage no
+    // longer carries `live`, and the arena's relayed status is dropped.
+    t.finishActiveChild(wireResult({ ended_by: "strikes_exhausted", correct: 4, answered: 7 }));
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-2", terminalReason: "combat", completionReason: "strikes_exhausted" }); });
+    await flush(10);
+    record();
+    obs.disconnect();
+    expect(phase()).toBe("stage-result");
+    expect(screen.getByTestId("result-headline")).toHaveTextContent("Out of strikes");
+    expect(screen.getByTestId("daily-strikes")).toHaveAttribute("data-strikes-out", "true");
+    expect(count()).toBe("3 / 3");
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.filter((s) => s !== "3 / 3")).toEqual([]);
+
+    // Continue leaves the result: Review has no strike chrome at all.
+    await continueOn();
+    expect(q("daily-strikes")).toBeNull();
+  });
+});

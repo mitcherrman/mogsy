@@ -28,7 +28,7 @@
 // it has no business having.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBand";
@@ -44,6 +44,8 @@ import {
   combatPremiseOf, combatQuestionSentence, JourneyCombatPremise,
 } from "@/components/journey/JourneyCombatQuestion";
 import { JourneyMatchupSides } from "@/components/journey/JourneyMatchupSides";
+import { JourneyCombatWorking } from "@/components/journey/JourneyCombatWorking";
+import type { CombatWorking } from "@/lib/journey/combatWorking";
 import { readNumericConstraints } from "@/features/mastery/contracts/playerQuestion";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import type { PlayerAnswer } from "@/features/mastery/player/useMasteryFixtureSession";
@@ -220,7 +222,9 @@ export function questionViewForChallenge(
   };
 }
 
-export function ProseChallenge({ challenge, submitting, onSubmit, reveal = null, showMedia = true, prompt = null }: {
+export function ProseChallenge({
+  challenge, submitting, onSubmit, reveal = null, showMedia = true, prompt = null, revealWorking = null,
+}: {
   challenge: MasterySliceChallengeView;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
@@ -229,6 +233,8 @@ export function ProseChallenge({ challenge, submitting, onSubmit, reveal = null,
   showMedia?: boolean;
   /** JOURNEY-UI2 — a sentence built from the SERVED semantics, replacing a terse label. */
   prompt?: string | null;
+  /** JOURNEY5 — the server's structured working, drawn as the primary reveal. */
+  revealWorking?: ReactNode;
 }) {
   const question = useMemo(() => {
     const q = questionViewForChallenge(challenge);
@@ -283,6 +289,7 @@ export function ProseChallenge({ challenge, submitting, onSubmit, reveal = null,
           correct={reveal.correct}
           answerLabel={reveal.answerLabel}
           explanation={reveal.explanation}
+          working={revealWorking}
         />
       ) : (
         <Button
@@ -307,13 +314,18 @@ export function ProseChallenge({ challenge, submitting, onSubmit, reveal = null,
  * slice's length, which is the same number for the same reason.
  */
 export function MasterySliceChallengeSurface({
-  challenge, total, submitting, onSubmit, reveal = null, journey = null,
+  challenge, total, submitting, onSubmit, reveal = null, journey = null, combatWorking = null,
 }: {
   challenge: MasterySliceChallengeView;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
   reveal?: MasteryQuestionReveal | null;
+  /**
+   * JOURNEY5 — the held reveal's server `combat_working`, if any. Drawn only
+   * while `reveal` is set, and only by a Journey Combat child.
+   */
+  combatWorking?: CombatWorking | null;
   /**
    * JOURNEY-UI2 — this child's Journey context. Present only inside a Journey
    * module, where the board owns the media region (no band is drawn here) and
@@ -324,7 +336,7 @@ export function MasterySliceChallengeSurface({
   if (journey) {
     return (
       <JourneyChild challenge={challenge} total={total} submitting={submitting}
-        onSubmit={onSubmit} reveal={reveal} journey={journey} />
+        onSubmit={onSubmit} reveal={reveal} journey={journey} combatWorking={combatWorking} />
     );
   }
   return (
@@ -334,13 +346,14 @@ export function MasterySliceChallengeSurface({
 }
 
 /** JOURNEY-UI2 — one Journey child: no own media band; Combat and Matchup made explicit. */
-function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey }: {
+function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, combatWorking }: {
   challenge: MasterySliceChallengeView;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
   reveal: MasteryQuestionReveal | null;
   journey: JourneyChildContext;
+  combatWorking: CombatWorking | null;
 }) {
   const path = journeyRenderPathFor(challenge);
   const reinforces = journey.reinforces.length > 0 ? (
@@ -357,7 +370,8 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey 
         <JourneyCombatPremise premise={premise} journey={journey}
           precisionInstruction={typeof precision === "string" ? precision : null} />
         <ProseChallenge challenge={challenge} submitting={submitting} onSubmit={onSubmit}
-          reveal={reveal} showMedia={false} prompt={combatQuestionSentence(premise)} />
+          reveal={reveal} showMedia={false} prompt={combatQuestionSentence(premise)}
+          revealWorking={reveal && combatWorking ? <JourneyCombatWorking working={combatWorking} /> : null} />
       </div>
     );
   }

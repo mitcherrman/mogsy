@@ -68,7 +68,7 @@ import {
   abilityTrayIsUseful, isPointsMatch, moduleProgressLabel,
   opponentLabelFor, opponentPresenceLabel, projectAbilities,
   projectAbilityPermissions, projectCombatants,
-  projectPermissions, projectTimer, projectJourneyTimer,
+  projectPermissions, projectTimer, projectJourneyTimer, isJourneyFinalReveal,
 } from "./rankedViews";
 import {
   EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
@@ -760,9 +760,12 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   const countdownNow = useCountdownNow(
     (journeyClock ? journeyClock.ownCardDeadline : null)
       ?? m.publicRound?.activeRound?.activeDeadline ?? null, m.skewMs);
+  // JOURNEY5 — during a Journey's FINAL reveal window the round's projected
+  // block deadline is never the clock (Survival has no child clock left).
   const timer = !revealing && m.publicRound
     ? (projectJourneyTimer(journeyClock, m.skewMs, countdownNow)
-      ?? projectTimer(m.publicRound, m.skewMs, countdownNow)) : null;
+      ?? (isJourneyFinalReveal(journeyClock) ? null : projectTimer(m.publicRound, m.skewMs, countdownNow)))
+    : null;
   // Wake EXACTLY at the live round's authoritative start, so input opens at
   // `started_at` rather than on the next 1s tick. One timeout, re-armed only
   // when the instant changes, cleared on unmount.
@@ -1550,6 +1553,12 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // R3: selecting an option IS answering. The index comes from the
       // projected question so the arena never guesses it from the option id.
       onSelect: (sel) => {
+        // JOURNEY5-LIVE — the grid is already disabled while input is closed;
+        // this refuses a selection that reaches here anyway (a stale render, a
+        // scripted click) so no answer is POSTed before the round's
+        // `started_at` (skew-corrected) — the server would refuse it with 409
+        // `RANKED_ROUND_NOT_OPEN`.
+        if (!inputOpen) return;
         const option = question?.options.find((o) => o.id === sel);
         if (option) m.answer(option.id, option.index);
       },

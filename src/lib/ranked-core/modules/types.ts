@@ -42,8 +42,12 @@ export interface ModuleSegmentActions {
    * server-issued positional `cardId`, a v1–v3 item card with its `itemId` —
    * so the shell relays a typed choice rather than a bare string it would have
    * to interpret.
+   *
+   * JOURNEY5-LIVE — may return a promise of whether the server ACCEPTED it
+   * (`false`: refused or failed, nothing stored), so a module can release its
+   * local pending state and let the player answer again.
    */
-  submitChallenge: (challengeIndex: number, choice: SegmentChoice) => void;
+  submitChallenge: (challengeIndex: number, choice: SegmentChoice) => void | Promise<boolean>;
   /** True while a challenge submission is in flight. */
   busy: boolean;
   /** Last action error, already human-readable. */

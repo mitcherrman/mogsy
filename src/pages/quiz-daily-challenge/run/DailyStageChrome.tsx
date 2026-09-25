@@ -100,9 +100,9 @@ export function StrikesMeter({ strikes, answered = null }: { strikes: DailyStrik
 }
 
 /** The ruleset's number for the active stage, from the server's live state. */
-function RulesetReadout({ stage, skewMs, childPhase, survival }: {
+function RulesetReadout({ stage, skewMs, childPhase, survival, strikesFloor }: {
   stage: DailyStage; skewMs: number; childPhase: RankedPresentationPhase | null;
-  survival: SurvivalStatus | null;
+  survival: SurvivalStatus | null; strikesFloor: number | null;
 }) {
   const live = stage.live;
   if (stage.ruleset?.id === "time_trial" && live?.timeBank) {
@@ -113,19 +113,25 @@ function RulesetReadout({ stage, skewMs, childPhase, survival }: {
     // the more recent one (strikes never go down within a stage).
     const max = live?.strikes?.max ?? survival?.maxStrikes ?? stage.ruleset.maxStrikes ?? null;
     const daily = live?.strikes ? Math.max(live.strikes.used, live.strikes.live ?? 0) : 0;
-    const used = Math.max(daily, survival?.strikesUsed ?? 0);
+    // B7 — and the stage's last server-reported count, so the terminal 3/3
+    // survives the parent advancing (a completed stage has no `live`).
+    const used = Math.max(daily, survival?.strikesUsed ?? 0, strikesFloor ?? 0);
     return max ? <StrikesMeter strikes={{ used, max }} answered={survival?.answered ?? null} /> : null;
   }
   return null;
 }
 
-export function DailyStageChrome({ run, stage, skewMs = 0, childPhase = null, survival = null }: {
+export function DailyStageChrome({
+  run, stage, skewMs = 0, childPhase = null, survival = null, strikesFloor = null,
+}: {
   run: DailyRun;
   stage: DailyStage | null;
   skewMs?: number;
   childPhase?: RankedPresentationPhase | null;
   /** The active Survival child's reported status (DC-SURV-UX). */
   survival?: SurvivalStatus | null;
+  /** B7 — the highest strike count the server reported for this stage. */
+  strikesFloor?: number | null;
 }) {
   const content = stage ? stageContentLine(stage) : null;
   return (
@@ -148,7 +154,8 @@ export function DailyStageChrome({ run, stage, skewMs = 0, childPhase = null, su
         )}
       </div>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-1">
-        {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase} survival={survival} />}
+        {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase} survival={survival}
+          strikesFloor={strikesFloor} />}
         <Link to={LEAGUECRAFT_HREF} className="text-sm text-muted-foreground underline">
           Back to Quiz
         </Link>

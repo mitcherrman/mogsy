@@ -69,6 +69,13 @@ export interface DailyRunState {
   onChildSurvivalStatus: (status: SurvivalStatus) => void;
   /** The active Survival child's status as its match last reported it. */
   survival: SurvivalStatus | null;
+  /**
+   * B7 — per stage id, the highest strike count the SERVER has reported for
+   * it (the Daily's `live.strikes` or the child's relayed status). Strikes
+   * never go down within a stage, so this is the stage's last known terminal
+   * reading once its `live` block and the child's status are gone.
+   */
+  strikesSeen: Readonly<Record<string, number>>;
   /** DC-LANE-C — the stage result's Continue. Presentation only. */
   continueFromResult: () => void;
 }
@@ -104,6 +111,7 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
   const [childPhase, setChildPhase] = useState<RankedPresentationPhase | null>(null);
   const [finishedChild, setFinishedChild] = useState<string | null>(null);
   const [survival, setSurvival] = useState<SurvivalStatus | null>(null);
+  const [strikesSeen, setStrikesSeen] = useState<Readonly<Record<string, number>>>({});
 
   const mounted = useRef(true);
   const runRef = useRef<DailyRun | null>(null);
@@ -128,11 +136,28 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
     timers.current.push(id);
   }, []);
 
+  /**
+   * B7 — latch a server-reported strike count for a stage (monotone). The
+   * completed stage's snapshot carries no `live` block and the child's relayed
+   * status is dropped when the parent advances, which used to leave the chrome
+   * reading 0/3 over "Out of strikes". Nothing is counted here: only numbers
+   * the server sent are kept.
+   */
+  const noteStrikes = useCallback((stageId: string, used: number | null | undefined) => {
+    if (used === null || used === undefined) return;
+    setStrikesSeen((cur) => (cur[stageId] !== undefined && cur[stageId] >= used
+      ? cur : { ...cur, [stageId]: used }));
+  }, []);
+
   /** Adopt a snapshot as the truth, and notice a stage this mount watched finish. */
   const adopt = useCallback((next: DailyRun) => {
     if (!mounted.current) return;
     const prev = runRef.current;
     runRef.current = next;
+    for (const st of next.stages) {
+      const k = st.live?.strikes;
+      if (st.ruleset?.id === "survival" && k) noteStrikes(st.id, Math.max(k.used, k.live ?? 0));
+    }
     setRun(next);
     setLoad("run");
     setSkewMs(runSkewMs(next.serverNow, Date.now()));
@@ -146,7 +171,7 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
       // screen; the player leaves it with Continue (`continueFromResult`).
       setResultFor(done.id);
     }
-  }, []);
+  }, [noteStrikes]);
 
   const ask = useCallback(async (work: () => Promise<DailyRun>, quiet = false): Promise<DailyRun | null> => {
     if (!quiet) { setBusy(true); setError(null); }
@@ -281,7 +306,10 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
   }, []);
   const onChildSurvivalStatus = useCallback((status: SurvivalStatus) => {
     setSurvival(status);
-  }, []);
+    const r = runRef.current;
+    const s = r ? currentStage(r) : null;
+    if (s?.ruleset?.id === "survival") noteStrikes(s.id, status.strikesUsed);
+  }, [noteStrikes]);
 
   // DC-LANE-C — leave the stage result. The parent has ALREADY advanced (the
   // result only exists after it did), so this moves presentation only: the
@@ -311,6 +339,6 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
   return {
     load, run, flow, busy, error, skewMs, childPhase, childEntry,
     start, retry, onChildSettled, onChildPhase,
-    onChildPlayerFinished, onChildSurvivalStatus, survival, continueFromResult,
+    onChildPlayerFinished, onChildSurvivalStatus, survival, strikesSeen, continueFromResult,
   };
 }

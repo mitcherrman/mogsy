@@ -29,6 +29,7 @@ import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
 import { isJourneyJ3, readJourneyJ3, type JourneyJ3 } from "@/lib/journey/j3";
 import { JourneyContractError } from "@/lib/journey/contract";
+import { readCombatWorking, type CombatWorking } from "@/lib/journey/combatWorking";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -488,6 +489,13 @@ export interface MasteryChallengeReveal {
   correctAnswer: string | null;
   explanation: string | null;
   answerOptions: string[];
+  /**
+   * JOURNEY5 — a Journey Combat child's structured working (`combat_working`),
+   * read through its own fail-closed allowlist: absent when the wire has none
+   * OR it is off-contract, so a malformed block only drops the working, never
+   * the match.
+   */
+  combatWorking?: CombatWorking | null;
 }
 
 export type SegmentBlockView =
@@ -1407,6 +1415,9 @@ function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallenge
     }
     const asText = (raw: unknown): string | null =>
       raw === null || raw === undefined ? null : String(raw);
+    // Only a Journey Combat reveal carries it; every other reveal keeps its
+    // exact pre-J5 shape (no key at all).
+    const combatWorking = readCombatWorking(o.combat_working);
     return {
       challengeIndex,
       isCorrect: o.is_correct === true,
@@ -1415,6 +1426,7 @@ function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallenge
       explanation: asText(o.explanation),
       answerOptions: Array.isArray(o.answer_options)
         ? o.answer_options.map((opt) => String(opt)) : [],
+      ...(combatWorking ? { combatWorking } : {}),
     };
   });
 }
@@ -2215,6 +2227,8 @@ export interface ReviewMasteryChallenge {
   explanation: string | null;
   viewerAnswer: string | number | boolean | null;
   isCorrect: boolean | null;
+  /** JOURNEY5 — a Journey Combat child's structured working; null when absent or off-contract. */
+  combatWorking?: CombatWorking | null;
   /**
    * RQ1 — the challenge's roles as FROZEN at segment start (canonical order).
    * Absent for a role-less challenge and for every match frozen before RQ1.
@@ -2336,10 +2350,12 @@ function reviewMasteryChallenge(raw: unknown, label: string,
   const explanation = nstr(c.explanation, `${label}.explanation`);
   // The inverse guard, same as the quiz round above: an unresolved round must
   // not carry the answer, because the source Mastery set can be served again.
-  if (!revealed && (correctAnswer !== null || explanation !== null)) {
+  if (!revealed && (correctAnswer !== null || explanation !== null
+      || (c.combat_working !== null && c.combat_working !== undefined))) {
     throw new RankedPublicParseError(
       `${label} is not revealed but carried a correct answer`);
   }
+  const combatWorking = revealed ? readCombatWorking(c.combat_working) : null;
   return {
     challengeIndex: num(c.challenge_index, `${label}.challenge_index`),
     prompt: str(c.prompt, `${label}.prompt`),
@@ -2359,6 +2375,9 @@ function reviewMasteryChallenge(raw: unknown, label: string,
     explanation,
     viewerAnswer: reviewMasteryAnswer(c.viewer_answer, `${label}.viewer_answer`),
     isCorrect: nbool(c.is_correct, `${label}.is_correct`),
+    // Reveal-only like `explanation` (the guard above refuses it on an
+    // unresolved round); present only on a Journey Combat row.
+    ...(combatWorking ? { combatWorking } : {}),
     ...(readQuestionRoles(c.roles).length ? { roles: readQuestionRoles(c.roles) } : {}),
   };
 }

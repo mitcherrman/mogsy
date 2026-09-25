@@ -24,6 +24,9 @@
  * reveal is the backend's own text. Neither J2 nor J3 serves a structured
  * derivation (raw damage → effective armor → mitigation → final), so none is
  * drawn and none is computed; prose is never parsed to rebuild one.
+ * JOURNEY5 — when the reveal carries the server's `combat_working`, that
+ * derivation is drawn verbatim by `JourneyCombatWorking` (still no arithmetic
+ * here); without it, the prose-only reveal is unchanged.
  *
  * JOURNEY-UI3 — a J3 child may RECALL the target's armor (scenario value
  * `"recalled"`): it is drawn as "recall · revealed in step N", from the
@@ -65,7 +68,7 @@ const shown = (key: string, v: string | number) =>
   key === "armor_penetration_percent" ? `${v}%` : (v === "none" ? "None" : String(v));
 
 /** A served ratio coefficient, written as the game writes it (1 → 100%). */
-const percent = (ratio: number) => `${Number((ratio * 100).toFixed(4))}%`;
+export const percent = (ratio: number) => `${Number((ratio * 100).toFixed(4))}%`;
 
 export interface CombatPremise {
   champion: string;
@@ -97,10 +100,24 @@ export function combatPremiseOf(challenge: MasterySliceChallengeView): CombatPre
   };
 }
 
+/**
+ * JOURNEY5 — which part of the ability the premise is about (e.g. Pantheon E's
+ * `"unempowered cast (no Mortal Will)"`), verbatim from the scenario pair
+ * `ability_component`; null when the server states none.
+ */
+export function abilityComponentOf(p: CombatPremise): string | null {
+  const v = p.pairs.find(([k]) => k === "ability_component")?.[1];
+  return v === undefined || v === "" ? null : String(v);
+}
+
 /** The question sentence, from the structured premise (no prose parsed). */
 export function combatQuestionSentence(p: CombatPremise): string {
   const target = p.pairs.find(([k]) => k === "target")?.[1];
-  const ability = `${p.champion}'s ${p.ability || p.slot}${p.slot ? ` (${p.slot}${p.rank !== null ? `, rank ${p.rank}` : ""})` : ""}`;
+  const component = abilityComponentOf(p);
+  const qualifiers = [p.rank !== null ? `rank ${p.rank}` : null, component].filter((x) => x !== null);
+  const ability = `${p.champion}'s ${p.ability || p.slot}${p.slot
+    ? ` (${[p.slot, ...qualifiers].join(", ")})`
+    : component ? ` (${component})` : ""}`;
   return `How much ${p.metric === "ability_physical_damage_after_armor" ? "physical damage, after armor," : "damage"} does ${ability} deal${target ? ` to ${target}` : ""}?`;
 }
 
@@ -128,7 +145,10 @@ export function JourneyCombatPremise({ premise, journey, precisionInstruction = 
   // J3 — the attacker's stated premise stats. The phone keeps them all.
   const onBoard = (k: string) => ON_BOARD.has(k) || (journey?.boardStats ?? []).includes(k);
   const target = pairs.get("target");
-  const known = new Set<string>([...ATTACKER_KEYS, ...TARGET_KEYS]);
+  // `ability_component` qualifies the ABILITY: it is stated in the question
+  // sentence beside the slot and rank (`combatQuestionSentence`), never as a
+  // chip in the target row — and not twice, for the 1024 height budget.
+  const known = new Set<string>([...ATTACKER_KEYS, ...TARGET_KEYS, "ability_component"]);
   // A premise key this build does not name is still shown — nothing dropped.
   const others = premise.pairs.filter(([k]) => !known.has(k));
   const formula = journey?.formula && journey.formula.slot === premise.slot ? journey.formula : null;

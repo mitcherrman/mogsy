@@ -176,3 +176,20 @@ describe("the timeline's outcome for a counted round", () => {
     expect(questionOutcome(quiz)).toBe("correct");
   });
 });
+
+describe("JOURNEY5 — a Journey Combat row's structured working in the review", () => {
+  it("prints the served working above the kept prose; a row without one is unchanged", async () => {
+    const { readCombatWorking } = await import("@/lib/journey/combatWorking");
+    const { PANTHEON_E_WORKING_RECALLED } = await import("@/lib/journey/__fixtures__/j5/finalWindow");
+    const working = readCombatWorking(structuredClone(PANTHEON_E_WORKING_RECALLED));
+    render(<QuestionReviewCard round={masteryRound({
+      masteryChallenges: [masteryChallenge(0, { correctAnswer: "83", viewerAnswer: "83", combatWorking: working }),
+        masteryChallenge(1)],
+    })} position={3} total={6} />);
+    const w = screen.getByTestId("review-mastery-working-0");
+    expect(w).toHaveTextContent("Leona armor 50.08 (recalled from step 1)");
+    expect(w).toHaveTextContent("Answer 83");
+    expect(screen.getByTestId("review-mastery-explanation-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-mastery-working-1")).toBeNull();
+  });
+});

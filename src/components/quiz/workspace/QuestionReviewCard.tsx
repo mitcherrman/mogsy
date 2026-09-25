@@ -52,6 +52,7 @@ import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { useQuestionOwnership } from "@/components/quiz/workspace/ownedQuestionIndex";
 import type { ReviewChallenge, ReviewRound } from "@/lib/ranked-public/contracts";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
+import { JourneyCombatWorking } from "@/components/journey/JourneyCombatWorking";
 import {
   masteryChallengeRolesDiffer, reviewRoundRoles,
 } from "@/lib/ranked-public/reviewRoles";
@@ -413,6 +414,19 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                   </p>
                 )}
               </div>
+
+              {/* JOURNEY5 — a Journey Combat child's served working, verbatim,
+                  above the prose (kept, as on the live reveal). */}
+              {round.revealed && challenge.combatWorking && (
+                <div
+                  className="space-y-0.5"
+                  data-testid={`review-mastery-working-${challenge.challengeIndex}`}
+                  style={{ color: LEAGUECRAFT_INK.body }}
+                >
+                  <SectionLabel>Working</SectionLabel>
+                  <JourneyCombatWorking working={challenge.combatWorking} />
+                </div>
+              )}
 
               {challenge.explanation && (
                 <div
