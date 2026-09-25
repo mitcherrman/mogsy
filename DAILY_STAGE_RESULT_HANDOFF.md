@@ -222,3 +222,253 @@ Recall is not a transition type there: it is gold plus a legal purchase, so the 
    - Survival finish stops the beats
    - Daily hosted flow unaffected
 8. Certify in a real browser at 375, 390, 1024, 1280 and 1440, then run the production build.
+
+---
+
+# JOURNEY-UI1 — Journey state board: presentation layer (frontend)
+
+Frontend only. Local commit on `dclane-c/daily-stage-result`, not pushed.
+- **Code commit:** `507445dc115f16abbdeacf89c50f266e878c289b`. This handoff update is the commit after it.
+- **Not wired into production Daily or Ranked.** Every new arena prop is optional and absent in production, so today's arena is unchanged.
+
+The contract is the provisional `journey.public.v0`, written against the backend `JOURNEY1_HANDOFF.md` (`dcgr-integ` worktree, untracked, on `64852eab`).
+
+## 1. What was built
+**Architecture:** one board per Journey module, persisting across child questions.
+- `JourneyModuleStage` mounts `ScenarioMediaBand` → `JourneyStateBoard` once, keyed on `journeyKey`. The child question sits beneath it; the caller keys it per child, as the slice does today.
+- It is fed only the canonical public state (`segment_state.journey`). It never assembles state from question prose, and it computes no stat, cooldown, damage, resistance or item effect.
+
+| Area | Where |
+|---|---|
+| Contract + typed allowlist reader | `src/lib/journey/contract.ts` |
+| Closed premise-stat vocabulary, labels, formatting (no arithmetic) | `src/lib/journey/stats.ts` |
+| Beat timing, lasting marks, event copy (pure) | `src/lib/journey/beat.ts` |
+| Rail identity projection | `src/lib/journey/rail.ts` |
+| Fixtures (JOURNEY1 §7 arcs A, C, F; explicit beat simulation `withBeat`) | `src/lib/journey/fixtures.ts` |
+
+**Components** (`src/components/journey/`):
+- `JourneyPrimitives.tsx`:
+  - `JourneyPortrait`: gold ring; cool rim for the opponent.
+  - `LevelBadge`: shows "Lv 5 6" with the old level struck through.
+  - `AbilityRankPips`: Q/W/E/R icon, slot badge and pips; rank 0 shows as locked.
+  - `InventorySlots`: six fixed slots; empty slots dashed; new items get a green rim.
+  - `StatChip`: three faces, all at a fixed height — plain, delta ("51.59 → 91.59") and withheld ("?").
+- `JourneyStateBoard.tsx`: the two-sided board, with a VS seam, or an attacker → target arrow for Combat.
+- `JourneyTransitionBeat.tsx`: the beat overlay on the board — a stamp (Recall / Level up / Ultimate unlocked / Purchase), the transition label, and staged event lines.
+- `JourneyStateSheet.tsx`: the expanded State sheet. It uses the existing bottom `Sheet` and shows both sides together.
+- `JourneyModuleStage.tsx`: the module-level composition, the beat gate and the reveal hold.
+- `useJourneyBeat.ts`: compares server time to `beat.until` and arms one timer.
+- `JourneyCrest.tsx`:
+  - `JourneyBannerCrest` sits in the desktop banner's mascot slot, reserving the slot with its own classes.
+  - `JourneyMatchBarCrest` replaces the 40px crest in the phone match bar.
+
+**Seams extended** (all optional; absent means byte-identical):
+
+| File | Change |
+|---|---|
+| `components/question-surface/ScenarioMediaBand.tsx` | `children` draws a card in place of the classified `ScenarioCard`, inside the same geometry; also adds `className` and `data-band-kind`. |
+| `lib/ranked-core/arenaView.ts` | Combatant rail gains `journey?: JourneyRailIdentity \| null`. |
+| `components/ranked-arena/CanonicalArena.tsx` (`Rail`) | Relays it. |
+| `components/ranked-arena/CombatantPanel.tsx` | `journey` replaces the role crest in the banner. |
+| `components/ranked-arena/MobileMatchBar.tsx` | `rail.journey` replaces the crest. |
+| `src/index.css` | `.journey-*` rules. Density is a **container query on the band**, not a viewport query. |
+
+**Fixture infrastructure:**
+- `/dev/ranked-arena-inspector`: 8 `Journey — …` states on the real question card, using the inspector's Mobile 375 / Narrow 1024 / Full buttons.
+- `/dev/journey-arena?arc=a|c|f&step=N`: new dev route, `src/pages/dev/journey-arena/`. It is the real `CanonicalArena` with banner rails, the phone match bar, and a fixture module rendering `JourneyModuleStage` above the real `InteractiveScenarioSurface` with `mediaScale: "none"`, so the page has exactly one band.
+  - Its step controls simulate the server poll and stamp the beat instant.
+
+## 2. Presentation (locked, as built)
+- **Desktop:**
+  - Subject champion in the left banner, opponent champion in the right banner: portrait, `Lv`, champion name and Q/W/E/R pips, in the role mascot's box.
+  - The full two-sided board sits in the question's media band. On a Journey the per-child scenario band is gone and the question card below is prompt plus answers.
+- **Phone:**
+  - Both champions are always visible, as two stacked rows in the same band: `[portrait] NAME · Lv · Atk/Tgt …… focus stats` / `Q W E R ▢▢▢▢▢▢`.
+  - The phone match bar shows each champion with a level corner.
+  - The **State** button opens the full sheet.
+  - No carousel.
+- **Hierarchy:**
+  - Always visible: identity, level, ranks, items.
+  - Band density shows all of a side's premise stats. Compact shows at most 2 per side, choosing what the question focuses on first, then what just changed.
+  - The sheet has everything.
+- **Transitions:**
+  - They play between children, on the board: the changed facts pulse, a stamp appears, and one line per event is staged in the server's order.
+  - While the canonical beat runs, the next question stays **mounted in its box but `inert`, `aria-hidden` and veiled** ("Board updating…"). No clock is touched: the client only waits for the server's `until`.
+  - The deltas (the "Lv 5 → 6" level badge, delta chips, new-item rims, raised pips) **persist for the whole following child**, because the server keeps the transition on that child's state.
+  - With reduced motion there is no animation; the gate and the lasting marks are unchanged.
+- **Matchup:** each side draws its own ranks, e.g. arc A child 2: Jarvan Q3 W1 E1 R1 vs Olaf Q3 W0 E2 R1. The shared-scalar defect cannot occur on a Journey board.
+- **Combat:** `focus.combat` tags the sides Attacker/Target and turns the seam into an arrow. `focus.refs` outline the attacker's ability, rank and stats, the target's armor/resistance and penetration, and items. The board does **not** solve Combat: it has no key under which a damage, cooldown or effective-resistance number could be published.
+
+## 3. Contract used: `journey.public.v0` (wire, snake_case)
+```jsonc
+// segment_state.journey — per viewer, always describing the viewer's CURRENT child
+{
+  "contract": "journey.public.v0",
+  "journey_key": "journey:jungle-first-recall-j4-olaf@1",   // opaque, stable for the whole Journey
+  "plan": "standard" | "survival",
+  "title": "First Recall → Defensive Purchase",            // optional
+  "step": { "index": 2, "count": 5, "node_id": "n1", "node_label": "Jarvan IV's first back" },
+  "sides": [                                               // exactly one subject + one opponent
+    { "side": "subject", "champion_id": "JarvanIV", "champion_name": "Jarvan IV", "icon": null,
+      "level": 6,
+      "abilities": [ { "slot": "Q", "rank": 3, "max_rank": 5, "name": "Dragon Strike", "icon": null }, … W, E, R ],
+      "items": [ { "slot": 0, "item_id": 3133, "name": "Caulfield's Warhammer", "icon": null } ],   // 0..5, fixed
+      "stats": [ { "key": "bonus_attack_damage", "value": 20 },
+                 { "key": "armor", "withheld": true } ],   // withheld: NO value key at all
+      "vitals": null },                                    // only when tracked
+    { "side": "opponent", … } ],
+  "transition": {                                          // only on the child right after a node change
+    "from_node": "n0", "to_node": "n1", "label": "Jarvan IV buys Caulfield's Warhammer (1050g)",
+    "events": [
+      { "kind": "purchase", "side": "subject", "group": "recall", "items": [ { "slot": 0, "item_id": 3133, "name": "…", "cost": 1050 } ] },
+      { "kind": "stat_delta", "side": "subject", "key": "ability_haste", "from": 0, "to": 10 }
+      // also: level {from,to} · ability_rank {slot,from,to} · ability_unlock {slot} · item_removed {item_id,name}
+    ],
+    "beat": { "ms": 1800, "until": "2026-09-25T12:00:01.800Z" } },   // canonical; until = next child answerable
+  "focus": { "refs": [ { "side": "subject", "kind": "ability", "key": "Q" },
+                       { "side": "opponent", "kind": "stat", "key": "armor" } ],   // also item {key: slot}, level
+             "combat": { "attacker": "subject", "target": "opponent" } | null }
+}
+```
+**Stat vocabulary (closed):** `health`, `attack_damage`, `bonus_attack_damage`, `ability_power`, `ability_haste`, `armor`, `magic_resist`, `lethality`, `armor_penetration_percent`, `magic_penetration`, `magic_penetration_percent`.
+
+**Safety is a typed allowlist:**
+- Every object is read against its exact key set, and an unknown key anywhere fails the read. `answer`, `correct`, `reveal`, `explanation` and `cooldown` are all refused as "not allowed", not by a name list.
+- A withheld stat that carries a `value` (even `null`) is refused.
+- Cross-checks against the resulting state reject:
+  - an event that restates a withheld stat;
+  - a delta whose `to` differs from the board;
+  - a level or rank event that does not rise to the board;
+  - a purchase of an item not held;
+  - a removal of an item still held;
+  - a focus ref to something absent;
+  - an attacker equal to the target.
+- `tryReadJourneyPublicState` returns `null` for a malformed block, so a surface draws no board rather than crashing a match.
+
+## 4. Divergences from JOURNEY1 (the backend must decide; J2 should fold these in)
+1. **The public state is per viewer, not per child.**
+   - `mastery_slice.public_view` publishes **every** child at segment open (`ranked_modules/mastery_slice.py:1780-1789`).
+   - A node state attached to each child would therefore publish later premises early, and JOURNEY1's reinforcement makes a later premise an earlier *answer*. In arc C, the armor asked in child 1 (44.195) is the stated premise of child 3.
+   - So the state lives in `segment_state.journey` and advances with `own_next_challenge_index`.
+   - **This same leak already exists in JOURNEY1's design through the children's PROMPTS:** child 3's prompt text, which states armor 44.195, is public at segment open while child 1 asks for it.
+   - The backend must either publish children progressively, or never let a later child's premise equal an earlier child's asked target inside one Journey. The ledger (`asked` vs `displayed`, §13) has the data to enforce the second.
+2. **A public node projection with per-child withholding.** JOURNEY1 keeps nodes private and publishes only `{beat, node_label, transition_note}`. The board needs level, ranks (`ranks_after(level)`), fixed item slots and premise stats per side. A stat is `withheld` when the current child's ledger `asked` target is that stat (e.g. `champion_stat_level` asks Garen's armor).
+3. **Stats map from `derive_side`:**
+
+   | Board key | `derive_side` source |
+   |---|---|
+   | `attack_damage` | `attack_damage.total` |
+   | `bonus_attack_damage` | `attack_damage.bonus` |
+   | `ability_power` | `ability_power.total` |
+   | `ability_haste` | `ability_haste.total` |
+   | `armor` | `armor.total` |
+   | `magic_resist` | `magic_resist.total` |
+   | `health` | `health.at_level` |
+   | `lethality`, `armor_penetration_percent` | penetration premises |
+
+   Cooldowns (`ability.<slot>.cooldown.*`) are deliberately **not** board stats.
+4. **Lossless per-event transitions.** JOURNEY1's `transitions:[{from,to,side,axes,note,gold}]` must expand to typed events:
+   - `level`;
+   - `ability_rank` (the skill-path diff);
+   - `ability_unlock`;
+   - `purchase`, with slot and cost;
+   - `item_removed`, for component consumption;
+   - `stat_delta`, public and non-withheld only.
+
+   **Recall:** there is no recall authority (JOURNEY1 §7: gold is narration only), so `group: "recall"` is a **presentational grouping chosen by the recipe** (e.g. arc type "First Recall"), not a timing claim. Owner decision.
+5. **A canonical beat.** `transition.beat {ms, until}` is new. The server must not open the next child's answer window before `until`.
+   - Under per-child clocks (PRE-1, Survival) that is a later `answerable_at`.
+   - Under Standard's **pooled block clock** (M10, 150 s) the beat would spend the player's pool unless the block deadline is extended by `ms`, as `reveal_window_ms` already is.
+   - The reveal window and the beat should be sequential: the board holds the previous state during the reveal hold, then plays the beat.
+6. **Focus and combat roles.** `focus.refs` come from the ledger's `displayed` premise refs for the current child. `focus.combat` comes from the Combat child's attacker, including the reverse direction (arc D #5).
+7. `vitals` (HP/resource) are supported but optional; JOURNEY1 lists them as later. `title`, `icon` and ability `name` are optional.
+
+## 5. Measurements (real browser, `/dev/journey-arena` + inspector)
+| Viewport | Board density | Band (w×h) | Overflow | Banner / bar crest | Question box across a beat |
+|---|---|---|---|---|---|
+| 1440×900 | band, roomy (≥34rem wide and ≥14rem tall) | 584×256 | none (board 256/256, sides 212/212) | 171×136 = the role mascot slot, identical; score 180px below the crest top in both | y=463, h=256 before, during and after |
+| 1280×800 | band | 576×208 | none | 169×134 = the mascot slot at this width | unchanged |
+| 1024×768 | band (≥26rem) | 438×200 | none (sides 162/162) | 131×104 | unchanged |
+| 390×844 | compact | 352×127 | none (rows 49/49); page scrollWidth 390 | 40px crest, champion + level | unchanged |
+| 375×812 | compact | 337×121 (the arena's own phone band) | none (rows 46/46); page scrollWidth 375 | 40px crest, champion + level | question 130/614, answers 439/210 before, during and after |
+
+**What was checked in the browser:**
+- **Beat (1440, arc A 4→5):** at +0.6 s the stage is active, the question `inert`, and the lines are staged. After the beat, "Armor 51.59 → 91.59" stays in its delta face and Chain Vest keeps its new-item mark.
+- **Level-up beat, captured mid-beat:** "LEVEL UP" stamp; both banners at LV 7 in the changed state; "Board updating…" over the veiled question.
+- **Phone unlock (375, arc F):** "Ultimate unlocked", then "LV 5 → 6", R lit and focused, and Ahri's armor delta.
+- **Withheld (390, arc C child 1):** "ARMOR ?" with focus rings. The board's DOM never contains 44.195; it appears only as answer option C. The sheet reads "? — asked in this question".
+- **State sheet on the phone:** both sides stacked, all stats by long label, no page overflow.
+
+## 6. Tests
+**New: 35 tests.**
+- `src/lib/journey/contract.test.ts` (18):
+  - every fixture reads;
+  - one journey key per run;
+  - per-side ranks;
+  - side-order normalisation;
+  - withheld has no value, and a withheld stat with a value (or `null`) is refused;
+  - unknown and answer-bearing keys are refused at every level;
+  - no key exists for a cooldown, damage or effective resistance;
+  - a transition restating a withheld stat is refused;
+  - contradicting events, bad focus refs, structural breakage and an unknown contract are refused;
+  - the tolerant reader returns null;
+  - beat instant boundaries;
+  - marks; event lines; staging; formatting.
+- `src/components/journey/JourneyModuleStage.test.tsx` (17):
+  - one band node across children, and exactly one band;
+  - the beat gate (inert and veiled until the server instant, open 1 ms after);
+  - deltas persist after the beat;
+  - a refresh after `until` plays no beat;
+  - no instant means no beat;
+  - the reveal hold keeps the previous state and defers the beat;
+  - level, rank and unlock marks;
+  - withheld `?` with the value nowhere in the DOM, sheet included;
+  - no cooldown or damage on the board;
+  - Matchup per-side ranks;
+  - Combat roles and focus;
+  - compact stat priority;
+  - the sheet;
+  - the banner crest replaces and then restores the role crest;
+  - the phone crest;
+  - a source guard: the Journey layer imports no calculation, combat, engine or service module.
+
+**Focused suites, run together:** journey, ranked-arena, question-surface, quiz-broadcast, game-results, ranked-core, ranked-public, daily-challenge, question-surface lib, quiz-daily-challenge, quiz-ranked, the arena inspector and features/mastery.
+- **Result:** 222 of 225 files, 2850 of 2856 tests.
+- **The 6 failures are pre-existing:** identical by name at `fe33aaa7`, before any Lane C or Journey work:
+  - `QuestionMotifLayer.qf1` (1)
+  - `AnswerGrid.elimination` (2)
+  - `QuestionStageGeometry` (3)
+
+**Other checks:**
+- `npm run build` passes.
+- `tsc -p tsconfig.app.json`: 20 errors, all pre-existing, none in a touched file.
+
+**Correction to the earlier stage-result commit `26ed7f0c`:** `components/ranked-arena/DailyOnCanonicalArena.boundary.test.tsx` failed 3 tests from that commit on. It was outside the suites that run covered. It is fixed here by narrowing the guard the same way `dailyRun.boundary` was:
+- `DailyStageResult.tsx` and `stageResultModel.ts` are registered as Daily files;
+- "Continue" is allowed only in `DailyStageResult.tsx`;
+- every other manual-progression token is still banned.
+
+The stage result's prop is renamed `onContinue` → `onProceed` so the page carries no "Continue" token.
+
+**Pre-existing failures, reproduced on a clean worktree at `18b84d7f`, untouched:**
+- `pages/dev/lobby-preview/syntheticRankedHistory.test.ts` (1)
+- `pages/dev/lobby-preview/LobbyPreviewPage.test.tsx` (2)
+
+`pages/dev/team-sim/TeamSimPage.phase5a.test.tsx` failed once under full-folder load and passes on its own.
+
+## 7. Scope kept
+- No Daily wiring, no stage-result change, no scoring change, no Champion Focus.
+- No backend field beyond the provisional contract above.
+- The Matchup and Combat card code paths are unchanged. The legacy per-child band still renders for every non-Journey slice.
+
+## 8. Exact integration task once J2 returns (JOURNEY-UI2)
+1. **Contract.** Replace the fixtures' wire with J2's real `segment_state.journey` samples, and re-run the reader tests on them. In `ranked-public/contracts.ts`, have `SegmentStateView` gain `journey: JourneyPublicState | null` via `tryReadJourneyPublicState(raw.journey)`, and confirm the pre-reveal walker passes it.
+2. **Module.** In `masterySliceModule.tsx` `MasterySliceChallengePhase`:
+   - when `state.journey` is present, wrap the keyed `MasterySliceChallengeSurface` in `<JourneyModuleStage state={state.journey} skewMs={skewMs} holdPrevious={holding !== null}>`;
+   - thread `skewMs` from `ModuleViewportProps`;
+   - add a `media="none"` prop to `MasterySliceChallengeSurface` so a Journey child skips its own `ScenarioMediaBand`, and pass `settings={{ mediaScale: "none" }}` on the prose path;
+   - drop the "Opponent: X of N done" line above it only if design asks.
+3. **Rails.** In `pages/quiz-ranked/QuizRankedMatch.tsx`, while the current segment's state carries `journey`, set `left.journey = journeyRailIdentity(journey, "subject")` and `right.journey = …("opponent")`. The viewer is always the subject; the bot's flank is the opponent champion. This applies to hosted and plain Ranked alike.
+4. **Survival.** Once `own_stage_finished` is set, the arena already stops presenting gameplay (the hosted placeholder), so no later transition can play. Add one test asserting no `journey-beat` after the finish signal.
+5. **Timing.** Confirm J2's `beat.until` ordering against `reveal_window_ms` and Standard's block deadline (§4.5), and adjust `holdPrevious` if the server sequences them differently.
+6. **Certify.** Re-run the browser widths (375, 390, 1024, 1280, 1440) on a real Bot match with a J2 Journey, run the focused suites and the build, and commit locally.
