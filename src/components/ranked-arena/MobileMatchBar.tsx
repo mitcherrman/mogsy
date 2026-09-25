@@ -25,6 +25,7 @@ import { isMirroredSide } from "./CombatantPanel";
 import { ModuleBubble } from "./ModuleBubble";
 import { RoleEmblem } from "./RoleEmblem";
 import { NeutralSigil, roleIdentityFor } from "./roleIdentity";
+import { JourneyMatchBarCrest } from "@/components/journey/JourneyCrest";
 
 type CombatantRail = Extract<ArenaRail, { kind: "combatant" }>;
 
@@ -60,6 +61,11 @@ function statusOf(c: CombatantView, outcome: CombatantRail["outcome"], showAbili
  */
 function Crest({ rail, mirrored }: { rail: CombatantRail; mirrored: boolean }) {
   const c = rail.combatant;
+  // JOURNEY-UI1 — during a Journey the crest is the side's champion, in the
+  // same 40px box, so the bar's layout is unchanged.
+  if (rail.journey) {
+    return <JourneyMatchBarCrest identity={rail.journey} testId={`mobile-crest-${c.playerId}`} />;
+  }
   const role = roleIdentityFor(c.roleId);
   const roleLayout = c.identityMode === "role" || role.role !== null;
   const klass = classIdentityFor(c.classId);

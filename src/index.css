@@ -15911,3 +15911,201 @@ html.hub-commons-in-view .hextech-ambience-layer {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: none; }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   JOURNEY-UI1 — THE JOURNEY STATE BOARD.
+   Drawn inside `ScenarioMediaBand` (a `container-type: size` box), so its
+   density is a CONTAINER query on the band, not a viewport query: the same
+   board is the side-by-side `band` on a desktop question card and the stacked
+   `compact` rows on a phone, from one DOM tree.
+   Every box is sized by a `--jb-*` token that only the density sets. A state
+   change swaps what is inside a box, never its size, so the question below
+   cannot move between children or during a transition beat.
+   ────────────────────────────────────────────────────────────────────────── */
+.journey-vars {
+  --jb-portrait: 1.625rem;
+  --jb-ability: 1rem;
+  --jb-slot: 1rem;
+  --jb-pip: 3px;
+  --jb-mono: 0.5rem;
+  --jb-chip-font: 0.5625rem;
+  --jb-chip-h: 0.875rem;
+}
+.journey-chip {
+  height: var(--jb-chip-h);
+  line-height: var(--jb-chip-h);
+  font-size: var(--jb-chip-font);
+}
+.journey-pip { width: var(--jb-pip); height: var(--jb-pip); }
+.journey-chip--delta {
+  border-color: rgb(143 208 160 / 0.65);
+  background: rgb(143 208 160 / 0.12);
+}
+/* Focus: what the current question is about. A shadow, so it lays out nothing. */
+.journey-focus {
+  box-shadow: 0 0 0 1.5px #f3dca0, 0 0 10px rgb(243 220 160 / 0.45);
+}
+.journey-board {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  overflow: hidden;
+  font-size: var(--jb-chip-font);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(212 179 90 / 0.10), transparent 60%),
+    linear-gradient(180deg, #0b1727, #060d18);
+}
+.journey-board__head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 0.75rem;
+  min-width: 0;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.7);
+}
+.journey-board__eyebrow { display: flex; min-width: 0; align-items: center; white-space: nowrap; }
+.journey-board__state-btn { height: 0.75rem; font-size: 0.5rem; }
+.journey-board__sides {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) 1px minmax(0, 1fr);
+  gap: 3px;
+}
+/* Compact: the seam is a gold hairline between the stacked rows. */
+.journey-board__seam {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, transparent, rgb(212 179 90 / 0.6), transparent);
+}
+.journey-board__seam > * { display: none; }
+/* Compact (a phone): one row per side, ~36px, the portrait spanning both
+   lines —   [portrait] NAME · Lv · role ............ focus stats
+             [        ] Q W E R  ▢▢▢▢▢▢                          */
+.journey-side {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: var(--jb-portrait) minmax(0, 1fr) auto;
+  grid-template-areas: "portrait name stats" "portrait kit items";
+  align-content: center;
+  align-items: center;
+  column-gap: 5px;
+  row-gap: 2px;
+}
+.journey-side__id { display: contents; }
+.journey-side__id > [data-testid^="journey-portrait-"] { grid-area: portrait; }
+.journey-side__name { grid-area: name; display: flex; min-width: 0; align-items: center; gap: 4px; }
+.journey-side__champion { font-size: 0.625rem; line-height: 0.75rem; }
+.journey-side__kit { grid-area: kit; display: flex; gap: 3px; }
+.journey-side__items { grid-area: items; justify-self: end; }
+.journey-side__stats {
+  grid-area: stats;
+  display: flex;
+  justify-self: end;
+  gap: 3px;
+  overflow: hidden;
+}
+.journey-side__stats { align-items: center; }
+.journey-stat-cell { display: inline-flex; }
+/* Compact names the combat role in three letters, so the champion keeps the room. */
+.journey-role-long { display: none; }
+.journey-role-short { display: inline; }
+.journey-stat-cell[data-compact="false"] { display: none; }
+
+@container (min-width: 26rem) {
+  .journey-vars {
+    --jb-portrait: 2.25rem;
+    --jb-ability: 1.625rem;
+    --jb-slot: 1.5rem;
+    --jb-pip: 4px;
+    --jb-mono: 0.75rem;
+    --jb-chip-font: 0.625rem;
+    --jb-chip-h: 1.2rem;
+  }
+  .journey-board { gap: 6px; padding: 8px 10px; }
+  .journey-board__head { height: 1rem; font-size: 0.5625rem; }
+  .journey-board__state-btn { height: 1rem; font-size: 0.5625rem; }
+  /* Band: the two sides stand as facing columns either side of the seam. */
+  .journey-board__sides {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) 1.75rem minmax(0, 1fr);
+    gap: 6px;
+  }
+  .journey-board__seam {
+    background: linear-gradient(180deg, transparent, rgb(212 179 90 / 0.55), transparent)
+      center / 1px 100% no-repeat;
+  }
+  .journey-board__seam > * { display: block; background: #07111f; padding: 2px 0; }
+  .journey-side {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "id" "kit" "items" "stats";
+    align-content: start;
+    row-gap: 6px;
+  }
+  .journey-side__id { grid-area: id; display: flex; min-width: 0; align-items: center; gap: 6px; }
+  .journey-side__name { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .journey-side__kit { gap: 4px; }
+  .journey-side__champion { font-size: 0.75rem; line-height: 0.95rem; }
+  .journey-side__items, .journey-side__stats { justify-self: start; }
+  .journey-side__stats { flex-wrap: wrap; overflow: visible; }
+  .journey-stat-cell[data-compact="false"] { display: inline-flex; }
+  .journey-role-long { display: inline; }
+  .journey-role-short { display: none; }
+  /* The opponent faces the subject: mirrored to the outer edge. */
+  .journey-side[data-side="opponent"] { justify-items: end; }
+  .journey-side[data-side="opponent"] .journey-side__id { flex-direction: row-reverse; text-align: right; }
+  .journey-side[data-side="opponent"] .journey-side__name { align-items: flex-end; }
+  /* Abilities stay Q W E R on both sides — the order players read — and only
+     the alignment mirrors. */
+  .journey-side[data-side="opponent"] .journey-side__items,
+  .journey-side[data-side="opponent"] .journey-side__stats { justify-self: end; justify-content: flex-end; }
+}
+
+/* The beat: what changed pulses while the canonical beat runs. Shadows and
+   filters only — nothing that lays out. */
+@keyframes journey-changed-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(143 208 160 / 0); filter: none; }
+  50% { box-shadow: 0 0 0 2px rgb(143 208 160 / 0.9), 0 0 14px rgb(143 208 160 / 0.6); filter: brightness(1.25); }
+}
+.journey-board[data-beat="active"] .journey-changed,
+.journey-board[data-beat="active"] .journey-chip--delta {
+  animation: journey-changed-pulse 0.9s ease-in-out 2;
+}
+.journey-beat__stamp { font-size: 0.625rem; line-height: 1.1rem; }
+.journey-beat__label { font-size: 0.625rem; }
+.journey-beat__line { font-size: 0.5625rem; line-height: 0.85rem; }
+@container (min-width: 26rem) {
+  .journey-beat__stamp { font-size: 0.75rem; line-height: 1.35rem; }
+  .journey-beat__label { font-size: 0.75rem; }
+  .journey-beat__line { font-size: 0.6875rem; line-height: 1.05rem; }
+}
+/* The question while the beat runs: present (same box), not yet active. */
+.journey-question__content--veiled { opacity: 0.12; filter: blur(1px); }
+@media (prefers-reduced-motion: reduce) {
+  .journey-board[data-beat="active"] .journey-changed,
+  .journey-board[data-beat="active"] .journey-chip--delta { animation: none; }
+}
+/* Roomy band: a wide AND tall band (a large desktop) spends its height. */
+@container (min-width: 34rem) and (min-height: 14rem) {
+  .journey-vars {
+    --jb-portrait: 2.75rem;
+    --jb-ability: 2rem;
+    --jb-slot: 1.75rem;
+    --jb-pip: 5px;
+    --jb-chip-font: 0.6875rem;
+    --jb-chip-h: 1.35rem;
+  }
+  .journey-board { gap: 8px; padding: 10px 12px; }
+  .journey-side { row-gap: 8px; }
+  .journey-side__champion { font-size: 0.875rem; line-height: 1.1rem; }
+}

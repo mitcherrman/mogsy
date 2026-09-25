@@ -47,7 +47,7 @@ export interface StageResultPlacementContext {
 export type StageResultPlacement = (ctx: StageResultPlacementContext) => ReactNode;
 
 export function DailyStageResult({
-  run, stage, error, onRetry, busy, onContinue, placement,
+  run, stage, error, onRetry, busy, onProceed, placement,
 }: {
   run: DailyRun;
   stage: DailyStage;
@@ -55,7 +55,7 @@ export function DailyStageResult({
   onRetry?: () => void;
   busy?: boolean;
   /** Leave the result. Absent while pending. */
-  onContinue?: () => void;
+  onProceed?: () => void;
   placement?: StageResultPlacement;
 }) {
   const model = buildDailyStageResult(run, stage);
@@ -120,8 +120,8 @@ export function DailyStageResult({
       <ResultActions actions={{
         primary: {
           label: continueLabel,
-          onClick: () => onContinue?.(),
-          disabled: !settled || !onContinue,
+          onClick: () => onProceed?.(),
+          disabled: !settled || !onProceed,
           testId: "daily-stage-result-continue",
         },
       }} />

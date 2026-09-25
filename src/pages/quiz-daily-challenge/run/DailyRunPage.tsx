@@ -139,7 +139,7 @@ export function DailyRunPage({
     case "stage-result": {
       const beat = shell(
         <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
-          onContinue={flow.phase === "stage-result" ? dc.continueFromResult : undefined}
+          onProceed={flow.phase === "stage-result" ? dc.continueFromResult : undefined}
           placement={stageResultPlacement} />,
         <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} />);
       // DC-SURV-UX — the player is out but the child is still settling: keep

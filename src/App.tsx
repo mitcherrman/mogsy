@@ -183,6 +183,8 @@ const QuizMatchupPage = lazy(() => import("./pages/quiz-matchup/QuizMatchupPage"
 const QuizPlaytestPage = lazy(() => import("./pages/quiz-ranked/QuizPlaytestPage"));
 const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
 const RankedShellProbe = lazy(() => import("./pages/dev/ranked-shell-probe/RankedShellProbe"));
+// JOURNEY-UI1 — dev-only fixture harness for the Journey state board in the real arena.
+const JourneyArenaHarness = lazy(() => import("./pages/dev/journey-arena/JourneyArenaHarness"));
 const Graph1RacePage = lazy(() => import("./pages/dev/graph1/Graph1RacePage"));
 // Dev-only League mechanics XP calculator (MECH1) — thin client over the
 // backend league_mechanics engine, not linked from any navigation.
@@ -582,6 +584,7 @@ const App = () => (
                   <Route path="/quiz/stat-check/private" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
+                  <Route path="/dev/journey-arena" element={<Suspense fallback={<RouteFallback />}><JourneyArenaHarness /></Suspense>} />
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />
                   <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />

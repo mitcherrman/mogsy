@@ -204,8 +204,11 @@ describe("the Daily owns no game surface of its own", () => {
       .map((f) => f.split("/").pop());
     expect(components).toEqual([
       "DailyCompletion.tsx",       // DCMOD-E: the parent run's one close
-      "DailyRunBeats.tsx",         // DCMOD-E: Daily intro, stage tag, stage result
+      "DailyRunBeats.tsx",         // DCMOD-E: Daily intro, stage tag
       "DailyStageChrome.tsx",      // DCMOD-E: the header row over the arena
+      // DC-LANE-C: a stage's result, in the SHARED result components (hero,
+      // snapshot, actions) — between stages, never a game surface.
+      "DailyStageResult.tsx",
       "StageTag.tsx",              // DCMOD-E: a stage's mode name, and the ladder
     ]);
   });
@@ -219,14 +222,23 @@ describe("the Daily owns no game surface of its own", () => {
    * see the state it happened to set up. The Daily plays like live Ranked:
    * answer once, brief result, automatically continue.
    */
+  /*
+   * DC-LANE-C (product decision) — ONE control is now allowed: the stage
+   * result's Continue, which moves between STAGES inside the Daily (never
+   * between cards, never to a lobby or a queue). It lives in exactly one file,
+   * and the handler behind it cannot reach the server (`dailyRun.boundary`
+   * pins that). Every other manual beat stays banned everywhere.
+   */
   it("names no manual progression control anywhere in its source", () => {
     const offenders: string[] = [];
     for (const file of DAILY_FILES()) {
       const src = codeOnly(read(file));
+      const allowed = file === "pages/quiz-daily-challenge/run/DailyStageResult.tsx" ? ["Continue"] : [];
       for (const banned of [
         "Next card", "Next Card", "Continue", "Start card", "See results",
         "dc-continue", "dc-reflex-start", "dc-reflex-gate", "DailyRunControls",
       ]) {
+        if (allowed.includes(banned)) continue;
         if (src.includes(banned)) offenders.push(`${file}: ${banned}`);
       }
     }
@@ -249,6 +261,7 @@ describe("the Daily owns no game surface of its own", () => {
       "lib/daily-challenge/run/fixtures.ts",
       "lib/daily-challenge/run/flow.ts",
       "lib/daily-challenge/run/stageIdentity.ts",
+      "lib/daily-challenge/run/stageResultModel.ts",
       "lib/daily-challenge/run/timeBank.ts",
       "lib/daily-challenge/status.ts",
       "lib/daily-challenge/useDailyChallengeStatus.ts",
@@ -256,6 +269,7 @@ describe("the Daily owns no game surface of its own", () => {
       "pages/quiz-daily-challenge/run/DailyRunBeats.tsx",
       "pages/quiz-daily-challenge/run/DailyRunPage.tsx",
       "pages/quiz-daily-challenge/run/DailyStageChrome.tsx",
+      "pages/quiz-daily-challenge/run/DailyStageResult.tsx",
       "pages/quiz-daily-challenge/run/StageTag.tsx",
       "pages/quiz-daily-challenge/run/useDailyRun.ts",
     ]);

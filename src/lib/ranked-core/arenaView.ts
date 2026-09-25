@@ -14,6 +14,7 @@
 // consumed by the extracted JSX today; nothing is speculative.
 // ---------------------------------------------------------------------------
 
+import type { JourneyRailIdentity } from "@/lib/journey/rail";
 import type { ReactNode } from "react";
 import type { SurfaceReveal, SurfaceSettings } from "@/lib/question-surface/contract";
 import type { ResolvedFeedback } from "@/lib/question-feedback/model";
@@ -109,6 +110,12 @@ export type ArenaRail =
      * Reveal-beat only by construction (see `DuelLeadChange`).
      */
     leadPulseId?: string | null;
+    /**
+     * JOURNEY-UI1 — this flank's Journey champion, while a Journey module is
+     * on screen. Absent everywhere else: the banner draws its role mascot and
+     * the phone bar its crest exactly as before.
+     */
+    journey?: JourneyRailIdentity | null;
   }
   | { kind: "panel"; node: ReactNode };
 

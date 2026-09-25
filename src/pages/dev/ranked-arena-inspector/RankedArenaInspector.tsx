@@ -41,6 +41,10 @@ import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { JourneyModuleStage } from "@/components/journey/JourneyModuleStage";
+import { readJourneyPublicState } from "@/lib/journey/contract";
+import { withBeat } from "@/lib/journey/fixtures";
+import { JOURNEY_HARNESS_ARCS } from "@/pages/dev/journey-arena/journeyHarnessFixtures";
 import { scenarioSourceForMasteryChallenge } from "@/lib/question-surface/masterySliceScenario";
 import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
@@ -1331,6 +1335,31 @@ const SPELL_COOLDOWN_SCENARIO = {
   },
 } as unknown as QuizQuestion;
 
+/**
+ * JOURNEY-UI1 — the Journey state board on the real question card: the module
+ * stage over the real surface (its own band off), sized by this bench's
+ * viewport buttons, which the board's container query answers directly. A
+ * state with a transition stamps the server's beat instant at mount — the
+ * explicit fixture simulation — so selecting it again replays the beat. The
+ * full arena (banners, phone match bar) is `/dev/journey-arena`.
+ */
+function JourneyBench({ arc, step }: { arc: keyof typeof JOURNEY_HARNESS_ARCS; step: number }) {
+  const s = JOURNEY_HARNESS_ARCS[arc].steps[step];
+  const [arrived] = useState(() => Date.now());
+  const state = readJourneyPublicState(withBeat(s.wire, arrived));
+  return (
+    <div className="ranked-shell ranked-academy mx-auto w-full max-w-[40rem]">
+      <section data-testid="ranked-question" className="ranked-panel ranked-folio p-3 sm:p-5">
+        <JourneyModuleStage state={state}>
+          <InteractiveScenarioSurface question={s.question} selectedOptionId={null} permissions={OPEN}
+            onSelectOption={() => {}} variant="competitive" settings={{ mediaScale: "none" }}
+            scenarioSource={null} />
+        </JourneyModuleStage>
+      </section>
+    </div>
+  );
+}
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -1589,6 +1618,24 @@ const STATES: InspectorState[] = [
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "Whose W has the longer cooldown at rank 1?" }}
       scenarioSource={SLICE_MATCHUP_SCENARIO} selected={null} /> },
+
+  // --- JOURNEY-UI1: the Journey state board (`journey.public.v0` fixtures) ---
+  { key: "journey-establish", label: "Journey — establish (Jarvan Q focus)",
+    render: () => <JourneyBench arc="a" step={0} /> },
+  { key: "journey-matchup", label: "Journey — Matchup, per-side ranks",
+    render: () => <JourneyBench arc="a" step={1} /> },
+  { key: "journey-recall-beat", label: "Journey — recall beat (purchase + deltas)",
+    render: () => <JourneyBench arc="a" step={2} /> },
+  { key: "journey-combat", label: "Journey — Combat focus (attacker → target)",
+    render: () => <JourneyBench arc="a" step={3} /> },
+  { key: "journey-target-purchase", label: "Journey — target buys armor (delta persists)",
+    render: () => <JourneyBench arc="a" step={4} /> },
+  { key: "journey-level-up", label: "Journey — level + rank + purchase beat",
+    render: () => <JourneyBench arc="a" step={5} /> },
+  { key: "journey-withheld", label: "Journey — withheld stat (armor ?)",
+    render: () => <JourneyBench arc="c" step={0} /> },
+  { key: "journey-unlock", label: "Journey — level 6, R unlocked",
+    render: () => <JourneyBench arc="f" step={1} /> },
 
   // --- shared InteractiveScenarioSurface ---
   { key: "surface-text-fallback", label: "Surface — compact band (no source)",
