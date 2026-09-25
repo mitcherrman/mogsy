@@ -220,7 +220,13 @@ const QuizRenderPage = lazy(() => import("./pages/dev/quiz-render/QuizRenderPage
 // MALT — the Leaguecraft lobby rendered from frozen demo state, so the three
 // parchment scrolls can be reviewed as an ESTABLISHED account reads them
 // rather than as an empty one. Inert: it fetches nothing and writes nothing.
-const LobbyPreviewPage = lazy(() => import("./pages/dev/lobby-preview/LobbyPreviewPage"));
+// HUB5: the Timmy fixture environment is DEVELOPMENT-ONLY. `import.meta.env.DEV`
+// is the literal `false` in a production build, so this import — and with it
+// every fixture and the History golden — is dead-code-eliminated there, and the
+// route below is never registered: `/dev/lobby-preview` 404s in production.
+const LobbyPreviewPage = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/lobby-preview/LobbyPreviewPage"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -583,7 +589,9 @@ const App = () => (
                   <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />
-                  <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />
+                  {LobbyPreviewPage ? (
+                    <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />
+                  ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
                   <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />

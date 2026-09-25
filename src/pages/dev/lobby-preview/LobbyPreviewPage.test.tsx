@@ -57,7 +57,9 @@ describe("Timmy demo — isolation from production state", () => {
   it("is imported by the preview page ALONE, so no product surface can reach it", () => {
     const importers = everySourceFile(SRC).filter((file) => {
       if (file.includes("lobby-preview")) return false;
-      return /lobbyPreviewFixtures/.test(readFileSync(file, "utf8"));
+      // An IMPORT of the fixtures, not a mention of the path in prose (a
+      // security test lists it as a known dev fixture).
+      return /from\s+["'][^"']*lobbyPreviewFixtures["']/.test(readFileSync(file, "utf8"));
     });
     expect(importers).toEqual([]);
   });
@@ -117,7 +119,7 @@ describe("the Role Mastery score is DEMO-ONLY", () => {
     const forwarders = everySourceFile(SRC)
       .filter((file) => !file.includes("lobby-preview") && !/\.test\.tsx?$/.test(file))
       .filter((file) => /demoRoleMastery=\{/.test(readFileSync(file, "utf8")))
-      .map((file) => file.split("/").pop());
+      .map((file) => file.split(/[\\/]/).pop());
     expect(forwarders).toEqual(["LeaguecraftHub.tsx"]);
   });
 

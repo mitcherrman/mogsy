@@ -1028,8 +1028,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     disposition: "DEVELOPER-ONLY",
     legacyRoutes: ["/dev/lobby-preview"],
     dangerLevel: "none",
-    status: "Internal",
-    authorization: "UNCHANGED — no route gate; renders frozen constants and performs no fetch or write.",
+    status: "Development",
+    developerOnly: true,
+    authorization: "Registered in DEV builds only (HUB5): the route and its fixtures are dead-code-eliminated from production builds, where the path 404s. Renders frozen constants and performs no fetch or write.",
     notes: "Demo-only. Its fixtures are imported by this page alone, so no production surface can reach them.",
   },
 

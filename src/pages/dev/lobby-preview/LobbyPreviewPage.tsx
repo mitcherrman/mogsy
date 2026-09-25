@@ -17,6 +17,13 @@
  *  - `/dev/*` is a `developer_route` under the ads policy and is linked from
  *    no navigation.
  *
+ * HUB5 — History is DETERMINISTIC. Each account state reads a History golden
+ * that HUB2.1's real route generated from raw Daily facts
+ * (`history/timmyHistory.golden.json`), through the production parser. The
+ * entitlement switch picks which server state the account is shown under;
+ * it changes what the server would have said, never what the UI does with it.
+ * The route itself is registered in development builds only (App.tsx).
+ *
  * Deleting this directory and its route line removes the demo completely.
  */
 
@@ -24,16 +31,15 @@ import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
-import { EMPTY_HISTORY_SOURCE } from "@/lib/history/historyApi";
 import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
 import type { QuestionLibraryState } from "@/components/quiz/workspace/useQuestionLibrary";
 import {
   LOBBY_PREVIEW_STATES,
   PREVIEW_SETS,
-  TIMMY_MATCH_REVIEWS,
-  TIMMY_RANKED_RECORD_PREVIEW,
   type LobbyPreviewProfile,
+  type PreviewEntitlement,
 } from "./lobbyPreviewFixtures";
+import { TIMMY_HISTORY_SOURCES } from "./history/timmyHistorySource";
 import {
   demoAnalyticsSource,
   demoAnalyticsSourceEmpty,
@@ -42,7 +48,8 @@ import {
   demoRoleDimension,
 } from "./demoLobbyAnalytics";
 
-const PROFILES: LobbyPreviewProfile[] = ["timmy", "newcomer"];
+const PROFILES: LobbyPreviewProfile[] = ["timmy", "firstDaily", "newcomer"];
+const ENTITLEMENTS: PreviewEntitlement[] = ["premium", "free", "unavailable"];
 
 /** Every host action the hub can fire, deliberately inert. */
 function noop() {}
@@ -59,6 +66,9 @@ export default function LobbyPreviewPage() {
   // moves the demo, and there is no writer behind it.
   const state = LOBBY_PREVIEW_STATES[profile];
   const [role, setRole] = useState(state.rankedRole);
+  const [entitlement, setEntitlement] = useState<PreviewEntitlement>(state.defaultEntitlement);
+  const view = state.entitlements[entitlement] ?? state.entitlements[state.defaultEntitlement]!;
+  const offered = ENTITLEMENTS.filter((e) => state.entitlements[e]);
 
   /**
    * The Review pane's bank, HANDED IN rather than loaded.
@@ -69,20 +79,24 @@ export default function LobbyPreviewPage() {
    * screen. Every action on the resolved state is inert, exactly like the
    * callbacks above.
    */
-  const review: MissedQuestionsState = useMemo(
-    () => ({
-      data: state.missedQuestions,
-      items: [...state.missedQuestions.results],
+  const review: MissedQuestionsState = useMemo(() => {
+    const data = view.missedQuestions;
+    const items = data ? [...data.results] : [];
+    const totalCount = data?.total_count ?? items.length;
+    return {
+      data,
+      items,
       loading: false,
       loadingMore: false,
-      error: null,
-      hasMore: false,
-      totalCount: state.missedQuestions.total_count ?? state.missedQuestions.results.length,
+      error: view.missedError,
+      // More exists on the server; loading it is inert here like every
+      // other action.
+      hasMore: items.length < totalCount,
+      totalCount,
       loadMore: noop,
       retry: noop,
-    }),
-    [state.missedQuestions],
-  );
+    };
+  }, [view]);
 
   /** REVIEW's OWNED collection, resolved for the same reason: opening the
    *  Owned tab on a demo screen must not fire a real account read. */
@@ -113,7 +127,7 @@ export default function LobbyPreviewPage() {
         <span className="text-[11px] text-muted-foreground">
           Demo state only — nothing here reads or writes a real account.
         </span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
           {PROFILES.map((id) => (
             <button
               key={id}
@@ -123,6 +137,7 @@ export default function LobbyPreviewPage() {
               onClick={() => {
                 setProfile(id);
                 setRole(LOBBY_PREVIEW_STATES[id].rankedRole);
+                setEntitlement(LOBBY_PREVIEW_STATES[id].defaultEntitlement);
               }}
               className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
                 profile === id
@@ -133,6 +148,26 @@ export default function LobbyPreviewPage() {
               {LOBBY_PREVIEW_STATES[id].label}
             </button>
           ))}
+          {offered.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Entitlement">
+              {offered.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  data-testid={`lobby-preview-entitlement-${id}`}
+                  aria-pressed={entitlement === id}
+                  onClick={() => setEntitlement(id)}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                    entitlement === id
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-primary/25 text-muted-foreground hover:border-primary/60"
+                  }`}
+                >
+                  {state.entitlements[id]!.label}
+                </button>
+              ))}
+            </div>
+          )}
           <Link to="/quiz" className="text-[11px] underline-offset-4 hover:underline">
             Real lobby
           </Link>
@@ -162,23 +197,25 @@ export default function LobbyPreviewPage() {
           setsLoading={false}
           onSelectSet={noop}
           onRefreshSets={noop}
-          history={state.history}
+          history={view.history}
           historyLoading={false}
           historyError={null}
           reviewState={review}
           ownedQuestionsPreview={owned}
-          /* FROZEN OVERRIDE, and only for the account that has duels. Ranked
-             history IS wired into the real record now (B1); this replaces it
-             with a fixed set so the visual pass is deterministic and this page
-             stays offline. The newcomer gets none, because a new account HAS
-             none and the empty record has to stay the real empty record. */
-          rankedHistoryPreview={profile === "timmy" ? TIMMY_RANKED_RECORD_PREVIEW : undefined}
-          /* Frozen reviews, so the question timelines and their popovers draw
+          /* FROZEN OVERRIDE. Ranked history IS wired into the real record now
+             (B1); this replaces it with a fixed set so the visual pass is
+             deterministic and this page stays offline. An account with no
+             duels gets an empty set — the real empty record. Never a Daily
+             child match: those belong to their Daily run alone. */
+          rankedHistoryPreview={state.rankedRecord}
+          /* Frozen reviews for every Ranked row AND every Daily stage's child
+             match, so each question timeline and its popover or sheet draws
              from a fixed set and this page never reaches the network. */
-          rankedReviewPreview={profile === "timmy" ? TIMMY_MATCH_REVIEWS : undefined}
-          /* HUB4: History's Daily runs, offline. Empty until HUB5 derives
-             Timmy's staged Daily runs through the real History parser. */
-          dailyHistorySource={EMPTY_HISTORY_SOURCE}
+          rankedReviewPreview={state.reviews}
+          /* HUB5: History's Daily runs, as HUB2.1's real route produced them
+             for this account and entitlement, read through the production
+             parser. */
+          dailyHistorySource={TIMMY_HISTORY_SOURCES[view.dailyHistory]}
           rankedRole={role}
           onSelectRankedRole={setRole}
           rankedProgression={state.progression}
