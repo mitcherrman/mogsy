@@ -4,6 +4,7 @@ import "./index.css";
 import { installChunkLoadRecovery } from "@/lib/chunk-recovery";
 import { retireStartupShell } from "@/lib/startup-shell-teardown";
 import { installHumanSignalWatcher } from "@/lib/analytics/humanSignal";
+import { installSessionIntelligence } from "@/lib/analytics/sessionIntelligence";
 
 installChunkLoadRecovery();
 
@@ -11,6 +12,7 @@ installChunkLoadRecovery();
 // Wired at the entry point so it covers every route, and so that a reader of
 // main.tsx can see that this is where audience classification begins.
 installHumanSignalWatcher();
+installSessionIntelligence();
 
 const container = document.getElementById("root")!;
 createRoot(container).render(<App />);
