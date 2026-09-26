@@ -132,12 +132,10 @@ def walk(client, limit):
 
 
 def probe_mixed_generator_versions(now):
-    """KNOWN HUB2.1 DEFECT, re-proved on every run so it cannot go quiet.
-
-    One stage whose questions mix a null generator_version (a curated bank
-    question) with a named one (a generated Mastery slice). HUB2.1's
-    _stage_compat sorts the version tuples and raises TypeError outside the
-    projection's try-block, so the whole page fails. Returns what happened.
+    """REGRESSION (fixed in HUB2.2): one stage mixing a null generator_version
+    (a curated bank question) with a named one (a generated Mastery slice).
+    HUB2.1 raised TypeError in _stage_compat and failed the whole page.
+    Must now answer 200; the script aborts otherwise.
     """
     conn = seed({
         "daily_runs": [{"run_id": "p-run", "user_id": "p", "policy": "official",
@@ -192,7 +190,8 @@ def main():
     commit = subprocess.run(["git", "-C", BACKEND, "rev-parse", "HEAD"],
                             capture_output=True, text=True, check=True).stdout.strip()
     probe = probe_mixed_generator_versions(now)
-    print("probe (mixed null/named generator_version in one stage):", probe)
+    print("regression (mixed null/named generator_version in one stage):", probe)
+    assert probe == "HTTP 200", probe
     golden = {
         "generated_by": "scripts/hub5-generate-timmy-history.py",
         "hub2_commit": commit,

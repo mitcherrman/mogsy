@@ -323,3 +323,107 @@ Built-in browser against this worktree's Vite server (`:5195`).
 - Non-colour outcome mark.
 - Real-device checks (safe areas, Android back).
 - **Real-account certification:** after HUB2 findings 1–3 are resolved, against a persisted staged Daily.
+
+## HUB5.1 — Regenerated against HUB2.2
+
+**Consumed:** HUB2.2 `bb8ed3340c4fd23cdce23861e446cb1e235fc2d9` (`codex/history-analytics-b`). Schema 1; the occurrence and Review contracts are unchanged. Base: HUB5 `20217edd`.
+
+### Workaround removed; truthful mixed provenance
+
+- In `questionIdentity.ts`, curated content is back to `generator: null`: the reviewed Ranked export (`ranked:`) and the quiz bank (`quiz:`).
+- Generated Mastery (`mastery:`) keeps `mastery-gen-4` / `mastery-set-12`.
+- Every run now has 1–2 stages mixing null and named generator versions:
+  - composed Standard: ranked + quiz + mastery;
+  - Review: replays of misses from all three.
+- No version is invented to make compatibility work.
+
+### Golden regeneration
+
+- Regenerated through HUB2.2's real `GET /api/history/v1`, same path as before (facts → rows → route → golden → production parser). `hub2_commit` is now `bb8ed334…`.
+- No derived value was edited by hand.
+- The old crash reproducer in `hub5-generate-timmy-history.py` is now a **regression assertion**: the mixed null/named stage must answer HTTP 200, and the script aborts otherwise. Result: **HTTP 200**.
+- `timmyHistory.test.ts` asserts that run 11's Standard carries both `null` and `mastery-gen-4` and is `available`.
+
+### Chronology (recurring / recovered)
+
+**The HUB5 finding is fixed.**
+- Run 11's Baron Review replay (`timmy-qr-11-4-1-0`) now sees its same-run source miss as its previous exposure (outcome `incorrect`, completed the same day).
+- It is **not** recovered.
+- It is recurring only, and the UI shows it as "Review · Objective Timers (last seen Sep 15)".
+- The former tripwire now asserts this corrected behaviour permanently.
+
+**Recurring weakness still works:** Baron is recurring in runs 9, 10 and 11.
+
+**Recovered weakness still works:** Rabadon's Deathcap AP is recovered in runs 6, 10 and 11, after its proper miss–miss–miss then correct–correct sequence.
+
+**First exposure now follows the same-run stream.** A first Daily marks only the first occurrence of each ref as `first_in_available_history`: 14 of 19 questions, because replays and repeated concepts already have an earlier exposure. The test was updated to that.
+
+**Review provenance** is unchanged and exact: every served replay is linked by `question_result_id` to an earlier-stage miss of the same ref, and recovery counts are as before (run 11: 3/3; run 9: 1/3 plus 1 unserved).
+
+**Preserved finding — HUB2 metric definitions, not a launch blocker, not approved for launch presentation, not investigated further here:**
+- Run 5's `timmy-qr-05-1-4-0` (Garen health remaining, Standard round 4) still carries both `recurring_weakness` and `recovered_weakness`.
+- Its exposures, in chronological order, end ✗ ✗ ✗ ✓ ✓. The last five hold 3 misses (recurring), and a recurring state at the third miss is followed by two corrects (recovered).
+- Both registry definitions are literally satisfied, so this is a definitional overlap, not the within-run ordering bug.
+
+### Compatibility cohorts (current strict policy — observed, not changed)
+
+Measured with HUB2.2's own `_build_records` keys over Timmy's rows.
+
+**1. Runs:** 11 completed Daily runs.
+
+**2–3. Cohorts:** 4 — {run 1}, {run 2}, {run 3}, {runs 4–11}, of sizes 1, 1, 1 and 8.
+
+**4. Metrics that can compute** (earlier compatible runs are counted within the cohort only):
+
+| Metric | Minimum history | Runs that compute it |
+|---|---|---|
+| Previous-run delta | 1 prior run | 5–11 |
+| Personal best | 2 runs | 5–11 |
+| Historical average | 3 prior runs | 7–11 |
+| Trajectory | 5 runs | 8–11 (up / down / stable / up) |
+
+**5. Blocked by compatibility:**
+- Runs 1, 2 and 3 compute none of the four, each being alone in its cohort.
+- Run 4 (the first of its cohort) and runs 5–6 or 5–7, for the metrics with higher thresholds, are limited by cohort size, not by incompatibility.
+
+**6. Caused solely by stage order:** runs 2 and 3.
+- Their five stage keys are identical to runs 4–11; only the order differs (Survival-first; Standard-first).
+- If order were ignored (measurement only), runs 2–11 would form one 10-run cohort.
+- That would give runs 2–11 comparisons, and trajectory from run 6.
+
+**7. Caused by substantive differences:** run 1 only.
+- Its Survival stage froze no ruleset (legacy), so its stage key and run key are null ("settings were not recorded").
+- Run 1 also has four stages, so it could not join a five-stage cohort anyway.
+- Mixed curated/generated provenance does **not** split cohorts: the provenance sets are stable per stage kind across runs 2–11.
+
+**Deliberate fixture choice:** runs 4–11 share one order on purpose, to exercise the longitudinal UI. Runs 2–3 keep their own shuffles on purpose, to show the strict policy's effect. Nothing was reordered in HUB5.1.
+
+**Next decision (HUB2.3, product and backend):** whether run compatibility should stay keyed on the *ordered* stage keys. On this data, stage order alone removes all run-level comparison from 2 of 10 comparable five-stage runs.
+
+### Tests
+
+- Timmy suites (fixtures, page certification, isolation/route gating, existing preview): **159/159**.
+- Scoped regression (`components/quiz/workspace` HUB4 + HUB3 timeline/review, `lib/history`, lobby-preview, `LolHistory`, `lib/admin`, `App*`): **756 passed / 2 failed**. Both failures are `App.routing-contract` "retired legacy multiplayer routes", the baseline that fails identically on untouched `fcd7cbba`.
+- `tsc`: the 2 baseline errors only.
+- ESLint on the preview: clean.
+
+**Held from HUB5 and re-verified:**
+- anchor, deterministic output, 4/5 stages and saved order;
+- distinct repeated refs, round/challenge order;
+- all five capability states, Ranked/Practice coexistence, Owned/Missed consistency, Daily child exclusion;
+- unforked components, route gate, no production import.
+
+### Browser (layout code unchanged, scoped)
+
+At 1280×720 (fine), 390×844 (touch) and 320×568 (touch), with 11 runs loaded and run analysis plus Owned & Missed open:
+- 0 page overflow, 0 row overflow, 0 clipped stages;
+- Popover on desktop and Sheet on touch, both with the correct question (Rabadon's Deathcap, Q2 of 4);
+- Close focused on the Sheet, and focus returned to the icon on Escape.
+
+### Remaining findings (unchanged, not owned here)
+
+- HUB2.3: strict run compatibility (above), and the recurring/recovered definitional overlap (above).
+- HUB2: no per-item Review provenance in the DTO; `review_recovery_rate` is per run.
+- HUB3: the live text-size change leaves stale rail paging.
+- HUB4: 320px + 200% trend-label overhang; signal naming.
+- `/dev/play-scroll` production gating.

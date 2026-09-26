@@ -117,8 +117,8 @@ describe("the golden is HUB2.1's projection of THESE facts", () => {
     expect(sha).toBe(TIMMY_HISTORY_GOLDEN.input_sha256);
   });
 
-  it("names the HUB2.1 backend commit that projected it", () => {
-    expect(TIMMY_HISTORY_GOLDEN.hub2_commit).toBe("59cceea2b1126f770fc87fc804ef1f821a3599de");
+  it("names the HUB2.2 backend commit that projected it", () => {
+    expect(TIMMY_HISTORY_GOLDEN.hub2_commit).toBe("bb8ed3340c4fd23cdce23861e446cb1e235fc2d9");
   });
 
   it("is cut at the page size the real History hook requests", () => {
@@ -425,29 +425,44 @@ describe("learning signals (HUB2 decides; the fixture only supplies exposures)",
     const [first] = records("first_daily");
     const questions = first.stages.flatMap((s) => s.questions);
     const firsts = signalsFor(first, "first_in_available_history");
-    // Every occurrence whose ref had no earlier RUN is a first exposure.
-    expect(firsts.length).toBe(questions.length);
+    // HUB2.2: exposures form one chronological stream, so only the FIRST
+    // occurrence of each ref is first — a Review replay or a repeated concept
+    // later in the same run already has a previous exposure.
+    const firstOccurrences = new Map<string, string>();
+    for (const q of first.stages.flatMap((s) => s.questions)) {
+      if (!firstOccurrences.has(q.canonicalRef!)) firstOccurrences.set(q.canonicalRef!, q.questionResultId!);
+    }
+    expect(questions.length).toBeGreaterThan(firstOccurrences.size);
+    expect(firsts.slice().sort()).toEqual([...firstOccurrences.values()].sort());
   });
 });
 
-describe("known HUB2.1 finding — owned by HUB2, reproduced by this golden", () => {
-  // HUB2.1 evaluates each occurrence against PRIOR RUNS only, so a Review
-  // replay ignores the miss it replays from earlier in the same run. Run 11's
-  // Baron replay is therefore flagged recurring AND recovered at once, and a
-  // concept missed earlier in the run can still be "recovered" by its replay.
-  // The spec's recovered rule needs ≥2 consecutive correct exposures, latest
-  // correct — which the same-run miss breaks. HUB5 does not fix HUB2: this
-  // TRIPWIRE fails once HUB2 is fixed and the golden regenerated. Delete it
-  // then, and assert the corrected behaviour instead.
-  it("flags one occurrence as both recurring and recovered weakness", () => {
+describe("HUB2.2 regressions for the two HUB5 findings", () => {
+  it("projects truthful mixed provenance: curated null and generated named versions in one stage", () => {
     const eleven = run("timmy_premium", 11);
-    const types = new Map<string, string[]>();
-    for (const s of eleven.analytics!.learningSignals) {
-      types.set(s.questionResultId!, [...(types.get(s.questionResultId!) ?? []), s.type]);
-    }
-    const both = [...types].filter(([, t]) => t.includes("recurring_weakness") && t.includes("recovered_weakness"));
-    expect(both.map(([id]) => id)).toEqual(["timmy-qr-11-4-1-0"]);
-    expect(questionById(eleven, "timmy-qr-11-4-1-0").canonicalRef).toBe(rankedRef("baron-respawn"));
+    const wire = TIMMY_HISTORY_GOLDEN.scenarios.timmy_premium[0] as unknown as {
+      items: Array<{ run_id: string; stages: Array<{ kind: string; questions: Array<{ generator_version: string | null }> }> }>;
+    };
+    const standard = wire.items.find((i) => i.run_id === "timmy-run-11")!.stages.find((s) => s.kind === "standard")!;
+    const versions = new Set(standard.questions.map((q) => q.generator_version));
+    expect(versions.has(null)).toBe(true);
+    expect(versions.has("mastery-gen-4")).toBe(true);
+    expect(eleven.stages.find((s) => s.kind === "standard")!.capability.state).toBe("available");
+  });
+
+  // HUB5 found run 11's Baron Review replay flagged recurring AND recovered,
+  // because HUB2.1 ignored the same-run source miss. HUB2.2 orders exposures
+  // across runs, stages, rounds and challenges; the source miss now precedes
+  // the replay, so one correct replay cannot establish recovery.
+  it("sees the same-run source miss before the Review replay; the replay is not recovered", () => {
+    const eleven = run("timmy_premium", 11);
+    const replayId = "timmy-qr-11-4-1-0";
+    const types = eleven.analytics!.learningSignals.filter((s) => s.questionResultId === replayId).map((s) => s.type);
+    expect(questionById(eleven, replayId).canonicalRef).toBe(rankedRef("baron-respawn"));
+    expect(types).not.toContain("recovered_weakness");
+    const previous = eleven.analytics!.learningSignals.find((s) => s.questionResultId === replayId)!.previous!;
+    expect(previous.outcome).toBe("incorrect");
+    expect(previous.completedAt).toBe(eleven.completedAt);
   });
 });
 

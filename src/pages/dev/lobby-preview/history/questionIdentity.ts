@@ -42,18 +42,16 @@ export { masteryRef, quizRef, rankedRef, refNamespace, type RefNamespace };
  * set of a stage's questions into its compatibility key, so these are part of
  * each question's frozen identity, not decoration.
  *
- * Every namespace carries a NON-NULL generator version, and that is a
- * workaround, not a claim: HUB2.1 (`59cceea2`, `history/daily.py`
- * `_stage_compat`) sorts the version tuples and raises `TypeError` when one
- * stage mixes a null generator with a named one — the whole History page
- * then fails. A curated question plausibly has no generator, so this is a
- * HUB2 defect (see HUB5_HANDOFF.md; `hub5-generate-timmy-history.py`
- * re-proves it on every run). Until it is fixed the fixture cannot seed the
- * mixed stages the real Daily composes.
+ * Truthful provenance (HUB5.1): curated content — the reviewed Ranked export
+ * and the quiz bank — has NO generator, so its generator version is null;
+ * generated Mastery content names its generator. A composed Standard stage
+ * and most Review stages therefore mix null and named generator versions.
+ * HUB2.1 crashed on exactly that mix; HUB2.2 (`bb8ed334`) projects it, and the
+ * golden now carries it unaltered.
  */
 const VERSIONS: Record<RefNamespace, { generator: string | null; source: string }> = {
-  ranked: { generator: "ranked-candidates-3", source: "ranked-export-2026.09" },
-  quiz: { generator: "quiz-bank-curation-2", source: "quiz-bank-2026.09" },
+  ranked: { generator: null, source: "ranked-export-2026.09" },
+  quiz: { generator: null, source: "quiz-bank-2026.09" },
   mastery: { generator: "mastery-gen-4", source: "mastery-set-12" },
 };
 
