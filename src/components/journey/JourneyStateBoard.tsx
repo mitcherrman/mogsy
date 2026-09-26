@@ -42,7 +42,7 @@ import { useState, type ReactNode } from "react";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import type { RankedRole } from "@/lib/ranked-public/roles";
-import { ArrowRight, PanelTopOpen } from "lucide-react";
+import { ArrowRight, Calculator, PanelTopOpen } from "lucide-react";
 import type {
   JourneyFocusRef, JourneyPublicState, JourneySide, JourneySideId,
 } from "@/lib/journey/contract";
@@ -184,7 +184,8 @@ function SidePanel({ state, side, marks, knowledge, gains }: {
 }
 
 export function JourneyStateBoard({
-  state, beatActive = false, onOpenDetail, questionRoles = null, knowledge = NO_KNOWLEDGE, beatStamp = null, children,
+  state, beatActive = false, onOpenDetail, onOpenFormulas, questionRoles = null, knowledge = NO_KNOWLEDGE,
+  beatStamp = null, children,
 }: {
   state: JourneyPublicState;
   /** K2 — the established facts to mark on this board's objects. */
@@ -200,6 +201,8 @@ export function JourneyStateBoard({
   /** While the canonical beat runs, the changed facts pulse. */
   beatActive?: boolean;
   onOpenDetail?: () => void;
+  /** Opens the Formulas & Calculator sheet (JX2). */
+  onOpenFormulas?: () => void;
   /**
    * JOURNEY-MOTION-V1 — the beat's compact stamp. While it is given it takes
    * the node label's place in the header row (same fixed-height, truncating
@@ -243,6 +246,14 @@ export function JourneyStateBoard({
             className="journey-board__state-btn inline-flex shrink-0 items-center gap-1 rounded-md border border-[#d4b35a]/40 bg-black/50 px-1.5 font-bold uppercase tracking-[0.16em] text-[#f3dca0] hover:bg-[#d4b35a]/15">
             <PanelTopOpen aria-hidden className="h-3 w-3" />
             State
+          </button>
+        )}
+        {onOpenFormulas && (
+          <button type="button" onClick={onOpenFormulas} data-testid="journey-open-formulas"
+            aria-label="Formulas and calculator"
+            className="journey-board__state-btn inline-flex shrink-0 items-center gap-1 rounded-md border border-[#d4b35a]/40 bg-black/50 px-1.5 font-bold uppercase tracking-[0.16em] text-[#f3dca0] hover:bg-[#d4b35a]/15">
+            <Calculator aria-hidden className="h-3 w-3" />
+            Calc
           </button>
         )}
         </span>
