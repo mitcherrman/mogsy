@@ -29,6 +29,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { JourneyPublicState } from "@/lib/journey/contract";
+import type { RankedRole } from "@/lib/ranked-public/roles";
 import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBand";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyStateBoard } from "./JourneyStateBoard";
@@ -36,12 +37,17 @@ import { JourneyStateSheet } from "./JourneyStateSheet";
 import { JourneyTransitionBeat } from "./JourneyTransitionBeat";
 import { useJourneyBeat } from "./useJourneyBeat";
 
-export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, children }: {
+export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, questionRoles = null, children }: {
   /** The viewer's current canonical public Journey state. */
   state: JourneyPublicState;
   skewMs?: number;
   /** The module is still revealing the previous child. */
   holdPrevious?: boolean;
+  /**
+   * JOURNEY-PRES-V1 — the RQ1 roles of the question on screen (its own
+   * `challenge.roles`), drawn in the board's step header. Null/empty → none.
+   */
+  questionRoles?: readonly RankedRole[] | null;
   /** The current child's question (the caller keys it per child). */
   children: ReactNode;
 }) {
@@ -66,7 +72,8 @@ export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, ch
         data-beat={beatActive ? "active" : "idle"} className="journey-stage flex flex-col gap-2">
         <ScenarioMediaBand key={board.journeyKey} aspect="band" compact data-band-kind="journey"
           className="journey-band">
-          <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}>
+          <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}
+            questionRoles={beatActive ? null : questionRoles}>
             {beatActive && <JourneyTransitionBeat key={board.step.index} state={board} />}
           </JourneyStateBoard>
         </ScenarioMediaBand>

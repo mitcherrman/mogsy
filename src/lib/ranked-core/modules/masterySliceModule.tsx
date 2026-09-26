@@ -219,9 +219,13 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
     ownCardStartedAt: state.ownCardStartedAt,
     ownFinished: state.ownFinished,
   }), [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished]);
-  const inJourney = (node: ReactNode) => (journey
+  // JOURNEY-PRES-V1 — `questionRoles`: the RQ1 roles of the challenge ON
+  // SCREEN (its own frozen `roles`), passed only by the question branch; the
+  // pending / waiting branches have no question and so no role badge.
+  const inJourney = (node: ReactNode, questionRoles: MasterySliceChallengeView["roles"] = null) => (journey
     ? (
-      <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}>
+      <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}
+        questionRoles={questionRoles}>
         {node}
       </JourneyModuleStage>
     ) : node);
@@ -315,6 +319,7 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
         combatWorking={reveal && holding ? holding.combatWorking ?? null : null}
       />
     </div>,
+    current.roles ?? null,
   );
 }
 

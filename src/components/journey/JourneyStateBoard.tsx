@@ -25,8 +25,17 @@
  * delta face for the whole child.
  *
  * Presentation only: nothing here reads an answer, and nothing is computed.
+ *
+ * JOURNEY-PRES-V1 — each side sits on its champion's splash: masked toward the
+ * seam, darkened, low opacity, `aria-hidden`, absolutely positioned (it lays
+ * out nothing, so the board cannot change size when the art loads or fails).
+ * The champion is the side's public identity (`side.championName`, already
+ * printed beside it), so the art discloses nothing the board does not.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
+import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
+import type { RankedRole } from "@/lib/ranked-public/roles";
 import { ArrowRight, PanelTopOpen } from "lucide-react";
 import type {
   JourneyFocusRef, JourneyPublicState, JourneySide, JourneySideId,
@@ -54,6 +63,21 @@ function focusSet(refs: JourneyFocusRef[], side: JourneySideId) {
   return { stats, abilities, items, level };
 }
 
+/** The side's decorative splash underlay. Nothing when there is no art. */
+function SideSplash({ side }: { side: JourneySide }) {
+  const assets = useMasteryAssets();
+  const [broken, setBroken] = useState(false);
+  const url = assets.championSplashUrl?.(side.championId, side.championName) ?? null;
+  if (!url || broken) return null;
+  return (
+    <span aria-hidden data-testid={`journey-splash-${side.side}`} data-champion={side.championName}
+      className="journey-side__splash">
+      <img src={url} alt="" draggable={false} loading="lazy" decoding="async"
+        onError={() => setBroken(true)} />
+    </span>
+  );
+}
+
 function SidePanel({ state, side, marks }: {
   state: JourneyPublicState;
   side: JourneySide;
@@ -79,6 +103,7 @@ function SidePanel({ state, side, marks }: {
       data-combat-role={role?.toLowerCase()}
       aria-label={`${side.championName}, level ${side.level}${role ? `, ${role.toLowerCase()}` : ""}`}
       className="journey-side">
+      <SideSplash side={side} />
       <header className="journey-side__id">
         <JourneyPortrait side={side} />
         <div className="journey-side__name min-w-0">
@@ -126,8 +151,16 @@ function SidePanel({ state, side, marks }: {
   );
 }
 
-export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, children }: {
+export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, questionRoles = null, children }: {
   state: JourneyPublicState;
+  /**
+   * JOURNEY-PRES-V1 — the CURRENT QUESTION's RQ1 roles (`challenge.roles`),
+   * beside "Step N of M". The step header is the one line that already
+   * describes the question on screen, and it costs the height-locked card
+   * nothing. A universal question (no roles) shows no badge; nothing here
+   * reads the player's role or the recipe's.
+   */
+  questionRoles?: readonly RankedRole[] | null;
   /** While the canonical beat runs, the changed facts pulse. */
   beatActive?: boolean;
   onOpenDetail?: () => void;
@@ -154,6 +187,9 @@ export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, chi
             </>
           )}
         </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+        <QuestionRoleEmblems roles={questionRoles} size="card" testId="journey-question-roles"
+          className="journey-board__roles" />
         {onOpenDetail && (
           <button type="button" onClick={onOpenDetail} data-testid="journey-open-state"
             className="journey-board__state-btn inline-flex shrink-0 items-center gap-1 rounded-md border border-[#d4b35a]/40 bg-black/50 px-1.5 font-bold uppercase tracking-[0.16em] text-[#f3dca0] hover:bg-[#d4b35a]/15">
@@ -161,6 +197,7 @@ export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, chi
             State
           </button>
         )}
+        </span>
       </div>
       <div className="journey-board__sides">
         <SidePanel state={state} side={subject} marks={marks} />
