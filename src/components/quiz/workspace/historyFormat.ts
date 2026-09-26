@@ -44,11 +44,12 @@ export function percent(ratio: number | null | undefined): string | null {
   return `${Math.round(ratio * 100)}%`;
 }
 
-/** Percentage points, signed and whole. */
+/** Percentage points, signed and whole: "+6 pp", "−4 pp", "0 pp" (HUB6.1,
+ *  the owner's exact form — a difference, never a verdict). */
 export function signedPoints(pp: number): string {
   const rounded = Math.round(pp);
-  if (rounded === 0) return "±0 pts";
-  return rounded > 0 ? `+${rounded} pts` : `−${Math.abs(rounded)} pts`;
+  if (rounded === 0) return "0 pp";
+  return rounded > 0 ? `+${rounded} pp` : `−${Math.abs(rounded)} pp`;
 }
 
 /** "Sep 24" for the Daily's plan date. The plan date is a calendar date, not

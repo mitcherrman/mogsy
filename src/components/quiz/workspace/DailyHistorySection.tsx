@@ -15,11 +15,11 @@
  * one question. A failed read is stated with a retry. Loading more keeps the
  * rows; a failed later page keeps them too.
  */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
-import DailyRunRow from "@/components/quiz/workspace/DailyRunRow";
+import DailyRunRow, { type FocusView } from "@/components/quiz/workspace/DailyRunRow";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { useMatchReviews } from "@/components/quiz/workspace/useMatchReviews";
 import type { DailyHistoryState } from "@/components/quiz/workspace/useDailyHistory";
@@ -64,10 +64,15 @@ export default function DailyHistorySection({
     [frozenReviews, reviews],
   );
 
+  /* HUB6.1 — ONE Daily in Focus at a time. Opening another collapses the
+     one before; the view inside it (Overview or one stage) is kept with it. */
+  const [focus, setFocus] = useState<{ runId: string; view: FocusView } | null>(null);
+
   const analysisTarget = records.find((r) => hasExpansion(r.capability))?.runId ?? null;
   useEffect(() => {
     if (openAnalysisSignal === null || status === "loading" || status === "idle") return;
     if (!analysisTarget) onAnalysisTargetMissing?.();
+    else setFocus({ runId: analysisTarget, view: "overview" });
     // Only the arrival itself — not later record changes — asks for this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openAnalysisSignal, status]);
@@ -106,6 +111,8 @@ export default function DailyHistorySection({
             record={record}
             reviewFor={reviewFor}
             onRetry={daily.reload}
+            focus={focus?.runId === record.runId ? focus.view : null}
+            onFocus={(view) => setFocus(view === null ? null : { runId: record.runId, view })}
             openAnalysisSignal={record.runId === analysisTarget ? openAnalysisSignal : null}
           />
         ))}

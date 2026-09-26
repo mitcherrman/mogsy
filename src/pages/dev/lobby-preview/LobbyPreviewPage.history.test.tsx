@@ -140,7 +140,7 @@ describe("Daily → Stage → Question", () => {
 });
 
 describe("Premium gates analysis only; the other states are not a paywall", () => {
-  it("8, 17, 18 — Premium opens the strong run's analysis: tied best, trend, recovery, signals", async () => {
+  it("8, 17 — Premium opens the strong run's Daily Focus: tied best, trend; no signals, no recovery tile (HUB6.1)", async () => {
     renderPreview();
     await waitFor(() => expect(runRows()).toHaveLength(10));
     const latest = runRows()[0];
@@ -149,12 +149,11 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     expect(analysis).toHaveAttribute("data-state", "available");
     expect(within(analysis).getByTestId("daily-analysis-best")).toHaveTextContent(/tied/);
     expect(within(analysis).getByTestId("history-trajectory")).toHaveAttribute("data-direction", "up");
-    expect(within(analysis).getByTestId("daily-analysis-recovery")).toHaveTextContent("3 of 3");
-    // Named in the production wording, stage · category: Baron respawn is an
-    // Objective Timers question asked in Time Trial.
-    expect(within(analysis).getByTestId("history-signal-recurring_weakness"))
-      .toHaveTextContent(/Time Trial · Objective Timers/);
-    expect(within(analysis).getByTestId("history-signal-recovered_weakness")).toBeInTheDocument();
+    // HUB6.1: Review recovery and the learning-signal labels (recurring /
+    // recovered weakness) are not launch presentation. The golden still
+    // carries them; nothing renders them.
+    expect(within(analysis).queryByTestId("daily-analysis-recovery")).toBeNull();
+    expect(within(latest).queryByText(/Learning signals|Recurring weakness|Recovered|Review recovery/)).toBeNull();
     expect(within(analysis).queryByText(/Upgrade/)).toBeNull();
     // No invented praise.
     expect(within(analysis).queryByText(/amazing|great job|crushing|well done/i)).toBeNull();
@@ -176,8 +175,13 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     await waitFor(() => expect(runRows()).toHaveLength(10));
     const poor = runRows()[2];
     fireEvent.click(within(poor).getByTestId("daily-analysis-toggle"));
-    expect(within(poor).getByTestId("daily-analysis-delta")).toHaveTextContent(/−\d+ pts/);
-    expect(within(poor).getByTestId("daily-analysis-recovery")).toHaveTextContent("1 of 3");
+    expect(within(poor).getByTestId("daily-analysis-delta")).toHaveTextContent(/−\d+ pp/);
+    // The failed replay is the Review stage's own exact record (HUB6.1).
+    fireEvent.click(within(poor).getAllByTestId("daily-focus-stage").find((b) => b.dataset.stageKind === "review")!);
+    const review = within(poor).getByTestId("stage-focus");
+    const results = within(review).getAllByTestId("stage-question-card").map((c) => c.dataset.outcome);
+    expect(results.filter((o) => o === "correct")).toHaveLength(1);
+    expect(results.filter((o) => o === "incorrect")).toHaveLength(2);
     expect(within(poor).queryByText(/bad|poor|fail|weak run/i)).toBeNull();
   });
 
@@ -187,7 +191,9 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     const survival = within(runRows()[2]).getAllByTestId("daily-stage-row")
       .find((s) => s.getAttribute("data-stage-kind") === "survival")!;
     fireEvent.click(within(survival).getByTestId("stage-analysis-toggle"));
-    expect(within(survival).getByTestId("stage-analysis")).toHaveTextContent(/3/);
+    const focus = within(runRows()[2]).getByTestId("stage-focus");
+    expect(within(focus).getByTestId("stage-analysis-strikes")).toHaveTextContent("3 of 3");
+    expect(within(focus).getByTestId("stage-survival-end")).toHaveTextContent("out of mistakes");
   });
 
   it("8, N — Free: one invitation per run, no stage-level upsells, basic record intact", async () => {
@@ -195,9 +201,16 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     pick("lobby-preview-entitlement-free");
     await waitFor(() => expect(runRows()).toHaveLength(10));
     const latest = runRows()[0];
-    expect(within(latest).queryAllByTestId("stage-analysis-toggle")).toHaveLength(0);
     fireEvent.click(within(latest).getByTestId("daily-analysis-toggle"));
     expect(within(latest).getByTestId("daily-analysis-upgrade")).toHaveTextContent("Mogzy Premium");
+    // Stages stay navigable and repeat no invitation; Survival's strikes stay
+    // Premium-only.
+    for (const nav of within(latest).getAllByTestId("daily-focus-stage")) {
+      fireEvent.click(nav);
+      const focus = within(latest).getByTestId("stage-focus");
+      expect(within(focus).queryByText(/Upgrade|Premium/)).toBeNull();
+      expect(within(focus).queryByTestId("stage-analysis-strikes")).toBeNull();
+    }
   });
 
   it("10, O — entitlement unavailable: a retry, never an upsell", async () => {
@@ -232,15 +245,20 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     expect(within(analysis).queryByText(/Upgrade|Premium/)).toBeNull();
   });
 
-  it("11, P — a not-applicable stage offers no analysis affordance at all", async () => {
+  it("11, P — a not-applicable stage shows its record and no analysis", async () => {
     renderPreview();
     await loadAllRuns();
     const first = runRows()[10];
     const survival = within(first).getAllByTestId("daily-stage-row")
       .find((s) => s.getAttribute("data-stage-kind") === "survival")!;
-    expect(within(survival).queryByTestId("stage-analysis-toggle")).toBeNull();
-    // Its run cannot be compared, and says why in the server's terms.
-    fireEvent.click(within(first).getByTestId("daily-analysis-toggle"));
+    fireEvent.click(within(survival).getByTestId("stage-analysis-toggle"));
+    const focus = within(first).getByTestId("stage-focus");
+    expect(within(focus).getByTestId("stage-focus-result")).toBeTruthy();
+    expect(within(focus).queryByTestId("stage-analysis")).toBeNull();
+    fireEvent.click(within(first).getByTestId("stage-focus-back"));
+    // Back on the Daily Overview of the same Focus: the run cannot be
+    // compared, and says why in the server's terms.
+    expect(first.dataset.focused).toBe("true");
     expect(within(first).getByTestId("daily-analysis-insufficient")).toHaveTextContent(/settings were not recorded/);
   });
 

@@ -6,7 +6,7 @@
  *
  *   ring       one bounded part-to-whole (accuracy), always beside its C/A
  *   line       ≥5 compatible runs, drawn oldest → newest
- *   bars       categorical results on a common zero baseline
+ *   path       a stage's rounds in played order (Stage Focus)
  *   pips       a small bounded count (Survival strikes against the limit)
  *
  * MOTION
@@ -82,61 +82,33 @@ export function AccuracyRing({
   );
 }
 
-// ------------------------------------------------------------ bars
-
-/** One categorical bar on a common zero baseline, its counts as text. */
-export function RatioBar({
-  label,
-  correct,
-  answered,
-  accuracy,
-  hint,
-  progress = 1,
-}: {
-  label: string;
-  correct: number;
-  answered: number;
-  accuracy: number;
-  hint?: string;
-  progress?: number;
-}) {
-  const width = Math.max(0, Math.min(100, accuracy * 100));
-  return (
-    <li className="min-w-0 text-[11px]" data-testid="history-bar">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate" style={{ color: LEAGUECRAFT_INK.body }} title={label}>
-          {label}
-          {hint && <span style={{ color: LEAGUECRAFT_INK.faint }}> · {hint}</span>}
-        </span>
-        <span className="shrink-0 tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-          <span style={{ color: LEAGUECRAFT_INK.faint }}>{correct}/{answered} · </span>
-          <span className="font-semibold">{Math.round(accuracy * 100)}%</span>
-        </span>
-      </div>
-      <span aria-hidden="true" className="mt-0.5 block h-[7px] w-full overflow-hidden rounded-full" style={{ background: TRACK_INK }}>
-        <span
-          className="block h-full rounded-full"
-          style={{ width: `${width * progress}%`, background: DATA_INK }}
-        />
-      </span>
-    </li>
-  );
-}
-
 // ------------------------------------------------------------ pips
 
-/** `used` of `max` marked, as a row of pips. Decorative: the count is text. */
-export function Pips({ used, max, progress = 1 }: { used: number; max: number; progress?: number }) {
+/** `used` of `max` marked, as a row of pips, filling in order. Decorative:
+ *  the count is text. The pips are a count against the limit — they do not
+ *  say which occurrence produced a strike. */
+export function Pips({
+  used,
+  max,
+  progress = 1,
+  ink = DATA_INK,
+}: {
+  used: number;
+  max: number;
+  progress?: number;
+  ink?: string;
+}) {
   const n = Math.max(0, Math.min(12, max));
   return (
-    <span className="inline-flex items-center gap-1" aria-hidden="true" data-testid="history-pips">
+    <span className="inline-flex items-center gap-1.5" aria-hidden="true" data-testid="history-pips">
       {Array.from({ length: n }, (_, i) => {
-        const on = i < used && staggered(progress, i, Math.max(1, used)) > 0.5;
+        const on = i < used && (progress >= 1 || staggered(progress, i, Math.max(1, used)) > 0.5);
         return (
           <span
             key={i}
-            className="block h-2.5 w-2.5 rounded-full border transition-colors duration-200 motion-reduce:transition-none"
-            style={{ borderColor: on ? DATA_INK : FRAME_INK, background: on ? DATA_INK : "transparent" }}
+            data-on={on ? "true" : "false"}
+            className="grid h-4 w-4 place-items-center rounded-full border-2 transition-transform duration-200 motion-reduce:transition-none"
+            style={{ borderColor: on ? ink : FRAME_INK, background: on ? ink : "transparent", transform: on ? "scale(1)" : "scale(0.85)" }}
           />
         );
       })}
@@ -161,7 +133,7 @@ export function ChartFrame({
     <div className={`flex ${height} min-w-0 gap-1.5`}>
       {gutter && (
         <div
-          className="relative w-7 shrink-0 text-right text-[9.5px] tabular-nums"
+          className="relative w-8 shrink-0 text-right text-[10px] tabular-nums"
           style={{ color: LEAGUECRAFT_INK.faint }}
           aria-hidden="true"
         >
@@ -190,8 +162,66 @@ export function ChartFrame({
   );
 }
 
+const yOf = (v: number) => (1 - Math.max(0, Math.min(1, v))) * 100;
+
+/** The dashed historical-average rule, on the chart's own 0–100% scale. */
+function AverageRule({ average, progress }: { average: number; progress: number }) {
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+      <line
+        x1={0}
+        x2={100}
+        y1={yOf(average)}
+        y2={yOf(average)}
+        stroke={LEAGUECRAFT_INK.faint}
+        strokeWidth={1.25}
+        strokeDasharray="5 4"
+        vectorEffect="non-scaling-stroke"
+        opacity={Math.min(1, progress * 1.6)}
+        data-testid="history-trajectory-average"
+      />
+    </svg>
+  );
+}
+
+/** This run's point: ringed in the accent, labelled with its value and
+ *  "this run", and landed last. */
+function CurrentPoint({ value, x, shown, labelBelow }: { value: number; x: number; shown: boolean; labelBelow: boolean }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        data-testid="history-trajectory-current"
+        className="absolute block h-3.5 w-3.5 rounded-full border-[2.5px] transition-transform duration-300 motion-reduce:transition-none"
+        style={{
+          left: `${x}%`,
+          top: `${yOf(value)}%`,
+          background: "#f3e6c4",
+          borderColor: LEAGUECRAFT_INK.accent,
+          transform: `translate(-50%, -50%) scale(${shown ? 1 : 0})`,
+        }}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute whitespace-nowrap text-right leading-tight tabular-nums"
+        style={{
+          right: `${100 - x}%`,
+          top: `${yOf(value)}%`,
+          transform: labelBelow ? "translate(-10px, 6px)" : "translate(-10px, calc(-100% - 6px))",
+          color: LEAGUECRAFT_INK.accent,
+          opacity: shown ? 1 : 0,
+          transition: "opacity 200ms",
+        }}
+      >
+        <span className="block text-[12px] font-extrabold">{Math.round(value * 100)}%</span>
+        <span className="block text-[9px] font-bold uppercase tracking-[0.14em]">this run</span>
+      </span>
+    </>
+  );
+}
+
 /**
- * The run-accuracy trajectory the server fitted: its values oldest first, the
+ * The run-accuracy history the server fitted: its values oldest first, the
  * last one being this run. Drawn on the full 0–100% axis. The dashed rule is
  * the historical average, when the server sent one — the "Average accuracy"
  * figure beside the chart carries the same dash as its key.
@@ -200,50 +230,38 @@ export function TrajectoryChart({
   values,
   average,
   progress = 1,
+  height,
 }: {
   values: number[];
   average: number | null;
   progress?: number;
+  height?: string;
 }) {
   const clipId = useId().replace(/:/g, "");
   const n = values.length;
   if (n < 2) return null;
   const x = (i: number) => (i / (n - 1)) * 100;
-  const y = (v: number) => (1 - Math.max(0, Math.min(1, v))) * 100;
-  const points = values.map((v, i) => `${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
+  const points = values.map((v, i) => `${x(i).toFixed(2)},${yOf(v).toFixed(2)}`).join(" ");
   const last = values[n - 1];
   // The newest value is labelled on the side its incoming segment is not.
-  const labelBelow = values[n - 2] < last ? false : true;
+  const labelBelow = values[n - 2] >= last;
   return (
-    <ChartFrame>
+    <ChartFrame height={height}>
+      {average !== null && <AverageRule average={average} progress={progress} />}
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
-        {/* The line is revealed left to right — oldest run first — by a clip
-            that widens with the reveal. A dash offset is not used: with a
-            non-scaling stroke on a stretched chart it breaks into dashes. */}
+        {/* Revealed left to right — oldest run first — by a clip that widens
+            with the reveal. A dash offset is not used: with a non-scaling
+            stroke on a stretched chart it breaks into dashes. */}
         <defs>
           <clipPath id={clipId}>
             <rect x={-2} y={-10} width={104 * progress} height={120} />
           </clipPath>
         </defs>
-        {average !== null && (
-          <line
-            x1={0}
-            x2={100}
-            y1={y(average)}
-            y2={y(average)}
-            stroke={LEAGUECRAFT_INK.faint}
-            strokeWidth={1.25}
-            strokeDasharray="5 4"
-            vectorEffect="non-scaling-stroke"
-            opacity={Math.min(1, progress * 1.6)}
-            data-testid="history-trajectory-average"
-          />
-        )}
         <polyline
           points={points}
           fill="none"
           stroke={DATA_INK}
-          strokeWidth={2}
+          strokeWidth={2.25}
           strokeLinejoin="round"
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
@@ -251,75 +269,75 @@ export function TrajectoryChart({
         />
       </svg>
       {/* Points are HTML so they stay round on a stretched chart. Each lands
-          when the line reaches it. */}
-      {values.map((v, i) => {
-        const isLast = i === n - 1;
-        const shown = progress >= i / (n - 1) - 0.001;
-        return (
-          <span
-            key={i}
-            aria-hidden="true"
-            className={`absolute block rounded-full transition-transform duration-200 motion-reduce:transition-none ${
-              isLast ? "h-3 w-3 border-2" : "h-2 w-2"
-            }`}
-            style={{
-              left: `${x(i)}%`,
-              top: `${y(v)}%`,
-              background: isLast ? "#f3e6c4" : DATA_INK,
-              borderColor: isLast ? LEAGUECRAFT_INK.accent : undefined,
-              transform: `translate(-50%, -50%) scale(${shown ? 1 : 0})`,
-            }}
-          />
-        );
-      })}
-      <span
-        aria-hidden="true"
-        className="absolute whitespace-nowrap text-[10.5px] font-bold tabular-nums"
-        style={{
-          right: 10,
-          top: `${y(last)}%`,
-          transform: labelBelow ? "translateY(4px)" : "translateY(calc(-100% - 4px))",
-          color: LEAGUECRAFT_INK.accent,
-          opacity: progress >= 1 ? 1 : 0,
-          transition: "opacity 200ms",
-        }}
-      >
-        {Math.round(last * 100)}%
-      </span>
+          when the line reaches it; this run's lands last. */}
+      {values.slice(0, -1).map((v, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          className="absolute block h-2.5 w-2.5 rounded-full transition-transform duration-200 motion-reduce:transition-none"
+          style={{
+            left: `${x(i)}%`,
+            top: `${yOf(v)}%`,
+            background: DATA_INK,
+            transform: `translate(-50%, -50%) scale(${progress >= i / (n - 1) - 0.001 ? 1 : 0})`,
+          }}
+        />
+      ))}
+      <CurrentPoint value={last} x={100} shown={progress >= 1} labelBelow={labelBelow} />
     </ChartFrame>
   );
 }
 
 /**
- * The same frame before the trend exists: an empty plot with no axis values
- * (there is nothing on it to read), and beneath it one slot per run the trend
- * needs, the ones already played filled. The slots are a count, kept off the
- * plot so they can never be read as values on it.
+ * The same chart before the trend exists. It plots only what is known — this
+ * run's own accuracy, at the newest end, and the historical average when the
+ * server sent one — and beneath the plot one slot per run the trend needs,
+ * filled from the newest end for the runs already on record. The slots are a
+ * count, kept off the plot so they can never be read as values on it.
  */
-export function DormantTrajectory({ observed, required }: { observed: number; required: number }) {
+export function DormantTrajectory({
+  observed,
+  required,
+  current = null,
+  average = null,
+  progress = 1,
+  height,
+}: {
+  observed: number;
+  required: number;
+  current?: number | null;
+  average?: number | null;
+  progress?: number;
+  height?: string;
+}) {
   const slots = Math.max(2, Math.min(12, required));
   const filled = Math.max(0, Math.min(slots, observed));
+  const plotted = current !== null || average !== null;
   return (
     <div className="min-w-0">
-      <ChartFrame gutter={false} height="h-[4.5rem]">
-        {null}
+      <ChartFrame gutter={plotted} height={height ?? (plotted ? "h-[6.5rem]" : "h-[4.5rem]")}>
+        {average !== null && <AverageRule average={average} progress={progress} />}
+        {current !== null && <CurrentPoint value={current} x={100} shown={progress >= 1} labelBelow={false} />}
       </ChartFrame>
-      <div className="relative mt-2 h-2.5" aria-hidden="true">
-        {Array.from({ length: slots }, (_, i) => (
-          <span
-            key={i}
-            data-testid="history-trajectory-slot"
-            data-filled={i < filled ? "true" : "false"}
-            className="absolute top-0 block h-2.5 w-2.5 rounded-full border"
-            style={{
-              left: `${(i / (slots - 1)) * 100}%`,
-              transform: "translateX(-50%)",
-              borderColor: i < filled ? DATA_INK : FRAME_INK,
-              background: i < filled ? DATA_INK : "transparent",
-              borderStyle: i < filled ? "solid" : "dashed",
-            }}
-          />
-        ))}
+      <div className={`relative mt-2 h-2.5 ${plotted ? "ml-[2.375rem]" : ""}`} aria-hidden="true">
+        {Array.from({ length: slots }, (_, i) => {
+          const on = i >= slots - filled;
+          return (
+            <span
+              key={i}
+              data-testid="history-trajectory-slot"
+              data-filled={on ? "true" : "false"}
+              className="absolute top-0 block h-2.5 w-2.5 rounded-full border"
+              style={{
+                left: `${(i / (slots - 1)) * 100}%`,
+                transform: "translateX(-50%)",
+                borderColor: on ? DATA_INK : FRAME_INK,
+                background: on ? DATA_INK : "transparent",
+                borderStyle: on ? "solid" : "dashed",
+              }}
+            />
+          );
+        })}
       </div>
     </div>
   );

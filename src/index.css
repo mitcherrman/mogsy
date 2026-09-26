@@ -15924,3 +15924,22 @@ html.reduce-motion .history-unfold { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .history-unfold { animation: none; }
 }
+
+/* HUB6.1 — Daily Focus's one canvas changes content deliberately: a deeper
+   view (Overview -> stage, or a later stage) slides in from the right, a
+   return from the left, clipped to its own edge. Removed for both
+   reduced-motion switches. */
+@keyframes history-canvas-in-right {
+  from { transform: translateX(18px); clip-path: inset(0 0 0 100%); }
+  to { transform: none; clip-path: inset(0 0 0 0); }
+}
+@keyframes history-canvas-in-left {
+  from { transform: translateX(-18px); clip-path: inset(0 100% 0 0); }
+  to { transform: none; clip-path: inset(0 0 0 0); }
+}
+.history-canvas-in--right { animation: history-canvas-in-right 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.history-canvas-in--left { animation: history-canvas-in-left 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+html.reduce-motion .history-canvas-in { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .history-canvas-in { animation: none !important; }
+}

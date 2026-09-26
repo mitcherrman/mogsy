@@ -245,6 +245,19 @@ afterEach(() => {
 const runs = () => screen.getAllByTestId("daily-run-row");
 const stagesOf = (run: HTMLElement) => within(run).getAllByTestId("daily-stage-row");
 
+/** HUB6.1 — open a stage into Stage Focus, from the collapsed record's stage
+ *  entry or from the Daily Focus navigator, and return the stage canvas. */
+function openStage(run: HTMLElement, kind: string): HTMLElement {
+  const nav = within(run).queryAllByTestId("daily-focus-stage");
+  if (nav.length > 0) {
+    fireEvent.click(nav.find((b) => b.dataset.stageKind === kind)!);
+  } else {
+    const row = stagesOf(run).find((s) => s.dataset.stageKind === kind)!;
+    fireEvent.click(within(row).getByTestId("stage-analysis-toggle"));
+  }
+  return within(run).getByTestId("stage-focus");
+}
+
 // ============================================================ DAILY
 
 describe("HUB4 Daily — the persisted hierarchy", () => {
@@ -346,33 +359,41 @@ describe("HUB4 Stage — one component, ruleset-aware facts", () => {
     expect(within(standard).queryByTestId("daily-stage-ended")).toBeNull();
   });
 
-  it("Time Trial: settled C/A and the bank's own ending, and no response-time comparison", async () => {
+  it("Time Trial: settled C/A, the bank's own ending, the server's settled count, no speed claim", async () => {
     const [, tt] = await load();
     const result = within(tt).getByTestId("daily-stage-result");
     expect(result.textContent).toContain("6/8");
     expect(within(tt).getByTestId("daily-stage-ended").textContent).toContain("bank ran out");
     expect(within(tt).queryByTestId("daily-stage-score")).toBeNull();
-    fireEvent.click(within(tt).getByTestId("stage-analysis-toggle"));
-    const analysis = within(tt).getByTestId("stage-analysis");
-    expect(analysis.textContent).not.toMatch(/\bms\b|speed|seconds|faster|slower|response time/i);
+    const focus = openStage(runs()[0], "time_trial");
+    // The lane under the bank, ending on the bank.
+    expect(within(focus).getByTestId("stage-lane")).toBeTruthy();
+    expect(within(focus).getByTestId("stage-lane-end").textContent).toContain("bank ran out");
+    // HUB2's settled_questions, not A re-counted.
+    expect(within(focus).getByTestId("stage-analysis-settled").textContent).toContain("8");
+    expect(focus.textContent).not.toMatch(/\bms\b|speed|faster|slower|response time/i);
   });
 
-  it("Survival: its own ending, and strikes used against the frozen limit", async () => {
+  it("Survival: its own ending, depth, and strikes used against the frozen limit — never pinned to an occurrence", async () => {
     const [, , survival] = await load();
     expect(within(survival).getByTestId("daily-stage-ended").textContent).toContain("out of mistakes");
-    fireEvent.click(within(survival).getByTestId("stage-analysis-toggle"));
-    expect(within(survival).getByTestId("stage-analysis-strikes").textContent).toContain("2 of 3");
+    const focus = openStage(runs()[0], "survival");
+    expect(within(focus).getByTestId("stage-survival-path")).toBeTruthy();
+    expect(within(focus).getByTestId("stage-survival-end").textContent).toContain("out of mistakes");
+    expect(within(focus).getByTestId("stage-analysis-strikes").textContent).toContain("2 of 3");
+    expect(within(focus).getByTestId("stage-analysis-depth").textContent).toContain("9");
+    // The DTO does not say which occurrence produced a strike: nothing claims it.
+    expect(focus.textContent).not.toMatch(/strike \d|struck/i);
   });
 
-  it("Weak Areas: C/A, and the frozen themes as words rather than ids", async () => {
+  it("Weak Areas: C/A and its exact questions — no broad themes, no conversion", async () => {
     const [, , , weak] = await load();
     expect(within(weak).getByTestId("daily-stage-result").textContent).toContain("2/3");
-    fireEvent.click(within(weak).getByTestId("stage-analysis-toggle"));
-    const themes = within(weak).getByTestId("stage-analysis-themes").textContent!;
-    expect(themes).toContain("Cooldown comparison");
-    expect(themes).not.toContain("cooldown_comparison");
-    // No Weak Areas Conversion: HUB2 defers it, so nothing here claims it.
-    expect(within(weak).getByTestId("stage-analysis").textContent).not.toMatch(/conver/i);
+    const focus = openStage(runs()[0], "weak_areas");
+    expect(within(focus).getAllByTestId("stage-question-card").length).toBe(3);
+    expect(focus.textContent).not.toContain("Cooldown comparison");
+    expect(focus.textContent).not.toContain("cooldown_comparison");
+    expect(focus.textContent).not.toMatch(/conver|weakness/i);
   });
 
   it("Review: correct over attempted, nothing more", async () => {
@@ -550,10 +571,18 @@ describe("HUB4 capability — five states, five treatments", () => {
     const run = await openRun(clone(golden.free_page_1.items[0]));
     expect(within(run).getByTestId("daily-run-score")).toBeTruthy();
     expect(within(run).getAllByTestId("timeline-icon").length).toBeGreaterThan(0);
-    expect(within(run).queryAllByTestId("stage-analysis-toggle").length).toBe(0);
     fireEvent.click(within(run).getByTestId("daily-analysis-toggle"));
     const invite = within(run).getByTestId("daily-analysis-upgrade");
     expect(within(invite).getByRole("link", { name: /Upgrade to Mogzy Premium/ }).getAttribute("href")).toBe("/lol/premium");
+    // HUB6.1: every stage is still navigable; a stage that inherits the run's
+    // upsell repeats no invitation and keeps its exact questions.
+    for (const nav of within(run).getAllByTestId("daily-focus-stage")) {
+      fireEvent.click(nav);
+      const focus = within(run).getByTestId("stage-focus");
+      expect(within(focus).queryByTestId("stage-analysis-upgrade")).toBeNull();
+      expect(within(focus).queryByRole("link", { name: /Premium/ })).toBeNull();
+      expect(within(focus).getByTestId("stage-focus-result")).toBeTruthy();
+    }
   });
 
   it("insufficient_evidence: factual counts, and never a paywall", async () => {
@@ -563,16 +592,20 @@ describe("HUB4 capability — five states, five treatments", () => {
     expect(analysis.dataset.state).toBe("insufficient_evidence");
     expect(analysis.textContent).toContain("0 of 3 matching runs");
     expect(analysis.textContent).not.toMatch(/Premium|Upgrade/);
-    // Stages carry their own insufficiency, also without a paywall.
-    const stageToggle = within(stagesOf(run)[0]).getByTestId("stage-analysis-toggle");
-    // HUB6: the stage toggle is an icon; its name is still "Analysis".
-    expect(stageToggle).toHaveAccessibleName("Analysis");
-    expect(stageToggle).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(stageToggle);
-    expect(stageToggle).toHaveAttribute("aria-expanded", "true");
-    const stage = within(stagesOf(run)[0]).getByTestId("stage-analysis-insufficient");
-    expect(stage.textContent).toMatch(/0 of 1 earlier matching stages/);
-    expect(stage.textContent).not.toMatch(/Premium|Upgrade/);
+    // Stages open from the Focus navigator, also without a paywall.
+    for (const nav of within(run).getAllByTestId("daily-focus-stage")) {
+      fireEvent.click(nav);
+      expect(within(run).getByTestId("stage-focus").textContent).not.toMatch(/Premium|Upgrade/);
+    }
+  });
+
+  it("names each stage's entry for its stage (HUB6.1)", async () => {
+    const run = await openRun(clone(golden.premium_newcomer.items[0]));
+    const entry = within(stagesOf(run)[0]).getByTestId("stage-analysis-toggle");
+    expect(entry).toHaveAccessibleName(/stage analysis$/);
+    fireEvent.click(entry);
+    const focus = within(run).getByTestId("stage-focus");
+    expect(focus.dataset.stageOrder).toBe("0");
   });
 
   it("temporarily_unavailable: a restrained retry, never an upsell", async () => {
@@ -590,17 +623,22 @@ describe("HUB4 capability — five states, five treatments", () => {
     await waitFor(() => expect(runs().length).toBe(1));
   });
 
-  it("not_applicable: no expansion affordance at all", async () => {
+  it("not_applicable: no analytics surface at all, and the record stays navigable", async () => {
     const run = await openRun(
       wireRun("r4", FOUR, {
         capability: { state: "not_applicable", reason_code: null },
         stageCapability: { state: "not_applicable", reason_code: "missing_question_or_ruleset_provenance" },
       }),
     );
-    expect(within(run).queryByTestId("daily-analysis-toggle")).toBeNull();
-    expect(within(run).queryAllByTestId("stage-analysis-toggle").length).toBe(0);
-    // …and the Free record is still whole.
+    // The Free record is whole.
     expect(stagesOf(run).length).toBe(4);
+    fireEvent.click(within(run).getByTestId("daily-analysis-toggle"));
+    expect(within(run).queryByTestId("daily-analysis")).toBeNull();
+    for (const nav of within(run).getAllByTestId("daily-focus-stage")) {
+      fireEvent.click(nav);
+      expect(within(run).queryByTestId("stage-analysis")).toBeNull();
+      expect(within(run).getByTestId("stage-focus-result")).toBeTruthy();
+    }
   });
 });
 
@@ -627,9 +665,10 @@ describe("HUB4 analytics — the server's numbers, and only them", () => {
     });
     expect(within(analysis).getByTestId("daily-analysis-average").textContent).toContain("12%");
     expect(within(analysis).getByTestId("daily-analysis-average").textContent).toContain("4 earlier runs");
-    expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toContain("−33 pts");
+    expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toContain("−33 pp");
     expect(within(analysis).getByTestId("daily-analysis-best").textContent).toContain("60");
-    expect(within(analysis).getByTestId("daily-analysis-recovery").textContent).toContain("2 of 3");
+    // HUB6.1: Review recovery is not a Daily headline figure.
+    expect(within(analysis).queryByTestId("daily-analysis-recovery")).toBeNull();
     const line = within(analysis).getByTestId("history-trajectory");
     expect(line.dataset.direction).toBe("up");
     expect(within(line).getByRole("img").getAttribute("aria-label")).toContain("33%, 67%, 67%, 100%, 67%");
@@ -654,24 +693,32 @@ describe("HUB4 analytics — the server's numbers, and only them", () => {
     expect(average).toHaveTextContent("Average accuracy");
     expect(average).toHaveTextContent("2 of 3 matching runs");
     expect(average).toHaveTextContent("—");
-    for (const el of [trend, average]) {
-      expect(el.textContent).not.toMatch(/\b0%|zero|bad|weak|declin/i);
-    }
+    // The dormant chart plots only what is known: this run, on its 0–100%
+    // axis. No line, and no value for the runs it is still waiting on.
+    expect(within(trend).getAllByTestId("history-trajectory-current")).toHaveLength(1);
+    expect(trend.querySelector("polyline")).toBeNull();
+    expect(average.textContent).not.toMatch(/\b0%|zero|bad|weak|declin/i);
+    expect(trend.textContent).not.toMatch(/zero|bad|weak|declin/i);
     // The sufficient figures beside them are unchanged.
     expect(within(analysis).getByTestId("daily-analysis-delta")).toBeTruthy();
   });
 
-  it("draws only categories the server found sufficient", async () => {
+  it("HUB6.1 — the Daily Overview shows no category bars, learning signals or Review recovery", async () => {
     const analysis = await withAnalytics((a) => {
       a.category_performance = [
         { category: "Champion Base Stats", correct: 4, answered: 5, accuracy: 0.8, sufficiency: { status: "sufficient", observed: 5, required: 3, reason_code: null } },
-        { category: "Item Stats", correct: 1, answered: 2, accuracy: null, sufficiency: { status: "insufficient", observed: 2, required: 3, reason_code: "insufficient_questions" } },
+      ];
+      a.learning_signals = [
+        { type: "recurring_weakness", question_result_id: null, previous: null, sufficiency: { status: "sufficient", observed: 3, required: 3, reason_code: null } },
+        { type: "recovered_weakness", question_result_id: null, previous: null, sufficiency: { status: "sufficient", observed: 3, required: 3, reason_code: null } },
       ];
     });
-    const cats = within(analysis).getByTestId("history-categories");
-    expect(within(cats).getAllByTestId("history-bar").length).toBe(1);
-    expect(cats.textContent).toContain("Champion Base Stats");
-    expect(cats.textContent).not.toContain("Item Stats");
+    expect(within(analysis).queryByTestId("history-categories")).toBeNull();
+    expect(within(analysis).queryByTestId("history-bar")).toBeNull();
+    expect(within(analysis).queryByTestId("history-signals")).toBeNull();
+    expect(within(analysis).queryByTestId("daily-analysis-recovery")).toBeNull();
+    const text = screen.getByTestId("daily-history").textContent!;
+    expect(text).not.toMatch(/Champion Base Stats|Learning signals|Recurring weakness|Recovered|Review recovery/);
   });
 
   it("prints no opaque id, key, ref or version anywhere in the record", async () => {
@@ -680,8 +727,11 @@ describe("HUB4 analytics — the server's numbers, and only them", () => {
     renderHub(source);
     await waitFor(() => expect(runs().length).toBe(1));
     fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
-    for (const t of within(runs()[0]).getAllByTestId("stage-analysis-toggle")) fireEvent.click(t);
-    const text = screen.getByTestId("daily-history").textContent!;
+    let text = screen.getByTestId("daily-history").textContent!;
+    for (const nav of within(runs()[0]).getAllByTestId("daily-focus-stage")) {
+      fireEvent.click(nav);
+      text += screen.getByTestId("daily-history").textContent!;
+    }
     for (const opaque of ["stg1_", "lrn1_", "run1_", "run-00", "qr-", "quiz:", "match-6", "gen-1", "source-1", "artifact", "history-daily-v1"]) {
       expect(text).not.toContain(opaque);
     }
@@ -838,5 +888,194 @@ describe("HUB4 — the legacy #trends link lands on the newest run's analysis", 
     await waitFor(() => expect(within(runs()[0]).getByTestId("daily-analysis")).toBeTruthy());
     expect(document.activeElement).toBe(within(runs()[0]).getByTestId("daily-analysis-toggle"));
     expect(within(runs()[1]).queryByTestId("daily-analysis")).toBeNull();
+  });
+});
+
+// ============================================================ HUB6.1 MULTI-LAYER
+
+describe("HUB6.1 — History → Daily Focus → Stage Focus → Question", () => {
+  const load = async (records: unknown[], over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = {}) => {
+    const { source } = sourceOf({ first: page(records) });
+    renderHub(source, over);
+    await waitFor(() => expect(runs().length).toBe(records.length));
+  };
+  const focused = () => runs().filter((r) => r.dataset.focused === "true");
+
+  it("only one Daily is in Focus: opening another collapses the first", async () => {
+    await load([wireRun("a", FIVE), wireRun("b", FOUR, { completedAt: "2026-09-19T18:00:00+00:00" })]);
+    fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
+    expect(focused()).toEqual([runs()[0]]);
+    fireEvent.click(within(runs()[1]).getByTestId("daily-analysis-toggle"));
+    expect(focused()).toEqual([runs()[1]]);
+    expect(screen.getAllByTestId("daily-focus")).toHaveLength(1);
+    // Collapsing leaves nothing in Focus, and the list entries intact.
+    fireEvent.click(within(runs()[1]).getByTestId("daily-analysis-toggle"));
+    expect(focused()).toHaveLength(0);
+    expect(stagesOf(runs()[1])).toHaveLength(4);
+  });
+
+  it("a stage entry opens Focus straight at that stage", async () => {
+    await load([wireRun("a", FIVE)]);
+    const focus = openStage(runs()[0], "survival");
+    expect(focus.dataset.stageKind).toBe("survival");
+    expect(runs()[0].dataset.focused).toBe("true");
+    const current = within(runs()[0]).getAllByTestId("daily-focus-stage").find((b) => b.getAttribute("aria-current") === "page");
+    expect(current?.dataset.stageKind).toBe("survival");
+  });
+
+  it("Daily Overview ↔ Stage Focus share ONE canvas; a stage replaces the overview, never stacks under it", async () => {
+    await load([wireRun("a", FIVE, { capability: { state: "available", reason_code: null }, analytics: goldenAnalytics() })]);
+    const run = runs()[0];
+    fireEvent.click(within(run).getByTestId("daily-analysis-toggle"));
+    const canvas = within(run).getByTestId("daily-focus-canvas");
+    expect(canvas.dataset.view).toBe("overview");
+    expect(within(canvas).getByTestId("daily-analysis")).toBeTruthy();
+
+    for (const kind of FIVE) {
+      openStage(run, kind);
+      // The same canvas element, now showing exactly one stage.
+      expect(within(run).getByTestId("daily-focus-canvas")).toBe(canvas);
+      expect(canvas.dataset.view).toBe("stage");
+      expect(canvas.dataset.stageKind).toBe(kind);
+      expect(within(run).getAllByTestId("stage-focus")).toHaveLength(1);
+      expect(within(run).queryByTestId("daily-analysis")).toBeNull();
+    }
+
+    fireEvent.click(within(run).getByTestId("stage-focus-back"));
+    expect(canvas.dataset.view).toBe("overview");
+    expect(within(run).queryByTestId("stage-focus")).toBeNull();
+    expect(within(run).getByTestId("daily-analysis")).toBeTruthy();
+    // Still the same Daily in Focus.
+    expect(run.dataset.focused).toBe("true");
+  });
+
+  it("the navigator is the persisted stage sequence: 4 on a first Daily, 5 otherwise, in saved order", async () => {
+    await load([
+      wireRun("a", ["survival", "weak_areas", "standard", "time_trial", "review"]),
+      wireRun("b", FOUR, { completedAt: "2026-09-19T18:00:00+00:00" }),
+    ]);
+    fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
+    expect(within(runs()[0]).getAllByTestId("daily-focus-stage").map((b) => b.dataset.stageKind)).toEqual([
+      "survival", "weak_areas", "standard", "time_trial", "review",
+    ]);
+    fireEvent.click(within(runs()[1]).getByTestId("daily-analysis-toggle"));
+    const four = within(runs()[1]).getAllByTestId("daily-focus-stage").map((b) => b.dataset.stageKind);
+    expect(four).toEqual(FOUR);
+    expect(four).not.toContain("weak_areas");
+  });
+
+  it("a question opened from Stage Focus uses the existing Popover, and closing it keeps the same focus", async () => {
+    const frozen = { "m-a-4": reviewOf("m-a-4", 3) };
+    await load([wireRun("a", FIVE)], { rankedReviewPreview: frozen });
+    const run = runs()[0];
+    const focus = openStage(run, "review");
+    const question = within(focus).getAllByTestId("inspector-question")[0];
+    expect(question.dataset.loaded).toBe("true");
+    fireEvent.click(question);
+    expect(await screen.findByTestId("question-review-popover")).toBeTruthy();
+    fireEvent.keyDown(screen.getByTestId("question-review-popover"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("question-review-popover")).toBeNull());
+    expect(run.dataset.focused).toBe("true");
+    expect(within(run).getByTestId("stage-focus").dataset.stageKind).toBe("review");
+  });
+
+  it("on touch the same question opens in HUB3's Sheet, and closing it keeps the same focus", async () => {
+    coarse = true;
+    const frozen = { "m-a-3": reviewOf("m-a-3", 3) };
+    await load([wireRun("a", FIVE)], { rankedReviewPreview: frozen });
+    const run = runs()[0];
+    const focus = openStage(run, "weak_areas");
+    const question = within(focus).getAllByTestId("inspector-question")[0];
+    expect(question.getAttribute("aria-haspopup")).toBe("dialog");
+    fireEvent.click(question);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("Daily prompt 1");
+    fireEvent.click(screen.getByTestId("question-review-sheet-close"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(within(run).getByTestId("stage-focus").dataset.stageKind).toBe("weak_areas");
+  });
+
+  it("Stage Focus has no question-type or category bar farm", async () => {
+    const analytics = (kind: string) => ({
+      ...stageAnalytics(kind),
+      family_performance: [
+        { family: "ability_cooldown", correct: 3, answered: 6, run_count: 5, accuracy: 0.5, sufficiency: { status: "sufficient", observed: 6, required: 3, reason_code: null } },
+      ],
+      category_performance: [
+        { category: "Champion Base Stats", correct: 4, answered: 5, accuracy: 0.8, sufficiency: { status: "sufficient", observed: 5, required: 3, reason_code: null } },
+      ],
+    });
+    await load([
+      wireRun("a", FIVE, {
+        stages: FIVE.map((k) => ({ capability: { state: "available", reason_code: null }, analytics: analytics(k) })),
+      }),
+    ]);
+    for (const kind of FIVE) {
+      const focus = openStage(runs()[0], kind);
+      expect(within(focus).queryByTestId("history-bar")).toBeNull();
+      expect(within(focus).queryByTestId("history-families")).toBeNull();
+      expect(within(focus).queryByTestId("history-categories")).toBeNull();
+      expect(focus.textContent).not.toMatch(/Question types|Ability cooldown|Compared with/);
+    }
+  });
+
+  it("Standard draws its course from HUB2.1 rounds, one node per round, module questions kept together", async () => {
+    await load([
+      wireRun("a", ["standard"], {
+        stages: [{ occurrences: [[1, 0], [2, 0], [2, 1], [3, 0]], correct: 3, capability: { state: "available", reason_code: null }, analytics: stageAnalytics("standard") }],
+      }),
+    ]);
+    const focus = openStage(runs()[0], "standard");
+    const nodes = within(within(focus).getByTestId("stage-course")).getAllByTestId("stage-path-node");
+    expect(nodes.map((n) => n.dataset.round)).toEqual(["1", "2", "3"]);
+    // Round 2 settled two questions: one node, its own C/A.
+    expect(nodes[1].textContent).toContain("2/2");
+    expect(nodes[1].dataset.outcome).toBe("correct");
+    expect(nodes[2].dataset.outcome).toBe("incorrect");
+    // No module points exist in the DTO, so none are printed.
+    expect(focus.textContent).not.toMatch(/\bpts\b|points/i);
+  });
+});
+
+/** A sufficient Daily analytics block, as HUB2 sends it. */
+function goldenAnalytics(): Json {
+  return clone(golden.premium_page_1.items[0].analytics as Json);
+}
+
+describe("HUB6.1 — reduced motion", () => {
+  // An animating environment whose element is never seen: without reduced
+  // motion the reveal waits at 0; with it, the final state is drawn at once.
+  const stubMotion = () => {
+    vi.stubGlobal("IntersectionObserver", class { observe() {} disconnect() {} });
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => setTimeout(() => cb(performance.now()), 16));
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id));
+  };
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.documentElement.classList.remove("reduce-motion");
+  });
+  const openFocus = async () => {
+    const { source } = sourceOf({ first: page([clone(golden.premium_page_1.items[0])]) });
+    renderHub(source);
+    await waitFor(() => expect(runs().length).toBe(1));
+    fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
+    return within(runs()[0]).getByTestId("daily-analysis");
+  };
+  const currentScale = (analysis: HTMLElement) =>
+    (within(analysis).getByTestId("history-trajectory-current") as HTMLElement).style.transform;
+
+  it("withholds the reveal until seen when motion is allowed", async () => {
+    stubMotion();
+    const analysis = await openFocus();
+    expect(currentScale(analysis)).toContain("scale(0)");
+  });
+
+  it("renders every final state immediately under the app's Reduce Motion", async () => {
+    stubMotion();
+    document.documentElement.classList.add("reduce-motion");
+    const analysis = await openFocus();
+    expect(currentScale(analysis)).toContain("scale(1)");
+    expect(within(analysis).getByTestId("daily-analysis-best").textContent).toContain("60");
+    expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toMatch(/pp/);
   });
 });

@@ -152,6 +152,20 @@ export interface StageAnalytics {
   strikesUsed: number | null;
   /** Weak Areas only: the frozen question families the stage drew on. */
   selectedThemes: string[];
+  /**
+   * HUB6.1 — ruleset facts HUB2 already projects and HUB4 did not read. Each
+   * is null where the server did not send it (another stage kind, or an
+   * older projection):
+   *   `settledQuestions`      Time Trial — questions terminally settled under
+   *                           the active answer bank (the throughput figure);
+   *   `terminal`              Time Trial / Survival — the raw terminal code;
+   *   `depth`                 Survival — questions played before termination;
+   *   `attemptedAllocations`  Review — frozen allocations actually attempted.
+   */
+  settledQuestions: number | null;
+  terminal: string | null;
+  depth: number | null;
+  attemptedAllocations: number | null;
 }
 
 export interface StageBasic {
@@ -405,6 +419,12 @@ export function readStageAnalytics(v: unknown, l = "analytics"): StageAnalytics 
     comparisonSufficiency: readSufficiency(r.comparison_sufficiency, `${l}.comparison_sufficiency`),
     strikesUsed: nnum(r.strikes_used, `${l}.strikes_used`),
     selectedThemes: list(r.selected_themes, `${l}.selected_themes`, str),
+    settledQuestions: r.settled_questions === null || r.settled_questions === undefined
+      ? null : int(r.settled_questions, `${l}.settled_questions`),
+    terminal: nstr(r.terminal, `${l}.terminal`),
+    depth: r.depth === null || r.depth === undefined ? null : int(r.depth, `${l}.depth`),
+    attemptedAllocations: r.attempted_allocations === null || r.attempted_allocations === undefined
+      ? null : int(r.attempted_allocations, `${l}.attempted_allocations`),
   };
 }
 

@@ -6,7 +6,6 @@ import {
   AccuracyRing,
   DormantTrajectory,
   Pips,
-  RatioBar,
   TrajectoryChart,
 } from "@/components/quiz/workspace/historyVisuals";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
@@ -80,33 +79,37 @@ describe("marks", () => {
     expect(container.querySelectorAll("circle")).toHaveLength(1);
   });
 
-  it("a bar is the server's accuracy on a common zero baseline", () => {
-    render(<ul><RatioBar label="Items" correct={3} answered={4} accuracy={0.75} /></ul>);
-    const bar = screen.getByTestId("history-bar");
-    expect(bar).toHaveTextContent("3/4");
-    expect(bar).toHaveTextContent("75%");
-    expect((bar.querySelector("span[aria-hidden] > span") as HTMLElement).style.width).toBe("75%");
-  });
-
   it("pips mark strikes used against the frozen limit", () => {
     render(<Pips used={2} max={3} />);
-    const pips = screen.getByTestId("history-pips").children;
+    const pips = [...screen.getByTestId("history-pips").children] as HTMLElement[];
     expect(pips).toHaveLength(3);
+    expect(pips.map((p) => p.dataset.on)).toEqual(["true", "true", "false"]);
   });
 
-  it("a trajectory plots every server value, newest last and labelled", () => {
+  it("a trajectory plots every server value, newest last and labelled as this run", () => {
     const { container } = render(<TrajectoryChart values={[0.8, 0.8, 0.54, 0.84, 0.88]} average={0.69} />);
     expect(container.querySelector("polyline")!.getAttribute("points")!.split(" ")).toHaveLength(5);
     expect(screen.getByTestId("history-trajectory-average")).toBeTruthy();
+    expect(screen.getAllByTestId("history-trajectory-current")).toHaveLength(1);
     expect(container.textContent).toContain("88%");
+    expect(container.textContent).toContain("this run");
   });
 
   it("a dormant trajectory draws slots and no values", () => {
     const { container } = render(<DormantTrajectory observed={3} required={5} />);
     const slots = screen.getAllByTestId("history-trajectory-slot");
     expect(slots).toHaveLength(5);
-    expect(slots.filter((s) => s.dataset.filled === "true")).toHaveLength(3);
+    // Filled from the newest end: the runs on record are the latest ones.
+    expect(slots.map((s) => s.dataset.filled)).toEqual(["false", "false", "true", "true", "true"]);
     expect(container.querySelector("polyline")).toBeNull();
     expect(container.textContent).not.toMatch(/%/);
+  });
+
+  it("a dormant trajectory with this run plots only this run and the average", () => {
+    const { container } = render(<DormantTrajectory observed={1} required={5} current={0.68} average={0.6} />);
+    expect(screen.getAllByTestId("history-trajectory-current")).toHaveLength(1);
+    expect(screen.getByTestId("history-trajectory-average")).toBeTruthy();
+    expect(container.querySelector("polyline")).toBeNull();
+    expect(container.textContent).toContain("68%");
   });
 });

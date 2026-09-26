@@ -1,32 +1,40 @@
 /**
- * HUB4 — the Premium expansions of a Daily run and of a Stage.
+ * HUB4 → HUB6.1 — the Premium analytics of a Daily (its Overview) and of a
+ * Stage (its ruleset facts), inside Daily Focus.
  *
- * WHAT THE EXPANSION ADDS, AND WHAT IT MUST NOT REPEAT
- * ───────────────────────────────────────────────────
- * The row above already states the run's score, C/A and accuracy and every
- * stage's result. The expansion only adds what the row cannot: comparison
- * with compatible earlier runs, category performance, learning signals and
- * Review recovery for a run; compatible-cohort and ruleset detail for a
- * stage. Nothing basic is restated to fill space.
+ * WHAT EACH LAYER OWNS (HUB6.1, owner-locked)
+ * ───────────────────────────────────────────
+ * Daily Overview: this run against compatible earlier runs — the accuracy
+ * history (the server's fitted trajectory, drawn chronologically, with the
+ * historical average on the same axis), the exact change from the previous
+ * compatible Daily, and the personal-best score. Nothing else: no category
+ * or question-type bars, no learning-signal lists, no Review-recovery tile,
+ * no population, no Academy lifetime aggregate.
+ *
+ * Stage: the ruleset's own facts the server projects — Time Trial's settled
+ * questions, Survival's depth and strikes used. The stage's exact questions
+ * and its own visual live in `StageFocus`. HUB4's per-stage category and
+ * question-type bars are not part of the launch presentation (the data is
+ * still parsed; nothing here reads it).
  *
  * THE SERVER DECIDES, THE PAGE WORDS IT
  * ─────────────────────────────────────
- * Which state an expansion is in comes from HUB2's `analytics_capability`,
- * never from a local entitlement check, and each state reads differently:
+ * Which state an analysis is in comes from HUB2's `analytics_capability`,
+ * never from a local entitlement check:
  *
  *   available                analytics, as sent
  *   upgrade_required         the existing Premium invitation
  *   insufficient_evidence    the server's counts, in words — never a paywall
  *   temporarily_unavailable  a restrained retry — never a paywall
- *   not_applicable           no expansion at all (handled by the row)
+ *   not_applicable           nothing at all
  *
  * Every figure is the server's. A metric whose evidence was insufficient has
  * a null value: its figure keeps its place with an em dash and the server's
- * count ("2 of 5 matching runs"), and the trend keeps its empty frame, so
- * "not yet" never reads as "zero" or as "bad" (HUB6).
+ * count ("2 of 5 matching runs"), and the chart keeps its frame, so "not yet"
+ * never reads as "zero" or as "bad".
  */
 import { Link } from "react-router-dom";
-import { Lock, MoveRight, TrendingDown, TrendingUp } from "lucide-react";
+import { Lock, MoveRight, TrendingDown, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import {
@@ -34,17 +42,13 @@ import {
   DormantTrajectory,
   FRAME_INK,
   Pips,
-  RatioBar,
   TrajectoryChart,
 } from "@/components/quiz/workspace/historyVisuals";
+import { DAILY_TONE, stageTone } from "@/components/quiz/workspace/stageTheme";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import {
   RUN_METRIC_LABELS,
-  SIGNAL_LABELS,
-  SIGNAL_ORDER,
   TRAJECTORY_LABEL,
-  categoryLabel,
-  familyLabel,
   insufficientReasonText,
   instantDateLabel,
   percent,
@@ -54,14 +58,11 @@ import {
 } from "@/components/quiz/workspace/historyFormat";
 import type {
   AnalyticsCapability,
-  CategoryPerformance,
   DailyAnalytics,
   DailyHistoryRecord,
-  HistoryQuestion,
   HistoryStage,
-  LearningGroupPerformance,
   Metric,
-  StageAnalytics,
+  PersonalBest,
   Trajectory,
 } from "@/lib/history/contracts";
 
@@ -84,9 +85,7 @@ function Caption({ children, className = "" }: { children: React.ReactNode; clas
 
 /**
  * One comparison figure. A figure whose evidence is not in yet keeps its
- * place — label, an em dash, and the server's count as its hint — so a run's
- * analysis has the same shape before and after the comparison exists, and
- * "not yet" never reads as "zero".
+ * place — label, an em dash, and the server's count as its hint.
  */
 function Figure({
   label,
@@ -95,6 +94,7 @@ function Figure({
   testId,
   pending = false,
   legend,
+  size = "text-[24px]",
 }: {
   label: string;
   value?: React.ReactNode;
@@ -103,6 +103,7 @@ function Figure({
   pending?: boolean;
   /** A key mark drawn before the label (the average's dash on the chart). */
   legend?: React.ReactNode;
+  size?: string;
 }) {
   return (
     <div className="min-w-0" data-testid={testId} data-pending={pending ? "true" : undefined}>
@@ -111,7 +112,7 @@ function Figure({
         {label}
       </Caption>
       <div
-        className="mt-0.5 text-[20px] font-extrabold leading-none tabular-nums"
+        className={`mt-1 ${size} font-extrabold leading-none tabular-nums`}
         style={{
           color: pending ? FRAME_INK : LEAGUECRAFT_INK.strong,
           textShadow: pending ? undefined : LEAGUECRAFT_INK.press,
@@ -120,7 +121,7 @@ function Figure({
         {pending ? <span aria-label="Not available yet">—</span> : value}
       </div>
       {hint && (
-        <div className="mt-1 text-[10px] leading-snug" style={{ color: LEAGUECRAFT_INK.faint }}>
+        <div className="mt-1 text-[10.5px] leading-snug" style={{ color: LEAGUECRAFT_INK.faint }}>
           {hint}
         </div>
       )}
@@ -142,85 +143,44 @@ const AVERAGE_DASH = (
   />
 );
 
-/** Bars laid out two to a row once the record is wide enough to hold them. */
-const BAR_GRID = "grid gap-x-6 gap-y-1.5 [@container(min-width:36rem)]:grid-cols-2";
-
-function CategoryBars({ title, groups, progress }: { title: string; groups: CategoryPerformance[]; progress: number }) {
-  // Only groups the server found sufficient carry an accuracy; the rest are
-  // not drawn as short bars, because a short bar would be a claim.
-  const shown = groups.filter((g) => g.accuracy !== null);
-  if (shown.length === 0) return null;
-  return (
-    <div className="space-y-1.5" data-testid="history-categories">
-      <Caption>{title}</Caption>
-      <ul className={BAR_GRID}>
-        {shown.map((g, i) => (
-          <RatioBar
-            key={g.category}
-            label={categoryLabel(g.category)}
-            correct={g.correct}
-            answered={g.answered}
-            accuracy={g.accuracy!}
-            progress={staggered(progress, i, shown.length, 0.35)}
-          />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function FamilyBars({ groups, progress }: { groups: LearningGroupPerformance[]; progress: number }) {
-  const shown = groups.filter((g) => g.accuracy !== null);
-  if (shown.length === 0) return null;
-  return (
-    <div className="space-y-1.5" data-testid="history-families">
-      <Caption>Question types</Caption>
-      <ul className={BAR_GRID}>
-        {shown.map((g, i) => (
-          <RatioBar
-            key={g.identity}
-            label={familyLabel(g.identity)}
-            correct={g.correct}
-            answered={g.answered}
-            accuracy={g.accuracy!}
-            hint={`${g.runCount} runs`}
-            progress={staggered(progress, i, shown.length, 0.35)}
-          />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 const TREND_ICON = { up: TrendingUp, down: TrendingDown, stable: MoveRight } as const;
 
 /**
- * The run-accuracy trajectory. Drawn only when the server sent one — which
- * it does only for five compatible runs — oldest to newest, the last point
- * being this run, with the server's direction label and every value in text
- * for a reader who cannot see it. Before that, the same frame stands empty
- * with the server's count.
+ * The Daily's accuracy history: the server's fitted trajectory — the last
+ * compatible completed runs, oldest first, this run last — on a fixed 0–100%
+ * axis, with the historical average dashed on the same axis. Before the
+ * server has enough compatible runs, the same frame plots only this run and
+ * the average, with the evidence count beneath it.
  */
-function TrendBlock({
+function AccuracyHistory({
   trajectory,
   average,
+  current,
   progress,
 }: {
   trajectory: Metric<Trajectory>;
   average: number | null;
+  current: number | null;
   progress: number;
 }) {
   const t = trajectory.value;
   if (!t || t.values.length < 2) {
     return (
       <div className="min-w-0" data-testid="history-pending-trend" data-pending="true">
-        <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <div className="mb-2 flex items-baseline justify-between gap-2">
           <Caption>{RUN_METRIC_LABELS.trajectory}</Caption>
-          <span className="text-[10px]" style={{ color: LEAGUECRAFT_INK.faint }}>
+          <span className="text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }}>
             {sufficiencyText(trajectory.sufficiency)}
           </span>
         </div>
-        <DormantTrajectory observed={trajectory.sufficiency.observed} required={trajectory.sufficiency.required} />
+        <DormantTrajectory
+          observed={trajectory.sufficiency.observed}
+          required={trajectory.sufficiency.required}
+          current={current}
+          average={average}
+          progress={progress}
+          height="h-[9.5rem]"
+        />
       </div>
     );
   }
@@ -228,75 +188,68 @@ function TrendBlock({
   const summary = t.values.map((v) => percent(v)).join(", ");
   return (
     <div className="min-w-0" data-testid="history-trajectory" data-direction={t.direction}>
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
         <Caption>Trend · last {t.values.length} runs</Caption>
         <span
-          className="inline-flex items-center gap-1 text-[13px] font-bold leading-none"
+          className="inline-flex items-center gap-1 text-[14px] font-bold leading-none"
           style={{ color: LEAGUECRAFT_INK.strong, textShadow: LEAGUECRAFT_INK.press }}
         >
-          <Icon className="h-3.5 w-3.5" style={{ color: LEAGUECRAFT_INK.accent }} aria-hidden="true" />
+          <Icon className="h-4 w-4" style={{ color: LEAGUECRAFT_INK.accent }} aria-hidden="true" />
           {TRAJECTORY_LABEL[t.direction]}
         </span>
       </div>
       <div role="img" aria-label={`Accuracy over your last ${t.values.length} matching runs, oldest first: ${summary}`}>
-        <TrajectoryChart values={t.values} average={average} progress={progress} />
+        <TrajectoryChart values={t.values} average={average} progress={progress} height="h-[11rem]" />
       </div>
     </div>
   );
 }
 
-function questionName(q: HistoryQuestion | undefined, stage: HistoryStage | undefined): string {
-  const kind = stage ? stageKindLabel(stage.kind) : "";
-  const subject = q?.subjectLabel ?? (q?.category ? categoryLabel(q.category) : null);
-  if (!q) return kind;
-  return subject ? `${kind} · ${subject}` : `${kind} · question ${q.reviewPosition}`;
-}
-
-/** How many questions a signal names before it summarises the rest. The
- *  count beside the label is always the full number. */
-const SIGNAL_NAMES_SHOWN = 4;
-
-function LearningSignals({ record, analytics }: { record: DailyHistoryRecord; analytics: DailyAnalytics }) {
-  const byId = new Map<string, { q: HistoryQuestion; stage: HistoryStage }>();
-  for (const stage of record.stages) {
-    for (const q of stage.questions) {
-      if (q.questionResultId) byId.set(q.questionResultId, { q, stage });
-    }
+/** The personal best, as a crest: the score under a trophy, gilded when this
+ *  run holds it. */
+function PersonalBestCrest({ best, progress }: { best: Metric<PersonalBest>; progress: number }) {
+  const b = best.value;
+  if (!b) {
+    return (
+      <div className="flex min-w-0 items-center gap-3" data-testid="history-pending-best" data-pending="true">
+        <span
+          aria-hidden="true"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-dashed"
+          style={{ borderColor: FRAME_INK, color: FRAME_INK }}
+        >
+          <Trophy className="h-5 w-5" />
+        </span>
+        <Figure pending label={RUN_METRIC_LABELS.personalBest} hint={sufficiencyText(best.sufficiency)} />
+      </div>
+    );
   }
-  const groups = SIGNAL_ORDER.map((type) => ({
-    type,
-    signals: analytics.learningSignals.filter((s) => s.type === type),
-  })).filter((g) => g.signals.length > 0);
-  if (groups.length === 0) return null;
+  const current = b.isCurrent;
   return (
-    <div className="space-y-1" data-testid="history-signals">
-      <Caption>Learning signals</Caption>
-      <ul className="space-y-0.5 text-[11px]">
-        {groups.map(({ type, signals }) => (
-          <li key={type} data-testid={`history-signal-${type}`} className="leading-snug">
-            <span className="font-semibold" style={{ color: LEAGUECRAFT_INK.strong }}>
-              {SIGNAL_LABELS[type]}
-            </span>{" "}
-            <span className="tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }}>
-              {signals.length}
-            </span>
-            {type !== "first_in_available_history" && (
-              <span style={{ color: LEAGUECRAFT_INK.body }}>
-                {" — "}
-                {signals
-                  .slice(0, SIGNAL_NAMES_SHOWN)
-                  .map((s) => {
-                    const hit = s.questionResultId ? byId.get(s.questionResultId) : undefined;
-                    const name = questionName(hit?.q, hit?.stage);
-                    return s.previous ? `${name} (last seen ${instantDateLabel(s.previous.completedAt)})` : name;
-                  })
-                  .join("; ")}
-                {signals.length > SIGNAL_NAMES_SHOWN && ` +${signals.length - SIGNAL_NAMES_SHOWN} more`}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
+    <div className="flex min-w-0 items-center gap-3" data-testid="daily-analysis-best" data-current={current ? "true" : "false"}>
+      <span
+        aria-hidden="true"
+        className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 transition-transform duration-300 motion-reduce:transition-none"
+        style={{
+          borderColor: DAILY_TONE.edge,
+          background: current ? "radial-gradient(circle at 35% 30%, #f6df9a, #c49a3c 70%)" : DAILY_TONE.tint,
+          color: current ? "#3a2708" : DAILY_TONE.ink,
+          boxShadow: current ? "0 0 0 3px rgba(196,154,60,0.25), inset 0 1px 0 rgba(255,249,233,0.6)" : undefined,
+          transform: `scale(${0.8 + 0.2 * progress})`,
+        }}
+      >
+        <Trophy className="h-5 w-5" />
+      </span>
+      <Figure
+        label={RUN_METRIC_LABELS.personalBest}
+        value={<Counted value={b.score} progress={progress} format={(v) => String(Math.round(v))} />}
+        hint={
+          current
+            ? b.tied
+              ? `this run · tied, first on ${instantDateLabel(b.earliestCompletedAt)}`
+              : "this run"
+            : instantDateLabel(b.earliestCompletedAt)
+        }
+      />
     </div>
   );
 }
@@ -304,34 +257,35 @@ function LearningSignals({ record, analytics }: { record: DailyHistoryRecord; an
 // ------------------------------------------------------------ capability
 
 /**
- * The existing Premium invitation, set beside the empty frame the analysis
- * would draw in — the structure is shown, never a sample of it: there is no
- * data behind the frame, so nothing is drawn on it.
+ * The existing Premium invitation, set in the empty frame the analysis would
+ * draw in — the structure is shown, never a sample of it: there is no data
+ * behind the frame, so nothing is drawn on it.
  */
 function PremiumInvitation({ testId }: { testId: string }) {
   return (
-    <div
-      className="grid items-center gap-3 rounded-md border px-3 py-2.5 [@container(min-width:32rem)]:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]"
-      data-testid={testId}
-      style={{ borderColor: "rgba(96,68,28,0.3)", background: LEAGUECRAFT_INK.inset }}
-    >
-      <div className="hidden opacity-70 [@container(min-width:32rem)]:block" aria-hidden="true">
-        <ChartFrame gutter={false}>{null}</ChartFrame>
+    <div className="relative" data-testid={testId}>
+      <div className="opacity-60" aria-hidden="true">
+        <ChartFrame gutter={false} height="h-[7rem]">{null}</ChartFrame>
       </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
-          <Lock className="h-3.5 w-3.5 shrink-0" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />
-          Run and stage analysis is part of Mogzy Premium.
-        </p>
-        <Button
-          asChild
-          size="sm"
-          variant="outline"
-          className="h-8 text-[11px]"
-          style={{ borderColor: "rgba(96,68,28,0.45)", color: LEAGUECRAFT_INK.brass }}
+      <div className="absolute inset-0 grid place-items-center px-2">
+        <div
+          className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-md border px-3 py-2.5"
+          style={{ borderColor: "rgba(96,68,28,0.3)", background: "rgba(239,224,187,0.94)" }}
         >
-          <Link to={PREMIUM_HREF}>Upgrade to Mogzy Premium</Link>
-        </Button>
+          <p className="flex min-w-0 items-center gap-1.5 text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+            <Lock className="h-3.5 w-3.5 shrink-0" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />
+            Run and stage analysis is part of Mogzy Premium.
+          </p>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-8 text-[11px] [@media(pointer:coarse)]:h-11"
+            style={{ borderColor: "rgba(96,68,28,0.45)", color: LEAGUECRAFT_INK.brass }}
+          >
+            <Link to={PREMIUM_HREF}>Upgrade to Mogzy Premium</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -344,7 +298,7 @@ function Unavailable({ onRetry, testId }: { onRetry?: () => void; testId: string
         Analysis is unavailable right now.
       </p>
       {onRetry && (
-        <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={onRetry} data-testid={`${testId}-retry`}>
+        <Button size="sm" variant="outline" className="h-7 text-[11px] [@media(pointer:coarse)]:h-11" onClick={onRetry} data-testid={`${testId}-retry`}>
           Try again
         </Button>
       )}
@@ -360,17 +314,17 @@ function Insufficient({ text, testId }: { text: string; testId: string }) {
   );
 }
 
-/** Whether a capability state earns an expansion affordance at all. */
+/** Whether a capability state earns an analytics surface at all. */
 export function hasExpansion(capability: AnalyticsCapability): boolean {
   return capability.state !== "not_applicable";
 }
 
-/** The expansion's body unrolls from its top edge as it opens (CSS
- *  `history-unfold`, removed under reduced motion); its marks then draw. */
-const UNFOLD = "history-unfold";
+// ------------------------------------------------------------ Daily Overview
 
-// ------------------------------------------------------------ Daily
-
+/**
+ * The Daily Overview's analytics. Null for `not_applicable` — the Daily
+ * Focus then shows the basic record and its stages only.
+ */
 export function DailyRunAnalysis({
   record,
   onRetry,
@@ -378,23 +332,22 @@ export function DailyRunAnalysis({
 }: {
   record: DailyHistoryRecord;
   onRetry?: () => void;
-  id: string;
+  id?: string;
 }) {
   const { capability, analytics } = record;
-  const reveal = useReveal<HTMLDivElement>({ durationMs: 900, delayMs: 120 });
+  const reveal = useReveal<HTMLDivElement>({ durationMs: 1100, delayMs: 120 });
+  if (!hasExpansion(capability)) return null;
   const shell = (children: React.ReactNode) => (
-    <div
+    <section
       ref={reveal.ref}
       id={id}
-      role="region"
       aria-label="Run analysis"
-      className={`${UNFOLD} mt-1 space-y-3.5 rounded-md border px-3 py-3`}
-      style={{ borderColor: "rgba(96,68,28,0.22)", background: "rgba(255, 246, 222, 0.28)" }}
+      className="min-w-0"
       data-testid="daily-analysis"
       data-state={capability.state}
     >
       {children}
-    </div>
+    </section>
   );
 
   if (capability.state === "upgrade_required") return shell(<PremiumInvitation testId="daily-analysis-upgrade" />);
@@ -402,16 +355,14 @@ export function DailyRunAnalysis({
     return shell(<Unavailable onRetry={onRetry} testId="daily-analysis-unavailable" />);
   }
   if (!analytics) {
-    // No per-metric counts to lay out: the server's reason, in words.
     return shell(<Insufficient text={insufficientReasonText(capability.reasonCode)} testId="daily-analysis-insufficient" />);
   }
-
   // `insufficient_evidence` with analytics and `available` share one layout:
   // every comparison has its place, filled or waiting on its count.
-  return shell(<RunAnalysisBody record={record} analytics={analytics} progress={reveal.progress} />);
+  return shell(<OverviewBody record={record} analytics={analytics} progress={reveal.progress} />);
 }
 
-function RunAnalysisBody({
+function OverviewBody({
   record,
   analytics: a,
   progress,
@@ -423,187 +374,138 @@ function RunAnalysisBody({
   const figure = staggered(progress, 1, 2, 0.4);
   const delta = a.previousRunDeltaPp;
   const average = a.historicalAverage;
-  const best = a.personalBest;
-  const recovery = a.reviewRecoveryRate;
-  const drawsAverage = a.trajectory.value !== null && average.value !== null;
+  const drawsAverage = average.value !== null;
 
   return (
-    <>
-      <div className="grid gap-x-6 gap-y-4 [@container(min-width:36rem)]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <TrendBlock trajectory={a.trajectory} average={average.value} progress={progress} />
+    <div className="grid gap-x-8 gap-y-5 [@container(min-width:40rem)]:grid-cols-[minmax(0,1.7fr)_minmax(12rem,1fr)]">
+      <AccuracyHistory
+        trajectory={a.trajectory}
+        average={average.value}
+        current={record.basic.accuracy}
+        progress={progress}
+      />
 
-        <div className="grid grid-cols-2 content-start gap-x-4 gap-y-3.5">
-          {delta.value !== null ? (
-            <Figure
-              testId="daily-analysis-delta"
-              label="Accuracy vs last run"
-              value={
-                <Counted
-                  value={delta.value}
-                  progress={figure}
-                  // Mid-count, a value still rounding to zero keeps the
-                  // final sign rather than flashing "±0".
-                  format={(v) => (Math.round(v) === 0 && Math.round(delta.value!) !== 0
-                    ? `${delta.value! > 0 ? "+" : "−"}0 pts`
-                    : signedPoints(v))}
-                />
-              }
-            />
-          ) : (
-            <Figure testId="history-pending-delta" pending label="Accuracy vs last run" hint={sufficiencyText(delta.sufficiency)} />
-          )}
+      <div className="grid content-start gap-x-6 gap-y-5 [@container(min-width:26rem)]:grid-cols-2 [@container(min-width:40rem)]:grid-cols-1">
+        {delta.value !== null ? (
+          <Figure
+            testId="daily-analysis-delta"
+            label="Previous Daily"
+            value={
+              <Counted
+                value={delta.value}
+                progress={figure}
+                // Mid-count, a value still rounding to zero keeps the final
+                // sign rather than flashing "0 pp".
+                format={(v) => (Math.round(v) === 0 && Math.round(delta.value!) !== 0
+                  ? `${delta.value! > 0 ? "+" : "−"}0 pp`
+                  : signedPoints(v))}
+              />
+            }
+            hint="accuracy"
+          />
+        ) : (
+          <Figure testId="history-pending-delta" pending label="Previous Daily" hint={sufficiencyText(delta.sufficiency)} />
+        )}
 
-          {average.value !== null ? (
-            <Figure
-              testId="daily-analysis-average"
-              label="Average accuracy"
-              legend={drawsAverage ? AVERAGE_DASH : undefined}
-              value={<Counted value={average.value} progress={figure} format={(v) => percent(v) ?? "—"} />}
-              hint={`${average.sufficiency.observed} earlier runs`}
-            />
-          ) : (
-            <Figure testId="history-pending-average" pending label="Average accuracy" hint={sufficiencyText(average.sufficiency)} />
-          )}
+        <PersonalBestCrest best={a.personalBest} progress={figure} />
 
-          {best.value !== null ? (
-            <Figure
-              testId="daily-analysis-best"
-              label="Best score"
-              value={<Counted value={best.value.score} progress={figure} format={(v) => String(Math.round(v))} />}
-              hint={
-                best.value.isCurrent
-                  ? best.value.tied
-                    ? `this run · tied, first on ${instantDateLabel(best.value.earliestCompletedAt)}`
-                    : "this run"
-                  : instantDateLabel(best.value.earliestCompletedAt)
-              }
-            />
-          ) : (
-            <Figure testId="history-pending-best" pending label="Best score" hint={sufficiencyText(best.sufficiency)} />
-          )}
-
-          {recovery.value ? (
-            <Figure
-              testId="daily-analysis-recovery"
-              label={RUN_METRIC_LABELS.reviewRecoveryRate}
-              value={`${recovery.value.correct} of ${recovery.value.attempted}`}
-              hint={recovery.value.rate !== null ? percent(recovery.value.rate) : null}
-            />
-          ) : (
-            <Figure
-              testId="history-pending-recovery"
-              pending
-              label={RUN_METRIC_LABELS.reviewRecoveryRate}
-              hint={sufficiencyText(recovery.sufficiency)}
-            />
-          )}
-        </div>
+        {average.value !== null ? (
+          <Figure
+            testId="daily-analysis-average"
+            label="Average accuracy"
+            legend={drawsAverage ? AVERAGE_DASH : undefined}
+            value={<Counted value={average.value} progress={figure} format={(v) => percent(v) ?? "—"} />}
+            hint={`${average.sufficiency.observed} earlier runs`}
+          />
+        ) : (
+          <Figure testId="history-pending-average" pending label="Average accuracy" hint={sufficiencyText(average.sufficiency)} />
+        )}
       </div>
-
-      <CategoryBars title="Categories" groups={a.categoryPerformance} progress={staggered(progress, 1, 2, 0.3)} />
-      <LearningSignals record={record} analytics={a} />
-    </>
+    </div>
   );
 }
 
 // ------------------------------------------------------------ Stage
 
 /**
- * Stage analysis, ruleset-aware. The stage row already prints C/A and the
- * terminal note, so Time Trial's settled count, Survival's depth and the
- * Review's attempted count (all equal to the row's A) are not repeated;
- * what is added is what the row does not carry: strikes used, the Weak Areas
- * themes, and the compatible cohort's category and question-type results.
- * No generic response-time comparison exists here, by design.
+ * A stage's ruleset facts, as the server projects them: Time Trial's settled
+ * questions under the active bank; Survival's depth and strikes used against
+ * the frozen limit. Nothing is compared: the DTO carries no earlier stages'
+ * values (HUB6.1 audit), so no comparison is drawn or implied.
+ *
+ * Returns null where the stage has nothing of its own to add.
  */
 export function StageAnalysis({
   stage,
   onRetry,
-  id,
+  progress = 1,
 }: {
   stage: HistoryStage;
   onRetry?: () => void;
-  id: string;
+  progress?: number;
 }) {
   const { capability, analytics } = stage;
-  const reveal = useReveal<HTMLDivElement>({ durationMs: 800, delayMs: 80 });
   const shell = (children: React.ReactNode) => (
-    <div
-      ref={reveal.ref}
-      id={id}
-      role="region"
+    <section
       aria-label={`${stageKindLabel(stage.kind)} stage analysis`}
-      className={`${UNFOLD} mb-1.5 mt-1 space-y-2.5 rounded-md border px-3 py-2.5`}
-      style={{ borderColor: "rgba(96,68,28,0.2)", background: "rgba(255, 246, 222, 0.24)" }}
+      className="min-w-0"
       data-testid="stage-analysis"
       data-state={capability.state}
     >
       {children}
-    </div>
+    </section>
   );
 
+  if (!hasExpansion(capability)) return null;
   if (capability.state === "upgrade_required") return shell(<PremiumInvitation testId="stage-analysis-upgrade" />);
   if (capability.state === "temporarily_unavailable") {
     return shell(<Unavailable onRetry={onRetry} testId="stage-analysis-unavailable" />);
   }
-  if (capability.state === "insufficient_evidence" || !analytics) {
-    const s = analytics?.comparisonSufficiency;
-    return shell(
-      <Insufficient
-        testId="stage-analysis-insufficient"
-        text={
-          s
-            ? `${insufficientReasonText(s.reasonCode ?? capability.reasonCode)} (${sufficiencyText(s)}.)`
-            : insufficientReasonText(capability.reasonCode)
-        }
+  if (!analytics) {
+    return shell(<Insufficient testId="stage-analysis-insufficient" text={insufficientReasonText(capability.reasonCode)} />);
+  }
+
+  const tone = stageTone(stage.kind);
+  const facts: React.ReactNode[] = [];
+  if (stage.kind === "time_trial" && analytics.settledQuestions !== null) {
+    facts.push(
+      <Figure
+        key="settled"
+        testId="stage-analysis-settled"
+        label="Settled questions"
+        value={<Counted value={analytics.settledQuestions} progress={progress} format={(v) => String(Math.round(v))} />}
+        size="text-[28px]"
       />,
     );
   }
-
-  return shell(<StageAnalyticsBody stage={stage} analytics={analytics} progress={reveal.progress} />);
-}
-
-function StageAnalyticsBody({
-  stage,
-  analytics,
-  progress,
-}: {
-  stage: HistoryStage;
-  analytics: StageAnalytics;
-  progress: number;
-}) {
-  const strikes =
-    stage.kind === "survival" && analytics.strikesUsed !== null ? (
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1" data-testid="stage-analysis-strikes">
+  if (stage.kind === "survival" && analytics.depth !== null) {
+    facts.push(
+      <Figure
+        key="depth"
+        testId="stage-analysis-depth"
+        label="Depth"
+        value={<Counted value={analytics.depth} progress={progress} format={(v) => String(Math.round(v))} />}
+        size="text-[28px]"
+      />,
+    );
+  }
+  if (stage.kind === "survival" && analytics.strikesUsed !== null) {
+    facts.push(
+      <div key="strikes" className="min-w-0" data-testid="stage-analysis-strikes">
         <Caption>Strikes used</Caption>
-        {stage.ruleset.maxStrikes !== null && (
-          <Pips used={analytics.strikesUsed} max={stage.ruleset.maxStrikes} progress={progress} />
-        )}
-        <span className="text-[12px] font-bold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-          {stage.ruleset.maxStrikes !== null
-            ? `${analytics.strikesUsed} of ${stage.ruleset.maxStrikes}`
-            : String(analytics.strikesUsed)}
-        </span>
-      </div>
-    ) : null;
-  return (
-    <>
-      <p className="text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="stage-analysis-samples">
-        Compared with{" "}
-        <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>
-          {analytics.historicalSamples}
-        </span>{" "}
-        earlier matching {stageKindLabel(stage.kind)} {analytics.historicalSamples === 1 ? "stage" : "stages"}.
-      </p>
-      {strikes}
-      {stage.kind === "weak_areas" && analytics.selectedThemes.length > 0 && (
-        <p className="text-[11px]" style={{ color: LEAGUECRAFT_INK.body }} data-testid="stage-analysis-themes">
-          <span className="font-semibold" style={{ color: LEAGUECRAFT_INK.strong }}>Built from</span>{" "}
-          {analytics.selectedThemes.map(familyLabel).join(", ")}
-        </p>
-      )}
-      <CategoryBars title="Categories" groups={analytics.categoryPerformance} progress={progress} />
-      <FamilyBars groups={analytics.familyPerformance} progress={progress} />
-    </>
-  );
+        <div className="mt-1.5 flex items-center gap-2.5">
+          {stage.ruleset.maxStrikes !== null && (
+            <Pips used={analytics.strikesUsed} max={stage.ruleset.maxStrikes} progress={progress} ink={tone.ink} />
+          )}
+          <span className="text-[16px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+            {stage.ruleset.maxStrikes !== null
+              ? `${analytics.strikesUsed} of ${stage.ruleset.maxStrikes}`
+              : String(analytics.strikesUsed)}
+          </span>
+        </div>
+      </div>,
+    );
+  }
+  if (facts.length === 0) return null;
+  return shell(<div className="flex flex-wrap items-end gap-x-10 gap-y-4 px-1">{facts}</div>);
 }
