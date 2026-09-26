@@ -11,12 +11,13 @@ import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import SEOHead from "@/components/SEOHead";
 import { safeReturnPath } from "@/lib/auth/safe-return";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/lib/auth/password-policy";
+import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   // Supabase appends its own params to the recovery link; a returnTo survives
   // alongside them when the requesting surface attached one.
-  const resetReturnTo = safeReturnPath(searchParams.get("returnTo"), "/home");
+  const resetReturnTo = safeReturnPath(searchParams.get("returnTo"), LEAGUE_HOME_ROUTE);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);

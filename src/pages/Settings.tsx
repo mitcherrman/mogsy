@@ -24,10 +24,12 @@ import {
   setPlayModeMusicAutomatically,
   useModeSoundtrack,
 } from "@/lib/audio/mode-soundtrack";
+import { useSafeTemporalBack } from "@/lib/navigation/useSafeTemporalBack";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const goBack = useSafeTemporalBack("/lol");
   const queryClient = useQueryClient();
   const radio = useAcademyRadio();
   const modeMusic = useModeSoundtrack();
@@ -131,7 +133,7 @@ export default function Settings() {
       <SEOHead title="Settings — Mogsy" description="Manage your Mogsy settings. Change theme, sign out, and customize your experience." />
       <div className="container mx-auto max-w-2xl lg:max-w-3xl">
         <div className="flex items-center gap-3 mb-8">
-          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/home")} className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={goBack} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-3xl font-extrabold text-foreground">Settings</h1>

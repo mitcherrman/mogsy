@@ -27,6 +27,7 @@ import LeagueProfileStats from "@/components/profile/LeagueProfileStats";
 import ProfileConfigPanel from "@/components/profile/ProfileConfigPanel";
 import { quizApi } from "@/lib/quiz/api";
 import { deriveProfileStats } from "@/lib/profile/view-model";
+import { useSafeTemporalBack } from "@/lib/navigation/useSafeTemporalBack";
 
 
 const frameOptions = [
@@ -49,6 +50,7 @@ const SOCIAL_PLACEHOLDERS: Record<string, string> = {
 export default function Profile() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const goBack = useSafeTemporalBack("/lol");
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -503,7 +505,7 @@ export default function Profile() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+              <Button variant="ghost" size="icon" aria-label="Go back" onClick={goBack} className="text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 sm:h-10 sm:w-10">
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <div className="min-w-0">

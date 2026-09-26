@@ -1,9 +1,9 @@
-import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSafeTemporalBack } from "@/lib/navigation/useSafeTemporalBack";
 
 export default function SecretRoom() {
-  const navigate = useNavigate();
+  const goBack = useSafeTemporalBack("/lol");
 
   return (
     <div
@@ -14,7 +14,7 @@ export default function SecretRoom() {
       <Button
         variant="ghost"
         size="icon" aria-label="Go back"
-        onClick={() => navigate(-1)}
+        onClick={goBack}
         className="absolute top-4 left-4 z-20 text-[hsl(180,60%,60%)] hover:text-[hsl(180,80%,70%)]"
       >
         <ArrowLeft className="w-6 h-6" />

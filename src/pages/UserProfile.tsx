@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useFriendStatus } from "@/hooks/useFriends";
 import { attempt, SEND_REQUEST_MESSAGES } from "@/lib/community/social-result";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import { BrainCircuit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { quizApi, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import LeaguePublicProfile from "@/components/profile/LeaguePublicProfile";
+import { useSafeTemporalBack } from "@/lib/navigation/useSafeTemporalBack";
 
 interface ProfileData {
   id: string;
@@ -238,7 +239,7 @@ function ProfileActions({ profileId, friendStatus, friendshipId, refreshFriend, 
 
 export default function UserProfile() {
   const { profileId } = useParams<{ profileId: string }>();
-  const navigate = useNavigate();
+  const goBack = useSafeTemporalBack("/lol");
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -340,7 +341,7 @@ export default function UserProfile() {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Profile not found</p>
-        <Button variant="outline" onClick={() => navigate(-1)}>Go back</Button>
+        <Button variant="outline" onClick={goBack}>Go back</Button>
       </div>
     );
   }
@@ -378,7 +379,7 @@ export default function UserProfile() {
             <Button
             variant="ghost"
             size="icon" aria-label="Go back"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className={cn("mb-4", theme.styles.mutedColor || "text-muted-foreground", "hover:opacity-80")}
           >
             <ArrowLeft className="h-5 w-5" />

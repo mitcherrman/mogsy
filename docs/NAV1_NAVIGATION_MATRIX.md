@@ -14,11 +14,11 @@ Severity: P0 data loss/security/unavoidable destructive behavior; P1 common brok
 | Surface / source state | Legitimate entries | Visible action and semantic type | Current implementation / history | Browser Back / Forward; direct link / refresh | Expected contract | Problem / severity / collision | Implementation class and tests |
 |---|---|---|---|---|---|---|---|
 | Global HUD, every `Layout` route | Any product route | Hat, “Home — Mogzy Academy”; `HOME` | `Link` to `LEAGUE_HOME_ROUTE` (`/lol`), PUSH | Back returns to the route left; Forward returns Home. Direct/refresh stable | Always `/lol`; never contextual Back | Correct. P3: repeated Home presses may stack `/lol`, but duplicate-home policy is optional. LOW | Preserve. Link/history e2e smoke |
-| Settings `/settings` | Profile gear, identity menu, direct URL, auth return | Arrow “Go back”; presented `TEMPORAL_BACK` | `navigate('/home')`, PUSH | Goes to wildcard/NotFound because `/home` is not registered; Back returns Settings | Contextual origin with safe `/profile` or `/lol` fallback; label destination if fixed | **P1** broken destination. LOW | Contextual-back contract; direct/internal/auth/refresh tests |
-| Password reset `/reset-password` after success | Email recovery URL | Automatic return; `AUTH_DETOUR` | `safeReturnPath(returnTo, '/home')`, then `navigate(...,{replace:true})` | Missing/unsafe `returnTo` replaces reset with nonexistent `/home` | Safe validated explicit return; deterministic registered fallback (`/auth` or product choice) | **P1** second `/home` bug. LOW | Change fallback only after owner chooses `/auth` vs `/lol`; auth tests |
-| Own profile `/profile` | HUD portrait, Ranked/Leaguecraft stats, direct/protected auth return | Arrow “Go back”; `TEMPORAL_BACK` | `navigate(-1)` | Internal entry works. Direct/new tab can no-op or leave Mogzy; external referrer leaves site; auth-return history depends on prior auth REPLACE; refresh retains opaque prior entry; Forward restores profile | Trust explicit same-origin provenance when supplied, otherwise fixed `/lol`; never raw history as sole behavior | **P1** unsafe/unbounded temporal back. LOW | Safe contextual Back; all six origin cases in router + Playwright |
-| Public profile `/user/:profileId` (loaded and not-found states) | Comments, friends, notifications, admin, favorite cards, direct/auth | Arrow/button “Go back”; `TEMPORAL_BACK` | Two `navigate(-1)` call sites | Same risks as own profile. Not-found direct link has no escape guarantee | Provenance + `/lol` fallback; optionally name fallback “Home” | **P1** two raw uses. LOW/MEDIUM (social/HUD senders) | Same shared primitive and origin matrix |
-| Secret room `/secret-room` | Theme-overlay easter egg, direct URL | Arrow “Go back”; `TEMPORAL_BACK` | `navigate(-1)` | Overlay entry works; direct/external can no-op/leave site | Provenance or deterministic `/lol` fallback | P2; low traffic. LOW | Same primitive; direct-entry test |
+| Settings `/settings` | Profile gear, identity menu, direct URL, auth return | Arrow “Go back”; `TEMPORAL_BACK` | **NAV1-B:** safe temporal Back; POP when router `idx > 0`, otherwise `/lol` REPLACE | Internal entry returns exact origin; direct/new-tab/external initial entry deterministically lands `/lol`; Forward remains normal after POP | Temporal origin with product-Home fallback | **Resolved NAV1-B**. LOW | Vitest + Chromium internal/direct certification |
+| Password reset `/reset-password` after success | Email recovery URL | Automatic return; `AUTH_DETOUR` | **NAV1-B:** `safeReturnPath(returnTo, LEAGUE_HOME_ROUTE)`, then REPLACE | Explicit safe return preserved; absent/unsafe return lands `/lol`; completed reset is not left behind | Safe validated explicit return; deterministic registered fallback | **Resolved NAV1-B**. LOW | Static contract + auth safe-return baseline |
+| Own profile `/profile` | HUD portrait, Ranked/Leaguecraft stats, direct/protected auth return | Arrow “Go back”; `TEMPORAL_BACK` | **NAV1-B:** `useSafeTemporalBack('/lol')` | Router-owned predecessor POPs exactly, including query/hash; direct/new-tab/external initial entry REPLACEs to `/lol`; Forward restores Profile after POP | Temporal Back with fixed `/lol` fallback | **Resolved NAV1-B**. LOW | Vitest BrowserRouter + Chromium internal/direct/Forward |
+| Public profile `/user/:profileId` (loaded and not-found states) | Comments, friends, notifications, admin, favorite cards, direct/auth | Arrow/button “Go back”; `TEMPORAL_BACK` | **NAV1-B:** both controls use `useSafeTemporalBack('/lol')` | Internal origin POPs; direct/not-found fallback is `/lol` | Temporal Back + `/lol` fallback | **Resolved NAV1-B**. LOW/MEDIUM | Call-site tests + Chromium internal/direct |
+| Secret room `/secret-room` | Theme-overlay easter egg, direct URL | Arrow “Go back”; `TEMPORAL_BACK` | **NAV1-B:** `useSafeTemporalBack('/lol')` | Theme-overlay entry POPs; direct/external initial entry REPLACEs `/lol` | Temporal Back + `/lol` fallback | **Resolved NAV1-B**. LOW | Shared behavior + call-site test |
 | Leaguecraft hub `/quiz`, default | Home/cards, result exits, auth return, direct | Global Home; workspace and mode CTAs | URL route; normal entries PUSH; gate recovery `navigate('/lol',{replace:true})` | Back returns origin. Refresh restores hub, not transient selections | Preserve; recovery replacement is correct | Correct except gate redirect should remain REPLACE. HIGH (`Quiz.tsx`) | Regression tests only |
 | Leaguecraft workspace `/quiz#history`, `#review`, `#trends` | Tabs, recent-study footer, result/deep links | Named tabs; meaningful reversible view | `navigate(workspaceHash(mode))` PUSH; identical hash suppressed; invalid/no hash uses local default | Back/Forward traverse panes; deep link and refresh restore pane. Explicit hash scrolls once; plain `/quiz` does not auto-scroll | Reference pattern: PUSH meaningful panes, suppress duplicate, URL is truth | Known good. HIGH (History/Practice) | Preserve; existing `LeaguecraftWorkspace` history test plus refresh/focus/scroll e2e |
 | Practice set/category load, active question, answer reveal `/quiz` | Hub set/category rail, builder/custom set | No dedicated leave control; header “League Hub” fixed `/lol`; active phases are local | `sets → loading-questions → active`; questions/reveal LOCAL | Browser Back leaves `/quiz` to prior route from active or reveal. Forward remounts `/quiz` at `sets`, losing run. Refresh also loses run. Header jumps `/lol` | One meaningful session entry boundary only; do not add per-question/reveal entries. Browser Back during unfinished run is `EXIT_ACTIVE_FLOW`, requiring confirm/leave policy; in-product control must say “Exit practice” or intentionally return Leaguecraft | **P1** silent loss/surprising exit; fixed header label says League Hub and is structurally honest but bypasses practice context. HIGH | Session URL/token or one history marker + active-flow guard; e2e unanswered/reveal/refresh |
@@ -69,13 +69,15 @@ These controls do not belong in browser history unless the transient is independ
 
 ## Raw temporal history inventory
 
-Production code has four actual `navigate(-1)` calls (the fifth textual match is an explanatory comment):
+Before NAV1-B, production code had four actual raw `navigate(-1)` calls. All
+four call sites now use `useSafeTemporalBack('/lol')`; the helper contains the
+single bounded `navigate(-1)` after verifying router `idx > 0`.
 
 | File | Count | State | Finding |
 |---|---:|---|---|
-| `src/pages/Profile.tsx` | 1 | normal profile | P1: no trusted-origin check or fallback |
-| `src/pages/UserProfile.tsx` | 2 | loaded and not-found | P1: no trusted-origin check or fallback |
-| `src/pages/SecretRoom.tsx` | 1 | easter-egg page | P2: direct/external entry can leave site or no-op |
+| `src/pages/Profile.tsx` | 1 | normal profile | Resolved: bounded POP, `/lol` fallback |
+| `src/pages/UserProfile.tsx` | 2 | loaded and not-found | Resolved: bounded POP, `/lol` fallback |
+| `src/pages/SecretRoom.tsx` | 1 | easter-egg page | Resolved: bounded POP, `/lol` fallback |
 
 There are no production `history.back()` or `history.go()` calls and no production `popstate` listener or React Router blocker.
 
@@ -123,9 +125,9 @@ None found.
 
 ### P1
 
-1. Settings “Go back” pushes nonexistent `/home`.
-2. Password-reset fallback replaces to nonexistent `/home` when `returnTo` is absent/unsafe.
-3. Profile and UserProfile rely exclusively on unbounded `navigate(-1)` (three controls).
+1. ~~Settings “Go back” pushes nonexistent `/home`.~~ Resolved NAV1-B.
+2. ~~Password-reset fallback replaces to nonexistent `/home` when `returnTo` is absent/unsafe.~~ Resolved NAV1-B with `/lol` fallback.
+3. ~~Profile and UserProfile rely exclusively on unbounded `navigate(-1)` (three controls).~~ Resolved NAV1-B.
 4. Active standalone Ranked can be left by browser/header Back with no explicit leave semantics; the server correctly treats this as disconnect, not forfeit.
 5. Active Daily can be left by a control labelled Back and by browser Back without an Exit Daily contract.
 6. Practice session/result is entirely local: Back silently leaves and Forward/refresh returns to the hub, losing the meaningful run state.
@@ -162,7 +164,9 @@ None found.
 
 ## Owner decisions still required
 
-1. Password-reset fallback: `/auth` (closest workflow parent) or `/lol` (product home). `/home` is invalid either way.
+1. Password-reset fallback resolved in NAV1-B as `/lol`: a successful reset
+   leaves the auth interruption via REPLACE and lands on product Home; an
+   invalid/expired reset still offers the structural `/auth` action.
 2. Leaving an active Ranked match: should confirmation say the player may reconnect for 45 seconds, and should the destination be Ranked lobby or Leaguecraft?
 3. Leaving an active Daily: is the run resumable without penalty, and what exact warning is truthful for each phase?
 4. Should completed Ranked/Daily terminal pages be reachable by Back after the user chooses a terminal-forward action? Recommendation: no; use REPLACE on acknowledged exit.

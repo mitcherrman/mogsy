@@ -254,8 +254,33 @@ Completed:
   profile route being `/user/:profileId`
 
 Not yet completed:
-- interactive browser certification
-- implementation
+- volatile NAV1-C+ implementation (Premium, Practice, Ranked, Daily, History)
+
+## NAV1-A/B implementation status
+
+Completed on this branch after the audit:
+
+- **NAV1-A:** added `useSafeTemporalBack(fallback)` and
+  `hasUsableMogzyHistory()` in `src/lib/navigation/useSafeTemporalBack.ts`.
+  The helper uses React Router 6.30's router-owned `window.history.state.idx`:
+  `idx > 0` performs a true POP; direct/new-tab/external initial entries use a
+  validated internal fallback with REPLACE. Refresh preserves a valid positive
+  index and therefore preserves a real Mogzy predecessor. Unsafe fallbacks fail
+  closed to `/lol`. No route stack, storage, referrer, or global interceptor was
+  introduced; auth `returnTo` remains independent.
+- **NAV1-B:** Settings, Profile, both UserProfile controls and Secret Room now
+  use safe temporal Back with `/lol` as the direct-entry fallback. Password
+  reset success now uses `/lol` instead of nonexistent `/home` when no safe
+  explicit `returnTo` exists; its completion still REPLACEs the reset entry,
+  while invalid/expired reset links still return structurally to `/auth`.
+- Added focused Vitest integration/call-site tests and a frontend-only
+  Playwright configuration/spec. Chromium certifies internal/direct Profile,
+  internal/direct UserProfile, Settings internal/direct, and normal Forward
+  after the in-app Back including query/hash preservation.
+
+Deferred P1s are unchanged: active Ranked leave semantics, active Daily leave
+semantics, Practice session/history boundaries, and Ranked terminal navigation.
+Premium and History IA also remain untouched.
 
 ## Audit conclusion
 
@@ -265,7 +290,9 @@ workspace state, and component-local gameplay) with three unsafe gaps: raw
 history popping on direct-linkable profiles, active-flow exits with no leave
 contract, and terminal/local state that browser history cannot represent.
 
-There are **0 P0 and 7 P1 findings**. The complete matrix, raw-history list,
+The audit found **0 P0 and 7 P1 findings**. NAV1-B resolves the first three
+(Settings/reset `/home`, Profile/UserProfile raw temporal Back); four volatile
+P1s remain. The complete matrix, raw-history list,
 `window.location` write inventory, provenance list and owner questions are in
 [`NAV1_NAVIGATION_MATRIX.md`](./NAV1_NAVIGATION_MATRIX.md).
 
