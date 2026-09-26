@@ -1,119 +1,50 @@
 # USERS2 — Audience Intelligence
 
-## Current task
+## Workstream status
 
-**USERS2.1 — top-level Users IA consolidation**
+### USERS2.1 — Audience IA consolidation — complete/on main
 
-## Objective
+- Users navigation is consolidated into exactly Audience, Accounts and Moderation.
+- Audience composes headline metrics, Visitors, Engagement / Activity, Acquisition, Retention and Traffic Health as one page with shared controls.
+- Existing analytics calculations, canonical Accounts behavior and Moderation behavior were preserved.
 
-Replace the eight-section Users navigation with exactly three top-level destinations:
+### USERS2.2 — analytics capability audit — complete/on main
 
-1. Audience
-2. Accounts
-3. Moderation
+- Audited browser analytics, Supabase stores/functions, Railway gameplay delivery and records, and Admin calculations.
+- Confirmed strong browser acquisition/session foundations and authoritative Railway start/completion events for selected gameplay, but incomplete lifecycle coverage, active-time/session state, release context, direct browser-to-Railway correlation and explicit terminal outcomes.
+- The audit is recorded in `docs/USERS2_ANALYTICS_AUDIT.md`.
 
-Audience must combine the existing Overview, Visitors, Activity, Acquisition,
-Retention and Traffic Health functionality into one vertically structured
-operational page without changing analytics calculations or schemas. Accounts
-must remain the canonical consolidated account surface from main, and
-Moderation must retain its existing queues and roster controls.
+### USERS2.3A — lifecycle contract — complete on this branch
 
-## Base and branch
+- Base: `origin/main` at `61673c53683f16fff859a42c15f83b9406411b92`
+- Branch: `codex/users2-3a-lifecycle`
+- Defined the governed lifecycle vocabulary: `opened`, `started`, `completed`, `abandoned`, `expired`, `failed`, `cancelled`.
+- Registered ten current bounded activities with explicit opened/start/terminal authority, entity grain/id, ownership, valid outcomes, current events and migration notes.
+- The contract is documented in `docs/USERS2_ACTIVITY_LIFECYCLE.md` and represented by the descriptive, non-emitting registry in `src/lib/analytics/activityLifecycle.ts`.
 
-- Base: `origin/main` at `6a1e52827732db25327279726004bc042c033997`
-- Branch: `codex/users2-audience-ia`
+Key lifecycle decisions:
 
-The branch was created from a freshly fetched `origin/main` in an isolated
-managed worktree. The unrelated dirty checkout at
-`C:\Users\mlmit\OneDrive\Desktop\mogsy` was not modified.
+- Opened is reach/intent, never a proxy for started. Started requires the meaningful participation boundary and an entity identity.
+- One activity entity gets at most one winning terminal outcome. Missing completion is unknown, not abandonment; browser close/navigation can only support explicitly labelled inference.
+- Railway remains authoritative for existing Practice, Ranked and Mastery starts/completions.
+- `quiz_completed` is a browser diagnostic; Railway `practice_quiz_completed` is canonical Practice completion.
+- Retired DSA/Time Trial names do not describe Daily Challenge and must not be revived.
+- Meta Reflex is governed at dealt-round / `client_submission_id` grain; the current hub-level open event is insufficient.
+- Daily Challenge is governed at parent `run_id`; child stages or Ranked matches do not complete the Daily activity independently.
+- Live onboarding is Academy Welcome v1. The older profile onboarding flow is Admin-preview-only and its legacy flag is not lifecycle authority.
 
-## Decisions
+USERS2.3A changes no database schema, event emission, Admin calculation, Railway runtime, product state machine or deployment.
 
-- Users top-level navigation is exactly Audience, Accounts and Moderation.
-- Audience is one continuous page, not six inner tabs. Its order is headline
-  metrics, Visitors, Engagement / Activity, Acquisition, Retention, then
-  Traffic Health.
-- The existing range, traffic-population and refresh controls apply once to the
-  entire Audience page.
-- Existing analytics components and calculations are composed unchanged.
-- Headline metric drilldowns continue to set `?population=<key>`, clear an open
-  visitor record, and target the embedded Visitors population. The page scrolls
-  to Visitors when a population drilldown is active.
-- Canonical Accounts continues to render the existing `AdminUsers` component.
-  Its search, filters, detail, roles, entitlement, invites and Account Actions
-  were not redesigned.
-- Moderation continues to expose Comments, User reports, Moderator roster and
-  Feedback through its existing in-section views.
-- Registry destinations that used the retired `section=visitors` and
-  `section=traffic-health` concepts now point to `section=audience`.
-- Removed the analytics read-count/status line and duplicate traffic-filter
-  explanation from the main Audience UI; actionable empty, error and truncation
-  states remain.
+## Follow-up ownership
 
-## Relevant files
+### USERS2.3B — browser/Supabase session intelligence
 
-- `src/pages/admin/areas/AdminUsersPage.tsx` — consolidated Audience composition
-  and preserved drilldown behavior.
-- `src/lib/admin/admin-registry.ts` — three-section Users IA and canonical
-  Audience tool destinations.
-- `src/pages/admin/areas/AdminShell.areas.test.tsx` — vertical composition and
-  drilldown integration coverage.
-- `src/lib/admin/admin-registry.test.ts` — updated registry assertions and
-  legacy redirect target.
-- `src/test/guards/users2AudienceIa.test.ts` — exact top-level navigation guard.
+Owns active time, session state, release context, and the durable same-browser identity link. It may consume the lifecycle registry but must not independently redefine activity ids, entity grains or lifecycle semantics.
 
-## State
+### USERS2.3C — browser → Railway correlation
 
-Code complete. Not published.
+Owns propagation of `visitor_id`, `session_id`, and interaction/request correlation through authoritative gameplay entities and the outbox. It must not independently redefine lifecycle event semantics and must preserve the authoritative-vs-inferred abandonment distinction.
 
-No analytics calculation, analytics schema, account implementation, or
-moderation implementation changed. No files were deleted.
+### Later integration phase
 
-## Verification
-
-Focused tests:
-
-```text
-5 files passed
-113 tests passed
-```
-
-Command:
-
-```text
-npx vitest run src/test/guards/users2AudienceIa.test.ts \
-  src/pages/admin/areas/AdminShell.areas.test.tsx \
-  src/lib/admin/admin-registry.test.ts \
-  src/lib/admin/admin-registry.routes.test.ts \
-  src/test/guards/usersAccountsIa.test.ts
-```
-
-Typecheck:
-
-```text
-npx tsc -p tsconfig.app.json --noEmit
-```
-
-The command ran and reports two existing errors in untouched files:
-
-- `src/components/onboarding/OnboardingProfile.tsx:180`
-- `src/lib/identity/connections.ts:263`
-
-Both are Supabase generated-type/excess-property mismatches present on the
-base; USERS2.1 changes introduce no typecheck diagnostic.
-
-Production build:
-
-```text
-npm run build
-```
-
-Passed, including Vite production compilation and all item/champion prerender
-verification. Existing Tailwind ambiguity and mixed dynamic/static import
-warnings remain non-fatal.
-
-## Next task
-
-USERS2.2 should build on this consolidated Audience page and be scoped from
-real operator needs. Keep analytics definitions and schema changes separate
-from this completed IA-only task.
+Owns terminal-outcome instrumentation and Admin lifecycle calculations/reporting. Admin must not count mode-open events as starts, browser diagnostics as authoritative completions, or missing terminals as abandonment.
