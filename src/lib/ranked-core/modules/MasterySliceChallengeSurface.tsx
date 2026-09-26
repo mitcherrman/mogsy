@@ -45,6 +45,7 @@ import {
 } from "@/components/journey/JourneyCombatQuestion";
 import { JourneyMatchupSides } from "@/components/journey/JourneyMatchupSides";
 import { JourneyCombatWorking } from "@/components/journey/JourneyCombatWorking";
+import { JourneyFocusMedia } from "@/components/journey/JourneyFocusMedia";
 import type { CombatWorking } from "@/lib/journey/combatWorking";
 import { readNumericConstraints } from "@/features/mastery/contracts/playerQuestion";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
@@ -345,7 +346,16 @@ export function MasterySliceChallengeSurface({
   );
 }
 
-/** JOURNEY-UI2 — one Journey child: no own media band; Combat and Matchup made explicit. */
+/**
+ * JOURNEY-UI2 — one Journey child: no own media BAND (the board owns the media
+ * region); Combat and Matchup made explicit.
+ *
+ * JOURNEY-PRES-V1 — "no band" never meant "no presentation". The child's QF1
+ * motif is drawn by its own renderer exactly as outside a Journey (it was only
+ * hidden by a Journey CSS rule, now replaced by a clip — index.css), and the
+ * child adds one focus object (`JourneyFocusMedia`). Its RQ1 role emblems ride
+ * in the board's step header (`JourneyStateBoard` `questionRoles`).
+ */
 function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, combatWorking }: {
   challenge: MasterySliceChallengeView;
   total: number;
@@ -356,38 +366,42 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   combatWorking: CombatWorking | null;
 }) {
   const path = journeyRenderPathFor(challenge);
-  const reinforces = journey.reinforces.length > 0 ? (
+  const meta = journey.reinforces.length > 0 ? (
     <p data-testid="journey-reinforces" className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7a5a17]">
       Builds on step {journey.reinforces.map((i) => i + 1).join(" and ")}
     </p>
   ) : null;
+  // JOURNEY-PRES-V1 — the question's focus object, last, in the leftover space.
+  const focus = <JourneyFocusMedia challenge={challenge} playerChampion={journey.playerChampion} />;
   if (path === "combat") {
     const premise = combatPremiseOf(challenge)!;
     const precision = (challenge.inputConstraints as { precision_instruction?: unknown } | null)?.precision_instruction;
     return (
       <div className="space-y-2" data-testid="journey-child" data-render-path="combat">
-        {reinforces}
+        {meta}
         <JourneyCombatPremise premise={premise} journey={journey}
           precisionInstruction={typeof precision === "string" ? precision : null} />
         <ProseChallenge challenge={challenge} submitting={submitting} onSubmit={onSubmit}
           reveal={reveal} showMedia={false} prompt={combatQuestionSentence(premise)}
           revealWorking={reveal && combatWorking ? <JourneyCombatWorking working={combatWorking} /> : null} />
+        {focus}
       </div>
     );
   }
   if (path === "prose") {
     return (
       <div className="space-y-3" data-testid="journey-child" data-render-path="prose">
-        {reinforces}
+        {meta}
         <ProseChallenge challenge={challenge} submitting={submitting} onSubmit={onSubmit}
           reveal={reveal} showMedia={false} />
+        {focus}
       </div>
     );
   }
   return (
     <MasteryAssetsProvider>
       <div className="space-y-3" data-testid="journey-child" data-render-path={path}>
-        {reinforces}
+        {meta}
         {path === "comparison" && (
           <JourneyMatchupSides comparisonSemantics={challenge.comparisonSemantics}
             playerChampion={journey.playerChampion} />
@@ -399,6 +413,7 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
           onSubmit={onSubmit}
           reveal={reveal}
         />
+        {focus}
       </div>
     </MasteryAssetsProvider>
   );

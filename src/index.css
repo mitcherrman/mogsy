@@ -16003,7 +16003,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   row-gap: 2px;
 }
 .journey-side__id { display: contents; }
-.journey-side__id > [data-testid^="journey-portrait-"] { grid-area: portrait; }
+.journey-side__id > .journey-know-host--portrait { grid-area: portrait; }
 .journey-side__name { grid-area: name; display: flex; min-width: 0; align-items: center; gap: 4px; }
 .journey-side__champion { font-size: 0.625rem; line-height: 0.75rem; }
 .journey-side__kit { grid-area: kit; display: flex; gap: 3px; }
@@ -16071,30 +16071,127 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-side[data-side="opponent"] .journey-side__stats { justify-self: end; justify-content: flex-end; }
 }
 
-/* The beat: what changed pulses while the canonical beat runs. Shadows and
-   filters only — nothing that lays out. */
+/* ──────────────────────────────────────────────────────────────────────────
+   JOURNEY-MOTION-V1 — THE BEAT IS THE STATE CHANGING.
+   The server's beat is 900 ms (one transition) or 1300 ms (a group). No
+   scrim: the board stays readable and each changed object animates IN PLACE,
+   all inside ~800 ms so the last motion lands before the next child opens.
+   Transforms, opacity, shadows and filters only — nothing that lays out — and
+   every final value is on screen from the first frame (the motion is the
+   arrival, never the information).
+     level     the new number rolls up into place          360 ms
+     rank      the NEW pip(s) fill — or, where the contract
+               states no max rank (J3), the rank digit pops;
+               the icon pulses once                         380 ms (+120)
+     unlock    the lock lifts off; the icon lights up       700 ms
+     item      the new item pops into its slot; its own     420 ms (+100)
+               stat line ("+10 AH") appears beside it
+   Reduced motion (OS or the app's `html.reduce-motion`): no movement at all;
+   the changed faces (green rims, the struck-through old level, green pips,
+   the item's stat tag) still say what changed, for the same server beat.
+   ────────────────────────────────────────────────────────────────────────── */
 @keyframes journey-changed-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgb(143 208 160 / 0); filter: none; }
-  50% { box-shadow: 0 0 0 2px rgb(143 208 160 / 0.9), 0 0 14px rgb(143 208 160 / 0.6); filter: brightness(1.25); }
+  45% { box-shadow: 0 0 0 2px rgb(143 208 160 / 0.9), 0 0 14px rgb(143 208 160 / 0.6); filter: brightness(1.25); }
 }
-.journey-board[data-beat="active"] .journey-changed,
-.journey-board[data-beat="active"] .journey-chip--delta {
-  animation: journey-changed-pulse 0.9s ease-in-out 2;
+@keyframes journey-level-roll {
+  from { transform: translateY(85%); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
-.journey-beat__stamp { font-size: 0.625rem; line-height: 1.1rem; }
-.journey-beat__label { font-size: 0.625rem; }
-.journey-beat__line { font-size: 0.5625rem; line-height: 0.85rem; }
+@keyframes journey-pip-fill {
+  0% { transform: scale(0.2); opacity: 0.2; }
+  60% { transform: scale(1.5); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes journey-unlock-art {
+  0% { opacity: 0.3; filter: grayscale(1); }
+  45% { opacity: 1; filter: grayscale(0) brightness(1.9); }
+  100% { opacity: 1; filter: none; }
+}
+@keyframes journey-unlock-lock {
+  from { opacity: 0.85; transform: none; }
+  to { opacity: 0; transform: translateY(-35%) scale(1.35); }
+}
+@keyframes journey-item-in {
+  0% { transform: scale(0.45); opacity: 0; }
+  65% { transform: scale(1.12); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes journey-gain-in {
+  from { transform: translateY(3px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+/* The lock an unlocked R used to wear: only ever seen while its beat animates. */
+.journey-unlock-lock { display: none; pointer-events: none; }
+/* A new item's own stat line, beside its slot while the beat runs. Absolutely
+   positioned: compact (a phone) floats it into the stats line above the
+   items, which is empty during a beat; the band drops it into the stats row
+   below them, also empty during a beat. */
+.journey-item-gain {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(100% + 2px);
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid rgb(143 208 160 / 0.7);
+  border-radius: 3px;
+  background: rgb(8 32 20 / 0.92);
+  padding: 0 3px;
+  color: #d9f2df;
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.journey-beat__stamp {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  font-size: 0.5rem;
+  line-height: 0.625rem;
+  letter-spacing: 0.1em;
+}
 @container (min-width: 26rem) {
-  .journey-beat__stamp { font-size: 0.75rem; line-height: 1.35rem; }
-  .journey-beat__label { font-size: 0.75rem; }
-  .journey-beat__line { font-size: 0.6875rem; line-height: 1.05rem; }
+  .journey-item-gain { bottom: auto; top: calc(100% + 3px); font-size: 0.5625rem; line-height: 0.875rem; }
+  .journey-beat__stamp { font-size: 0.5625rem; line-height: 0.8125rem; }
 }
+@media (prefers-reduced-motion: no-preference) {
+  .journey-board[data-beat="active"] .journey-changed,
+  .journey-board[data-beat="active"] .journey-chip--delta {
+    animation: journey-changed-pulse 0.8s ease-in-out 1;
+  }
+  .journey-board[data-beat="active"] .journey-level[data-changed="true"] .journey-level__to {
+    animation: journey-level-roll 360ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .journey-board[data-beat="active"] .journey-pip[data-new="true"],
+  .journey-board[data-beat="active"] .journey-rank-digit[data-new="true"] {
+    animation: journey-pip-fill 380ms 120ms ease-out both;
+  }
+  .journey-board[data-beat="active"] .journey-unlock-art {
+    animation: journey-unlock-art 700ms ease-out both;
+  }
+  .journey-board[data-beat="active"] .journey-unlock-lock {
+    display: block;
+    animation: journey-unlock-lock 450ms 80ms ease-in both;
+  }
+  .journey-board[data-beat="active"] [data-new="true"][role="listitem"] > * {
+    animation: journey-item-in 420ms 100ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .journey-board[data-beat="active"] .journey-item-gain {
+    animation: journey-gain-in 220ms 220ms ease-out both;
+  }
+}
+/* The app's own Settings → Reduce Motion: the global rule only shortens
+   durations (delays would still hold a new item hidden for a moment), so the
+   board's beat motion is removed outright — and the unlock ghost with it. */
+html.reduce-motion .journey-board * { animation: none !important; }
+html.reduce-motion .journey-unlock-lock { display: none !important; }
 /* The question while the beat runs: present (same box), not yet active. */
 .journey-question__content--veiled { opacity: 0.12; filter: blur(1px); }
-@media (prefers-reduced-motion: reduce) {
-  .journey-board[data-beat="active"] .journey-changed,
-  .journey-board[data-beat="active"] .journey-chip--delta { animation: none; }
-}
 /* Roomy band: a wide AND tall band (a large desktop) spends its height. */
 @container (min-width: 34rem) and (min-height: 14rem) {
   .journey-vars {
@@ -16109,6 +16206,64 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-side { row-gap: 8px; }
   .journey-side__champion { font-size: 0.875rem; line-height: 1.1rem; }
 }
+/* K2 — KNOWLEDGE MARKS. Every portrait / ability sits in a host of exactly its
+   own size; the `!` is absolutely positioned at the icon's top-right corner, so
+   a mark appearing lays out nothing. The badge is small; its tap target is
+   widened by an invisible ::before, not by its box. */
+.journey-know-host { position: relative; display: inline-flex; flex-shrink: 0; }
+.journey-know {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border-radius: 9999px;
+  border: 1px solid rgb(0 0 0 / 0.65);
+  background: #e8c97a;
+  color: #2a1f08;
+  font-size: 0.4375rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
+  cursor: pointer;
+}
+.journey-know::before { content: ""; position: absolute; inset: -7px; border-radius: 9999px; }
+.journey-know:hover, .journey-know[data-state="open"] { background: #f3dca0; }
+.journey-know:focus-visible { outline: 2px solid #f3dca0; outline-offset: 1px; }
+/* The ability tile is centred over its pips: pin to the TILE's corner. */
+/* It reaches no further right than the kit's gap, so it never touches the
+   next tile (whose top-left carries the rank digit). */
+.journey-know--ability { top: -3px; right: calc(50% - var(--jb-ability) / 2 - 3px); }
+/* The portrait is round: the badge sits on its bounding box's corner, off the face. */
+.journey-know--portrait { top: -2px; right: -3px; }
+@container (min-width: 26rem) {
+  .journey-know { width: 0.75rem; height: 0.75rem; font-size: 0.5625rem; }
+  .journey-know--ability { right: calc(50% - var(--jb-ability) / 2 - 4px); }
+}
+.journey-know-pop {
+  border-color: rgb(212 179 90 / 0.45);
+  background: rgb(7 17 31 / 0.96);
+  color: rgb(255 255 255 / 0.85);
+  padding: 4px 7px;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.9);
+}
+.journey-know-pop__title {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e8c97a;
+  white-space: nowrap;
+}
+.journey-know-pop__lines { display: flex; flex-direction: column; }
+.journey-know-pop__line { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.journey-know-pop__icon { width: 0.7rem; height: 0.7rem; color: #e8c97a; flex-shrink: 0; }
+.journey-know-pop__step { color: #e8c97a; opacity: 0.85; }
 /* JOURNEY-UI2 — a rank printed on the ability tile (a contract without max rank). */
 .journey-rank-digit { font-size: 0.5625rem; }
 /* JOURNEY-UI2 — the Journey question inside the Ranked stage.
@@ -16159,11 +16314,26 @@ html.hub-commons-in-view .hextech-ambience-layer {
 .ranked-question-stage [data-testid="ranked-question-body"] > :has(> .journey-viewport) {
   margin-top: 0; margin-bottom: 0; flex: 1 1 auto;
 }
-/* JOURNEY-UI2 — the question-motif art is scenario media; inside a Journey
-   the board is the scenario art, and the motif's oversized decorative
-   pseudo-element would otherwise give the scrollable question a phantom
-   scroll range. */
-.journey-question .question-motif-layer { display: none; }
+/* JOURNEY-PRES-V1 — the QF1 motif is printed on a Journey child's parchment
+   exactly as on the same question outside a Journey. JOURNEY-UI2 hid it
+   (`display: none`) for two reasons, and both are answered without hiding it:
+
+     * "the board is the scenario art" — the board is STATE, drawn in the
+       media region; the motif says what KIND of knowledge the question is,
+       and was never media. They are independent axes (QF1 decision 3).
+     * its 40rem bleed pseudo-element gave the scrollable `.journey-question`
+       a phantom scroll range — so the bleed is CLIPPED at the motif's own
+       host instead. `overflow: clip` (not `hidden`) makes no scroll
+       container, and clipped overflow contributes nothing to the ancestor's
+       scrollable area, so the question scrolls exactly as far as before.
+
+   The motif treatment itself — art, opacity, filter, crop, the phone
+   `display: none` below 640px — is the shared QF1 rule, untouched. */
+.journey-question .question-motif-host {
+  overflow: clip;
+  /* Room for focus rings and tablet shadows; the art's crop is unaffected. */
+  overflow-clip-margin: 6px;
+}
 .journey-question { overflow-x: hidden; }
 /* JOURNEY-UI3 — J3's board states the premise stats, so from `lg` the child's
    question gives the height-locked card back: its category row is the board's
@@ -16176,3 +16346,292 @@ html.hub-commons-in-view .hextech-ambience-layer {
     font-size: 1rem; line-height: 1.25;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   JOURNEY-PRES-V1 — the question's FOCUS object, the board's splash
+   underlays and the Matchup tiles' splash.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* THE LEFTOVER-SPACE CHAIN. The focus slot is the last child of the Journey
+   question and takes only the height the question does not use. Every box
+   between `.journey-question` and the slot becomes a column that grows to
+   fill (`1 0 auto`: never smaller than its content), so the slot alone
+   absorbs the difference. Nothing in the chain can shrink below its content,
+   so the prompt, the answers and lock-in keep every pixel they had. */
+.journey-question { display: flex; flex-direction: column; }
+.journey-question > div:first-child,
+.journey-question [data-testid="mastery-slice-challenge-phase"],
+.journey-question [data-testid="journey-child"] {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+/* A size container: its height is the leftover, never its content's. */
+.journey-focus-slot {
+  container: journey-focus / size;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* A `space-y-*` parent would give even an EMPTY slot a 12px margin, and
+     on a height-locked card that margin alone can tip lock-in out of view. */
+  margin-top: 0 !important;
+}
+/* Below `lg` the page scrolls, so the slot keeps a modest floor and sits
+   under lock-in; it still grows into any spare parchment. The floor is the
+   flex BASIS, not a `min-height`: a size container's query reads the basis
+   (0 under size containment) and would hide the plate in a 112px slot. */
+@media (max-width: 1023px) {
+  .journey-focus-slot { flex: 1 0 7.5rem; }
+}
+/* A slim slot (a 1280x800 card): one caption line, a smaller hero. Scoped
+   under the slot so it outranks the base rules declared further down. */
+@container journey-focus (max-height: 6rem) {
+  .journey-focus-slot .journey-focus-media { gap: 0.625rem; padding: 0.25rem 0.625rem; }
+  .journey-focus-slot .journey-focus-media__who,
+  .journey-focus-slot .journey-focus-media__vs-metric,
+  .journey-focus-slot .journey-focus-media__half .journey-focus-media__meta { display: none; }
+  .journey-focus-slot .journey-focus-media__caption { flex-direction: row; align-items: baseline; gap: 0.5rem; }
+  .journey-focus-slot .journey-focus-media__half { align-items: center; padding: 0.25rem 0.625rem; }
+  .journey-focus-slot .journey-focus-media__vs > span:first-child { width: 1.75rem; height: 1.75rem; font-size: 0.625rem; }
+}
+/* Nothing useful fits: draw nothing rather than a squeezed plate. */
+@container journey-focus (max-height: 3.25rem) {
+  .journey-focus-media { display: none !important; }
+}
+
+.journey-focus-media {
+  --jfm-h: min(100cqh, 10rem);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: min(100%, 30rem);
+  height: calc(var(--jfm-h) - 0.5rem);
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(212 179 90 / 0.45);
+  background: linear-gradient(180deg, #0b1727, #060d18);
+  box-shadow: 0 10px 28px -14px rgb(0 0 0 / 0.75), inset 0 0 0 1px rgb(255 255 255 / 0.04);
+  color: #fff;
+}
+.journey-focus-media__splash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 45%, #000 100%);
+}
+.journey-focus-media__splash img { object-position: 50% 22%; filter: saturate(0.9) brightness(0.8); }
+/* The one prominent object. Square, sized by the plate's height. */
+.journey-focus-media__hero {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(7rem, calc(var(--jfm-h) - 1.75rem));
+  height: min(7rem, calc(var(--jfm-h) - 1.75rem));
+  overflow: hidden;
+  border-radius: 0.625rem;
+  border: 2px solid #d4b35a;
+  background: #07111f;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 0 18px -4px rgb(243 220 160 / 0.45);
+}
+.journey-focus-media__hero--champion { border-radius: 9999px; }
+.journey-focus-media__hero--champion .journey-focus-media__portrait {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.journey-focus-media__slot {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  min-width: 1.25rem;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: rgb(0 0 0 / 0.8);
+  box-shadow: inset 0 0 0 1px rgb(212 179 90 / 0.6);
+  font-size: 0.6875rem;
+  font-weight: 900;
+  line-height: 1.1rem;
+  text-align: center;
+  color: #f3dca0;
+}
+.journey-focus-media__caption {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+}
+.journey-focus-media__who {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.85);
+}
+.journey-focus-media__who .journey-focus-media__portrait { width: 1.25rem; height: 1.25rem; }
+.journey-focus-media__what { font-size: 0.9375rem; font-weight: 800; line-height: 1.15; color: #fff; }
+.journey-focus-media__meta {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e8c97a;
+}
+.journey-focus-media__portrait {
+  display: block;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 1px solid rgb(212 179 90 / 0.7);
+  background: #07111f;
+}
+/* Matchup: two facing halves, the VS medallion on the seam. */
+.journey-focus-media--matchup { gap: 0; padding: 0; }
+.journey-focus-media__half {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  align-items: flex-end;
+  padding: 0.5rem 0.75rem;
+  overflow: hidden;
+}
+.journey-focus-media__half .journey-focus-media__splash { opacity: 0.7; }
+.journey-focus-media__half--left .journey-focus-media__splash {
+  -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
+}
+.journey-focus-media__half--right { justify-content: flex-end; text-align: right; }
+.journey-focus-media__half--right .journey-focus-media__splash {
+  -webkit-mask-image: linear-gradient(270deg, #000 55%, transparent 100%);
+  mask-image: linear-gradient(270deg, #000 55%, transparent 100%);
+}
+/* Readable names over any splash: a floor of shade under the caption. */
+.journey-focus-media__half::after {
+  content: "";
+  position: absolute;
+  inset: 40% 0 0;
+  z-index: -1;
+  background: linear-gradient(180deg, transparent, rgb(6 13 24 / 0.9));
+}
+.journey-focus-media__half-id {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+}
+.journey-focus-media__half--right .journey-focus-media__half-id { flex-direction: row-reverse; }
+.journey-focus-media__half-id .journey-focus-media__portrait {
+  width: min(2.75rem, calc(var(--jfm-h) * 0.3));
+  height: min(2.75rem, calc(var(--jfm-h) * 0.3));
+  border-width: 2px;
+}
+.journey-focus-media__half--left .journey-focus-media__portrait { border-color: #d4b35a; }
+.journey-focus-media__half--right .journey-focus-media__portrait { border-color: #7fb2d4; }
+.journey-focus-media__vs {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translate(-50%, -50%);
+}
+.journey-focus-media__vs > span:first-child {
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgb(212 179 90 / 0.8);
+  background: #07111f;
+  box-shadow: 0 0 14px -2px rgb(243 220 160 / 0.5);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #f3dca0;
+}
+.journey-focus-media__vs-metric {
+  padding: 0 0.3rem;
+  border-radius: 0.25rem;
+  background: rgb(0 0 0 / 0.7);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e8c97a;
+}
+
+/* The board's splash underlays. Each side's box, bled to the board's edge
+   and faded toward the seam; darkened and quiet so every chip, pip and name
+   on it stays the brightest thing there. The board clips (overflow hidden). */
+.journey-side { position: relative; isolation: isolate; }
+.journey-side__splash {
+  position: absolute;
+  inset: -8px -10px;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.42;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 90%);
+  mask-image: linear-gradient(90deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 90%);
+}
+.journey-side[data-side="opponent"] .journey-side__splash {
+  -webkit-mask-image: linear-gradient(270deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 90%);
+  mask-image: linear-gradient(270deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 90%);
+}
+.journey-side__splash img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 20%;
+  filter: saturate(0.85) brightness(0.7);
+}
+/* The Matchup side tiles: the same treatment, inside the tile. */
+.journey-matchup-side__splash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  opacity: 0.4;
+  filter: saturate(0.85) brightness(0.6);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, #000, rgb(0 0 0 / 0.25));
+  mask-image: linear-gradient(90deg, #000, rgb(0 0 0 / 0.25));
+}
+.journey-matchup-side[data-side="opponent"] .journey-matchup-side__splash {
+  -webkit-mask-image: linear-gradient(270deg, #000, rgb(0 0 0 / 0.25));
+  mask-image: linear-gradient(270deg, #000, rgb(0 0 0 / 0.25));
+}
+/* The current question's role emblems in the board's step header: the head
+   is 0.75rem tall on a phone board and 1rem on the band, so the marks follow
+   (the art is drawn for this dark ground and needs no tile). */
+.journey-board__roles img { width: 11px !important; height: 11px !important; }
+@container (min-width: 26rem) {
+  .journey-board__roles img { width: 13px !important; height: 13px !important; }
+}
+/* The board's step header carries the question's role emblems at every
+   width, so the prose surface's own meta row (drawn below `lg` only) does not
+   repeat them; its category label stays. */
+.journey-question [data-testid="question-meta-row"] [data-testid="question-role-emblems"] { display: none; }

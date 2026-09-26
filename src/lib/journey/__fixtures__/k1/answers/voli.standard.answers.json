@@ -1,0 +1,51 @@
+[
+ {
+  "index": 0,
+  "correct_answer": "12",
+  "answer_options": [
+   "10",
+   "12",
+   "8",
+   "9"
+  ]
+ },
+ {
+  "index": 1,
+  "correct_answer": "57",
+  "answer_options": [
+   "57",
+   "52",
+   "42",
+   "47"
+  ]
+ },
+ {
+  "index": 2,
+  "correct_answer": "11",
+  "answer_options": [
+   "9",
+   "14",
+   "8",
+   "11"
+  ]
+ },
+ {
+  "index": 3,
+  "correct_answer": "92",
+  "answer_options": [
+   "112",
+   "102",
+   "92",
+   "122"
+  ]
+ },
+ {
+  "index": 4,
+  "correct_answer": "lee-sin",
+  "answer_options": [
+   "lee-sin",
+   "volibear",
+   "tie"
+  ]
+ }
+]

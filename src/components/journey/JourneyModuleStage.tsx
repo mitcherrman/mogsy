@@ -17,6 +17,10 @@
  * the server's canonical public state (`segment_state.journey`) — never
  * assembled from question prose.
  *
+ * THE BEAT (JOURNEY-MOTION-V1). No overlay: the board stays fully visible, the
+ * objects that changed animate in place, and one compact stamp sits in the
+ * board's header. The status region keeps every event line for screen readers.
+ *
  * THE BEAT GATE. While the server's beat runs (`useJourneyBeat`, server time
  * against `beat.until`), the next question is `inert`, `aria-hidden` and
  * veiled. It stays MOUNTED in its own box, so nothing lays out differently
@@ -29,19 +33,34 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { JourneyPublicState } from "@/lib/journey/contract";
+import type { RankedRole } from "@/lib/ranked-public/roles";
+import { NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
 import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBand";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyStateBoard } from "./JourneyStateBoard";
 import { JourneyStateSheet } from "./JourneyStateSheet";
-import { JourneyTransitionBeat } from "./JourneyTransitionBeat";
+import { JourneyBeatStamp, JourneyTransitionBeat } from "./JourneyTransitionBeat";
 import { useJourneyBeat } from "./useJourneyBeat";
 
-export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, children }: {
+export function JourneyModuleStage({
+  state, skewMs = 0, holdPrevious = false, questionRoles = null, knowledge = NO_KNOWLEDGE, children,
+}: {
   /** The viewer's current canonical public Journey state. */
   state: JourneyPublicState;
   skewMs?: number;
   /** The module is still revealing the previous child. */
   holdPrevious?: boolean;
+  /**
+   * JOURNEY-PRES-V1 — the RQ1 roles of the question on screen (its own
+   * `challenge.roles`), drawn in the board's step header. Null/empty → none.
+   */
+  questionRoles?: readonly RankedRole[] | null;
+  /**
+   * K2 — established facts to mark on the board. Computed from the LIVE
+   * segment state (not the held board), so a child's own fact is marked
+   * during its reveal hold.
+   */
+  knowledge?: JourneyKnowledge;
   /** The current child's question (the caller keys it per child). */
   children: ReactNode;
 }) {
@@ -66,7 +85,9 @@ export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, ch
         data-beat={beatActive ? "active" : "idle"} className="journey-stage flex flex-col gap-2">
         <ScenarioMediaBand key={board.journeyKey} aspect="band" compact data-band-kind="journey"
           className="journey-band">
-          <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}>
+          <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}
+            questionRoles={beatActive ? null : questionRoles} knowledge={knowledge}
+            beatStamp={beatActive ? <JourneyBeatStamp key={board.step.index} state={board} /> : null}>
             {beatActive && <JourneyTransitionBeat key={board.step.index} state={board} />}
           </JourneyStateBoard>
         </ScenarioMediaBand>

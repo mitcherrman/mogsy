@@ -41,6 +41,7 @@ import { ClassIdentity, classIdentityFor } from "./classIdentity";
 import { ModuleBubble } from "./ModuleBubble";
 import { AwardPops, type AwardEvent } from "./AwardPops";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
+import { RoleEmblem } from "./RoleEmblem";
 
 /**
  * THE ONE SIDE RULE (AI1 Phase 2B follow-up).
@@ -969,6 +970,16 @@ export function CombatantPanel({
                   draggable={false}
                   className="h-4 w-4 shrink-0 select-none rounded-[3px] object-cover [object-position:50%_22%] sm:hidden"
                 />
+              )}
+              {/* JOURNEY-PRES-V1 — a Journey's crest slot shows the CHAMPION,
+                  which took the role mascot (and so any picture of the role)
+                  off the banner. The small RQ1 emblem puts it back beside the
+                  role's name, from the participant's FROZEN match role
+                  (`players[].role` → `roleId`) and nothing else: no Journey
+                  recipe role, no inference. A role-less participant gets
+                  none. Outside a Journey the mascot already says it. */}
+              {roleLayout && journey && role.role && (
+                <RoleEmblem role={role.role} size="sm" decorative className="opacity-90" />
               )}
               <span className="truncate">{identityLabel}</span>
             </div>

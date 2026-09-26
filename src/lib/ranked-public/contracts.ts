@@ -487,6 +487,12 @@ export interface MasteryChallengeReveal {
   isCorrect: boolean;
   playerAnswer: string | null;
   correctAnswer: string | null;
+  /**
+   * K2 — the frozen player-facing display of the correct answer
+   * (`precision_authority` at freeze), when the reveal carries one. Null for
+   * single-choice children, whose shown value IS `correctAnswer`.
+   */
+  correctAnswerDisplay?: string | null;
   explanation: string | null;
   answerOptions: string[];
   /**
@@ -1418,6 +1424,8 @@ function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallenge
     // Only a Journey Combat reveal carries it; every other reveal keeps its
     // exact pre-J5 shape (no key at all).
     const combatWorking = readCombatWorking(o.combat_working);
+    // K2 — likewise only when the wire carries a display string.
+    const display = asText(o.correct_answer_display);
     return {
       challengeIndex,
       isCorrect: o.is_correct === true,
@@ -1426,6 +1434,7 @@ function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallenge
       explanation: asText(o.explanation),
       answerOptions: Array.isArray(o.answer_options)
         ? o.answer_options.map((opt) => String(opt)) : [],
+      ...(display !== null ? { correctAnswerDisplay: display } : {}),
       ...(combatWorking ? { combatWorking } : {}),
     };
   });
