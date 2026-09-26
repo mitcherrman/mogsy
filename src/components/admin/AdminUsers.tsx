@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   isEffectivePro,
@@ -13,6 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
+import { BotStateToggle } from "@/components/admin/BotStateToggle";
+import { notifyFriendsChanged } from "@/lib/community/friends-refresh";
+import {
+  EMPTY_IDENTITIES,
+  groupIdentityLinks,
+  profileHref,
+  riotIdLabel,
+  type AdminIdentitySummary,
+} from "@/lib/admin/admin-users";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +34,7 @@ import {
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
   KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info, Film,
-  RefreshCw, RotateCcw, Ghost,
+  RefreshCw, RotateCcw, Ghost, ExternalLink,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -58,6 +68,7 @@ interface Profile {
   stripe_subscription_status: string | null;
   stripe_current_period_end: string | null;
   is_bot: boolean | null;
+  is_disabled: boolean | null;
   is_anonymous: boolean | null;
   profile_frame: string | null;
   admin_notes: string | null;
@@ -114,7 +125,7 @@ interface UserFeedback {
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
-  const [filterMode, setFilterMode] = useState<string>("signed_up");
+  const [filterMode, setFilterMode] = useState<string>("all");
   const [sortMode, setSortMode] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
@@ -142,6 +153,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
+  const [identityMap, setIdentityMap] = useState<Record<string, AdminIdentitySummary>>({});
 
   const [noteEntries, setNoteEntries] = useState<{ id: string; text: string; created_at: string; updated_at?: string }[]>([]);
   const [newNoteText, setNewNoteText] = useState("");
@@ -196,16 +208,15 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const fetchProfiles = useCallback(async (): Promise<Profile[] | null> => {
     setLoading(true);
     setProfilesError(false);
-    const [profilesResult, notesResult] = await Promise.all([
+    const [profilesResult, notesResult, identitiesResult] = await Promise.all([
       supabase
         .rpc("admin_list_profiles")
         .then((r: any) => ({
           ...r,
-          data: (r.data || [])
-            .filter((p: any) => p.is_bot === false)
-            .sort((a: any, b: any) => (a.created_at < b.created_at ? 1 : -1)),
+          data: (r.data || []).sort((a: any, b: any) => (a.created_at < b.created_at ? 1 : -1)),
         })),
       supabase.from("profile_admin_notes").select("profile_id, notes"),
+      supabase.rpc("admin_list_identity_links" as never),
     ]);
     const { data, error: profilesQueryError } = profilesResult;
     const { data: notesData, error: notesError } = notesResult;
@@ -216,6 +227,13 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       return null;
     }
     if (notesError) setProfilesError(true);
+    if (identitiesResult.error) setProfilesError(true);
+    const identities = groupIdentityLinks(
+      Array.isArray(identitiesResult.data)
+        ? (identitiesResult.data as Record<string, unknown>[])
+        : [],
+    );
+    setIdentityMap(Object.fromEntries(identities));
     const notesMap = new Map((notesData || []).map((n: any) => [n.profile_id, n.notes]));
     const enriched = ((data as any[]) || []).map(p => ({ ...p, admin_notes: notesMap.get(p.id) || null }));
     setProfiles(enriched as Profile[]);
@@ -266,11 +284,16 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
       const q = search.toLowerCase();
       const email = emailMap[p.user_id] || "";
+      const identities = identityMap[p.id] ?? EMPTY_IDENTITIES;
+      const riotId = riotIdLabel(identities.riot) ?? "";
       return (
         p.display_name.toLowerCase().includes(q) ||
         p.user_id.toLowerCase().includes(q) ||
         email.toLowerCase().includes(q) ||
-        (p.location || "").toLowerCase().includes(q)
+        (p.location || "").toLowerCase().includes(q) ||
+        (identities.discord?.username || "").toLowerCase().includes(q) ||
+        (identities.discord?.displayName || "").toLowerCase().includes(q) ||
+        riotId.toLowerCase().includes(q)
       );
     });
 
@@ -279,7 +302,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     switch (filterMode) {
       case "pro": list = list.filter(p => isEffectivePro(p)); break;
       case "free": list = list.filter(p => !isEffectivePro(p)); break;
-      case "signed_up": break; // already filtered above
+      case "all": break; // registered accounts, including bots
+      case "real": list = list.filter(p => !p.is_bot); break;
+      case "bots": list = list.filter(p => p.is_bot === true); break;
       case "anonymous": break; // already filtered above
       case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
       case "ads_off": list = list.filter(p => p.ads_enabled === false); break;
@@ -300,7 +325,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     }
 
     return list;
-  }, [profiles, search, emailMap, filterMode, sortMode, userRoles]);
+  }, [profiles, search, emailMap, filterMode, sortMode, userRoles, identityMap]);
 
   const anonymousUsers = useMemo(() => profiles.filter(p => p.is_anonymous), [profiles]);
 
@@ -699,7 +724,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const resetFilters = () => {
     setSearch("");
-    setFilterMode("signed_up");
+    setFilterMode("all");
     setSortMode("newest");
   };
 
@@ -806,6 +831,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   if (selectedUser) {
     const selectedRoles = userRoles[selectedUser.user_id] || [];
+    const selectedIdentities = identityMap[selectedUser.id] ?? EMPTY_IDENTITIES;
+    const selectedRiotId = riotIdLabel(selectedIdentities.riot);
     const isSelectedAdmin = selectedRoles.includes("admin");
     const isSelectedMaster = selectedRoles.includes("master_admin");
     const isSelectedMod = selectedRoles.includes("moderator");
@@ -840,13 +867,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {selectedRoles.includes("master_admin") && <Badge className="bg-primary/20 text-primary border-primary/30"><ShieldCheck className="h-3 w-3 mr-1" /> Master</Badge>}
-            {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>}
-            {isSelectedMod && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30"><ShieldCheck className="h-3 w-3 mr-1" /> Mod</Badge>}
+            {selectedUser.is_bot && <Badge variant="outline">BOT</Badge>}
+            {selectedRoles.includes("master_admin") && <Badge className="bg-primary/20 text-primary border-primary/30"><ShieldCheck className="h-3 w-3 mr-1" /> MASTER ADMIN</Badge>}
+            {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> ADMIN</Badge>}
+            {isSelectedMod && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30"><ShieldCheck className="h-3 w-3 mr-1" /> MODERATOR</Badge>}
             {isSelectedDemo && <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30"><Film className="h-3 w-3 mr-1" /> Demo</Badge>}
             {premium.effectivePremium && (
               <Badge variant="secondary" data-testid="detail-premium-badge" data-premium-source={premium.source}>
-                <Crown className="h-3 w-3 mr-1" /> Premium · {premium.sourceLabel}
+                <Crown className="h-3 w-3 mr-1" /> PREMIUM · {premium.sourceLabel}
               </Badge>
             )}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
@@ -881,6 +909,25 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <p className="break-all"><span className="text-muted-foreground">Profile UUID:</span> {selectedUser.id}</p>
                 <p className="break-all"><span className="text-muted-foreground">Auth UUID:</span> {selectedUser.user_id}</p>
                 <p><span className="text-muted-foreground">Email:</span> {emailMap[selectedUser.user_id] || (selectedUser.is_anonymous ? "Anonymous account" : "Unavailable")}</p>
+                <p><span className="text-muted-foreground">Discord:</span> {selectedIdentities.discord?.displayName || selectedIdentities.discord?.username || "Not linked"}{selectedIdentities.discord ? ` · ${selectedIdentities.discord.contactConsent ? "contact verified" : "no contact consent"}` : ""}</p>
+                <p><span className="text-muted-foreground">Riot:</span> {selectedRiotId || "Not linked"}</p>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button asChild size="sm" variant="outline">
+                    <Link to={profileHref({ id: selectedUser.id })}>
+                      View Profile <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden />
+                    </Link>
+                  </Button>
+                  {isMasterAdmin && (
+                    <AddToMyFriendsButton
+                      targetProfileId={selectedUser.id}
+                      targetName={selectedUser.display_name || "this user"}
+                      disabled={selectedUser.is_bot === true && selectedUser.is_disabled === true}
+                      onCompleted={(result) => {
+                        if (result.ok && result.code === "created") notifyFriendsChanged();
+                      }}
+                    />
+                  )}
+                </div>
               </div>
               <div className="rounded-xl border border-border bg-card p-4 space-y-2">
                 <h4 className="font-bold">Account</h4>
@@ -896,6 +943,18 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   )}
                 </p>
                 <p><span className="text-muted-foreground">Roles:</span> {selectedRoles.length ? selectedRoles.join(", ") : "User"}</p>
+                {selectedUser.is_bot && isMasterAdmin && (
+                  <div className="pt-2">
+                    <BotStateToggle
+                      profileId={selectedUser.id}
+                      isDisabled={selectedUser.is_disabled === true}
+                      onChanged={() => {
+                        setSelectedUser((current) => current ? { ...current, is_disabled: !current.is_disabled } : current);
+                        void fetchProfiles();
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
             {detailErrors.length > 0 && (
@@ -1659,8 +1718,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         <Select value={filterMode} onValueChange={setFilterMode}>
           <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Filter…" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="signed_up">Signed Up</SelectItem>
-            <SelectItem value="all">All Users</SelectItem>
+            <SelectItem value="all">All Accounts</SelectItem>
+            <SelectItem value="real">Real Users</SelectItem>
+            <SelectItem value="bots">Bots</SelectItem>
             <SelectItem value="pro">Premium Only</SelectItem>
             <SelectItem value="free">Free Only</SelectItem>
             <SelectItem value="ads_on">Ads On</SelectItem>
@@ -1682,7 +1742,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="name_az">Name A-Z</SelectItem>
           </SelectContent>
         </Select>
-        {(filterMode !== "signed_up" || sortMode !== "newest" || search) && (
+        {(filterMode !== "all" || sortMode !== "newest" || search) && (
           <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 text-xs gap-1 text-muted-foreground">
             <RotateCcw className="h-3 w-3" /> Reset
           </Button>
@@ -1744,6 +1804,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
+                    {p.is_bot && <Badge variant="outline" className="h-5 px-1.5 text-[9px]">BOT</Badge>}
+                    {isEffectivePro(p) && <Badge variant="secondary" className="h-5 px-1.5 text-[9px]">PREMIUM</Badge>}
+                    {roles.includes("master_admin") && <Badge className="h-5 px-1.5 text-[9px]">MASTER ADMIN</Badge>}
+                    {roles.includes("admin") && <Badge variant="secondary" className="h-5 px-1.5 text-[9px]">ADMIN</Badge>}
+                    {roles.includes("moderator") && <Badge variant="secondary" className="h-5 px-1.5 text-[9px]">MODERATOR</Badge>}
                     {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
                     {roles.includes("master_admin") && <ShieldCheck className="h-3 w-3 text-primary shrink-0" />}
                     {roles.includes("admin") && <Shield className="h-3 w-3 text-primary shrink-0" />}

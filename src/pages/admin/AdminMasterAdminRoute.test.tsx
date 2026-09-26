@@ -6,18 +6,16 @@
  * refused (master_admin is NOT satisfied by has_role being permissive about the
  * admin role) and nothing renders while the check is in flight.
  *
- * FUNNEL1C/ADMIN2 retired /admin/users as a destination — browsing accounts had
- * three entries under Users › Accounts. It is now that section's master-only
- * "Identities" view, so this file also asserts the redirect and the registry
- * entry that replaced it.
+ * The Accounts consolidation keeps /admin/users as the Users area while
+ * deleting the standalone identity and profile-directory surfaces.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import AdminRoute from "@/components/AdminRoute";
-import { ADMIN_TOOLS, legacyRouteMap } from "@/lib/admin/admin-registry";
+import { ADMIN_TOOLS } from "@/lib/admin/admin-registry";
 
 let authState: { user: { id: string } | null; loading: boolean } = {
   user: { id: "user-1" },
@@ -97,7 +95,7 @@ describe("master_admin route authorization", () => {
 
 });
 
-describe("the user directory is one view of People, not a second destination", () => {
+describe("Users has one canonical account directory", () => {
   const appSource = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
 
   // USERS1 gave /admin/users to the Users AREA. The identity directory keeps
@@ -111,28 +109,16 @@ describe("the user directory is one view of People, not a second destination", (
     expect(appSource).not.toContain("<AdminUserDirectory />");
   });
 
-  it("advertises one destination for accounts, with the identity view as a panel of it", () => {
-    // Exactly one tool owns /admin/users as a ROUTE — the Users area — and the
-    // account browsers are panels of it rather than peers of it.
+  it("advertises one destination for accounts", () => {
     expect(
       ADMIN_TOOLS.filter((t) => t.kind === "route" && t.path === "/admin/users").map((t) => t.id),
     ).toEqual(["product-analytics"]);
-    const entry = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
-    expect(entry).toBeTruthy();
-    expect(entry.kind).toBe("panel");
-    expect(entry.area).toBe("users");
-    expect(entry.section).toBe("accounts");
-    expect(entry.path).toBe("/admin/users?section=accounts&view=identities");
-    // The master-only requirement it always enforced is still advertised.
-    expect(entry.requiredRole).toBe("master_admin");
-    expect(entry.dangerLevel).not.toBe("none");
-    expect(entry.warning).toBeTruthy();
+    expect(ADMIN_TOOLS.some((t) => t.id === "people-user-identities")).toBe(false);
+    expect(ADMIN_TOOLS.some((t) => t.id === "people-profile-browser")).toBe(false);
   });
 
-  it("keeps the identity-only capabilities in the registry description", () => {
-    const entry = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
-    for (const capability of [/discord/i, /riot/i, /consent/i, /friend/i]) {
-      expect(entry.description, String(capability)).toMatch(capability);
-    }
+  it("deletes the retired directory components", () => {
+    expect(existsSync(resolve(__dirname, "AdminUserDirectory.tsx"))).toBe(false);
+    expect(existsSync(resolve(__dirname, "../../components/admin/AdminProfileDirectory.tsx"))).toBe(false);
   });
 });

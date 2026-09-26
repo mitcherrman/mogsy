@@ -52,7 +52,9 @@ const { deleteProfile, invoke, supabase } = vi.hoisted(() => {
         is_flagged_underage: false, created_at: "2026-08-01T00:00:00Z",
         last_seen_at: "2026-08-19T00:00:00Z", ads_enabled: true,
       }], error: null })
-      : Promise.resolve({ data: [{ id: "f1", profile_id: testProfileId, title: "Great idea", category: "General", status: "open", created_at: "2026-08-18T00:00:00Z" }], error: null })),
+      : name === "admin_list_identity_links"
+        ? Promise.resolve({ data: [], error: null })
+        : query({ data: [{ id: "f1", profile_id: testProfileId, title: "Great idea", category: "General", status: "open", created_at: "2026-08-18T00:00:00Z" }], error: null })),
     from: vi.fn((table: string) => query({
       data: table === "user_roles"
         ? [{ user_id: testUserId, role: "admin" }]

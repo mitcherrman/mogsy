@@ -307,25 +307,6 @@ describe("admin registry — helpers", () => {
 // ---------------------------------------------------------------------------
 
 describe("accounts have exactly one destination", () => {
-  const identities = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
-
-  it("keeps the identity directory under Users › Accounts as a panel", () => {
-    expect(identities).toBeTruthy();
-    expect(identities.area).toBe("users");
-    expect(identities.section).toBe("accounts");
-    expect(identities.kind).toBe("panel");
-    expect(identities.path).toBe("/admin/users?section=accounts&view=identities");
-  });
-
-  it("records the master-admin authority it already enforces, without changing it", () => {
-    expect(identities.requiredRole).toBe("master_admin");
-    expect(identities.authorization).toMatch(/master_admin|is_master_admin/);
-  });
-
-  it("is searchable in All Tools", () => {
-    expect(searchAdminTools("identities").map((t) => t.id)).toContain(identities.id);
-  });
-
   it("advertises no second account-browsing route", () => {
     // USERS1 — /admin/users is now the Users AREA, not a second directory, so
     // the only route under it is the area itself. Accounts, Profile browser,
@@ -337,6 +318,7 @@ describe("accounts have exactly one destination", () => {
     const userTools = toolsForSection("users", "accounts").filter((t) => t.kind === "panel");
     const bases = new Set(userTools.map((t) => t.path?.split("?")[0]));
     expect([...bases]).toEqual(["/admin/users"]);
+    expect(userTools.map((t) => t.id)).toEqual(["people-users", "people-invites"]);
   });
 });
 
@@ -438,7 +420,6 @@ describe("USERS1 — Users is the one audience domain", () => {
       "users-visitors",
       "users-detail",
       "people-users",
-      "people-user-identities",
       "people-invites",
       "people-comments",
       "people-feedback",

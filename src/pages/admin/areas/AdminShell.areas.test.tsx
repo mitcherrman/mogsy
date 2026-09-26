@@ -214,36 +214,18 @@ describe("2 · Admin Users remains available, and only once", () => {
     await waitFor(() => expect(rpcCalls).toContain("admin_list_profiles"));
   });
 
-  it("exposes exactly one Users interface — the browser is a view of it, not a peer", async () => {
+  it("ignores retired account view params and always renders the canonical directory", async () => {
+    for (const view of ["browser", "access", "identities"]) {
+      cleanup();
+      renderAdmin(`/admin/users?section=accounts&view=${view}`);
+      expect(await screen.findByTestId("users-accounts-list")).toBeTruthy();
+      expect(screen.queryByTestId("users-accounts-subtabs")).toBeNull();
+    }
+  });
+
+  it("keeps invite links as a compact page action instead of a navigation tab", async () => {
     renderAdmin("/admin/users?section=accounts");
-    const subtabs = await screen.findByTestId("users-accounts-subtabs");
-    expect(within(subtabs).getByTestId("users-accounts-subtabs-accounts")).toBeTruthy();
-    expect(within(subtabs).getByTestId("users-accounts-subtabs-browser")).toBeTruthy();
-    // Accounts is the default view; the profile browser is not rendered beside it.
-    expect(screen.queryByTestId("users-accounts-browser")).toBeNull();
-  });
-
-  // FUNNEL1C/ADMIN2 — /admin/users was a second account browser in navigation.
-  it("offers the master-only identity directory as a third VIEW, deep-linkable", async () => {
-    renderAdmin("/admin/users?section=accounts&view=identities");
-    expect(await screen.findByTestId("users-accounts-identities")).toBeTruthy();
-    // One destination: the other views are not rendered beside it.
-    expect(screen.queryByTestId("users-accounts-list")).toBeNull();
-    expect(screen.queryByTestId("users-accounts-browser")).toBeNull();
-    const subtabs = screen.getByTestId("users-accounts-subtabs");
-    expect(within(subtabs).getByTestId("users-accounts-subtabs-identities")).toBeTruthy();
-  });
-
-  it("does not advertise the identity view to a non-master admin", async () => {
-    supabase.from.mockImplementation((table: string) =>
-      buildQuery(table === "user_roles" ? [{ user_id: "u1", role: "admin" }] : []),
-    );
-    renderAdmin("/admin/users?section=accounts&view=identities");
-    const subtabs = await screen.findByTestId("users-accounts-subtabs");
-    expect(within(subtabs).queryByTestId("users-accounts-subtabs-identities")).toBeNull();
-    expect(screen.queryByTestId("users-accounts-identities")).toBeNull();
-    // It falls back to Accounts rather than rendering an empty section.
-    expect(screen.getByTestId("users-accounts-list")).toBeTruthy();
+    expect(await screen.findByTestId("users-invite-links-action")).toBeTruthy();
   });
 });
 

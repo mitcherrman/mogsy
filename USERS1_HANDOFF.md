@@ -1,5 +1,71 @@
 # USERS1 — Clean audience identity, and one Users domain
 
+## Accounts consolidation — 2026-09-26
+
+### Objective
+
+Make Admin › Users › Accounts one ordinary account-management surface instead
+of four overlapping inner tabs, while preserving all account, access, identity,
+bot, entitlement, activity, and invite-link capabilities.
+
+### Decisions
+
+* `AdminUsers` is the canonical list and selected-user detail, backed by the
+  existing `admin_list_profiles()` source. Bots are included; the local
+  `is_bot === false` filter was deleted, so Timmy remains in the directory.
+* The Accounts/Profile browser/Roles & access/Identities subtab row is gone.
+  Stale `?view=browser|access|identities` values are harmless and render the
+  canonical Accounts surface.
+* Verified Discord/Riot identity data, contact consent, profile UUID, View
+  Profile, Add to My Friends, bot status/control, and textual account/role/
+  Premium badges now live in the canonical selected-user experience.
+* Invite Links and its Redemption Log remain available from the page-level
+  `Invite links` button, which opens a dialog rather than owning navigation.
+* The separate profile and identity directory components and their dedicated
+  tests were deleted. `AdminUserCard` remains because Community still uses it.
+* Top-level Users navigation is deliberately unchanged.
+
+### Files changed
+
+Modified:
+
+* `src/pages/admin/areas/AdminUsersPage.tsx`
+* `src/components/admin/AdminUsers.tsx`
+* `src/pages/admin/areas/AdminRankedPage.tsx`
+* `src/lib/admin/admin-registry.ts`
+* `src/components/admin/AdminUsers.phase1.test.tsx`
+* `src/pages/admin/areas/AdminShell.areas.test.tsx`
+* `src/pages/admin/AdminMasterAdminRoute.test.tsx`
+* `src/lib/admin/admin-registry.test.ts`
+* `src/lib/platform-policy/botLabels.test.ts`
+
+Added:
+
+* `src/test/guards/usersAccountsIa.test.ts`
+
+Deleted:
+
+* `src/components/admin/AdminProfileDirectory.tsx`
+* `src/components/admin/AdminProfileDirectory.test.tsx`
+* `src/pages/admin/AdminUserDirectory.tsx`
+* `src/pages/admin/AdminUserDirectory.test.tsx`
+
+### Current state and verification
+
+Code complete on `users1-accounts-consolidation`; not published.
+
+* Focused tests: 8 files, 163 tests passed.
+* Production build: passed.
+* Typecheck: unchanged repository baseline failures remain in unrelated files;
+  no error points at a file changed by this consolidation.
+* Guard coverage prevents the three retired Accounts subtabs and directory
+  components from being reintroduced, and prevents bot filtering from returning.
+
+### Next task
+
+Simplify the top-level Users navigation. Do not fold that work into this
+Accounts consolidation retroactively.
+
 ## Production continuation — 2026-09-24
 
 Current owner-confirmed state:
@@ -364,7 +430,7 @@ Admin
 ├─ Users                     <- Analytics + People, collapsed
 │   ├─ Overview              headline KPIs, every tile clickable
 │   ├─ Visitors              the list, and the one record detail
-│   ├─ Accounts              Accounts · Profile browser · Roles & access · Identities (master)
+│   ├─ Accounts              one canonical directory + selected-user detail
 │   ├─ Activity              mode opens vs Railway-confirmed starts/completions
 │   ├─ Acquisition           funnel + signup funnel + first/session-touch sources
 │   ├─ Retention             new vs returning, repeat sessions, D1/D7

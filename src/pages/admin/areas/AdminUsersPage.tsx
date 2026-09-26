@@ -30,11 +30,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Link2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import AdminUsers from "@/components/admin/AdminUsers";
-import AdminUserDirectory from "@/pages/admin/AdminUserDirectory";
-import AdminProfileDirectory from "@/components/admin/AdminProfileDirectory";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminComments from "@/components/admin/AdminComments";
 import AdminUserReports from "@/components/admin/AdminUserReports";
@@ -218,8 +222,8 @@ export default function AdminUsersPage() {
   const filter = parseTrafficFilter(params.get("traffic"));
   const population = params.get("population");
   const visitor = params.get("visitor");
-  const accountsView = params.get("view") ?? "accounts";
   const moderationView = params.get("view") ?? "comments";
+  const [inviteLinksOpen, setInviteLinksOpen] = useState(false);
 
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<LoadState>({ s: "loading" });
@@ -415,46 +419,28 @@ export default function AdminUsersPage() {
 
       {section.id === "accounts" && (
         <div className="space-y-4">
-          <SubTabs
-            testId="users-accounts-subtabs"
-            value={accountsView}
-            onChange={(id) => setParam("view", id)}
-            options={[
-              { id: "accounts", label: "Accounts" },
-              { id: "browser", label: "Profile browser" },
-              { id: "access", label: "Roles & access" },
-              // Master-only, exactly as /admin/users was before USERS1 moved
-              // the whole area onto that path. The RPCs re-check server-side.
-              ...(isMasterAdmin ? [{ id: "identities", label: "Identities" }] : []),
-            ]}
-          />
-          {accountsView === "browser" && (
-            <div data-testid="users-accounts-browser">
-              <AdminProfileDirectory />
-            </div>
-          )}
-          {accountsView === "identities" && isMasterAdmin && (
-            <div data-testid="users-accounts-identities">
-              <AdminUserDirectory embedded />
-            </div>
-          )}
-          {accountsView === "access" && (
-            <div className="space-y-4" data-testid="users-accounts-access">
-              <AdminPanel
-                title="Invite links"
-                description="Role-granting invites promote whoever redeems them. redeem_invite_link writes to user_roles — this is a real role-assignment path, alongside the master-only editor inside Accounts."
-              >
-                <AdminInviteLinks />
-              </AdminPanel>
-            </div>
-          )}
-          {accountsView !== "browser" &&
-            accountsView !== "access" &&
-            !(accountsView === "identities" && isMasterAdmin) && (
-              <div data-testid="users-accounts-list">
-                <AdminUsers isMasterAdmin={isMasterAdmin} />
-              </div>
-            )}
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setInviteLinksOpen(true)}
+              data-testid="users-invite-links-action"
+            >
+              <Link2 className="h-3.5 w-3.5" aria-hidden /> Invite links
+            </Button>
+          </div>
+          <div data-testid="users-accounts-list">
+            <AdminUsers isMasterAdmin={isMasterAdmin} />
+          </div>
+          <Dialog open={inviteLinksOpen} onOpenChange={setInviteLinksOpen}>
+            <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto" data-testid="users-invite-links-dialog">
+              <DialogHeader>
+                <DialogTitle>Invite links</DialogTitle>
+              </DialogHeader>
+              <AdminInviteLinks />
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
