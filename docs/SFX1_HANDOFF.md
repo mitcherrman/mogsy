@@ -353,3 +353,11 @@ Base: frontend `origin/main` @ `6a1e5282`. Bindings/timing only; no new assets, 
 **Resulting hierarchy:** per-question correct/incorrect (2 notes, light) < module completion (award phrase, + speed accent when earned) < Daily stage completion (resolved 4-voice completion) ; match victory/defeat/draw unchanged for Ranked.
 
 **Tests:** `useRankedMatchSfx.test.ts` (verdict-only settlement; aggregate Journey award + speed; zero award silent), `DailyRunPage.test.tsx` (four watched stages → four unique `daily.stage.complete`; finished-day reload silent). 12 files / 212 tests pass across `src/lib/audio`, `quiz-daily-challenge/run`, and the Ranked observer. `e2e/ranked-sfx.spec.ts` comments updated (assertion shape unchanged; not re-run).
+
+### SFX2 correction — Journey child verdicts
+
+- Each newly published Journey child reveal (`segmentState.ownChallengeReveals` on a segment with a `journey` block) now sounds one light `ranked.answer.correct` / `ranked.answer.incorrect`, eventId `ranked:<match>:segment:<journey>:child:<i>:result`. Hydration is a silent baseline; a skipped poll sounds only the newest child. No other layer sounds Journey child verdicts (the Meta per-card path is `item_cost_duel` only; the aggregate settlement nulls its verdict), so there is no duplicate.
+- Children never sound points/speed; the aggregate Journey settlement keeps the module award (+ speed when earned). The final child + module settlement in one poll gives exactly one verdict + one award phrase.
+- Volume scope: the 0.72 gain applies only to the registry key `ranked.answer.correct` (generator `sfx.ranked.answer-correct`, used by no other key). Its sole caller is `useRankedMatchSfx` (Ranked Standard rounds, Meta Reflex cards, Journey children — including Daily stage children, which run the same arena). Leaguecraft practice uses the separate `leaguecraft.answer.correct` (0.9, unchanged); Swipe/Elo and Broadcast correct cues are separate keys, also unchanged.
+- Mastery (non-Journey) per-question reveals remain silent as before.
+- Perceptual listening was not possible in this environment (no audio output available to the agent); owner approval by ear remains for integration.

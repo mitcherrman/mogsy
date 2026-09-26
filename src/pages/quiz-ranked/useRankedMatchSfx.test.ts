@@ -98,22 +98,75 @@ describe("Ranked semantic SFX observation", () => {
     })).emissions).toEqual([]);
   });
 
-  it("sounds the award phrase only for an aggregate module completion (Journey / Meta)", () => {
-    const journey = base({ moduleKey: "mastery_journey.1#2", roundKey: "mastery_journey.1#2" });
-    const initial = step(null, journey);
-    // Aggregate settlement: no per-question verdict, a positive module award.
-    const done = step(initial.watch, {
-      ...journey, settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
-      ownAward: { pointsAwarded: 6, speedBonusPoints: 2 },
+  describe("SFX2 — Journey children are light verdicts; the module owns the award", () => {
+    const J = "mastery_journey.1#2";
+    const journey = base({ moduleKey: J, roundKey: J, journeyKey: J, journeyOwnReveals: [] });
+    const events = (r: ReturnType<typeof step>) => r.emissions.map((e) => e.event);
+
+    it("a correct child sounds one light correct cue and no points/speed", () => {
+      const initial = step(null, journey);
+      const child = step(initial.watch, {
+        ...journey, journeyOwnReveals: [{ challengeIndex: 0, isCorrect: true }],
+      });
+      expect(events(child)).toEqual(["ranked.answer.correct"]);
+      // A repeat poll of the same reveal is silent.
+      expect(step(child.watch, {
+        ...journey, journeyOwnReveals: [{ challengeIndex: 0, isCorrect: true }],
+      }).emissions).toEqual([]);
     });
-    expect(done.emissions.map((event) => event.event)).toEqual([
-      "ranked.points.awarded", "ranked.speed.bonus",
-    ]);
-    // A zero-point module completion stays silent.
-    expect(step(initial.watch, {
-      ...journey, settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
-      ownAward: { pointsAwarded: 0, speedBonusPoints: 0 },
-    }).emissions).toEqual([]);
+
+    it("an incorrect child sounds one light incorrect cue and no points/speed", () => {
+      const initial = step(null, journey);
+      expect(events(step(initial.watch, {
+        ...journey, journeyOwnReveals: [{ challengeIndex: 0, isCorrect: false }],
+      }))).toEqual(["ranked.answer.incorrect"]);
+    });
+
+    it("hydrating onto already-revealed children is silent", () => {
+      expect(step(null, {
+        ...journey, journeyOwnReveals: [{ challengeIndex: 0, isCorrect: true }],
+      }).emissions).toEqual([]);
+    });
+
+    it("module completion sounds the award phrase separately from the child verdicts", () => {
+      const one = [{ challengeIndex: 0, isCorrect: true }];
+      const initial = step(null, journey);
+      const first = step(initial.watch, { ...journey, journeyOwnReveals: one });
+      const done = step(first.watch, {
+        ...journey, journeyOwnReveals: one,
+        settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
+        ownAward: { pointsAwarded: 6, speedBonusPoints: 2 },
+      });
+      expect(events(done)).toEqual(["ranked.points.awarded", "ranked.speed.bonus"]);
+      // A zero-point completion stays silent.
+      expect(step(first.watch, {
+        ...journey, journeyOwnReveals: one,
+        settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
+        ownAward: { pointsAwarded: 0, speedBonusPoints: 0 },
+      }).emissions).toEqual([]);
+    });
+
+    it("final child + module settlement in ONE poll: one verdict, one award, no duplicates", () => {
+      const initial = step(null, journey);
+      const both = step(initial.watch, {
+        ...journey,
+        journeyOwnReveals: [
+          { challengeIndex: 0, isCorrect: true }, { challengeIndex: 1, isCorrect: true },
+        ],
+        settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
+        ownAward: { pointsAwarded: 6, speedBonusPoints: 0 },
+      });
+      expect(events(both)).toEqual(["ranked.answer.correct", "ranked.points.awarded"]);
+      expect(new Set(both.emissions.map((e) => e.eventId)).size).toBe(2);
+      expect(step(both.watch, {
+        ...journey,
+        journeyOwnReveals: [
+          { challengeIndex: 0, isCorrect: true }, { challengeIndex: 1, isCorrect: true },
+        ],
+        settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
+        ownAward: { pointsAwarded: 6, speedBonusPoints: 0 },
+      }).emissions).toEqual([]);
+    });
   });
 
   it("uses owner-only Meta reveals and coalesces public opponent progress", () => {
