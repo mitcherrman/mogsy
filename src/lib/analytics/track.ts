@@ -59,6 +59,7 @@ import {
   type AnalyticsEventInsert,
 } from "./schema";
 import { supabase } from "@/integrations/supabase/client";
+import { FRONTEND_RELEASE_ID } from "./release";
 
 const ROUTE_MAX = 512;
 
@@ -293,14 +294,23 @@ async function recordSession(
   touch: Touch,
   traffic?: TrafficSignal,
 ): Promise<void> {
-  const row = toSessionRow(sessionId, visitorId, touch, traffic);
+  const row = {
+    ...toSessionRow(sessionId, visitorId, touch, traffic),
+    frontend_release: FRONTEND_RELEASE_ID,
+  };
   let ok = await insertOnce(ANALYTICS_SESSIONS_TABLE, row);
 
   // The classification columns do not exist yet. Record the SESSION rather
   // than nothing: an unclassified session reads as `unknown`, which is inside
   // the default population, and a lost session is unrecoverable.
   if (!ok && lastFailureWasUnknownColumn) {
-    const { traffic_class: _c, traffic_source: _s, classification_reason: _r, ...legacy } = row;
+    const {
+      traffic_class: _c,
+      traffic_source: _s,
+      classification_reason: _r,
+      frontend_release: _release,
+      ...legacy
+    } = row;
     ok = await insertOnce(ANALYTICS_SESSIONS_TABLE, legacy);
   }
   // A 23505 counts as success here too, and deliberately: it means the first

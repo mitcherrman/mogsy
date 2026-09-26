@@ -93,6 +93,7 @@ export type AnalyticsSessionInsert = {
   traffic_class?: "automation" | "internal" | "unknown";
   traffic_source?: string | null;
   classification_reason?: string | null;
+  frontend_release?: string | null;
 };
 
 export type AnalyticsSessionRow = Required<
@@ -105,6 +106,20 @@ export type AnalyticsSessionRow = Required<
    * (see the USERS1 migration §2), so it is expressed in the types too.
    */
   traffic_class: "human" | "automation" | "internal" | "unknown";
+  active_ms: number;
+  last_active_at: string | null;
+  session_end_reason: "explicit_end" | "inactivity_timeout" | null;
+  session_end_observed_at: string | null;
+  last_browser_boundary: "page_hidden" | "pagehide" | null;
+  last_browser_boundary_observed_at: string | null;
+};
+
+export type AnalyticsVisitorUserLinkRow = {
+  visitor_id: string;
+  user_id: string;
+  first_observed_at: string;
+  last_observed_at: string;
+  observation_count: number;
 };
 
 /**
@@ -153,12 +168,33 @@ export type AnalyticsDatabase = {
         Update: Partial<AnalyticsTrafficOverrideInsert>;
         Relationships: [];
       };
+      analytics_visitor_user_links: {
+        Row: AnalyticsVisitorUserLinkRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       /** USERS1 — the only write path to traffic_class = 'human'. */
       analytics_promote_session_human: {
         Args: { p_session_id: string; p_reason?: string | null };
+        Returns: boolean;
+      };
+      analytics_record_session_activity: {
+        Args: {
+          p_session_id: string;
+          p_visitor_id: string;
+          p_active_ms: number;
+          p_last_active_at?: string | null;
+          p_end_reason?: string | null;
+          p_browser_boundary?: string | null;
+        };
+        Returns: boolean;
+      };
+      analytics_link_visitor_user: {
+        Args: { p_visitor_id: string };
         Returns: boolean;
       };
     };

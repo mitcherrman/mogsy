@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/account-upgrade";
 import { getE2EIdentity, e2eSession, e2eEnabled } from "@/lib/e2e/identity";
 import { observeAuthIdentity } from "@/lib/analytics";
+import { observeAuthenticatedVisitor } from "@/lib/analytics/sessionIntelligence";
 
 interface AuthContextType {
   user: User | null;
@@ -86,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     observeAuthIdentity(user);
+    void observeAuthenticatedVisitor(user);
   }, [user]);
 
   useEffect(() => {

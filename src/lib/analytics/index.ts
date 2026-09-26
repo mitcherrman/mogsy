@@ -100,3 +100,15 @@ export {
 } from "./traffic";
 
 export { installHumanSignalWatcher } from "./humanSignal";
+
+export {
+  installSessionIntelligence,
+  observeAuthenticatedVisitor,
+  recordExplicitSessionEnd,
+  ACTIVE_IDLE_TIMEOUT_MS,
+  ACTIVE_PERSIST_INTERVAL_MS,
+  type SessionEndReason,
+  type BrowserBoundary,
+} from "./sessionIntelligence";
+
+export { FRONTEND_RELEASE, FRONTEND_RELEASE_ID } from "./release";
