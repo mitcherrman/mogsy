@@ -124,5 +124,31 @@ describe("failure is never drawn as an empty record", () => {
     render(<AcademyAnalyticsCarousel source={broken} />);
     await waitFor(() => expect(screen.getByTestId("academy-analytics-error")).toBeTruthy());
     expect(screen.queryByTestId("academy-analytics-empty")).toBeNull();
+    expect(screen.queryByTestId("academy-analytics-dormant")).toBeNull();
+  });
+});
+
+describe("HUB6 — an empty window keeps its chart frame", () => {
+  const empty: TrendsSource = {
+    capability: async () => ({ capability: capability([7]) }),
+    trends: async () =>
+      ({ ...report(7), current: { attempts: 0, correct: 0, accuracy: null, active_days: 0 }, modes: [], categories: [] }) as unknown as TrendReport,
+  };
+
+  it("draws the dormant axis, the existing sentence, and no bars", async () => {
+    render(<AcademyAnalyticsCarousel source={empty} />);
+    await waitFor(() => expect(screen.getByTestId("academy-analytics-empty")).toBeTruthy());
+    const frame = screen.getByTestId("academy-analytics-dormant");
+    expect(frame.dataset.slide).toBe("bars");
+    expect(frame).toHaveTextContent("No answers in this window yet.");
+    expect(screen.queryByTestId("lobby-accuracy-bars")).toBeNull();
+  });
+
+  it("keeps the unfilled ring on the donut slide", async () => {
+    render(<AcademyAnalyticsCarousel source={empty} />);
+    await waitFor(() => expect(screen.getByTestId("academy-analytics-empty")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("academy-analytics-next"));
+    expect(screen.getByTestId("academy-analytics-dormant").dataset.slide).toBe("donut");
+    expect(screen.queryByTestId("lobby-distribution-donut")).toBeNull();
   });
 });

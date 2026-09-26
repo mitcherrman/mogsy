@@ -224,7 +224,11 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     fireEvent.click(within(only).getByTestId("daily-analysis-toggle"));
     const analysis = within(only).getByTestId("daily-analysis");
     expect(analysis).toHaveAttribute("data-state", "insufficient_evidence");
-    expect(within(analysis).getByTestId("history-pending")).toHaveTextContent(/0 of 1|0 of 3|1 of 5/);
+    // HUB6: every comparison keeps its place, dormant, with the server's count.
+    expect(within(analysis).getByTestId("history-pending-delta")).toHaveTextContent("0 of 1 matching runs");
+    expect(within(analysis).getByTestId("history-pending-average")).toHaveTextContent("0 of 3 matching runs");
+    expect(within(analysis).getByTestId("history-pending-trend")).toHaveTextContent("1 of 5 matching runs");
+    expect(within(analysis).queryByTestId("history-trajectory")).toBeNull();
     expect(within(analysis).queryByText(/Upgrade|Premium/)).toBeNull();
   });
 

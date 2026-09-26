@@ -565,7 +565,11 @@ describe("HUB4 capability — five states, five treatments", () => {
     expect(analysis.textContent).not.toMatch(/Premium|Upgrade/);
     // Stages carry their own insufficiency, also without a paywall.
     const stageToggle = within(stagesOf(run)[0]).getByTestId("stage-analysis-toggle");
+    // HUB6: the stage toggle is an icon; its name is still "Analysis".
+    expect(stageToggle).toHaveAccessibleName("Analysis");
+    expect(stageToggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(stageToggle);
+    expect(stageToggle).toHaveAttribute("aria-expanded", "true");
     const stage = within(stagesOf(run)[0]).getByTestId("stage-analysis-insufficient");
     expect(stage.textContent).toMatch(/0 of 1 earlier matching stages/);
     expect(stage.textContent).not.toMatch(/Premium|Upgrade/);
@@ -631,17 +635,30 @@ describe("HUB4 analytics — the server's numbers, and only them", () => {
     expect(within(line).getByRole("img").getAttribute("aria-label")).toContain("33%, 67%, 67%, 100%, 67%");
   });
 
-  it("omits a null metric, and lists it once with the server's counts", async () => {
+  it("keeps a null metric's place, dormant, with the server's counts (HUB6)", async () => {
     const analysis = await withAnalytics((a) => {
       a.trajectory = { value: null, sufficiency: { status: "insufficient", observed: 2, required: 5, reason_code: "insufficient_compatible_history" } };
       a.historical_average = { value: null, sufficiency: { status: "insufficient", observed: 2, required: 3, reason_code: "insufficient_compatible_history" } };
     });
+    // No value is drawn or printed for either…
     expect(within(analysis).queryByTestId("history-trajectory")).toBeNull();
     expect(within(analysis).queryByTestId("daily-analysis-average")).toBeNull();
-    const pending = within(analysis).getByTestId("history-pending").textContent!;
-    expect(pending).toContain("Trend (2 of 5 matching runs)");
-    expect(pending).toContain("Average (2 of 3 matching runs)");
-    expect(pending).not.toMatch(/\b0%|zero|bad|weak|declin/i);
+    // …but each keeps its place, with the server's count.
+    const trend = within(analysis).getByTestId("history-pending-trend");
+    expect(trend).toHaveTextContent("Trend");
+    expect(trend).toHaveTextContent("2 of 5 matching runs");
+    const slots = within(trend).getAllByTestId("history-trajectory-slot");
+    expect(slots).toHaveLength(5);
+    expect(slots.filter((s) => s.dataset.filled === "true")).toHaveLength(2);
+    const average = within(analysis).getByTestId("history-pending-average");
+    expect(average).toHaveTextContent("Average accuracy");
+    expect(average).toHaveTextContent("2 of 3 matching runs");
+    expect(average).toHaveTextContent("—");
+    for (const el of [trend, average]) {
+      expect(el.textContent).not.toMatch(/\b0%|zero|bad|weak|declin/i);
+    }
+    // The sufficient figures beside them are unchanged.
+    expect(within(analysis).getByTestId("daily-analysis-delta")).toBeTruthy();
   });
 
   it("draws only categories the server found sufficient", async () => {

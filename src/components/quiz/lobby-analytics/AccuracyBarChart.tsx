@@ -16,6 +16,7 @@
 import { Bar, BarChart, Cell, LabelList, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LEAGUECRAFT_INK as INK } from "@/components/quiz/leaguecraft-ink";
+import { useMotionAllowed } from "@/lib/motion/useReveal";
 import type { AccuracyBar } from "./analyticsSlices";
 
 /** At most this many rows fit the reserved box legibly. The rest are the
@@ -23,6 +24,9 @@ import type { AccuracyBar } from "./analyticsSlices";
 const MAX_ROWS = 6;
 
 export default function AccuracyBarChart({ bars }: { bars: readonly AccuracyBar[] }) {
+  // HUB6: bars grow from the zero baseline on arrival; never under reduced
+  // motion, where they are simply drawn.
+  const animate = useMotionAllowed();
   const rows = bars.slice(0, MAX_ROWS).map((b) => ({
     key: b.key,
     label: b.label.length > 14 ? `${b.label.slice(0, 13)}…` : b.label,
@@ -35,7 +39,10 @@ export default function AccuracyBarChart({ bars }: { bars: readonly AccuracyBar[
   return (
     <ChartContainer
       config={{ accuracy: { label: "Accuracy" } }}
-      className="aspect-auto h-full w-full"
+      /* HUB6: the container's own tick rule paints axis labels in the app's
+         muted foreground — a light grey in the dark theme, near-invisible on
+         parchment. The sheet's body ink wins here, as the tick prop intends. */
+      className="aspect-auto h-full w-full [&_.recharts-cartesian-axis-tick_text]:fill-[#3f2c14]"
       data-testid="lobby-accuracy-bars"
     >
       <BarChart
@@ -72,7 +79,14 @@ export default function AccuracyBarChart({ bars }: { bars: readonly AccuracyBar[
             />
           }
         />
-        <Bar dataKey="accuracy" radius={[2, 2, 2, 2]} isAnimationActive={false}>
+        <Bar
+          dataKey="accuracy"
+          radius={[2, 2, 2, 2]}
+          isAnimationActive={animate}
+          animationBegin={80}
+          animationDuration={650}
+          animationEasing="ease-out"
+        >
           {rows.map((row) => (
             <Cell
               key={row.key}

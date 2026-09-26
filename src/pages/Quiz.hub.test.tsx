@@ -499,11 +499,11 @@ describe("Leaguecraft hub — the Leaguecraft Record", () => {
     // Every row is printed once — there is no preview of the same payload
     // above it any more.
     expect(container.querySelectorAll('[data-testid="history-row"]').length).toBe(0);
-    // The summary the Recent Studies card carried, folded into one line.
+    // The ledger's scope line states its window. HUB6: accuracy aggregates
+    // (session average / best) are the Academy Record's, not History's.
     const scope = screen.getByTestId("study-history-scope").textContent!;
     expect(scope).toContain("12");
-    expect(scope).toMatch(/average/);
-    expect(scope).toMatch(/best/);
+    expect(scope).not.toMatch(/average|best/);
   });
 
   it("owns the ONLY empty-history CTA, and it opens PRACTICE not Ranked", async () => {

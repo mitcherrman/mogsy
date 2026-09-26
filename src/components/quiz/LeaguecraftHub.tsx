@@ -871,6 +871,9 @@ export default function LeaguecraftHub({
                  Ranked together, so the ledger does not read its own. */
               ownsCollection={false}
               signInHref={authHref("/quiz#history")}
+              /* HUB6: the Academy Record above owns accuracy aggregates; the
+                 ledger's scope line keeps its session count only. */
+              sessionAggregates={false}
             />
           </OwnedQuestionIndexProvider>
         </LeaguecraftWorkspace>

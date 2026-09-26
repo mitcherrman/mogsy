@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import DailyRunRow from "@/components/quiz/workspace/DailyRunRow";
+import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { useMatchReviews } from "@/components/quiz/workspace/useMatchReviews";
 import type { DailyHistoryState } from "@/components/quiz/workspace/useDailyHistory";
 import { hasExpansion } from "@/components/quiz/workspace/HistoryAnalysis";
@@ -40,6 +41,7 @@ export default function DailyHistorySection({
   onAnalysisTargetMissing?: () => void;
 }) {
   const { records, status } = daily;
+  const coarse = useCoarsePointer();
 
   /* ONE bounded loader for every stage timeline, in display order — the same
      loader the Ranked rows use, so fifty stage timelines are read two at a
@@ -119,7 +121,7 @@ export default function DailyHistorySection({
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-[11px]"
+              className={`text-[11px] ${coarse ? "min-h-[44px]" : "h-7"}`}
               disabled={daily.loadingMore}
               aria-busy={daily.loadingMore}
               onClick={daily.loadMore}

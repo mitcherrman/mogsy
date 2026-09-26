@@ -13,6 +13,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter, useLocation, useNavigationType } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
+import StudyHistoryLedger from "@/components/quiz/workspace/StudyHistoryLedger";
 import type { QuizHistoryResponse, MissedQuestionsResponse } from "@/lib/quiz/api";
 
 const getMissedQuestions = vi.fn();
@@ -254,8 +255,24 @@ describe("MALT — the consolidation: one history system, no practice panel", ()
     expect(onSelectSet.mock.calls[0][0]).toMatchObject({ name: "All Current Questions" });
   });
 
-  it("folds the old card's summary into the ledger's own scope line", () => {
+  it("keeps the ledger's scope line to its window, and leaves accuracy aggregates to the Academy Record (HUB6)", () => {
     renderHub();
+    const scope = screen.getByTestId("study-history-scope").textContent!;
+    expect(scope).toContain("3");
+    expect(scope).toContain("41");
+    // The session average and best (53% / 80% over these three rows) were a
+    // second accuracy aggregate beside the Academy Record's own; the hub's
+    // History no longer states them.
+    expect(scope).not.toMatch(/average|best/);
+    expect(scope).not.toContain("53%");
+  });
+
+  it("still folds the session summary into the standalone ledger's scope line", () => {
+    render(
+      <MemoryRouter>
+        <StudyHistoryLedger history={HISTORY} loading={false} error={null} />
+      </MemoryRouter>,
+    );
     const scope = screen.getByTestId("study-history-scope").textContent!;
     // 80, 60 and 20 across the three rows.
     expect(scope).toContain("53%");
