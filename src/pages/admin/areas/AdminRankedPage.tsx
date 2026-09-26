@@ -328,6 +328,12 @@ export default function AdminRankedPage() {
                     Matches & Testing — building that inspector once serves both.
                   </p>
                   <p>
+                    <strong className="text-foreground">PLAY1 Director.</strong> Host-directed
+                    playtest cohorts around the canonical Daily Challenge:{" "}
+                    <AdminCrossLink to="/admin/playtest-director" label="Playtest Director" />
+                    . Separate from the RB guided playtest at /quiz/playtest.
+                  </p>
+                  <p>
                     <strong className="text-foreground">Not introduced.</strong> No allowlist and no
                     cohort restriction is applied to normal Ranked PvP or Ranked Bot.
                   </p>

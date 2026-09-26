@@ -181,6 +181,9 @@ const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
 const QuizMatchupPage = lazy(() => import("./pages/quiz-matchup/QuizMatchupPage"));
 
 const QuizPlaytestPage = lazy(() => import("./pages/quiz-ranked/QuizPlaytestPage"));
+// PLAY1 — facilitated Playtest (participant + Director). Separate from RB3's /quiz/playtest.
+const PlaytestParticipantPage = lazy(() => import("./pages/playtest/PlaytestParticipantPage"));
+const PlaytestDirectorPage = lazy(() => import("./pages/playtest/PlaytestDirectorPage"));
 const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
 const RankedShellProbe = lazy(() => import("./pages/dev/ranked-shell-probe/RankedShellProbe"));
 // JOURNEY-UI1 — dev-only fixture harness for the Journey state board in the real arena.
@@ -417,6 +420,7 @@ const App = () => (
                         backend-authority admin reads are. */}
                     <Route path="pro-play-coverage" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
+                    <Route path="playtest-director" element={<Suspense fallback={<RouteFallback />}><PlaytestDirectorPage /></Suspense>} />
                     {/* USERS1 — Ranked is a section of Leaguecraft now, not an
                         area. The path resolves so bookmarks land somewhere
                         true; it is advertised nowhere. */}
@@ -505,6 +509,7 @@ const App = () => (
                       Ranked is untouched and the whole session can be removed
                       by deleting this line. */}
                   <Route path="/quiz/playtest" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><QuizPlaytestPage /></Suspense></ProtectedRoute>} />
+                  <Route path="/playtest/:slug" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><PlaytestParticipantPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/ranked" element={<Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />

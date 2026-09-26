@@ -148,6 +148,16 @@ export const PRODUCT_EVENTS = [
   "dsa_results_viewed",
   "dsa_practice_replay_clicked",
   "dsa_legacy_fallback",
+  // PLAY1 — the facilitated Playtest wrapper. Presentation/research events
+  // only; Daily and Ranked gameplay keep their own canonical events and are
+  // never re-emitted under a playtest name. Metadata is bounded to
+  // cohort_id / enrollment_id / manifest_id / manifest_version / scene_id.
+  "playtest_joined",
+  "playtest_scene_viewed",
+  "playtest_gameplay_released",
+  "playtest_stage_checkpoint_reached",
+  "playtest_feedback_submitted",
+  "playtest_completed",
 ] as const;
 
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];
