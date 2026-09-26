@@ -133,7 +133,15 @@ export function observeRankedSfx(
     } else if (current.ownSettlementOutcome === "incorrect") {
       emissions.push({ event: "ranked.answer.incorrect", eventId: `${settlementId}:result` });
     }
-    if (current.ownAward && current.ownAward.pointsAwarded > 0) {
+    // SFX2 — ONE CUE PER SETTLEMENT. A per-question verdict owns its own
+    // settlement: the award (+180 ms) and speed accent (+400 ms) used to ride
+    // behind it and turned every correct Standard answer into a five-note
+    // rising phrase heavier than a module completion. The award phrase now
+    // sounds only for an aggregate multi-card settlement (Journey / Meta
+    // Reflex module completion), which carries no per-question verdict here.
+    const verdictSounded = current.ownSettlementOutcome === "correct"
+      || current.ownSettlementOutcome === "incorrect";
+    if (!verdictSounded && current.ownAward && current.ownAward.pointsAwarded > 0) {
       emissions.push({ event: "ranked.points.awarded", eventId: `${settlementId}:award` });
       if (current.ownAward.speedBonusPoints > 0) {
         emissions.push({ event: "ranked.speed.bonus", eventId: `${settlementId}:speed-bonus` });

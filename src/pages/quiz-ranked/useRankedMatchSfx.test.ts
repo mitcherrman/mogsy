@@ -74,8 +74,9 @@ describe("Ranked semantic SFX observation", () => {
       ownSettlementOutcome: "correct",
       ownAward: { pointsAwarded: 3, speedBonusPoints: 1 },
     }));
+    // SFX2 — a per-question verdict owns its settlement: no award/speed stack.
     expect(settled.emissions.map((event) => event.event)).toEqual([
-      "ranked.answer.correct", "ranked.points.awarded", "ranked.speed.bonus",
+      "ranked.answer.correct",
     ]);
     expect(step(settled.watch, base({
       settlementRound: 1,
@@ -95,6 +96,24 @@ describe("Ranked semantic SFX observation", () => {
       settlementRound: 1, ownSettlementOutcome: "correct",
       ownAward: { pointsAwarded: 2, speedBonusPoints: 0 },
     })).emissions).toEqual([]);
+  });
+
+  it("sounds the award phrase only for an aggregate module completion (Journey / Meta)", () => {
+    const journey = base({ moduleKey: "mastery_journey.1#2", roundKey: "mastery_journey.1#2" });
+    const initial = step(null, journey);
+    // Aggregate settlement: no per-question verdict, a positive module award.
+    const done = step(initial.watch, {
+      ...journey, settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
+      ownAward: { pointsAwarded: 6, speedBonusPoints: 2 },
+    });
+    expect(done.emissions.map((event) => event.event)).toEqual([
+      "ranked.points.awarded", "ranked.speed.bonus",
+    ]);
+    // A zero-point module completion stays silent.
+    expect(step(initial.watch, {
+      ...journey, settlementRound: 2, settlementLive: true, ownSettlementOutcome: null,
+      ownAward: { pointsAwarded: 0, speedBonusPoints: 0 },
+    }).emissions).toEqual([]);
   });
 
   it("uses owner-only Meta reveals and coalesces public opponent progress", () => {

@@ -37,6 +37,7 @@ import {
   projectDailyFlow, stageCompletedBetween, type DailyFlowView,
 } from "@/lib/daily-challenge/run/flow";
 import { runSkewMs } from "@/lib/daily-challenge/run/timeBank";
+import { useSfx } from "@/lib/audio/useSfx";
 
 export type DailyRunLoad = "loading" | "ready" | "run" | "unavailable";
 
@@ -99,6 +100,7 @@ function messageFor(e: unknown): string {
 }
 
 export function useDailyRun(transport: DailyRunTransport): DailyRunState {
+  const { play: playSfx } = useSfx();
   const [load, setLoad] = useState<DailyRunLoad>("loading");
   const [run, setRun] = useState<DailyRun | null>(null);
   const [busy, setBusy] = useState(false);
@@ -170,8 +172,13 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
       // DC-LANE-C — every finished stage, Review included, gets its result
       // screen; the player leaves it with Continue (`continueFromResult`).
       setResultFor(done.id);
+      // SFX2 — only a stage this mount WATCHED finish sounds; a reload onto a
+      // finished stage has no `prev` and stays silent. Skips are not earned.
+      if (done.status === "completed") {
+        playSfx("daily.stage.complete", { eventId: `daily:${next.runId}:stage:${done.id}:complete` });
+      }
     }
-  }, [noteStrikes]);
+  }, [noteStrikes, playSfx]);
 
   const ask = useCallback(async (work: () => Promise<DailyRun>, quiet = false): Promise<DailyRun | null> => {
     if (!quiet) { setBusy(true); setError(null); }
