@@ -135,7 +135,9 @@ function Rail({ rail, progressionEnabled }:
       reaction={rail.reaction}
       // RD1 — relayed like everything above; absent draws the gold tally.
       standing={rail.standing ?? null}
-      leadPulseId={rail.leadPulseId ?? null} />
+      leadPulseId={rail.leadPulseId ?? null}
+      // JOURNEY-UI1 — relayed; absent draws the role mascot as always.
+      journey={rail.journey ?? null} />
   );
 }
 

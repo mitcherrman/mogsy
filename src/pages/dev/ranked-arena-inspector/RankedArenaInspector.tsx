@@ -11,7 +11,7 @@
  * Excluded from navigation and the sitemap (a /dev route); unavailable in
  * production builds unless explicitly enabled.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
@@ -41,6 +41,9 @@ import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { masterySliceModule } from "@/lib/ranked-core/modules/masterySliceModule";
+import { readPublicRound } from "@/lib/ranked-public/contracts";
+import { loadCapture, type CaptureKey, type CaptureSnapshot } from "@/lib/journey/realFixtures";
 import { scenarioSourceForMasteryChallenge } from "@/lib/question-surface/masterySliceScenario";
 import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
@@ -1331,6 +1334,39 @@ const SPELL_COOLDOWN_SCENARIO = {
   },
 } as unknown as QuizQuestion;
 
+/**
+ * JOURNEY-UI2/UI3 — the Journey board on the real question card, fed a REAL J3
+ * capture (a `GET /api/ranked/matches/{id}` envelope from a real Bot match,
+ * `lib/journey/__fixtures__/j3`) through the production parser and the
+ * production `masterySliceModule` viewport. Server now is pinned to the
+ * capture instant, so a beat capture plays its server-timed beat once. The
+ * full arena (banners, phone match bar, autoplay) is `/dev/journey-arena`.
+ */
+function JourneyBench({ capture, label }: { capture: CaptureKey; label: string }) {
+  const [snap, setSnap] = useState<CaptureSnapshot | null>(null);
+  const [shownAt] = useState(() => Date.now());
+  useEffect(() => {
+    let alive = true;
+    void loadCapture(capture).then((all) => {
+      if (alive) setSnap(all.find((x) => x.label === label) ?? null);
+    });
+    return () => { alive = false; };
+  }, [capture, label]);
+  if (!snap) return <p className="text-sm text-muted-foreground">Loading capture…</p>;
+  const round = readPublicRound(snap.envelope);
+  const Viewport = masterySliceModule.Viewport;
+  return (
+    <div className="ranked-shell ranked-academy mx-auto w-full max-w-[40rem]">
+      <section data-testid="ranked-question" className="ranked-panel ranked-folio p-3 sm:p-5">
+        <Viewport publicRound={round} segmentState={round.segmentState} selection={null}
+          permissions={NO_INTERACTIONS} onSelect={() => {}}
+          actions={{ submitChallenge: () => {}, busy: false, error: null }}
+          skewMs={Date.parse(snap.at) - shownAt} />
+      </section>
+    </div>
+  );
+}
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -1589,6 +1625,24 @@ const STATES: InspectorState[] = [
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "Whose W has the longer cooldown at rank 1?" }}
       scenarioSource={SLICE_MATCHUP_SCENARIO} selected={null} /> },
+
+  // --- JOURNEY-UI3: the Journey board on REAL J3 captures ---
+  { key: "journey-matchup", label: "Journey (J3) — Matchup, per-side ranks",
+    render: () => <JourneyBench capture="olaf" label="child1-open" /> },
+  { key: "journey-withheld", label: "Journey (J3) — asked stat withheld (Lee Sin armor ?)",
+    render: () => <JourneyBench capture="voli" label="child0-live" /> },
+  { key: "journey-combat", label: "Journey (J3) — Combat, formula stated, armor recalled",
+    render: () => <JourneyBench capture="voli" label="child2-open" /> },
+  { key: "journey-purchase-beat", label: "Journey (J3) — first-back purchase beat (server-timed)",
+    render: () => <JourneyBench capture="zed" label="child3-beat" /> },
+  { key: "journey-after-purchase", label: "Journey (J3) — child after the purchase (marks kept)",
+    render: () => <JourneyBench capture="zed" label="child3-open" /> },
+  { key: "journey-combat-recalled", label: "Journey (J3) — Combat, formula recalled",
+    render: () => <JourneyBench capture="voli" label="child4-open" /> },
+  { key: "journey-level-up", label: "Journey (J3) — level 6 beat (both sides, R unlocks)",
+    render: () => <JourneyBench capture="pantheon" label="child3-beat" /> },
+  { key: "journey-armor-stated", label: "Journey (J3) — Combat at level 6, armor stated",
+    render: () => <JourneyBench capture="pantheon" label="child4-open" /> },
 
   // --- shared InteractiveScenarioSurface ---
   { key: "surface-text-fallback", label: "Surface — compact band (no source)",

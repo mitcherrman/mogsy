@@ -74,12 +74,23 @@ export interface DailyTimeBank {
 export interface DailyStrikes {
   used: number;
   max: number;
+  /**
+   * DC-LANE-C — settled strikes plus the mistakes already known inside the
+   * unsettled module (the server's `live_strikes`). Absent on older payloads.
+   */
+  live?: number | null;
 }
 
 /** B+ — the ACTIVE stage's live ruleset state. Null when there is none. */
 export interface DailyStageLive {
   timeBank: DailyTimeBank | null;
   strikes: DailyStrikes | null;
+  /**
+   * DC-LANE-C — the server says the player's ruleset stage is over, though
+   * the child may still be settling. A presentation signal only: the parent
+   * still advances on canonical settlement. Null when absent.
+   */
+  ownStageFinished?: boolean | null;
 }
 
 /** Why a stage ended: the content ran out, or the ruleset ended it. */
@@ -205,9 +216,13 @@ function readLive(v: unknown, l: string): DailyStageLive | null {
   let strikes: DailyStrikes | null = null;
   if (r.strikes !== null && r.strikes !== undefined) {
     const s = rec(r.strikes, `${l}.strikes`);
-    strikes = { used: int(s.used, `${l}.strikes.used`), max: int(s.max, `${l}.strikes.max`) };
+    strikes = {
+      used: int(s.used, `${l}.strikes.used`), max: int(s.max, `${l}.strikes.max`),
+      live: optInt(s.live, `${l}.strikes.live`),
+    };
   }
-  return { timeBank, strikes };
+  const ownStageFinished = typeof r.own_stage_finished === "boolean" ? r.own_stage_finished : null;
+  return { timeBank, strikes, ownStageFinished };
 }
 
 function readResult(v: unknown, l: string): DailyStageResult | null {

@@ -93,3 +93,13 @@ describe("Item Cost Duel transcript", () => {
       .toBeInTheDocument();
   });
 });
+
+describe("JOURNEY-UI3 — a settled mastery_slice block is named for what it is", () => {
+  it("a v2 Journey/Mastery settlement is 'Mastery', never 'Item Cost Duel'", async () => {
+    const { segmentTitle } = await import("./SegmentTranscript");
+    const base = { challengeCount: 3, challenges: [], masteryChallenges: [], players: {}, items: {} };
+    expect(segmentTitle({ ...base, moduleId: "mastery_slice", moduleVersion: 2 })).toBe("Mastery");
+    expect(segmentTitle({ ...base, moduleId: "item_cost_duel", moduleVersion: 2 })).toBe("Item Cost Duel");
+    expect(segmentTitle({ ...base, moduleId: "item_cost_duel", moduleVersion: 4 })).toBe("Meta Reflex");
+  });
+});

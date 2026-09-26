@@ -28,6 +28,8 @@
  *    TIMED OUT with an icon AND a word, never colour alone — in the same
  *    reserved row the neutral status chips occupy, so nothing moves.
  */
+import type { JourneyRailIdentity } from "@/lib/journey/rail";
+import { JourneyBannerCrest } from "@/components/journey/JourneyCrest";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Hourglass, Lock, ShieldCheck, Swords, XCircle, Zap } from "lucide-react";
 import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
@@ -764,8 +766,15 @@ export function CombatantPanel({
   reaction = null,
   standing = null,
   leadPulseId = null,
+  journey = null,
 }: {
   combatant: CombatantView;
+  /**
+   * JOURNEY-UI1 — the Journey champion this column stands for, while a Journey
+   * is on screen. It takes the role mascot's slot in exactly the same box
+   * (`JourneyBannerCrest`); absent, the column is byte-identical.
+   */
+  journey?: JourneyRailIdentity | null;
   /** RD1 — this column's duel standing; see `ScoreTally`. */
   standing?: DuelStanding | null;
   /** RD1 — the lead-change event that put this column ahead; see `ScoreTally`. */
@@ -914,7 +923,8 @@ export function CombatantPanel({
           faces, WHEN something happened, and that it is touchable. Every
           distance, duration, easing curve and keyframe — including the whole
           of the click reaction — stays in `RoleMascot`. */}
-      {roleLayout && (
+      {roleLayout && journey && <JourneyBannerCrest identity={journey} />}
+      {roleLayout && !journey && (
         // Rendered for BOTH columns of a role match. `RoleCrest` draws the
         // mascot when there is a role and a neutral emblem in exactly the same
         // box when there is not, so the slot's geometry is a constant of the

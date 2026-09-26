@@ -36,6 +36,7 @@ import {
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
 import { reconciledSkewMs } from "@/lib/ranked-core/timerMath";
+import { msUntilServerInstant } from "@/lib/ranked-core/flow/useServerInstantWake";
 import { useSfx } from "@/lib/audio/useSfx";
 
 const POLL_MS = 1500;
@@ -235,7 +236,7 @@ export interface MatchController {
    * animation every time an ordinary round advanced underneath it.
    */
   lastSegmentRoundNumber: number | null;
-  submitSegmentChallenge: (challengeIndex: number, choice: api.SegmentChoice) => void;
+  submitSegmentChallenge: (challengeIndex: number, choice: api.SegmentChoice) => Promise<boolean>;
   /**
    * A payload this client could not READ, as a human-readable reason.
    *
@@ -409,6 +410,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const failuresRef = useRef(0);
   const inFlightRef = useRef(false);
   const rerunRef = useRef(false);
+  /** JOURNEY5-LIVE — the private read runs BESIDE the poll loop (see `readPrivate`). */
+  const privateInFlightRef = useRef(false);
+  const privateDirtyRef = useRef(false);
   const serverAbilityRef = useRef<string | null>(null);
   // Synchronous double-activation guards. State alone is not enough: two clicks
   // dispatched in the same React batch both read the pre-update `submitting`,
@@ -647,6 +651,34 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     setDamageLog((log) => mergeSettlements(log, recovered));
   }, [matchId, viewerUserId]);
 
+  /**
+   * One private read at a time; a poll that lands while one is in flight marks
+   * it dirty so exactly one more read follows. Errors keep their old meaning:
+   * a contract breach or a fatal code stops the match, anything else is
+   * transient and the next poll asks again.
+   */
+  const readPrivate = useCallback((signal: AbortSignal) => {
+    if (!matchId) return;
+    if (privateInFlightRef.current) { privateDirtyRef.current = true; return; }
+    privateInFlightRef.current = true;
+    privateDirtyRef.current = false;
+    void (async () => {
+      try {
+        const next = await api.getPrivatePlayer(matchId, signal);
+        if (!stoppedRef.current) setPrivatePlayer(next);
+      } catch (e) {
+        if (api.isAborted(e)) return;
+        if (api.isContractError(e)) { failContract("private player", e); return; }
+        if (api.isFatal(e)) {
+          setError((e as RankedApiError).message); stoppedRef.current = true; clearTimer();
+        }
+      } finally {
+        privateInFlightRef.current = false;
+        if (privateDirtyRef.current && !stoppedRef.current && !signal.aborted) readPrivate(signal);
+      }
+    })();
+  }, [matchId, failContract]);
+
   const poll = useCallback(async () => {
     if (!matchId || stoppedRef.current) return;
     if (inFlightRef.current) { rerunRef.current = true; return; }
@@ -789,14 +821,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       // Open, and observed open. Recorded AFTER the completion branch so the
       // very snapshot that ends the match can never set it.
       sawMatchLiveRef.current = true;
-      if (active !== null) {
-        try {
-          setPrivatePlayer(await api.getPrivatePlayer(matchId, controller.signal));
-        } catch (e) {
-          if (api.isContractError(e)) { failContract("private player", e); return; }
-          if (api.isFatal(e)) { setError((e as RankedApiError).message); stoppedRef.current = true; return; }
-        }
-      }
+      // JOURNEY5-LIVE — NOT awaited. The private read used to sit inside the
+      // poll, so the NEXT public read waited for it: on a live stack answering
+      // in 2-11 s (measured; /private alone 8 s) a Journey child that opened at
+      // `started_at` stayed off screen behind the previous module's frame (or
+      // the lead-in's placeholder) for most of its 30 s window. The public
+      // snapshot is what moves the arena; the private one only carries the
+      // viewer's own draft and submission echo, so it no longer gates it.
+      if (active !== null) readPrivate(controller.signal);
     } catch (e) {
       if (api.isAborted(e)) return;
       if (api.isContractError(e)) { failContract("public round", e); return; }
@@ -822,7 +854,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
           runNext, Math.min(POLL_MS * 2 ** failuresRef.current, MAX_BACKOFF_MS));
       }
     }
-  }, [matchId, captureResolved, viewerUserId]);
+  }, [matchId, captureResolved, viewerUserId, readPrivate]);
 
   // Keep `pollRef` on the latest `poll`. Declared BEFORE the mount effect so it
   // is populated by the time that effect kicks the loop off.
@@ -1043,7 +1075,11 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         // Release the grid so the player can answer again.
         setSelectedOptionId(null);
         setAnsweredSelection((cur) => (cur?.roundNumber === rn ? null : cur));
-        if (!(e instanceof RankedApiError && e.code === "RANKED_STALE_ROUND")) {
+        // JOURNEY5-LIVE — `RANKED_ROUND_NOT_OPEN` (an answer that reached the
+        // server before `started_at`, e.g. on a skewed clock) stored nothing:
+        // the grid is released above and the player simply answers again.
+        if (!(e instanceof RankedApiError
+              && (e.code === "RANKED_STALE_ROUND" || e.code === "RANKED_ROUND_NOT_OPEN"))) {
           setActionError(e instanceof Error ? e.message : "submit failed");
         } else {
           poke();
@@ -1097,15 +1133,69 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const segmentState = publicRound?.segmentState ?? null;
   const segmentNumber = segmentState?.segmentNumber ?? null;
 
+  /**
+   * JOURNEY-UI3 — POLL AT THE JOURNEY'S SERVER INSTANTS.
+   *
+   * A Journey child is not in the payload until the server opens it, and a
+   * transition is not published until its beat starts. On the ordinary 1.5 s
+   * cadence the client learned both up to 1.5 s late — measured in a real
+   * Daily: the next child appeared 0.5–1.0 s after the server opened it (the
+   * pooled clock already running on an empty "opening…" placeholder), and a
+   * 2.5 s purchase beat was visible for 1.25 s. So, for a Journey only:
+   *
+   *   * one poll AT `own_card_started_at` (the server's open instant), and
+   *   * one poll when a new reveal's frozen window (`reveal_window_ms`) ends —
+   *     the instant the server publishes the transition, if there is one.
+   *
+   * Poll SCHEDULING only: nothing is opened, paused or decided here; the
+   * snapshot those polls return is the only thing that moves the Journey.
+   */
+  const journeyOpensAt = segmentState?.journey ? segmentState.ownCardStartedAt : null;
+  useEffect(() => {
+    if (!journeyOpensAt) return;
+    const delay = msUntilServerInstant(journeyOpensAt, skewMs, Date.now());
+    if (delay <= 0) return;
+    const id = window.setTimeout(poke, delay + 60);
+    return () => window.clearTimeout(id);
+  }, [journeyOpensAt, skewMs, poke]);
+  const journeyRevealing = segmentState?.journey ? segmentState.ownRevealingCardIndex : null;
+  const journeyRevealMs = segmentState?.journey ? segmentState.revealWindowMs : null;
+  useEffect(() => {
+    if (journeyRevealing === null || !journeyRevealMs) return;
+    // First observed right after the submit that settled it: its window ends
+    // one frozen reveal later (a late first sighting only makes this poll early).
+    const id = window.setTimeout(poke, journeyRevealMs + 80);
+    return () => window.clearTimeout(id);
+  }, [journeyRevealing, journeyRevealMs, poke]);
+  // JOURNEY5 — and one poll AT `own_reveal_until` when the server states it:
+  // after the FINAL child's reveal window that is the instant the segment
+  // resolves (and, on the last module, the match completes), so the handback
+  // follows the server without waiting out the ordinary cadence.
+  const journeyRevealUntil = segmentState?.journey ? segmentState.ownRevealUntil : null;
+  useEffect(() => {
+    if (!journeyRevealUntil) return;
+    const delay = msUntilServerInstant(journeyRevealUntil, skewMs, Date.now());
+    if (delay <= 0) return;
+    const id = window.setTimeout(poke, delay + 60);
+    return () => window.clearTimeout(id);
+  }, [journeyRevealUntil, skewMs, poke]);
+
+  /**
+   * JOURNEY5-LIVE — resolves `true` when the server ACCEPTED the action and
+   * `false` otherwise (refused, failed, or not sent), so a module holding a
+   * local "Locking in…" state can release it and let the player answer again.
+   */
   const runSegmentAction = useCallback(
-    (action: (segment: number) => Promise<unknown>, onAccepted?: (segment: number) => void) => {
-      if (!matchId || submitting || segmentNumber === null) return;
+    (action: (segment: number) => Promise<unknown>,
+     onAccepted?: (segment: number) => void): Promise<boolean> => {
+      if (!matchId || submitting || segmentNumber === null) return Promise.resolve(false);
       setSubmitting(true);
       setActionError(null);
-      (async () => {
+      return (async () => {
         try {
           await action(segmentNumber);
           onAccepted?.(segmentNumber);
+          return true;
         } catch (e) {
           // A stale phase/index means the server already moved on — re-poll
           // rather than surfacing a transient race as an error.
@@ -1123,10 +1213,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
             e.code === "RANKED_WRONG_SEGMENT_PHASE" ||
             e.code === "RANKED_WRONG_CHALLENGE_INDEX" ||
             e.code === "RANKED_CARD_NOT_OPEN" ||
+            // JOURNEY5-LIVE — the backend's refusal of an answer that arrived
+            // before the round opened: nothing was stored, answer again.
+            e.code === "RANKED_ROUND_NOT_OPEN" ||
             e.code === "RANKED_SEGMENT_COMPLETE");
           if (!stale) {
             setActionError(e instanceof Error ? e.message : "action failed");
           }
+          return false;
         } finally {
           setSubmitting(false);
           poke();
@@ -1139,8 +1233,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   // The CHOICE is opaque here: which token a card contract answers with is the
   // module's business, and this controller only relays it.
   const submitSegmentChallenge = useCallback(
-    (challengeIndex: number, choice: api.SegmentChoice) => {
-      runSegmentAction((segment) =>
+    (challengeIndex: number, choice: api.SegmentChoice): Promise<boolean> => {
+      return runSegmentAction((segment) =>
         api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice),
       (segment) => {
         if (segmentState?.moduleId !== "item_cost_duel"

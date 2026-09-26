@@ -15911,3 +15911,268 @@ html.hub-commons-in-view .hextech-ambience-layer {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: none; }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   JOURNEY-UI1 — THE JOURNEY STATE BOARD.
+   Drawn inside `ScenarioMediaBand` (a `container-type: size` box), so its
+   density is a CONTAINER query on the band, not a viewport query: the same
+   board is the side-by-side `band` on a desktop question card and the stacked
+   `compact` rows on a phone, from one DOM tree.
+   Every box is sized by a `--jb-*` token that only the density sets. A state
+   change swaps what is inside a box, never its size, so the question below
+   cannot move between children or during a transition beat.
+   ────────────────────────────────────────────────────────────────────────── */
+.journey-vars {
+  --jb-portrait: 1.625rem;
+  --jb-ability: 1rem;
+  --jb-slot: 1rem;
+  --jb-pip: 3px;
+  --jb-mono: 0.5rem;
+  --jb-chip-font: 0.5625rem;
+  --jb-chip-h: 0.875rem;
+}
+.journey-chip {
+  height: var(--jb-chip-h);
+  line-height: var(--jb-chip-h);
+  font-size: var(--jb-chip-font);
+}
+.journey-pip { width: var(--jb-pip); height: var(--jb-pip); }
+.journey-chip--delta {
+  border-color: rgb(143 208 160 / 0.65);
+  background: rgb(143 208 160 / 0.12);
+}
+/* Focus: what the current question is about. A shadow, so it lays out nothing. */
+.journey-focus {
+  box-shadow: 0 0 0 1.5px #f3dca0, 0 0 10px rgb(243 220 160 / 0.45);
+}
+.journey-board {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  overflow: hidden;
+  font-size: var(--jb-chip-font);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(212 179 90 / 0.10), transparent 60%),
+    linear-gradient(180deg, #0b1727, #060d18);
+}
+.journey-board__head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 0.75rem;
+  min-width: 0;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.7);
+}
+.journey-board__eyebrow { display: flex; min-width: 0; align-items: center; white-space: nowrap; }
+.journey-board__state-btn { height: 0.75rem; font-size: 0.5rem; }
+.journey-board__sides {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) 1px minmax(0, 1fr);
+  gap: 3px;
+}
+/* Compact: the seam is a gold hairline between the stacked rows. */
+.journey-board__seam {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, transparent, rgb(212 179 90 / 0.6), transparent);
+}
+.journey-board__seam > * { display: none; }
+/* Compact (a phone): one row per side, ~36px, the portrait spanning both
+   lines —   [portrait] NAME · Lv · role ............ focus stats
+             [        ] Q W E R  ▢▢▢▢▢▢                          */
+.journey-side {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: var(--jb-portrait) minmax(0, 1fr) auto;
+  grid-template-areas: "portrait name stats" "portrait kit items";
+  align-content: center;
+  align-items: center;
+  column-gap: 5px;
+  row-gap: 2px;
+}
+.journey-side__id { display: contents; }
+.journey-side__id > [data-testid^="journey-portrait-"] { grid-area: portrait; }
+.journey-side__name { grid-area: name; display: flex; min-width: 0; align-items: center; gap: 4px; }
+.journey-side__champion { font-size: 0.625rem; line-height: 0.75rem; }
+.journey-side__kit { grid-area: kit; display: flex; gap: 3px; }
+.journey-side__items { grid-area: items; justify-self: end; }
+.journey-side__stats {
+  grid-area: stats;
+  display: flex;
+  justify-self: end;
+  gap: 3px;
+  overflow: hidden;
+}
+.journey-side__stats { align-items: center; }
+.journey-stat-cell { display: inline-flex; }
+/* Compact names the combat role in three letters, so the champion keeps the room. */
+.journey-role-long { display: none; }
+.journey-role-short { display: inline; }
+.journey-stat-cell[data-compact="false"] { display: none; }
+
+@container (min-width: 26rem) {
+  .journey-vars {
+    --jb-portrait: 2.25rem;
+    --jb-ability: 1.625rem;
+    --jb-slot: 1.5rem;
+    --jb-pip: 4px;
+    --jb-mono: 0.75rem;
+    --jb-chip-font: 0.625rem;
+    --jb-chip-h: 1.2rem;
+  }
+  .journey-board { gap: 6px; padding: 8px 10px; }
+  .journey-board__head { height: 1rem; font-size: 0.5625rem; }
+  .journey-board__state-btn { height: 1rem; font-size: 0.5625rem; }
+  /* Band: the two sides stand as facing columns either side of the seam. */
+  .journey-board__sides {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) 1.75rem minmax(0, 1fr);
+    gap: 6px;
+  }
+  .journey-board__seam {
+    background: linear-gradient(180deg, transparent, rgb(212 179 90 / 0.55), transparent)
+      center / 1px 100% no-repeat;
+  }
+  .journey-board__seam > * { display: block; background: #07111f; padding: 2px 0; }
+  .journey-side {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "id" "kit" "items" "stats";
+    align-content: start;
+    row-gap: 6px;
+  }
+  .journey-side__id { grid-area: id; display: flex; min-width: 0; align-items: center; gap: 6px; }
+  .journey-side__name { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .journey-side__kit { gap: 4px; }
+  .journey-side__champion { font-size: 0.75rem; line-height: 0.95rem; }
+  .journey-side__items, .journey-side__stats { justify-self: start; }
+  .journey-side__stats { flex-wrap: wrap; overflow: visible; }
+  .journey-stat-cell[data-compact="false"] { display: inline-flex; }
+  .journey-role-long { display: inline; }
+  .journey-role-short { display: none; }
+  /* The opponent faces the subject: mirrored to the outer edge. */
+  .journey-side[data-side="opponent"] { justify-items: end; }
+  .journey-side[data-side="opponent"] .journey-side__id { flex-direction: row-reverse; text-align: right; }
+  .journey-side[data-side="opponent"] .journey-side__name { align-items: flex-end; }
+  /* Abilities stay Q W E R on both sides — the order players read — and only
+     the alignment mirrors. */
+  .journey-side[data-side="opponent"] .journey-side__items,
+  .journey-side[data-side="opponent"] .journey-side__stats { justify-self: end; justify-content: flex-end; }
+}
+
+/* The beat: what changed pulses while the canonical beat runs. Shadows and
+   filters only — nothing that lays out. */
+@keyframes journey-changed-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(143 208 160 / 0); filter: none; }
+  50% { box-shadow: 0 0 0 2px rgb(143 208 160 / 0.9), 0 0 14px rgb(143 208 160 / 0.6); filter: brightness(1.25); }
+}
+.journey-board[data-beat="active"] .journey-changed,
+.journey-board[data-beat="active"] .journey-chip--delta {
+  animation: journey-changed-pulse 0.9s ease-in-out 2;
+}
+.journey-beat__stamp { font-size: 0.625rem; line-height: 1.1rem; }
+.journey-beat__label { font-size: 0.625rem; }
+.journey-beat__line { font-size: 0.5625rem; line-height: 0.85rem; }
+@container (min-width: 26rem) {
+  .journey-beat__stamp { font-size: 0.75rem; line-height: 1.35rem; }
+  .journey-beat__label { font-size: 0.75rem; }
+  .journey-beat__line { font-size: 0.6875rem; line-height: 1.05rem; }
+}
+/* The question while the beat runs: present (same box), not yet active. */
+.journey-question__content--veiled { opacity: 0.12; filter: blur(1px); }
+@media (prefers-reduced-motion: reduce) {
+  .journey-board[data-beat="active"] .journey-changed,
+  .journey-board[data-beat="active"] .journey-chip--delta { animation: none; }
+}
+/* Roomy band: a wide AND tall band (a large desktop) spends its height. */
+@container (min-width: 34rem) and (min-height: 14rem) {
+  .journey-vars {
+    --jb-portrait: 2.75rem;
+    --jb-ability: 2rem;
+    --jb-slot: 1.75rem;
+    --jb-pip: 5px;
+    --jb-chip-font: 0.6875rem;
+    --jb-chip-h: 1.35rem;
+  }
+  .journey-board { gap: 8px; padding: 10px 12px; }
+  .journey-side { row-gap: 8px; }
+  .journey-side__champion { font-size: 0.875rem; line-height: 1.1rem; }
+}
+/* JOURNEY-UI2 — a rank printed on the ability tile (a contract without max rank). */
+.journey-rank-digit { font-size: 0.5625rem; }
+/* JOURNEY-UI2 — the Journey question inside the Ranked stage.
+   The stage's region reserves (`--qs-*-h`) are sized for ONE surface filling
+   the card, and pin its answer tablets for that layout. A Journey child sits
+   BELOW the module's board, so those reserves would double-count: they are
+   released for the nested surface only, which then takes its content height.
+   Ordinary rounds are untouched — the tokens are reset on `.journey-question`
+   alone. */
+.journey-question {
+  --qs-media-h: 0px;
+  --qs-prompt-h: 0px;
+  --qs-answers-h: 0px;
+}
+/* The Journey band's height from `lg`: exactly what the band-density board
+   needs (measured 184-191px), so the child question below keeps the rest of a
+   height-locked card. (Inline max-height is `ScenarioMediaBand`'s, hence the
+   priority; the region cap still applies through `min`.) */
+@media (min-width: 1024px) {
+  .journey-band { max-height: min(12.5rem, 100%) !important; }
+}
+/* JOURNEY-UI2 — a structural Mastery view's progress + identity block is the
+   board's job inside a Journey (step N of M, both champions). */
+.journey-question [data-mastery-meta] { display: none; }
+/* JOURNEY-UI2 — in the height-locked desktop card the board keeps its band
+   and the Journey QUESTION is the one region that yields: a long served reveal
+   or a wrapped premise scrolls inside it instead of being clipped by the
+   card. Below `lg` the page scrolls, so nothing here applies. */
+@media (min-width: 1024px) {
+  .ranked-question-stage .journey-viewport {
+    display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto;
+  }
+  .ranked-question-stage .journey-viewport > .journey-stage {
+    flex: 1 1 auto; min-height: 0;
+  }
+  .ranked-question-stage .journey-stage > .journey-band { flex: 0 0 auto; }
+  .ranked-question-stage .journey-stage > .journey-question {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  }
+}
+/* JOURNEY-UI3 — the surface wrapper centres short content (auto block
+   margins; `lg:my-auto` on desktop, the stage's own rule on a phone). During a
+   transition beat the next child is not in the payload yet, so the module
+   shows a one-line placeholder and the whole board slid down to the card's
+   middle (measured: 1440 band y 133 → 262, 390 band y 159 → 332, and back).
+   A Journey takes the body from the top instead, at every width, so its board
+   never moves between children. */
+.ranked-question-stage [data-testid="ranked-question-body"] > :has(> .journey-viewport) {
+  margin-top: 0; margin-bottom: 0; flex: 1 1 auto;
+}
+/* JOURNEY-UI2 — the question-motif art is scenario media; inside a Journey
+   the board is the scenario art, and the motif's oversized decorative
+   pseudo-element would otherwise give the scrollable question a phantom
+   scroll range. */
+.journey-question .question-motif-layer { display: none; }
+.journey-question { overflow-x: hidden; }
+/* JOURNEY-UI3 — J3's board states the premise stats, so from `lg` the child's
+   question gives the height-locked card back: its category row is the board's
+   job (Journey · step N of M), and its heading steps down one size. Measured
+   at 1024x768: without this a live Combat child pushed "Lock in" 35px below
+   the card's fold. Below `lg` the page scrolls and nothing here applies. */
+@media (min-width: 1024px) {
+  .journey-question [data-testid="question-meta-row"] { display: none; }
+  .ranked-academy .ranked-folio .journey-question [data-testid="scenario-surface"] > header h2 {
+    font-size: 1rem; line-height: 1.25;
+  }
+}

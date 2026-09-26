@@ -22,6 +22,7 @@ import type {
   SegmentRevealView,
 } from "@/lib/ranked-public/contracts";
 import {
+  MASTERY_SLICE_MODULE_ID,
   META_REFLEX_MIXED_VERSION,
   revealChoiceEntityId,
 } from "@/lib/ranked-public/contracts";
@@ -36,8 +37,14 @@ const RESULT_LABEL: Record<SegmentResult, string> = {
 /**
  * The block's public name. v4 IS Meta Reflex; v1–v3 were the Item Cost Duel,
  * and a historical transcript must keep saying what it actually was.
+ *
+ * JOURNEY-UI3 — a `mastery_slice` block (a Journey, or any Mastery slice) is
+ * "Mastery", the name the live header already gives it (`liveModuleTitle`).
+ * Before this, its v2 settlement fell through the version test and the header
+ * read "Item Cost Duel" after a Daily Journey (found in real play).
  */
 export function segmentTitle(reveal: SegmentRevealView): string {
+  if (reveal.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
   return reveal.moduleVersion >= META_REFLEX_MIXED_VERSION
     ? META_REFLEX_LABEL : "Item Cost Duel";
 }

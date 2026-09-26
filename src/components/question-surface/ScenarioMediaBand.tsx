@@ -22,6 +22,7 @@
  * output is unchanged and the gold standard is untouched.
  */
 import { MotionConfig } from "framer-motion";
+import type { ReactNode } from "react";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/ScenarioCard";
 
@@ -63,7 +64,17 @@ export const BAND_ASPECT = { hero: "16 / 9", band: "16 / 7" } as const;
 
 export interface ScenarioMediaBandProps {
   /** The Quiz/Broadcast-shaped payload the card classifier reads. */
-  source: QuizQuestion;
+  source?: QuizQuestion;
+  /**
+   * JOURNEY-UI1 — a card drawn INSTEAD of the classified Scenario Card, inside
+   * the very same box (the Journey state board). The geometry above stays the
+   * one definition; only what fills it changes. Exactly one of `source` and
+   * `children` is given.
+   */
+  children?: ReactNode;
+  /** Extra hook for a caller's own styling of the box (container-query rules). */
+  className?: string;
+  "data-band-kind"?: string;
   /** Which aspect preset — `hero` for comfortable, `band` for compact. */
   aspect: keyof typeof BAND_ASPECT;
   /** Compact density caps the band harder; see the height notes below. */
@@ -76,6 +87,9 @@ export interface ScenarioMediaBandProps {
 
 export function ScenarioMediaBand({
   source,
+  children,
+  className,
+  "data-band-kind": bandKind,
   aspect,
   compact,
   motionLevel,
@@ -105,7 +119,8 @@ export function ScenarioMediaBand({
     <MotionConfig reducedMotion={reducedMotion}>
       <div
         data-testid="scenario-hero"
-        className="@container relative w-full overflow-hidden rounded-xl bg-black/30"
+        data-band-kind={bandKind}
+        className={`@container relative w-full overflow-hidden rounded-xl bg-black/30${className ? ` ${className}` : ""}`}
         // minHeight floors the container-query box on narrow viewports (where the
         // band would otherwise collapse and shrink every cqmin unit into
         // illegibility); maxHeight caps it on ultra-wide columns. Between the two
@@ -140,7 +155,9 @@ export function ScenarioMediaBand({
           maxHeight: `min(var(--qs-media-max, ${bandMaxHeight}), 100%)`,
         }}
       >
-        <ScenarioCard question={source} revealActive={revealActive} correctAnswer={correctAnswer} />
+        {children ?? (source
+          ? <ScenarioCard question={source} revealActive={revealActive} correctAnswer={correctAnswer} />
+          : null)}
       </div>
     </MotionConfig>
   );

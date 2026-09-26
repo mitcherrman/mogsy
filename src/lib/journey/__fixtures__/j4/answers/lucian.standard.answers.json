@@ -1,0 +1,51 @@
+[
+ {
+  "index": 0,
+  "correct_answer": "9",
+  "answer_options": [
+   "12",
+   "13",
+   "7",
+   "9"
+  ]
+ },
+ {
+  "index": 1,
+  "correct_answer": "lucian",
+  "answer_options": [
+   "caitlyn",
+   "lucian",
+   "tie"
+  ]
+ },
+ {
+  "index": 2,
+  "correct_answer": "60",
+  "answer_options": [
+   "60",
+   "70",
+   "50",
+   "75"
+  ]
+ },
+ {
+  "index": 3,
+  "correct_answer": "78",
+  "answer_options": [
+   "108",
+   "98",
+   "68",
+   "78"
+  ]
+ },
+ {
+  "index": 4,
+  "correct_answer": "71",
+  "answer_options": [
+   "71",
+   "91",
+   "86",
+   "81"
+  ]
+ }
+]

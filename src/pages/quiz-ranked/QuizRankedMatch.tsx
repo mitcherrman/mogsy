@@ -68,7 +68,7 @@ import {
   abilityTrayIsUseful, isPointsMatch, moduleProgressLabel,
   opponentLabelFor, opponentPresenceLabel, projectAbilities,
   projectAbilityPermissions, projectCombatants,
-  projectPermissions, projectTimer,
+  projectPermissions, projectTimer, projectJourneyTimer, isJourneyFinalReveal,
 } from "./rankedViews";
 import {
   EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
@@ -95,6 +95,8 @@ import { useCountdownNow } from "@/lib/ranked-core/flow/useCountdownNow";
 import { projectMatchOutro } from "@/lib/ranked-core/flow/matchOutro";
 import { useSpecialTransition } from "@/lib/ranked-core/flow/useSpecialTransition";
 import { hostedMatchSettled, type MatchHost } from "@/lib/ranked-core/flow/matchHost";
+import { survivalHumanFinished, survivalStatus } from "@/lib/ranked-core/survivalFinish";
+import { journeyRailsFor } from "@/lib/journey/rail";
 import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
 import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import { RankedEntryIntro } from "@/components/ranked-arena/RankedEntryIntro";
@@ -749,10 +751,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * both read the ONE `header.timer` built from it, so there is a single
    * countdown projection on every viewport.
    */
+  // JOURNEY-UI3 — a Journey module's clock is its OWN budget (Standard's pooled
+  // active time, Survival's per-child window), read from the segment state —
+  // never the round's projected block deadline. Ticks anchor on the child's
+  // own deadline so each digit is a real second of THAT clock.
+  const clockSeg = m.segmentState ?? m.publicRound?.segmentState ?? null;
+  const journeyClock = !revealing && clockSeg?.journey ? clockSeg : null;
   const countdownNow = useCountdownNow(
-    m.publicRound?.activeRound?.activeDeadline ?? null, m.skewMs);
+    (journeyClock ? journeyClock.ownCardDeadline : null)
+      ?? m.publicRound?.activeRound?.activeDeadline ?? null, m.skewMs);
+  // JOURNEY5 — during a Journey's FINAL reveal window the round's projected
+  // block deadline is never the clock (Survival has no child clock left).
   const timer = !revealing && m.publicRound
-    ? projectTimer(m.publicRound, m.skewMs, countdownNow) : null;
+    ? (projectJourneyTimer(journeyClock, m.skewMs, countdownNow)
+      ?? (isJourneyFinalReveal(journeyClock) ? null : projectTimer(m.publicRound, m.skewMs, countdownNow)))
+    : null;
   // Wake EXACTLY at the live round's authoritative start, so input opens at
   // `started_at` rather than on the next 1s tick. One timeout, re-armed only
   // when the instant changes, cleared on unmount.
@@ -792,6 +805,28 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   useEffect(() => {
     hostRef.current?.onPresentationPhase?.(presentationPhase);
   }, [presentationPhase]);
+  /**
+   * DC-SURV-UX — a hosted Survival stage ends for the PLAYER at strike 3, not
+   * when the bot has finished its remaining cards. Server truth only (see
+   * `survivalHumanFinished`); the match stays connected so it settles, and
+   * the ordinary handback above still fires when it does.
+   */
+  const survivalOver = host !== undefined && m.phase !== "match_over"
+    && survivalHumanFinished(m.publicRound, m.segmentState ?? m.publicRound?.segmentState);
+  const finishedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!survivalOver || finishedRef.current === matchId) return;
+    finishedRef.current = matchId;
+    hostRef.current?.onPlayerFinished?.(matchId);
+  }, [survivalOver, matchId]);
+  const survival = survivalStatus(m.publicRound);
+  const survivalKey = survival
+    ? `${survival.answered}|${survival.strikesUsed}|${survival.maxStrikes}` : null;
+  useEffect(() => {
+    if (survival) hostRef.current?.onSurvivalStatus?.(survival);
+    // Keyed on the values, not the object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [survivalKey]);
   /**
    * RFX1 2B3 — THE MEDIUM BEAT this round is owed, if any.
    *
@@ -1025,7 +1060,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
 
   // DCMOD-E: a hosted match has no end screen. It has been handed back (the
   // effect above), and holds the arena's placeholder until its host moves on.
-  if (m.phase === "match_over" && host) {
+  if ((m.phase === "match_over" || survivalOver) && host) {
     return (
       <CanonicalArena view={null} chrome={chrome}
         recovering={{ eyebrow: host.eyebrow, message: host.settlingMessage }} />
@@ -1338,6 +1373,21 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       ? { round, count: seen.count + 1 } : { round, count: 1 };
   }
 
+  /**
+   * JOURNEY-UI2 — while the live segment is a Mastery Journey, each flank
+   * shows its Journey champion (the viewer's side is the Journey's player, the
+   * opponent's side its opponent) in the role mascot's box. Absent for every
+   * other module, which therefore renders exactly as it always has.
+   */
+  const journeySeg = m.segmentState ?? m.publicRound?.segmentState ?? null;
+  const journeyRails = journeySeg?.journey
+    ? journeyRailsFor(journeySeg.journey, {
+      ownNextChallengeIndex: journeySeg.ownNextChallengeIndex,
+      ownCardStartedAt: journeySeg.ownCardStartedAt,
+      ownFinished: journeySeg.ownFinished,
+    })
+    : null;
+
   /** Ranked fills both flanks with a duelist. */
   const rail = (which: "player" | "opponent"): ArenaRail => {
     const c = combatants[which];
@@ -1370,6 +1420,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       leadPulseId: duelState?.leadChange
         && duelState.leadChange.newLeader === (which === "player" ? "viewer" : "opponent")
         ? duelState.leadChange.eventId : null,
+      journey: journeyRails ? journeyRails[which === "player" ? "subject" : "opponent"] : null,
     };
   };
 
@@ -1418,7 +1469,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // (that is duel framing); an ABNORMAL presence state is still news.
       presenceNote: opponentLabel ?? (host ? null : opponentVersusLabel),
       timer,
-      timerLabel: "Shared round timer",
+      timerLabel: journeyClock ? "Journey timer" : "Shared round timer",
       /**
        * RM1 Pass 2B — THE VIEWER'S RESULT, in the header's focal display.
        *
@@ -1502,6 +1553,12 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // R3: selecting an option IS answering. The index comes from the
       // projected question so the arena never guesses it from the option id.
       onSelect: (sel) => {
+        // JOURNEY5-LIVE — the grid is already disabled while input is closed;
+        // this refuses a selection that reaches here anyway (a stale render, a
+        // scripted click) so no answer is POSTed before the round's
+        // `started_at` (skew-corrected) — the server would refuse it with 409
+        // `RANKED_ROUND_NOT_OPEN`.
+        if (!inputOpen) return;
         const option = question?.options.find((o) => o.id === sel);
         if (option) m.answer(option.id, option.index);
       },

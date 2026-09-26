@@ -7,7 +7,8 @@
  * match (`MatchHost`) so the Daily owns what surrounds each stage:
  *
  *   entry ─► Daily intro ─► stage tag ─► [canonical match] ─► stage result
- *         ─► next stage tag ─► … ─► Review ─► the one final completion
+ *         ─(Continue)─► next stage tag ─► … ─► Review ─► Review's result
+ *         ─(Continue)─► the one final completion
  *
  * The child match is keyed on its id, so each stage is a clean mount of the
  * same arena; between stages the Daily's own beats hold the same shell, so
@@ -24,7 +25,8 @@ import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
 import type { MatchHost } from "@/lib/ranked-core/flow/matchHost";
 import { httpDailyRunTransport, type DailyRunTransport } from "@/lib/daily-challenge/run/client";
 import { DailyStageChrome } from "./DailyStageChrome";
-import { DailyIntroBeat, StageIntroBeat, StageResultBeat } from "./DailyRunBeats";
+import { DailyIntroBeat, StageIntroBeat } from "./DailyRunBeats";
+import { DailyStageResult, type StageResultPlacement } from "./DailyStageResult";
 import { DailyCompletion } from "./DailyCompletion";
 import { useDailyRun } from "./useDailyRun";
 
@@ -47,26 +49,36 @@ export function DailyRunPage({
   transport = httpDailyRunTransport,
   StageMatch = CanonicalStageMatch,
   viewerUserId: viewerOverride,
+  stageResultPlacement,
 }: {
   transport?: DailyRunTransport;
   StageMatch?: ComponentType<StageMatchProps>;
   /** Test seam; production reads the signed-in (or anonymous) session. */
   viewerUserId?: string;
+  /**
+   * DC-LANE-C — an optional unit between a stage's result and its Continue
+   * (a future monetization placement). Unset in production today.
+   */
+  stageResultPlacement?: StageResultPlacement;
 }) {
   const dc = useDailyRun(transport);
   const { user } = useAuth();
   const viewerUserId = viewerOverride ?? user?.id ?? null;
-  const { onChildSettled, onChildPhase } = dc;
+  const { onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus } = dc;
 
   const host = useMemo<MatchHost>(() => ({
     eyebrow: DAILY_EYEBROW,
     settlingMessage: "Stage complete…",
     onMatchSettled: (s) => onChildSettled(s.matchId),
     onPresentationPhase: onChildPhase,
-  }), [onChildSettled, onChildPhase]);
+    onPlayerFinished: onChildPlayerFinished,
+    onSurvivalStatus: onChildSurvivalStatus,
+  }), [onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus]);
 
   const run = dc.run;
   const flow = dc.flow;
+  // B7 — the stage's last server-reported strike count (see `strikesSeen`).
+  const strikesFloor = flow?.stage ? dc.strikesSeen[flow.stage.id] ?? null : null;
 
   const shell = (children: ReactNode, header: ReactNode = null) => (
     <ArenaShell size="wide" header={header ?? (run
@@ -126,10 +138,32 @@ export function DailyRunPage({
         <StageIntroBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
         <DailyStageChrome run={run} stage={flow.stage} />);
     case "stage-settling":
-    case "stage-result":
-      return shell(
-        <StageResultBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
-        <DailyStageChrome run={run} stage={flow.stage} />);
+    case "stage-result": {
+      const beat = shell(
+        <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
+          onProceed={flow.phase === "stage-result" ? dc.continueFromResult : undefined}
+          placement={stageResultPlacement} />,
+        <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} strikesFloor={strikesFloor} />);
+      // DC-SURV-UX — the player is out but the child is still settling: keep
+      // it connected (its reads let the server finish the match) and hidden.
+      // It presents nothing — the arena itself shows only its placeholder —
+      // and its ordinary handback is what the parent syncs on.
+      if (!flow.settlingChildMatchId || !viewerUserId) return beat;
+      return (
+        <>
+          {beat}
+          <div hidden aria-hidden data-testid="daily-settling-child">
+            <StageMatch
+              key={flow.settlingChildMatchId}
+              matchId={flow.settlingChildMatchId}
+              viewerUserId={viewerUserId}
+              entry={dc.childEntry}
+              host={host}
+              chrome={null} />
+          </div>
+        </>
+      );
+    }
     case "complete":
       return shell(<DailyCompletion run={run}
         saveRequired={(user as { is_anonymous?: boolean } | null)?.is_anonymous === true} />);
@@ -150,7 +184,8 @@ export function DailyRunPage({
             entry={dc.childEntry}
             host={host}
             chrome={<DailyStageChrome run={run} stage={flow.stage}
-              skewMs={dc.skewMs} childPhase={dc.childPhase} />} />
+              skewMs={dc.skewMs} childPhase={dc.childPhase} survival={dc.survival}
+              strikesFloor={strikesFloor} />} />
         </div>
       );
     }

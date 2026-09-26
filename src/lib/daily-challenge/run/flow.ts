@@ -17,12 +17,16 @@
  *
  * WHAT IS DELIBERATELY ABSENT: a Victory/Defeat outro after each stage. A
  * child match is handed back through the arena's `MatchHost` seam at the
- * instant its outro would have started, and the stage result here is a short
- * interstitial. Only the parent completion is a full closing state.
+ * instant its outro would have started.
+ *
+ * DC-LANE-C — the stage result reuses Ranked's end-screen language (hero,
+ * snapshot, one primary action), and the player leaves it with CONTINUE, not
+ * a timer. It is still a step inside the Daily: no result word, no lobby, no
+ * queue. Continue only exists once the parent has advanced past the stage,
+ * so it can never move the day ahead of the server. Only the parent
+ * completion is a full closing state.
  */
-import {
-  ENTRY_INTRO_MIN_MS, REVEAL_HOLD_LEVEL_UP_MS,
-} from "@/lib/ranked-core/pacing";
+import { ENTRY_INTRO_MIN_MS } from "@/lib/ranked-core/pacing";
 import type { DailyRun, DailyStage } from "./contracts";
 import { currentStage } from "./contracts";
 
@@ -33,11 +37,10 @@ import { currentStage } from "./contracts";
  *     locked preview's worth, so the lineup can actually be read;
  *   * a stage tag holds for Ranked's entry-intro floor (and longer if the
  *     child match is still being created — it never cuts to an empty arena);
- *   * a stage result holds for Ranked's "strictly more to read" reveal beat.
+ *   * a stage result holds until the player presses Continue (DC-LANE-C).
  */
 export const DAILY_INTRO_MS = ENTRY_INTRO_MIN_MS + 1000;
 export const STAGE_INTRO_MIN_MS = ENTRY_INTRO_MIN_MS;
-export const STAGE_RESULT_MS = REVEAL_HOLD_LEVEL_UP_MS;
 
 export type DailyFlowPhase =
   | "daily-intro"
@@ -57,10 +60,18 @@ export interface DailyFlowLatches {
   settledChild: string | null;
   /** The completed stage whose result interstitial is on screen. */
   resultFor: string | null;
+  /**
+   * DC-SURV-UX — the child whose PLAYER is done (Survival's third strike)
+   * though the match itself may still be settling. Presentation only: it
+   * moves the page to the settling beat, and the parent still advances only
+   * when the server says so.
+   */
+  finishedChild?: string | null;
 }
 
 export const NO_LATCHES: DailyFlowLatches = {
   dailyIntroUp: false, stageIntroFor: null, settledChild: null, resultFor: null,
+  finishedChild: null,
 };
 
 export interface DailyFlowView {
@@ -69,6 +80,12 @@ export interface DailyFlowView {
   stage: DailyStage | null;
   /** The child match to mount, only in `stage-play`. */
   childMatchId: string | null;
+  /**
+   * DC-SURV-UX — in `stage-settling` only: a child whose player is done but
+   * whose match has not handed back yet. The page keeps it connected, out of
+   * sight, so the server can settle it; nothing of it is presented.
+   */
+  settlingChildMatchId?: string | null;
 }
 
 export function projectDailyFlow(run: DailyRun, latches: DailyFlowLatches): DailyFlowView {
@@ -90,12 +107,28 @@ export function projectDailyFlow(run: DailyRun, latches: DailyFlowLatches): Dail
   if (latches.settledChild && stage.childMatchId === latches.settledChild) {
     return { phase: "stage-settling", stage, childMatchId: null };
   }
+  if ((latches.finishedChild && stage.childMatchId === latches.finishedChild)
+    || survivalStageFinished(stage)) {
+    return { phase: "stage-settling", stage, childMatchId: null, settlingChildMatchId: stage.childMatchId };
+  }
 
   const playable = stage.status === "in_progress" && stage.childMatchId !== null;
   if (!playable || latches.stageIntroFor === stage.id) {
     return { phase: "stage-intro", stage, childMatchId: null };
   }
   return { phase: "stage-play", stage, childMatchId: stage.childMatchId };
+}
+
+/**
+ * DC-LANE-C — the Daily's own live read says the player's Survival stage is
+ * over (`live.own_stage_finished`), though the child is still settling. The
+ * same presentation move as the arena's `onPlayerFinished`, from the other
+ * authority — whichever arrives first takes the player out of gameplay.
+ * Survival only: a drained Time Trial bank ends on the question's deadline.
+ */
+export function survivalStageFinished(stage: DailyStage): boolean {
+  return stage.ruleset?.id === "survival" && stage.status === "in_progress"
+    && stage.childMatchId !== null && stage.live?.ownStageFinished === true;
 }
 
 /**

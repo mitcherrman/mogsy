@@ -26,7 +26,7 @@ import {
   FIVE_STAGE_DAY, FOUR_STAGE_DAY, createFixtureTransport, wireResult, wireRun,
   type FixtureTransport,
 } from "@/lib/daily-challenge/run/fixtures";
-import { DAILY_INTRO_MS, STAGE_INTRO_MIN_MS, STAGE_RESULT_MS } from "@/lib/daily-challenge/run/flow";
+import { DAILY_INTRO_MS, STAGE_INTRO_MIN_MS } from "@/lib/daily-challenge/run/flow";
 import { DailyRunPage, type StageMatchProps } from "./DailyRunPage";
 
 let lastHost: MatchHost | null = null;
@@ -46,6 +46,11 @@ function FakeStageMatch({ matchId, entry, chrome, host }: StageMatchProps) {
 const flush = async (ms = 0) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); };
 const phase = () => screen.getAllByTestId("daily-run")[0].getAttribute("data-flow-phase");
 const q = (id: string) => screen.queryByTestId(id);
+/** DC-LANE-C — the stage result holds until Continue; press it. */
+const continueOn = async () => {
+  await act(async () => { screen.getByTestId("daily-stage-result-continue").click(); });
+  await flush(10);
+};
 
 function mount(t: FixtureTransport) {
   return render(
@@ -76,7 +81,7 @@ afterEach(() => {
 });
 
 describe("one Daily Challenge, stage by stage", () => {
-  it("intro → tag → gameplay → short result → next tag … → Review → ONE completion", async () => {
+  it("intro → tag → gameplay → stage result → Continue → next tag … → Review → ONE completion", async () => {
     const t = createFixtureTransport(FOUR_STAGE_DAY);
     mount(t);
     await flush();
@@ -116,16 +121,16 @@ describe("one Daily Challenge, stage by stage", () => {
     expect(within(result).getByTestId("daily-stage-result-next")).toHaveTextContent(/standard/i);
     expect(result).not.toHaveTextContent(/victory|defeat/i);
 
-    await flush(STAGE_RESULT_MS + 10);
+    await continueOn();
     expect(phase()).toBe("stage-intro");
     expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-stage-kind", "standard");
     await playStage(t);
     watch();
-    await flush(STAGE_RESULT_MS + 10);
+    await continueOn();
     expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-stage-kind", "survival");
     await playStage(t);
     watch();
-    await flush(STAGE_RESULT_MS + 10);
+    await continueOn();
 
     // Review reads as the closing stage.
     const review = screen.getByTestId("daily-stage-intro");
@@ -134,7 +139,13 @@ describe("one Daily Challenge, stage by stage", () => {
     expect(within(review).getByTestId("daily-stage-intro-position")).toHaveTextContent("Final stage");
     await playStage(t);
 
-    // Review goes straight to the one final completion — no stage interstitial.
+    // DC-LANE-C — Review gets its own stage result, then Continue opens the
+    // one final completion.
+    expect(phase()).toBe("stage-result");
+    expect(screen.getByTestId("daily-stage-result")).toHaveAttribute("data-stage-kind", "review");
+    expect(screen.getByTestId("daily-stage-result-continue")).toHaveTextContent("See today's results");
+    expect(q("daily-run-complete")).toBeNull();
+    await continueOn();
     expect(phase()).toBe("complete");
     expect(q("daily-stage-result")).toBeNull();
     expect(screen.getAllByTestId("daily-run-complete")).toHaveLength(1);
@@ -181,7 +192,7 @@ describe("one Daily Challenge, stage by stage", () => {
     expect(phase()).toBe("stage-result");
     expect(screen.getByTestId("daily-stage-result-perfect")).toBeInTheDocument();
     expect(q("daily-run-complete")).toBeNull();
-    await flush(STAGE_RESULT_MS + 10);
+    await continueOn();
     expect(phase()).toBe("complete");
     expect(screen.getByTestId("daily-run-complete")).toHaveAttribute("data-perfect", "true");
     expect(screen.getByTestId("daily-run-perfect")).toBeInTheDocument();
@@ -417,5 +428,276 @@ describe("a guest's first Daily (owner decision: sign up at the END to save)", (
     await flush();
     expect(phase()).toBe("complete");
     expect(q("daily-save-gate")).toBeNull();
+  });
+});
+
+describe("DC-SURV-UX — Survival ends for the player at strike 3", () => {
+  const survivalDay = (live: unknown = { strikes: { used: 2, max: 3 } }) => createFixtureTransport(FOUR_STAGE_DAY, {
+    existing: wireRun(FOUR_STAGE_DAY, { current_stage_index: 2 }, {
+      0: { status: "completed", result: wireResult() },
+      1: { status: "completed", result: wireResult() },
+      2: { status: "in_progress", child_match_id: "child-2", live },
+    }),
+  });
+
+  it("shows answered and strikes out of 3 — never a module denominator", async () => {
+    const t = survivalDay();
+    mount(t);
+    await flush();
+    await act(async () => { lastHost!.onSurvivalStatus!({ answered: 12, strikesUsed: 2, maxStrikes: 3 }); });
+    const chrome = screen.getByTestId("daily-stage-chrome");
+    expect(within(chrome).getByTestId("daily-survival-answered")).toHaveTextContent("12 answered");
+    expect(within(chrome).getByTestId("daily-strikes-count")).toHaveTextContent("2 / 3");
+    expect(chrome).not.toHaveTextContent(/\/\s*175|of 175|\b12\s*\/\s*\d+/);
+  });
+
+  it("0/3, 1/3, 2/3 and 3/3 are distinguishable, from the server's ledger", async () => {
+    const t = survivalDay(null);
+    mount(t);
+    await flush();
+    const seen: string[] = [];
+    for (const used of [0, 1, 2, 3]) {
+      await act(async () => { lastHost!.onSurvivalStatus!({ answered: 4, strikesUsed: used, maxStrikes: 3 }); });
+      const s = screen.getByTestId("daily-strikes");
+      const spent = within(s).getAllByTestId("daily-strike-mark").map((m) => m.getAttribute("data-spent") === "true" ? "x" : "o").join("");
+      seen.push(`${spent} ${screen.getByTestId("daily-strikes-count").textContent} ${s.getAttribute("data-strikes-out")}`);
+    }
+    expect(seen).toEqual(["ooo 0 / 3 false", "xoo 1 / 3 false", "xxo 2 / 3 false", "xxx 3 / 3 true"]);
+  });
+
+  it("player finished → the stage beat goes up at once; the parent advances only when the server does", async () => {
+    const t = survivalDay();
+    mount(t);
+    await flush();
+    expect(phase()).toBe("stage-play");
+    const syncsBefore = t.calls.filter((c) => c === "sync").length;
+
+    await act(async () => { lastHost!.onPlayerFinished!("child-2"); });
+    // Immediately out of gameplay, into the Daily's own stage beat — pending.
+    expect(phase()).toBe("stage-settling");
+    const beat = screen.getByTestId("daily-stage-result");
+    expect(beat).toHaveAttribute("data-pending", "true");
+    expect(beat).not.toHaveTextContent(/victory|defeat/i);
+    // The child stays connected, out of sight, so the server can settle it.
+    const hidden = screen.getByTestId("daily-settling-child");
+    expect(hidden).toHaveAttribute("hidden");
+    expect(within(hidden).getByTestId("fake-stage-match")).toHaveAttribute("data-match-id", "child-2");
+    // Nothing invented: no sync-driven advance, still on stage 3, no Review.
+    await flush(5000);
+    expect(t.calls.filter((c) => c === "sync").length).toBe(syncsBefore);
+    expect(t.wire().current_stage_index).toBe(2);
+    expect(q("daily-stage-intro")).toBeNull();
+
+    // The server settles the child; the ordinary handback drives the sync.
+    t.finishActiveChild(wireResult({ ended_by: "strikes_exhausted", correct: 9, answered: 12 }));
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-2", terminalReason: "combat", completionReason: "strikes_exhausted" }); });
+    await flush(10);
+    expect(phase()).toBe("stage-result");
+    expect(q("daily-settling-child")).toBeNull();
+    expect(screen.getByTestId("daily-stage-result-ended")).toHaveTextContent("Out of mistakes");
+    expect(screen.getByTestId("daily-stage-result-next")).toHaveTextContent(/review/i);
+    await continueOn();
+    expect(phase()).toBe("stage-intro");
+    expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-stage-kind", "review");
+  });
+
+  it("outside Survival the flow is unchanged: no settling child, ordinary handback", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY, {
+      existing: wireRun(FOUR_STAGE_DAY, {}, { 0: { status: "in_progress", child_match_id: "child-0" } }),
+    });
+    mount(t);
+    await flush();
+    expect(phase()).toBe("stage-play");
+    expect(q("daily-survival-answered")).toBeNull();
+    t.finishActiveChild(wireResult());
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-0", terminalReason: "combat", completionReason: null }); });
+    await flush(10);
+    expect(phase()).toBe("stage-result");
+    expect(q("daily-settling-child")).toBeNull();
+  });
+});
+
+describe("DC-LANE-C — the Daily stage result, in Ranked's end-screen language", () => {
+  const midDay = () => createFixtureTransport(FOUR_STAGE_DAY, {
+    existing: wireRun(FOUR_STAGE_DAY, {}, { 0: { status: "in_progress", child_match_id: "child-0" } }),
+  });
+  const handBack = async () => {
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-0", terminalReason: "combat", completionReason: null }); });
+    await flush(10);
+  };
+
+  it("holds until Continue, and the next stage is not launched behind it", async () => {
+    const t = midDay();
+    mount(t);
+    await flush();
+    t.finishActiveChild(wireResult());
+    await handBack();
+    expect(phase()).toBe("stage-result");
+    await flush(60_000);
+    expect(phase()).toBe("stage-result");
+    expect(t.calls).not.toContain("launch:1");
+    await continueOn();
+    expect(phase()).toBe("stage-intro");
+    expect(t.calls).toContain("launch:1");
+  });
+
+  it("reuses the shared hero and snapshot, with one action and no Ranked exits", async () => {
+    const t = midDay();
+    mount(t);
+    await flush();
+    t.finishActiveChild(wireResult());
+    await handBack();
+    const result = screen.getByTestId("daily-stage-result");
+    expect(within(result).getByTestId("result-hero")).toHaveAttribute("data-state", "complete");
+    expect(within(result).getByTestId("result-eyebrow")).toHaveTextContent("Daily Challenge · Stage 1 of 4");
+    expect(within(result).getByTestId("result-snapshot")).toBeInTheDocument();
+    const actions = within(result).getByTestId("result-actions");
+    expect(within(actions).getAllByRole("button").map((b) => b.textContent)).toEqual(["Continue"]);
+    expect(result).not.toHaveTextContent(/victory|defeat|play again|back to leaguecraft|review match|queue/i);
+  });
+
+  it("while scoring, Continue is shown but cannot be pressed, and no placement shows", async () => {
+    const t = midDay();
+    render(
+      <MemoryRouter>
+        <DailyRunPage transport={t} StageMatch={FakeStageMatch} viewerUserId="userA"
+          stageResultPlacement={() => <div data-testid="probe-unit" />} />
+      </MemoryRouter>);
+    await flush();
+    // Handed back, but the server has not settled the child: the parent holds.
+    await handBack();
+    expect(phase()).toBe("stage-settling");
+    const cont = screen.getByTestId("daily-stage-result-continue");
+    expect(cont).toBeDisabled();
+    expect(cont).toHaveTextContent("Scoring…");
+    expect(q("daily-stage-result-placement")).toBeNull();
+  });
+
+  it("a placement renders between the result and Continue, and Continue never depends on it", async () => {
+    const t = midDay();
+    const seen: string[] = [];
+    render(
+      <MemoryRouter>
+        <DailyRunPage transport={t} StageMatch={FakeStageMatch} viewerUserId="userA"
+          stageResultPlacement={(ctx) => { seen.push(ctx.stageKind); return <div data-testid="probe-unit" />; }} />
+      </MemoryRouter>);
+    await flush();
+    t.finishActiveChild(wireResult());
+    await handBack();
+    const slot = screen.getByTestId("daily-stage-result-placement");
+    const cont = screen.getByTestId("daily-stage-result-continue");
+    expect(within(slot).getByTestId("probe-unit")).toBeInTheDocument();
+    expect(slot.compareDocumentPosition(cont) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(slot.contains(cont)).toBe(false);
+    expect(seen).toContain("time_trial");
+    await continueOn();
+    expect(phase()).toBe("stage-intro");
+  });
+});
+
+describe("DC-LANE-C — the Daily's own live read ends Survival play", () => {
+  const survivalDay = (live: unknown) => createFixtureTransport(FOUR_STAGE_DAY, {
+    existing: wireRun(FOUR_STAGE_DAY, { current_stage_index: 2 }, {
+      0: { status: "completed", result: wireResult() },
+      1: { status: "completed", result: wireResult() },
+      2: { status: "in_progress", child_match_id: "child-2", live },
+    }),
+  });
+
+  it("chrome shows the live strike count, which includes the unsettled module", async () => {
+    mount(survivalDay({ strikes: { used: 1, live: 2, max: 3 }, own_stage_finished: false }));
+    await flush();
+    expect(phase()).toBe("stage-play");
+    expect(screen.getByTestId("daily-strikes-count")).toHaveTextContent("2 / 3");
+  });
+
+  it("own_stage_finished leaves gameplay at once; the child stays mounted hidden; no fabricated advance", async () => {
+    const t = survivalDay({ strikes: { used: 2, live: 3, max: 3 }, own_stage_finished: true });
+    mount(t);
+    await flush();
+    expect(phase()).toBe("stage-settling");
+    expect(screen.getByTestId("daily-stage-result")).toHaveAttribute("data-pending", "true");
+    const hidden = screen.getByTestId("daily-settling-child");
+    expect(hidden).toHaveAttribute("hidden");
+    expect(within(hidden).getByTestId("fake-stage-match")).toHaveAttribute("data-match-id", "child-2");
+    await flush(5000);
+    expect(t.wire().current_stage_index).toBe(2);
+    expect(t.calls).not.toContain("sync");
+    // The canonical settlement is what advances the parent.
+    t.finishActiveChild(wireResult({ ended_by: "strikes_exhausted" }));
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-2", terminalReason: "combat", completionReason: "strikes_exhausted" }); });
+    await flush(10);
+    expect(phase()).toBe("stage-result");
+    expect(screen.getByTestId("result-headline")).toHaveTextContent("Out of strikes");
+  });
+});
+
+describe("B7 — a Survival strike-out's chrome stays 3/3 until the stage result takes over", () => {
+  const survivalDay = () => createFixtureTransport(FOUR_STAGE_DAY, {
+    existing: wireRun(FOUR_STAGE_DAY, { current_stage_index: 2 }, {
+      0: { status: "completed", result: wireResult() },
+      1: { status: "completed", result: wireResult() },
+      2: { status: "in_progress", child_match_id: "child-2",
+           live: { strikes: { used: 0, live: 0, max: 3 }, own_stage_finished: false } },
+    }),
+  });
+  const count = () => screen.getByTestId("daily-strikes-count").textContent;
+
+  it("strike 1, 2, 3 → gameplay exit → result: never 0/3 after strike 3 (every render watched)", async () => {
+    const t = survivalDay();
+    mount(t);
+    await flush();
+    expect(phase()).toBe("stage-play");
+    expect(count()).toBe("0 / 3");
+
+    // Each strike: the arena relays the child's server status, and the Daily's
+    // own live read (triggered by the phase change) reports the same ledger.
+    const strike = async (n: number, extra: Record<string, unknown> = {}) => {
+      t.setLive({ strikes: { used: n - 1, live: n, max: 3 }, own_stage_finished: false, ...extra });
+      await act(async () => { lastHost!.onSurvivalStatus!({ answered: 2 + n, strikesUsed: n, maxStrikes: 3 }); });
+      await act(async () => { lastHost!.onPresentationPhase!(n % 2 ? "revealing" : "answering"); });
+      await flush(500);
+    };
+    await strike(1);
+    expect(count()).toBe("1 / 3");
+    await strike(2);
+    expect(count()).toBe("2 / 3");
+
+    // Watch every text the strike counter shows from here on.
+    const seen: string[] = [];
+    const record = () => {
+      for (const el of document.querySelectorAll("[data-testid='daily-strikes-count']")) seen.push(el.textContent ?? "");
+    };
+    const obs = new MutationObserver(record);
+    obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+
+    await strike(3, { own_stage_finished: true });
+    record();
+    expect(count()).toBe("3 / 3");
+    // Strike 3 ends gameplay at once (the arena's own signal; the Daily's
+    // own_stage_finished says the same).
+    await act(async () => { lastHost!.onPlayerFinished!("child-2"); });
+    await flush(10);
+    record();
+    expect(phase()).toBe("stage-settling");
+    expect(count()).toBe("3 / 3");
+
+    // The canonical settlement: the parent advances, the completed stage no
+    // longer carries `live`, and the arena's relayed status is dropped.
+    t.finishActiveChild(wireResult({ ended_by: "strikes_exhausted", correct: 4, answered: 7 }));
+    await act(async () => { lastHost!.onMatchSettled({ matchId: "child-2", terminalReason: "combat", completionReason: "strikes_exhausted" }); });
+    await flush(10);
+    record();
+    obs.disconnect();
+    expect(phase()).toBe("stage-result");
+    expect(screen.getByTestId("result-headline")).toHaveTextContent("Out of strikes");
+    expect(screen.getByTestId("daily-strikes")).toHaveAttribute("data-strikes-out", "true");
+    expect(count()).toBe("3 / 3");
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.filter((s) => s !== "3 / 3")).toEqual([]);
+
+    // Continue leaves the result: Review has no strike chrome at all.
+    await continueOn();
+    expect(q("daily-strikes")).toBeNull();
   });
 });

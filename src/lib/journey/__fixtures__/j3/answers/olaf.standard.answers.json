@@ -1,0 +1,51 @@
+[
+ {
+  "index": 0,
+  "correct_answer": "40",
+  "answer_options": [
+   "40",
+   "43",
+   "50",
+   "52"
+  ]
+ },
+ {
+  "index": 1,
+  "correct_answer": "olaf",
+  "answer_options": [
+   "olaf",
+   "sett",
+   "tie"
+  ]
+ },
+ {
+  "index": 2,
+  "correct_answer": "50",
+  "answer_options": [
+   "65",
+   "50",
+   "35",
+   "55"
+  ]
+ },
+ {
+  "index": 3,
+  "correct_answer": "45",
+  "answer_options": [
+   "55",
+   "50",
+   "65",
+   "45"
+  ]
+ },
+ {
+  "index": 4,
+  "correct_answer": "9",
+  "answer_options": [
+   "7",
+   "9",
+   "6",
+   "5"
+  ]
+ }
+]
