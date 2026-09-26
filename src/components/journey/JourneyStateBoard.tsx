@@ -46,7 +46,7 @@ import { ArrowRight, PanelTopOpen } from "lucide-react";
 import type {
   JourneyFocusRef, JourneyPublicState, JourneySide, JourneySideId,
 } from "@/lib/journey/contract";
-import { markKey, rankFrom, transitionMarks, type JourneyMarks } from "@/lib/journey/beat";
+import { itemGainTags, markKey, rankFrom, transitionMarks, type JourneyMarks } from "@/lib/journey/beat";
 import { knowledgeKeyFor, NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
 import {
   AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge, StatChip,
@@ -86,11 +86,13 @@ function SideSplash({ side }: { side: JourneySide }) {
   );
 }
 
-function SidePanel({ state, side, marks, knowledge }: {
+function SidePanel({ state, side, marks, knowledge, gains }: {
   state: JourneyPublicState;
   side: JourneySide;
   marks: JourneyMarks;
   knowledge: JourneyKnowledge;
+  /** MOTION-V1 — while the beat runs: a new item's server stat lines, by `side:slot`. */
+  gains: ReadonlyMap<string, string[]> | null;
 }) {
   const id = side.side;
   const championMark = knowledge.get(knowledgeKeyFor(side)) ?? null;
@@ -160,7 +162,11 @@ function SidePanel({ state, side, marks, knowledge }: {
         })}
       </div>
       <div className="journey-side__items">
-        <InventorySlots side={side} items={side.items} newSlots={newSlots} focusSlots={focus.items} />
+        <InventorySlots side={side} items={side.items} newSlots={newSlots} focusSlots={focus.items}
+          gainTags={gains ? new Map([...newSlots].flatMap((slot) => {
+            const tags = gains.get(markKey(id, slot));
+            return tags ? [[slot, tags] as const] : [];
+          })) : undefined} />
       </div>
       <div className="journey-side__stats">
         {ranked.map((s) => (
@@ -178,7 +184,7 @@ function SidePanel({ state, side, marks, knowledge }: {
 }
 
 export function JourneyStateBoard({
-  state, beatActive = false, onOpenDetail, questionRoles = null, knowledge = NO_KNOWLEDGE, children,
+  state, beatActive = false, onOpenDetail, questionRoles = null, knowledge = NO_KNOWLEDGE, beatStamp = null, children,
 }: {
   state: JourneyPublicState;
   /** K2 — the established facts to mark on this board's objects. */
@@ -194,10 +200,17 @@ export function JourneyStateBoard({
   /** While the canonical beat runs, the changed facts pulse. */
   beatActive?: boolean;
   onOpenDetail?: () => void;
-  /** The transition beat overlay, drawn inside the board's box. */
+  /**
+   * JOURNEY-MOTION-V1 — the beat's compact stamp. While it is given it takes
+   * the node label's place in the header row (same fixed-height, truncating
+   * line), so it costs the board no box.
+   */
+  beatStamp?: ReactNode;
+  /** The transition beat's status region, drawn inside the board's box. */
   children?: ReactNode;
 }) {
   const marks = transitionMarks(state.transition);
+  const gains = beatActive ? itemGainTags(state.transition) : null;
   const [subject, opponent] = state.sides;
   const combat = state.focus.combat;
   return (
@@ -210,7 +223,12 @@ export function JourneyStateBoard({
           <span className="text-[#e8c97a]">Journey</span>
           <span aria-hidden className="px-1 text-white/35">·</span>
           <span data-testid="journey-step">Step {state.step.index + 1} of {state.step.count}</span>
-          {state.step.nodeLabel && (
+          {beatStamp ? (
+            <>
+              <span aria-hidden className="px-1 text-white/35">·</span>
+              {beatStamp}
+            </>
+          ) : state.step.nodeLabel && (
             <>
               <span aria-hidden className="px-1 text-white/35">·</span>
               <span data-testid="journey-node-label" className="text-white/75">{state.step.nodeLabel}</span>
@@ -230,7 +248,7 @@ export function JourneyStateBoard({
         </span>
       </div>
       <div className="journey-board__sides">
-        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} />
+        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} />
         <div aria-hidden className="journey-board__seam" data-testid="journey-seam"
           data-seam={combat ? "combat" : "versus"}>
           {combat ? (
@@ -239,7 +257,7 @@ export function JourneyStateBoard({
             <span className="font-black tracking-[0.2em] text-[#e8c97a]/80">VS</span>
           )}
         </div>
-        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} />
+        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} />
       </div>
       {children}
     </div>

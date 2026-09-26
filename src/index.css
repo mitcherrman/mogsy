@@ -16071,30 +16071,127 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-side[data-side="opponent"] .journey-side__stats { justify-self: end; justify-content: flex-end; }
 }
 
-/* The beat: what changed pulses while the canonical beat runs. Shadows and
-   filters only — nothing that lays out. */
+/* ──────────────────────────────────────────────────────────────────────────
+   JOURNEY-MOTION-V1 — THE BEAT IS THE STATE CHANGING.
+   The server's beat is 900 ms (one transition) or 1300 ms (a group). No
+   scrim: the board stays readable and each changed object animates IN PLACE,
+   all inside ~800 ms so the last motion lands before the next child opens.
+   Transforms, opacity, shadows and filters only — nothing that lays out — and
+   every final value is on screen from the first frame (the motion is the
+   arrival, never the information).
+     level     the new number rolls up into place          360 ms
+     rank      the NEW pip(s) fill — or, where the contract
+               states no max rank (J3), the rank digit pops;
+               the icon pulses once                         380 ms (+120)
+     unlock    the lock lifts off; the icon lights up       700 ms
+     item      the new item pops into its slot; its own     420 ms (+100)
+               stat line ("+10 AH") appears beside it
+   Reduced motion (OS or the app's `html.reduce-motion`): no movement at all;
+   the changed faces (green rims, the struck-through old level, green pips,
+   the item's stat tag) still say what changed, for the same server beat.
+   ────────────────────────────────────────────────────────────────────────── */
 @keyframes journey-changed-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgb(143 208 160 / 0); filter: none; }
-  50% { box-shadow: 0 0 0 2px rgb(143 208 160 / 0.9), 0 0 14px rgb(143 208 160 / 0.6); filter: brightness(1.25); }
+  45% { box-shadow: 0 0 0 2px rgb(143 208 160 / 0.9), 0 0 14px rgb(143 208 160 / 0.6); filter: brightness(1.25); }
 }
-.journey-board[data-beat="active"] .journey-changed,
-.journey-board[data-beat="active"] .journey-chip--delta {
-  animation: journey-changed-pulse 0.9s ease-in-out 2;
+@keyframes journey-level-roll {
+  from { transform: translateY(85%); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
-.journey-beat__stamp { font-size: 0.625rem; line-height: 1.1rem; }
-.journey-beat__label { font-size: 0.625rem; }
-.journey-beat__line { font-size: 0.5625rem; line-height: 0.85rem; }
+@keyframes journey-pip-fill {
+  0% { transform: scale(0.2); opacity: 0.2; }
+  60% { transform: scale(1.5); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes journey-unlock-art {
+  0% { opacity: 0.3; filter: grayscale(1); }
+  45% { opacity: 1; filter: grayscale(0) brightness(1.9); }
+  100% { opacity: 1; filter: none; }
+}
+@keyframes journey-unlock-lock {
+  from { opacity: 0.85; transform: none; }
+  to { opacity: 0; transform: translateY(-35%) scale(1.35); }
+}
+@keyframes journey-item-in {
+  0% { transform: scale(0.45); opacity: 0; }
+  65% { transform: scale(1.12); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes journey-gain-in {
+  from { transform: translateY(3px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+/* The lock an unlocked R used to wear: only ever seen while its beat animates. */
+.journey-unlock-lock { display: none; pointer-events: none; }
+/* A new item's own stat line, beside its slot while the beat runs. Absolutely
+   positioned: compact (a phone) floats it into the stats line above the
+   items, which is empty during a beat; the band drops it into the stats row
+   below them, also empty during a beat. */
+.journey-item-gain {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(100% + 2px);
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid rgb(143 208 160 / 0.7);
+  border-radius: 3px;
+  background: rgb(8 32 20 / 0.92);
+  padding: 0 3px;
+  color: #d9f2df;
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.journey-beat__stamp {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  font-size: 0.5rem;
+  line-height: 0.625rem;
+  letter-spacing: 0.1em;
+}
 @container (min-width: 26rem) {
-  .journey-beat__stamp { font-size: 0.75rem; line-height: 1.35rem; }
-  .journey-beat__label { font-size: 0.75rem; }
-  .journey-beat__line { font-size: 0.6875rem; line-height: 1.05rem; }
+  .journey-item-gain { bottom: auto; top: calc(100% + 3px); font-size: 0.5625rem; line-height: 0.875rem; }
+  .journey-beat__stamp { font-size: 0.5625rem; line-height: 0.8125rem; }
 }
+@media (prefers-reduced-motion: no-preference) {
+  .journey-board[data-beat="active"] .journey-changed,
+  .journey-board[data-beat="active"] .journey-chip--delta {
+    animation: journey-changed-pulse 0.8s ease-in-out 1;
+  }
+  .journey-board[data-beat="active"] .journey-level[data-changed="true"] .journey-level__to {
+    animation: journey-level-roll 360ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .journey-board[data-beat="active"] .journey-pip[data-new="true"],
+  .journey-board[data-beat="active"] .journey-rank-digit[data-new="true"] {
+    animation: journey-pip-fill 380ms 120ms ease-out both;
+  }
+  .journey-board[data-beat="active"] .journey-unlock-art {
+    animation: journey-unlock-art 700ms ease-out both;
+  }
+  .journey-board[data-beat="active"] .journey-unlock-lock {
+    display: block;
+    animation: journey-unlock-lock 450ms 80ms ease-in both;
+  }
+  .journey-board[data-beat="active"] [data-new="true"][role="listitem"] > * {
+    animation: journey-item-in 420ms 100ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .journey-board[data-beat="active"] .journey-item-gain {
+    animation: journey-gain-in 220ms 220ms ease-out both;
+  }
+}
+/* The app's own Settings → Reduce Motion: the global rule only shortens
+   durations (delays would still hold a new item hidden for a moment), so the
+   board's beat motion is removed outright — and the unlock ghost with it. */
+html.reduce-motion .journey-board * { animation: none !important; }
+html.reduce-motion .journey-unlock-lock { display: none !important; }
 /* The question while the beat runs: present (same box), not yet active. */
 .journey-question__content--veiled { opacity: 0.12; filter: blur(1px); }
-@media (prefers-reduced-motion: reduce) {
-  .journey-board[data-beat="active"] .journey-changed,
-  .journey-board[data-beat="active"] .journey-chip--delta { animation: none; }
-}
 /* Roomy band: a wide AND tall band (a large desktop) spends its height. */
 @container (min-width: 34rem) and (min-height: 14rem) {
   .journey-vars {

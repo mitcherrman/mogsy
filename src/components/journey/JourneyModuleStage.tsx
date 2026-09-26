@@ -17,6 +17,10 @@
  * the server's canonical public state (`segment_state.journey`) — never
  * assembled from question prose.
  *
+ * THE BEAT (JOURNEY-MOTION-V1). No overlay: the board stays fully visible, the
+ * objects that changed animate in place, and one compact stamp sits in the
+ * board's header. The status region keeps every event line for screen readers.
+ *
  * THE BEAT GATE. While the server's beat runs (`useJourneyBeat`, server time
  * against `beat.until`), the next question is `inert`, `aria-hidden` and
  * veiled. It stays MOUNTED in its own box, so nothing lays out differently
@@ -35,7 +39,7 @@ import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBa
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyStateBoard } from "./JourneyStateBoard";
 import { JourneyStateSheet } from "./JourneyStateSheet";
-import { JourneyTransitionBeat } from "./JourneyTransitionBeat";
+import { JourneyBeatStamp, JourneyTransitionBeat } from "./JourneyTransitionBeat";
 import { useJourneyBeat } from "./useJourneyBeat";
 
 export function JourneyModuleStage({
@@ -82,7 +86,8 @@ export function JourneyModuleStage({
         <ScenarioMediaBand key={board.journeyKey} aspect="band" compact data-band-kind="journey"
           className="journey-band">
           <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}
-            questionRoles={beatActive ? null : questionRoles} knowledge={knowledge}>
+            questionRoles={beatActive ? null : questionRoles} knowledge={knowledge}
+            beatStamp={beatActive ? <JourneyBeatStamp key={board.step.index} state={board} /> : null}>
             {beatActive && <JourneyTransitionBeat key={board.step.index} state={board} />}
           </JourneyStateBoard>
         </ScenarioMediaBand>

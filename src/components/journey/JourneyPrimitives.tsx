@@ -69,11 +69,12 @@ export function LevelBadge({ level, from = null, focused = false, testId }: {
   return (
     <span data-testid={testId} data-changed={from !== null ? "true" : undefined}
       data-focus={focused ? "true" : undefined}
-      className={`journey-chip inline-flex shrink-0 items-baseline gap-1 rounded-md border px-1.5 font-semibold uppercase tracking-[0.16em] ${
+      className={`journey-chip journey-level inline-flex shrink-0 items-baseline gap-1 overflow-hidden rounded-md border px-1.5 font-semibold uppercase tracking-[0.16em] ${
         from !== null ? "journey-chip--delta" : "border-[#d4b35a]/35 bg-black/55"} ${focused ? "journey-focus" : ""}`}>
       <span className="text-white/70">Lv</span>
-      {from !== null && <span className="text-white/55 line-through decoration-white/40">{from}</span>}
-      <span className="font-black text-white">{level}</span>
+      {from !== null && <span className="journey-level__from text-white/55 line-through decoration-white/40">{from}</span>}
+      {/* MOTION-V1: the new number rolls in during the beat (CSS); it is the final value from the first frame. */}
+      <span className="journey-level__to inline-block font-black text-white">{level}</span>
     </span>
   );
 }
@@ -109,7 +110,7 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
       <span className={`relative flex items-center justify-center overflow-hidden rounded-md border bg-black/70 ${
         focused ? "journey-focus" : ""} ${changed ? "journey-changed" : ""} ${sideRim(side)}`}
         style={{ width: "var(--jb-ability)", height: "var(--jb-ability)" }}>
-        <span className={locked ? "h-full w-full opacity-30 grayscale" : "h-full w-full"}>
+        <span className={locked ? "h-full w-full opacity-30 grayscale" : `h-full w-full ${unlocked ? "journey-unlock-art" : ""}`}>
           <Art url={url} alt="" mono={ability.slot} />
         </span>
         <span aria-hidden className="absolute bottom-0 right-0 rounded-tl-[4px] bg-[#d4b35a] px-[3px] text-[0.5625rem] font-black leading-[0.8rem] text-[#2a1f08]">
@@ -118,11 +119,18 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
         {locked && (
           <Lock aria-hidden className="absolute h-[45%] w-[45%] text-white/70" strokeWidth={2.5} />
         )}
+        {unlocked && !locked && (
+          // MOTION-V1: the lock it WAS, shown only while the beat runs (CSS),
+          // lifting off as the icon lights up. Hidden otherwise.
+          <Lock aria-hidden data-testid={`journey-unlock-${side}-${ability.slot}`}
+            className="journey-unlock-lock absolute h-[45%] w-[45%] text-white/80" strokeWidth={2.5} />
+        )}
         {ability.maxRank === null && !locked && (
           // The contract states the rank but not the maximum (J2): the rank is
           // printed ON the tile, top-left, rather than as pips of a length this
           // client would have to guess — and on the tile it costs no height.
           <span aria-hidden data-testid={`journey-pips-${side}-${ability.slot}`} data-rank-only="true"
+            data-new={rankFrom !== null || unlocked ? "true" : undefined}
             className={`journey-rank-digit absolute left-0 top-0 rounded-br-[4px] px-[3px] font-black leading-[0.8rem] ${
               rankFrom !== null || unlocked ? "bg-[#8fd0a0] text-[#0d2418]" : "bg-black/80 text-[#f3dca0]"}`}>
             {ability.rank}
@@ -145,16 +153,32 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
 }
 
 /** Six fixed slots. An empty slot is a dashed box of the same size. */
-export function InventorySlots({ side, items, newSlots, focusSlots }: {
+export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: {
   side: JourneySide;
   items: JourneyItem[];
   newSlots: ReadonlySet<number>;
   focusSlots: ReadonlySet<number>;
+  /**
+   * MOTION-V1 — while the beat runs, a NEW item's own stat lines as the server
+   * published them ("+10 AH"), by slot. Drawn as a transient tag anchored to
+   * that slot, absolutely positioned (it lays out nothing); gone with the beat.
+   */
+  gainTags?: ReadonlyMap<number, readonly string[]>;
 }) {
   const assets = useMasteryAssets();
   return (
     <span role="list" aria-label={`${side.championName} items`}
-      data-testid={`journey-items-${side.side}`} className="flex shrink-0 gap-[3px]">
+      data-testid={`journey-items-${side.side}`} className="journey-items relative flex shrink-0 gap-[3px]">
+      {[...(gainTags ?? [])].map(([slot, tags]) => (
+        <span key={`gain-${slot}`} aria-hidden data-testid={`journey-item-gain-${side.side}-${slot}`}
+          className="journey-item-gain"
+          // Anchored to its slot, opening INWARD so it never leaves the board.
+          style={slot < 3
+            ? { left: `calc(${slot} * (var(--jb-slot) + 3px))` }
+            : { right: `calc(${5 - slot} * (var(--jb-slot) + 3px))` }}>
+          {tags.join(" · ")}
+        </span>
+      ))}
       {Array.from({ length: 6 }, (_, slot) => {
         const it = items.find((x) => x.slot === slot) ?? null;
         const isNew = it !== null && newSlots.has(slot);
