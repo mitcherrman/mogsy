@@ -38,6 +38,7 @@ import {
   ResumeView,
 } from "./contracts";
 import type { RankedRole } from "./roles";
+import { withBrowserCorrelation } from "@/lib/analytics/correlation";
 
 export const RANKED_API_BASE =
   (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) ?? "http://127.0.0.1:8000";
@@ -304,11 +305,11 @@ export const joinQueue = (
 ): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, {
     method: "POST",
-    body: {
+    body: withBrowserCorrelation({
       ...(classId ? { class_id: classId } : {}),
       ...(options?.matchWithBot ? { match_with_bot: true } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
-    },
+    }),
     signal,
   });
 

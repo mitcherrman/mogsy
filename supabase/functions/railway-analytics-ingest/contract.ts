@@ -48,6 +48,7 @@ export type IngestRejection =
   | "invalid_entity_type"
   | "invalid_entity_id"
   | "invalid_user_id"
+  | "invalid_correlation_id"
   | "unsupported_version"
   | "invalid_occurred_at"
   | "metadata_too_large"
@@ -62,6 +63,8 @@ export type IngestRow = {
   source_entity_type: string;
   source_entity_id: string;
   user_id: string | null;
+  visitor_id: string | null;
+  session_id: string | null;
   is_guest: boolean | null;
   route: null;
   verification_type: null;
@@ -118,6 +121,8 @@ export const MAX_BATCH = 50;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CORRELATION_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 /** The write-fallback sentinel Railway uses when no verified subject exists. */
 const ANONYMOUS_SENTINEL = "anonymous";
@@ -215,6 +220,19 @@ export function validateIngestEvent(input: unknown): ValidationResult {
     isGuest = raw.is_guest;
   }
 
+  const correlationId = (field: "visitor_id" | "session_id"): string | null | ValidationResult => {
+    const value = raw[field];
+    if (value === undefined || value === null || value === "") return null;
+    if (typeof value !== "string" || value.length !== 36 || !CORRELATION_UUID_RE.test(value)) {
+      return reject("invalid_correlation_id", `${field} must be a canonical lowercase uuid`);
+    }
+    return value;
+  };
+  const visitorId = correlationId("visitor_id");
+  if (visitorId !== null && typeof visitorId !== "string") return visitorId;
+  const sessionId = correlationId("session_id");
+  if (sessionId !== null && typeof sessionId !== "string") return sessionId;
+
   let occurredAt = new Date().toISOString();
   if (raw.occurred_at !== undefined && raw.occurred_at !== null) {
     if (typeof raw.occurred_at !== "string") {
@@ -256,8 +274,12 @@ export function validateIngestEvent(input: unknown): ValidationResult {
       source_entity_type: entityType,
       source_entity_id: entityId,
       user_id: userId,
+      visitor_id: visitorId,
+      session_id: sessionId,
       is_guest: isGuest,
-      // Browser concepts. A backend event carrying them would be lying.
+      // Route remains a browser-render concept. Correlation ids identify the
+      // browser request that caused this authoritative server fact; they grant
+      // no authority.
       route: null,
       verification_type: null,
       metadata,
