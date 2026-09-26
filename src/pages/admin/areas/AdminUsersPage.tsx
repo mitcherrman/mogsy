@@ -33,9 +33,6 @@ import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AdminUsers from "@/components/admin/AdminUsers";
-import AdminUserDirectory from "@/pages/admin/AdminUserDirectory";
-import AdminProfileDirectory from "@/components/admin/AdminProfileDirectory";
-import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminComments from "@/components/admin/AdminComments";
 import AdminUserReports from "@/components/admin/AdminUserReports";
 import AdminModeratorConfig from "@/components/admin/AdminModeratorConfig";
@@ -218,7 +215,6 @@ export default function AdminUsersPage() {
   const filter = parseTrafficFilter(params.get("traffic"));
   const population = params.get("population");
   const visitor = params.get("visitor");
-  const accountsView = params.get("view") ?? "accounts";
   const moderationView = params.get("view") ?? "comments";
 
   const [nonce, setNonce] = useState(0);
@@ -413,48 +409,11 @@ export default function AdminUsersPage() {
         </DrillContext.Provider>
       )}
 
+      {/* ONE canonical account surface: one search, one filter row, one list,
+          one detail. Invite links are a global action inside it. */}
       {section.id === "accounts" && (
-        <div className="space-y-4">
-          <SubTabs
-            testId="users-accounts-subtabs"
-            value={accountsView}
-            onChange={(id) => setParam("view", id)}
-            options={[
-              { id: "accounts", label: "Accounts" },
-              { id: "browser", label: "Profile browser" },
-              { id: "access", label: "Roles & access" },
-              // Master-only, exactly as /admin/users was before USERS1 moved
-              // the whole area onto that path. The RPCs re-check server-side.
-              ...(isMasterAdmin ? [{ id: "identities", label: "Identities" }] : []),
-            ]}
-          />
-          {accountsView === "browser" && (
-            <div data-testid="users-accounts-browser">
-              <AdminProfileDirectory />
-            </div>
-          )}
-          {accountsView === "identities" && isMasterAdmin && (
-            <div data-testid="users-accounts-identities">
-              <AdminUserDirectory embedded />
-            </div>
-          )}
-          {accountsView === "access" && (
-            <div className="space-y-4" data-testid="users-accounts-access">
-              <AdminPanel
-                title="Invite links"
-                description="Role-granting invites promote whoever redeems them. redeem_invite_link writes to user_roles — this is a real role-assignment path, alongside the master-only editor inside Accounts."
-              >
-                <AdminInviteLinks />
-              </AdminPanel>
-            </div>
-          )}
-          {accountsView !== "browser" &&
-            accountsView !== "access" &&
-            !(accountsView === "identities" && isMasterAdmin) && (
-              <div data-testid="users-accounts-list">
-                <AdminUsers isMasterAdmin={isMasterAdmin} />
-              </div>
-            )}
+        <div data-testid="users-accounts-list">
+          <AdminUsers isMasterAdmin={isMasterAdmin} />
         </div>
       )}
 

@@ -1,5 +1,16 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
+import { AdminIdentityLines } from "@/components/admin/AdminUserCard";
+import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
+import { BotStateToggle } from "@/components/admin/BotStateToggle";
+import { notifyFriendsChanged } from "@/lib/community/friends-refresh";
+import {
+  EMPTY_IDENTITIES,
+  groupIdentityLinks,
+  riotIdLabel,
+  type AdminIdentitySummary,
+} from "@/lib/admin/admin-users";
 import { supabase } from "@/integrations/supabase/client";
 import {
   isEffectivePro,
@@ -24,7 +35,7 @@ import {
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
   KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info, Film,
-  RefreshCw, RotateCcw, Ghost,
+  RefreshCw, RotateCcw, Ghost, Bot, ExternalLink,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -58,6 +69,7 @@ interface Profile {
   stripe_subscription_status: string | null;
   stripe_current_period_end: string | null;
   is_bot: boolean | null;
+  is_disabled?: boolean | null;
   is_anonymous: boolean | null;
   profile_frame: string | null;
   admin_notes: string | null;
@@ -111,13 +123,39 @@ interface UserFeedback {
   created_at: string;
 }
 
+/**
+ * The ONE account filter row. Every filter reads the same merged model: one
+ * row per profile (bots included), joined in memory with emails, roles and
+ * verified identities. Anonymous profiles are a filter, not a second list.
+ */
+const ACCOUNT_FILTERS = [
+  ["all", "All"],
+  ["real", "Real users"],
+  ["bots", "Bots"],
+  ["premium", "Premium"],
+  ["admins", "Admins"],
+  ["moderators", "Moderators"],
+  ["underage", "Underage"],
+  ["anonymous", "Anonymous"],
+] as const;
+
+function RowTag({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "primary" | "warning" }) {
+  const toneClass =
+    tone === "primary" ? "bg-primary/10 text-primary"
+      : tone === "warning" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+      : "bg-muted text-muted-foreground";
+  return <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${toneClass}`}>{children}</span>;
+}
+
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
-  const [filterMode, setFilterMode] = useState<string>("signed_up");
+  const [filterMode, setFilterMode] = useState<string>("all");
   const [sortMode, setSortMode] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
+  const [invitesOpen, setInvitesOpen] = useState(false);
+  const [identities, setIdentities] = useState<Map<string, AdminIdentitySummary>>(new Map());
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   // COM1-2 deep link. `?user=<profileId>` preselects one account so another
   // admin surface can hand off to THIS one instead of reimplementing it.
@@ -202,7 +240,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         .then((r: any) => ({
           ...r,
           data: (r.data || [])
-            .filter((p: any) => p.is_bot === false)
             .sort((a: any, b: any) => (a.created_at < b.created_at ? 1 : -1)),
         })),
       supabase.from("profile_admin_notes").select("profile_id, notes"),
@@ -240,6 +277,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       setEmailMap(allEmails);
     }
 
+    // Verified Discord / Riot identities, keyed by public profile id. A failure
+    // degrades the identity lines to empty rather than failing the list.
+    const identityRes = await supabase.rpc("admin_list_identity_links" as never).then((r) => r, () => ({ data: null }));
+    setIdentities(groupIdentityLinks(Array.isArray(identityRes.data) ? (identityRes.data as Record<string, unknown>[]) : []));
+
     const { data: rolesData, error: rolesError } = await supabase.from("user_roles").select("user_id, role");
     if (rolesError) setProfilesError(true);
     if (rolesData) {
@@ -266,7 +308,12 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
       const q = search.toLowerCase();
       const email = emailMap[p.user_id] || "";
+      const ids = identities.get(p.id);
+      const identityText = [ids?.discord?.username, ids?.discord?.displayName, riotIdLabel(ids?.riot ?? null)]
+        .filter(Boolean).join(" ").toLowerCase();
       return (
+        p.id.toLowerCase().includes(q) ||
+        identityText.includes(q) ||
         p.display_name.toLowerCase().includes(q) ||
         p.user_id.toLowerCase().includes(q) ||
         email.toLowerCase().includes(q) ||
@@ -277,16 +324,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     // Apply filter (excluding anonymous which is handled above)
     const roles = userRoles;
     switch (filterMode) {
-      case "pro": list = list.filter(p => isEffectivePro(p)); break;
-      case "free": list = list.filter(p => !isEffectivePro(p)); break;
-      case "signed_up": break; // already filtered above
-      case "anonymous": break; // already filtered above
-      case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
-      case "ads_off": list = list.filter(p => p.ads_enabled === false); break;
+      case "real": list = list.filter(p => !p.is_bot); break;
+      case "bots": list = list.filter(p => !!p.is_bot); break;
+      case "premium": list = list.filter(p => isEffectivePro(p)); break;
       case "admins": list = list.filter(p => (roles[p.user_id] || []).some(r => r === "admin" || r === "master_admin")); break;
       case "moderators": list = list.filter(p => (roles[p.user_id] || []).includes("moderator")); break;
-      case "has_avatar": list = list.filter(p => !!p.avatar_url); break;
-      case "no_avatar": list = list.filter(p => !p.avatar_url); break;
       case "underage": list = list.filter(p => p.is_flagged_underage); break;
     }
 
@@ -300,9 +342,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     }
 
     return list;
-  }, [profiles, search, emailMap, filterMode, sortMode, userRoles]);
+  }, [profiles, search, emailMap, filterMode, sortMode, userRoles, identities]);
 
   const anonymousUsers = useMemo(() => profiles.filter(p => p.is_anonymous), [profiles]);
+  const registered = useMemo(() => profiles.filter(p => !p.is_anonymous), [profiles]);
+  const botCount = useMemo(() => registered.filter(p => p.is_bot).length, [registered]);
 
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
@@ -690,7 +734,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const resetFilters = () => {
     setSearch("");
-    setFilterMode("signed_up");
+    setFilterMode("all");
     setSortMode("newest");
   };
 
@@ -840,9 +884,40 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <Crown className="h-3 w-3 mr-1" /> Premium · {premium.sourceLabel}
               </Badge>
             )}
+            {selectedUser.is_bot && <Badge variant="outline" data-testid="detail-bot-badge"><Bot className="h-3 w-3 mr-1" /> Bot{selectedUser.is_disabled ? " · Disabled" : ""}</Badge>}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
           </div>
+        </div>
+
+        {/* Per-user actions that used to live in the separate directories. */}
+        <div className="flex flex-wrap items-start gap-2" data-testid="detail-quick-actions">
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1">
+            <Link to={`/user/${selectedUser.id}`} data-testid="detail-view-profile">
+              <ExternalLink className="h-3 w-3" /> View Profile
+            </Link>
+          </Button>
+          {!selectedUser.is_anonymous && (
+            <AddToMyFriendsButton
+              targetProfileId={selectedUser.id}
+              targetName={selectedUser.display_name || "Unnamed"}
+              disabled={!!selectedUser.is_bot && !!selectedUser.is_disabled}
+              onCompleted={(r) => {
+                if (r.ok && r.code === "created") notifyFriendsChanged();
+              }}
+            />
+          )}
+          {selectedUser.is_bot && (
+            <BotStateToggle
+              profileId={selectedUser.id}
+              isDisabled={!!selectedUser.is_disabled}
+              onChanged={async () => {
+                const rows = await fetchProfiles();
+                const fresh = rows?.find((p) => p.id === selectedUser.id);
+                if (fresh) setSelectedUser(fresh);
+              }}
+            />
+          )}
         </div>
 
         {/* Tab navigation */}
@@ -872,6 +947,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <p className="break-all"><span className="text-muted-foreground">Profile UUID:</span> {selectedUser.id}</p>
                 <p className="break-all"><span className="text-muted-foreground">Auth UUID:</span> {selectedUser.user_id}</p>
                 <p><span className="text-muted-foreground">Email:</span> {emailMap[selectedUser.user_id] || (selectedUser.is_anonymous ? "Anonymous account" : "Unavailable")}</p>
+                <div data-testid="detail-identities">
+                  {(() => {
+                    const ids = identities.get(selectedUser.id) ?? EMPTY_IDENTITIES;
+                    return ids.discord || ids.riot
+                      ? <AdminIdentityLines profileId={selectedUser.id} identities={ids} />
+                      : <p><span className="text-muted-foreground">Discord / Riot:</span> Not linked</p>;
+                  })()}
+                </div>
               </div>
               <div className="rounded-xl border border-border bg-card p-4 space-y-2">
                 <h4 className="font-bold">Account</h4>
@@ -1643,26 +1726,40 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
-        <Badge variant="outline">{filtered.length} users</Badge>
+        <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1 text-xs" onClick={() => setInvitesOpen(true)} data-testid="accounts-invite-links">
+          <Link2 className="h-3.5 w-3.5" /> Invite links
+        </Button>
       </div>
 
+      <Dialog open={invitesOpen} onOpenChange={setInvitesOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Invite links</DialogTitle>
+            <DialogDescription>Role-granting invites promote whoever redeems them.</DialogDescription>
+          </DialogHeader>
+          <AdminInviteLinks />
+        </DialogContent>
+      </Dialog>
+
       <div className="flex gap-2 flex-wrap">
-        <Select value={filterMode} onValueChange={setFilterMode}>
-          <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Filter…" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="signed_up">Signed Up</SelectItem>
-            <SelectItem value="all">All Users</SelectItem>
-            <SelectItem value="pro">Premium Only</SelectItem>
-            <SelectItem value="free">Free Only</SelectItem>
-            <SelectItem value="ads_on">Ads On</SelectItem>
-            <SelectItem value="ads_off">Ads Off</SelectItem>
-            <SelectItem value="admins">Admins</SelectItem>
-            <SelectItem value="moderators">Moderators</SelectItem>
-            <SelectItem value="has_avatar">Has Avatar</SelectItem>
-            <SelectItem value="no_avatar">No Avatar</SelectItem>
-            <SelectItem value="underage">Flagged Underage</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter accounts">
+          {ACCOUNT_FILTERS.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={filterMode === id}
+              data-testid={`accounts-filter-${id}`}
+              onClick={() => setFilterMode(id)}
+              className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${
+                filterMode === id
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <Select value={sortMode} onValueChange={setSortMode}>
           <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Sort…" /></SelectTrigger>
           <SelectContent>
@@ -1673,12 +1770,41 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="name_az">Name A-Z</SelectItem>
           </SelectContent>
         </Select>
-        {(filterMode !== "signed_up" || sortMode !== "newest" || search) && (
+        {(filterMode !== "all" || sortMode !== "newest" || search) && (
           <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 text-xs gap-1 text-muted-foreground">
             <RotateCcw className="h-3 w-3" /> Reset
           </Button>
         )}
       </div>
+
+      <p className="text-[11px] text-muted-foreground tabular-nums" data-testid="accounts-count">
+        Showing {filtered.length} of {registered.length} registered accounts ({botCount} {botCount === 1 ? "bot" : "bots"}) · {anonymousUsers.length} anonymous
+      </p>
+
+      {filterMode === "anonymous" && isMasterAdmin && anonymousUsers.length > 0 && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" disabled={purging}>
+              {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Purge All Anonymous ({anonymousUsers.length})
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Purge all anonymous users?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all {anonymousUsers.length} anonymous accounts and their auth data. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handlePurgeAnonymous} className="bg-destructive text-destructive-foreground">
+                Purge All
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       {!loading && profilesError && profiles.length > 0 && (
         <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300">
@@ -1736,9 +1862,12 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
                     {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
-                    {roles.includes("master_admin") && <ShieldCheck className="h-3 w-3 text-primary shrink-0" />}
-                    {roles.includes("admin") && <Shield className="h-3 w-3 text-primary shrink-0" />}
-                    {roles.includes("moderator") && <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" />}
+                    {p.is_bot && <RowTag>{p.is_disabled ? "Bot · disabled" : "Bot"}</RowTag>}
+                    {p.is_anonymous && <RowTag>Anonymous</RowTag>}
+                    {isEffectivePro(p) && <RowTag tone="primary">Premium</RowTag>}
+                    {roles.includes("master_admin") && <RowTag tone="primary">Master admin</RowTag>}
+                    {roles.includes("admin") && <RowTag tone="primary">Admin</RowTag>}
+                    {roles.includes("moderator") && <RowTag>Mod</RowTag>}
                     {p.avatar_url ? (
                       <ImageIcon className="h-3 w-3 text-primary shrink-0" />
                     ) : (
@@ -1769,66 +1898,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         </div>
       )}
 
-      {/* ─── Separate Anonymous Users Section ─── */}
-      {filterMode !== "anonymous" && anonymousUsers.length > 0 && (
-        <div className="border-t border-border pt-4">
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
-              <Ghost className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground">Anonymous Users</span>
-              <Badge variant="secondary" className="text-[10px] px-1.5">{anonymousUsers.length}</Badge>
-              <ChevronDown className="h-3 w-3 text-muted-foreground ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 space-y-3">
-              {isMasterAdmin && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" disabled={purging}>
-                      {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                      Purge All Anonymous ({anonymousUsers.length})
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Purge all anonymous users?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all {anonymousUsers.length} anonymous accounts and their auth data. This cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handlePurgeAnonymous} className="bg-destructive text-destructive-foreground">
-                        Purge All
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-              <div className="space-y-1">
-                {anonymousUsers.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => openUserDetail(p)}
-                    className="w-full flex items-center gap-3 rounded-xl border border-border bg-card p-3 hover:bg-secondary/50 transition-colors text-left"
-                  >
-                    <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                      <Ghost className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">{p.display_name}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>Joined {new Date(p.created_at).toLocaleDateString()}</span>
-                        <span>· Last seen {timeAgo(p.last_seen_at)}</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      )}
     </div>
   );
 }
