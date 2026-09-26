@@ -246,16 +246,217 @@ Completed:
 - reviewed representative Docs, Pro Play, Meta Reflex, History, Premium navigation
 - mapped current workstream collision zones
 - created this audit-only branch/handoff
+- completed the exhaustive static audit and route/state matrix; see
+  [`NAV1_NAVIGATION_MATRIX.md`](./NAV1_NAVIGATION_MATRIX.md)
+- verified all seed hypotheses against `main@4b3be0cbe2767d3107f4462082755066b26b398b`
+- found two additional invalid-route risks: Reset Password's `/home` fallback,
+  and a likely-live-check-required `/profile/:id` sender despite the public
+  profile route being `/user/:profileId`
 
 Not yet completed:
-- exhaustive local `rg` inventory across every source file
-- full route x entry-origin transition table
 - interactive browser certification
-- final active-gameplay leave semantics
 - implementation
 
-## Next task
-Run the exhaustive local audit from a clean worktree at this branch/base. Produce the full transition matrix in this file (or a linked concise audit table), identify every P0/P1 defect, and propose a no-conflict implementation sequence. Do not edit product code.
+## Audit conclusion
+
+The owner report is not one bug. Mogzy currently mixes five valid mechanisms
+(fixed Home, structural parent links, auth return destinations, URL-addressed
+workspace state, and component-local gameplay) with three unsafe gaps: raw
+history popping on direct-linkable profiles, active-flow exits with no leave
+contract, and terminal/local state that browser history cannot represent.
+
+There are **0 P0 and 7 P1 findings**. The complete matrix, raw-history list,
+`window.location` write inventory, provenance list and owner questions are in
+[`NAV1_NAVIGATION_MATRIX.md`](./NAV1_NAVIGATION_MATRIX.md).
+
+The base remains appropriate: after `git fetch origin --prune`, `origin/main`
+is still `4b3be0cbe2767d3107f4462082755066b26b398b`, the exact NAV1 merge base.
+
+## Product navigation contract
+
+1. **Home** is always `/lol`. The HUD hat stays Home and must not become Back.
+2. **Temporal Back** is used only when the preceding entry is known to be a
+   meaningful Mogzy location. A direct-linkable page must have a deterministic
+   fallback.
+3. **Contextual Back** carries a validated same-origin relative origin plus a
+   route-specific fallback. Router state is preferred for an SPA round trip;
+   validated query state is reserved for provenance that must survive refresh,
+   auth, or a document detour.
+4. **Structural Parent** is fixed and destination-named: “Champion Index”,
+   “Pro Play”, “Leaguecraft”, not a generic “Back”.
+5. **Direct-link fallback** never consults `document.referrer` and never pops
+   unknown history. Use the page's declared safe parent/home.
+6. **PUSH** only for meaningful reversible views: workspace panes, selected
+   graph/focus/entity, and session entry when a user reasonably expects Back
+   to leave/undo that session.
+7. **REPLACE** for canonical redirects, invalid/recovery correction, URL
+   normalization, transient control/filter changes, completed auth, and an
+   acknowledged terminal exit that must not resurrect stale gameplay.
+8. **LOCAL** for modals, drawers, confirms, individual questions/answers,
+   welcome chapters, and Daily/Ranked stages. Do not create one entry per
+   question or stage.
+9. **Active gameplay** has a dedicated leave contract. Browser Back and an
+   in-product exit converge on the same confirmation, but leaving is not
+   forfeit. Only the explicit confirmed Ranked Forfeit sends the server command.
+10. **Terminal gameplay** uses SPA navigation. Once a user chooses an exit or
+    next action, prefer REPLACE so Back cannot resurrect a stale terminal
+    controller; preserve a terminal result only when product explicitly wants
+    it revisitable.
+11. **Full reload** is limited to external checkout/provider/OS handoffs and
+    documented chunk recovery. Internal Mogzy routes use React Router.
+12. **Auth** keeps its separately validated `returnTo` interruption contract.
+    Ordinary Back provenance must not weaken or overload it.
+
+## Smallest coherent architecture (proposal only)
+
+- A typed `NavigationOrigin`/`ContextualBack` primitive that accepts an allowed
+  relative origin and an explicit fallback. It must reuse the safety properties
+  of `safeReturnPath` without making auth and ordinary Back the same concept.
+- A route policy table for fallback and label, small enough to review; no Redux,
+  fake global stack, or arbitrary stored URLs.
+- An `ActiveFlowLeaveGuard` abstraction around React Router blocking plus a
+  flow-owned confirmation callback. Ranked, Daily, Stat Check and Team Sim can
+  share interception mechanics but keep different server semantics and copy.
+- URL state only at meaningful session/view boundaries. Practice gets at most a
+  session-level marker/identifier; question/reveal state remains local.
+- A terminal-navigation helper that makes PUSH versus REPLACE explicit and
+  prohibits internal `window.location.assign` by test/lint assertion.
+
+## Workstream collision map (verified 2026-09-26)
+
+| Area | Evidence | Conflict |
+|---|---|---|
+| Leaguecraft History/Review/Daily history | `hub4/history-frontend`, `hub5/timmy-history`, `histd/mobile-review-reliability`, `hub6/ranked-hub-visuals` all have 2026-09-25/26 commits | HIGH; block rehome and shared workspace edits |
+| Practice / Study Hall / Quiz Forge | `sh11*`–`sh13*`, `envvis1-batch1-scene-channel`, recent `qf1/*`; overlaps `Quiz.tsx`, workspace and question surfaces | HIGH |
+| Daily | `dclane-c`, `dcsurv`, `dcmod/*`, HUB6; overlaps run controller/chrome/results | HIGH |
+| Ranked / PLAYTEST | active Ranked/history work and `play0/director-audit`; overlaps match terminal and host lifecycle | MEDIUM/HIGH |
+| Journey / Mastery | `journey-*`, `jenh/*`, `jm1/*`, `jx2/*` dated 2026-09-25/26 | HIGH for mastery player/shared arena; otherwise no NAV1 foundation overlap |
+| USERS2 analytics | integrated on current main; current branches touch lifecycle/analytics, not navigation policy except event continuity | LOW/MEDIUM; retain events while editing navigation |
+| Pro Play | `pse1/unified-explorer` and current local Pro work | MEDIUM; preserve proven URL contract |
+| Settings/Profile/UserProfile/auth helpers | no recent feature branch evidence touching the exact controls | LOW; safest first implementation lane |
+
+Old branch existence alone was not treated as active; dates, handoffs and actual
+surface overlap were used.
+
+## Exact implementation batches
+
+### NAV1-A — policy primitives and history tests
+
+Files: new `src/lib/navigation/*`, new unit tests, Playwright navigation fixture/spec.
+Content: safe contextual origin, fallback policy, terminal PUSH/REPLACE API;
+tests for malicious/external origin and real Back/Forward.
+Conflicts: LOW. Depends on: owner approval of the contract, not gameplay copy.
+Parallel/cherry-pick: **yes**, independent instance; land first.
+
+### NAV1-B — low-conflict account navigation
+
+Files: `Settings.tsx`, `Profile.tsx`, `UserProfile.tsx`, `SecretRoom.tsx`,
+`ResetPassword.tsx` and focused tests.
+Content: remove `/home`, replace raw `-1`, add deterministic fallback.
+Conflicts: LOW. Depends on: NAV1-A and reset fallback decision.
+Parallel/cherry-pick: **yes** after A API is frozen; can be developed in parallel
+on top of A and cherry-picked.
+
+### NAV1-C — contextual Premium senders
+
+Files: `LolPremium.tsx`, Profile, Combat Lab/Team Sim failure, Practice Builder,
+History/Review/Trends CTA components, house-ad presentation and tests.
+Content: carry validated origin; preserve checkout/auth return.
+Conflicts: MEDIUM, HIGH only for History/Practice senders.
+Parallel/cherry-pick: **split**: destination + low-conflict senders can run
+independently; History/Practice sender patch waits and is integrated last.
+
+### NAV1-D — terminal internal navigation
+
+Files: `QuizRankedMatch.tsx`, `PlaytestMatchHost.tsx`, result policy tests.
+Content: replace internal full reloads, apply terminal REPLACE policy.
+Conflicts: MEDIUM/HIGH Ranked/PLAYTEST. Depends on: NAV1-A and terminal owner
+decision.
+Parallel/cherry-pick: **yes as a dedicated owner**, but do not cherry-pick until
+current Ranked/PLAYTEST branches reconcile.
+
+### NAV1-E — Practice session boundary
+
+Files: `Quiz.tsx`, possibly a small practice-session route/state module, tests.
+Content: one meaningful session boundary; active leave handling; no history per
+question; SPA result Review.
+Conflicts: HIGH. **BLOCKED** until Practice/Study Hall/Quiz Forge integration.
+Parallel/cherry-pick: **no** against active shared-file work; rebase and single
+owner integration required.
+
+### NAV1-F — Ranked/Daily active-flow leave policy
+
+Files: shared leave-guard UI/hook, `QuizRankedPage/Match/RankedRouteHeader`,
+Daily run page/chrome, server-lifecycle tests.
+Content: browser/system Back interception, truthful leave copy, retain explicit
+Forfeit separation and Daily host ownership.
+Conflicts: HIGH. **BLOCKED** on owner answers and current Daily/Ranked work.
+Parallel/cherry-pick: mechanics can be prototyped independently after A, but
+surface integrations must be one coordinated batch.
+
+### NAV1-G — History IA reconciliation
+
+Files: `LolHistory.tsx`, `LolMissedQuestions.tsx`, Leaguecraft workspace links,
+redirects only if approved.
+Conflicts: HIGH. **BLOCKED** until HUB/History work declares canonical IA.
+Parallel/cherry-pick: **no** before that handoff; afterward a discrete batch.
+
+### NAV1-H — secondary active flows and dead-route cleanup
+
+Files: Stat Check room, Team Sim navigation shell, `RecentMatchups.tsx`,
+`NavBanner.tsx`, route-contract tests.
+Content: verify reachability, fix only live invalid routes, apply flow-specific
+leave semantics.
+Conflicts: MEDIUM. Depends on: A/F mechanics, PLAYTEST/ENVVIS ownership.
+Parallel/cherry-pick: **yes** as isolated sub-batches after ownership check.
+
+Recommended next implementation task: **NAV1-A, then NAV1-B**. It resolves the
+unambiguous P1 account-navigation defects without entering the active
+Daily/History/Practice collision zones.
+
+## Certification plan
+
+Vitest/MemoryRouter must cover policy validation, direct-entry fallback,
+pathname+search+hash preservation, duplicate suppression, PUSH vs REPLACE,
+auth separation, recovery redirects and each route's declared fallback.
+
+Playwright must exercise real history for: parent→child→Back→Forward; cross-link
+detail Back; direct/new-tab visible Back; external-referrer containment; refresh
+then Back; auth detour then Back; workspace hash traversal; Practice result→
+Review and Play Again; Ranked result actions; active Ranked unanswered/reveal;
+active Daily intro/play/reveal/result; Daily-hosted Ranked; completion exits;
+and mobile viewport/system-history equivalents. Assertions must check rendered
+state and history behavior, not merely `href`.
+
+## Audit mechanics and counts
+
+Static searches excluded dependencies, build output, coverage and generated
+reports, and included `src`, unit tests and `e2e`. The audit used `rg` for all
+requested primitives/copy, `App.tsx` route enumeration, targeted handoff reads,
+`git for-each-ref`, branch dates/history and worktree inspection.
+
+Production (non-test) textual call-site counts at this base:
+
+| Category | Count |
+|---|---:|
+| `navigate(...)` | 71 |
+| actual `navigate(-1)` | 4 (5 textual including one comment) |
+| `<Link>` | 291 |
+| `<Navigate>` redirects | 14 |
+| `window.location.assign` | 7 |
+| `window.location.replace` | 1 |
+| `window.location.href =` | 3 |
+| `history.back/go` | 0 |
+| `pushState` | 0 |
+| `replaceState` | 1 |
+| `setSearchParams` | 28 |
+| `{ replace: true }` | 34 |
+| `beforeunload` textual sites | 3 |
+| `popstate` / router blocker | 0 / 0 |
+
+Counts are lexical certification aids, not a claim that every Link is a Back
+transition. The matrix classifies the meaningful user-facing transitions rather
+than conflating all 291 Links.
 
 The first audit must specifically answer:
 1. Every place browser Back can produce a surprising destination.
