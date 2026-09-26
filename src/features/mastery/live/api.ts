@@ -9,6 +9,7 @@
  */
 
 import { getBackendAuthHeaders } from "@/lib/backend-auth";
+import { withBrowserCorrelation } from "@/lib/analytics/correlation";
 import {
   MasteryPlayerQuestion,
   MasteryPlayerReveal,
@@ -275,7 +276,7 @@ export const getProgress = (signal?: AbortSignal): Promise<MasterySetProgress[]>
 
 export const startSession = (masterySetId: string, signal?: AbortSignal): Promise<MasterySessionView> =>
   request("/api/mastery/sessions", readSessionView,
-    { method: "POST", body: { mastery_set_id: masterySetId }, signal });
+    { method: "POST", body: withBrowserCorrelation({ mastery_set_id: masterySetId }), signal });
 
 /** Dev-only, unauthenticated session creation through the GENERIC on-demand
  * synthesizer: any supported champion, or any pair, at a chosen question

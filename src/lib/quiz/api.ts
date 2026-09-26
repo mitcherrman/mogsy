@@ -6,6 +6,7 @@ import {
 } from "@/lib/backend-auth";
 import type { AssetStatus } from "./assetStatus";
 import type { RenderProvenance } from "@/lib/quiz-screenshot/types";
+import { withBrowserCorrelation } from "@/lib/analytics/correlation";
 
 // Optional access: under the Remotion webpack bundle (video export)
 // `import.meta.env` is undefined; the Vite app build is unaffected.
@@ -844,7 +845,7 @@ export const quizApi = {
   startSession: (payload: { mode?: string; category?: string; difficulty?: string; quiz_set_id?: string }) =>
     authedRequest<{ ok: boolean; session_id?: number }>("/api/quiz/sessions", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(withBrowserCorrelation(payload)),
     }),
   /** Mark a quiz session finished; backend computes duration + accuracy.
    *  Must carry the same identity that startSession used, or the backend's

@@ -40,7 +40,12 @@ describe("public Ranked client", () => {
     stub(() => json(queueStatusV1("waiting")));
     await api.joinQueue("tank");
     const body = JSON.parse(calls[0].init.body as string);
-    expect(body).toEqual({ class_id: "tank" });
+    expect(body).toMatchObject({
+      class_id: "tank",
+      visitor_id: expect.any(String),
+      session_id: expect.any(String),
+      interaction_id: expect.any(String),
+    });
     expect("user_id" in body).toBe(false);
     expect("match_id" in body).toBe(false);
   });
@@ -136,7 +141,11 @@ describe("R1 — the role endpoints and the class-free join", () => {
     await api.joinQueue(null);
     // Nothing about the player's identity travels — and nothing derived from
     // a role. The backend reads the role off the account itself.
-    expect(JSON.parse(String(calls[0].init.body))).toEqual({});
+    expect(JSON.parse(String(calls[0].init.body))).toMatchObject({
+      visitor_id: expect.any(String),
+      session_id: expect.any(String),
+      interaction_id: expect.any(String),
+    });
   });
 
   it("surfaces RANKED_ROLE_REQUIRED as a typed, recognised code", async () => {
@@ -171,7 +180,12 @@ describe("match_with_bot", () => {
     await api.joinQueue(null, undefined, { matchWithBot: true });
     expect(calls[0].url).toContain("/api/ranked/queue");
     expect(calls[0].init.method).toBe("POST");
-    expect(JSON.parse(String(calls[0].init.body))).toEqual({ match_with_bot: true });
+    expect(JSON.parse(String(calls[0].init.body))).toMatchObject({
+      match_with_bot: true,
+      visitor_id: expect.any(String),
+      session_id: expect.any(String),
+      interaction_id: expect.any(String),
+    });
   });
 
   it("reads the immediate match out of an ordinary matched queue status", async () => {

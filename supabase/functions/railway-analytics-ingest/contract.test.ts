@@ -189,6 +189,26 @@ describe("identity", () => {
     expect(ok(good({ is_guest: true })).is_guest).toBe(true);
     expect(ok(good({ is_guest: undefined })).is_guest).toBeNull();
   });
+
+  it("carries optional browser correlation without changing user identity", () => {
+    const row = ok(good({
+      visitor_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      session_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      user_id: USER,
+    }));
+    expect(row.visitor_id).toBe("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    expect(row.session_id).toBe("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    expect(row.user_id).toBe(USER);
+  });
+
+  it("supports missing correlation and rejects malformed supplied values", () => {
+    expect(ok(good()).visitor_id).toBeNull();
+    expect(ok(good()).session_id).toBeNull();
+    expect(rejected(good({ visitor_id: "not-a-uuid" })).code)
+      .toBe("invalid_correlation_id");
+    expect(rejected(good({ session_id: "A".repeat(36) })).code)
+      .toBe("invalid_correlation_id");
+  });
 });
 
 // ----------------------------------------------------------------- payload
