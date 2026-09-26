@@ -445,6 +445,14 @@ The six events are `playtest_joined`, `playtest_scene_viewed`, `playtest_gamepla
 - tests
 - this handoff
 
+**Static certification (PLAY1.1, 2026-09-27):**
+- The committed migration was reviewed line by line, with no security defect found. The verdict and the non-blocking note on `pg_temp`/type resolution are below.
+- PGlite replay: 21/21. PLAY-owned total: 56/56.
+- `npm run build` exits 0. The typecheck is unchanged: 2 pre-existing errors.
+- The ownership diff is clean.
+- No code changed in PLAY1.1; this handoff is the only file updated.
+- **Hardening note (not a defect):** every relation in the SECURITY DEFINER bodies is schema-qualified. The one unqualified name is the `app_role` type cast, which a caller could shadow only inside their own session with a temp table named `app_role`. That makes their own call **fail**; it never grants anything. This matches the repo-wide `SET search_path = public` convention. Optional future hardening: use `public.app_role` or `SET search_path = public, pg_temp`.
+
 **Manual certification: BLOCKED on migration application.**
 - There is no local Supabase, no Docker, and no staging project in this setup.
 - Migrations are applied by hand in the Lovable Cloud SQL editor, and production application was not authorized.
@@ -460,10 +468,21 @@ The six events are `playtest_joined`, `playtest_scene_viewed`, `playtest_gamepla
 7. Advance to `standard_feedback`, have a tester answer, and confirm the Director roster shows the status, Daily stage and answer.
 8. Advance to `play1_complete`.
 
+**Owner product rule: checkpoint presentation (recorded at PLAY1 static certification).**
+- When a Playtest manifest declares a Daily return point or checkpoint, the Playtest presentation may intentionally **replace** the canonical Daily stage-result presentation for that stage.
+- PLAY1 does this already: the Daily unmounts on the terminal snapshot, before its stage-result card.
+- **PLAY2-A** owns a curated checkpoint-summary presentation. It is not implemented in PLAY1 or PLAY1.1.
+- Daily stages **without** a Playtest checkpoint stay eligible to flow normally, including their own stage result.
+- This rule changes nothing in Daily.
+
+**Operational constraint: UTC day (PLAY1 certification and real cohorts).**
+- There is one official Daily per user per UTC date. Daily is unchanged, and this workstream adds no replay or reset feature.
+- During PDT, do **not** run a certification or a real cohort across **5:00 PM Pacific** (00:00 UTC). A refresh after that point resumes the *next* day's Daily.
+- Use tester accounts that have **not** already completed that UTC day's Daily. Otherwise the gate observes a finished stage 0 and returns immediately.
+
 **Unresolved and known limits:**
-- **UTC day:** a session crossing 00:00 UTC (17:00 PDT) resumes a *new* day's Daily on refresh. Schedule sessions within one UTC day.
-- **Daily already played:** a tester who already played today resumes a finished stage 0 and returns immediately.
-- **Stage result:** the wrapper unmounts on the sync snapshot, so testers do not see the Daily's own stage-result card for the checkpoint stage. If the owner wants it shown, a later manifest option could delay the return until the result is dismissed. Daily exposes no such hook today, so that would be a Daily-owner seam and not a PLAY edit.
+- **UTC day and already-played testers:** see the operational constraint above.
+- **Stage result:** see the checkpoint presentation rule above.
 - **Manifest validation:** scene and prompt keys are shape-validated in SQL, not validated against the code manifest. The host UI only proposes manifest positions.
 - **Admin registry:** the `ranked-playtests` registry entry still reads "Future gap".
 - **Deferred:** Discord, Presence, payment/Stripe hooks, the Premium already-owned rule, and RB guided-playtest retirement.
