@@ -486,7 +486,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     id: "people-users",
     title: "User Accounts",
     description:
-      "The account management surface: email, profile detail, admin notes, per-user feedback, the Premium / Entitlement section, and the Account Actions menu.",
+      "The one canonical account surface (bots included): one search, one filter row, one list, one detail with email, verified Discord/Riot identities and contact consent, roles, Premium / Entitlement, bot state, Add to My Friends, View Profile, notes, feedback and Account Actions. Invite links open from a page-level action.",
     area: "users",
     section: "accounts",
     kind: "panel",
@@ -502,43 +502,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
     notes: "Same AdminUsers component and same isMasterAdmin prop. No second Users interface exists.",
   },
   {
-    id: "people-profile-browser",
-    title: "Profile Browser",
-    description: "The 500-row profile browser that navigates to /user/:profileId.",
-    area: "users",
-    section: "accounts",
-    kind: "panel",
-    path: "/admin/users?section=accounts",
-    oldLocation: '/admin → "Directory" tab (AdminProfileDirectory)',
-    disposition: "MERGE",
-    dangerLevel: "none",
-    status: "Legacy",
-    authorization: "AdminRoute (admin, master_admin) — unchanged.",
-    notes:
-      'Merged under Users as a secondary view rather than a peer tab. Ends the "Directory" naming collision with the tool index.',
-  },
-  {
-    id: "people-user-identities",
-    title: "User Identities",
-    description:
-      "The master-only Identities view of Users › Accounts: newest first, filters (including Premium and Discord contact consent), verified Discord/Riot identities with contact consent, bot state, and Add to My Friends. Observation and friend linking only — no email, no entitlement control, no deletion.",
-    area: "users",
-    section: "accounts",
-    kind: "panel",
-    path: "/admin/users?section=accounts&view=identities",
-    oldLocation: "/admin/users — a second account browser in navigation",
-    disposition: "MERGE",
-    legacyRoutes: ["/admin/users"],
-    dangerLevel: "caution",
-    warning: "Add to My Friends writes a real accepted friendship on your own profile.",
-    status: "Production",
-    requiredRole: "master_admin",
-    authorization:
-      "Unchanged authority: AdminAuthGate + admin_list_profiles / admin_list_identity_links, which raise unless the caller is an admin and re-check is_master_admin server-side. The view is advertised only to master admins, exactly as the standalone route was gated.",
-    notes:
-      "FUNNEL1C/ADMIN2 closed ADMIN1B: browsing accounts had three entries (Accounts, Profile browser and this). It is now the third VIEW of one destination, deep-linkable at ?view=identities. USERS1 gave /admin/users to the Users area itself, and this view lives at ?section=accounts&view=identities. What it alone offers — verified Discord/Riot identity lines with contact consent, bot state toggle, Add to My Friends — is preserved unchanged.",
-  },
-  {
     id: "people-invites",
     title: "Invite Links",
     description:
@@ -546,7 +509,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     area: "users",
     section: "accounts",
     kind: "panel",
-    path: "/admin/users?section=accounts&view=access",
+    path: "/admin/users?section=accounts",
     oldLocation: "/admin → Invites tab (page 2)",
     disposition: "MOVE",
     dangerLevel: "mutates-production",

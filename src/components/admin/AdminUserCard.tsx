@@ -21,6 +21,7 @@ import {
   profileHref,
   riotIdLabel,
   type AdminDirectoryProfile,
+  type AdminIdentitySummary,
   type LinkFriendshipResult,
 } from "@/lib/admin/admin-users";
 
@@ -108,7 +109,7 @@ export function AdminUserCard({ profile, onFriendshipCompleted, botActions }: Pr
             </div>
           </dl>
 
-          <IdentityLines profile={profile} />
+          <AdminIdentityLines profileId={profile.id} identities={identitiesOf(profile)} />
 
           {/* The public profile id is the only identifier shown. It is already
               in the URL of the profile link, so it discloses nothing new. */}
@@ -148,8 +149,15 @@ export function AdminUserCard({ profile, onFriendshipCompleted, botActions }: Pr
  * icon, because "may I message this person" is the one fact here that must not
  * be misread at a glance.
  */
-function IdentityLines({ profile }: { profile: AdminDirectoryProfile }) {
-  const { discord, riot } = identitiesOf(profile);
+export function AdminIdentityLines({
+  profileId,
+  identities,
+}: {
+  profileId: string;
+  identities: AdminIdentitySummary;
+}) {
+  const profile = { id: profileId };
+  const { discord, riot } = identities;
   if (!discord && !riot) return null;
   const riotId = riotIdLabel(riot);
   return (

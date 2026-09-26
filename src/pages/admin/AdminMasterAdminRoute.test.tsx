@@ -117,22 +117,7 @@ describe("the user directory is one view of People, not a second destination", (
     expect(
       ADMIN_TOOLS.filter((t) => t.kind === "route" && t.path === "/admin/users").map((t) => t.id),
     ).toEqual(["product-analytics"]);
-    const entry = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
-    expect(entry).toBeTruthy();
-    expect(entry.kind).toBe("panel");
-    expect(entry.area).toBe("users");
-    expect(entry.section).toBe("accounts");
-    expect(entry.path).toBe("/admin/users?section=accounts&view=identities");
-    // The master-only requirement it always enforced is still advertised.
-    expect(entry.requiredRole).toBe("master_admin");
-    expect(entry.dangerLevel).not.toBe("none");
-    expect(entry.warning).toBeTruthy();
+    expect(ADMIN_TOOLS.find((t) => t.id === "people-user-identities")).toBeUndefined();
   });
 
-  it("keeps the identity-only capabilities in the registry description", () => {
-    const entry = ADMIN_TOOLS.find((t) => t.id === "people-user-identities")!;
-    for (const capability of [/discord/i, /riot/i, /consent/i, /friend/i]) {
-      expect(entry.description, String(capability)).toMatch(capability);
-    }
-  });
 });
