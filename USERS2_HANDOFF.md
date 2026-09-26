@@ -36,13 +36,27 @@ USERS2.3A changes no database schema, event emission, Admin calculation, Railway
 
 ## Follow-up ownership
 
-### USERS2.3B — browser/Supabase session intelligence — complete on integration branch; migration NOT applied
+### USERS2.3B — browser/Supabase session intelligence — complete/on main; production migration NOT applied
 
 Owns active time, session state, release context, and the durable same-browser identity link. Its migration is committed for review but has not been applied. Implementation details are recorded in `docs/USERS2_3B_SESSION_INTELLIGENCE.md`. It may consume the lifecycle registry but must not independently redefine activity ids, entity grains or lifecycle semantics.
 
-### USERS2.3C — separate browser → Railway correlation workstream
+### USERS2.3C — browser → Railway correlation — frontend complete on integration branch
 
-Owns propagation of `visitor_id`, `session_id`, and interaction/request correlation through authoritative gameplay entities and the outbox. It must not independently redefine lifecycle event semantics and must preserve the authoritative-vs-inferred abandonment distinction.
+Frontend integration branch: `codex/users2-3c-main-integration`.
+
+The browser now adds observability-only `visitor_id`, `session_id`, and
+`interaction_id` correlation to the existing Practice, Ranked and Mastery
+start requests. It reuses the canonical visitor/session identity and does not
+duplicate USERS2.3B session machinery. The Railway ingest contract validates
+the existing visitor/session fields before inserting authoritative events.
+Correlation never authorizes or selects an account; authenticated `user_id`
+remains derived from the verified JWT.
+
+The backend implementation remains commit
+`8d6d0f1b134c82bb79983b15522b92399d3c1a14` on
+`codex/users2-3c-correlation`. It is not on backend `master` and has not been
+deployed. This slice preserves the current authoritative start/completion event
+names; terminal-event migration remains later work.
 
 ### Later integration phase
 

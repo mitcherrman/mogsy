@@ -1,6 +1,12 @@
 # USERS2.3C — browser correlation (frontend)
 
-Base: `origin/main` at `61673c53683f16fff859a42c15f83b9406411b92`.
+Original implementation base: `origin/main` at
+`61673c53683f16fff859a42c15f83b9406411b92`.
+
+Integrated onto `origin/main` at
+`c67d8f835cb8068baa8b4f0b7255504193249962` on
+`codex/users2-3c-main-integration` by cherry-picking only the original frontend
+3C commit `92f820abda670a0af413803dbd410a19d92db08f` before this handoff update.
 
 The live browser start requests now carry three observability-only UUIDs:
 
