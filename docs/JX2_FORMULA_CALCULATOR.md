@@ -5,30 +5,40 @@ A small **Calc** button in the Journey board header, next to **State**. It opens
 - The sheet's content is capped at `max-w-md` and centred.
 - It overlays the arena on phones (375/390) and on desktop, and never takes a player rail.
 
+## Reference availability vs. question support
+
+These are two separate things:
+
+- **Formula reference availability** means the notecard lists a formula. It is a general Mogzy mechanics reference: the simple default formulas a player may reasonably need.
+- **Journey question-generation support** is what the backend actually asks. Today that is ability cooldowns and **physical** ability damage only (`combat_working.v1`: armor, lethality, % armor pen, flat armor pen).
+
+Listing magic resistance does **not** mean Journey asks magic-damage Combat questions.
+
 ## Formula source decision
 
 I checked `src/lib/lol-glossary/registry.ts` against the backend (`League_Combat_Simulator`).
 
-- **Armor** (`armor`): exact. Its formula `100 / (100 + effective_armor)` for armor ≥ 0 matches `damage_mitigation.apply_resistance`. Reused.
-- **Ability haste** (`actual-cooldown`): exact. It matches `mastery/calculations/cooldown.py`. Reused.
-- **Physical penetration / lethality**: **not in the glossary.** It has only magic-pen entries, and the "penetration" lines the audit cited are category labels, not formulas. The one missing entry is stated in `lib/journey/formulas.ts`, following `penetration.py`:
-  - percent pen first, then flat pen (lethality 1:1, no level scaling since V14.1);
-  - it only applies to positive armor, and it clamps at 0.
-- **Magic resistance / magic pen**: **excluded.** Journey Combat children are physical only. `combat_working.v1` has `calculation: "physical_ability_damage"`, and its penetration block holds only lethality, % armor pen and flat armor pen.
+- **Ability haste** (`actual-cooldown`), **armor** (`armor`) and **magic resistance** (`magic-resistance`): exact canonical entries, reused verbatim. They match `mastery/calculations/cooldown.py` and `damage_mitigation.apply_resistance`.
+- **Physical penetration / lethality**: not in the glossary. It is stated once in `lib/journey/formulas.ts`, taken from `penetration.py`:
+  - percent pen first, then flat pen;
+  - lethality counts 1:1, with no level scaling since V14.1;
+  - it applies to positive armor only and clamps at 0.
+- **Movement speed / soft caps**: the glossary has no entry, so it is **left out** for later. Nothing was invented or researched.
 
-So the glossary is exact for what it covers, but it isn't complete for Journey. `lib/journey/formulas.ts` is the whitelist: it pulls glossary formula strings where they exist and adds only the penetration line.
-
-## Supported formulas (display order)
+## Formula list (display order)
 
 1. **Ability haste → cooldown:** `actual_cooldown = base_cooldown × 100 / (100 + ability_haste)` (from the glossary).
 2. **Armor penetration & lethality:**
    - `armor_after_percent = armor × (1 − armor_pen_percent)`
    - `effective_armor = max(0, armor_after_percent − (lethality + flat_armor_pen))`
 3. **Armor → physical damage:**
-   - `physical_multiplier = 100 / (100 + effective_armor)` (from the glossary)
+   - `physical_multiplier = 100 / (100 + effective_armor) when effective_armor ≥ 0` (from the glossary)
    - `post_mitigation_damage = raw_damage × physical_multiplier`
+4. **Magic resistance → magic damage** (reference only; not a Journey question today):
+   - `magic_multiplier = 100 / (100 + effective_magic_resistance) when effective_magic_resistance ≥ 0` (from the glossary)
+   - `post_mitigation_damage = raw_damage × magic_multiplier`
 
-These are left out deliberately: MR / magic pen, negative-armor mitigation (Journey target armor is level armor), shields, and bonus-armor pen.
+Not listed: movement speed, magic penetration, negative-resistance mitigation, shields and bonus-armor pen.
 
 ## Calculator
 
@@ -52,8 +62,8 @@ These are left out deliberately: MR / magic pen, negative-armor mitigation (Jour
 ## Tests
 
 - `src/lib/journey/formulas.test.ts`:
-  - pins the formula ids to the backend's current Journey objectives;
-  - checks there is no magic, MR or shield text;
+  - pins the four reference formula ids;
+  - checks there is no movement-speed, shield, bonus-armor-pen or magic-pen text;
   - checks the glossary strings are reused verbatim;
   - checks the penetration order;
   - checks the worked examples.
@@ -69,4 +79,4 @@ Running `vitest run src/components/journey src/lib/journey` gives 153/153 passin
 
 ## Drift rule
 
-If the backend starts asking a new mechanic (for example magic damage in Journey Combat), add it to `JOURNEY_FORMULAS` and update the pin test in the same change.
+To add a reference formula, first add an exact canonical glossary entry, then add it to `JOURNEY_FORMULAS` and update the pin test. Question support is a separate backend decision.

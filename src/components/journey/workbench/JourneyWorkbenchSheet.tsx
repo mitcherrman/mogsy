@@ -40,7 +40,7 @@ export function JourneyWorkbenchSheet({ open, onOpenChange }: {
           <SheetHeader>
             <SheetTitle className="ranked-title text-[#f3dca0]">Formulas & Calculator</SheetTitle>
             <SheetDescription className="text-white/70">
-              The formulas this Journey uses, and a calculator.
+              Core League formulas for reference, and a calculator.
             </SheetDescription>
           </SheetHeader>
           <JourneyFormulaCard />

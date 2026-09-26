@@ -11,7 +11,7 @@ describe("JourneyWorkbenchSheet (JX2)", () => {
     const card = within(sheet).getByTestId("journey-formula-card");
     const calc = within(sheet).getByTestId("journey-calculator");
     expect(card.compareDocumentPosition(calc) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(card.querySelectorAll("[data-formula]")).toHaveLength(3);
+    expect(card.querySelectorAll("[data-formula]")).toHaveLength(4);
   });
 
   it("computes, backspaces and clears", () => {

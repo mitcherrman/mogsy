@@ -1,28 +1,22 @@
 /**
- * JX2 — THE JOURNEY FORMULA REFERENCE: a whitelist, not a mechanics engine.
+ * JX2 — THE FORMULA REFERENCE: a general Mogzy mechanics notecard, shown on
+ * the Journey board. A whitelist, not a mechanics engine.
  *
- * Only the mechanics a Journey can currently ask about are listed, pinned to
- * the backend that produces them (League_Combat_Simulator):
- *
- *   ability cooldown   `ability_cooldown` / `ability_cooldown_compare`
- *                      children — `mastery/calculations/cooldown.py`
- *                      (base × 100 / (100 + ability_haste)).
- *   physical damage    `combat_ability_damage` children, contract
- *                      `combat_working.v1` — PHYSICAL only. Its working
- *                      states armor, lethality, % armor pen and flat armor
- *                      pen; `penetration.py` applies % pen, then flat pen
- *                      (lethality 1:1, not level-scaled since V14.1), to
- *                      positive armor only; `damage_mitigation.py` then
- *                      multiplies by 100 / (100 + armor).
- *
- * NOT listed, on purpose: magic resistance / magic penetration (no Journey
- * child deals magic damage), negative-armor mitigation (Journey target armor
- * is level armor, always positive), shields, bonus-armor pen.
+ * REFERENCE AVAILABILITY is not QUESTION SUPPORT. A formula listed here is
+ * one a player may reasonably need; it does not mean a Journey asks about it.
+ * Journey question generation today (League_Combat_Simulator) covers ability
+ * cooldowns and PHYSICAL ability damage only (`combat_working.v1`) — magic
+ * resistance is listed as reference, not because Journey asks it.
  *
  * Formula text comes from `lol-glossary/registry.ts` where the glossary is
- * exact (armor, ability haste). The glossary has no physical-penetration
- * entry, so that one line is stated here. The frontend computes nothing
- * with these strings: they are display text.
+ * exact (ability haste, armor, magic resistance). The glossary has no
+ * physical-penetration entry, so that one is stated here from the backend's
+ * `penetration.py` (% pen, then flat pen; lethality 1:1, no level scaling
+ * since V14.1; positive armor only). Movement speed is NOT listed: the
+ * glossary has no canonical entry for it yet.
+ *
+ * Not listed: negative-resistance mitigation, shields, bonus-armor pen,
+ * magic penetration. The frontend computes nothing with these strings.
  */
 import { getGlossaryTerm } from "@/lib/lol-glossary/registry";
 
@@ -68,7 +62,16 @@ export const JOURNEY_FORMULAS: readonly JourneyFormula[] = [
     ],
     example: "Raw damage 200, effective armor 46: 200 × 100 / 146 ≈ 136.99.",
   },
+  {
+    id: "magic-mitigation",
+    title: "Magic resistance → magic damage",
+    lines: [
+      glossaryFormula("magic-resistance"),
+      "post_mitigation_damage = raw_damage × magic_multiplier",
+    ],
+    example: "Raw damage 200, effective magic resistance 50: 200 × 100 / 150 ≈ 133.33.",
+  },
 ];
 
 /** The glossary terms this reference reads, for the drift test. */
-export const JOURNEY_FORMULA_GLOSSARY_IDS = ["actual-cooldown", "armor"] as const;
+export const JOURNEY_FORMULA_GLOSSARY_IDS = ["actual-cooldown", "armor", "magic-resistance"] as const;

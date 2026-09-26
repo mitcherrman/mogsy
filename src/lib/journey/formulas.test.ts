@@ -4,18 +4,17 @@ import { JOURNEY_FORMULAS, JOURNEY_FORMULA_GLOSSARY_IDS } from "./formulas";
 import { evaluate } from "./calculator";
 
 describe("Journey formula reference (JX2)", () => {
-  it("is pinned to the mechanics a Journey can ask about today", () => {
-    // Backend: ability_cooldown(_compare) and combat_ability_damage
-    // (combat_working.v1, physical only). Adding a formula here means the
-    // backend started asking about it — update this pin deliberately.
+  it("is pinned to the approved reference list (reference, not question support)", () => {
+    // A general mechanics reference. Magic resistance is listed although no
+    // Journey child deals magic damage today (combat_working.v1 is physical).
     expect(JOURNEY_FORMULAS.map((f) => f.id)).toEqual([
-      "ability-cooldown", "armor-penetration", "physical-mitigation",
+      "ability-cooldown", "armor-penetration", "physical-mitigation", "magic-mitigation",
     ]);
   });
 
-  it("does not show mechanics no Journey child uses", () => {
+  it("lists nothing without a canonical source (movement speed, shields, bonus armor pen)", () => {
     const text = JOURNEY_FORMULAS.flatMap((f) => [f.title, ...f.lines]).join(" ").toLowerCase();
-    expect(text).not.toMatch(/magic|\bmr\b|shield|bonus armor/);
+    expect(text).not.toMatch(/movement|move speed|shield|bonus armor|magic_pen/);
   });
 
   it("reuses the glossary's exact formula text rather than restating it", () => {
@@ -35,5 +34,6 @@ describe("Journey formula reference (JX2)", () => {
     // armor 80, 30% pen, 10 lethality → 46; raw 200 vs 46 armor.
     expect(evaluate("80×(1−0.3)−10")).toBeCloseTo(46);
     expect(evaluate("200×100÷(100+46)")).toBeCloseTo(136.99, 2);
+    expect(evaluate("200×100÷(100+50)")).toBeCloseTo(133.33, 2);
   });
 });
