@@ -198,9 +198,6 @@ function ControlBar({
           </span>
         )}
       </div>
-      <p className="text-[10px] leading-snug text-muted-foreground/80" data-testid="users-traffic-definition">
-        {TRAFFIC_FILTER_DEFINITIONS[filter]}
-      </p>
     </div>
   );
 }
@@ -249,13 +246,9 @@ export default function AdminUsersPage() {
     setParams(next, { replace: false });
   };
 
-  /**
-   * A metric was clicked. Land on Visitors with the population applied, and
-   * drop any record that was open — the reader asked for a list, not a person.
-   */
   const drill = (populationKey: string) => {
     const next = new URLSearchParams(params);
-    next.set("section", "visitors");
+    next.set("section", "audience");
     next.set("population", populationKey);
     next.delete("visitor");
     setParams(next, { replace: false });
@@ -266,11 +259,6 @@ export default function AdminUsersPage() {
     return filterDatasetByTraffic(state.loaded.dataset, filter, state.loaded.overrides);
   }, [state, filter]);
 
-  /**
-   * The sections were written against a LoadedAnalytics. They receive one
-   * whose dataset has been narrowed to the chosen population, which is how a
-   * filter written once reaches two dozen metrics.
-   */
   const viewLoaded = useMemo<LoadedAnalytics | null>(() => {
     if (state.s !== "ok" || !filtered) return null;
     return { ...state.loaded, dataset: filtered.dataset };
@@ -279,13 +267,15 @@ export default function AdminUsersPage() {
   const truncated =
     state.s === "ok" && Object.entries(state.loaded.truncated).filter(([, t]) => t).map(([k]) => k);
 
-  const audienceSection =
-    section.id === "overview" ||
-    section.id === "visitors" ||
-    section.id === "activity" ||
-    section.id === "acquisition" ||
-    section.id === "retention" ||
-    section.id === "traffic-health";
+  const audienceSection = section.id === "audience";
+
+  useEffect(() => {
+    if (!audienceSection || !population) return;
+    const visitors = document.getElementById("users-audience-visitors");
+    if (typeof visitors?.scrollIntoView === "function") {
+      visitors.scrollIntoView({ block: "start" });
+    }
+  }, [audienceSection, population]);
 
   return (
     <div data-testid="admin-area-users">
@@ -323,15 +313,6 @@ export default function AdminUsersPage() {
 
       {audienceSection && state.s === "ok" && viewLoaded && filtered && (
         <DrillContext.Provider value={drill}>
-          <p className="mb-3 text-[10px] text-muted-foreground" data-testid="analytics-loaded-at">
-            {RANGE_LABELS[preset]} · {TRAFFIC_FILTER_LABELS[filter]} · read{" "}
-            {new Date(state.loaded.loadedAt).toLocaleTimeString()} ·{" "}
-            {viewLoaded.dataset.events.length} of {state.loaded.dataset.events.length} events,{" "}
-            {viewLoaded.dataset.sessions.length} of {state.loaded.dataset.sessions.length} sessions,{" "}
-            {viewLoaded.dataset.visitors.length} of {state.loaded.dataset.visitors.length} visitors
-            in this population
-          </p>
-
           {truncated && truncated.length > 0 && (
             <p
               className="mb-3 flex items-start gap-1.5 rounded-md border border-amber-400/40 bg-amber-400/5 p-3 text-[11px] text-amber-300"
@@ -353,42 +334,39 @@ export default function AdminUsersPage() {
             </p>
           )}
 
-          {section.id === "overview" && (
+          <div className="space-y-6" data-testid="users-section-audience">
             <OverviewSection loaded={viewLoaded} range={state.range} now={state.now} />
-          )}
-          {section.id === "visitors" && (
-            <VisitorsSection
-              dataset={viewLoaded.dataset}
-              range={state.range}
-              byVisitor={filtered.byVisitor}
-              population={population}
-              onPopulation={(key) => setParam("population", key)}
-              selected={visitor}
-              onSelect={(id) => setParam("visitor", id)}
-            />
-          )}
-          {section.id === "activity" && (
-            <EngagementSection loaded={viewLoaded} range={state.range} now={state.now} />
-          )}
-          {section.id === "acquisition" && (
-            <div className="space-y-4">
+            <section id="users-audience-visitors" aria-label="Visitors">
+              <h2 className="mb-3 text-sm font-semibold">Visitors</h2>
+              <VisitorsSection
+                dataset={viewLoaded.dataset}
+                range={state.range}
+                byVisitor={filtered.byVisitor}
+                population={population}
+                onPopulation={(key) => setParam("population", key)}
+                selected={visitor}
+                onSelect={(id) => setParam("visitor", id)}
+              />
+            </section>
+            <section aria-label="Engagement and activity">
+              <h2 className="mb-3 text-sm font-semibold">Engagement / Activity</h2>
+              <EngagementSection loaded={viewLoaded} range={state.range} now={state.now} />
+            </section>
+            <section aria-label="Acquisition" className="space-y-4">
+              <h2 className="text-sm font-semibold">Acquisition</h2>
               <AcquisitionSection loaded={viewLoaded} range={state.range} now={state.now} />
-              {/* The signup funnel belongs to acquisition, not to a separate
-                  "Accounts" analytics tab: it is the last step of the same
-                  journey, and splitting it was how "Accounts" came to mean two
-                  different things in one Admin. */}
               <AccountsSection loaded={viewLoaded} range={state.range} now={state.now} />
               <SourcesSection loaded={viewLoaded} range={state.range} now={state.now} />
-            </div>
-          )}
-          {section.id === "retention" && (
-            <RetentionSection loaded={viewLoaded} range={state.range} now={state.now} />
-          )}
-          {section.id === "traffic-health" && (
-            <div className="space-y-4">
+            </section>
+            <section aria-label="Retention">
+              <h2 className="mb-3 text-sm font-semibold">Retention</h2>
+              <RetentionSection loaded={viewLoaded} range={state.range} now={state.now} />
+            </section>
+            <section aria-label="Traffic Health" className="space-y-4">
+              <h2 className="text-sm font-semibold">Traffic Health</h2>
               <AdminPanel
                 title="Traffic mix"
-                description="Every visitor in the store, by class, ignoring the filter above — this is the denominator the filter is a view of. Detection is not perfect: `unknown` is what honesty looks like, not a bug."
+                description="Every visitor in the store by traffic class, before the population filter is applied."
                 testId="users-traffic-mix-panel"
               >
                 <MetricGrid>
@@ -404,8 +382,8 @@ export default function AdminUsersPage() {
                 </MetricGrid>
               </AdminPanel>
               <HealthSection loaded={viewLoaded} range={state.range} now={state.now} />
-            </div>
-          )}
+            </section>
+          </div>
         </DrillContext.Provider>
       )}
 

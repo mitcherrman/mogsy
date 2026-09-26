@@ -349,7 +349,7 @@ describe("FUNNEL1C — a single Admin inventory", () => {
     // USERS1 — People and Analytics are gone as destinations; the two old
     // paths redirect for bookmarks and are advertised nowhere.
     expect(map.get("/admin/analytics")).toBe("/admin/users");
-    expect(map.get("/admin/analytics?section=health")).toBe("/admin/users?section=traffic-health");
+    expect(map.get("/admin/analytics?section=health")).toBe("/admin/users?section=audience");
     // LEGACY1 deleted the redirects that existed only to keep a dead concept
     // reachable. A redirect to nowhere is not compatibility, it is a rumour.
     for (const gone of [
@@ -387,21 +387,12 @@ describe("FUNNEL1C — a single Admin inventory", () => {
 });
 
 describe("USERS1 — Users is the one audience domain", () => {
-  it("is a live area beside Overview with the eight sections", () => {
+  it("is a live area beside Overview with the consolidated Users sections", () => {
     const area = ADMIN_AREAS_BY_ID.users;
     expect(area.kind).toBe("live");
     expect(area.path).toBe("/admin/users");
     expect(ADMIN_AREA_IDS.indexOf("users")).toBe(ADMIN_AREA_IDS.indexOf("overview") + 1);
-    expect(area.sections.map((s) => s.id)).toEqual([
-      "overview",
-      "visitors",
-      "accounts",
-      "activity",
-      "acquisition",
-      "retention",
-      "moderation",
-      "traffic-health",
-    ]);
+    expect(area.sections.map((s) => s.id)).toEqual(["audience", "accounts", "moderation"]);
   });
 
   it("has removed People and Analytics as areas entirely", () => {

@@ -12,7 +12,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import type { AdminAuthContextValue } from "@/lib/admin-auth/types";
 
@@ -626,30 +626,27 @@ describe("USERS1 · Users is the one audience domain", () => {
     expect(ids.slice(0, 2)).toEqual(["admin-nav-overview", "admin-nav-users"]);
   });
 
-  // The audience sections keep FUNNEL1C's own test ids — they are the same
-  // components, moved. `activity` renders `analytics-section-engagement` and
-  // `traffic-health` renders `analytics-section-health` for that reason.
-  it("renders every audience section with the shared range control and an honest empty state", async () => {
-    const sections: Array<[string, string]> = [
-      ["overview", "analytics-section-overview"],
-      ["acquisition", "analytics-section-acquisition"],
-      ["activity", "analytics-section-engagement"],
-      ["retention", "analytics-section-retention"],
-      ["traffic-health", "analytics-section-health"],
-    ];
-    for (const [section, testId] of sections) {
-      cleanup();
-      renderAdmin(`/admin/users?section=${section}&range=30d`);
-      expect(await screen.findByTestId(testId), section).toBeTruthy();
-      expect(screen.getByTestId("analytics-range-30d").getAttribute("aria-pressed")).toBe("true");
-      expect(screen.getByTestId("analytics-empty")).toBeTruthy();
+  it("renders the full audience vertically under one shared range control", async () => {
+    renderAdmin("/admin/users?section=audience&range=30d");
+    expect(await screen.findByTestId("users-section-audience")).toBeTruthy();
+    for (const testId of [
+      "analytics-section-overview",
+      "users-section-visitors",
+      "analytics-section-engagement",
+      "analytics-section-acquisition",
+      "analytics-section-retention",
+      "analytics-section-health",
+    ]) {
+      expect(screen.getByTestId(testId), testId).toBeTruthy();
     }
+    expect(screen.getByTestId("analytics-range-30d").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("analytics-empty")).toBeTruthy();
   });
 
   // USERS1 — the traffic filter is the control the whole workstream exists
   // for. It defaults to human + unknown and it is on every audience section.
   it("defaults the traffic filter to human + unknown and offers all six populations", async () => {
-    renderAdmin("/admin/users?section=overview");
+    renderAdmin("/admin/users?section=audience");
     await screen.findByTestId("analytics-section-overview");
     expect(screen.getByTestId("users-traffic-human_unknown").getAttribute("aria-pressed")).toBe("true");
     for (const f of ["human", "unknown", "automation", "internal", "all"]) {
@@ -659,14 +656,21 @@ describe("USERS1 · Users is the one audience domain", () => {
   });
 
   it("renders the visitor list, which is where every metric drills to", async () => {
-    renderAdmin("/admin/users?section=visitors");
+    renderAdmin("/admin/users?section=audience");
     expect(await screen.findByTestId("users-section-visitors")).toBeTruthy();
     expect(screen.getByTestId("users-visitors-empty")).toBeTruthy();
   });
 
+  it("keeps headline metric drilldowns connected to the embedded visitor population", async () => {
+    renderAdmin("/admin/users?section=audience");
+    await screen.findByTestId("analytics-section-overview");
+    fireEvent.click(screen.getByTestId("analytics-drill-visitors"));
+    expect(await screen.findByTestId("users-population-banner")).toBeTruthy();
+  });
+
   it("reads nothing from Arena-era tables", async () => {
     supabase.from.mockClear();
-    renderAdmin("/admin/users?section=overview");
+    renderAdmin("/admin/users?section=audience");
     await screen.findByTestId("analytics-section-overview");
     const tables = supabase.from.mock.calls.map((c) => c[0] as string);
     expect(tables.length).toBeGreaterThan(0);

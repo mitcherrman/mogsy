@@ -131,14 +131,9 @@ export const ADMIN_AREAS: AdminArea[] = [
     description:
       "Everyone who reaches Mogzy: visitors, accounts, what they did, where they came from, whether they came back — and the moderation and access controls that act on them.",
     sections: [
-      { id: "overview", label: "Overview", summary: "Headline audience numbers for the range, and the traffic mix behind them." },
-      { id: "visitors", label: "Visitors", summary: "Every browser visitor, classified, filterable, and the target of every metric drill-down." },
+      { id: "audience", label: "Audience", summary: "Audience health, visitors, engagement, acquisition, retention and traffic health." },
       { id: "accounts", label: "Accounts", summary: "Registered and guest accounts: inspection, roles, entitlement, invites and Account Actions." },
-      { id: "activity", label: "Activity", summary: "What the population did: mode opens versus Railway-confirmed starts and completions, by day." },
-      { id: "acquisition", label: "Acquisition", summary: "The funnel from landing to account, and the first-touch and session-touch sources behind it." },
-      { id: "retention", label: "Retention", summary: "New versus returning, repeat sessions, D1 and D7 from session history." },
       { id: "moderation", label: "Moderation", summary: "Comments, user reports, the moderator roster and the feedback queue." },
-      { id: "traffic-health", label: "Traffic Health", summary: "How much of the store is human, automation, internal or unknown — and whether analytics is arriving at all." },
     ],
   },
   {
@@ -395,7 +390,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     description:
       "Visitors, sessions, engagement, signups and retention for the range, under one traffic filter — and every tile opens the records behind it.",
     area: "users",
-    section: "overview",
+    section: "audience",
     kind: "route",
     path: "/admin/users",
     oldLocation: "/admin/analytics — a separate top-level Analytics area (FUNNEL1C)",
@@ -414,9 +409,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     description:
       "Latest event received, browser vs Railway counts, authoritative freshness per event, integrity anomalies, and the Railway outbox probe.",
     area: "users",
-    section: "traffic-health",
+    section: "audience",
     kind: "panel",
-    path: "/admin/users?section=traffic-health",
+    path: "/admin/users?section=audience",
     oldLocation: "Analytics › System Health (FUNNEL1C); before that, GET /api/admin/analytics/health with no UI (handoff §20.7)",
     legacyRoutes: ["/admin/analytics?section=health"],
     disposition: "MOVE",
@@ -432,9 +427,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     description:
       "Every browser visitor in the range: traffic class, first and last seen, sessions, what they opened, whether they signed up — and the row that opens the canonical detail.",
     area: "users",
-    section: "visitors",
+    section: "audience",
     kind: "panel",
-    path: "/admin/users?section=visitors",
+    path: "/admin/users?section=audience",
     oldLocation: "none — no visitor-level view existed. Analytics reported counts only (USERS1).",
     disposition: "KEEP",
     dangerLevel: "none",
@@ -450,9 +445,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     description:
       "One record for one person: identity, traffic classification, acquisition, sessions, activity, server-confirmed gameplay, the account if they have one, and the admin actions that apply.",
     area: "users",
-    section: "visitors",
+    section: "audience",
     kind: "panel",
-    path: "/admin/users?section=visitors",
+    path: "/admin/users?section=audience",
     oldLocation: "none — Analytics had no record view and People had no visitor view (USERS1).",
     disposition: "KEEP",
     dangerLevel: "none",
@@ -467,9 +462,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
     description:
       "Reclassify a visitor when detection got it wrong. Written to analytics_traffic_overrides and applied at read time; the observed session classes are never edited.",
     area: "users",
-    section: "visitors",
+    section: "audience",
     kind: "panel",
-    path: "/admin/users?section=visitors",
+    path: "/admin/users?section=audience",
     oldLocation: "none — USERS1.",
     disposition: "KEEP",
     dangerLevel: "caution",
