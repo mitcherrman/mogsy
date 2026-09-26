@@ -427,3 +427,45 @@ At 1280×720 (fine), 390×844 (touch) and 320×568 (touch), with 11 runs loaded 
 - HUB3: the live text-size change leaves stale rail paging.
 - HUB4: 320px + 200% trend-label overhang; signal naming.
 - `/dev/play-scroll` production gating.
+
+## HUB5.2 — HUB2.3 compatibility certification
+
+**Consumed:** HUB2.3 `1ffa624cf7c2c0e429770226aef7806ad87fda67`. The run key is now `plan_version` plus an order-independent multiset of stage keys; stage keys are unchanged. Base: HUB5.1 `b1a7b505`.
+
+**Golden:** regenerated through HUB2.3's real `/api/history/v1`; `hub2_commit` is now `1ffa624c…`. Nothing was edited by hand. The mixed null/named provenance regression still answers **HTTP 200**.
+
+**Cohorts:**
+- Before: {1}, {2}, {3}, {4–11}.
+- After: **{1}, {2–11}**.
+- In the golden, the previous-run evidence count rises by exactly one per run from run 2 (0) to run 11 (9).
+- Runs 2 and 3 joined **only** because order is ignored. Their stage keys were already identical to runs 4–11 (HUB5.1 measurement), and they keep their own day's shuffle.
+- Run 1 stays separate for substantive reasons: its Survival stage froze no ruleset (`missing_frozen_compatibility`), and it has 4 stages.
+
+**Metric availability (formulas and thresholds unchanged):**
+
+| Metric | Before (runs) | After (runs) |
+|---|---|---|
+| Previous-run delta | 5–11 | 3–11 |
+| Personal best | 5–11 | 3–11 |
+| Historical average | 7–11 | 5–11 |
+| Trajectory | 8–11 | 6–11 (up, up, up, down, stable, up) |
+
+Runs 1 and 2 compute none of the four: run 1 is incompatible, and run 2 is the first run of its cohort.
+
+**Tests:** Timmy suites, HUB4 workspace, HUB3 timeline/review and `lib/history`: **424/424, 16 files**.
+- The updated tests are: the backend commit id; the cohort test (runs 2–11 compare, run 1 alone); and the "no trend below five runs" case, which moved from run 7 to run 5.
+- Still held:
+  - repeated occurrences stay distinct;
+  - round/challenge order;
+  - exact Review provenance;
+  - 4-stage and 5-stage runs;
+  - Daily children excluded from ordinary Ranked;
+  - unforked parser and components;
+  - route gate and isolation.
+- No browser smoke was run: layout code is unchanged, and the added analysis content is covered by the page-level tests.
+
+**Blockers:** none.
+
+**Not investigated:** weakness/recovery semantics (recurring/recovered) and Review semantics, by instruction.
+
+**HUB5 certification is complete for the HUB6 handoff.**

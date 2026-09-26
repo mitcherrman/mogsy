@@ -117,8 +117,8 @@ describe("the golden is HUB2.1's projection of THESE facts", () => {
     expect(sha).toBe(TIMMY_HISTORY_GOLDEN.input_sha256);
   });
 
-  it("names the HUB2.2 backend commit that projected it", () => {
-    expect(TIMMY_HISTORY_GOLDEN.hub2_commit).toBe("bb8ed3340c4fd23cdce23861e446cb1e235fc2d9");
+  it("names the HUB2.3 backend commit that projected it", () => {
+    expect(TIMMY_HISTORY_GOLDEN.hub2_commit).toBe("1ffa624cf7c2c0e429770226aef7806ad87fda67");
   });
 
   it("is cut at the page size the real History hook requests", () => {
@@ -520,7 +520,7 @@ describe("trends and comparisons (HUB2's thresholds, not the fixture's)", () => 
     expect([8, 9, 10, 11].map(direction)).toEqual(["up", "down", "stable", "up"]);
     for (const n of [8, 9, 10, 11]) expect(run("timmy_premium", n).analytics!.trajectory.value!.values).toHaveLength(5);
     // Fewer than five compatible runs: no trend at all, never a guess.
-    expect(run("timmy_premium", 7).analytics!.trajectory.value).toBeNull();
+    expect(run("timmy_premium", 5).analytics!.trajectory.value).toBeNull();
   });
 
   it("D — the strong latest run ties its personal best, earliest date kept", () => {
@@ -535,10 +535,13 @@ describe("trends and comparisons (HUB2's thresholds, not the fixture's)", () => 
     expect(poor.basic.accuracy!).toBeLessThan(poor.analytics!.historicalAverage.value!);
   });
 
-  it("C — a run on its own day's shuffle is its own comparison cohort in HUB2.1", () => {
-    for (const n of [2, 3]) {
-      expect(run("timmy_premium", n).analytics!.previousRunDeltaPp.sufficiency.observed).toBe(0);
+  it("C — HUB2.3: stage order does not split cohorts; runs 2–11 compare, run 1 stands alone", () => {
+    // Runs 2 and 3 keep their own day's shuffle, yet join runs 4–11: the run
+    // key is now an order-independent multiset of stage keys.
+    for (let n = 2; n <= 11; n++) {
+      expect(run("timmy_premium", n).analytics!.previousRunDeltaPp.sufficiency.observed).toBe(n - 2);
     }
+    expect(run("timmy_premium", 1).capability.reasonCode).toBe("missing_frozen_compatibility");
   });
 });
 
