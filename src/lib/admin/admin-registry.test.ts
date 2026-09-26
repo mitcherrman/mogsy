@@ -318,6 +318,7 @@ describe("accounts have exactly one destination", () => {
     const userTools = toolsForSection("users", "accounts").filter((t) => t.kind === "panel");
     const bases = new Set(userTools.map((t) => t.path?.split("?")[0]));
     expect([...bases]).toEqual(["/admin/users"]);
+    expect(userTools.map((t) => t.id)).toEqual(["people-users", "people-invites"]);
   });
 });
 
