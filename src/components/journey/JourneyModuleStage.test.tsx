@@ -255,3 +255,13 @@ describe("source guard — the Journey layer computes nothing", () => {
     }
   });
 });
+
+describe("Formulas & Calculator (JX2)", () => {
+  it("opens from the board header without touching the question", () => {
+    render(stage(read(ARC_A_CHILD_0), "c0"));
+    expect(q("journey-workbench-sheet")).toBeNull();
+    fireEvent.click(screen.getByTestId("journey-open-formulas"));
+    expect(screen.getByTestId("journey-workbench-sheet")).toBeInTheDocument();
+    expect(screen.getByTestId("child-question")).toHaveAttribute("data-child", "c0");
+  });
+});

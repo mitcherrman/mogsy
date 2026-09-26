@@ -35,6 +35,7 @@ import { JourneyStateBoard } from "./JourneyStateBoard";
 import { JourneyStateSheet } from "./JourneyStateSheet";
 import { JourneyTransitionBeat } from "./JourneyTransitionBeat";
 import { useJourneyBeat } from "./useJourneyBeat";
+import { JourneyWorkbenchSheet } from "./workbench/JourneyWorkbenchSheet";
 
 export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, children }: {
   /** The viewer's current canonical public Journey state. */
@@ -52,6 +53,7 @@ export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, ch
 
   const beatActive = useJourneyBeat(board.transition, skewMs, holdPrevious);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [formulasOpen, setFormulasOpen] = useState(false);
 
   // `inert` is set on the element: React 18 has no typed prop for it.
   const questionRef = useRef<HTMLDivElement>(null);
@@ -66,7 +68,8 @@ export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, ch
         data-beat={beatActive ? "active" : "idle"} className="journey-stage flex flex-col gap-2">
         <ScenarioMediaBand key={board.journeyKey} aspect="band" compact data-band-kind="journey"
           className="journey-band">
-          <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}>
+          <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}
+            onOpenFormulas={() => setFormulasOpen(true)}>
             {beatActive && <JourneyTransitionBeat key={board.step.index} state={board} />}
           </JourneyStateBoard>
         </ScenarioMediaBand>
@@ -85,6 +88,7 @@ export function JourneyModuleStage({ state, skewMs = 0, holdPrevious = false, ch
           )}
         </div>
         <JourneyStateSheet state={board} open={sheetOpen} onOpenChange={setSheetOpen} />
+        <JourneyWorkbenchSheet open={formulasOpen} onOpenChange={setFormulasOpen} />
       </div>
     </MasteryAssetsProvider>
   );

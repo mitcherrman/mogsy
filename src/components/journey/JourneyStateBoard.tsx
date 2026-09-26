@@ -27,7 +27,7 @@
  * Presentation only: nothing here reads an answer, and nothing is computed.
  */
 import type { ReactNode } from "react";
-import { ArrowRight, PanelTopOpen } from "lucide-react";
+import { ArrowRight, Calculator, PanelTopOpen } from "lucide-react";
 import type {
   JourneyFocusRef, JourneyPublicState, JourneySide, JourneySideId,
 } from "@/lib/journey/contract";
@@ -126,11 +126,13 @@ function SidePanel({ state, side, marks }: {
   );
 }
 
-export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, children }: {
+export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, onOpenFormulas, children }: {
   state: JourneyPublicState;
   /** While the canonical beat runs, the changed facts pulse. */
   beatActive?: boolean;
   onOpenDetail?: () => void;
+  /** Opens the Formulas & Calculator sheet (JX2). */
+  onOpenFormulas?: () => void;
   /** The transition beat overlay, drawn inside the board's box. */
   children?: ReactNode;
 }) {
@@ -154,13 +156,23 @@ export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, chi
             </>
           )}
         </span>
-        {onOpenDetail && (
-          <button type="button" onClick={onOpenDetail} data-testid="journey-open-state"
-            className="journey-board__state-btn inline-flex shrink-0 items-center gap-1 rounded-md border border-[#d4b35a]/40 bg-black/50 px-1.5 font-bold uppercase tracking-[0.16em] text-[#f3dca0] hover:bg-[#d4b35a]/15">
-            <PanelTopOpen aria-hidden className="h-3 w-3" />
-            State
-          </button>
-        )}
+        <span className="inline-flex shrink-0 items-center gap-1">
+          {onOpenDetail && (
+            <button type="button" onClick={onOpenDetail} data-testid="journey-open-state"
+              className="journey-board__state-btn inline-flex shrink-0 items-center gap-1 rounded-md border border-[#d4b35a]/40 bg-black/50 px-1.5 font-bold uppercase tracking-[0.16em] text-[#f3dca0] hover:bg-[#d4b35a]/15">
+              <PanelTopOpen aria-hidden className="h-3 w-3" />
+              State
+            </button>
+          )}
+          {onOpenFormulas && (
+            <button type="button" onClick={onOpenFormulas} data-testid="journey-open-formulas"
+              aria-label="Formulas and calculator"
+              className="journey-board__state-btn inline-flex shrink-0 items-center gap-1 rounded-md border border-[#d4b35a]/40 bg-black/50 px-1.5 font-bold uppercase tracking-[0.16em] text-[#f3dca0] hover:bg-[#d4b35a]/15">
+              <Calculator aria-hidden className="h-3 w-3" />
+              Calc
+            </button>
+          )}
+        </span>
       </div>
       <div className="journey-board__sides">
         <SidePanel state={state} side={subject} marks={marks} />
