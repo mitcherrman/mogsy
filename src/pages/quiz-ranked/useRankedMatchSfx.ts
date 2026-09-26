@@ -23,6 +23,14 @@ export interface RankedSfxObservation {
   metaOpponentCompleted: number;
   metaOwnFinished: boolean;
   metaOwnReveals: readonly Pick<SettledCardReveal, "challengeIndex" | "outcome">[];
+  /**
+   * SFX2 — a Mastery Journey segment's identity and the viewer's OWN published
+   * per-child reveals (`ownChallengeReveals`, reached children only). Each new
+   * reveal is one light verdict; the module award stays with the aggregate
+   * settlement. `null` / empty for every non-Journey segment.
+   */
+  journeyKey?: string | null;
+  journeyOwnReveals?: readonly { challengeIndex: number; isCorrect: boolean }[];
   settlementRound: number | null;
   settlementLive: boolean;
   ownSettlementOutcome: "correct" | "incorrect" | "timed_out" | null;
@@ -123,6 +131,21 @@ export function observeRankedSfx(
     }
   }
 
+  const journeyKey = current.journeyKey ?? null;
+  if (journeyKey && !current.terminal) {
+    const seen = new Set((journeyKey === previous.journeyKey
+      ? previous.journeyOwnReveals ?? [] : []).map((reveal) => reveal.challengeIndex));
+    // One verdict per update: a skipped poll announces only the newest child.
+    const newest = [...(current.journeyOwnReveals ?? [])].reverse()
+      .find((reveal) => !seen.has(reveal.challengeIndex));
+    if (newest) {
+      emissions.push({
+        event: newest.isCorrect ? "ranked.answer.correct" : "ranked.answer.incorrect",
+        eventId: id(`segment:${journeyKey}:child:${newest.challengeIndex}:result`),
+      });
+    }
+  }
+
   if (current.settlementRound !== null
       && current.settlementRound !== previous.settlementRound
       && current.settlementLive
@@ -133,7 +156,15 @@ export function observeRankedSfx(
     } else if (current.ownSettlementOutcome === "incorrect") {
       emissions.push({ event: "ranked.answer.incorrect", eventId: `${settlementId}:result` });
     }
-    if (current.ownAward && current.ownAward.pointsAwarded > 0) {
+    // SFX2 — ONE CUE PER SETTLEMENT. A per-question verdict owns its own
+    // settlement: the award (+180 ms) and speed accent (+400 ms) used to ride
+    // behind it and turned every correct Standard answer into a five-note
+    // rising phrase heavier than a module completion. The award phrase now
+    // sounds only for an aggregate multi-card settlement (Journey / Meta
+    // Reflex module completion), which carries no per-question verdict here.
+    const verdictSounded = current.ownSettlementOutcome === "correct"
+      || current.ownSettlementOutcome === "incorrect";
+    if (!verdictSounded && current.ownAward && current.ownAward.pointsAwarded > 0) {
       emissions.push({ event: "ranked.points.awarded", eventId: `${settlementId}:award` });
       if (current.ownAward.speedBonusPoints > 0) {
         emissions.push({ event: "ranked.speed.bonus", eventId: `${settlementId}:speed-bonus` });
@@ -224,6 +255,9 @@ export function useRankedMatchSfx(input: UseRankedMatchSfxInput): void {
       metaOpponentCompleted: isMeta ? segment.opponentChallengesCompleted : 0,
       metaOwnFinished: isMeta ? segment.ownFinished : false,
       metaOwnReveals: isMeta ? segment.ownCardReveals : [],
+      journeyKey: segment?.journey
+        ? `${segment.moduleId}.${segment.moduleVersion}#${segment.segmentNumber}` : null,
+      journeyOwnReveals: segment?.journey ? segment.ownChallengeReveals : [],
       settlementRound: settlement?.roundNumber ?? null,
       settlementLive: input.revealHold,
       // Multi-card modules publish their own per-card verdict stream. Their

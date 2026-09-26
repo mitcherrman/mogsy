@@ -332,3 +332,32 @@ SFX1.2 is complete at the commit containing this section. Its frontend implement
 - Current Ranked presentation, answer/reveal flow, preload/media gates, result presentation, scoring, timeline, and zero-scroll architecture remain the production implementations. SFX continues to derive the viewer verdict only from authoritative local settlement data; public opponent progress produces only `ranked.opponent.submitted`, with no opponent correctness input.
 - Verification passed: canonical audio/mute/Audio Studio, Broadcast, Home Hub, Leaguecraft, Ranked SFX and current RFX suites; the remaining Admin, Combat, Archives, Pro Play, auth/account, settings, and legacy-adapter surface suites (210/210); TypeScript `--noEmit`; focused canonical-SFX/Ranked/Broadcast ESLint; Vite production bundling; and the item/champion prerender invariants (213 and 173 URLs). A broad changed-file lint invocation still reports pre-existing `no-explicit-any` debt in large current-main files such as `CombatLab.tsx`, `Quiz.tsx`, and `MogzyIdentityMenu.tsx`; no focused SFX lint error remains.
 - The production-smoke renderer assertions instantiate oscillator voices for every authored Hub/Leaguecraft event and every live Ranked semantic. This explicitly covers `hub.destination.focus`, `leaguecraft.quiz.start`, `leaguecraft.answer.correct`, `ranked.module.start`, `ranked.opponent.submitted`, `ranked.points.awarded`, and `ranked.match.victory`; they are registered to concrete `SFX_GENERATORS` entries rather than silent placeholders.
+
+## SFX2 — feedback hierarchy refinement (2026-09-26)
+
+Base: frontend `origin/main` @ `6a1e5282`. Bindings/timing only; no new assets, no layout/motif/backend change.
+
+**What was actually stacking (traced in `useRankedMatchSfx.observeRankedSfx` + `sfx-renderers.ts`):**
+
+- Standard question, correct: `ranked.answer.lock` on accepted submit, then on the live settlement **three** cues from one semantic event — `ranked.answer.correct` (E5→B5, 0–0.21 s), `ranked.points.awarded` (G5→C6 at +180/+240 ms) and, when `speedBonusPoints > 0`, `ranked.speed.bonus` (E6 at +400 ms). Five rising notes over ~0.5 s: longer and higher than `ranked.match.victory`. This is the "too heavy" sound.
+- Journey child: silent per child (no lock, no verdict — the Meta per-card path is `item_cost_duel` only). Journey completion arrives as an aggregate segment settlement (`ownSettlementOutcome` nulled) and sounded award (+ speed): **three** notes — lighter than a single Standard correct. Hierarchy was inverted.
+- Meta Reflex: per-card `ranked.meta.action` + owner-only card verdict; the block's aggregate settlement adds award (+ speed). Unchanged in shape.
+- Daily stage completion: silent (hosted children suppress the terminal sting; `useDailyRun` played nothing).
+
+**Changes:**
+
+- `observeRankedSfx`: a settlement that sounds a per-question verdict no longer also sounds award/speed (one cue per semantic event). Award + speed now sound only for an aggregate module settlement (Journey / Meta Reflex block completion).
+- Registry: `ranked.answer.correct` gain 0.88 → 0.72.
+- New semantic `daily.stage.complete` (group `daily`) bound to the existing `sfx.leaguecraft.quiz-complete` synth at gain 1; played from `useDailyRun.adopt` only when this mount watched a stage move to `completed` (skips and reload/restore are silent), eventId `daily:<runId>:stage:<stageId>:complete`.
+
+**Resulting hierarchy:** per-question correct/incorrect (2 notes, light) < module completion (award phrase, + speed accent when earned) < Daily stage completion (resolved 4-voice completion) ; match victory/defeat/draw unchanged for Ranked.
+
+**Tests:** `useRankedMatchSfx.test.ts` (verdict-only settlement; aggregate Journey award + speed; zero award silent), `DailyRunPage.test.tsx` (four watched stages → four unique `daily.stage.complete`; finished-day reload silent). 12 files / 212 tests pass across `src/lib/audio`, `quiz-daily-challenge/run`, and the Ranked observer. `e2e/ranked-sfx.spec.ts` comments updated (assertion shape unchanged; not re-run).
+
+### SFX2 correction — Journey child verdicts
+
+- Each newly published Journey child reveal (`segmentState.ownChallengeReveals` on a segment with a `journey` block) now sounds one light `ranked.answer.correct` / `ranked.answer.incorrect`, eventId `ranked:<match>:segment:<journey>:child:<i>:result`. Hydration is a silent baseline; a skipped poll sounds only the newest child. No other layer sounds Journey child verdicts (the Meta per-card path is `item_cost_duel` only; the aggregate settlement nulls its verdict), so there is no duplicate.
+- Children never sound points/speed; the aggregate Journey settlement keeps the module award (+ speed when earned). The final child + module settlement in one poll gives exactly one verdict + one award phrase.
+- Volume scope: the 0.72 gain applies only to the registry key `ranked.answer.correct` (generator `sfx.ranked.answer-correct`, used by no other key). Its sole caller is `useRankedMatchSfx` (Ranked Standard rounds, Meta Reflex cards, Journey children — including Daily stage children, which run the same arena). Leaguecraft practice uses the separate `leaguecraft.answer.correct` (0.9, unchanged); Swipe/Elo and Broadcast correct cues are separate keys, also unchanged.
+- Mastery (non-Journey) per-question reveals remain silent as before.
+- Perceptual listening was not possible in this environment (no audio output available to the agent); owner approval by ear remains for integration.
