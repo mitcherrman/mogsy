@@ -14,10 +14,9 @@
 - Confirmed strong browser acquisition/session foundations and authoritative Railway start/completion events for selected gameplay, but incomplete lifecycle coverage, active-time/session state, release context, direct browser-to-Railway correlation and explicit terminal outcomes.
 - The audit is recorded in `docs/USERS2_ANALYTICS_AUDIT.md`.
 
-### USERS2.3A — lifecycle contract — complete on this branch
+### USERS2.3A — lifecycle contract — complete/on main
 
-- Base: `origin/main` at `61673c53683f16fff859a42c15f83b9406411b92`
-- Branch: `codex/users2-3a-lifecycle`
+- Main commit: `3eba8494e6cf96dcadbd57f44d8fcca5086eeffb`
 - Defined the governed lifecycle vocabulary: `opened`, `started`, `completed`, `abandoned`, `expired`, `failed`, `cancelled`.
 - Registered ten current bounded activities with explicit opened/start/terminal authority, entity grain/id, ownership, valid outcomes, current events and migration notes.
 - The contract is documented in `docs/USERS2_ACTIVITY_LIFECYCLE.md` and represented by the descriptive, non-emitting registry in `src/lib/analytics/activityLifecycle.ts`.
@@ -37,11 +36,11 @@ USERS2.3A changes no database schema, event emission, Admin calculation, Railway
 
 ## Follow-up ownership
 
-### USERS2.3B — browser/Supabase session intelligence
+### USERS2.3B — browser/Supabase session intelligence — complete on integration branch; migration NOT applied
 
-Owns active time, session state, release context, and the durable same-browser identity link. It may consume the lifecycle registry but must not independently redefine activity ids, entity grains or lifecycle semantics.
+Owns active time, session state, release context, and the durable same-browser identity link. Its migration is committed for review but has not been applied. Implementation details are recorded in `docs/USERS2_3B_SESSION_INTELLIGENCE.md`. It may consume the lifecycle registry but must not independently redefine activity ids, entity grains or lifecycle semantics.
 
-### USERS2.3C — browser → Railway correlation
+### USERS2.3C — separate browser → Railway correlation workstream
 
 Owns propagation of `visitor_id`, `session_id`, and interaction/request correlation through authoritative gameplay entities and the outbox. It must not independently redefine lifecycle event semantics and must preserve the authoritative-vs-inferred abandonment distinction.
 
