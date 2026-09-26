@@ -280,7 +280,7 @@ Completed on this branch after the audit:
 
 Deferred P1s are unchanged: active Ranked leave semantics, active Daily leave
 semantics, Practice session/history boundaries, and Ranked terminal navigation.
-Premium and History IA also remain untouched.
+NAV1-C now resolves Premium's contextual return without touching History IA.
 
 ## Audit conclusion
 
@@ -384,14 +384,59 @@ Conflicts: LOW. Depends on: NAV1-A and reset fallback decision.
 Parallel/cherry-pick: **yes** after A API is frozen; can be developed in parallel
 on top of A and cherry-picked.
 
-### NAV1-C — contextual Premium senders
+### NAV1-C — Premium contextual return (implemented)
 
-Files: `LolPremium.tsx`, Profile, Combat Lab/Team Sim failure, Practice Builder,
-History/Review/Trends CTA components, house-ad presentation and tests.
-Content: carry validated origin; preserve checkout/auth return.
-Conflicts: MEDIUM, HIGH only for History/Practice senders.
-Parallel/cherry-pick: **split**: destination + low-conflict senders can run
-independently; History/Practice sender patch waits and is integrated last.
+The sender inventory changed the proposed design. Every LOW-conflict sender
+already uses React Router navigation and therefore creates the exact history
+entry Premium needs: the Home panel and mobile bulletin use `Link`, Profile uses
+`navigate`, and house ads render an internal `Link`. Combat Lab and Team Sim
+also use `Link`; they are MEDIUM collision and need no edit. Adding a parallel
+`from` channel would create two sources of truth without preserving anything
+that router history does not already preserve.
+
+`LolPremium.tsx` now uses `useSafeTemporalBack('/lol')`. Internal entries POP
+to the exact sender, refresh retains the router-owned positive index, and a
+direct/new-tab/external initial entry REPLACEs to `/lol`. Legacy `/lol/pro` and
+`/pro` aliases still canonicalize with REPLACE and preserve search/hash.
+
+Sender classification:
+
+- **LOW:** Home Premium panel and bulletin, Profile, and house ads. All were
+  already SPA senders; no sender edit was required.
+- **MEDIUM:** Combat Lab and Team Sim failure. Both already use `Link`; no edit,
+  avoiding ENVVIS/Journey overlap.
+- **HIGH-DEFER:** Practice Builder, Study History, Missed Questions Review and
+  Performance Trends. The first and last still use full-document anchors, but
+  they live in the explicitly frozen Practice/History workspace. They receive
+  deterministic `/lol` fallback after a document load until that owner converts
+  them to SPA links. No volatile workspace file was touched.
+
+Complete production entry inventory (10 rendered sender call sites, plus
+canonicalization and interruption returns):
+
+| Sender | Surface / label | Mechanism and history | Conflict | NAV1-C action |
+|---|---|---|---|---|
+| `components/lol/HubPremiumPanel.tsx` | `/lol` desktop slip, “Explore/View Premium” | `Link` via shared presentation; PUSH | LOW | None needed |
+| `components/lol/AcademyBulletin.tsx` | `/lol` mobile bulletin, “Explore/View Premium” | `Link` via shared presentation; PUSH | LOW | None needed |
+| `pages/Profile.tsx` | profile customization, “Go Premium” | `navigate('/lol/premium')`; PUSH | LOW | None needed |
+| `lib/ads/houseAds.ts` + `components/ads/AdSlot.tsx` | eligible house-ad placements, “Upgrade to Premium” | creative rendered as `Link`; PUSH | LOW | None needed |
+| `pages/CombatLab.tsx` | exhausted free usage, “Upgrade to Mogzy Premium” | `Link`; PUSH | MEDIUM (ENVVIS/Journey) | None needed; no overlapping edit |
+| `pages/dev/team-sim/components/FailureNotice.tsx` | Premium-required Team Sim failure, CTA | `Link` through `PREMIUM_ROUTE`; PUSH | MEDIUM (ENVVIS/Journey) | None needed; no overlapping edit |
+| `components/quiz/builder/PracticeBuilderPanel.tsx` | Practice Builder gate, “See Mogzy Premium” | raw `<a href>`; full reload | HIGH (Practice/Study Hall) | Deferred |
+| `components/quiz/workspace/MissedQuestionsReview.tsx` | Review gate, “Upgrade to Mogzy Premium” | `Link`; PUSH | HIGH (History/Review) | Deferred; already correct mechanism |
+| `components/quiz/workspace/StudyHistoryLedger.tsx` | History gate, “Unlock Full History” | `Link`; PUSH | HIGH (History) | Deferred; already correct mechanism |
+| `components/quiz/trends/PerformanceTrendsPane.tsx` | Trends gate, CTA | raw `<a href>`; full reload | HIGH (History/Trends) | Deferred |
+
+`LegacyPremiumRedirect.tsx` additionally maps `/lol/pro` and `/pro` to the
+canonical route with REPLACE. `LolPremium.tsx`'s auth return and
+`lib/pro/checkout.ts`'s Stripe success/cancel URLs are interruption re-entries,
+not ordinary product senders; their existing semantics are unchanged. There
+were no LOW-conflict full-document senders to convert in this batch.
+
+Auth and Stripe remain separate contracts. Auth still validates and returns to
+`/lol/premium`; Stripe still performs an intentional external navigation and
+returns to `?success`/`?canceled`. Those document detours do not claim to recover
+the pre-Premium sender, so Premium safely falls back to `/lol` afterward.
 
 ### NAV1-D — terminal internal navigation
 

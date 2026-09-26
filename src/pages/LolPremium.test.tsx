@@ -72,7 +72,10 @@ function renderPage() {
 
 beforeEach(() => {
   getEntitlement.mockReset();
-  entitlementRpc.mockReset();
+  // Premium responses trigger a second, provenance-only entitlement read.
+  // Give that async branch a complete neutral response unless a test
+  // deliberately overrides it, so it cannot reject after cleanup.
+  entitlementRpc.mockReset().mockResolvedValue({ data: null, error: null });
   openBillingPortal.mockReset();
 });
 afterEach(cleanup);

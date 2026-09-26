@@ -35,6 +35,7 @@ import {
   type PricingMode,
 } from "@/lib/pro/checkout";
 import { annualSavingsPct, STANDARD_OFFERS } from "@/lib/pro/offers";
+import { useSafeTemporalBack } from "@/lib/navigation/useSafeTemporalBack";
 import {
   benefitById,
   benefitsInGroup,
@@ -121,6 +122,7 @@ const LOL_PREMIUM_ROUTE = "/lol/premium";
 export default function LolPremium() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const goBack = useSafeTemporalBack("/lol");
   const [searchParams] = useSearchParams();
   const isAnonymous = !user || user.is_anonymous === true;
   const [isPremium, setIsPremium] = useState(false);
@@ -231,8 +233,8 @@ export default function LolPremium() {
       />
 
       <div className="mb-8 flex items-center gap-3">
-        <Button asChild variant="ghost" size="icon" aria-label="Back to LoL hub">
-          <Link to="/lol"><ArrowLeft className="h-5 w-5" /></Link>
+        <Button type="button" variant="ghost" size="icon" aria-label="Go back" onClick={goBack}>
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         <Crown className="h-6 w-6" style={{ color: GOLD }} />
         <h1 className="text-2xl font-bold">Mogzy Premium</h1>

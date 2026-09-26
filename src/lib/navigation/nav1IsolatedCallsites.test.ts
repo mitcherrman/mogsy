@@ -34,3 +34,13 @@ describe("NAV1-B isolated temporal Back call sites", () => {
   });
 });
 
+describe("NAV1-C Premium contextual return", () => {
+  it("uses bounded temporal Back with the League hub as its direct-entry fallback", () => {
+    const source = page("LolPremium.tsx");
+    expect(source).toContain('useSafeTemporalBack("/lol")');
+    expect(source).toContain('aria-label="Go back" onClick={goBack}');
+    expect(source).not.toContain('aria-label="Back to LoL hub"');
+    expect(source).not.toMatch(/<Link to="\/lol"><ArrowLeft/);
+  });
+});
+
