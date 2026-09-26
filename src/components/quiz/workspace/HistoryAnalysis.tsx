@@ -11,11 +11,10 @@
  * or question-type bars, no learning-signal lists, no Review-recovery tile,
  * no population, no Academy lifetime aggregate.
  *
- * Stage: the ruleset's own facts the server projects — Time Trial's settled
- * questions, Survival's depth and strikes used. The stage's exact questions
- * and its own visual live in `StageFocus`. HUB4's per-stage category and
- * question-type bars are not part of the launch presentation (the data is
- * still parsed; nothing here reads it).
+ * Stage (HUB6.2): the selected stage's quick facts sit on its own row and its
+ * deeper visual in the Daily's analytics region — both in `StageAnalytics`.
+ * HUB4's per-stage category and question-type bars are not part of the launch
+ * presentation (the data is still parsed; nothing reads it).
  *
  * THE SERVER DECIDES, THE PAGE WORDS IT
  * ─────────────────────────────────────
@@ -41,10 +40,9 @@ import {
   ChartFrame,
   DormantTrajectory,
   FRAME_INK,
-  Pips,
   TrajectoryChart,
 } from "@/components/quiz/workspace/historyVisuals";
-import { DAILY_TONE, stageTone } from "@/components/quiz/workspace/stageTheme";
+import { DAILY_TONE } from "@/components/quiz/workspace/stageTheme";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import {
   RUN_METRIC_LABELS,
@@ -53,7 +51,6 @@ import {
   instantDateLabel,
   percent,
   signedPoints,
-  stageKindLabel,
   sufficiencyText,
 } from "@/components/quiz/workspace/historyFormat";
 import type {
@@ -261,7 +258,7 @@ function PersonalBestCrest({ best, progress }: { best: Metric<PersonalBest>; pro
  * draw in — the structure is shown, never a sample of it: there is no data
  * behind the frame, so nothing is drawn on it.
  */
-function PremiumInvitation({ testId }: { testId: string }) {
+export function PremiumInvitation({ testId }: { testId: string }) {
   return (
     <div className="relative" data-testid={testId}>
       <div className="opacity-60" aria-hidden="true">
@@ -291,7 +288,7 @@ function PremiumInvitation({ testId }: { testId: string }) {
   );
 }
 
-function Unavailable({ onRetry, testId }: { onRetry?: () => void; testId: string }) {
+export function Unavailable({ onRetry, testId }: { onRetry?: () => void; testId: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2" data-testid={testId}>
       <p className="text-[11px]" style={{ color: LEAGUECRAFT_INK.faint }}>
@@ -423,89 +420,4 @@ function OverviewBody({
       </div>
     </div>
   );
-}
-
-// ------------------------------------------------------------ Stage
-
-/**
- * A stage's ruleset facts, as the server projects them: Time Trial's settled
- * questions under the active bank; Survival's depth and strikes used against
- * the frozen limit. Nothing is compared: the DTO carries no earlier stages'
- * values (HUB6.1 audit), so no comparison is drawn or implied.
- *
- * Returns null where the stage has nothing of its own to add.
- */
-export function StageAnalysis({
-  stage,
-  onRetry,
-  progress = 1,
-}: {
-  stage: HistoryStage;
-  onRetry?: () => void;
-  progress?: number;
-}) {
-  const { capability, analytics } = stage;
-  const shell = (children: React.ReactNode) => (
-    <section
-      aria-label={`${stageKindLabel(stage.kind)} stage analysis`}
-      className="min-w-0"
-      data-testid="stage-analysis"
-      data-state={capability.state}
-    >
-      {children}
-    </section>
-  );
-
-  if (!hasExpansion(capability)) return null;
-  if (capability.state === "upgrade_required") return shell(<PremiumInvitation testId="stage-analysis-upgrade" />);
-  if (capability.state === "temporarily_unavailable") {
-    return shell(<Unavailable onRetry={onRetry} testId="stage-analysis-unavailable" />);
-  }
-  if (!analytics) {
-    return shell(<Insufficient testId="stage-analysis-insufficient" text={insufficientReasonText(capability.reasonCode)} />);
-  }
-
-  const tone = stageTone(stage.kind);
-  const facts: React.ReactNode[] = [];
-  if (stage.kind === "time_trial" && analytics.settledQuestions !== null) {
-    facts.push(
-      <Figure
-        key="settled"
-        testId="stage-analysis-settled"
-        label="Settled questions"
-        value={<Counted value={analytics.settledQuestions} progress={progress} format={(v) => String(Math.round(v))} />}
-        size="text-[28px]"
-      />,
-    );
-  }
-  if (stage.kind === "survival" && analytics.depth !== null) {
-    facts.push(
-      <Figure
-        key="depth"
-        testId="stage-analysis-depth"
-        label="Depth"
-        value={<Counted value={analytics.depth} progress={progress} format={(v) => String(Math.round(v))} />}
-        size="text-[28px]"
-      />,
-    );
-  }
-  if (stage.kind === "survival" && analytics.strikesUsed !== null) {
-    facts.push(
-      <div key="strikes" className="min-w-0" data-testid="stage-analysis-strikes">
-        <Caption>Strikes used</Caption>
-        <div className="mt-1.5 flex items-center gap-2.5">
-          {stage.ruleset.maxStrikes !== null && (
-            <Pips used={analytics.strikesUsed} max={stage.ruleset.maxStrikes} progress={progress} ink={tone.ink} />
-          )}
-          <span className="text-[16px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-            {stage.ruleset.maxStrikes !== null
-              ? `${analytics.strikesUsed} of ${stage.ruleset.maxStrikes}`
-              : String(analytics.strikesUsed)}
-          </span>
-        </div>
-      </div>,
-    );
-  }
-  if (facts.length === 0) return null;
-  return shell(<div className="flex flex-wrap items-end gap-x-10 gap-y-4 px-1">{facts}</div>);
 }

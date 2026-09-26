@@ -22,7 +22,8 @@ export type TimmyHistoryScenario =
   | "timmy_free"
   | "timmy_unavailable"
   | "first_daily"
-  | "newcomer";
+  | "newcomer"
+  | "full_daily";
 
 interface WirePage {
   next_cursor: string | null;
@@ -61,4 +62,5 @@ export const TIMMY_HISTORY_SOURCES: Readonly<Record<TimmyHistoryScenario, Histor
   timmy_unavailable: sourceFor("timmy_unavailable"),
   first_daily: sourceFor("first_daily"),
   newcomer: sourceFor("newcomer"),
+  full_daily: sourceFor("full_daily"),
 });

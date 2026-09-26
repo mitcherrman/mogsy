@@ -177,8 +177,9 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     fireEvent.click(within(poor).getByTestId("daily-analysis-toggle"));
     expect(within(poor).getByTestId("daily-analysis-delta")).toHaveTextContent(/−\d+ pp/);
     // The failed replay is the Review stage's own exact record (HUB6.1).
-    fireEvent.click(within(poor).getAllByTestId("daily-focus-stage").find((b) => b.dataset.stageKind === "review")!);
-    const review = within(poor).getByTestId("stage-focus");
+    const reviewRow = within(poor).getAllByTestId("daily-stage-row").find((s) => s.getAttribute("data-stage-kind") === "review")!;
+    fireEvent.click(within(reviewRow).getByTestId("stage-analysis-toggle"));
+    const review = within(poor).getByTestId("stage-analytics");
     const results = within(review).getAllByTestId("stage-question-card").map((c) => c.dataset.outcome);
     expect(results.filter((o) => o === "correct")).toHaveLength(1);
     expect(results.filter((o) => o === "incorrect")).toHaveLength(2);
@@ -191,7 +192,7 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     const survival = within(runRows()[2]).getAllByTestId("daily-stage-row")
       .find((s) => s.getAttribute("data-stage-kind") === "survival")!;
     fireEvent.click(within(survival).getByTestId("stage-analysis-toggle"));
-    const focus = within(runRows()[2]).getByTestId("stage-focus");
+    const focus = runRows()[2];
     expect(within(focus).getByTestId("stage-analysis-strikes")).toHaveTextContent("3 of 3");
     expect(within(focus).getByTestId("stage-survival-end")).toHaveTextContent("out of mistakes");
   });
@@ -205,9 +206,9 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     expect(within(latest).getByTestId("daily-analysis-upgrade")).toHaveTextContent("Mogzy Premium");
     // Stages stay navigable and repeat no invitation; Survival's strikes stay
     // Premium-only.
-    for (const nav of within(latest).getAllByTestId("daily-focus-stage")) {
+    for (const nav of within(latest).getAllByTestId("stage-analysis-toggle")) {
       fireEvent.click(nav);
-      const focus = within(latest).getByTestId("stage-focus");
+      const focus = within(latest).getByTestId("stage-analytics");
       expect(within(focus).queryByText(/Upgrade|Premium/)).toBeNull();
       expect(within(focus).queryByTestId("stage-analysis-strikes")).toBeNull();
     }
@@ -252,10 +253,10 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     const survival = within(first).getAllByTestId("daily-stage-row")
       .find((s) => s.getAttribute("data-stage-kind") === "survival")!;
     fireEvent.click(within(survival).getByTestId("stage-analysis-toggle"));
-    const focus = within(first).getByTestId("stage-focus");
-    expect(within(focus).getByTestId("stage-focus-result")).toBeTruthy();
+    const focus = within(first).getByTestId("stage-analytics");
+    expect(focus.dataset.stageKind).toBe("survival");
     expect(within(focus).queryByTestId("stage-analysis")).toBeNull();
-    fireEvent.click(within(first).getByTestId("stage-focus-back"));
+    fireEvent.click(within(first).getByTestId("daily-overview-return"));
     // Back on the Daily Overview of the same Focus: the run cannot be
     // compared, and says why in the server's terms.
     expect(first.dataset.focused).toBe("true");
@@ -331,5 +332,72 @@ describe("Owned & Missed agree with History", () => {
     pick("review-source-missed");
     expect(await screen.findByTestId("missed-questions-locked")).toBeInTheDocument();
     expect(screen.getByTestId("study-history-upsell")).toBeInTheDocument();
+  });
+});
+
+describe("HUB6.2 — full-length stages stay navigable (real HUB2.3 golden)", () => {
+  const openFull = async () => {
+    renderPreview();
+    pick("lobby-preview-fullDaily");
+    await waitFor(() => expect(runRows()).toHaveLength(2));
+    return runRows()[0];
+  };
+  const row = (run: HTMLElement, kind: string) =>
+    within(run).getAllByTestId("daily-stage-row").find((s) => s.getAttribute("data-stage-kind") === kind)!;
+
+  /** Walk a stage's HUB3 rail page by page; every round it reaches. */
+  const walkRail = (stage: HTMLElement): number[] => {
+    const seen = new Set<number>();
+    for (let guard = 0; guard < 20; guard++) {
+      for (const icon of within(stage).getAllByTestId("timeline-icon")) seen.add(Number(icon.dataset.round));
+      const next = within(stage).queryByTestId("timeline-next") as HTMLButtonElement | null;
+      if (!next || next.disabled) break;
+      fireEvent.click(next);
+    }
+    return [...seen].sort((a, b) => a - b);
+  };
+
+  it("13 — a 28-question Time Trial: every question reachable on its rail and drawn in the lane, ending on its bank", async () => {
+    const run = await openFull();
+    const tt = row(run, "time_trial");
+    expect(within(tt).getByTestId("question-timeline").dataset.total).toBe("28");
+    expect(walkRail(tt)).toEqual(Array.from({ length: 28 }, (_, i) => i + 1));
+    fireEvent.click(within(tt).getByTestId("stage-analysis-toggle"));
+    const lane = within(run).getByTestId("stage-lane");
+    expect(lane.dataset.rounds).toBe("28");
+    expect(within(lane).getAllByTestId("stage-path-node")).toHaveLength(28);
+    expect(within(lane).getByTestId("stage-lane-end")).toHaveTextContent("bank ran out");
+    expect(within(tt).getByTestId("stage-analysis-settled")).toHaveTextContent("28");
+    // The rail is still whole while its stage is selected.
+    expect(within(tt).getByTestId("question-timeline").dataset.total).toBe("28");
+  });
+
+  it("14 — a ten-module Standard: Splash, Meta Reflex and Mastery modules, each reachable", async () => {
+    const run = await openFull();
+    const std = row(run, "standard");
+    expect(walkRail(std)).toEqual(Array.from({ length: 10 }, (_, i) => i + 1));
+    fireEvent.click(within(std).getByTestId("stage-analysis-toggle"));
+    const nodes = within(within(run).getByTestId("stage-course")).getAllByTestId("stage-path-node");
+    expect(nodes.map((n) => n.dataset.module)).toEqual([
+      "quiz", "quiz", "quiz", "quiz", "meta_reflex", "quiz", "quiz", "quiz", "meta_reflex", "mastery_slice",
+    ]);
+    expect(nodes[4]).toHaveTextContent("Meta Reflex");
+    expect(nodes[4]).toHaveTextContent("4/5");
+    expect(nodes[9]).toHaveTextContent("Mastery");
+    expect(nodes[9]).toHaveTextContent("3/4");
+    // A module with no proven art wears its module sigil, never "?".
+    expect(within(nodes[9]).getByTestId("module-sigil").dataset.module).toBe("mastery_slice");
+  });
+
+  it("a long Survival: mixed single and multi-question rounds, three strikes counted, none pinned to a question", async () => {
+    const run = await openFull();
+    const surv = row(run, "survival");
+    fireEvent.click(within(surv).getByTestId("stage-analysis-toggle"));
+    const nodes = within(within(run).getByTestId("stage-survival-path")).getAllByTestId("stage-path-node");
+    expect(nodes).toHaveLength(8);
+    expect(within(surv).getByTestId("stage-analysis-strikes")).toHaveTextContent("3 of 3");
+    expect(within(surv).getByTestId("stage-analysis-depth")).toHaveTextContent("13");
+    expect(within(run).getByTestId("stage-survival-end")).toHaveTextContent("out of mistakes");
+    expect(run.textContent).not.toMatch(/strike \d|struck/i);
   });
 });

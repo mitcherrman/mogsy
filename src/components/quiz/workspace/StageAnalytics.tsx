@@ -1,9 +1,14 @@
 /**
- * HUB6.1 — Stage Focus: ONE stage of ONE Daily, drawn to its own rules.
+ * HUB6.1 → HUB6.2 — one stage's analytics INSIDE its expanded Daily.
  *
- * Layer 2 of History (History → Daily → Stage → Question). It occupies the
- * Daily Focus canvas in place of the Daily Overview — it is never appended
- * beneath it — and each stage kind is drawn as what its ruleset is about:
+ * HUB6.2 (owner correction): a selected stage is never a screen of its own.
+ * The expanded Daily keeps every stage row and every question rail where
+ * they were; the selected stage's ROW is emphasised in place and gains its
+ * quick facts (`StageLocalFacts`), and the Daily's one analytics region
+ * changes to that stage's deeper visual (`StageAnalyticsView`). This file
+ * owns both halves; `DailyRunRow` places them.
+ *
+ * Each stage kind is drawn as what its ruleset is about:
  *
  *   Standard     the course: every round in played order, each module drawn
  *                as its kind (single question, Meta Reflex, Mastery)
@@ -23,20 +28,9 @@
  * Deliberately NOT drawn, because the DTO does not carry them (HUB6.1 audit):
  * per-module points; which occurrence produced a Survival strike; earlier
  * compatible stages' scores, throughput or depths; why a Weak Areas question
- * was selected; which earlier miss a Review question replays. Each is a
- * backend gap, listed in HUB6_HANDOFF.md, and nothing stands in for it.
- *
- * PREMIUM
- * ───────
- * The server's capability decides. With analytics access (`available`,
- * `insufficient_evidence`) the stage's own visual is drawn — the course, the
- * lane, the path — with its ruleset facts. Without it the stage keeps its
- * basic record: result, terminal note and its exact questions on HUB3's
- * timeline. Weak Areas and Review draw their exact questions for everyone:
- * the questions served and their results ARE their basic record.
+ * was selected; which earlier miss a Review question replays.
  */
 import {
-  ArrowLeft,
   Check,
   Clock,
   Flag,
@@ -46,14 +40,15 @@ import {
   ShieldX,
   Timer,
   X,
-  Zap,
 } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionTimeline from "@/components/quiz/workspace/QuestionTimeline";
 import QuestionInspector from "@/components/quiz/workspace/QuestionInspector";
+import ModuleSigil, { hasModuleSigil } from "@/components/quiz/workspace/ModuleSigil";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { resolveQuestionIcon } from "@/components/quiz/workspace/questionIcons";
-import { StageAnalysis } from "@/components/quiz/workspace/HistoryAnalysis";
+import { PremiumInvitation, Unavailable } from "@/components/quiz/workspace/HistoryAnalysis";
+import { Pips } from "@/components/quiz/workspace/historyVisuals";
 import { OUTCOME_INK, stageTone, type StageTone } from "@/components/quiz/workspace/stageTheme";
 import { categoryLabel, endedByNote, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
@@ -66,7 +61,7 @@ const KNOWN: readonly string[] = ["standard", "time_trial", "survival", "weak_ar
 
 /** The stage's own one-sentence rule, from the Daily's stage identity — the
  *  same sentence its stage intro showed, with its frozen numbers. */
-function ruleSentence(stage: HistoryStage): string | null {
+export function ruleSentence(stage: HistoryStage): string | null {
   if (!KNOWN.includes(stage.kind)) return null;
   const rulesetId = stage.ruleset.id && KNOWN.includes(stage.ruleset.id) ? stage.ruleset.id : stage.kind;
   return stageIdentity({
@@ -80,7 +75,7 @@ function ruleSentence(stage: HistoryStage): string | null {
 }
 
 /** Whether the server granted this stage its analytics (Premium). */
-function stageHasAnalyticsAccess(stage: HistoryStage): boolean {
+function hasAnalyticsAccess(stage: HistoryStage): boolean {
   return stage.capability.state === "available" || stage.capability.state === "insufficient_evidence";
 }
 
@@ -118,14 +113,18 @@ function moduleName(r: ReviewRound | null): string | null {
   return r.kind === "meta_reflex" ? "Meta Reflex" : r.kind === "mastery_slice" ? "Mastery" : null;
 }
 
-function NodeArt({ round }: { round: ReviewRound | null }) {
-  if (!round) return <HelpCircle className="h-5 w-5" style={{ color: "rgba(96,68,28,0.4)" }} aria-hidden="true" />;
-  // The timeline's own resolution (`iconHint`), so a question wears the same
-  // art in Stage Focus as on its History rail.
+/**
+ * A question's face. Fallback order (HUB6.2): the backend's proven entity or
+ * category art; else the module's own sigil (Mastery, Meta Reflex); else the
+ * "no picture" mark — only when nothing authoritative exists.
+ */
+function NodeArt({ round, tone, large = false }: { round: ReviewRound | null; tone: StageTone; large?: boolean }) {
+  const size = large ? "h-6 w-6" : "h-5 w-5";
+  if (!round) return <HelpCircle className={size} style={{ color: "rgba(96,68,28,0.4)" }} aria-hidden="true" />;
   const icon = resolveQuestionIcon(round.iconHint);
-  if (icon.glyph === "meta_reflex") return <Zap className="h-5 w-5" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />;
-  if (!icon.src) return <HelpCircle className="h-5 w-5" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />;
-  return <img src={icon.src} alt="" aria-hidden="true" loading="lazy" className="h-full w-full object-cover" />;
+  if (icon.src) return <img src={icon.src} alt="" aria-hidden="true" loading="lazy" className="h-full w-full object-cover" />;
+  if (hasModuleSigil(round)) return <ModuleSigil kind={round.kind} className={size} ink={tone.ink} />;
+  return <HelpCircle className={size} style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />;
 }
 
 /** A small result mark in the node's corner: shape and glyph, not colour
@@ -179,6 +178,7 @@ function RoundNode({
   shown,
   tone,
   showModule,
+  compact,
 }: {
   round: HistoryRound;
   review: ReviewRound | null;
@@ -187,11 +187,16 @@ function RoundNode({
   shown: boolean;
   tone: StageTone;
   showModule: boolean;
+  /** A long stage (Time Trial) draws smaller tiles so its lane stays a few
+   *  controlled lines rather than a wall; touch keeps 44px targets. */
+  compact: boolean;
 }) {
   const coarse = useCoarsePointer();
   const outcome = roundOutcome(round);
   const correct = round.questions.filter((q) => q.outcome === "correct").length;
   const module = showModule ? moduleName(review) : null;
+  const tile = coarse ? "h-11 w-11" : compact ? "h-9 w-9" : "h-11 w-11";
+  const isModule = review?.kind === "mastery_slice" || review?.kind === "meta_reflex";
   return (
     <div
       className="flex flex-col items-center gap-1 transition-[opacity,transform] duration-300 motion-reduce:transition-none"
@@ -205,17 +210,15 @@ function RoundNode({
         round={review}
         position={position}
         total={total}
-        className={`relative grid ${coarse ? "h-12 w-12" : "h-11 w-11"} place-items-center rounded-lg border-2 ${
-          review?.kind === "meta_reflex" ? "rounded-full" : ""
-        }`}
+        className={`relative grid ${tile} place-items-center border-2 ${review?.kind === "meta_reflex" ? "rounded-full" : "rounded-lg"}`}
         style={{
           borderColor: outcome ? OUTCOME_INK[outcome] : "rgba(96,68,28,0.3)",
-          background: LEAGUECRAFT_INK.inset,
+          background: isModule ? tone.tint : LEAGUECRAFT_INK.inset,
           boxShadow: review?.kind === "mastery_slice" ? `0 0 0 2px #efe0bb, 0 0 0 3.5px ${tone.edge}` : undefined,
         }}
       >
         <span className={`grid h-full w-full place-items-center overflow-hidden ${review?.kind === "meta_reflex" ? "rounded-full" : "rounded-md"}`}>
-          <NodeArt round={review} />
+          <NodeArt round={review} tone={tone} />
         </span>
         <OutcomeBadge outcome={outcome} />
       </QuestionInspector>
@@ -236,10 +239,14 @@ function RoundNode({
   );
 }
 
+/** Beyond this many rounds a lane draws compact tiles (fine pointer). */
+const LONG_STAGE = 12;
+
 /**
  * A stage's rounds in played order, joined by a rule in the stage's ink that
  * reaches each node before it resolves. `start` and `end` are the lane's own
- * markers (Time Trial's bank; the way a stage ended).
+ * markers (Time Trial's bank; the way a stage ended). It wraps into as many
+ * lines as the region needs — every round stays reachable, none is cut.
  */
 function RoundPath({
   stage,
@@ -261,18 +268,24 @@ function RoundPath({
   testId: string;
 }) {
   const rounds = stage.rounds ?? [];
+  const compact = rounds.length > LONG_STAGE;
   const n = rounds.length + (end ? 1 : 0);
   const at = (i: number) => staggered(progress, i, Math.max(1, n), 0.75) > 0.02 || progress >= 1;
   const connector = (shown: boolean, key: string) => (
     <span
       key={key}
       aria-hidden="true"
-      className="mt-[22px] block h-[2px] w-3 shrink-0 origin-left self-start rounded-full transition-transform duration-200 motion-reduce:transition-none sm:w-4"
+      className={`${compact ? "mt-[17px] w-2 sm:w-2.5" : "mt-[21px] w-3 sm:w-4"} block h-[2px] shrink-0 origin-left self-start rounded-full transition-transform duration-200 motion-reduce:transition-none`}
       style={{ background: tone.edge, transform: `scaleX(${shown ? 1 : 0})` }}
     />
   );
   return (
-    <ol className="flex flex-wrap items-start gap-y-3" data-testid={testId} aria-label={`${stageKindLabel(stage.kind)} questions`}>
+    <ol
+      className="flex flex-wrap items-start gap-y-3"
+      data-testid={testId}
+      data-rounds={rounds.length}
+      aria-label={`${stageKindLabel(stage.kind)} questions`}
+    >
       {start && <li className="flex items-start">{start}{connector(at(0), "c-start")}</li>}
       {rounds.map((round, i) => (
         <li key={round.roundNumber} className="flex items-start">
@@ -285,6 +298,7 @@ function RoundPath({
             shown={at(i)}
             tone={tone}
             showModule={showModule}
+            compact={compact}
           />
         </li>
       ))}
@@ -308,7 +322,7 @@ function Marker({ icon: Icon, tone, word, testId }: { icon: typeof Flag; tone: S
   return (
     <span className="flex flex-col items-center gap-1" data-testid={testId}>
       <span
-        className="grid h-11 w-11 place-items-center rounded-full border-2"
+        className="grid h-10 w-10 place-items-center rounded-full border-2"
         style={{ borderColor: tone.edge, background: tone.tint, color: tone.ink }}
       >
         <Icon className="h-5 w-5" aria-hidden="true" />
@@ -356,7 +370,9 @@ function QuestionCards({
         return (
           <li
             key={round.roundNumber}
-            className="flex min-w-0 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-[opacity,transform] duration-300 motion-reduce:transition-none"
+            // Wraps: on the narrowest sheet at 200% text the result drops to
+            // its own line rather than past the card's edge.
+            className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-lg border px-2.5 py-2 transition-[opacity,transform] duration-300 motion-reduce:transition-none"
             style={{
               borderColor: tone.edge,
               background: tone.tint,
@@ -373,9 +389,9 @@ function QuestionCards({
               className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-md border-2"
               style={{ borderColor: outcome ? OUTCOME_INK[outcome] : "rgba(96,68,28,0.3)", background: LEAGUECRAFT_INK.inset }}
             >
-              <NodeArt round={r} />
+              <NodeArt round={r} tone={tone} />
             </QuestionInspector>
-            <span className="min-w-0 flex-1">
+            <span className="min-w-0 flex-1 basis-[6rem]">
               <span className="block text-[9.5px] font-bold uppercase tracking-[0.12em] tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }}>
                 {i + 1} / {rounds.length}
               </span>
@@ -385,7 +401,7 @@ function QuestionCards({
             </span>
             {outcome && Icon && (
               <span
-                className="flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold transition-[opacity,transform] duration-300 motion-reduce:transition-none"
+                className="ml-auto flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold transition-[opacity,transform] duration-300 motion-reduce:transition-none"
                 style={{
                   borderColor: OUTCOME_INK[outcome],
                   color: OUTCOME_INK[outcome],
@@ -406,70 +422,57 @@ function QuestionCards({
   );
 }
 
-// ------------------------------------------------------------ the stage
+// ------------------------------------------------------------ local facts (the selected row)
 
-function StageBand({ stage, tone }: { stage: HistoryStage; tone: StageTone }) {
-  const Icon = tone.icon;
-  const note = endedByNote(stage.basic.endedBy);
+/**
+ * The selected stage's QUICK facts, shown on its own row under its question
+ * rail: the stage's rule sentence (frozen numbers), and — where the server
+ * granted analytics — the ruleset's own facts: Time Trial's settled count,
+ * Survival's depth and strikes used against the frozen limit (a count; never
+ * pinned to an occurrence). The deeper visual is the analytics region's.
+ */
+export function StageLocalFacts({ stage }: { stage: HistoryStage }) {
+  const tone = stageTone(stage.kind);
   const rule = ruleSentence(stage);
-  const played = stage.basic.answered > 0 || stage.basic.score > 0;
+  const a = hasAnalyticsAccess(stage) ? stage.analytics : null;
+  const fact = (testId: string, label: string, value: React.ReactNode) => (
+    <span key={testId} className="inline-flex items-baseline gap-1.5" data-testid={testId}>
+      <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: LEAGUECRAFT_INK.faint }}>{label}</span>
+      <span className="text-[13px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{value}</span>
+    </span>
+  );
+  const facts: React.ReactNode[] = [];
+  if (a && stage.kind === "time_trial" && a.settledQuestions !== null) {
+    facts.push(fact("stage-analysis-settled", "Settled questions", a.settledQuestions));
+  }
+  if (a && stage.kind === "survival" && a.depth !== null) {
+    facts.push(fact("stage-analysis-depth", "Depth", a.depth));
+  }
+  if (a && stage.kind === "survival" && a.strikesUsed !== null) {
+    facts.push(
+      <span key="strikes" className="inline-flex items-center gap-1.5" data-testid="stage-analysis-strikes">
+        <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: LEAGUECRAFT_INK.faint }}>Strikes used</span>
+        {stage.ruleset.maxStrikes !== null && <Pips used={a.strikesUsed} max={stage.ruleset.maxStrikes} ink={tone.ink} />}
+        <span className="text-[13px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+          {stage.ruleset.maxStrikes !== null ? `${a.strikesUsed} of ${stage.ruleset.maxStrikes}` : String(a.strikesUsed)}
+        </span>
+      </span>,
+    );
+  }
+  if (!rule && facts.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="stage-focus-band">
-      <span
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2"
-        style={{ borderColor: tone.edge, background: tone.tint, color: tone.ink }}
-        aria-hidden="true"
-      >
-        <Icon className="h-5 w-5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }}>
-          Stage {stage.order + 1}
-        </div>
-        <h4 className="text-[19px] font-extrabold leading-tight" style={{ color: tone.ink, textShadow: LEAGUECRAFT_INK.press }}>
-          {stageKindLabel(stage.kind)}
-        </h4>
-        {rule && (
-          <p className="text-[11px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="stage-focus-rule">
-            {rule}
-          </p>
-        )}
-      </div>
-      <div className="flex shrink-0 items-end gap-4 tabular-nums" data-testid="stage-focus-result">
-        {played ? (
-          <>
-            {stage.kind === "standard" && (
-              <div className="text-right leading-none">
-                <div className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
-                  Score
-                </div>
-                <div className="mt-1 text-[24px] font-black" style={{ color: LEAGUECRAFT_INK.strong, textShadow: LEAGUECRAFT_INK.press }}>
-                  {stage.basic.score}
-                </div>
-              </div>
-            )}
-            <div className="text-right leading-none">
-              <div
-                className="text-[24px] font-black"
-                style={{ color: LEAGUECRAFT_INK.strong, textShadow: LEAGUECRAFT_INK.press }}
-                aria-label={`${stage.basic.correct} of ${stage.basic.answered} correct`}
-              >
-                {stage.basic.correct}/{stage.basic.answered}
-              </div>
-              {note && (
-                <div className="mt-1 text-[11px] italic" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="stage-focus-ended">
-                  {note}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <span style={{ color: LEAGUECRAFT_INK.faint }}>—</span>
-        )}
-      </div>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5" data-testid="stage-local-facts">
+      {rule && (
+        <span className="text-[11px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="stage-rule">
+          {rule}
+        </span>
+      )}
+      {facts}
     </div>
   );
 }
+
+// ------------------------------------------------------------ the region view
 
 /** The stage's own visual, by kind, for a reader with analytics access. */
 function StageVisual({
@@ -530,24 +533,32 @@ function StageVisual({
   }
 }
 
-export default function StageFocus({
+/**
+ * The analytics region's content for ONE selected stage.
+ *
+ * With analytics access, the stage's own visual (course, lane, path). Weak
+ * Areas and Review draw their exact questions for every reader — those ARE
+ * their basic record. Without access, every stage shows its exact questions
+ * and results, never a second invitation: `upgrade_required` and
+ * `temporarily_unavailable` are decided for the run and said ONCE, in its
+ * Daily Overview (HUB4's one-invitation rule). A stage whose own state
+ * differs from its run's still says so here — a retry, never an upsell.
+ */
+export function StageAnalyticsView({
   stage,
   review,
-  onBack,
   onRetry,
   runCapabilityState,
 }: {
   stage: HistoryStage;
   review: MatchReviewView | null;
-  onBack: () => void;
   onRetry?: () => void;
-  /** The run's capability state: a stage that merely inherits an upsell or an
-   *  outage from its run does not repeat it (the run's overview says it once). */
   runCapabilityState: string;
 }) {
   const tone = stageTone(stage.kind);
-  const reveal = useReveal<HTMLDivElement>({ durationMs: 1100, delayMs: 80 });
-  const access = stageHasAnalyticsAccess(stage);
+  const Icon = tone.icon;
+  const reveal = useReveal<HTMLDivElement>({ durationMs: 1100, delayMs: 180 });
+  const access = hasAnalyticsAccess(stage);
   const exact = stage.kind === "weak_areas" || stage.kind === "review";
   const drawn = stage.rounds !== null && stage.rounds.length > 0;
 
@@ -564,55 +575,37 @@ export default function StageFocus({
     );
   } else if (drawn && access && KNOWN.includes(stage.kind)) {
     body = <StageVisual stage={stage} review={review} tone={tone} progress={reveal.progress} />;
+  } else if (stage.capability.state === "upgrade_required" && runCapabilityState !== "upgrade_required") {
+    body = <PremiumInvitation testId="stage-analysis-upgrade" />;
+  } else if (stage.capability.state === "temporarily_unavailable" && runCapabilityState !== "temporarily_unavailable") {
+    body = <Unavailable onRetry={onRetry} testId="stage-analysis-unavailable" />;
   } else if (stage.questions.length > 0) {
-    // The basic record: the stage's exact questions on HUB3's own timeline.
-    body = (
-      <QuestionTimeline
-        className="justify-start"
-        matchId={stage.reviewMatchId ?? ""}
-        roundCount={stage.rounds?.length ?? 0}
-        review={review}
-      />
+    // No analytics of its own here: the stage's exact questions and results.
+    body = drawn ? (
+      <QuestionCards stage={stage} review={review} tone={tone} progress={reveal.progress} testId="stage-questions" />
+    ) : (
+      <QuestionTimeline className="justify-start" matchId={stage.reviewMatchId ?? ""} roundCount={0} review={review} />
     );
   } else {
     body = null;
   }
 
-  const inheritsRunState =
-    (stage.capability.state === "upgrade_required" || stage.capability.state === "temporarily_unavailable") &&
-    stage.capability.state === runCapabilityState;
-
   return (
     <div
       ref={reveal.ref}
-      className="space-y-4"
-      data-testid="stage-focus"
+      className="min-w-0 space-y-3"
+      data-testid="stage-analytics"
       data-stage-kind={stage.kind}
       data-stage-order={stage.order}
+      data-state={stage.capability.state}
     >
-      <button
-        type="button"
-        onClick={onBack}
-        data-testid="stage-focus-back"
-        className="-ml-1.5 inline-flex min-h-[36px] items-center gap-1.5 rounded-md px-1.5 text-[11px] font-bold uppercase tracking-[0.14em] transition-colors hover:bg-[rgba(96,68,28,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-[44px]"
-        style={{ color: LEAGUECRAFT_INK.brass }}
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Daily Overview
-      </button>
-
-      <div
-        className="rounded-lg border px-3 py-3"
-        style={{ borderColor: tone.edge, background: `linear-gradient(180deg, ${tone.tint}, transparent 70%)`, borderTopWidth: 3 }}
-      >
-        <StageBand stage={stage} tone={tone} />
-        {body && <div className="mt-4 min-w-0">{body}</div>}
-        {access || !inheritsRunState ? (
-          <div className="mt-4 border-t pt-3 empty:hidden" style={{ borderColor: tone.edge }}>
-            <StageAnalysis stage={stage} onRetry={onRetry} progress={reveal.progress} />
-          </div>
-        ) : null}
+      {/* Names the stage whose row is lit above, in the same ink and glyph. */}
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: tone.ink }}>
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }}>{stage.order + 1}</span>
+        {stageKindLabel(stage.kind)}
       </div>
+      {body}
     </div>
   );
 }

@@ -245,17 +245,14 @@ afterEach(() => {
 const runs = () => screen.getAllByTestId("daily-run-row");
 const stagesOf = (run: HTMLElement) => within(run).getAllByTestId("daily-stage-row");
 
-/** HUB6.1 — open a stage into Stage Focus, from the collapsed record's stage
- *  entry or from the Daily Focus navigator, and return the stage canvas. */
+/** HUB6.2 — select a stage by its own row (expanding the Daily if needed) and
+ *  return the run: the selected row's quick facts and the analytics region
+ *  are both inside it. Selecting the already-selected stage would return to
+ *  the Daily, so an already-lit row is left as it is. */
 function openStage(run: HTMLElement, kind: string): HTMLElement {
-  const nav = within(run).queryAllByTestId("daily-focus-stage");
-  if (nav.length > 0) {
-    fireEvent.click(nav.find((b) => b.dataset.stageKind === kind)!);
-  } else {
-    const row = stagesOf(run).find((s) => s.dataset.stageKind === kind)!;
-    fireEvent.click(within(row).getByTestId("stage-analysis-toggle"));
-  }
-  return within(run).getByTestId("stage-focus");
+  const row = stagesOf(run).find((s) => s.dataset.stageKind === kind)!;
+  if (row.dataset.selected !== "true") fireEvent.click(within(row).getByTestId("stage-analysis-toggle"));
+  return run;
 }
 
 // ============================================================ DAILY
@@ -576,12 +573,12 @@ describe("HUB4 capability — five states, five treatments", () => {
     expect(within(invite).getByRole("link", { name: /Upgrade to Mogzy Premium/ }).getAttribute("href")).toBe("/lol/premium");
     // HUB6.1: every stage is still navigable; a stage that inherits the run's
     // upsell repeats no invitation and keeps its exact questions.
-    for (const nav of within(run).getAllByTestId("daily-focus-stage")) {
+    for (const nav of within(run).getAllByTestId("stage-analysis-toggle")) {
       fireEvent.click(nav);
-      const focus = within(run).getByTestId("stage-focus");
+      const focus = within(run).getByTestId("stage-analytics");
       expect(within(focus).queryByTestId("stage-analysis-upgrade")).toBeNull();
       expect(within(focus).queryByRole("link", { name: /Premium/ })).toBeNull();
-      expect(within(focus).getByTestId("stage-focus-result")).toBeTruthy();
+      expect(within(run).getByTestId("stage-analytics")).toBeTruthy();
     }
   });
 
@@ -593,9 +590,9 @@ describe("HUB4 capability — five states, five treatments", () => {
     expect(analysis.textContent).toContain("0 of 3 matching runs");
     expect(analysis.textContent).not.toMatch(/Premium|Upgrade/);
     // Stages open from the Focus navigator, also without a paywall.
-    for (const nav of within(run).getAllByTestId("daily-focus-stage")) {
+    for (const nav of within(run).getAllByTestId("stage-analysis-toggle")) {
       fireEvent.click(nav);
-      expect(within(run).getByTestId("stage-focus").textContent).not.toMatch(/Premium|Upgrade/);
+      expect(within(run).getByTestId("stage-analytics").textContent).not.toMatch(/Premium|Upgrade/);
     }
   });
 
@@ -604,7 +601,7 @@ describe("HUB4 capability — five states, five treatments", () => {
     const entry = within(stagesOf(run)[0]).getByTestId("stage-analysis-toggle");
     expect(entry).toHaveAccessibleName(/stage analysis$/);
     fireEvent.click(entry);
-    const focus = within(run).getByTestId("stage-focus");
+    const focus = within(run).getByTestId("stage-analytics");
     expect(focus.dataset.stageOrder).toBe("0");
   });
 
@@ -634,10 +631,10 @@ describe("HUB4 capability — five states, five treatments", () => {
     expect(stagesOf(run).length).toBe(4);
     fireEvent.click(within(run).getByTestId("daily-analysis-toggle"));
     expect(within(run).queryByTestId("daily-analysis")).toBeNull();
-    for (const nav of within(run).getAllByTestId("daily-focus-stage")) {
+    for (const nav of within(run).getAllByTestId("stage-analysis-toggle")) {
       fireEvent.click(nav);
       expect(within(run).queryByTestId("stage-analysis")).toBeNull();
-      expect(within(run).getByTestId("stage-focus-result")).toBeTruthy();
+      expect(within(run).getByTestId("stage-analytics")).toBeTruthy();
     }
   });
 });
@@ -728,7 +725,7 @@ describe("HUB4 analytics — the server's numbers, and only them", () => {
     await waitFor(() => expect(runs().length).toBe(1));
     fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
     let text = screen.getByTestId("daily-history").textContent!;
-    for (const nav of within(runs()[0]).getAllByTestId("daily-focus-stage")) {
+    for (const nav of within(runs()[0]).getAllByTestId("stage-analysis-toggle")) {
       fireEvent.click(nav);
       text += screen.getByTestId("daily-history").textContent!;
     }
@@ -812,7 +809,9 @@ describe("HUB4 layout — HUB3's self-sizing row pattern", () => {
     expect(run.className).toContain("[container-type:inline-size]");
     for (const stage of stagesOf(run)) {
       expect(stage.className).toContain("[container-type:inline-size]");
-      const line = stage.firstElementChild as HTMLElement;
+      // The ruled line holds the stage's name (HUB6.2: the row's first child
+      // is now its selection wash).
+      const line = within(stage).getByTestId("stage-analysis-toggle").parentElement as HTMLElement;
       expect(line.className).toContain("flex-wrap");
       expect(line.className).toContain("[@container(min-width:34rem)]:flex-nowrap");
       const timeline = within(stage).getByTestId("question-timeline");
@@ -828,7 +827,7 @@ describe("HUB4 layout — HUB3's self-sizing row pattern", () => {
     const { source } = sourceOf({ first: page([wireRun("r5", FIVE)]) });
     renderHub(source);
     await waitFor(() => expect(runs().length).toBe(1));
-    const line = stagesOf(runs()[0])[0].firstElementChild as HTMLElement;
+    const line = within(stagesOf(runs()[0])[0]).getByTestId("stage-analysis-toggle").parentElement as HTMLElement;
     expect(line.className).toContain("[@container(min-width:44rem)]:flex-nowrap");
     expect(within(runs()[0]).getAllByTestId("daily-analysis-toggle")[0].className).toContain("min-h-[44px]");
   });
@@ -893,109 +892,150 @@ describe("HUB4 — the legacy #trends link lands on the newest run's analysis", 
 
 // ============================================================ HUB6.1 MULTI-LAYER
 
-describe("HUB6.1 — History → Daily Focus → Stage Focus → Question", () => {
+describe("HUB6.2 — one Daily entry that grows: History → Daily → Stage → Question", () => {
   const load = async (records: unknown[], over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = {}) => {
     const { source } = sourceOf({ first: page(records) });
     renderHub(source, over);
     await waitFor(() => expect(runs().length).toBe(records.length));
   };
-  const focused = () => runs().filter((r) => r.dataset.focused === "true");
+  const expanded = () => runs().filter((r) => r.dataset.focused === "true");
+  /** Every stage row of a run, each with its question rail — the backbone. */
+  const backbone = (run: HTMLElement) =>
+    stagesOf(run).map((s) => ({
+      kind: s.dataset.stageKind,
+      icons: within(s).getAllByTestId("timeline-icon").length,
+    }));
 
-  it("only one Daily is in Focus: opening another collapses the first", async () => {
-    await load([wireRun("a", FIVE), wireRun("b", FOUR, { completedAt: "2026-09-19T18:00:00+00:00" })]);
-    fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
-    expect(focused()).toEqual([runs()[0]]);
-    fireEvent.click(within(runs()[1]).getByTestId("daily-analysis-toggle"));
-    expect(focused()).toEqual([runs()[1]]);
-    expect(screen.getAllByTestId("daily-focus")).toHaveLength(1);
-    // Collapsing leaves nothing in Focus, and the list entries intact.
-    fireEvent.click(within(runs()[1]).getByTestId("daily-analysis-toggle"));
-    expect(focused()).toHaveLength(0);
-    expect(stagesOf(runs()[1])).toHaveLength(4);
+  it("1, 2 — collapsed and expanded, the entry holds every stage and every stage's question icons, in place", async () => {
+    await load([wireRun("a", FIVE, { capability: { state: "available", reason_code: null }, analytics: goldenAnalytics() })]);
+    const run = runs()[0];
+    const collapsed = backbone(run);
+    expect(collapsed.map((s) => s.kind)).toEqual(FIVE);
+    expect(collapsed.every((s) => s.icons > 0)).toBe(true);
+    const rowsBefore = stagesOf(run);
+    fireEvent.click(within(run).getByTestId("daily-analysis-toggle"));
+    // The SAME row elements — nothing was rebuilt elsewhere.
+    expect(stagesOf(run)).toEqual(rowsBefore);
+    expect(backbone(run)).toEqual(collapsed);
+    // …and the new room holds the Daily's analytics.
+    expect(within(run).getByTestId("daily-analytics-region").dataset.view).toBe("overview");
+    expect(within(run).getByTestId("daily-analysis")).toBeTruthy();
+    // No second stage representation (HUB6.1's navigator strip is gone).
+    expect(within(run).queryByTestId("daily-focus-nav")).toBeNull();
   });
 
-  it("a stage entry opens Focus straight at that stage", async () => {
-    await load([wireRun("a", FIVE)]);
-    const focus = openStage(runs()[0], "survival");
-    expect(focus.dataset.stageKind).toBe("survival");
-    expect(runs()[0].dataset.focused).toBe("true");
-    const current = within(runs()[0]).getAllByTestId("daily-focus-stage").find((b) => b.getAttribute("aria-current") === "page");
-    expect(current?.dataset.stageKind).toBe("survival");
+  it("3, 4, 5 — selecting any stage keeps every other stage and its icons; the chosen row is lit in place with its quick facts", async () => {
+    await load([wireRun("a", FIVE, {
+      stages: FIVE.map((k) => ({ capability: { state: "available", reason_code: null }, analytics: stageAnalytics(k) })),
+    })]);
+    const run = runs()[0];
+    const collapsed = backbone(run);
+    for (const kind of FIVE) {
+      openStage(run, kind);
+      expect(backbone(run)).toEqual(collapsed);
+      const rows = stagesOf(run);
+      const lit = rows.filter((r) => r.dataset.selected === "true");
+      expect(lit.map((r) => r.dataset.stageKind)).toEqual([kind]);
+      expect(within(lit[0]).getByTestId("stage-analysis-toggle")).toHaveAttribute("aria-pressed", "true");
+      expect(within(lit[0]).getByTestId("stage-local-facts")).toBeTruthy();
+      // Only the selected row carries quick facts.
+      expect(within(run).getAllByTestId("stage-local-facts")).toHaveLength(1);
+    }
   });
 
-  it("Daily Overview ↔ Stage Focus share ONE canvas; a stage replaces the overview, never stacks under it", async () => {
+  it("6, 7 — the analytics region switches Daily → stage → Daily in ONE region, without collapsing", async () => {
     await load([wireRun("a", FIVE, { capability: { state: "available", reason_code: null }, analytics: goldenAnalytics() })]);
     const run = runs()[0];
     fireEvent.click(within(run).getByTestId("daily-analysis-toggle"));
-    const canvas = within(run).getByTestId("daily-focus-canvas");
-    expect(canvas.dataset.view).toBe("overview");
-    expect(within(canvas).getByTestId("daily-analysis")).toBeTruthy();
-
+    const region = within(run).getByTestId("daily-analytics-region");
     for (const kind of FIVE) {
       openStage(run, kind);
-      // The same canvas element, now showing exactly one stage.
-      expect(within(run).getByTestId("daily-focus-canvas")).toBe(canvas);
-      expect(canvas.dataset.view).toBe("stage");
-      expect(canvas.dataset.stageKind).toBe(kind);
-      expect(within(run).getAllByTestId("stage-focus")).toHaveLength(1);
+      expect(within(run).getAllByTestId("daily-analytics-region")).toEqual([region]);
+      expect(region.dataset.view).toBe("stage");
+      expect(region.dataset.stageKind).toBe(kind);
+      expect(within(run).getAllByTestId("stage-analytics")).toHaveLength(1);
       expect(within(run).queryByTestId("daily-analysis")).toBeNull();
     }
-
-    fireEvent.click(within(run).getByTestId("stage-focus-back"));
-    expect(canvas.dataset.view).toBe("overview");
-    expect(within(run).queryByTestId("stage-focus")).toBeNull();
+    fireEvent.click(within(run).getByTestId("daily-overview-return"));
+    expect(region.dataset.view).toBe("overview");
     expect(within(run).getByTestId("daily-analysis")).toBeTruthy();
-    // Still the same Daily in Focus.
+    expect(stagesOf(run).every((r) => r.dataset.selected === "false")).toBe(true);
+    expect(run.dataset.focused).toBe("true");
+    // Selecting the lit stage again also returns to the Daily.
+    openStage(run, "survival");
+    fireEvent.click(within(stagesOf(run).find((r) => r.dataset.stageKind === "survival")!).getByTestId("stage-analysis-toggle"));
+    expect(region.dataset.view).toBe("overview");
     expect(run.dataset.focused).toBe("true");
   });
 
-  it("the navigator is the persisted stage sequence: 4 on a first Daily, 5 otherwise, in saved order", async () => {
-    await load([
-      wireRun("a", ["survival", "weak_areas", "standard", "time_trial", "review"]),
-      wireRun("b", FOUR, { completedAt: "2026-09-19T18:00:00+00:00" }),
-    ]);
+  it("10 — only one Daily is expanded: opening another collapses the first", async () => {
+    await load([wireRun("a", FIVE), wireRun("b", FOUR, { completedAt: "2026-09-19T18:00:00+00:00" })]);
     fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
-    expect(within(runs()[0]).getAllByTestId("daily-focus-stage").map((b) => b.dataset.stageKind)).toEqual([
-      "survival", "weak_areas", "standard", "time_trial", "review",
-    ]);
+    expect(expanded()).toEqual([runs()[0]]);
+    openStage(runs()[1], "survival");
+    expect(expanded()).toEqual([runs()[1]]);
+    expect(screen.getAllByTestId("daily-analytics-region")).toHaveLength(1);
     fireEvent.click(within(runs()[1]).getByTestId("daily-analysis-toggle"));
-    const four = within(runs()[1]).getAllByTestId("daily-focus-stage").map((b) => b.dataset.stageKind);
-    expect(four).toEqual(FOUR);
-    expect(four).not.toContain("weak_areas");
+    expect(expanded()).toHaveLength(0);
+    expect(screen.queryByTestId("daily-analytics-region")).toBeNull();
+    expect(backbone(runs()[1]).map((s) => s.kind)).toEqual(FOUR);
   });
 
-  it("a question opened from Stage Focus uses the existing Popover, and closing it keeps the same focus", async () => {
-    const frozen = { "m-a-4": reviewOf("m-a-4", 3) };
+  it("11, 12 — a first Daily stays four stages and a normal Daily five, at every layer", async () => {
+    await load([wireRun("a", FIVE), wireRun("b", FOUR, { completedAt: "2026-09-19T18:00:00+00:00" })]);
+    for (const [run, kinds] of [[runs()[0], FIVE], [runs()[1], FOUR]] as const) {
+      expect(backbone(run).map((s) => s.kind)).toEqual(kinds);
+      openStage(run, "review");
+      expect(backbone(run).map((s) => s.kind)).toEqual(kinds);
+    }
+    expect(backbone(runs()[1]).map((s) => s.kind)).not.toContain("weak_areas");
+  });
+
+  // Radix's popper is slow in jsdom (HUB3 documented it); three open/close
+  // cycles need more than the default budget under a parallel run.
+  it("8, 9 — the Popover opens from a collapsed rail, a selected stage's analytics and another stage's rail; closing keeps the view", { timeout: 240_000 }, async () => {
+    const frozen = { "m-a-4": reviewOf("m-a-4", 3), "m-a-0": reviewOf("m-a-0", 3) };
     await load([wireRun("a", FIVE)], { rankedReviewPreview: frozen });
     const run = runs()[0];
-    const focus = openStage(run, "review");
-    const question = within(focus).getAllByTestId("inspector-question")[0];
-    expect(question.dataset.loaded).toBe("true");
-    fireEvent.click(question);
-    expect(await screen.findByTestId("question-review-popover")).toBeTruthy();
-    fireEvent.keyDown(screen.getByTestId("question-review-popover"), { key: "Escape" });
-    await waitFor(() => expect(screen.queryByTestId("question-review-popover")).toBeNull());
-    expect(run.dataset.focused).toBe("true");
-    expect(within(run).getByTestId("stage-focus").dataset.stageKind).toBe("review");
+    const openAndClose = async (trigger: HTMLElement) => {
+      fireEvent.click(trigger);
+      expect(await screen.findByTestId("question-review-popover")).toBeTruthy();
+      fireEvent.keyDown(screen.getByTestId("question-review-popover"), { key: "Escape" });
+      await waitFor(() => expect(screen.queryByTestId("question-review-popover")).toBeNull());
+    };
+    const railIcon = (kind: string) =>
+      within(stagesOf(run).find((s) => s.dataset.stageKind === kind)!).getAllByTestId("timeline-icon")[0];
+    // Collapsed.
+    await openAndClose(railIcon("review"));
+    expect(run.dataset.focused).toBe("false");
+    // A stage selected: from the analytics region, and from ANOTHER stage's
+    // rail — which stays live while Review is selected. (Expanded-overview
+    // rails are the same elements; the one-canvas test proves that.)
+    openStage(run, "review");
+    await openAndClose(within(within(run).getByTestId("stage-analytics")).getAllByTestId("inspector-question")[0]);
+    await openAndClose(railIcon("standard"));
+    expect(run.dataset.view).toBe("stage");
+    expect(within(run).getByTestId("stage-analytics").dataset.stageKind).toBe("review");
   });
 
-  it("on touch the same question opens in HUB3's Sheet, and closing it keeps the same focus", async () => {
+  it("8, 9 — on touch the same questions open in HUB3's Sheet, and closing it keeps the view", async () => {
     coarse = true;
     const frozen = { "m-a-3": reviewOf("m-a-3", 3) };
     await load([wireRun("a", FIVE)], { rankedReviewPreview: frozen });
     const run = runs()[0];
-    const focus = openStage(run, "weak_areas");
-    const question = within(focus).getAllByTestId("inspector-question")[0];
+    openStage(run, "weak_areas");
+    const question = within(within(run).getByTestId("stage-analytics")).getAllByTestId("inspector-question")[0];
     expect(question.getAttribute("aria-haspopup")).toBe("dialog");
     fireEvent.click(question);
     const dialog = await screen.findByRole("dialog");
     expect(dialog.textContent).toContain("Daily prompt 1");
     fireEvent.click(screen.getByTestId("question-review-sheet-close"));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(within(run).getByTestId("stage-focus").dataset.stageKind).toBe("weak_areas");
+    expect(within(run).getByTestId("stage-analytics").dataset.stageKind).toBe("weak_areas");
+    expect(stagesOf(run).find((r) => r.dataset.selected === "true")?.dataset.stageKind).toBe("weak_areas");
   });
 
-  it("Stage Focus has no question-type or category bar farm", async () => {
+  it("16 — no removed analytics reappear: no question-type/category bars, signals or recovery tile, anywhere", async () => {
     const analytics = (kind: string) => ({
       ...stageAnalytics(kind),
       family_performance: [
@@ -1007,33 +1047,37 @@ describe("HUB6.1 — History → Daily Focus → Stage Focus → Question", () =
     });
     await load([
       wireRun("a", FIVE, {
+        capability: { state: "available", reason_code: null },
+        analytics: goldenAnalytics(),
         stages: FIVE.map((k) => ({ capability: { state: "available", reason_code: null }, analytics: analytics(k) })),
       }),
     ]);
+    const run = runs()[0];
+    fireEvent.click(within(run).getByTestId("daily-analysis-toggle"));
+    const texts = [run.textContent!];
     for (const kind of FIVE) {
-      const focus = openStage(runs()[0], kind);
-      expect(within(focus).queryByTestId("history-bar")).toBeNull();
-      expect(within(focus).queryByTestId("history-families")).toBeNull();
-      expect(within(focus).queryByTestId("history-categories")).toBeNull();
-      expect(focus.textContent).not.toMatch(/Question types|Ability cooldown|Compared with/);
+      openStage(run, kind);
+      texts.push(run.textContent!);
+      expect(within(run).queryByTestId("history-bar")).toBeNull();
+    }
+    for (const t of texts) {
+      expect(t).not.toMatch(/Question types|Ability cooldown|Champion Base Stats|Learning signals|Recurring weakness|Recovered|Review recovery|Compared with/);
     }
   });
 
-  it("Standard draws its course from HUB2.1 rounds, one node per round, module questions kept together", async () => {
+  it("Standard's analytics follow HUB2.1 rounds: one node per round, module questions kept together, no points", async () => {
     await load([
       wireRun("a", ["standard"], {
         stages: [{ occurrences: [[1, 0], [2, 0], [2, 1], [3, 0]], correct: 3, capability: { state: "available", reason_code: null }, analytics: stageAnalytics("standard") }],
       }),
     ]);
-    const focus = openStage(runs()[0], "standard");
-    const nodes = within(within(focus).getByTestId("stage-course")).getAllByTestId("stage-path-node");
+    openStage(runs()[0], "standard");
+    const nodes = within(within(runs()[0]).getByTestId("stage-course")).getAllByTestId("stage-path-node");
     expect(nodes.map((n) => n.dataset.round)).toEqual(["1", "2", "3"]);
-    // Round 2 settled two questions: one node, its own C/A.
     expect(nodes[1].textContent).toContain("2/2");
     expect(nodes[1].dataset.outcome).toBe("correct");
     expect(nodes[2].dataset.outcome).toBe("incorrect");
-    // No module points exist in the DTO, so none are printed.
-    expect(focus.textContent).not.toMatch(/\bpts\b|points/i);
+    expect(within(runs()[0]).getByTestId("stage-analytics").textContent).not.toMatch(/\bpts\b|points/i);
   });
 });
 
@@ -1077,5 +1121,25 @@ describe("HUB6.1 — reduced motion", () => {
     expect(currentScale(analysis)).toContain("scale(1)");
     expect(within(analysis).getByTestId("daily-analysis-best").textContent).toContain("60");
     expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toMatch(/pp/);
+  });
+
+  it("HUB6.2 — with motion, the region mounts closed and grows open on the next frame", async () => {
+    stubMotion();
+    await openFocus();
+    const region = () => within(runs()[0]).getByTestId("daily-analytics-region").closest("[data-open]") as HTMLElement;
+    // The first frame is the closed state the transition grows from…
+    expect(region().dataset.open).toBe("false");
+    // …and the next frame opens it.
+    await waitFor(() => expect(region().dataset.open).toBe("true"));
+  });
+
+  it("HUB6.2 — under Reduce Motion the region is open at once, and collapsing removes it at once", async () => {
+    stubMotion();
+    document.documentElement.classList.add("reduce-motion");
+    await openFocus();
+    const region = within(runs()[0]).getByTestId("daily-analytics-region").closest("[data-open]") as HTMLElement;
+    expect(region.dataset.open).toBe("true");
+    fireEvent.click(within(runs()[0]).getByTestId("daily-analysis-toggle"));
+    expect(within(runs()[0]).queryByTestId("daily-analytics-region")).toBeNull();
   });
 });

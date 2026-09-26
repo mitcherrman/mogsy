@@ -38,6 +38,7 @@ import { ChevronLeft, ChevronRight, HelpCircle, Zap } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionReviewCard from "@/components/quiz/workspace/QuestionReviewCard";
+import ModuleSigil from "@/components/quiz/workspace/ModuleSigil";
 import {
   QuestionReviewSheet,
   useCoarsePointer,
@@ -90,6 +91,9 @@ function IconFace({ round }: { round: ReviewRound | null }) {
     );
   }
   if (!icon.src) {
+    // HUB6.2: a Mastery module with no proven art wears its module sigil,
+    // not the "no picture" question mark.
+    if (round.kind === "mastery_slice") return <ModuleSigil kind="mastery_slice" />;
     return (
       <HelpCircle
         className="h-4 w-4"

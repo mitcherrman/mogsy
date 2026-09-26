@@ -453,3 +453,183 @@ The stage rule sentences are `stageIdentity`'s existing copy.
 2. Survival and Mastery rounds still show HUB3's generic "?" art (no slice icon).
 3. Owner naming: "Splash" does not exist as a module kind. Single-question rounds are drawn plain.
 4. Carried over: hero recent-record duplication, real-device checks, real-account certification.
+
+
+## HUB6.2 — In-place Daily expansion + persistent stage history
+
+**Base:** HUB6.1 `9477617d`. HUB6.2 is one new local commit; nothing amended, nothing pushed.
+
+### Owner correction
+
+HUB6.1 turned an opened Daily into a different screen:
+- a new header;
+- a top stage-navigator strip that replaced the stage rows;
+- a stage "screen" (band plus ← back) that replaced the Daily's content.
+
+The owner's model is the opposite. **The collapsed History entry itself grows.** Its header, every stage row and every question rail stay exactly where they were at every layer, and analytics are added in new room around them.
+
+### Final continuity model (`DailyRunRow.tsx`, one structure at every layer)
+
+```
+┌ header (date · score · ring · C/A)            ← unchanged, same size, same place
+├ stage rows on the spine, each with its HUB3 question rail   ← ALWAYS present
+│   └ selected row: lit in its stage's ink (wash + spine-side rule, filled node,
+│     bolder name), other rows dimmed but whole; quick facts appear UNDER its own
+│     icons (rule sentence · TT settled · Survival depth + strike pips)
+├ footer: [Run analysis ▾/▴]                 [← Daily Overview]  (only when a stage is selected)
+└ analytics region (expanded only), grown out of the card:
+     Daily Overview  (trend chart · Previous Daily · personal best · average)
+   | the selected stage's visual (course · lane · path · exact question cards)
+```
+
+**How it behaves:**
+- **Expand:** "Run analysis" expands the entry. The card's edges move outward (`-mx-1.5 sm:-mx-2.5`, deeper shadow, brass edge), and the region grows beneath the stages, grid rows 0fr → 1fr over 320ms. Charts start after that; the reveal is gated on visibility, with a 120–180ms delay.
+- **Select a stage:** click its **own name in its own row**. The rows are the navigator, so no strip exists. Selecting from a collapsed entry expands it at that stage.
+- **Return to the Daily:** click "Daily Overview", or click the lit stage again. Nothing collapses.
+- **Only one Daily expanded:** the section owns `{runId, view}`, and opening another collapses the first.
+- **Questions:** the Popover (fine) or Sheet (touch) opens from any rail icon, collapsed or expanded, from any stage's rail while another is selected, and from the analytics region's nodes and cards. Closing it leaves the view and selection untouched.
+- **Capability:** with Premium the stage's own visual shows. Without it, every stage shows its exact questions and results. The one invitation (or retry) appears only in the Daily Overview, per HUB4's one-invitation rule; a stage whose state differs from its run's still says so in the region.
+
+### Component changes
+
+| File | Change |
+|---|---|
+| `DailyRunRow.tsx` | Rewritten as the single continuous structure: selectable rows, in-place emphasis, local facts, footer return, a growing region |
+| `DailyFocus.tsx` | **Deleted** (HUB6.1's replacement screen and navigator) |
+| `StageFocus.tsx` → `StageAnalytics.tsx` | The band and back button are gone. `StageAnalyticsView` is region content; `StageLocalFacts` is the selected row's quick facts. Compact tiles for long stages (>12 rounds, fine pointer); question cards wrap on narrow sheets |
+| `HistoryAnalysis.tsx` | The stage-facts panel moved to the row. `PremiumInvitation` and `Unavailable` are exported |
+| `ModuleSigil.tsx` (new) | A deliberate Mastery module sigil (stacked layers) and the Meta Reflex bolt |
+| `QuestionTimeline.tsx` | One line: a `mastery_slice` round with no proven art shows the sigil instead of "?" |
+| `index.css` | `history-region` (grow) and `history-facts-in`, both off under either reduced-motion switch. `history-unfold` was removed (unused) |
+
+### Mastery and fallback art
+
+- **Fallback order:** backend-proven entity or category art (`iconHint.icon` / category tile), then the module sigil keyed on the review's authoritative `round.kind` (Mastery → layers, Meta Reflex → bolt), then "?".
+- "?" is now used only when a curated question's legacy category bridge resolves to no tile (e.g. "Objectives & Timers" bank questions). That is the HUB3 bridge's honest "no picture".
+- No art is ever built from a subject name (`questionIcons.ts` forbids it).
+
+### Realistic-stage fixture: the "Full-length Daily" preview profile
+
+- **New account:** `FULL_DAILY_FACTS`, `demo-full-daily` / `full-*`, generated through **HUB2.3's real route** (`1ffa624c`, backend worktree untouched). It is golden scenario `full_daily`.
+- **Existing scenarios:** byte-identical. Only `input_sha256` changed.
+
+| Run | Stages | Time Trial | Standard | Survival |
+|---|---|---|---|---|
+| 1 (first Daily) | 4 | 22 settled, completed | **10 modules**: Splash ×4, Meta Reflex (5 cards), Splash ×3, Meta Reflex, 4-question Mastery slice | 6 rounds (single + 2–3-question slices), 2 misses, completed |
+| 2 | 5 | **28 settled, bank ran out** | the same 10-module recipe | 8 rounds, mixed, **3 strikes → out of mistakes**, depth 13 |
+
+**Fixture machinery:**
+- The `reflex:` namespace (`REFLEX_NAMESPACE`), with 10 item-cost Meta Reflex cards (`item_cost_duel`, family `item_cost_comparison`).
+- The builder accepts a 5-card Meta Reflex round (`META_REFLEX_CARDS`) and freezes `meta_reflex` review rounds.
+- Weak Areas selects only run 1's misses, and Review replays only same-run misses. The builder enforces both.
+- Tests prove:
+  - the shapes above;
+  - the recipe order of round kinds;
+  - one side costing more on every card;
+  - every frozen review, including Meta Reflex, parses through production `readMatchReview`.
+
+**Correction to HUB6.1:** "Splash" **is** a real Standard V1 unit (`daily_challenge/recipe.py::STANDARD_V1_UNITS`). It reviews as round kind `quiz`, so a Splash is drawn as a single-question node. The unit name is frozen in the stage composition but not projected into History, so it is not printed.
+
+### Tests
+
+**New HUB6.2 block** (`DailyHistory.test.tsx`), numbered to the owner's list:
+
+| # | What it proves |
+|---|---|
+| 1, 2 | Collapsed and expanded keep the same row elements and every rail; the region opens and no navigator exists |
+| 3–5 | Every stage selection keeps every stage and its icons; exactly one row is lit, `aria-pressed`, with local facts |
+| 6, 7 | One region Daily → stage → Daily; the return keeps the Daily expanded; re-clicking the lit stage returns |
+| 8, 9 | The Popover opens from a collapsed rail, the selected stage's analytics and another stage's rail, and the view is kept after closing (240s budget, as for HUB3's slow jsdom popper); the Sheet does the same on touch |
+| 10 | One Daily expanded |
+| 11, 12 | 4 and 5 stages at every layer |
+| 16 | No bars, signals or recovery anywhere |
+| — | Standard nodes follow rounds |
+| 15 | Reduced motion: the region mounts closed and grows open with motion; under Reduce Motion it is open at once and removed at once; the chart is final at once |
+
+**New (`LobbyPreviewPage.history.test.tsx`, real golden):**
+- **13:** a 28-question Time Trial, all 28 reachable by paging its rail, 28 lane nodes, ending on the bank, settled 28.
+- **14:** a ten-module Standard, all 10 reachable, module kinds in recipe order, Meta Reflex 4/5, Mastery 3/4 with the sigil.
+- **Long Survival:** 8 nodes, strikes 3 of 3, depth 13, and nothing pinned to a question.
+
+**New (`timmyHistory.test.ts`):** full-length fixture shapes; `reflex` namespace.
+
+**Updated to the continuity model:**
+- HUB4 Stage/capability tests: stage selection by row, region content.
+- Layout tests: the ruled line is the name button's parent.
+- Lobby-preview E/J, L, N, P.
+
+**Results:**
+- History, workspace, lobby-preview, `lib/history` and lobby-analytics suites: all pass.
+- Broad regression: **2692 passed / 7 failed, 170 files**, the same 7 baselines as HUB6.1:
+  - `App.routing-contract` ×2;
+  - `Quiz.hub` "one h1";
+  - `Quiz.rankedRole` "commits NOTHING for Practice";
+  - `playModeCard.styles` ×2 (CRLF);
+  - the `QuestionReviewHost` popper timeout.
+- `tsc`: the 2 baseline errors only.
+- ESLint on touched files: clean.
+
+### Responsive certification
+
+Playwright/Edge against `/dev/lobby-preview`, reduced motion, "Full-length Daily" unless noted. The probe:
+1. measures collapsed;
+2. expands;
+3. selects all 5 stages from their rows;
+4. opens a question from the region, closes it and checks the view;
+5. returns to the Daily;
+6. opens the second Daily.
+
+"Rail" is overhang of any rail element past its **own stage row**; "region" is anything past the analytics region.
+
+| Viewport | Page | Rail | Region | Card height (collapsed → overview → stages) | Rows + rails at every step | Region nodes TT/Std/Surv/WA/Rev | Host | Min target |
+|---|---|---|---|---|---|---|---|---|
+| 320×568 | 0 | 0 | 0 | 770 → 1243 → 1121–1409 | ✓ | 28/10/8/3/4 | Sheet ✓ | 44 |
+| 375×667 | 0 | 0 | 0 | 726 → 1199 → 1077–1252 | ✓ | 28/10/8/3/4 | Sheet ✓ | 44 |
+| 390×844 | 0 | 0 | 0 | 726 → 1199 → 1054–1252 | ✓ | 28/10/8/3/4 | Sheet ✓ | 44 |
+| 412×915 | 0 | 0 | 0 | 726 → 1199 → 1002–1200 | ✓ | 28/10/8/3/4 | Sheet ✓ | 44 |
+| 667×375 | 0 | 0 | 0 | 726 → 1118 → 955–1072 | ✓ | 28/10/8/3/4 | Sheet ✓ | 44 |
+| 768×1024 | 0 | 0 | 0 | 324 → 716 → 493–579 | ✓ | 28/10/8/3/4 | Popover ✓ | 28 |
+| 1280×720 | 0 | 0 | 0 | 324 → 583 → 490–553 | ✓ | 28/10/8/3/4 | Popover ✓ | 28 |
+| 1440×900 | 0 | 0 | 0 | 324 → 583 → 490–553 | ✓ | 28/10/8/3/4 | Popover ✓ | 28 |
+| 390×844, 200% | 0 | 0 | 0 | 1100 → 1898 → 2007–3054 | ✓ | 28/10/8/3/4 | Sheet ✓ | 44 |
+| 320×568, 200% | 58* | 17** | 0 | 1119 → 1933 → 2038–4757 | ✓ | 28/10/8/3/4 | Sheet ✓ | 44 |
+| Timmy 320 / 390 / 1280 | 0 | 0 | 0 | — | ✓ | 6/4/4/3/3 | ✓ | 44/44/28 |
+
+Every step also passed these checks:
+- after closing a question the view stays on the stage;
+- the return lands on the Daily Overview;
+- opening Daily 2 collapses Daily 1.
+
+\* Present **before** any History interaction: the global HUD header at 200% text (`global-hud-right`), not HUB6.
+
+\*\* HUB3's minimum-one rail (one 88px icon plus two 88px arrows) at the extreme size; it stays inside the card's own padding (HUB4 recorded the same rule).
+
+**Fix during certification:** at 320/200% the Weak Areas/Review question cards' result chips overhung by 37–46px. The cards now wrap, and the chip drops to its own line.
+
+### Screenshots (before → after)
+
+**HUB6.1 before:**
+- Timmy at 1440: `b61-collapsed`, `b61-expanded` (the new header and top strip replaced the rows), `b61-standard` (the stage band replaced the Daily).
+- Full-length Time Trial: `b61-full-tt`.
+- Mobile at 390: `b61-m-*`.
+
+**HUB6.2 after:**
+- **1440:** `a62-collapsed`, `a62-expanded` (the same rows in the same places, with the region below), `a62-standard` (the Standard row lit with its rule line, region = course).
+- **Full-length:** `a62-full-standard` (10 modules, 2 Meta Reflex, Mastery sigil), `a62-full-tt` (a 28-node lane in two compact lines), `a62-full-surv`.
+- **390:** `a62m-collapsed`, `a62m-expanded`, `a62m-survival` (lit row with depth and strike pips, path below).
+- **768:** `a62t-standard`.
+
+### Backend gaps (unchanged, not HUB6's to solve)
+
+1. **Historical per-stage series:** earlier compatible Standard scores, Time Trial `settled_questions`, Survival depth and strikes.
+2. **Per-occurrence strike attribution:** `questions[].strike_index` / `is_strike`.
+3. **Weak Areas selection provenance:** source question result, run, date and outcome, plus policy version.
+4. **Review source linkage:** source `question_result_id`, stage kind and order, outcome, and allocation ordinal.
+5. **Per-module points:** `rounds[].score`.
+6. **(new)** **The Standard unit name** (Splash / Meta Reflex / slice) is frozen in the stage composition but not projected. Module *kind* covers the shape today.
+
+### Remaining launch-facing visual items
+
+- Curated bank questions whose legacy category resolves to no tile still show "?". This is the HUB3 legacy bridge (e.g. "Objectives & Timers"), not History.
+- At 320/200% a 28-question lane is very tall (2 nodes per line). It is usable and every node is reachable, but a denser lane for extreme zoom could be a later refinement.
+- Carried over: the hero's duplicate recent record, real-device checks, real-account certification.

@@ -187,6 +187,11 @@ def main():
     scenarios["newcomer"] = walk(
         client_for(seed(newcomer["rows"]), newcomer["user_id"], Cap(True), now), limit)
 
+    # HUB6.2 — full-length stage shapes, Premium.
+    full = accounts["full_daily"]
+    scenarios["full_daily"] = walk(
+        client_for(seed(full["rows"]), full["user_id"], Cap(True), now), limit)
+
     commit = subprocess.run(["git", "-C", BACKEND, "rev-parse", "HEAD"],
                             capture_output=True, text=True, check=True).stdout.strip()
     probe = probe_mixed_generator_versions(now)

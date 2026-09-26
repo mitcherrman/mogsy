@@ -48,7 +48,7 @@ import {
   demoRoleDimension,
 } from "./demoLobbyAnalytics";
 
-const PROFILES: LobbyPreviewProfile[] = ["timmy", "firstDaily", "newcomer"];
+const PROFILES: LobbyPreviewProfile[] = ["timmy", "firstDaily", "fullDaily", "newcomer"];
 const ENTITLEMENTS: PreviewEntitlement[] = ["premium", "free", "unavailable"];
 
 /** Every host action the hub can fire, deliberately inert. */

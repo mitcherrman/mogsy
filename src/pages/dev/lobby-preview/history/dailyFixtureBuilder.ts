@@ -37,7 +37,7 @@
 import type { DailyStageKind } from "@/lib/daily-challenge/run/contracts";
 import type { MatchReviewView, ReviewRound } from "@/lib/ranked-public/contracts";
 import { FIXTURE_ANCHOR, fixtureDate } from "./fixtureClock";
-import { identityOf, masteryContentOf, quizContentOf, refNamespace } from "./questionIdentity";
+import { identityOf, masteryContentOf, quizContentOf, reflexContentOf, refNamespace } from "./questionIdentity";
 
 export class FixtureFactError extends Error {
   constructor(message: string) {
@@ -163,6 +163,8 @@ export interface BuiltDailyAccount {
 // ─────────────────────────────────────────────────────────────── building
 
 const PRE_REVIEW: readonly DailyStageKind[] = ["standard", "time_trial", "survival", "weak_areas"];
+/** `daily_challenge/recipe.py::META_REFLEX_CARDS`. */
+const META_REFLEX_CARDS = 5;
 const pad = (n: number) => String(n).padStart(2, "0");
 const isMiss = (o: Outcome) => o !== "correct";
 
@@ -208,9 +210,11 @@ function checkOccurrences(run: RunFact, index: number, stage: StageFact, occ: Oc
   for (const [n, qs] of rounds) {
     qs.forEach((q, i) => q.challenge !== i && reject(`${where}: round ${n} challenges must be 0..k without gaps`));
     const slice = qs.every((q) => refNamespace(q.ref) === "mastery");
-    const single = qs.length === 1 && refNamespace(qs[0].ref) !== "mastery";
-    if (!slice && !single) {
-      reject(`${where}: round ${n} must be one single-answer question or one Mastery slice`);
+    // HUB6.2 — a Meta Reflex block: the recipe's five item-cost cards.
+    const reflex = qs.length === META_REFLEX_CARDS && qs.every((q) => refNamespace(q.ref) === "reflex");
+    const single = qs.length === 1 && refNamespace(qs[0].ref) !== "mastery" && refNamespace(qs[0].ref) !== "reflex";
+    if (!slice && !single && !reflex) {
+      reject(`${where}: round ${n} must be one single-answer question, one Mastery slice or one ${META_REFLEX_CARDS}-card Meta Reflex block`);
     }
   }
   // Ruleset terminal paths, as the child match settles them.
@@ -239,6 +243,32 @@ function checkOccurrences(run: RunFact, index: number, stage: StageFact, occ: Oc
 }
 
 function reviewRound(roundNumber: number, qs: Array<{ ref: string; variant: number | null; outcome: Outcome }>): ReviewRound {
+  if (refNamespace(qs[0].ref) === "reflex") {
+    // A Meta Reflex block: one recognition card per challenge, answered by a
+    // side. A miss picked the other side; a time-out picked nothing.
+    const challenges = qs.map((q, challengeIndex) => {
+      const c = reflexContentOf(q.ref);
+      const other = c.correctSide === "left" ? "right" : "left";
+      const viewerSide = q.outcome === "correct" ? c.correctSide : q.outcome === "incorrect" ? other : null;
+      return {
+        challengeIndex, prompt: c.prompt, kind: "magnitude", entityKind: "item",
+        left: c.left, right: c.right, correctSide: c.correctSide, viewerSide,
+        isCorrect: viewerSide === null ? null : viewerSide === c.correctSide,
+      };
+    });
+    return {
+      roundNumber, kind: "meta_reflex", moduleId: "item_cost_duel", category: "Item Costs",
+      canonicalQuestionRef: null, revealed: true,
+      iconHint: { kind: "meta_reflex", key: null, icon: null }, topic: null,
+      question: null, challenges, masteryChallenges: null,
+      viewerSubmission: {
+        answerIndex: null, isCorrect: null,
+        correctCount: challenges.filter((c) => c.isCorrect === true).length,
+        answeredCount: challenges.filter((c) => c.viewerSide !== null).length,
+        challengeCount: challenges.length,
+      },
+    };
+  }
   if (refNamespace(qs[0].ref) !== "mastery") {
     const q = qs[0];
     const content = quizContentOf(q.ref);

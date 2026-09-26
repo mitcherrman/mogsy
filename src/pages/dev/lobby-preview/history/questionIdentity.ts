@@ -33,9 +33,9 @@ import {
 } from "@/pages/dev/lobby-preview/syntheticRankedHistory";
 import type { ReviewIconHint } from "@/lib/ranked-public/contracts";
 import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
-import { masteryRef, quizRef, rankedRef, refNamespace, type RefNamespace } from "./canonicalRefs";
+import { masteryRef, quizRef, rankedRef, reflexRef, refNamespace, type RefNamespace } from "./canonicalRefs";
 
-export { masteryRef, quizRef, rankedRef, refNamespace, type RefNamespace };
+export { masteryRef, quizRef, rankedRef, reflexRef, refNamespace, type RefNamespace };
 
 /**
  * Content versions per namespace. HUB2 folds the (generator, source) version
@@ -53,6 +53,8 @@ const VERSIONS: Record<RefNamespace, { generator: string | null; source: string 
   ranked: { generator: null, source: "ranked-export-2026.09" },
   quiz: { generator: null, source: "quiz-bank-2026.09" },
   mastery: { generator: "mastery-gen-4", source: "mastery-set-12" },
+  // HUB6.2 — Meta Reflex cards are generated (item-cost pairs) like Mastery.
+  reflex: { generator: "meta-reflex-gen-3", source: "meta-reflex-cards-2026.09" },
 };
 
 /** The backend's frozen subject columns. A category-level question names no
@@ -267,6 +269,45 @@ const MASTERY_CONCEPTS: readonly MasteryConcept[] = [
   ] },
 ];
 
+// ───────────────────────────────────────────── reflex: Meta Reflex cards
+
+/**
+ * HUB6.2 — the Meta Reflex cards a full Standard stage deals: item-cost
+ * pairs, as the Daily recipe's `item_cost_duel` block (five cards) serves
+ * them. One card is one challenge of the round; its identity is the card.
+ */
+interface ReflexCard {
+  key: string;
+  left: { name: string; id: number; cost: number };
+  right: { name: string; id: number; cost: number };
+}
+
+const item = (name: string, id: number, cost: number) => ({ name, id, cost });
+
+const REFLEX_CARDS: readonly ReflexCard[] = [
+  { key: "ie-vs-deathcap", left: item("Infinity Edge", 3031, 3400), right: item("Rabadon's Deathcap", 3089, 3600) },
+  { key: "sunfire-vs-bork", left: item("Sunfire Aegis", 3068, 2700), right: item("Blade of the Ruined King", 3153, 3200) },
+  { key: "liandry-vs-warmog", left: item("Liandry's Torment", 6653, 3000), right: item("Warmog's Armor", 3083, 3100) },
+  { key: "zhonya-vs-moonstone", left: item("Zhonya's Hourglass", 3157, 3250), right: item("Moonstone Renewer", 6617, 2200) },
+  { key: "dshield-vs-dblade", left: item("Doran's Shield", 1054, 450), right: item("Doran's Ring", 1056, 400) },
+  { key: "sorcs-vs-swifties", left: item("Sorcerer's Shoes", 3020, 1100), right: item("Boots of Swiftness", 3009, 1000) },
+  { key: "voidstaff-vs-lordd", left: item("Void Staff", 3135, 3000), right: item("Lord Dominik's Regards", 3036, 3100) },
+  { key: "bc-vs-steraks", left: item("Black Cleaver", 3071, 3000), right: item("Sterak's Gage", 3053, 3200) },
+  { key: "bt-vs-nashor", left: item("Bloodthirster", 3072, 3400), right: item("Nashor's Tooth", 3115, 3000) },
+  { key: "pot-vs-boots", left: item("Health Potion", 2003, 50), right: item("Boots", 1001, 300) },
+];
+
+// Every card has one side that costs more — an equal pair has no answer, and
+// the real module never deals one. A test holds this.
+
+/** One Meta Reflex card as a `meta_reflex` review round carries it. */
+export interface ReflexContent {
+  prompt: string;
+  left: { label: string; icon: string; value: number };
+  right: { label: string; icon: string; value: number };
+  correctSide: "left" | "right";
+}
+
 // ───────────────────────────────────────────── the factory
 
 const RANKED_BY_REF = new Map<string, SyntheticQuestion>(
@@ -274,6 +315,7 @@ const RANKED_BY_REF = new Map<string, SyntheticQuestion>(
 );
 const QUIZ_BY_REF = new Map<string, QuizBankQuestion>(QUIZ_BANK.map((q) => [quizRef(q.id), q]));
 const MASTERY_BY_REF = new Map<string, MasteryConcept>(MASTERY_CONCEPTS.map((c) => [masteryRef(c.conceptId), c]));
+const REFLEX_BY_REF = new Map<string, ReflexCard>(REFLEX_CARDS.map((c) => [reflexRef(c.key), c]));
 
 const IDENTITIES = new Map<string, FixtureQuestionIdentity>();
 
@@ -299,6 +341,17 @@ function build(ref: string): FixtureQuestionIdentity {
       family: q.family, concept: q.concept, category: q.category,
       subject: frozenSubject(q.subject),
       generatorVersion: versions.generator, sourceVersion: versions.source, sourceArtifactId: null,
+    };
+  }
+  if (namespace === "reflex") {
+    const card = REFLEX_BY_REF.get(ref);
+    if (!card) throw new Error(`unknown Meta Reflex fixture card: ${ref}`);
+    return {
+      namespace, canonicalRef: ref, exactKey: null, quizQuestionId: null,
+      family: "item_cost_comparison", concept: `reflex.item_cost.${card.key}`, category: "Item Costs",
+      subject: { kind: null, key: null, label: null },
+      generatorVersion: versions.generator, sourceVersion: versions.source,
+      sourceArtifactId: `artifact:reflex:${card.key}`,
     };
   }
   const c = MASTERY_BY_REF.get(ref);
@@ -346,6 +399,19 @@ export function masteryContentOf(ref: string, variant: number): MasteryContent {
   return { ...v, questionFamily: c.family };
 }
 
+/** One Meta Reflex card: which of two items costs more. */
+export function reflexContentOf(ref: string): ReflexContent {
+  const c = REFLEX_BY_REF.get(ref);
+  if (!c) throw new Error(`unknown Meta Reflex fixture card: ${ref}`);
+  const side = (x: ReflexCard["left"]) => ({ label: x.name, icon: `assets/items/${x.id}.png`, value: x.cost });
+  return {
+    prompt: "Which costs more?",
+    left: side(c.left),
+    right: side(c.right),
+    correctSide: c.left.cost > c.right.cost ? "left" : "right",
+  };
+}
+
 /** The quiz-bank question a Practice attempt names by numeric id. */
 export function quizRefForBankId(bankId: number): string {
   const q = QUIZ_BANK.find((x) => x.bankId === bankId);
@@ -358,4 +424,5 @@ export const ALL_FIXTURE_REFS: readonly string[] = Object.freeze([
   ...RANKED_BY_REF.keys(),
   ...QUIZ_BY_REF.keys(),
   ...MASTERY_BY_REF.keys(),
+  ...REFLEX_BY_REF.keys(),
 ]);

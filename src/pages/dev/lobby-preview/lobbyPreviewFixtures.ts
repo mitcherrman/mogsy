@@ -59,9 +59,9 @@ import {
 import type { DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import { fixtureInstant } from "@/pages/dev/lobby-preview/history/fixtureClock";
-import { FIRST_DAILY, TIMMY_DAILY } from "@/pages/dev/lobby-preview/history/timmyHistoryInput";
+import { FIRST_DAILY, FULL_DAILY, TIMMY_DAILY } from "@/pages/dev/lobby-preview/history/timmyHistoryInput";
 import type { TimmyHistoryScenario } from "@/pages/dev/lobby-preview/history/timmyHistorySource";
-import { FIRST_DAILY_FACTS, TIMMY_DAILY_FACTS } from "@/pages/dev/lobby-preview/history/timmyDailyFacts";
+import { FIRST_DAILY_FACTS, FULL_DAILY_FACTS, TIMMY_DAILY_FACTS } from "@/pages/dev/lobby-preview/history/timmyDailyFacts";
 import { deriveLibrary, type LobbyPreviewLibrary } from "@/pages/dev/lobby-preview/timmyLibrary";
 import {
   MISSED_UNAVAILABLE_ERROR,
@@ -75,7 +75,7 @@ import {
 export type { LobbyPreviewLibrary };
 
 /** The accounts the preview switches between. */
-export type LobbyPreviewProfile = "timmy" | "firstDaily" | "newcomer";
+export type LobbyPreviewProfile = "timmy" | "firstDaily" | "fullDaily" | "newcomer";
 
 /**
  * The entitlement a preview account is shown under. The server decides it
@@ -270,6 +270,11 @@ export const TIMMY_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary([
 
 export const FIRST_DAILY_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary(
   dailyMatches(FIRST_DAILY_FACTS, FIRST_DAILY),
+);
+
+/** HUB6.2 — the full-length Daily account's Owned questions. */
+export const FULL_DAILY_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary(
+  dailyMatches(FULL_DAILY_FACTS, FULL_DAILY),
 );
 
 /** A new account owns nothing. The empty Library has to stay the real one. */
@@ -496,6 +501,34 @@ export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState
         missedQuestions: FIRST_DAILY_MISSED_QUESTIONS,
         missedError: null,
         dailyHistory: "first_daily",
+      },
+    },
+    defaultEntitlement: "premium",
+  },
+  /* HUB6.2 — full-length stage shapes: a ten-module Standard with two Meta
+     Reflex blocks and a Mastery slice, 22- and 28-question Time Trials, and
+     a long mixed Survival that goes out of strikes. Premium, like the
+     first-Daily account, and with no Practice or Ranked record. */
+  fullDaily: {
+    label: "Full-length Daily — real stage sizes",
+    displayName: "Marathoner",
+    signedIn: true,
+    rankedRole: null,
+    ranked: NEWCOMER_RANKED_STATE,
+    progress: NEWCOMER_PROGRESS,
+    progression: null,
+    matchHistory: [],
+    rankedRecord: [],
+    reviews: FULL_DAILY.reviews,
+    questionLibrary: FULL_DAILY_QUESTION_LIBRARY,
+    demoRoleMastery: null,
+    entitlements: {
+      premium: {
+        label: "Premium",
+        history: FIRST_DAILY_QUIZ_HISTORY,
+        missedQuestions: FIRST_DAILY_MISSED_QUESTIONS,
+        missedError: null,
+        dailyHistory: "full_daily",
       },
     },
     defaultEntitlement: "premium",

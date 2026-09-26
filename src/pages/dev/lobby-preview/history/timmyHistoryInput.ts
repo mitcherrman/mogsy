@@ -12,16 +12,20 @@
 import { FIXTURE_ANCHOR } from "./fixtureClock";
 import { GOLDEN_PAGE_SIZE } from "./goldenPageSize";
 import { buildDailyAccount, canonicalJson, type BuiltDailyAccount, type DailyAccountFacts } from "./dailyFixtureBuilder";
-import { FIRST_DAILY_FACTS, NEWCOMER_DAILY_FACTS, TIMMY_DAILY_FACTS } from "./timmyDailyFacts";
+import { FIRST_DAILY_FACTS, FULL_DAILY_FACTS, NEWCOMER_DAILY_FACTS, TIMMY_DAILY_FACTS } from "./timmyDailyFacts";
 
 export const TIMMY_DAILY: BuiltDailyAccount = buildDailyAccount(TIMMY_DAILY_FACTS);
 export const FIRST_DAILY: BuiltDailyAccount = buildDailyAccount(FIRST_DAILY_FACTS);
 export const NEWCOMER_DAILY: BuiltDailyAccount = buildDailyAccount(NEWCOMER_DAILY_FACTS);
+/** HUB6.2 — full-length stage shapes (ten-module Standard, long Time Trial
+ *  and Survival). */
+export const FULL_DAILY: BuiltDailyAccount = buildDailyAccount(FULL_DAILY_FACTS);
 
 const ACCOUNTS: Record<string, [DailyAccountFacts, BuiltDailyAccount]> = {
   timmy: [TIMMY_DAILY_FACTS, TIMMY_DAILY],
   first_daily: [FIRST_DAILY_FACTS, FIRST_DAILY],
   newcomer: [NEWCOMER_DAILY_FACTS, NEWCOMER_DAILY],
+  full_daily: [FULL_DAILY_FACTS, FULL_DAILY],
 };
 
 export function timmyHistoryInput(): string {

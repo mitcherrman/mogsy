@@ -32,7 +32,7 @@
  *    are listed OUT of display order on purpose.
  */
 import { fixtureInstant } from "./fixtureClock";
-import { masteryRef, quizRef, rankedRef } from "./questionIdentity";
+import { masteryRef, quizRef, rankedRef, reflexRef } from "./questionIdentity";
 import type {
   DailyAccountFacts,
   OccurrenceFact,
@@ -270,4 +270,110 @@ export const NEWCOMER_DAILY_FACTS: DailyAccountFacts = Object.freeze({
   userId: "demo-newcomer",
   idPrefix: "newcomer",
   runs: [],
+}) as DailyAccountFacts;
+
+// ─────────────────────────────────────────────────────────────── full-length Daily
+
+/**
+ * HUB6.2 — a player whose Dailies are FULL LENGTH, to certify History at the
+ * real stage shapes rather than Timmy's compact ones:
+ *
+ *  - Standard is the recipe's owner-locked ten modules
+ *    (`daily_challenge/recipe.py::STANDARD_V1_UNITS`): four Splash questions,
+ *    a five-card Meta Reflex block, three Splash, a second Meta Reflex block,
+ *    then one four-question Mastery slice.
+ *  - Time Trial settles 22 (run 1, completed) and 28 (run 2, the bank ran out
+ *    on its last question) questions.
+ *  - Survival mixes single questions with multi-question slices; run 2 goes
+ *    out of strikes on its third miss.
+ *
+ * Run 1 is this player's FIRST Daily (four stages, no Weak Areas); run 2 is
+ * five stages, and its Weak Areas are three of run 1's misses.
+ */
+const splash = ask;
+/** A five-card Meta Reflex block at `round`, one mark per card. */
+const reflexBlock = (round: number, keys: string[], marks: Mark[]): OccurrenceFact[] =>
+  keys.map((key, challenge) => ({ round, challenge, ref: reflexRef(key), outcome: OUTCOME[marks[challenge]] }));
+
+const FULL_RUNS: RunFact[] = [
+  // 1 — first Daily: four stages.
+  run(1, fixtureInstant(1, 19, 5), [
+    timeTrial(180, [
+      ask(1, R("flash-cooldown"), "C"), ask(2, Q("rabadon-ap"), "X"), ask(3, R("infinity-edge-ad"), "C"),
+      ask(4, Q("sunfire-health"), "C"), ask(5, R("caster-count"), "C"), ask(6, Q("electrocute-hits"), "C"),
+      ask(7, R("smite-charges"), "X"), ask(8, Q("warmog-health"), "C"), ask(9, R("ward-duration"), "C"),
+      ask(10, Q("ignite-cooldown"), "C"), ask(11, R("conqueror-stacks"), "C"), ask(12, Q("teleport-cooldown"), "X"),
+      ask(13, R("baron-respawn"), "C"), ask(14, Q("first-minions"), "C"), ask(15, R("blue-sentinel"), "C"),
+      ask(16, Q("cannon-cadence"), "X"), ask(17, R("ahri-q-cost"), "C"), ask(18, Q("liandry-ap"), "C"),
+      ask(19, R("slow-push"), "C"), ask(20, Q("exhaust-duration"), "C"), ask(21, R("moonstone-unique"), "C"),
+      ask(22, Q("dragon-first-spawn"), "C"),
+    ]),
+    standard(118, [
+      splash(1, R("malphite-r-cooldown"), "C"), splash(2, Q("annie-q-cooldown"), "C"), splash(3, R("dragon-soul"), "X"),
+      splash(4, Q("bork-attack-speed"), "C"),
+      ...reflexBlock(5, ["ie-vs-deathcap", "sunfire-vs-bork", "liandry-vs-warmog", "zhonya-vs-moonstone", "dshield-vs-dblade"],
+        ["C", "C", "X", "C", "C"]),
+      splash(6, R("control-ward"), "C"), splash(7, Q("inhibitor-respawn"), "C"), splash(8, R("purchase-total"), "X"),
+      ...reflexBlock(9, ["sorcs-vs-swifties", "voidstaff-vs-lordd", "bc-vs-steraks", "bt-vs-nashor", "pot-vs-boots"],
+        ["C", "X", "C", "C", "C"]),
+      slice(10, 0, "annie-q-raw-damage", 0, "C"), slice(10, 1, "physical-post-mitigation", 0, "C"),
+      slice(10, 2, "lux-casts-before-oom", 0, "X"), slice(10, 3, "ezreal-e-haste", 0, "C"),
+    ]),
+    survival(45, [
+      ask(1, R("dorans-shield-cost"), "C"),
+      slice(2, 0, "garen-health-remaining", 0, "C"), slice(2, 1, "annie-q-raw-damage", 1, "C"),
+      ask(3, Q("first-strike-window"), "X"),
+      slice(4, 0, "lux-casts-before-oom", 1, "C"), slice(4, 1, "ezreal-e-haste", 1, "C"), slice(4, 2, "physical-post-mitigation", 1, "C"),
+      ask(5, R("ability-haste"), "C"),
+      slice(6, 0, "garen-health-remaining", 1, "X"), slice(6, 1, "annie-q-raw-damage", 0, "C"),
+    ]),
+    review(20),
+  ], [replay(0, 2, 0, "C"), replay(1, 3, 0, "X"), replay(2, 3, 0, "C")]),
+
+  // 2 — five stages, the long shapes: a 28-question Time Trial whose bank ran
+  // out, and a Survival that goes out of strikes.
+  run(2, fixtureInstant(0, 17, 40), [
+    timeTrial(210, [
+      ask(1, R("infinity-edge-ad"), "C"), ask(2, Q("sunfire-health"), "C"), ask(3, R("flash-cooldown"), "X"),
+      ask(4, Q("annie-q-cooldown"), "C"), ask(5, R("dorans-shield-cost"), "C"), ask(6, Q("electrocute-hits"), "C"),
+      ask(7, R("caster-count"), "C"), ask(8, Q("rabadon-ap"), "C"), ask(9, R("smite-charges"), "C"),
+      ask(10, Q("warmog-health"), "X"), ask(11, R("conqueror-stacks"), "C"), ask(12, Q("liandry-ap"), "C"),
+      ask(13, R("purchase-total"), "C"), ask(14, Q("ezreal-e-cooldown"), "C"), ask(15, R("baron-respawn"), "X"),
+      ask(16, Q("bork-attack-speed"), "C"), ask(17, R("dragon-soul"), "C"), ask(18, Q("first-strike-window"), "C"),
+      ask(19, R("ward-duration"), "C"), ask(20, Q("dragon-first-spawn"), "C"), ask(21, R("control-ward"), "X"),
+      ask(22, Q("baron-first-spawn"), "C"), ask(23, R("slow-push"), "C"), ask(24, Q("turret-plates-fall"), "C"),
+      ask(25, R("blue-sentinel"), "C"), ask(26, Q("freeze-definition"), "X"), ask(27, R("ability-haste"), "C"),
+      ask(28, Q("exhaust-duration"), "T"),
+    ], "time_bank_exhausted"),
+    standard(131, [
+      splash(1, Q("liandry-ap"), "C"), splash(2, R("ahri-q-cost"), "C"), splash(3, Q("inhibitor-respawn"), "C"),
+      splash(4, R("moonstone-unique"), "X"),
+      ...reflexBlock(5, ["bt-vs-nashor", "pot-vs-boots", "ie-vs-deathcap", "voidstaff-vs-lordd", "sorcs-vs-swifties"],
+        ["C", "C", "C", "X", "C"]),
+      splash(6, Q("cannon-cadence"), "C"), splash(7, R("malphite-r-cooldown"), "C"), splash(8, Q("ignite-cooldown"), "C"),
+      ...reflexBlock(9, ["zhonya-vs-moonstone", "bc-vs-steraks", "dshield-vs-dblade", "liandry-vs-warmog", "sunfire-vs-bork"],
+        ["C", "C", "X", "C", "C"]),
+      slice(10, 0, "garen-health-remaining", 0, "C"), slice(10, 1, "lux-casts-before-oom", 1, "C"),
+      slice(10, 2, "physical-post-mitigation", 1, "C"), slice(10, 3, "annie-q-raw-damage", 1, "X"),
+    ]),
+    survival(60, [
+      ask(1, R("conqueror-stacks"), "C"),
+      slice(2, 0, "ezreal-e-haste", 0, "C"), slice(2, 1, "garen-health-remaining", 1, "C"),
+      ask(3, Q("teleport-cooldown"), "X"),
+      slice(4, 0, "annie-q-raw-damage", 0, "C"), slice(4, 1, "physical-post-mitigation", 0, "X"), slice(4, 2, "lux-casts-before-oom", 0, "C"),
+      ask(5, R("ward-duration"), "C"),
+      slice(6, 0, "lux-casts-before-oom", 1, "C"), slice(6, 1, "ezreal-e-haste", 1, "C"),
+      ask(7, Q("first-minions"), "C"),
+      slice(8, 0, "garen-health-remaining", 0, "C"), slice(8, 1, "annie-q-raw-damage", 1, "X"),
+    ], "strikes_exhausted"),
+    // Three of run 1's misses, served again.
+    weakAreas(20, [ask(1, Q("rabadon-ap"), "C"), ask(2, R("dragon-soul"), "C"), ask(3, Q("cannon-cadence"), "X")]),
+    review(30),
+  ], [replay(0, 3, 0, "C"), replay(1, 4, 0, "C"), replay(2, 3, 0, "X"), replay(0, 10, 0, "C")]),
+];
+
+export const FULL_DAILY_FACTS: DailyAccountFacts = Object.freeze({
+  userId: "demo-full-daily",
+  idPrefix: "full",
+  runs: FULL_RUNS,
 }) as DailyAccountFacts;

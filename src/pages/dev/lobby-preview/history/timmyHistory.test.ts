@@ -22,9 +22,9 @@ import {
   type RunFact,
 } from "./dailyFixtureBuilder";
 import { GOLDEN_PAGE_SIZE } from "./goldenPageSize";
-import { ALL_FIXTURE_REFS, identityOf, quizContentOf, quizRef, rankedRef, refNamespace } from "./questionIdentity";
-import { FIRST_DAILY_FACTS, TIMMY_DAILY_FACTS } from "./timmyDailyFacts";
-import { FIRST_DAILY, TIMMY_DAILY, timmyHistoryInput } from "./timmyHistoryInput";
+import { ALL_FIXTURE_REFS, identityOf, quizContentOf, quizRef, rankedRef, reflexContentOf, refNamespace } from "./questionIdentity";
+import { FIRST_DAILY_FACTS, FULL_DAILY_FACTS, TIMMY_DAILY_FACTS } from "./timmyDailyFacts";
+import { FIRST_DAILY, FULL_DAILY, TIMMY_DAILY, timmyHistoryInput } from "./timmyHistoryInput";
 import { TIMMY_HISTORY_GOLDEN, TIMMY_HISTORY_SOURCES, type TimmyHistoryScenario } from "./timmyHistorySource";
 import { SYNTHETIC_RANKED_HISTORY, SYNTHETIC_RANKED_REVIEWS } from "../syntheticRankedHistory";
 import {
@@ -174,9 +174,9 @@ describe("the offline History source", () => {
 // ─────────────────────────────────────────────────────────── identity
 
 describe("one identity factory", () => {
-  it("mints all three namespaces and resolves every one back", () => {
+  it("mints every namespace (HUB6.2 adds Meta Reflex `reflex:`) and resolves every one back", () => {
     const namespaces = new Set(ALL_FIXTURE_REFS.map(refNamespace));
-    expect([...namespaces].sort()).toEqual(["mastery", "quiz", "ranked"]);
+    expect([...namespaces].sort()).toEqual(["mastery", "quiz", "ranked", "reflex"]);
     for (const ref of ALL_FIXTURE_REFS) expect(identityOf(ref).canonicalRef).toBe(ref);
     expect(() => identityOf("ranked:demo-not-a-question")).toThrow();
   });
@@ -322,7 +322,9 @@ describe("HUB2.1 occurrences", () => {
   });
 
   it("freezes every stage review in the real review contract", () => {
-    for (const review of [...Object.values(TIMMY_DAILY.reviews), ...Object.values(FIRST_DAILY.reviews)]) {
+    for (const review of [
+      ...Object.values(TIMMY_DAILY.reviews), ...Object.values(FIRST_DAILY.reviews), ...Object.values(FULL_DAILY.reviews),
+    ]) {
       const wire = {
         schema_version: review.schemaVersion, projection_type: "match_review", match_id: review.matchId,
         round_number: null, server_time: review.serverTime,
@@ -341,6 +343,11 @@ describe("HUB2.1 occurrences", () => {
             question_family: c.questionFamily, answer_type: c.answerType, answer_options: c.answerOptions,
             prompt_semantics: c.promptSemantics, comparison_semantics: c.comparisonSemantics,
             correct_answer: c.correctAnswer, explanation: c.explanation, viewer_answer: c.viewerAnswer,
+            is_correct: c.isCorrect,
+          })) ?? r.challenges?.map((c) => ({
+            // HUB6.2 — a Meta Reflex block's recognition cards.
+            challenge_index: c.challengeIndex, prompt: c.prompt, kind: c.kind, entity_kind: c.entityKind,
+            left: c.left, right: c.right, correct_side: c.correctSide, viewer_side: c.viewerSide,
             is_correct: c.isCorrect,
           })) ?? null,
           viewer_submission: {
@@ -707,5 +714,57 @@ describe("Owned & Missed agree with the record", () => {
     }
     const stamps = TIMMY_MISSED_PREMIUM.results.map((m) => m.missed_at);
     expect(stamps).toEqual(stamps.slice().sort().reverse());
+  });
+});
+
+// ============================================================ HUB6.2 full-length shapes
+
+describe("HUB6.2 — the full-length Daily fixture is the real stage shapes", () => {
+  const pages = TIMMY_HISTORY_GOLDEN.scenarios.full_daily.map((p) => readHistoryPage(p));
+  const records = pages.flatMap((p) => p.items) as DailyHistoryRecord[];
+  const latest = records[0];
+  const stage = (r: DailyHistoryRecord, kind: string) => r.stages.find((s) => s.kind === kind)!;
+
+  it("is two runs: a first Daily with four stages, then a five-stage run", () => {
+    expect(records.map((r) => r.stages.length)).toEqual([5, 4]);
+    expect(records[1].stages.map((s) => s.kind)).not.toContain("weak_areas");
+    expect(FULL_DAILY_FACTS.userId).toBe("demo-full-daily");
+  });
+
+  it("Standard is the recipe's ten modules: Splash ×4, Meta Reflex, Splash ×3, Meta Reflex, a four-question slice", () => {
+    for (const r of records) {
+      const std = stage(r, "standard");
+      expect(std.rounds!.map((x) => x.questions.length)).toEqual([1, 1, 1, 1, 5, 1, 1, 1, 5, 4]);
+      const review = FULL_DAILY.reviews[std.reviewMatchId!];
+      expect(review.rounds.map((x) => x.kind)).toEqual([
+        "quiz", "quiz", "quiz", "quiz", "meta_reflex", "quiz", "quiz", "quiz", "meta_reflex", "mastery_slice",
+      ]);
+      // (Each frozen review also parses through the production reader: see
+      // "freezes every stage review in the real review contract".)
+    }
+  });
+
+  it("Time Trial settles 22 and 28 questions; the 28-question run's bank ran out", () => {
+    expect(records.map((r) => stage(r, "time_trial").analytics!.settledQuestions)).toEqual([28, 22]);
+    expect(stage(latest, "time_trial").basic.endedBy).toBe("time_bank_exhausted");
+    expect(stage(latest, "time_trial").rounds).toHaveLength(28);
+  });
+
+  it("Survival mixes single questions and slices, and run 2 goes out on its third strike", () => {
+    const surv = stage(latest, "survival");
+    const sizes = surv.rounds!.map((x) => x.questions.length);
+    expect(sizes).toContain(1);
+    expect(sizes.some((n) => n > 1)).toBe(true);
+    expect(surv.basic.endedBy).toBe("strikes_exhausted");
+    expect(surv.analytics!.strikesUsed).toBe(3);
+    expect(surv.analytics!.depth).toBe(13);
+  });
+
+  it("every Meta Reflex card has one side that costs more", () => {
+    for (const ref of ALL_FIXTURE_REFS.filter((r) => refNamespace(r) === "reflex")) {
+      const c = reflexContentOf(ref);
+      expect(c.left.value).not.toBe(c.right.value);
+      expect(c.correctSide).toBe(c.left.value > c.right.value ? "left" : "right");
+    }
   });
 });
