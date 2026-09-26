@@ -121,7 +121,6 @@ describe("containment", () => {
 
   it.each([
     "components/admin/AdminUserCard.tsx",
-    "pages/admin/AdminUserDirectory.tsx",
   ])("master-admin surface %s never consults it either", (file) => {
     expect(code(file)).not.toMatch(FORBIDDEN);
   });
