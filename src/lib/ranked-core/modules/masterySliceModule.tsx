@@ -41,6 +41,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { journeyViewFor } from "@/lib/journey/adapter";
+import { journeyKnowledge } from "@/lib/journey/knowledge";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 import { JourneyModuleStage } from "@/components/journey/JourneyModuleStage";
 import {
@@ -219,13 +220,19 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
     ownCardStartedAt: state.ownCardStartedAt,
     ownFinished: state.ownFinished,
   }), [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished]);
+  // K2 — the Journey's established facts, joined with the settled reveals
+  // that carry their player-facing values (K1 §1.3). All reveals, not just the
+  // held one: an earlier child's fact stays marked for the whole Journey.
+  const knowledge = useMemo(
+    () => journeyKnowledge(state.journey, state.ownChallengeReveals, state.ownCardIndex),
+    [state.journey, state.ownChallengeReveals, state.ownCardIndex]);
   // JOURNEY-PRES-V1 — `questionRoles`: the RQ1 roles of the challenge ON
   // SCREEN (its own frozen `roles`), passed only by the question branch; the
   // pending / waiting branches have no question and so no role badge.
   const inJourney = (node: ReactNode, questionRoles: MasterySliceChallengeView["roles"] = null) => (journey
     ? (
       <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}
-        questionRoles={questionRoles}>
+        questionRoles={questionRoles} knowledge={knowledge}>
         {node}
       </JourneyModuleStage>
     ) : node);

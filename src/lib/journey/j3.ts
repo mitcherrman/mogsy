@@ -39,6 +39,12 @@ import { isJourneyStatKey, type JourneyStatKey } from "./stats";
 
 export const JOURNEY_J3_VERSION = "mastery_journey.v1";
 export const JOURNEY_J3_STATE_CONTRACT = "journey_public_state.v1";
+/**
+ * K2 — backend K1's additive knowledge-object contract
+ * (`JOURNEY_KNOWLEDGE_OBJECT_HANDOFF.md`). A block frozen before K1 carries
+ * none of its keys and reads with `knowledgeContract: null` (no marks).
+ */
+export const JOURNEY_KNOWLEDGE_OBJECT_CONTRACT = "journey_knowledge_object.v1";
 
 export type J3Side = "player" | "opponent";
 export type J3Engine = "champion" | "matchup" | "combat";
@@ -114,15 +120,57 @@ export interface J3Asks {
   subject: string | string[];
 }
 
+/** K1 — the game object a fact is about: `<side>:<champion_id>[:<slot>]`. */
+export type J3KnowledgeObject =
+  | { type: "ability"; key: string; side: J3Side; championId: string; slot: AbilitySlot }
+  | { type: "champion"; key: string; side: J3Side; championId: string; slot: null };
+
+/** K1 — the conditions a fact's value holds under. Absent keys do not apply. */
+export interface J3FactContext {
+  /** `null` = a flat-shaped cooldown (no rank). */
+  rank?: number | null;
+  abilityHaste?: number;
+  stat?: string;
+  level?: number;
+}
+
+/**
+ * K1 — a fact's knowledge-object descriptor. `object: null` = the fact maps to
+ * no v1 object (Combat damage, cooldown compare): never a mark.
+ */
+export interface J3FactObject {
+  object: J3KnowledgeObject | null;
+  context: J3FactContext;
+  unit: "seconds" | null;
+}
+
+/**
+ * K1 — `learner.asks_fact`: WHICH fact this child asks, value-free. Exactly
+ * six keys on the wire; a `value`, label or answer anywhere fails the read.
+ */
+export interface J3AsksFact extends J3FactObject {
+  fact: string;
+  kind: string;
+  /** The child whose settlement establishes the fact (this child). */
+  child: number;
+}
+
 /** The learner ledger's public half. Correctness is NOT part of it. */
 export interface J3Learner {
   established: {
     fact: string; kind: string; label: string; source: "stated" | "revealed"; child: number;
     /** The established value, as served (number, text, or a formula). */
     value: number | string | J3Formula;
+    /** K1 descriptor; null on a block frozen before K1. */
+    knowledge: J3FactObject | null;
   }[];
   reliesOn: { fact: string; what: string; source: "stated" | "revealed"; establishedInChild: number }[];
-  states: { fact: string; kind: string; label: string; value: number | string | J3Formula }[];
+  states: {
+    fact: string; kind: string; label: string; value: number | string | J3Formula;
+    knowledge: J3FactObject | null;
+  }[];
+  /** K1 — null before K1 (key absent) and when the fact maps to no v1 object. */
+  asksFact: J3AsksFact | null;
 }
 
 export interface J3Child {
@@ -180,6 +228,8 @@ export interface JourneyJ3 {
   arcType: string | null;
   plan: "standard" | "survival";
   childCount: number;
+  /** K1 — `knowledge_object_contract`; null when the block predates K1. */
+  knowledgeContract: string | null;
   children: J3Child[];
   transitions: J3Transition[];
   openDelaysMs: number[];
@@ -330,6 +380,49 @@ function readState(v: unknown, l: string): J3State {
   return state;
 }
 
+/** K1 — `object` / `context` / `unit` on a ledger fact (all three, or none). */
+function readFactObject(x: Rec, l: string): J3FactObject | null {
+  const has = ["object", "context", "unit"].filter((k) => k in x);
+  if (has.length === 0) return null;
+  if (has.length !== 3) fail(`${l} carries a partial knowledge-object descriptor`);
+  let object: J3KnowledgeObject | null = null;
+  if (x.object !== null) {
+    const o = shape(x.object, `${l}.object`, ["type", "key", "side", "champion_id", "slot"],
+      ["type", "key", "side", "champion_id"]);
+    const s = side(o.side, `${l}.object.side`);
+    const championId = str(o.champion_id, `${l}.object.champion_id`);
+    const key = str(o.key, `${l}.object.key`);
+    if (o.type === "ability") {
+      const sl = slot(o.slot, `${l}.object.slot`);
+      if (key !== `${s}:${championId}:${sl}`) fail(`${l}.object.key does not name its own side/champion/slot`);
+      object = { type: "ability", key, side: s, championId, slot: sl };
+    } else if (o.type === "champion") {
+      if ("slot" in o) fail(`${l}.object: a champion object has no slot`);
+      if (key !== `${s}:${championId}`) fail(`${l}.object.key does not name its own side/champion`);
+      object = { type: "champion", key, side: s, championId, slot: null };
+    } else {
+      fail(`${l}.object.type must be ability|champion`);
+    }
+  }
+  const c = shape(x.context, `${l}.context`, ["rank", "ability_haste", "stat", "level"], []);
+  const context: J3FactContext = {};
+  if ("rank" in c) context.rank = c.rank === null ? null : int(c.rank, `${l}.context.rank`, 1);
+  if ("ability_haste" in c) context.abilityHaste = num(c.ability_haste, `${l}.context.ability_haste`);
+  if ("stat" in c) context.stat = str(c.stat, `${l}.context.stat`);
+  if ("level" in c) context.level = int(c.level, `${l}.context.level`, 1);
+  const unit = x.unit === null ? null : x.unit === "seconds" ? "seconds" as const
+    : fail(`${l}.unit must be "seconds" or null`);
+  return { object, context, unit };
+}
+
+function readAsksFact(v: unknown, l: string): J3AsksFact | null {
+  if (v === undefined || v === null) return null;
+  // EXACTLY these six keys: a value, label, display or answer fails the read.
+  const x = shape(v, l, ["fact", "kind", "object", "context", "unit", "child"]);
+  const d = readFactObject(x, l)!;
+  return { fact: str(x.fact, `${l}.fact`), kind: str(x.kind, `${l}.kind`), child: int(x.child, `${l}.child`), ...d };
+}
+
 function readLearnerValue(v: unknown, l: string): number | string | J3Formula {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string") return v;
@@ -344,7 +437,8 @@ function readChild(v: unknown, l: string, reask = false): J3Child {
   // The asked field is NAMED and its value WITHHELD, always.
   if (a.withheld !== true) fail(`${l}.asks must be withheld`);
   const premise = shape(o.premise, `${l}.premise`, ["ability_damage"], []);
-  const ln = shape(o.learner, `${l}.learner`, ["established", "relies_on", "states"]);
+  const ln = shape(o.learner, `${l}.learner`, ["established", "relies_on", "states", "asks_fact"],
+    ["established", "relies_on", "states"]);
   return {
     index: int(o.index, `${l}.index`),
     childId: reask ? "reask" : str(o.child_id, `${l}.child_id`),
@@ -372,11 +466,13 @@ function readChild(v: unknown, l: string, reask = false): J3Child {
     learner: {
       established: arr(ln.established, `${l}.learner.established`).map((e, i) => {
         const el = `${l}.learner.established[${i}]`;
-        const x = shape(e, el, ["fact", "kind", "label", "source", "value", "child"]);
+        const x = shape(e, el, ["fact", "kind", "label", "source", "value", "child", "object", "context", "unit"],
+          ["fact", "kind", "label", "source", "value", "child"]);
         return {
           fact: str(x.fact, `${el}.fact`), kind: str(x.kind, `${el}.kind`), label: str(x.label, `${el}.label`),
           source: source(x.source, `${el}.source`), child: int(x.child, `${el}.child`),
           value: readLearnerValue(x.value, `${el}.value`),
+          knowledge: readFactObject(x, el),
         };
       }),
       reliesOn: arr(ln.relies_on, `${l}.learner.relies_on`).map((r, i) => {
@@ -389,12 +485,15 @@ function readChild(v: unknown, l: string, reask = false): J3Child {
       }),
       states: arr(ln.states, `${l}.learner.states`).map((s, i) => {
         const sl = `${l}.learner.states[${i}]`;
-        const x = shape(s, sl, ["fact", "kind", "label", "value"]);
+        const x = shape(s, sl, ["fact", "kind", "label", "value", "object", "context", "unit"],
+          ["fact", "kind", "label", "value"]);
         return {
           fact: str(x.fact, `${sl}.fact`), kind: str(x.kind, `${sl}.kind`), label: str(x.label, `${sl}.label`),
           value: readLearnerValue(x.value, `${sl}.value`),
+          knowledge: readFactObject(x, sl),
         };
       }),
+      asksFact: readAsksFact(ln.asks_fact, `${l}.learner.asks_fact`),
     },
     reinforces: arr(o.reinforces, `${l}.reinforces`).map((r, i) => int(r, `${l}.reinforces[${i}]`)),
   };
@@ -479,6 +578,8 @@ function readReask(json: unknown): JourneyJ3 {
     version: JOURNEY_J3_VERSION, stateContract: JOURNEY_J3_STATE_CONTRACT, reask: true,
     ledgerPolicy: null, revealPolicy: null, recipeId: null, recipeVersion: null,
     title: null, role: null, arcType: null, plan: "standard", childCount: 1,
+    // A re-ask carries no K1 key (the backend strips them): no marks.
+    knowledgeContract: null,
     children, transitions: [],
     openDelaysMs: arr(o.open_delays_ms, "open_delays_ms").map((d, i) => int(d, `open_delays_ms[${i}]`)),
   };
@@ -491,6 +592,9 @@ export function readJourneyJ3(json: unknown): JourneyJ3 {
     return readReask(json);
   }
   const o = shape(json, "journey",
+    ["journey_version", "public_state_contract", "ledger_policy", "reveal_policy", "recipe_id", "recipe_version",
+      "title", "role", "arc_type", "plan", "child_count", "children", "transitions", "open_delays_ms",
+      "knowledge_object_contract"],
     ["journey_version", "public_state_contract", "ledger_policy", "reveal_policy", "recipe_id", "recipe_version",
       "title", "role", "arc_type", "plan", "child_count", "children", "transitions", "open_delays_ms"]);
   if (o.journey_version !== JOURNEY_J3_VERSION) fail(`unsupported journey_version ${JSON.stringify(o.journey_version)}`);
@@ -519,6 +623,8 @@ export function readJourneyJ3(json: unknown): JourneyJ3 {
     arcType: str(o.arc_type, "arc_type"),
     plan,
     childCount,
+    knowledgeContract: o.knowledge_object_contract === undefined ? null
+      : str(o.knowledge_object_contract, "knowledge_object_contract"),
     children,
     transitions,
     openDelaysMs: arr(o.open_delays_ms, "open_delays_ms").map((d, i) => int(d, `open_delays_ms[${i}]`)),

@@ -44,14 +44,21 @@ export const J3_CAPTURES = {
   "j4-lucian-survival": "j4/lucian.survival",
   "j4-pantheon-survival": "j4/pantheon.survival",
   "j4-strikeout": "j4/pantheon.survival.strikeout",
+  // K2 — the K1 knowledge-object contract (backend 597a2432), same harness: `__fixtures__/k1/`.
+  "k1-voli": "k1/voli.standard",
+  "k1-pantheon": "k1/pantheon.standard",
+  "k1-ahri-survival": "k1/ahri.survival",
+  "k1-voli-survival": "k1/voli.survival",
+  "k1-voli-timeout": "k1/voli.standard.timeout",
 } as const;
 export type CaptureKey = keyof typeof J3_CAPTURES;
 
-const loaders = import.meta.glob<CaptureSnapshot[]>(["./__fixtures__/j3/*.json", "./__fixtures__/j4/*.json"], { import: "default" });
+const loaders = import.meta.glob<CaptureSnapshot[]>(
+  ["./__fixtures__/j3/*.json", "./__fixtures__/j4/*.json", "./__fixtures__/k1/*.json"], { import: "default" });
 
 export async function loadCapture(key: CaptureKey): Promise<CaptureSnapshot[]> {
   const file = J3_CAPTURES[key];
-  const load = loaders[file.startsWith("j4/") ? `./__fixtures__/${file}.json` : `./__fixtures__/j3/${file}.json`];
+  const load = loaders[/^(j4|k1)\//.test(file) ? `./__fixtures__/${file}.json` : `./__fixtures__/j3/${file}.json`];
   if (!load) throw new Error(`no capture ${key}`);
   return load();
 }

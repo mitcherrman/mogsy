@@ -16003,7 +16003,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   row-gap: 2px;
 }
 .journey-side__id { display: contents; }
-.journey-side__id > [data-testid^="journey-portrait-"] { grid-area: portrait; }
+.journey-side__id > .journey-know-host--portrait { grid-area: portrait; }
 .journey-side__name { grid-area: name; display: flex; min-width: 0; align-items: center; gap: 4px; }
 .journey-side__champion { font-size: 0.625rem; line-height: 0.75rem; }
 .journey-side__kit { grid-area: kit; display: flex; gap: 3px; }
@@ -16109,6 +16109,64 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-side { row-gap: 8px; }
   .journey-side__champion { font-size: 0.875rem; line-height: 1.1rem; }
 }
+/* K2 — KNOWLEDGE MARKS. Every portrait / ability sits in a host of exactly its
+   own size; the `!` is absolutely positioned at the icon's top-right corner, so
+   a mark appearing lays out nothing. The badge is small; its tap target is
+   widened by an invisible ::before, not by its box. */
+.journey-know-host { position: relative; display: inline-flex; flex-shrink: 0; }
+.journey-know {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border-radius: 9999px;
+  border: 1px solid rgb(0 0 0 / 0.65);
+  background: #e8c97a;
+  color: #2a1f08;
+  font-size: 0.4375rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
+  cursor: pointer;
+}
+.journey-know::before { content: ""; position: absolute; inset: -7px; border-radius: 9999px; }
+.journey-know:hover, .journey-know[data-state="open"] { background: #f3dca0; }
+.journey-know:focus-visible { outline: 2px solid #f3dca0; outline-offset: 1px; }
+/* The ability tile is centred over its pips: pin to the TILE's corner. */
+/* It reaches no further right than the kit's gap, so it never touches the
+   next tile (whose top-left carries the rank digit). */
+.journey-know--ability { top: -3px; right: calc(50% - var(--jb-ability) / 2 - 3px); }
+/* The portrait is round: the badge sits on its bounding box's corner, off the face. */
+.journey-know--portrait { top: -2px; right: -3px; }
+@container (min-width: 26rem) {
+  .journey-know { width: 0.75rem; height: 0.75rem; font-size: 0.5625rem; }
+  .journey-know--ability { right: calc(50% - var(--jb-ability) / 2 - 4px); }
+}
+.journey-know-pop {
+  border-color: rgb(212 179 90 / 0.45);
+  background: rgb(7 17 31 / 0.96);
+  color: rgb(255 255 255 / 0.85);
+  padding: 4px 7px;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.9);
+}
+.journey-know-pop__title {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e8c97a;
+  white-space: nowrap;
+}
+.journey-know-pop__lines { display: flex; flex-direction: column; }
+.journey-know-pop__line { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.journey-know-pop__icon { width: 0.7rem; height: 0.7rem; color: #e8c97a; flex-shrink: 0; }
+.journey-know-pop__step { color: #e8c97a; opacity: 0.85; }
 /* JOURNEY-UI2 — a rank printed on the ability tile (a contract without max rank). */
 .journey-rank-digit { font-size: 0.5625rem; }
 /* JOURNEY-UI2 — the Journey question inside the Ranked stage.

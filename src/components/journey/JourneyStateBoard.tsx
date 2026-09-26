@@ -31,6 +31,12 @@
  * out nothing, so the board cannot change size when the art loads or fails).
  * The champion is the side's public identity (`side.championName`, already
  * printed beside it), so the art discloses nothing the board does not.
+ *
+ * K2 — KNOWLEDGE MARKS. A portrait or ability the Journey has established
+ * facts about wears a tiny `!` (`JourneyKnowledgeMark`), keyed by K1's object
+ * key (`player:<champion>:<slot>` / `opponent:<champion>`). Each portrait and
+ * ability sits in a same-size `journey-know-host`, marked or not, so a mark
+ * appearing changes no box. Items are never marked (K1 has no item fact).
  */
 import { useState, type ReactNode } from "react";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
@@ -41,9 +47,11 @@ import type {
   JourneyFocusRef, JourneyPublicState, JourneySide, JourneySideId,
 } from "@/lib/journey/contract";
 import { markKey, rankFrom, transitionMarks, type JourneyMarks } from "@/lib/journey/beat";
+import { knowledgeKeyFor, NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
 import {
   AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge, StatChip,
 } from "./JourneyPrimitives";
+import { JourneyKnowledgeMark } from "./JourneyKnowledgeMark";
 
 /** Compact rows show at most this many stats; the sheet shows them all. */
 export const COMPACT_STAT_LIMIT = 2;
@@ -78,12 +86,14 @@ function SideSplash({ side }: { side: JourneySide }) {
   );
 }
 
-function SidePanel({ state, side, marks }: {
+function SidePanel({ state, side, marks, knowledge }: {
   state: JourneyPublicState;
   side: JourneySide;
   marks: JourneyMarks;
+  knowledge: JourneyKnowledge;
 }) {
   const id = side.side;
+  const championMark = knowledge.get(knowledgeKeyFor(side)) ?? null;
   const focus = focusSet(state.focus.refs, id);
   const combat = state.focus.combat;
   const role = combat ? (combat.attacker === id ? "Attacker" : "Target") : null;
@@ -105,7 +115,13 @@ function SidePanel({ state, side, marks }: {
       className="journey-side">
       <SideSplash side={side} />
       <header className="journey-side__id">
-        <JourneyPortrait side={side} />
+        <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}>
+          <JourneyPortrait side={side} />
+          {championMark && (
+            <JourneyKnowledgeMark mark={championMark} name={side.championName} placement="portrait"
+              testId={`journey-know-${id}-champion`} />
+          )}
+        </span>
         <div className="journey-side__name min-w-0">
           <span className="journey-side__champion truncate font-black uppercase tracking-[0.08em] text-white"
             data-testid={`journey-name-${id}`}>
@@ -126,12 +142,22 @@ function SidePanel({ state, side, marks }: {
         </div>
       </header>
       <div className="journey-side__kit" role="group" aria-label={`${side.championName} abilities`}>
-        {side.abilities.map((a) => (
-          <AbilityRankPips key={a.slot} ability={a} champion={side.championName} side={id}
-            rankFrom={marks.rank.has(markKey(id, a.slot)) ? rankFrom(state.transition, id, a.slot) : null}
-            unlocked={marks.unlocked.has(markKey(id, a.slot))}
-            focused={focus.abilities.has(a.slot)} />
-        ))}
+        {side.abilities.map((a) => {
+          const known = knowledge.get(knowledgeKeyFor(side, a.slot)) ?? null;
+          return (
+            <span key={a.slot} className="journey-know-host journey-know-host--ability"
+              data-know-key={knowledgeKeyFor(side, a.slot)}>
+              <AbilityRankPips ability={a} champion={side.championName} side={id}
+                rankFrom={marks.rank.has(markKey(id, a.slot)) ? rankFrom(state.transition, id, a.slot) : null}
+                unlocked={marks.unlocked.has(markKey(id, a.slot))}
+                focused={focus.abilities.has(a.slot)} />
+              {known && (
+                <JourneyKnowledgeMark mark={known} name={`${side.championName} ${a.slot}`} placement="ability"
+                  testId={`journey-know-${id}-${a.slot}`} />
+              )}
+            </span>
+          );
+        })}
       </div>
       <div className="journey-side__items">
         <InventorySlots side={side} items={side.items} newSlots={newSlots} focusSlots={focus.items} />
@@ -151,8 +177,12 @@ function SidePanel({ state, side, marks }: {
   );
 }
 
-export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, questionRoles = null, children }: {
+export function JourneyStateBoard({
+  state, beatActive = false, onOpenDetail, questionRoles = null, knowledge = NO_KNOWLEDGE, children,
+}: {
   state: JourneyPublicState;
+  /** K2 — the established facts to mark on this board's objects. */
+  knowledge?: JourneyKnowledge;
   /**
    * JOURNEY-PRES-V1 — the CURRENT QUESTION's RQ1 roles (`challenge.roles`),
    * beside "Step N of M". The step header is the one line that already
@@ -200,7 +230,7 @@ export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, que
         </span>
       </div>
       <div className="journey-board__sides">
-        <SidePanel state={state} side={subject} marks={marks} />
+        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} />
         <div aria-hidden className="journey-board__seam" data-testid="journey-seam"
           data-seam={combat ? "combat" : "versus"}>
           {combat ? (
@@ -209,7 +239,7 @@ export function JourneyStateBoard({ state, beatActive = false, onOpenDetail, que
             <span className="font-black tracking-[0.2em] text-[#e8c97a]/80">VS</span>
           )}
         </div>
-        <SidePanel state={state} side={opponent} marks={marks} />
+        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} />
       </div>
       {children}
     </div>
