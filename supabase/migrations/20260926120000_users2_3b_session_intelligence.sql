@@ -143,5 +143,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.analytics_link_visitor_user(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.analytics_link_visitor_user(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.analytics_link_visitor_user(uuid) TO authenticated;
