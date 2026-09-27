@@ -23,7 +23,7 @@
  * Every mark takes a `progress` (0 → 1) from `useReveal`, which is exactly 1
  * whenever motion is reduced. Text is always the final figure.
  */
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { clamp01 } from "@/lib/motion/easing";
@@ -146,6 +146,67 @@ export function Segmented({
   );
 }
 
+/**
+ * HUB6.3G — whether an element's content box is narrower than `rem` root
+ * ems (so the threshold follows the reader's text size, like the room's
+ * container queries). For a switch CSS cannot make — a different structure,
+ * not a restyle. Measured before paint and on every resize; false (wide)
+ * wherever there is no ResizeObserver.
+ */
+export function useNarrow(ref: RefObject<HTMLElement>, rem: number): boolean {
+  const { width, root } = useElementWidth(ref);
+  return width > 0 && width < rem * root;
+}
+
+/** An element's width (px) and the root font size, kept current. Zero
+ *  wherever there is no ResizeObserver. */
+export function useElementWidth(ref: RefObject<HTMLElement>): { width: number; root: number } {
+  const [state, setState] = useState({ width: 0, root: 16 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const width = el.clientWidth;
+      setState((s) => (s.width === width && s.root === root ? s : { width, root }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return state;
+}
+
+/**
+ * HUB6.3G — which of a histogram's equal-width bins get an axis label, so no
+ * two labels overlap: the player's own bin first, then the two ends, then the
+ * rest, each kept only if its (estimated) box clears every label already
+ * placed. The ends are anchored inward. Every range stays in the tooltip and
+ * the table.
+ */
+export function axisLabelIndexes(labels: string[], subject: number | null, width: number, charPx = 6.2, gap = 6): number[] {
+  const n = labels.length;
+  if (n === 0) return [];
+  if (width <= 0) return [...new Set([0, n - 1, ...(subject !== null ? [subject] : [])])].sort((a, b) => a - b);
+  const col = width / n;
+  const box = (i: number): [number, number] => {
+    const w = labels[i].length * charPx + 4;
+    if (i === 0) return [0, w];
+    if (i === n - 1) return [width - w, width];
+    const c = (i + 0.5) * col;
+    return [c - w / 2, c + w / 2];
+  };
+  const order = [...(subject !== null ? [subject] : []), 0, n - 1, ...labels.map((_, i) => i)];
+  const kept: Array<[number, number, number]> = [];
+  for (const i of order) {
+    if (kept.some((k) => k[2] === i)) continue;
+    const [a, b] = box(i);
+    if (kept.every(([x, y]) => b + gap <= x || a >= y + gap)) kept.push([a, b, i]);
+  }
+  return kept.map((k) => k[2]).sort((a, b) => a - b);
+}
+
 /** A number counted into place with its reveal; the final value whenever
  *  there is no motion. */
 export function Counted({ value, progress, format = (v) => String(Math.round(v)) }: {
@@ -265,8 +326,12 @@ export interface LinePoint {
  * A chronological personal series on ONE y-axis (the caller never mixes
  * scales: a metric toggle swaps the whole series). Accuracy is drawn on a
  * fixed 0–100% axis; counts from zero. The line draws oldest → newest; the
- * current run is ringed and labelled; `average` is a dashed rule and
- * `record` a dotted one, each named in the key beneath.
+ * current run is ringed; `average` is a dashed rule and `record` a dotted
+ * one.
+ *
+ * HUB6.3G: NO text inside the plot. The current run's value and the two
+ * rules are named in the readout above it (`LineKey`), so a label can never
+ * collide with a rule, a point or another label — at any width or text size.
  */
 export function LineHistory({
   points,
@@ -304,7 +369,6 @@ export function LineHistory({
     .map((p, i) => (p.value === null ? null : `${x(i).toFixed(2)},${y(p.value).toFixed(2)}`))
     .filter(Boolean)
     .join(" ");
-  const cur = points.findIndex((p) => p.isCurrent);
   const sel = s.index;
   const summary = points.filter((p) => p.value !== null).map((p) => `${p.label}: ${format(p.value!)}`).join("; ");
 
@@ -382,20 +446,6 @@ export function LineHistory({
               />
             );
           })}
-          {cur >= 0 && points[cur].value !== null && progress >= 1 && sel === null && (
-            <span
-              aria-hidden="true"
-              className="absolute whitespace-nowrap text-right text-[10px] font-extrabold uppercase leading-tight tracking-[0.1em]"
-              style={{
-                right: `${100 - x(cur)}%`, top: `${y(points[cur].value!)}%`,
-                transform: y(points[cur].value!) < 22 ? "translate(-10px, 8px)" : "translate(-10px, calc(-100% - 8px))",
-                color: CHART.current,
-              }}
-            >
-              <span className="block text-[12.5px] tracking-normal">{format(points[cur].value!)}</span>
-              this Daily
-            </span>
-          )}
           {sel !== null && points[sel] && (
             <ChartTip x={x(sel)} testId={testId ? `${testId}-tip` : undefined} placement={points[sel].value !== null && y(points[sel].value!) < 45 ? "bottom" : "top"}>
               {describe(points[sel], sel)}
@@ -420,27 +470,37 @@ function niceCeil(v: number): number {
   return 10 * mag;
 }
 
-/** The key under a line chart: what the dashed and dotted rules are. */
-export function LineKey({ average, record }: { average?: string | null; record?: string | null }) {
-  if (!average && !record) return null;
+/**
+ * The readout over a line chart (HUB6.3G): this Daily's value, then what the
+ * dashed and dotted rules are, each with its figure. It sits OUTSIDE the plot
+ * and wraps as the width needs, so nothing in it can overlap the chart's
+ * marks or another label.
+ */
+export function LineKey({ current, average, record, testId }: {
+  current?: string | null;
+  average?: string | null;
+  record?: string | null;
+  testId?: string;
+}) {
   return (
-    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }}>
+    <div className="mb-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid={testId}>
+      <span className="inline-flex items-center gap-1.5" data-testid="line-key-current">
+        <span aria-hidden="true" className="inline-block h-2.5 w-2.5 self-center rounded-full" style={{ border: `2px solid ${CHART.current}`, background: "#f3e6c4" }} />
+        <span className="font-extrabold uppercase tracking-[0.1em]" style={{ color: CHART.current }}>This Daily</span>
+        {current && <span className="text-[13px] font-black tabular-nums" style={{ color: CHART.current }}>{current}</span>}
+      </span>
       {average && (
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="inline-block w-4" style={{ borderTop: `1.5px dashed ${LEAGUECRAFT_INK.faint}` }} />
+        <span className="inline-flex items-center gap-1.5" data-testid="line-key-average">
+          <span aria-hidden="true" className="inline-block w-4 self-center" style={{ borderTop: `1.5px dashed ${LEAGUECRAFT_INK.faint}` }} />
           {average}
         </span>
       )}
       {record && (
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="inline-block w-4" style={{ borderTop: `2px dotted ${CHART.gold}` }} />
+        <span className="inline-flex items-center gap-1.5" data-testid="line-key-record">
+          <span aria-hidden="true" className="inline-block w-4 self-center" style={{ borderTop: `2px dotted ${CHART.gold}` }} />
           {record}
         </span>
       )}
-      <span className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-full" style={{ border: `2px solid ${CHART.current}`, background: "#f3e6c4" }} />
-        This Daily
-      </span>
     </div>
   );
 }
@@ -593,7 +653,7 @@ export function NestedDonut({
 
   return (
     <div className="grid min-w-0 items-start gap-x-5 gap-y-3 [@container(min-width:27rem)]:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)]" data-testid={testId}>
-      <div className="relative mx-auto w-full max-w-[15rem]">
+      <div className="relative mx-auto w-full max-w-[12.5rem] [@container(min-width:27rem)]:max-w-[15rem]">
         <svg
           viewBox="0 0 200 200"
           className="block h-auto w-full"
@@ -702,7 +762,7 @@ export function NestedDonut({
             return (
               <li
                 key={g.group}
-                className="grid min-w-0 grid-cols-1 items-center gap-x-2 rounded-md border px-1.5 py-1 [@container(min-width:22rem)]:grid-cols-[minmax(0,1fr)_auto]"
+                className="grid min-w-0 grid-cols-1 items-center gap-x-2 rounded-md border px-1.5 py-0.5 [@container(min-width:16rem)]:grid-cols-[minmax(0,1fr)_auto]"
                 style={{
                   borderColor: locked ? LEAGUECRAFT_INK.strong : "rgba(96,68,28,0.18)",
                   background: locked ? "rgba(96,68,28,0.1)" : isOn(t) ? "rgba(255,249,233,0.3)" : "transparent",
@@ -725,7 +785,7 @@ export function NestedDonut({
                   <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-[3px]" style={{ background: g.color }} />
                   <span className="min-w-0">
                     <span className="block truncate text-[12px] font-bold" style={{ color: LEAGUECRAFT_INK.strong }}>{g.label}</span>
-                    <span className="block text-[10.5px] tabular-nums [@container(min-width:22rem)]:whitespace-nowrap" style={{ color: LEAGUECRAFT_INK.faint }}>
+                    <span className="block text-[10.5px] tabular-nums [@container(min-width:16rem)]:whitespace-nowrap" style={{ color: LEAGUECRAFT_INK.faint }}>
                       {g.correct}/{g.played} correct · {Math.round((g.correct / Math.max(1, g.played)) * 100)}%
                     </span>
                   </span>
@@ -761,7 +821,7 @@ export function NestedDonut({
                   })}
                 </span>
                 {describeGroup && (shown?.kind === "group" && shown.group === g.group || shown?.kind === "slice" && shown.slice.group === g.group) && (
-                  <div className="pb-0.5 pl-5 text-[10.5px] leading-snug [@container(min-width:22rem)]:col-span-2" style={{ color: LEAGUECRAFT_INK.body }} data-testid="donut-group-detail">
+                  <div className="pb-0.5 pl-5 text-[10.5px] leading-snug [@container(min-width:16rem)]:col-span-2" style={{ color: LEAGUECRAFT_INK.body }} data-testid="donut-group-detail">
                     {describeGroup(g.group)}
                   </div>
                 )}
@@ -842,6 +902,12 @@ export function Distribution({
   const youX = value === null || sub === null ? null : positionIn(bins, value, fraction, sub);
   const label = (i: number) => binLabel(bins[i], fraction);
   const tableId = useId().replace(/:/g, "");
+  const axisRef = useRef<HTMLDivElement>(null);
+  const { width: axisWidth } = useElementWidth(axisRef);
+  const shownLabels = useMemo(
+    () => axisLabelIndexes(bins.map((b) => binLabel(b, fraction)), sub, axisWidth),
+    [bins, fraction, sub, axisWidth],
+  );
 
   return (
     <div className="min-w-0" data-testid={testId}>
@@ -857,7 +923,7 @@ export function Distribution({
         onBlur={() => s.setIndex(null)}
         data-testid={testId ? `${testId}-scrubber` : undefined}
         data-selected={s.index ?? undefined}
-        className="relative h-[8.5rem] min-w-0 touch-pan-y rounded-sm pt-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative h-[8rem] min-w-0 touch-pan-y rounded-sm pt-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="relative h-full">
           <span aria-hidden="true" className="absolute inset-x-0 bottom-0 block" style={{ borderTop: `1px solid ${CHART.frame}` }} />
@@ -887,9 +953,6 @@ export function Distribution({
               className="absolute bottom-0 top-0 block"
               style={{ left: `${medianX}%`, borderLeft: `1.5px dashed ${LEAGUECRAFT_INK.faint}`, opacity: pBars }}
             >
-              <span className="absolute -top-5 -translate-x-1/2 whitespace-nowrap text-[9.5px] font-bold uppercase tracking-[0.1em]" style={{ color: LEAGUECRAFT_INK.faint }}>
-                Median
-              </span>
             </span>
           )}
           {youX !== null && (
@@ -919,8 +982,8 @@ export function Distribution({
           </ChartTip>
         )}
       </div>
-      <div className="relative mt-1 h-3.5 text-[9.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }} aria-hidden="true">
-        {bins.map((b, i) => (i === 0 || i === n - 1 || i === sub || (n <= 7)) && (
+      <div ref={axisRef} className="relative mt-1 h-3.5 text-[9.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }} aria-hidden="true" data-testid="dist-axis">
+        {bins.map((b, i) => shownLabels.includes(i) && (
           <span
             key={i}
             className="absolute -translate-x-1/2 whitespace-nowrap"
@@ -935,7 +998,23 @@ export function Distribution({
           </span>
         ))}
       </div>
-      <details className="mt-2 text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }}>
+      {/* HUB6.3G: the "You" marker is the plot's only text; the median rule
+          is named here, so the two can never collide in one bin. */}
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="dist-key">
+        {value !== null && sub !== null && (
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-[2px]" style={{ background: CHART.gold, boxShadow: `inset 0 0 0 1.5px ${LEAGUECRAFT_INK.brass}` }} />
+            Your range
+          </span>
+        )}
+        {median !== null && (
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className="inline-block h-3 self-center" style={{ borderLeft: `1.5px dashed ${LEAGUECRAFT_INK.faint}` }} />
+            Median {format(median)}
+          </span>
+        )}
+      </div>
+      <details className="mt-1.5 text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }}>
         <summary className="flex min-h-[24px] cursor-pointer select-none items-center rounded font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-[44px]">
           Every range as a table
         </summary>
@@ -994,6 +1073,7 @@ export function PercentileDial({
   reason,
   testId,
   emphasis = false,
+  fluid = false,
 }: {
   percentile: number | null;
   label: string;
@@ -1004,6 +1084,9 @@ export function PercentileDial({
   reason?: string;
   testId?: string;
   emphasis?: boolean;
+  /** HUB6.3G: fill the cell (up to `size`) — three dials in one row on a
+   *  phone rather than three stacked cards. */
+  fluid?: boolean;
 }) {
   const r = 40;
   const start = -120;
@@ -1031,8 +1114,9 @@ export function PercentileDial({
     >
       <svg
         viewBox="0 0 100 92"
-        width={size}
-        height={size * 0.92}
+        width={fluid ? undefined : size}
+        height={fluid ? undefined : size * 0.92}
+        style={fluid ? { width: "100%", maxWidth: size, height: "auto" } : undefined}
         role="img"
         aria-label={has ? `${label}: ${ordinal(num!)} percentile` : `${label}: no percentile. ${reason ?? ""}`}
         className="max-w-full"

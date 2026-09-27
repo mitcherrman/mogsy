@@ -52,8 +52,8 @@ import {
 } from "@/components/quiz/workspace/historyHighlight";
 import type { RoundVM } from "@/components/quiz/workspace/historyViewModel";
 import QuestionContext from "@/components/quiz/workspace/analytics/QuestionContext";
-import { CohortProvider } from "@/components/quiz/workspace/analytics/population";
-import { HighlightBar } from "@/components/quiz/workspace/analytics/roomParts";
+import { CohortBar, CohortProvider } from "@/components/quiz/workspace/analytics/population";
+import { HighlightBar, PreviewStatus } from "@/components/quiz/workspace/analytics/roomParts";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { relativeMatchAge } from "@/components/quiz/workspace/RankedMatchRow";
 import { DailyRunAnalysis, hasExpansion } from "@/components/quiz/workspace/HistoryAnalysis";
@@ -612,12 +612,22 @@ function DailyRunEntry({
               data-stage-kind={selected?.kind}
               aria-label={selected ? `${stageKindLabel(selected.kind)} stage analysis` : "Daily Overview"}
             >
+              {/* HUB6.3G: the ONE cohort choice, above whichever view is
+                  showing; it outlives the view, so it persists across the
+                  Overview and every stage. */}
+              <div className="mb-3 empty:hidden">
+                <CohortBar
+                  blocks={selected ? [selected.population] : [record.population?.core ?? null, ...record.stages.map((s) => s.population)]}
+                />
+              </div>
+              <PreviewStatus record={record} />
               <div key={focus ?? "closed"} className={`history-canvas-in history-canvas-in--${direction}`}>
                 {selected ? (
                   <StageAnalyticsView
                     record={record}
                     stage={selected}
                     review={reviewFor(selected.reviewMatchId)}
+                    reviewFor={reviewFor}
                     onRetry={onRetry}
                     runCapabilityState={record.capability.state}
                   />

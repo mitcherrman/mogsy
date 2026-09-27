@@ -17,9 +17,10 @@
  * percentile standing in for "not enough players" (the cohort's reason is
  * printed instead).
  *
- * COHORT: HUB6.3C's primary cohort is the rolling 28 days; the same-day
- * cohort is additional. One choice per expanded Daily (`CohortProvider`),
- * so every population surface in the room reads the same cohort.
+ * COHORT: HUB6.3C's primary cohort is the rolling 28 days (the default);
+ * the same-day cohort is additional. One choice per expanded Daily
+ * (`CohortProvider`) made in ONE place (`CohortBar`, HUB6.3G), so every
+ * population surface reads the same cohort and none carries its own toggle.
  */
 import { createContext, useContext, useMemo, useState } from "react";
 import { Crown } from "lucide-react";
@@ -74,19 +75,38 @@ export function useCohort(): CohortState {
   return useContext(CohortContext);
 }
 
-/** The cohort toggle — only where the block has more than one cohort. */
-export function CohortToggle({ blocks }: { blocks: Array<PopulationSubjectBlock | null | undefined> }) {
+/** The cohorts any of these blocks carries, in the fixed order (primary
+ *  first). */
+export function cohortsIn(blocks: Array<PopulationSubjectBlock | null | undefined>): CohortType[] {
+  return COHORT_TYPES.filter((t) => blocks.some((b) => cohortOf(b, t)));
+}
+
+/**
+ * HUB6.3G — THE cohort selector: exactly one per expanded Daily, above its
+ * analytics region, shown only while the view has a population with more
+ * than one cohort. Every population surface (the Overview's mode profile,
+ * strongest mode and Core distribution; each core stage's distribution,
+ * dials and streak percentile) reads this one choice, and the choice
+ * survives switching between the Overview and the stages (`CohortProvider`
+ * is the region's, not the view's). The default is the rolling 28 days.
+ */
+export function CohortBar({ blocks }: { blocks: Array<PopulationSubjectBlock | null | undefined> }) {
   const { type, setType } = useCohort();
-  const present = COHORT_TYPES.filter((t) => blocks.some((b) => cohortOf(b, t)));
+  const present = cohortsIn(blocks);
   if (present.length < 2) return null;
   return (
-    <Segmented
-      label="Compare with"
-      options={present.map((t) => ({ id: t, label: COHORT_LABEL[t] ?? t }))}
-      value={type}
-      onChange={(t) => setType(t)}
-      testId="cohort-toggle"
-    />
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1" data-testid="cohort-bar">
+      <span className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
+        Compare with Mogzy players from
+      </span>
+      <Segmented
+        label="Compare with Mogzy players from"
+        options={present.map((t) => ({ id: t, label: COHORT_LABEL[t] ?? t }))}
+        value={present.includes(type) ? type : PRIMARY_COHORT}
+        onChange={(t) => setType(t as CohortType)}
+        testId="cohort-toggle"
+      />
+    </div>
   );
 }
 
@@ -130,7 +150,6 @@ export function PopulationPanel({
   dials = true,
   testId,
   accent = CHART.ink,
-  extraBlocks = [],
 }: {
   block: PopulationSubjectBlock | null;
   /** Metric tabs, primary first. */
@@ -140,14 +159,14 @@ export function PopulationPanel({
   dials?: boolean;
   testId?: string;
   accent?: string;
-  /** Other blocks whose cohorts the toggle should account for. */
-  extraBlocks?: Array<PopulationSubjectBlock | null>;
 }) {
   const { type } = useCohort();
   const [metric, setMetric] = useState(metrics[0]);
   const reveal = useReveal<HTMLDivElement>({ durationMs: 1200, delayMs: 100 });
   if (!block) return null;
-  const cohort = cohortOf(block, type) ?? cohortOf(block, PRIMARY_COHORT);
+  const chosen = cohortOf(block, type);
+  const cohort = chosen ?? cohortOf(block, PRIMARY_COHORT);
+  const fellBack = !chosen && !!cohort && type !== PRIMARY_COHORT;
   const available = cohort?.status === "available";
   const m = cohort?.metrics[metric];
   const format = (v: number) => metricValue(metric, v);
@@ -155,11 +174,15 @@ export function PopulationPanel({
   return (
     <Panel
       title={title}
-      eyebrow={eyebrow ?? "Mogzy players"}
+      eyebrow={eyebrow ?? `Mogzy players · ${COHORT_LABEL[cohort?.type ?? PRIMARY_COHORT] ?? ""}`}
       testId={testId ?? "population-panel"}
-      action={<CohortToggle blocks={[block, ...extraBlocks]} />}
     >
       <div ref={reveal.ref} className="min-w-0" data-cohort={cohort?.type} data-status={cohort?.status ?? "none"}>
+        {fellBack && (
+          <p className="mb-2 text-[10.5px] italic" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="population-cohort-fallback">
+            {COHORT_LABEL[type] ?? "That"} comparison isn't available here — showing {(COHORT_LABEL[PRIMARY_COHORT] ?? "").toLowerCase()}.
+          </p>
+        )}
         {metrics.length > 1 && (
           <div className="mb-2.5">
             <Segmented
@@ -260,15 +283,10 @@ export function ModeProfile({ record }: { record: DailyHistoryRecord }) {
   const winner = strongest?.stageKind ?? null;
 
   return (
-    <Panel
-      title="Mode profile"
-      eyebrow="Mogzy players"
-      testId="mode-profile"
-      action={<CohortToggle blocks={[pop?.core ?? null, ...blocks]} />}
-    >
+    <Panel title="Mode profile" eyebrow={`Mogzy players · ${COHORT_LABEL[type] ?? ""}`} testId="mode-profile">
       <div ref={reveal.ref} className="min-w-0">
         <StrongestBanner record={record} type={type} progress={reveal.progress} />
-        <ul className="mt-3 grid grid-cols-3 gap-1.5 [@container(max-width:20rem)]:grid-cols-1" aria-label="Each mode's standing">
+        <ul className="mt-3 grid grid-cols-1 gap-1.5 [@container(min-width:16rem)]:grid-cols-3" aria-label="Each mode's standing" data-testid="mode-dials">
           {CORE_KINDS.map((kind, i) => {
             const stage = stages[i];
             const block = blocks[i];
@@ -282,7 +300,7 @@ export function ModeProfile({ record }: { record: DailyHistoryRecord }) {
             return (
               <li
                 key={kind}
-                className="relative flex min-w-0 flex-col items-center rounded-lg border px-1 pb-2 pt-3"
+                className="relative flex min-w-0 flex-row items-center justify-between gap-3 rounded-lg border px-2.5 py-2 [@container(min-width:16rem)]:flex-col [@container(min-width:16rem)]:justify-start [@container(min-width:16rem)]:gap-0 [@container(min-width:16rem)]:px-1 [@container(min-width:16rem)]:pb-2 [@container(min-width:16rem)]:pt-3"
                 style={{
                   borderColor: crowned ? tone.ink : tone.edge,
                   background: crowned ? tone.tint : "rgba(255,249,233,0.25)",
@@ -297,7 +315,7 @@ export function ModeProfile({ record }: { record: DailyHistoryRecord }) {
                     <Crown className="h-3 w-3" style={{ color: "#4a3208" }} />
                   </span>
                 )}
-                <span className="mb-0.5 flex items-center gap-1 text-[10.5px] font-extrabold uppercase tracking-[0.08em]" style={{ color: tone.ink }}>
+                <span className="mb-0.5 flex min-w-0 items-center gap-1 text-[10.5px] font-extrabold uppercase tracking-[0.06em]" style={{ color: tone.ink }}>
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   {stageKindLabel(kind)}
                 </span>
@@ -308,6 +326,7 @@ export function ModeProfile({ record }: { record: DailyHistoryRecord }) {
                   progress={reveal.progress}
                   color={tone.ink}
                   size={crowned ? 104 : 94}
+                  fluid
                   emphasis={crowned}
                   reason={pct === null ? shortReason(cohort) : undefined}
                 />

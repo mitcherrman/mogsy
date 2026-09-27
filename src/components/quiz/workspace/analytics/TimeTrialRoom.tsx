@@ -179,7 +179,7 @@ function Stopwatch({ stage }: { stage: HistoryStage }) {
           <line x1={100} y1={112} x2={hx} y2={hy} stroke={LEAGUECRAFT_INK.strong} strokeWidth={2.4} strokeLinecap="round" />
           <circle cx={100} cy={112} r={4} fill={LEAGUECRAFT_INK.strong} />
           <text x={100} y={148} textAnchor="middle" fontSize={27} fontWeight={900} fill={LEAGUECRAFT_INK.strong}>{shown}</text>
-          <text x={100} y={159} textAnchor="middle" fontSize={8} fontWeight={800} letterSpacing={1.2} fill={LEAGUECRAFT_INK.faint}>PLAYED</text>
+          <text x={100} y={163} textAnchor="middle" fontSize={8} fontWeight={800} letterSpacing={1.2} fill={LEAGUECRAFT_INK.faint}>PLAYED</text>
         </svg>
         <div className="min-w-0">
           <ul className="grid">

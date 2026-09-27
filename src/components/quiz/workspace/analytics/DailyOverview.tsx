@@ -101,11 +101,12 @@ function ThisDaily({ record, analytics }: { record: DailyHistoryRecord; analytic
   const accuracy = cur?.accuracy ?? record.basic.accuracy;
 
   const current: BoardFigure[] = [
-    { label: "Correct", value: `${correct} / ${played}`, aria: correctOfPlayed(correct, played) },
-    { label: "Accuracy", value: pct(accuracy) },
+    { key: "correct", label: "Correct", value: `${correct} / ${played}`, aria: correctOfPlayed(correct, played) },
+    { key: "accuracy", label: "Accuracy", value: pct(accuracy) },
   ];
   if (streak) {
     current.push({
+      key: "streak",
       label: "Core longest streak",
       value: (
         <span data-testid="daily-core-streak">
@@ -123,23 +124,23 @@ function ThisDaily({ record, analytics }: { record: DailyHistoryRecord; analytic
   const changes: BoardChange[] = [];
   if (prev && prev.correct != null && prev.questionsPlayed != null) {
     previous = [
-      { label: "Correct", value: `${prev.correct} / ${prev.questionsPlayed}`, aria: correctOfPlayed(prev.correct, prev.questionsPlayed) },
-      { label: "Accuracy", value: pct(prev.accuracy) },
+      { key: "correct", label: "Correct", value: `${prev.correct} / ${prev.questionsPlayed}`, aria: correctOfPlayed(prev.correct, prev.questionsPlayed) },
+      { key: "accuracy", label: "Accuracy", value: pct(prev.accuracy) },
     ];
     // The previous Core streak only when Core's previous IS that Daily.
     const prevStreak = core?.previous?.runId === prev.runId ? core.previous.longestStreak ?? null : null;
-    if (streak && prevStreak !== null) previous.push({ label: "Core longest streak", value: String(prevStreak) });
+    if (streak && prevStreak !== null) previous.push({ key: "streak", label: "Core longest streak", value: String(prevStreak) });
     const dc = correct - prev.correct;
-    changes.push({ text: `${signed(dc)} correct`, direction: dir(dc), testId: "daily-change-correct" });
+    changes.push({ text: `${signed(dc)} correct`, direction: dir(dc), testId: "daily-change-correct", metric: "correct" });
     const dp = played - prev.questionsPlayed;
-    changes.push({ text: questionsPlayedDelta(dp), direction: dir(dp), testId: "daily-change-played" });
+    changes.push({ text: questionsPlayedDelta(dp), direction: dir(dp), testId: "daily-change-played", metric: "correct" });
     if (accuracy != null && prev.accuracy != null) {
       const a = accuracyComparison(accuracy, prev.accuracy);
-      changes.push({ text: `${a.versus} · ${a.change}`, direction: dir(a.points), testId: "daily-change-accuracy" });
+      changes.push({ text: `${a.versus} · ${a.change}`, direction: dir(a.points), testId: "daily-change-accuracy", metric: "accuracy" });
     }
     if (streak && prevStreak !== null) {
       const ds = streak.length - prevStreak;
-      changes.push({ text: `Streak ${signed(ds)}`, direction: dir(ds), testId: "daily-change-streak" });
+      changes.push({ text: `Streak ${signed(ds)}`, direction: dir(ds), testId: "daily-change-streak", metric: "streak" });
     }
   }
   const composition = pd && pd.sameStageKinds === false && prev
@@ -172,7 +173,7 @@ function CoreRecords({ record }: { record: DailyHistoryRecord }) {
   if (!mostCorrect && !streak) return null;
   return (
     <Panel title="Core Daily records" eyebrow="Standard · Time Trial · Survival" testId="core-records">
-      <div ref={reveal.ref} className="grid grid-cols-[repeat(auto-fit,minmax(min(7rem,100%),1fr))] gap-3 pt-1">
+      <div ref={reveal.ref} className="grid grid-cols-1 gap-3 pt-1 [@container(min-width:16rem)]:grid-cols-2" data-testid="records-grid" data-count={2}>
         <RecordMedal record={mostCorrect} label="Most correct" glyph={CheckCheck} shape="round" progress={reveal.progress} testId="core-record-correct" />
         <RecordMedal record={streak} label="Longest streak" glyph={Flame} shape="shield" progress={reveal.progress} testId="core-record-streak" />
       </div>

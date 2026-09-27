@@ -4,13 +4,14 @@
  * and the series tooltip.
  */
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
-import { useHighlightControls } from "@/components/quiz/workspace/historyHighlight";
-import { planDateLabel } from "@/components/quiz/workspace/historyFormat";
+import { useHighlightControls, useHistoryHighlight, type HistoryHighlight } from "@/components/quiz/workspace/historyHighlight";
+import { planDateLabel, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import { useReveal } from "@/lib/motion/useReveal";
-import type { PersonalSnapshot } from "@/lib/history/contracts";
+import type { DailyHistoryRecord, PersonalSnapshot } from "@/lib/history/contracts";
 import { LineHistory, LineKey, Panel, Segmented, type LinePoint } from "./charts";
 import { seriesPoints } from "./derive";
 
@@ -47,6 +48,59 @@ export function HighlightBar() {
         Clear
       </button>
     </div>
+  );
+}
+
+/** "Time Trial" / "on 2 rows" / "across the Daily": where a highlight's
+ *  questions are, from its scope. */
+export function highlightScope(record: DailyHistoryRecord, h: HistoryHighlight): { kind: string | null; rows: number } {
+  const ids = h.stageIds ? [...h.stageIds] : h.stageId ? [h.stageId] : null;
+  if (!ids) {
+    const rows = record.stages.filter((s) => s.questions.some((q) => q.questionResultId !== null && h.occurrenceIds.has(q.questionResultId))).length;
+    return { kind: null, rows: rows || record.stages.length };
+  }
+  const stages = record.stages.filter((s) => ids.includes(s.stageId));
+  return { kind: stages.length === 1 ? stageKindLabel(stages[0].kind) : null, rows: stages.length };
+}
+
+export function previewWords(record: DailyHistoryRecord, h: HistoryHighlight): string {
+  const n = h.occurrenceIds.size;
+  const noun = n === 1 ? "question" : "questions";
+  const { kind, rows } = highlightScope(record, h);
+  if (kind) return `Lighting ${n} ${kind} ${noun}`;
+  return `Lighting ${n} ${noun} on ${rows} ${rows === 1 ? "row" : "rows"}`;
+}
+
+/**
+ * HUB6.3G — while a chart PREVIEWS (hover or focus), the rails it lights may
+ * be scrolled out of sight above. The page never scrolls on a hover; instead
+ * this compact note, fixed at the foot of the window over the room the reader
+ * is pointing at, says what is lit and where: "Lighting 6 Time Trial
+ * questions ↑ on the rows above · select to keep them lit". It vanishes with
+ * the preview. A click/tap LOCKS (the lock bar then stays, and the rail pages
+ * to the first lit question); Escape or Clear resets.
+ *
+ * It reads the effective highlight, so a hover re-renders only this note (and
+ * the rails) — never a chart. Portalled to the body so no ancestor's
+ * clipping or transform can hold it.
+ */
+export function PreviewStatus({ record }: { record: DailyHistoryRecord }) {
+  const { highlight, locked } = useHistoryHighlight();
+  if (!highlight || highlight === locked || highlight.occurrenceIds.size === 0 || typeof document === "undefined") return null;
+  return createPortal(
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4" data-testid="preview-status-layer">
+      <div
+        role="status"
+        className="flex max-w-full flex-wrap items-center gap-x-1.5 rounded-full border px-3 py-1.5 text-[11.5px] shadow-lg"
+        style={{ borderColor: "rgba(96,68,28,0.45)", background: "rgba(246,236,210,0.98)", color: "#3d2a0e" }}
+        data-testid="preview-status"
+      >
+        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#b4862a", boxShadow: "0 0 0 2px rgba(180,134,42,0.3)" }} />
+        <strong style={{ color: "#241708" }}>{previewWords(record, highlight)}</strong>
+        <span style={{ color: "#6b5330" }}>↑ on the rows above · select to keep them lit</span>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -93,6 +147,7 @@ export function HistoryPanel({
     key: p.runId, value: p.value, isCurrent: p.isCurrent, label: planDateLabel(p.planDate),
   }));
   const bySeries = new Map(series.map((s) => [s.runId, s]));
+  const currentPoint = points.find((x) => x.isCurrent) ?? null;
   return (
     <Panel
       title={title}
@@ -111,6 +166,12 @@ export function HistoryPanel({
       <div ref={reveal.ref} data-metric={metric.id as string}>
         {points.length >= 2 ? (
           <>
+            <LineKey
+              current={currentPoint && currentPoint.value !== null ? fmt(currentPoint.value) : null}
+              average={metric.average !== null && metric.average !== undefined ? `Your average ${fmt(metric.average)}` : null}
+              record={metric.record !== null && metric.record !== undefined ? `Record ${fmt(metric.record)}` : null}
+              testId="history-key"
+            />
             <LineHistory
               key={metric.id as string}
               points={points}
@@ -132,10 +193,6 @@ export function HistoryPanel({
                   </>
                 );
               }}
-            />
-            <LineKey
-              average={metric.average !== null && metric.average !== undefined ? `Your average ${fmt(metric.average)}` : null}
-              record={metric.record !== null && metric.record !== undefined ? `Record ${fmt(metric.record)}` : null}
             />
           </>
         ) : (

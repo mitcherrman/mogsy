@@ -60,33 +60,37 @@ export function StageCompare({ stage, fields }: { stage: HistoryStage; fields: C
         return s.completionReason ? { label: "Ended", value: <span className="text-[13px]">{COMPLETION_WORDS[s.completionReason] ?? "Finished"}</span> } : null;
     }
   };
-  const current = fields.map((x) => fig(cur, x)).filter((x): x is BoardFigure => x !== null);
-  const previous = prev ? fields.map((x) => fig(prev, x)).filter((x): x is BoardFigure => x !== null) : null;
+  const keyed = (s: typeof cur | PersonalSnapshot, field: CompareField): BoardFigure | null => {
+    const f = fig(s, field);
+    return f ? { ...f, key: field } : null;
+  };
+  const current = fields.map((x) => keyed(cur, x)).filter((x): x is BoardFigure => x !== null);
+  const previous = prev ? fields.map((x) => keyed(prev, x)).filter((x): x is BoardFigure => x !== null) : null;
   const changes: BoardChange[] = [];
   if (prev) {
     for (const field of fields) {
       if (field === "score" && cur.score != null && prev.score != null) {
         const d = cur.score - prev.score;
-        changes.push({ text: `Score ${signed(d)}`, direction: dir(d), testId: "change-score" });
+        changes.push({ text: `Score ${signed(d)}`, direction: dir(d), testId: "change-score", metric: "score" });
       } else if (field === "correct" && prev.correct != null) {
         const d = cur.correct - prev.correct;
-        changes.push({ text: `${signed(d)} correct`, direction: dir(d), testId: "change-correct" });
+        changes.push({ text: `${signed(d)} correct`, direction: dir(d), testId: "change-correct", metric: "correct" });
       } else if (field === "played" && prev.questionsPlayed != null) {
         const d = cur.questionsPlayed - prev.questionsPlayed;
-        changes.push({ text: questionsPlayedDelta(d), direction: dir(d), testId: "change-played" });
+        changes.push({ text: questionsPlayedDelta(d), direction: dir(d), testId: "change-played", metric: "played" });
       } else if (field === "accuracy" && cur.accuracy != null && prev.accuracy != null) {
         const a = accuracyComparison(cur.accuracy, prev.accuracy);
-        changes.push({ text: `${a.versus} · ${a.change}`, direction: dir(a.points), testId: "change-accuracy" });
+        changes.push({ text: `${a.versus} · ${a.change}`, direction: dir(a.points), testId: "change-accuracy", metric: "accuracy" });
       } else if (field === "streak" && cur.longestStreak != null && prev.longestStreak != null) {
         const d = cur.longestStreak - prev.longestStreak;
-        changes.push({ text: `Streak ${signed(d)}`, direction: dir(d), testId: "change-streak" });
+        changes.push({ text: `Streak ${signed(d)}`, direction: dir(d), testId: "change-streak", metric: "streak" });
       } else if (field === "depth" && cur.depth != null && prev.depth != null) {
         const d = cur.depth - prev.depth;
-        changes.push({ text: depthDelta(d), direction: dir(d), testId: "change-depth" });
+        changes.push({ text: depthDelta(d), direction: dir(d), testId: "change-depth", metric: "depth" });
       } else if (field === "strikes" && cur.strikesUsed != null && prev.strikesUsed != null) {
         const d = cur.strikesUsed - prev.strikesUsed;
         // Fewer strikes is not scored as better or worse here: a plain count.
-        changes.push({ text: d === 0 ? "Same strikes used" : `${Math.abs(d)} ${d > 0 ? "more" : "fewer"} ${Math.abs(d) === 1 ? "strike" : "strikes"} used`, direction: "same", testId: "change-strikes" });
+        changes.push({ text: d === 0 ? "Same strikes used" : `${Math.abs(d)} ${d > 0 ? "more" : "fewer"} ${Math.abs(d) === 1 ? "strike" : "strikes"} used`, direction: "same", testId: "change-strikes", metric: "strikes" });
       }
     }
   }
@@ -199,7 +203,7 @@ export function RecordsPanel({ stage, specs, title = "Personal records" }: { sta
   if (!p?.eligible || records.length === 0) return null;
   return (
     <Panel title={title} eyebrow={stageKindLabel(stage.kind)} testId="stage-records">
-      <div ref={reveal.ref} className="grid grid-cols-[repeat(auto-fit,minmax(min(6.75rem,100%),1fr))] gap-3 pt-1">
+      <div ref={reveal.ref} className={`grid grid-cols-1 gap-3 pt-1 ${records.length >= 3 ? "[@container(min-width:16rem)]:grid-cols-3" : "[@container(min-width:16rem)]:grid-cols-2"}`} data-testid="records-grid" data-count={records.length}>
         {records.map(({ s, r }) => (
           <RecordMedal key={s.metric} record={r} label={s.label} glyph={s.glyph} shape={s.shape} progress={reveal.progress} testId={`record-${s.metric}`} />
         ))}

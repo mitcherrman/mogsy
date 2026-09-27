@@ -8,7 +8,7 @@
  * medal claim. Deliberately absent: the raw Daily score (Review awards points
  * after misses), best accuracy, fewest strikes.
  */
-import { useId } from "react";
+import { useId, useRef } from "react";
 import { Flame, Link2 } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
@@ -18,7 +18,7 @@ import type { PersonalRecord } from "@/lib/history/contracts";
 import { instantDateLabel } from "@/components/quiz/workspace/historyFormat";
 import { RECORD_LABEL } from "@/components/quiz/workspace/historyComparisons";
 import { CHART } from "./ink";
-import { Counted, DeltaChip } from "./charts";
+import { Counted, DeltaChip, useNarrow } from "./charts";
 
 // ─────────────────────────────────────────────────────────── medal
 
@@ -77,14 +77,14 @@ export function RecordMedal({
         : first ? "No earlier attempt to compare" : null;
   return (
     <figure
-      className="flex min-w-0 flex-col items-center text-center"
+      className="flex min-w-0 flex-row items-center gap-3 text-left [@container(min-width:16rem)]:flex-col [@container(min-width:16rem)]:gap-0 [@container(min-width:16rem)]:text-center"
       data-testid={testId ?? "record-medal"}
       data-metric={record.metric}
       data-status={status ?? "unknown"}
       aria-label={`${label}: ${format(record.current)}. ${statusText}.${recordLine ? ` ${recordLine}.` : ""}`}
       role="group"
     >
-      <div className={`relative h-[100px] w-[100px] shrink-0 ${gilded && done && motion ? "history-medal-settle" : ""}`}>
+      <div className={`relative h-[68px] w-[68px] shrink-0 [@container(min-width:16rem)]:h-[80px] [@container(min-width:16rem)]:w-[80px] [@container(min-width:24rem)]:h-[100px] [@container(min-width:24rem)]:w-[100px] ${gilded && done && motion ? "history-medal-settle" : ""}`}>
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
           <defs>
             <radialGradient id={`${uid}-gold`} cx="35%" cy="28%" r="80%">
@@ -115,13 +115,13 @@ export function RecordMedal({
         <div className="absolute inset-0 grid place-items-center" aria-hidden="true">
           <div className="flex flex-col items-center leading-none">
             <Glyph className="mb-0.5 h-4 w-4" style={{ color: gilded ? "#4a3208" : LEAGUECRAFT_INK.brass }} aria-hidden={true} />
-            <span className="text-[23px] font-black tabular-nums" style={{ color: gilded ? "#2a1a04" : LEAGUECRAFT_INK.strong }}>
+            <span className="text-[19px] font-black tabular-nums [@container(min-width:24rem)]:text-[23px]" style={{ color: gilded ? "#2a1a04" : LEAGUECRAFT_INK.strong }}>
               {format(shown)}
             </span>
           </div>
         </div>
       </div>
-      <figcaption className="mt-1.5 min-w-0 max-w-full">
+      <figcaption className="min-w-0 max-w-full [@container(min-width:16rem)]:mt-1.5">
         <span className="block text-[11px] font-extrabold" style={{ color: LEAGUECRAFT_INK.strong }}>{label}</span>
         <span
           className="mt-0.5 inline-block rounded-full px-1.5 text-[9.5px] font-black uppercase tracking-[0.12em]"
@@ -265,19 +265,32 @@ export interface BoardFigure {
   value: React.ReactNode;
   /** Accessible text when `value` is a picture. */
   aria?: string;
+  /** Identity, so a change can sit under its own figure (narrow layout). */
+  key?: string;
 }
 
 export interface BoardChange {
   text: string;
   direction: "up" | "down" | "same";
   testId?: string;
+  /** The figure (`BoardFigure.key`) this change describes. */
+  metric?: string;
 }
+
+/** Below this width (in rem, so it tracks the text size) the board is two
+ *  compact columns with each change under its figure. */
+const NARROW_REM = 28;
 
 /**
  * Current vs previous, side by side, and the exact changes between them.
  * Only factual differences of displayed figures: counts, and accuracy in
  * points between the two shown percentages ("89% vs 79%", "10 points
  * higher").
+ *
+ * HUB6.3G: on a narrow board (a phone) the three stacked cards became one
+ * compact grid — Today | Previous in two columns, one row per figure, and
+ * that figure's change directly beneath it — instead of three full-width
+ * cards. Wide boards keep the Today / Previous / Change cards.
  */
 export function CompareBoard({
   currentTitle,
@@ -296,6 +309,8 @@ export function CompareBoard({
   note?: React.ReactNode;
   testId?: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const narrow = useNarrow(ref, NARROW_REM);
   const column = (title: React.ReactNode, figures: BoardFigure[], mine: boolean, id: string) => (
     <div
       className="min-w-0 rounded-md border px-2.5 py-2"
@@ -320,8 +335,59 @@ export function CompareBoard({
       </dl>
     </div>
   );
-  return (
-    <div className="min-w-0" data-testid={testId}>
+
+  let body: React.ReactNode;
+  if (narrow) {
+    const keyOf = (f: BoardFigure) => f.key ?? f.label;
+    const rows = current.map((f) => ({
+      f,
+      prev: previous?.find((x) => keyOf(x) === keyOf(f)) ?? null,
+      changes: changes.filter((c) => c.metric === keyOf(f)),
+    }));
+    const shown = new Set(current.map(keyOf));
+    const rest = changes.filter((c) => c.metric === undefined || !shown.has(c.metric));
+    body = (
+      <>
+        <div className="overflow-hidden rounded-md border" style={{ borderColor: "rgba(96,68,28,0.22)" }} data-testid="compare-narrow">
+          <div className="grid grid-cols-2 border-b text-[9.5px] font-black uppercase tracking-[0.14em]" style={{ borderColor: "rgba(96,68,28,0.16)" }}>
+            <div className="px-2.5 py-1.5" style={{ color: CHART.current, background: "rgba(8,64,79,0.06)" }} data-testid="compare-narrow-current">{currentTitle}</div>
+            <div className="min-w-0 px-2.5 py-1.5" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="compare-narrow-previous">{previous ? previousTitle : "Previous"}</div>
+          </div>
+          <dl>
+            {rows.map(({ f, prev, changes: cs }) => (
+              <div key={f.label} className={`border-b last:border-b-0 ${cs.length === 0 ? "pb-1.5" : ""}`} style={{ borderColor: "rgba(96,68,28,0.12)" }} data-testid="compare-row" data-metric={keyOf(f)}>
+                <dt className="px-2.5 pt-1.5 text-[9.5px] font-bold uppercase tracking-[0.12em]" style={{ color: LEAGUECRAFT_INK.faint }}>{f.label}</dt>
+                <dd className="grid grid-cols-2 items-baseline">
+                  <span className="min-w-0 px-2.5 text-[15px] font-extrabold leading-tight tabular-nums" style={{ color: LEAGUECRAFT_INK.strong, background: "rgba(8,64,79,0.04)" }} aria-label={f.aria ? `${currentTitle}: ${f.aria}` : undefined}>
+                    {f.value}
+                  </span>
+                  <span className="min-w-0 px-2.5 text-[13px] font-bold leading-tight tabular-nums" style={{ color: LEAGUECRAFT_INK.body }} aria-label={prev?.aria ? `Previous: ${prev.aria}` : undefined}>
+                    {prev ? prev.value : "—"}
+                  </span>
+                </dd>
+                {cs.length > 0 && (
+                  <dd className="flex flex-wrap gap-1 px-2.5 pb-1.5 pt-1">
+                    {cs.map((c) => <DeltaChip key={c.text} text={c.text} direction={c.direction} testId={c.testId} />)}
+                  </dd>
+                )}
+              </div>
+            ))}
+          </dl>
+          {rest.length > 0 && (
+            <div className="flex flex-wrap gap-1 border-t px-2.5 py-1.5" style={{ borderColor: "rgba(96,68,28,0.12)" }}>
+              {rest.map((c) => <DeltaChip key={c.text} text={c.text} direction={c.direction} testId={c.testId} />)}
+            </div>
+          )}
+        </div>
+        {!previous && (
+          <p className="mt-1.5 text-[11px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="compare-previous-none">
+            No earlier matching attempt yet — this is the first.
+          </p>
+        )}
+      </>
+    );
+  } else {
+    body = (
       <div className="grid gap-2 [@container(min-width:28rem)]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)]">
         {column(currentTitle, current, true, "compare-current")}
         {previous ? column(previousTitle, previous, false, "compare-previous") : (
@@ -342,6 +408,13 @@ export function CompareBoard({
           </div>
         )}
       </div>
+    );
+  }
+
+  // One measured wrapper for both layouts, so the width is always observed.
+  return (
+    <div ref={ref} className="min-w-0" data-testid={testId} data-layout={narrow ? "narrow" : "wide"}>
+      {body}
       {note && <p className="mt-1.5 text-[10.5px] italic" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="compare-note">{note}</p>}
     </div>
   );
