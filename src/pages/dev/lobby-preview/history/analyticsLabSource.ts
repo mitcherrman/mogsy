@@ -1,9 +1,11 @@
 /**
- * HUB6.3D — the Analytics Lab's History, served offline through the
+ * HUB6.3D/E — the Analytics Lab's History, served offline through the
  * production contract, exactly like Timmy's: every page is a real
- * `GET /api/history/v1` response — HUB6.3B's route (`d4a43826`) run over the
- * lab's rows by `scripts/hub63-generate-analytics-lab.py` — handed to the SAME
- * `readHistoryPage` production uses. Nothing here computes a figure.
+ * `GET /api/history/v1` response — HUB6.3C's route (`00c794cd`: HUB6.3B
+ * personal analytics + population + Free strike markers) run over the lab's
+ * rows and population recipes by `scripts/hub63-generate-analytics-lab.py` —
+ * handed to the SAME `readHistoryPage` production uses. Nothing here computes
+ * a figure.
  */
 import goldenText from "./analyticsLab.golden.json?raw";
 import { readHistoryPage } from "@/lib/history/contracts";
@@ -19,7 +21,8 @@ interface WirePage {
 
 export interface AnalyticsLabGolden {
   generated_by: string;
-  hub6_3b_commit: string;
+  /** The backend commit whose route produced every page. */
+  backend_commit: string;
   input_sha256: string;
   scenarios: Record<AnalyticsLabScenario, WirePage[]>;
 }

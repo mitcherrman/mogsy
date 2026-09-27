@@ -30,11 +30,51 @@ describe("Analytics Lab — provenance", () => {
     expect(sha).toBe(ANALYTICS_LAB_GOLDEN.input_sha256);
   });
 
-  it("names the HUB6.3B backend it came from, and stays apart from the HUB2.3 goldens", () => {
-    expect(ANALYTICS_LAB_GOLDEN.hub6_3b_commit).toMatch(/^d4a43826/);
+  it("names the HUB6.3C backend it came from, and stays apart from the HUB2.3 goldens", () => {
+    // HUB6.3E: regenerated through HUB6.3C (personal + population + Free
+    // strike markers) on `claude/hub6-3-population`.
+    expect(ANALYTICS_LAB_GOLDEN.backend_commit).toMatch(/^00c794cd/);
     expect(ANALYTICS_LAB_GOLDEN.generated_by).toMatch(/hub63-generate-analytics-lab/);
     // The certified HUB5/HUB6 accounts are untouched: a different input.
     expect(TIMMY_HISTORY_GOLDEN.input_sha256).not.toBe(ANALYTICS_LAB_GOLDEN.input_sha256);
+  });
+
+  it("HUB6.3C Free basic facts: the stage's own streak, depth and strikes equal the Premium duplicates", () => {
+    const free = records("lab_free");
+    const premium = records("lab_premium");
+    let stages = 0;
+    for (const [i, run] of premium.entries()) {
+      for (const [j, stage] of run.stages.entries()) {
+        const f = free[i].stages[j];
+        const cur = stage.analytics?.personalFacts.current;
+        expect(f.analytics).toBeNull();
+        expect(f.basic.longestStreak).toBe(stage.basic.longestStreak);
+        if (cur) expect(stage.basic.longestStreak).toBe(cur.longestStreak);
+        if (stage.kind === "survival") {
+          expect(f.basic.depth).toBe(stage.basic.questionsPlayed);
+          expect(f.basic.strikesUsed).toBe(cur?.strikesUsed ?? f.basic.strikesUsed);
+          expect(f.basic.maxStrikes).toBe(3);
+        }
+        stages += 1;
+      }
+    }
+    expect(stages).toBeGreaterThan(60);
+  });
+
+  it("HUB6.3C Free strike markers: per question, equal to Premium `analytics.strikes`, on every Survival", () => {
+    const free = records("lab_free");
+    for (const [i, run] of records("lab_premium").entries()) {
+      const stage = run.stages.find((s) => s.kind === "survival")!;
+      const fs = free[i].stages.find((s) => s.kind === "survival")!;
+      const premium = (stage.analytics?.personalFacts.strikes ?? []).map((s) => [s.questionResultId, s.strikeIndex]);
+      const marked = fs.questions.filter((q) => q.isStrike).map((q) => [q.questionResultId, q.strikeIndex]);
+      expect(marked).toEqual(premium);
+      expect(marked.map(([, k]) => k)).toEqual(premium.map((_, k) => k + 1));
+      // Only Survival questions carry the marker.
+      for (const other of free[i].stages.filter((s) => s.kind !== "survival")) {
+        expect(other.questions.every((q) => q.isStrike === null && q.strikeIndex === null)).toBe(true);
+      }
+    }
   });
 
   it("the lab uses the PRODUCTION persistence shape; other accounts do not", () => {

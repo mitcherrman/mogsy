@@ -15948,3 +15948,45 @@ html.reduce-motion .history-facts-in { animation: none !important; }
   .history-region { transition: none !important; }
   .history-facts-in { animation: none !important; }
 }
+
+/* HUB6.3E — the Premium analytics room's one-shot motion. A lit question
+   icon pulses ONCE when a chart lights it; a new or tied record's medal
+   catches the light once; a streak's flame settles once. Nothing loops.
+   Removed for both reduced-motion switches: the final state, at once. */
+@keyframes history-lit-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(180, 134, 42, 0.8); opacity: 1; }
+  100% { box-shadow: 0 0 0 8px rgba(180, 134, 42, 0); opacity: 0; }
+}
+.history-lit-pulse { animation: history-lit-pulse 720ms ease-out 1 both; }
+@keyframes history-medal-shine {
+  0% { transform: translateX(-120%) rotate(18deg); opacity: 0; }
+  30% { opacity: 0.9; }
+  100% { transform: translateX(160%) rotate(18deg); opacity: 0; }
+}
+.history-medal-shine { animation: history-medal-shine 900ms 450ms ease-out 1 both; }
+@keyframes history-medal-settle {
+  0% { transform: scale(0.6) rotate(-8deg); opacity: 0; }
+  70% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.history-medal-settle { animation: history-medal-settle 620ms cubic-bezier(0.2, 0.7, 0.2, 1) 1 both; }
+@keyframes history-flame-in {
+  0% { transform: scale(0.3) translateY(6px); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.history-flame-in { transform-origin: 50% 90%; animation: history-flame-in 560ms cubic-bezier(0.2, 0.7, 0.2, 1) 1 both; }
+html.reduce-motion .history-lit-pulse,
+html.reduce-motion .history-medal-shine,
+html.reduce-motion .history-medal-settle,
+html.reduce-motion .history-flame-in { animation: none !important; }
+html.reduce-motion .history-lit-pulse,
+html.reduce-motion .history-medal-shine { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .history-lit-pulse,
+  .history-medal-shine,
+  .history-medal-settle,
+  .history-flame-in { animation: none !important; }
+  .history-lit-pulse,
+  .history-medal-shine { display: none; }
+}

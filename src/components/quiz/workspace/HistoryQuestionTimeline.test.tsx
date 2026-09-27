@@ -97,7 +97,7 @@ describe("history view model", () => {
     }
   });
 
-  it("hover data: public category, outcome, stage category C/played, exact-question prior history, population slot", () => {
+  it("hover data: public category, outcome, stage category C/played, exact-question prior history", () => {
     const vm = buildStageViewModel(stageOf(9, "time_trial"));
     const o = vm.rounds[0].occurrences[0];
     expect(o.publicCategory?.label).toBeTruthy();
@@ -105,7 +105,6 @@ describe("history view model", () => {
     expect(o.stageCategory!.questionsPlayed).toBeGreaterThanOrEqual(1);
     expect(o.priorHistory).not.toBeNull();
     expect(o.priorHistory!.priorExposures).toBeGreaterThanOrEqual(0);
-    expect(o.population).toBeNull();
     // Somewhere in nine earlier Dailies a question repeats with a dated last outcome.
     const all = [...vm.byOccurrence.values()];
     expect(all.some((x) => x.priorHistory?.lastPrior?.completedAt)).toBe(true);

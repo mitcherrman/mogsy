@@ -31,7 +31,7 @@
  * the module sigil), the one-open-at-a-time Popover on a fine pointer, the
  * bottom sheet on touch, and 44px targets on touch.
  */
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Check, ChevronLeft, ChevronRight, Clock3, HelpCircle, Layers, RotateCcw, X, Zap } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { IconFace, QuestionPopover } from "@/components/quiz/workspace/questionTimelineParts";
@@ -46,6 +46,13 @@ export interface HistoryTimelineMode {
   size?: "row" | "selected";
   /** Occurrence ids to light; everything else steps back. Null: no highlight. */
   highlight?: ReadonlySet<string> | null;
+  /** HUB6.3E: the highlight is a lock (not a hover preview). A lock pages
+   *  the rail to its first lit icon when none is on the current page; a
+   *  preview never moves the rail. */
+  locked?: boolean;
+  /** HUB6.3E: a question's factual context, shown under its review card in
+   *  the Popover and the Sheet (so it never depends on hover). */
+  detail?: (round: RoundVM) => React.ReactNode;
 }
 
 /** px at a 16px root; scaled by the live root size when measured. */
@@ -99,7 +106,34 @@ export function historyIconLabel(round: RoundVM, total: number): string {
   } else {
     result = round.verdict && round.verdict !== "mixed" ? RESULT_WORD[round.verdict] : "result unknown";
   }
-  return `Question ${round.position} of ${total}, ${subject}, ${result}`;
+  const strike = strikeOf(round);
+  return `Question ${round.position} of ${total}, ${subject}, ${result}${strike ? `, strike ${strike}` : ""}`;
+}
+
+/** HUB6.3C Free: the strike this position produced (a Journey child can be
+ *  the striking question), from the server's per-question marker. */
+export function strikeOf(round: RoundVM): number | null {
+  return round.occurrences.find((o) => o.strikeIndex !== null)?.strikeIndex ?? null;
+}
+
+/** A Survival strike: a notched rubric tab on the icon's top-left corner
+ *  with the strike's number — a mark of its own, not a colour. */
+function StrikeTab({ index, size }: { index: number; size: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="timeline-strike"
+      data-strike={index}
+      className="pointer-events-none absolute z-[2] flex items-center justify-center rounded-[3px] border font-black tabular-nums leading-none"
+      style={{
+        left: -4, top: -5, height: rem(size), minWidth: rem(size), padding: "0 2px",
+        fontSize: rem(size * 0.62), background: "#7a2820", borderColor: "#f6ecd2", color: "#fff3df",
+        clipPath: "polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%)",
+      }}
+    >
+      {index}
+    </span>
+  );
 }
 
 /** Width of the track, and the live root scale (HUB4: 200% text). */
@@ -254,6 +288,27 @@ export default function HistoryQuestionTimeline({
   const rounds = mode.rounds;
   const total = rounds.length;
   const { pageSize, paged, stackedPager, rangeLabel } = historyPageSize(total, width, k, g);
+
+  // HUB6.3E: a LOCKED highlight whose icons are all on other pages brings
+  // the first of them into view. A hover preview never moves the rail.
+  const lockedTarget = useMemo(() => {
+    if (!mode.locked || !mode.highlight) return null;
+    const ids = mode.highlight;
+    const i = rounds.findIndex((r) => r.occurrences.some((o) => ids.has(o.occurrenceId)));
+    return i < 0 ? null : i;
+  }, [mode.locked, mode.highlight, rounds]);
+  useEffect(() => {
+    if (lockedTarget === null || !paged || !mode.highlight) return;
+    const ids = mode.highlight;
+    const pageStart = Math.floor(anchor / pageSize) * pageSize;
+    const visible = rounds.slice(pageStart, pageStart + pageSize)
+      .some((r) => r.occurrences.some((o) => ids.has(o.occurrenceId)));
+    if (!visible) setAnchor(lockedTarget);
+    // Only when the lock itself changes: paging away afterwards is the
+    // reader's choice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lockedTarget, mode.highlight, paged]);
+
   if (total === 0) return null;
 
   // The review's round for a position: by round number, else by order.
@@ -273,21 +328,40 @@ export default function HistoryQuestionTimeline({
   };
   const openRound = open !== null ? reviewRound(open) : null;
   const lit = mode.highlight ?? null;
+  // Which positions hold a lit occurrence (all pages), and a key that
+  // changes with the highlight so a lit icon's pulse replays exactly once.
+  const litIndexes = lit
+    ? rounds.flatMap((r, i) => (r.occurrences.some((o) => lit.has(o.occurrenceId)) ? [i] : []))
+    : [];
+  const pulseKey = lit ? litIndexes.join(",") + "|" + lit.size : "";
+  const litBefore = litIndexes.some((i) => i < start);
+  const litAfter = litIndexes.some((i) => i >= start + slots.length);
 
   const arrow = (dir: "prev" | "next") => {
     const Chevron = dir === "prev" ? ChevronLeft : ChevronRight;
+    // A lit question on another page: a brass dot on the arrow toward it.
+    const flagged = dir === "prev" ? litBefore : litAfter;
     return (
       <button
         type="button"
         data-testid={`timeline-${dir}`}
-        aria-label={dir === "prev" ? "Earlier questions" : "Later questions"}
+        aria-label={`${dir === "prev" ? "Earlier questions" : "Later questions"}${flagged ? ", highlighted questions there" : ""}`}
+        data-flagged={flagged ? "true" : undefined}
         disabled={dir === "prev" ? current === 0 : current >= pages - 1}
         onClick={() => step(dir === "prev" ? -1 : 1)}
         className="flex shrink-0 items-center justify-center rounded-[4px] transition-colors hover:bg-[rgba(96,68,28,0.08)] disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         style={{ width: g.arrow, height: coarse ? Math.max(44, g.arrow) : g.slot * k, color: LEAGUECRAFT_INK.brass }}
       >
-        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border" style={{ borderColor: "rgba(96,68,28,0.4)" }}>
+        <span className="relative flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border" style={{ borderColor: "rgba(96,68,28,0.4)" }}>
           <Chevron className="h-4 w-4" aria-hidden="true" />
+          {flagged && (
+            <span
+              aria-hidden="true"
+              data-testid="timeline-pager-flag"
+              className="absolute -right-1 -top-1 h-2 w-2 rounded-full"
+              style={{ background: "#b4862a", boxShadow: "0 0 0 1.5px #f6ecd2" }}
+            />
+          )}
         </span>
       </button>
     );
@@ -320,6 +394,7 @@ export default function HistoryQuestionTimeline({
           const label = historyIconLabel(round, total);
           const isOpen = open === index;
           const isLit = lit ? round.occurrences.some((o) => lit.has(o.occurrenceId)) : null;
+          const strike = strikeOf(round);
           const icon = (
             <button
               type="button"
@@ -370,6 +445,10 @@ export default function HistoryQuestionTimeline({
               </span>
               <SegmentStrip round={round} />
               <ResultBadge round={round} size={g.badge} />
+              {strike !== null && <StrikeTab index={strike} size={g.badge} />}
+              {isLit && (
+                <span key={pulseKey} aria-hidden="true" className="history-lit-pulse pointer-events-none absolute -inset-[5px] rounded-[8px]" />
+              )}
             </button>
           );
           if (coarse) return <li key={index}>{icon}</li>;
@@ -381,6 +460,7 @@ export default function HistoryQuestionTimeline({
                 round={art}
                 position={index + 1}
                 total={total}
+                footer={mode.detail ? mode.detail(round) : undefined}
               >
                 {icon}
               </QuestionPopover>
@@ -413,6 +493,7 @@ export default function HistoryQuestionTimeline({
           total={total}
           label={open !== null ? historyIconLabel(rounds[open], total) : "Question review"}
           onClose={() => setOpen(null)}
+          footer={open !== null && mode.detail ? mode.detail(rounds[open]) : undefined}
           returnFocusTo={() =>
             lastOpened.current !== null ? iconRefs.current.get(lastOpened.current) ?? null : null
           }

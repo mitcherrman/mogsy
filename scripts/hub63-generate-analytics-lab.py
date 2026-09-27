@@ -1,4 +1,8 @@
-"""HUB6.3D: generate the Analytics Lab's History golden through HUB6.3B's REAL route.
+"""HUB6.3D/E: generate the Analytics Lab's History golden through the REAL route.
+
+HUB6.3E: the backend is HUB6.3C (`claude/hub6-3-population`, 00c794cd) --
+HUB6.3B personal analytics plus population aggregates and the Free strike
+markers. See POPULATION below.
 
 The Analytics Lab's Daily facts are authored as raw facts in the frontend
 (src/pages/dev/lobby-preview/history/analyticsLabFacts.ts) and built, in the
@@ -18,8 +22,24 @@ exact-question history, strike attribution, Review sources, Weak Areas
 selection) is computed by the backend's own code. The frontend never
 re-implements it.
 
+POPULATION (HUB6.3E). The lab input carries per-run population RECIPES
+(src/pages/dev/lobby-preview/history/analyticsLabPopulation.ts): cohort sizes
+and a target midrank percentile per subject/metric. For each lab Daily this
+script
+  1. runs HUB6.3C's own migration (migrate_history_population) on the lab DB;
+  2. reads the player's REAL analytics keys and values with HUB6.3C's own
+     population.load_observations (the same facts personal records use);
+  3. builds, deterministically, a list of values around the player's value
+     (quantile-spaced normal, its centre bisected so the player's midrank
+     lands near the target; a tie spike or an outlier where the recipe asks);
+  4. stores it with HUB6.3C's own population._write_date -> summarize
+     (median, quantiles, privacy-merged histogram, frequency).
+A cohort is only a list of values -- exactly what `summarize` receives in
+production. No user rows, ids or records are created. A run whose recipe
+says built=False gets no aggregate: the route reports aggregate_not_built.
+
 Read-only against the backend worktree: it imports modules; nothing on disk
-in the backend is written.
+in the backend is written (the lab database is a temporary file).
 
 Usage (from the frontend worktree):
   npx tsx scripts/hub63-export-analytics-lab-rows.ts <tmp>/lab-rows.json
@@ -29,10 +49,13 @@ Usage (from the frontend worktree):
 """
 import hashlib
 import json
+import os
 import sqlite3
 import subprocess
 import sys
+import tempfile
 from datetime import datetime
+from statistics import NormalDist
 
 BACKEND, INPUT, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 sys.path.insert(0, BACKEND)
@@ -43,6 +66,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import routes.history as history_route  # noqa: E402
 from routes.supabase_auth import Identity, require_account_identity  # noqa: E402
+from history import population  # noqa: E402
+import migrate_history_population  # noqa: E402
 
 # The production tables HUB6.3B reads, restricted to the columns it selects
 # (the same shape as the backend's test_hub6_3_personal_analytics.py::_db,
@@ -79,8 +104,8 @@ TABLES = ("daily_runs", "daily_run_stages", "ranked_rounds",
           "ranked_segment_child_results", "daily_run_review_items")
 
 
-def seed(rows):
-    conn = sqlite3.connect(":memory:", check_same_thread=False)
+def seed(rows, path):
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.executescript(SCHEMA)
     for table in TABLES:
         for row in rows[table]:
@@ -91,6 +116,106 @@ def seed(rows):
     conn.commit()
     conn.row_factory = sqlite3.Row
     return conn
+
+
+# ─────────────────────────────────────────────────────────── population
+
+#: A metric's natural spread in the lab (one standard deviation) and bounds.
+SPREAD = {
+    ("core", "correct"): 10, ("core", "accuracy"): 0.085, ("core", "longest_streak"): 5,
+    ("standard", "score"): 16, ("standard", "correct"): 2.2,
+    ("standard", "accuracy"): 0.07, ("standard", "longest_streak"): 4,
+    ("time_trial", "correct"): 4.5, ("time_trial", "questions_played"): 4,
+    ("time_trial", "accuracy"): 0.08, ("time_trial", "longest_streak"): 4,
+    ("survival", "depth"): 6, ("survival", "correct"): 5,
+    ("survival", "accuracy"): 0.07, ("survival", "longest_streak"): 4,
+}
+UPPER = {("standard", "correct"): 22}
+_Z = NormalDist()
+
+
+def _quantize(x, metric, subject):
+    if metric == "accuracy":
+        return round(min(1.0, max(0.0, x)), 3)
+    top = UPPER.get((subject, metric))
+    value = max(0, int(round(x)))
+    return min(top, value) if top is not None else value
+
+
+def _midrank(values, v):
+    below = sum(1 for x in values if x < v)
+    equal = sum(1 for x in values if x == v)
+    return (below + 0.5 * equal) / len(values)
+
+
+def _spaced(n, centre, spread, metric, subject, cap=None):
+    out = []
+    for i in range(n):
+        x = centre + spread * _Z.inv_cdf((i + 0.5) / n)
+        if cap is not None:
+            x = min(x, cap)
+        out.append(_quantize(x, metric, subject))
+    return out
+
+
+def cohort_values(value, users, target, subject, metric, ties=None, outlier=False):
+    """``users`` values (the player's own included) with the player's midrank
+    near ``target``. Deterministic; no randomness."""
+    spread = SPREAD[(subject, metric)]
+    step = 0.001 if metric == "accuracy" else 1
+    others = users - 1
+    if ties:
+        tied = max(0, int(round(ties * users)) - 1)
+        below = _spaced(others - tied, value - 2.2 * spread, spread, metric, subject, cap=value - step)
+        return sorted([value] * (tied + 1) + below)
+    if outlier:
+        rest = _spaced(others, value * 0.46, spread * 0.55, metric, subject, cap=value - 6 * step)
+        return sorted([value] + rest)
+    best, lo, hi = None, value - 12 * spread, value + 12 * spread
+    for _ in range(60):
+        centre = (lo + hi) / 2
+        values = [value] + _spaced(others, centre, spread, metric, subject)
+        pct = _midrank(values, value)
+        if best is None or abs(pct - target) < best[0]:
+            best = (abs(pct - target), values)
+        if pct > target:
+            lo = centre     # the player stands too high: move the others up
+        else:
+            hi = centre
+    return sorted(best[1])
+
+
+def seed_population(conn, recipes):
+    """Aggregates for every recipe date, through HUB6.3C's own writer."""
+    first = min(r["planDate"] for r in recipes)
+    last = max(r["planDate"] for r in recipes)
+    observations = {o["run_id"]: o for o in population.load_observations(conn, first, last)}
+    conn.isolation_level = None          # _write_date issues BEGIN/COMMIT itself
+    for recipe in recipes:
+        if not recipe["built"]:
+            continue
+        obs = observations[recipe["runId"]]
+        cohorts = {}
+        for cohort_type, spec in sorted(recipe["cohorts"].items()):
+            ties = spec.get("ties") or {}
+            outlier = spec.get("outlier") or {}
+            for subject, (key, values) in sorted(obs["subjects"].items()):
+                users = (spec.get("usersBySubject") or {}).get(subject, spec["users"])
+                metrics = {}
+                for metric in population.METRICS[subject]:
+                    value = values.get(metric)
+                    if value is None:
+                        continue
+                    tied = (ties.get("subject"), ties.get("metric")) == (subject, metric)
+                    metrics[metric] = cohort_values(
+                        value, users, spec["targets"][subject][metric], subject, metric,
+                        ties=ties.get("share") if tied else None,
+                        outlier=(outlier.get("subject"), outlier.get("metric")) == (subject, metric))
+                cohorts[(subject, key, cohort_type)] = metrics
+        largest = max(spec["users"] for spec in recipe["cohorts"].values())
+        population._write_date(conn, recipe["planDate"], cohorts,
+                               recipe["planDate"] + "T23:30:00+00:00", largest)
+    conn.isolation_level = ""
 
 
 class Cap:
@@ -150,7 +275,11 @@ def main():
     now = datetime.fromisoformat(data["anchor"].replace("Z", "+00:00"))
     limit = data["page_size"]
     lab = data["accounts"]["analytics_lab"]
-    conn = seed(lab["rows"])
+    workdir = tempfile.mkdtemp(prefix="hub63-lab-")
+    path = os.path.join(workdir, "lab.sqlite3")
+    conn = seed(lab["rows"], path)
+    migrate_history_population.migrate(path)
+    seed_population(conn, data["population"])
     user = lab["user_id"]
     scenarios = {
         "lab_premium": walk(client_for(conn, user, Cap(True), now), limit),
@@ -162,13 +291,13 @@ def main():
                             capture_output=True, text=True, check=True).stdout.strip()
     golden = {
         "generated_by": "scripts/hub63-generate-analytics-lab.py",
-        "hub6_3b_commit": commit,
+        "backend_commit": commit,
         "input_sha256": hashlib.sha256(raw).hexdigest(),
         "scenarios": scenarios,
     }
     nl = chr(10)
     lines = [f"  {json.dumps(k)}: {json.dumps(golden[k], sort_keys=True, separators=(',', ':'))}"
-             for k in ("generated_by", "hub6_3b_commit", "input_sha256")]
+             for k in ("generated_by", "backend_commit", "input_sha256")]
     scenario_lines = [f"    {json.dumps(k)}: {json.dumps(scenarios[k], sort_keys=True, separators=(',', ':'))}"
                       for k in sorted(scenarios)]
     body = ("," + nl).join(lines) + "," + nl + '  "scenarios": {' + nl + ("," + nl).join(scenario_lines) + nl + "  }"

@@ -45,14 +45,13 @@ export interface QuestionOccurrenceVM {
   stageCategory: { correct: number; questionsPlayed: number } | null;
   /** Premium: this exact question's earlier staged-Daily history. */
   priorHistory: QuestionPriorHistory | null;
-  /** Premium (Survival): which strike this question produced, if any. */
+  /** Survival: which strike this question produced, if any — HUB6.3C's Free
+   *  per-question marker, else the Premium duplicate. */
   strikeIndex: number | null;
   /** Premium (Review): the source miss this replay re-asked. */
   reviewSource: ReviewSource["source"] | null;
   /** Premium (source stages): the Review replay of this miss. */
   replayedBy: ReplayedBy | null;
-  /** HUB6.3C: the population block, once it exists. Always null today. */
-  population: null;
 }
 
 /** A round — one timeline position: a Splash question, a Meta Reflex block,
@@ -128,10 +127,9 @@ export function buildStageViewModel(stage: HistoryStage): StageViewModel {
         outcome: resultOf(q),
         stageCategory: t ? { correct: t.correct, questionsPlayed: t.questionsPlayed } : null,
         priorHistory: history.get(occurrenceId) ?? null,
-        strikeIndex: strikes.get(occurrenceId) ?? null,
+        strikeIndex: q.strikeIndex ?? strikes.get(occurrenceId) ?? null,
         reviewSource: sources.get(occurrenceId) ?? null,
         replayedBy: replayed.get(occurrenceId) ?? null,
-        population: null,
       };
       byOccurrence.set(occurrenceId, vm);
       return vm;
@@ -202,7 +200,7 @@ export function stageCurrentFacts(stage: HistoryStage): StageCurrentFacts {
   const current = stage.analytics?.personalFacts.current ?? null;
   const b = stage.basic;
   const survival = stage.kind === "survival";
-  const maxStrikes = current?.maxStrikes ?? stage.ruleset.maxStrikes;
+  const maxStrikes = b.maxStrikes ?? current?.maxStrikes ?? stage.ruleset.maxStrikes;
   const misses = b.questionsPlayed - b.correct;
   return {
     correct: b.correct,
@@ -210,11 +208,13 @@ export function stageCurrentFacts(stage: HistoryStage): StageCurrentFacts {
     accuracy: b.accuracy,
     incorrect: b.incorrect,
     timeout: b.timeout,
-    longestStreak: current?.longestStreak ?? longestStreakOf(stage),
+    // HUB6.3C Free basic facts first, then HUB6.3B's Premium `current`, then
+    // the record's own count by the server's rule (older payloads).
+    longestStreak: b.longestStreak ?? current?.longestStreak ?? longestStreakOf(stage),
     score: stage.kind === "standard" ? b.score : null,
-    depth: survival ? current?.depth ?? b.questionsPlayed : null,
+    depth: survival ? b.depth ?? current?.depth ?? b.questionsPlayed : null,
     strikesUsed: survival
-      ? current?.strikesUsed ?? (maxStrikes !== null ? Math.min(misses, maxStrikes) : null)
+      ? b.strikesUsed ?? current?.strikesUsed ?? (maxStrikes !== null ? Math.min(misses, maxStrikes) : null)
       : null,
     maxStrikes: survival ? maxStrikes : null,
     completionReason: current?.completionReason ?? b.completionReason ?? null,

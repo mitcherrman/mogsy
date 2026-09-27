@@ -34,9 +34,17 @@ import {
   type QuestionUnit,
   type RunPersonal,
   type StagePersonalFacts,
+  type StreakSpan,
 } from "@/lib/history/personal";
+import {
+  readRunPopulation,
+  readSubjectBlock,
+  type PopulationSubjectBlock,
+  type RunPopulation,
+} from "@/lib/history/population";
 
 export type * from "@/lib/history/personal";
+export type * from "@/lib/history/population";
 
 export const HISTORY_SCHEMA_VERSION = 1;
 
@@ -205,6 +213,16 @@ export interface StageBasic {
   timeout: number;
   /** HUB6.3B raw child terminal (`segments_complete`, …); null before. */
   completionReason: string | null;
+  /**
+   * HUB6.3C Free current-attempt facts (owner tier rule). Null on an older
+   * payload, where `stageCurrentFacts` counts them by the server's rule.
+   */
+  longestStreak: number | null;
+  longestStreakSpan: StreakSpan | null;
+  /** Survival only. */
+  depth: number | null;
+  strikesUsed: number | null;
+  maxStrikes: number | null;
 }
 
 export interface HistoryQuestion {
@@ -234,6 +252,14 @@ export interface HistoryQuestion {
   publicCategory: PublicCategory | null;
   moduleId: string | null;
   moduleVersion: number | null;
+  /**
+   * HUB6.3C Free Survival strike markers (canonical): whether this question
+   * produced a strike, and which (1..max). Null on non-Survival questions,
+   * on older payloads, and when the server could not attribute strikes —
+   * never guessed here.
+   */
+  isStrike: boolean | null;
+  strikeIndex: number | null;
 }
 
 /** One Ranked round/module occurrence of a stage and the questions it settled,
@@ -273,6 +299,9 @@ export interface HistoryStage {
   skipReason: string | null;
   capability: AnalyticsCapability;
   analytics: StageAnalytics | null;
+  /** HUB6.3C Premium population (Standard / Time Trial / Survival); null
+   *  for Free, other kinds, and older payloads. */
+  population: PopulationSubjectBlock | null;
 }
 
 export interface DailyHistoryRecord {
@@ -297,6 +326,9 @@ export interface DailyHistoryRecord {
   stages: HistoryStage[];
   capability: AnalyticsCapability;
   analytics: DailyAnalytics | null;
+  /** HUB6.3C Premium population (Core Daily + strongest mode); null for
+   *  Free and older payloads. Optional: personal analytics never need it. */
+  population: RunPopulation | null;
 }
 
 /** Discriminated so Ranked/Practice variants can join without pretending to
@@ -517,6 +549,10 @@ function readQuestion(v: unknown, l: string): HistoryQuestion {
     publicCategory: readPublicCategory(r.public_category),
     moduleId: typeof r.module_id === "string" ? r.module_id : null,
     moduleVersion: typeof r.module_version === "number" && Number.isInteger(r.module_version) ? r.module_version : null,
+    // HUB6.3C, optional (Survival only).
+    isStrike: typeof r.is_strike === "boolean" ? r.is_strike : null,
+    strikeIndex: typeof r.strike_index === "number" && Number.isInteger(r.strike_index) && r.strike_index >= 1
+      ? r.strike_index : null,
   };
 }
 
@@ -596,6 +632,12 @@ function readStage(v: unknown, l: string): HistoryStage {
       incorrect: optCount(basic.incorrect, countOf("incorrect")),
       timeout: optCount(basic.timeout, countOf("timeout")),
       completionReason: typeof basic.completion_reason === "string" ? basic.completion_reason : null,
+      // HUB6.3C Free facts, optional.
+      longestStreak: optInt(basic.longest_streak),
+      longestStreakSpan: readSpan(basic.longest_streak_span),
+      depth: optInt(basic.depth),
+      strikesUsed: optInt(basic.strikes_used),
+      maxStrikes: optInt(basic.max_strikes),
     },
     ...questionList,
     modules: readModules(r.modules),
@@ -603,7 +645,19 @@ function readStage(v: unknown, l: string): HistoryStage {
     skipReason: typeof r.skip_reason === "string" ? r.skip_reason : null,
     capability,
     analytics,
+    population: readSubjectBlock(r.population),
   };
+}
+
+const optInt = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
+
+function readSpan(v: unknown): StreakSpan | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const r = v as Rec;
+  const length = optInt(r.length);
+  if (length === null) return null;
+  const id = (x: unknown) => (typeof x === "string" ? x : typeof x === "number" ? String(x) : null);
+  return { length, startQuestionResultId: id(r.start_question_result_id), endQuestionResultId: id(r.end_question_result_id) };
 }
 
 function readDailyRecord(r: Rec, l: string): DailyHistoryRecord {
@@ -640,6 +694,7 @@ function readDailyRecord(r: Rec, l: string): DailyHistoryRecord {
     stages,
     capability,
     analytics,
+    population: readRunPopulation(r.population),
   };
 }
 

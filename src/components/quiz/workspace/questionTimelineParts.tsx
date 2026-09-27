@@ -87,6 +87,7 @@ export function QuestionPopover({
   position,
   total,
   children,
+  footer,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -94,6 +95,9 @@ export function QuestionPopover({
   position: number;
   total: number;
   children: React.ReactElement;
+  /** HUB6.3E (History only): the question's factual context, under the
+   *  card. Ranked passes nothing and is unchanged. */
+  footer?: React.ReactNode;
 }) {
   return (
     <Popover
@@ -172,6 +176,7 @@ export function QuestionPopover({
             position={position}
             total={total}
           />
+          {footer}
         </PopoverContent>
       )}
     </Popover>

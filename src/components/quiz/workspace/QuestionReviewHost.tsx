@@ -90,6 +90,7 @@ export function QuestionReviewSheet({
   label,
   onClose,
   returnFocusTo,
+  footer,
 }: {
   /** The round on review, or null when the sheet is closed. */
   round: ReviewRound | null;
@@ -102,6 +103,8 @@ export function QuestionReviewSheet({
    *  button is not focused on every mobile browser, so Radix's own "restore
    *  what was focused" can land on the page body. */
   returnFocusTo: () => HTMLElement | null;
+  /** HUB6.3E (History only): the question's factual context, under the card. */
+  footer?: React.ReactNode;
 }) {
   return (
     <Sheet open={round !== null} onOpenChange={(next) => !next && onClose()}>
@@ -143,6 +146,7 @@ export function QuestionReviewSheet({
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
             {round && <QuestionReviewCard round={round} position={position} total={total} />}
+            {round && footer}
           </div>
         </DialogPrimitive.Content>
       </SheetPortal>
