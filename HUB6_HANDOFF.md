@@ -715,3 +715,38 @@ Every step also passed these checks:
 
 **Performance:** only the expanded Daily mounts a room (190–675 nodes). A hover preview re-renders only the rails (the highlight context is split).
 
+
+## HUB6.3G — Final Premium Analytics Polish
+
+**Base:** v2 `hub6/premium-analytics-v2` @ `26d9b4e0` (the HUB6.3F winner), on branch `hub6/premium-analytics-final` (worktree `.worktrees/hub6-final`). Five local commits (`c38b752c`, `0d4e336c`, `4d946eee`, `312fb881`, docs); nothing amended, nothing pushed. v1 (`18876c75`) was reference only. Full detail: **`HUB6_3G_FINAL_POLISH_HANDOFF.md`**.
+
+**Backend consumed:** HUB6.3C `00c794cd`, read only.
+
+**Locked decisions applied:**
+- Population defaults to the last 28 days, with Same day optional.
+- No Review donut; the exact original → replay → result connector is kept.
+- The Standard course is kept, with real art.
+
+| Part | Result |
+|---|---|
+| Correctness | Legacy `slice` → "Journey" everywhere (raw value kept) · no invented strike limit (shield only with `max_strikes`) · `strikes_used` null stays unknown · `prior_exposures` null stays null ("First time" only on 0) · Weak Areas cutoff formatted as a UTC date (Sep 14, not Sep 13) |
+| Survival | v1-style tower in v2's room: taller floors (12px fine / 9px touch), floor numbers, STRIKE 1/2/3 tags and Previous / Average / Deepest rules in a lane that never overlaps; exact markers, strike list and rail paging kept |
+| League art | From each stage's frozen review, by round number (proven art → module sigil → generic): the Standard course (now grouped Splash ×4 · Meta Reflex · Splash ×3 · Meta Reflex · Journey), both Review steps, and the Weak Areas served questions |
+| Mobile | Narrow compare board (Today \| Previous, changes under each figure); mode dials in one row; records as an intentional row; compact donut legends. Region height at 390 vs v2: Overview −23%, Time Trial −18%, Standard −18%, Survival −10%, Review −44%, Weak Areas −57% |
+| Cohort | One selector above the region, persisted across Overview and stages; no panel toggles |
+| Labels | No text inside line plots (readout above); histogram median in a key and collision-free axis labels. 0 collisions in every certified shot (v2 had 2) |
+| Question context | A sticky History summary at the Popover's bottom edge, visible on open; the touch Sheet is unchanged |
+| Hover | A temporary "Lighting N … questions ↑" note while previewing; no auto-scroll; a lock still shows the bar and pages the rail |
+| Weak Areas | The donut is removed; one panel of served questions (art, category, result), the cutoff, and no invented provenance |
+
+**Standard course (owner follow-up):** it now adds the recipe structure and module types. However, it still repeats the rail's per-position art and results. Consider reducing it to a one-line recipe strip. Not a blocker.
+
+**Tests:** new `LobbyPreviewPage.hub63g.test.tsx` (31 tests, all 30 requirements).
+- History scope + Ranked timeline: 620 tests, 604 pass. The 16 failures are the same 16 load-timeout names that fail at v2; those files pass in isolation.
+- tsc: only the 2 known errors. ESLint: 0 errors.
+
+**Certification:** 320–1440 plus 200% text at 320 and 390, including the Popover, Sheet, hover note, tooltips, special states and Free.
+- Page overflow, region overflow and elements past the region's edge are all 0.
+- Touch targets are ≥ 44px.
+
+**Performance (dev):** hover preview ≈ 35–45 ms and lock ≈ 40–55 ms, unchanged from v2.
