@@ -310,12 +310,15 @@ export function StageAnalyticsView({
   record,
   stage,
   review,
+  reviewFor,
   onRetry,
   runCapabilityState,
 }: {
   record: DailyHistoryRecord;
   stage: HistoryStage;
   review: MatchReviewView | null;
+  /** Any stage's loaded review (the Review room's original-miss art). */
+  reviewFor?: (matchId: string | null) => MatchReviewView | null;
   onRetry?: () => void;
   runCapabilityState: string;
 }) {
@@ -328,10 +331,10 @@ export function StageAnalyticsView({
 
   let body: React.ReactNode;
   if (room && stage.kind === "time_trial") body = <TimeTrialRoom stage={stage} />;
-  else if (room && stage.kind === "standard") body = <StandardRoom stage={stage} />;
+  else if (room && stage.kind === "standard") body = <StandardRoom stage={stage} review={review} />;
   else if (room && stage.kind === "survival") body = <SurvivalRoom stage={stage} />;
-  else if (room && stage.kind === "review") body = <ReviewRoom record={record} stage={stage} />;
-  else if (room && stage.kind === "weak_areas") body = <WeakAreasRoom stage={stage} />;
+  else if (room && stage.kind === "review") body = <ReviewRoom record={record} stage={stage} review={review} reviewFor={reviewFor} />;
+  else if (room && stage.kind === "weak_areas") body = <WeakAreasRoom stage={stage} review={review} />;
   else if (drawn && (stage.kind === "weak_areas" || stage.kind === "review")) {
     body = (
       <QuestionCards

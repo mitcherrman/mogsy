@@ -94,8 +94,11 @@ export interface StageCategory {
 
 export interface QuestionPriorHistory {
   questionResultId: string;
-  priorExposures: number;
-  priorCorrect: number;
+  /** HUB6.3G: null when the server could not place the question in its
+   *  exposure stream (it sends `prior_exposures: null`) — unknown, never 0,
+   *  so it can never read as "first time". */
+  priorExposures: number | null;
+  priorCorrect: number | null;
   lastPrior: { runId: string; completedAt: string; outcome: string } | null;
 }
 
@@ -491,8 +494,8 @@ export function readStagePersonalFacts(v: unknown): StagePersonalFacts {
       const last = isRec(raw.last_prior) ? raw.last_prior : null;
       return [{
         questionResultId: qid,
-        priorExposures: int(raw.prior_exposures) ?? 0,
-        priorCorrect: int(raw.prior_correct) ?? 0,
+        priorExposures: int(raw.prior_exposures),
+        priorCorrect: int(raw.prior_correct),
         lastPrior: last ? { runId: id(last.run_id) ?? "", completedAt: str(last.completed_at) ?? "", outcome: str(last.outcome) ?? "" } : null,
       }];
     }), []),

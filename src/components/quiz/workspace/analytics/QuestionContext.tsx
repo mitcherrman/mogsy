@@ -12,13 +12,16 @@
  *
  * Facts only — no weakness, strength, mastery or recovery wording.
  */
+import { useRef } from "react";
+import { ChevronDown } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
+import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { instantDateLabel, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import type { RoundVM, StageViewModel } from "@/components/quiz/workspace/historyViewModel";
 import type { DailyHistoryRecord, HistoryStage } from "@/lib/history/contracts";
 import { OutcomeMark } from "./charts";
 import { RESULT_WORD, categoryInk } from "./ink";
-import { questionContext, UNIT_NAME, type QuestionContextVM } from "./derive";
+import { questionContext, unitName, type QuestionContextVM } from "./derive";
 
 const OUTCOME_WORD: Record<string, string> = { correct: "correct", incorrect: "incorrect", timeout: "timed out" };
 
@@ -57,12 +60,13 @@ function OneQuestion({ ctx, stage, heading }: { ctx: QuestionContextVM; stage: H
             {ctx.category.label} in this {kind}: {ctx.stageCategory.correct} / {ctx.stageCategory.played} correct
           </Line>
         )}
-        {ctx.prior && (
+        {ctx.prior && ctx.prior.exposures !== null && (
           <Line testId="question-context-prior">
             {ctx.prior.exposures === 0
               ? "First time this question appeared in your Dailies"
               : <>
-                  Seen {ctx.prior.exposures} {ctx.prior.exposures === 1 ? "time" : "times"} before · {ctx.prior.correct} correct
+                  Seen {ctx.prior.exposures} {ctx.prior.exposures === 1 ? "time" : "times"} before
+                  {ctx.prior.correct !== null ? ` · ${ctx.prior.correct} correct` : ""}
                   {ctx.prior.last && ctx.prior.last.completedAt
                     ? ` · last ${instantDateLabel(ctx.prior.last.completedAt)}: ${OUTCOME_WORD[ctx.prior.last.outcome] ?? ctx.prior.last.outcome}`
                     : ""}
@@ -89,6 +93,24 @@ function OneQuestion({ ctx, stage, heading }: { ctx: QuestionContextVM; stage: H
   );
 }
 
+/**
+ * HUB6.3G — the one line the Popover keeps in sight: the most specific fact
+ * this question has (its earlier attempts, then its category's history, then
+ * this stage's count, then its strike). Only what the context lists below.
+ */
+export function contextSummary(ctx: QuestionContextVM, kind: string): string | null {
+  if (ctx.prior && ctx.prior.exposures !== null) {
+    if (ctx.prior.exposures === 0) return "First time in your Dailies";
+    return `Seen ${ctx.prior.exposures} ${ctx.prior.exposures === 1 ? "time" : "times"} before${ctx.prior.correct !== null ? ` · ${ctx.prior.correct} correct` : ""}`;
+  }
+  if (ctx.category && ctx.categoryHistory && ctx.categoryHistory.played > 0) {
+    return `Earlier ${kind} stages: ${ctx.categoryHistory.correct} / ${ctx.categoryHistory.played} ${ctx.category.label}`;
+  }
+  if (ctx.category && ctx.stageCategory) return `${ctx.category.label} in this ${kind}: ${ctx.stageCategory.correct} / ${ctx.stageCategory.played}`;
+  if (ctx.strikeIndex !== null) return `Strike ${ctx.strikeIndex}`;
+  return null;
+}
+
 export default function QuestionContext({
   record,
   stage,
@@ -100,27 +122,65 @@ export default function QuestionContext({
   round: RoundVM;
   stageVms?: Map<string, StageViewModel>;
 }) {
+  const coarse = useCoarsePointer();
+  const listRef = useRef<HTMLDivElement>(null);
   const multi = round.occurrences.length > 1;
+  const ctxs = round.occurrences.map((o) => questionContext(record, stage, o, stageVms));
+  const kind = stageKindLabel(stage.kind);
+  const heading = `In your History${multi && round.unit ? ` · ${unitName(round.unit)}, ${round.occurrences.length} questions` : ""}`;
+  const summary = multi ? null : contextSummary(ctxs[0], kind);
+  const list = (
+    <div ref={listRef} className="grid gap-2">
+      {round.occurrences.map((o, i) => (
+        <OneQuestion
+          key={o.occurrenceId}
+          ctx={ctxs[i]}
+          stage={stage}
+          heading={multi ? `${i + 1}.` : undefined}
+        />
+      ))}
+    </div>
+  );
+  if (coarse) {
+    // Touch: the Sheet shows the whole context in place (unchanged).
+    return (
+      <section aria-label="In your History" className="mt-3 border-t pt-2.5" style={{ borderColor: LEAGUECRAFT_INK.rule }} data-testid="question-context">
+        <div className="mb-1.5 text-[9.5px] font-black uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
+          {heading}
+        </div>
+        {list}
+      </section>
+    );
+  }
+  /* Fine pointer: the Popover is capped at 24rem, so a long question pushes
+     the context below its fold. Its heading is a DIRECT child of the
+     Popover's scroll box (a sticky element cannot leave its parent), sticky
+     to the box's BOTTOM edge: in sight — with the question's key fact —
+     while the section is below, and back in place above it once the reader
+     scrolls there. Selecting it scrolls the section in. */
   return (
-    <section
-      aria-label="In your History"
-      className="mt-3 border-t pt-2.5"
-      style={{ borderColor: LEAGUECRAFT_INK.rule }}
-      data-testid="question-context"
-    >
-      <div className="mb-1.5 text-[9.5px] font-black uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
-        In your History{multi && round.unit ? ` · ${UNIT_NAME[round.unit] ?? "Module"}, ${round.occurrences.length} questions` : ""}
-      </div>
-      <div className="grid gap-2">
-        {round.occurrences.map((o, i) => (
-          <OneQuestion
-            key={o.occurrenceId}
-            ctx={questionContext(record, stage, o, stageVms)}
-            stage={stage}
-            heading={multi ? `${i + 1}.` : undefined}
-          />
-        ))}
-      </div>
-    </section>
+    <>
+      <button
+        type="button"
+        onClick={() => listRef.current?.scrollIntoView?.({ block: "nearest" })}
+        className="sticky bottom-[-0.875rem] z-[1] -mx-3.5 mt-3 flex w-[calc(100%+1.75rem)] min-w-0 items-center gap-2 border-t px-3.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        style={{ borderColor: LEAGUECRAFT_INK.rule, background: "rgb(241,229,200)", boxShadow: "0 -6px 10px -8px rgba(58,39,8,0.45)" }}
+        aria-label={`${heading}${summary ? `: ${summary}` : ""}. Show the details.`}
+        data-testid="question-context-summary"
+      >
+        <span className="shrink-0 text-[9.5px] font-black uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
+          {heading}
+        </span>
+        {summary && (
+          <span className="min-w-0 truncate text-[11px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }} aria-hidden="true">
+            · {summary}
+          </span>
+        )}
+        <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />
+      </button>
+      <section aria-label="In your History" className="pt-1.5" data-testid="question-context">
+        {list}
+      </section>
+    </>
   );
 }

@@ -37,6 +37,7 @@ import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { IconFace, QuestionPopover } from "@/components/quiz/workspace/questionTimelineParts";
 import { QuestionReviewSheet, useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import type { QuestionResult, RoundVM } from "@/components/quiz/workspace/historyViewModel";
+import { moduleFamily, moduleName } from "@/components/quiz/workspace/historyFormat";
 import type { MatchReviewView, ReviewRound } from "@/lib/ranked-public/contracts";
 
 export interface HistoryTimelineMode {
@@ -84,11 +85,9 @@ const RESULT_WORD: Record<QuestionResult, string> = {
   timeout: "timed out",
 };
 
-const UNIT_LABEL: Record<string, string> = {
-  meta_reflex: "Meta Reflex",
-  journey: "Journey",
-  review_replay: "Review replay",
-};
+// HUB6.3G: a legacy `slice` reads "Journey" (never "Slice"); Splash names
+// its category instead.
+const unitLabel = (unit: string | null) => (unit === "splash" ? null : moduleName(unit));
 
 const rem = (px: number) => `${px / 16}rem`;
 
@@ -96,8 +95,8 @@ const rem = (px: number) => `${px / 16}rem`;
 export function historyIconLabel(round: RoundVM, total: number): string {
   const first = round.occurrences[0];
   const subject = round.occurrences.length > 1
-    ? UNIT_LABEL[round.unit ?? ""] ?? "Module"
-    : first?.publicCategory?.label ?? UNIT_LABEL[round.unit ?? ""] ?? "Question";
+    ? unitLabel(round.unit) ?? "Module"
+    : first?.publicCategory?.label ?? unitLabel(round.unit) ?? "Question";
   let result: string;
   if (round.occurrences.length > 1) {
     const played = round.correct + round.incorrect + round.timeout;
@@ -250,7 +249,8 @@ function SegmentStrip({ round }: { round: RoundVM }) {
 /** Art for a position whose review has not loaded (or never will): the
  *  unit's drawn mark. Never entity art without proof. */
 function UnitFace({ unit }: { unit: string | null }) {
-  const Icon = unit === "meta_reflex" ? Zap : unit === "journey" ? Layers : unit === "review_replay" ? RotateCcw : HelpCircle;
+  const family = moduleFamily(unit);
+  const Icon = family === "meta_reflex" ? Zap : family === "journey" ? Layers : family === "review_replay" ? RotateCcw : HelpCircle;
   const faint = Icon === HelpCircle;
   return (
     <Icon

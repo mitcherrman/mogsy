@@ -71,6 +71,44 @@ export function instantDateLabel(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+/**
+ * HUB6.3G — "Sep 14" for a DATE BOUNDARY the server sends as midnight UTC
+ * (`evidence_cutoff: "2026-09-14T00:00:00+00:00"`). It names a calendar day,
+ * not a moment, so it is read by its own date part and formatted in UTC — a
+ * reader west of Greenwich never sees the day before.
+ */
+export function dateBoundaryLabel(iso: string): string {
+  const day = /^(\d{4}-\d{2}-\d{2})/.exec(iso.trim())?.[1];
+  return day ? planDateLabel(day) : instantDateLabel(iso);
+}
+
+/**
+ * HUB6.3G — a Standard module's unit, as the reader knows it. The backend
+ * still emits `unit: "slice"` for older rounds (the raw value is kept on the
+ * record); the module is a Journey either way, and "Slice" is never shown.
+ */
+export type ModuleFamily = "splash" | "meta_reflex" | "journey" | "review_replay";
+
+export function moduleFamily(unit: string | null | undefined): ModuleFamily | null {
+  if (unit === "journey" || unit === "slice") return "journey";
+  if (unit === "splash" || unit === "meta_reflex" || unit === "review_replay") return unit;
+  return null;
+}
+
+const MODULE_NAME: Readonly<Record<ModuleFamily, string>> = {
+  splash: "Splash",
+  meta_reflex: "Meta Reflex",
+  journey: "Journey",
+  review_replay: "Review replay",
+};
+
+/** "Journey" (also for a legacy `slice`); null for a unit this client does
+ *  not know, so each caller keeps its own neutral word. */
+export function moduleName(unit: string | null | undefined): string | null {
+  const family = moduleFamily(unit);
+  return family ? MODULE_NAME[family] : null;
+}
+
 const SNAKE = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 
 /**

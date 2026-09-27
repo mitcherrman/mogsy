@@ -24,8 +24,9 @@ import {
   type RoundVM,
   type StageViewModel,
 } from "@/components/quiz/workspace/historyViewModel";
+import type { MatchReviewView, ReviewRound } from "@/lib/ranked-public/contracts";
 import { stageTone } from "@/components/quiz/workspace/stageTheme";
-import { stageKindLabel } from "@/components/quiz/workspace/historyFormat";
+import { moduleFamily, moduleName, stageKindLabel, type ModuleFamily } from "@/components/quiz/workspace/historyFormat";
 import { RESULT_INK, RESULTS, categoryInk, categoryName, categoryRank } from "./ink";
 
 export const CORE_KINDS: readonly string[] = ["standard", "time_trial", "survival"];
@@ -244,8 +245,11 @@ export function seriesPoints(series: PersonalSnapshot[], metric: keyof PersonalS
 export interface CourseModule {
   position: number;
   roundNumber: number;
-  /** `splash`, `meta_reflex`, `journey` (legacy `slice`). */
+  /** The raw unit: `splash`, `meta_reflex`, `journey` (legacy `slice`). */
   unit: string | null;
+  /** What the module IS (a legacy `slice` is a Journey) — for its shape,
+   *  its name and its art; never shown raw. */
+  family: ModuleFamily | null;
   correct: number;
   played: number;
   round: RoundVM | null;
@@ -262,26 +266,53 @@ export function courseModules(stage: HistoryStage, vm: StageViewModel = buildSta
       .sort((a, b) => a.roundNumber - b.roundNumber)
       .map((m, i) => {
         const round = byRound.get(m.roundNumber) ?? null;
+        const unit = m.unit ?? round?.unit ?? null;
         return {
-          position: i + 1, roundNumber: m.roundNumber, unit: m.unit ?? round?.unit ?? null,
+          position: i + 1, roundNumber: m.roundNumber, unit, family: moduleFamily(unit),
           correct: m.correct, played: m.questionsPlayed, round,
           ids: m.questionResultIds.length ? m.questionResultIds : round?.occurrences.map((o) => o.occurrenceId) ?? [],
         };
       });
   }
   return vm.rounds.map((r, i) => ({
-    position: i + 1, roundNumber: r.roundNumber, unit: r.unit, correct: r.correct,
+    position: i + 1, roundNumber: r.roundNumber, unit: r.unit, family: moduleFamily(r.unit), correct: r.correct,
     played: r.correct + r.incorrect + r.timeout, round: r, ids: r.occurrences.map((o) => o.occurrenceId),
   }));
 }
 
-export const UNIT_NAME: Readonly<Record<string, string>> = {
-  splash: "Splash",
-  meta_reflex: "Meta Reflex",
-  journey: "Journey",
-  slice: "Slice",
-  review_replay: "Review replay",
-};
+export interface CourseSegment {
+  family: ModuleFamily | null;
+  modules: CourseModule[];
+}
+
+/** The course's recipe: consecutive modules of one type, in played order —
+ *  production's Splash ×4 · Meta Reflex · Splash ×3 · Meta Reflex · Journey.
+ *  Read from the modules themselves; never a template. */
+export function courseSegments(modules: CourseModule[]): CourseSegment[] {
+  const out: CourseSegment[] = [];
+  for (const m of modules) {
+    const last = out[out.length - 1];
+    // A Journey is always its own segment: one gate, many children.
+    if (last && last.family === m.family && m.family !== "journey") last.modules.push(m);
+    else out.push({ family: m.family, modules: [m] });
+  }
+  return out;
+}
+
+/**
+ * The frozen review round that is this round's AUTHORITATIVE art — matched by
+ * round number only (the review's own ordinal), never by position or by
+ * name. Null when the review has not loaded or holds no such round.
+ */
+export function artRound(review: MatchReviewView | null | undefined, roundNumber: number): ReviewRound | null {
+  return review?.rounds.find((r) => r.roundNumber === roundNumber) ?? null;
+}
+
+/** A module's name: a legacy `slice` is a Journey (the raw unit stays on
+ *  the record); an unknown unit is a plain "Question". */
+export function unitName(unit: string | null | undefined): string {
+  return moduleName(unit) ?? "Question";
+}
 
 // ─────────────────────────────────────────────────────────── Survival
 
@@ -356,22 +387,6 @@ export function reviewLinks(record: DailyHistoryRecord, review: HistoryStage): R
   }));
 }
 
-/** Review donut: replay result (inner) × source stage (outer), over linked
- *  replays only. */
-export function reviewDonut(record: DailyHistoryRecord, links: ReviewLink[]): NestedDonutData {
-  const members: Member[] = links.flatMap((l) => {
-    if (!l.replayOutcome || !l.source) return [];
-    const stage = record.stages.find((s) => s.stageId === l.source!.stageId);
-    const kind = l.source.stageKind || stage?.kind || "";
-    return [{
-      id: l.replayId, outcome: l.replayOutcome, group: l.source.stageId, groupLabel: stageKindLabel(kind),
-      color: stageTone(kind).ink, stageId: l.source.stageId,
-    }];
-  });
-  const order = new Map(record.stages.map((s) => [s.stageId, s.order]));
-  return donutFrom(members, new Map(), (g) => order.get(g) ?? 99);
-}
-
 // ─────────────────────────────────────────────────────────── question context
 
 export interface QuestionContextVM {
@@ -379,8 +394,9 @@ export interface QuestionContextVM {
   category: { key: string; label: string } | null;
   /** This stage's C / played for the question's category (Free count). */
   stageCategory: { correct: number; played: number } | null;
-  /** Premium: this exact question's earlier staged-Daily history. */
-  prior: { exposures: number; correct: number; last: { completedAt: string; outcome: string } | null } | null;
+  /** Premium: this exact question's earlier staged-Daily history. The
+   *  counts are null when the server could not establish them — never 0. */
+  prior: { exposures: number | null; correct: number | null; last: { completedAt: string; outcome: string } | null } | null;
   /** Premium: earlier compatible stages' totals for the category. */
   categoryHistory: { correct: number; played: number; accuracy: number | null; attempts: number } | null;
   strikeIndex: number | null;

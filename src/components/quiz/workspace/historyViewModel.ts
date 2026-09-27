@@ -201,7 +201,6 @@ export function stageCurrentFacts(stage: HistoryStage): StageCurrentFacts {
   const b = stage.basic;
   const survival = stage.kind === "survival";
   const maxStrikes = b.maxStrikes ?? current?.maxStrikes ?? stage.ruleset.maxStrikes;
-  const misses = b.questionsPlayed - b.correct;
   return {
     correct: b.correct,
     questionsPlayed: b.questionsPlayed,
@@ -213,8 +212,17 @@ export function stageCurrentFacts(stage: HistoryStage): StageCurrentFacts {
     longestStreak: b.longestStreak ?? current?.longestStreak ?? longestStreakOf(stage),
     score: stage.kind === "standard" ? b.score : null,
     depth: survival ? b.depth ?? current?.depth ?? b.questionsPlayed : null,
+    // HUB6.3G: strikes used is only ever the SERVER's count. A null is the
+    // server withholding it (contradictory rows) and stays unknown — it is
+    // never rebuilt from misses. HUB6.3C Free facts are present whenever
+    // `depth` is; else HUB6.3B's Premium `current`; else (a HUB2.3 payload)
+    // its own factual `strikes_used`.
     strikesUsed: survival
-      ? b.strikesUsed ?? current?.strikesUsed ?? (maxStrikes !== null ? Math.min(misses, maxStrikes) : null)
+      ? b.depth !== null
+        ? b.strikesUsed
+        : current
+          ? current.strikesUsed
+          : stage.analytics?.strikesUsed ?? null
       : null,
     maxStrikes: survival ? maxStrikes : null,
     completionReason: current?.completionReason ?? b.completionReason ?? null,

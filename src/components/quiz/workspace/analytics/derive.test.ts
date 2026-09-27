@@ -15,7 +15,6 @@ import {
   dailyDonut,
   questionContext,
   recordOf,
-  reviewDonut,
   reviewLinks,
   stageCategoryDonut,
   streakIds,
@@ -193,7 +192,6 @@ describe("Review — exact source → replay", () => {
       expect(vm.rounds[l.source!.position! - 1].occurrences.some((o) => o.occurrenceId === src.source.questionResultId)).toBe(true);
     }
     expect(links.map((l) => l.source!.stageKind)).toEqual(["time_trial", "survival", "weak_areas"]);
-    expect(reviewDonut(r, links).total).toBe(3);
   });
 
   it("a replay without a stored link says so; nothing is matched by content or order", () => {
