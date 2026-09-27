@@ -84,7 +84,7 @@ export function RecordMedal({
       aria-label={`${label}: ${format(record.current)}. ${statusText}.${recordLine ? ` ${recordLine}.` : ""}`}
       role="group"
     >
-      <div className={`relative h-[6.25rem] w-[6.25rem] ${gilded && done && motion ? "history-medal-settle" : ""}`}>
+      <div className={`relative h-[100px] w-[100px] shrink-0 ${gilded && done && motion ? "history-medal-settle" : ""}`}>
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
           <defs>
             <radialGradient id={`${uid}-gold`} cx="35%" cy="28%" r="80%">
@@ -231,8 +231,8 @@ export function StreakChain({
           const links = Math.ceil(row.value / per);
           const fillTo = row.mine ? Math.ceil(links * clamp01(progress)) : links;
           return (
-            <li key={row.key} className="grid grid-cols-[5.25rem_minmax(0,1fr)_2rem] items-center gap-2 [@container(max-width:22rem)]:grid-cols-[4.25rem_minmax(0,1fr)_1.75rem]" data-testid={`streak-row-${row.key}`}>
-              <span className="truncate text-[10.5px] font-bold" style={{ color: row.mine ? LEAGUECRAFT_INK.strong : LEAGUECRAFT_INK.faint }}>{row.label}</span>
+            <li key={row.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 [@container(min-width:24rem)]:grid-cols-[5.25rem_minmax(0,1fr)_2rem]" data-testid={`streak-row-${row.key}`}>
+              <span className="col-span-2 truncate text-[10.5px] font-bold [@container(min-width:24rem)]:col-span-1" style={{ color: row.mine ? LEAGUECRAFT_INK.strong : LEAGUECRAFT_INK.faint }}>{row.label}</span>
               <span className="flex min-w-0 flex-wrap items-center gap-[2px]" aria-hidden="true">
                 {Array.from({ length: Math.ceil(top / per) }, (_, i) => {
                   const on = i < fillTo;

@@ -174,12 +174,17 @@ function measure() {
     ? [...region.querySelectorAll('[data-testid$="-chart"], [data-testid="population-distribution"], [data-testid="history-line"], [data-testid="daily-donut-chart"], ul')]
         .filter(visible).map((el) => el.scrollWidth - el.clientWidth).reduce((m, v) => Math.max(m, v), 0)
     : null;
+  const chartOver = region
+    ? [...region.querySelectorAll("ul, ol")].filter(visible).filter((el) => el.scrollWidth - el.clientWidth > 0)
+        .map((el) => `${el.tagName}${el.dataset.testid ? "#" + el.dataset.testid : ""}[${el.getAttribute("aria-label") ?? ""}]+${el.scrollWidth - el.clientWidth}`)
+    : [];
   return {
     pageOverflow: document.documentElement.scrollWidth - vw,
     rowWidth: row ? Math.round(row.getBoundingClientRect().width) : null,
     regionWidth: rb ? Math.round(rb.width) : null,
     regionOverflow: region ? region.scrollWidth - region.clientWidth : null,
     chartOverflow: charts,
+    chartOver: chartOver.slice(0, 4),
     pastEdge: past.slice(0, 8),
     pastEdgeCount: past.length,
     minTarget: minT,

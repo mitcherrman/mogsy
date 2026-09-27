@@ -702,7 +702,7 @@ export function NestedDonut({
             return (
               <li
                 key={g.group}
-                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border px-1.5 py-1"
+                className="grid min-w-0 grid-cols-1 items-center gap-x-2 rounded-md border px-1.5 py-1 [@container(min-width:22rem)]:grid-cols-[minmax(0,1fr)_auto]"
                 style={{
                   borderColor: locked ? LEAGUECRAFT_INK.strong : "rgba(96,68,28,0.18)",
                   background: locked ? "rgba(96,68,28,0.1)" : isOn(t) ? "rgba(255,249,233,0.3)" : "transparent",
@@ -725,12 +725,12 @@ export function NestedDonut({
                   <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-[3px]" style={{ background: g.color }} />
                   <span className="min-w-0">
                     <span className="block truncate text-[12px] font-bold" style={{ color: LEAGUECRAFT_INK.strong }}>{g.label}</span>
-                    <span className="block whitespace-nowrap text-[10.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }}>
+                    <span className="block text-[10.5px] tabular-nums [@container(min-width:22rem)]:whitespace-nowrap" style={{ color: LEAGUECRAFT_INK.faint }}>
                       {g.correct}/{g.played} correct · {Math.round((g.correct / Math.max(1, g.played)) * 100)}%
                     </span>
                   </span>
                 </button>
-                <span className="flex items-center gap-0.5" role="group" aria-label={`${g.label} by result`}>
+                <span className="flex flex-wrap items-center gap-0.5" role="group" aria-label={`${g.label} by result`}>
                   {slices.map((s) => {
                     const st: DonutTarget = { kind: "slice", slice: s };
                     const sk = targetKey(st);
@@ -761,7 +761,7 @@ export function NestedDonut({
                   })}
                 </span>
                 {describeGroup && (shown?.kind === "group" && shown.group === g.group || shown?.kind === "slice" && shown.slice.group === g.group) && (
-                  <div className="col-span-2 pb-0.5 pl-5 text-[10.5px] leading-snug" style={{ color: LEAGUECRAFT_INK.body }} data-testid="donut-group-detail">
+                  <div className="pb-0.5 pl-5 text-[10.5px] leading-snug [@container(min-width:22rem)]:col-span-2" style={{ color: LEAGUECRAFT_INK.body }} data-testid="donut-group-detail">
                     {describeGroup(g.group)}
                   </div>
                 )}
@@ -936,7 +936,7 @@ export function Distribution({
         ))}
       </div>
       <details className="mt-2 text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }}>
-        <summary className="cursor-pointer select-none rounded font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:py-[14px]">
+        <summary className="flex min-h-[24px] cursor-pointer select-none items-center rounded font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-[44px]">
           Every range as a table
         </summary>
         <table className="mt-1.5 w-full max-w-[18rem] tabular-nums" aria-describedby={tableId}>

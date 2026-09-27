@@ -172,7 +172,7 @@ function CoreRecords({ record }: { record: DailyHistoryRecord }) {
   if (!mostCorrect && !streak) return null;
   return (
     <Panel title="Core Daily records" eyebrow="Standard · Time Trial · Survival" testId="core-records">
-      <div ref={reveal.ref} className="grid grid-cols-2 gap-3 pt-1">
+      <div ref={reveal.ref} className="grid grid-cols-[repeat(auto-fit,minmax(min(7rem,100%),1fr))] gap-3 pt-1">
         <RecordMedal record={mostCorrect} label="Most correct" glyph={CheckCheck} shape="round" progress={reveal.progress} testId="core-record-correct" />
         <RecordMedal record={streak} label="Longest streak" glyph={Flame} shape="shield" progress={reveal.progress} testId="core-record-streak" />
       </div>

@@ -119,7 +119,7 @@ function CourseMap({ stage }: { stage: HistoryStage }) {
     >
       <div ref={reveal.ref} className="min-w-0">
         <ol
-          className="relative flex flex-wrap items-start gap-y-4 [@container(min-width:40rem)]:flex-nowrap"
+          className="relative flex flex-wrap items-start gap-y-4 pr-2 [@container(min-width:40rem)]:flex-nowrap"
           aria-label="Standard modules in played order"
           data-testid="course-modules"
           data-count={n}

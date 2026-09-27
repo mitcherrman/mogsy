@@ -199,7 +199,7 @@ export function RecordsPanel({ stage, specs, title = "Personal records" }: { sta
   if (!p?.eligible || records.length === 0) return null;
   return (
     <Panel title={title} eyebrow={stageKindLabel(stage.kind)} testId="stage-records">
-      <div ref={reveal.ref} className="grid grid-cols-[repeat(auto-fit,minmax(6.75rem,1fr))] gap-3 pt-1">
+      <div ref={reveal.ref} className="grid grid-cols-[repeat(auto-fit,minmax(min(6.75rem,100%),1fr))] gap-3 pt-1">
         {records.map(({ s, r }) => (
           <RecordMedal key={s.metric} record={r} label={s.label} glyph={s.glyph} shape={s.shape} progress={reveal.progress} testId={`record-${s.metric}`} />
         ))}
