@@ -160,9 +160,9 @@ function revealNames(settlement: ResolvedRoundView,
  * there is no second creation call, and a bot player re-arms the same switch
  * on the same record a human player uses to queue.
  *
- * A full document load rather than a router push, matching what this screen
- * has always done: a finished match is exactly the moment it is cheapest to
- * drop every piece of arena state on the floor.
+ * The standalone route supplies terminal navigation with SPA REPLACE. Match
+ * state, polling, presentation timers and audio ownership clean up on unmount.
+ * Legacy preset embedders retain their existing document-navigation fallback.
  */
 const AGAIN_HREF = "/quiz?play=1";
 const LOBBY_HREF = "/quiz";
@@ -228,6 +228,10 @@ export interface QuizRankedMatchProps {
    * assert. The route supplies it; the arena renders it.
    */
   chrome?: ReactNode;
+  /** Standalone route policy, used only after the hosted-return guard. */
+  onTerminalNavigate?: (destination: string) => void;
+  /** Terminal-only route chrome; active-match Back keeps its own contract. */
+  terminalChrome?: ReactNode;
   /**
    * DCMOD-E — this match is one step of a parent flow that owns its entry and
    * its close. See `MatchHost`: no duel intro card, no outro, no end screen,
@@ -271,10 +275,12 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
   );
 }
 
-function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chrome,
+function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chrome, terminalChrome,
                             entry = "recovered",
                             paused = false, onSessionComplete,
-                            onProgress, host }: QuizRankedMatchProps) {
+                            onProgress, host,
+                            onTerminalNavigate = (destination) => window.location.assign(destination),
+                          }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, {
     paused, entry,
     // RFX1 2B1: the reveal hold's bounded swap gate waits on this.
@@ -1138,24 +1144,24 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
         ? { label: "Continue", onClick: onSessionComplete }
         : {
           label: "Play Again",
-          onClick: () => { window.location.assign(AGAIN_HREF); },
+          onClick: () => { onTerminalNavigate(AGAIN_HREF); },
         },
       // Into the Record's History pane, which is where this match's full
       // question-by-question timeline — answers included — already lives.
       secondary: {
         label: "Review Match",
-        onClick: () => { window.location.assign("/quiz#history"); },
+        onClick: () => { onTerminalNavigate("/quiz#history"); },
       },
       tertiary: {
         label: "Back to Leaguecraft",
-        onClick: () => { window.location.assign(LOBBY_HREF); },
+        onClick: () => { onTerminalNavigate(LOBBY_HREF); },
       },
     };
     // PT1.3's reveal keeps its position under the progression it follows: it
     // is the mode's own reward content, so it rides the model's REVIEW slot.
     results.review = discoveryRevealHasContent(discoveries.view)
       ? (<DiscoveryReveal view={discoveries.view}
-          onReview={() => { window.location.assign("/quiz#review"); }} />)
+          onReview={() => { onTerminalNavigate("/quiz#review"); }} />)
       : undefined;
 
     /**
@@ -1247,7 +1253,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
        */
       reveal: null,
     };
-    return <CanonicalArena view={null} terminal={terminal} chrome={chrome} />;
+    return <CanonicalArena view={null} terminal={terminal} chrome={terminalChrome ?? chrome} />;
   }
 
   /**

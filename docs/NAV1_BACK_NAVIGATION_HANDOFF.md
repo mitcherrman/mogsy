@@ -61,6 +61,8 @@ This is a canonical positive example to preserve/generalize.
 Hosted Daily children deliberately suppress Ranked’s own Forfeit/rules/end screen. Preserve that host boundary.
 
 ### 7. Ranked terminal actions use full-document navigation
+
+Historical audit finding; standalone actions are resolved by NAV1-D below.
 `src/pages/quiz-ranked/QuizRankedMatch.tsx` uses:
 - `window.location.assign("/quiz?play=1")`
 - `window.location.assign("/quiz#history")`
@@ -254,7 +256,8 @@ Completed:
   profile route being `/user/:profileId`
 
 Not yet completed:
-- volatile NAV1-C+ implementation (Premium, Practice, Ranked, Daily, History)
+- active Ranked/Daily leave contracts, Practice boundaries and History IA
+  (Premium completed in NAV1-C; standalone Ranked terminal exits in NAV1-D)
 
 ## NAV1-A/B implementation status
 
@@ -278,8 +281,9 @@ Completed on this branch after the audit:
   internal/direct UserProfile, Settings internal/direct, and normal Forward
   after the in-app Back including query/hash preservation.
 
-Deferred P1s are unchanged: active Ranked leave semantics, active Daily leave
-semantics, Practice session/history boundaries, and Ranked terminal navigation.
+Remaining P1s: active Ranked leave semantics, active Daily leave semantics,
+and Practice session/history boundaries. NAV1-D resolves standalone Ranked
+terminal navigation.
 NAV1-C now resolves Premium's contextual return without touching History IA.
 
 ## Audit conclusion
@@ -291,8 +295,8 @@ history popping on direct-linkable profiles, active-flow exits with no leave
 contract, and terminal/local state that browser history cannot represent.
 
 The audit found **0 P0 and 7 P1 findings**. NAV1-B resolves the first three
-(Settings/reset `/home`, Profile/UserProfile raw temporal Back); four volatile
-P1s remain. The complete matrix, raw-history list,
+(Settings/reset `/home`, Profile/UserProfile raw temporal Back); NAV1-D resolves
+standalone terminal Ranked history, leaving three volatile P1s. The complete matrix, raw-history list,
 `window.location` write inventory, provenance list and owner questions are in
 [`NAV1_NAVIGATION_MATRIX.md`](./NAV1_NAVIGATION_MATRIX.md).
 
@@ -322,7 +326,7 @@ is still `4b3be0cbe2767d3107f4462082755066b26b398b`, the exact NAV1 merge base.
 8. **LOCAL** for modals, drawers, confirms, individual questions/answers,
    welcome chapters, and Daily/Ranked stages. Do not create one entry per
    question or stage.
-9. **Active gameplay** has a dedicated leave contract. Browser Back and an
+9. **Active gameplay** needs a dedicated leave contract (UNRESOLVED). Proposed: browser Back and an
    in-product exit converge on the same confirmation, but leaving is not
    forfeit. Only the explicit confirmed Ranked Forfeit sends the server command.
 10. **Terminal gameplay** uses SPA navigation. Once a user chooses an exit or
@@ -438,14 +442,13 @@ Auth and Stripe remain separate contracts. Auth still validates and returns to
 returns to `?success`/`?canceled`. Those document detours do not claim to recover
 the pre-Premium sender, so Premium safely falls back to `/lol` afterward.
 
-### NAV1-D — terminal internal navigation
+### NAV1-D — standalone Ranked terminal history (completed)
 
-Files: `QuizRankedMatch.tsx`, `PlaytestMatchHost.tsx`, result policy tests.
-Content: replace internal full reloads, apply terminal REPLACE policy.
-Conflicts: MEDIUM/HIGH Ranked/PLAYTEST. Depends on: NAV1-A and terminal owner
-decision.
-Parallel/cherry-pick: **yes as a dedicated owner**, but do not cherry-pick until
-current Ranked/PLAYTEST branches reconcile.
+Standalone result controls and the terminal header now use SPA REPLACE.
+`QuizRankedPage` supplies the policy to the router-independent arena; Daily
+and legacy guided-playtest ownership remain unchanged. Full re-audit,
+certification and integration instructions are recorded below. No active-game
+Back/leave contract was implemented.
 
 ### NAV1-E — Practice session boundary
 
@@ -482,7 +485,7 @@ leave semantics.
 Conflicts: MEDIUM. Depends on: A/F mechanics, PLAYTEST/ENVVIS ownership.
 Parallel/cherry-pick: **yes** as isolated sub-batches after ownership check.
 
-Recommended next implementation task: **NAV1-A, then NAV1-B**. It resolves the
+Original implementation order (A-D are now complete): **NAV1-A, then NAV1-B**. It resolves the
 unambiguous P1 account-navigation defects without entering the active
 Daily/History/Practice collision zones.
 
@@ -499,6 +502,214 @@ Review and Play Again; Ranked result actions; active Ranked unanswered/reveal;
 active Daily intro/play/reveal/result; Daily-hosted Ranked; completion exits;
 and mobile viewport/system-history equivalents. Assertions must check rendered
 state and history behavior, not merely `href`.
+
+## NAV1-D certification — standalone Ranked terminal history
+
+### Repository and collision audit
+
+- Dedicated managed checkout: `C:/Users/mlmit/.codex/worktrees/6cd6/mogsy`.
+- Started clean/detached at NAV1-C `5d000eecb30e4ceff5452eda6cbe1fc0431947d3`.
+  Created `codex/nav1-d-terminal-history` from `nav1/back-navigation-audit`;
+  that branch remains checked out, clean and unchanged in `nav1-audit`.
+- Fetched `origin`; main remains `4b3be0cbe2767d3107f4462082755066b26b398b`.
+  Starting NAV1 is 5 ahead / 0 behind main; NAV1-D adds one distinct commit.
+- Ranked match owner: `9be28689` (JOURNEY5 final reveal/live Daily fixes),
+  already in main and NAV1. Route recovery owner: `4defb73e` (Daily redirect),
+  also already present. No newer change to these files needs importing.
+- PLAY1 owner: `c4958b73446d612507f91273255470d2b461b19b`, implementation
+  `d9ec62a4`, two commits ahead of main. Its diff adds Playtest Director,
+  participant orchestration, schema and analytics; it changes none of these
+  three navigation files. Read its current handoff/checkpoint rule:
+  Playtest may unmount Daily at a declared checkpoint before Daily's result.
+  NAV1-D does not change that orchestration or absorb PLAY1.
+- SFX2 owner: `2153d4c8c438fc1f8f48a23e464ffee0e21ce89a` following
+  `02ac1b47`; changes Ranked sound observation and Daily award hierarchy,
+  not terminal navigation. Its handoff and diff were checked. Keep separate.
+- Read DCMOD integration and Daily stage-result handoffs, current Ranked
+  history, current recovery and host code. Checked all registered worktrees
+  for dirty Ranked, arena, Daily and legacy Playtest files: only this task's
+  files were modified. This is a point-in-time collision check, not an owner
+  lock. Recheck before integration.
+
+### Actions and history contract
+
+The exact label/destination/old/new/semantic matrix is in
+`NAV1_NAVIGATION_MATRIX.md#nav1-d-terminal-contract-2026-09-26`.
+
+All four standalone result callbacks now use the route's
+`navigate(destination, { replace: true })`. The discovery callback covers
+both **Review New Discoveries** and **Review collection**. The always-visible
+**Back to Quiz** header also uses `Link replace` on the terminal frame only.
+Active, loading and account-gate headers retain their old PUSH behavior.
+
+Before: `[origin, completed Ranked, destination]` after a result action.
+After: `[origin, destination]`. Back reaches the preceding meaningful entry;
+Forward restores the chosen destination. No new document is loaded. This
+does not delete older duplicate entries or invent a predecessor for direct
+entry, and it does not intercept arbitrary Home/other navigation.
+
+Play Again still targets `/quiz?play=1`: it opens the mode-selection dialog,
+does not auto-select Ranked or queue, and leaves the query intact. Mode
+selection is local; a successful queue handoff PUSHes a new `/quiz/ranked`
+with the new `matchId`. Back before that handoff reaches the preceding origin;
+Back after it reaches the launcher, then the origin. The old result does not
+accumulate. No queue/history cleanup change was necessary.
+
+### Why SPA teardown is safe here
+
+The reload rationale originated in `f57ae166` (RB2): a finished match was
+considered the cheapest point to discard arena state. It documented a
+precaution, not a specific persistent-state dependency. Current evidence:
+
+- `useRankedMatch` owns match snapshots/ledger/results in state and refs. Its
+  cleanup sets `stoppedRef`, clears polling, heartbeat and reveal timers,
+  invalidates the hold token and aborts the current poll/recovery request.
+  The terminal public snapshot already stops polling. A pending presence
+  request can finish, but no new heartbeat is scheduled after unmount.
+- `useMatchTimeline`, `useMatchDiscoveries`, `useRankedMatchHistory` and
+  progression reads abort and ignore cancelled responses. They do not keep
+  a singleton live match or a query-cache match controller.
+- Arena tick, server-instant wake, countdown, special transition and entry
+  preparation effects clear timers or ignore late work. UI/animation state
+  belongs to the unmounted subtree. No match route event listener or Zustand
+  match store needs a document reset.
+- `useRankedAudioBoundary` releases the match's soundtrack owner when no
+  longer active or when unmounted. SFX watches are component refs; shared
+  audio dedupe keys use event/match identities. Image-preparation caches hold
+  asset promises rather than gameplay state. Keeping them is safe.
+- The Leaguecraft hub mounts its own history/progression/queue readers on
+  arrival. No explicit cache invalidation is required to dispose of the old
+  arena. A browser test waits longer than the 10-second presence interval
+  after exit and observes zero further requests for the completed match.
+- Chromium asserts both unchanged `performance.timeOrigin` and unchanged
+  history length for every standalone terminal destination; a second queue
+  handoff carries `m2` and renders no `m1` result.
+
+`useSafeTemporalBack` was inspected and is deliberately unused: a terminal
+action chooses a forward destination and replaces its current entry; it is
+not a temporal POP with fallback.
+
+### Server state, recovery and analytics
+
+No terminal action issues forfeit, resume, queue-join or completion writes.
+The result is already server terminal. Leaving only unmounts its readers and
+heartbeat; a later explicit queue join remains the existing server action.
+
+Refreshing an intentionally open result with router handoff state preserves
+the match id and loads that result again. Fresh hints remain hints; server
+snapshots still decide whether recovery is needed. A direct visit with no
+handoff id discovers only an active match. After completion/no active match
+it REPLACEs to `/quiz` with `openPlay` state. Daily discovery still REPLACEs
+to `/quiz/daily-challenge`. None of that recovery code changed.
+
+Result callbacks currently emit no action analytics. `ranked_opened` is the
+route's existing surface event; authoritative start/completion belongs to the
+server. Shared action SFX still fires before its callback. No event name,
+schema, callback order or analytics emission was added or removed. SPA
+navigation retains the analytics runtime/queue rather than tearing it down.
+
+### Daily and legacy Playtest ownership
+
+The hosted terminal guard returns before standalone actions are built.
+`host.onMatchSettled` hands back once after the presentation is ready; Daily
+owns sync, the stage result and Continue. NAV1-D supplies no route callback
+or terminal chrome to a Daily child. Chromium exercised two real hosted
+controllers against deterministic API fixtures: two parent stage results,
+Continue, constant `/quiz/daily-challenge`, constant history length/document,
+and no standalone Ranked result or Play Again button. Existing final-reveal,
+Survival and Daily boundary suites also pass. No per-stage history was added.
+
+Legacy guided presets remain distinct: `onSessionComplete` still calls the
+preset owner locally, exactly once. For other legacy embedded terminal
+actions, the arena retains its existing document `assign` fallback. This is
+intentional scope isolation, not a claim that legacy exit history is fixed.
+`PlaytestMatchHost` itself is untouched and remains the PLAYTEST owner's work.
+
+Internal `window.location` inventory after NAV1-D:
+
+- `QuizRankedMatch`: one `assign(destination)` fallback for legacy embedders
+  (previously four calls); the standalone route always supplies SPA REPLACE.
+- Same file: one unchanged error **Retry** `reload()`.
+- Ranked page, header, hooks, ranked-core/public and arena components: no
+  other `assign`, `replace` or `href` writes.
+- Adjacent `PlaytestMatchHost`: existing `/quiz` `assign` default exit,
+  unchanged. External provider/checkout and chunk recovery are untouched.
+
+### Verification
+
+Run from the dedicated checkout with the existing installed dependencies.
+Windows required an escalated test process because sandboxed esbuild could
+not read the checkout's ancestor directories. No dependencies were installed.
+
+```powershell
+npx playwright test --config playwright.nav1.config.ts
+npx vitest run src/pages/quiz-ranked src/pages/quiz-daily-challenge src/lib/ranked-public src/lib/ranked-core src/lib/daily-challenge src/lib/navigation src/components/ranked-arena src/components/audio/useRankedAudioBoundary.test.tsx src/pages/LolPremium.navigation.test.tsx --maxWorkers=3
+npx vitest run src/pages/quiz-ranked/QuizRankedPage.terminalHistory.test.tsx src/pages/LolPremium.test.tsx src/pages/LegacyPremiumRedirect.test.tsx src/components/playtest src/components/quiz/play-scroll src/components/quiz/QuizRankedQueueCard.test.tsx src/lib/navigation --maxWorkers=3
+npx tsc --noEmit -p tsconfig.app.json
+npx eslint src/pages/quiz-ranked/QuizRankedMatch.tsx src/pages/quiz-ranked/QuizRankedPage.tsx src/pages/quiz-ranked/RankedRouteHeader.tsx src/pages/quiz-ranked/QuizRankedPage.terminalHistory.test.tsx src/test/fixtures/rankedTerminal.ts e2e/nav1/ranked-terminal-history.spec.ts
+git diff --check
+```
+
+- Chromium: **16/16**, including **9 new NAV1-D scenarios**, no page errors.
+  Result lobby/History/Review/Play Again/header each prove SPA, replacement,
+  Back and Forward. Refresh proves result retention until exit and teardown.
+  Direct no-active recovery, next-match queue handoff, and two hosted Daily
+  stages are covered. Data/identities are intercepted fixtures, not live-match
+  certification. The initial terminal route seeds the queue's router state;
+  the next-match scenario uses the actual launcher and queue UI.
+- New router/controller tests: **9/9**, all six rendered action variants,
+  hosted callback isolation, unchanged active header PUSH, and preset Continue.
+- Broad regression: **2,147 passed / 5 failed**, 173 files. The five failures
+  reproduce on clean NAV1-C: `AnswerGrid.elimination` (2 Windows path checks),
+  `QuestionStageGeometry` (3 path/CRLF checks). Baseline: 75 passed / 5 failed.
+- Additional launcher/Playtest/NAV1 run: **272 passed / 2 failed**, 9 files.
+  The two `playModeCard.styles` CRLF-sensitive static assertions reproduce
+  on NAV1-C (20 passed / 2 failed). These runs overlap; do not sum counts.
+  The first broad command's old Premium filename selects no file; the second
+  command explicitly runs the actual `LolPremium.test.tsx` and alias tests.
+- TypeScript: two existing errors, `OnboardingProfile.tsx:180` and
+  `identity/connections.ts:263`, also recorded by PLAY1; neither file changed.
+- Targeted lint: zero errors; one pre-existing Fast Refresh warning for
+  `rankedDetailsSummary` in `QuizRankedMatch`. Diff whitespace check passes.
+- The whole frontend contains 771 test files; the 173-file gameplay run plus
+  targeted launcher/navigation checks were used rather than an unrelated
+  all-frontend sweep. No claim of a fully green repository suite.
+- Browser observation outside scope: the fixed header link can overlap the
+  terminal title at the default desktop viewport. Its history test uses
+  keyboard focus + Enter, not a forced click. No layout edit was made.
+
+### Integration and remaining work
+
+Commit separately as `NAV1-D: clean up Ranked terminal history`; nothing is
+pushed. Product changes are limited to `QuizRankedMatch`, `QuizRankedPage`
+and `RankedRouteHeader`; the rest is focused tests/fixtures and these two docs.
+
+Safest sequence: bring the existing NAV1 audit/A/B/C chain through `5d000eec`
+into the integration branch, then cherry-pick NAV1-D. The original NAV1
+branch can fast-forward to this task branch after its owner is ready.
+No PLAY1 or SFX2 commit is a prerequisite: both have disjoint changed files.
+Integrate those separately in their own owner order, retaining their Daily
+checkpoint and sound policies, then rerun Ranked/Daily/browser certification.
+Never port this patch by replacing the entire match component.
+
+Still separate and unresolved:
+
+- **P1: active Ranked Back/leave** during unanswered/reveal phases; explicit
+  Forfeit, reconnect, network loss and unload remain unchanged.
+- **P1: active Daily Back/exit**, plus owner decision on completion recap
+  retention. Stage Continue remains local and parent-owned.
+- **P1: Practice meaningful-history boundary**, pending Practice/Study Hall
+  integration on shared `Quiz.tsx` and workspace files.
+- Deferred Premium anchors in Practice Builder/Trends, and History/Review IA.
+- Legacy guided-playtest document exits and the terminal header overlap.
+
+Recommended next task: **active Ranked/Daily leave-contract design**, with no
+runtime interception until owners agree. PLAY1 checkpoints and SFX2 are still
+separate owner work; design can resolve truthful leave/resume copy without
+editing those files. Practice implementation currently overlaps the broader,
+still-deferred Study Hall/Quiz workspace work, so it is the riskier next code
+batch. This recommendation is about collision risk, not permission to expand
+NAV1-D into active-game behavior.
 
 ## Audit mechanics and counts
 

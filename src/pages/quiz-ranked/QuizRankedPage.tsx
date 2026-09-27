@@ -203,6 +203,8 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
       <QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId}
         viewerDisplayName={viewerIdentity.displayName}
         entry={handoffMatchId ? "fresh" : "recovered"}
+        onTerminalNavigate={(destination) => navigate(destination, { replace: true })}
+        terminalChrome={<RankedRouteHeader size="wide" replace />}
         chrome={<RankedRouteHeader size="wide" />} />
     );
   }
