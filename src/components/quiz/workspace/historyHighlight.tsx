@@ -24,6 +24,12 @@
  *
  * Local by design: one provider per Daily (`DailyRunRow`), so a highlight can
  * never leak into another run or survive a collapse. No global store.
+ *
+ * THREE CONTEXTS, so a hover is cheap: the actions never change; the lock
+ * changes only on click; the effective highlight changes on every preview and
+ * is read only by the rails. A chart that previews therefore re-renders
+ * nothing but the question rails (`useHighlightControls` for charts,
+ * `useStageHighlightState` for rails).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { HistoryStage } from "@/lib/history/contracts";
@@ -58,10 +64,17 @@ interface HighlightState {
   clear: () => void;
 }
 
+interface HighlightActions {
+  setHighlight: (h: HistoryHighlight | null) => void;
+  preview: (h: HistoryHighlight | null) => void;
+  toggleLock: (h: HistoryHighlight) => void;
+  clear: () => void;
+}
+
 const NOOP = () => {};
-const HighlightContext = createContext<HighlightState>({
-  highlight: null, locked: null, setHighlight: NOOP, preview: NOOP, toggleLock: NOOP, clear: NOOP,
-});
+const ActionsContext = createContext<HighlightActions>({ setHighlight: NOOP, preview: NOOP, toggleLock: NOOP, clear: NOOP });
+const LockedContext = createContext<HistoryHighlight | null>(null);
+const EffectiveContext = createContext<HistoryHighlight | null>(null);
 
 const sameKey = (a: HistoryHighlight | null, b: HistoryHighlight | null) =>
   !!a && !!b && a.key !== undefined && a.key === b.key;
@@ -92,15 +105,30 @@ export function HistoryHighlightProvider({ children }: { children: React.ReactNo
     return () => document.removeEventListener("keydown", onKey);
   }, [locked, clear]);
 
-  const value = useMemo(
-    () => ({ highlight: previewed ?? locked, locked, setHighlight, preview, toggleLock, clear }),
-    [previewed, locked, setHighlight, preview, toggleLock, clear],
+  const actions = useMemo(() => ({ setHighlight, preview, toggleLock, clear }), [setHighlight, preview, toggleLock, clear]);
+  return (
+    <ActionsContext.Provider value={actions}>
+      <LockedContext.Provider value={locked}>
+        <EffectiveContext.Provider value={previewed ?? locked}>{children}</EffectiveContext.Provider>
+      </LockedContext.Provider>
+    </ActionsContext.Provider>
   );
-  return <HighlightContext.Provider value={value}>{children}</HighlightContext.Provider>;
 }
 
+/** Everything (re-renders on every preview) — the HUB6.3D API. */
 export function useHistoryHighlight(): HighlightState {
-  return useContext(HighlightContext);
+  const actions = useContext(ActionsContext);
+  const locked = useContext(LockedContext);
+  const highlight = useContext(EffectiveContext);
+  return { ...actions, locked, highlight };
+}
+
+/** For charts: the actions and the lock (for pressed states) — a hover
+ *  preview does not re-render the caller. */
+export function useHighlightControls(): HighlightActions & { locked: HistoryHighlight | null } {
+  const actions = useContext(ActionsContext);
+  const locked = useContext(LockedContext);
+  return useMemo(() => ({ ...actions, locked }), [actions, locked]);
 }
 
 function inScope(h: HistoryHighlight, stageId: string): boolean {
@@ -111,21 +139,22 @@ function inScope(h: HistoryHighlight, stageId: string): boolean {
 /** The occurrence ids a stage's timeline should light, or null when nothing
  *  targets this stage. */
 export function useStageHighlight(stageId: string): ReadonlySet<string> | null {
-  const { highlight } = useHistoryHighlight();
+  const highlight = useContext(EffectiveContext);
   return highlight && inScope(highlight, stageId) ? highlight.occurrenceIds : null;
 }
 
 /** As `useStageHighlight`, plus whether it is a lock (the timeline pages to
  *  a lit icon only for a lock — a hover never moves the rail). */
 export function useStageHighlightState(stageId: string): { ids: ReadonlySet<string>; locked: boolean } | null {
-  const { highlight, locked } = useHistoryHighlight();
+  const highlight = useContext(EffectiveContext);
+  const locked = useContext(LockedContext);
   if (!highlight || !inScope(highlight, stageId)) return null;
   return { ids: highlight.occurrenceIds, locked: highlight === locked };
 }
 
 /** Whether a control's highlight is the current lock (its pressed state). */
 export function useIsLocked(key: string): boolean {
-  const { locked } = useHistoryHighlight();
+  const locked = useContext(LockedContext);
   return locked?.key === key;
 }
 

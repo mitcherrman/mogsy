@@ -47,7 +47,7 @@ import QuestionTimeline from "@/components/quiz/workspace/QuestionTimeline";
 import { buildStageViewModel } from "@/components/quiz/workspace/historyViewModel";
 import {
   HistoryHighlightProvider,
-  useHistoryHighlight,
+  useHighlightControls,
   useStageHighlightState,
 } from "@/components/quiz/workspace/historyHighlight";
 import type { RoundVM } from "@/components/quiz/workspace/historyViewModel";
@@ -333,7 +333,7 @@ function StageRow({
 /** A highlight belongs to the view it was made in: changing the run's view
  *  (another stage, the overview, collapse) clears it. */
 function HighlightScope({ focus }: { focus: FocusView | null }) {
-  const { setHighlight } = useHistoryHighlight();
+  const { setHighlight } = useHighlightControls();
   useEffect(() => {
     setHighlight(null);
   }, [focus, setHighlight]);

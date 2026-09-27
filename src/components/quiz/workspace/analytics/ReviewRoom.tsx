@@ -25,7 +25,7 @@ import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost
 import { instantDateLabel, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import { stageTone } from "@/components/quiz/workspace/stageTheme";
 import { buildStageViewModel, stageCurrentFacts, type QuestionResult } from "@/components/quiz/workspace/historyViewModel";
-import { runHighlight, useHistoryHighlight } from "@/components/quiz/workspace/historyHighlight";
+import { runHighlight, useHighlightControls } from "@/components/quiz/workspace/historyHighlight";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import type { DailyHistoryRecord, HistoryStage } from "@/lib/history/contracts";
 import { NestedDonut, OutcomeMark, Panel } from "./charts";
@@ -56,7 +56,7 @@ export function ReviewRoom({ record, stage }: { record: DailyHistoryRecord; stag
 function ReviewLinks({ record, stage, links, summary }: { record: DailyHistoryRecord; stage: HistoryStage; links: ReviewLink[]; summary: string }) {
   const reveal = useReveal<HTMLDivElement>({ durationMs: 1300, delayMs: 100 });
   const coarse = useCoarsePointer();
-  const { preview, toggleLock, locked } = useHistoryHighlight();
+  const { preview, toggleLock, locked } = useHighlightControls();
   const reviewTone = stageTone("review");
   const hl = (l: ReviewLink) => runHighlight(
     [l.replayId, ...(l.source ? [l.source.questionResultId] : [])],
@@ -202,7 +202,7 @@ export function WeakAreasRoom({ stage }: { stage: HistoryStage }) {
   const selection = stage.analytics?.personalFacts.selection ?? null;
   const reveal = useReveal<HTMLDivElement>({ durationMs: 1000, delayMs: 100 });
   const coarse = useCoarsePointer();
-  const { preview, toggleLock, locked } = useHistoryHighlight();
+  const { preview, toggleLock, locked } = useHighlightControls();
   const byId = vm.byOccurrence;
   const slots = selection?.slots ?? [];
   const cutoff = selection?.evidenceCutoff ? instantDateLabel(selection.evidenceCutoff) : null;

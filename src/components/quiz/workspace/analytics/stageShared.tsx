@@ -9,7 +9,7 @@ import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { planDateLabel, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import { accuracyComparison, questionsPlayedDelta, wholePercent } from "@/components/quiz/workspace/historyComparisons";
 import { stageCurrentFacts, buildStageViewModel } from "@/components/quiz/workspace/historyViewModel";
-import { occurrenceHighlight, useHistoryHighlight, useIsLocked } from "@/components/quiz/workspace/historyHighlight";
+import { occurrenceHighlight, useHighlightControls, useIsLocked } from "@/components/quiz/workspace/historyHighlight";
 import { useReveal } from "@/lib/motion/useReveal";
 import type { HistoryStage, PersonalRecord, PersonalSnapshot } from "@/lib/history/contracts";
 import { cohortOf } from "@/lib/history/population";
@@ -156,7 +156,7 @@ export function StreakPanel({ stage }: { stage: HistoryStage }) {
   const reveal = useReveal<HTMLDivElement>({ durationMs: 1100, delayMs: 100 });
   const key = `${stage.stageId}:streak`;
   const locked = useIsLocked(key);
-  const { preview, toggleLock } = useHistoryHighlight();
+  const { preview, toggleLock } = useHighlightControls();
   const { type } = useCohort();
   const cohort = cohortOf(stage.population, type);
   const sp = cohort?.status === "available" ? cohort.metrics.longest_streak?.percentile ?? null : null;

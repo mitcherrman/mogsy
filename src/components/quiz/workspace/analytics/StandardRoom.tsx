@@ -19,7 +19,7 @@ import { CheckCheck, Droplet, Flag, Flame, Layers, Star, Trophy, Zap } from "luc
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { buildStageViewModel } from "@/components/quiz/workspace/historyViewModel";
-import { runHighlight, useHistoryHighlight } from "@/components/quiz/workspace/historyHighlight";
+import { runHighlight, useHighlightControls } from "@/components/quiz/workspace/historyHighlight";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import type { HistoryStage } from "@/lib/history/contracts";
 import { OutcomeMark, Panel } from "./charts";
@@ -99,7 +99,7 @@ function CourseMap({ stage }: { stage: HistoryStage }) {
   const modules = useMemo(() => courseModules(stage, vm), [stage, vm]);
   const reveal = useReveal<HTMLDivElement>({ durationMs: 1400, delayMs: 100 });
   const coarse = useCoarsePointer();
-  const { preview, toggleLock, locked } = useHistoryHighlight();
+  const { preview, toggleLock, locked } = useHighlightControls();
   const [focus, setFocus] = useState<number | null>(null);
   if (modules.length === 0) return null;
   const n = modules.length;

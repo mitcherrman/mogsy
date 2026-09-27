@@ -7,7 +7,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
-import { useHistoryHighlight } from "@/components/quiz/workspace/historyHighlight";
+import { useHighlightControls } from "@/components/quiz/workspace/historyHighlight";
 import { planDateLabel } from "@/components/quiz/workspace/historyFormat";
 import { useReveal } from "@/lib/motion/useReveal";
 import type { PersonalSnapshot } from "@/lib/history/contracts";
@@ -20,7 +20,7 @@ import { seriesPoints } from "./derive";
  * on its own.
  */
 export function HighlightBar() {
-  const { locked, clear } = useHistoryHighlight();
+  const { locked, clear } = useHighlightControls();
   const coarse = useCoarsePointer();
   if (!locked) return null;
   const n = locked.occurrenceIds.size;

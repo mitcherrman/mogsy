@@ -4,7 +4,7 @@
  * previews it, click/tap locks it (a second click unlocks).
  */
 import { useCallback } from "react";
-import { runHighlight, useHistoryHighlight, type HistoryHighlight } from "@/components/quiz/workspace/historyHighlight";
+import { runHighlight, useHighlightControls, type HistoryHighlight } from "@/components/quiz/workspace/historyHighlight";
 import { RESULT_WORD } from "./ink";
 import { targetKey, type DonutTarget } from "./charts";
 import type { NestedDonutData } from "./derive";
@@ -26,7 +26,7 @@ export function useDonutHighlight(
   scope: string | null,
   expand?: (ids: string[]) => { ids: string[]; stageIds: string[] },
 ): DonutWiring {
-  const { preview, toggleLock, locked } = useHistoryHighlight();
+  const { preview, toggleLock, locked } = useHighlightControls();
   const build = useCallback((t: DonutTarget): HistoryHighlight => {
     let ids: string[];
     let stageIds: string[] | null;
