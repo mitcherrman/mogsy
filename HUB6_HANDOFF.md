@@ -750,3 +750,21 @@ Every step also passed these checks:
 - Touch targets are ≥ 44px.
 
 **Performance (dev):** hover preview ≈ 35–45 ms and lock ≈ 40–55 ms, unchanged from v2.
+
+## HUB6.3G1 — Selected Timeline Analytics + Visual Fusion
+
+**Base:** HUB6.3G `8489da90`, on `hub6/premium-analytics-final`. Commit `22124326` plus docs; nothing amended, nothing pushed. Detail: **`HUB6_3G1_SELECTED_TIMELINE_HANDOFF.md`**.
+
+Selecting a stage now opens the **same row** further:
+- **Topic lines.** Premium question icons show "NN% <public category>": the player's earlier-stage accuracy in that category (HUB6.3B `category_history`, the server's accuracy). The line is omitted without data, never 0%. A module shows one only if every child shares a category.
+- **Comparison on the row.** The Free quick facts are followed by the previous attempt and the change chips. The rooms' comparison boards and the "N STAGE · ANALYTICS" title are removed; there is one comparison.
+- **Continuity.** The region carries the stage's ink rule and wash.
+- **Course.** The Standard course is a compact recipe strip: segments with chevrons, 36px frames, and only the Journey's five child pips.
+
+**Result:** the selected row grows (e.g. Standard 1440: 108 → 211px), while the whole expanded Daily gets shorter at every width (−4% to −12%). 0 overflow and 0 label collisions in every captured view.
+
+**Tests:** new suite `LobbyPreviewPage.hub63g1.test.tsx`.
+- History scope: 634 tests, 618 pass. The 16 failures are the known load timeouts.
+- The affected suites in isolation: 134 / 134.
+
+**Performance:** preview and lock are unchanged; rooms are lighter.
