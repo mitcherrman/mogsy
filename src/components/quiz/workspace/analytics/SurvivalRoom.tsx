@@ -16,7 +16,7 @@
  *   history     depth · accuracy · longest streak
  *   population  depth (primary) distribution; accuracy and streak dials
  */
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { CheckCheck, Flame, Castle } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
@@ -24,7 +24,7 @@ import { buildStageViewModel, stageCurrentFacts } from "@/components/quiz/worksp
 import { occurrenceHighlight, useHighlightControls } from "@/components/quiz/workspace/historyHighlight";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import type { HistoryStage } from "@/lib/history/contracts";
-import { Panel } from "./charts";
+import { Panel, useElementWidth } from "./charts";
 import { RESULT_INK } from "./ink";
 import { HistoryPanel, seriesLines } from "./roomParts";
 import { PopulationPanel } from "./population";
@@ -153,6 +153,18 @@ function DepthShaft({ stage }: { stage: HistoryStage }) {
   const bottom = Math.max(depth, floors.length, previous ?? 0, Math.ceil(average ?? 0), best ?? 0, 1);
   // Touch is phone-sized: shorter floors keep a deep run from towering.
   const FLOOR = coarse ? 9 : 12;
+  // Horizontal geometry in px (a 200% text scale must not widen it): the
+  // floor-number gutter, the tower, a 20px leader gap, then the label lane,
+  // which needs ~66px. On a very narrow panel the gutter goes and the tower
+  // gives way to the lane.
+  const boxRef = useRef<HTMLDivElement>(null);
+  const { width: boxWidth } = useElementWidth(boxRef);
+  const compact = boxWidth > 0 && boxWidth < 230;
+  const GUTTER = compact ? 0 : 28;
+  const LANE = 70;
+  const TOWER = boxWidth > 0
+    ? Math.max(36, Math.min(208, Math.round(boxWidth * 0.48), boxWidth - GUTTER - 20 - LANE))
+    : 160;
   const height = bottom * FLOOR;
   const pr = reveal.progress;
   const grown = Math.round(floors.length * Math.min(1, pr / 0.75));
@@ -194,24 +206,26 @@ function DepthShaft({ stage }: { stage: HistoryStage }) {
       <div ref={reveal.ref} className="grid min-w-0 gap-x-6 gap-y-4 [@container(min-width:34rem)]:grid-cols-[minmax(15rem,24rem)_minmax(0,1fr)]">
         <div className="min-w-0">
           <div
-            className="relative min-w-0 [--tower:min(13rem,48%)]"
+            ref={boxRef}
+            className="relative min-w-0"
             style={{ height: laneBottom - laneTop }}
             role="img"
             aria-label={`Depth ${depth}: ${f.correct} correct, ${f.incorrect} incorrect, ${f.timeout} timed out${strikes.length ? `; strikes at depths ${strikes.map((s) => s.depth).join(", ")}` : ""}${previous !== null ? `; previous depth ${previous}` : ""}${average !== null ? `; your average ${fmtAvg(average)}` : ""}${best !== null ? `; deepest ${best}` : ""}.`}
             data-testid="shaft"
             data-floor={FLOOR}
+            data-compact={compact ? "true" : undefined}
           >
             <div className="absolute inset-x-0" style={{ top: -laneTop, height }}>
               {/* Floor numbers: 1, then every fifth. */}
-              <div aria-hidden="true" className="absolute left-0 top-0 w-6" style={{ height }}>
+              {!compact && <div aria-hidden="true" className="absolute left-0 top-0 w-[24px]" style={{ height }}>
                 {Array.from({ length: bottom }, (_, i) => (i === 0 || (i + 1) % 5 === 0) && (
                   <span key={i} className="absolute right-1 text-[8.5px] tabular-nums leading-none" style={{ top: i * FLOOR + FLOOR / 2 - 4, color: LEAGUECRAFT_INK.faint }}>
                     {i + 1}
                   </span>
                 ))}
-              </div>
+              </div>}
               {/* The tower: lighter at the surface, darker with depth. */}
-              <div className="absolute left-7 top-0" style={{ width: "var(--tower)", height }}>
+              <div className="absolute top-0" style={{ left: GUTTER, width: TOWER, height }}>
                 <span
                   aria-hidden="true"
                   className="absolute -inset-1 block rounded-sm"
@@ -279,7 +293,7 @@ function DepthShaft({ stage }: { stage: HistoryStage }) {
               <svg
                 aria-hidden="true"
                 className="pointer-events-none absolute top-0 overflow-visible"
-                style={{ left: "calc(var(--tower) + 1.75rem + 4px)", height, width: 14 }}
+                style={{ left: GUTTER + TOWER + 4, height, width: 14 }}
               >
                 {placed.map((l) => (
                   <line
@@ -293,7 +307,7 @@ function DepthShaft({ stage }: { stage: HistoryStage }) {
                 ))}
               </svg>
               {/* The lane: strike tags and rule names, never overlapping. */}
-              <div aria-hidden="true" className="absolute top-0" style={{ left: "calc(var(--tower) + 1.75rem + 20px)", right: 0, height }}>
+              <div aria-hidden="true" className="absolute top-0" style={{ left: GUTTER + TOWER + 20, right: 0, height }}>
                 {placed.map((l) => {
                   const shown = isShown(l);
                   return l.kind === "strike" ? (
@@ -329,7 +343,7 @@ function DepthShaft({ stage }: { stage: HistoryStage }) {
             </div>
           </div>
           {/* The run's depth: the focal point. */}
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 pl-7" aria-hidden="true">
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2" style={{ paddingLeft: GUTTER }} aria-hidden="true">
             <span className="text-[9.5px] font-black uppercase tracking-[0.14em]" style={{ color: RUBRIC }}>Depth</span>
             <span className="text-[26px] font-black leading-none tabular-nums" style={{ color: LEAGUECRAFT_INK.strong, textShadow: LEAGUECRAFT_INK.press }} data-testid="shaft-depth">
               {Math.round(depth * Math.min(1, pr / 0.75))}

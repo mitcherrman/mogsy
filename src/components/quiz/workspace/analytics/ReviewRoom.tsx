@@ -24,6 +24,7 @@ import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { dateBoundaryLabel, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import { IconFace } from "@/components/quiz/workspace/questionTimelineParts";
+import ModuleSigil, { hasModuleSigil } from "@/components/quiz/workspace/ModuleSigil";
 import { resolveQuestionIcon } from "@/components/quiz/workspace/questionIcons";
 import { stageTone } from "@/components/quiz/workspace/stageTheme";
 import { buildStageViewModel, stageCurrentFacts, type QuestionResult } from "@/components/quiz/workspace/historyViewModel";
@@ -71,18 +72,24 @@ export function ReviewRoom({
   );
 }
 
-/** A question's face in a Review step: its proven art, else a sigil. */
+/** A question's face in a Review step, in the HUB6.2 art priority: its
+ *  proven art, else its module's sigil (a Journey child, a Meta Reflex
+ *  card), else the stage's mark. */
 function StepArt({ round, fallback: Fallback, ink }: { round: ReviewRound | null; fallback: React.ElementType; ink: string }) {
   const proven = round ? resolveQuestionIcon(round.iconHint) : null;
   return (
     <span
-      className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-md border p-[2px]"
+      className="grid h-[32px] w-[32px] shrink-0 place-items-center overflow-hidden rounded-md border p-[2px]"
       style={{ borderColor: "rgba(96,68,28,0.3)", background: LEAGUECRAFT_INK.inset }}
       aria-hidden="true"
       data-testid="review-step-art"
       data-art={round && proven?.src ? "proven" : "sigil"}
     >
-      {round && proven?.src ? <IconFace round={round} /> : <Fallback className="h-4 w-4" style={{ color: ink }} />}
+      {round && proven?.src
+        ? <IconFace round={round} />
+        : hasModuleSigil(round)
+          ? <ModuleSigil kind={round!.kind} className="h-4 w-4" ink={ink} />
+          : <Fallback className="h-4 w-4" style={{ color: ink }} />}
     </span>
   );
 }
@@ -300,21 +307,25 @@ export function WeakAreasRoom({ stage, review = null }: { stage: HistoryStage; r
                       onFocus={() => preview(h)}
                       onBlur={() => preview(null)}
                       onClick={() => toggleLock(h)}
-                      className={`grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-2 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${coarse ? "min-h-[48px]" : "min-h-[40px]"}`}
+                      className={`grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-[6px] rounded-md border px-[6px] py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${coarse ? "min-h-[48px]" : "min-h-[40px]"}`}
                       style={{ borderColor: on ? LEAGUECRAFT_INK.strong : "rgba(90,58,142,0.3)", background: on ? "rgba(90,58,142,0.12)" : "rgba(255,249,233,0.3)" }}
                     >
-                      <span className="grid h-6 w-6 place-items-center rounded-full border text-[10.5px] font-black tabular-nums" style={{ borderColor: "rgba(90,58,142,0.5)", color: "rgb(90,58,142)" }}>
+                      <span className="grid h-[22px] w-[22px] place-items-center rounded-full border text-[10.5px] font-black tabular-nums" style={{ borderColor: "rgba(90,58,142,0.5)", color: "rgb(90,58,142)" }}>
                         {row.index}
                       </span>
                       {/* The SERVED question's own art (its frozen review). */}
                       <span
                         aria-hidden="true"
-                        className="grid h-8 w-8 place-items-center overflow-hidden rounded-md border p-[2px]"
+                        className="grid h-[32px] w-[32px] place-items-center overflow-hidden rounded-md border p-[2px]"
                         style={{ borderColor: "rgba(96,68,28,0.3)", background: LEAGUECRAFT_INK.inset }}
                         data-testid="weak-areas-art"
                         data-art={art && proven?.src ? "proven" : "sigil"}
                       >
-                        {art && proven?.src ? <IconFace round={art} /> : <Crosshair className="h-4 w-4" style={{ color: "rgb(90,58,142)" }} />}
+                        {art && proven?.src
+                          ? <IconFace round={art} />
+                          : hasModuleSigil(art)
+                            ? <ModuleSigil kind={art!.kind} className="h-4 w-4" ink="rgb(90,58,142)" />
+                            : <Crosshair className="h-4 w-4" style={{ color: "rgb(90,58,142)" }} />}
                       </span>
                       <span className="min-w-0">
                         <span className="flex min-w-0 items-center gap-1.5 text-[12px] font-bold" style={{ color: LEAGUECRAFT_INK.strong }}>

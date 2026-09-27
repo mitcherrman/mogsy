@@ -327,6 +327,7 @@ export function ModeProfile({ record }: { record: DailyHistoryRecord }) {
                   color={tone.ink}
                   size={crowned ? 104 : 94}
                   fluid
+                  className="w-[96px] shrink-0 [@container(min-width:16rem)]:w-full [@container(min-width:16rem)]:shrink"
                   emphasis={crowned}
                   reason={pct === null ? shortReason(cohort) : undefined}
                 />

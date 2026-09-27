@@ -238,7 +238,7 @@ function measure() {
   if (region) {
     for (const sel of chartSel) {
       for (const box of region.querySelectorAll(sel)) {
-        const leaves = [...box.querySelectorAll("*")].filter((el) => visible(el) && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()));
+        const leaves = [...box.querySelectorAll("*")].filter((el) => visible(el) && !el.closest('[data-testid$="-tip"]') && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()));
         const rects = leaves.map((el) => ({ el, b: el.getBoundingClientRect() }));
         for (let i = 0; i < rects.length; i++) {
           for (let j = i + 1; j < rects.length; j++) {
@@ -270,6 +270,7 @@ function measure() {
     compareLayout: region?.querySelector('[data-testid="daily-compare"], [data-testid="stage-compare-board"]')?.getAttribute("data-layout") ?? null,
     pageOverflow: document.documentElement.scrollWidth - vw,
     rowWidth: row ? Math.round(row.getBoundingClientRect().width) : null,
+    rowHeight: row ? Math.round(row.getBoundingClientRect().height) : null,
     regionWidth: rb ? Math.round(rb.width) : null,
     regionOverflow: region ? region.scrollWidth - region.clientWidth : null,
     chartOverflow: charts,

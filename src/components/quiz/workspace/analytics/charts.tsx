@@ -1074,6 +1074,7 @@ export function PercentileDial({
   testId,
   emphasis = false,
   fluid = false,
+  className = "",
 }: {
   percentile: number | null;
   label: string;
@@ -1087,6 +1088,7 @@ export function PercentileDial({
   /** HUB6.3G: fill the cell (up to `size`) — three dials in one row on a
    *  phone rather than three stacked cards. */
   fluid?: boolean;
+  className?: string;
 }) {
   const r = 40;
   const start = -120;
@@ -1107,7 +1109,7 @@ export function PercentileDial({
   const num = has ? percentileNumber(percentile!) : null;
   return (
     <figure
-      className="flex min-w-0 flex-col items-center text-center"
+      className={`flex min-w-0 flex-col items-center text-center ${className}`}
       data-testid={testId}
       data-percentile={has ? num! : undefined}
       data-state={has ? "available" : "none"}
@@ -1141,7 +1143,7 @@ export function PercentileDial({
           {has ? ordinal(num!) : "—"}
         </text>
       </svg>
-      <figcaption className="-mt-0.5 min-w-0 max-w-full">
+      <figcaption className="min-w-0 max-w-full">
         <span className="block text-[11px] font-extrabold" style={{ color: LEAGUECRAFT_INK.strong }}>{label}</span>
         {sublabel && <span className="block text-[10.5px] leading-snug" style={{ color: LEAGUECRAFT_INK.faint }}>{sublabel}</span>}
         {!has && reason && <span className="mt-0.5 block text-[10px] italic leading-snug" style={{ color: LEAGUECRAFT_INK.faint }}>{reason}</span>}

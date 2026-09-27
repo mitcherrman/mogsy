@@ -87,6 +87,8 @@ export function previewWords(record: DailyHistoryRecord, h: HistoryHighlight): s
 export function PreviewStatus({ record }: { record: DailyHistoryRecord }) {
   const { highlight, locked } = useHistoryHighlight();
   if (!highlight || highlight === locked || highlight.occurrenceIds.size === 0 || typeof document === "undefined") return null;
+  // A tap focuses its control as it locks it: that preview IS the lock.
+  if (locked && highlight.key !== undefined && highlight.key === locked.key) return null;
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4" data-testid="preview-status-layer">
       <div

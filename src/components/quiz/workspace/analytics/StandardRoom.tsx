@@ -169,7 +169,7 @@ function CourseMap({ stage, review }: { stage: HistoryStage; review: MatchReview
                 {g.modules.length > 1 && <span style={{ color: LEAGUECRAFT_INK.faint }}>×{g.modules.length}</span>}
               </span>
               <span aria-hidden="true" className="mb-1.5 block h-1.5 rounded-t-sm border-x-2 border-t-2" style={{ borderColor: "rgba(29,79,138,0.35)" }} />
-              <ol className="flex items-start gap-1.5 [@container(min-width:40rem)]:justify-around" aria-label={`${unitName(g.family)}${g.modules.length > 1 ? ` ×${g.modules.length}` : ""}`}>
+              <ol className="flex flex-wrap items-start gap-[6px] [@container(min-width:40rem)]:flex-nowrap [@container(min-width:40rem)]:justify-around" aria-label={`${unitName(g.family)}${g.modules.length > 1 ? ` ×${g.modules.length}` : ""}`}>
                 {g.modules.map((m) => {
                   const i = m.position - 1;
                   const shown = reveal.progress >= 1 || staggered(reveal.progress, i, n, 0.7) > 0.05;

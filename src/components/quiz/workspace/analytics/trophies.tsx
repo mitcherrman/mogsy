@@ -77,7 +77,7 @@ export function RecordMedal({
         : first ? "No earlier attempt to compare" : null;
   return (
     <figure
-      className="flex min-w-0 flex-row items-center gap-3 text-left [@container(min-width:16rem)]:flex-col [@container(min-width:16rem)]:gap-0 [@container(min-width:16rem)]:text-center"
+      className="flex min-w-0 flex-row flex-wrap items-center gap-[12px] text-left [@container(min-width:16rem)]:flex-col [@container(min-width:16rem)]:flex-nowrap [@container(min-width:16rem)]:gap-0 [@container(min-width:16rem)]:text-center"
       data-testid={testId ?? "record-medal"}
       data-metric={record.metric}
       data-status={status ?? "unknown"}
