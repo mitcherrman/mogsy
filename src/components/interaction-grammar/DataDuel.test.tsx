@@ -76,7 +76,8 @@ describe.each(DOMAINS)("DataDuel · %s fixture", (domain) => {
     render(<Harness domain={domain} />);
     const group = screen.getByRole("radiogroup");
     expect(group).toHaveAccessibleName(f.content.prompt);
-    expect(within(group).getAllByRole("radio")).toHaveLength(2);
+    // Two sides, plus the tie option when the comparison's domain has one.
+    expect(within(group).getAllByRole("radio")).toHaveLength(f.content.tie ? 3 : 2);
     expect(screen.getByRole("radio", { name: new RegExp(f.content.left.label) })).toBeInTheDocument();
   });
 

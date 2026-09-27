@@ -59,6 +59,19 @@ export interface DataDuelPublic {
   context?: string | null;
   left: DuelSide;
   right: DuelSide;
+  /**
+   * The canonical "same value" answer, when the comparison's answer domain
+   * has one (Mastery comparisons always do: `[a, b, "tie"]`). Absent = a
+   * strictly two-sided duel. Knowing a tie is POSSIBLE discloses nothing.
+   */
+  tie?: { token: string; label: string } | null;
+  /**
+   * How the post-reveal margin is written — `unit` is a SUFFIX appended
+   * verbatim ("s", " games", " HP", " pts"), so the margin reads exactly like
+   * the values — and at what precision. Pre-reveal safe: it names the unit,
+   * never a value. Absent = no margin bar.
+   */
+  margin?: { unit: string; decimals: number } | null;
 }
 
 /** Authority-supplied, post-reveal only. */
@@ -67,6 +80,11 @@ export interface DataDuelReveal {
   canonicalToken: string;
   /** Both deciding values, already formatted by the authority, keyed by token. */
   values: Readonly<Record<string, string>>;
+  /**
+   * The same two values as numbers, keyed by side token, so the margin can be
+   * DRAWN. Display only: the primitive never decides a winner from them.
+   */
+  numericValues?: Readonly<Record<string, number>> | null;
   /** One short evidence line (the authority's own explanation). */
   evidence?: string | null;
   /** Where the fact came from. */

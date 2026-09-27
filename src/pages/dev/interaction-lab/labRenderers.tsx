@@ -55,6 +55,10 @@ export function duelRevealFromSurface(fixture: DuelFixture, reveal: SurfaceRevea
   return {
     canonicalToken: reveal.correctOptionId,
     values,
+    // `SurfaceReveal`'s comparison evidence carries DISPLAY strings only, so
+    // the numbers the margin bar draws from ride the fixture's reveal. This is
+    // the second reveal-contract gap MIG1.2 records (structured side values).
+    numericValues: fixture.hidden.numericValues ?? null,
     evidence: reveal.explanation ?? null,
     source: fixture.hidden.source ?? null,
   };
@@ -65,11 +69,20 @@ function DataDuelViewport({ selection, permissions, onSelect, actions, reveal }:
   if (!stage || stage.fixture.mechanic !== "data-duel") return null;
   const fixture = stage.fixture;
   return (
-    <DataDuel content={fixture.content} phase={stage.phase}
-      value={typeof selection === "string" ? selection : null}
-      onChange={(token) => { if (permissions.canSelectAnswer) onSelect(token); }}
-      onLock={(choice) => { if (permissions.canConfirmSubmission) void actions.submitChallenge(0, choice); }}
-      reveal={duelRevealFromSurface(fixture, reveal)} />
+    // THE STAMP GUTTER. The arena's verdict stamp sits at the stage's top
+    // (0.75rem, ~2.3rem tall). Whenever the duel is tall enough to reach the
+    // stage top — every phone, and any desktop once the tie row, margin and
+    // evidence are all present — it landed on the metric chips. A CONSTANT top
+    // reserve here, not a reveal-only one (which would jump the layout at the
+    // verdict), clears it at every size without touching the arena. It steps
+    // up at `lg` because the stamp's type scales with the viewport (2.4vw).
+    <div data-testid="lab-duel-stamp-gutter" className="pt-10 sm:pt-8 lg:pt-11">
+      <DataDuel content={fixture.content} phase={stage.phase}
+        value={typeof selection === "string" ? selection : null}
+        onChange={(token) => { if (permissions.canSelectAnswer) onSelect(token); }}
+        onLock={(choice) => { if (permissions.canConfirmSubmission) void actions.submitChallenge(0, choice); }}
+        reveal={duelRevealFromSurface(fixture, reveal)} />
+    </div>
   );
 }
 

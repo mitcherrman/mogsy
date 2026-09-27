@@ -1,21 +1,23 @@
 /**
- * MIG1.1 — STAT DROP.
+ * MIG1 — STAT DROP.
  *
  * A numerical estimate on a bounded scale. The player drags (or keys, or
- * nudges) a marker, locks it, and after a short beat the true value drops onto
- * the same scale beside theirs.
+ * nudges) a marker, locks it, and after a short beat the ACTUAL value drops
+ * onto the same scale above theirs, with the gap between them drawn and named
+ * (under / over / exact).
  *
  *   OPEN → adjust → LOCK → (suspense, caller-owned) → REVEAL
  *
  * NO LEAK BY CONSTRUCTION. `content` (StatDropPublic) carries the prompt and
  * the scale — never the value. The scale's bounds are the CALLER's
  * presentation choice and must be chosen without reference to the answer (a
- * scale centred on the answer is a leak; see the MIG1.1 handoff).
+ * scale centred on the answer is a leak; see the MIG1 handoff).
  *
  * NO SCORING. After the reveal the absolute difference is drawn, because the
  * value is then public. It is a distance, not a grade: there is no points
- * formula here and no "close enough" band. Current backend numeric grading is
- * pass/fail and is not this component's business.
+ * formula here and no "close enough" band. "Exact" means the estimate matches
+ * the answer at the answer's displayed precision — a description of where the
+ * marker landed, not an award.
  *
  * INPUT. A native range input sits over the whole track (a >=44px target for
  * touch and pointer). Keys are handled here rather than left to the browser so
@@ -23,7 +25,7 @@
  * Home/End the bounds, Enter locks. The −/+ buttons are the precise path on a
  * phone.
  */
-import { useId, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { Lock, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
@@ -64,6 +66,24 @@ function withUnit(text: string, unit: string) {
   return unit ? `${text} ${unit}` : text;
 }
 
+/**
+ * Where the locked estimate landed relative to the truth, AT THE ANSWER'S
+ * DISPLAYED PRECISION: "exact" means the two agree to the digits the answer is
+ * shown in. A description, never a grade: nothing here awards anything.
+ */
+export type DropOutcome = "under" | "over" | "exact";
+
+export function dropOutcome(estimate: number, reveal: StatDropReveal, scale: StatDropScale): {
+  outcome: DropOutcome; delta: number; decimals: number;
+} {
+  const decimals = Math.max(scale.decimals, (reveal.canonicalDisplay.split(".")[1] ?? "").length);
+  const delta = Math.abs(estimate - reveal.canonicalValue);
+  if (Number(fmt(delta, decimals)) === 0) return { outcome: "exact", delta: 0, decimals };
+  return { outcome: estimate < reveal.canonicalValue ? "under" : "over", delta, decimals };
+}
+
+const OUTCOME_WORD: Record<DropOutcome, string> = { under: "under", over: "over", exact: "exact" };
+
 export function StatDrop({ content, phase, value, onChange, onLock, reveal = null }: StatDropProps) {
   const reduced = useReducedMotionPreference();
   const animate = !reduced;
@@ -73,6 +93,14 @@ export function StatDrop({ content, phase, value, onChange, onLock, reveal = nul
   const estimate = value ?? initialEstimate(scale);
   const set = (next: number) => { if (open) onChange(snapToScale(next, scale)); };
   const lock = () => { if (open) onLock({ selected: estimate }); };
+
+  // The gap GROWS from the estimate to the truth, once, on reveal.
+  const [grown, setGrown] = useState(!animate);
+  useEffect(() => {
+    if (!reveal || !animate) { setGrown(!animate); return; }
+    const id = window.requestAnimationFrame(() => setGrown(true));
+    return () => window.cancelAnimationFrame(id);
+  }, [reveal, animate]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!open) return;
@@ -90,21 +118,21 @@ export function StatDrop({ content, phase, value, onChange, onLock, reveal = nul
   const truePct = reveal ? pct(reveal.canonicalValue, scale) : null;
   const outOfScale = reveal !== null
     && (reveal.canonicalValue < scale.min || reveal.canonicalValue > scale.max);
-  const delta = reveal ? Math.abs(estimate - reveal.canonicalValue) : null;
-  // The delta at the ESTIMATE's precision, or the authority's if finer.
-  const deltaDecimals = reveal
-    ? Math.max(scale.decimals, (reveal.canonicalDisplay.split(".")[1] ?? "").length) : scale.decimals;
-  const deltaText = delta !== null ? withUnit(fmt(delta, deltaDecimals), unit) : null;
-  const exactHit = delta !== null && Number(fmt(delta, deltaDecimals)) === 0;
+  const result = reveal ? dropOutcome(estimate, reveal, scale) : null;
+  const deltaText = result ? withUnit(fmt(result.delta, result.decimals), unit) : null;
   const estimateText = withUnit(fmt(estimate, scale.decimals), unit);
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => scale.min + f * (scale.max - scale.min));
+  // Keep the ACTUAL flag's label inside the plate at the scale's two ends.
+  const flagAlign = truePct === null ? "center" : truePct < 12 ? "start" : truePct > 88 ? "end" : "center";
 
-  const announcement = phase === "revealed" && reveal
-    ? `Revealed. True value ${withUnit(reveal.canonicalDisplay, unit)}. Your estimate ${estimateText}. Off by ${deltaText}.`
+  const announcement = phase === "revealed" && reveal && result
+    ? `Revealed. Actual value ${withUnit(reveal.canonicalDisplay, unit)}. Your estimate ${estimateText}. ${
+      result.outcome === "exact" ? "Exact." : `${deltaText} ${OUTCOME_WORD[result.outcome]}.`}`
     : phase === "locked" ? `Locked at ${estimateText}. Revealing.` : "";
 
   return (
     <div data-testid="mig-stat-drop" data-mig-primitive="stat-drop" data-phase={phase}
+      data-outcome={result?.outcome}
       className="flex w-full flex-col gap-3 sm:gap-4">
       <header className="flex flex-col items-center gap-1.5 text-center">
         <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -136,7 +164,8 @@ export function StatDrop({ content, phase, value, onChange, onLock, reveal = nul
                 className="h-11 w-11 rounded-full border border-[#b9934c]/45 text-[#f0d78c] hover:bg-white/5 hover:text-[#f6e6bb]">
                 <Minus aria-hidden />
               </Button>
-              <div className="flex min-w-[8.5rem] flex-col items-center">
+              <div className={`flex min-w-[8.5rem] flex-col items-center ${
+                animate && phase === "locked" ? "animate-in zoom-in-95 duration-200 ease-out" : ""}`}>
                 <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d5b66f]/80">
                   {phase === "locked" ? "Locked estimate" : "Your estimate"}
                 </span>
@@ -152,8 +181,9 @@ export function StatDrop({ content, phase, value, onChange, onLock, reveal = nul
                 <Plus aria-hidden />
               </Button>
             </>
-          ) : reveal && (
-            <div data-testid="drop-readout-revealed" className="grid w-full max-w-[26rem] grid-cols-3 items-end text-center">
+          ) : reveal && result && (
+            <div data-testid="drop-readout-revealed"
+              className="grid w-full max-w-[28rem] grid-cols-[1fr_1.5fr_1fr] items-end text-center">
               <div className="flex flex-col items-center">
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#d5b66f]/80">You</span>
                 <span data-testid="drop-estimate" className="font-serif text-2xl font-black tabular-nums leading-none text-[#f0d78c] sm:text-3xl">
@@ -163,37 +193,59 @@ export function StatDrop({ content, phase, value, onChange, onLock, reveal = nul
               <div className="flex flex-col items-center">
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8fd0f5]">Actual</span>
                 <span data-testid="drop-true-value"
-                  className={`font-serif text-[2.1rem] font-black tabular-nums leading-none text-[#dcefff] sm:text-[2.6rem] ${
+                  className={`whitespace-nowrap font-serif text-[2.3rem] font-black tabular-nums leading-none text-[#dcefff] drop-shadow-[0_0_14px_rgba(143,208,245,0.45)] sm:text-[2.9rem] ${
                     animate ? "animate-in fade-in zoom-in-50 slide-in-from-top-3 duration-500 fill-mode-both" : ""}`}>
                   {reveal.canonicalDisplay}
+                  {unit && <span className="ml-1 font-sans text-xs font-semibold text-[#8fd0f5]/80 sm:text-sm">{unit}</span>}
                 </span>
               </div>
-              <div className="flex flex-col items-center">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a9b3c1]">{exactHit ? "Exact" : "Off by"}</span>
+              <div className="flex flex-col items-center" data-testid="drop-outcome" data-outcome={result.outcome}>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a9b3c1]">
+                  {result.outcome === "exact" ? "Dead on" : `Off · ${OUTCOME_WORD[result.outcome]}`}
+                </span>
                 <span data-testid="drop-delta"
-                  className={`font-serif text-2xl font-black tabular-nums leading-none text-[#efe8d6] sm:text-3xl ${
+                  className={`font-serif text-2xl font-black tabular-nums leading-none sm:text-3xl ${
+                    result.outcome === "exact" ? "text-[#bfe4ff]" : "text-[#efe8d6]"} ${
                     animate ? "animate-in fade-in duration-300 fill-mode-both [animation-delay:450ms]" : ""}`}>
-                  {exactHit ? "✓" : fmt(delta!, deltaDecimals)}
+                  {result.outcome === "exact" ? "✓" : fmt(result.delta, result.decimals)}
                 </span>
               </div>
             </div>
           )}
         </div>
 
-        {/* THE SCALE. Markers sit ABOVE the rail (You) and BELOW it (Actual),
-            so the two can never cover each other even when they coincide. */}
-        <div className="relative mx-1 mt-1 h-16 sm:mx-2">
+        {/* THE SCALE. The ACTUAL flag lands ABOVE the rail and your thumb sits
+            ON it, so the two never cover each other even when they coincide.
+            The flag's lane is reserved in every phase, so nothing moves. */}
+        <div className="relative mx-1 mt-1 h-[4.5rem] sm:mx-2">
+          {truePct !== null && reveal && (
+            <div data-testid="drop-true-marker" aria-hidden
+              className={`pointer-events-none absolute top-0 z-10 flex flex-col ${
+                flagAlign === "start" ? "items-start" : flagAlign === "end" ? "-translate-x-full items-end" : "-translate-x-1/2 items-center"} ${
+                animate ? "animate-in fade-in slide-in-from-top-6 duration-500 ease-out fill-mode-both" : ""}`}
+              style={{ left: `${truePct}%` }}>
+              <span data-testid="drop-true-flag"
+                className="whitespace-nowrap rounded-md border border-[#8fd0f5]/80 bg-[#0d2740] px-1.5 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] text-[#dcefff] shadow-[0_0_16px_-4px_rgba(143,208,245,0.8)]">
+                {outOfScale
+                  ? (reveal.canonicalValue > scale.max ? `Actual ${reveal.canonicalDisplay} ▶` : `◀ Actual ${reveal.canonicalDisplay}`)
+                  : `Actual ${reveal.canonicalDisplay}`}
+              </span>
+              <span className="mx-0.5 h-[22px] w-0.5 bg-[#8fd0f5]" />
+            </div>
+          )}
           {/* Rail */}
-          <div aria-hidden className="absolute inset-x-0 top-7 h-2 rounded-full bg-black/60 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] ring-1 ring-[#b9934c]/30" />
+          <div aria-hidden className="absolute inset-x-0 top-[44px] h-2 rounded-full bg-black/60 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] ring-1 ring-[#b9934c]/30" />
           {/* Fill to the estimate */}
-          <div aria-hidden className="absolute left-0 top-7 h-2 rounded-full bg-gradient-to-r from-[#7a6236] to-[#d5b66f]"
+          <div aria-hidden className="absolute left-0 top-[44px] h-2 rounded-full bg-gradient-to-r from-[#7a6236] to-[#d5b66f]"
             style={{ width: `${estimatePct}%` }} />
-          {/* The gap, once the truth is known */}
-          {truePct !== null && (
+          {/* The gap, grown from the estimate toward the truth */}
+          {truePct !== null && result && result.outcome !== "exact" && (
             <div aria-hidden data-testid="drop-gap"
-              className={`absolute top-[26px] h-3 rounded-sm bg-[#8fd0f5]/25 ring-1 ring-[#8fd0f5]/50 ${
-                animate ? "animate-in fade-in duration-500 fill-mode-both [animation-delay:250ms]" : ""}`}
-              style={{ left: `${Math.min(estimatePct, truePct)}%`, width: `${Math.abs(estimatePct - truePct)}%` }} />
+              className="absolute top-[41px] h-3.5 rounded-sm bg-[#8fd0f5]/30 ring-1 ring-[#8fd0f5]/70 transition-[width,left] duration-700 ease-out motion-reduce:transition-none"
+              style={{
+                left: `${result.outcome === "under" || !grown ? estimatePct : truePct}%`,
+                width: `${grown ? Math.abs(estimatePct - truePct) : 0}%`,
+              }} />
           )}
           {/* The native control, over the whole track: pointer, touch, and the
               focus ring's anchor. Visually it is the thumb below. */}
@@ -204,25 +256,19 @@ export function StatDrop({ content, phase, value, onChange, onLock, reveal = nul
             aria-valuetext={estimateText}
             onChange={(e) => set(Number(e.currentTarget.value))}
             onKeyDown={onKeyDown}
-            className="peer absolute inset-x-0 top-2 z-20 h-12 w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default" />
+            className="peer absolute inset-x-0 top-6 z-20 h-12 w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default" />
           {/* YOUR thumb */}
           <div aria-hidden data-testid="drop-thumb"
-            className={`pointer-events-none absolute top-[18px] z-10 -ml-[13px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-[#f6e6bb] bg-[#2a2110] shadow-[0_0_14px_-2px_rgba(213,182,111,0.8)] ring-offset-2 ring-offset-[#0c192a] peer-focus-visible:ring-2 peer-focus-visible:ring-[#d5b66f] ${
-              open ? "" : "border-[#d5b66f]"} ${animate && phase === "locked" ? "animate-pulse" : ""}`}
+            className={`pointer-events-none absolute top-[35px] z-10 -ml-[13px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-[#f6e6bb] bg-[#2a2110] shadow-[0_0_14px_-2px_rgba(213,182,111,0.8)] ring-offset-2 ring-offset-[#0c192a] peer-focus-visible:ring-2 peer-focus-visible:ring-[#d5b66f] ${
+              open ? "" : "border-[#d5b66f]"} ${animate && phase === "locked" ? "animate-in zoom-in-75 duration-200" : ""}`}
             style={{ left: `${estimatePct}%` }}>
             {phase !== "open" && <Lock className="h-3 w-3 text-[#f0d78c]" />}
           </div>
-          {/* The TRUE marker drops in below the rail */}
-          {truePct !== null && reveal && (
-            <div data-testid="drop-true-marker" aria-hidden
-              className={`pointer-events-none absolute top-[34px] z-10 flex -translate-x-1/2 flex-col items-center ${
-                animate ? "animate-in fade-in slide-in-from-top-4 duration-500 fill-mode-both" : ""}`}
-              style={{ left: `${truePct}%` }}>
-              <span className="h-0 w-0 border-x-[7px] border-b-[9px] border-x-transparent border-b-[#8fd0f5]" />
-              <span className="mt-0.5 whitespace-nowrap rounded-sm bg-[#0d2740] px-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#bfe4ff]">
-                {outOfScale ? (reveal.canonicalValue > scale.max ? "Actual ▶" : "◀ Actual") : "Actual"}
-              </span>
-            </div>
+          {phase === "revealed" && (
+            <span aria-hidden className="pointer-events-none absolute top-[62px] z-10 -translate-x-1/2 text-[9px] font-bold uppercase tracking-[0.18em] text-[#d5b66f]"
+              style={{ left: `${Math.min(94, Math.max(6, estimatePct))}%` }}>
+              You
+            </span>
           )}
         </div>
         {/* Tick labels */}

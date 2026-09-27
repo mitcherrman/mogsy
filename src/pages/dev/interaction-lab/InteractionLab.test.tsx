@@ -154,13 +154,19 @@ describe("Interaction Lab — isolation from production", () => {
       // side effect — it is how the lab names the production `SegmentChoice`.
       const imports = readFileSync(file, "utf8").split("\n")
         .filter((l) => /^\s*import\b|from "/.test(l) && !/^\s*import type\b/.test(l)).join("\n");
+      // MIG1.2: the lab's cue wrapper (and only it) may reach the SFX engine,
+      // through its public hook and registry type. The primitives never may.
+      const audioAllowed = file.endsWith("labCues.ts");
+      const auditable = audioAllowed
+        ? imports.replace(/from "@\/lib\/audio\/(useSfx|sfx-registry)"/g, "")
+        : imports;
       for (const forbidden of [
         "@/lib/analytics", "useSurfaceEvent", "useActivity", "ranked-public/client\"",
         "useRankedMatch", "useRankedMatchSfx", "useRankedAudioBoundary", "@/lib/audio",
         "pro-play/statsApi", "pro-play/api\"", "pro-play/mediaApi", "supabase",
         "quiz-ranked/", "quiz-daily-challenge/",
       ]) {
-        expect(imports, `${file} imports ${forbidden}`).not.toContain(forbidden);
+        expect(auditable, `${file} imports ${forbidden}`).not.toContain(forbidden);
       }
     }
   });
