@@ -214,7 +214,9 @@ describe("mode profile and strongest mode — the server's verdict", () => {
     expect(within(pop).getByTestId("population-sentence").textContent).toBe("You: 67 · 88th percentile · median 55 · 1,455 players");
     expect(within(pop).getByTestId("population-cohort").textContent).toMatch(/1,455 players · last 28 days to Sep 14/);
     expect(within(pop).getAllByTestId("dist-bin").filter((b) => b.dataset.subject === "true")).toHaveLength(1);
-    fireEvent.click(within(within(pop).getByTestId("cohort-toggle")).getByText("Same day"));
+    // HUB6.3G: the ONE cohort control sits above the region, not in a panel.
+    expect(within(pop).queryByTestId("cohort-toggle")).toBeNull();
+    fireEvent.click(within(within(run).getByTestId("cohort-toggle")).getByText("Same day"));
     expect(within(pop).getByTestId("population-sentence").textContent).toMatch(/173 players/);
     // One cohort choice for the whole room.
     expect(within(run).getByTestId("strongest-mode").getAttribute("aria-label")).toMatch(/97th percentile/);
@@ -387,9 +389,10 @@ describe("Review and Weak Areas rooms", () => {
     expect(run.textContent).not.toMatch(FORBIDDEN);
   });
 
-  it("Review donut (result × source stage) appears with two or more linked replays", async () => {
+  it("no Review donut (HUB6.3G owner decision): the three-step links are the whole Review room", async () => {
     const run = await stageRoom(14, "review");
-    expect(within(within(run).getByTestId("review-donut")).getAllByTestId("donut-legend-group")).toHaveLength(3);
+    expect(within(run).queryByTestId("review-donut")).toBeNull();
+    expect(within(run).getAllByTestId("review-link")).toHaveLength(3);
   });
 
   it("Weak Areas: slots, cutoff and what the record does NOT keep — nothing invented", async () => {
