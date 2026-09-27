@@ -1,7 +1,7 @@
 /**
  * JREF2 — the admin launch control is the ordinary queue join with the admin
  * reference preset, followed by the ordinary Ranked handoff. Nothing else goes
- * on the wire.
+ * on the wire beyond the browser correlation every queue join carries.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -70,7 +70,12 @@ describe("ReferenceJourneyLaunch", () => {
     await waitFor(() => expect(screen.getByTestId("ranked-route")).toBeTruthy());
     expect(urls).toHaveLength(1);
     expect(urls[0]).toMatch(/\/api\/ranked\/queue$/);
-    expect(bodies[0]).toEqual({ match_with_bot: true, preset: REFERENCE_JOURNEY_PRESET });
+    // Every queue join carries the browser correlation (USERS2.3C); beyond it,
+    // exactly the bot flag and the preset.
+    const { visitor_id, session_id, interaction_id, ...gameplay } =
+      bodies[0] as Record<string, unknown>;
+    expect(gameplay).toEqual({ match_with_bot: true, preset: REFERENCE_JOURNEY_PRESET });
+    expect([visitor_id, session_id, interaction_id].every((v) => typeof v === "string")).toBe(true);
     expect(screen.getByTestId("ranked-route").textContent).toContain("rkb_ref1");
   });
 
