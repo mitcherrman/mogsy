@@ -671,3 +671,47 @@ Every step also passed these checks:
 - Full-repo regression (767 files): 61 failures, the identical 61 test names failing at HUB6.2 `39231649` (admin, security-migration, CRLF-style and routing suites). `pt2cProfileFrameAuthority` runs out of memory at baseline too. No History test fails.
 
 **Not built:** donuts, histograms, gauges, strongest-mode profile, medals, full stage dashboards, the Review connector, and any weakness or learning-state label.
+
+## HUB6.3E — Premium History Analytics Visual Experience
+
+**Base:** HUB6.3D `0e53b6e2`, on branch `hub6/premium-analytics-v2` (worktree `.worktrees/hub6-premium-v2`). There are seven local commits, nothing amended, nothing pushed. The full detail is in **`HUB6_3E_PREMIUM_ANALYTICS_HANDOFF.md`**.
+
+**Backend consumed:** HUB6.3C `00c794cd` (`claude/hub6-3-population`), read only.
+
+**Note:** a parallel HUB6.3E attempt from another session is on `hub6/premium-analytics` (`18876c75`). This branch was built independently, from a fresh brief, on a clean branch.
+
+**Frozen shell unchanged:**
+- The same Daily grows; every stage row and rail stays.
+- A stage is selected by its own row; one region below changes.
+- The Popover / Sheet opens from any icon.
+- One Daily is expanded at a time.
+
+### What changed
+
+| Part | Result |
+|---|---|
+| Population contract | `lib/history/population.ts` parses HUB6.3C run and stage population (cohorts, percentile, median, quantiles, merged histogram, subject bin, strongest mode). Lenient; a non-available cohort never carries a figure. Also the Free HUB6.3C fields: stage streak (+ span), Survival depth / strikes, per-question strike markers |
+| Analytics Lab | The temporary fixture is replaced by population recipes, seeded through HUB6.3C's own migration, `load_observations` and `_write_date` / `summarize`, then read from the real route. Every requested state is present, including ties, the outlier, each strongest mode, margin < 10, one mode insufficient and not built |
+| Daily Overview | This Daily vs the previous Daily (factual, with a composition note), Core records (most correct, longest streak), Core history (accuracy / correct / streak), a result × stage donut, a mode profile, the backend's strongest mode, and the Core population distribution. **The raw Daily-score personal best and the Up / Down / Stable label are removed** |
+| Time Trial | Compare (23/29 → 25/28 wording), result × category nested donut, stopwatch throughput, records, streak chain, history, population |
+| Standard | Compare, the real ten-module course (5-child Journey, never "Slice"), records, history, category donut, streak, population |
+| Survival | Compare, the depth shaft with the exact strike floors from `strike_index`, a three-plate shield, a strike list, records, history, population |
+| Review | Exact source miss → replay → result, "Light both" across two rails, a result × source-stage donut (≥ 2 links) |
+| Weak Areas | Result × category donut, the slots, the evidence cutoff, and what the record does not keep |
+| Question analytics | Under the review card, in the Popover and the Sheet: category and this stage's C / played, the strike (Free), exact prior attempts, earlier-stage category totals, and the Review link (Premium) |
+| Cross-highlight | Hover / focus preview, click / tap lock, Escape / Clear; stage, multi-stage and run scopes; a lock pages the rail; pager flags; the pulse plays once; a "Lighting N questions" bar |
+| One system | HUB6.2's lane / course / path visuals are removed. Free and older payloads list exact question cards |
+
+**Certification:** 320–1440 plus 200% text at 320 and 390, across all six views, with tooltips, Popover and Sheet:
+- Page overflow, region overflow and elements past the region's edge are 0 everywhere, after the certification fixes.
+- Touch targets are ≥ 44px; fine-pointer targets 24–30px.
+- The known HUD header at 320 @ 200% is not History.
+
+**Tests:**
+- New: parser (10), derivations (24), and the Premium room through the real page (39).
+- Rewritten: the population wire (17).
+- The History scope is 580 / 580 passing.
+- Full repo vs `0e53b6e2`: 64 vs 64 failures, identical except one load flake in each direction; both pass in isolation on both snapshots. **No new failures.**
+
+**Performance:** only the expanded Daily mounts a room (190–675 nodes). A hover preview re-renders only the rails (the highlight context is split).
+
