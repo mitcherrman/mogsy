@@ -53,6 +53,7 @@ import {
 import { ADMIN_AREAS_BY_ID, toolsForSection } from "@/lib/admin/admin-registry";
 import { cn } from "@/lib/utils";
 import RankedFormatBuilder from "@/pages/admin/ranked/RankedFormatBuilder";
+import { ReferenceJourneyLaunch } from "@/pages/admin/ranked/ReferenceJourneyLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
 const rankedTools = (view: string) =>
@@ -294,6 +295,13 @@ export default function AdminRankedPage() {
 
           {section.id === "playtests" && (
             <>
+              <AdminPanel
+                title="Reference Journeys"
+                description="Owner-approved reference Journeys, played through the normal Ranked Bot shell."
+                testId="ranked-reference-journeys"
+              >
+                <ReferenceJourneyLaunch />
+              </AdminPanel>
               <AdminPanel
                 title="Playtests"
                 description="The home exists; the system does not yet. Everything below is either an existing primitive a playtest would build on, or a named gap."
