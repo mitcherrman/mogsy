@@ -1,0 +1,1838 @@
+{
+  "shots": [
+    {
+      "name": "duel-1440-open-proplay-t1-kt",
+      "w": 1440,
+      "h": 900,
+      "fixture": "duel.pp.t1-kt-gragas",
+      "vw": 1440,
+      "vh": 900,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 226,
+        "b": 888,
+        "l": 407,
+        "r": 1033
+      },
+      "lock": {
+        "t": 723,
+        "b": 767,
+        "l": 634,
+        "r": 806
+      },
+      "stamp": null,
+      "header": {
+        "t": 391,
+        "b": 474,
+        "l": 428,
+        "r": 1012
+      },
+      "phase": "open",
+      "outcome": null,
+      "margin": null
+    },
+    {
+      "name": "duel-1440-reveal-leaguecraft-leona-pantheon",
+      "w": 1440,
+      "h": 900,
+      "fixture": "duel.lc.leona-pantheon-r",
+      "vw": 1440,
+      "vh": 900,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 180,
+        "b": 888,
+        "l": 407,
+        "r": 1033
+      },
+      "lock": null,
+      "stamp": {
+        "t": 193,
+        "b": 238,
+        "l": 592,
+        "r": 848
+      },
+      "header": {
+        "t": 305,
+        "b": 388,
+        "l": 428,
+        "r": 1012
+      },
+      "phase": "revealed",
+      "outcome": null,
+      "margin": "Leona by 90s"
+    },
+    {
+      "name": "duel-1440-reveal-tie-olaf-lucian",
+      "w": 1440,
+      "h": 900,
+      "fixture": "duel.lc.olaf-lucian-tie",
+      "vw": 1440,
+      "vh": 900,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 180,
+        "b": 888,
+        "l": 407,
+        "r": 1033
+      },
+      "lock": null,
+      "stamp": {
+        "t": 193,
+        "b": 238,
+        "l": 609,
+        "r": 831
+      },
+      "header": {
+        "t": 305,
+        "b": 388,
+        "l": 428,
+        "r": 1012
+      },
+      "phase": "revealed",
+      "outcome": null,
+      "margin": "Dead even — 9s each"
+    },
+    {
+      "name": "duel-1024x768-reveal-no-art-ahri-syndra",
+      "w": 1024,
+      "h": 768,
+      "fixture": "duel.lc.ahri-syndra-health",
+      "vw": 1024,
+      "vh": 768,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 230,
+        "b": 756,
+        "l": 268,
+        "r": 756
+      },
+      "lock": null,
+      "stamp": {
+        "t": 243,
+        "b": 287,
+        "l": 404,
+        "r": 620
+      },
+      "header": {
+        "t": 304,
+        "b": 359,
+        "l": 289,
+        "r": 735
+      },
+      "phase": "revealed",
+      "outcome": null,
+      "margin": "Ahri by 7 HP"
+    },
+    {
+      "name": "duel-375-open-long-label-viktor-jarvan",
+      "w": 375,
+      "h": 812,
+      "fixture": "duel.pp.viktor-jarvan-picks",
+      "vw": 379,
+      "vh": 821,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 308,
+        "b": 722,
+        "l": 16,
+        "r": 359
+      },
+      "lock": {
+        "t": 665,
+        "b": 709,
+        "l": 102,
+        "r": 273
+      },
+      "stamp": null,
+      "header": {
+        "t": 361,
+        "b": 480,
+        "l": 29,
+        "r": 346
+      },
+      "phase": "open",
+      "outcome": null,
+      "margin": null
+    },
+    {
+      "name": "duel-375-reveal-proplay-weiwei-h4cker",
+      "w": 375,
+      "h": 812,
+      "fixture": "duel.pp.weiwei-h4cker-udyr",
+      "vw": 379,
+      "vh": 821,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 308,
+        "b": 799,
+        "l": 16,
+        "r": 359
+      },
+      "lock": null,
+      "stamp": {
+        "t": 321,
+        "b": 356,
+        "l": 107,
+        "r": 268
+      },
+      "header": {
+        "t": 361,
+        "b": 434,
+        "l": 29,
+        "r": 346
+      },
+      "phase": "revealed",
+      "outcome": null,
+      "margin": "Weiwei by 17.9 pts"
+    },
+    {
+      "name": "drop-1440-open-combat-zed",
+      "w": 1440,
+      "h": 900,
+      "fixture": "drop.lc.zed-shadow-slash",
+      "vw": 1440,
+      "vh": 900,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 180,
+        "b": 888,
+        "l": 407,
+        "r": 1033
+      },
+      "lock": {
+        "t": 670,
+        "b": 714,
+        "l": 616,
+        "r": 824
+      },
+      "stamp": null,
+      "header": {
+        "t": 354,
+        "b": 437,
+        "l": 428,
+        "r": 1012
+      },
+      "phase": "open",
+      "outcome": null,
+      "margin": null
+    },
+    {
+      "name": "drop-1440-reveal-over-proplay-nuguri",
+      "w": 1440,
+      "h": 900,
+      "fixture": "drop.pp.nuguri-kennen-wr",
+      "vw": 1440,
+      "vh": 900,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 180,
+        "b": 888,
+        "l": 407,
+        "r": 1033
+      },
+      "lock": null,
+      "stamp": null,
+      "header": {
+        "t": 349,
+        "b": 432,
+        "l": 428,
+        "r": 1012
+      },
+      "phase": "revealed",
+      "outcome": "over",
+      "margin": null
+    },
+    {
+      "name": "drop-1280x720-reveal-under-proplay-peanut",
+      "w": 1280,
+      "h": 720,
+      "fixture": "drop.pp.peanut-sejuani",
+      "vw": 1280,
+      "vh": 720,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 180,
+        "b": 708,
+        "l": 327,
+        "r": 953
+      },
+      "lock": null,
+      "stamp": null,
+      "header": {
+        "t": 259,
+        "b": 342,
+        "l": 348,
+        "r": 932
+      },
+      "phase": "revealed",
+      "outcome": "under",
+      "margin": null
+    },
+    {
+      "name": "drop-375-open-decimal-olaf",
+      "w": 375,
+      "h": 812,
+      "fixture": "drop.lc.olaf-undertow-haste",
+      "vw": 379,
+      "vh": 821,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 308,
+        "b": 687,
+        "l": 16,
+        "r": 359
+      },
+      "lock": {
+        "t": 630,
+        "b": 674,
+        "l": 84,
+        "r": 291
+      },
+      "stamp": null,
+      "header": {
+        "t": 321,
+        "b": 417,
+        "l": 29,
+        "r": 346
+      },
+      "phase": "open",
+      "outcome": null,
+      "margin": null
+    },
+    {
+      "name": "drop-375-reveal-exact-ahri-armor",
+      "w": 375,
+      "h": 812,
+      "fixture": "drop.lc.ahri-armor-l3",
+      "vw": 379,
+      "vh": 821,
+      "hScroll": 0,
+      "clipped": [],
+      "smallTargets": [],
+      "stage": {
+        "t": 308,
+        "b": 695,
+        "l": 16,
+        "r": 359
+      },
+      "lock": null,
+      "stamp": null,
+      "header": {
+        "t": 321,
+        "b": 396,
+        "l": 29,
+        "r": 346
+      },
+      "phase": "revealed",
+      "outcome": "exact",
+      "margin": null
+    }
+  ],
+  "sweep": [
+    {
+      "w": 375,
+      "h": 812,
+      "fixture": "duel.lc.olaf-lucian-tie",
+      "touch": true,
+      "open": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 786,
+          "l": 16,
+          "r": 359
+        },
+        "lock": {
+          "t": 729,
+          "b": 773,
+          "l": 102,
+          "r": 273
+        },
+        "stamp": null,
+        "header": {
+          "t": 361,
+          "b": 457,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 877,
+          "l": 16,
+          "r": 359
+        },
+        "lock": null,
+        "stamp": {
+          "t": 321,
+          "b": 356,
+          "l": 107,
+          "r": 268
+        },
+        "header": {
+          "t": 361,
+          "b": 457,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Dead even — 9s each"
+      }
+    },
+    {
+      "w": 375,
+      "h": 812,
+      "fixture": "duel.pp.viktor-jarvan-picks",
+      "touch": true,
+      "open": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 722,
+          "l": 16,
+          "r": 359
+        },
+        "lock": {
+          "t": 665,
+          "b": 709,
+          "l": 102,
+          "r": 273
+        },
+        "stamp": null,
+        "header": {
+          "t": 361,
+          "b": 480,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 846,
+          "l": 16,
+          "r": 359
+        },
+        "lock": null,
+        "stamp": {
+          "t": 321,
+          "b": 356,
+          "l": 107,
+          "r": 268
+        },
+        "header": {
+          "t": 361,
+          "b": 480,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Viktor by 2 picks"
+      }
+    },
+    {
+      "w": 375,
+      "h": 812,
+      "fixture": "drop.lc.zed-shadow-slash",
+      "touch": true,
+      "open": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 729,
+          "l": 16,
+          "r": 359
+        },
+        "lock": {
+          "t": 672,
+          "b": 716,
+          "l": 84,
+          "r": 291
+        },
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 459,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 847,
+          "l": 16,
+          "r": 359
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 459,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 375,
+      "h": 812,
+      "fixture": "drop.pp.nuguri-kennen-wr",
+      "touch": true,
+      "open": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 666,
+          "l": 16,
+          "r": 359
+        },
+        "lock": {
+          "t": 609,
+          "b": 653,
+          "l": 84,
+          "r": 291
+        },
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 396,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 379,
+        "vh": 821,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 710,
+          "l": 16,
+          "r": 359
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 396,
+          "l": 29,
+          "r": 346
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 390,
+      "h": 844,
+      "fixture": "duel.lc.olaf-lucian-tie",
+      "touch": true,
+      "open": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 770,
+          "l": 16,
+          "r": 374
+        },
+        "lock": {
+          "t": 713,
+          "b": 757,
+          "l": 109,
+          "r": 281
+        },
+        "stamp": null,
+        "header": {
+          "t": 361,
+          "b": 457,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 842,
+          "l": 16,
+          "r": 374
+        },
+        "lock": null,
+        "stamp": {
+          "t": 321,
+          "b": 356,
+          "l": 114,
+          "r": 276
+        },
+        "header": {
+          "t": 361,
+          "b": 457,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Dead even — 9s each"
+      }
+    },
+    {
+      "w": 390,
+      "h": 844,
+      "fixture": "duel.pp.viktor-jarvan-picks",
+      "touch": true,
+      "open": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 722,
+          "l": 16,
+          "r": 374
+        },
+        "lock": {
+          "t": 665,
+          "b": 709,
+          "l": 109,
+          "r": 281
+        },
+        "stamp": null,
+        "header": {
+          "t": 361,
+          "b": 480,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 846,
+          "l": 16,
+          "r": 374
+        },
+        "lock": null,
+        "stamp": {
+          "t": 321,
+          "b": 356,
+          "l": 114,
+          "r": 276
+        },
+        "header": {
+          "t": 361,
+          "b": 480,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Viktor by 2 picks"
+      }
+    },
+    {
+      "w": 390,
+      "h": 844,
+      "fixture": "drop.lc.zed-shadow-slash",
+      "touch": true,
+      "open": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 729,
+          "l": 16,
+          "r": 374
+        },
+        "lock": {
+          "t": 672,
+          "b": 716,
+          "l": 91,
+          "r": 299
+        },
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 459,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 847,
+          "l": 16,
+          "r": 374
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 459,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 390,
+      "h": 844,
+      "fixture": "drop.pp.nuguri-kennen-wr",
+      "touch": true,
+      "open": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 666,
+          "l": 16,
+          "r": 374
+        },
+        "lock": {
+          "t": 609,
+          "b": 653,
+          "l": 91,
+          "r": 299
+        },
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 396,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 394,
+        "vh": 853,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 308,
+          "b": 710,
+          "l": 16,
+          "r": 374
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 321,
+          "b": 396,
+          "l": 29,
+          "r": 361
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 768,
+      "h": 1024,
+      "fixture": "duel.lc.olaf-lucian-tie",
+      "touch": false,
+      "open": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 774,
+          "l": 32,
+          "r": 736
+        },
+        "lock": {
+          "t": 709,
+          "b": 753,
+          "l": 298,
+          "r": 470
+        },
+        "stamp": null,
+        "header": {
+          "t": 319,
+          "b": 402,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 828,
+          "l": 32,
+          "r": 736
+        },
+        "lock": null,
+        "stamp": {
+          "t": 279,
+          "b": 316,
+          "l": 297,
+          "r": 471
+        },
+        "header": {
+          "t": 319,
+          "b": 402,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Dead even — 9s each"
+      }
+    },
+    {
+      "w": 768,
+      "h": 1024,
+      "fixture": "duel.pp.viktor-jarvan-picks",
+      "touch": false,
+      "open": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 729,
+          "l": 32,
+          "r": 736
+        },
+        "lock": {
+          "t": 664,
+          "b": 708,
+          "l": 298,
+          "r": 470
+        },
+        "stamp": null,
+        "header": {
+          "t": 319,
+          "b": 430,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 802,
+          "l": 32,
+          "r": 736
+        },
+        "lock": null,
+        "stamp": {
+          "t": 279,
+          "b": 316,
+          "l": 297,
+          "r": 471
+        },
+        "header": {
+          "t": 319,
+          "b": 430,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Viktor by 2 picks"
+      }
+    },
+    {
+      "w": 768,
+      "h": 1024,
+      "fixture": "drop.lc.zed-shadow-slash",
+      "touch": false,
+      "open": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 668,
+          "l": 32,
+          "r": 736
+        },
+        "lock": {
+          "t": 603,
+          "b": 647,
+          "l": 280,
+          "r": 488
+        },
+        "stamp": null,
+        "header": {
+          "t": 287,
+          "b": 370,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 715,
+          "l": 32,
+          "r": 736
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 287,
+          "b": 370,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 768,
+      "h": 1024,
+      "fixture": "drop.pp.nuguri-kennen-wr",
+      "touch": false,
+      "open": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 668,
+          "l": 32,
+          "r": 736
+        },
+        "lock": {
+          "t": 603,
+          "b": 647,
+          "l": 280,
+          "r": 488
+        },
+        "stamp": null,
+        "header": {
+          "t": 287,
+          "b": 370,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 768,
+        "vh": 1024,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 266,
+          "b": 679,
+          "l": 32,
+          "r": 736
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 287,
+          "b": 370,
+          "l": 53,
+          "r": 715
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 1024,
+      "h": 768,
+      "fixture": "duel.lc.olaf-lucian-tie",
+      "touch": false,
+      "open": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": {
+          "t": 692,
+          "b": 736,
+          "l": 426,
+          "r": 598
+        },
+        "stamp": null,
+        "header": {
+          "t": 294,
+          "b": 405,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": null,
+        "stamp": {
+          "t": 243,
+          "b": 287,
+          "l": 404,
+          "r": 620
+        },
+        "header": {
+          "t": 289,
+          "b": 400,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Dead even — 9s each"
+      }
+    },
+    {
+      "w": 1024,
+      "h": 768,
+      "fixture": "duel.pp.viktor-jarvan-picks",
+      "touch": false,
+      "open": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": {
+          "t": 656,
+          "b": 700,
+          "l": 426,
+          "r": 598
+        },
+        "stamp": null,
+        "header": {
+          "t": 330,
+          "b": 441,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": null,
+        "stamp": {
+          "t": 243,
+          "b": 287,
+          "l": 404,
+          "r": 620
+        },
+        "header": {
+          "t": 289,
+          "b": 400,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Viktor by 2 picks"
+      }
+    },
+    {
+      "w": 1024,
+      "h": 768,
+      "fixture": "drop.lc.zed-shadow-slash",
+      "touch": false,
+      "open": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": {
+          "t": 657,
+          "b": 701,
+          "l": 408,
+          "r": 616
+        },
+        "stamp": null,
+        "header": {
+          "t": 286,
+          "b": 424,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 245,
+          "b": 383,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 1024,
+      "h": 768,
+      "fixture": "drop.pp.nuguri-kennen-wr",
+      "touch": false,
+      "open": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": {
+          "t": 629,
+          "b": 673,
+          "l": 408,
+          "r": 616
+        },
+        "stamp": null,
+        "header": {
+          "t": 313,
+          "b": 396,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1024,
+        "vh": 768,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 230,
+          "b": 756,
+          "l": 268,
+          "r": 756
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 291,
+          "b": 374,
+          "l": 289,
+          "r": 735
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 1280,
+      "h": 720,
+      "fixture": "duel.lc.olaf-lucian-tie",
+      "touch": false,
+      "open": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": {
+          "t": 626,
+          "b": 670,
+          "l": 554,
+          "r": 726
+        },
+        "stamp": null,
+        "header": {
+          "t": 262,
+          "b": 345,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": null,
+        "stamp": {
+          "t": 193,
+          "b": 238,
+          "l": 529,
+          "r": 751
+        },
+        "header": {
+          "t": 239,
+          "b": 322,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Dead even — 9s each"
+      }
+    },
+    {
+      "w": 1280,
+      "h": 720,
+      "fixture": "duel.pp.viktor-jarvan-picks",
+      "touch": false,
+      "open": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 226,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": {
+          "t": 627,
+          "b": 671,
+          "l": 554,
+          "r": 726
+        },
+        "stamp": null,
+        "header": {
+          "t": 307,
+          "b": 418,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 226,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": null,
+        "stamp": {
+          "t": 239,
+          "b": 284,
+          "l": 529,
+          "r": 751
+        },
+        "header": {
+          "t": 285,
+          "b": 396,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Viktor by 2 picks"
+      }
+    },
+    {
+      "w": 1280,
+      "h": 720,
+      "fixture": "drop.lc.zed-shadow-slash",
+      "touch": false,
+      "open": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": {
+          "t": 580,
+          "b": 624,
+          "l": 536,
+          "r": 744
+        },
+        "stamp": null,
+        "header": {
+          "t": 264,
+          "b": 347,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 232,
+          "b": 315,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 1280,
+      "h": 720,
+      "fixture": "drop.pp.nuguri-kennen-wr",
+      "touch": false,
+      "open": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": {
+          "t": 580,
+          "b": 624,
+          "l": 536,
+          "r": 744
+        },
+        "stamp": null,
+        "header": {
+          "t": 264,
+          "b": 347,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1280,
+        "vh": 720,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 708,
+          "l": 327,
+          "r": 953
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 259,
+          "b": 342,
+          "l": 348,
+          "r": 932
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 1440,
+      "h": 900,
+      "fixture": "duel.lc.olaf-lucian-tie",
+      "touch": false,
+      "open": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": {
+          "t": 727,
+          "b": 771,
+          "l": 634,
+          "r": 806
+        },
+        "stamp": null,
+        "header": {
+          "t": 341,
+          "b": 424,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": null,
+        "stamp": {
+          "t": 193,
+          "b": 238,
+          "l": 609,
+          "r": 831
+        },
+        "header": {
+          "t": 305,
+          "b": 388,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Dead even — 9s each"
+      }
+    },
+    {
+      "w": 1440,
+      "h": 900,
+      "fixture": "duel.pp.viktor-jarvan-picks",
+      "touch": false,
+      "open": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 226,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": {
+          "t": 728,
+          "b": 772,
+          "l": 634,
+          "r": 806
+        },
+        "stamp": null,
+        "header": {
+          "t": 387,
+          "b": 498,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 226,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": null,
+        "stamp": {
+          "t": 239,
+          "b": 284,
+          "l": 609,
+          "r": 831
+        },
+        "header": {
+          "t": 350,
+          "b": 461,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "revealed",
+        "outcome": null,
+        "margin": "Viktor by 2 picks"
+      }
+    },
+    {
+      "w": 1440,
+      "h": 900,
+      "fixture": "drop.lc.zed-shadow-slash",
+      "touch": false,
+      "open": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": {
+          "t": 670,
+          "b": 714,
+          "l": 616,
+          "r": 824
+        },
+        "stamp": null,
+        "header": {
+          "t": 354,
+          "b": 437,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 322,
+          "b": 405,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    },
+    {
+      "w": 1440,
+      "h": 900,
+      "fixture": "drop.pp.nuguri-kennen-wr",
+      "touch": false,
+      "open": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": {
+          "t": 670,
+          "b": 714,
+          "l": 616,
+          "r": 824
+        },
+        "stamp": null,
+        "header": {
+          "t": 354,
+          "b": 437,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "open",
+        "outcome": null,
+        "margin": null
+      },
+      "revealed": {
+        "vw": 1440,
+        "vh": 900,
+        "hScroll": 0,
+        "clipped": [],
+        "smallTargets": [],
+        "stage": {
+          "t": 180,
+          "b": 888,
+          "l": 407,
+          "r": 1033
+        },
+        "lock": null,
+        "stamp": null,
+        "header": {
+          "t": 349,
+          "b": 432,
+          "l": 428,
+          "r": 1012
+        },
+        "phase": "revealed",
+        "outcome": "over",
+        "margin": null
+      }
+    }
+  ],
+  "blockedRequests": [
+    "GET kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/app_settings",
+    "GET kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/audio_assets",
+    "GET kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/audio_event_bindings",
+    "GET kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/audio_mode_bindings",
+    "GET kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/audio_playlist_items",
+    "GET kewgjwrzpzpeltwidvuc.supabase.co/rest/v1/audio_playlists"
+  ]
+}

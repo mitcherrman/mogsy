@@ -350,3 +350,249 @@ All of these must use existing `sfx-registry` cues through a lab-safe path: not 
    - Fix the overlay stamp covering the metric chips at 375 px.
 4. **Responsive certification** at 375, 768, 1024×768, 1280×720, 1440×900 and 1920, with screenshots stored in the handoff. Include a design spike for the Data Duel tie affordance (limitation 3).
 5. **Decision memo per mechanic:** promote to Daily (via MIG1.3 adoption in `MasterySliceChallengeSurface` for `comparison_left_right` / `numeric`) or hold. List the backend reveal fields each mechanic would need (limitations 1, 2 and 4).
+
+---
+
+# MIG1.2 — Interaction polish + product certification
+
+Status: done on `mig1/1-interaction-lab`, **not pushed**. Still LAB-ONLY and DEV-only. Nothing was productionized.
+
+## A. SHAs
+
+| What | SHA |
+|---|---|
+| Start (MIG1.1 end) | `c3dfcdae` |
+| `origin/main` at fetch (unchanged, so no rebase) | `3011a416` |
+| MIG1.2 implementation | `9e251141` feat(mig1): polish data duel and stat drop interactions |
+| MIG1.2 docs + evidence | the commit that adds this section |
+
+## B. Polish changes
+
+### Data Duel (`src/components/interaction-grammar/DataDuel.tsx`)
+
+- **Margin reveal.** A centre-origin bar, drawn only from the revealed numbers, grows from the middle toward the side the reveal names. Its length is the gap relative to the larger value: 90s vs 180s reads as a rout, and 583 vs 590 HP as a whisker (with a 5% floor so it stays visible). It is also written out in words: "Leona by 90s", "Weiwei by 17.9 pts", "Dead even — 9s each".
+  - The primitive never decides a winner from the numbers. It draws toward `reveal.canonicalToken`, because "better" depends on the metric (a shorter cooldown, a higher win rate), which it does not know.
+- **Tie.** New optional `content.tie`: a slim, neutral third tablet ("= Same value") in the same radiogroup.
+  - Keyboard order: left → right → tie.
+  - On a tie reveal, both values show, the tie tablet takes the answer state, and the margin draws a centred even-mark.
+  - Why it is needed: the production Mastery comparison domain is ALWAYS `[a, b, "tie"]` (`mastery.manifest_session.adapter._answer_and_options`), so a tie is genuinely required on the promotion path.
+  - Pro Play pairwise payloads carry no tie, so their fixtures omit it.
+- **Keys** are relative to the focused option (the WAI radio pattern), and Enter locks.
+- **Motion.**
+  - A one-shot selection press.
+  - A lock "compression" (zoom-in-95, 200ms).
+  - Staggered value arrival, then the answer tag, the margin bar (700ms grow) and the evidence.
+  - No loops except the ≤0.9s suspense dots.
+- **Typography.** Authority values render as a large number plus a smaller unit ("590 HP", "25.0%"), still verbatim text.
+- **Identity.** Champion sides use canonical champion art. Where no art exists, a single-letter monogram (or the authored short code, "T1"/"KT") replaces the three-letter slice.
+  - Pro Play team and player portraits exist only behind `pro-play/mediaApi` (a network client), so they were deliberately not used; no new asset system was built.
+
+### Stat Drop (`src/components/interaction-grammar/StatDrop.tsx`)
+
+- **ACTUAL callout.**
+  - An "ACTUAL {value}" flag drops onto the scale ABOVE the rail, with a stem into it. It clamps at the scale ends, and out-of-scale values get ◀/▶.
+  - The readout becomes You | **Actual** (large, glowing, with unit) | Off · under/over.
+  - The player's thumb stays on the rail, marked "You".
+- **Gap.** A band grows from the estimate to the truth (700ms). Under reduced motion it is drawn at full size immediately.
+- **Outcome.** `dropOutcome()` returns `under` | `over` | `exact`, where "exact" means equal **at the answer's displayed precision** (8.2 vs 8.1818… → exact). That is the same cell the backend's `ROUNDED_DECIMAL` grading uses.
+  - It is written in words ("Dead on", "Off · under"), so it never depends on colour.
+  - It is a description, not a grade: no points and no bands.
+- The locked readout and thumb compress once on lock.
+
+### Lab (`src/pages/dev/interaction-lab/`)
+
+- 12 certification fixtures (§C), a fixture selector (chips from `xl`, a native select below), ◀/▶ cycling across both domains, and `?fixture=` deep links.
+  - Changing fixture, mechanic or domain always starts a fresh round.
+- Compact phone controls: two rows, with icon buttons for Reset / Replay / Cues.
+- **Verdict-stamp gutter.**
+  - A constant top reserve in the lab's Data Duel viewport (`pt-10 sm:pt-8 lg:pt-11`, stepping with the stamp's 2.4vw type) keeps the arena's CORRECT/INCORRECT stamp off the metric chips at every size.
+  - The arena is unchanged, and the gutter never jumps at reveal.
+- **Suspense** is 900ms (was 1100), and 200ms under reduced motion, so the player is never made to wait through an animation that isn't playing.
+- **Sound:** `labCues.ts` (see §E).
+
+## C. Fixture matrix (12, all adapted from repo captures; no invented facts)
+
+| Id | Domain | Certifies | Canonical | Source |
+|---|---|---|---|---|
+| `duel.pp.t1-kt-gragas` | Pro Play | team vs team · count · monogram | KT Rolster 84 vs 64 | `PRO_PLAY_SAMPLES.t1_lineage` (pairwise projection of a 4-team ranking) |
+| `duel.pp.weiwei-h4cker-udyr` | Pro Play | player vs player · rate · large margin | Weiwei 25.0% vs 7.1% | `champion_player` (production capture; authority's own answer and question text) |
+| `duel.pp.viktor-jarvan-picks` | Pro Play | champion vs champion · 113-char scope · art · close | Viktor 6 vs 4 | `recent` (production capture; authority's own answer and question text) |
+| `duel.lc.leona-pantheon-r` | Leaguecraft | ultimate cooldown · large margin · art | Leona 90s vs 180s | J3 `pantheon.standard` child 3 |
+| `duel.lc.ahri-syndra-health` | Leaguecraft | champion base stat · close margin · no art | Ahri 590 vs 583 HP | `masterySlicePreviews.json` (verbatim `mastery_preview.py`, matchup generator) |
+| `duel.lc.olaf-lucian-tie` | Leaguecraft | cooldown · exact tie · mixed rank context | tie, 9s = 9s | Lab pairing of J4 `olaf.standard` child 1 and J4 `lucian.standard` child 1, same patch. Prompt from production `formatComparisonPrompt` over the two captured side contexts. |
+| `drop.pp.peanut-sejuani` | Pro Play | integer · broad 0–200 | 113 | `pro_play` (production capture) |
+| `drop.pp.nuguri-kennen-wr` | Pro Play | decimal percent · 0–100 step 0.1 | 75.0 % | `nuguri_clear` |
+| `drop.pp.splyce-gangplank` | Pro Play | integer · small 0–40 | 16 | `champion_team` (production capture) |
+| `drop.lc.olaf-undertow-haste` | Leaguecraft | decimal · narrow 0–20 step 0.1 (authority `input_constraints`) | 8.2 (8.1818…) | J4 `olaf.standard` child 2 (real `numeric` child) |
+| `drop.lc.ahri-armor-l3` | Leaguecraft | champion stat · integer 0–100 | 27 (27.195) | J3 `zed.standard` child 0 |
+| `drop.lc.zed-shadow-slash` | Leaguecraft | combat calculation · broad 0–300 | 55 | J3 `zed.standard` child 2. Prompt from production `combatQuestionSentence` plus captured scenario inputs. |
+
+Lab-only adaptations, flagged in `labFixtures.ts`:
+- Two pairings/projections (`t1-kt`, `olaf-lucian-tie`).
+- Leaguecraft comparison values parsed fail-closed from explanation prose.
+- Pro Play numbers read from the evidence rows' structured `display` field.
+- `ahri-armor` and `zed-shadow-slash` were served as `single_choice`: the value is the authority's, but the numeric presentation is the lab's.
+- Stat Drop scales come from per-family `LAB_SCALES`, never from the answer; a test pins this.
+
+There is no trustworthy Faker fixture in the repo (the Faker row in `ProStatsExplorer.test` is a hand-written mock), so there is no Faker fixture.
+
+## D. Screenshots — `docs/audits/mig1-interaction-lab/`
+
+| File | Shows |
+|---|---|
+| `duel-1440-open-proplay-t1-kt.jpg` | Data Duel, desktop, open (Pro Play, monogram identity) |
+| `duel-1440-reveal-leaguecraft-leona-pantheon.jpg` | Desktop reveal, incorrect pick, large margin |
+| `duel-1440-reveal-tie-olaf-lucian.jpg` | Tie reveal: even-mark and "Same value" answer |
+| `duel-1024x768-reveal-no-art-ahri-syndra.jpg` | Short desktop, no-art sides, close margin (7 HP) |
+| `duel-375-open-long-label-viktor-jarvan.jpg` | Phone open, long Pro Play scope, champion art |
+| `duel-375-reveal-proplay-weiwei-h4cker.jpg` | Phone reveal, stamp clear of the chips |
+| `drop-1440-open-combat-zed.jpg` | Stat Drop, desktop, open (combat calculation) |
+| `drop-1440-reveal-over-proplay-nuguri.jpg` | Desktop reveal, estimate over, decimal percent |
+| `drop-1280x720-reveal-under-proplay-peanut.jpg` | Short desktop reveal, estimate under, broad range |
+| `drop-375-open-decimal-olaf.jpg` | Phone open, decimal narrow scale |
+| `drop-375-reveal-exact-ahri-armor.jpg` | Phone reveal, exact ("Dead on") |
+
+`qa-metrics.json` in the same folder holds the raw measurements:
+- Captured with headless Edge through Playwright, touch emulation below 768.
+- Every non-local request was aborted except fonts and champion art; the only attempted ones were the app shell's six Supabase GETs, listed in the file.
+
+## E. Audio
+
+- **Boundary audit.**
+  - `CanonicalArena` and its components play no sound.
+  - Ranked's settlement cues live in `useRankedMatchSfx` / `useRankedMatch`, which the lab does not mount.
+  - The SFX engine (`lib/audio/sfx.ts`) has no analytics and no network for built-in synth voices. It fetches only operator-bound asset voices, and none of the cues below are assets.
+- **Lab cues** (`labCues.ts`) use the existing registry only:
+
+  | Moment | Cue |
+  |---|---|
+  | Duel pick | `leaguecraft.record.selection` |
+  | Lock | `ranked.answer.lock` |
+  | Duel reveal | `ranked.answer.correct` / `ranked.answer.incorrect` (one per settlement) |
+  | Stat Drop reveal | `combat.simulation.resolve` (neutral; no verdict exists) |
+
+  Stat Drop dragging is deliberately silent (it would chatter).
+- Every play carries a per-round `eventId`, so the engine dedupes re-renders. One user action produces one cue (tested).
+- **Preferences.**
+  - The global mute (`mogsy-sounds-muted`, set by Settings/HUD) is honoured by the engine's master gain and shown in the lab rail.
+  - Audio Studio policy still gates built-ins.
+  - A per-viewer lab switch ("Cues on/off", localStorage `mogzy.mig-lab.cues`) silences the lab without touching the global preference.
+- No audio files were added.
+
+## F. QA
+
+Responsive sweep, from `qa-metrics.json`:
+- **Viewports:** 375×812, 390×844, 768×1024, 1024×768, 1280×720, 1440×900.
+- **Cases:** tie duel, long-label duel, combat drop, percent drop; each open and revealed.
+- **Results:**
+  - Horizontal scroll: 0 in all 48 states.
+  - Clipped controls: none.
+  - Primitive targets under 44px: none.
+  - Desktop (≥1024): the whole stage fits the viewport, and Lock sits inside the stage (1024×768: Lock bottom 736, stage bottom 756).
+  - Verdict stamp above the duel header at every size.
+- **Fixed during QA:**
+  - At 1024×768 the three-row lab controls had pushed Data Duel's Lock below the height-locked stage, where it was clipped. This was fixed with xl-only chips, tighter `lg` art and prompt, and the stamp gutter.
+  - The duel tie tags overlapped their label.
+  - The margin unit's spacing didn't match the values.
+- **Arena frame note.** At 375 `document.scrollWidth` reports 379 because the arena shell's own `::before` frame uses `inset: 0 -4px`. `body` is `overflow-x: hidden` and `scrollX` stays 0, so no horizontal scroll is possible. This is arena-owned and shared by every non-phone-arena host, so it was left unchanged.
+
+Behaviour, verified by tests and in the browser:
+- touch (Playwright taps), pointer drag, keyboard (radio arrows, Enter, range keys), and a focus ring on tablets and thumb
+- meaningful ARIA labels and live announcements for lock and reveal
+- the reveal is carried by words (Answer / Locked / Your pick tags, margin text, under/over/exact)
+- reduced motion (OS or Mogzy setting): zero `animate-*` classes and a 200ms beat
+- Reset is deterministic
+- switching fixture mid-reveal leaks nothing
+- switching domain keeps the renderer and the primitive
+
+## G. Tests
+
+- **MIG suites:** 89 tests, all passing.
+  - MIG1.1 suites preserved: `DataDuel.test` (updated for the 3-option radiogroup and focus-relative keys), `StatDrop.test`, `InteractionLab.test`. The import guard now permits the SFX hook for `labCues.ts` only; the primitives still may not import audio.
+  - New `InteractionLab.certification.test.tsx` covers:
+    - the matrix shape
+    - per-fixture pre-reveal no-leak (all 12)
+    - margin toward the canonical side, in words
+    - tie option, keyboard path and reveal
+    - Stat Drop ACTUAL flag, under/over/exact (integer and decimal precision) and the exact state without a gap
+    - every fixture rendering through its mechanic's one renderer
+    - fixture switch resets
+    - deterministic reset and deep link
+    - one cue per action, silent dragging, the persisted cue switch and global-mute display
+    - no analytics and no fetch
+    - reduced motion
+  - `App.interactionLabRoutes.test.ts` still passes.
+- **Affected suites** (ranked-arena, the inspector, the Ranked geometry test, ranked-core modules, `lib/audio`, mastery interactions): 1,261 pass. 5 fail — the same pre-existing Windows path/CRLF tests in `AnswerGrid.elimination` and `QuestionStageGeometry` that fail identically on clean `origin/main` (§F of MIG1.1).
+- **`tsc -p tsconfig.app.json`:** only the 2 pre-existing errors.
+- **ESLint on changed files:** 0 errors, 7 `react-refresh` warnings (dev pages).
+- **Production `vite build`:** 0 occurrences of `interaction-lab`, `InteractionLab`, `mig_lab`, `mig-data-duel`, `mig-stat-drop`, `Interaction Lab`, `Lock estimate`, `duel-side-left`, `mogzy.mig-lab.cues`, `Dead even`, `duel-margin` or `drop-true-flag`. The controls (`ranked-arena-inspector`, `journey-arena`) are present, so the route and chunk are still excluded.
+- **Full suite:** not re-run. It OOMs on clean `main` on this machine (MIG1.1 §H); the targeted, sharded evidence above stands.
+
+## H. Known limitations
+
+1. **Stat Drop reveal slot.** `SurfaceReveal` still has no numeric slot, so the Stat Drop reveal rides lab context.
+2. **Comparison values.** Comparison reveals carry display strings only: the margin's numbers ride the fixture, and Leaguecraft values are parsed from prose (lab only).
+3. **Verdict tint.** The arena's verdict overlay tint mutes the tablets' reveal colours. The words carry the meaning and the arena was not changed.
+4. **Recalled context.** Journey combat facts can depend on earlier-child context ("recalled target armor"). A standalone Stat Drop of such a fact needs its full premise served.
+5. **Pro Play identity.** Pro Play player and team sides have no portrait or logo without the Pro Play media API.
+6. **Audio playback.** Sound was verified at the wiring level (tests and engine policy). Audible playback depends on the viewer's Audio Studio config and unlock gesture, as for every cue.
+
+## I. Production contract requirements (NOT implemented)
+
+### Data Duel
+
+- **Pre-reveal (public round):**
+  - `prompt` (or structured `comparison_semantics` and a formatter, as today)
+  - `metric_label`
+  - scope/context
+  - two sides, each `{ token, label, sublabel?, media_ref? }`
+  - `tie_token` when the answer domain has one (Mastery: always `"tie"`)
+  - `margin_unit` suffix and display decimals
+  - Must contain no values, winner or tie state: the existing `answer_safety.assert_pre_reveal_safe` rule, unchanged.
+- **Response:** `SegmentChoice { selected: "<token>" }`. This already exists: `SegmentChallengeIn.selected` is a strict string, and `mastery_slice` validates `single_choice ∈ answer_options`. No transport change.
+- **Post-reveal (per challenge reveal):**
+  - `correct_answer` (the token, already present)
+  - NEW `side_values`: `[{ token, value: number, display: string, unit }]` for both sides. This replaces explanation parsing and must be published by the authority, not derived client-side.
+  - `explanation` (already present)
+  - `canonical_question_ref`
+  - authority/source revision (Pro Play has `authority_revisions` and `metric_definition_version`; Mastery has `patch_display` and artifact digest).
+- **Tie semantics:** `correct_answer = "tie"` iff the two canonical values are equal at the metric's comparison precision, decided by the authority.
+- **Frontend:**
+  - The arena's RG3 `SurfaceReveal.evidence {kind:"comparison"}` already carries both display values and `winner` (null for a tie). Extend `ComparisonSide` with an optional numeric `value` so the margin can be drawn.
+  - Adoption point: `MasterySliceChallengeSurface` for `comparison_left_right`, mapping `answer_options[0..1]` to sides and `"tie"` to `content.tie`.
+- **Pro Play path:** Pro Play pairwise facts would need to publish through an existing module (MIG1.0 §15.1, e.g. frozen Mastery-style children), not a new runtime.
+
+### Stat Drop
+
+- **Pre-reveal:** `prompt` (structured `prompt_semantics` and a formatter), unit, and `input_constraints` (`step`, `decimal_places`, `integer_only`, `min`; already published), **plus** a published scale `max` (today `max: null`).
+  - The range must be **authority-published by metric family** (e.g. "basic ability cooldown: 0–20s"), never derived from the answer (the scale is then a hint), and never lab-authored in production.
+- **Response:** `SegmentChoice { selected: number }`. This already exists: `SegmentChallengeIn.selected` accepts a strict int/float, and `mastery_slice` accepts `answer_type: "numeric"`.
+- **Post-reveal:** `correct_answer` (number), `correct_answer_display`, `explanation`, `canonical_question_ref` and source revision. All already present on numeric Mastery reveals except the ref/revision surfacing.
+- **Grading available today:** binary only — `EXACT_INTEGER`, or `ROUNDED_DECIMAL` (same displayed rounding cell) in `mastery/questions/precision.py`. The lab's "exact" state matches that cell.
+- **Unresolved:** any credit for *closeness* would be a NEW module grading policy (bands or tolerance, and points), which is a product decision (MIG1.0 §15.2). The UI must never imply credit the backend does not give.
+
+## J. Product certification
+
+**DATA DUEL — PROMOTE.**
+1. **Semantic fit.** Choosing a side IS the comparison. The reveal shows both deciding values and the margin, which teaches magnitude ("Leona by 90s", "Ahri by 7 HP") rather than just right or wrong.
+2. **Universality.** One component, zero domain branching, across teams, players, champions, a cooldown, a base stat, a win rate, a pick count and a tie, from both domains.
+3. **Interaction quality.** Two taps (pick, lock), the keyboard radio pattern and 44px targets. Instantly legible.
+4. **Reveal quality.** Values, answer and pick tags, the margin bar in words, authority evidence, and the arena's own verdict stamp.
+5. **Responsive and accessible.** 48/48 states clean. Touch, keyboard and reduced motion all pass.
+6. **Architectural fit.** Maps onto the existing `comparison_left_right` domain, `SegmentChoice.selected` and RG3 comparison evidence. The only backend need is additive: structured `side_values`.
+
+**STAT DROP — HOLD.**
+- **Strong:** interaction quality (drag, keys and nudges, explicit lock), reveal quality (ACTUAL flag, gap, under/over/exact in words), universality (6 fixtures, integer and decimal, 0–40 to 0–300) and responsive/accessible (all states clean).
+- **Held on two gates:**
+  - **Semantic fit and grading.** Estimating on a continuous slider promises that closeness matters, but production grading is exact-cell pass/fail. On 0–20 step 0.1, almost every sincere estimate would be graded wrong. Shipping it as-is would punish the very behaviour the interaction invites. That needs a product decision on graded closeness, or a different framing.
+  - **Architectural fit.** Transport is ready, but there is no authority-published, answer-independent scale today (`max: null`). The lab's family scales are not an authority.
+- It should return for certification once a closeness policy and published scales exist; no UI redesign is needed.
+
+## K. Recommended next work (do not start either without sign-off)
+
+1. **MIG1.3 — Order Forge + Match Grid in the lab** (lab only, frontend only, the same certification method). This is where the structured-answer question (MIG1.0 §8.1) gets its evidence. Do not modify Daily.
+2. **Separately, plan (don't build) the smallest Data Duel productionization.**
+   - Backend: additive `side_values` on comparison reveals, plus `tie` already present.
+   - Frontend: optional `value` on RG3 `ComparisonSide`; `DataDuel` adopted inside `MasterySliceChallengeSurface` for `comparison_left_right`, with snapshot parity for the existing rendering.
+   - Keep it rating-ineligible or within an existing format until certified in a real match.
+3. **Stat Drop:** a product memo on closeness grading and scale publication before any production work.
