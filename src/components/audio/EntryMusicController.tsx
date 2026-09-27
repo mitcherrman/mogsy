@@ -28,10 +28,11 @@ import { loadSoundSettingsRuntime } from "@/lib/audio/sound-settings-runtime";
  * the presence monitor, and makes one startup attempt — which the browser is
  * free to refuse, leaving the first-interaction net to pick it up.
  *
- * Placement is load-bearing. It is mounted inside <BrowserRouter> but outside
- * <Routes> so it spans every route, and it must not move into <Layout /> (the
- * root entrance renders outside Layout) or into the entrance itself (that
- * component unmounts during the / -> /lol hand-off, taking the music with it).
+ * Placement is load-bearing. It is mounted in the data router's pathless root
+ * route, beside <Outlet />, so it spans every route. It must not move into
+ * <Layout /> (the root entrance renders outside Layout) or into the entrance
+ * itself (that component unmounts during the / -> /lol hand-off, taking the
+ * music with it).
  *
  * There is deliberately no cleanup: the element is global and has to survive
  * this component, HMR, and every route change. Pausing or cancelling a fade here

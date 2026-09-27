@@ -14,12 +14,13 @@ The problem is contextual: fixed parent links, temporal browser history, local c
 
 ## Current NAV1-E status
 
-The active Ranked / Daily leave-contract audit is complete at NAV1-D base
-`576e9dd309094d725afafc837408e329815d927c`. The executable state, history,
-copy, ownership, race and batch contract is
+The active Ranked / Daily leave-contract audit remains authoritative at NAV1-D
+base `576e9dd309094d725afafc837408e329815d927c`. NAV1-E1 now implements only
+its supported router, blocker, typed-bypass and accessible-dialog substrate.
+The executable state, history, copy, ownership, race and batch contract is
 [`NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md`](./NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md).
-No blocker, dialog, Forfeit change, Daily orchestration change or other product
-behavior was implemented in that pass.
+E2/E2Q/E3 product wiring has not started: no Ranked match, Ranked queue or
+Daily run is guarded, and Forfeit and Daily orchestration remain unchanged.
 
 ## Important current findings
 
@@ -750,6 +751,148 @@ Production (non-test) textual call-site counts at this base:
 Counts are lexical certification aids, not a claim that every Link is a Back
 transition. The matrix classifies the meaningful user-facing transitions rather
 than conflating all 291 Links.
+
+## NAV1-E1 certification — supported blocker substrate
+
+### Base and owner reconciliation
+
+All refs were fetched before editing. `origin/main` is
+`4b3be0cbe2767d3107f4462082755066b26b398b`. SFX2 has not landed there: its
+side commit is `2153d4c8`, and merge `dd510777` integrates it only on a
+separate Journey/release line. E1 neither needs nor includes that line and
+does not alter SFX behavior. E2 must retain or reconcile SFX2 when its Ranked
+owner surface is integrated. PLAY1 had not landed or moved: its current side
+branch is the two commits `d9ec62a4` and `c4958b73`. The NAV1-E design and
+PLAY1 share the same main merge base, so those two owner commits were
+cherry-picked onto NAV1-E before any E1 edit. The resulting PLAY1 route additions
+(`/admin/playtest-director` and `/playtest/:slug`) are retained verbatim. No
+unrelated PLAY1 experiment and no SFX behavior was merged or edited.
+
+### Final router and provider architecture
+
+`App.tsx` replaces `BrowserRouter` + `Routes` with a module-scope
+`createBrowserRouter(createRoutesFromElements(...))` and `RouterProvider`.
+The old route JSX remains line-comparable inside one pathless root route; paths,
+nesting, redirects and each existing `Navigate replace` are unchanged. The
+pathless root renders `AcademyRadioController` beside `Outlet`, matching its
+old lifetime inside the router but outside the route tree. A focused lifetime
+test proves the controller mounts once and does not restart across route
+changes. QueryClient, auth and identity bridges, admin auth, premium session,
+tooltips, both toaster roots and their ordering remain outside the module-scope
+router exactly as before. The data-router error element rethrows the captured
+route error so E1 does not introduce React Router's default route error screen.
+No loader or action was added.
+
+Changed production files:
+
+- `src/App.tsx`
+- `src/components/audio/EntryMusicController.tsx` (lifetime comment only)
+- `src/lib/navigation/useTransactionalLeaveGuard.ts`
+- `src/components/navigation/TransactionalLeaveDialog.tsx`
+
+The remaining changed files are focused unit/integration/browser tests,
+generic test fixtures and these two NAV1 documents.
+
+### Blocker and bypass API
+
+`useTransactionalLeaveGuard({ active, kind, copy, shouldBlock })` accepts only
+the kinds `ranked_match`, `ranked_queue` and `daily_run`. The owner predicate
+receives React Router's complete current/next location and history-action
+candidate, so owner-preserving search, hash, state or nested-route transitions
+can pass without a hard-coded pathname rule. The result exposes `kind`, `copy`,
+`state`, `confirmationOpen`, `pendingLocation`, `stay`, `leave` and
+`runWithBypass`.
+
+Inactive guards return false for every transition. Active eligible navigation
+is captured by `useBlocker`. Stay invokes `blocker.reset()` and Leave invokes
+`blocker.proceed()`; the hook never constructs a replacement navigation, so
+POP, PUSH, REPLACE, search, hash and state retain their original semantics.
+Handled actions are locally idempotent. `blocked` and `proceeding` remain
+distinct, and only `blocked` opens the confirmation. React StrictMode, repeated
+Back and rapid real-browser Back/Forward render one confirmation and preserve
+the first pending browser transition.
+
+If `active` becomes false while blocked, an effect calls reset exactly once;
+it never calls proceed. This is the authoritative-terminal rule: the stale
+user destination is dismissed while the current route renders the terminal
+state.
+
+`runWithBypass(reason, transition)` accepts only
+`AUTHORITATIVE_TERMINAL | HOST_RETURN | AUTH_RECOVERY | ROUTE_RECOVERY`. A
+bypass exists only for its synchronous callback, is consumed by the first
+router candidate and is cleared in `finally` if no candidate occurs. It cannot
+persist into future navigation, and nested bypasses throw. When invoked while
+a user transition is blocked, it resets that stale attempt before initiating
+the system transition; it never proceeds the user's destination. E1 defines
+this mechanism but wires no product call site.
+
+### Dialog
+
+`TransactionalLeaveDialog` uses the existing Radix AlertDialog wrapper. It
+provides alert-dialog labelling, focus entry and containment, background
+inertness/aria hiding, Escape-to-Stay, Stay-first reading and tab order,
+responsive viewport sizing, busy-state disabling and a local double-submit
+guard. Copy and flow policy remain owner inputs; E1 includes neutral fixtures
+only.
+
+### Verification
+
+Commands run from the dedicated managed worktree:
+
+```powershell
+npx vitest run src/lib/navigation/useTransactionalLeaveGuard.test.tsx src/components/navigation/TransactionalLeaveDialog.test.tsx src/App.dataRouter.test.tsx --maxWorkers=1
+npx vitest run src/App.dataRouter.test.tsx src/lib/navigation src/components/navigation src/components/ProtectedRoute.test.tsx src/pages/Auth.authFlow.test.tsx src/pages/AuthCallback.test.tsx src/pages/quiz-ranked src/pages/quiz-daily-challenge src/features/playtest-director src/pages/playtest --maxWorkers=3
+npx playwright test --config playwright.nav1.config.ts
+npx vitest run --maxWorkers=3
+npx tsc --noEmit -p tsconfig.app.json
+npx eslint <all changed TypeScript/TSX implementation and test files>
+git diff --check
+```
+
+- E1 route/blocker/dialog tests: **40/40**.
+- Route/auth/Ranked/Daily/PLAY1 regression slice: **783/783** across 71 files
+  after including the final unknown-route assertion.
+- NAV1 Chromium: **20/20**, including four generic E1 browser-history cases.
+  Cancel keeps B with unchanged history and permits a new Back attempt;
+  confirm replays POP to A and Forward returns to B; PUSH and REPLACE retain
+  their history actions; repeated Back/Forward leaves one dialog and the first
+  pending POP; Stay receives initial focus.
+- TypeScript retains four base errors: `OnboardingProfile.tsx:180`,
+  `lib/identity/connections.ts:263`, and two `includes` errors in
+  `RankedShellProbe.test.tsx:32`. None of those files changed in E1; the first
+  two were already recorded by PLAY1/NAV1-D and the probe test is byte-identical
+  to the reconciled PLAY1 base.
+- Targeted ESLint: zero errors and four Fast Refresh warnings. One is the
+  intentional module-scope router export used by route regression tests, two
+  are existing `EntryMusicController` exports, and one is a test fixture.
+- `git diff --check` passes.
+- The broad all-frontend run is baseline evidence, not a green-suite claim. A
+  three-worker attempt exposed unchanged static/platform failures and then a
+  worker reached Node's heap limit. Every reported failing test file is
+  byte-identical to the reconciled PLAY1 base; the stale multiplayer source
+  test also fails there because the asserted redirects are absent on that
+  base. No unrelated failure was changed in E1. A single-worker retry with an
+  8 GB heap also exhausted its heap before producing a final aggregate.
+
+One test-harness observation does not change the design: firing opposite
+`router.navigate(-1)`/`router.navigate(1)` calls directly at MemoryRouter can
+replace its in-memory pending POP because it lacks browser POP restoration.
+The required behavior was therefore certified in real Chromium, where rapid
+Back/Forward preserves the first pending transition. No custom registry,
+history shim or product workaround was added.
+
+### Scope and next owners
+
+NAV1-A safe temporal Back, NAV1-B Profile/Settings/UserProfile/reset fallbacks,
+NAV1-C Premium contextual return and NAV1-D terminal REPLACE all pass their
+unit/browser regression suites. Ranked, Daily and the Ranked queue are not
+guarded. Forfeit and global HUD semantics are unchanged. No `beforeunload`,
+`pagehide`, `unload`, `popstate`, beacon, keepalive, fake entry or history
+repair was added.
+
+E2 and E3 are safe to start in parallel after this commit because their owner
+surfaces are disjoint. E2Q still requires explicit PLAY1 owner scheduling and
+must not run concurrently with further PLAY1 queue edits.
 
 The first audit must specifically answer:
 1. Every place browser Back can produce a surprising destination.

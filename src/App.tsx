@@ -3,7 +3,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  Navigate,
+  Outlet,
+  Route,
+  RouterProvider,
+  useRouteError,
+} from "react-router-dom";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { AuthProvider } from "./hooks/useAuth";
 import { AdminAuthProvider } from "./lib/admin-auth/AdminAuthProvider";
@@ -339,19 +347,22 @@ function AcademyIdentityBridge() {
   return null;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <AuthQuerySyncBridge />
-      <AcademyIdentityBridge />
-      <AdminAuthProvider>
-      <PremiumSessionProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-              <AcademyRadioController />
-              <Routes>
+export function AppRouterRoot() {
+  return (
+    <>
+      <AcademyRadioController />
+      <Outlet />
+    </>
+  );
+}
+
+function RouteErrorRethrower(): never {
+  throw useRouteError();
+}
+
+export const appRouter = createBrowserRouter(
+  createRoutesFromElements(
+    <Route element={<AppRouterRoot />} errorElement={<RouteErrorRethrower />}>
                 {/* Root entrance. The Academy entry screen IS the homepage: it
                     renders outside <Layout /> so no navbar or footer appears, and
                     its call to action navigates on to LEAGUE_HOME_ROUTE. LEGACY1
@@ -643,8 +654,21 @@ const App = () => (
                 <Route path="/dev/content-studio" element={<Suspense fallback={<RouteLoader />}><ContentStudioPage /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
-              </Routes>
-          </BrowserRouter>
+    </Route>,
+  ),
+);
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <AuthQuerySyncBridge />
+      <AcademyIdentityBridge />
+      <AdminAuthProvider>
+      <PremiumSessionProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <RouterProvider router={appRouter} />
         </TooltipProvider>
       </PremiumSessionProvider>
       </AdminAuthProvider>

@@ -1,6 +1,6 @@
 # NAV1-E — Active Ranked / Daily leave contract
 
-Status: design/audit complete; no runtime behavior implemented  
+Status: E1 substrate implemented; E2/E2Q/E3 product wiring not started
 Audit base: `576e9dd309094d725afafc837408e329815d927c` (`NAV1-D`)  
 Frontend remote observed after fetch: `origin/main` = `4b3be0cbe2767d3107f4462082755066b26b398b`  
 Backend remote observed after fetch: `origin/master` = `acb2a946d65e8afb0deba02a5dec9165d8414716`
@@ -710,3 +710,51 @@ after PLAY1's current route ownership. Then run E2 and E3 in parallel with one
 owner per high-conflict surface, and certify them together in E4. Defer E2Q
 only if PLAY1 ownership cannot be scheduled; do not substitute a partial
 browser-Back-only handler.
+
+## 19. NAV1-E1 implementation status
+
+NAV1-E1 is implemented on the reconciled NAV1-E + PLAY1 route base. The app
+now uses a module-scope `createBrowserRouter(createRoutesFromElements(...))`
+and `RouterProvider`. The previous route JSX is preserved beneath one pathless
+root route. That root owns `AcademyRadioController` and an `Outlet`, preserving
+the controller's former lifetime inside the router and across ordinary route
+changes. Query, auth, admin-auth, premium-session, tooltip and toast providers
+remain outside the router in their previous order and retain their prior
+lifetimes. The root's error element rethrows the data-router route error so E1
+does not silently adopt React Router's default error UI as a product behavior.
+
+The shared `useTransactionalLeaveGuard` accepts `active`, a closed flow
+`kind`, owner copy and an owner-supplied `shouldBlock(candidate)` predicate.
+It exposes the router blocker state, pending location, `stay()`/`reset`,
+`leave()`/`proceed`, and `runWithBypass(reason, transition)`. The bypass reason
+is restricted to `AUTHORITATIVE_TERMINAL`, `HOST_RETURN`, `AUTH_RECOVERY` or
+`ROUTE_RECOVERY`; it is scoped to one synchronous transition, consumed by the
+first candidate and cleared in `finally`. Deactivation while blocked resets
+the stale attempt and never proceeds it. A system bypass that wins while a
+user attempt is pending also resets the stale attempt before initiating the
+system transition. No URL is reconstructed and no synthetic history entry is
+created.
+
+`TransactionalLeaveDialog` reuses the existing Radix AlertDialog primitive.
+It places Stay first, moves and contains focus, maps Escape/dismiss to Stay,
+aria-hides the underlying surface, prevents double submission and supports a
+busy/proceeding state. It contains no Ranked or Daily policy or copy.
+
+Owner reconciliation used current fetched refs. `origin/main` remained
+`4b3be0cbe2767d3107f4462082755066b26b398b`. SFX2 remains outside that
+ancestry: its side commit is `2153d4c8c438fc1f8f48a23e464ffee0e21ce89a`,
+with integration merge `dd510777` on a separate Journey/release line. E1 does
+not need or include that line and does not alter SFX behavior. PLAY1 had not
+landed and remained the two-commit side branch ending at
+`c4958b73446d612507f91273255470d2b461b19b`; those commits were applied on top
+of NAV1-E before the router migration, making the PLAY1 route tree the routing
+authority.
+
+Focused substrate tests, the route/auth/Ranked/Daily/PLAY1 regression slice and
+the complete NAV1 Chromium suite pass. Chromium proves cancel and confirm for
+real POP history, Forward after confirm, exact PUSH/REPLACE behavior, repeated
+Back/Forward while blocked, one dialog and safe initial focus. The broad
+frontend suite retains unrelated base failures documented in the handoff; no
+failing file is changed by E1. No Ranked match, Ranked queue or Daily run is
+guarded yet, and no unload, `popstate`, beacon, keepalive or history-repair
+mechanic was added.
