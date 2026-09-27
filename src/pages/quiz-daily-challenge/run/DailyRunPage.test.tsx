@@ -28,6 +28,12 @@ vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfxApi }));
 vi.mock("@/pages/quiz-ranked/QuizRankedMatch", () => ({
   QuizRankedMatch: () => { throw new Error("the stand-in is injected in these tests"); },
 }));
+vi.mock("@/lib/navigation/useTransactionalLeaveGuard", () => ({
+  useTransactionalLeaveGuard: ({ copy }: { copy: unknown }) => ({
+    kind: "daily_run", copy, state: "unblocked", confirmationOpen: false,
+    pendingLocation: null, stay: vi.fn(), leave: vi.fn(), runWithBypass: vi.fn(),
+  }),
+}));
 
 import type { MatchHost } from "@/lib/ranked-core/flow/matchHost";
 import {

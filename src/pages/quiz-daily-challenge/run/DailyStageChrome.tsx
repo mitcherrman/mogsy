@@ -157,7 +157,7 @@ export function DailyStageChrome({
         {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase} survival={survival}
           strikesFloor={strikesFloor} />}
         <Link to={LEAGUECRAFT_HREF} className="text-sm text-muted-foreground underline">
-          Back to Quiz
+          {run.status === "active" ? "Exit Daily Challenge" : "Back to Quiz"}
         </Link>
       </div>
     </header>

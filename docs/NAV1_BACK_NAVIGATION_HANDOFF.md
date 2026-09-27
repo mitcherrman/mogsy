@@ -19,8 +19,9 @@ base `576e9dd309094d725afafc837408e329815d927c`. NAV1-E1 now implements only
 its supported router, blocker, typed-bypass and accessible-dialog substrate.
 The executable state, history, copy, ownership, race and batch contract is
 [`NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md`](./NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md).
-E2/E2Q/E3 product wiring has not started: no Ranked match, Ranked queue or
-Daily run is guarded, and Forfeit and Daily orchestration remain unchanged.
+E3 Daily product wiring is implemented at `DailyRunPage`. E2/E2Q have not
+started: standalone Ranked match and Ranked queue do not yet invoke the
+blocker. Forfeit and Daily server orchestration remain unchanged.
 
 ## Important current findings
 
@@ -708,9 +709,10 @@ Still separate work:
 
 - **P1 implementation: active Ranked Back/leave**. The NAV1-E contract is now
   decided; explicit Forfeit, reconnect, network loss and unload remain separate.
-- **P1 implementation: active Daily Exit**. The NAV1-E contract preserves the
-  resumable parent run, forbids child Forfeit and documents result-interstitial
-  loss on remount.
+- **Resolved NAV1-E3: active Daily Exit**. The parent preserves the run,
+  distinguishes canonical/hidden live children, warns about the mount-local
+  result beat, preserves the original POP/PUSH destination, and cancels stale
+  navigation when the run completes.
 - **P1: Practice meaningful-history boundary**, pending Practice/Study Hall
   integration on shared `Quiz.tsx` and workspace files.
 - Deferred Premium anchors in Practice Builder/Trends, and History/Review IA.

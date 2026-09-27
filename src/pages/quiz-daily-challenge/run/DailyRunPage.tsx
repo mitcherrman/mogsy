@@ -19,6 +19,7 @@ import type { ComponentType, ReactNode } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
 import { ArenaShell, arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import { useAuth } from "@/hooks/useAuth";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
@@ -30,6 +31,8 @@ import { DailyStageResult, type StageResultPlacement } from "./DailyStageResult"
 import { DailyCompletion } from "./DailyCompletion";
 import { useDailyRun } from "./useDailyRun";
 import { hasDailyStartIntent } from "@/lib/daily-challenge/run/entry";
+import { dailyLeaveCopy, isActiveDailyRun, shouldBlockDailyNavigation } from "./dailyLeaveContract";
+import { useTransactionalLeaveGuard } from "@/lib/navigation/useTransactionalLeaveGuard";
 
 export const DAILY_EYEBROW = "Daily Challenge";
 
@@ -88,10 +91,30 @@ export function DailyRunPage({
 
   const run = dc.run;
   const flow = dc.flow;
+  const guard = useTransactionalLeaveGuard({
+    active: isActiveDailyRun(run),
+    kind: "daily_run",
+    copy: dailyLeaveCopy(run, flow),
+    shouldBlock: shouldBlockDailyNavigation,
+  });
   // B7 — the stage's last server-reported strike count (see `strikesSeen`).
   const strikesFloor = flow?.stage ? dc.strikesSeen[flow.stage.id] ?? null : null;
 
-  const shell = (children: ReactNode, header: ReactNode = null) => (
+  const guarded = (children: ReactNode) => (
+    <>
+      {children}
+      <TransactionalLeaveDialog
+        open={guard.confirmationOpen}
+        title={guard.copy.title}
+        body={guard.copy.body}
+        stayLabel={guard.copy.stayLabel}
+        leaveLabel={guard.copy.leaveLabel}
+        onStay={guard.stay}
+        onLeave={guard.leave} />
+    </>
+  );
+
+  const shell = (children: ReactNode, header: ReactNode = null) => guarded(
     <ArenaShell size="wide" header={header ?? (run
       ? <DailyStageChrome run={run} stage={null} /> : <DailyStageChromeless />)}>
       <div data-testid="daily-run" data-flow-phase={flow?.phase ?? dc.load}
@@ -190,7 +213,7 @@ export function DailyRunPage({
             <p className="text-sm text-muted-foreground">Entering the arena…</p>
           </div>);
       }
-      return (
+      return guarded(
         <div data-testid="daily-run" data-flow-phase="stage-play" className="contents">
           <StageMatch
             key={flow.childMatchId!}

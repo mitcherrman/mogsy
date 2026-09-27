@@ -11,6 +11,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mockAuth = vi.hoisted(() => ({
   user: { id: "userA", is_anonymous: false } as { id: string; is_anonymous: boolean } | null,
 }));
+vi.mock("@/lib/navigation/useTransactionalLeaveGuard", () => ({
+  useTransactionalLeaveGuard: ({ copy }: { copy: unknown }) => ({
+    kind: "daily_run", copy, state: "unblocked", confirmationOpen: false,
+    pendingLocation: null, stay: vi.fn(), leave: vi.fn(), runWithBypass: vi.fn(),
+  }),
+}));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => mockAuth }));
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));

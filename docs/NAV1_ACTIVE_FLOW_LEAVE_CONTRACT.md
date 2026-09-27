@@ -1,6 +1,6 @@
 # NAV1-E — Active Ranked / Daily leave contract
 
-Status: E1 substrate and E2 standalone Ranked wiring implemented; E2Q/E3 not started
+Status: E1 substrate, E2 standalone Ranked wiring, and E3 Daily parent wiring implemented; E2Q deferred
 Audit base: `576e9dd309094d725afafc837408e329815d927c` (`NAV1-D`)  
 Frontend remote observed after fetch: `origin/main` = `4b3be0cbe2767d3107f4462082755066b26b398b`  
 Backend remote observed after fetch: `origin/master` = `acb2a946d65e8afb0deba02a5dec9165d8414716`
@@ -654,6 +654,26 @@ Parallel: not with PLAY1; may be deferred without weakening E2's active-match
 contract.
 
 ### NAV1-E3 — Daily parent Exit contract
+
+**Implemented.** `DailyRunPage` owns one `daily_run` blocker while the
+canonical run has `status === "active"`. Its predicate blocks only departure
+from `/quiz/daily-challenge`, so owner-preserving search/hash changes and every
+stage transition remain local. The header is **Exit Daily Challenge** for an
+active run; pre-run, unavailable, and completed views retain safe navigation.
+
+Copy is projected on every render from the newest parent state. A canonical
+in-progress/launching child is live even behind a stage tag, and Survival's
+hidden `settlingChildMatchId` remains live. A terminal child already handed
+back while parent sync is pending uses normal saved-progress copy. Only the
+mount-local `stage-result` view gets the approved non-replay warning. State
+changes update copy without replacing the pending destination; completion
+resets that stale transition and leaves the completion mounted.
+
+No Daily endpoint, Forfeit call, child blocker, unload handler, history marker,
+or PLAY1 policy was added. Hosted `QuizRankedMatch` remains unchanged. E1's
+typed `HOST_RETURN` bypass remains available, but E3 needs no such navigation:
+host handback is local parent state, and PLAY1's route does not satisfy the
+Daily-route departure predicate.
 
 Files:
 

@@ -67,7 +67,11 @@ describe("the Daily parent run hosts the canonical match and nothing else", () =
    */
   it("Continue lives only on the stage result and never advances the server", () => {
     const withContinue = RUN_FILES.filter((f) => /\bContinue\b/.test(codeOnly(readFileSync(f, "utf8"))));
-    expect(withContinue.map((f) => f.split(/[\\/]/).pop())).toEqual(["DailyStageResult.tsx"]);
+    // NAV1-E3's "Continue Daily" is the cancel label in a route-leave
+    // confirmation, not a stage progression control.
+    expect(withContinue.map((f) => f.split(/[\\/]/).pop()).sort()).toEqual([
+      "DailyStageResult.tsx", "dailyLeaveContract.ts",
+    ]);
     const hook = codeOnly(readFileSync(join(ROOT, "pages/quiz-daily-challenge/run/useDailyRun.ts"), "utf8"));
     const body = hook.slice(hook.indexOf("const continueFromResult"), hook.indexOf("const retry"));
     expect(body.length).toBeGreaterThan(0);
