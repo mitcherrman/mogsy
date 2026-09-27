@@ -47,6 +47,7 @@ import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
 import type { DailyStageKind } from "@/lib/daily-challenge/run/contracts";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import type { DailyHistoryRecord, HistoryQuestion, HistoryRound, HistoryStage } from "@/lib/history/contracts";
+import TimeTrialRoom from "@/components/quiz/workspace/analytics/TimeTrialRoom";
 import type { MatchReviewView, ReviewRound } from "@/lib/ranked-public/contracts";
 
 const KNOWN: readonly string[] = ["standard", "time_trial", "survival", "weak_areas", "review"];
@@ -323,7 +324,8 @@ export function StageAnalyticsView({
   const room = access && drawn && hasRoomData(stage);
 
   let body: React.ReactNode;
-  if (drawn && (stage.kind === "weak_areas" || stage.kind === "review")) {
+  if (room && stage.kind === "time_trial") body = <TimeTrialRoom stage={stage} />;
+  else if (drawn && (stage.kind === "weak_areas" || stage.kind === "review")) {
     body = (
       <QuestionCards
         stage={stage}

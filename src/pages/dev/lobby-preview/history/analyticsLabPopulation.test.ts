@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { readHistoryPage, type DailyHistoryRecord, type HistoryStage } from "@/lib/history/contracts";
-import { cohortOf, strongestFor, type PopulationCohort } from "@/lib/history/population";
+import { cohortOf, strongestFor, type PopulationSubjectBlock } from "@/lib/history/population";
 import { percentileNumber } from "@/components/quiz/workspace/analytics/copy";
 import { ANALYTICS_LAB_GOLDEN, type AnalyticsLabScenario } from "./analyticsLabSource";
 import { ANALYTICS_LAB_POPULATION_RECIPES, POPULATION_MIN_USERS } from "./analyticsLabPopulation";
@@ -18,7 +18,7 @@ function records(scenario: AnalyticsLabScenario = "lab_premium"): DailyHistoryRe
 }
 const run = (n: number) => records().find((r) => r.runId === `lab-run-${String(n).padStart(2, "0")}`)!;
 const stage = (n: number, kind: string): HistoryStage => run(n).stages.find((s) => s.kind === kind)!;
-const rolling = (c: { cohorts: PopulationCohort[] } | null | undefined) => cohortOf(c ?? null, "rolling_28d")!;
+const rolling = (b: PopulationSubjectBlock | null | undefined) => cohortOf(b ?? null, "rolling_28d")!;
 
 describe("population — the real HUB6.3C wire", () => {
   it("every Premium Daily carries the run block, its policies, Core and three mode blocks", () => {
