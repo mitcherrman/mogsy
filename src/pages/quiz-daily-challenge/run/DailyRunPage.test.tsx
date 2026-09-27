@@ -397,6 +397,28 @@ describe("a stage that cannot open", () => {
     expect(t.calls.filter((c) => c.startsWith("launch"))).toHaveLength(2);
     expect(phase()).toBe("stage-play");
   });
+
+  it("USERS2.3C-Daily — a retried launch keeps ONE interaction id; the next stage gets its own", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY, { existing: wireRun(FOUR_STAGE_DAY, {}, {}) });
+    (t.wire().stages as Record<string, unknown>[])[0].status = "launching";
+    t.failNextLaunch = true;
+    mount(t);
+    await flush(10);
+    await act(async () => { screen.getByTestId("daily-run-retry").click(); });
+    await flush(10);
+    expect(t.launchInteractions).toHaveLength(2);
+    const [first, retried] = t.launchInteractions;
+    expect(first).toMatch(/^[0-9a-f-]{36}$/);
+    expect(retried).toBe(first);
+
+    await playStage(t);
+    await continueOn();
+    await flush(STAGE_INTRO_MIN_MS + 50);
+    expect(t.calls).toContain("launch:1");
+    const next = t.launchInteractions[t.launchInteractions.length - 1];
+    expect(next).toMatch(/^[0-9a-f-]{36}$/);
+    expect(next).not.toBe(first);
+  });
 });
 
 describe("a guest's first Daily (owner decision: sign up at the END to save)", () => {

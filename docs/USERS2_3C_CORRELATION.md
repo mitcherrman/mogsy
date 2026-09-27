@@ -30,3 +30,24 @@ the verified JWT subject.
 
 This slice does not add DSA instrumentation, active-time tracking, or lifecycle
 event names.
+
+## USERS2.3C-Daily
+
+Branch `codex/users2-3c-daily-correlation` from `main` `4b3be0cb`.
+
+- `src/lib/daily-challenge/run/client.ts`: `startToday` and `launchStage` send
+  `withBrowserCorrelation({})` as the JSON body. `readToday` / `readRun` are
+  unchanged pure GETs: no body, no `ensureBackendAuthToken`, no correlation or
+  session touch. `syncRun` sends no body.
+- `src/lib/analytics/correlation.ts`: `browserCorrelation(interactionId?)` and
+  `withBrowserCorrelation(body, interactionId?)` accept a caller-owned
+  interaction id; `newInteractionId()` mints one. Visitor and session still come
+  from the one canonical identity module.
+- `src/pages/quiz-daily-challenge/run/useDailyRun.ts`: one interaction id per
+  stage id, minted at the first launch attempt and reused by the bounded
+  automatic retries and the player's Retry. Each Start press is its own
+  interaction. The server freezes the first value either way.
+
+Railway freezes these on the Daily run and stage and propagates the stage's
+values to the canonical Ranked child. See the backend
+`docs/USERS2_3C_CORRELATION.md`.

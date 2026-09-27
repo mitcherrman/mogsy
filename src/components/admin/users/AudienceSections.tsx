@@ -36,6 +36,8 @@ import {
   computeFunnel,
   computeGameplay,
   computeHealth,
+  computeRankedByHost,
+  UNINSTRUMENTED_ACTIVITIES,
   computeOverview,
   computeRetention,
   computeSources,
@@ -332,12 +334,13 @@ export function AcquisitionSection({ loaded, range, now }: SectionProps) {
 
 export function EngagementSection({ loaded, range }: SectionProps) {
   const modes = useMemo(() => computeGameplay(loaded.dataset, range), [loaded, range]);
+  const ranked = useMemo(() => computeRankedByHost(loaded.dataset, range), [loaded, range]);
   const na = (text = "Not instrumented") => <Unavailable>{text}</Unavailable>;
   return (
     <div className="space-y-4" data-testid="analytics-section-engagement">
       <AdminPanel
         title="Gameplay branches"
-        description="Five independent modes. Opened is a browser signal (intent). Started and Completed are counted only from Railway-authoritative rows (source_system = 'railway'); a browser row with those names is never counted."
+        description="Independent current modes. Opened is a browser signal (intent). Started and Completed are counted only from Railway-authoritative rows (source_system = 'railway'); a browser row with those names is never counted. Retired Daily Score Attack is not a current product and is not shown; Legacy Champion Mastery is the old standalone session, not Mastery Journeys."
       >
         <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1"><Kind kind="browser" /> opened</span>
@@ -356,6 +359,50 @@ export function EngagementSection({ loaded, range }: SectionProps) {
             m.completed === null ? na() : m.completed,
             m.completion === null ? "—" : formatRate(m.completion),
             <span key="g" className="text-muted-foreground">{m.mode.gap ?? m.mode.grain}</span>,
+          ])}
+        />
+      </AdminPanel>
+      <AdminPanel
+        title="Ranked — canonical matches by host"
+        description={`${METRIC_DEFINITIONS.rankedCanonical} ${METRIC_DEFINITIONS.rankedByHost}`}
+        testId="analytics-ranked-hosts"
+      >
+        <Table
+          testId="analytics-ranked-by-host"
+          head={["Host / context", "Started", "Started users", "Completed", "Completion", "Definition"]}
+          rows={[
+            [
+              <span key="t" className="font-medium" data-testid="analytics-ranked-host-total">Total — canonical Ranked</span>,
+              ranked.total.started,
+              ranked.total.startedUsers,
+              ranked.total.completed,
+              formatRate(ranked.total.completion),
+              <span key="d" className="text-muted-foreground">All hosts. Equals the Ranked branch above.</span>,
+            ],
+            ...ranked.rows.map((r) => [
+              <span key="h" className="pl-3" data-testid={`analytics-ranked-host-${r.bucket.id}`}>{r.bucket.label}</span>,
+              r.started,
+              r.startedUsers,
+              r.completed,
+              formatRate(r.completion),
+              <span key="d" className="text-muted-foreground">{r.bucket.definition}</span>,
+            ]),
+          ]}
+        />
+      </AdminPanel>
+      <AdminPanel
+        title="Not yet instrumented"
+        description="Shown as unavailable, never zero, and never approximated from child Ranked rows."
+        testId="analytics-uninstrumented"
+      >
+        <Table
+          testId="analytics-uninstrumented-table"
+          head={["Activity", "Started", "Completed", "Why"]}
+          rows={UNINSTRUMENTED_ACTIVITIES.map((a) => [
+            <span key="a" className="font-medium" data-testid={`analytics-uninstrumented-${a.id}`}>{a.label}</span>,
+            na(),
+            na(),
+            <span key="r" className="text-muted-foreground">{a.reason}</span>,
           ])}
         />
       </AdminPanel>

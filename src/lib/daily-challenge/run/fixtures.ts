@@ -105,6 +105,8 @@ export interface FixtureTransport extends DailyRunTransport {
   /** Set the active stage's live ruleset state. */
   setLive(live: Wire | null): void;
   calls: string[];
+  /** USERS2.3C-Daily — the interaction id each launch call carried, in order. */
+  launchInteractions: (string | undefined)[];
   /** Make the next launch fail with DAILY_RUN_CHILD_UNAVAILABLE. */
   failNextLaunch: boolean;
 }
@@ -115,12 +117,14 @@ export function createFixtureTransport(
   let state: Wire | null = opts.existing === undefined ? null : opts.existing;
   const finished = new Map<string, Wire>();
   const calls: string[] = [];
+  const launchInteractions: (string | undefined)[] = [];
   const stamp = () => { if (state) state.server_now = new Date().toISOString(); };
   const snap = (): DailyRun => { stamp(); return readDailyRun(structuredClone(state)); };
   const stages = () => (state!.stages as Wire[]);
 
   const t: FixtureTransport = {
     calls,
+    launchInteractions,
     failNextLaunch: false,
     wire: () => state!,
     async readToday() {
@@ -136,8 +140,9 @@ export function createFixtureTransport(
       calls.push("readRun");
       return snap();
     },
-    async launchStage(_runId, index) {
+    async launchStage(_runId, index, _signal, interactionId) {
       calls.push(`launch:${index}`);
+      launchInteractions.push(interactionId);
       if (t.failNextLaunch) {
         t.failNextLaunch = false;
         throw new DailyRunApiError("backend", 503, "child unavailable", "DAILY_RUN_CHILD_UNAVAILABLE");

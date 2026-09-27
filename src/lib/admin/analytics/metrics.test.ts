@@ -18,11 +18,15 @@ import {
   computeGameplay,
   computeHealth,
   computeOverview,
+  computeRankedByHost,
   computeRetention,
   computeSources,
   formatRate,
   GAMEPLAY_MODES,
+  METRIC_DEFINITIONS,
   MIN_RATE_SAMPLE,
+  rankedHostBucket,
+  UNINSTRUMENTED_ACTIVITIES,
   referrerHost,
   retentionRate,
   type AnalyticsDataset,
@@ -350,14 +354,15 @@ describe("gameplay branches", () => {
   };
   const modes = Object.fromEntries(computeGameplay(ds, r7).map((m) => [m.mode.id, m]));
 
-  it("lists the five branches, none derived from another", () => {
-    expect(GAMEPLAY_MODES.map((m) => m.label)).toEqual([
+  it("presents the current branches, none derived from another; retired DSA is not one", () => {
+    expect(computeGameplay(ds, r7).map((m) => m.mode.label)).toEqual([
       "Practice Quiz",
-      "Ranked",
+      "Ranked — canonical matches (all hosts)",
       "Meta Reflex",
-      "Champion Mastery",
-      "Daily Score Attack",
+      "Legacy Champion Mastery",
     ]);
+    // The full registry still governs every historical name.
+    expect(GAMEPLAY_MODES.map((m) => m.id)).toContain("dsa");
     expect(modes.ranked.started).toBe(2);
     expect(modes.practice.started).toBe(1);
   });
@@ -396,6 +401,99 @@ describe("gameplay branches", () => {
         "ranked_started",
       ].sort(),
     );
+  });
+});
+
+describe("USERS2.3C-Daily — canonical Ranked by host", () => {
+  const meta = (host: string | undefined, opponent: string | undefined, extra: Record<string, unknown> = {}) => ({
+    metadata: {
+      match_id: "m",
+      ...(host === undefined ? {} : { host }),
+      ...(opponent === undefined ? {} : { opponent_type: opponent }),
+      ...extra,
+    },
+  });
+  const pair = (id: string, user: string, m: Partial<AnalyticsEventRecord>, complete = true) => [
+    railway("ranked_started", NOW - HOUR, `${id}:${user}`, { user_id: user, is_guest: false, ...m }),
+    ...(complete ? [railway("ranked_completed", NOW - HOUR + 1, `${id}:${user}`, { user_id: user, is_guest: false, ...m })] : []),
+  ];
+  const daily = meta("daily_challenge", "bot", {
+    parent_activity_type: "daily_challenge", parent_activity_id: "dr_1",
+    parent_stage_index: 0, parent_stage_kind: "standard",
+  });
+  const ds: AnalyticsDataset = {
+    events: [
+      ...pair("pvp", "a", meta("direct", "human")),
+      ...pair("pvp", "b", meta("direct", "human"), false),
+      ...pair("bot", "c", meta("direct", "bot")),
+      ...pair("pt", "d", meta("playtest", "bot", { session_preset: "playtest" })),
+      ...pair("sh", "e", meta("study_hall", "bot", { session_preset: "champion_fundamentals" })),
+      ...pair("dc1", "f", daily),
+      ...pair("dc2", "g", daily, false),
+      ...pair("old", "h", { metadata: { match_id: "old", is_bot_match: false, creation_source: "queue" } }),
+      ...pair("odd", "i", meta("direct", undefined)),
+      ...pair("new", "j", meta("some_future_host", "bot")),
+      // A browser row claiming a Ranked start is never counted anywhere.
+      web("ranked_started", NOW - HOUR, "V", "s", { user_id: "z", ...meta("direct", "human") }),
+    ],
+    sessions: [sess("s", "V", NOW - HOUR)],
+    visitors: [vis("V", NOW - HOUR)],
+  };
+  const r = computeRankedByHost(ds, r7);
+  const bucket = Object.fromEntries(r.rows.map((row) => [row.bucket.id, row]));
+
+  it("classifies direct human, direct bot, Playtest, Study Hall and Daily child", () => {
+    expect(bucket.direct_pvp.started).toBe(2);
+    expect(bucket.direct_pvp.completed).toBe(1);
+    expect(bucket.direct_bot.started).toBe(1);
+    expect(bucket.playtest.started).toBe(1);
+    expect(bucket.study_hall.started).toBe(1);
+    expect(bucket.daily_challenge.started).toBe(2);
+    expect(bucket.daily_challenge.completed).toBe(1);
+    expect(bucket.daily_challenge.startedUsers).toBe(2);
+  });
+
+  it("puts missing or unrecognised host provenance in Legacy / unknown, never guessed", () => {
+    // pre-provenance row, a direct row with no opponent_type, an unknown host.
+    expect(bucket.legacy_unknown.started).toBe(3);
+    expect(bucket.legacy_unknown.bucket.label).toBe("Legacy / unknown host");
+    expect(rankedHostBucket({ metadata: null })).toBe("legacy_unknown");
+  });
+
+  it("counts only Railway rows, and the buckets sum to the canonical total", () => {
+    expect(r.total.started).toBe(10); // the browser 'ranked_started' is excluded
+    expect(r.rows.reduce((n, row) => n + row.started, 0)).toBe(r.total.started);
+    expect(r.rows.reduce((n, row) => n + row.completed, 0)).toBe(r.total.completed);
+    const rankedBranch = computeGameplay(ds, r7).find((m) => m.mode.id === "ranked")!;
+    expect(rankedBranch.started).toBe(r.total.started);
+    expect(rankedBranch.completed).toBe(r.total.completed);
+  });
+
+  it("keeps Daily children in the canonical total without letting them masquerade as Direct Ranked", () => {
+    expect(r.total.started).toBeGreaterThanOrEqual(bucket.daily_challenge.started);
+    expect(bucket.direct_pvp.started + bucket.direct_bot.started).toBe(3);
+    expect(bucket.direct_pvp.bucket.label).toBe("Direct Ranked — human opponent");
+    expect(bucket.daily_challenge.bucket.definition).toMatch(/not the Daily completing/i);
+  });
+
+  it("does not present DSA as current gameplay; standalone mastery is explicitly legacy", () => {
+    const presented = computeGameplay(ds, r7).map((m) => m.mode);
+    expect(presented.some((m) => m.id === "dsa" || /score attack/i.test(m.label))).toBe(false);
+    const mastery = presented.find((m) => m.id === "mastery")!;
+    expect(mastery.presentation).toBe("legacy");
+    expect(mastery.label).toBe("Legacy Champion Mastery");
+    expect(mastery.grain).toMatch(/Not Mastery Journeys/);
+  });
+
+  it("invents no Daily parent or Mastery Journey lifecycle number", () => {
+    expect(UNINSTRUMENTED_ACTIVITIES.map((a) => a.id)).toEqual(["daily_challenge", "mastery_journey"]);
+    for (const a of UNINSTRUMENTED_ACTIVITIES) {
+      expect(Object.keys(a).sort()).toEqual(["id", "label", "reason"]);
+    }
+    const ids = computeGameplay(ds, r7).map((m) => m.mode.id as string);
+    expect(ids).not.toContain("mastery_journey");
+    expect(ids).not.toContain("daily_challenge");
+    expect(METRIC_DEFINITIONS.dailyChildNotDaily).toMatch(/not instrumented/);
   });
 });
 

@@ -106,11 +106,21 @@ export interface GameplayMode {
   /** Grain of one authoritative row. */
   grain: string;
   gap?: string;
+  /**
+   * USERS2.3C-Daily — how the Admin presents this branch. `current` is a live
+   * product; `legacy` is still emitted but is not the current product and is
+   * labelled so; `retired` is kept only so historical names stay governed
+   * (authority/anomaly checks, drill-downs) and is never shown as gameplay.
+   */
+  presentation: "current" | "legacy" | "retired";
 }
 
 /**
  * Independent branches. Ranked is NOT downstream of Practice, and nothing in
  * this list is ordered as a funnel.
+ *
+ * This is the full governed registry of gameplay event names, retired ones
+ * included. Presentation reads `CURRENT_GAMEPLAY_MODES`.
  */
 export const GAMEPLAY_MODES: GameplayMode[] = [
   {
@@ -120,14 +130,17 @@ export const GAMEPLAY_MODES: GameplayMode[] = [
     started: "practice_quiz_started",
     completed: "practice_quiz_completed",
     grain: "one row per quiz session",
+    presentation: "current",
   },
   {
     id: "ranked",
-    label: "Ranked",
+    label: "Ranked — canonical matches (all hosts)",
     opened: "ranked_opened",
     started: "ranked_started",
     completed: "ranked_completed",
-    grain: "one row per human participant (a duel is two)",
+    grain:
+      "one row per human participant in a canonical Ranked match, direct or nested under a host (Daily, Study Hall, Playtest); see Ranked by host",
+    presentation: "current",
   },
   {
     id: "meta_reflex",
@@ -137,24 +150,104 @@ export const GAMEPLAY_MODES: GameplayMode[] = [
     completed: null,
     grain: "—",
     gap: "No authoritative emitter: Meta Reflex truth lives in Supabase (league_swipe_results), not Railway (§20.1).",
+    presentation: "current",
   },
   {
     id: "mastery",
-    label: "Champion Mastery",
+    label: "Legacy Champion Mastery",
     opened: "mastery_opened",
     started: "mastery_started",
     completed: "mastery_completed",
-    grain: "one row per mastery session",
+    grain:
+      "one row per LEGACY standalone mastery session (/api/mastery/sessions). Not Mastery Journeys, which are served inside Ranked/Daily and have no lifecycle instrumentation yet",
+    presentation: "legacy",
   },
   {
     id: "dsa",
-    label: "Daily Score Attack",
+    label: "Daily Score Attack (retired)",
     opened: "dsa_opened",
     started: "dsa_started",
     completed: "dsa_completed",
     grain: "one row per run",
+    presentation: "retired",
   },
 ];
+
+/** The branches the Admin presents as gameplay. Retired DSA is never one of them. */
+export const CURRENT_GAMEPLAY_MODES: GameplayMode[] = GAMEPLAY_MODES.filter(
+  (m) => m.presentation !== "retired",
+);
+
+// --- Ranked by host (USERS2.3C-Daily) ---------------------------------------
+
+export type RankedHostBucketId =
+  | "direct_pvp"
+  | "direct_bot"
+  | "playtest"
+  | "study_hall"
+  | "daily_challenge"
+  | "legacy_unknown";
+
+export interface RankedHostBucket {
+  id: RankedHostBucketId;
+  label: string;
+  definition: string;
+}
+
+/**
+ * Exhaustive, disjoint classification of the SAME authoritative `ranked_*`
+ * rows by the wrapper Railway froze on the match (`metadata.host`,
+ * `metadata.opponent_type`). Nothing is duplicated and nothing is guessed: a
+ * row without a recognised host is Legacy / unknown host.
+ */
+export const RANKED_HOST_BUCKETS: RankedHostBucket[] = [
+  { id: "direct_pvp", label: "Direct Ranked — human opponent",
+    definition: "host = direct, opponent_type = human: live queue Ranked." },
+  { id: "direct_bot", label: "Direct Bot Ranked",
+    definition: "host = direct, opponent_type = bot: a plain bot match. Unrated." },
+  { id: "playtest", label: "Playtest",
+    definition: "host = playtest: a Playtest-family preset (metadata.session_preset) against a bot. Unrated." },
+  { id: "study_hall", label: "Study Hall",
+    definition: "host = study_hall: a Study Hall drill (metadata.session_preset) against a bot. Unrated." },
+  { id: "daily_challenge", label: "Daily Challenge child matches",
+    definition:
+      "host = daily_challenge: one Daily stage's Ranked child (metadata.parent_activity_id = run, parent_stage_index/kind = stage). A child completing is NOT the Daily completing. Unrated." },
+  { id: "legacy_unknown", label: "Legacy / unknown host",
+    definition:
+      "No recognised metadata.host (rows recorded before host provenance existed — Daily children were not emitted then). Not guessed into another bucket." },
+];
+
+export function rankedHostBucket(e: Pick<AnalyticsEventRecord, "metadata">): RankedHostBucketId {
+  const host = e.metadata?.host;
+  const opponent = e.metadata?.opponent_type;
+  if (host === "direct") {
+    if (opponent === "human") return "direct_pvp";
+    if (opponent === "bot") return "direct_bot";
+    return "legacy_unknown";
+  }
+  if (host === "playtest" || host === "study_hall" || host === "daily_challenge") return host;
+  return "legacy_unknown";
+}
+
+/**
+ * Activities whose lifecycle is NOT instrumented yet. Presented as
+ * unavailable with the reason — never as zero, and never approximated from
+ * child Ranked rows.
+ */
+export const UNINSTRUMENTED_ACTIVITIES = [
+  {
+    id: "daily_challenge",
+    label: "Daily Challenge (parent run)",
+    reason:
+      "No parent-run lifecycle events yet (USERS2.3D). Daily child Ranked matches are counted under Ranked by host, but a child completing is not the Daily completing.",
+  },
+  {
+    id: "mastery_journey",
+    label: "Mastery Journey",
+    reason:
+      "Journeys are served inside Ranked/Daily and have no durable instance id or lifecycle events yet. Legacy Champion Mastery rows do not measure them.",
+  },
+] as const;
 
 export const MODE_OPEN_EVENTS = GAMEPLAY_MODES.map((m) => m.opened);
 
@@ -181,6 +274,12 @@ export const METRIC_DEFINITIONS = {
   signups: "signup_completed events in range (one per account, deduped at the emitter).",
   d1: "Of visitors first seen in range and at least 48h ago: share with a session starting 24–48h after first seen.",
   d7: "Of visitors first seen in range and at least 8 days ago: share with a session starting 7–8 days after first seen.",
+  rankedCanonical:
+    "Railway ranked_started / ranked_completed rows, one per human participant in a canonical Ranked match. A canonical Ranked match is not its parent wrapper: Daily, Study Hall and Playtest matches are counted here AND labelled by host below.",
+  rankedByHost:
+    "The same rows split by metadata.host / opponent_type. Buckets are disjoint and sum to the canonical total. Rows without host provenance are Legacy / unknown host, never guessed.",
+  dailyChildNotDaily:
+    "A Daily child match completing is not the Daily Challenge completing. Daily parent-run lifecycle is not instrumented yet.",
 } as const;
 
 // --- Rates -----------------------------------------------------------------
@@ -523,7 +622,7 @@ export interface ModeMetrics {
 export function computeGameplay(ds: AnalyticsDataset, range: AnalyticsRange): ModeMetrics[] {
   const web = webEventsInRange(ds, range);
   const railway = railwayEventsInRange(ds, range);
-  return GAMEPLAY_MODES.map((mode) => {
+  return CURRENT_GAMEPLAY_MODES.map((mode) => {
     const opens = web.filter((e) => e.event_name === mode.opened);
     const openedVisitors = new Set(opens.map((e) => e.visitor_id).filter(Boolean)).size;
     if (!mode.started || !mode.completed) {
@@ -553,6 +652,51 @@ export function computeGameplay(ds: AnalyticsDataset, range: AnalyticsRange): Mo
       completion: { numerator: completes.length, denominator: starts.length },
     };
   });
+}
+
+export interface RankedHostRow {
+  bucket: RankedHostBucket;
+  started: number;
+  startedUsers: number;
+  completed: number;
+  completion: Rate;
+}
+
+export interface RankedByHostMetrics {
+  /** Canonical Ranked, every host: equals the Ranked branch's started/completed. */
+  total: { started: number; startedUsers: number; completed: number; completion: Rate };
+  rows: RankedHostRow[];
+}
+
+/**
+ * Canonical Ranked split by host. Railway-authoritative rows only (the same
+ * authority rule as every gameplay count); each row lands in exactly one
+ * bucket, classified from its own frozen metadata.
+ */
+export function computeRankedByHost(ds: AnalyticsDataset, range: AnalyticsRange): RankedByHostMetrics {
+  const railway = railwayEventsInRange(ds, range);
+  const starts = railway.filter((e) => e.event_name === "ranked_started");
+  const completes = railway.filter((e) => e.event_name === "ranked_completed");
+  const users = (rows: AnalyticsEventRecord[]) => new Set(rows.map((e) => e.user_id).filter(Boolean)).size;
+  return {
+    total: {
+      started: starts.length,
+      startedUsers: users(starts),
+      completed: completes.length,
+      completion: { numerator: completes.length, denominator: starts.length },
+    },
+    rows: RANKED_HOST_BUCKETS.map((bucket) => {
+      const s = starts.filter((e) => rankedHostBucket(e) === bucket.id);
+      const c = completes.filter((e) => rankedHostBucket(e) === bucket.id);
+      return {
+        bucket,
+        started: s.length,
+        startedUsers: users(s),
+        completed: c.length,
+        completion: { numerator: c.length, denominator: s.length },
+      };
+    }),
+  };
 }
 
 // --- Accounts --------------------------------------------------------------
