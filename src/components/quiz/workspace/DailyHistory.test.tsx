@@ -363,9 +363,10 @@ describe("HUB4 Stage — one component, ruleset-aware facts", () => {
     expect(within(tt).getByTestId("daily-stage-ended").textContent).toContain("bank ran out");
     expect(within(tt).queryByTestId("daily-stage-score")).toBeNull();
     const focus = openStage(runs()[0], "time_trial");
-    // The lane under the bank, ending on the bank.
-    expect(within(focus).getByTestId("stage-lane")).toBeTruthy();
-    expect(within(focus).getByTestId("stage-lane-end").textContent).toContain("bank ran out");
+    // HUB6.3E: without HUB6.3B analytics the stage lists its exact questions
+    // (HUB6.2's lane is gone — one analytics system).
+    expect(within(focus).getAllByTestId("stage-question-card")).toHaveLength(8);
+    expect(within(focus).queryByTestId("stage-lane")).toBeNull();
     // HUB6.3D: the row's quick facts say "questions played", never "settled".
     const facts = within(runs()[0]).getByTestId("stage-local-facts");
     expect(within(facts).getByTestId("stage-fact-played").textContent).toContain("6 / 8");
@@ -377,8 +378,8 @@ describe("HUB4 Stage — one component, ruleset-aware facts", () => {
     const [, , survival] = await load();
     expect(within(survival).getByTestId("daily-stage-ended").textContent).toContain("out of mistakes");
     const focus = openStage(runs()[0], "survival");
-    expect(within(focus).getByTestId("stage-survival-path")).toBeTruthy();
-    expect(within(focus).getByTestId("stage-survival-end").textContent).toContain("out of mistakes");
+    expect(within(focus).queryByTestId("stage-survival-path")).toBeNull();
+    expect(within(focus).getAllByTestId("stage-question-card").length).toBeGreaterThan(0);
     expect(within(focus).getByTestId("stage-analysis-strikes").textContent).toContain("2 of 3");
     expect(within(focus).getByTestId("stage-analysis-depth").textContent).toContain("9");
     // The DTO does not say which occurrence produced a strike: nothing claims it.
@@ -667,11 +668,13 @@ describe("HUB4 analytics — the server's numbers, and only them", () => {
     expect(within(analysis).getByTestId("daily-analysis-average").textContent).toContain("12%");
     expect(within(analysis).getByTestId("daily-analysis-average").textContent).toContain("4 earlier runs");
     expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toContain("−33 points");
-    expect(within(analysis).getByTestId("daily-analysis-best").textContent).toContain("60");
+    // HUB6.3E: the raw Daily score is never shown as a personal best.
+    expect(within(analysis).queryByTestId("daily-analysis-best")).toBeNull();
     // HUB6.1: Review recovery is not a Daily headline figure.
     expect(within(analysis).queryByTestId("daily-analysis-recovery")).toBeNull();
     const line = within(analysis).getByTestId("history-trajectory");
-    expect(line.dataset.direction).toBe("up");
+    // HUB6.3E: no Up / Down / Stable verdict on the line.
+    expect(line.dataset.direction).toBeUndefined();
     expect(within(line).getByRole("img").getAttribute("aria-label")).toContain("33%, 67%, 67%, 100%, 67%");
   });
 
@@ -1069,18 +1072,19 @@ describe("HUB6.2 — one Daily entry that grows: History → Daily → Stage →
     }
   });
 
-  it("Standard's analytics follow HUB2.1 rounds: one node per round, module questions kept together, no points", async () => {
+  it("Standard's questions follow HUB2.1 rounds: one card per round, module questions kept together, no points", async () => {
     await load([
       wireRun("a", ["standard"], {
         stages: [{ occurrences: [[1, 0], [2, 0], [2, 1], [3, 0]], correct: 3, capability: { state: "available", reason_code: null }, analytics: stageAnalytics("standard") }],
       }),
     ]);
     openStage(runs()[0], "standard");
-    const nodes = within(within(runs()[0]).getByTestId("stage-course")).getAllByTestId("stage-path-node");
-    expect(nodes.map((n) => n.dataset.round)).toEqual(["1", "2", "3"]);
-    expect(nodes[1].textContent).toContain("2/2");
-    expect(nodes[1].dataset.outcome).toBe("correct");
-    expect(nodes[2].dataset.outcome).toBe("incorrect");
+    // A HUB2.3-shaped stage (no HUB6.3B analytics): its exact questions, one
+    // card per round; the module's two questions stay one card.
+    const cards = within(runs()[0]).getAllByTestId("stage-question-card");
+    expect(cards).toHaveLength(3);
+    expect(cards[1].dataset.outcome).toBe("correct");
+    expect(cards[2].dataset.outcome).toBe("incorrect");
     expect(within(runs()[0]).getByTestId("stage-analytics").textContent).not.toMatch(/\bpts\b|points/i);
   });
 });
@@ -1123,7 +1127,6 @@ describe("HUB6.1 — reduced motion", () => {
     document.documentElement.classList.add("reduce-motion");
     const analysis = await openFocus();
     expect(currentScale(analysis)).toContain("scale(1)");
-    expect(within(analysis).getByTestId("daily-analysis-best").textContent).toContain("60");
     expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toMatch(/\d+ points?/);
   });
 

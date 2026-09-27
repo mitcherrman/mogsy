@@ -1,6 +1,13 @@
 /**
- * HUB4 → HUB6.1 — the Premium analytics of a Daily (its Overview) and of a
- * Stage (its ruleset facts), inside Daily Focus.
+ * HUB4 → HUB6.1 → HUB6.3E — the Daily Overview's analytics, inside the
+ * expanded Daily.
+ *
+ * HUB6.3E: a payload with HUB6.3B personal analytics renders the Premium
+ * analytics room (`analytics/DailyOverview`). An older HUB2.3 payload keeps
+ * the accuracy history below, minus two things HUB6.3E removed everywhere:
+ * the raw Daily-score "personal best" (Review awards points after misses, so
+ * the total is not a performance record) and the Up / Down / Stable label.
+ * A Free reader keeps this Daily's own facts above the one invitation.
  *
  * WHAT EACH LAYER OWNS (HUB6.1, owner-locked)
  * ───────────────────────────────────────────
@@ -33,7 +40,7 @@
  * never reads as "zero" or as "bad".
  */
 import { Link } from "react-router-dom";
-import { Lock, MoveRight, TrendingDown, TrendingUp, Trophy } from "lucide-react";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import {
@@ -42,25 +49,23 @@ import {
   FRAME_INK,
   TrajectoryChart,
 } from "@/components/quiz/workspace/historyVisuals";
-import { DAILY_TONE } from "@/components/quiz/workspace/stageTheme";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import {
   RUN_METRIC_LABELS,
-  TRAJECTORY_LABEL,
   insufficientReasonText,
-  instantDateLabel,
   percent,
   signedPoints,
+  stageKindLabel,
   sufficiencyText,
 } from "@/components/quiz/workspace/historyFormat";
-import { accuracyComparison } from "@/components/quiz/workspace/historyComparisons";
+import { accuracyComparison, correctOfPlayed } from "@/components/quiz/workspace/historyComparisons";
+import DailyOverview from "@/components/quiz/workspace/analytics/DailyOverview";
+import { coreStreak } from "@/components/quiz/workspace/analytics/derive";
 import type {
   AnalyticsCapability,
   DailyAnalytics,
   DailyHistoryRecord,
-  HistoryStage,
   Metric,
-  PersonalBest,
   Trajectory,
 } from "@/lib/history/contracts";
 
@@ -141,8 +146,6 @@ const AVERAGE_DASH = (
   />
 );
 
-const TREND_ICON = { up: TrendingUp, down: TrendingDown, stable: MoveRight } as const;
-
 /**
  * The Daily's accuracy history: the server's fitted trajectory — the last
  * compatible completed runs, oldest first, this run last — on a fixed 0–100%
@@ -182,72 +185,15 @@ function AccuracyHistory({
       </div>
     );
   }
-  const Icon = TREND_ICON[t.direction];
   const summary = t.values.map((v) => percent(v)).join(", ");
   return (
-    <div className="min-w-0" data-testid="history-trajectory" data-direction={t.direction}>
+    <div className="min-w-0" data-testid="history-trajectory">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <Caption>Trend · last {t.values.length} runs</Caption>
-        <span
-          className="inline-flex items-center gap-1 text-[14px] font-bold leading-none"
-          style={{ color: LEAGUECRAFT_INK.strong, textShadow: LEAGUECRAFT_INK.press }}
-        >
-          <Icon className="h-4 w-4" style={{ color: LEAGUECRAFT_INK.accent }} aria-hidden="true" />
-          {TRAJECTORY_LABEL[t.direction]}
-        </span>
+        <Caption>Accuracy · last {t.values.length} runs</Caption>
       </div>
       <div role="img" aria-label={`Accuracy over your last ${t.values.length} matching runs, oldest first: ${summary}`}>
         <TrajectoryChart values={t.values} average={average} progress={progress} height="h-[11rem]" />
       </div>
-    </div>
-  );
-}
-
-/** The personal best, as a crest: the score under a trophy, gilded when this
- *  run holds it. */
-function PersonalBestCrest({ best, progress }: { best: Metric<PersonalBest>; progress: number }) {
-  const b = best.value;
-  if (!b) {
-    return (
-      <div className="flex min-w-0 items-center gap-3" data-testid="history-pending-best" data-pending="true">
-        <span
-          aria-hidden="true"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-dashed"
-          style={{ borderColor: FRAME_INK, color: FRAME_INK }}
-        >
-          <Trophy className="h-5 w-5" />
-        </span>
-        <Figure pending label={RUN_METRIC_LABELS.personalBest} hint={sufficiencyText(best.sufficiency)} />
-      </div>
-    );
-  }
-  const current = b.isCurrent;
-  return (
-    <div className="flex min-w-0 items-center gap-3" data-testid="daily-analysis-best" data-current={current ? "true" : "false"}>
-      <span
-        aria-hidden="true"
-        className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 transition-transform duration-300 motion-reduce:transition-none"
-        style={{
-          borderColor: DAILY_TONE.edge,
-          background: current ? "radial-gradient(circle at 35% 30%, #f6df9a, #c49a3c 70%)" : DAILY_TONE.tint,
-          color: current ? "#3a2708" : DAILY_TONE.ink,
-          boxShadow: current ? "0 0 0 3px rgba(196,154,60,0.25), inset 0 1px 0 rgba(255,249,233,0.6)" : undefined,
-          transform: `scale(${0.8 + 0.2 * progress})`,
-        }}
-      >
-        <Trophy className="h-5 w-5" />
-      </span>
-      <Figure
-        label={RUN_METRIC_LABELS.personalBest}
-        value={<Counted value={b.score} progress={progress} format={(v) => String(Math.round(v))} />}
-        hint={
-          current
-            ? b.tied
-              ? `this run · tied, first on ${instantDateLabel(b.earliestCompletedAt)}`
-              : "this run"
-            : instantDateLabel(b.earliestCompletedAt)
-        }
-      />
     </div>
   );
 }
@@ -317,6 +263,40 @@ export function hasExpansion(capability: AnalyticsCapability): boolean {
   return capability.state !== "not_applicable";
 }
 
+// ------------------------------------------------------------ Free facts
+
+/**
+ * This Daily's own facts — Free (owner tier rule): correct / questions
+ * played, accuracy, and the Core longest streak with the stage that produced
+ * it (the max of the three core stages' own Free streaks).
+ */
+export function FreeDailyFacts({ record }: { record: DailyHistoryRecord }) {
+  const streak = coreStreak(record);
+  const item = (label: string, value: React.ReactNode, testId: string, aria?: string) => (
+    <div className="min-w-0" data-testid={testId} aria-label={aria}>
+      <Caption>{label}</Caption>
+      <div className="mt-0.5 text-[16px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{value}</div>
+    </div>
+  );
+  return (
+    <div className="flex flex-wrap gap-x-6 gap-y-2" data-testid="daily-free-facts">
+      {item("Correct", `${record.basic.correct} / ${record.basic.questionsPlayed}`, "free-correct",
+        correctOfPlayed(record.basic.correct, record.basic.questionsPlayed))}
+      {item("Accuracy", percent(record.basic.accuracy) ?? "—", "free-accuracy")}
+      {streak && item(
+        "Core longest streak",
+        <>
+          {streak.length}
+          <span className="ml-1.5 text-[11px] font-bold" style={{ color: LEAGUECRAFT_INK.faint }}>
+            {streak.kinds.map(stageKindLabel).join(", ")}
+          </span>
+        </>,
+        "free-core-streak",
+      )}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------ Daily Overview
 
 /**
@@ -348,15 +328,26 @@ export function DailyRunAnalysis({
     </section>
   );
 
-  if (capability.state === "upgrade_required") return shell(<PremiumInvitation testId="daily-analysis-upgrade" />);
+  if (capability.state === "upgrade_required") {
+    // Free: this Daily's own facts stay; the analysis is invited once.
+    return shell(
+      <div className="space-y-3">
+        <FreeDailyFacts record={record} />
+        <PremiumInvitation testId="daily-analysis-upgrade" />
+      </div>,
+    );
+  }
   if (capability.state === "temporarily_unavailable") {
     return shell(<Unavailable onRetry={onRetry} testId="daily-analysis-unavailable" />);
   }
   if (!analytics) {
     return shell(<Insufficient text={insufficientReasonText(capability.reasonCode)} testId="daily-analysis-insufficient" />);
   }
-  // `insufficient_evidence` with analytics and `available` share one layout:
-  // every comparison has its place, filled or waiting on its count.
+  // HUB6.3E: the Premium analytics room, whenever HUB6.3B's personal block
+  // is on the wire. `insufficient_evidence` and `available` share it: every
+  // section says what it has, or that this is the first attempt.
+  if (analytics.personal) return shell(<DailyOverview record={record} analytics={analytics} />);
+  // An older (HUB2.3) payload: its accuracy history, as before.
   return shell(<OverviewBody record={record} analytics={analytics} progress={reveal.progress} />);
 }
 
@@ -411,8 +402,6 @@ function OverviewBody({
         ) : (
           <Figure testId="history-pending-delta" pending label="Previous Daily" hint={sufficiencyText(delta.sufficiency)} />
         )}
-
-        <PersonalBestCrest best={a.personalBest} progress={figure} />
 
         {average.value !== null ? (
           <Figure

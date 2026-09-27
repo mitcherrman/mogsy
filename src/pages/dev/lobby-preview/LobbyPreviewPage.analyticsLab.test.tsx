@@ -146,8 +146,9 @@ describe("Analytics Lab — terminology", () => {
   it("the Daily overview compares accuracy in points, never pp", async () => {
     const [latest] = await openLab();
     fireEvent.click(within(latest).getByTestId("daily-analysis-toggle"));
-    const delta = await within(latest).findByTestId("daily-analysis-delta");
-    expect(delta.textContent).toMatch(/points?/);
+    // HUB6.3E: the previous-Daily comparison is the room's change chips.
+    const delta = await within(latest).findByTestId("daily-change-accuracy");
+    expect(delta.textContent).toMatch(/\d+ points? (higher|lower)|Same accuracy/);
     expect(delta.textContent).toMatch(/\d+% vs \d+%/);
     expect(latest.textContent).not.toMatch(/\bpp\b/);
   });

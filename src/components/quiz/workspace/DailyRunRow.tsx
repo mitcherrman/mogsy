@@ -40,7 +40,7 @@
  * wraps: the name first, then the result and the question rail indented past
  * the spine. Nothing has a width that can push the page sideways.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionTimeline from "@/components/quiz/workspace/QuestionTimeline";
@@ -48,8 +48,12 @@ import { buildStageViewModel } from "@/components/quiz/workspace/historyViewMode
 import {
   HistoryHighlightProvider,
   useHistoryHighlight,
-  useStageHighlight,
+  useStageHighlightState,
 } from "@/components/quiz/workspace/historyHighlight";
+import type { RoundVM } from "@/components/quiz/workspace/historyViewModel";
+import QuestionContext from "@/components/quiz/workspace/analytics/QuestionContext";
+import { CohortProvider } from "@/components/quiz/workspace/analytics/population";
+import { HighlightBar } from "@/components/quiz/workspace/analytics/roomParts";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { relativeMatchAge } from "@/components/quiz/workspace/RankedMatchRow";
 import { DailyRunAnalysis, hasExpansion } from "@/components/quiz/workspace/HistoryAnalysis";
@@ -152,12 +156,14 @@ function FocusToggle({
 }
 
 function StageRow({
+  record,
   stage,
   review,
   selected,
   dimmed,
   onSelect,
 }: {
+  record: DailyHistoryRecord;
   stage: HistoryStage;
   review: MatchReviewView | null;
   /** This stage is the one the analytics region shows. */
@@ -175,7 +181,13 @@ function StageRow({
   const played = stage.basic.answered > 0;
   // HUB6.3D: the History track reads each position's result from the DTO.
   const view = useMemo(() => buildStageViewModel(stage), [stage]);
-  const highlight = useStageHighlight(stage.stageId);
+  const highlight = useStageHighlightState(stage.stageId);
+  // HUB6.3E: a question's factual History context under its review card
+  // (Free facts for everyone; Premium lines where the server sent them).
+  const detail = useCallback(
+    (round: RoundVM) => <QuestionContext record={record} stage={stage} round={round} />,
+    [record, stage],
+  );
 
   return (
     <li
@@ -297,7 +309,13 @@ function StageRow({
             review={review}
             // A legacy stage without round ordinals keeps the Ranked track:
             // nothing may hold a position the record cannot place (HUB4.1).
-            history={stage.rounds ? { rounds: view.rounds, size: selected ? "selected" : "row", highlight } : undefined}
+            history={stage.rounds ? {
+              rounds: view.rounds,
+              size: selected ? "selected" : "row",
+              highlight: highlight?.ids ?? null,
+              locked: highlight?.locked ?? false,
+              detail,
+            } : undefined}
           />
         )}
       </div>
@@ -536,6 +554,7 @@ function DailyRunEntry({
           {record.stages.map((stage) => (
             <StageRow
               key={stage.stageId}
+              record={record}
               stage={stage}
               review={reviewFor(stage.reviewMatchId)}
               selected={selected?.stageId === stage.stageId}
@@ -569,10 +588,17 @@ function DailyRunEntry({
             Daily Overview
           </button>
         )}
+        {/* A chart's locked selection, where the lit rails are. */}
+        {expanded && (
+          <div className="basis-full empty:hidden">
+            <HighlightBar />
+          </div>
+        )}
       </div>
 
       {/* ── The analytics region, grown out of the entry ──────────────── */}
       {regionMounted && regionHasContent && (
+        <CohortProvider>
         <div
           className={`history-region grid ${regionOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           data-open={regionOpen ? "true" : "false"}
@@ -589,6 +615,7 @@ function DailyRunEntry({
               <div key={focus ?? "closed"} className={`history-canvas-in history-canvas-in--${direction}`}>
                 {selected ? (
                   <StageAnalyticsView
+                    record={record}
                     stage={selected}
                     review={reviewFor(selected.reviewMatchId)}
                     onRetry={onRetry}
@@ -601,6 +628,7 @@ function DailyRunEntry({
             </section>
           </div>
         </div>
+        </CohortProvider>
       )}
     </li>
   );

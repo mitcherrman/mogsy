@@ -140,15 +140,19 @@ describe("Daily → Stage → Question", () => {
 });
 
 describe("Premium gates analysis only; the other states are not a paywall", () => {
-  it("8, 17 — Premium opens the strong run's Daily Focus: tied best, trend; no signals, no recovery tile (HUB6.1)", async () => {
+  it("8, 17 — Premium opens the strong run's Daily Focus: accuracy history; no raw-score best, no signals, no recovery tile", async () => {
     renderPreview();
     await waitFor(() => expect(runRows()).toHaveLength(10));
     const latest = runRows()[0];
     fireEvent.click(within(latest).getByTestId("daily-analysis-toggle"));
     const analysis = within(latest).getByTestId("daily-analysis");
     expect(analysis).toHaveAttribute("data-state", "available");
-    expect(within(analysis).getByTestId("daily-analysis-best")).toHaveTextContent(/tied/);
-    expect(within(analysis).getByTestId("history-trajectory")).toHaveAttribute("data-direction", "up");
+    // HUB6.3E: the raw Daily score is not a performance record (Review awards
+    // points after misses) — no "personal best" tile, anywhere.
+    expect(within(analysis).queryByTestId("daily-analysis-best")).toBeNull();
+    expect(within(analysis).queryByText(/personal best/i)).toBeNull();
+    // The HUB2.3 accuracy history stays, without an Up / Down / Stable verdict.
+    expect(within(analysis).getByTestId("history-trajectory")).not.toHaveAttribute("data-direction");
     // HUB6.1: Review recovery and the learning-signal labels (recurring /
     // recovered weakness) are not launch presentation. The golden still
     // carries them; nothing renders them.
@@ -159,15 +163,14 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     expect(within(analysis).queryByText(/amazing|great job|crushing|well done/i)).toBeNull();
   });
 
-  it("F — down and stable trends render as the server labelled them", async () => {
+  it("F — accuracy history draws for every run with no trend verdict (HUB6.3E: Up / Down / Stable removed)", async () => {
     renderPreview();
     await waitFor(() => expect(runRows()).toHaveLength(10));
-    const direction = (i: number) => {
+    for (const i of [1, 2]) {
       fireEvent.click(within(runRows()[i]).getByTestId("daily-analysis-toggle"));
-      return within(runRows()[i]).getByTestId("history-trajectory").getAttribute("data-direction");
-    };
-    expect(direction(1)).toBe("stable"); // run 10
-    expect(direction(2)).toBe("down"); // run 9
+      const trend = within(runRows()[i]).getByTestId("history-trajectory");
+      expect(trend.textContent).not.toMatch(/\b(Up|Down|Stable)\b/);
+    }
   });
 
   it("E, J — the poor run states its drop and its failed replay, without judgment", async () => {
@@ -194,7 +197,7 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     fireEvent.click(within(survival).getByTestId("stage-analysis-toggle"));
     const focus = runRows()[2];
     expect(within(focus).getByTestId("stage-analysis-strikes")).toHaveTextContent("3 of 3");
-    expect(within(focus).getByTestId("stage-survival-end")).toHaveTextContent("out of mistakes");
+    expect(within(survival).getByTestId("daily-stage-ended")).toHaveTextContent("out of mistakes");
   });
 
   it("8, N — Free: one invitation per run, no stage-level upsells, basic record intact", async () => {
@@ -357,16 +360,17 @@ describe("HUB6.2 — full-length stages stay navigable (real HUB2.3 golden)", ()
     return [...seen].sort((a, b) => a - b);
   };
 
-  it("13 — a 28-question Time Trial: every question reachable on its rail and drawn in the lane, ending on its bank", async () => {
+  it("13 — a 28-question Time Trial: every question reachable on its rail and listed below it, ending on its bank", async () => {
     const run = await openFull();
     const tt = row(run, "time_trial");
     expect(within(tt).getByTestId("question-timeline").dataset.total).toBe("28");
     expect(walkRail(tt)).toEqual(Array.from({ length: 28 }, (_, i) => i + 1));
     fireEvent.click(within(tt).getByTestId("stage-analysis-toggle"));
-    const lane = within(run).getByTestId("stage-lane");
-    expect(lane.dataset.rounds).toBe("28");
-    expect(within(lane).getAllByTestId("stage-path-node")).toHaveLength(28);
-    expect(within(lane).getByTestId("stage-lane-end")).toHaveTextContent("bank ran out");
+    // HUB6.3E: a HUB2.3 payload has no analytics room; its stage lists its
+    // exact questions (HUB6.2's lane is gone — one analytics system).
+    expect(within(run).getAllByTestId("stage-question-card")).toHaveLength(28);
+    expect(within(run).queryByTestId("stage-lane")).toBeNull();
+    expect(within(tt).getByTestId("daily-stage-ended")).toHaveTextContent("bank ran out");
     // HUB6.3D: "questions played", never "settled".
     expect(within(tt).getByTestId("stage-fact-played")).toHaveTextContent(/\/ 28$/);
     expect(tt.textContent).not.toMatch(/settled/i);
@@ -379,27 +383,25 @@ describe("HUB6.2 — full-length stages stay navigable (real HUB2.3 golden)", ()
     const std = row(run, "standard");
     expect(walkRail(std)).toEqual(Array.from({ length: 10 }, (_, i) => i + 1));
     fireEvent.click(within(std).getByTestId("stage-analysis-toggle"));
-    const nodes = within(within(run).getByTestId("stage-course")).getAllByTestId("stage-path-node");
-    expect(nodes.map((n) => n.dataset.module)).toEqual([
-      "quiz", "quiz", "quiz", "quiz", "meta_reflex", "quiz", "quiz", "quiz", "meta_reflex", "mastery_slice",
-    ]);
-    expect(nodes[4]).toHaveTextContent("Meta Reflex");
-    expect(nodes[4]).toHaveTextContent("4/5");
-    expect(nodes[9]).toHaveTextContent("Mastery");
-    expect(nodes[9]).toHaveTextContent("3/4");
-    // A module with no proven art wears its module sigil, never "?".
-    expect(within(nodes[9]).getByTestId("module-sigil").dataset.module).toBe("mastery_slice");
+    expect(within(run).getAllByTestId("stage-question-card")).toHaveLength(10);
+    // The rail is the module map: every module in place, its C / played on
+    // its badge.
+    const icons = within(std).getAllByTestId("timeline-icon");
+    expect(icons).toHaveLength(10);
+    expect(within(icons[4]).getByTestId("timeline-badge")).toHaveTextContent("4/5");
+    expect(within(icons[9]).getByTestId("timeline-badge")).toHaveTextContent("3/4");
   });
 
   it("a long Survival: mixed single and multi-question rounds, three strikes counted, none pinned to a question", async () => {
     const run = await openFull();
     const surv = row(run, "survival");
     fireEvent.click(within(surv).getByTestId("stage-analysis-toggle"));
-    const nodes = within(within(run).getByTestId("stage-survival-path")).getAllByTestId("stage-path-node");
-    expect(nodes).toHaveLength(8);
+    expect(within(run).getAllByTestId("stage-question-card")).toHaveLength(8);
     expect(within(surv).getByTestId("stage-analysis-strikes")).toHaveTextContent("3 of 3");
     expect(within(surv).getByTestId("stage-analysis-depth")).toHaveTextContent("13");
-    expect(within(run).getByTestId("stage-survival-end")).toHaveTextContent("out of mistakes");
+    expect(within(surv).getByTestId("daily-stage-ended")).toHaveTextContent("out of mistakes");
+    // A HUB2.3 payload has no per-question strike markers: none is pinned.
+    expect(within(surv).queryAllByTestId("timeline-strike")).toHaveLength(0);
     expect(run.textContent).not.toMatch(/strike \d|struck/i);
   });
 });
