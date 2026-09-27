@@ -32,6 +32,7 @@ import { currentStage } from "@/lib/daily-challenge/run/contracts";
 import {
   DailyRunApiError, isDailyRunAborted, type DailyRunTransport,
 } from "@/lib/daily-challenge/run/client";
+import { newInteractionId } from "@/lib/analytics/correlation";
 import {
   DAILY_INTRO_MS, STAGE_INTRO_MIN_MS,
   projectDailyFlow, stageCompletedBetween, type DailyFlowView,
@@ -121,6 +122,13 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
   /** Child matches THIS mount created — the only fresh entries there are. */
   const freshChildren = useRef<Set<string>>(new Set());
   const launchAttempts = useRef<Map<string, number>>(new Map());
+  /**
+   * USERS2.3C-Daily — one browser interaction id per stage launch. The bounded
+   * automatic retries and the player's Retry are the SAME logical launch (the
+   * server's `launch_id` is per stage too), so they reuse it rather than each
+   * minting a meaningless new interaction. The server freezes the first one.
+   */
+  const launchInteractions = useRef<Map<string, string>>(new Map());
   const launching = useRef(false);
   const syncing = useRef(false);
   const lastLiveRead = useRef(0);
@@ -243,9 +251,14 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
     const attempts = launchAttempts.current.get(s.id) ?? 0;
     if (attempts >= MAX_LAUNCH_ATTEMPTS) return;
     launchAttempts.current.set(s.id, attempts + 1);
+    let interactionId = launchInteractions.current.get(s.id);
+    if (!interactionId) {
+      interactionId = newInteractionId();
+      launchInteractions.current.set(s.id, interactionId);
+    }
     launching.current = true;
     try {
-      const next = await ask(() => transport.launchStage(r.runId, s.index));
+      const next = await ask(() => transport.launchStage(r.runId, s.index, undefined, interactionId));
       const child = next ? next.stages[s.index]?.childMatchId : null;
       if (child) freshChildren.current.add(child);
     } finally {

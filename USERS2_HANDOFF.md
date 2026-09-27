@@ -36,13 +36,11 @@ USERS2.3A changes no database schema, event emission, Admin calculation, Railway
 
 ## Follow-up ownership
 
-### USERS2.3B — browser/Supabase session intelligence — complete/on main; production migration NOT applied
+### USERS2.3B — browser/Supabase session intelligence — complete/on main; production migration applied
 
-Owns active time, session state, release context, and the durable same-browser identity link. Its migration is committed for review but has not been applied. Implementation details are recorded in `docs/USERS2_3B_SESSION_INTELLIGENCE.md`. It may consume the lifecycle registry but must not independently redefine activity ids, entity grains or lifecycle semantics.
+Owns active time, session state, release context, and the durable same-browser identity link. Its production Supabase migration has been applied (by the owner, outside these slices). Implementation details are recorded in `docs/USERS2_3B_SESSION_INTELLIGENCE.md`. It may consume the lifecycle registry but must not independently redefine activity ids, entity grains or lifecycle semantics.
 
-### USERS2.3C — browser → Railway correlation — frontend complete on integration branch
-
-Frontend integration branch: `codex/users2-3c-main-integration`.
+### USERS2.3C — browser → Railway correlation — on main (frontend) / master (backend)
 
 The browser now adds observability-only `visitor_id`, `session_id`, and
 `interaction_id` correlation to the existing Practice, Ranked and Mastery
@@ -52,11 +50,84 @@ the existing visitor/session fields before inserting authoritative events.
 Correlation never authorizes or selects an account; authenticated `user_id`
 remains derived from the verified JWT.
 
-The backend implementation remains commit
-`8d6d0f1b134c82bb79983b15522b92399d3c1a14` on
-`codex/users2-3c-correlation`. It is not on backend `master` and has not been
-deployed. This slice preserves the current authoritative start/completion event
+The backend implementation is on `master` (`acb2a946`). Railway sends
+`visitor_id` / `session_id` top-level AND `visitor_id` / `session_id` /
+`interaction_id` in metadata: the deployed Lovable-managed Edge ingest is older
+and keeps metadata while dropping the new top-level fields. Persisted
+correlation overwrites any conflicting metadata value. The bridge stays until
+the upgraded ingest is deployed, history is backfilled and top-level
+correlation is certified (`docs/USERS2_3C_CORRELATION.md`, backend).
+
+- **Direct Practice correlation is production-certified** through that
+  compatibility path.
+- **Daily gap identified.** 3C missed the primary public play loop: Daily
+  Challenge. Daily start/launch carried no correlation, and Daily-hosted Ranked
+  children emitted no `ranked_*` event at all (deliberately suppressed).
+
+This slice preserves the current authoritative start/completion event
 names; terminal-event migration remains later work.
+
+### USERS2.3C-Daily — correlation + provenance through Daily — branches pushed, not merged
+
+Branches (both repos): `codex/users2-3c-daily-correlation`, from
+`mogsy/main 4b3be0cb` and `League_Combat_Simulator/master acb2a946`.
+Not merged, not deployed, no Supabase change.
+
+Path: browser → Daily run → Daily stage → canonical Ranked child participant →
+Railway outbox → Supabase metadata bridge.
+
+- **Browser.** `startToday` and `launchStage` send the canonical
+  `browserCorrelation()` (`src/lib/analytics/correlation.ts`, no second
+  visitor/session implementation). GETs remain pure reads (no body, no auth
+  minting, no correlation). The Daily controller mints ONE interaction id per
+  stage launch and reuses it across its automatic retries and the player's
+  Retry. `syncRun` carries none: it is auto-retried, creates nothing, and the
+  run and stage it advances are already correlated.
+- **Railway.** Strict optional bodies (422 on malformed UUID or any extra field,
+  e.g. `user_id`); missing correlation stays valid; `user_id` is only the
+  verified bearer. `daily_runs` freezes the creating request's correlation
+  (resume never rewrites); `daily_run_stages` freezes the first launch
+  request's (retries never rewrite). The child's human participant inherits the
+  stage's frozen values; the bot gets none.
+- **Ranked child is measured.** Daily children now emit `ranked_started` /
+  `ranked_completed` at the unchanged `ranked_participant = match_id:user_id`
+  grain with durable wrapper provenance frozen on `ranked_matches`: `host`
+  (`direct` | `daily_challenge` | `study_hall` | `playtest`), `session_preset`,
+  `parent_activity_type/id`, `parent_stage_index/kind`, plus `opponent_type`,
+  `is_bot_match`, `creation_source`, `format_id/version`, identical on start and
+  completion. Daily children stay unrated. A guest's Daily child is reported
+  `is_guest=true` (frozen `ranked_participants.is_guest_at_start`).
+
+Standing rules this slice established:
+
+- **Public availability ≠ analytics coverage.** A dormant or gated path keeps
+  its instrumentation.
+- **Canonical Ranked is measured across wrappers**: live human-v-human, direct
+  bot, Playtest presets, Study Hall, Daily children, future wrappers.
+- **Daily parent and Ranked child are separate grains.** A child completing
+  never completes the Daily. Admin › Audience › Engagement shows canonical
+  Ranked as a total plus disjoint host buckets classified from the same rows
+  (Direct PvP, Direct Bot, Playtest, Study Hall, Daily children, Legacy /
+  unknown host for rows without `metadata.host`). Retired DSA is no longer
+  presented as gameplay, standalone mastery is labelled "Legacy Champion
+  Mastery", and the Daily parent and Mastery Journey lifecycles are shown as
+  not instrumented (never zero).
+- **Mastery Journey is the current Mastery concept** (a segment inside Daily
+  Standard/Survival Ranked formats). It has no durable instance id yet, so no
+  `mastery_journey` activity is registered; the identity gap is documented in
+  `docs/USERS2_ACTIVITY_LIFECYCLE.md`.
+- **Legacy standalone Mastery instrumentation is preserved for
+  compatibility** (`/api/mastery/sessions`, `mastery_*`), relabelled legacy in
+  the 3A registry.
+
+USERS2.3D (Daily lifecycle events) is NOT implemented; this slice is its
+correlation/provenance foundation.
+
+### USERS2.3D — Daily lifecycle — next
+
+Canonical `daily_challenge_*` lifecycle events at the parent `run_id` grain,
+reusing the run's frozen creation correlation. Never infer abandonment from a
+missing completion or browser close.
 
 ### Later integration phase
 

@@ -53,6 +53,25 @@ describe("canonical activity lifecycle registry", () => {
     expect(onboarding.migrationNotes).toContain("Admin-preview-only");
   });
 
+  it("measures canonical Ranked across hosts without letting a child complete its parent", () => {
+    const ranked = ACTIVITY_LIFECYCLE_BY_ID.ranked_match;
+    expect(ranked.entityId).toBe("ranked_participant = match_id:user_id");
+    expect(ranked.entityGrain).toContain("nested under another product host");
+    expect(ranked.migrationNotes).toContain("never substitutes for its parent activity's completion");
+    expect(ranked.migrationNotes).toContain("parent_activity_type");
+    const daily = ACTIVITY_LIFECYCLE_BY_ID.daily_challenge;
+    expect(daily.started.boundary).toContain("/api/daily-run/today");
+    expect(daily.migrationNotes).toContain("separate grains");
+  });
+
+  it("keeps standalone Champion Mastery as legacy, not the current Mastery product", () => {
+    const mastery = ACTIVITY_LIFECYCLE_BY_ID.champion_mastery;
+    expect(mastery.humanName).toContain("legacy");
+    expect(mastery.currentEvents).toEqual(["mastery_opened", "mastery_started", "mastery_completed"]);
+    expect(mastery.migrationNotes).toContain("Mastery Journey");
+    expect(Object.keys(ACTIVITY_LIFECYCLE_BY_ID)).not.toContain("mastery_journey");
+  });
+
   it("makes every authority and entity declaration non-empty", () => {
     for (const entry of ACTIVITY_LIFECYCLE_REGISTRY) {
       expect(entry.opened.boundary.trim(), `${entry.activityId}.opened`).not.toBe("");
