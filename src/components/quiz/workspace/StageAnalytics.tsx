@@ -50,6 +50,7 @@ import type { DailyHistoryRecord, HistoryQuestion, HistoryRound, HistoryStage } 
 import TimeTrialRoom from "@/components/quiz/workspace/analytics/TimeTrialRoom";
 import StandardRoom from "@/components/quiz/workspace/analytics/StandardRoom";
 import SurvivalRoom from "@/components/quiz/workspace/analytics/SurvivalRoom";
+import { ReviewRoom, WeakAreasRoom } from "@/components/quiz/workspace/analytics/ReviewRoom";
 import type { MatchReviewView, ReviewRound } from "@/lib/ranked-public/contracts";
 
 const KNOWN: readonly string[] = ["standard", "time_trial", "survival", "weak_areas", "review"];
@@ -329,6 +330,8 @@ export function StageAnalyticsView({
   if (room && stage.kind === "time_trial") body = <TimeTrialRoom stage={stage} />;
   else if (room && stage.kind === "standard") body = <StandardRoom stage={stage} />;
   else if (room && stage.kind === "survival") body = <SurvivalRoom stage={stage} />;
+  else if (room && stage.kind === "review") body = <ReviewRoom record={record} stage={stage} />;
+  else if (room && stage.kind === "weak_areas") body = <WeakAreasRoom stage={stage} />;
   else if (drawn && (stage.kind === "weak_areas" || stage.kind === "review")) {
     body = (
       <QuestionCards
