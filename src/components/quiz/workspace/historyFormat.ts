@@ -44,12 +44,16 @@ export function percent(ratio: number | null | undefined): string | null {
   return `${Math.round(ratio * 100)}%`;
 }
 
-/** Percentage points, signed and whole: "+6 pp", "−4 pp", "0 pp" (HUB6.1,
- *  the owner's exact form — a difference, never a verdict). */
-export function signedPoints(pp: number): string {
-  const rounded = Math.round(pp);
-  if (rounded === 0) return "0 pp";
-  return rounded > 0 ? `+${rounded} pp` : `−${Math.abs(rounded)} pp`;
+/** An accuracy difference in whole points, signed: "+6 points", "−1 point",
+ *  "0 points" — a difference, never a verdict. HUB6.3D: never "pp" (owner
+ *  terminology); see `historyComparisons.accuracyComparison` for the
+ *  "89% vs 79%" form. */
+export function signedPoints(points: number): string {
+  const rounded = Math.round(points);
+  const n = Math.abs(rounded);
+  const unit = n === 1 ? "point" : "points";
+  if (rounded === 0) return "0 points";
+  return rounded > 0 ? `+${n} ${unit}` : `−${n} ${unit}`;
 }
 
 /** "Sep 24" for the Daily's plan date. The plan date is a calendar date, not

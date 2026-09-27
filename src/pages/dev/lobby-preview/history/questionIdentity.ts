@@ -267,6 +267,46 @@ const MASTERY_CONCEPTS: readonly MasteryConcept[] = [
     { prompt: "Garen has 980 health and takes 615 post-mitigation damage. How much health remains?",
       options: ["365", "385", "335", "415"], correctAnswer: "365", explanation: "980 − 615 = 365." },
   ] },
+  // HUB6.3D — the production Journey (`daily_standard_v1` module 10: five
+  // children; `daily_survival_v1` slot 6: three). One champion, one chain of
+  // worked facts. Families are the production Mastery Journey families, which
+  // `quiz.public_category.public_category_for_mastery` maps to real public
+  // categories (Abilities & Cooldowns, Champion Stats, Summoner Spells).
+  { conceptId: "ahri-q-cooldown-rank", family: "ability_cooldown", subject: CHAMPION("Ahri"), variants: [
+    { prompt: "Orb of Deception has a 7 second cooldown at rank 1. What is it at rank 3?",
+      options: ["7", "6", "8", "5"], correctAnswer: "7", explanation: "Orb of Deception keeps a flat 7 second cooldown at every rank." },
+    { prompt: "Orb of Deception has a 7 second cooldown. With 20 ability haste, what is it?",
+      options: ["5.8", "6.2", "5.4", "7"], correctAnswer: "5.8", explanation: "7 × 100 / (100 + 20) ≈ 5.8." },
+  ] },
+  { conceptId: "ahri-q-cost-rank", family: "ability_cost", subject: CHAMPION("Ahri"), variants: [
+    { prompt: "Orb of Deception costs 55 mana at rank 1 and 5 more per rank. What does it cost at rank 3?",
+      options: ["65", "60", "70", "55"], correctAnswer: "65", explanation: "55 + 2 × 5 = 65." },
+    { prompt: "Orb of Deception costs 55 mana at rank 1 and 5 more per rank. What does it cost at rank 5?",
+      options: ["75", "70", "80", "65"], correctAnswer: "75", explanation: "55 + 4 × 5 = 75." },
+  ] },
+  { conceptId: "ahri-base-health", family: "champion_base_stat", subject: CHAMPION("Ahri"), variants: [
+    { prompt: "Ahri starts with 590 health and gains 104 per level. How much health at level 3?",
+      options: ["798", "694", "902", "760"], correctAnswer: "798", explanation: "590 + 2 × 104 = 798." },
+    { prompt: "Ahri starts with 590 health and gains 104 per level. How much health at level 5?",
+      options: ["1006", "902", "1110", "980"], correctAnswer: "1006", explanation: "590 + 4 × 104 = 1006." },
+  ] },
+  { conceptId: "flash-cooldown-haste", family: "summoner_spell_cooldown", subject: SPELL("Flash"), variants: [
+    { prompt: "Flash has a 300 second cooldown. With 18 summoner spell haste, what is it?",
+      options: ["254", "282", "246", "270"], correctAnswer: "254", explanation: "300 × 100 / (100 + 18) ≈ 254." },
+    { prompt: "Flash has a 300 second cooldown. With 12 summoner spell haste, what is it?",
+      options: ["268", "288", "256", "276"], correctAnswer: "268", explanation: "300 × 100 / (100 + 12) ≈ 268." },
+  ] },
+  { conceptId: "ahri-r-cooldown-rank", family: "ability_cooldown", subject: CHAMPION("Ahri"), variants: [
+    { prompt: "Spirit Rush has a 130 second cooldown at rank 1 and 25 less per rank. What is it at rank 2?",
+      options: ["105", "115", "95", "130"], correctAnswer: "105", explanation: "130 − 25 = 105." },
+    { prompt: "Spirit Rush has a 130 second cooldown at rank 1 and 25 less per rank. What is it at rank 3?",
+      options: ["80", "90", "105", "70"], correctAnswer: "80", explanation: "130 − 2 × 25 = 80." },
+  ] },
+];
+
+/** HUB6.3D — the production Journey chain, in child order. */
+export const JOURNEY_CONCEPTS: readonly string[] = [
+  "ahri-q-cooldown-rank", "ahri-q-cost-rank", "ahri-base-health", "flash-cooldown-haste", "ahri-r-cooldown-rank",
 ];
 
 // ───────────────────────────────────────────── reflex: Meta Reflex cards

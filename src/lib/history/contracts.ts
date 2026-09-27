@@ -24,6 +24,20 @@
  * them into copy.
  */
 
+import {
+  readModules,
+  readPublicCategory,
+  readRunPersonal,
+  readStagePersonalFacts,
+  type HistoryModule,
+  type PublicCategory,
+  type QuestionUnit,
+  type RunPersonal,
+  type StagePersonalFacts,
+} from "@/lib/history/personal";
+
+export type * from "@/lib/history/personal";
+
 export const HISTORY_SCHEMA_VERSION = 1;
 
 export class HistoryContractError extends Error {
@@ -138,6 +152,9 @@ export interface DailyAnalytics {
   categoryPerformance: CategoryPerformance[];
   learningSignals: LearningSignal[];
   reviewRecoveryRate: Metric<ReviewRecovery>;
+  /** HUB6.3B personal history (previous Daily, Core Daily); null on an
+   *  older payload or an unreadable block. */
+  personal: RunPersonal | null;
 }
 
 export interface StageAnalytics {
@@ -166,6 +183,10 @@ export interface StageAnalytics {
   terminal: string | null;
   depth: number | null;
   attemptedAllocations: number | null;
+  /** HUB6.3B: current facts, memberships, exact-question history, personal
+   *  comparison, strikes, Review sources, Weak Areas selection. Every part is
+   *  empty/null on an older payload. */
+  personalFacts: StagePersonalFacts;
 }
 
 export interface StageBasic {
@@ -176,6 +197,14 @@ export interface StageBasic {
   accuracy: number | null;
   /** Stable raw terminal code (`completed`, `time_bank_exhausted`, …). */
   endedBy: string | null;
+  /** HUB6.3B: correct + incorrect + timeout occurrences. Older payloads:
+   *  `answered` (the same count). */
+  questionsPlayed: number;
+  /** HUB6.3B, or counted from this stage's own question outcomes. */
+  incorrect: number;
+  timeout: number;
+  /** HUB6.3B raw child terminal (`segments_complete`, …); null before. */
+  completionReason: string | null;
 }
 
 export interface HistoryQuestion {
@@ -199,6 +228,12 @@ export interface HistoryQuestion {
   family: string | null;
   concept: string | null;
   subjectLabel: string | null;
+  /** HUB6.3B: the frozen unit (`splash`, `meta_reflex`, `journey`, …). */
+  unit: QuestionUnit | null;
+  /** HUB6.3B: RG2's public category — the only grouping label shown. */
+  publicCategory: PublicCategory | null;
+  moduleId: string | null;
+  moduleVersion: number | null;
 }
 
 /** One Ranked round/module occurrence of a stage and the questions it settled,
@@ -231,6 +266,11 @@ export interface HistoryStage {
    * and nothing is inferred from its question count.
    */
   rounds: HistoryRound[] | null;
+  /** HUB6.3B per-round modules (unit, C/played, member ids); null before. */
+  modules: HistoryModule[] | null;
+  /** HUB6.3B stage status (`completed` / `skipped`) and skip reason. */
+  status: string | null;
+  skipReason: string | null;
   capability: AnalyticsCapability;
   analytics: StageAnalytics | null;
 }
@@ -248,6 +288,10 @@ export interface DailyHistoryRecord {
     correct: number;
     answered: number;
     accuracy: number | null;
+    /** HUB6.3B, or the stages' own counts on an older payload. */
+    questionsPlayed: number;
+    incorrect: number;
+    timeout: number;
   };
   /** Exactly the persisted stages, in persisted order. */
   stages: HistoryStage[];
@@ -403,6 +447,7 @@ export function readDailyAnalytics(v: unknown, l = "analytics"): DailyAnalytics 
         rate: nnum(x.rate, `${rl}.rate`),
       };
     }),
+    personal: readRunPersonal(r.personal),
   };
 }
 
@@ -425,6 +470,7 @@ export function readStageAnalytics(v: unknown, l = "analytics"): StageAnalytics 
     depth: r.depth === null || r.depth === undefined ? null : int(r.depth, `${l}.depth`),
     attemptedAllocations: r.attempted_allocations === null || r.attempted_allocations === undefined
       ? null : int(r.attempted_allocations, `${l}.attempted_allocations`),
+    personalFacts: readStagePersonalFacts(r),
   };
 }
 
@@ -466,6 +512,11 @@ function readQuestion(v: unknown, l: string): HistoryQuestion {
     family: nstr(r.family, `${l}.family`),
     concept: nstr(r.concept, `${l}.concept`),
     subjectLabel: subject ? nstr(subject.label, `${l}.subject.label`) : null,
+    // HUB6.3B, optional: an older payload has none of these.
+    unit: typeof r.unit === "string" ? r.unit : null,
+    publicCategory: readPublicCategory(r.public_category),
+    moduleId: typeof r.module_id === "string" ? r.module_id : null,
+    moduleVersion: typeof r.module_version === "number" && Number.isInteger(r.module_version) ? r.module_version : null,
   };
 }
 
@@ -516,6 +567,12 @@ function readStage(v: unknown, l: string): HistoryStage {
     `${l}.analytics`,
     readStageAnalytics,
   );
+  const questionList = occurrences(
+    arr(r.questions, `${l}.questions`).map((q, i) => readQuestion(q, `${l}.questions[${i}]`)), l);
+  const countOf = (outcome: string) => questionList.questions.filter((q) => q.outcome === outcome).length;
+  const optCount = (v: unknown, fallback: number) =>
+    typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : fallback;
+  const answered = int(basic.answered, `${l}.basic.answered`);
   return {
     stageId: str(r.stage_id, `${l}.stage_id`),
     order: int(r.order, `${l}.order`),
@@ -530,11 +587,20 @@ function readStage(v: unknown, l: string): HistoryStage {
     basic: {
       score: num(basic.score, `${l}.basic.score`),
       correct: int(basic.correct, `${l}.basic.correct`),
-      answered: int(basic.answered, `${l}.basic.answered`),
+      answered,
       accuracy: nnum(basic.accuracy, `${l}.basic.accuracy`),
       endedBy: nstr(basic.ended_by, `${l}.basic.ended_by`),
+      // HUB6.3B; an older payload's own question outcomes give the same
+      // counts (questions played = answered = its question rows).
+      questionsPlayed: optCount(basic.questions_played, answered),
+      incorrect: optCount(basic.incorrect, countOf("incorrect")),
+      timeout: optCount(basic.timeout, countOf("timeout")),
+      completionReason: typeof basic.completion_reason === "string" ? basic.completion_reason : null,
     },
-    ...occurrences(arr(r.questions, `${l}.questions`).map((q, i) => readQuestion(q, `${l}.questions[${i}]`)), l),
+    ...questionList,
+    modules: readModules(r.modules),
+    status: typeof r.status === "string" ? r.status : null,
+    skipReason: typeof r.skip_reason === "string" ? r.skip_reason : null,
     capability,
     analytics,
   };
@@ -564,6 +630,12 @@ function readDailyRecord(r: Rec, l: string): DailyHistoryRecord {
       correct: int(basic.correct, `${l}.basic.correct`),
       answered: int(basic.answered, `${l}.basic.answered`),
       accuracy: nnum(basic.accuracy, `${l}.basic.accuracy`),
+      questionsPlayed: typeof basic.questions_played === "number" ? basic.questions_played
+        : int(basic.answered, `${l}.basic.answered`),
+      incorrect: typeof basic.incorrect === "number" ? basic.incorrect
+        : stages.reduce((a, s) => a + s.basic.incorrect, 0),
+      timeout: typeof basic.timeout === "number" ? basic.timeout
+        : stages.reduce((a, s) => a + s.basic.timeout, 0),
     },
     stages,
     capability,

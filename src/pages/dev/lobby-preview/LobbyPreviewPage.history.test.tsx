@@ -175,7 +175,7 @@ describe("Premium gates analysis only; the other states are not a paywall", () =
     await waitFor(() => expect(runRows()).toHaveLength(10));
     const poor = runRows()[2];
     fireEvent.click(within(poor).getByTestId("daily-analysis-toggle"));
-    expect(within(poor).getByTestId("daily-analysis-delta")).toHaveTextContent(/−\d+ pp/);
+    expect(within(poor).getByTestId("daily-analysis-delta")).toHaveTextContent(/−\d+ points?/);
     // The failed replay is the Review stage's own exact record (HUB6.1).
     const reviewRow = within(poor).getAllByTestId("daily-stage-row").find((s) => s.getAttribute("data-stage-kind") === "review")!;
     fireEvent.click(within(reviewRow).getByTestId("stage-analysis-toggle"));
@@ -367,7 +367,9 @@ describe("HUB6.2 — full-length stages stay navigable (real HUB2.3 golden)", ()
     expect(lane.dataset.rounds).toBe("28");
     expect(within(lane).getAllByTestId("stage-path-node")).toHaveLength(28);
     expect(within(lane).getByTestId("stage-lane-end")).toHaveTextContent("bank ran out");
-    expect(within(tt).getByTestId("stage-analysis-settled")).toHaveTextContent("28");
+    // HUB6.3D: "questions played", never "settled".
+    expect(within(tt).getByTestId("stage-fact-played")).toHaveTextContent(/\/ 28$/);
+    expect(tt.textContent).not.toMatch(/settled/i);
     // The rail is still whole while its stage is selected.
     expect(within(tt).getByTestId("question-timeline").dataset.total).toBe("28");
   });

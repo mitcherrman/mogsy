@@ -53,6 +53,7 @@ import {
   signedPoints,
   sufficiencyText,
 } from "@/components/quiz/workspace/historyFormat";
+import { accuracyComparison } from "@/components/quiz/workspace/historyComparisons";
 import type {
   AnalyticsCapability,
   DailyAnalytics,
@@ -370,6 +371,13 @@ function OverviewBody({
 }) {
   const figure = staggered(progress, 1, 2, 0.4);
   const delta = a.previousRunDeltaPp;
+  // HUB6.3B's previous-Daily block names both accuracies, so the figure can
+  // read "88% vs 84%" and count the points between the two SHOWN percentages.
+  const prior = a.personal?.previousDaily;
+  const versus = prior?.current?.accuracy != null && prior.previous?.accuracy != null
+    ? accuracyComparison(prior.current.accuracy, prior.previous.accuracy)
+    : null;
+  const points = versus ? versus.points : delta.value;
   const average = a.historicalAverage;
   const drawsAverage = average.value !== null;
 
@@ -383,22 +391,22 @@ function OverviewBody({
       />
 
       <div className="grid content-start gap-x-6 gap-y-5 [@container(min-width:26rem)]:grid-cols-2 [@container(min-width:40rem)]:grid-cols-1">
-        {delta.value !== null ? (
+        {points !== null ? (
           <Figure
             testId="daily-analysis-delta"
             label="Previous Daily"
             value={
               <Counted
-                value={delta.value}
+                value={points}
                 progress={figure}
                 // Mid-count, a value still rounding to zero keeps the final
-                // sign rather than flashing "0 pp".
-                format={(v) => (Math.round(v) === 0 && Math.round(delta.value!) !== 0
-                  ? `${delta.value! > 0 ? "+" : "−"}0 pp`
+                // sign rather than flashing "0 points".
+                format={(v) => (Math.round(v) === 0 && Math.round(points) !== 0
+                  ? `${points > 0 ? "+" : "−"}0 points`
                   : signedPoints(v))}
               />
             }
-            hint="accuracy"
+            hint={versus ? `accuracy, ${versus.versus}` : "accuracy"}
           />
         ) : (
           <Figure testId="history-pending-delta" pending label="Previous Daily" hint={sufficiencyText(delta.sufficiency)} />

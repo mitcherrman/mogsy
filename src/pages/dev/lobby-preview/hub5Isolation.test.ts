@@ -95,7 +95,10 @@ describe("the preview renders the REAL product components", () => {
   it("mounts the production hub, which composes the production History components", () => {
     const page = code(read(join(PREVIEW, "LobbyPreviewPage.tsx")));
     expect(page).toMatch(/import LeaguecraftHub from "@\/components\/quiz\/LeaguecraftHub"/);
-    expect(page).toMatch(/dailyHistorySource=\{TIMMY_HISTORY_SOURCES\[view\.dailyHistory\]\}/);
+    // HUB6.3D: Timmy's sources and the Analytics Lab's, both through the
+    // production parser, in one map.
+    expect(page).toMatch(/dailyHistorySource=\{HISTORY_SOURCES\[view\.dailyHistory\]\}/);
+    expect(page).toMatch(/\.\.\.TIMMY_HISTORY_SOURCES,\s*\.\.\.ANALYTICS_LAB_SOURCES/);
     const hub = code(read(resolve(SRC, "components/quiz/LeaguecraftHub.tsx")));
     for (const component of ["DailyHistorySection", "StudyHistoryLedger", "ReviewPane", "LeaguecraftWorkspace"]) {
       expect(hub).toContain(`<${component}`);

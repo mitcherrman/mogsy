@@ -366,8 +366,10 @@ describe("HUB4 Stage — one component, ruleset-aware facts", () => {
     // The lane under the bank, ending on the bank.
     expect(within(focus).getByTestId("stage-lane")).toBeTruthy();
     expect(within(focus).getByTestId("stage-lane-end").textContent).toContain("bank ran out");
-    // HUB2's settled_questions, not A re-counted.
-    expect(within(focus).getByTestId("stage-analysis-settled").textContent).toContain("8");
+    // HUB6.3D: the row's quick facts say "questions played", never "settled".
+    const facts = within(runs()[0]).getByTestId("stage-local-facts");
+    expect(within(facts).getByTestId("stage-fact-played").textContent).toContain("6 / 8");
+    expect(facts.textContent).not.toMatch(/settled/i);
     expect(focus.textContent).not.toMatch(/\bms\b|speed|faster|slower|response time/i);
   });
 
@@ -460,7 +462,9 @@ describe("HUB4 Question — HUB3's QuestionTimeline, fed by review_identity", ()
     renderHub(source, { rankedReviewPreview: frozen });
     await waitFor(() => expect(runs().length).toBe(1));
     const icon = within(stagesOf(runs()[0])[0]).getAllByTestId("timeline-icon")[0];
-    expect(icon.className).toContain("h-11 w-11");
+    // HUB6.3D: History's track sizes by rem so 200% text grows it; 44px+.
+    expect(parseFloat(icon.style.width) * 16).toBeGreaterThanOrEqual(44);
+    expect(parseFloat(icon.style.height) * 16).toBeGreaterThanOrEqual(44);
     expect(icon.getAttribute("aria-haspopup")).toBe("dialog");
     fireEvent.click(icon);
     const dialog = await screen.findByRole("dialog");
@@ -662,7 +666,7 @@ describe("HUB4 analytics — the server's numbers, and only them", () => {
     });
     expect(within(analysis).getByTestId("daily-analysis-average").textContent).toContain("12%");
     expect(within(analysis).getByTestId("daily-analysis-average").textContent).toContain("4 earlier runs");
-    expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toContain("−33 pp");
+    expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toContain("−33 points");
     expect(within(analysis).getByTestId("daily-analysis-best").textContent).toContain("60");
     // HUB6.1: Review recovery is not a Daily headline figure.
     expect(within(analysis).queryByTestId("daily-analysis-recovery")).toBeNull();
@@ -1120,7 +1124,7 @@ describe("HUB6.1 — reduced motion", () => {
     const analysis = await openFocus();
     expect(currentScale(analysis)).toContain("scale(1)");
     expect(within(analysis).getByTestId("daily-analysis-best").textContent).toContain("60");
-    expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toMatch(/pp/);
+    expect(within(analysis).getByTestId("daily-analysis-delta").textContent).toMatch(/\d+ points?/);
   });
 
   it("HUB6.2 — with motion, the region mounts closed and grows open on the next frame", async () => {

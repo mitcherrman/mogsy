@@ -40,10 +40,16 @@
  * wraps: the name first, then the result and the question rail indented past
  * the spine. Nothing has a width that can push the page sideways.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionTimeline from "@/components/quiz/workspace/QuestionTimeline";
+import { buildStageViewModel } from "@/components/quiz/workspace/historyViewModel";
+import {
+  HistoryHighlightProvider,
+  useHistoryHighlight,
+  useStageHighlight,
+} from "@/components/quiz/workspace/historyHighlight";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { relativeMatchAge } from "@/components/quiz/workspace/RankedMatchRow";
 import { DailyRunAnalysis, hasExpansion } from "@/components/quiz/workspace/HistoryAnalysis";
@@ -167,6 +173,9 @@ function StageRow({
   const Icon = tone.icon;
   const note = endedByNote(stage.basic.endedBy);
   const played = stage.basic.answered > 0;
+  // HUB6.3D: the History track reads each position's result from the DTO.
+  const view = useMemo(() => buildStageViewModel(stage), [stage]);
+  const highlight = useStageHighlight(stage.stageId);
 
   return (
     <li
@@ -281,10 +290,14 @@ function StageRow({
             // One timeline position per Ranked round/module occurrence
             // (HUB2.1 `round_number`), never one per question result: a
             // Standard or Survival round can settle several questions, and
-            // the review draws them in one card. The review is the authority
-            // once it lands; without round ordinals nothing holds the place.
+            // the review draws them in one card. HUB6.3D: History's own
+            // track — as many icons as fit, the DTO's outcome on each, and
+            // more room on the selected stage.
             roundCount={stage.rounds?.length ?? 0}
             review={review}
+            // A legacy stage without round ordinals keeps the Ranked track:
+            // nothing may hold a position the record cannot place (HUB4.1).
+            history={stage.rounds ? { rounds: view.rounds, size: selected ? "selected" : "row", highlight } : undefined}
           />
         )}
       </div>
@@ -299,7 +312,32 @@ function StageRow({
   );
 }
 
-export default function DailyRunRow({
+/** A highlight belongs to the view it was made in: changing the run's view
+ *  (another stage, the overview, collapse) clears it. */
+function HighlightScope({ focus }: { focus: FocusView | null }) {
+  const { setHighlight } = useHistoryHighlight();
+  useEffect(() => {
+    setHighlight(null);
+  }, [focus, setHighlight]);
+  return null;
+}
+
+type DailyRunRowProps = Parameters<typeof DailyRunEntry>[0];
+
+/**
+ * HUB6.3D: each Daily owns ONE local cross-highlight (analytics ↔ question
+ * icons). Scoped to the run, so it can never light another run's icons.
+ */
+export default function DailyRunRow(props: DailyRunRowProps) {
+  return (
+    <HistoryHighlightProvider>
+      <HighlightScope focus={props.focus ?? null} />
+      <DailyRunEntry {...props} />
+    </HistoryHighlightProvider>
+  );
+}
+
+function DailyRunEntry({
   record,
   reviewFor,
   onRetry,

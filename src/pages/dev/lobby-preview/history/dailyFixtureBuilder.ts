@@ -31,6 +31,26 @@
  * ordinal order, exactly as HUB1 links them. Anything that would let two
  * copies of one fact disagree is rejected (`FixtureFactError`).
  *
+ * HUB6.3D — PRODUCTION SHAPE (opt-in, `DailyAccountFacts.production`)
+ * ───────────────────────────────────────────────────────────────────
+ * HUB6.3B's projection reads more of what the production writers persist: the
+ * serving module of every child result, each round's frozen recipe tag
+ * (`ranked_rounds.segment_config_json.analytics_tag`), the stage's status and
+ * context, and the frozen recipe `format` + raw `completion_reason`. An
+ * account marked `production` also emits those (the Analytics Lab), shaped
+ * as production writes them:
+ *
+ *   Standard   `daily_standard_v1`: Splash ×4, Meta Reflex, Splash ×3, Meta
+ *              Reflex, a five-child Journey (children after pool exhaustion
+ *              have no row)
+ *   Time Trial `daily_time_trial_v1`: Splash only; a question may time out on
+ *              its own clock, and the bank's cut-off question is a timeout
+ *   Survival   `daily_survival_v1`: Splash, with a three-child Journey at
+ *              slot 6; a timeout is a miss and a strike
+ *
+ * Every other account (Timmy, First Daily, Newcomer, Full-length) emits
+ * exactly the rows it always did, so their HUB2.3 goldens stay byte-identical.
+ *
  * Imported only by the Timmy preview's tests and the row-export script —
  * never by a production module (asserted in `hub5Isolation.test.ts`).
  */
@@ -103,6 +123,9 @@ export interface DailyAccountFacts {
   /** Prefix for every opaque id this account's rows carry. */
   idPrefix: string;
   runs: RunFact[];
+  /** HUB6.3D — emit the production-writer columns and tables HUB6.3B reads,
+   *  and accept production timing (per-question timeouts, Journey rounds). */
+  production?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────── the rows
@@ -114,6 +137,12 @@ export interface DailyRunRowFact {
 export interface DailyStageRowFact {
   run_id: string; stage_index: number; stage_kind: string; ruleset_id: string;
   content_set_id: string | null; child_match_id: string; result_json: string;
+  /** Production accounts only. */
+  status?: string; context_json?: string;
+}
+/** Production accounts only: a round's frozen segment config (its tag). */
+export interface RankedRoundRowFact {
+  match_id: string; round_number: number; segment_config_json: string;
 }
 export interface ChildResultRowFact {
   match_id: string; user_id: string; question_result_id: string;
@@ -122,6 +151,8 @@ export interface ChildResultRowFact {
   family: string; concept: string; category: string;
   subject_kind: string | null; subject_key: string | null; subject_label: string | null;
   generator_version: string | null; source_version: string; source_artifact_id: string | null;
+  /** Production accounts only: the serving module. */
+  module_id?: string; module_version?: number;
 }
 export interface ReviewItemRowFact {
   run_id: string; ordinal: number; question_ref: string; source_stage_index: number;
@@ -135,6 +166,8 @@ export interface PersistenceRows {
   daily_run_stages: DailyStageRowFact[];
   ranked_segment_child_results: ChildResultRowFact[];
   daily_run_review_items: ReviewItemRowFact[];
+  /** Production accounts only. */
+  ranked_rounds?: RankedRoundRowFact[];
 }
 
 /** One played occurrence, as the other fixture surfaces need it. */
@@ -165,6 +198,53 @@ export interface BuiltDailyAccount {
 const PRE_REVIEW: readonly DailyStageKind[] = ["standard", "time_trial", "survival", "weak_areas"];
 /** `daily_challenge/recipe.py::META_REFLEX_CARDS`. */
 const META_REFLEX_CARDS = 5;
+/** The production Journey: five children in Standard, three in Survival;
+ *  children after the pooled clock runs out have no row. */
+const JOURNEY_MAX_CHILDREN = 5;
+
+/** The frozen recipe format each production stage kind is built from. */
+const PRODUCTION_FORMAT: Record<DailyStageKind, string> = {
+  standard: "daily_standard_v1",
+  time_trial: "daily_time_trial_v1",
+  survival: "daily_survival_v1",
+  weak_areas: "content_weak_areas",
+  review: "daily_review",
+};
+
+/** The raw child terminal the Daily service freezes as `completion_reason`. */
+const COMPLETION_REASON: Record<StageFact["endedBy"], string> = {
+  completed: "segments_complete",
+  time_bank_exhausted: "time_bank_exhausted",
+  strikes_exhausted: "strikes_exhausted",
+};
+
+/** The serving module a production child result names, by ref namespace. */
+function productionModule(ref: string): { module_id: string; module_version: number } {
+  switch (refNamespace(ref)) {
+    case "reflex":
+      return { module_id: "item_cost_duel", module_version: 5 };
+    case "mastery":
+      return { module_id: "mastery_slice", module_version: 2 };
+    default:
+      return { module_id: "quiz", module_version: 2 };
+  }
+}
+
+/** A production round's frozen recipe tag (`SegmentSpec.analytics_tag`). */
+function productionTag(kind: DailyStageKind, round: number, firstRef: string, slot: number): string {
+  if (kind === "review") return `daily_review:${round}`;
+  const family = identityOf(firstRef).family;
+  if (kind === "weak_areas") return `weak_areas:${family}:${slot}`;
+  const fmt = PRODUCTION_FORMAT[kind];
+  switch (refNamespace(firstRef)) {
+    case "reflex":
+      return `${fmt}:${round}:meta_reflex`;
+    case "mastery":
+      return `${fmt}:${round}:journey_slice`;
+    default:
+      return `${fmt}:${round}:${family}`;
+  }
+}
 const pad = (n: number) => String(n).padStart(2, "0");
 const isMiss = (o: Outcome) => o !== "correct";
 
@@ -189,7 +269,7 @@ function checkComposition(run: RunFact) {
 }
 
 /** Round/challenge structure a Ranked child match can actually have. */
-function checkOccurrences(run: RunFact, index: number, stage: StageFact, occ: OccurrenceFact[]) {
+function checkOccurrences(run: RunFact, index: number, stage: StageFact, occ: OccurrenceFact[], production = false) {
   const where = `run ${run.number} stage ${index} (${stage.kind})`;
   const seen = new Set<string>();
   for (const o of occ) {
@@ -209,7 +289,8 @@ function checkOccurrences(run: RunFact, index: number, stage: StageFact, occ: Oc
   numbers.forEach((n, i) => n !== i + 1 && reject(`${where}: rounds must be numbered 1..n without gaps`));
   for (const [n, qs] of rounds) {
     qs.forEach((q, i) => q.challenge !== i && reject(`${where}: round ${n} challenges must be 0..k without gaps`));
-    const slice = qs.every((q) => refNamespace(q.ref) === "mastery");
+    const slice = qs.every((q) => refNamespace(q.ref) === "mastery")
+      && (!production || qs.length <= JOURNEY_MAX_CHILDREN);
     // HUB6.2 — a Meta Reflex block: the recipe's five item-cost cards.
     const reflex = qs.length === META_REFLEX_CARDS && qs.every((q) => refNamespace(q.ref) === "reflex");
     const single = qs.length === 1 && refNamespace(qs[0].ref) !== "mastery" && refNamespace(qs[0].ref) !== "reflex";
@@ -221,7 +302,15 @@ function checkOccurrences(run: RunFact, index: number, stage: StageFact, occ: Oc
   const misses = ordered.filter((o) => isMiss(o.outcome)).length;
   const timeouts = ordered.filter((o) => o.outcome === "timeout");
   const lastOutcome = ordered[ordered.length - 1]?.outcome;
-  if (stage.kind === "time_trial") {
+  if (production) {
+    // Production clocks: every Splash question, Meta Reflex card and Journey
+    // child has its own deadline, so a timeout can happen in any performance
+    // stage; the bank's cut-off question is always the LAST Time Trial row.
+    if (stage.kind === "time_trial" && stage.endedBy === "time_bank_exhausted" && lastOutcome !== "timeout") {
+      reject(`${where}: an exhausted bank ends on its timed-out cut-off question`);
+    }
+    if (stage.kind === "review" && timeouts.length) reject(`${where}: Review replays are not timed out here`);
+  } else if (stage.kind === "time_trial") {
     if (stage.endedBy === "time_bank_exhausted") {
       if (lastOutcome !== "timeout" || timeouts.length !== 1) {
         reject(`${where}: an exhausted bank ends on exactly one timed-out question`);
@@ -324,6 +413,8 @@ export function buildDailyAccount(account: DailyAccountFacts): BuiltDailyAccount
   const reviews: Record<string, MatchReviewView> = {};
   const occurrences: BuiltOccurrence[] = [];
   const P = account.idPrefix;
+  const production = account.production === true;
+  if (production) rows.ranked_rounds = [];
 
   let previous: RunFact | null = null;
   for (const run of account.runs) {
@@ -374,7 +465,7 @@ export function buildDailyAccount(account: DailyAccountFacts): BuiltDailyAccount
       if (stage.kind === "review" && stage.occurrences) reject(`run ${run.number}: Review questions are derived from its allocations`);
       if (stage.kind !== "review" && !authored) reject(`run ${run.number} stage ${index}: no questions authored`);
       const occ = authored ?? reviewOccurrences;
-      checkOccurrences(run, index, stage, occ);
+      checkOccurrences(run, index, stage, occ, production);
       if (stage.kind === "weak_areas") {
         // Weak Areas draws only on evidence frozen before the run: every
         // selection must have been missed in an earlier completed run.
@@ -395,11 +486,39 @@ export function buildDailyAccount(account: DailyAccountFacts): BuiltDailyAccount
           time_bank_ms: ruleset.timeBankMs, max_strikes: ruleset.maxStrikes,
         };
       }
-      rows.daily_run_stages.push({
+      if (production) {
+        // What the production Daily service freezes: the raw terminal and the
+        // recipe format the child was built from.
+        result.completion_reason = COMPLETION_REASON[stage.endedBy];
+        result.format = { id: PRODUCTION_FORMAT[stage.kind], version: 1 };
+      }
+      const stageRow: DailyStageRowFact = {
         run_id: runId, stage_index: index, stage_kind: stage.kind,
         ruleset_id: ruleset?.id ?? (stage.kind === "weak_areas" || stage.kind === "review" ? "standard" : stage.kind),
         content_set_id: stage.contentSetId, child_match_id: mid, result_json: JSON.stringify(result),
-      });
+      };
+      if (production) {
+        stageRow.status = "completed";
+        stageRow.context_json = JSON.stringify(stage.kind === "weak_areas"
+          ? {
+            // Evidence frozen at launch: misses before the start of this
+            // run's plan day, under the Weak Areas selection policy.
+            evidence_cutoff: `${fixtureDate(run.completedAt)}T00:00:00+00:00`,
+            weak_areas_policy_version: "weak-areas-v2",
+          }
+          : {});
+      }
+      rows.daily_run_stages.push(stageRow);
+      if (production) {
+        const firstOfRound = new Map<number, OccurrenceFact>();
+        for (const o of occ.slice().sort(byOrdinals)) if (!firstOfRound.has(o.round)) firstOfRound.set(o.round, o);
+        [...firstOfRound.entries()].forEach(([round, o], slot) => {
+          rows.ranked_rounds!.push({
+            match_id: mid, round_number: round,
+            segment_config_json: JSON.stringify({ analytics_tag: productionTag(stage.kind, round, o.ref, slot + 1) }),
+          });
+        });
+      }
 
       // Child results in the AUTHORED order — deliberately not display
       // order where a fact lists them out of order; HUB2 orders by ordinals.
@@ -413,6 +532,7 @@ export function buildDailyAccount(account: DailyAccountFacts): BuiltDailyAccount
           subject_kind: id.subject.kind, subject_key: id.subject.key, subject_label: id.subject.label,
           generator_version: id.generatorVersion, source_version: id.sourceVersion,
           source_artifact_id: id.sourceArtifactId,
+          ...(production ? productionModule(o.ref) : {}),
         });
       }
 

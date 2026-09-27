@@ -12,7 +12,7 @@
  *
  *   Standard     the course: every round in played order, each module drawn
  *                as its kind (single question, Meta Reflex, Mastery)
- *   Time Trial   the lane under the bank: settled questions in order, then
+ *   Time Trial   the lane under the bank: questions played in order, then
  *                how the stage ended
  *   Survival     the path until termination, and how it ended
  *   Weak Areas   the exact questions the stage served, and their results
@@ -49,6 +49,13 @@ import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost
 import { resolveQuestionIcon } from "@/components/quiz/workspace/questionIcons";
 import { PremiumInvitation, Unavailable } from "@/components/quiz/workspace/HistoryAnalysis";
 import { Pips } from "@/components/quiz/workspace/historyVisuals";
+import { stageCurrentFacts } from "@/components/quiz/workspace/historyViewModel";
+import {
+  COMPLETION_LABEL,
+  correctOfPlayed,
+  questionsPlayed,
+  wholePercent,
+} from "@/components/quiz/workspace/historyComparisons";
 import { OUTCOME_INK, stageTone, type StageTone } from "@/components/quiz/workspace/stageTheme";
 import { categoryLabel, endedByNote, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
@@ -426,50 +433,83 @@ function QuestionCards({
 
 /**
  * The selected stage's QUICK facts, shown on its own row under its question
- * rail: the stage's rule sentence (frozen numbers), and — where the server
- * granted analytics — the ruleset's own facts: Time Trial's settled count,
- * Survival's depth and strikes used against the frozen limit (a count; never
- * pinned to an occurrence). The deeper visual is the analytics region's.
+ * rail: the stage's rule sentence (frozen numbers), then the current
+ * attempt's own facts, by kind (HUB6.3D):
+ *
+ *   Standard     score · C / played · accuracy · longest streak
+ *   Time Trial   C / played · accuracy · longest streak · how it ended
+ *   Survival     depth · strikes used · C / played · accuracy · longest streak
+ *   Weak Areas,
+ *   Review       C / played · accuracy
+ *
+ * Every one is a fact of THIS attempt, so every one is Free (owner tier
+ * rule): the server's HUB6.3B value where it sent one, else the record's own
+ * count by the server's definition (`stageCurrentFacts`). Comparisons,
+ * records and series are Premium and live in the analytics region.
  */
 export function StageLocalFacts({ stage }: { stage: HistoryStage }) {
   const tone = stageTone(stage.kind);
   const rule = ruleSentence(stage);
-  const a = hasAnalyticsAccess(stage) ? stage.analytics : null;
-  const fact = (testId: string, label: string, value: React.ReactNode) => (
-    <span key={testId} className="inline-flex items-baseline gap-1.5" data-testid={testId}>
-      <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: LEAGUECRAFT_INK.faint }}>{label}</span>
+  const f = stageCurrentFacts(stage);
+  const label = (text: string) => (
+    <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: LEAGUECRAFT_INK.faint }}>{text}</span>
+  );
+  const fact = (testId: string, name: string, value: React.ReactNode, aria?: string) => (
+    <span key={testId} className="inline-flex items-baseline gap-1.5" data-testid={testId} aria-label={aria}>
+      {label(name)}
       <span className="text-[13px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{value}</span>
     </span>
   );
+  const played = f.questionsPlayed > 0;
   const facts: React.ReactNode[] = [];
-  if (a && stage.kind === "time_trial" && a.settledQuestions !== null) {
-    facts.push(fact("stage-analysis-settled", "Settled questions", a.settledQuestions));
-  }
-  if (a && stage.kind === "survival" && a.depth !== null) {
-    facts.push(fact("stage-analysis-depth", "Depth", a.depth));
-  }
-  if (a && stage.kind === "survival" && a.strikesUsed !== null) {
+  if (stage.kind === "standard") facts.push(fact("stage-fact-score", "Score", f.score ?? stage.basic.score));
+  if (stage.kind === "survival" && f.depth !== null) facts.push(fact("stage-analysis-depth", "Depth", f.depth));
+  if (stage.kind === "survival" && f.strikesUsed !== null) {
     facts.push(
       <span key="strikes" className="inline-flex items-center gap-1.5" data-testid="stage-analysis-strikes">
-        <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: LEAGUECRAFT_INK.faint }}>Strikes used</span>
-        {stage.ruleset.maxStrikes !== null && <Pips used={a.strikesUsed} max={stage.ruleset.maxStrikes} ink={tone.ink} />}
+        {label("Strikes used")}
+        {f.maxStrikes !== null && <Pips used={f.strikesUsed} max={f.maxStrikes} ink={tone.ink} />}
         <span className="text-[13px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
-          {stage.ruleset.maxStrikes !== null ? `${a.strikesUsed} of ${stage.ruleset.maxStrikes}` : String(a.strikesUsed)}
+          {f.maxStrikes !== null ? `${f.strikesUsed} of ${f.maxStrikes}` : String(f.strikesUsed)}
         </span>
       </span>,
     );
+  }
+  facts.push(
+    fact(
+      "stage-fact-played",
+      "Correct",
+      `${f.correct} / ${f.questionsPlayed}`,
+      `${correctOfPlayed(f.correct, f.questionsPlayed)}, ${questionsPlayed(f.questionsPlayed)}`,
+    ),
+  );
+  if (played && f.accuracy !== null) facts.push(fact("stage-fact-accuracy", "Accuracy", `${wholePercent(f.accuracy)}%`));
+  const streakKinds = ["standard", "time_trial", "survival"];
+  if (streakKinds.includes(stage.kind) && f.longestStreak !== null && played) {
+    facts.push(fact("stage-fact-streak", "Longest streak", f.longestStreak));
+  }
+  if (stage.kind === "time_trial") {
+    const ended = timeTrialEnding(f.completionReason ?? stage.basic.endedBy);
+    if (ended) facts.push(fact("stage-fact-ended", "Ended", ended));
   }
   if (!rule && facts.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5" data-testid="stage-local-facts">
       {rule && (
-        <span className="text-[11px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="stage-rule">
+        <span className="basis-full text-[11px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="stage-rule">
           {rule}
         </span>
       )}
       {facts}
     </div>
   );
+}
+
+/** How a Time Trial ended, in the recap's words. */
+function timeTrialEnding(reason: string | null): string | null {
+  if (!reason) return null;
+  if (COMPLETION_LABEL[reason]) return COMPLETION_LABEL[reason];
+  return reason === "segments_complete" || reason === "completed" ? "Every question played" : null;
 }
 
 // ------------------------------------------------------------ the region view

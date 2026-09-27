@@ -40,6 +40,13 @@ import {
   type PreviewEntitlement,
 } from "./lobbyPreviewFixtures";
 import { TIMMY_HISTORY_SOURCES } from "./history/timmyHistorySource";
+import { ANALYTICS_LAB_SOURCES } from "./history/analyticsLabSource";
+
+/** Every generated History golden the preview can serve, by scenario. */
+const HISTORY_SOURCES: Record<string, (typeof TIMMY_HISTORY_SOURCES)[keyof typeof TIMMY_HISTORY_SOURCES]> = {
+  ...TIMMY_HISTORY_SOURCES,
+  ...ANALYTICS_LAB_SOURCES,
+};
 import {
   demoAnalyticsSource,
   demoAnalyticsSourceEmpty,
@@ -48,7 +55,7 @@ import {
   demoRoleDimension,
 } from "./demoLobbyAnalytics";
 
-const PROFILES: LobbyPreviewProfile[] = ["timmy", "firstDaily", "fullDaily", "newcomer"];
+const PROFILES: LobbyPreviewProfile[] = ["timmy", "firstDaily", "fullDaily", "analyticsLab", "newcomer"];
 const ENTITLEMENTS: PreviewEntitlement[] = ["premium", "free", "unavailable"];
 
 /** Every host action the hub can fire, deliberately inert. */
@@ -215,7 +222,7 @@ export default function LobbyPreviewPage() {
           /* HUB5: History's Daily runs, as HUB2.1's real route produced them
              for this account and entitlement, read through the production
              parser. */
-          dailyHistorySource={TIMMY_HISTORY_SOURCES[view.dailyHistory]}
+          dailyHistorySource={HISTORY_SOURCES[view.dailyHistory]}
           rankedRole={role}
           onSelectRankedRole={setRole}
           rankedProgression={state.progression}
