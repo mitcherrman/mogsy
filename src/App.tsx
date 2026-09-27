@@ -34,6 +34,7 @@ import {
   TEAM_SIM_DEV_ROUTE,
   TEAM_SIM_ROUTE,
 } from "@/lib/combat-lab/team-sim/featureGate";
+import { INTERACTION_LAB_ROUTE, isInteractionLabEnabled } from "@/lib/interaction-grammar/featureGate";
 import { Suspense } from "react";
 import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
@@ -185,6 +186,12 @@ const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspect
 const RankedShellProbe = lazy(() => import("./pages/dev/ranked-shell-probe/RankedShellProbe"));
 // JOURNEY-UI1 — dev-only fixture harness for the Journey state board in the real arena.
 const JourneyArenaHarness = lazy(() => import("./pages/dev/journey-arena/JourneyArenaHarness"));
+// MIG1.1 — DEV-ONLY Interaction Lab. The lazy import itself is gated, not just
+// the route: in a production build the gate is the literal `false`, so neither
+// the route nor the chunk exists there (see interaction-grammar/featureGate).
+const InteractionLab = isInteractionLabEnabled()
+  ? lazy(() => import("./pages/dev/interaction-lab/InteractionLab"))
+  : null;
 const Graph1RacePage = lazy(() => import("./pages/dev/graph1/Graph1RacePage"));
 // Dev-only League mechanics XP calculator (MECH1) — thin client over the
 // backend league_mechanics engine, not linked from any navigation.
@@ -585,6 +592,9 @@ const App = () => (
                   <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/journey-arena" element={<Suspense fallback={<RouteFallback />}><JourneyArenaHarness /></Suspense>} />
+                  {isInteractionLabEnabled() && InteractionLab ? (
+                    <Route path={INTERACTION_LAB_ROUTE} element={<Suspense fallback={<RouteFallback />}><InteractionLab /></Suspense>} />
+                  ) : null}
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />
                   <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
