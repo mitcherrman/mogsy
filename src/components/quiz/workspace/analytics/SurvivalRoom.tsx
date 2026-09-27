@@ -28,7 +28,7 @@ import { Panel, useElementWidth } from "./charts";
 import { RESULT_INK } from "./ink";
 import { HistoryPanel, seriesLines } from "./roomParts";
 import { PopulationPanel } from "./population";
-import { RecordsPanel, StageCompare, StreakPanel } from "./stageShared";
+import { RecordsPanel, StreakPanel } from "./stageShared";
 import { recordOf, survivalFloors } from "./derive";
 import { COMPLETION_WORDS } from "./copy";
 
@@ -39,9 +39,6 @@ export default function SurvivalRoom({ stage }: { stage: HistoryStage }) {
   const h = p?.history ?? null;
   return (
     <div className="grid min-w-0 gap-3 [@container(min-width:52rem)]:grid-cols-2" data-testid="survival-room">
-      <div className="[@container(min-width:52rem)]:col-span-2">
-        <StageCompare stage={stage} fields={["depth", "correct", "accuracy", "strikes", "streak", "ended"]} />
-      </div>
       <div className="[@container(min-width:52rem)]:col-span-2">
         <DepthShaft stage={stage} />
       </div>

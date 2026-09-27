@@ -233,11 +233,11 @@ function measure() {
     : [];
   // Text collisions inside charts: every visible element whose OWN text is
   // non-empty, pairwise, per chart container.
-  const chartSel = ['[data-testid="history-line"]', '[data-testid="history-key"]', '[data-testid="shaft"]', '[data-testid="population-distribution"]', '[data-testid="stopwatch"]', '[data-testid="course-modules"]', '[data-testid="mode-dials"]'];
+  const chartSel = ['[data-testid="timeline-icons"]', '[data-testid="stage-row-compare"]', '[data-testid="history-line"]', '[data-testid="history-key"]', '[data-testid="shaft"]', '[data-testid="population-distribution"]', '[data-testid="stopwatch"]', '[data-testid="course-modules"]', '[data-testid="mode-dials"]'];
   const collisions = [];
   if (region) {
     for (const sel of chartSel) {
-      for (const box of region.querySelectorAll(sel)) {
+      for (const box of (row ?? region).querySelectorAll(sel)) {
         const leaves = [...box.querySelectorAll("*")].filter((el) => visible(el) && !el.closest('[data-testid$="-tip"]') && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()));
         const rects = leaves.map((el) => ({ el, b: el.getBoundingClientRect() }));
         for (let i = 0; i < rects.length; i++) {
@@ -271,6 +271,9 @@ function measure() {
     pageOverflow: document.documentElement.scrollWidth - vw,
     rowWidth: row ? Math.round(row.getBoundingClientRect().width) : null,
     rowHeight: row ? Math.round(row.getBoundingClientRect().height) : null,
+    selectedStageHeight: (() => { const st = row?.querySelector('[data-testid="daily-stage-row"][data-selected="true"]'); return st ? Math.round(st.getBoundingClientRect().height) : null; })(),
+    topicLines: row ? row.querySelectorAll('[data-testid="timeline-topic"]').length : null,
+    rowCompare: row ? !!row.querySelector('[data-testid="stage-row-compare"]') : null,
     regionWidth: rb ? Math.round(rb.width) : null,
     regionOverflow: region ? region.scrollWidth - region.clientWidth : null,
     chartOverflow: charts,
@@ -312,7 +315,7 @@ for (const s of shots) {
       await page.screenshot({ path: file, clip: box });
     }
     appendFileSync(log, JSON.stringify({ name: s.name, width: s.width, height: s.height, textScale: s.textScale ?? 1, touch, ...m }) + "\n");
-    console.log(s.name, JSON.stringify({ po: m.pageOverflow, ro: m.regionOverflow, past: m.pastEdgeCount, min: m.minTarget, u44: m.under44, h: m.regionHeight, col: m.collisionCount, tip: m.tip?.inside, lit: m.lit, ps: m.previewStatus?.text, ctx: m.contextSummary?.visibleInPopover, cohorts: m.cohortToggles }));
+    console.log(s.name, JSON.stringify({ po: m.pageOverflow, ro: m.regionOverflow, past: m.pastEdgeCount, min: m.minTarget, u44: m.under44, h: m.regionHeight, row: m.rowHeight, sel: m.selectedStageHeight, topics: m.topicLines, cmp: m.rowCompare, col: m.collisionCount, tip: m.tip?.inside, lit: m.lit, ps: m.previewStatus?.text, ctx: m.contextSummary?.visibleInPopover, cohorts: m.cohortToggles }));
   } catch (e) {
     console.log(s.name, "FAILED", e.message.split("\n")[0]);
   } finally {

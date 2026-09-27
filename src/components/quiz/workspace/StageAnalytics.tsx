@@ -323,7 +323,6 @@ export function StageAnalyticsView({
   runCapabilityState: string;
 }) {
   const tone = stageTone(stage.kind);
-  const Icon = tone.icon;
   const reveal = useReveal<HTMLDivElement>({ durationMs: 1100, delayMs: 180 });
   const access = hasAnalyticsAccess(stage);
   const drawn = stage.rounds !== null && stage.rounds.length > 0;
@@ -370,13 +369,12 @@ export function StageAnalyticsView({
       data-state={stage.capability.state}
       data-room={room ? stage.kind : undefined}
     >
-      {/* Names the stage whose row is lit above, in the same ink and glyph. */}
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: tone.ink }}>
-        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-        <span className="tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }}>{stage.order + 1}</span>
-        {stageKindLabel(stage.kind)}
-        {room && <span style={{ color: LEAGUECRAFT_INK.faint }}>· analytics</span>}
-      </div>
+      {/* HUB6.3G1: no visible stage title — the selected row above names
+          the stage, and this region continues it (its ink rule and wash).
+          The name stays for assistive technology. */}
+      <h3 className="sr-only" data-testid="stage-analytics-heading">
+        {stageKindLabel(stage.kind)}{room ? " analytics" : " questions"}
+      </h3>
       {body}
     </div>
   );

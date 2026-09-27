@@ -280,6 +280,50 @@ export function courseModules(stage: HistoryStage, vm: StageViewModel = buildSta
   }));
 }
 
+// ─────────────────────────────────────────────────────────── topic stats
+
+export interface TopicStat {
+  key: string;
+  label: string;
+  /** The server's historical accuracy for the category (0–1). */
+  accuracy: number;
+  correct: number;
+  played: number;
+}
+
+/**
+ * HUB6.3G1 — one short historical fact per timeline position of a SELECTED
+ * stage: the player's personal accuracy in the position's PUBLIC CATEGORY
+ * over earlier compatible stages (HUB6.3B `personal.category_history`:
+ * correct / questions played, and the server's own `accuracy`). Keyed by
+ * round number, built once per stage.
+ *
+ * Omitted — never 0%, never "first time" — when the server sent no history
+ * for the category, no accuracy, or no questions played. A multi-question
+ * module gets a stat only when EVERY child shares one public category; mixed
+ * modules get none (no dominant pick, no average). Premium by construction:
+ * Free payloads carry no personal history.
+ */
+export function topicStats(stage: HistoryStage, vm: StageViewModel = buildStageViewModel(stage)): Map<number, TopicStat> {
+  const out = new Map<number, TopicStat>();
+  const history = stage.analytics?.personalFacts.personal?.categoryHistory ?? [];
+  if (history.length === 0) return out;
+  const byKey = new Map(history.map((h) => [h.publicCategory.key, h]));
+  for (const round of vm.rounds) {
+    const keys = new Set(round.occurrences.map((o) => o.publicCategory?.key ?? null));
+    if (keys.size !== 1) continue;
+    const key = [...keys][0];
+    if (!key) continue;
+    const h = byKey.get(key);
+    if (!h || h.accuracy === null || h.questionsPlayed <= 0) continue;
+    const pc = round.occurrences[0].publicCategory!;
+    out.set(round.roundNumber, {
+      key, label: categoryName(key, pc.label), accuracy: h.accuracy, correct: h.correct, played: h.questionsPlayed,
+    });
+  }
+  return out;
+}
+
 export interface CourseSegment {
   family: ModuleFamily | null;
   modules: CourseModule[];

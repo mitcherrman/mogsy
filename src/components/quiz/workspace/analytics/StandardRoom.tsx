@@ -14,14 +14,16 @@
  *   streak      chain + flame
  *   population  score (primary) distribution; accuracy and streak dials
  *
- * HUB6.3G: the course owns the MACRO recipe the rail cannot show — the
+ * HUB6.3G1: a compact recipe strip — segments joined by chevrons, smaller
+ * frames, no per-module numbers or card pips (the selected timeline above
+ * owns exact questions). HUB6.3G: the course owns the MACRO recipe the rail cannot show — the
  * run of modules grouped into its segments (Splash ×4 · Meta Reflex · …),
  * each module's type by its frame, its result, and a Journey's children — and
  * each module wears the question's own authoritative art from its frozen
  * review (never art guessed from a name), else its module sigil.
  */
 import { useMemo, useState } from "react";
-import { CheckCheck, Droplet, Flame, Layers, Trophy, Zap } from "lucide-react";
+import { CheckCheck, ChevronRight, Droplet, Flame, Layers, Trophy, Zap } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import ModuleSigil from "@/components/quiz/workspace/ModuleSigil";
 import { IconFace } from "@/components/quiz/workspace/questionTimelineParts";
@@ -37,7 +39,7 @@ import { OutcomeMark, Panel } from "./charts";
 import { RESULT_INK, categoryName } from "./ink";
 import { HistoryPanel, seriesLines } from "./roomParts";
 import { PopulationPanel } from "./population";
-import { CategoryDonut, RecordsPanel, StageCompare, StreakPanel } from "./stageShared";
+import { CategoryDonut, RecordsPanel, StreakPanel } from "./stageShared";
 import { artRound, courseModules, courseSegments, recordOf, unitName, type CourseModule } from "./derive";
 
 export default function StandardRoom({ stage, review = null }: { stage: HistoryStage; review?: MatchReviewView | null }) {
@@ -45,9 +47,6 @@ export default function StandardRoom({ stage, review = null }: { stage: HistoryS
   const h = p?.history ?? null;
   return (
     <div className="grid min-w-0 gap-3 [@container(min-width:52rem)]:grid-cols-2" data-testid="standard-room">
-      <div className="[@container(min-width:52rem)]:col-span-2">
-        <StageCompare stage={stage} fields={["score", "correct", "accuracy", "streak"]} />
-      </div>
       <div className="[@container(min-width:52rem)]:col-span-2">
         <CourseMap stage={stage} review={review} />
       </div>
@@ -143,10 +142,10 @@ function CourseMap({ stage, review }: { stage: HistoryStage; review: MatchReview
   });
   const active = focus !== null ? modules[focus - 1] ?? null : modules.find((m) => locked?.key === keyOf(m)) ?? null;
   const activeCategory = active?.round?.occurrences[0]?.publicCategory ?? null;
-  const recipe = segments.map((g) => (g.modules.length > 1 ? `${unitName(g.family)} ×${g.modules.length}` : unitName(g.family))).join(" · ");
+
 
   return (
-    <Panel title="The course" eyebrow={`${n} modules · ${recipe}`} testId="standard-course">
+    <Panel title="The course" eyebrow={`Standard recipe · ${n} modules`} testId="standard-course" className="!pb-2.5">
       <div ref={reveal.ref} className="min-w-0">
         <ol
           className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-3 [@container(min-width:40rem)]:flex-nowrap"
@@ -154,7 +153,7 @@ function CourseMap({ stage, review }: { stage: HistoryStage; review: MatchReview
           data-testid="course-modules"
           data-count={n}
         >
-          {segments.map((g, gi) => (
+          {segments.map((g) => (
             <li
               key={g.modules[0].roundNumber}
               className="flex min-w-0 flex-col [@container(min-width:40rem)]:flex-1"
@@ -177,7 +176,7 @@ function CourseMap({ stage, review }: { stage: HistoryStage; review: MatchReview
                   const ring = verdict === "correct" || verdict === "incorrect" || verdict === "timeout" ? RESULT_INK[verdict] : "rgba(138,106,44,0.85)";
                   const family = m.family ?? "splash";
                   const isLocked = locked?.key === keyOf(m);
-                  const size = family === "journey" ? 52 : 44;
+                  const size = family === "journey" ? 42 : 36;
                   const art = artRound(review, m.roundNumber);
                   const label = `Module ${m.position} of ${n}, ${unitName(m.unit)}${m.played > 1 ? `, ${m.correct} of ${m.played} correct` : verdict === "correct" ? ", correct" : verdict === "incorrect" ? ", incorrect" : verdict === "timeout" ? ", timed out" : ""}`;
                   return (
@@ -216,17 +215,16 @@ function CourseMap({ stage, review }: { stage: HistoryStage; review: MatchReview
                         )}
                       </button>
                       <span className="flex flex-col items-center gap-0.5 text-[9.5px] leading-none" aria-hidden="true">
-                        <span className="font-bold tabular-nums" style={{ color: LEAGUECRAFT_INK.faint }}>{m.position}</span>
                         {m.played > 1 && (
                           <>
-                            <span className="flex gap-[2px]" data-testid="course-children" data-count={m.round?.occurrences.length ?? m.played}>
+                            {family === "journey" && <span className="flex gap-[2px]" data-testid="course-children" data-count={m.round?.occurrences.length ?? m.played}>
                               {(m.round?.occurrences ?? []).map((o) => (
                                 <span key={o.occurrenceId} className="block h-[5px] w-[5px] rounded-full" style={{
                                   background: o.outcome === "correct" ? RESULT_INK.correct : "transparent",
                                   border: `1.2px ${o.outcome === "timeout" ? "dotted" : "solid"} ${o.outcome ? RESULT_INK[o.outcome] : "rgba(96,68,28,0.3)"}`,
                                 }} />
                               ))}
-                            </span>
+                            </span>}
                             <span className="font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{m.correct}/{m.played}</span>
                           </>
                         )}
@@ -235,11 +233,15 @@ function CourseMap({ stage, review }: { stage: HistoryStage; review: MatchReview
                   );
                 })}
               </ol>
-              {gi < segments.length - 1 && <span className="sr-only">then</span>}
             </li>
-          ))}
+          )).flatMap((li, gi) => (gi === 0 ? [li] : [
+            <li key={`then-${gi}`} aria-hidden="true" className="flex items-center self-center pt-3 [@container(min-width:40rem)]:flex-none" data-testid="course-then">
+              <ChevronRight className="h-3.5 w-3.5" style={{ color: "rgba(29,79,138,0.55)" }} />
+            </li>,
+            li,
+          ]))}
         </ol>
-        <p className="mt-3 min-h-[2.5em] text-[11px] leading-snug" style={{ color: LEAGUECRAFT_INK.body }} aria-live="polite" data-testid="course-detail">
+        <p className="mt-2 min-h-[1.4em] text-[11px] leading-snug" style={{ color: LEAGUECRAFT_INK.body }} aria-live="polite" data-testid="course-detail">
           {active ? (
             <>
               <strong style={{ color: LEAGUECRAFT_INK.strong }}>Module {active.position} · {unitName(active.unit)}</strong>

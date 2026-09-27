@@ -237,10 +237,13 @@ describe("Time Trial room", () => {
   it("23 / 29 → 25 / 28 (L4): +2 correct, 1 fewer question played, 89% vs 79% · 10 points higher, Streak +3", async () => {
     const run = await stageRoom(4, "time_trial");
     const room = within(run).getByTestId("time-trial-room");
-    expect(within(room).getByTestId("change-correct").textContent).toContain("+2 correct");
-    expect(within(room).getByTestId("change-played").textContent).toContain("1 fewer question played");
-    expect(within(room).getByTestId("change-accuracy").textContent).toContain("89% vs 79% · 10 points higher");
-    expect(within(room).getByTestId("change-streak").textContent).toContain("Streak +3");
+    // HUB6.3G1: the comparison lives on the selected Time Trial row.
+    const row = within(within(run).getAllByTestId("daily-stage-row").find((r) => r.dataset.stageKind === "time_trial")!).getByTestId("stage-row-compare");
+    expect(within(room).queryByTestId("change-correct")).toBeNull();
+    expect(within(row).getByTestId("change-correct").textContent).toContain("+2 correct");
+    expect(within(row).getByTestId("change-played").textContent).toContain("1 fewer question played");
+    expect(within(row).getByTestId("change-accuracy").textContent).toContain("89% vs 79% · 10 points higher");
+    expect(within(row).getByTestId("change-streak").textContent).toContain("Streak +3");
     expect(room.textContent).not.toMatch(FORBIDDEN);
   });
 
@@ -290,7 +293,18 @@ describe("Time Trial room", () => {
   it("the streak lights its exact span", async () => {
     const run = await stageRoom(10, "time_trial");
     fireEvent.click(within(within(run).getByTestId("stage-streak")).getByTestId("streak-light"));
-    expect(lit(stageRow(run, "time_trial"))).toHaveLength(25);
+    // HUB6.3G1: the selected rail's topic columns page it; count the lit span
+    // across its pages.
+    const row = stageRow(run, "time_trial");
+    const timeline = within(row).getByTestId("question-timeline");
+    const seen = new Set<string>();
+    for (;;) {
+      lit(row).forEach((i) => seen.add(i.dataset.round!));
+      const next = within(timeline).queryByTestId("timeline-next");
+      if (!next || next.hasAttribute("disabled")) break;
+      fireEvent.click(next);
+    }
+    expect(seen.size).toBe(25);
   });
 
   it("history toggles correct · played · accuracy · streak; population is correct-first with three dials", async () => {

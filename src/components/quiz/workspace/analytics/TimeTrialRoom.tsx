@@ -25,7 +25,7 @@ import { Panel } from "./charts";
 import { CHART, RESULT_INK } from "./ink";
 import { HistoryPanel, seriesLines } from "./roomParts";
 import { PopulationPanel } from "./population";
-import { CategoryDonut, RecordsPanel, StageCompare, StreakPanel } from "./stageShared";
+import { CategoryDonut, RecordsPanel, StreakPanel } from "./stageShared";
 import { recordOf } from "./derive";
 import { COMPLETION_WORDS } from "./copy";
 
@@ -34,9 +34,6 @@ export default function TimeTrialRoom({ stage }: { stage: HistoryStage }) {
   const h = p?.history ?? null;
   return (
     <div className="grid min-w-0 gap-3 [@container(min-width:52rem)]:grid-cols-2" data-testid="time-trial-room">
-      <div className="[@container(min-width:52rem)]:col-span-2">
-        <StageCompare stage={stage} fields={["correct", "accuracy", "played", "streak", "ended"]} />
-      </div>
       <div className="[@container(min-width:52rem)]:col-span-2">
         <CategoryDonut stage={stage} title="Every question, by result and category" />
       </div>

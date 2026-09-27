@@ -1,6 +1,7 @@
 /**
  * HUB6.3E — sections several stage rooms share: the current-vs-previous
- * board, the result × category donut, the streak panel and the records row.
+ * comparison (HUB6.3G1: on the selected History row), the result × category
+ * donut, the streak panel and the records row.
  * Every figure is the server's (`stage.analytics.personalFacts`) or a count
  * of this stage's exact questions.
  */
@@ -13,8 +14,8 @@ import { occurrenceHighlight, useHighlightControls, useIsLocked } from "@/compon
 import { useReveal } from "@/lib/motion/useReveal";
 import type { HistoryStage, PersonalRecord, PersonalSnapshot } from "@/lib/history/contracts";
 import { cohortOf } from "@/lib/history/population";
-import { NestedDonut, Panel } from "./charts";
-import { CompareBoard, RecordMedal, StreakChain, dir, type BoardChange, type BoardFigure, type MedalShape } from "./trophies";
+import { DeltaChip, NestedDonut, Panel } from "./charts";
+import { RecordMedal, StreakChain, dir, type BoardChange, type BoardFigure, type MedalShape } from "./trophies";
 import { recordOf, stageCategoryDonut, streakIds } from "./derive";
 import { useDonutHighlight } from "./interact";
 import { useCohort } from "./population";
@@ -24,15 +25,30 @@ const pct = (v: number | null | undefined) => (v === null || v === undefined ? "
 
 export type CompareField = "score" | "correct" | "played" | "accuracy" | "streak" | "depth" | "strikes" | "ended";
 
+/** HUB6.3G1 — each core stage's compared fields (unchanged from HUB6.3E). */
+export const COMPARE_FIELDS: Readonly<Record<string, CompareField[]>> = {
+  standard: ["score", "correct", "accuracy", "streak"],
+  time_trial: ["correct", "accuracy", "played", "streak", "ended"],
+  survival: ["depth", "correct", "accuracy", "strikes", "streak", "ended"],
+};
+
+export interface StageComparison {
+  current: BoardFigure[];
+  previous: BoardFigure[] | null;
+  previousDate: string | null;
+  changes: BoardChange[];
+}
+
 /**
  * The stage's current attempt against its previous compatible attempt:
- * the chosen fields side by side, and the exact change of each.
+ * the chosen fields, and the exact change of each. Null when the stage has
+ * no Premium personal comparison (Free, older payloads, ineligible).
  */
-export function StageCompare({ stage, fields }: { stage: HistoryStage; fields: CompareField[] }) {
+export function stageComparison(stage: HistoryStage, fields: CompareField[]): StageComparison | null {
   const p = stage.analytics?.personalFacts.personal ?? null;
   const f = stageCurrentFacts(stage);
-  const prev = p?.eligible ? p.previous : null;
-  const kind = stageKindLabel(stage.kind);
+  if (!p?.eligible) return null;
+  const prev = p.previous;
 
   const cur: Required<Pick<PersonalSnapshot, "score" | "correct" | "questionsPlayed" | "accuracy" | "longestStreak" | "depth" | "strikesUsed">> & { completionReason: string | null } = {
     score: f.score, correct: f.correct, questionsPlayed: f.questionsPlayed, accuracy: f.accuracy,
@@ -94,17 +110,55 @@ export function StageCompare({ stage, fields }: { stage: HistoryStage; fields: C
       }
     }
   }
+  return { current, previous, previousDate: prev ? prev.planDate : null, changes };
+}
+
+/**
+ * HUB6.3G1 — the selected stage's current-vs-previous comparison, ON its
+ * History row, under the row's Free quick facts (which already state this
+ * attempt): the previous compatible attempt's same figures, then the exact
+ * changes as chips. The one canonical comparison — the analytics room below
+ * no longer opens with its own board.
+ */
+export function StageRowCompare({ stage }: { stage: HistoryStage }) {
+  const fields = COMPARE_FIELDS[stage.kind];
+  const c = fields ? stageComparison(stage, fields) : null;
+  if (!c) return null;
+  const kind = stageKindLabel(stage.kind);
+  const label = (text: string) => (
+    <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: LEAGUECRAFT_INK.faint }}>{text}</span>
+  );
   return (
-    <Panel title={`This ${kind} vs the previous one`} eyebrow={kind} testId="stage-compare">
-      <CompareBoard
-        currentTitle={`This ${kind}`}
-        previousTitle={prev ? `Previous · ${planDateLabel(prev.planDate)}` : "Previous"}
-        current={current}
-        previous={previous}
-        changes={changes}
-        testId="stage-compare-board"
-      />
-    </Panel>
+    <div className="mt-2 border-t border-dashed pt-2" style={{ borderColor: "rgba(96,68,28,0.28)" }} data-testid="stage-row-compare">
+      {c.previous ? (
+        <>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1" data-testid="stage-row-previous">
+            <span className="text-[9.5px] font-black uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.brass }}>
+              Previous{c.previousDate ? ` · ${planDateLabel(c.previousDate)}` : ""}
+            </span>
+            {c.previous.map((f) => (
+              <span key={f.label} className="inline-flex items-baseline gap-1.5" aria-label={f.aria ? `Previous ${f.label}: ${f.aria}` : undefined}>
+                {label(f.label)}
+                <span className="text-[12px] font-bold tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>{f.value}</span>
+              </span>
+            ))}
+          </div>
+          {c.changes.length > 0 && (
+            <ul className="mt-1.5 flex flex-wrap gap-1.5" aria-label={`Change since the previous ${kind}`} data-testid="stage-row-changes">
+              {c.changes.map((ch) => (
+                <li key={ch.text} className="min-w-0 max-w-full">
+                  <DeltaChip text={ch.text} direction={ch.direction} testId={ch.testId} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <p className="text-[11px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid="compare-previous-none">
+          No earlier matching {kind} yet — this is the first.
+        </p>
+      )}
+    </div>
   );
 }
 

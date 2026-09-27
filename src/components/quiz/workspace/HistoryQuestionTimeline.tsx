@@ -54,7 +54,23 @@ export interface HistoryTimelineMode {
   /** HUB6.3E: a question's factual context, shown under its review card in
    *  the Popover and the Sheet (so it never depends on hover). */
   detail?: (round: RoundVM) => React.ReactNode;
+  /** HUB6.3G1 (selected Premium stage): a short historical fact per
+   *  position, by round number — "65% Itemization" under the icon. A
+   *  position without one simply has no line. */
+  topics?: ReadonlyMap<number, HistoryTopicStat> | null;
 }
+
+/** The player's earlier accuracy in a position's public category. */
+export interface HistoryTopicStat {
+  label: string;
+  accuracy: number;
+  correct: number;
+  played: number;
+}
+
+/** With topic lines, each position is a column this wide (px at a 16px
+ *  root): room for "Abilities &" / "Cooldowns" in two short lines. */
+const TOPIC_COLUMN = { fine: 62, coarse: 58 } as const;
 
 /** px at a 16px root; scaled by the live root size when measured. */
 export const HISTORY_GEOMETRY = {
@@ -280,6 +296,9 @@ export default function HistoryQuestionTimeline({
   const coarse = useCoarsePointer();
   const size = mode.size ?? "row";
   const g = HISTORY_GEOMETRY[coarse ? "coarse" : "fine"][size];
+  const topics = mode.topics && mode.topics.size > 0 ? mode.topics : null;
+  // Topic lines widen each position into a column; the pager counts columns.
+  const column = topics ? Math.max(g.slot, TOPIC_COLUMN[coarse ? "coarse" : "fine"]) : g.slot;
   const measureRef = useRef<HTMLDivElement>(null);
   const iconRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const lastOpened = useRef<number | null>(null);
@@ -287,7 +306,7 @@ export default function HistoryQuestionTimeline({
 
   const rounds = mode.rounds;
   const total = rounds.length;
-  const { pageSize, paged, stackedPager, rangeLabel } = historyPageSize(total, width, k, g);
+  const { pageSize, paged, stackedPager, rangeLabel } = historyPageSize(total, width, k, { ...g, slot: column });
 
   // HUB6.3E: a LOCKED highlight whose icons are all on other pages brings
   // the first of them into view. A hover preview never moves the rail.
@@ -385,13 +404,18 @@ export default function HistoryQuestionTimeline({
       data-highlight={lit ? "on" : undefined}
       style={{ gap: rem(g.gap) }}
     >
-      <ul className="flex min-w-0 items-center" style={{ gap: rem(g.gap) }} data-testid="timeline-icons">
+      <ul className={`flex min-w-0 ${topics ? "items-start" : "items-center"}`} style={{ gap: rem(g.gap) }} data-testid="timeline-icons" data-topics={topics ? "on" : undefined}>
         {slots.map((index) => {
           const round = rounds[index];
           const art = reviewRound(index);
           const verdict = round.verdict;
           const ring = RING[verdict ?? "none"];
-          const label = historyIconLabel(round, total);
+          const topic = topics?.get(round.roundNumber) ?? null;
+          const topicWords = topic ? `${Math.round(topic.accuracy * 100)}% ${topic.label}` : null;
+          const topicDetail = topic
+            ? `${topic.label}: ${topic.correct} of ${topic.played} correct in your earlier matching stages, ${Math.round(topic.accuracy * 100)}%`
+            : null;
+          const label = historyIconLabel(round, total) + (topicDetail ? `. ${topicDetail}` : "");
           const isOpen = open === index;
           const isLit = lit ? round.occurrences.some((o) => lit.has(o.occurrenceId)) : null;
           const strike = strikeOf(round);
@@ -451,9 +475,33 @@ export default function HistoryQuestionTimeline({
               )}
             </button>
           );
-          if (coarse) return <li key={index}>{icon}</li>;
+          // The topic line: secondary, two short lines at most, the same
+          // column for every position so the rail stays one scannable row.
+          const caption = topics ? (
+            <span
+              aria-hidden="true"
+              className="mt-1 block w-full text-center leading-[1.1]"
+              style={{ minHeight: rem(30) }}
+              title={topicDetail ?? undefined}
+              data-testid={topic ? "timeline-topic" : undefined}
+            >
+              {topic && topicWords && (
+                <>
+                  <span className="block text-[11px] font-extrabold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+                    {Math.round(topic.accuracy * 100)}%
+                  </span>
+                  <span className="line-clamp-2 block break-words text-[9.5px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }}>
+                    {topic.label}
+                  </span>
+                </>
+              )}
+            </span>
+          ) : null;
+          const cell = topics ? "flex flex-col items-center" : undefined;
+          const cellStyle = topics ? { width: rem(column) } : undefined;
+          if (coarse) return <li key={index} className={cell} style={cellStyle}>{icon}{caption}</li>;
           return (
-            <li key={index}>
+            <li key={index} className={cell} style={cellStyle}>
               <QuestionPopover
                 open={isOpen}
                 onOpenChange={(next) => setOpen(next ? index : null)}
@@ -464,6 +512,7 @@ export default function HistoryQuestionTimeline({
               >
                 {icon}
               </QuestionPopover>
+              {caption}
             </li>
           );
         })}

@@ -53,6 +53,8 @@ import {
 import type { RoundVM } from "@/components/quiz/workspace/historyViewModel";
 import QuestionContext from "@/components/quiz/workspace/analytics/QuestionContext";
 import { CohortBar, CohortProvider } from "@/components/quiz/workspace/analytics/population";
+import { StageRowCompare } from "@/components/quiz/workspace/analytics/stageShared";
+import { topicStats } from "@/components/quiz/workspace/analytics/derive";
 import { HighlightBar, PreviewStatus } from "@/components/quiz/workspace/analytics/roomParts";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { relativeMatchAge } from "@/components/quiz/workspace/RankedMatchRow";
@@ -182,6 +184,9 @@ function StageRow({
   // HUB6.3D: the History track reads each position's result from the DTO.
   const view = useMemo(() => buildStageViewModel(stage), [stage]);
   const highlight = useStageHighlightState(stage.stageId);
+  // HUB6.3G1: the selected stage's per-position historical topic facts,
+  // derived once (Premium data only; an empty map otherwise).
+  const topics = useMemo(() => (selected ? topicStats(stage, view) : null), [selected, stage, view]);
   // HUB6.3E: a question's factual History context under its review card
   // (Free facts for everyone; Premium lines where the server sent them).
   const detail = useCallback(
@@ -315,15 +320,19 @@ function StageRow({
               highlight: highlight?.ids ?? null,
               locked: highlight?.locked ?? false,
               detail,
+              topics,
             } : undefined}
           />
         )}
       </div>
 
-      {/* The selected stage's quick facts, under its own icons. */}
+      {/* The selected stage's quick facts, under its own icons; then
+          (HUB6.3G1, Premium) the previous attempt and the changes — the row
+          itself opens further before the charts continue below. */}
       {selected && (
         <div className={`history-facts-in relative mt-2 ${layout.facts}`}>
           <StageLocalFacts stage={stage} />
+          <StageRowCompare stage={stage} />
         </div>
       )}
     </li>
@@ -606,7 +615,12 @@ function DailyRunEntry({
           <div className="min-h-0 overflow-hidden">
             <section
               className="border-t px-4 pb-5 pt-4"
-              style={{ borderColor: "rgba(96,68,28,0.22)", background: "rgba(255, 246, 222, 0.22)" }}
+              style={selected ? {
+                borderColor: stageTone(selected.kind).edge,
+                background: `linear-gradient(180deg, ${stageTone(selected.kind).tint}, rgba(255, 246, 222, 0.22) 14rem)`,
+                boxShadow: `inset 3px 0 0 ${stageTone(selected.kind).ink}`,
+              } : { borderColor: "rgba(96,68,28,0.22)", background: "rgba(255, 246, 222, 0.22)" }}
+              data-continues={selected ? selected.kind : undefined}
               data-testid="daily-analytics-region"
               data-view={selected ? "stage" : "overview"}
               data-stage-kind={selected?.kind}
