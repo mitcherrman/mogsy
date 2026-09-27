@@ -12,6 +12,15 @@ The problem is contextual: fixed parent links, temporal browser history, local c
 - Audit first. Do not modify product behavior until the inventory and policy matrix are complete.
 - Keep NAV1 independent of active Daily/History/Practice work. One later integration pass owns shared-file reconciliation.
 
+## Current NAV1-E status
+
+The active Ranked / Daily leave-contract audit is complete at NAV1-D base
+`576e9dd309094d725afafc837408e329815d927c`. The executable state, history,
+copy, ownership, race and batch contract is
+[`NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md`](./NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md).
+No blocker, dialog, Forfeit change, Daily orchestration change or other product
+behavior was implemented in that pass.
+
 ## Important current findings
 
 ### 1. Home is not Back
@@ -450,7 +459,7 @@ and legacy guided-playtest ownership remain unchanged. Full re-audit,
 certification and integration instructions are recorded below. No active-game
 Back/leave contract was implemented.
 
-### NAV1-E — Practice session boundary
+### NAV1-P — Practice session boundary (separate/deferred)
 
 Files: `Quiz.tsx`, possibly a small practice-session route/state module, tests.
 Content: one meaningful session boundary; active leave handling; no history per
@@ -459,15 +468,17 @@ Conflicts: HIGH. **BLOCKED** until Practice/Study Hall/Quiz Forge integration.
 Parallel/cherry-pick: **no** against active shared-file work; rebase and single
 owner integration required.
 
-### NAV1-F — Ranked/Daily active-flow leave policy
+### NAV1-E — Ranked/Daily active-flow leave contract
 
-Files: shared leave-guard UI/hook, `QuizRankedPage/Match/RankedRouteHeader`,
-Daily run page/chrome, server-lifecycle tests.
-Content: browser/system Back interception, truthful leave copy, retain explicit
-Forfeit separation and Daily host ownership.
-Conflicts: HIGH. **BLOCKED** on owner answers and current Daily/Ranked work.
-Parallel/cherry-pick: mechanics can be prototyped independently after A, but
-surface integrations must be one coordinated batch.
+Design/audit: **complete** in
+[`NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md`](./NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md).
+Implementation: **not started**. The contract retains explicit Forfeit
+separation, puts Daily-hosted exit ownership in the parent, defines exact POP
+reset/proceed behavior, rejects unload Forfeit, and identifies the current
+`BrowserRouter`/data-router prerequisite. Execute only as the E1/E2/E2Q/E3/E4
+batches in that document.
+Conflicts: HIGH in `App.tsx`, Ranked match, Daily parent and PLAY1 queue/host
+surfaces. E2 and E3 may run in parallel only after E1 lands.
 
 ### NAV1-G — History IA reconciliation
 
@@ -692,24 +703,23 @@ Integrate those separately in their own owner order, retaining their Daily
 checkpoint and sound policies, then rerun Ranked/Daily/browser certification.
 Never port this patch by replacing the entire match component.
 
-Still separate and unresolved:
+Still separate work:
 
-- **P1: active Ranked Back/leave** during unanswered/reveal phases; explicit
-  Forfeit, reconnect, network loss and unload remain unchanged.
-- **P1: active Daily Back/exit**, plus owner decision on completion recap
-  retention. Stage Continue remains local and parent-owned.
+- **P1 implementation: active Ranked Back/leave**. The NAV1-E contract is now
+  decided; explicit Forfeit, reconnect, network loss and unload remain separate.
+- **P1 implementation: active Daily Exit**. The NAV1-E contract preserves the
+  resumable parent run, forbids child Forfeit and documents result-interstitial
+  loss on remount.
 - **P1: Practice meaningful-history boundary**, pending Practice/Study Hall
   integration on shared `Quiz.tsx` and workspace files.
 - Deferred Premium anchors in Practice Builder/Trends, and History/Review IA.
 - Legacy guided-playtest document exits and the terminal header overlap.
 
-Recommended next task: **active Ranked/Daily leave-contract design**, with no
-runtime interception until owners agree. PLAY1 checkpoints and SFX2 are still
-separate owner work; design can resolve truthful leave/resume copy without
-editing those files. Practice implementation currently overlaps the broader,
-still-deferred Study Hall/Quiz workspace work, so it is the riskier next code
-batch. This recommendation is about collision risk, not permission to expand
-NAV1-D into active-game behavior.
+Recommended next task: **NAV1-E1 supported blocker substrate**, after the owner
+accepts the documented data-router prerequisite and the current PLAY1 route is
+integrated/rebased. Do not begin with a surface-only browser Back handler.
+PLAY1 checkpoints and SFX2 remain separate owner work; E2/E3 integration must
+retain those policies. Practice remains the separate NAV1-P workstream.
 
 ## Audit mechanics and counts
 
