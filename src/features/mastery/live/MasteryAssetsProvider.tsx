@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { getChampionIcon, type ChampionManifest } from "@/hooks/useChampionAssets";
+import { getChampionIcon, getChampionSplash, type ChampionManifest } from "@/hooks/useChampionAssets";
 import { MasteryAssetsContext, type MasteryAssets } from "../player/MasteryAssets";
 import { championName } from "../player/playerFormat";
 
@@ -46,6 +46,12 @@ export function MasteryAssetsProvider({ children }: { children: ReactNode }) {
         getChampionIcon(manifest, championName(championId)),
       // Item icons follow the same backend asset convention as the quiz surfaces
       // (assets/items/{id}.png). A missing asset falls back at the <img> level.
+      // JOURNEY-PRES-V1 — the same manifest through the existing
+      // `getChampionSplash` (splash, else loading art). Decorative only; the
+      // champion's identity is already public wherever it is drawn.
+      championSplashUrl: (championId, displayName) =>
+        getChampionSplash(manifest, displayName ?? championName(championId)) ??
+        getChampionSplash(manifest, championName(championId)),
       itemIconUrl: (itemId) =>
         itemId === null || itemId === undefined ? null : `${API_BASE}/assets/items/${itemId}.png`,
     }),

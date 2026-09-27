@@ -16,7 +16,7 @@ export interface SfxAssetVoice {
 }
 
 export interface SfxRegistryEntry {
-  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast";
+  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily";
   minReplayMs: number;
   relativeGain: number;
   legacySettingKey?: keyof SoundSettings;
@@ -73,7 +73,9 @@ export const SFX_REGISTRY = {
   "ranked.opponent.found": { group: "ranked", minReplayMs: 400, relativeGain: 1, legacySettingKey: "play_opponent_found", builtInGeneratorId: "sfx.legacy.opponent-found" },
   "ranked.module.start": { group: "ranked", minReplayMs: 300, relativeGain: 0.82, builtInGeneratorId: "sfx.ranked.module-start" },
   "ranked.answer.lock": { group: "ranked", minReplayMs: 90, relativeGain: 0.8, builtInGeneratorId: "sfx.ranked.answer-lock" },
-  "ranked.answer.correct": { group: "ranked", minReplayMs: 140, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.answer-correct" },
+  // SFX2 — a single question's verdict is the lightest confirmation in the
+  // hierarchy; it no longer carries the award/speed phrase behind it.
+  "ranked.answer.correct": { group: "ranked", minReplayMs: 140, relativeGain: 0.72, builtInGeneratorId: "sfx.ranked.answer-correct" },
   "ranked.answer.incorrect": { group: "ranked", minReplayMs: 140, relativeGain: 0.84, builtInGeneratorId: "sfx.ranked.answer-incorrect" },
   "ranked.opponent.submitted": { group: "ranked", minReplayMs: 180, relativeGain: 0.58, builtInGeneratorId: "sfx.ranked.opponent-submitted" },
   "ranked.meta.action": { group: "ranked", minReplayMs: 90, relativeGain: 0.62, builtInGeneratorId: "sfx.ranked.meta-action" },
@@ -93,6 +95,9 @@ export const SFX_REGISTRY = {
   "ranked.match.victory": { group: "ranked", minReplayMs: 1000, relativeGain: 0.94, builtInGeneratorId: "sfx.ranked.match-victory" },
   "ranked.match.defeat": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-defeat" },
   "ranked.match.draw": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-draw" },
+  // SFX2 — Daily stage completion outranks a module completion (the award
+  // phrase). Reuses the existing resolved completion voice; no new asset.
+  "daily.stage.complete": { group: "daily", minReplayMs: 1000, relativeGain: 1, builtInGeneratorId: "sfx.leaguecraft.quiz-complete" },
   "combat.simulation.resolve": { group: "combat", minReplayMs: 220, relativeGain: 0.78, builtInGeneratorId: "sfx.combat.simulation-resolve" },
   "archives.reference.open": { group: "archives", minReplayMs: 120, relativeGain: 0.48, builtInGeneratorId: "sfx.archives.reference-open" },
   "pro-play.analysis.open": { group: "pro-play", minReplayMs: 160, relativeGain: 0.62, builtInGeneratorId: "sfx.pro-play.analysis-open" },

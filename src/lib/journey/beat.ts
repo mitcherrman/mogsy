@@ -116,3 +116,69 @@ export function eventDelaysMs(count: number, beatMs: number): number[] {
   const step = count > 1 ? Math.min(450, span / (count - 1)) : 0;
   return Array.from({ length: count }, (_, i) => Math.round(i * step));
 }
+
+/*
+ * JOURNEY-MOTION-V1 — the beat reads as the STATE changing, not as a screen.
+ * The board keeps showing; each changed object animates in place, and the
+ * only words on screen are one compact stamp in the board's own header. The
+ * full per-event lines stay for assistive tech (the beat's status region).
+ */
+
+/** The stamp words, in reading order: recall / first back, level, unlock, purchase. Full words (status region). */
+export function beatStamps(transition: JourneyTransition | null): string[] {
+  const events = transition?.events ?? [];
+  const out: string[] = [];
+  if (events.some((e) => e.kind === "purchase" && e.group === "recall")) out.push("Recall");
+  // J3 narrates some purchases as a first back to base: a presentation label
+  // the recipe chose, not a recall mechanic (J3 retired canonical recall).
+  else if (events.some((e) => e.kind === "purchase" && e.group === "first_back")) out.push("First back");
+  if (events.some((e) => e.kind === "ability_unlock")) out.push("Ultimate unlocked");
+  if (events.some((e) => e.kind === "level")) out.push("Level up");
+  if (!out.length && events.some((e) => e.kind === "purchase")) out.push("Purchase");
+  if (!out.length && events.some((e) => e.kind === "ability_rank")) out.push("Rank up");
+  return out.length ? out : ["State change"];
+}
+
+/**
+ * The VISIBLE stamp: short enough for the phone header beside "Step N of M".
+ * A progression beat reads as one moment ("Lv 6 · R unlocked"); a purchase
+ * in the same beat is carried by its slot and its delta tag, not by words.
+ */
+export function beatShortStamp(transition: JourneyTransition | null): string {
+  const events = transition?.events ?? [];
+  const levels = new Set(events.flatMap((e) => (e.kind === "level" ? [e.to] : [])));
+  const unlocked = [...new Set(events.flatMap((e) => (e.kind === "ability_unlock" ? [e.slot] : [])))];
+  const parts: string[] = [];
+  if (levels.size === 1) parts.push(`Lv ${[...levels][0]}`);
+  else if (levels.size > 1) parts.push("Level up");
+  if (unlocked.length) parts.push(`${unlocked.join("/")} unlocked`);
+  // The recipe's narration of a purchase (a recall / first back) is kept; a
+  // plain purchase beside a progression is carried by its slot and tag alone.
+  if (events.some((e) => e.kind === "purchase" && e.group === "recall")) parts.push("Recall");
+  else if (events.some((e) => e.kind === "purchase" && e.group === "first_back")) parts.push("First back");
+  if (parts.length) return parts.join(" · ");
+  if (events.some((e) => e.kind === "purchase")) return "Purchase";
+  if (events.some((e) => e.kind === "ability_rank")) return "Rank up";
+  return "Update";
+}
+
+/**
+ * The item's own stat lines, as the server published them, keyed by the slot
+ * the item landed in (`side:slot`): "+10 AH". Only a `stat_change` whose
+ * `source` names an item this transition put in that side's inventory — the
+ * one causal link the public data states. Nothing is summed or derived; a
+ * `stat_delta` (from/to, J2) belongs to its stat chip, not to an item.
+ */
+export function itemGainTags(transition: JourneyTransition | null): Map<string, string[]> {
+  const bought = new Map<string, string>();       // `side|name` → markKey(side, slot)
+  const out = new Map<string, string[]>();
+  for (const e of transition?.events ?? []) {
+    if (e.kind === "purchase") for (const it of e.items) if (it.slot >= 0) bought.set(`${e.side}|${it.name}`, k(e.side, it.slot));
+    if (e.kind === "stat_change" && e.source) {
+      const at = bought.get(`${e.side}|${e.source}`);
+      if (!at) continue;
+      out.set(at, [...(out.get(at) ?? []), `${formatStatGain(e.delta, e.key)} ${JOURNEY_STAT_META[e.key].short}`]);
+    }
+  }
+  return out;
+}

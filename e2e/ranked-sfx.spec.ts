@@ -66,7 +66,7 @@ for (const mobile of [false, true]) {
       expect(await page.evaluate(() => window.__rankedSfxOscillators)).toBe(0);
     });
 
-    test("live public transitions synthesize opponent, settlement, speed, and victory cues",
+    test("live public transitions synthesize opponent, verdict, and victory cues",
       async ({ page }) => {
         await instrumentSynths(page);
         await page.goto("/dev/ranked-shell-probe?q=opts4&points=1&frame=0&progression=0&sfx=1");
@@ -80,8 +80,8 @@ for (const mobile of [false, true]) {
         };
 
         await advance(); // public opponent submission, local player still active
-        await advance(); // round 1 correct + base award
-        await advance(); // round 2 correct + base award + speed accent
+        await advance(); // round 1 correct (SFX2: verdict only, award no longer stacks)
+        await advance(); // round 2 correct (SFX2: verdict only, speed no longer stacks)
         await advance(); // round 3 incorrect
         await advance(); // authoritative live transition to victory
         await expect(page.getByText("VICTORY")).toBeVisible();

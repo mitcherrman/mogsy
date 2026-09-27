@@ -17,6 +17,13 @@ const mockAuth = vi.hoisted(() => ({
 }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => mockAuth }));
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
+const sfxPlays = vi.hoisted(() => [] as { event: string; eventId?: string }[]);
+// A stable API, like the real `useSfx`.
+const sfxApi = vi.hoisted(() => ({
+  play: (event: string, options?: { eventId?: string }) => { sfxPlays.push({ event, eventId: options?.eventId }); },
+  stop: () => {}, preload: () => {},
+}));
+vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfxApi }));
 vi.mock("@/pages/quiz-ranked/QuizRankedMatch", () => ({
   QuizRankedMatch: () => { throw new Error("the stand-in is injected in these tests"); },
 }));
@@ -70,6 +77,7 @@ async function playStage(t: FixtureTransport, result = wireResult()) {
 }
 
 beforeEach(() => {
+  sfxPlays.length = 0;
   mockAuth.user = { id: "userA", is_anonymous: false };
   vi.useFakeTimers({ shouldAdvanceTime: false });
   lastHost = null;
@@ -153,6 +161,9 @@ describe("one Daily Challenge, stage by stage", () => {
     expect(screen.getByTestId("daily-recap-3")).toHaveAttribute("data-closing", "true");
     // No completion ever appeared between stages.
     expect(completions).toEqual([0, 0, 0]);
+    // SFX2 — each watched stage completion sounds exactly once, Review included.
+    expect(sfxPlays.filter((p) => p.event === "daily.stage.complete")).toHaveLength(4);
+    expect(new Set(sfxPlays.map((p) => p.eventId)).size).toBe(sfxPlays.length);
     // Each child mounted once, fresh, under the Daily's name.
     expect(mounts).toEqual([
       { matchId: "child-0", entry: "fresh" }, { matchId: "child-1", entry: "fresh" },
@@ -357,6 +368,8 @@ describe("refresh lands on the server's current stage", () => {
     expect(phase()).toBe("complete");
     expect(q("daily-stage-result")).toBeNull();
     expect(q("daily-intro")).toBeNull();
+    // SFX2 — reopening a finished day is history, not a fresh completion.
+    expect(sfxPlays).toEqual([]);
   });
 
   it("an untouched run is still an arrival: the Daily intro plays", async () => {

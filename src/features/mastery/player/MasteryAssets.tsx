@@ -13,6 +13,12 @@ export interface MasteryAssets {
   championIconUrl: (championId: string, displayName?: string | null) => string | null;
   /** Square item icon URL by stable LoL item id, or null (caller shows a fallback). */
   itemIconUrl: (itemId: number | null | undefined) => string | null;
+  /**
+   * JOURNEY-PRES-V1 — rectangular splash URL, or null. Optional so every
+   * existing resolver (and test double) stays valid; decorative callers treat
+   * absence as "no art".
+   */
+  championSplashUrl?: (championId: string, displayName?: string | null) => string | null;
 }
 
 export const MasteryAssetsContext = createContext<MasteryAssets>({
