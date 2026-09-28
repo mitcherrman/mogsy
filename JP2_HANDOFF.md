@@ -20,7 +20,7 @@ This pass acts on the owner's first production playtest of the Zed/Ahri referenc
 |---|---|---|
 | A | One fixed stage: board, prompt, answers and reveal at the same coordinates from Step 1 to the finish, on desktop and mobile | `index.css` "JP2 — THE FIXED JOURNEY STAGE"; `JourneyStageQuestion` |
 | B | The state board is the primary media | Board takes the locked card's leftover height from `lg`; taller fixed height below `lg`; two new density tiers |
-| C | Learned knowledge lives on the state | K2 join extended (`knowledge.ts`); premise / "Builds on" manifest removed; a one-line cue remains |
+| C | Learned knowledge lives on the state | K2 join extended (`knowledge.ts`); premise / "Builds on" manifest removed, **and (polish) no helper line at all** |
 | D | Identical stackable consumables stack, with a count | `lib/journey/inventory.ts`, `adapter.itemsOf`, `InventorySlots` |
 | E | "total AD" wherever the formula means total AD | `lib/journey/statWording.ts` (display only) |
 | F | Step 2 asks the semantic question | Raw template joins the Combat seam (`JourneyCombatQuestion`) |
@@ -74,10 +74,13 @@ The Journey stage **reserves** those regions with the same `--qs-*` tokens the o
 | Width | Prompt reserve | Answer reserve | Board height |
 |---|---|---|---|
 | Phone (< 640) | 8.75rem | 17.5rem | 12.5rem |
-| 640–1023 | 5.75rem | 15rem | 15rem |
-| ≥ 1024 (locked card) | 7.75rem, then 5.75rem from 1280 | 11.75rem, then 11.5rem from 1280; 12.5rem from 1500 | Takes the rest |
+| 640–1023 | 6rem | 15rem | 15rem |
+| 1024–1279 (locked card) | 8.5rem | 11rem | Takes the rest |
+| ≥ 1280 (locked card) | 6.25rem | 9.75rem | Takes the rest |
 
-The reserves were measured: the tallest real content (reference + Daily captures) plus about one line. The measurements are recorded in the CSS.
+The reserves were measured: the tallest real content (reference + Daily captures), with a small margin. The measurements are recorded in the CSS.
+
+**The tablets fill their region.** The options grid takes the reserved answer region's full height, and its rows share it evenly (`grid-auto-rows: 1fr`). A short option set therefore gets larger tablets instead of leaving empty parchment beneath. The Journey tablet padding out-specifies the arena's wide/tall-screen tablet padding, so the floor stays tight.
 
 What differs per child kind is only **words**:
 * **Combat** (after armor **and** the raw template): `combatQuestionSentence`.
@@ -95,10 +98,18 @@ A tap submits the **served option string** for that tablet, looked up by index. 
 
 The reveal is a layer in the prompt box: the prompt is hidden, not removed. The tablets keep their place and take the surface's own reveal tones. It contains:
 * the verdict ("Correct" / "Not quite" / "Time's up") and the answer;
-* then **one** line of working, chosen in this order:
-  1. the server's `combat_working` (Step 4);
-  2. the raw result laid out from **served parts only**: the ledger's taught formula, the premise's bonus AD and the reveal's answer. For example, *"Rank 1 Shadow Slash: 70 + (70% × 20.8 bonus AD) ≈ 85 physical damage before armor"*. There is no arithmetic.
+* then the working, in **rows** at reading size (14 px from 1280, 13 px from 640, 12 px on phone), chosen in this order:
+  1. the server's `combat_working` (Step 4), in three rows. Every value is the server's; only the joins differ in row mode (`JourneyCombatWorking rows`):
+     *Formula (E rank 1): 70 + 70% bonus AD (20.8)*
+     *Raw 84.56 → Ahri armor 24.024 (recalled from step 3) → No penetration*
+     *Effective armor 24.024 × 0.8063 = 68.1804 → Answer 68*
+  2. the raw result laid out from **served parts only** (the ledger's taught formula, the premise's bonus AD, the reveal's answer), also in three rows. There is no arithmetic.
+     *Rank 1 Shadow Slash*
+     *70 + (70% × 20.8 bonus AD)*
+     *≈ 85 physical damage before armor*
   3. the served explanation.
+
+**No helper lines (polish).** "Builds on Step N" and "Item effects inactive" are not drawn under any Journey question. What earlier steps established is on the board. Item effects declared inactive is internal scenario state the calculation holds fixed. The only premise the question still carries is a formula a Daily Combat child **states**.
 
 ### Board as memory (K2 extended)
 
@@ -146,7 +157,7 @@ The **submitted value is the served string** (for example, "…(+70% AD)"). The 
 * `src/lib/journey/statWording.ts`
 * `src/lib/ranked-core/modules/masterySliceModule.stageGrammar.test.tsx`
 * `src/lib/journey/__fixtures__/jref/*`: 3 real captures, answers, harness, `CAPTURE.md`
-* `docs/handoffs/jp2-stage-grammar/*.jpg`: before/after at 1280×800 and 390×844
+* `docs/handoffs/jp2-stage-grammar/*.jpg`: `before-*` (origin/main) and `final-*` (this build)
 * `JP2_HANDOFF.md`
 
 **Modified**
@@ -225,40 +236,49 @@ The **submitted value is the served string** (for example, "…(+70% AD)"). The 
 * the preset freezes exactly one Journey module;
 * public catalogs are untouched.
 
-## 7. Viewport certification
+## 7. Viewport certification (final polish build)
 
-**Method.** The dev harness `/dev/journey-arena` replays the real captures through the production path (`readPublicRound` → `masterySliceModule` → `CanonicalArena`). A probe steps every snapshot and records each region's coordinates.
+**Method.** The dev harness `/dev/journey-arena` replays the real captures through the production path (`readPublicRound` → `masterySliceModule` → `CanonicalArena`). A probe steps every snapshot and records:
+* each region's coordinates;
+* the overflow of every prompt, reveal, answer and question box;
+* any lock-in button;
+* any "Builds on" / "Item effects" text;
+* horizontal overflow.
 
-**Desktop.** One value per region across every snapshot of the correct, wrong and timeout captures:
+A second probe measures each region's natural need, with the tablets un-stretched, against its reserve.
 
-| Viewport | Board (y / h) | Question box (y / h) | Prompt top | Answer origin | Overflow | Lock-in | x-overflow |
-|---|---|---|---|---|---|---|---|
-| 1024×768 | 127 / 214 | 349 / 324 | 349 | 481 | 0 | 0 | 0 |
-| 1280×800 | 127 / 282 | 417 / 288 | 417 | 517 | 0 | 0 | 0 |
-| 1440×900 | 133 / 370 | 511 / 288 | 511 | 615 | 0 | 0 | 0 |
-| 1920×1080 | 145 / 522 | 675 / 304 | 675 | 779 | 0 | 0 | 0 |
+**Captures run at each breakpoint:** the reference Journey (correct, wrong, timeout) and the Daily M1 captures (Volibear with beats and a comparison, Pantheon with a stated formula and the longest working, Ahri Survival).
 
-**Mobile and tablet.**
+**Result:** one value per region across every snapshot, with overflow, lock-in, helper text and x-overflow all 0.
 
-| Viewport | Board (y / h) | Question box (y / h) | Prompt top | Answer origin | Overflow | Lock-in | x-overflow |
-|---|---|---|---|---|---|---|---|
-| 768×1024 | 155 / 240 | 403 / 344 | 403 | 503 | 0 | 0 | 0 |
-| 390×844 | 159 / 200 | 367 / 432 | 367 | 515 | 0 | 0 | 0 |
-| 375×812 | 159 / 200 | 367 / 432 | 367 | 515 | 0 | 0 | 0 |
-
-**Board height before JP2:** 1024 → 200, 1280 → 208, 1440 → 200, 390 → 127.
+| Viewport | Board (y / h) | Question box (y / h) | Prompt top | Answer origin | Board before polish | Board before JP2 |
+|---|---|---|---|---|---|---|
+| 1024×768 | 127 / 214 | 349 / 324 | 349 | 493 | 214 | 200 |
+| 1280×800 | 127 / **302** | 437 / 268 | 437 | 545 | 282 | 208 |
+| 1440×900 | 133 / **390** | 531 / 268 | 531 | 643 | 370 | 200 |
+| 1920×1080 | 145 / **558** | 711 / 268 | 711 | 823 | 522 | — |
+| 768×1024 | 155 / 240 | 403 / 348 | 403 | 507 | 240 | — |
+| 390×844 | 159 / 200 | 367 / 432 | 367 | 515 | 200 (unchanged) | 127 |
+| 375×812 | 159 / 200 | 367 / 432 | 367 | 515 | 200 (unchanged) | — |
 
 **Other certification**
-* The Daily M1 captures (Volibear with transition beats and a comparison, Pantheon with a stated formula, Ahri Survival) give the same single-value result at 1024, 1280, 768 and 390.
-* The lead-in frame equals the child geometry (1280: board 127/282, question 417/288).
-* Every reveal fits its box.
-* The K2 popover stays in the viewport on phone and desktop.
+* **Mobile card unchanged by the polish:** stage 658, question box 432, answer origin 515 at 390 and 375.
+* **768:** the question box is 4 px taller (the prompt reserve covers a 92 px reveal).
+* **Lead-in:** the frame equals the child geometry at every width.
+* **Needs vs reserves (worst real content, px):**
+  * 1280–1920: prompt 70, reveal 96, answers 149;
+  * 1024: prompt 81, reveal 132, answers 173;
+  * 768: prompt 67, reveal 92, answers 224;
+  * 390: prompt 108, reveal 121, answers 271.
+
+  Each fits its reserve.
+* **Known and unchanged:** a Survival Journey's arena header loses its per-child timer at the finish (outside the Journey renderer, pre-existing). This shifts that whole stage 10 px at the final reveal.
 
 **Screenshots.** `docs/handoffs/jp2-stage-grammar/`:
-* `before-*` / `after-*` at `desktop` (1280×800) and `mobile` (390×844), for Step 1–4 live and reveal, and finished;
-* `after-*-step4-mark-*`: the Zed E and Ahri popovers.
+* `final-desktop-*` (1280×800): step1-live, step2-live, step2-reveal, step3-live, step3-reveal, step4-live, step4-reveal;
+* `final-mobile-*` (390×844): step4-live, step4-reveal.
 
-These were taken with headless Edge.
+They were taken with headless Edge from the committed build. The `before-*` shots (`origin/main`) are kept for comparison. The superseded `after-*` shots were removed.
 
 ## 8. Curriculum and data invariants (unchanged)
 

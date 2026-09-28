@@ -174,7 +174,9 @@ describe("Step 2 — the question asks; the board states", () => {
     show(snap(REF, "child1-live"));
     expect(heading()).toHaveTextContent("How much physical damage does Zed's Rank 1 Shadow Slash deal before armor?");
     expect(child().textContent).not.toMatch(/attacker level|attacker items|@ 2|Doran's Blade|inactive item effects|after armor/);
-    expect(screen.getByTestId("journey-cue")).toHaveTextContent("Builds on Step 1 · Item effects inactive");
+    // No helper copy: no "Builds on", no internal scenario state.
+    expect(child().textContent).not.toMatch(/builds on|item effects/i);
+    expect(screen.queryByTestId("scenario-context")).toBeNull();
     // The state it is read at is the BOARD's.
     expect(screen.getByTestId("journey-stat-subject-bonus_attack_damage")).toHaveTextContent("20.8");
     expect(screen.getByTestId("journey-level-subject")).toHaveTextContent("2");
@@ -184,7 +186,9 @@ describe("Step 2 — the question asks; the board states", () => {
   it("the reveal lays out the formula applied, from SERVED parts only — then ≈ the answer", () => {
     show(snap(REF, "child1-reveal"));
     const w = screen.getByTestId("journey-raw-working");
-    expect(w).toHaveTextContent("Rank 1 Shadow Slash: 70 + (70% × 20.8 bonus AD) ≈ 85 physical damage before armor");
+    // Three rows: what, the formula applied, the result.
+    expect([...w.querySelectorAll(".journey-reveal__row")].map((r) => r.textContent)).toEqual([
+      "Rank 1 Shadow Slash", "70 + (70% × 20.8 bonus AD)", "≈ 85 physical damage before armor"]);
     // No arithmetic: every number drawn is the taught formula's, the premise's or the answer.
     expect((w.textContent ?? "").match(/\d+(?:\.\d+)?/g)).toEqual(["1", "70", "70", "20.8", "85"]);
     expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent("Correct · 85");
@@ -210,8 +214,9 @@ describe("Step 4 — the culmination reads off the board", () => {
   it("asks the application; no dependency manifest; the prerequisites are the board's", () => {
     show(snap(REF, "child3-live"));
     expect(heading()).toHaveTextContent("How much physical damage does Zed's Rank 1 Shadow Slash deal to Ahri?");
-    expect(screen.getByTestId("journey-cue")).toHaveTextContent("Builds on Steps 2 & 3 · Item effects inactive");
     expect(document.body.textContent).not.toMatch(/Raw damage · recalled|recall · revealed in step|not part of this question's premise/);
+    // The chain is on the board, not in a helper line under the question.
+    expect(child().textContent).not.toMatch(/builds on|item effects/i);
     // The armor is a recall on the board; its value is one hover away, not printed.
     expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveTextContent(/recall · step 3/i);
     expect(popText("journey-know-subject-E")).toMatch(
@@ -228,6 +233,10 @@ describe("Step 4 — the culmination reads off the board", () => {
     expect(within(w).getByTestId("journey-combat-working-armor-source")).toHaveTextContent("(recalled from step 3)");
     expect(within(w).getByTestId("journey-combat-working-answer")).toHaveTextContent("68");
     expect(screen.getByTestId("journey-reveal")).toContainElement(w);
+    // Laid out in three rows of reasoning (formula / raw → armor / result).
+    expect(w).toHaveAttribute("data-layout", "rows");
+    expect(w.querySelectorAll(".journey-working__break")).toHaveLength(2);
+    expect(w.querySelector("[data-step='final']")).toHaveTextContent(/^= 68\.1804$/);
   });
 });
 
@@ -383,6 +392,8 @@ describe("the fixed stage: structure the pixel invariant rests on", () => {
     expect(block).toMatch(/\.journey-reveal\s*\{[^}]*position:\s*absolute[^}]*height:\s*var\(--jq-prompt-h\)/);
     expect(block).toMatch(/\.journey-ask\[data-revealing="true"\] \[data-surface-region="prompt"\]\s*\{\s*visibility:\s*hidden/);
     expect(block).toMatch(/\.journey-stage-status\s*\{[^}]*min-height:\s*calc\(var\(--jq-prompt-h\)/);
+    // The tablets fill the reserved answer region (no empty parchment beneath).
+    expect(block).toMatch(/\[data-testid="answer-grid"\] > \.grid\s*\{[^}]*min-height:\s*var\(--jq-answers-h\)[^}]*grid-auto-rows:\s*1fr/);
     // The reveal mark takes room the tablet always keeps (no re-wrap at reveal).
     expect(block).toMatch(/\[data-quiz-choice\]:not\(:has\(img\)\) > svg\s*\{[^}]*position:\s*absolute/);
     // No inner scroll box in the Journey question any more.

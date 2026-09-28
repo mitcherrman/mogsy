@@ -16309,11 +16309,11 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   /* RESERVES = the tallest real Journey content at that width + a little,
      measured on real captures — the Zed/Ahri reference Journey (every child
      and its reveal, right / wrong / timed out) and the Daily's Journeys (M1:
-     Volibear, Pantheon with a stated formula, Ahri Survival):
-     prompt+cue / reveal / answers, in px.
-       375–390   121 / 119 / 263     768          82 /  78 / 224
-       1024       94 /  95 / 173     1280        85 /  82 / 149
-       1440       69 /  82 / 165     1920        69 /  82 / 181
+     Volibear, Pantheon with a stated formula and the longest working, Ahri
+     Survival): prompt / reveal / answers (natural, before the tablets
+     stretch to fill), in px.
+       375–390   108 / 121 / 271     768          67 /  92 / 224
+       1024       81 / 132 / 173     1280–1920    70 /  96 / 149
      The prompt box holds the REVEAL too, so it is sized for the larger. */
   --jb-band-h: 12.5rem;   /* phone: a stacked board with room for real icons */
   --jq-prompt-h: 8.75rem;
@@ -16322,24 +16322,23 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
 @media (min-width: 640px) {
   .journey-stage {
     --jb-band-h: 15rem;
-    --jq-prompt-h: 5.75rem;
+    --jq-prompt-h: 6rem;
     --jq-answers-h: 15rem;
   }
 }
 @media (min-width: 1024px) {
   .journey-stage {
-    --jq-prompt-h: 7.75rem;
-    --jq-answers-h: 11.75rem;
+    --jq-prompt-h: 8.5rem;
+    --jq-answers-h: 11rem;
   }
 }
+/* From 1280 the reveal's rows fit the column: the question box is 268px and
+   the board takes the rest of the card. */
 @media (min-width: 1280px) {
   .journey-stage {
-    --jq-prompt-h: 5.75rem;
-    --jq-answers-h: 11.5rem;
+    --jq-prompt-h: 6.25rem;
+    --jq-answers-h: 9.75rem;
   }
-}
-@media (min-width: 1500px) {
-  .journey-stage { --jq-answers-h: 12.5rem; }
 }
 
 /* THE BOARD REGION. `ScenarioMediaBand` stays the box (its container query
@@ -16397,32 +16396,27 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
     font-size: 1.125rem; line-height: 1.35;
   }
 }
-/* The cue line under the sentence: "Builds on Steps 2 & 3 · …". */
+/* A formula the child STATES as its premise, under the sentence. There is no
+   other helper line: what earlier steps established is on the board. */
 .journey-question [data-testid="scenario-context"] {
-  margin-top: 0.125rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  line-height: 1rem;
-  text-transform: uppercase;
-  color: #7a5a17;
-}
-.journey-ask__formula {
-  display: inline;
-  font-size: 0.75rem;
-  letter-spacing: 0;
-  text-transform: none;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
   color: #3a2c10;
-  font-variant-numeric: tabular-nums;
 }
+.journey-ask__formula { font-variant-numeric: tabular-nums; }
 
 /* A tablet's reveal mark (the check / cross) takes room the tablet ALWAYS
    keeps, so its label wraps the same before and after the reveal. Outside the
    stage the mark joins the label's row and narrows it: a three-line formula
    option became four lines at its reveal and the answer grid grew. */
-.journey-question [data-quiz-choice]:not(:has(img)) {
+.journey-question [data-quiz-choice]:not(:has(img)),
+.ranked-academy .journey-question [data-answers-state] [data-quiz-choice]:not(:has(img)) {
+  /* Out-specifies the arena's wide/tall tablet padding (14–18px): a Journey
+     tablet FILLS its reserved region, so extra padding would only inflate the
+     region's floor. */
   position: relative;
-  padding: 0.625rem 2rem 0.625rem 0.75rem;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
   line-height: 1.35;
 }
 .journey-question [data-quiz-choice]:not(:has(img)) > svg {
@@ -16431,6 +16425,19 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   right: 0.625rem;
   margin: 0;
   transform: translateY(-50%);
+}
+
+/* THE TABLETS FILL THEIR REGION. The answer region is a fixed box sized for
+   the tallest real option set (a formula-recognition child); a set of short
+   options used to sit at its top with parchment left empty beneath. Now the
+   grid takes the whole box and its rows share it evenly, so every child's
+   tablets fill the same rectangle — larger tap targets, no dead space, and
+   still nothing that depends on a child's content. */
+/* (Sized on the grid itself: a <fieldset>'s anonymous content box does not
+   hand a definite height to a flex child, so a flex chain would not reach it.) */
+.journey-question [data-testid="answer-grid"] > .grid {
+  min-height: var(--jq-answers-h);
+  grid-auto-rows: 1fr;
 }
 
 /* THE REVEAL LAYER: the prompt region's own box, the prompt hidden beneath it.
@@ -16448,19 +16455,30 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   color: #2a1f08;
 }
 .journey-reveal__verdict {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.3;
 }
 .journey-reveal__verdict--correct { color: #1f6b3d; }
 .journey-reveal__verdict--wrong { color: #9a2f22; }
+/* The working, one reasoning step per line (`rows`), at reading size. */
 .journey-reveal__working {
+  /* Phone: 12px keeps the longest real working (a Daily Pantheon E) inside the
+     phone's prompt box; the card does not grow for it. */
   font-size: 0.75rem;
-  line-height: 1.3;
+  line-height: 1.4;
   color: #2a1f08;
+  font-variant-numeric: tabular-nums;
+}
+.journey-reveal__working[data-layout="rows"] { row-gap: 0.125rem; }
+.journey-working__break { flex-basis: 100%; height: 0; }
+.journey-reveal__rows { display: flex; flex-direction: column; }
+.journey-reveal__row { display: block; }
+@media (min-width: 640px) {
+  .journey-reveal__working { font-size: 0.8125rem; line-height: 1.45; }
 }
 @media (min-width: 1280px) {
-  .journey-reveal__working { font-size: 0.8125rem; }
+  .journey-reveal__working { font-size: 0.875rem; }
 }
 
 /* Between children, and once the Journey is finished: the same question box. */

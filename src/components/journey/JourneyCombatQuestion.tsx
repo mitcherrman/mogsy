@@ -15,9 +15,9 @@
  * Zed's Rank 1 Shadow Slash deal before armor?"). Levels, items and the stats
  * a formula reads are on the state board; the facts an earlier step taught are
  * on the board's objects as `!` marks. The premise panel that used to restate
- * all of it beneath the board is gone. The only premise facts that still need
- * words are the ones the board has no object for (`premiseNotes`: e.g. item
- * effects declared inactive), and they ride in the question's one cue line.
+ * all of it beneath the board is gone, and so is any helper line: internal
+ * scenario state the calculation holds fixed (item effects declared inactive)
+ * is never question copy.
  *
  * Two templates are Combat here, both phrased from the same premise:
  *   `ability_damage_under_state`      — after the target's armor (JOURNEY-UI2);
@@ -116,16 +116,4 @@ export function combatQuestionSentence(p: CombatPremise): string {
     : target !== undefined ? ` to ${target}` : " after armor";
   return `How much ${damageWords(p.metric)} does ${p.champion}'s ${ability} deal${where}${
     component ? `, ${component}` : ""}?`;
-}
-
-/**
- * Premise facts that change the answer and have NO object on the board, as
- * short words for the question's cue line. Today that is one: items whose
- * effects the scenario declares inactive (`item_effects: inactive`). A value
- * that is a board object (level, items, stats, armor, a recalled result) is
- * never repeated here.
- */
-export function premiseNotes(p: CombatPremise): string[] {
-  const effects = premiseValue(p, "item_effects");
-  return effects === "inactive" ? ["Item effects inactive"] : [];
 }

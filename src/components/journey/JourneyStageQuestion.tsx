@@ -23,8 +23,13 @@
  *     prompt), never a serialization of the state the board already shows;
  *   * the option labels — the served values, drawn in the Journey's wording
  *     (a comparison's champion names; a formula's explicit AD category);
- *   * the one cue line — "Builds on Steps 2 & 3", and a premise fact the
- *     board has no object for.
+ *   * a formula the child STATES as its premise (a Daily Combat child), the
+ *     one premise the question itself must carry.
+ *
+ * NO HELPER LINES. What earlier steps established is on the board (K2 `!`
+ * marks, recall chips), so the question does not repeat it underneath
+ * ("Builds on step N"), and internal scenario state that the calculation
+ * holds fixed (item effects declared inactive) is never question copy.
  *
  * DIRECT ANSWER. Choosing a tablet IS answering — the Ranked arena's own rule
  * ("There is no Lock In button — clicking an answer submits it"). The value
@@ -55,7 +60,7 @@ import { COMPARISON_TIE_TOKEN } from "@/features/mastery/interactions/Comparison
 import type { CombatWorking } from "@/lib/journey/combatWorking";
 import { ratioStatLabel, explicitAdText } from "@/lib/journey/statWording";
 import {
-  combatPremiseOf, combatQuestionSentence, percent, premiseNotes, premiseValue, type CombatPremise,
+  combatPremiseOf, combatQuestionSentence, percent, premiseValue, type CombatPremise,
 } from "./JourneyCombatQuestion";
 import { JourneyCombatWorking } from "./JourneyCombatWorking";
 
@@ -68,20 +73,10 @@ export interface JourneyQuestion {
   sentence: string;
   /** The label drawn on each served option (same order, same count). */
   labels: string[];
-  /** The one cue line under the sentence, or null. */
-  cue: string | null;
   /** A formula this child STATES as its premise (Combat), drawn with the question. */
   statedFormula: JourneyFormula | null;
   /** The served Combat premise, when this is a Combat child. */
   premise: CombatPremise | null;
-}
-
-/** "Builds on Step 1" / "Builds on Steps 2 & 3" / "Builds on Steps 1, 2 & 4". */
-export function buildsOnCue(reinforces: readonly number[]): string | null {
-  if (reinforces.length === 0) return null;
-  const steps = [...reinforces].sort((a, b) => a - b).map((i) => String(i + 1));
-  if (steps.length === 1) return `Builds on Step ${steps[0]}`;
-  return `Builds on Steps ${steps.slice(0, -1).join(", ")} & ${steps[steps.length - 1]}`;
 }
 
 const FORMULA_FAMILY = "ability_damage_formula";
@@ -94,13 +89,11 @@ export function journeyQuestionFor(challenge: MasterySliceChallengeView, journey
   const options = challenge.answerOptions;
   const formulaLabels = challenge.questionFamily === FORMULA_FAMILY;
   const served = options.map((o) => (formulaLabels ? explicitAdText(o) : o));
-  const cue = (notes: string[] = []) => [buildsOnCue(journey.reinforces), ...notes].filter(Boolean).join(" · ") || null;
 
   const premise = combatPremiseOf(challenge);
   if (premise) {
     const stated = journey.formula && journey.formula.slot === premise.slot ? journey.formula : null;
-    return { kind: "combat", sentence: combatQuestionSentence(premise), labels: served, cue: cue(premiseNotes(premise)),
-      statedFormula: stated, premise };
+    return { kind: "combat", sentence: combatQuestionSentence(premise), labels: served, statedFormula: stated, premise };
   }
   if (challenge.interactionKind === "comparison_left_right" && challenge.comparisonSemantics
       && options.length === 3 && options[2] === COMPARISON_TIE_TOKEN) {
@@ -108,7 +101,7 @@ export function journeyQuestionFor(challenge: MasterySliceChallengeView, journey
       const cs = readComparisonSemantics(challenge.comparisonSemantics);
       // The comparison renderer's own labels: champion NAMES, never the ids.
       return { kind: "comparison", sentence: formatComparisonPrompt(cs),
-        labels: [cs.championADisplay, cs.championBDisplay, "Tie / Same"], cue: cue(), statedFormula: null, premise: null };
+        labels: [cs.championADisplay, cs.championBDisplay, "Tie / Same"], statedFormula: null, premise: null };
     } catch { /* an unreadable comparison is asked in its served words below */ }
   }
   const template = (challenge.promptSemantics as { template?: unknown } | null)?.template;
@@ -116,10 +109,10 @@ export function journeyQuestionFor(challenge: MasterySliceChallengeView, journey
       && (PROMPT_TEMPLATES as readonly unknown[]).includes(template)) {
     try {
       return { kind: "recall", sentence: formatRecallPrompt(readPromptSemantics(challenge.promptSemantics)),
-        labels: served, cue: cue(), statedFormula: null, premise: null };
+        labels: served, statedFormula: null, premise: null };
     } catch { /* fall through to the served prompt */ }
   }
-  return { kind: "prose", sentence: challenge.prompt, labels: served, cue: cue(), statedFormula: null, premise: null };
+  return { kind: "prose", sentence: challenge.prompt, labels: served, statedFormula: null, premise: null };
 }
 
 /** A formula stated as the question's premise, in one line. Served values only. */
@@ -146,7 +139,9 @@ function StatedFormula({ formula, rank }: { formula: JourneyFormula; rank: numbe
  * premise states, and the reveal's own answer. Nothing is multiplied, summed
  * or rounded here; where a part is not served, no working is drawn.
  *
- *   Rank 1 Shadow Slash: 70 + (70% × 20.8 bonus AD) ≈ 85
+ *   Rank 1 Shadow Slash
+ *   70 + (70% × 20.8 bonus AD)
+ *   ≈ 85 physical damage before armor
  */
 export function rawWorkingParts(premise: CombatPremise, formula: JourneyFormula | null, answer: string | null) {
   if (!formula || premise.rank === null || answer === null) return null;
@@ -167,8 +162,9 @@ export function rawWorkingParts(premise: CombatPremise, formula: JourneyFormula 
 
 /**
  * The reveal, in the prompt region's reserved box: the verdict and the answer,
- * then ONE line of working — the server's Combat working, else a raw result
- * laid out from served parts, else the served explanation.
+ * then the working in short ROWS (one step of the reasoning per line) — the
+ * server's Combat working, else a raw result laid out from served parts, else
+ * the served explanation.
  */
 function JourneyReveal({ question, correct, timedOut, answer, explanation, working, learnedFormula }: {
   question: JourneyQuestion;
@@ -191,14 +187,16 @@ function JourneyReveal({ question, correct, timedOut, answer, explanation, worki
         {answer !== null && <> · <span data-testid="journey-reveal-answer">{answer}</span></>}
       </p>
       {working ? (
-        <JourneyCombatWorking working={working} className="journey-reveal__working" />
+        <JourneyCombatWorking working={working} rows className="journey-reveal__working" />
       ) : raw ? (
-        <p data-testid="journey-raw-working" className="journey-reveal__working">
-          <span className="font-semibold">{raw.what}:</span>{" "}
-          <span className="tabular-nums">{raw.expression}</span>{" "}
-          <span aria-hidden className="opacity-60">≈</span>{" "}
-          <span className="font-black tabular-nums">{raw.answer}</span>{" "}
-          <span className="opacity-80">physical damage before armor</span>
+        <p data-testid="journey-raw-working" className="journey-reveal__working journey-reveal__rows">
+          <span className="journey-reveal__row font-semibold">{raw.what}</span>{" "}
+          <span className="journey-reveal__row tabular-nums">{raw.expression}</span>{" "}
+          <span className="journey-reveal__row">
+            <span aria-hidden className="opacity-60">≈</span>{" "}
+            <span className="font-black tabular-nums">{raw.answer}</span>{" "}
+            <span className="opacity-80">physical damage before armor</span>
+          </span>
         </p>
       ) : explanation ? (
         <p data-testid="journey-reveal-explanation" className="journey-reveal__working">{explanation}</p>
@@ -242,13 +240,9 @@ export function JourneyStageQuestion({
   // option, from the server payload, so a reload lands on the same picture.
   const shown = revealing ? (optionId(reveal.selectedValue) ?? picked) : picked;
   const open = !submitting && !revealing;
-  const context = question.statedFormula || question.cue ? (
-    <>
-      {question.statedFormula && <StatedFormula formula={question.statedFormula} rank={question.premise?.rank ?? null} />}
-      {question.statedFormula && question.cue && <br />}
-      {question.cue && <span data-testid="journey-cue">{question.cue}</span>}
-    </>
-  ) : null;
+  const context = question.statedFormula
+    ? <StatedFormula formula={question.statedFormula} rank={question.premise?.rank ?? null} />
+    : null;
 
   return (
     <div data-testid="journey-child" data-render-path={question.kind} data-revealing={revealing ? "true" : undefined}

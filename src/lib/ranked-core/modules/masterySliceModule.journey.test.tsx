@@ -296,7 +296,8 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
     expect(screen.queryByTestId("journey-stated-formula")).toBeNull();
     expect(text()).not.toMatch(/10 \/ 20 \/ 30/);
     expect(screen.getByTestId("journey-stat-subject-bonus_attack_damage")).toHaveTextContent("20");
-    expect(screen.getByTestId("journey-cue")).toHaveTextContent("Builds on Steps 1 & 3");
+    // What steps 1 and 3 established is on the board; no helper line repeats it.
+    expect(text()).not.toMatch(/Builds on/i);
   });
 
   it("the Combat reveal is the backend's text, verbatim — no local derivation", () => {
