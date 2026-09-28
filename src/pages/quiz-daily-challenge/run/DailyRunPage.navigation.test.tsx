@@ -145,8 +145,7 @@ describe("DailyRunPage navigation ownership", () => {
     mockState.current = { ...mockState.current, load: "ready", run: null, flow: null };
     const router = harness(["/quiz/daily-challenge"], 0);
     render(<RouterProvider router={router} />);
-    fireEvent.click(screen.getByRole("link", { name: "HUD Home" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/lol"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz"));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 });

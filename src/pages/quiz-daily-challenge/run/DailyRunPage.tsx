@@ -55,6 +55,7 @@ export function DailyRunPage({
   StageMatch = CanonicalStageMatch,
   viewerUserId: viewerOverride,
   stageResultPlacement,
+  startOnMount = false,
 }: {
   transport?: DailyRunTransport;
   StageMatch?: ComponentType<StageMatchProps>;
@@ -65,14 +66,17 @@ export function DailyRunPage({
    * (a future monetization placement). Unset in production today.
    */
   stageResultPlacement?: StageResultPlacement;
+  /** Parent-host entry seam; PLAY1 starts the canonical Daily without the Hub route state. */
+  startOnMount?: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   // Read the Play intent ONCE, then drop it from history so Back/Reload never
   // re-sends a start the player did not press again.
-  const [autoStart] = useState(() => hasDailyStartIntent(location.state));
+  const [routeStartIntent] = useState(() => hasDailyStartIntent(location.state));
+  const [autoStart] = useState(() => startOnMount || routeStartIntent);
   useEffect(() => {
-    if (autoStart) navigate(location.pathname, { replace: true, state: null });
+    if (routeStartIntent) navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const dc = useDailyRun(transport, autoStart);

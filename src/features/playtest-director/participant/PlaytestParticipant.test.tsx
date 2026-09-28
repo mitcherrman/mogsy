@@ -229,10 +229,9 @@ describe("gameplay: canonical Daily, observed, returned at the manifest's checkp
     const t = createFixtureTransport(FOUR_STAGE_DAY);
     mountParticipant(gameplayDeps(t));
     await flush();
-    expect(q("daily-run-entry")).not.toBeNull();
+    expect(q("daily-run-entry")).toBeNull();
     expect(tracked.map((e) => e.name)).toContain("playtest_gameplay_released");
 
-    await act(async () => { screen.getByTestId("daily-run-start").click(); });
     await flush(DAILY_INTRO_MS + 10);
     await flush(STAGE_INTRO_MIN_MS + 50);
     // Stage 0 is in progress: several nonterminal snapshots, still in Daily.

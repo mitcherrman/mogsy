@@ -100,7 +100,6 @@ test("active Daily preserves Back/Forward, header, and HUD destinations without 
   await page.goto("/quiz?play=1");
   await page.getByTestId("play-mode-daily").click();
   await expect(page).toHaveURL("/quiz/daily-challenge");
-  await page.getByTestId("daily-run-start").click();
   await expect(page.getByText("Exit Daily Challenge", { exact: true }).first()).toBeVisible();
   const historyLength = await page.evaluate(() => history.length);
 
@@ -140,8 +139,9 @@ test("active Daily preserves Back/Forward, header, and HUD destinations without 
 
 test("Daily completion authority dismisses a pending Back without replaying it", async ({ page }) => {
   const fixture = await prepare(page, true);
-  await page.goto("/quiz/daily-challenge");
-  await page.getByTestId("daily-run-start").click();
+  await page.goto("/quiz?play=1");
+  await page.getByTestId("play-mode-daily").click();
+  await expect(page).toHaveURL("/quiz/daily-challenge");
   await expect(page.getByTestId("ranked-match")).toBeVisible({ timeout: 8_000 });
   await page.goBack();
   await expect(page.getByRole("alertdialog", { name: "Exit Daily Challenge?" })).toBeVisible();

@@ -65,7 +65,9 @@ async function terminal(page: Page) {
 for (const [control, destination] of [
   ["result-tertiary", "/quiz"],
   ["result-secondary", "/quiz#history"],
-  ["discovery-cta", "/quiz#review"],
+  // HUB4 keeps #review as a legacy entry point, then canonically replaces it
+  // with #history. Assert the stable current-main destination across Forward.
+  ["discovery-cta", "/quiz#history"],
   ["result-primary", "/quiz?play=1"],
   ["ranked-back-to-quiz", "/quiz"],
 ]) {

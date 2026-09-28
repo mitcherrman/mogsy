@@ -63,6 +63,7 @@ export function DailyGameplayGate({
     <div data-testid="playtest-daily-gameplay">
       <DailyRunPage
         transport={observed}
+        startOnMount
         {...(StageMatch ? { StageMatch } : {})}
         {...(viewerUserId ? { viewerUserId } : {})}
       />

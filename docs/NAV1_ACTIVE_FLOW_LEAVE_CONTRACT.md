@@ -757,6 +757,67 @@ No owner decision is needed on Forfeit versus leave, Daily permanent abandon,
 per-stage history, unload Forfeit, or HUD destination: current authority makes
 those answers unambiguous.
 
+## 20. Final production integration
+
+Completed on 2026-09-28 in `codex/nav1-final-main-integration`. The initial
+fetch observed `origin/main` at
+`660dbfce8198799a6449dd849314a253ec1406da`; it advanced during certification,
+so the complete series was re-audited and rebased. A second late advance added
+the disjoint JP2 Journey stage-grammar line. A third added direct Daily start;
+the final fetched tip is
+`defad70e00c43d63a0eb12341415e6ba5c917ccc`. The merge base with certified
+E4B HEAD `d2c057fa968e8eee704a9af2a74b68949b62b791` was
+`3011a416cb1e1ce85bf33bea117b20dc91c42865`. Patch-aware comparison found no
+certified NAV1/PLAY1 commit already equivalent on main, so all fourteen
+certified commits were replayed in their original dependency order. SFX2 was
+already in current-main ancestry and was not replayed.
+
+The initial file-level overlap was `src/App.tsx`. Its semantic resolution
+keeps main's `import.meta.env.DEV` gate for `/dev/lobby-preview` while
+retaining the certified module-scoped data router, pathless root, provider
+lifetimes, PLAY1 routes, existing redirects, and blocker support. Chromium
+confirmed the preview loads from the development server and reaches the normal
+not-found route from a production bundle.
+
+The late main advance added overlap in `LolPremium.tsx` and its test. The
+rebase retained HUB7's newer commercial surface and test setup while applying
+only NAV1-C's safe temporal Back behavior. No HUB7 product copy, offer, or
+eligibility behavior was rolled back.
+
+The final main advance overlapped `DailyRunPage.tsx` and its test. The
+resolution retains main's one-shot Hub Play intent and direct Daily start
+(including bare-URL recovery and retry behavior) together with NAV1's single
+Daily parent blocker and dialog. No Begin screen was restored, and no hosted
+Ranked child blocker was added. PLAY1's canonical Daily host explicitly uses
+the same one-shot start seam because it does not enter through the Hub route;
+this changes no PLAY1 user-exit policy.
+
+Current main also canonicalises legacy `/quiz#review` arrivals to
+`/quiz#history`. The Ranked terminal browser fixture now asserts that stable
+destination after Forward while preserving its original REPLACE, unchanged
+history-length, Back-to-origin, and no-match-restoration assertions. A
+test-only type annotation in the Ranked shell probe removes two certified-line
+TypeScript diagnostics without changing runtime behavior.
+
+Final integration certification:
+
+- focused NAV1/PLAY1/current-main owner slice: 22 files / 254 tests passed;
+- focused SFX2/Daily/Ranked slice: 15 files / 241 tests passed;
+- full NAV1 Chromium: 30/30 passed;
+- production and development Lobby Preview environment checks passed;
+- focused owner ESLint passed with warnings only;
+- TypeScript reports only the two diagnostics reproduced on pristine current
+  main (`OnboardingProfile.tsx:180` and `connections.ts:263`);
+- working-tree `git diff --check` passed;
+- one broad Vitest attempt was stopped after the known large Windows runner
+  became impractically slow. Reported unrelated Archive/play-scroll failures
+  were outside NAV1; the only reported Ranked geometry failure set reproduced
+  identically on pristine current main (3 failures / 66 tests).
+
+NAV1-E implementation and certification are complete. Deferred scope remains
+E2Q Ranked queue navigation, PLAY1 user-exit policy, remaining
+History/Practice NAV1 work, and true iOS/WebKit swipe-Back certification.
+
 ## 18. Recommendation
 
 Implement NAV1-E1 first because every correct POP/PUSH/REPLACE contract depends

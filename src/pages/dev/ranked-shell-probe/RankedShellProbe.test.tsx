@@ -28,7 +28,8 @@ describe("RankedShellProbe", () => {
     // arena's. The only styled thing the probe owns is its state switcher,
     // which is `fixed` and therefore outside the flow entirely.
     const own = src.slice(src.indexOf("export default function"));
-    const inFlow = (own.match(/className=[`"][^`"]*[`"]/g) ?? [])
+    const classNames: string[] = own.match(/className=[`"][^`"]*[`"]/g) ?? [];
+    const inFlow = classNames
       .filter((cls) => !cls.includes("fixed") && !cls.includes("rounded px-1.5"));
     expect(inFlow).toEqual([]);
   });
