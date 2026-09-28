@@ -104,6 +104,8 @@ function toQuestionReveal(
     selectedValue: reveal.playerAnswer,
     answerLabel: isComparison ? null : reveal.correctAnswer,
     explanation: reveal.explanation,
+    // DD1 — reveal-only structured values, passed through (already read fail-closed).
+    comparisonValues: isComparison ? reveal.comparisonValues ?? null : null,
   };
 }
 

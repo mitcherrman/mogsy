@@ -17,6 +17,7 @@
  * it only choose colours from it.
  */
 import { useEffect, useRef } from "react";
+import type { ComparisonValues } from "../contracts/comparisonValues";
 
 /** The single shared reveal interval, in milliseconds. */
 export const MASTERY_REVEAL_DURATION_MS = 1750;
@@ -145,4 +146,11 @@ export interface MasteryQuestionReveal extends MasteryChoiceReveal {
   readonly answerLabel: string | null;
   /** The backend's concise explanation, or null when it states none. */
   readonly explanation: string | null;
+  /**
+   * DD1 — a comparison's structured values (`comparison_values.v1`), already
+   * read through its fail-closed allowlist. Absent on every other interaction,
+   * on every reveal frozen before the backend published it, and whenever the
+   * block was off-contract: the comparison then renders its legacy reveal.
+   */
+  readonly comparisonValues?: ComparisonValues | null;
 }

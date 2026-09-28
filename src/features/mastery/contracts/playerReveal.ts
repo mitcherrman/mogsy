@@ -31,6 +31,7 @@ import {
   masterySetId,
   sessionId,
 } from "./ids";
+import { type ComparisonValues, readComparisonValues } from "./comparisonValues";
 import { MasteryStateView, readOptionalStateView } from "./stateView";
 import { MasteryTransitionView, readOptionalTransitionView } from "./transitionView";
 
@@ -82,6 +83,12 @@ export interface MasteryPlayerReveal {
   readonly sourceSummary: MasterySourceSummary;
   readonly nextStepReady: boolean;
   readonly completionState: MasteryRevealCompletionState;
+  /**
+   * DD1 — a comparison step's structured values (`comparison_values.v1`).
+   * Optional and fail-closed: absent from older servers and non-comparison
+   * steps, and dropped (never thrown on) when off-contract.
+   */
+  readonly comparisonValues?: ComparisonValues | null;
 }
 
 function readCalcStep(value: unknown, label: string): MasteryCalculationStep {
@@ -133,7 +140,13 @@ export function readPlayerReveal(value: unknown, label = "data"): MasteryPlayerR
     sourceSummary: readSourceSummary(d.source_summary, `${label}.source_summary`),
     nextStepReady: bool(d.next_step_ready, `${label}.next_step_ready`),
     completionState: readCompletion(d.completion_state, `${label}.completion_state`),
+    ...optionalComparisonValues(d.comparison_values),
   };
+}
+
+function optionalComparisonValues(raw: unknown): { comparisonValues?: ComparisonValues } {
+  const comparisonValues = readComparisonValues(raw);
+  return comparisonValues ? { comparisonValues } : {};
 }
 
 /**

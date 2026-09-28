@@ -364,8 +364,13 @@ function OrdinaryChild({
   const path = renderPathFor(challenge);
   // Pure, memoised on the challenge: the adapter reads only structural
   // semantics, never the options or the answer.
+  //
+  // DD1 — a comparison is drawn as a Data Duel, whose two tablets ARE the
+  // subjects' art; a band above it would draw both champions twice. So the
+  // comparison path gets no band (`structuralBandSource`), here and in the
+  // round's media preload alike.
   const mediaSource = useMemo(
-    () => scenarioSourceForMasteryChallenge(challenge),
+    () => structuralBandSource(challenge),
     [challenge],
   );
 
@@ -427,4 +432,14 @@ function OrdinaryChild({
       />
     </MasteryAssetsProvider>
   );
+}
+
+/**
+ * DD1 — the scenario band an ORDINARY structural child draws above its
+ * renderer, or null. Null for a comparison (the Data Duel owns its subjects'
+ * presentation) and wherever the server sent no media.
+ */
+export function structuralBandSource(challenge: MasterySliceChallengeView) {
+  if (renderPathFor(challenge) === "comparison") return null;
+  return scenarioSourceForMasteryChallenge(challenge);
 }

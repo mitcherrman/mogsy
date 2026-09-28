@@ -19,7 +19,9 @@ import { Button } from "@/components/ui/button";
 import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
 import type { MasteryPlayerReveal } from "../contracts/playerReveal";
 import type { PlayerAnswer } from "../player/useMasteryFixtureSession";
-import { COMPARISON_TIE_TOKEN, MasteryComparisonContractError } from "./ComparisonQuestionView";
+import {
+  COMPARISON_TIE_LABEL, COMPARISON_TIE_TOKEN, MasteryComparisonContractError,
+} from "./ComparisonQuestionView";
 
 /**
  * Maps a raw wire answer value (a champion id, or the tie token) back to a
@@ -33,7 +35,7 @@ function labelForAnswer(question: MasteryPlayerQuestion, raw: string): string {
     );
   }
   const [championAValue, championBValue] = question.answerOptions;
-  if (raw === COMPARISON_TIE_TOKEN) return "Tie / Same";
+  if (raw === COMPARISON_TIE_TOKEN) return COMPARISON_TIE_LABEL;
   if (raw === championAValue) return question.comparisonSemantics.championADisplay;
   if (raw === championBValue) return question.comparisonSemantics.championBDisplay;
   return raw;

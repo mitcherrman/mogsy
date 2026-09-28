@@ -184,10 +184,12 @@ describe("modern question views render their own reveal in place", () => {
     expect(screen.getByTestId("mastery-comparison-question")).toBeTruthy();
     expect(screen.getByTestId("mastery-inline-reveal"))
       .toHaveAttribute("data-correct", "false");
-    expect(screen.getByTestId(`mastery-choice-row-${b}`))
-      .toHaveAttribute("data-tone", "chosen-wrong");
-    expect(screen.getByTestId(`mastery-choice-row-${a}`))
-      .toHaveAttribute("data-tone", "correct");
+    // DD1 — the comparison is a Data Duel: side B was picked, side A is right.
+    expect(a).toBe(question.answerOptions[0]);
+    expect(screen.getByTestId("duel-side-right"))
+      .toHaveAttribute("data-choice-state", "incorrect-selected");
+    expect(screen.getByTestId("duel-side-left"))
+      .toHaveAttribute("data-choice-state", "correct");
     expect(screen.queryByTestId("mastery-next-button")).toBeNull();
   });
 });

@@ -51,6 +51,9 @@ export const FORBIDDEN_ANSWER_KEYS: readonly string[] = [
   "reaches_zero",
   "reacheszero",
   "overkill",
+  // DD1 — a comparison's structured values are reveal-only.
+  "comparison_values",
+  "comparisonvalues",
 ];
 
 const FORBIDDEN_SET = new Set(FORBIDDEN_ANSWER_KEYS.map((k) => k.toLowerCase()));

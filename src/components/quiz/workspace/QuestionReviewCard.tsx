@@ -50,9 +50,10 @@ import {
 } from "@/components/quiz/workspace/questionIcons";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { useQuestionOwnership } from "@/components/quiz/workspace/ownedQuestionIndex";
-import type { ReviewChallenge, ReviewRound } from "@/lib/ranked-public/contracts";
+import type { ReviewChallenge, ReviewMasteryChallenge, ReviewRound } from "@/lib/ranked-public/contracts";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import { JourneyCombatWorking } from "@/components/journey/JourneyCombatWorking";
+import { withUnitLabel } from "@/features/mastery/contracts/comparisonValues";
 import {
   masteryChallengeRolesDiffer, reviewRoundRoles,
 } from "@/lib/ranked-public/reviewRoles";
@@ -317,6 +318,24 @@ function CardSide({
  * Generic over the challenge contract — there is no champion, item or damage
  * type in it, and it prints whatever the frozen challenges hold.
  */
+/**
+ * DD1 — a comparison row's two served values, one line ("Leona 90 seconds ·
+ * Pantheon 180 seconds"). Only from the reveal-gated `comparison_values`
+ * block, printed verbatim; a row without it (every match frozen before the
+ * block existed) shows nothing here and keeps its explanation.
+ */
+function comparisonValuesLine(challenge: ReviewMasteryChallenge): string | null {
+  const cv = challenge.comparisonValues;
+  if (!cv) return null;
+  const cs = challenge.comparisonSemantics;
+  const [a, b] = challenge.answerOptions;
+  const labelOf = (token: string): string => {
+    const name = token === a ? cs?.champion_a_display : token === b ? cs?.champion_b_display : null;
+    return typeof name === "string" && name ? name : token;
+  };
+  return cv.sides.map((side) => `${labelOf(side.token)} ${withUnitLabel(side.display, cv)}`).join(" · ");
+}
+
 function MasterySliceBody({ round }: { round: ReviewRound }) {
   const challenges = round.masteryChallenges ?? [];
   // RQ1: per-challenge emblems only when the challenges' frozen role sets
@@ -414,6 +433,18 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
                   </p>
                 )}
               </div>
+
+              {round.revealed && comparisonValuesLine(challenge) && (
+                <div
+                  className="space-y-0.5"
+                  data-testid={`review-mastery-values-${challenge.challengeIndex}`}
+                >
+                  <SectionLabel>Values</SectionLabel>
+                  <p className="text-[11.5px] tabular-nums" style={{ color: LEAGUECRAFT_INK.body }}>
+                    {comparisonValuesLine(challenge)}
+                  </p>
+                </div>
+              )}
 
               {/* JOURNEY5 — a Journey Combat child's served working, verbatim,
                   above the prose (kept, as on the live reveal). */}

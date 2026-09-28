@@ -111,6 +111,55 @@ function afterPrefix(prefix: string, word: string): string {
 }
 
 /**
+ * DD1 — the compared quantity as a short label ("Cooldown", "Armor"), for the
+ * Data Duel metric chip. Same vocabulary as the prompt; never a value.
+ */
+export function comparisonMetricLabel(cs: MasteryComparisonSemantics): string {
+  switch (cs.template) {
+    case "compare_ability_cooldown":
+      return "Cooldown";
+    case "compare_ability_cost":
+      return "Cost";
+    case "compare_champion_base_stat":
+      return hasBaseQualifier(cs.metric) ? `Base ${humanizeBaseMetric(cs.metric)}` : humanizeMetric(cs.metric);
+    case "compare_champion_stat_at_level":
+      return humanizeMetric(cs.metric);
+    default: {
+      const exhaustive: never = cs.template;
+      throw new MasteryUnknownComparisonTemplateError(exhaustive as unknown as string);
+    }
+  }
+}
+
+/**
+ * DD1 — the shared scope both sides are stated at ("Rank 3", "Level 11"), or
+ * null. The same rank rule as the prompt: no rank for a rank-independent pair,
+ * and none shared when each side names its own.
+ */
+export function comparisonScopeLabel(cs: MasteryComparisonSemantics): string | null {
+  if (cs.template === "compare_champion_stat_at_level") {
+    return cs.context.championLevel === null || cs.context.championLevel === undefined
+      ? null : `Level ${cs.context.championLevel}`;
+  }
+  if (!cs.subjectRef || sidesDiffer(cs) || cs.rankIndependent) return null;
+  const rank = cs.context.abilityRank;
+  return rank === null || rank === undefined ? null : `Rank ${rank}`;
+}
+
+/**
+ * DD1 — one side's second line: the ability it is ("R · Solar Flare"), plus its
+ * own rank when the two sides stand at different ranks. Null for a champion stat.
+ */
+export function comparisonSideSublabel(cs: MasteryComparisonSemantics, i: 0 | 1): string | null {
+  if (!cs.subjectRef) return null;
+  const name = i === 0 ? cs.abilityNameA : cs.abilityNameB;
+  const parts = [cs.subjectRef];
+  if (name && name !== cs.subjectRef) parts.push(name);
+  if (sidesDiffer(cs)) parts.push(sideRankText(cs.sideContexts![i].abilityRank));
+  return parts.join(" · ");
+}
+
+/**
  * Renders a prompt sentence for one of the four comparison shapes the
  * Matchup Composer produces: ability cooldown, ability cost, champion base
  * stat, champion level stat. Fails explicitly on a template it does not

@@ -30,6 +30,9 @@ import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/qu
 import { isJourneyJ3, readJourneyJ3, type JourneyJ3 } from "@/lib/journey/j3";
 import { JourneyContractError } from "@/lib/journey/contract";
 import { readCombatWorking, type CombatWorking } from "@/lib/journey/combatWorking";
+import {
+  readComparisonValues, type ComparisonValues,
+} from "@/features/mastery/contracts/comparisonValues";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -502,6 +505,12 @@ export interface MasteryChallengeReveal {
    * the match.
    */
   combatWorking?: CombatWorking | null;
+  /**
+   * DD1 — a comparison child's structured values (`comparison_values.v1`),
+   * read through its own fail-closed allowlist: absent when the wire has none
+   * OR it is off-contract (the reveal then renders as before the block).
+   */
+  comparisonValues?: ComparisonValues | null;
 }
 
 export type SegmentBlockView =
@@ -1109,6 +1118,10 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   // reach this reader.
   "left_value", "right_value", "correct_entity_id", "correct_side",
   "correct_card_id",
+  // DD1 — a comparison's structured values are reveal-only (backend
+  // `FORBIDDEN_PRE_REVEAL_KEYS`); they may arrive only inside the lifted-out
+  // `own_challenge_reveals`.
+  "comparison_values",
 ]);
 
 /**
@@ -1424,6 +1437,8 @@ function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallenge
     // Only a Journey Combat reveal carries it; every other reveal keeps its
     // exact pre-J5 shape (no key at all).
     const combatWorking = readCombatWorking(o.combat_working);
+    // DD1 — likewise only a comparison reveal carries it.
+    const comparisonValues = readComparisonValues(o.comparison_values);
     // K2 — likewise only when the wire carries a display string.
     const display = asText(o.correct_answer_display);
     return {
@@ -1436,6 +1451,7 @@ function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallenge
         ? o.answer_options.map((opt) => String(opt)) : [],
       ...(display !== null ? { correctAnswerDisplay: display } : {}),
       ...(combatWorking ? { combatWorking } : {}),
+      ...(comparisonValues ? { comparisonValues } : {}),
     };
   });
 }
@@ -2238,6 +2254,8 @@ export interface ReviewMasteryChallenge {
   isCorrect: boolean | null;
   /** JOURNEY5 — a Journey Combat child's structured working; null when absent or off-contract. */
   combatWorking?: CombatWorking | null;
+  /** DD1 — a comparison row's structured values; reveal-only, null when absent or off-contract. */
+  comparisonValues?: ComparisonValues | null;
   /**
    * RQ1 — the challenge's roles as FROZEN at segment start (canonical order).
    * Absent for a role-less challenge and for every match frozen before RQ1.
@@ -2360,11 +2378,13 @@ function reviewMasteryChallenge(raw: unknown, label: string,
   // The inverse guard, same as the quiz round above: an unresolved round must
   // not carry the answer, because the source Mastery set can be served again.
   if (!revealed && (correctAnswer !== null || explanation !== null
-      || (c.combat_working !== null && c.combat_working !== undefined))) {
+      || (c.combat_working !== null && c.combat_working !== undefined)
+      || (c.comparison_values !== null && c.comparison_values !== undefined))) {
     throw new RankedPublicParseError(
       `${label} is not revealed but carried a correct answer`);
   }
   const combatWorking = revealed ? readCombatWorking(c.combat_working) : null;
+  const comparisonValues = revealed ? readComparisonValues(c.comparison_values) : null;
   return {
     challengeIndex: num(c.challenge_index, `${label}.challenge_index`),
     prompt: str(c.prompt, `${label}.prompt`),
@@ -2387,6 +2407,7 @@ function reviewMasteryChallenge(raw: unknown, label: string,
     // Reveal-only like `explanation` (the guard above refuses it on an
     // unresolved round); present only on a Journey Combat row.
     ...(combatWorking ? { combatWorking } : {}),
+    ...(comparisonValues ? { comparisonValues } : {}),
     ...(readQuestionRoles(c.roles).length ? { roles: readQuestionRoles(c.roles) } : {}),
   };
 }

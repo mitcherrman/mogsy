@@ -17,9 +17,9 @@ describe("ComparisonPrototype end-to-end", () => {
 
     // Q1: decisive ability-cooldown comparison — Ahri wins
     expect(await screen.findByTestId("mastery-comparison-question")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("choice-ahri"));
+    fireEvent.click(screen.getByTestId("duel-side-left"));
     await act(async () => {
-      fireEvent.click(screen.getByTestId("mastery-submit-button"));
+      fireEvent.click(screen.getByTestId("duel-lock"));
       await Promise.resolve();
     });
     expect(screen.getByTestId("mastery-correctness").getAttribute("data-correct")).toBe("true");
@@ -30,9 +30,9 @@ describe("ComparisonPrototype end-to-end", () => {
 
     // Q2: decisive champion-stat comparison — answer wrong on purpose
     expect(screen.getByTestId("mastery-comparison-question")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("choice-ahri"));
+    fireEvent.click(screen.getByTestId("duel-side-left"));
     await act(async () => {
-      fireEvent.click(screen.getByTestId("mastery-submit-button"));
+      fireEvent.click(screen.getByTestId("duel-lock"));
       await Promise.resolve();
     });
     expect(screen.getByTestId("mastery-correctness").getAttribute("data-correct")).toBe("false");
@@ -42,13 +42,13 @@ describe("ComparisonPrototype end-to-end", () => {
     });
 
     // Q3: a true tie — final step
-    fireEvent.click(screen.getByTestId("choice-tie"));
+    fireEvent.click(screen.getByTestId("duel-side-tie"));
     await act(async () => {
-      fireEvent.click(screen.getByTestId("mastery-submit-button"));
+      fireEvent.click(screen.getByTestId("duel-lock"));
       await Promise.resolve();
     });
     expect(screen.getByTestId("mastery-correctness").getAttribute("data-correct")).toBe("true");
-    expect(screen.getByTestId("mastery-correct-answer").textContent).toContain("Tie / Same");
+    expect(screen.getByTestId("mastery-correct-answer").textContent).toContain("Same value");
     expect(screen.getByTestId("mastery-next-button").textContent).toBe("View results");
     await act(async () => {
       fireEvent.click(screen.getByTestId("mastery-next-button"));

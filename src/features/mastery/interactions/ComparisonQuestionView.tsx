@@ -1,33 +1,46 @@
 /**
- * Comparative (champion-vs-champion) question screen (Phase 4C2).
+ * Comparative (champion-vs-champion) question screen (Phase 4C2; DD1).
  *
- * The two-champion / non-combat sibling of `player/MasteryQuestionView` and
- * `AtomicRecallQuestionView`. Renders `question.comparisonSemantics` into
- * player-facing text (never `question.prompt`), shows both champions with no
- * combat-state panel (there is no `state`/`matchupIdentity` for this
- * interaction kind — a matchup candidate is stateless), and reuses the
- * existing `MasteryChoiceInput` + submit flow unchanged.
+ * DD1 — the question is presented as the MIG DATA DUEL
+ * (`components/interaction-grammar/DataDuel`): the two champions face each
+ * other as tablets, the player picks a side (or "Same value"), locks it, and
+ * the reveal lands in place with both deciding values and the margin between
+ * them. It is a presentation/input swap only: the same answer domain, the same
+ * scalar answer token through the same `onSubmit`, the same server grading.
+ * The props and the registry signature are unchanged, so every host that
+ * dispatches a comparison (standalone Mastery, the Ranked slice, the Admin
+ * Generator Lab) picks it up with no dispatcher edit.
  *
  * The backend answer domain for a comparison is ALWAYS exactly three options
  * — champion A, champion B, and the composer's own tie token — regardless of
  * whether this particular comparison happens to be decisive or a true tie
- * (`mastery.manifest_session.adapter._answer_and_options`). So a Tie/Same
- * choice is offered unconditionally here; nothing about whether THIS
- * comparison is a tie is visible before submission, and nothing needs to be
- * inferred from rounded values to decide whether to show it.
+ * (`mastery.manifest_session.adapter._answer_and_options`). So the tie choice
+ * is offered unconditionally here; nothing about whether THIS comparison is a
+ * tie is visible before submission, and nothing needs to be inferred from
+ * rounded values to decide whether to show it.
+ *
+ * REVEAL BOUNDARY. Before the reveal the duel is built from
+ * `comparisonSemantics` + `answerOptions` alone (`toDataDuelPublic`), which
+ * carry no value and no winner. After it, the canonical side is the server's
+ * `correct_answer` and the values come only from `comparison_values`
+ * (`toDataDuelReveal`); a reveal without that block shows no values and the
+ * explanation prose is displayed, never parsed. Correctness words and the
+ * explanation stay in the existing `MasteryInlineReveal`.
+ *
+ * No sound here: the host surface owns selection / lock / result cues.
  */
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { DataDuel } from "@/components/interaction-grammar/DataDuel";
+import type { InteractionPhase } from "@/lib/interaction-grammar/types";
 import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
 import type { PlayerAnswer } from "../player/useMasteryFixtureSession";
-import { MasteryChoiceInput, type ChoiceOption } from "../player/MasteryBooleanInput";
-import { MasteryChampionPortrait } from "../player/MasteryChampionPortrait";
+import { useMasteryAssets } from "../player/MasteryAssets";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import { MasteryPatchBadge } from "../player/MasteryPatchBadge";
 import { MasteryProgress } from "../player/MasteryProgress";
-import { formatComparisonPrompt } from "./formatComparisonSemantics";
 import { MasteryInlineReveal } from "./MasteryInlineReveal";
 import type { MasteryQuestionReveal } from "./revealState";
+import { DATA_DUEL_TIE_LABEL, toDataDuelPublic, toDataDuelReveal } from "./toDataDuel";
 import { QuestionMotifLayer, motifHostClass } from "@/components/question-surface/QuestionMotifLayer";
 
 export class MasteryComparisonContractError extends Error {
@@ -39,6 +52,9 @@ export class MasteryComparisonContractError extends Error {
 
 /** The composer's own tie token (`mastery.matchup.contract.TieState.TIE.value`). */
 export const COMPARISON_TIE_TOKEN = "tie";
+
+/** How the tie token reads to a player, everywhere a comparison is shown. */
+export const COMPARISON_TIE_LABEL = DATA_DUEL_TIE_LABEL;
 
 export function ComparisonQuestionView({
   question,
@@ -75,7 +91,7 @@ export function ComparisonQuestionView({
   }
 
   const cs = question.comparisonSemantics;
-  const [championAValue, championBValue, tieValue] = options;
+  const assets = useMasteryAssets();
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -83,100 +99,73 @@ export function ComparisonQuestionView({
   }, [question.sequenceIndex]);
 
   const [choice, setChoice] = useState<string | null>(null);
-  const prompt = formatComparisonPrompt(cs);
 
-  // Buttons show champion NAMES, never the raw option values (which are
-  // champion ids / the tie token) — matching the task's display convention.
-  const choiceOptions: ChoiceOption[] = [
-    { value: championAValue, label: cs.championADisplay },
-    { value: championBValue, label: cs.championBDisplay },
-    { value: tieValue, label: "Tie / Same" },
-  ];
-
-  const canSubmit = !submitting && choice !== null;
-  const doSubmit = () => {
-    if (!canSubmit || choice === null) return;
-    onSubmit(choice);
-  };
+  // Public material only — semantics, tokens, art. See `toDataDuel.ts`.
+  const content = useMemo(
+    () => toDataDuelPublic(cs, options, assets),
+    [cs, options, assets],
+  );
+  const duelReveal = useMemo(
+    () => (reveal ? toDataDuelReveal(reveal, content) : null),
+    [reveal, content],
+  );
+  const phase: InteractionPhase = reveal ? "revealed" : submitting ? "locked" : "open";
+  // During a reveal the pick is the SERVER's record of it (a reload mid-hold
+  // has no local choice); before it, the local pending pick.
+  const value = reveal ? reveal.selectedValue ?? choice : choice;
 
   return (
     <section aria-label="Question" data-testid="mastery-comparison-question"
+      data-presentation="data-duel"
       className={`space-y-4${motifHostClass(question.questionMotif)}`}>
-      {/* JOURNEY-UI2 — `data-mastery-meta`: progress + identity row. Inside a
-          Journey the module's board already states both (step, champions), so
-          `.journey-question` hides this block; everywhere else it is drawn. */}
+      {/* JOURNEY-UI2 — `data-mastery-meta`: progress + metadata row. Inside a
+          Journey the module's board already states both, so
+          `.journey-question` hides this block; everywhere else it is drawn.
+          DD1 — the two champions are no longer named here: the duel's own
+          tablets carry their identity. */}
       <div className="space-y-3" data-mastery-meta>
         <MasteryProgress index={question.sequenceIndex} total={total} />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2" data-testid="mastery-comparison-header">
-            <MasteryChampionPortrait
-              championId={cs.championADisplay.toLowerCase()}
-              displayName={cs.championADisplay}
-              size={32}
-            />
-            <span className="text-sm font-semibold">
-              {cs.championADisplay} vs {cs.championBDisplay}
-            </span>
-            <MasteryChampionPortrait
-              championId={cs.championBDisplay.toLowerCase()}
-              displayName={cs.championBDisplay}
-              size={32}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            {/* RQ1 — the question's role emblem(s), immediately left of the
-                existing metadata (patch badge + kind label). Absent unless the
-                Ranked slice froze roles; standalone Mastery is unchanged. */}
-            <QuestionRoleEmblems roles={question.questionRoles} size="card" backed />
-            <MasteryPatchBadge patchDisplay={question.patchDisplay} />
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Comparison
-            </span>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* RQ1 — the question's role emblem(s), immediately left of the
+              existing metadata (patch badge + kind label). Absent unless the
+              Ranked slice froze roles; standalone Mastery is unchanged. */}
+          <QuestionRoleEmblems roles={question.questionRoles} size="card" backed />
+          <MasteryPatchBadge patchDisplay={question.patchDisplay} />
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Comparison
+          </span>
         </div>
       </div>
 
-      <h2
-        ref={headingRef}
-        tabIndex={-1}
-        data-testid="mastery-question-heading"
-        className="text-base font-semibold leading-snug outline-none"
-      >
-        {prompt}
-      </h2>
-
-      <MasteryChoiceInput
-        options={choiceOptions}
-        value={choice}
-        onSelect={setChoice}
-        disabled={submitting}
-        reveal={reveal}
-        ariaLabel="Comparison choices"
+      <DataDuel
+        content={content}
+        phase={phase}
+        value={value}
+        onChange={setChoice}
+        onLock={({ selected }) => {
+          if (!submitting && reveal === null) onSubmit(selected);
+        }}
+        reveal={duelReveal}
+        promptRef={headingRef}
       />
 
       {question.hintAvailable && reveal === null && (
         <p className="text-xs text-muted-foreground">A hint is available for this question.</p>
       )}
 
-      {reveal !== null ? (
-        // The winner and, where the backend's frozen explanation states them,
-        // both underlying values — passed through, never recomputed.
+      {reveal !== null && (
+        // Server correctness in words, and the backend's own explanation —
+        // passed through, never recomputed and never mined for numbers.
         <MasteryInlineReveal
           correct={reveal.correct}
           answerLabel={reveal.answerLabel}
           explanation={reveal.explanation}
         />
-      ) : (
-        <div className="flex items-center gap-3">
-          <Button onClick={doSubmit} disabled={!canSubmit} data-testid="mastery-submit-button">
-            Submit answer
-          </Button>
-          {submitting && (
-            <span role="status" aria-live="polite" className="text-sm text-muted-foreground">
-              Submitting your answer…
-            </span>
-          )}
-        </div>
+      )}
+      {submitting && reveal === null && (
+        <span role="status" aria-live="polite" className="sr-only">
+          Submitting your answer…
+        </span>
       )}
       {/* QF1.2 — the motif illustration, last and absolutely positioned (a
           `space-y` host cannot offset it), behind the whole question. */}

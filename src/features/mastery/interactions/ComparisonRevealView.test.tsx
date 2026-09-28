@@ -84,7 +84,7 @@ describe("ComparisonRevealView", () => {
     expect(reveals[2].correctAnswer).toBe("tie");
     const status = screen.getByTestId("mastery-correctness");
     expect(status.getAttribute("data-correct")).toBe("true");
-    expect(screen.getByTestId("mastery-correct-answer").textContent).toContain("Tie / Same");
+    expect(screen.getByTestId("mastery-correct-answer").textContent).toContain("Same value");
     expect(screen.getByTestId("mastery-explanation").textContent).toContain("Tied");
   });
 

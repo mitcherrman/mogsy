@@ -125,6 +125,14 @@ async function answerCurrentStep(run: CapturedRun, index: number) {
     const options = step.question.answer_options as string[];
     expect(options, `correct answer ${correct} must be one of the options`)
       .toContain(correct);
+    if (step.question.interaction_kind === "comparison_left_right") {
+      // DD1 — a comparison is a Data Duel: [A, B, tie] are its left, right
+      // and tie tablets, and the pick is committed with Lock in.
+      const which = ["left", "right", "tie"][options.indexOf(correct)];
+      fireEvent.click(screen.getByTestId(`duel-side-${which}`));
+      await click("duel-lock");
+      return;
+    }
     expect(screen.getAllByTestId(/^choice-/)).toHaveLength(options.length);
     fireEvent.click(screen.getByTestId(`choice-${correct}`));
   } else {

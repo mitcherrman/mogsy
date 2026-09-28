@@ -15,7 +15,7 @@
  */
 import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
 import type { MasteryPlayerReveal } from "../contracts/playerReveal";
-import { COMPARISON_TIE_TOKEN } from "./ComparisonQuestionView";
+import { COMPARISON_TIE_LABEL, COMPARISON_TIE_TOKEN } from "./ComparisonQuestionView";
 import type { MasteryQuestionReveal } from "./revealState";
 
 /**
@@ -31,7 +31,7 @@ function labelFor(question: MasteryPlayerQuestion, raw: string): string {
   const cs = question.comparisonSemantics;
   if (!cs) return raw;
   const [a, b] = question.answerOptions;
-  if (raw === COMPARISON_TIE_TOKEN) return "Tie / Same";
+  if (raw === COMPARISON_TIE_TOKEN) return COMPARISON_TIE_LABEL;
   if (raw === a) return cs.championADisplay;
   if (raw === b) return cs.championBDisplay;
   return raw;
@@ -61,5 +61,8 @@ export function toQuestionReveal(
       ? null : String(submitted),
     answerLabel,
     explanation: reveal.explanation ?? null,
+    // DD1 — a comparison's structured values, passed through; never parsed from prose.
+    ...(question.interactionKind === "comparison_left_right" && reveal.comparisonValues
+      ? { comparisonValues: reveal.comparisonValues } : {}),
   };
 }

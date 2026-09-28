@@ -49,13 +49,12 @@ import { resolveBandProfile } from "@/lib/question-surface/bandProfile";
 import { resolveCompactDensity } from "@/lib/question-surface/compactDensity";
 import { selectFamilyLayout } from "@/lib/question-surface/familyLayout";
 import { JUNGLE_GRASS_BACKGROUND } from "@/lib/question-surface/jungleAtmosphere";
-import { scenarioSourceForMasteryChallenge } from "@/lib/question-surface/masterySliceScenario";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import { scenarioSourceFromPublicQuestion } from "../adapters/scenarioSource";
-import { renderPathFor } from "../modules/MasterySliceChallengeSurface";
+import { renderPathFor, structuralBandSource } from "../modules/MasterySliceChallengeSurface";
 
 export interface RoundMedia {
   /**
@@ -251,7 +250,8 @@ export function rankedRoundMedia(
       } else {
         // Structural renders `ScenarioMediaBand` with revealActive=false and
         // correctAnswer=null hard-coded, only when a source exists.
-        const src = scenarioSourceForMasteryChallenge(ch);
+        // DD1 — none for a comparison (its Data Duel draws its own subjects).
+        const src = structuralBandSource(ch);
         if (src) cinematicUrls(selectScenario(src, false, null), manifest, critical);
       }
       decorativeUrls(ch.motif ?? null, ch.roles ?? null, viewportWidth, bestEffort);
