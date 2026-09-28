@@ -1,0 +1,3215 @@
+[
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "pre",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+196,
+163
+],
+[
+"duel-side-right",
+196,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "locked",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "locked",
+"targets": [
+[
+"duel-side-left",
+196,
+163
+],
+[
+"duel-side-right",
+196,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"selected",
+"idle"
+],
+"ariaPressed": [
+"false",
+"true",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "correct",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+196,
+163
+],
+[
+"duel-side-right",
+196,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "12 seconds",
+"right": "15 seconds",
+"margin": "Ahri by 3 seconds",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "incorrect",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+196,
+163
+],
+[
+"duel-side-right",
+196,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "100 seconds",
+"right": "80 seconds",
+"margin": "Syndra by 20 seconds",
+"states": [
+"incorrect-selected",
+"correct",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "tie",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+161,
+163
+],
+[
+"duel-side-right",
+161,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "550 units",
+"right": "550 units",
+"margin": "Dead even \u00e2\u20ac\u201d 550 units each",
+"states": [
+"idle",
+"idle",
+"correct"
+],
+"ariaPressed": [
+"false",
+"false",
+"true"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "close",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+196,
+163
+],
+[
+"duel-side-right",
+196,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "25.04 armor",
+"right": "25 armor",
+"margin": "Ahri by 0.04 armor",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "legacy",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+196,
+163
+],
+[
+"duel-side-right",
+196,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "noart",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+196,
+163
+],
+[
+"duel-side-right",
+196,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 375,
+"h": 812,
+"reduced": false,
+"s": "long",
+"scrollW": 375,
+"vw": 375,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+250,
+163
+],
+[
+"duel-side-right",
+250,
+163
+],
+[
+"duel-side-tie",
+48,
+337
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "pre",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "locked",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "locked",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"selected",
+"idle"
+],
+"ariaPressed": [
+"false",
+"true",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "correct",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "12 seconds",
+"right": "15 seconds",
+"margin": "Ahri by 3 seconds",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "incorrect",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+196,
+170
+],
+[
+"duel-side-right",
+196,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "100 seconds",
+"right": "80 seconds",
+"margin": "Syndra by 20 seconds",
+"states": [
+"incorrect-selected",
+"correct",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "tie",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+161,
+170
+],
+[
+"duel-side-right",
+161,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "550 units",
+"right": "550 units",
+"margin": "Dead even \u00e2\u20ac\u201d 550 units each",
+"states": [
+"idle",
+"idle",
+"correct"
+],
+"ariaPressed": [
+"false",
+"false",
+"true"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "close",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "25.04 armor",
+"right": "25 armor",
+"margin": "Ahri by 0.04 armor",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "legacy",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "noart",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": false,
+"s": "long",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+250,
+170
+],
+[
+"duel-side-right",
+250,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "pre",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "locked",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "locked",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"selected",
+"idle"
+],
+"ariaPressed": [
+"false",
+"true",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "correct",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "12 seconds",
+"right": "15 seconds",
+"margin": "Ahri by 3 seconds",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "incorrect",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+196,
+170
+],
+[
+"duel-side-right",
+196,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "100 seconds",
+"right": "80 seconds",
+"margin": "Syndra by 20 seconds",
+"states": [
+"incorrect-selected",
+"correct",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "tie",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+161,
+170
+],
+[
+"duel-side-right",
+161,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "550 units",
+"right": "550 units",
+"margin": "Dead even \u00e2\u20ac\u201d 550 units each",
+"states": [
+"idle",
+"idle",
+"correct"
+],
+"ariaPressed": [
+"false",
+"false",
+"true"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "close",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "25.04 armor",
+"right": "25 armor",
+"margin": "Ahri by 0.04 armor",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "legacy",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "noart",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+179,
+170
+],
+[
+"duel-side-right",
+179,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 390,
+"h": 844,
+"reduced": true,
+"s": "long",
+"scrollW": 390,
+"vw": 390,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+250,
+170
+],
+[
+"duel-side-right",
+250,
+170
+],
+[
+"duel-side-tie",
+48,
+352
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "pre",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "locked",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "locked",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"selected",
+"idle"
+],
+"ariaPressed": [
+"false",
+"true",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "correct",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "12 seconds",
+"right": "15 seconds",
+"margin": "Ahri by 3 seconds",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "incorrect",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "100 seconds",
+"right": "80 seconds",
+"margin": "Syndra by 20 seconds",
+"states": [
+"incorrect-selected",
+"correct",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "tie",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+202,
+335
+],
+[
+"duel-side-right",
+202,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "550 units",
+"right": "550 units",
+"margin": "Dead even \u00e2\u20ac\u201d 550 units each",
+"states": [
+"idle",
+"idle",
+"correct"
+],
+"ariaPressed": [
+"false",
+"false",
+"true"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "close",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "25.04 armor",
+"right": "25 armor",
+"margin": "Ahri by 0.04 armor",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "legacy",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "noart",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 768,
+"h": 1024,
+"reduced": false,
+"s": "long",
+"scrollW": 772,
+"vw": 768,
+"hScroll": true,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+221,
+335
+],
+[
+"duel-side-right",
+221,
+335
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "pre",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+201,
+228
+],
+[
+"duel-side-right",
+201,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "locked",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "locked",
+"targets": [
+[
+"duel-side-left",
+201,
+228
+],
+[
+"duel-side-right",
+201,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"selected",
+"idle"
+],
+"ariaPressed": [
+"false",
+"true",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "correct",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+201,
+228
+],
+[
+"duel-side-right",
+201,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "12 seconds",
+"right": "15 seconds",
+"margin": "Ahri by 3 seconds",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "incorrect",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+201,
+228
+],
+[
+"duel-side-right",
+201,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "100 seconds",
+"right": "80 seconds",
+"margin": "Syndra by 20 seconds",
+"states": [
+"incorrect-selected",
+"correct",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "tie",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+182,
+228
+],
+[
+"duel-side-right",
+182,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "550 units",
+"right": "550 units",
+"margin": "Dead even \u00e2\u20ac\u201d 550 units each",
+"states": [
+"idle",
+"idle",
+"correct"
+],
+"ariaPressed": [
+"false",
+"false",
+"true"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "close",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+201,
+228
+],
+[
+"duel-side-right",
+201,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "25.04 armor",
+"right": "25 armor",
+"margin": "Ahri by 0.04 armor",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "legacy",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+201,
+228
+],
+[
+"duel-side-right",
+201,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "noart",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+201,
+228
+],
+[
+"duel-side-right",
+201,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1024,
+"h": 768,
+"reduced": false,
+"s": "long",
+"scrollW": 1028,
+"vw": 1024,
+"hScroll": true,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+241,
+228
+],
+[
+"duel-side-right",
+241,
+228
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "pre",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+195,
+280
+],
+[
+"duel-side-right",
+195,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "locked",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "locked",
+"targets": [
+[
+"duel-side-left",
+195,
+280
+],
+[
+"duel-side-right",
+195,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"selected",
+"idle"
+],
+"ariaPressed": [
+"false",
+"true",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "correct",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+195,
+280
+],
+[
+"duel-side-right",
+195,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "12 seconds",
+"right": "15 seconds",
+"margin": "Ahri by 3 seconds",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "incorrect",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+195,
+280
+],
+[
+"duel-side-right",
+195,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "100 seconds",
+"right": "80 seconds",
+"margin": "Syndra by 20 seconds",
+"states": [
+"incorrect-selected",
+"correct",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "tie",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+176,
+280
+],
+[
+"duel-side-right",
+176,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "550 units",
+"right": "550 units",
+"margin": "Dead even \u00e2\u20ac\u201d 550 units each",
+"states": [
+"idle",
+"idle",
+"correct"
+],
+"ariaPressed": [
+"false",
+"false",
+"true"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "close",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+195,
+280
+],
+[
+"duel-side-right",
+195,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "25.04 armor",
+"right": "25 armor",
+"margin": "Ahri by 0.04 armor",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "legacy",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+195,
+280
+],
+[
+"duel-side-right",
+195,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "noart",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+195,
+280
+],
+[
+"duel-side-right",
+195,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1280,
+"h": 720,
+"reduced": false,
+"s": "long",
+"scrollW": 1280,
+"vw": 1280,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+235,
+280
+],
+[
+"duel-side-right",
+235,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "pre",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+217,
+280
+],
+[
+"duel-side-right",
+217,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "locked",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "locked",
+"targets": [
+[
+"duel-side-left",
+217,
+280
+],
+[
+"duel-side-right",
+217,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"selected",
+"idle"
+],
+"ariaPressed": [
+"false",
+"true",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "correct",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+217,
+280
+],
+[
+"duel-side-right",
+217,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "12 seconds",
+"right": "15 seconds",
+"margin": "Ahri by 3 seconds",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "incorrect",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+217,
+280
+],
+[
+"duel-side-right",
+217,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "100 seconds",
+"right": "80 seconds",
+"margin": "Syndra by 20 seconds",
+"states": [
+"incorrect-selected",
+"correct",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "tie",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+198,
+280
+],
+[
+"duel-side-right",
+198,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "550 units",
+"right": "550 units",
+"margin": "Dead even \u00e2\u20ac\u201d 550 units each",
+"states": [
+"idle",
+"idle",
+"correct"
+],
+"ariaPressed": [
+"false",
+"false",
+"true"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "close",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+217,
+280
+],
+[
+"duel-side-right",
+217,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "25.04 armor",
+"right": "25 armor",
+"margin": "Ahri by 0.04 armor",
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "legacy",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "revealed",
+"targets": [
+[
+"duel-side-left",
+217,
+280
+],
+[
+"duel-side-right",
+217,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+null
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"correct",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"true",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "noart",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+217,
+280
+],
+[
+"duel-side-right",
+217,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+},
+{
+"w": 1440,
+"h": 900,
+"reduced": false,
+"s": "long",
+"scrollW": 1440,
+"vw": 1440,
+"hScroll": false,
+"over": [],
+"phase": "open",
+"targets": [
+[
+"duel-side-left",
+257,
+280
+],
+[
+"duel-side-right",
+257,
+280
+],
+[
+"duel-side-tie",
+44,
+416
+],
+[
+"duel-lock",
+44,
+167
+]
+],
+"left": "",
+"right": "",
+"margin": null,
+"states": [
+"idle",
+"idle",
+"idle"
+],
+"ariaPressed": [
+"false",
+"false",
+"false"
+],
+"imgs": [
+true,
+true
+],
+"stampOverValue": false,
+"focusRing": "solid 2px shadow"
+}
+]
