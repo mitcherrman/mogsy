@@ -8,11 +8,8 @@ import {
   History,
   BookX,
   LineChart,
-  SlidersHorizontal,
-  Save,
   Sparkles,
   Target,
-  Library,
   Palette,
   Swords,
   Layers,
@@ -87,9 +84,6 @@ const GOLD = "#c9a84c";
  * from a benefit id to its glyph is presentation, so it lives here.
  */
 const BENEFIT_ICONS: Record<string, React.ElementType> = {
-  "practice-builder": SlidersHorizontal,
-  "practice-pools": Library,
-  "saved-practice-sets": Save,
   "performance-trends": LineChart,
   "recurring-weaknesses": Target,
   "study-history": History,
@@ -112,7 +106,7 @@ const BENEFIT_ICONS: Record<string, React.ElementType> = {
 const LEAD_BENEFIT_IDS = [
   "performance-trends",
   "missed-question-bank",
-  "practice-builder",
+  "recurring-weaknesses",
   "study-history",
 ] as const;
 
@@ -235,7 +229,7 @@ export default function LolPremium() {
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <SEOHead
         title="Mogzy Premium — Practice Smarter at League"
-        description="Mogzy Premium: your full quiz history, every question you have missed, performance trends over 7/30/90 days, and a practice builder that turns your weak spots into a set."
+        description="Mogzy Premium: your full quiz history, every question you have missed, performance trends over 7/30/90 days, and the weak spots that keep coming back."
       />
 
       <div className="mb-8 flex items-center gap-3">
@@ -275,8 +269,8 @@ export default function LolPremium() {
         <p className="mx-auto mt-3 max-w-xl text-sm text-[#c8d4e6]">
           Playing is free — Ranked, Time Trial, the practice sets, the Combat Lab and
           your own recent results. Premium is for reading your record over time: full
-          history, every question you have missed, and a builder that turns your weak
-          spots into the set you play next.
+          history, every question you have missed, and the weak spots that keep
+          coming back.
         </p>
 
         {isPremium ? (

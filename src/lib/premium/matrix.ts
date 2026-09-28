@@ -224,65 +224,10 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
     differentiator: false,
     userFacingSummary: "All curated practice sets and subjects are free.",
   },
-  {
-    id: "practice-builder",
-    group: "practice",
-    label: "Practice Builder",
-    free: "Not available. Free practises the curated sets and subjects.",
-    premium:
-      "Assemble a session yourself — pick the pool, the category, the difficulty and the length (5–30), then run it.",
-    status: "shipped",
-    enforcement: "backend",
-    enforcementNote:
-      "services/entitlement.py require_build(); routes/practice_builder.py:225/248/264/396. 403 PREMIUM_REQUIRED.",
-    differentiator: true,
-    userFacingSummary:
-      "Build your own practice session — choose the pool, subject, difficulty and length.",
-    upsell: {
-      cta: "Build a set",
-      value: "Practise exactly the thing you are trying to fix, not a set someone else chose.",
-      surfaces: ["quiz-lobby", "practice-rail", "results-screen"],
-    },
-  },
-  {
-    id: "practice-pools",
-    group: "practice",
-    label: "Practice from your own record",
-    free: "Not available as a practice source.",
-    premium:
-      "Draw a session from the questions you own, the ones you have missed, or your weakest categories — not just the open bank.",
-    status: "shipped",
-    enforcement: "backend",
-    enforcementNote:
-      "Capability.allowed_pools — Free is (), Premium is (bank, owned, missed, weak). Selection SQL in services/practice_builder.py.",
-    differentiator: true,
-    userFacingSummary:
-      "Practise from what you own, what you have missed, or your weakest subjects.",
-    upsell: {
-      cta: "Practise your misses",
-      value: "Turn the questions you got wrong into the set you play next.",
-      surfaces: ["review-pane", "missed-bank", "trends-pane"],
-    },
-  },
-  {
-    id: "saved-practice-sets",
-    group: "practice",
-    label: "Saved practice sets",
-    free:
-      "Cannot create or edit one. Anything already saved stays readable, renameable and deletable forever.",
-    premium: "Create and edit up to 100 saved configurations.",
-    status: "shipped",
-    enforcement: "backend",
-    enforcementNote:
-      "require_save() on create/edit only. services/saved_practice_sets.py deliberately leaves list/read/rename/delete ungated so a lapse destroys nothing.",
-    differentiator: true,
-    userFacingSummary: "Save the sets you build and come back to them.",
-    upsell: {
-      cta: "Save this set",
-      value: "Keep the sessions that work and replay them whenever you want.",
-      surfaces: ["practice-builder"],
-    },
-  },
+  // HUB7: "practice-builder", "practice-pools" and "saved-practice-sets" were
+  // removed. All three are reachable only through the Practice Builder, which
+  // has no player-facing entry point since HUB7 took it off the Ranked Hub.
+  // The backend capability is unchanged; re-add the rows with the entry point.
 
   // ────────────────────────────────────────────────────── analytics
   {
@@ -328,7 +273,7 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
     label: "Recurring weaknesses",
     free: "Not available.",
     premium:
-      "The subjects that came back weak in both periods — a repeated problem, not one bad session — each with a one-tap handoff into the Practice Builder.",
+      "The subjects that came back weak in both periods — a repeated problem, not one bad session.",
     status: "shipped",
     enforcement: "backend",
     enforcementNote:
@@ -337,7 +282,7 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
     caveat:
       "Weak is measured against your own average in the same period, so it names a repeated problem rather than a low score.",
     userFacingSummary:
-      "See which weak spots keep coming back, and turn them straight into a practice set.",
+      "See which weak spots keep coming back.",
     upsell: {
       cta: "Fix what keeps coming back",
       value: "Stop re-learning the same subject by accident.",

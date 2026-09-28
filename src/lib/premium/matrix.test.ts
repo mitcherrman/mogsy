@@ -225,10 +225,11 @@ describe("PHASE 6 — analytics rows match PT1.11/PT1.12 exactly", () => {
     expect(trends.free).toMatch(/No windows and no comparison/i);
   });
 
-  it("gives Premium the recurring-weakness diagnosis and the Practice handoff", () => {
+  it("gives Premium the recurring-weakness diagnosis, and no Builder handoff (HUB7)", () => {
     expect(weak.differentiator).toBe(true);
     expect(weak.premium).toMatch(/both periods/i);
-    expect(weak.premium).toMatch(/Practice Builder/);
+    expect(weak.premium).not.toMatch(/Builder/);
+    expect(weak.userFacingSummary).not.toMatch(/practice set/i);
     expect(weak.enforcementNote).toMatch(/trends-practise-all/);
     expect(weak.enforcementNote).toMatch(/pool:'weak'/);
     expect(weak.enforcementNote).toMatch(/pool:'bank', category/);
@@ -269,10 +270,13 @@ describe("PHASE 7 — history and review, as actually implemented", () => {
     expect(lib.enforcementNote).toMatch(/ACCOUNT_REQUIRED/);
   });
 
-  it("records that a lapse keeps saved sets readable, renameable and deletable", () => {
-    const s = benefitById("saved-practice-sets")!;
-    expect(s.free).toMatch(/renameable and deletable/i);
-    expect(s.enforcementNote).toMatch(/a lapse destroys nothing/);
+  it("HUB7: sells no Builder-only row while the Builder has no entry point", () => {
+    for (const id of ["practice-builder", "practice-pools", "saved-practice-sets"]) {
+      expect(benefitById(id)).toBeUndefined();
+    }
+    for (const b of PREMIUM_MATRIX) {
+      expect(`${b.premium} ${b.userFacingSummary}`).not.toMatch(/builder/i);
+    }
   });
 });
 

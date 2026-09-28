@@ -491,13 +491,11 @@ describe("the Premium rename and the PT1.7 surfaces survive the PT1.5 port", () 
     // wrong in 2026-09.
     expect(code(lolPremium)).toContain('from "@/lib/premium/matrix"');
     const sellable = premiumBenefits();
-    const builder = sellable.find((b) => b.id === "practice-builder");
-    const pools = sellable.find((b) => b.id === "practice-pools");
-    const saved = sellable.find((b) => b.id === "saved-practice-sets");
-    for (const b of [builder, pools, saved]) expect(b).toBeTruthy();
-    expect(builder!.premium).toMatch(/pool.*category.*difficulty.*length/i);
-    expect(pools!.premium).toMatch(/weakest categories/i);
-    expect(saved!.premium).toMatch(/save/i);
+    // HUB7: the Builder has no player-facing entry point, so none of its
+    // rows (builder, own-record pools, saved sets) may be sold.
+    for (const id of ["practice-builder", "practice-pools", "saved-practice-sets"]) {
+      expect(sellable.find((b) => b.id === id)).toBeUndefined();
+    }
     // The thing PT1.7A made Free must appear as a FREE row, never as a sale.
     const snapshot = PREMIUM_MATRIX.find((b) => b.id === "performance-snapshot")!;
     expect(snapshot.differentiator).toBe(false);
