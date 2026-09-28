@@ -800,3 +800,7 @@ Full detail: `HUB6_FRONTEND_PRODUCTION_INTEGRATION_HANDOFF.md`.
 **Backend `26ef8829` contract:** parses. Guest History is correct against the real Railway backend.
 
 **Not yet live.** mogzy.lol had not deployed `660dbfce` 20+ minutes after the push; it still serves the pre-HUB6 bundle. Publishing and the authenticated production smoke are the HUB6.4C closure tasks.
+
+## CLOSED — HUB6.4C (2026-09-28)
+
+Live: frontend `660dbfce` published on mogzy.lol (bundle `index-Bb_yS2LU.js`), backend `26ef8829`. Superseded HUB6 branches and worktrees retired; rollback refs kept. Owner still to confirm the authenticated History smoke and the first scheduled population cron run. Full detail: `HUB6_CLOSURE_HANDOFF.md`.
