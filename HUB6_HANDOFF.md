@@ -768,3 +768,35 @@ Selecting a stage now opens the **same row** further:
 - The affected suites in isolation: 134 / 134.
 
 **Performance:** preview and lock are unchanged; rooms are lighter.
+
+## HUB6.4B — Frontend production integration
+
+Full detail: `HUB6_FRONTEND_PRODUCTION_INTEGRATION_HANDOFF.md`.
+
+**What landed:**
+- `hub6/premium-analytics-final` `45634b5b` was merged onto production `main` `3011a416` (merge `2ce5fb43`), plus one reconciliation commit, `660dbfce`:
+  - Core Daily readouts say "Core accuracy / Core correct / Core longest streak";
+  - the records note is mechanical;
+  - Weak Areas names the cutoff as the Daily's start, because backend `evidence_cutoff` is the run-creation instant.
+- **Pushed to `origin/main` as `660dbfce`.** Rollback: `3011a416` (local branch `hub6/rollback-main-pre-hub6`).
+
+**Semantic overlap:**
+- `index.css`: both EOF blocks kept.
+- `App.tsx` and `admin-registry.ts`: auto-merged, both sides kept.
+- Main's additive contract changes (J3 Journey, combat working, correlation on POSTs) don't touch History's read path.
+
+**Gates:**
+
+| Gate | Result |
+|---|---|
+| Full suite, 8 shards | base 77 failures, integrated 76. 74 identical, 3 fixed, 2 load-timeouts in HUB6-only files that pass in isolation |
+| Focused History run | 628 / 628 |
+| Typecheck | 2 = 2 |
+| Lint | 0 new errors |
+| Build | passes |
+| Probe, 81 shots (desktop, mobile, 200% text; Free, Premium, not-built, insufficient) | 0 overflow, 0 collisions, touch ≥ 44px |
+| Structural performance | identical to G1 |
+
+**Backend `26ef8829` contract:** parses. Guest History is correct against the real Railway backend.
+
+**Not yet live.** mogzy.lol had not deployed `660dbfce` 20+ minutes after the push; it still serves the pre-HUB6 bundle. Publishing and the authenticated production smoke are the HUB6.4C closure tasks.
