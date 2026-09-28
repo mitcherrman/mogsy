@@ -267,28 +267,9 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
       surfaces: ["trends-pane", "results-screen", "knowledge-breakdown"],
     },
   },
-  {
-    id: "recurring-weaknesses",
-    group: "analytics",
-    label: "Recurring weaknesses",
-    free: "Not available.",
-    premium:
-      "The subjects that came back weak in both periods — a repeated problem, not one bad session.",
-    status: "shipped",
-    enforcement: "backend",
-    enforcementNote:
-      "`recurring_weak` and per-category `is_recurring_weak` are Premium-only fields. PT1.12 CTAs: trends-practise-all → {pool:'weak'}, trends-practise-category → {pool:'bank', category}.",
-    differentiator: true,
-    caveat:
-      "Weak is measured against your own average in the same period, so it names a repeated problem rather than a low score.",
-    userFacingSummary:
-      "See which weak spots keep coming back.",
-    upsell: {
-      cta: "Fix what keeps coming back",
-      value: "Stop re-learning the same subject by accident.",
-      surfaces: ["trends-pane", "knowledge-breakdown", "results-screen"],
-    },
-  },
+  // HUB7: "recurring-weaknesses" removed. HUB6 launch policy keeps Learning
+  // Signals (recurring / recovered weakness) out of user-facing UI; the
+  // backend fields stay dormant and are not sold.
 
   // ───────────────────────────────────────────────────────── review
   {

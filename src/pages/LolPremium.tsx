@@ -9,7 +9,6 @@ import {
   BookX,
   LineChart,
   Sparkles,
-  Target,
   Palette,
   Swords,
   Layers,
@@ -85,7 +84,6 @@ const GOLD = "#c9a84c";
  */
 const BENEFIT_ICONS: Record<string, React.ElementType> = {
   "performance-trends": LineChart,
-  "recurring-weaknesses": Target,
   "study-history": History,
   "missed-question-bank": BookX,
   "profile-themes": Palette,
@@ -96,7 +94,8 @@ const BENEFIT_ICONS: Record<string, React.ElementType> = {
 };
 
 /**
- * The four benefits the page leads with, in this order.
+ * The three benefits the page leads with, in this order (HUB7: four until
+ * Practice Builder and Recurring weaknesses were withdrawn from sale).
  *
  * A curated subset, not a computed one: "most valuable" is an editorial
  * judgement and pretending to derive it would just hide the decision. Each id
@@ -106,7 +105,6 @@ const BENEFIT_ICONS: Record<string, React.ElementType> = {
 const LEAD_BENEFIT_IDS = [
   "performance-trends",
   "missed-question-bank",
-  "recurring-weaknesses",
   "study-history",
 ] as const;
 
@@ -229,7 +227,7 @@ export default function LolPremium() {
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <SEOHead
         title="Mogzy Premium — Practice Smarter at League"
-        description="Mogzy Premium: your full quiz history, every question you have missed, performance trends over 7/30/90 days, and the weak spots that keep coming back."
+        description="Mogzy Premium: your full quiz history, every question you have missed, and performance trends over 7/30/90 days."
       />
 
       <div className="mb-8 flex items-center gap-3">
@@ -269,8 +267,8 @@ export default function LolPremium() {
         <p className="mx-auto mt-3 max-w-xl text-sm text-[#c8d4e6]">
           Playing is free — Ranked, Time Trial, the practice sets, the Combat Lab and
           your own recent results. Premium is for reading your record over time: full
-          history, every question you have missed, and the weak spots that keep
-          coming back.
+          history, every question you have missed, and how your accuracy moves over
+          time.
         </p>
 
         {isPremium ? (
@@ -391,7 +389,7 @@ export default function LolPremium() {
           Four cards, not nine. The full list is directly below in the
           comparison; leading with all of it makes none of it land. */}
       <h3 className="mb-4 text-lg font-semibold">What Premium adds</h3>
-      <div className="mb-10 grid gap-3 sm:grid-cols-2">
+      <div className="mb-10 grid gap-3 sm:grid-cols-3">
         {leadBenefits().map((b) => {
           const Icon = BENEFIT_ICONS[b.id] ?? Sparkles;
           return (

@@ -267,13 +267,14 @@ describe("PT1.13 — the comparison is rendered FROM the canonical matrix", () =
     expect(rendered).toEqual(populatedGroups().map((g) => `premium-group-${g.id}`));
   });
 
-  it("leads with four benefits, each a shipped differentiator", async () => {
+  it("leads with three benefits, each a shipped differentiator (HUB7)", async () => {
     renderPage();
     await screen.findByText("What Premium adds");
     const sellable = new Set(premiumBenefits().map((b) => b.id));
     const available = new Set(availableBenefits().map((b) => b.id));
     const leads = Array.from(document.querySelectorAll("[data-testid^='premium-lead-']"));
-    expect(leads).toHaveLength(4);
+    expect(leads).toHaveLength(3);
+    expect(document.body.textContent).not.toMatch(/recurring weak|recovered weak|keep coming back|weak spots/i);
     for (const el of leads) {
       const id = el.getAttribute("data-testid")!.replace("premium-lead-", "");
       expect(sellable.has(id), id).toBe(true);

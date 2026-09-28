@@ -194,11 +194,10 @@ describe("PT1.13B — lapse keeps the equipped cosmetic", () => {
 describe("PHASE 6 — analytics rows match PT1.11/PT1.12 exactly", () => {
   const snapshot = benefitById("performance-snapshot")!;
   const trends = benefitById("performance-trends")!;
-  const weak = benefitById("recurring-weaknesses")!;
 
   it("does not call the snapshot 'Free analytics'", () => {
     // The forbidden simplification: a tier name where a scope belongs.
-    for (const b of [snapshot, trends, weak]) {
+    for (const b of [snapshot, trends]) {
       expect(`${b.label} ${b.userFacingSummary ?? ""}`).not.toMatch(/free analytics|premium analytics/i);
     }
   });
@@ -225,14 +224,12 @@ describe("PHASE 6 — analytics rows match PT1.11/PT1.12 exactly", () => {
     expect(trends.free).toMatch(/No windows and no comparison/i);
   });
 
-  it("gives Premium the recurring-weakness diagnosis, and no Builder handoff (HUB7)", () => {
-    expect(weak.differentiator).toBe(true);
-    expect(weak.premium).toMatch(/both periods/i);
-    expect(weak.premium).not.toMatch(/Builder/);
-    expect(weak.userFacingSummary).not.toMatch(/practice set/i);
-    expect(weak.enforcementNote).toMatch(/trends-practise-all/);
-    expect(weak.enforcementNote).toMatch(/pool:'weak'/);
-    expect(weak.enforcementNote).toMatch(/pool:'bank', category/);
+  it("sells no Learning Signal — recurring/recovered weakness stays off launch UI (HUB7)", () => {
+    expect(benefitById("recurring-weaknesses")).toBeUndefined();
+    for (const b of PREMIUM_MATRIX) {
+      const copy = `${b.label} ${b.premium} ${b.free} ${b.userFacingSummary ?? ""} ${b.caveat ?? ""} ${b.upsell?.cta ?? ""} ${b.upsell?.value ?? ""}`;
+      expect(copy, b.id).not.toMatch(/recurring|recovered|keep(s)? coming back|weak spots?|repeated problem/i);
+    }
   });
 
   it("states the scope on every analytics row that has one", () => {
