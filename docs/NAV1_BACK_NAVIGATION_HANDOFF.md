@@ -14,8 +14,21 @@ pending transition, and zero ordinary-leave Forfeit/abandon traffic. Refresh
 remains server recovery with no unload interception. Queue protection (E2Q)
 and PLAY1 user-exit semantics remain separate follow-up work.
 
-Remaining E4 browser cases: a genuine ordinary-round reveal, a separately
-identified hidden/settling Daily child, and stage-result warning/recovery.
+E4B closes the remaining browser cases. A genuine server-projected ordinary
+Ranked reveal preserves the exact POP through Stay/Leave and recovers by native
+Forward without replaying the fresh intro. A legal Survival
+`own_stage_finished` snapshot proves the hidden child remains mounted while the
+Daily parent exclusively owns the live-stage dialog. A terminal child followed
+by parent `/sync` proves the stage-result warning, Continue behavior, Exit POP,
+and canonical next-stage reconstruction after Forward without replaying the
+mount-local result. Network logs show no Forfeit, abandon, cancellation, or
+invented termination write, and history-length assertions show no synthetic or
+per-stage entry.
+
+The Daily mobile smoke uses a 390x844 Chromium viewport and certifies dialog
+layout/focus plus Back, header, HUD, and one-modal ownership. It does not claim
+iOS Safari swipe-back coverage. **E4B required test coverage only; no runtime
+changes.**
 
 ## Objective
 Audit Mogzy's browser Back behavior and every in-product Back/Home/Parent/Close/Cancel/Exit navigation path. Produce an explicit route/state contract before changing product code.

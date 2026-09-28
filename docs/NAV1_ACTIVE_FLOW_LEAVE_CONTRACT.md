@@ -1,6 +1,6 @@
 # NAV1-E — Active Ranked / Daily leave contract
 
-Status: E1 substrate, E2 standalone Ranked wiring, and E3 Daily parent wiring complete; E4 combined core certification recorded below; E2Q deferred
+Status: E1 substrate, E2 standalone Ranked wiring, E3 Daily parent wiring, and E4/E4B combined browser certification complete; E2Q deferred
 
 ## E4 integration certification record (2026-09-28)
 
@@ -18,10 +18,19 @@ abandon, cancellation, or invented termination request. Hosted Ranked remains
 owned by Daily and has no standalone blocker. E2Q queue protection and PLAY1
 user-initiated exit policy remain intentionally deferred.
 
-The dedicated E4 lane does not yet contain a server-driven ordinary-round
-reveal fixture, a separately named Daily hidden-settling scenario, or a
-stage-result warning/recovery scenario. E4 must not be marked fully complete
-until those remaining named scenarios are added and pass.
+E4B completed the remaining named browser cases with contract-valid fixtures.
+The standalone Ranked route advances through its normal projection/controller
+poll from an active ordinary round to a nonterminal resolved-round reveal, then
+certifies Back/Stay/Back/Leave/Forward without a synthetic entry or fresh intro.
+Daily certifies the parent-owned hidden Survival settlement, including its live
+child copy and canonical recovery, and a sync-driven stage result whose warning
+is shown before Exit and whose mount-local interstitial is not replayed after
+Forward. Request logs reject Forfeit, abandon, cancellation, and invented
+termination writes in every case. A 390x844 Chromium viewport certifies Daily
+Back, header, HUD, focus, layout, and one-modal behavior; this is mobile viewport
+and history coverage, not a claim about iOS Safari swipe gestures.
+
+**E4B required test coverage only; no runtime changes.**
 Audit base: `576e9dd309094d725afafc837408e329815d927c` (`NAV1-D`)  
 Frontend remote observed after fetch: `origin/main` = `4b3be0cbe2767d3107f4462082755066b26b398b`  
 Backend remote observed after fetch: `origin/master` = `acb2a946d65e8afb0deba02a5dec9165d8414716`
@@ -724,6 +733,11 @@ PLAY1/SFX2 regression.
 Dependencies: E2 + E3; E2Q if queue scope is included.  
 Conflict: **LOW/MEDIUM**.  
 Parallel: test authoring can begin earlier; certification/merge is last.
+
+Completed by E4/E4B on 2026-09-28. The full deterministic NAV1 Chromium lane
+passes, including ordinary Ranked reveal, Daily hidden Survival settlement,
+Daily stage-result non-replay with native Forward recovery, and Daily mobile
+viewport ownership. E2Q was not included and remains deferred.
 
 ## 17. Unresolved owner decisions
 
