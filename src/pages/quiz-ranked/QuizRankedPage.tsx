@@ -56,7 +56,7 @@
  * account gate rather than a redirect, because sending them to the lobby to
  * be told the same thing is a longer way round to the same sentence.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSurfaceEvent } from "@/lib/analytics";
 import { authHref } from "@/lib/auth/auth-destination";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -67,6 +67,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import { getActiveMatch } from "@/lib/ranked-public/client";
 import { QuizRankedMatch } from "./QuizRankedMatch";
+import type { MatchPhase } from "./useRankedMatch";
+import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
+import {
+  useTransactionalLeaveGuard,
+  type TransactionalLeaveCandidate,
+} from "@/lib/navigation/useTransactionalLeaveGuard";
+import {
+  isStandaloneRankedLeaveProtected,
+  leavesStandaloneRankedOwner,
+  RANKED_LEAVE_COPY,
+} from "./rankedLeaveContract";
 
 /**
  * ARENA1 Step 3: the frame that used to be declared here IS
@@ -151,13 +162,41 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   const viewerIdentity = useProfileIdentity(viewerUserId);
   // The handoff hint from the lobby's match-entry scroll. Read once: a later
   // re-render must not resurrect an id the account has since finished with.
-  const [handoffMatchId] = useState<string | null>(() => {
+  const [{ matchId: handoffMatchId, entry: handoffEntry }] = useState<{
+    matchId: string | null;
+    entry: "fresh" | "recovered";
+  }>(() => {
     const state = location.state as { matchId?: unknown } | null;
-    return typeof state?.matchId === "string" ? state.matchId : null;
+    return {
+      matchId: typeof state?.matchId === "string" ? state.matchId : null,
+      entry: (state as { rankedEntry?: unknown } | null)?.rankedEntry === "recovered"
+        ? "recovered" : "fresh",
+    };
   });
   const [discoveredMatchId, setDiscoveredMatchId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [discoveryDone, setDiscoveryDone] = useState(false);
+  const [authority, setAuthority] = useState<{
+    matchId: string;
+    phase: MatchPhase;
+  } | null>(null);
+
+  // Freshness is a one-mount hint. Keep the match id for exact Forward/history
+  // recovery, but mark this entry recovered after its first mount so a reload
+  // or later Forward resumes authority instead of replaying a fresh intro.
+  useEffect(() => {
+    if (!handoffMatchId) return;
+    const state = location.state as Record<string, unknown> | null;
+    if (state?.matchId !== handoffMatchId || state.rankedEntry === "recovered") return;
+    navigate({
+      pathname: location.pathname,
+      search: location.search,
+      hash: location.hash,
+    }, {
+      replace: true,
+      state: { ...state, rankedEntry: "recovered" },
+    });
+  }, [handoffMatchId, location.hash, location.pathname, location.search, location.state, navigate]);
 
   // Reconnect after a full page reload, and the ONLY way to rediscover an
   // active bot match (never in the queue, so queue status alone loses it).
@@ -190,6 +229,24 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   }, [handoffMatchId, navigate]);
 
   const liveMatchId = handoffMatchId ?? discoveredMatchId;
+  const shouldBlockRankedLeave = useCallback(
+    ({ nextLocation }: TransactionalLeaveCandidate) =>
+      leavesStandaloneRankedOwner(nextLocation.pathname),
+    [],
+  );
+  const handlePhaseChange = useCallback((phase: MatchPhase) => {
+    if (liveMatchId) setAuthority({ matchId: liveMatchId, phase });
+  }, [liveMatchId]);
+  const leaveGuard = useTransactionalLeaveGuard({
+    active: isStandaloneRankedLeaveProtected({
+      matchId: liveMatchId,
+      hosted: false,
+      phase: authority?.matchId === liveMatchId ? authority.phase : null,
+    }),
+    kind: "ranked_match",
+    copy: RANKED_LEAVE_COPY,
+    shouldBlock: shouldBlockRankedLeave,
+  });
 
   if (liveMatchId) {
     // No `Frame` here any more: the arena brings its own shell, so the styling
@@ -200,12 +257,25 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
     // there is nothing to recover; an id that came from discovery was found
     // because the client had lost track of it, which is what recovery is for.
     return (
-      <QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId}
-        viewerDisplayName={viewerIdentity.displayName}
-        entry={handoffMatchId ? "fresh" : "recovered"}
-        onTerminalNavigate={(destination) => navigate(destination, { replace: true })}
-        terminalChrome={<RankedRouteHeader size="wide" replace />}
-        chrome={<RankedRouteHeader size="wide" />} />
+      <>
+        <QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId}
+          viewerDisplayName={viewerIdentity.displayName}
+          entry={handoffMatchId ? handoffEntry : "recovered"}
+          onPhaseChange={handlePhaseChange}
+          onTerminalNavigate={(destination) => navigate(destination, { replace: true })}
+          terminalChrome={<RankedRouteHeader size="wide" replace />}
+          chrome={<RankedRouteHeader size="wide" active />} />
+        <TransactionalLeaveDialog
+          open={leaveGuard.confirmationOpen}
+          title={leaveGuard.copy.title}
+          body={leaveGuard.copy.body}
+          stayLabel={leaveGuard.copy.stayLabel}
+          leaveLabel={leaveGuard.copy.leaveLabel}
+          onStay={leaveGuard.stay}
+          onLeave={leaveGuard.leave}
+          busy={leaveGuard.state === "proceeding"}
+        />
+      </>
     );
   }
 

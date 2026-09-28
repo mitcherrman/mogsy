@@ -76,7 +76,7 @@ import {
 } from "@/lib/ranked-core/roundTimeline";
 import { plannedRoundTotal } from "@/lib/ranked-core/stagePlan";
 import { useMatchDiscoveries } from "./useMatchDiscoveries";
-import { useRankedMatch } from "./useRankedMatch";
+import { useRankedMatch, type MatchPhase } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
 import {
   projectPresentationPhase, projectResultFeedback, projectSpecialTransition,
@@ -219,6 +219,8 @@ export interface QuizRankedMatchProps {
    * here can change what this component renders.
    */
   onProgress?: (completedSegments: number, matchOver: boolean) => void;
+  /** Reports server-authoritative lifecycle to the standalone route owner. */
+  onPhaseChange?: (phase: MatchPhase) => void;
   /**
    * The route's own chrome, rendered in the shell's header slot.
    *
@@ -278,7 +280,7 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
 function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chrome, terminalChrome,
                             entry = "recovered",
                             paused = false, onSessionComplete,
-                            onProgress, host,
+                            onProgress, onPhaseChange, host,
                             onTerminalNavigate = (destination) => window.location.assign(destination),
                           }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, {
@@ -286,6 +288,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     // RFX1 2B1: the reveal hold's bounded swap gate waits on this.
     prepareRound: prepareRoundCritical,
   });
+  useEffect(() => {
+    onPhaseChange?.(m.phase);
+  }, [m.phase, onPhaseChange]);
   /** RMOB2 — what the viewer is called everywhere in the match. */
   const viewerLabel = viewerDisplayName?.trim() || "You";
   // RB3 — the reporting seam. An effect rather than a render-time call so a

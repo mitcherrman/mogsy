@@ -1,6 +1,6 @@
 # NAV1-E — Active Ranked / Daily leave contract
 
-Status: E1 substrate implemented; E2/E2Q/E3 product wiring not started
+Status: E1 substrate and E2 standalone Ranked wiring implemented; E2Q/E3 not started
 Audit base: `576e9dd309094d725afafc837408e329815d927c` (`NAV1-D`)  
 Frontend remote observed after fetch: `origin/main` = `4b3be0cbe2767d3107f4462082755066b26b398b`  
 Backend remote observed after fetch: `origin/master` = `acb2a946d65e8afb0deba02a5dec9165d8414716`
@@ -758,3 +758,29 @@ frontend suite retains unrelated base failures documented in the handoff; no
 failing file is changed by E1. No Ranked match, Ranked queue or Daily run is
 guarded yet, and no unload, `popstate`, beacon, keepalive or history-repair
 mechanic was added.
+
+## 20. NAV1-E2 standalone Ranked implementation status
+
+NAV1-E2 is implemented on E1 plus the two SFX2 owner commits (`02ac1b47`,
+`2153d4c8`). The SFX2 commits were replayed directly; merge `dd510777` was not
+used because its other parent belongs to an unrelated release line.
+
+`RankedMatchHost` owns the single standalone blocker. A known match is protected
+from assignment/pre-snapshot through recovering, active, locked, reviewing,
+recovering-error and fatal states. The child reports its authoritative phase;
+`match_outro` and `match_over` immediately deactivate/reset a pending block, so
+terminal authority wins without replaying a stale destination. The exact
+`/quiz/ranked` route is the owner: search/hash/state-only changes preserve it;
+another pathname exits and is blocked. Hosted `MatchHost` children mount no
+blocker or standalone dialog.
+
+The active route header now says **Leave Match** and remains an ordinary PUSH
+Link to `/quiz`. The terminal header remains **Back to Quiz** with NAV1-D
+REPLACE. Browser POP, header, HUD Home and other router navigation all use the
+captured E1 transition. Neither Stay nor Leave calls Forfeit. The one-mount
+fresh handoff is marked recovered in router state after consumption, retaining
+the match id while preventing a fresh intro replay on refresh/Forward.
+
+No unload, queue, Daily, PLAY1 exit, auth, Forfeit or sound policy was added.
+Recovery redirects occur before a known standalone owner is mounted, so no
+active-guard bypass is needed on the current code paths; E2 did not invent one.

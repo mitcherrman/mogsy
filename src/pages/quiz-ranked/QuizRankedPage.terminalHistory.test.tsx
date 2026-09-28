@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter, Routes, Route, useLocation, useNavigate, useNavigationType } from "react-router-dom";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  createMemoryRouter, MemoryRouter, Outlet, RouterProvider,
+  useLocation, useNavigate, useNavigationType,
+} from "react-router-dom";
 import QuizRankedPage from "./QuizRankedPage";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { RankedRouteHeader } from "./RankedRouteHeader";
@@ -9,6 +12,23 @@ import { rankedTerminalResponse } from "@/test/fixtures/rankedTerminal";
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "userA" } }) }));
 vi.mock("@/hooks/useProfileIdentity", () => ({ useProfileIdentity: () => ({ displayName: "Tester" }) }));
 vi.mock("@/lib/backend-auth", () => ({ getBackendAuthHeaders: async () => ({}) }));
+
+const NativeRequest = globalThis.Request;
+class RouterTestRequest {
+  readonly url: string;
+  readonly method: string;
+  readonly signal: AbortSignal | null;
+  readonly headers: Headers;
+  constructor(input: string | URL, init: RequestInit = {}) {
+    this.url = String(input);
+    this.method = init.method ?? "GET";
+    this.signal = init.signal ?? null;
+    this.headers = new Headers(init.headers);
+  }
+}
+
+beforeAll(() => { globalThis.Request = RouterTestRequest as unknown as typeof Request; });
+afterAll(() => { globalThis.Request = NativeRequest; });
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -33,6 +53,10 @@ function HistoryProbe() {
   </>;
 }
 
+function HistoryLayout() {
+  return <><HistoryProbe /><Outlet /></>;
+}
+
 describe("standalone terminal history through the real route, controller and result UI", () => {
   it.each([
     ["result-primary", "/quiz?play=1"],
@@ -43,11 +67,17 @@ describe("standalone terminal history through the real route, controller and res
     ["ranked-back-to-quiz", "/quiz"],
   ])("%s replaces the result with %s and Back skips the old match", async (control, destination) => {
     transport(control !== "discovery-quiet-cta");
-    render(<MemoryRouter initialEntries={["/lol?origin=ranked#academy", { pathname: "/quiz/ranked", state: { matchId: "m1" } }]}>
-      <HistoryProbe />
-      <Routes><Route path="/quiz/ranked" element={<QuizRankedPage />} />
-        <Route path="*" element={<div>Destination</div>} /></Routes>
-    </MemoryRouter>);
+    const router = createMemoryRouter([{
+      element: <HistoryLayout />,
+      children: [
+        { path: "/quiz/ranked", element: <QuizRankedPage /> },
+        { path: "*", element: <div>Destination</div> },
+      ],
+    }], {
+      initialEntries: ["/lol?origin=ranked#academy", { pathname: "/quiz/ranked", state: { matchId: "m1" } }],
+      initialIndex: 1,
+    });
+    render(<RouterProvider router={router} />);
     await screen.findByTestId("ranked-match-over");
     fireEvent.click(await screen.findByTestId(control));
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe(destination));

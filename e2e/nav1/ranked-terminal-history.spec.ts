@@ -118,6 +118,12 @@ test("direct Ranked after completion uses existing no-active-match recovery", as
 
 test("Play Again opens mode selection; the next queue handoff cannot restore the old result", async ({ page }) => {
   await terminal(page);
+  const ordinaryLeaveRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().includes("/forfeit")) {
+      ordinaryLeaveRequests.push(request.url());
+    }
+  });
   await page.route("**/api/ranked/queue", (route) => route.fulfill({ json:
     queueStatusV1(route.request().method() === "POST" ? "matched" : "idle",
       route.request().method() === "POST" ? "m2" : null) }));
@@ -134,11 +140,43 @@ test("Play Again opens mode selection; the next queue handoff cannot restore the
   await expect(page).toHaveURL("/quiz/ranked");
   expect(await page.evaluate(() => history.state.usr.matchId)).toBe("m2");
   await expect(page.getByTestId("ranked-match-over")).toHaveCount(0);
-  // Observe the existing active Back behavior without defining leave/forfeit.
+  await expect(page.getByTestId("ranked-back-to-quiz")).toHaveText("Leave Match");
+  const activeHistoryLength = await page.evaluate(() => history.length);
+  // E2 protects the newly active match; Stay preserves it and Leave replays
+  // the original POP back to the mode-selection lobby.
   await page.goBack();
+  await expect(page.getByRole("alertdialog", { name: "Leave this Ranked match?" })).toBeVisible();
+  await page.getByRole("button", { name: "Stay in Match" }).click();
+  await expect(page).toHaveURL("/quiz/ranked");
+  expect(await page.evaluate(() => history.length)).toBe(activeHistoryLength);
+  await page.goBack();
+  await page.getByRole("button", { name: "Leave Match" }).click();
   await expect(page).toHaveURL("/quiz?play=1");
+  expect(await page.evaluate(() => history.length)).toBe(activeHistoryLength);
+  await page.goForward();
+  await expect(page).toHaveURL("/quiz/ranked");
+  expect(await page.evaluate(() => history.state.usr.matchId)).toBe("m2");
+  await page.getByTestId("ranked-back-to-quiz").focus();
+  await page.getByTestId("ranked-back-to-quiz").press("Enter");
+  await expect(page.getByRole("alertdialog", { name: "Leave this Ranked match?" })).toBeVisible();
+  await page.getByRole("button", { name: "Stay in Match" }).click();
+  await page.getByTestId("hud-home").focus();
+  await page.getByTestId("hud-home").press("Enter");
+  await page.getByRole("button", { name: "Stay in Match" }).click();
+  await page.getByTestId("hud-home").focus();
+  await page.getByTestId("hud-home").press("Enter");
+  await page.getByRole("button", { name: "Leave Match" }).click();
+  await expect(page).toHaveURL("/lol");
+  expect(ordinaryLeaveRequests).toEqual([]);
   await page.goBack();
-  await expect(page).toHaveURL(origin);
+  await expect(page).toHaveURL("/quiz/ranked");
+  await page.getByTestId("ranked-back-to-quiz").focus();
+  await page.getByTestId("ranked-back-to-quiz").press("Enter");
+  await page.getByRole("button", { name: "Leave Match" }).click();
+  await expect(page).toHaveURL("/quiz");
+  expect(ordinaryLeaveRequests).toEqual([]);
+  await page.goBack();
+  await expect(page).toHaveURL("/quiz/ranked");
 });
 
 test("Daily owns two hosted settlements and Continue without stage history entries", async ({ page }) => {

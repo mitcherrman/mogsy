@@ -11,9 +11,23 @@
  * exists. The recovery half of this file is unchanged; only the fall-through
  * expectation moved.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom";
+
+const NativeRequest = globalThis.Request;
+class RouterTestRequest {
+  readonly url: string;
+  readonly method: string;
+  readonly signal: AbortSignal | null;
+  readonly headers: Headers;
+  constructor(input: string | URL, init: RequestInit = {}) {
+    this.url = String(input);
+    this.method = init.method ?? "GET";
+    this.signal = init.signal ?? null;
+    this.headers = new Headers(init.headers);
+  }
+}
 
 const h = vi.hoisted(() => ({
   getActiveMatch: vi.fn(),
@@ -38,6 +52,8 @@ vi.mock("@/lib/ranked-public/client", () => ({
 
 import QuizRankedPage from "./QuizRankedPage";
 
+beforeAll(() => { globalThis.Request = RouterTestRequest as unknown as typeof Request; });
+afterAll(() => { globalThis.Request = NativeRequest; });
 afterEach(() => vi.clearAllMocks());
 
 /** Reports where the route sent us, and what it asked the lobby to do. */
@@ -53,14 +69,11 @@ function LobbyProbe() {
 }
 
 function renderPage() {
-  return render(
-    <MemoryRouter initialEntries={["/quiz/ranked"]}>
-      <Routes>
-        <Route path="/quiz/ranked" element={<QuizRankedPage />} />
-        <Route path="/quiz" element={<LobbyProbe />} />
-      </Routes>
-    </MemoryRouter>,
-  );
+  const router = createMemoryRouter([
+    { path: "/quiz/ranked", element: <QuizRankedPage /> },
+    { path: "/quiz", element: <LobbyProbe /> },
+  ], { initialEntries: ["/quiz/ranked"] });
+  return render(<RouterProvider router={router} />);
 }
 
 describe("Ranked route reconnect after reload", () => {

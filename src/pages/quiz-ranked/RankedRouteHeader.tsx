@@ -35,8 +35,8 @@
  */
 import { Link } from "react-router-dom";
 
-export function RankedRouteHeader({ size = "default", replace = false }:
-{ size?: "default" | "wide"; replace?: boolean }) {
+export function RankedRouteHeader({ size = "default", replace = false, active = false }:
+{ size?: "default" | "wide"; replace?: boolean; active?: boolean }) {
   // Accepted and unused: the row no longer has a width-dependent geometry to
   // choose, because it no longer has a row.
   void size;
@@ -53,7 +53,7 @@ export function RankedRouteHeader({ size = "default", replace = false }:
           text-xs text-muted-foreground/70 underline underline-offset-2
           transition-colors hover:text-muted-foreground"
       >
-        Back to Quiz
+        {active ? "Leave Match" : "Back to Quiz"}
       </Link>
     </div>
   );

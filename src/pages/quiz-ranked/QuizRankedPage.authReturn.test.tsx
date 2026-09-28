@@ -16,6 +16,13 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: h.user }) }));
+vi.mock("@/lib/navigation/useTransactionalLeaveGuard", () => ({
+  useTransactionalLeaveGuard: () => ({
+    isBlocked: false,
+    stay: vi.fn(),
+    leave: vi.fn(),
+  }),
+}));
 vi.mock("./QuizRankedMatch", () => ({ QuizRankedMatch: () => <div /> }));
 vi.mock("./useRankedQueue", () => ({
   useRankedQueue: () => ({

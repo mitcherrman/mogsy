@@ -14,9 +14,23 @@
  *            duplicated Recent Matches list must not be reachable here by any
  *            normal path.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom";
+
+const NativeRequest = globalThis.Request;
+class RouterTestRequest {
+  readonly url: string;
+  readonly method: string;
+  readonly signal: AbortSignal | null;
+  readonly headers: Headers;
+  constructor(input: string | URL, init: RequestInit = {}) {
+    this.url = String(input);
+    this.method = init.method ?? "GET";
+    this.signal = init.signal ?? null;
+    this.headers = new Headers(init.headers);
+  }
+}
 
 const h = vi.hoisted(() => ({ getActiveMatch: vi.fn() }));
 
@@ -43,6 +57,8 @@ function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
+beforeAll(() => { globalThis.Request = RouterTestRequest as unknown as typeof Request; });
+afterAll(() => { globalThis.Request = NativeRequest; });
 afterEach(() => vi.clearAllMocks());
 
 function Lobby() {
@@ -51,14 +67,11 @@ function Lobby() {
 }
 
 function renderRoute(state?: unknown) {
-  return render(
-    <MemoryRouter initialEntries={[{ pathname: "/quiz/ranked", state }]}>
-      <Routes>
-        <Route path="/quiz/ranked" element={<QuizRankedPage />} />
-        <Route path="/quiz" element={<Lobby />} />
-      </Routes>
-    </MemoryRouter>,
-  );
+  const router = createMemoryRouter([
+    { path: "/quiz/ranked", element: <QuizRankedPage /> },
+    { path: "/quiz", element: <Lobby /> },
+  ], { initialEntries: [{ pathname: "/quiz/ranked", state }] });
+  return render(<RouterProvider router={router} />);
 }
 
 describe("/quiz/ranked — the live-match host", () => {

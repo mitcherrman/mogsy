@@ -905,3 +905,32 @@ The first audit must specifically answer:
 8. Every route that needs entry provenance and its safe fallback.
 9. Which current active workstream owns each conflicting file.
 10. Exact implementation batches that can be developed in parallel and cherry-picked safely.
+
+## NAV1-E2 certification — standalone Ranked active leave
+
+E2 now guards only the standalone `/quiz/ranked` owner. Its known-match
+predicate begins before the first snapshot and remains true through active,
+locked/reveal presentation, recovery and known nonterminal errors. Server
+authority turns it off at `match_outro` or `match_over`; if a dialog is open,
+the E1 hook resets that stale transition and keeps the authoritative result on
+screen. The active header is **Leave Match** (ordinary PUSH `/quiz`), while the
+terminal header and result actions retain NAV1-D REPLACE.
+
+All router navigation away shares the same captured transition, including
+browser POP, HUD Home and programmatic PUSH/REPLACE. Exact-owner search/hash/
+state changes are allowed. A fresh queue handoff retains its match id but is
+marked recovered after the first mount, so refresh/Forward resumes rather than
+replaying the fresh intro. Current no-match and Daily-host discovery redirects
+occur before the standalone owner is known, so they remain unguarded recovery
+REPLACEs; no global disable or ad hoc bypass was introduced.
+
+Hosted Ranked remains entirely parent-owned: no child blocker, standalone
+dialog, standalone header, or Forfeit change. Explicit Forfeit remains the
+only POST concession path. No unload handler was added.
+
+SFX2 reconciliation replayed only `02ac1b47` and owner tip `2153d4c8` onto E1;
+the unrelated release-line merge parent of `dd510777` was not absorbed. E2
+does not change the sound observer or arena/audio ownership.
+
+Deferred exactly as before: E2Q Ranked queue, E3 Daily parent guarding, and
+PLAY1 user-exit policy.
