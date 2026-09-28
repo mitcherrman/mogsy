@@ -1,204 +1,118 @@
 /**
- * MALT Phase A — the Leaguecraft HISTORY / REVIEW workspace.
+ * HUB4 — the Ranked Hub's lower workspace, as ONE History surface.
  *
- * The lower half of `/quiz`, underneath the approved ceremonial first screen
- * and its category rail. Three questions, one surface:
+ * It used to be three peer tabs — History | Review | Trends. That shell is
+ * gone. History is the surface; Review and Trends are capabilities inside it:
  *
- *   HISTORY  what have I studied?      — the account's quiz-session record
- *   REVIEW   what did I get wrong?     — the missed-question bank
- *   TRENDS   am I getting better?      — PT1.8's longitudinal reading of the
- *                                        same attempt record (Premium)
+ *   * the record itself — completed Daily runs (Daily → Stage → Question),
+ *     then the existing Ranked and Practice ledger — is always what is shown;
+ *   * Owned / Missed, what the Review tab held, is a contextual section the
+ *     reader opens from History, with its loaders, entitlement lines and
+ *     practice actions unchanged;
+ *   * run and stage comparison, what Trends was for, lives in each Daily
+ *     run's and stage's own Premium expansion (HUB2 authority).
  *
- * SUBORDINATE BY CONSTRUCTION
- * ───────────────────────────
- * The canonical visual reference is explicit that the three-scroll rack is
- * this page's LAYOUT, not the Leaguecraft system. So this is not a fourth
- * scroll, not a second hero and not a three-column rack: it is ONE sheet of
- * the academy's vellum — flat, unrolled, unornamented — carrying ruled
- * headings and ruled rows. A record book, not a dashboard.
+ * The sheet is the same flat vellum it always was — a record book, not a
+ * dashboard — with no strip of tabs across its top.
  *
- * The material is the hierarchy. The three lobby scrolls are ceremonial and
- * dimensional; a record is paper. That is why the sheet has no rolls, no
- * second frame and no ornament, and why it is measurably flatter: see the
- * `.lc-vellum` rules in `index.css` for the crop that keeps the sheet's dark
- * vignette off the text, which is what lets this surface reuse the approved
- * parchment ink rather than mint a palette of its own.
- *
- * THE SHELL IS THE POINT, NOT THE TABS IN IT
- * ──────────────────────────────────────────
- * PT1.8 is the first proof of that: TRENDS arrived as one entry in the mode
- * list and one body passed down. The strip, the deep-link scheme, the roving
- * selection and the scroll target were not touched.
- *
- * Phase A ships one pane per mode, but the mode list is DATA. History is
- * scheduled to gain Practice / Daily / Ranked streams once the DSA
- * reconciliation and a Ranked history read model exist; Review is scheduled
- * to gain Session Review and Ranked Review once there is a persistent
- * session-review endpoint behind them. Both arrive as entries in a mode's
- * `panes` list — the shell, the tab strip, the deep-link scheme and the
- * scroll target do not change. Nothing empty is displayed in the meantime: a
- * tab the product cannot fill yet is not rendered at all.
- *
- * WHAT IT IS NOT: a player-facing "Review" is the player's OWN mistakes. The
- * moderator's question-review console is a different product at a different
- * route, and this must never borrow its name.
- *
- * Presentation only. History reads the payload the page already holds; Review
- * mounts its own gated loader, and only once it is actually opened.
+ * ADDRESSABLE, AND OLD LINKS STILL LAND
+ * ─────────────────────────────────────
+ * `#history` opens the record. `#review` and `#trends` are legacy links from
+ * results screens and older builds; the hub maps each to the History context
+ * it meant (the Owned/Missed section; the newest run's analysis) and then
+ * canonicalises the URL to `#history` with `replace`, so the back button does
+ * not step through a hash that no longer names anything.
  */
-import { BookX, History as HistoryIcon, LineChart } from "lucide-react";
+import { useEffect, useId, useRef } from "react";
+import { BookX, ChevronDown } from "lucide-react";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
+import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 
-/** Which top-level question the workspace is answering. Also the URL hash. */
-export type WorkspaceMode = "history" | "review" | "trends";
+/** What a workspace hash asks for. Only `history` is canonical. */
+export type HistoryHashTarget = "history" | "review" | "trends";
 
-export const WORKSPACE_MODES: readonly WorkspaceMode[] = [
-  "history",
-  "review",
-  "trends",
-] as const;
+const HASH_TARGETS: readonly HistoryHashTarget[] = ["history", "review", "trends"];
 
-/** `/quiz#history`, `/quiz#review` and `/quiz#trends`. One scheme, so a link
- *  from anywhere in the product can open the workspace on the pane it means. */
-export function parseWorkspaceHash(hash: string | null | undefined): WorkspaceMode | null {
+export const HISTORY_HASH = "#history";
+
+/** `#history`, and the two legacy hashes that now resolve into it. Anything
+ *  else is not the workspace's, and returns null. */
+export function parseHistoryHash(hash: string | null | undefined): HistoryHashTarget | null {
   const raw = (hash ?? "").replace(/^#/, "").toLowerCase();
-  return (WORKSPACE_MODES as readonly string[]).includes(raw) ? (raw as WorkspaceMode) : null;
+  return (HASH_TARGETS as readonly string[]).includes(raw) ? (raw as HistoryHashTarget) : null;
 }
-
-export function workspaceHash(mode: WorkspaceMode): string {
-  return `#${mode}`;
-}
-
-const MODE_META: Record<
-  WorkspaceMode,
-  { label: string; icon: React.ComponentType<{ className?: string }>; hint: string }
-> = {
-  history: {
-    label: "History",
-    icon: HistoryIcon,
-    hint: "Every study session on record.",
-  },
-  review: {
-    label: "Review",
-    icon: BookX,
-    // PT1.2 gave REVIEW two sources (OWNED / MISSED), each with its own line
-    // inside the pane. This one names the pane's JOB rather than restating
-    // either source, so the two hints do not read as a contradiction.
-    hint: "The questions you own, and the ones you got wrong.",
-  },
-  trends: {
-    label: "Trends",
-    icon: LineChart,
-    // Names the QUESTION, not the tier. The pane itself says what a reader
-    // without Premium gets and what stays theirs; a tab that advertised a
-    // paywall would put the price above the product.
-    //
-    // IT ALSO NAMES THE RECORD. This hint is on screen above the PAYWALL as
-    // well as above the pane, and the paywall has no room for the pane's scope
-    // note — so an unscoped "your accuracy" would read, to a player whose
-    // study is mostly Ranked, as a promise about every mode.
-    hint: "How your Practice & Time Trial results are moving.",
-  },
-};
 
 export default function LeaguecraftWorkspace({
-  mode,
-  onModeChange,
-  history,
-  review,
-  trends,
+  questionsOpen,
+  onQuestionsOpenChange,
+  questionsFocusSignal = null,
+  questions,
+  children,
   className = "",
 }: {
-  mode: WorkspaceMode;
-  onModeChange: (mode: WorkspaceMode) => void;
-  /** The History pane's body. Supplied by the host so this file fetches
-   *  nothing and the lobby can hand down the payload it already holds. */
-  history: React.ReactNode;
-  /** The Review pane's body. Mounted only while Review is the open mode, so
-   *  its Pro-gated endpoint is never read by a reader who did not ask. */
-  review: React.ReactNode;
-  /** The Trends pane's body. Same rule as Review: its account-bound reads
-   *  happen only once a reader has opened the pane. */
-  trends: React.ReactNode;
+  /** Whether the contextual Owned/Missed section is open. */
+  questionsOpen: boolean;
+  onQuestionsOpenChange: (open: boolean) => void;
+  /** A changing value moves focus to the Owned/Missed section — the legacy
+   *  `#review` arrival. */
+  questionsFocusSignal?: number | null;
+  /** The Owned/Missed body. Rendered only while open, so its account-bound
+   *  and Pro-gated reads never run for a reader who did not ask. */
+  questions: React.ReactNode;
+  /** The record: Daily runs, then the Ranked/Practice ledger. */
+  children: React.ReactNode;
   className?: string;
 }) {
-  const meta = MODE_META[mode];
+  const regionId = useId();
+  const regionRef = useRef<HTMLElement | null>(null);
+  const coarse = useCoarsePointer();
+
+  useEffect(() => {
+    if (questionsFocusSignal === null || !questionsOpen) return;
+    regionRef.current?.focus({ preventScroll: true });
+  }, [questionsFocusSignal, questionsOpen]);
 
   return (
-    <div className={className} data-testid="leaguecraft-workspace" data-mode={mode}>
+    <div className={className} data-testid="leaguecraft-workspace" data-surface="history">
       <LobbyPanel variant="vellum" className="gap-2">
-        {/* The tab strip. Real tabs — `tablist`/`tab`/`tabpanel` with roving
-            selection — because these are two views of one surface, not two
-            destinations; a reader on a screen reader should be told the panel
-            changed, not that the page did. */}
-        <div
-          role="tablist"
-          aria-label="Leaguecraft record"
-          data-testid="workspace-tablist"
-          className="flex items-end gap-1 border-b pb-px"
-          style={{ borderColor: LEAGUECRAFT_INK.rule }}
-        >
-          {WORKSPACE_MODES.map((id) => {
-            const active = id === mode;
-            const Icon = MODE_META[id].icon;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                id={`workspace-tab-${id}`}
-                aria-selected={active}
-                aria-controls={`workspace-panel-${id}`}
-                tabIndex={active ? 0 : -1}
-                data-testid={`workspace-tab-${id}`}
-                onClick={() => onModeChange(id)}
-                onKeyDown={(e) => {
-                  // Arrow keys move between tabs, as a tablist owes its reader.
-                  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-                  e.preventDefault();
-                  const i = WORKSPACE_MODES.indexOf(id);
-                  const next =
-                    e.key === "ArrowRight"
-                      ? (i + 1) % WORKSPACE_MODES.length
-                      : (i - 1 + WORKSPACE_MODES.length) % WORKSPACE_MODES.length;
-                  onModeChange(WORKSPACE_MODES[next]);
-                }}
-                /* Ink, not brass-on-black: the ACTIVE tab is the darkest
-                   thing on the strip and is underscored in the sheet's own
-                   brown, which is how a book marks the page you are on. */
-                className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  active ? "" : "border-transparent"
-                }`}
-                style={
-                  active
-                    ? { borderColor: LEAGUECRAFT_INK.brass, color: LEAGUECRAFT_INK.heading, textShadow: LEAGUECRAFT_INK.press }
-                    : { color: LEAGUECRAFT_INK.faint }
-                }
-              >
-                <Icon className="h-3 w-3" aria-hidden="true" />
-                {MODE_META[id].label}
-              </button>
-            );
-          })}
-          {/* The open pane's own line, on the strip's far end where it reads as
-              a caption for what is below rather than as a second heading. */}
-          <span
-            className="ml-auto hidden pb-1.5 pl-3 text-[10px] sm:inline"
-            style={{ color: LEAGUECRAFT_INK.faint }}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            aria-expanded={questionsOpen}
+            aria-controls={regionId}
+            data-testid="history-questions-toggle"
+            onClick={() => onQuestionsOpenChange(!questionsOpen)}
+            className={`inline-flex items-center gap-1.5 rounded px-1.5 text-[10px] font-bold uppercase tracking-[0.16em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              coarse ? "min-h-[44px]" : "py-1"
+            }`}
+            style={{ color: questionsOpen ? LEAGUECRAFT_INK.heading : LEAGUECRAFT_INK.brass }}
           >
-            {meta.hint}
-          </span>
+            <BookX className="h-3 w-3" aria-hidden="true" />
+            Owned &amp; Missed
+            <ChevronDown
+              className={`h-3 w-3 transition-transform motion-reduce:transition-none ${questionsOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
         </div>
 
-        <div
-          role="tabpanel"
-          id={`workspace-panel-${mode}`}
-          aria-labelledby={`workspace-tab-${mode}`}
-          data-testid={`workspace-panel-${mode}`}
-          className="min-h-[9rem] pt-1"
-        >
-          {mode === "history" ? history : mode === "review" ? review : trends}
+        {questionsOpen && (
+          <section
+            ref={regionRef}
+            id={regionId}
+            tabIndex={-1}
+            aria-label="Owned and missed questions"
+            data-testid="history-questions"
+            className="rounded border px-2.5 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            style={{ borderColor: "rgba(96,68,28,0.34)" }}
+          >
+            {questions}
+          </section>
+        )}
+
+        <div data-testid="history-record" className="min-h-[9rem] pt-1">
+          {children}
         </div>
       </LobbyPanel>
     </div>

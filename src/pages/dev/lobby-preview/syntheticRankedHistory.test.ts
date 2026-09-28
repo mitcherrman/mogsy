@@ -398,9 +398,11 @@ describe("the fixture cannot leak into production", () => {
           if (entry.name === "node_modules") continue;
           walk(full);
         } else if (/\.tsx?$/.test(entry.name)) {
-          if (full.includes("/pages/dev/")) continue;
+          // Separator-agnostic: on Windows `full` carries backslashes.
+          if (full.replace(/\\/g, "/").includes("/pages/dev/")) continue;
           const src = readFileSync(full, "utf8");
-          if (src.includes("syntheticRankedHistory")) offenders.push(full);
+          // An IMPORT of the module, not a mention of its name in prose.
+          if (/from\s+["'][^"']*syntheticRankedHistory["']/.test(src)) offenders.push(full);
         }
       }
     };

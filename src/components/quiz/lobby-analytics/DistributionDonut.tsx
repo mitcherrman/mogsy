@@ -14,6 +14,7 @@
 import { Cell, Pie, PieChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LEAGUECRAFT_INK as INK } from "@/components/quiz/leaguecraft-ink";
+import { useMotionAllowed } from "@/lib/motion/useReveal";
 import { sliceTotal, type DistributionSlice } from "./analyticsSlices";
 
 /** Beyond this the arcs are thinner than their own stroke. The remainder is
@@ -25,6 +26,9 @@ const MAX_ARCS = 5;
 const SHADES = [1, 0.78, 0.58, 0.42, 0.3];
 
 export default function DistributionDonut({ slices }: { slices: readonly DistributionSlice[] }) {
+  // HUB6: the ring sweeps around its circumference on arrival; never under
+  // reduced motion.
+  const animate = useMotionAllowed();
   const total = sliceTotal(slices);
   const head = slices.slice(0, MAX_ARCS);
   const tail = slices.slice(MAX_ARCS);
@@ -59,7 +63,12 @@ export default function DistributionDonut({ slices }: { slices: readonly Distrib
             outerRadius="88%"
             paddingAngle={1.5}
             stroke="none"
-            isAnimationActive={false}
+            startAngle={90}
+            endAngle={-270}
+            isAnimationActive={animate}
+            animationBegin={60}
+            animationDuration={750}
+            animationEasing="ease-out"
           >
             {rows.map((row, i) => (
               <Cell

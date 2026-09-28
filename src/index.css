@@ -16635,3 +16635,83 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
    width, so the prose surface's own meta row (drawn below `lg` only) does not
    repeat them; its category label stays. */
 .journey-question [data-testid="question-meta-row"] [data-testid="question-role-emblems"] { display: none; }
+
+/* HUB6.1 — Daily Focus's one canvas changes content deliberately: a deeper
+   view (Overview -> stage, or a later stage) slides in from the right, a
+   return from the left, clipped to its own edge. Removed for both
+   reduced-motion switches. */
+@keyframes history-canvas-in-right {
+  from { transform: translateX(18px); clip-path: inset(0 0 0 100%); }
+  to { transform: none; clip-path: inset(0 0 0 0); }
+}
+@keyframes history-canvas-in-left {
+  from { transform: translateX(-18px); clip-path: inset(0 100% 0 0); }
+  to { transform: none; clip-path: inset(0 0 0 0); }
+}
+.history-canvas-in--right { animation: history-canvas-in-right 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.history-canvas-in--left { animation: history-canvas-in-left 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+html.reduce-motion .history-canvas-in { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .history-canvas-in { animation: none !important; }
+}
+
+/* HUB6.2 — the expanded Daily GROWS: its analytics region opens from zero
+   height beneath the stages (grid rows 0fr -> 1fr) while the card's edges
+   move outward; a selected stage's quick facts unroll under its own icons.
+   Removed for both reduced-motion switches: the final state, at once. */
+.history-region {
+  transition: grid-template-rows 320ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 240ms ease-out;
+}
+@keyframes history-facts-in {
+  from { clip-path: inset(0 0 100% 0); opacity: 0; transform: translateY(-2px); }
+  to { clip-path: inset(0 0 0 0); opacity: 1; transform: none; }
+}
+.history-facts-in { animation: history-facts-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+html.reduce-motion .history-region { transition: none !important; }
+html.reduce-motion .history-facts-in { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .history-region { transition: none !important; }
+  .history-facts-in { animation: none !important; }
+}
+
+/* HUB6.3E — the Premium analytics room's one-shot motion. A lit question
+   icon pulses ONCE when a chart lights it; a new or tied record's medal
+   catches the light once; a streak's flame settles once. Nothing loops.
+   Removed for both reduced-motion switches: the final state, at once. */
+@keyframes history-lit-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(180, 134, 42, 0.8); opacity: 1; }
+  100% { box-shadow: 0 0 0 8px rgba(180, 134, 42, 0); opacity: 0; }
+}
+.history-lit-pulse { animation: history-lit-pulse 720ms ease-out 1 both; }
+@keyframes history-medal-shine {
+  0% { transform: translateX(-120%) rotate(18deg); opacity: 0; }
+  30% { opacity: 0.9; }
+  100% { transform: translateX(160%) rotate(18deg); opacity: 0; }
+}
+.history-medal-shine { animation: history-medal-shine 900ms 450ms ease-out 1 both; }
+@keyframes history-medal-settle {
+  0% { transform: scale(0.6) rotate(-8deg); opacity: 0; }
+  70% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.history-medal-settle { animation: history-medal-settle 620ms cubic-bezier(0.2, 0.7, 0.2, 1) 1 both; }
+@keyframes history-flame-in {
+  0% { transform: scale(0.3) translateY(6px); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.history-flame-in { transform-origin: 50% 90%; animation: history-flame-in 560ms cubic-bezier(0.2, 0.7, 0.2, 1) 1 both; }
+html.reduce-motion .history-lit-pulse,
+html.reduce-motion .history-medal-shine,
+html.reduce-motion .history-medal-settle,
+html.reduce-motion .history-flame-in { animation: none !important; }
+html.reduce-motion .history-lit-pulse,
+html.reduce-motion .history-medal-shine { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .history-lit-pulse,
+  .history-medal-shine,
+  .history-medal-settle,
+  .history-flame-in { animation: none !important; }
+  .history-lit-pulse,
+  .history-medal-shine { display: none; }
+}

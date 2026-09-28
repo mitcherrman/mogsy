@@ -58,10 +58,12 @@ import type {
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 import { legacyCategoryKey } from "@/lib/quiz/publicCategory";
+import { rankedRef } from "@/pages/dev/lobby-preview/history/canonicalRefs";
+import { FIXTURE_ANCHOR, fixtureInstant } from "@/pages/dev/lobby-preview/history/fixtureClock";
 
 /** What a question is centred on. `category` means "no single entity", which
  *  is a claim in its own right and the most common honest answer. */
-type Subject =
+export type Subject =
   | { kind: "champion"; name: string; icon: string }
   | { kind: "item"; name: string; icon: string }
   | { kind: "summoner_spell"; name: string; icon: string }
@@ -106,19 +108,19 @@ export function topicFor(q: SyntheticQuestion): TimelineTopic {
 
 // ───────────────────────────────────────────────────────── the question bank
 
-const CHAMPION = (name: string): Subject => ({
+export const CHAMPION = (name: string): Subject => ({
   kind: "champion", name, icon: `assets/champions/${name}/icon.png`,
 });
-const ITEM = (name: string, id: number): Subject => ({
+export const ITEM = (name: string, id: number): Subject => ({
   kind: "item", name, icon: `assets/items/${id}.png`,
 });
-const SPELL = (name: string): Subject => ({
+export const SPELL = (name: string): Subject => ({
   kind: "summoner_spell", name, icon: `assets/summoner_spells/${name}.png`,
 });
-const RUNE = (name: string, file: string): Subject => ({
+export const RUNE = (name: string, file: string): Subject => ({
   kind: "rune", name, icon: `assets/runes/${file}.png`,
 });
-const CATEGORY: Subject = { kind: "category" };
+export const CATEGORY: Subject = { kind: "category" };
 
 export const SYNTHETIC_QUESTIONS: Record<string, SyntheticQuestion> = {
   // ── entity-specific: a champion ability ─────────────────────────────────
@@ -517,7 +519,7 @@ function quizRound(roundNumber: number, spec: RoundSpec): ReviewRound {
     kind: "quiz",
     moduleId: "quiz",
     category: q.category,
-    canonicalQuestionRef: `ranked:demo-${q.id}`,
+    canonicalQuestionRef: rankedRef(q.id),
     revealed,
     iconHint: iconHintFor(q),
     topic: topicFor(q),
@@ -700,11 +702,10 @@ const MATCHES: MatchSpec[] = [
 
 // ────────────────────────────────────────────────────────────────── exports
 
+/** HUB5: every instant is an offset from the fixed fixture anchor, in UTC —
+ *  never from the reader's clock or timezone. */
 function isoDaysAgo(days: number, hour: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  d.setHours(hour, 0, 0, 0);
-  return d.toISOString();
+  return fixtureInstant(days, hour);
 }
 
 /** Timmy's synthetic Ranked record, newest first. */
@@ -717,7 +718,7 @@ export const SYNTHETIC_RANKED_HISTORY: readonly MatchHistoryEntryView[] = Object
     // Match LENGTH, never a score: the contract carries the round a duel
     // ended on and no per-round results.
     finalRoundNumber: m.rounds.length,
-    completedAt: isoDaysAgo(m.daysAgo, 20 - (m.daysAgo % 8)),
+    completedAt: isoDaysAgo(m.daysAgo, 17 - (m.daysAgo % 8)),
     isBotMatch: m.bot,
     viewerClass: "mage",
     opponentClass: "marksman",
@@ -744,7 +745,8 @@ export const SYNTHETIC_RANKED_REVIEWS: Readonly<Record<string, MatchReviewView>>
           m.id,
           {
             schemaVersion: "ranked_duel.match_review.v1",
-            serverTime: isoDaysAgo(m.daysAgo, 21),
+            // The review is read "now" — the fixture anchor.
+            serverTime: FIXTURE_ANCHOR,
             matchId: m.id,
             finalRoundNumber: rounds.length,
             roundCount: rounds.length,

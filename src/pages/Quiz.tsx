@@ -28,7 +28,7 @@ import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 // Daily Score Attack hub entry: shown instead of the legacy Daily card only
 // when the backend reports the new mode enabled (server feature flag).
 import PracticeBuilderPanel, { type BuilderPreset } from "@/components/quiz/builder/PracticeBuilderPanel";
-import PerformanceTrendsPane, { type TrendsPracticePreset } from "@/components/quiz/trends/PerformanceTrendsPane";
+import type { TrendsPracticePreset } from "@/components/quiz/trends/RecurringWeaknesses";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { QUIZ_CATEGORY_ICONS } from "@/components/quiz/QuizCategoryStrip";
 import {
@@ -1112,7 +1112,7 @@ export default function Quiz() {
 
   /**
    * PT1.8 — the Trends → Builder handoff, held here because this page hosts
-   * BOTH surfaces: the workspace's Trends pane and the lobby's Practice
+   * BOTH surfaces: History's recurring weaknesses and the lobby's Practice
    * Builder are siblings on one screen, so "practise this" is a preset
    * travelling between them rather than a navigation.
    *
@@ -1530,11 +1530,10 @@ export default function Quiz() {
                   />
                 </div>
               }
-              /* PT1.8 — the workspace's third pane. Passed as a node for the
-                 same reason `builder` is: the hub places it and the pane
-                 itself draws the paywall from the server's answer, so no hub
-                 flag and no client-side tier check decides who sees what. */
-              trends={<PerformanceTrendsPane onPractiseWeakness={handlePractiseWeakness} />}
+              /* PT1.8 → HUB4 — the Trends pane is retired from the lobby; its
+                 recurring-weakness hand-off to the Builder lives on inside
+                 History's Owned & Missed section. */
+              onPractiseWeakness={handlePractiseWeakness}
               /* The lobby shows the UNSAVED choice; the account is written at
                  PLAY. See `pendingRankedRole`. */
               rankedRole={effectiveRankedRole}

@@ -49,36 +49,50 @@ import type {
 import type {
   MatchHistoryEntryView,
   MatchReviewView,
-  QuestionLibraryEntryView,
-  QuestionLibrarySummaryView,
   RankedProgressionView,
-  ReviewQuestion,
-  ReviewRound,
 } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import {
-  SYNTHETIC_MATCH_SPECS,
-  SYNTHETIC_QUESTION_BANK,
   SYNTHETIC_RANKED_HISTORY,
   SYNTHETIC_RANKED_REVIEWS,
 } from "@/pages/dev/lobby-preview/syntheticRankedHistory";
 import type { DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import type { RankedState } from "@/lib/quiz/featured-mock";
+import { fixtureInstant } from "@/pages/dev/lobby-preview/history/fixtureClock";
+import { FIRST_DAILY, FULL_DAILY, TIMMY_DAILY } from "@/pages/dev/lobby-preview/history/timmyHistoryInput";
+import { ANALYTICS_LAB } from "@/pages/dev/lobby-preview/history/analyticsLabInput";
+import { ANALYTICS_LAB_FACTS } from "@/pages/dev/lobby-preview/history/analyticsLabFacts";
+import type { AnalyticsLabScenario } from "@/pages/dev/lobby-preview/history/analyticsLabSource";
+import type { TimmyHistoryScenario } from "@/pages/dev/lobby-preview/history/timmyHistorySource";
+import { FIRST_DAILY_FACTS, FULL_DAILY_FACTS, TIMMY_DAILY_FACTS } from "@/pages/dev/lobby-preview/history/timmyDailyFacts";
+import { deriveLibrary, type LobbyPreviewLibrary } from "@/pages/dev/lobby-preview/timmyLibrary";
+import {
+  MISSED_UNAVAILABLE_ERROR,
+  TIMMY_MISSED_LOCKED,
+  TIMMY_MISSED_PREMIUM,
+  TIMMY_QUIZ_HISTORY_FREE,
+  TIMMY_QUIZ_HISTORY_PREMIUM,
+  TIMMY_QUIZ_HISTORY_UNAVAILABLE,
+} from "@/pages/dev/lobby-preview/timmyPractice";
 
-/** The two states the preview switches between. */
-export type LobbyPreviewProfile = "timmy" | "newcomer";
+export type { LobbyPreviewLibrary };
+
+/** The accounts the preview switches between. */
+export type LobbyPreviewProfile = "timmy" | "firstDaily" | "fullDaily" | "analyticsLab" | "newcomer";
 
 /**
- * Timestamps are relative to page load, so the "last played" and match-age
- * lines stay believable however long after this file was written the preview
- * is opened. Days back, at a fixed hour, so a render is stable within a day.
+ * The entitlement a preview account is shown under. The server decides it
+ * (History capability, quiz-history window, Missed bank) and one account's
+ * three reads always agree, so it is chosen once per account state.
  */
-function daysAgo(days: number, hour = 20): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  d.setHours(hour, 0, 0, 0);
-  return d.toISOString();
-}
+export type PreviewEntitlement = "premium" | "free" | "unavailable";
+
+/*
+ * HUB5: every timestamp here is an offset from the fixed fixture anchor
+ * (`history/fixtureClock.ts`), in UTC. The preview used to date its rows from
+ * page load in local time, so a certification made today no longer described
+ * the page tomorrow, or in another timezone.
+ */
 
 // ── Ranked ─────────────────────────────────────────────────────────────────
 
@@ -122,110 +136,72 @@ export const NEWCOMER_RANKED_STATE: RankedState = Object.freeze({
 /**
  * Twenty rows — the same window `useRankedMatchHistory` requests — so the
  * derived per-role ledger is exercised at its real scope rather than at a
- * convenient one.
+ * convenient one. The newest nine are the synthetic match set the Leaguecraft
+ * Record shows (`syntheticRankedHistory.ts`); these are the eleven OLDER rows
+ * that continue it.
  *
  * Deliberately UNEVEN across the five roles. Timmy is a Mid main who also
  * plays a lot of Jungle, dabbles Top and ADC, and has one Support game on
  * record; the win rates differ per role and the rating deltas vary in size.
- * Five identical blocks would have told us nothing about how the ledger reads
- * when the numbers actually disagree.
+ *
+ * HUB5 corrections: these rows used to be dated 6-31 days back, so several
+ * were NEWER than the synthetic record they follow; they now continue it,
+ * strictly older. The voided no-contest now moves no rating, as a void does.
  */
-const TIMMY_ROWS: Array<{
+const TIMMY_OLDER_SPECS: Array<{
   role: RankedRole;
   outcome: "win" | "loss" | "draw";
   delta: number | null;
   opponent: string | null;
   bot: boolean;
   days: number;
+  terminal?: { reason: "forfeit" | "no_contest"; rounds: number };
 }> = [
-  { role: "mid", outcome: "win", delta: 22, opponent: "Sylvara", bot: false, days: 0 },
-  { role: "mid", outcome: "win", delta: 19, opponent: null, bot: true, days: 0 },
-  { role: "jungle", outcome: "loss", delta: -14, opponent: "Korrin", bot: false, days: 1 },
-  { role: "mid", outcome: "win", delta: 25, opponent: "Belveth99", bot: false, days: 1 },
-  { role: "top", outcome: "loss", delta: -11, opponent: "IronGrove", bot: false, days: 2 },
-  { role: "jungle", outcome: "win", delta: 18, opponent: null, bot: true, days: 3 },
-  { role: "mid", outcome: "loss", delta: -13, opponent: "Nocturnaut", bot: false, days: 3 },
-  { role: "adc", outcome: "win", delta: 21, opponent: "Quiverling", bot: false, days: 4 },
-  { role: "jungle", outcome: "win", delta: 16, opponent: "Thornwake", bot: false, days: 5 },
-  { role: "mid", outcome: "win", delta: 23, opponent: null, bot: true, days: 6 },
-  { role: "top", outcome: "win", delta: 20, opponent: "Bramblehide", bot: false, days: 8 },
-  { role: "jungle", outcome: "loss", delta: -15, opponent: "Vexmarrow", bot: false, days: 9 },
-  { role: "mid", outcome: "win", delta: 24, opponent: "Lanterna", bot: false, days: 11 },
-  { role: "adc", outcome: "loss", delta: -12, opponent: "Fletchwind", bot: false, days: 12 },
-  { role: "mid", outcome: "draw", delta: 0, opponent: "Sylvara", bot: false, days: 14 },
-  { role: "jungle", outcome: "win", delta: 17, opponent: null, bot: true, days: 16 },
-  { role: "support", outcome: "loss", delta: -10, opponent: "Wardlight", bot: false, days: 19 },
-  { role: "mid", outcome: "win", delta: 21, opponent: "Emberquill", bot: false, days: 22 },
-  { role: "top", outcome: "loss", delta: -13, opponent: "Stonewarden", bot: false, days: 26 },
+  { role: "mid", outcome: "win", delta: 23, opponent: null, bot: true, days: 17 },
+  { role: "top", outcome: "win", delta: 20, opponent: "Bramblehide", bot: false, days: 18 },
+  { role: "jungle", outcome: "draw", delta: null, opponent: "Vexmarrow", bot: false, days: 20,
+    terminal: { reason: "no_contest", rounds: 4 } },
+  { role: "mid", outcome: "win", delta: 24, opponent: "Lanterna", bot: false, days: 21 },
+  { role: "adc", outcome: "loss", delta: -12, opponent: "Fletchwind", bot: false, days: 23 },
+  { role: "mid", outcome: "draw", delta: 0, opponent: "Sylvara", bot: false, days: 24 },
+  { role: "jungle", outcome: "win", delta: 17, opponent: null, bot: true, days: 26 },
+  { role: "support", outcome: "loss", delta: -10, opponent: "Wardlight", bot: false, days: 27 },
+  { role: "mid", outcome: "win", delta: 21, opponent: "Emberquill", bot: false, days: 29 },
+  { role: "top", outcome: "loss", delta: -13, opponent: "Stonewarden", bot: false, days: 30 },
   // One pre-rating row: the delta columns must survive a null, which is what
   // every historical result on a pre-F2.2 backend actually carries.
-  { role: "mid", outcome: "win", delta: null, opponent: "Duskrune", bot: false, days: 31 },
+  { role: "mid", outcome: "win", delta: null, opponent: "Duskrune", bot: false, days: 33 },
 ];
 
 /**
- * The ladder Timmy actually walked, rather than the same number twenty times.
- *
- * `ratingAfter` used to be `TIMMY_PROGRESSION.rating` on EVERY row, which is a
- * shape the backend could never send: it would mean two hundred rated matches
- * all finishing on the same score. It matters now because the Ranked record
- * design prints the rating a match started from, derived as
- * `ratingAfter - ratingDelta` — against a flat column that derivation produced
- * the same pair on every row and told us nothing about the design.
- *
- * So the chain is walked BACKWARDS from Timmy's current standing: the newest
- * match ends on it, and each older match ends where the one after it began.
- * A pre-rating row (`delta: null`) has no `ratingAfter` at all and the walk
- * simply carries past it — which is exactly what a real account with results
- * older than rating application looks like.
+ * The ladder, continued. The synthetic record walks back from Timmy's current
+ * rating; its oldest rated match STARTED at `ratingAfter - ratingDelta`, which
+ * is where the newest older row must have finished. Each older row then ends
+ * where the one after it began. A voided or pre-rating row moved nothing and
+ * the walk steps over it.
  */
-const TIMMY_RATING_AFTER: Array<number | null> = (() => {
-  const out: Array<number | null> = [];
-  let running = TIMMY_PROGRESSION.rating;
-  for (const row of TIMMY_ROWS) {
-    if (row.delta === null) {
-      out.push(null);
-      continue;
-    }
-    out.push(running);
+const TIMMY_OLDER_RATING_AFTER: Array<number | null> = (() => {
+  const oldestRated = [...SYNTHETIC_RANKED_HISTORY].reverse()
+    .find((m) => m.ratingDelta !== null && m.ratingAfter !== null)!;
+  let running = oldestRated.ratingAfter! - oldestRated.ratingDelta!;
+  return TIMMY_OLDER_SPECS.map((row) => {
+    if (row.delta === null) return null;
+    const after = running;
     running -= row.delta;
-  }
-  return out;
+    return after;
+  });
 })();
 
-/**
- * Terminal reasons, so the record is not one shape repeated. Most duels are
- * played out; the fixture carries one forfeit and one void result because the
- * contract has three `terminal_reason` values and a design that only ever
- * meets the common one has not been reviewed.
- */
-const TIMMY_TERMINAL: Record<number, { reason: "forfeit" | "no_contest"; rounds: number }> = {
-  4: { reason: "forfeit", rounds: 2 },
-  11: { reason: "no_contest", rounds: 4 },
-};
-
-/**
- * One deliberately LONG match, so the preview exercises what the common case
- * cannot: a question timeline that has to page. Five icons a page means a
- * 15-round match is three pages, which is the only length that proves both
- * arrows, both edges, and a middle page where neither is disabled.
- */
-const TIMMY_LONG_MATCHES: Record<number, number> = { 2: 15 };
-
 const TIMMY_OLDER_ROWS: readonly MatchHistoryEntryView[] = Object.freeze(
-  TIMMY_ROWS.slice(SYNTHETIC_RANKED_HISTORY.length).map((row, idx) => {
-    const i = idx + SYNTHETIC_RANKED_HISTORY.length;
-    return ({
-    matchId: `demo-timmy-${i}`,
+  TIMMY_OLDER_SPECS.map((row, idx) => ({
+    matchId: `demo-timmy-${idx + SYNTHETIC_RANKED_HISTORY.length}`,
     viewerOutcome: row.outcome,
-    terminalReason: TIMMY_TERMINAL[i]?.reason ?? "combat",
-    completionReason: TIMMY_TERMINAL[i] ? TIMMY_TERMINAL[i].reason : "rounds_complete",
+    terminalReason: row.terminal?.reason ?? "combat",
+    completionReason: row.terminal ? row.terminal.reason : "rounds_complete",
     // Match LENGTH, never a score: the contract carries the round a duel ended
     // on and no per-round results. A short one is a duel that ended early.
-    finalRoundNumber:
-      TIMMY_TERMINAL[i]?.rounds ??
-      TIMMY_LONG_MATCHES[i] ??
-      (i % 4 === 0 ? 7 : i % 3 === 0 ? 3 : 5),
-    completedAt: daysAgo(row.days, 20 - (i % 6)),
+    finalRoundNumber: row.terminal?.rounds ?? (idx % 4 === 0 ? 7 : idx % 3 === 0 ? 3 : 5),
+    completedAt: fixtureInstant(row.days, 20 - (idx % 6)),
     isBotMatch: row.bot,
     viewerClass: "mage",
     opponentClass: "marksman",
@@ -234,9 +210,8 @@ const TIMMY_OLDER_ROWS: readonly MatchHistoryEntryView[] = Object.freeze(
     opponentDisplayName: row.opponent,
     opponentIsBot: row.bot,
     ratingDelta: row.delta,
-    ratingAfter: TIMMY_RATING_AFTER[i],
-  });
-  }) satisfies MatchHistoryEntryView[],
+    ratingAfter: TIMMY_OLDER_RATING_AFTER[idx],
+  })) satisfies MatchHistoryEntryView[],
 );
 
 /**
@@ -273,103 +248,55 @@ export const TIMMY_RANKED_RECORD_PREVIEW = SYNTHETIC_RANKED_HISTORY;
 export const TIMMY_MATCH_REVIEWS = SYNTHETIC_RANKED_REVIEWS;
 
 /**
- * PT1.2 — Timmy's Personal Question Library, DERIVED from the same synthetic
- * matches his record and reviews are derived from.
- *
- * Nothing is authored here. A question enters the collection exactly the way
- * the real backend admits one: the round was SUBMITTED (`answer` is not
- * null — an unanswered round records no discovery), the counters are the
- * number of those submissions and how many were right, and `firstSeenAt` is
- * the oldest match the question appeared in. Meta Reflex rounds are skipped
- * because they carry no canonical ref, which is also true in production.
- *
- * Consequence worth keeping: this fixture cannot show a collection Timmy's
- * demo matches did not actually produce.
+ * PT1.2 / HUB5 — the Owned collection, DERIVED from every Ranked round each
+ * account actually submitted: Timmy's ordinary Ranked matches and his Daily
+ * stages' child matches alike, through `timmyLibrary.ts` (the backend's
+ * discovery rule). Nothing is authored here, so the collection cannot claim a
+ * question the record beside it never asked, and one question is one ref on
+ * every surface (`history/questionIdentity.ts`).
  */
-function deriveLibrary() {
-  type Acc = {
-    ref: string; prompt: string; category: string;
-    answered: number; correct: number; firstDaysAgo: number; lastDaysAgo: number;
-    firstMatchId: string; firstRoundNumber: number;
-  };
-  const byRef = new Map<string, Acc>();
-  for (const match of SYNTHETIC_MATCH_SPECS) {
-    match.rounds.forEach((round, i) => {
-      if (round === "meta-reflex") return;
-      if (round.answer === null) return; // never submitted -> never discovered
-      const q = SYNTHETIC_QUESTION_BANK[round.q];
-      if (!q) return;
-      const ref = `ranked:${q.id}`;
-      const existing = byRef.get(ref);
-      const correct = round.answer === q.correctIndex ? 1 : 0;
-      if (!existing) {
-        byRef.set(ref, {
-          ref, prompt: q.prompt, category: q.category,
-          answered: 1, correct,
-          firstDaysAgo: match.daysAgo, lastDaysAgo: match.daysAgo,
-          firstMatchId: match.id, firstRoundNumber: i + 1,
-        });
-        return;
-      }
-      existing.answered += 1;
-      existing.correct += correct;
-      // MATCHES runs newest-first, so a later iteration is always older.
-      if (match.daysAgo > existing.firstDaysAgo) {
-        existing.firstDaysAgo = match.daysAgo;
-        existing.firstMatchId = match.id;
-        existing.firstRoundNumber = i + 1;
-      }
-      if (match.daysAgo < existing.lastDaysAgo) existing.lastDaysAgo = match.daysAgo;
-    });
-  }
-  const iso = (daysAgo: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    d.setHours(20, 0, 0, 0);
-    return d.toISOString();
-  };
-  const entries: QuestionLibraryEntryView[] = [...byRef.values()]
-    // The API's one ordering: most recently encountered first.
-    .sort((a, b) => a.lastDaysAgo - b.lastDaysAgo || a.ref.localeCompare(b.ref))
-    .map((a) => ({
-      canonicalQuestionRef: a.ref,
-      firstSeenAt: iso(a.firstDaysAgo),
-      lastSeenAt: iso(a.lastDaysAgo),
-      timesAnswered: a.answered,
-      timesCorrect: a.correct,
-      accuracy: a.answered ? a.correct / a.answered : null,
-      firstMatchId: a.firstMatchId,
-      firstRoundNumber: a.firstRoundNumber,
-      metadataStatus: "resolved",
-      metadataSource: "frozen_round",
-      question: { prompt: a.prompt, category: a.category },
-    }));
-  const totalAnswered = entries.reduce((n, e) => n + e.timesAnswered, 0);
-  const totalCorrect = entries.reduce((n, e) => n + e.timesCorrect, 0);
-  return {
-    summary: {
-      uniqueDiscovered: entries.length,
-      totalAnswered,
-      totalCorrect,
-      accuracy: totalAnswered ? totalCorrect / totalAnswered : null,
-    } satisfies QuestionLibrarySummaryView,
-    entries,
-  };
-}
+const RANKED_COMPLETED_AT = new Map(SYNTHETIC_RANKED_HISTORY.map((m) => [m.matchId, m.completedAt]));
+const dailyMatches = (facts: typeof TIMMY_DAILY_FACTS, built: typeof TIMMY_DAILY) =>
+  facts.runs.flatMap((run) => {
+    const runId = `${facts.idPrefix}-run-${String(run.number).padStart(2, "0")}`;
+    return built.rows.daily_run_stages
+      .filter((s) => s.run_id === runId)
+      .map((s) => ({ completedAt: run.completedAt, review: built.reviews[s.child_match_id] }));
+  });
 
-const TIMMY_LIBRARY = deriveLibrary();
+export const TIMMY_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary([
+  ...Object.values(SYNTHETIC_RANKED_REVIEWS).map((review) => ({
+    completedAt: RANKED_COMPLETED_AT.get(review.matchId)!, review,
+  })),
+  ...dailyMatches(TIMMY_DAILY_FACTS, TIMMY_DAILY),
+]);
 
-export const TIMMY_QUESTION_LIBRARY: LobbyPreviewLibrary = Object.freeze({
-  summary: TIMMY_LIBRARY.summary,
-  entries: Object.freeze(TIMMY_LIBRARY.entries) as readonly QuestionLibraryEntryView[],
-});
+export const FIRST_DAILY_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary(
+  dailyMatches(FIRST_DAILY_FACTS, FIRST_DAILY),
+);
+
+/** HUB6.2 — the full-length Daily account's Owned questions. */
+export const FULL_DAILY_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary(
+  dailyMatches(FULL_DAILY_FACTS, FULL_DAILY),
+);
+
+/** HUB6.3D — the Analytics Lab's Owned questions. */
+export const ANALYTICS_LAB_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary(
+  dailyMatches(ANALYTICS_LAB_FACTS, ANALYTICS_LAB),
+);
 
 /** A new account owns nothing. The empty Library has to stay the real one. */
-export const NEWCOMER_QUESTION_LIBRARY: LobbyPreviewLibrary = Object.freeze({
-  summary: { uniqueDiscovered: 0, totalAnswered: 0, totalCorrect: 0, accuracy: null },
-  entries: Object.freeze([]) as readonly QuestionLibraryEntryView[],
-});
+export const NEWCOMER_QUESTION_LIBRARY: LobbyPreviewLibrary = deriveLibrary([]);
 
+/**
+ * Every frozen match review the preview may open, by match id: the Ranked
+ * record's and each Daily stage's child match. Daily children are here and
+ * ONLY here — they are never rows of the ordinary Ranked record.
+ */
+export const TIMMY_ALL_REVIEWS: Readonly<Record<string, MatchReviewView>> = Object.freeze({
+  ...SYNTHETIC_RANKED_REVIEWS,
+  ...TIMMY_DAILY.reviews,
+});
 
 /**
  * Representative Role Mastery scores — DEMO ONLY, and the clearest example of
@@ -443,64 +370,17 @@ export const PREVIEW_SETS: readonly QuizSet[] = Object.freeze([
 ]);
 
 /**
- * Timmy's study record — a FULL Free window, so the unified History ledger can
- * be judged at the density a real account actually reaches.
- *
- * THE WINDOW IS THE POINT, AND IT IS EXACT.
- * The quiz-history endpoint serves a Free account its most recent
- * `free_limit` sessions and flags the truncation. Timmy is `is_pro: false`
- * with
- * `free_limit: 10`, so the honest payload is TEN rows out of a career of 96 —
- * not four, which was a placeholder, and not twelve, which no Free account
- * could ever be served. The ledger's scope line therefore reads "your last 10
- * of 96", the ten rows below it are exactly what it counted, and the Free-cap
- * notice under them is the real one. Nothing here is inconsistent with
- * anything else here: change `free_limit` and the row count has to move too.
- *
- * WHAT THE ROWS ARE FOR. Every field a row can vary by is varied, because the
- * ledger has to stay readable when they disagree:
- *   - the two modes the stream actually carries — practice sets (`standard`,
- *     which carry the set name as their category) and the legacy Daily
- *     (`daily`, which carries none) — plus one older `legacy` backfill row
- *     with no category at all, so the neutral fallback label is on screen;
- *   - accuracy across the ledger's full tint range: two sessions at 90%+, a
- *     run of middling ones, and a genuine 20% so the rough tone is visible;
- *   - question counts that are not all ten, so the score column has to hold
- *     alignment against 5, 12 and 20;
- *   - durations from 74 seconds to nearly nine minutes, and ONE row with none
- *     at all, because real history has them and the column must not collapse;
- *   - ages from today to nearly a month back, so the date column is exercised
- *     by both a same-day and a much older stamp.
- *
- * Every `accuracy` equals its own `score / total_questions`. A fixture whose
- * figures disagreed with each other would make the summary line untestable by
- * eye, which is the one thing this data exists to support.
+ * Timmy's study record. Free, it is a FULL Free window: the endpoint serves a
+ * Free account its most recent `free_limit` sessions and flags the
+ * truncation, so the ledger reads "your last 10 of 96" over exactly the ten
+ * rows it counted. Premium, the same career arrives whole; with the
+ * entitlement lookup failed, the Free window without the limit flag or an
+ * upsell. All three are cut from ONE session list in `timmyPractice.ts`.
  *
  * NO RANKED ROWS, deliberately. The Ranked duel writes none of these — it has
- * its own contract — and Ranked full history is Phase B. Inventing one here
- * would put a record on screen that Phase A cannot honestly serve.
+ * its own contract.
  */
-export const TIMMY_QUIZ_HISTORY: QuizHistoryResponse = Object.freeze({
-  ok: true,
-  is_pro: false,
-  total_count: 96,
-  limited: true,
-  free_limit: 10,
-  upsell_message: null,
-  entitlement_status: "ok",
-  results: [
-    { session_id: 96, date: daysAgo(0), completed_at: daysAgo(0, 20), mode: "standard", category: "Champion Cooldowns", score: 9, total_questions: 10, accuracy: 90, duration_seconds: 214 },
-    { session_id: 95, date: daysAgo(0), completed_at: daysAgo(0, 9), mode: "daily", category: null, score: 5, total_questions: 5, accuracy: 100, duration_seconds: 96 },
-    { session_id: 94, date: daysAgo(1), completed_at: daysAgo(1, 21), mode: "standard", category: "Item Exact Stats", score: 6, total_questions: 10, accuracy: 60, duration_seconds: 331 },
-    { session_id: 93, date: daysAgo(2), completed_at: daysAgo(2, 19), mode: "standard", category: "Rune Recognition", score: 8, total_questions: 10, accuracy: 80, duration_seconds: 187 },
-    { session_id: 92, date: daysAgo(3), completed_at: daysAgo(3, 8), mode: "daily", category: null, score: 3, total_questions: 5, accuracy: 60, duration_seconds: 74 },
-    { session_id: 91, date: daysAgo(4), completed_at: daysAgo(4, 23), mode: "standard", category: "Objectives & Timers", score: 2, total_questions: 10, accuracy: 20, duration_seconds: 412 },
-    { session_id: 90, date: daysAgo(6), completed_at: daysAgo(6, 18), mode: "standard", category: "Wave Management", score: 7, total_questions: 10, accuracy: 70, duration_seconds: 268 },
-    { session_id: 89, date: daysAgo(9), completed_at: daysAgo(9, 22), mode: "standard", category: "Summoner Spells", score: 15, total_questions: 20, accuracy: 75, duration_seconds: 501 },
-    { session_id: 88, date: daysAgo(18), completed_at: daysAgo(18, 20), mode: "legacy", category: null, score: 4, total_questions: 10, accuracy: 40, duration_seconds: null },
-    { session_id: 87, date: daysAgo(26), completed_at: daysAgo(26, 17), mode: "standard", category: "Vision Control", score: 11, total_questions: 12, accuracy: 91.7, duration_seconds: 143 },
-  ],
-});
+export const TIMMY_QUIZ_HISTORY: QuizHistoryResponse = TIMMY_QUIZ_HISTORY_FREE;
 
 export const NEWCOMER_QUIZ_HISTORY: QuizHistoryResponse = Object.freeze({
   ok: true,
@@ -513,44 +393,37 @@ export const NEWCOMER_QUIZ_HISTORY: QuizHistoryResponse = Object.freeze({
   results: [],
 });
 
+/** The first-Daily account is Premium (its History was generated entitled)
+ *  and has never played Practice. */
+const FIRST_DAILY_QUIZ_HISTORY: QuizHistoryResponse = Object.freeze({
+  ...NEWCOMER_QUIZ_HISTORY,
+  is_pro: true,
+});
+
 /**
- * MALT — the Review pane's bank, for both demo accounts.
- *
- * BOTH ARE LOCKED, and that is the fixture being truthful rather than the
- * fixture being lazy. Timmy's quiz history already carries `is_pro: false`
- * with the Free cap applied (`limited`, 96 sessions, ten of them served), so
- * a Pro-only missed-question bank that opened for him would be a demo account
- * contradicting itself — and the paywall is the state a real free player
- * meets, which makes it the one worth reviewing in place.
- *
- * A populated bank is a Pro state. It is covered by the Review pane's own
- * tests and is reachable on `/quiz#review` with a Pro account; it is not
- * invented here, because a demo that shows an entitlement the demo account
- * does not have is exactly the kind of thing this fixture file exists to
- * prevent.
+ * The Missed bank. Free, it is LOCKED — a Free account meets the paywall, and
+ * a locked bank carries no data. Premium, it is the real first page of
+ * Timmy's Practice misses (`timmyPractice.ts`).
  */
-export const TIMMY_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze({
-  ok: true,
-  is_pro: false,
-  locked: true,
-  results: [],
-  upsell_message:
-    "Upgrade to Mogzy Premium to review every question you missed and practice your weak spots.",
+export const TIMMY_MISSED_QUESTIONS: MissedQuestionsResponse = TIMMY_MISSED_LOCKED;
+
+export const NEWCOMER_MISSED_QUESTIONS: MissedQuestionsResponse = TIMMY_MISSED_LOCKED;
+
+const FIRST_DAILY_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze({
+  ok: true, is_pro: true, locked: false, results: [], total_count: 0, limit: 25, offset: 0,
 });
 
-export const NEWCOMER_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze({
-  ok: true,
-  is_pro: false,
-  locked: true,
-  results: [],
-  upsell_message:
-    "Upgrade to Mogzy Premium to review every question you missed and practice your weak spots.",
-});
-
-/** A frozen collection page: the two halves `OwnedQuestionsPane` reads. */
-export interface LobbyPreviewLibrary {
-  summary: QuestionLibrarySummaryView;
-  entries: readonly QuestionLibraryEntryView[];
+/** What one entitlement state changes: the three server-decided reads. */
+export interface EntitlementView {
+  label: string;
+  history: QuizHistoryResponse;
+  /** The Missed bank as served, or null when its read failed. */
+  missedQuestions: MissedQuestionsResponse | null;
+  /** The Missed hook's failure line when its read failed. */
+  missedError: string | null;
+  /** Which generated History golden this state reads: a HUB2.3 Timmy-family
+   *  scenario, or (HUB6.3D) an Analytics Lab scenario generated by HUB6.3B. */
+  dailyHistory: TimmyHistoryScenario | AnalyticsLabScenario;
 }
 
 /** Everything one preview state needs, in the shape the hub's props expect. */
@@ -563,15 +436,42 @@ export interface LobbyPreviewState {
   progress: QuizProgress;
   progression: RankedProgressionView | null;
   matchHistory: readonly MatchHistoryEntryView[];
-  history: QuizHistoryResponse;
-  /** The Review pane's bank — see `TIMMY_MISSED_QUESTIONS`. */
-  missedQuestions: MissedQuestionsResponse;
+  /** The Leaguecraft Record's Ranked rows (never a Daily child match). */
+  rankedRecord: readonly MatchHistoryEntryView[];
+  /** Every frozen review this account can open — Ranked and Daily stages. */
+  reviews: Readonly<Record<string, MatchReviewView>>;
   /** REVIEW's OWNED collection — see `TIMMY_QUESTION_LIBRARY`. */
   questionLibrary: LobbyPreviewLibrary;
   /** DEMO ONLY — see `TIMMY_ROLE_MASTERY`. Null for the newcomer state, which
    *  must render exactly what a real new account renders. */
   demoRoleMastery: Partial<Record<RankedRole, DemoRoleMastery>> | null;
+  entitlements: Partial<Record<PreviewEntitlement, EntitlementView>>;
+  defaultEntitlement: PreviewEntitlement;
 }
+
+const TIMMY_ENTITLEMENTS: Record<PreviewEntitlement, EntitlementView> = {
+  premium: {
+    label: "Premium",
+    history: TIMMY_QUIZ_HISTORY_PREMIUM,
+    missedQuestions: TIMMY_MISSED_PREMIUM,
+    missedError: null,
+    dailyHistory: "timmy_premium",
+  },
+  free: {
+    label: "Free",
+    history: TIMMY_QUIZ_HISTORY_FREE,
+    missedQuestions: TIMMY_MISSED_LOCKED,
+    missedError: null,
+    dailyHistory: "timmy_free",
+  },
+  unavailable: {
+    label: "Entitlement unavailable",
+    history: TIMMY_QUIZ_HISTORY_UNAVAILABLE,
+    missedQuestions: null,
+    missedError: MISSED_UNAVAILABLE_ERROR,
+    dailyHistory: "timmy_unavailable",
+  },
+};
 
 export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState> = {
   timmy: {
@@ -583,10 +483,108 @@ export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState
     progress: TIMMY_PROGRESS,
     progression: TIMMY_PROGRESSION,
     matchHistory: TIMMY_MATCH_HISTORY,
-    history: TIMMY_QUIZ_HISTORY,
-    missedQuestions: TIMMY_MISSED_QUESTIONS,
+    rankedRecord: TIMMY_RANKED_RECORD_PREVIEW,
+    reviews: TIMMY_ALL_REVIEWS,
     questionLibrary: TIMMY_QUESTION_LIBRARY,
     demoRoleMastery: TIMMY_ROLE_MASTERY,
+    entitlements: TIMMY_ENTITLEMENTS,
+    defaultEntitlement: "premium",
+  },
+  firstDaily: {
+    label: "First Daily — one 4-stage run",
+    displayName: "Rookie",
+    signedIn: true,
+    rankedRole: null,
+    ranked: NEWCOMER_RANKED_STATE,
+    progress: NEWCOMER_PROGRESS,
+    progression: null,
+    matchHistory: [],
+    rankedRecord: [],
+    reviews: FIRST_DAILY.reviews,
+    questionLibrary: FIRST_DAILY_QUESTION_LIBRARY,
+    demoRoleMastery: null,
+    entitlements: {
+      premium: {
+        label: "Premium",
+        history: FIRST_DAILY_QUIZ_HISTORY,
+        missedQuestions: FIRST_DAILY_MISSED_QUESTIONS,
+        missedError: null,
+        dailyHistory: "first_daily",
+      },
+    },
+    defaultEntitlement: "premium",
+  },
+  /* HUB6.2 — full-length stage shapes: a ten-module Standard with two Meta
+     Reflex blocks and a Mastery slice, 22- and 28-question Time Trials, and
+     a long mixed Survival that goes out of strikes. Premium, like the
+     first-Daily account, and with no Practice or Ranked record. */
+  fullDaily: {
+    label: "Full-length Daily — real stage sizes",
+    displayName: "Marathoner",
+    signedIn: true,
+    rankedRole: null,
+    ranked: NEWCOMER_RANKED_STATE,
+    progress: NEWCOMER_PROGRESS,
+    progression: null,
+    matchHistory: [],
+    rankedRecord: [],
+    reviews: FULL_DAILY.reviews,
+    questionLibrary: FULL_DAILY_QUESTION_LIBRARY,
+    demoRoleMastery: null,
+    entitlements: {
+      premium: {
+        label: "Premium",
+        history: FIRST_DAILY_QUIZ_HISTORY,
+        missedQuestions: FIRST_DAILY_MISSED_QUESTIONS,
+        missedError: null,
+        dailyHistory: "full_daily",
+      },
+    },
+    defaultEntitlement: "premium",
+  },
+  /* HUB6.3D — the Analytics Lab: 14 production-shaped Dailies (first
+     4-stage Daily, then 5-stage), generated through HUB6.3B's real route —
+     previous comparisons, records (new / tied / below), streaks, series,
+     public categories, exact-question history, strike attribution, Review
+     sources. Premium / Free / Entitlement-unavailable over the same facts.
+     NOT production data: a development account for the Premium analytics. */
+  analyticsLab: {
+    label: "Analytics Lab — 14 Dailies",
+    displayName: "Analytics Lab",
+    signedIn: true,
+    rankedRole: null,
+    ranked: NEWCOMER_RANKED_STATE,
+    progress: NEWCOMER_PROGRESS,
+    progression: null,
+    matchHistory: [],
+    rankedRecord: [],
+    reviews: ANALYTICS_LAB.reviews,
+    questionLibrary: ANALYTICS_LAB_QUESTION_LIBRARY,
+    demoRoleMastery: null,
+    entitlements: {
+      premium: {
+        label: "Premium",
+        history: FIRST_DAILY_QUIZ_HISTORY,
+        missedQuestions: FIRST_DAILY_MISSED_QUESTIONS,
+        missedError: null,
+        dailyHistory: "lab_premium",
+      },
+      free: {
+        label: "Free",
+        history: NEWCOMER_QUIZ_HISTORY,
+        missedQuestions: TIMMY_MISSED_LOCKED,
+        missedError: null,
+        dailyHistory: "lab_free",
+      },
+      unavailable: {
+        label: "Entitlement unavailable",
+        history: NEWCOMER_QUIZ_HISTORY,
+        missedQuestions: null,
+        missedError: MISSED_UNAVAILABLE_ERROR,
+        dailyHistory: "lab_unavailable",
+      },
+    },
+    defaultEntitlement: "premium",
   },
   newcomer: {
     label: "New player — nothing on record",
@@ -597,9 +595,19 @@ export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState
     progress: NEWCOMER_PROGRESS,
     progression: null,
     matchHistory: [],
-    history: NEWCOMER_QUIZ_HISTORY,
-    missedQuestions: NEWCOMER_MISSED_QUESTIONS,
+    rankedRecord: [],
+    reviews: {},
     questionLibrary: NEWCOMER_QUESTION_LIBRARY,
     demoRoleMastery: null,
+    entitlements: {
+      free: {
+        label: "Free",
+        history: NEWCOMER_QUIZ_HISTORY,
+        missedQuestions: NEWCOMER_MISSED_QUESTIONS,
+        missedError: null,
+        dailyHistory: "newcomer",
+      },
+    },
+    defaultEntitlement: "free",
   },
 };

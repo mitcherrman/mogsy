@@ -129,9 +129,13 @@ export default function AcademyAnalyticsCarousel({
             <span data-testid="academy-analytics-error">Analytics are unavailable.</span>
           </Centre>
         ) : !hasData ? (
-          <Centre>
+          /* HUB6: an empty window keeps the chart's own frame — the 0–100
+             axis for the bars, the unfilled ring for the donut — with the
+             existing sentence inside it, rather than a bare text box. Nothing
+             is drawn on the frame: there is nothing measured to draw. */
+          <DormantChart slide={slide}>
             <span data-testid="academy-analytics-empty">No answers in this window yet.</span>
-          </Centre>
+          </DormantChart>
         ) : slide === "bars" ? (
           <AccuracyBarChart bars={bars} />
         ) : (
@@ -189,6 +193,42 @@ export default function AcademyAnalyticsCarousel({
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** The empty frame of the current slide. Geometry follows the live charts:
+ *  the bars' plot starts after their 78px label column and leaves 30px for
+ *  value labels; the ring sits where the donut does, beside its legend. */
+function DormantChart({ slide, children }: { slide: Slide; children: React.ReactNode }) {
+  const frame = "rgba(96, 68, 28, 0.28)";
+  return (
+    <div className="relative h-full w-full" data-testid="academy-analytics-dormant" data-slide={slide}>
+      {slide === "bars" ? (
+        <div aria-hidden="true" className="absolute bottom-1 left-[80px] right-[30px] top-1">
+          {[0, 0.5, 1].map((t) => (
+            <span
+              key={t}
+              className="absolute inset-y-0 block"
+              style={{ left: `${t * 100}%`, borderLeft: `1px ${t === 0 ? "solid" : "dotted"} ${frame}` }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div aria-hidden="true" className="absolute inset-y-0 left-0 right-[90px] flex items-center justify-center">
+          <span
+            className="block aspect-square h-[76%] rounded-full"
+            style={{ border: `10px solid rgba(96, 68, 28, 0.12)`, outline: `1px dotted ${frame}`, outlineOffset: 2 }}
+          />
+        </div>
+      )}
+      <div className="absolute inset-0">
+        <Centre>
+          <span className="rounded px-1.5 py-0.5" style={{ background: "rgba(236, 220, 186, 0.92)" }}>
+            {children}
+          </span>
+        </Centre>
       </div>
     </div>
   );

@@ -368,11 +368,9 @@ describe("Leaguecraft hub — category rail", () => {
   it("keeps initial/restored state silent and sounds one intentional Record selection", async () => {
     await renderHub();
     expect(sfx.play).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     expect(sfx.play).toHaveBeenCalledTimes(1);
     expect(sfx.play).toHaveBeenCalledWith("leaguecraft.record.selection");
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
-    expect(sfx.play).toHaveBeenCalledTimes(1);
   });
 
   // The six subjects used to be a strip inside the Practice panel: five of
@@ -483,7 +481,8 @@ describe("Leaguecraft hub — category rail", () => {
 describe("Leaguecraft hub — the Leaguecraft Record", () => {
   it("is the ONE study record: the full ledger, on the page, from real data", async () => {
     const { container } = await renderHub();
-    expect(screen.getByRole("heading", { name: /Leaguecraft Record/i })).toBeTruthy();
+    // HUB4: the record is the one History surface, and is named so.
+    expect(screen.getByRole("heading", { name: "History" })).toBeTruthy();
     await waitFor(() =>
       expect(container.querySelectorAll('[data-testid="study-history-row"]').length).toBe(
         HISTORY.results.length,
@@ -500,11 +499,11 @@ describe("Leaguecraft hub — the Leaguecraft Record", () => {
     // Every row is printed once — there is no preview of the same payload
     // above it any more.
     expect(container.querySelectorAll('[data-testid="history-row"]').length).toBe(0);
-    // The summary the Recent Studies card carried, folded into one line.
+    // The ledger's scope line states its window. HUB6: accuracy aggregates
+    // (session average / best) are the Academy Record's, not History's.
     const scope = screen.getByTestId("study-history-scope").textContent!;
     expect(scope).toContain("12");
-    expect(scope).toMatch(/average/);
-    expect(scope).toMatch(/best/);
+    expect(scope).not.toMatch(/average|best/);
   });
 
   it("owns the ONLY empty-history CTA, and it opens PRACTICE not Ranked", async () => {
@@ -532,15 +531,16 @@ describe("Leaguecraft hub — the Leaguecraft Record", () => {
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
   });
 
-  it("keeps Review as the second pane, reachable from the record", async () => {
+  it("keeps Owned & Missed reachable from History, as a section rather than a pane", async () => {
     const { container } = await renderHub();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    expect(container.querySelector('[data-testid="workspace-tablist"]')).toBeNull();
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     await waitFor(() =>
-      expect(
-        container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
-      ).toBe("review"),
+      expect(container.querySelector('[data-testid="history-questions"]')).not.toBeNull(),
     );
-    expect(container.querySelector('[data-testid="workspace-panel-review"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="review-pane"]')).not.toBeNull();
+    // The record itself stays on screen beside it.
+    expect(container.querySelector('[data-testid="history-record"]')).not.toBeNull();
   });
 });
 

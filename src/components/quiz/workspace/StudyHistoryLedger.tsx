@@ -137,6 +137,7 @@ export default function StudyHistoryLedger({
   rankedReviews,
   ownsCollection = false,
   signInHref,
+  sessionAggregates = true,
   className = "",
 }: {
   history: QuizHistoryResponse | null;
@@ -189,6 +190,14 @@ export default function StudyHistoryLedger({
    */
   ownsCollection?: boolean;
   signInHref?: string;
+  /**
+   * HUB6 — whether the scope line also states the sessions' average and best
+   * accuracy. In the Ranked Hub it does not: accuracy aggregates belong to the
+   * Academy Record on the same page (All-time accuracy, the accuracy charts),
+   * and History keeps only the chronological record and its scope. The
+   * standalone `/lol/history`, which has no Academy Record, keeps them.
+   */
+  sessionAggregates?: boolean;
   className?: string;
 }) {
   /**
@@ -340,11 +349,7 @@ export default function StudyHistoryLedger({
     : null;
   const bestAccuracy = accuracies.length ? Math.round(Math.max(...accuracies)) : null;
 
-  return (
-    /* The ownership index covers every question card inside the record, so it
-       is provided once around the whole ledger rather than threaded through
-       four levels of row/timeline/popover props. */
-    <OwnedQuestionIndexProvider value={ownership}>
+  const ledger = (
     <div className={className} data-testid="study-history">
       {/* The scope line. It is ABOVE the rows on purpose: a reader has to know
           what window they are looking at before they read it, not after. */}
@@ -364,7 +369,10 @@ export default function StudyHistoryLedger({
               data-testid={`history-stream-${id}`}
               aria-pressed={stream === id}
               onClick={() => setStream(id)}
-              className="rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              /* HUB6: on touch the chip keeps its size and gains a 44px-tall
+                 hit area (the pseudo-element), so it is touch-safe without
+                 turning into a slab. */
+              className="relative rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:before:absolute [@media(pointer:coarse)]:before:inset-x-0 [@media(pointer:coarse)]:before:-inset-y-3 [@media(pointer:coarse)]:before:content-['']"
               style={
                 stream === id
                   ? {
@@ -407,7 +415,7 @@ export default function StudyHistoryLedger({
               session{totalCount === 1 ? "" : "s"} on record
             </>
           )}
-          {avgAccuracy !== null && (
+          {sessionAggregates && avgAccuracy !== null && (
             <>
               {" · "}
               <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{avgAccuracy}%</span>{" "}
@@ -527,6 +535,17 @@ export default function StudyHistoryLedger({
         </div>
       )}
     </div>
-    </OwnedQuestionIndexProvider>
+  );
+
+  /* The ownership index covers every question card inside the record, so it
+     is provided once around the whole ledger rather than threaded through
+     four levels of row/timeline/popover props. HUB4: only when this ledger
+     owns the read — a host that provides one index for a wider record
+     (History's Daily runs AND these rows) passes `ownsCollection={false}` and
+     its own provider reaches these cards unshadowed. */
+  return ownsCollection ? (
+    <OwnedQuestionIndexProvider value={ownership}>{ledger}</OwnedQuestionIndexProvider>
+  ) : (
+    ledger
   );
 }

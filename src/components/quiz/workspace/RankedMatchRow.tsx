@@ -43,6 +43,7 @@
 import { Flag, MinusCircle, Swords } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionTimeline from "@/components/quiz/workspace/QuestionTimeline";
+import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { RANKED_ROLE_LABELS } from "@/lib/ranked-public/roles";
 import type { MatchHistoryEntryView, MatchReviewView } from "@/lib/ranked-public/contracts";
 
@@ -106,6 +107,46 @@ export function relativeMatchAge(iso: string, now: Date = new Date()): string {
   return `${Math.max(1, Math.round(days / 30))}mo ago`;
 }
 
+/**
+ * HISTORY-D — ONE LINE ONLY WHERE ONE LINE FITS.
+ *
+ * The desktop record is a single ruled line: verdict, opponent, role, the
+ * question timeline, delta. Its fixed columns add up to ~34rem, so on a phone
+ * that line was wider than the screen and the row's `overflow-hidden`
+ * silently cut the timeline and delta off. The row is now its own inline-size
+ * container and asks how wide IT is (not the viewport — the same row sits in
+ * a narrower column on /quiz than on /lol/history):
+ *
+ * * at or above the threshold, the approved single line, unchanged;
+ * * below it, the line wraps: identity and result first (verdict, opponent,
+ *   role, delta), the timeline on its own full-width line beneath, then the
+ *   quiet age / ladder line.
+ *
+ * The role and delta keep their fixed columns only on the one-line layout,
+ * where the columns exist to align rows; stacked, they size to their text so
+ * the opponent's name gets the room. Touch needs a wider threshold because
+ * its timeline carries 44px targets.
+ * Tailwind only emits class names it can see whole, hence two literal sets.
+ */
+const ROW_LAYOUT = {
+  fine: {
+    line: "flex flex-wrap items-center gap-x-2 gap-y-1 [@container(min-width:35rem)]:flex-nowrap",
+    opponent: "min-w-0 flex-1 [@container(min-width:35rem)]:w-[8.5rem] [@container(min-width:35rem)]:flex-none",
+    role: "[@container(min-width:35rem)]:w-[3.25rem]",
+    delta: "[@container(min-width:35rem)]:w-[42px]",
+    timeline:
+      "order-last basis-full justify-start [@container(min-width:35rem)]:order-none [@container(min-width:35rem)]:basis-0 [@container(min-width:35rem)]:flex-1 [@container(min-width:35rem)]:justify-center",
+  },
+  coarse: {
+    line: "flex flex-wrap items-center gap-x-2 gap-y-1 [@container(min-width:44rem)]:flex-nowrap",
+    opponent: "min-w-0 flex-1 [@container(min-width:44rem)]:w-[8.5rem] [@container(min-width:44rem)]:flex-none",
+    role: "[@container(min-width:44rem)]:w-[3.25rem]",
+    delta: "[@container(min-width:44rem)]:w-[42px]",
+    timeline:
+      "order-last basis-full justify-start [@container(min-width:44rem)]:order-none [@container(min-width:44rem)]:basis-0 [@container(min-width:44rem)]:flex-1 [@container(min-width:44rem)]:justify-center",
+  },
+} as const;
+
 export default function RankedMatchRow({
   entry,
   review = null,
@@ -118,6 +159,7 @@ export default function RankedMatchRow({
    */
   review?: MatchReviewView | null;
 }) {
+  const layout = ROW_LAYOUT[useCoarsePointer() ? "coarse" : "fine"];
   const verdict = VERDICT[entry.viewerOutcome];
   const terminal = TERMINAL[entry.terminalReason] ?? TERMINAL.combat;
   const Icon = terminal.icon;
@@ -146,7 +188,7 @@ export default function RankedMatchRow({
          brown and one tile a shade deeper than the page. It is more structure
          than a Study row and less than a card — the same entry, written with
          a ruled box around it because it carries more facts. */
-      className="lc-ranked-row group relative my-1.5 overflow-hidden rounded border py-1.5 pl-3 pr-2.5 transition-colors first:mt-0 last:mb-0"
+      className="lc-ranked-row group relative my-1.5 overflow-hidden rounded border py-1.5 pl-3 pr-2.5 transition-colors [container-type:inline-size] first:mt-0 last:mb-0"
       style={{ borderColor: "rgba(96,68,28,0.34)", background: LEAGUECRAFT_INK.inset }}
     >
       {/* The verdict edge — the ledger's marginal mark, drawn as a rule down
@@ -158,7 +200,7 @@ export default function RankedMatchRow({
         style={{ background: verdict.edge }}
       />
 
-      <div className="flex items-center gap-2">
+      <div className={layout.line} data-testid="ranked-match-line">
         <Icon
           className="h-3 w-3 shrink-0"
           style={{ color: verdict.ink }}
@@ -170,20 +212,20 @@ export default function RankedMatchRow({
         >
           {verdict.label}
         </span>
-        {/* FIXED widths, not intrinsic ones. A column of records is read down
-            the page, and a timeline that starts at a different x on every row
+        {/* FIXED widths, not intrinsic ones — on the one-line layout. A
+            column of records is read down the page, and a timeline that starts at a different x on every row
             because one opponent is called "Bot" and the next "Nocturnaut"
             reads as ragged rather than as a ledger. The name still truncates
             with its full value on the title. */}
         <span
-          className="w-[8.5rem] shrink-0 truncate text-[13px] font-semibold"
+          className={`${layout.opponent} truncate text-[13px] font-semibold`}
           style={{ color: LEAGUECRAFT_INK.strong }}
           title={opponent}
         >
           {opponent}
         </span>
         <span
-          className="w-[3.25rem] shrink-0 text-[9px] font-bold uppercase tracking-[0.14em]"
+          className={`${layout.role} shrink-0 text-[9px] font-bold uppercase tracking-[0.14em]`}
           style={{ color: LEAGUECRAFT_INK.brass }}
         >
           {role}
@@ -191,7 +233,7 @@ export default function RankedMatchRow({
 
         {/* THE MIDDLE. What used to be empty space is the record's payload. */}
         <QuestionTimeline
-          className="min-w-0 flex-1"
+          className={layout.timeline}
           matchId={entry.matchId}
           roundCount={entry.finalRoundNumber}
           review={review}
@@ -199,7 +241,7 @@ export default function RankedMatchRow({
 
         <span
           data-testid="ranked-match-delta"
-          className="w-[42px] shrink-0 text-right text-[14px] font-extrabold tabular-nums"
+          className={`${layout.delta} shrink-0 text-right text-[14px] font-extrabold tabular-nums`}
           style={{ color: deltaInk, textShadow: LEAGUECRAFT_INK.press }}
         >
           {delta === null ? "—" : delta > 0 ? `+${delta}` : String(delta)}

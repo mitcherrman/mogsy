@@ -29,6 +29,7 @@
 import type { Graph1EventContext } from "./contract";
 import type { RaceIndex } from "./raceIndex";
 import { stateAfter } from "./raceIndex";
+import { easeInOutCubic } from "../lib/motion/easing";
 
 export interface RaceDisplayConfig {
   topN: number;
@@ -106,9 +107,6 @@ export interface RaceFrameState {
   rows: RaceRow[];
 }
 
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
 
 /** rank order of all entities with total > 0, per the documented rule */
 function rankOrder(

@@ -14,6 +14,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
+import { EMPTY_HISTORY_SOURCE } from "@/lib/history/historyApi";
 import OwnedQuestionsPane from "@/components/quiz/workspace/OwnedQuestionsPane";
 import { RankedApiError } from "@/lib/ranked-public/client";
 import type { QuizHistoryResponse } from "@/lib/quiz/api";
@@ -119,6 +120,7 @@ function renderHub(
         rankedProgression={null}
         signedIn
         hasAccount
+        dailyHistorySource={EMPTY_HISTORY_SOURCE}
         {...over}
       />
     </MemoryRouter>,
@@ -142,32 +144,32 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("placement — a source inside REVIEW, not a third pane", () => {
-  it("leaves the record with exactly two panes", () => {
+describe("placement — a source inside History's Owned & Missed section", () => {
+  it("is a section of History, not a pane beside it", () => {
     renderHub();
-    const tabs = screen.getByTestId("workspace-tablist");
-    expect(within(tabs).getByTestId("workspace-tab-history")).toBeTruthy();
-    expect(within(tabs).getByTestId("workspace-tab-review")).toBeTruthy();
-    // The standalone Library pane was removed — REVIEW absorbed it.
-    expect(within(tabs).queryByTestId("workspace-tab-library")).toBeNull();
+    // HUB4: no tab strip at all — History is the one surface.
+    expect(screen.queryByTestId("workspace-tablist")).toBeNull();
+    expect(screen.queryByTestId("workspace-tab-review")).toBeNull();
+    expect(screen.queryByTestId("workspace-tab-library")).toBeNull();
+    expect(screen.getByTestId("history-questions-toggle").getAttribute("aria-expanded")).toBe("false");
     expect(document.querySelectorAll('[data-testid="leaguecraft-workspace"]').length).toBe(1);
   });
 
-  it("offers OWNED and MISSED inside REVIEW, with OWNED open first", async () => {
+  it("offers OWNED and MISSED inside it, with OWNED open first", async () => {
     renderHub();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     await waitFor(() => expect(screen.getByTestId("review-pane")).toBeTruthy());
     expect(screen.getByTestId("review-pane").dataset.source).toBe("owned");
     expect(screen.getByTestId("review-source-owned")).toBeTruthy();
     expect(screen.getByTestId("review-source-missed")).toBeTruthy();
   });
 
-  it("reads neither source until a reader opens REVIEW", async () => {
+  it("reads neither source until a reader opens the section", async () => {
     renderHub();
-    await waitFor(() => expect(screen.getByTestId("workspace-tablist")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("history-questions-toggle")).toBeTruthy());
     expect(getQuestionLibrary).not.toHaveBeenCalled();
     expect(getMissedQuestions).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     await waitFor(() => expect(getQuestionLibrary).toHaveBeenCalledTimes(1));
     // OWNED is open; the Pro-gated bank is still untouched.
     expect(getMissedQuestions).not.toHaveBeenCalled();
@@ -175,20 +177,21 @@ describe("placement — a source inside REVIEW, not a third pane", () => {
 
   it("reads MISSED only once its own tab is opened", async () => {
     renderHub();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     await waitFor(() => expect(getQuestionLibrary).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId("review-source-missed"));
     await waitFor(() => expect(getMissedQuestions).toHaveBeenCalledTimes(1));
   });
 
-  it("still opens REVIEW from /quiz#review, and no #library hash exists", async () => {
+  it("still opens it from the legacy /quiz#review, and no #library hash exists", async () => {
     renderHub({}, ["/quiz#review"]);
-    await waitFor(() => expect(screen.getByTestId("workspace-panel-review")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("history-questions")).toBeTruthy());
+    expect(screen.getByTestId("review-pane")).toBeTruthy();
     cleanup();
-    // An unknown hash falls back to History rather than resolving a Library.
+    // An unknown hash leaves History as it is rather than resolving a Library.
     renderHub({}, ["/quiz#library"]);
-    await waitFor(() => expect(screen.getByTestId("workspace-panel-history")).toBeTruthy());
-    expect(screen.queryByTestId("workspace-panel-library")).toBeNull();
+    expect(screen.getByTestId("history-record")).toBeTruthy();
+    expect(screen.queryByTestId("history-questions")).toBeNull();
   });
 });
 
@@ -196,7 +199,7 @@ describe("the two sources stay independent", () => {
   it("a failing MISSED bank does not blank OWNED", async () => {
     getMissedQuestions.mockRejectedValue(new Error("bank down"));
     renderHub();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     await waitFor(() => expect(screen.getByTestId("owned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("review-source-missed"));
     await waitFor(() => expect(screen.getByTestId("missed-questions-error")).toBeTruthy());
@@ -210,7 +213,7 @@ describe("the two sources stay independent", () => {
       upsell_message: "Upgrade to Mogzy Premium to review every question you missed.",
     });
     renderHub();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     // OWNED is Free: a non-Pro account gets its real collection, not a paywall.
     await waitFor(() => expect(screen.getByTestId("owned")).toBeTruthy());
     expect(screen.queryByTestId("missed-questions-locked")).toBeNull();
@@ -221,7 +224,7 @@ describe("the two sources stay independent", () => {
   it("a failing OWNED collection does not break MISSED", async () => {
     getQuestionLibrary.mockRejectedValue(new RankedApiError("backend", 500, "boom"));
     renderHub();
-    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    fireEvent.click(screen.getByTestId("history-questions-toggle"));
     await waitFor(() => expect(screen.getByTestId("owned-error")).toBeTruthy());
     fireEvent.click(screen.getByTestId("review-source-missed"));
     await waitFor(() => expect(screen.getByTestId("missed-questions")).toBeTruthy());
