@@ -180,7 +180,7 @@ describe("DD1 transport — comparison_values rides only the reveal", () => {
   });
 
   it("a malformed block is dropped, never thrown on", () => {
-    const [reveal] = parse(answered({ comparison_values: { ...VALUES, winner: "leona" } })).ownChallengeReveals;
+    const [reveal] = parse(answered({ comparison_values: { ...VALUES, contract: "comparison_values.v2" } })).ownChallengeReveals;
     expect(reveal).not.toHaveProperty("comparisonValues");
   });
 

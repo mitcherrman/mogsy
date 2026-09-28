@@ -21,7 +21,7 @@ Frontend half of `docs/DD1_DATA_DUEL_PRODUCTION_PATH.md` (branch `dd1/data-duel-
 **Reader.** `src/features/mastery/contracts/comparisonValues.ts` → `readComparisonValues(raw): ComparisonValues | null`.
 - Required: `contract === "comparison_values.v1"` and `sides`, which must be exactly two `{token, value, display}` objects with exact keys, non-empty distinct string tokens, finite numeric values and non-empty display strings.
 - Optional: `unit`, `unit_label` (string, may be `""`), `display_precision` (int ≥ 0), `operator` (non-empty string), `delta` (finite), `delta_display` (non-empty string). Each may be absent or `null`; if present with the wrong type, the whole block is dropped.
-- Any unknown key, at the top level or on a side (for example a `winner` copy), drops the block.
+- Strict on v1 semantics, forward-compatible with additive post-reveal metadata (DD1-B.1): an unknown key, at the top level or on a side, is ignored and never copied into the result. Known fields that are missing or wrongly typed still drop the block.
 - Never throws; returns `null`.
 - `withUnitLabel(display, cv)` gives `display + " " + unit_label`. The one exception is `percent` / `%`, which is written tight. The client keeps no unit table of its own.
 
@@ -113,6 +113,6 @@ Either order is safe.
   - the standalone `mastery_player_reveal.data.comparison_values`
 - `sides[0].token == answer_options[0]` and `sides[1].token == answer_options[1]`. The frontend drops the values if the pair of tokens differs.
 - `display` and `delta_display` are printed verbatim with `unit_label`. `delta_display` should be the absolute margin, because the sentence reads "Leona by 90 seconds".
-- No other keys may be present. An extra key (for example `winner` or `tie_state`) drops the whole block.
+- Additive keys are tolerated and ignored (DD1-B.1). The frontend still derives the winner and tie only from `correct_answer`, never from a key inside the block.
 - The in-progress DD1-A builder (`adapter.comparison_values`) matches this reader exactly: every field non-null, `unit` / `unit_label` possibly `""`.
 - Cross-layer certification (slice C) should replace the hand-authored fixtures with a captured real `own_challenge_reveals` sample.

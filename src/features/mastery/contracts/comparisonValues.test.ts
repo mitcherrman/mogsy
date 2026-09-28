@@ -71,6 +71,18 @@ describe("readComparisonValues — the served block", () => {
     expect(readComparisonValues({ ...WIRE, delta: null, delta_display: null })?.deltaDisplay).toBeNull();
   });
 
+  it("ignores unknown additive metadata, top level and per side, and never copies it", () => {
+    const extended = {
+      ...WIRE,
+      future_metadata: { source: "x" },
+      sides: [{ ...WIRE.sides[0], rank_note: "r1" }, WIRE.sides[1]],
+    };
+    const cv = readComparisonValues(extended);
+    expect(cv).toEqual(readComparisonValues(WIRE));
+    expect(cv).not.toHaveProperty("future_metadata");
+    expect(cv?.sides[0]).not.toHaveProperty("rank_note");
+  });
+
   it("is absent-safe", () => {
     expect(readComparisonValues(undefined)).toBeNull();
     expect(readComparisonValues(null)).toBeNull();
@@ -92,9 +104,9 @@ describe("readComparisonValues — fails closed, never throws", () => {
     ["duplicate tokens", (o) => ({ ...o, sides: [(o.sides as unknown[])[0], (o.sides as unknown[])[0]] })],
     ["empty display", (o) => ({ ...o, sides: [{ token: "a", value: 1, display: "" }, (o.sides as unknown[])[1]] })],
     ["numeric display", (o) => ({ ...o, sides: [{ token: "a", value: 1, display: 1 }, (o.sides as unknown[])[1]] })],
-    ["extra side key (a winner flag)", (o) => ({ ...o, sides: [{ token: "a", value: 1, display: "1", winner: true }, (o.sides as unknown[])[1]] })],
-    ["extra top-level key (a winner copy)", (o) => ({ ...o, winner: "leona" })],
-    ["extra top-level key (tie_state)", (o) => ({ ...o, tie_state: "decisive" })],
+    ["a side missing its display", (o) => ({ ...o, sides: [{ token: "a", value: 1 }, (o.sides as unknown[])[1]] })],
+    ["a null side", (o) => ({ ...o, sides: [null, (o.sides as unknown[])[1]] })],
+    ["unknown key beside a malformed known field", (o) => ({ ...o, future_metadata: {}, unit: 5 })],
     ["negative precision", (o) => ({ ...o, display_precision: -1 })],
     ["fractional precision", (o) => ({ ...o, display_precision: 1.5 })],
     ["NaN delta", (o) => ({ ...o, delta: NaN })],

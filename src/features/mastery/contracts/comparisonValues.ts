@@ -10,11 +10,13 @@
  * REVEAL-ONLY. It never exists on a pre-reveal payload (the backend names it in
  * `FORBIDDEN_PRE_REVEAL_KEYS`), and no pre-reveal type here has a slot for it.
  *
- * This reader is a typed ALLOWLIST and FAILS CLOSED TO "NO VALUES", the
- * `combat_working` discipline (`lib/journey/combatWorking.ts`): an exact key
- * set, a contract string, exactly two sides with distinct non-empty tokens,
- * finite numbers and non-empty display strings. Anything off-contract returns
- * `null` and never throws — a malformed block must never take a reveal down;
+ * This reader is STRICT ON v1 SEMANTICS and FAILS CLOSED TO "NO VALUES": the
+ * contract string, exactly two sides with distinct non-empty tokens, finite
+ * numbers, non-empty display strings, and correctly typed known optional
+ * fields. It is FORWARD-COMPATIBLE with additive post-reveal metadata: an
+ * unknown key (top level or on a side) is ignored and never copied into the
+ * result, which is built from the known v1 fields only. Anything off-contract
+ * returns `null` and never throws — a malformed block must never take a reveal down;
  * the reveal simply renders as a legacy one (tags + explanation, no values).
  *
  * Nothing here decides a winner, a tie or text: `correct_answer` states the
@@ -49,18 +51,15 @@ export interface ComparisonValues {
   readonly deltaDisplay: string | null;
 }
 
-const KEYS = [
-  "contract", "sides", "unit", "unit_label", "display_precision", "operator", "delta", "delta_display",
-] as const;
 const SIDE_KEYS = ["token", "value", "display"] as const;
 
 class Off extends Error {}
 type Obj = Record<string, unknown>;
 
-function exactObj(v: unknown, allowed: readonly string[], required: readonly string[]): Obj {
+/** A plain object carrying every required key. Unknown keys are ignored (additive metadata). */
+function obj(v: unknown, required: readonly string[]): Obj {
   if (!v || typeof v !== "object" || Array.isArray(v)) throw new Off();
   const o = v as Obj;
-  for (const k of Object.keys(o)) if (!allowed.includes(k)) throw new Off();
   for (const k of required) if (!(k in o)) throw new Off();
   return o;
 }
@@ -88,7 +87,7 @@ const optPrecision = (v: unknown): number | null => {
 };
 
 function side(v: unknown): ComparisonValueSide {
-  const o = exactObj(v, SIDE_KEYS, SIDE_KEYS);
+  const o = obj(v, SIDE_KEYS);
   return { token: text(o.token), value: finite(o.value), display: text(o.display) };
 }
 
@@ -99,7 +98,7 @@ function side(v: unknown): ComparisonValueSide {
 export function readComparisonValues(raw: unknown): ComparisonValues | null {
   if (raw === null || raw === undefined) return null;
   try {
-    const o = exactObj(raw, KEYS, ["contract", "sides"]);
+    const o = obj(raw, ["contract", "sides"]);
     if (o.contract !== COMPARISON_VALUES_CONTRACT) return null;
     if (!Array.isArray(o.sides) || o.sides.length !== 2) return null;
     const a = side(o.sides[0]);
