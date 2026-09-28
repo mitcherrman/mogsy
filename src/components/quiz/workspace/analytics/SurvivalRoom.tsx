@@ -55,6 +55,7 @@ export default function SurvivalRoom({ stage }: { stage: HistoryStage }) {
         <div className="[@container(min-width:52rem)]:col-span-2">
           <HistoryPanel
             title="Survival history"
+            currentLabel={() => "This Survival"}
             eyebrow="Your matching Survivals"
             testId="stage-history"
             series={p.series}

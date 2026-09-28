@@ -61,6 +61,7 @@ export default function DailyOverview({ record, analytics }: { record: DailyHist
         <HistoryPanel
           title="Core Daily history"
           eyebrow="Standard · Time Trial · Survival"
+          currentLabel={(m) => `Core ${m.label.toLowerCase()}`}
           testId="core-history"
           series={core.series}
           metrics={[
@@ -178,7 +179,7 @@ function CoreRecords({ record }: { record: DailyHistoryRecord }) {
         <RecordMedal record={streak} label="Longest streak" glyph={Flame} shape="shield" progress={reveal.progress} testId="core-record-streak" />
       </div>
       <p className="mt-2 text-[10.5px] leading-snug" style={{ color: LEAGUECRAFT_INK.faint }}>
-        The Daily's total score is not kept as a record: Review awards points after misses, so a higher total can mean a harder day.
+        Daily score isn't used for records because Review can add points after missed questions.
       </p>
     </Panel>
   );

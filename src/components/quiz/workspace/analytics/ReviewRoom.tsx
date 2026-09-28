@@ -357,7 +357,7 @@ export function WeakAreasRoom({ stage, review = null }: { stage: HistoryStage; r
           <div className="mt-2.5 flex items-start gap-2 rounded-md border border-dashed px-2.5 py-2 text-[10.5px] leading-snug" style={{ borderColor: "rgba(96,68,28,0.3)", color: LEAGUECRAFT_INK.faint }} data-testid="weak-areas-provenance">
             <Crosshair className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "rgb(90,58,142)" }} aria-hidden="true" />
             <span>
-              {cutoff ? <>Chosen from your results before <strong style={{ color: LEAGUECRAFT_INK.body }} data-testid="weak-areas-cutoff">{cutoff}</strong>. </> : null}
+              {cutoff ? <>Chosen from your results before this Daily started on <strong style={{ color: LEAGUECRAFT_INK.body }} data-testid="weak-areas-cutoff">{cutoff}</strong>. </> : null}
               The record keeps which categories were chosen — not which earlier question led to each one. Each row is the question this Weak Areas served.
             </span>
           </div>

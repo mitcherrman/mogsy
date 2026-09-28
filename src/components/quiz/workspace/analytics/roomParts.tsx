@@ -126,6 +126,7 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
 export function HistoryPanel({
   title,
   eyebrow,
+  currentLabel,
   series,
   metrics,
   describe,
@@ -134,6 +135,8 @@ export function HistoryPanel({
 }: {
   title: string;
   eyebrow?: string;
+  /** The readout's name for the current attempt's value of a metric. */
+  currentLabel: (metric: HistoryMetric) => string;
   series: PersonalSnapshot[];
   metrics: HistoryMetric[];
   /** Tooltip lines for one attempt. */
@@ -169,6 +172,7 @@ export function HistoryPanel({
         {points.length >= 2 ? (
           <>
             <LineKey
+              currentLabel={currentLabel(metric)}
               current={currentPoint && currentPoint.value !== null ? fmt(currentPoint.value) : null}
               average={metric.average !== null && metric.average !== undefined ? `Your average ${fmt(metric.average)}` : null}
               record={metric.record !== null && metric.record !== undefined ? `Record ${fmt(metric.record)}` : null}

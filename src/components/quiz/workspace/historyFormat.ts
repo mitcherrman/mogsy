@@ -72,10 +72,13 @@ export function instantDateLabel(iso: string): string {
 }
 
 /**
- * HUB6.3G — "Sep 14" for a DATE BOUNDARY the server sends as midnight UTC
- * (`evidence_cutoff: "2026-09-14T00:00:00+00:00"`). It names a calendar day,
- * not a moment, so it is read by its own date part and formatted in UTC — a
- * reader west of Greenwich never sees the day before.
+ * HUB6.3G — "Sep 14", the UTC calendar day of a server timestamp, read by its
+ * own date part — a reader west of Greenwich never sees the day before.
+ * HUB6.4B: Weak Areas' `evidence_cutoff` is the run's CREATION INSTANT
+ * (`2026-09-14T03:12:45.123456+00:00`, backend `daily_challenge/run/service.py`),
+ * not a midnight boundary. Its UTC day is always the run's plan date (both
+ * come from the same `now`), so callers phrase it as "before this Daily
+ * started on Sep 14", never "before Sep 14".
  */
 export function dateBoundaryLabel(iso: string): string {
   const day = /^(\d{4}-\d{2}-\d{2})/.exec(iso.trim())?.[1];

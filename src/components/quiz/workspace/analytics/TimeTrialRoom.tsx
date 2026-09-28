@@ -50,6 +50,7 @@ export default function TimeTrialRoom({ stage }: { stage: HistoryStage }) {
       {p?.eligible && (
         <HistoryPanel
           title="Time Trial history"
+          currentLabel={() => "This Time Trial"}
           eyebrow="Your matching Time Trials"
           testId="stage-history"
           series={p.series}

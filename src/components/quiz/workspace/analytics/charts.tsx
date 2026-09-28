@@ -471,12 +471,15 @@ function niceCeil(v: number): number {
 }
 
 /**
- * The readout over a line chart (HUB6.3G): this Daily's value, then what the
- * dashed and dotted rules are, each with its figure. It sits OUTSIDE the plot
- * and wraps as the width needs, so nothing in it can overlap the chart's
- * marks or another label.
+ * The readout over a line chart (HUB6.3G): the current attempt's value, then
+ * what the dashed and dotted rules are, each with its figure. It sits OUTSIDE
+ * the plot and wraps as the width needs, so nothing in it can overlap the
+ * chart's marks or another label. `currentLabel` names exactly what the value
+ * measures (HUB6.4B): "Core accuracy" for a Core Daily series, never "This
+ * Daily", which would read as the whole Daily.
  */
-export function LineKey({ current, average, record, testId }: {
+export function LineKey({ currentLabel, current, average, record, testId }: {
+  currentLabel: string;
   current?: string | null;
   average?: string | null;
   record?: string | null;
@@ -486,7 +489,7 @@ export function LineKey({ current, average, record, testId }: {
     <div className="mb-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[10.5px]" style={{ color: LEAGUECRAFT_INK.faint }} data-testid={testId}>
       <span className="inline-flex items-center gap-1.5" data-testid="line-key-current">
         <span aria-hidden="true" className="inline-block h-2.5 w-2.5 self-center rounded-full" style={{ border: `2px solid ${CHART.current}`, background: "#f3e6c4" }} />
-        <span className="font-extrabold uppercase tracking-[0.1em]" style={{ color: CHART.current }}>This Daily</span>
+        <span className="font-extrabold uppercase tracking-[0.1em]" style={{ color: CHART.current }}>{currentLabel}</span>
         {current && <span className="text-[13px] font-black tabular-nums" style={{ color: CHART.current }}>{current}</span>}
       </span>
       {average && (

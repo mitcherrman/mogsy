@@ -471,8 +471,10 @@ describe("F — no chart label can collide", () => {
     const run = await overview(14);
     const hist = within(run).getByTestId("core-history");
     expect(within(hist).getByTestId("history-line-scrubber").textContent).toBe("");
-    expect(within(hist).getByTestId("line-key-current").textContent).toMatch(/This Daily\s*89%/);
+    // HUB6.4B — a Core Daily series names its metric as Core, never "This Daily".
+    expect(within(hist).getByTestId("line-key-current").textContent).toMatch(/^Core accuracy\s*89%/);
     fireEvent.click(within(within(hist).getByTestId("history-metric")).getByText("Correct"));
+    expect(within(hist).getByTestId("line-key-current").textContent).toMatch(/^Core correct\s*\d/);
     expect(within(hist).getByTestId("history-line-scrubber").textContent).toBe("");
     expect(within(hist).getByTestId("line-key-average").textContent).toMatch(/Your average/);
     expect(within(hist).getByTestId("line-key-record").textContent).toMatch(/Record/);
@@ -595,5 +597,29 @@ describe("I — Weak Areas simplified; no Review donut; no forbidden wording", (
       texts.push(within(run).getByTestId("daily-analytics-region").textContent!);
     }
     for (const t of texts) expect(t).not.toMatch(FORBIDDEN);
+  });
+
+  it("HUB6.4B — Core Daily wording: the records note is mechanical; Core series never read as 'This Daily'", async () => {
+    const run = await overview(14);
+    const records = within(run).getByTestId("core-records");
+    expect(records.textContent).toMatch(/Daily score isn't used for records because Review can add points after missed questions\./);
+    expect(records.textContent).not.toMatch(/harder day/i);
+    const hist = within(run).getByTestId("core-history");
+    expect(hist.textContent).toMatch(/Standard · Time Trial · Survival/);
+    for (const label of ["Accuracy", "Correct", "Longest streak"]) {
+      fireEvent.click(within(within(hist).getByTestId("history-metric")).getByText(label));
+      expect(within(hist).getByTestId("line-key-current").textContent).toMatch(new RegExp(`^Core ${label.toLowerCase()}`));
+    }
+    // A stage room's series is that stage's, named as such.
+    await selectStage(run, "time_trial");
+    expect(within(within(run).getByTestId("stage-history")).getByTestId("line-key-current").textContent).toMatch(/^This Time Trial/);
+  });
+
+  it("HUB6.4B — Weak Areas cutoff is the run's start instant: named as the Daily's start, UTC day", async () => {
+    const run = await overview(14);
+    await selectStage(run, "weak_areas");
+    const prov = within(run).getByTestId("weak-areas-provenance").textContent!;
+    expect(prov).toMatch(/Chosen from your results before this Daily started on Sep 14\./);
+    expect(prov).not.toMatch(/before Sep 14/);
   });
 });

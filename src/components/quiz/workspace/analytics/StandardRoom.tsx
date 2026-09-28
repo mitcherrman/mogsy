@@ -61,6 +61,7 @@ export default function StandardRoom({ stage, review = null }: { stage: HistoryS
       {p?.eligible && (
         <HistoryPanel
           title="Standard history"
+          currentLabel={() => "This Standard"}
           eyebrow="Your matching Standards"
           testId="stage-history"
           series={p.series}

@@ -413,7 +413,7 @@ describe("Review and Weak Areas rooms", () => {
     const run = await stageRoom(14, "weak_areas");
     expect(within(run).getAllByTestId("weak-areas-slot")).toHaveLength(4);
     const prov = within(run).getByTestId("weak-areas-provenance").textContent!;
-    expect(prov).toMatch(/Chosen from your results before Sep 1[34]/);
+    expect(prov).toMatch(/Chosen from your results before this Daily started on Sep 1[34]/);
     expect(prov).toMatch(/not which earlier question led to each one/);
     expect(run.textContent).not.toMatch(/missed \d+ times|last missed|miss count/i);
     expect(run.textContent).not.toMatch(FORBIDDEN);
