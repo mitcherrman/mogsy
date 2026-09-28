@@ -78,6 +78,20 @@ const HISTORY = {
   ],
 };
 
+// HUB7: the Builder is off the hub, so none of its endpoints may be read by
+// merely visiting it. Every method is a spy that records the call.
+const builderCalls = vi.hoisted(() => [] as string[]);
+vi.mock("@/lib/quiz/builderApi", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/quiz/builderApi")>();
+  const builderApi = new Proxy({} as Record<string, unknown>, {
+    get: (_t, key) => async () => {
+      builderCalls.push(String(key));
+      return {};
+    },
+  });
+  return { ...real, builderApi };
+});
+
 const questionsMock = vi.fn(async () => ({ questions: [] }));
 const categoryQuestionsMock = vi.fn(async (_category?: unknown, _limit?: unknown) => ({
   questions: [] as unknown[],
@@ -248,40 +262,51 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(container.querySelectorAll('[data-testid="leaguecraft-workspace"]').length).toBe(1);
   });
 
-  it("shows the curated Practice Packs beside the rail, without duplicating it", async () => {
-    // PT1.7A. The packs were withheld on the grounds that they and the rail
-    // were "two navigations to the same six subjects". They are not: the five
-    // sets reach Champion Basics, Runes and Game Fundamentals, which no rail
-    // tile resolves to. So both are on the page — and the panel's ONE real
-    // duplicate, a primary button that opened the very set its first chip
-    // opens, is what went away instead.
+  it("HUB7: reads QUICK STUDY then HISTORY, with no Practice Packs or Builder", async () => {
+    // The approved lower page: the six-subject rail, renamed Quick Study, and
+    // then the one History surface. The curated packs and the Premium Builder
+    // that sat between them are removed from the composition, not collapsed.
+    const { trackFunnelEvent } = await import("@/lib/funnel-analytics");
+    const funnel = vi.mocked(trackFunnelEvent);
+    builderCalls.length = 0;
+    funnel.mockClear();
     const { container } = await renderHub();
-    expect(container.querySelector('[data-testid="hub-practice-section"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="practice-tiles"]')).not.toBeNull();
-    expect(container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(SETS.length);
-    expect(container.querySelector('[data-testid="practice-primary-cta"]')).toBeNull();
-    expect(screen.getByText("Practice Packs")).toBeTruthy();
-    // The rail is untouched: still six in-page controls, still no links.
-    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
-    expect(rail.querySelectorAll("a").length).toBe(0);
-    expect(rail.querySelectorAll("button").length).toBe(6);
-  });
 
-  it("a pack chip starts the SAME runner the rail does — one Practice system", async () => {
-    // The whole point of restoring the packs is that they are another way
-    // into the existing runner, never a second one. A chip press must call
-    // `GET /api/quiz/questions?set=…` on this page and navigate nowhere.
-    questionsMock.mockClear();
-    const { container } = await renderHub();
-    const chips = [...container.querySelectorAll('[data-testid="practice-tile"]')];
-    const champions = chips.find((c) => c.textContent?.includes("Champion Basics"))!;
-    expect(champions).toBeTruthy();
-    fireEvent.click(champions);
-    await waitFor(() =>
-      expect(questionsMock).toHaveBeenCalledWith("Champion Basics", 10),
+    const quick = container.querySelector('[data-testid="hub-quick-study"]')!;
+    expect(quick).not.toBeNull();
+    expect(within(quick as HTMLElement).getByRole("heading", { name: /Quick Study/i })).toBeTruthy();
+    const rail = quick.querySelector('[data-testid="quiz-category-rail"]')!;
+    expect(rail.querySelectorAll('[data-testid="quiz-category-rail-tile"]').length).toBe(6);
+    expect(rail.querySelectorAll("button").length).toBe(6);
+    expect(rail.querySelectorAll("a").length).toBe(0);
+
+    // Nothing of the old study row survives, whatever the sets payload holds.
+    expect(screen.queryByText("Practice Packs")).toBeNull();
+    expect(screen.queryByText(/Practice Builder/i)).toBeNull();
+    for (const id of ["hub-workspace", "hub-practice-section", "practice-tiles",
+                      "practice-tile", "hub-time-trial-section"]) {
+      expect(container.querySelector(`[data-testid="${id}"]`)).toBeNull();
+    }
+    expect(container.querySelector('[data-testid^="practice-builder"]')).toBeNull();
+    for (const set of SETS.filter((s) => s.name !== "Item Knowledge" && s.name !== "Champion Basics")) {
+      expect(screen.queryByText(set.name)).toBeNull();
+    }
+
+    // History is the next section after Quick Study — nothing between them.
+    const record = container.querySelector('[data-testid="hub-record-section"]')!;
+    expect(quick.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const between = [...container.querySelectorAll("section")].filter(
+      (el) =>
+        quick.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING &&
+        el.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING &&
+        !quick.contains(el),
     );
-    expect(screen.getByTestId("location").textContent).toBe("/quiz");
-    expect(sfx.play).not.toHaveBeenCalledWith("leaguecraft.quiz.start");
+    expect(between).toEqual([]);
+
+    // No Builder request and no false builder funnel event from a visit.
+    expect(builderCalls).toEqual([]);
+    const names = funnel.mock.calls.map((call) => String(call[0]));
+    expect(names.filter((n) => n.startsWith("practice_builder"))).toEqual([]);
   });
 
   it("makes the rail the Practice chooser — a tile starts a session in place", async () => {
@@ -585,8 +610,8 @@ describe("Leaguecraft hub — modes withheld from this page", () => {
     // no upsell ON IT.
     //
     // Scoped to the module rather than to the whole page, and that narrowing
-    // is the point rather than a weakening: since PT1.7B the lobby also hosts
-    // the Practice Builder, which legitimately carries a Premium paywall. The
+    // is the point rather than a weakening: from PT1.7B to HUB7 the lobby also
+    // hosted the Practice Builder, which carries a Premium paywall. The
     // claim worth fencing was always "this card is Free", not "no word on this
     // page mentions Premium" — and the page-wide version would now pass only
     // for as long as nothing paid ever shared the lobby.
@@ -598,20 +623,14 @@ describe("Leaguecraft hub — modes withheld from this page", () => {
     expect(module!.textContent).not.toMatch(/Premium|Upgrade|Pro\b/);
   });
 
-  it("keeps the Builder's paywall out of the Free modules around it", async () => {
-    // The converse of the test above: the Builder may say Premium, and nothing
-    // else on the lobby may start doing so because it is nearby.
+  it("carries no Premium paywall in Quick Study or History's own chrome", async () => {
+    // HUB7: the Builder, the lobby's one legitimately paywalled module, is off
+    // the hub — so neither region around it may print its upsell.
     const { container } = await renderHub();
-    for (const testid of ["hub-practice-section", "quiz-category-rail",
-                          "hub-record-section"]) {
-      const region = container.querySelector(`[data-testid="${testid}"]`);
-      if (!region) continue;
-      // The Builder is rendered INSIDE the practice section, so exclude it
-      // before asserting on that section's own copy.
-      const clone = region.cloneNode(true) as HTMLElement;
-      clone.querySelectorAll('[data-testid^="practice-builder"]')
-        .forEach((node) => node.remove());
-      expect(clone.textContent).not.toMatch(/Upgrade to Mogzy Premium/);
+    for (const testid of ["hub-quick-study", "hub-record-section"]) {
+      const region = container.querySelector(`[data-testid="${testid}"]`)!;
+      expect(region).not.toBeNull();
+      expect(region.textContent).not.toMatch(/Upgrade to Mogzy Premium/);
     }
   });
 

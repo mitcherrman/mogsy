@@ -27,8 +27,6 @@ import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 // Daily Score Attack hub entry: shown instead of the legacy Daily card only
 // when the backend reports the new mode enabled (server feature flag).
-import PracticeBuilderPanel, { type BuilderPreset } from "@/components/quiz/builder/PracticeBuilderPanel";
-import type { TrendsPracticePreset } from "@/components/quiz/trends/RecurringWeaknesses";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { QUIZ_CATEGORY_ICONS } from "@/components/quiz/QuizCategoryStrip";
 import {
@@ -100,17 +98,6 @@ type HubModuleFlags = {
   /** Mastery Journey link (kept: it is one quiet line, and this page holds
    *  the ONLY entrance to /quiz/mastery in the product). */
   masteryJourney: boolean;
-  /**
-   * "Practice for Ranked" panel in the lobby's lower half.
-   *
-   * WITHHELD, not retired. The full-width category rail directly above it is
-   * becoming Leaguecraft's practice selector, and until it opens the two were
-   * stacked navigations to the same six subjects. The panel, its sets, their
-   * real question counts and its start action are all intact behind this flag
-   * inside `LeaguecraftHub`; every practice ROUTE and question set is
-   * untouched.
-   */
-  practicePanel: boolean;
 };
 
 /**
@@ -124,10 +111,11 @@ type HubModuleFlags = {
  *   knowledgeBreakdown per-category accuracy over the player's OWN record.
  *                      This page is its only host, so the flag was the only
  *                      route back to it.
- *   practicePanel      the five curated sets. Withheld on the grounds that
- *                      they duplicated the category rail; measured against
- *                      the live bank they do not — see the study row in
- *                      `LeaguecraftHub`.
+ *   (practicePanel     removed by HUB7: the approved Ranked Hub is Quick
+ *                      Study then History, so the curated Practice Packs and
+ *                      the Practice Builder left the hub's composition. The
+ *                      sets are still loaded for the record's Practice
+ *                      handoff; the Builder component is kept, unmounted.)
  *
  * `legacyPracticeGrid` stays withheld on purpose: it is the SAME five sets in
  * the pre-redesign five-card presentation, so restoring it would put the same
@@ -140,7 +128,6 @@ const HUB_MODULES: HubModuleFlags = {
   achievements: false,
   legacyPracticeGrid: false,
   masteryJourney: true,
-  practicePanel: true,
 };
 
 /**
@@ -1110,64 +1097,6 @@ export default function Quiz() {
     });
   }, [missedQuestions, currentSet, startHistorySession, soundQuizStarted]);
 
-  /**
-   * PT1.8 — the Trends → Builder handoff, held here because this page hosts
-   * BOTH surfaces: History's recurring weaknesses and the lobby's Practice
-   * Builder are siblings on one screen, so "practise this" is a preset
-   * travelling between them rather than a navigation.
-   *
-   * The nonce is what makes pressing the same weak category twice work: the
-   * configuration is identical and the reader still asked again.
-   */
-  const [builderPreset, setBuilderPreset] = useState<BuilderPreset | null>(null);
-  const builderAnchorRef = useRef<HTMLDivElement | null>(null);
-
-  const handlePractiseWeakness = useCallback((preset: TrendsPracticePreset) => {
-    setBuilderPreset({
-      pool: preset.pool,
-      category: preset.category,
-      nonce: Date.now(),
-    });
-  }, []);
-
-  /* The Builder is ABOVE the record on this page, so adopting a preset has to
-     bring the reader back up to it — otherwise the configuration changes off
-     screen and the click looks like it did nothing. */
-  const handlePresetApplied = useCallback(() => {
-    builderAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, []);
-
-  /**
-   * PT1.7B — run a session the Builder assembled.
-   *
-   * Identical in shape to `handlePracticeMissed`: an explicit, already
-   * answer-safe question list goes straight into the runner. The Builder is a
-   * SELECTOR, not an engine — every answer still posts to
-   * `POST /api/quiz/attempts` and is graded there, and nothing about ownership,
-   * XP or achievements behaves differently because the list was custom.
-   */
-  const handleBuiltSession = useCallback((built: QuizQuestion[], label: string) => {
-    if (built.length === 0) return;
-    soundQuizStarted();
-    startHistorySession("practice_builder", label);
-    setCurrentSet({
-      id: `practice-builder:${label}`,
-      name: label,
-      description: "A practice set you built.",
-      question_count: built.length,
-    });
-    setCurrentCategoryId(null);
-    setQuestions(built);
-    setScore(0);
-    setSessionAnswers([]);
-    setCurrentIndex(0);
-    setSelectedAnswer(null);
-    setFillBlankValue("");
-    setAnswerResult(null);
-    setErrorMsg("");
-    setPhase("active");
-  }, [startHistorySession, soundQuizStarted]);
-
   const handlePlayAgain = useCallback(() => {
     // A subject replays through its own loader. `currentSet` holds a synthetic
     // entry for those sessions, and feeding it back to `handleSelectSet` would
@@ -1498,7 +1427,6 @@ export default function Quiz() {
               dailyChallenge={dailyStatus}
               playScrollOpenOnMount={openPlayOnMount}
               sets={sets}
-              setsLoading={setsLoading}
               onSelectSet={handleSelectSet}
               /* PRAC1: the category rail IS the Practice chooser. A tile press
                  starts the session here, on this page, in the runner below —
@@ -1508,32 +1436,9 @@ export default function Quiz() {
               /* …and when the runner hands the page back, focus returns to the
                  tile it was started from rather than to the top of the doc. */
               focusCategoryId={currentCategoryId}
-              onRefreshSets={handleRetry}
               history={recentHistory}
               historyLoading={historyLoading}
               historyError={historyError}
-              showPractice={HUB_MODULES.practicePanel}
-              /* PT1.7B: the Builder sits with the other ways to start a
-                 session. It draws its own paywall from the server's capability
-                 answer, so the hub neither knows nor decides who may see it. */
-              builder={
-                <div ref={builderAnchorRef}>
-                  <PracticeBuilderPanel
-                    open={phase === "sets"}
-                    onStartSession={handleBuiltSession}
-                    /* PT1.8: a weak category handed down from the Trends pane
-                       below. The panel applies it through its own `setConfig`,
-                       so there is one configuration path and one set of pool
-                       rules, not two. */
-                    preset={builderPreset}
-                    onPresetApplied={handlePresetApplied}
-                  />
-                </div>
-              }
-              /* PT1.8 → HUB4 — the Trends pane is retired from the lobby; its
-                 recurring-weakness hand-off to the Builder lives on inside
-                 History's Owned & Missed section. */
-              onPractiseWeakness={handlePractiseWeakness}
               /* The lobby shows the UNSAVED choice; the account is written at
                  PLAY. See `pendingRankedRole`. */
               rankedRole={effectiveRankedRole}

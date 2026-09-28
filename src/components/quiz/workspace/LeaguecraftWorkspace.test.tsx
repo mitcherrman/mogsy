@@ -95,9 +95,7 @@ function renderHub(
         onPlayDailyChallenge={() => {}}
         playModes={{ ranked: true, daily: true, invite: true }}
         sets={[]}
-        setsLoading={false}
         onSelectSet={() => {}}
-        onRefreshSets={() => {}}
         history={HISTORY}
         historyLoading={false}
         historyError={null}
@@ -226,19 +224,15 @@ describe("MALT — the consolidation: one history system, no practice panel", ()
     );
   });
 
-  it("hides the Practice for Ranked panel by default, and keeps it restorable", () => {
-    const hidden = renderHub().container;
-    expect(hidden.querySelector('[data-testid="hub-practice-section"]')).toBeNull();
-    expect(hidden.querySelectorAll('[data-testid="practice-tile"]').length).toBe(0);
-    cleanup();
-    // WITHHELD, not deleted: the sets, their counts and the start action are
-    // all still behind the flag `Quiz.tsx` owns.
-    const shown = renderHub({
-      showPractice: true,
+  it("HUB7: renders no Practice Packs or Practice Builder, whatever the sets", () => {
+    const { container } = renderHub({
       sets: [{ id: 5, name: "All Current Questions", description: "", question_count: 1260 }],
-    }).container;
-    expect(shown.querySelector('[data-testid="hub-practice-section"]')).not.toBeNull();
-    expect(shown.querySelectorAll('[data-testid="practice-tile"]').length).toBe(1);
+    });
+    expect(container.querySelector('[data-testid="hub-practice-section"]')).toBeNull();
+    expect(container.querySelector('[data-testid="hub-workspace"]')).toBeNull();
+    expect(container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(0);
+    expect(screen.queryByText("Practice Packs")).toBeNull();
+    expect(screen.queryByText(/Practice Builder/i)).toBeNull();
   });
 
   it("keeps ONE empty state, with one practice action, when there is no record", () => {
@@ -603,9 +597,7 @@ function renderAt(entry: string, over: Partial<React.ComponentProps<typeof Leagu
         onPlayDailyChallenge={() => {}}
         playModes={{ ranked: true, daily: true, invite: true }}
         sets={[]}
-        setsLoading={false}
         onSelectSet={() => {}}
-        onRefreshSets={() => {}}
         history={HISTORY}
         historyLoading={false}
         historyError={null}

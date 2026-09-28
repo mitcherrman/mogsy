@@ -64,13 +64,15 @@ describe("the Builder did not become a second Practice engine", () => {
     }
   });
 
-  it("hands its list to the host runner through one prop", () => {
+  it("hands its list to a host runner through one prop, and HUB7 mounts it nowhere on /quiz", () => {
     const panel = read("src/components/quiz/builder/PracticeBuilderPanel.tsx");
     expect(panel).toContain("onStartSession");
+    // HUB7: the Ranked Hub is Quick Study then History. The Builder left the
+    // hub's composition; the component and its routes are kept, unmounted.
     const page = read("src/pages/Quiz.tsx");
-    // The same explicit-list entry PT1.7A introduced, not a new phase.
-    expect(page).toContain("handleBuiltSession");
-    expect(page).toContain('startHistorySession("practice_builder"');
+    expect(page).not.toContain("PracticeBuilderPanel");
+    const hub = read("src/components/quiz/LeaguecraftHub.tsx");
+    expect(hub).not.toMatch(/builder\??:\s*ReactNode/);
   });
 });
 
@@ -88,9 +90,8 @@ describe("PT1.7A's Free surfaces are untouched", () => {
     expect(handler).not.toContain("missed-questions");
   });
 
-  it("keeps the curated Packs, the subject rail and Time Trial visible", () => {
-    expect(page).toMatch(/practicePanel:\s*true/);
-    expect(page).toMatch(/timeTrial:\s*true/);
+  it("HUB7: no Practice Packs flag, and the Free modules stay as they were", () => {
+    expect(page).not.toMatch(/practicePanel:\s*(true|false)/);
     expect(page).toMatch(/knowledgeBreakdown:\s*true/);
     expect(page).toMatch(/legacyPracticeGrid:\s*false/);
   });

@@ -205,9 +205,7 @@ function renderHub(
         onPlayDailyChallenge={() => {}}
         playModes={{ ranked: true, daily: true, invite: true }}
         sets={[]}
-        setsLoading={false}
         onSelectSet={() => {}}
-        onRefreshSets={() => {}}
         history={HISTORY}
         historyLoading={false}
         historyError={null}

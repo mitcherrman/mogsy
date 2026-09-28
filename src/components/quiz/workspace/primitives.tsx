@@ -33,14 +33,16 @@ export function SectionHeading({
   icon: Icon,
   title,
   hint,
+  id,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   hint: string;
+  id?: string;
 }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-      <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#e2c877]/85">
+      <h2 id={id} className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#e2c877]/85">
         <Icon className="h-3 w-3 text-[#c9a84c]/70" aria-hidden="true" />
         {title}
       </h2>

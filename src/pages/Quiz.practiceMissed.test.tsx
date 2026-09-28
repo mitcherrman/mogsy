@@ -14,7 +14,7 @@
  * It must also not mutate ownership: OWNED is Ranked's
  * `ranked_question_discoveries` ledger and Practice has never written to it.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -94,7 +94,13 @@ vi.mock("@/lib/quiz/api", () => ({
     getProgress: async () => ({ rank_name: "Bronze", attempts: 2, accuracy: 50 }),
     getCategories: async () => ({ categories: [] }),
     getAchievements: async () => ({ achievements: [] }),
-    getHistory: async () => ({ ok: false }),
+    // An empty record, so History's one empty-state action is on the page:
+    // HUB7 took the Practice Packs off the hub, and that action is the
+    // lobby's remaining in-place door into a set-based Practice session.
+    getHistory: async () => ({
+      ok: true, is_pro: false, total_count: 0, limited: false, free_limit: 10,
+      upsell_message: null, results: [],
+    }),
     getMissedQuestions: () => missedQuestionsMock(),
     startSession: (payload: { mode?: string; category?: string }) => startSessionMock(payload),
     completeSession: async () => ({}),
@@ -108,6 +114,12 @@ vi.mock("@/lib/quiz/api", () => ({
 
 import QuizPage from "./Quiz";
 
+/** Start the catalog-wide set through History's empty-record action. */
+async function startSetPractice() {
+  const empty = await screen.findByTestId("study-history-empty");
+  fireEvent.click(within(empty).getByRole("button", { name: /Start practising/ }));
+}
+
 /** Start a pack, answer both questions, and land on the results screen. */
 async function playASessionWithOneMiss() {
   render(
@@ -117,7 +129,7 @@ async function playASessionWithOneMiss() {
   );
   await waitFor(() => expect(screen.getByTestId("leaguecraft-workspace")).toBeTruthy());
 
-  fireEvent.click(screen.getByTestId("practice-tile"));
+  await startSetPractice();
   await waitFor(() => expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy());
 
   fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
@@ -159,7 +171,7 @@ describe("Practice — remediating the run you just played", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByTestId("leaguecraft-workspace")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("practice-tile"));
+    await startSetPractice();
     await waitFor(() => expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy());
 
     fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));

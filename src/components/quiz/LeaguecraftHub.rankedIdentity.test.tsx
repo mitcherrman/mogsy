@@ -64,9 +64,7 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
         onPlayDailyChallenge={() => {}}
         playModes={{ ranked: true, daily: true, invite: true }}
         sets={[]}
-        setsLoading={false}
         onSelectSet={() => {}}
-        onRefreshSets={() => {}}
         history={null}
         historyLoading={false}
         historyError={null}

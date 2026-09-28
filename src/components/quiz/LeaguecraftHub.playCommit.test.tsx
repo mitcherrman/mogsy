@@ -91,9 +91,7 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
         playModes={{ ranked: true, daily: true, invite: true }}
         rankedRole="jungle"
         sets={[]}
-        setsLoading={false}
         onSelectSet={() => {}}
-        onRefreshSets={() => {}}
         history={null}
         historyLoading={false}
         historyError={null}

@@ -201,9 +201,7 @@ export default function LobbyPreviewPage() {
           dailyChallenge={PREVIEW_DAILY_DONE}
           playModes={{ ranked: true, daily: true, invite: true }}
           sets={[...PREVIEW_SETS]}
-          setsLoading={false}
           onSelectSet={noop}
-          onRefreshSets={noop}
           history={view.history}
           historyLoading={false}
           historyError={null}

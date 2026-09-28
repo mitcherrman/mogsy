@@ -90,3 +90,7 @@ Frontend: `git revert --no-edit 660dbfce; git revert --no-edit -m 1 2ce5fb43` on
 ## 13. Next workstream
 
 HUB6.5 as planned by the owner, after §7 is ticked.
+
+## 14. HUB7 (follow-up, 2026-09-28)
+
+Page composition corrected: the Ranked Hub's lower page is now **Quick Study** (the existing six-subject rail, renamed) followed directly by **History**. Practice Packs and the Practice Builder are removed from the hub; the Builder is kept unmounted and has no entry point. History internals are unchanged. See `HUB7_RANKED_HUB_LOWER_WORKSPACE_HANDOFF.md`.
