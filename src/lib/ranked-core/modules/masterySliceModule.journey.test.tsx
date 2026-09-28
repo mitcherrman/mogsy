@@ -147,13 +147,14 @@ describe("answer leaks — the reached prefix only", () => {
     expect(sheet.textContent).not.toMatch(/null|undefined|— ·/);
   });
 
-  it("a RECALLED armor names its teaching step on the board, the sheet and the premise — never the number", () => {
+  it("a RECALLED armor names its teaching step on the board and the sheet — never the number", () => {
     show(snap("zed.standard", "child2-open"));
     afterReveal();
     const chip = within(screen.getByTestId("journey-board")).getByTestId("journey-stat-opponent-armor");
     expect(chip).toHaveAttribute("data-face", "recalled");
     expect(chip).toHaveTextContent(/recall · step 1/i);
-    expect(screen.getByTestId("journey-combat-target_armor")).toHaveTextContent(/recall · revealed in step 1/i);
+    // JP2 — no premise panel restates the board beneath it.
+    expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
     fireEvent.click(screen.getByTestId("journey-open-state"));
     expect(screen.getByTestId("journey-sheet-stat-opponent-armor")).toHaveTextContent(/recall it — revealed in step 1/);
     expect(text()).not.toMatch(/27\.195|27\.2\b/);
@@ -230,69 +231,78 @@ describe("the server-timed transition beat", () => {
   });
 });
 
-describe("Matchup and Combat render the served per-side premises", () => {
-  it("Matchup: each side's own ability and rank, in the board's side order", () => {
+describe("JP2 — Matchup and Combat children on the Journey stage", () => {
+  const tablets = () => [...screen.getByTestId("journey-child").querySelectorAll("[data-quiz-choice]")]
+    .map((b) => b.querySelector("[data-choice-letter]")!.nextElementSibling!.textContent);
+
+  it("Matchup: asked in words on the stage; its tablets are the champions' NAMES, in the served order", () => {
     show(snap("olaf.standard", "child1-open"));
     afterReveal();
-    expect(screen.getByTestId("journey-matchup-side-a")).toHaveTextContent(/Olaf.*Reckless Swing \(E\).*rank 1/);
-    expect(screen.getByTestId("journey-matchup-side-b")).toHaveTextContent(/Sett.*Facebreaker \(E\).*rank 1/);
-    const strip = screen.getByTestId("journey-matchup-sides");
-    expect([...strip.querySelectorAll("[data-champion]")].map((e) => e.getAttribute("data-champion")))
-      .toEqual(["Olaf", "Sett"]);
+    const child = screen.getByTestId("journey-child");
+    expect(child).toHaveAttribute("data-render-path", "comparison");
+    expect(within(child).getByRole("heading")).toHaveTextContent(/Olaf|Sett/);
+    expect(tablets()).toEqual(["Olaf", "Sett", "Tie / Same"]);
+    // The board carries both sides' ranks; no separate side strip is drawn.
+    expect(screen.queryByTestId("journey-matchup-sides")).toBeNull();
+    expect(screen.getByTestId("journey-ability-subject-E")).toHaveAttribute("data-rank", "1");
+    expect(screen.getByTestId("journey-ability-opponent-E")).toHaveAttribute("data-rank", "1");
   });
 
-  it("Matchup: the backend's A/B order is re-read into the BOARD's order (opponent first on the wire)", () => {
-    show(snap("pantheon.standard", "child3-open"));
+  it("Matchup: a tap submits the SERVED option value (a champion id), not the drawn name", () => {
+    const submitChallenge = vi.fn(() => Promise.resolve(true));
+    const s = snap("pantheon.standard", "child3-open");
+    vi.setSystemTime(Date.parse(s.at));
+    const round = readPublicRound(s.envelope);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Viewport publicRound={round} segmentState={round.segmentState} selection={null}
+          permissions={NO_INTERACTIONS} onSelect={() => {}}
+          actions={{ submitChallenge, busy: false, error: null }} skewMs={0} />
+      </QueryClientProvider>,
+    );
     afterReveal();
-    // The wire's A side is Leona (the opponent); the Journey player (Pantheon) is drawn left.
-    const strip = screen.getByTestId("journey-matchup-sides");
-    expect([...strip.querySelectorAll("[data-champion]")].map((e) => e.getAttribute("data-champion")))
-      .toEqual(["Pantheon", "Leona"]);
-    expect(screen.getByTestId("journey-matchup-side-a")).toHaveAttribute("data-rank", "1");
-    expect(screen.getByTestId("journey-matchup-side-b")).toHaveAttribute("data-rank", "1");
+    const served = round.segmentState!.block!.contract === "mastery_slice"
+      ? round.segmentState!.block!.challenges[3].answerOptions : [];
+    fireEvent.click(screen.getByTestId("journey-child").querySelector("[data-quiz-choice='0']")!);
+    expect(submitChallenge).toHaveBeenCalledWith(3, { selected: served[0] });
+    expect(served[0]).not.toBe(tablets()[0]);
   });
 
   it("the Matchup reveal states BOTH exact values, verbatim", () => {
     show(snap("olaf.standard", "child1-reveal"));
-    expect(screen.getByTestId("mastery-reveal-explanation"))
+    expect(screen.getByTestId("journey-reveal-explanation"))
       .toHaveTextContent("Olaf E (Reckless Swing) at rank 1: 11 seconds. Sett E (Facebreaker) at rank 1: 16 seconds.");
   });
 
-  it("Combat, stated: attacker, rank, stats and the served formula — no arithmetic", () => {
+  it("Combat, stated: the served formula is stated WITH the question; the stats are the board's", () => {
     show(snap("voli.standard", "child2-open"));
     afterReveal();
-    const p = screen.getByTestId("journey-combat-premise");
-    expect(within(p).getByTestId("journey-combat-ability")).toHaveTextContent("Thundering Smash · rank 1");
-    expect(within(p).getByTestId("journey-combat-attack_damage")).toHaveTextContent("70.1625");
-    // The board states the SAME served number — every digit, never rounded
-    // (it once printed 70.162) — so from `lg` the premise does not repeat it.
+    expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
+    expect(screen.getByTestId("journey-child")).toHaveAttribute("data-render-path", "combat");
+    // Every digit of the served number, on the board — never rounded.
     expect(screen.getByTestId("journey-stat-subject-attack_damage")).toHaveTextContent("70.1625");
-    expect(within(p).getByTestId("journey-combat-attack_damage")).toHaveAttribute("data-on-board", "true");
-    // The recalled armor is NOT a board number: the premise keeps naming its source.
-    expect(within(p).getByTestId("journey-combat-target_armor")).not.toHaveAttribute("data-on-board");
-    expect(within(p).getByTestId("journey-combat-target_armor")).toHaveTextContent(/recall · revealed in step 1/);
-    const f = within(p).getByTestId("journey-combat-formula");
-    expect(f.querySelector("[data-formula='stated']")).not.toBeNull();
+    // The recalled armor is a board chip naming its source, never a number.
+    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveTextContent(/recall · step 1/);
+    const f = screen.getByTestId("journey-stated-formula");
     expect(f).toHaveTextContent("10 / 20 / 30 / 40 / 50");
-    expect(f).toHaveTextContent("+ 100% attack damage");
-    expect(f).toHaveTextContent("+ 160% bonus attack damage");
+    expect(f).toHaveTextContent("+ 100% total AD");
+    expect(f).toHaveTextContent("+ 160% bonus AD");
     expect(f.querySelector("[data-rank-value='1']")!.className).toContain("underline");
   });
 
   it("Combat, recalled formula AND recalled armor: neither number is restated; the teaching steps are named", () => {
     show(snap("voli.standard", "child4-open"));
     afterReveal();
-    const f = screen.getByTestId("journey-combat-formula");
-    expect(f.querySelector("[data-formula='recalled']")).not.toBeNull();
-    expect(f).toHaveTextContent("stated in step 3");
+    expect(screen.queryByTestId("journey-stated-formula")).toBeNull();
     expect(text()).not.toMatch(/10 \/ 20 \/ 30/);
-    expect(screen.getByTestId("journey-combat-bonus_attack_damage")).toHaveTextContent("20");
-    expect(screen.getByTestId("journey-reinforces")).toHaveTextContent("Builds on step 1 and 3");
+    expect(screen.getByTestId("journey-stat-subject-bonus_attack_damage")).toHaveTextContent("20");
+    // What steps 1 and 3 established is on the board; no helper line repeats it.
+    expect(text()).not.toMatch(/Builds on/i);
   });
 
   it("the Combat reveal is the backend's text, verbatim — no local derivation", () => {
     show(snap("zed.standard", "child2-reveal"));
-    expect(screen.getByTestId("mastery-reveal-explanation")).toHaveTextContent("55.034 damage, which rounds to 55");
+    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent("55.034 damage, which rounds to 55");
     // J3 serves no structured working (raw → effective armor → mitigation → final).
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
   });

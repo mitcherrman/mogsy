@@ -43,7 +43,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { journeyViewFor } from "@/lib/journey/adapter";
 import { journeyKnowledge } from "@/lib/journey/knowledge";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
-import { JourneyModuleStage } from "@/components/journey/JourneyModuleStage";
+import { JourneyModuleStage, JourneyStageLeadIn } from "@/components/journey/JourneyModuleStage";
 import {
   MasterySliceChallengeSurface,
   ProseChallenge,
@@ -248,22 +248,29 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   // but its reached prefix is empty, so there is no board yet (`journey` is
   // null) and no challenge. A Journey that has not reached a child cannot be
   // complete, whatever the counters say, so it reads as opening too.
+  //
+  // JP2 — the line fills the SAME question box a child fills
+  // (`journey-stage-status`), so the gap between two children moves nothing;
+  // before the first child there is no board yet, so the lead-in draws the
+  // stage's empty frame (`JourneyStageLeadIn`) for the first child to open into.
   const leadIn = !!state.journey && state.journey.children.length === 0 && !current;
   if (leadIn || (journey && !current && !state.ownFinished)) {
     const next = journey?.pendingChildIndex ?? serverIndex;
-    return inJourney(
+    const line = (
       <div data-testid="journey-next-pending" data-child-index={next}
-        className="flex min-h-[8rem] items-center justify-center text-sm text-muted-foreground" role="status">
+        className="journey-stage-status text-sm text-muted-foreground" role="status">
         {journey && journey.pendingChildIndex !== null
           ? `Step ${next + 1} of ${state.challengeCount} opens after the update…`
           : `Step ${next + 1} of ${state.challengeCount} is opening…`}
-      </div>,
+      </div>
     );
+    return journey ? inJourney(line) : <JourneyStageLeadIn>{line}</JourneyStageLeadIn>;
   }
 
   if ((state.ownFinished && !revealed) || !current) {
     return inJourney(
-      <div className="space-y-2" data-testid="mastery-slice-waiting">
+      // JP2 — in a Journey, the finished state fills the question box too.
+      <div className={journey ? "journey-stage-status flex-col gap-2" : "space-y-2"} data-testid="mastery-slice-waiting">
         <h4 className="font-semibold">Mastery Slice complete</h4>
         <p className="text-sm text-muted-foreground" role="status">
           {state.opponentFinished

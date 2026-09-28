@@ -154,7 +154,8 @@ function SidePanel({ state, side, marks, knowledge, gains }: {
                 unlocked={marks.unlocked.has(markKey(id, a.slot))}
                 focused={focus.abilities.has(a.slot)} />
               {known && (
-                <JourneyKnowledgeMark mark={known} name={`${side.championName} ${a.slot}`} placement="ability"
+                <JourneyKnowledgeMark mark={known} name={`${side.championName} ${a.slot}`} abilityName={a.name}
+                  placement="ability"
                   testId={`journey-know-${id}-${a.slot}`} />
               )}
             </span>

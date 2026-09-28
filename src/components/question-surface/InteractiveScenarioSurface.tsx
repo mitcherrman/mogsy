@@ -19,6 +19,7 @@
  * Variants change layout/density ONLY — there are no isTutorial/isRanked/isBot
  * branches. A mode passes `variant` and optional neutral `settings`.
  */
+import type { ReactNode } from "react";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import QuizAnswerFeedback, {
   type QuizFeedbackVerdict,
@@ -98,8 +99,8 @@ export interface InteractiveScenarioSurfaceProps {
    * only the mode has them — Ranked has no such state and passes nothing.
    */
   verdict?: QuizFeedbackVerdict | null;
-  /** Optional short context line under the prompt. */
-  context?: string | null;
+  /** Optional short context line under the prompt (text, or inline marked-up text). */
+  context?: ReactNode;
 }
 
 /**
@@ -304,7 +305,7 @@ export function InteractiveScenarioSurface({
           )
         )}
         <h2 className={`${promptSize} font-semibold leading-snug`}>{question.prompt}</h2>
-        {context && <p className="text-sm text-muted-foreground">{context}</p>}
+        {context && <p data-testid="scenario-context" className="text-sm text-muted-foreground">{context}</p>}
       </header>
 
       {/* Answer interaction is the shared, reveal-safe AnswerGrid (→ QuizAnswerOptions,

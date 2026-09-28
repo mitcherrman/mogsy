@@ -17,7 +17,7 @@ import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type { CaptureSnapshot } from "@/lib/journey/realFixtures";
 import { readJourneyJ3 } from "@/lib/journey/j3";
 import {
-  journeyKnowledge, knowledgeCard, stepMarker, type JourneyKnowledge,
+  journeyKnowledge, knowledgeCard, stepLabel, type JourneyKnowledge,
 } from "@/lib/journey/knowledge";
 import { masterySliceModule } from "./masterySliceModule";
 
@@ -184,10 +184,12 @@ describe("grouping, objects and sides", () => {
     const q = marksOf(s).get("player:volibear:Q")!;
     const card = knowledgeCard(q);
     expect(card.title).toBe("Q · R1");
-    expect(card.lines.map((l) => [l.icon, l.value, l.tail, stepMarker(l.step)])).toEqual([
-      ["cooldown", "12s", null, "①"],
-      ["haste", "11s", "10 AH", "③"],
+    expect(card.lines.map((l) => [l.icon, l.value, l.tail, stepLabel(l.step)])).toEqual([
+      ["cooldown", "12s", null, "Step 1"],
+      ["haste", "11s", "10 AH", "Step 3"],
     ]);
+    // JP2 — on the board the card is titled with the ability's own name.
+    expect(knowledgeCard(q, "Thundering Smash").title).toBe("Q · Thundering Smash · R1");
     show(s);
     expect(screen.getAllByTestId("journey-know-subject-Q")).toHaveLength(1);
     expect(screen.getByTestId("journey-know-subject-Q")).toHaveAttribute("data-facts", "2");
@@ -213,7 +215,7 @@ describe("grouping, objects and sides", () => {
     expect(screen.queryByTestId("journey-know-subject-champion")).toBeNull();
     const card = knowledgeCard(marksOf(s).get("opponent:leona")!);
     expect(card.title).toBe("Lv3");
-    expect(card.lines.map((l) => l.value)).toEqual(["Armor 50"]);
+    expect(card.lines.map((l) => [l.label, l.value, stepLabel(l.step)])).toEqual([["Armor", "50", "Step 1"]]);
   });
 
   it("a mark whose champion is not on that side draws nothing (keys are side + champion)", () => {
@@ -254,7 +256,7 @@ describe("the final child and reconnects", () => {
     ]);
     show(s);
     fireEvent.click(screen.getByTestId("journey-know-subject-R"));
-    expect(popText("journey-know-subject-R")).toMatch(/R · R1.*140s.*②.*127s.*10 AH.*③/);
+    expect(popText("journey-know-subject-R")).toMatch(/R · .*R1.*140s.*Step 2.*127s.*10 AH.*Step 3/);
   });
 
   it("a flat cooldown (rank null) titles the card by slot alone", () => {
@@ -322,7 +324,7 @@ describe("interaction", () => {
     expect(b).toHaveAccessibleName("Known facts: Volibear Q");
     pointer(b, "pointerover", "mouse");
     expect(open()).not.toBeNull();
-    expect(popText("journey-know-subject-Q")).toMatch(/Q · R1.*12s.*①.*11s.*10 AH.*③/);
+    expect(popText("journey-know-subject-Q")).toMatch(/Q · .*R1.*12s.*Step 1.*11s.*10 AH.*Step 3/);
     pointer(b, "pointerout", "mouse");
     expect(open()).toBeNull();
   });

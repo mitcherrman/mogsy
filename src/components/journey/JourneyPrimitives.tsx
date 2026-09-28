@@ -152,7 +152,12 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
   );
 }
 
-/** Six fixed slots. An empty slot is a dashed box of the same size. */
+/**
+ * Six fixed slots. An empty slot is a dashed box of the same size. JP2: a slot
+ * holding a STACK (identical stackable consumables, `lib/journey/inventory.ts`)
+ * wears the game's count in its bottom-right corner — absolutely positioned,
+ * so a stack changes nothing about the slot's box.
+ */
 export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: {
   side: JourneySide;
   items: JourneyItem[];
@@ -183,12 +188,14 @@ export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: 
         const it = items.find((x) => x.slot === slot) ?? null;
         const isNew = it !== null && newSlots.has(slot);
         const focused = it !== null && focusSlots.has(slot);
+        const qty = it?.quantity ?? 1;
         return (
           <span key={slot} role="listitem"
-            aria-label={it ? `${it.name}${isNew ? ", just bought" : ""}` : "Empty slot"}
-            title={it?.name ?? undefined}
+            aria-label={it ? `${it.name}${qty > 1 ? `, ${qty}` : ""}${isNew ? ", just bought" : ""}` : "Empty slot"}
+            title={it ? `${it.name}${qty > 1 ? ` ×${qty}` : ""}` : undefined}
             data-testid={`journey-item-${side.side}-${slot}`}
             data-item-id={it?.itemId}
+            data-quantity={qty > 1 ? qty : undefined}
             data-new={isNew ? "true" : undefined}
             data-focus={focused ? "true" : undefined}
             className={`relative flex items-center justify-center overflow-hidden rounded-[5px] border ${
@@ -196,6 +203,11 @@ export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: 
               isNew ? "ring-1 ring-[#8fd0a0]/80 journey-changed" : ""} ${focused ? "journey-focus" : ""}`}
             style={{ width: "var(--jb-slot)", height: "var(--jb-slot)" }}>
             {it && <Art url={resolveAssetUrl(it.icon) ?? assets.itemIconUrl(it.itemId)} alt="" mono={it.name} />}
+            {qty > 1 && (
+              <span aria-hidden data-testid={`journey-item-qty-${side.side}-${slot}`} className="journey-item-qty">
+                {qty}
+              </span>
+            )}
           </span>
         );
       })}

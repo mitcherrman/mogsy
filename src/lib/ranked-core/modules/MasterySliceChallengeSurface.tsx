@@ -28,7 +28,7 @@
 // it has no business having.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBand";
@@ -40,12 +40,7 @@ import type { MasteryPlayerQuestion } from "@/features/mastery/contracts/playerQ
 import { readComparisonSemantics } from "@/features/mastery/contracts/comparisonSemantics";
 import { PROMPT_TEMPLATES, readPromptSemantics } from "@/features/mastery/contracts/promptSemantics";
 import type { JourneyChildContext } from "@/lib/journey/adapter";
-import {
-  combatPremiseOf, combatQuestionSentence, JourneyCombatPremise,
-} from "@/components/journey/JourneyCombatQuestion";
-import { JourneyMatchupSides } from "@/components/journey/JourneyMatchupSides";
-import { JourneyCombatWorking } from "@/components/journey/JourneyCombatWorking";
-import { JourneyFocusMedia } from "@/components/journey/JourneyFocusMedia";
+import { JourneyStageQuestion } from "@/components/journey/JourneyStageQuestion";
 import type { CombatWorking } from "@/lib/journey/combatWorking";
 import { readNumericConstraints } from "@/features/mastery/contracts/playerQuestion";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
@@ -82,29 +77,6 @@ export function renderPathFor(
     return "atomic_recall";
   }
   return "prose";
-}
-
-/**
- * JOURNEY-UI2 — the dispatch for a JOURNEY child. The same rule as
- * `renderPathFor`, plus the two things a Journey needs and ordinary slices are
- * left without (deliberately — non-Journey modules are unchanged):
- *
- *   * a Combat child (`ability_damage_under_state`) renders its SERVED premise
- *     explicitly (`JourneyCombatPremise`) and answers through the prose
- *     surface — the atomic renderers have no Combat template;
- *   * a structural child whose template this build cannot phrase renders as
- *     prose instead of throwing mid-Journey.
- */
-export type JourneyRenderPath = MasterySliceRenderPath | "combat";
-
-export function journeyRenderPathFor(challenge: MasterySliceChallengeView): JourneyRenderPath {
-  if (combatPremiseOf(challenge)) return "combat";
-  const path = renderPathFor(challenge);
-  if (path === "atomic_recall") {
-    const template = (challenge.promptSemantics as { template?: unknown } | null)?.template;
-    if (!(PROMPT_TEMPLATES as readonly unknown[]).includes(template)) return "prose";
-  }
-  return path;
 }
 
 /**
@@ -224,23 +196,14 @@ export function questionViewForChallenge(
 }
 
 export function ProseChallenge({
-  challenge, submitting, onSubmit, reveal = null, showMedia = true, prompt = null, revealWorking = null,
+  challenge, submitting, onSubmit, reveal = null,
 }: {
   challenge: MasterySliceChallengeView;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
   reveal?: MasteryQuestionReveal | null;
-  /** JOURNEY-UI2 — false when a Journey board owns the media region. */
-  showMedia?: boolean;
-  /** JOURNEY-UI2 — a sentence built from the SERVED semantics, replacing a terse label. */
-  prompt?: string | null;
-  /** JOURNEY5 — the server's structured working, drawn as the primary reveal. */
-  revealWorking?: ReactNode;
 }) {
-  const question = useMemo(() => {
-    const q = questionViewForChallenge(challenge);
-    return prompt ? { ...q, prompt } : q;
-  }, [challenge, prompt]);
+  const question = useMemo(() => questionViewForChallenge(challenge), [challenge]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   // A new challenge clears the pending selection. Keyed on the authoritative
   // index, so a poll that re-renders the same challenge does not wipe a pick
@@ -276,7 +239,6 @@ export function ProseChallenge({
         }}
         onSelectOption={(option) => setSelectedOptionId(option.id)}
         variant="competitive"
-        settings={showMedia ? undefined : { mediaScale: "none" }}
         // No question-safe rich-visual source exists for a generated Mastery
         // question, so the surface renders its polished text treatment. It is
         // never fabricated here: inventing art would be inventing content.
@@ -290,7 +252,6 @@ export function ProseChallenge({
           correct={reveal.correct}
           answerLabel={reveal.answerLabel}
           explanation={reveal.explanation}
-          working={revealWorking}
         />
       ) : (
         <Button
@@ -330,7 +291,7 @@ export function MasterySliceChallengeSurface({
   /**
    * JOURNEY-UI2 — this child's Journey context. Present only inside a Journey
    * module, where the board owns the media region (no band is drawn here) and
-   * Combat/Matchup children render their served per-side premises.
+   * the child is drawn in the Journey stage's fixed grammar (JP2).
    */
   journey?: JourneyChildContext | null;
 }) {
@@ -347,14 +308,14 @@ export function MasterySliceChallengeSurface({
 }
 
 /**
- * JOURNEY-UI2 — one Journey child: no own media BAND (the board owns the media
- * region); Combat and Matchup made explicit.
+ * JOURNEY-UI2 — one Journey child: no own media band (the board owns the media
+ * region).
  *
- * JOURNEY-PRES-V1 — "no band" never meant "no presentation". The child's QF1
- * motif is drawn by its own renderer exactly as outside a Journey (it was only
- * hidden by a Journey CSS rule, now replaced by a clip — index.css), and the
- * child adds one focus object (`JourneyFocusMedia`). Its RQ1 role emblems ride
- * in the board's step header (`JourneyStateBoard` `questionRoles`).
+ * JP2 — ONE STAGE GRAMMAR. Every child answered by choosing is drawn by
+ * `JourneyStageQuestion` — the arena's own question surface in the Journey
+ * stage's reserved prompt / answer regions, answered by one tap, revealed in
+ * place. The kind of child changes only its words. A child answered by typing
+ * (a numeric free-entry recall) keeps its Mastery renderer, in the same frame.
  */
 function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, combatWorking }: {
   challenge: MasterySliceChallengeView;
@@ -365,57 +326,29 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   journey: JourneyChildContext;
   combatWorking: CombatWorking | null;
 }) {
-  const path = journeyRenderPathFor(challenge);
-  const meta = journey.reinforces.length > 0 ? (
-    <p data-testid="journey-reinforces" className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7a5a17]">
-      Builds on step {journey.reinforces.map((i) => i + 1).join(" and ")}
-    </p>
-  ) : null;
-  // JOURNEY-PRES-V1 — the question's focus object, last, in the leftover space.
-  const focus = <JourneyFocusMedia challenge={challenge} playerChampion={journey.playerChampion} />;
-  if (path === "combat") {
-    const premise = combatPremiseOf(challenge)!;
-    const precision = (challenge.inputConstraints as { precision_instruction?: unknown } | null)?.precision_instruction;
+  const path = renderPathFor(challenge);
+  // A structural renderer throws on a template it cannot phrase; such a child
+  // is asked in its served words on the stage instead (never a crash mid-Journey).
+  const template = (challenge.promptSemantics as { template?: unknown } | null)?.template;
+  const phraseable = path === "comparison" || (PROMPT_TEMPLATES as readonly unknown[]).includes(template);
+  if (challenge.answerType === "numeric" && path !== "prose" && phraseable) {
     return (
-      <div className="space-y-2" data-testid="journey-child" data-render-path="combat">
-        {meta}
-        <JourneyCombatPremise premise={premise} journey={journey}
-          precisionInstruction={typeof precision === "string" ? precision : null} />
-        <ProseChallenge challenge={challenge} submitting={submitting} onSubmit={onSubmit}
-          reveal={reveal} showMedia={false} prompt={combatQuestionSentence(premise)}
-          revealWorking={reveal && combatWorking ? <JourneyCombatWorking working={combatWorking} /> : null} />
-        {focus}
-      </div>
-    );
-  }
-  if (path === "prose") {
-    return (
-      <div className="space-y-3" data-testid="journey-child" data-render-path="prose">
-        {meta}
-        <ProseChallenge challenge={challenge} submitting={submitting} onSubmit={onSubmit}
-          reveal={reveal} showMedia={false} />
-        {focus}
-      </div>
+      <MasteryAssetsProvider>
+        <div data-testid="journey-child" data-render-path="numeric" className="journey-ask">
+          <MasteryQuestionDispatch
+            question={toPlayerQuestion(challenge, total, path)}
+            total={total}
+            submitting={submitting}
+            onSubmit={onSubmit}
+            reveal={reveal}
+          />
+        </div>
+      </MasteryAssetsProvider>
     );
   }
   return (
-    <MasteryAssetsProvider>
-      <div className="space-y-3" data-testid="journey-child" data-render-path={path}>
-        {meta}
-        {path === "comparison" && (
-          <JourneyMatchupSides comparisonSemantics={challenge.comparisonSemantics}
-            playerChampion={journey.playerChampion} />
-        )}
-        <MasteryQuestionDispatch
-          question={toPlayerQuestion(challenge, total, path)}
-          total={total}
-          submitting={submitting}
-          onSubmit={onSubmit}
-          reveal={reveal}
-        />
-        {focus}
-      </div>
-    </MasteryAssetsProvider>
+    <JourneyStageQuestion challenge={challenge} journey={journey} submitting={submitting}
+      onSubmit={onSubmit} reveal={reveal} combatWorking={combatWorking} />
   );
 }
 

@@ -24,19 +24,40 @@
  *
  * V1 KINDS. Only facts that sit on a visible object as a compact number:
  * `ability_cooldown`, `ability_cooldown_under_haste`, `champion_stat_at_level`.
- * Deferred: the stated `ability_damage_formula` (a formula does not fit a
- * two-line popover), and every `object: null` fact (Combat damage, cooldown
- * compare). No item fact kind exists, so no item is ever marked.
+ *
+ * JP2 — THE BOARD IS THE MEMORY SURFACE. Two more kinds, so a chain that
+ * teaches a formula and then applies it reads off the board instead of off a
+ * dependency panel:
+ *
+ *   `ability_damage_formula` — REVEALED only (a formula the learner was taught
+ *     by a reveal, e.g. a recognition question). Its K1 object is the ability.
+ *     The line wraps; the text is the reveal's, in the Journey's AD wording.
+ *     A formula merely STATED as a premise is still not marked: it is on the
+ *     question that states it.
+ *   `ability_raw_damage` — JREF1's raw result. K1 publishes it with
+ *     `object: null`, so it is ANCHORED instead by the establishing child's
+ *     own asked field (`state.withheld`: `abilities.<slot>.raw_damage`,
+ *     reason `asked`) — the backend's value-free statement of exactly which
+ *     board object the answer belongs to. Only that one field name anchors:
+ *     a matchup's `cooldown` is asked of BOTH sides (its answer is a champion,
+ *     not a number), and Combat damage after armor relates two objects (K1's
+ *     reason for `object: null`), so neither is ever marked this way.
+ *
+ * Still deferred: Combat damage after armor, cooldown compare, stated facts.
+ * No item fact kind exists, so no item is ever marked.
  */
 import type { JourneyJ3, J3AsksFact, J3FactContext, J3KnowledgeObject } from "./j3";
 import { JOURNEY_KNOWLEDGE_OBJECT_CONTRACT } from "./j3";
 import type { AbilitySlot, JourneySide } from "./contract";
 import { isJourneyStatKey, JOURNEY_STAT_META } from "./stats";
+import { explicitAdText } from "./statWording";
 
 export const KNOWLEDGE_MARK_KINDS = [
   "ability_cooldown",
   "ability_cooldown_under_haste",
   "champion_stat_at_level",
+  "ability_damage_formula",
+  "ability_raw_damage",
 ] as const;
 export type KnowledgeMarkKind = (typeof KNOWLEDGE_MARK_KINDS)[number];
 const isMarkKind = (k: string): k is KnowledgeMarkKind => (KNOWLEDGE_MARK_KINDS as readonly string[]).includes(k);
@@ -88,24 +109,40 @@ export function journeyKnowledge(
     return r.correctAnswerDisplay ?? r.correctAnswer ?? null;
   };
   const facts = new Map<string, KnowledgeFact & { object: J3KnowledgeObject }>();
+  // One fact per (kind, establishing child, object), whichever channel names
+  // it first — an anchored raw result and its later ledger entry are one fact.
+  const seen = new Set<string>();
   let openFact: string | null = null;
+  const anchors = anchoredObjects(journey);
   const add = (f: { fact: string; kind: string; object: J3KnowledgeObject | null; context: J3FactContext; unit: "seconds" | null },
     child: number) => {
-    if (!f.object || !isMarkKind(f.kind) || facts.has(f.fact)) return;
+    const anchor = !f.object && f.kind === RAW_DAMAGE_KIND ? anchors.get(child) ?? null : null;
+    const object = f.object ?? anchor?.object ?? null;
+    if (!object || !isMarkKind(f.kind) || facts.has(f.fact)) return;
+    const identity = `${f.kind}@${child}@${object.key}`;
+    if (seen.has(identity)) return;
     const shown = display(child);
     if (shown === null || shown === "") return;
-    facts.set(f.fact, { fact: f.fact, kind: f.kind, child, display: shown, unit: f.unit, context: f.context, object: f.object });
+    seen.add(identity);
+    const context = anchor && f.context.rank === undefined ? { ...f.context, rank: anchor.rank } : f.context;
+    facts.set(f.fact, { fact: f.fact, kind: f.kind, child, display: shown, unit: f.unit, context, object });
   };
   for (const c of journey.children) {
     const asks: J3AsksFact | null = c.learner.asksFact;
     if (openIndex !== null && c.index === openIndex && asks) openFact = asks.fact;
-    // Stated facts of a v1 kind carry their value on the card, not in a
-    // reveal; the only one K1 produces is the formula (deferred), so a stated
-    // fact is never marked in V1.
+    // Stated facts carry their value on the card that states them, not in a
+    // reveal, so a stated fact is never marked.
     for (const e of c.learner.established) {
-      if (e.source === "revealed" && e.knowledge) add({ fact: e.fact, kind: e.kind, ...e.knowledge }, e.child);
+      if (e.source === "revealed") add({ fact: e.fact, kind: e.kind, object: null, context: {}, unit: null, ...e.knowledge }, e.child);
     }
     if (asks && byChild.has(asks.child)) add(asks, asks.child);
+    // JP2 — a revealed child whose asked value has no K1 object but whose
+    // asked FIELD names one (the raw result): marked from its own reveal, so
+    // the fact is on the board from the reveal on, not only once a later
+    // child's ledger lists it.
+    if (!asks && anchors.has(c.index) && byChild.has(c.index) && c.index !== openIndex) {
+      add({ fact: `asked:${c.index}:${anchors.get(c.index)!.field}`, kind: RAW_DAMAGE_KIND, object: null, context: {}, unit: null }, c.index);
+    }
   }
   if (openFact !== null) facts.delete(openFact);
   const out = new Map<string, KnowledgeObjectMark>();
@@ -118,6 +155,36 @@ export function journeyKnowledge(
   return out;
 }
 
+const RAW_DAMAGE_KIND = "ability_raw_damage";
+/** The one asked-field shape that anchors an object-less fact (see the header). */
+const RAW_DAMAGE_FIELD = /^abilities\.([QWER])\.raw_damage$/;
+
+/**
+ * Each reached child whose OWN asked field is an ability's raw damage → that
+ * ability as a knowledge object, read from the child's own public state (its
+ * side's champion id and the ability's rank there). Value-free: a field name
+ * and the state's identity, nothing else.
+ */
+function anchoredObjects(journey: JourneyJ3): Map<number, { object: J3KnowledgeObject; rank: number; field: string }> {
+  const out = new Map<number, { object: J3KnowledgeObject; rank: number; field: string }>();
+  for (const c of journey.children) {
+    const asked = c.state.withheld.filter((w) => w.reason === "asked");
+    if (asked.length !== 1) continue;
+    const m = RAW_DAMAGE_FIELD.exec(asked[0].field);
+    if (!m) continue;
+    const side = c.state.sides[asked[0].side];
+    const slot = m[1] as AbilitySlot;
+    const ability = side.abilities.find((a) => a.slot === slot);
+    if (!ability) continue;
+    out.set(c.index, {
+      object: { type: "ability", key: `${asked[0].side}:${side.championId}:${slot}`, side: asked[0].side, championId: side.championId, slot },
+      rank: ability.rank,
+      field: asked[0].field,
+    });
+  }
+  return out;
+}
+
 /** The K1 key of a board object (`subject` is K1's `player`). */
 export function knowledgeKeyFor(side: Pick<JourneySide, "side" | "championId">, slot: AbilitySlot | null = null): string {
   const k1 = side.side === "subject" ? "player" : "opponent";
@@ -126,32 +193,34 @@ export function knowledgeKeyFor(side: Pick<JourneySide, "side" | "championId">, 
 
 // ── the popover's lines (pure: formatting only, no arithmetic) ─────────────
 
-export type KnowledgeIcon = "cooldown" | "haste" | "stat";
+export type KnowledgeIcon = "cooldown" | "haste" | "stat" | "formula" | "damage";
 
 export interface KnowledgeLine {
   icon: KnowledgeIcon;
+  /** What the value is, when the icon alone does not say ("Armor", "Raw damage"). */
+  label: string | null;
   /** Leading context the header could not factor out (e.g. "R2", "Lv5"). */
   lead: string | null;
-  /** The value, with its unit: "5s", "50". */
+  /** The value, with its unit: "5s", "50", a formula. */
   value: string;
   /** Trailing context: "10 AH". */
   tail: string | null;
-  /** 1-based step. */
+  /** 1-based step that established it. */
   step: number;
+  /** A long value (a formula) wraps instead of widening the popover. */
+  wrap: boolean;
   /** Screen-reader sentence. */
   spoken: string;
 }
 
 export interface KnowledgeCard {
-  /** "E · R1", "R", "Lv3". */
+  /** "E · Shadow Slash · R1", "R", "Lv3". */
   title: string;
   lines: KnowledgeLine[];
 }
 
-/** ① … ⑳, then (21). The step marker is the fact's whole provenance. */
-export function stepMarker(step: number): string {
-  return step >= 1 && step <= 20 ? String.fromCodePoint(0x2460 + step - 1) : `(${step})`;
-}
+/** JP2 — a fact's provenance, as the Journey says it: "Step 2". */
+export const stepLabel = (step: number) => `Step ${step}`;
 
 const withUnit = (v: string, unit: "seconds" | null) => (unit === "seconds" ? `${v}s` : v);
 const statLabel = (stat: string | undefined) =>
@@ -165,22 +234,39 @@ function common<T>(xs: T[]): T | undefined {
   return xs.length > 0 && xs.every((x) => x === xs[0]) ? xs[0] : undefined;
 }
 
-export function knowledgeCard(mark: KnowledgeObjectMark): KnowledgeCard {
+/**
+ * One object's facts as a popover card. `abilityName` (the board's own label
+ * for the ability) only titles the card; nothing is read from it.
+ */
+export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | null = null): KnowledgeCard {
   const { object, facts } = mark;
   if (object.type === "ability") {
-    const rank = common(facts.map((f) => f.context.rank ?? null));
-    const title = rank ? `${object.slot} · R${rank}` : object.slot;
+    // A formula holds at every rank, so it never splits the header's rank.
+    const ranked = facts.filter((f) => f.kind !== "ability_damage_formula");
+    const rank = common(ranked.map((f) => f.context.rank ?? null));
+    const title = [object.slot, abilityName, rank ? `R${rank}` : null].filter(Boolean).join(" · ");
+    const name = abilityName ?? object.slot;
     return {
       title,
       lines: facts.map((f) => {
-        const lead = rank === undefined && f.context.rank ? `R${f.context.rank}` : null;
+        const step = f.child + 1;
+        const rankWords = f.context.rank ? ` at rank ${f.context.rank}` : "";
+        const lead = f.kind !== "ability_damage_formula" && rank === undefined && f.context.rank ? `R${f.context.rank}` : null;
+        if (f.kind === "ability_damage_formula") {
+          const value = explicitAdText(f.display);
+          return { icon: "formula", label: "Formula", lead: null, value, tail: null, step, wrap: true,
+            spoken: `${name} damage formula: ${value}, ${stepLabel(step)}` };
+        }
+        if (f.kind === "ability_raw_damage") {
+          return { icon: "damage", label: "Raw damage", lead, value: f.display, tail: null, step, wrap: false,
+            spoken: `${name} raw damage before armor${rankWords}: ${f.display}, ${stepLabel(step)}` };
+        }
         const value = withUnit(f.display, f.unit);
         const ah = f.kind === "ability_cooldown_under_haste" && f.context.abilityHaste !== undefined
           ? `${plain(f.context.abilityHaste)} AH` : null;
-        const rankWords = f.context.rank ? ` at rank ${f.context.rank}` : "";
         return {
-          icon: ah ? "haste" : "cooldown", lead, value, tail: ah, step: f.child + 1,
-          spoken: `${object.slot} cooldown${rankWords}${ah ? ` with ${ah.replace("AH", "ability haste")}` : ""}: ${value}, step ${f.child + 1}`,
+          icon: ah ? "haste" : "cooldown", label: null, lead, value, tail: ah, step, wrap: false,
+          spoken: `${object.slot} cooldown${rankWords}${ah ? ` with ${ah.replace("AH", "ability haste")}` : ""}: ${value}, ${stepLabel(step)}`,
         };
       }),
     };
@@ -190,11 +276,13 @@ export function knowledgeCard(mark: KnowledgeObjectMark): KnowledgeCard {
     title: level !== undefined ? `Lv${level}` : "",
     lines: facts.map((f) => ({
       icon: "stat",
+      label: statLabel(f.context.stat),
       lead: level === undefined && f.context.level !== undefined ? `Lv${f.context.level}` : null,
-      value: `${statLabel(f.context.stat)} ${withUnit(f.display, f.unit)}`,
+      value: withUnit(f.display, f.unit),
       tail: null,
       step: f.child + 1,
-      spoken: `${statLong(f.context.stat)}${f.context.level !== undefined ? ` at level ${f.context.level}` : ""}: ${withUnit(f.display, f.unit)}, step ${f.child + 1}`,
+      wrap: false,
+      spoken: `${statLong(f.context.stat)}${f.context.level !== undefined ? ` at level ${f.context.level}` : ""}: ${withUnit(f.display, f.unit)}, ${stepLabel(f.child + 1)}`,
     })),
   };
 }

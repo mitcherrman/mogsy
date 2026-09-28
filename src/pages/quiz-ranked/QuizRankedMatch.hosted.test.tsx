@@ -686,8 +686,8 @@ describe("JOURNEY5 — a hosted Journey's final child", () => {
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
     await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
     await waitFor(() => expect(shownPhase()).toHaveAttribute("data-revealing", "true"), { timeout: 4000 });
-    expect(screen.getByTestId("mastery-reveal-answer")).toHaveTextContent("90");
-    expect(screen.getByTestId("mastery-inline-reveal")).toHaveAttribute("data-correct", "false");
+    expect(screen.getByTestId("journey-reveal-answer")).toHaveTextContent("90");
+    expect(screen.getByTestId("journey-reveal-verdict")).toHaveAttribute("data-correct", "false");
   }, 25000);
 
   it("a reconnect after the window (match already complete) is handed back with no reveal replayed", async () => {
@@ -698,7 +698,7 @@ describe("JOURNEY5 — a hosted Journey's final child", () => {
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={host} />);
     await waitFor(() => expect(host.settled).toHaveLength(1), { timeout: 8000 });
     expect(shownPhase()).toBeNull();
-    expect(screen.queryByTestId("mastery-inline-reveal")).toBeNull();
+    expect(screen.queryByTestId("journey-reveal")).toBeNull();
   }, 25000);
 
   it("Survival: the last child reveals in its window; gameplay stays, no player finish, no round clock", async () => {
@@ -840,15 +840,16 @@ describe("JOURNEY5-LIVE — no answer is sent before the server opens it; a refu
       code: "RANKED_CARD_NOT_OPEN", message: "challenge 0 opens at the round's start" } } }];
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
     await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
+    // JP2 — a Journey child is answered by one tap on its tablet.
+    const tablet = () => screen.getByTestId("journey-child").querySelector<HTMLButtonElement>("[data-quiz-choice='1']")!;
     const answer = async () => {
-      (screen.getAllByRole("radio")[1] as HTMLElement).click();
-      await waitFor(() => expect(screen.getByTestId("mastery-submit-button")).not.toBeDisabled());
-      (screen.getByTestId("mastery-submit-button") as HTMLButtonElement).click();
+      await waitFor(() => expect(tablet()).not.toBeDisabled());
+      tablet().click();
     };
     await waitFor(() => expect(screen.getByTestId("mastery-slice-challenge-phase")).not.toHaveAttribute("data-not-open"));
     await answer();
     await waitFor(() => expect(posts).toHaveLength(1));
-    await waitFor(() => expect(screen.getByTestId("mastery-submit-button")).not.toBeDisabled());
+    await waitFor(() => expect(tablet()).not.toBeDisabled());
     expect(screen.queryByTestId("mastery-slice-error")).toBeNull();
     expect(document.body.textContent).not.toMatch(/could not reach the ranked service/);
     await answer();

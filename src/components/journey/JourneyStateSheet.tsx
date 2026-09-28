@@ -55,7 +55,7 @@ function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneyS
           <ul className="text-xs text-white/85">
             {side.items.map((it) => (
               <li key={it.slot}>
-                {it.name}{marks.newItems.has(markKey(id, it.slot)) ? " · new" : ""}
+                {it.name}{it.quantity && it.quantity > 1 ? ` ×${it.quantity}` : ""}{marks.newItems.has(markKey(id, it.slot)) ? " · new" : ""}
               </li>
             ))}
           </ul>

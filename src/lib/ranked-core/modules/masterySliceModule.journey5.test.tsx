@@ -69,9 +69,8 @@ describe("JOURNEY5 — the final child's reveal (own_finished + own_revealing_ca
     expect(phase()).toHaveAttribute("data-challenge-index", "4");
     expect(phase()).toHaveAttribute("data-revealing", "true");
     expect(screen.queryByTestId("mastery-slice-waiting")).toBeNull();
-    const reveal = screen.getByTestId("mastery-inline-reveal");
-    expect(reveal).toHaveAttribute("data-correct", "true");
-    expect(within(reveal).getByTestId("mastery-reveal-answer")).toHaveTextContent("90");
+    expect(screen.getByTestId("journey-reveal-verdict")).toHaveAttribute("data-correct", "true");
+    expect(screen.getByTestId("journey-reveal-answer")).toHaveTextContent("90");
     // Visible through (almost) the whole frozen window.
     act(() => { vi.advanceTimersByTime(1_700); });
     expect(phase()).toHaveAttribute("data-revealing", "true");
@@ -87,9 +86,9 @@ describe("JOURNEY5 — the final child's reveal (own_finished + own_revealing_ca
   it("child 5 INCORRECT: the reveal is visible, with the player's own pick and the served answer", () => {
     playIntoFinalWindow(pantheonStandardFinalWindow("incorrect"));
     expect(phase()).toHaveAttribute("data-revealing", "true");
-    const reveal = screen.getByTestId("mastery-inline-reveal");
-    expect(reveal).toHaveAttribute("data-correct", "false");
-    expect(within(reveal).getByTestId("mastery-reveal-answer")).toHaveTextContent("90");
+    expect(screen.getByTestId("journey-reveal-verdict")).toHaveAttribute("data-correct", "false");
+    expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent(/^Not quite/);
+    expect(screen.getByTestId("journey-reveal-answer")).toHaveTextContent("90");
   });
 
   it("child 5 TIMED OUT: the reveal is still shown (player_answer null), with the correct answer", () => {
@@ -97,9 +96,9 @@ describe("JOURNEY5 — the final child's reveal (own_finished + own_revealing_ca
     playIntoFinalWindow(final);
     expect(phase()).toHaveAttribute("data-challenge-index", "4");
     expect(phase()).toHaveAttribute("data-revealing", "true");
-    const reveal = screen.getByTestId("mastery-inline-reveal");
-    expect(reveal).toHaveAttribute("data-correct", "false");
-    expect(within(reveal).getByTestId("mastery-reveal-answer")).toHaveTextContent("90");
+    expect(screen.getByTestId("journey-reveal-verdict")).toHaveAttribute("data-correct", "false");
+    expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent(/^Time's up/);
+    expect(screen.getByTestId("journey-reveal-answer")).toHaveTextContent("90");
     expect(screen.queryByTestId("mastery-slice-submit")).toBeNull();
   });
 
@@ -112,7 +111,7 @@ describe("JOURNEY5 — the final child's reveal (own_finished + own_revealing_ca
   it("a fresh mount AFTER own_reveal_until does not replay it (B10)", () => {
     show(pantheonStandardFinalWindowStale());
     expect(screen.queryByTestId("mastery-slice-challenge-phase")).toBeNull();
-    expect(screen.queryByTestId("mastery-inline-reveal")).toBeNull();
+    expect(screen.queryByTestId("journey-reveal")).toBeNull();
     expect(screen.getByTestId("mastery-slice-waiting")).toBeInTheDocument();
   });
 
@@ -120,22 +119,21 @@ describe("JOURNEY5 — the final child's reveal (own_finished + own_revealing_ca
     show(pantheonSurvivalFinalChild());
     expect(phase()).toHaveAttribute("data-challenge-index", "2");
     expect(phase()).toHaveAttribute("data-revealing", "true");
-    expect(within(screen.getByTestId("mastery-inline-reveal")).getByTestId("mastery-reveal-answer"))
-      .toHaveTextContent("75");
+    expect(screen.getByTestId("journey-reveal-answer")).toHaveTextContent("75");
   });
 
   it("Survival strike 3 on the final child: no final hold is entered (the server names none)", () => {
     show(pantheonSurvivalFinalChild({ strikeOut: true }));
-    expect(screen.queryByTestId("mastery-inline-reveal")).toBeNull();
+    expect(screen.queryByTestId("journey-reveal")).toBeNull();
   });
 });
 
 describe("JOURNEY5 — structured Combat working on the reveal", () => {
-  it("the final child's reveal draws the server's working as the primary reveal; the prose stays secondary", () => {
+  it("the final child's reveal draws the server's working as THE reveal line; the serialized prose is not repeated", () => {
     playIntoFinalWindow(pantheonStandardFinalWindow("correct"));
     const w = screen.getByTestId("journey-combat-working");
     expect(w).toHaveTextContent(
-      "Formula (E rank 1): 55 + 100% attack damage (81.4745) + 150% bonus attack damage (10)");
+      "Formula (E rank 1): 55 + 100% total AD (81.4745) + 150% bonus AD (10)");
     expect(within(w).getByTestId("journey-combat-working-raw")).toHaveTextContent("151.4745");
     expect(within(w).getByTestId("journey-combat-working-armor")).toHaveTextContent("68.872");
     expect(w.querySelector("[data-step='penetration']")).toHaveTextContent("No penetration");
@@ -145,9 +143,10 @@ describe("JOURNEY5 — structured Combat working on the reveal", () => {
     expect(within(w).getByTestId("journey-combat-working-answer")).toHaveTextContent("90");
     // Stated armor: no recall note.
     expect(within(w).queryByTestId("journey-combat-working-armor-source")).toBeNull();
-    // The served prose is still there, as secondary text.
-    expect(screen.getByTestId("mastery-reveal-explanation-secondary")).toBeInTheDocument();
-    expect(screen.getByTestId("mastery-reveal-explanation")).toHaveTextContent("89.698 damage, which rounds to 90");
+    // JP2 — the working says it all, in the prompt's own box: the backend's
+    // serialized explanation is not appended under it.
+    expect(screen.queryByTestId("journey-reveal-explanation")).toBeNull();
+    expect(screen.getByTestId("journey-reveal")).toContainElement(w);
   });
 
   it("a RECALLED armor: the working shows the value actually used and the step that taught it", () => {
@@ -164,8 +163,7 @@ describe("JOURNEY5 — structured Combat working on the reveal", () => {
     show(realSnap("pantheon.standard", "child2-reveal"));
     expect(phase()).toHaveAttribute("data-revealing", "true");
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
-    expect(screen.queryByTestId("mastery-reveal-explanation-secondary")).toBeNull();
-    expect(screen.getByTestId("mastery-reveal-explanation")).toHaveTextContent("82.534 damage, which rounds to 83");
+    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent("82.534 damage, which rounds to 83");
   });
 
   it("a MALFORMED combat_working drops only the working: the match keeps rendering the prose reveal", () => {
@@ -175,23 +173,25 @@ describe("JOURNEY5 — structured Combat working on the reveal", () => {
     show(s);
     expect(phase()).toHaveAttribute("data-revealing", "true");
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
-    expect(screen.getByTestId("mastery-reveal-explanation")).toHaveTextContent("82.534 damage, which rounds to 83");
+    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent("82.534 damage, which rounds to 83");
   });
 
   it("a live (unrevealed) Combat child never draws a working", () => {
     show(realSnap("pantheon.standard", "child4-live"));
     expect(phase()).not.toHaveAttribute("data-revealing");
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
-    expect(screen.getByTestId("mastery-slice-submit")).toBeInTheDocument();
+    // JP2 — answered by one tap: no lock-in button, the tablets are live.
+    expect(screen.queryByTestId("mastery-slice-submit")).toBeNull();
+    expect(screen.getByTestId("journey-child").querySelector("[data-quiz-choice='0']")).not.toBeDisabled();
   });
 });
 
 describe("JOURNEY5 — the Combat premise's ability_component", () => {
-  it("is stated, verbatim, in the question sentence beside the slot and rank — not as a target chip", () => {
+  it("is stated, verbatim, in the question sentence — never as a chip", () => {
     show(pantheonStandardChild3RevealWithWorking());
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
-      `How much physical damage, after armor, does Pantheon's Aegis Assault (E, rank 1, ${PANTHEON_COMPONENT}) deal to Leona?`);
-    expect(within(screen.getByTestId("journey-combat-target")).queryByText(PANTHEON_COMPONENT)).toBeNull();
+      `How much physical damage does Pantheon's Rank 1 Aegis Assault deal to Leona, ${PANTHEON_COMPONENT}?`);
+    expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
     expect(screen.queryByTestId("journey-combat-ability_component")).toBeNull();
   });
 });
@@ -233,8 +233,9 @@ describe("JOURNEY5-LIVE — Daily Review's block-clocked re-ask is not answerabl
     const r = render(ui());
     return { rerender: () => r.rerender(ui()), round };
   }
-  const pick = () => act(() => { screen.getAllByRole("radio")[1].click(); });
-  const submit = () => act(() => { screen.getByTestId("mastery-submit-button").click(); });
+  const tablet = () => screen.getByTestId("journey-child").querySelector<HTMLButtonElement>("[data-quiz-choice='1']")!;
+  // JP2 — direct answer: tapping a tablet IS the submission.
+  const answer = () => act(() => { tablet().click(); });
 
   it("rendered during the lead-in: the child is shown but inert, and no submission is sent until it opens", async () => {
     const s = reask();
@@ -246,15 +247,13 @@ describe("JOURNEY5-LIVE — Daily Review's block-clocked re-ask is not answerabl
     expect(phase).toHaveAttribute("data-not-open", "true");
     expect(phase).toHaveAttribute("inert");
     expect(screen.getByTestId("journey-board")).toBeInTheDocument();
-    pick();
-    submit();
+    answer();
     expect(sent).toEqual([]);
     // The server's started_at arrives: one wake, input opens, the answer goes.
     await act(async () => { vi.advanceTimersByTime(2100); });
     expect(screen.getByTestId("mastery-slice-challenge-phase")).not.toHaveAttribute("data-not-open");
     expect(screen.getByTestId("mastery-slice-challenge-phase")).not.toHaveAttribute("inert");
-    pick();
-    submit();
+    answer();
     expect(sent).toHaveLength(1);
   });
 
@@ -263,16 +262,14 @@ describe("JOURNEY5-LIVE — Daily Review's block-clocked re-ask is not answerabl
     const results = [false, true];
     const sent: unknown[] = [];
     mountWith(s, Date.parse(s.at), (i, c) => { sent.push([i, c]); return Promise.resolve(results.shift()!); });
-    pick();
-    submit();
+    answer();
     expect(sent).toHaveLength(1);
     await act(async () => { await Promise.resolve(); });
-    // Not stuck on "Submitting…": the button is live again.
-    expect(screen.getByTestId("mastery-submit-button")).not.toBeDisabled();
-    pick();
-    submit();
+    // Not stuck: the refused answer released the tablets.
+    expect(tablet()).not.toBeDisabled();
+    answer();
     expect(sent).toHaveLength(2);
     await act(async () => { await Promise.resolve(); });
-    expect(screen.getByTestId("mastery-submit-button")).toBeDisabled();
+    expect(tablet()).toBeDisabled();
   });
 });

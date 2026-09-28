@@ -16262,36 +16262,237 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
 }
 .journey-know-pop__lines { display: flex; flex-direction: column; }
 .journey-know-pop__line { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* JP2 — a formula line wraps inside the popover instead of widening it. */
+.journey-know-pop__line--wrap { align-items: flex-start; white-space: normal; }
+.journey-know-pop__line--wrap .journey-know-pop__icon { margin-top: 0.15rem; }
+.journey-know-pop__fact { min-width: 0; flex: 1 1 auto; }
+.journey-know-pop__step { margin-left: auto; padding-left: 6px; white-space: nowrap; font-size: 0.625rem; letter-spacing: 0.04em; }
 .journey-know-pop__icon { width: 0.7rem; height: 0.7rem; color: #e8c97a; flex-shrink: 0; }
 .journey-know-pop__step { color: #e8c97a; opacity: 0.85; }
 /* JOURNEY-UI2 — a rank printed on the ability tile (a contract without max rank). */
 .journey-rank-digit { font-size: 0.5625rem; }
-/* JOURNEY-UI2 — the Journey question inside the Ranked stage.
-   The stage's region reserves (`--qs-*-h`) are sized for ONE surface filling
-   the card, and pin its answer tablets for that layout. A Journey child sits
-   BELOW the module's board, so those reserves would double-count: they are
-   released for the nested surface only, which then takes its content height.
-   Ordinary rounds are untouched — the tokens are reset on `.journey-question`
-   alone. */
-.journey-question {
-  --qs-media-h: 0px;
-  --qs-prompt-h: 0px;
-  --qs-answers-h: 0px;
+/* ──────────────────────────────────────────────────────────────────────────
+   JP2 — THE FIXED JOURNEY STAGE.
+     "Every Journey child uses the same fixed stage. The state changes; the
+      layout does not."
+
+   A Journey is ONE stage of four regions, sized once per viewport and never
+   by a child's content:
+
+     ┌ board ────────────────┐  the state board, the Journey's primary media.
+     │                       │  From `lg` it takes whatever the locked card
+     │                       │  leaves (flex 1 1 0); below `lg` a fixed height.
+     └───────────────────────┘
+     ┌ prompt ───────────────┐  the semantic question (+ one cue line), in a
+     │                       │  reserved box. THE REVEAL is drawn in this same
+     └───────────────────────┘  box (the prompt hidden, not removed).
+     ┌ answers ──────────────┐  the tablets, at one origin for every child.
+     └───────────────────────┘
+
+   It reuses the arena's own region system: every Journey child answers
+   through `InteractiveScenarioSurface`, whose `data-surface-region` boxes
+   read `--qs-prompt-h` / `--qs-answers-h` — the same tokens the ordinary
+   Ranked stage reserves with, here set to the Journey's values instead of
+   the zero JOURNEY-UI2 used to release them to. They stay FLOORS, as on the
+   ordinary stage (never a clip, never a scroll box), sized to the tallest
+   real Journey child plus one line — so every served child fits and none
+   moves the next region.
+
+   Nothing appends to the flow: the reveal replaces the prompt in place, a
+   transition beat animates inside the board, and the between-children and
+   finished states fill the same question box. The board, the prompt top and
+   the answer origin are therefore the same coordinates from Step 1 to the
+   end of the Journey.
+   ────────────────────────────────────────────────────────────────────────── */
+.journey-stage {
+  --jq-gap: 0.75rem;
+  /* RESERVES = the tallest real Journey content at that width + a little,
+     measured on real captures — the Zed/Ahri reference Journey (every child
+     and its reveal, right / wrong / timed out) and the Daily's Journeys (M1:
+     Volibear, Pantheon with a stated formula and the longest working, Ahri
+     Survival): prompt / reveal / answers (natural, before the tablets
+     stretch to fill), in px.
+       375–390   108 / 121 / 271     768          67 /  92 / 224
+       1024       81 / 132 / 173     1280–1920    70 /  96 / 149
+     The prompt box holds the REVEAL too, so it is sized for the larger. */
+  --jb-band-h: 12.5rem;   /* phone: a stacked board with room for real icons */
+  --jq-prompt-h: 8.75rem;
+  --jq-answers-h: 17.5rem;
 }
-/* The Journey band's height from `lg`: exactly what the band-density board
-   needs (measured 184-191px), so the child question below keeps the rest of a
-   height-locked card. (Inline max-height is `ScenarioMediaBand`'s, hence the
-   priority; the region cap still applies through `min`.) */
+@media (min-width: 640px) {
+  .journey-stage {
+    --jb-band-h: 15rem;
+    --jq-prompt-h: 6rem;
+    --jq-answers-h: 15rem;
+  }
+}
 @media (min-width: 1024px) {
-  .journey-band { max-height: min(12.5rem, 100%) !important; }
+  .journey-stage {
+    --jq-prompt-h: 8.5rem;
+    --jq-answers-h: 11rem;
+  }
 }
-/* JOURNEY-UI2 — a structural Mastery view's progress + identity block is the
-   board's job inside a Journey (step N of M, both champions). */
+/* From 1280 the reveal's rows fit the column: the question box is 268px and
+   the board takes the rest of the card. */
+@media (min-width: 1280px) {
+  .journey-stage {
+    --jq-prompt-h: 6.25rem;
+    --jq-answers-h: 9.75rem;
+  }
+}
+
+/* THE BOARD REGION. `ScenarioMediaBand` stays the box (its container query
+   drives the board's density); only its size rule changes. Its inline
+   aspect ratio reads `--qs-band-aspect-band`, so `auto` arrives through the
+   cascade; its inline min/max heights are overruled, as JOURNEY-UI2's cap was. */
+.journey-band {
+  --qs-band-aspect-band: auto;
+  height: var(--jb-band-h);
+  flex: 0 0 auto;
+}
+/* Out-specifies the arena's cap on every scenario band (`.ranked-academy
+   [data-testid="scenario-hero"]`, min(16rem, 26vh)): the board is not a
+   scenario illustration, and its height is the stage's to decide. */
+.journey-stage > .journey-band,
+.ranked-academy .journey-stage > .journey-band {
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+/* The lead-in's board box: the board's own size and ground, nothing on it. */
+.journey-band--empty {
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #0b1727, #060d18);
+}
+
+/* THE QUESTION REGION: a fixed box (prompt + gap + answers). */
+.journey-question {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: calc(var(--jq-prompt-h) + var(--jq-gap) + var(--jq-answers-h));
+  --qs-media-h: 0px;
+  --qs-prompt-h: var(--jq-prompt-h);
+  --qs-answers-h: var(--jq-answers-h);
+  /* `clip`, not `hidden`: a hidden x-overflow would compute y to `auto` and
+     make the question a scroll box — the old reveal's 13px scroll. */
+  overflow-x: clip;
+}
+/* The Mastery view's progress + identity block is the board's job here. */
 .journey-question [data-mastery-meta] { display: none; }
-/* JOURNEY-UI2 — in the height-locked desktop card the board keeps its band
-   and the Journey QUESTION is the one region that yields: a long served reveal
-   or a wrapped premise scrolls inside it instead of being clipped by the
-   card. Below `lg` the page scrolls, so nothing here applies. */
+/* The board's header says what step this is: no category row on the stage. */
+.journey-question [data-testid="question-meta-row"],
+.journey-question .scenario-category { display: none; }
+.journey-question [data-testid="scenario-surface"] > header { display: flex; flex-direction: column; justify-content: flex-start; }
+.ranked-academy .ranked-folio .journey-question [data-testid="scenario-surface"] > header h2 {
+  font-size: 1.0625rem; line-height: 1.35;
+}
+@media (min-width: 1024px) {
+  .ranked-academy .ranked-folio .journey-question [data-testid="scenario-surface"] > header h2 {
+    font-size: 1rem; line-height: 1.3;
+  }
+}
+@media (min-width: 1280px) {
+  .ranked-academy .ranked-folio .journey-question [data-testid="scenario-surface"] > header h2 {
+    font-size: 1.125rem; line-height: 1.35;
+  }
+}
+/* A formula the child STATES as its premise, under the sentence. There is no
+   other helper line: what earlier steps established is on the board. */
+.journey-question [data-testid="scenario-context"] {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #3a2c10;
+}
+.journey-ask__formula { font-variant-numeric: tabular-nums; }
+
+/* A tablet's reveal mark (the check / cross) takes room the tablet ALWAYS
+   keeps, so its label wraps the same before and after the reveal. Outside the
+   stage the mark joins the label's row and narrows it: a three-line formula
+   option became four lines at its reveal and the answer grid grew. */
+.journey-question [data-quiz-choice]:not(:has(img)),
+.ranked-academy .journey-question [data-answers-state] [data-quiz-choice]:not(:has(img)) {
+  /* Out-specifies the arena's wide/tall tablet padding (14–18px): a Journey
+     tablet FILLS its reserved region, so extra padding would only inflate the
+     region's floor. */
+  position: relative;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  line-height: 1.35;
+}
+.journey-question [data-quiz-choice]:not(:has(img)) > svg {
+  position: absolute;
+  top: 50%;
+  right: 0.625rem;
+  margin: 0;
+  transform: translateY(-50%);
+}
+
+/* THE TABLETS FILL THEIR REGION. The answer region is a fixed box sized for
+   the tallest real option set (a formula-recognition child); a set of short
+   options used to sit at its top with parchment left empty beneath. Now the
+   grid takes the whole box and its rows share it evenly, so every child's
+   tablets fill the same rectangle — larger tap targets, no dead space, and
+   still nothing that depends on a child's content. */
+/* (Sized on the grid itself: a <fieldset>'s anonymous content box does not
+   hand a definite height to a flex child, so a flex chain would not reach it.) */
+.journey-question [data-testid="answer-grid"] > .grid {
+  min-height: var(--jq-answers-h);
+  grid-auto-rows: 1fr;
+}
+
+/* THE REVEAL LAYER: the prompt region's own box, the prompt hidden beneath it.
+   The tablets below keep their place and take the surface's reveal tones. */
+.journey-ask { position: relative; }
+.journey-ask[data-revealing="true"] [data-surface-region="prompt"] { visibility: hidden; }
+.journey-reveal {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--jq-prompt-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  color: #2a1f08;
+}
+.journey-reveal__verdict {
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.journey-reveal__verdict--correct { color: #1f6b3d; }
+.journey-reveal__verdict--wrong { color: #9a2f22; }
+/* The working, one reasoning step per line (`rows`), at reading size. */
+.journey-reveal__working {
+  /* Phone: 12px keeps the longest real working (a Daily Pantheon E) inside the
+     phone's prompt box; the card does not grow for it. */
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #2a1f08;
+  font-variant-numeric: tabular-nums;
+}
+.journey-reveal__working[data-layout="rows"] { row-gap: 0.125rem; }
+.journey-working__break { flex-basis: 100%; height: 0; }
+.journey-reveal__rows { display: flex; flex-direction: column; }
+.journey-reveal__row { display: block; }
+@media (min-width: 640px) {
+  .journey-reveal__working { font-size: 0.8125rem; line-height: 1.45; }
+}
+@media (min-width: 1280px) {
+  .journey-reveal__working { font-size: 0.875rem; }
+}
+
+/* Between children, and once the Journey is finished: the same question box. */
+.journey-stage-status {
+  display: flex;
+  min-height: calc(var(--jq-prompt-h) + var(--jq-gap) + var(--jq-answers-h));
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* From `lg` the arena locks the card to the viewport: the stage fills it and
+   the BOARD takes what the fixed question box leaves — the same height for
+   every child at a given viewport, because nothing a child renders is in it. */
 @media (min-width: 1024px) {
   .ranked-question-stage .journey-viewport {
     display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto;
@@ -16299,285 +16500,91 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   .ranked-question-stage .journey-viewport > .journey-stage {
     flex: 1 1 auto; min-height: 0;
   }
-  .ranked-question-stage .journey-stage > .journey-band { flex: 0 0 auto; }
-  .ranked-question-stage .journey-stage > .journey-question {
-    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  .ranked-question-stage .journey-stage > .journey-band {
+    height: auto;
+    flex: 1 1 0;
   }
 }
-/* JOURNEY-UI3 — the surface wrapper centres short content (auto block
-   margins; `lg:my-auto` on desktop, the stage's own rule on a phone). During a
-   transition beat the next child is not in the payload yet, so the module
-   shows a one-line placeholder and the whole board slid down to the card's
-   middle (measured: 1440 band y 133 → 262, 390 band y 159 → 332, and back).
-   A Journey takes the body from the top instead, at every width, so its board
-   never moves between children. */
+/* JOURNEY-UI3 — a Journey takes the body from the top at every width, so its
+   board never re-centres between children. */
 .ranked-question-stage [data-testid="ranked-question-body"] > :has(> .journey-viewport) {
   margin-top: 0; margin-bottom: 0; flex: 1 1 auto;
 }
-/* JOURNEY-PRES-V1 — the QF1 motif is printed on a Journey child's parchment
-   exactly as on the same question outside a Journey. JOURNEY-UI2 hid it
-   (`display: none`) for two reasons, and both are answered without hiding it:
-
-     * "the board is the scenario art" — the board is STATE, drawn in the
-       media region; the motif says what KIND of knowledge the question is,
-       and was never media. They are independent axes (QF1 decision 3).
-     * its 40rem bleed pseudo-element gave the scrollable `.journey-question`
-       a phantom scroll range — so the bleed is CLIPPED at the motif's own
-       host instead. `overflow: clip` (not `hidden`) makes no scroll
-       container, and clipped overflow contributes nothing to the ancestor's
-       scrollable area, so the question scrolls exactly as far as before.
-
-   The motif treatment itself — art, opacity, filter, crop, the phone
-   `display: none` below 640px — is the shared QF1 rule, untouched. */
+/* An error line never pushes the stage: it sits over the stage's foot. */
+.journey-viewport { position: relative; }
+.journey-viewport > [data-testid="mastery-slice-error"] {
+  position: absolute; left: 0; right: 0; bottom: -1.25rem; margin: 0;
+}
+/* JOURNEY-PRES-V1 — the QF1 motif on a Journey child, clipped at its own host
+   (never a scroll container). */
 .journey-question .question-motif-host {
   overflow: clip;
-  /* Room for focus rings and tablet shadows; the art's crop is unaffected. */
   overflow-clip-margin: 6px;
 }
-.journey-question { overflow-x: hidden; }
-/* JOURNEY-UI3 — J3's board states the premise stats, so from `lg` the child's
-   question gives the height-locked card back: its category row is the board's
-   job (Journey · step N of M), and its heading steps down one size. Measured
-   at 1024x768: without this a live Combat child pushed "Lock in" 35px below
-   the card's fold. Below `lg` the page scrolls and nothing here applies. */
-@media (min-width: 1024px) {
-  .journey-question [data-testid="question-meta-row"] { display: none; }
-  .ranked-academy .ranked-folio .journey-question [data-testid="scenario-surface"] > header h2 {
-    font-size: 1rem; line-height: 1.25;
+
+/* JP2 — THE BOARD AS PRIMARY MEDIA. The board is now the Journey's whole media
+   region, so where the band is tall its objects are drawn large and the two
+   sides sit in the middle of it rather than along its top edge. Same tokens,
+   same one DOM tree: only the density's numbers change (a container query on
+   the band, as every other tier). */
+@container (max-width: 25.99rem) and (min-height: 11rem) {
+  /* A tall PHONE board (the stacked rows). */
+  .journey-vars {
+    --jb-portrait: 2.5rem;
+    --jb-ability: 1.5rem;
+    --jb-slot: 1.375rem;
+    --jb-pip: 4px;
+    --jb-mono: 0.625rem;
+    --jb-chip-font: 0.625rem;
+    --jb-chip-h: 1.125rem;
   }
+  .journey-board { gap: 6px; padding: 8px 10px; }
+  .journey-board__head { height: 1rem; font-size: 0.5625rem; }
+  .journey-board__state-btn { height: 1rem; font-size: 0.5625rem; }
+  .journey-side { column-gap: 8px; row-gap: 6px; }
+  .journey-side__champion { font-size: 0.8125rem; line-height: 1rem; }
+  .journey-side__kit { gap: 5px; }
 }
-
-/* ─────────────────────────────────────────────────────────────────────────
-   JOURNEY-PRES-V1 — the question's FOCUS object, the board's splash
-   underlays and the Matchup tiles' splash.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* THE LEFTOVER-SPACE CHAIN. The focus slot is the last child of the Journey
-   question and takes only the height the question does not use. Every box
-   between `.journey-question` and the slot becomes a column that grows to
-   fill (`1 0 auto`: never smaller than its content), so the slot alone
-   absorbs the difference. Nothing in the chain can shrink below its content,
-   so the prompt, the answers and lock-in keep every pixel they had. */
-.journey-question { display: flex; flex-direction: column; }
-.journey-question > div:first-child,
-.journey-question [data-testid="mastery-slice-challenge-phase"],
-.journey-question [data-testid="journey-child"] {
-  display: flex;
-  flex: 1 0 auto;
-  flex-direction: column;
+@container (min-width: 34rem) and (min-height: 17rem) {
+  /* A tall DESKTOP board: the primary media. */
+  .journey-vars {
+    --jb-portrait: 4rem;
+    --jb-ability: 2.5rem;
+    --jb-slot: 2.125rem;
+    --jb-pip: 6px;
+    --jb-mono: 1rem;
+    --jb-chip-font: 0.75rem;
+    --jb-chip-h: 1.5rem;
+  }
+  .journey-board { gap: 10px; padding: 12px 16px; }
+  .journey-board__head { height: 1.125rem; font-size: 0.625rem; }
+  .journey-board__state-btn { height: 1.125rem; font-size: 0.625rem; }
+  .journey-board__sides { align-items: center; }
+  .journey-side { row-gap: 12px; align-content: center; }
+  .journey-side__id { gap: 10px; }
+  .journey-side__kit { gap: 8px; }
+  .journey-side__champion { font-size: 1.0625rem; line-height: 1.3rem; }
+  .journey-items { gap: 4px; }
+  .journey-know { width: 1rem; height: 1rem; font-size: 0.6875rem; }
+  .journey-know--ability { right: calc(50% - var(--jb-ability) / 2 - 5px); }
 }
-/* A size container: its height is the leftover, never its content's. */
-.journey-focus-slot {
-  container: journey-focus / size;
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  /* A `space-y-*` parent would give even an EMPTY slot a 12px margin, and
-     on a height-locked card that margin alone can tip lock-in out of view. */
-  margin-top: 0 !important;
-}
-/* Below `lg` the page scrolls, so the slot keeps a modest floor and sits
-   under lock-in; it still grows into any spare parchment. The floor is the
-   flex BASIS, not a `min-height`: a size container's query reads the basis
-   (0 under size containment) and would hide the plate in a 112px slot. */
-@media (max-width: 1023px) {
-  .journey-focus-slot { flex: 1 0 7.5rem; }
-}
-/* A slim slot (a 1280x800 card): one caption line, a smaller hero. Scoped
-   under the slot so it outranks the base rules declared further down. */
-@container journey-focus (max-height: 6rem) {
-  .journey-focus-slot .journey-focus-media { gap: 0.625rem; padding: 0.25rem 0.625rem; }
-  .journey-focus-slot .journey-focus-media__who,
-  .journey-focus-slot .journey-focus-media__vs-metric,
-  .journey-focus-slot .journey-focus-media__half .journey-focus-media__meta { display: none; }
-  .journey-focus-slot .journey-focus-media__caption { flex-direction: row; align-items: baseline; gap: 0.5rem; }
-  .journey-focus-slot .journey-focus-media__half { align-items: center; padding: 0.25rem 0.625rem; }
-  .journey-focus-slot .journey-focus-media__vs > span:first-child { width: 1.75rem; height: 1.75rem; font-size: 0.625rem; }
-}
-/* Nothing useful fits: draw nothing rather than a squeezed plate. */
-@container journey-focus (max-height: 3.25rem) {
-  .journey-focus-media { display: none !important; }
-}
-
-.journey-focus-media {
-  --jfm-h: min(100cqh, 10rem);
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  width: min(100%, 30rem);
-  height: calc(var(--jfm-h) - 0.5rem);
-  margin: 0;
-  padding: 0.625rem 0.875rem;
-  overflow: hidden;
-  border-radius: 0.75rem;
-  border: 1px solid rgb(212 179 90 / 0.45);
-  background: linear-gradient(180deg, #0b1727, #060d18);
-  box-shadow: 0 10px 28px -14px rgb(0 0 0 / 0.75), inset 0 0 0 1px rgb(255 255 255 / 0.04);
+/* A stack's count, bottom-right on the slot, as in the game. */
+.journey-item-qty {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  min-width: 0.625rem;
+  padding: 0 2px;
+  border-top-left-radius: 3px;
+  background: rgb(0 0 0 / 0.78);
   color: #fff;
-}
-.journey-focus-media__splash {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.5;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%, #000 100%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 45%, #000 100%);
-}
-.journey-focus-media__splash img { object-position: 50% 22%; filter: saturate(0.9) brightness(0.8); }
-/* The one prominent object. Square, sized by the plate's height. */
-.journey-focus-media__hero {
-  position: relative;
-  flex: 0 0 auto;
-  width: min(7rem, calc(var(--jfm-h) - 1.75rem));
-  height: min(7rem, calc(var(--jfm-h) - 1.75rem));
-  overflow: hidden;
-  border-radius: 0.625rem;
-  border: 2px solid #d4b35a;
-  background: #07111f;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 0 18px -4px rgb(243 220 160 / 0.45);
-}
-.journey-focus-media__hero--champion { border-radius: 9999px; }
-.journey-focus-media__hero--champion .journey-focus-media__portrait {
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-.journey-focus-media__slot {
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  min-width: 1.25rem;
-  padding: 0 0.25rem;
-  border-radius: 0.25rem;
-  background: rgb(0 0 0 / 0.8);
-  box-shadow: inset 0 0 0 1px rgb(212 179 90 / 0.6);
-  font-size: 0.6875rem;
+  font-size: max(0.5rem, calc(var(--jb-slot) * 0.38));
   font-weight: 900;
-  line-height: 1.1rem;
+  line-height: 1.15;
   text-align: center;
-  color: #f3dca0;
-}
-.journey-focus-media__caption {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.2rem;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
-}
-.journey-focus-media__who {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgb(255 255 255 / 0.85);
-}
-.journey-focus-media__who .journey-focus-media__portrait { width: 1.25rem; height: 1.25rem; }
-.journey-focus-media__what { font-size: 0.9375rem; font-weight: 800; line-height: 1.15; color: #fff; }
-.journey-focus-media__meta {
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #e8c97a;
-}
-.journey-focus-media__portrait {
-  display: block;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: 9999px;
-  border: 1px solid rgb(212 179 90 / 0.7);
-  background: #07111f;
-}
-/* Matchup: two facing halves, the VS medallion on the seam. */
-.journey-focus-media--matchup { gap: 0; padding: 0; }
-.journey-focus-media__half {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  flex: 1 1 0;
-  min-width: 0;
-  height: 100%;
-  align-items: flex-end;
-  padding: 0.5rem 0.75rem;
-  overflow: hidden;
-}
-.journey-focus-media__half .journey-focus-media__splash { opacity: 0.7; }
-.journey-focus-media__half--left .journey-focus-media__splash {
-  -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
-  mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
-}
-.journey-focus-media__half--right { justify-content: flex-end; text-align: right; }
-.journey-focus-media__half--right .journey-focus-media__splash {
-  -webkit-mask-image: linear-gradient(270deg, #000 55%, transparent 100%);
-  mask-image: linear-gradient(270deg, #000 55%, transparent 100%);
-}
-/* Readable names over any splash: a floor of shade under the caption. */
-.journey-focus-media__half::after {
-  content: "";
-  position: absolute;
-  inset: 40% 0 0;
-  z-index: -1;
-  background: linear-gradient(180deg, transparent, rgb(6 13 24 / 0.9));
-}
-.journey-focus-media__half-id {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.5rem;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
-}
-.journey-focus-media__half--right .journey-focus-media__half-id { flex-direction: row-reverse; }
-.journey-focus-media__half-id .journey-focus-media__portrait {
-  width: min(2.75rem, calc(var(--jfm-h) * 0.3));
-  height: min(2.75rem, calc(var(--jfm-h) * 0.3));
-  border-width: 2px;
-}
-.journey-focus-media__half--left .journey-focus-media__portrait { border-color: #d4b35a; }
-.journey-focus-media__half--right .journey-focus-media__portrait { border-color: #7fb2d4; }
-.journey-focus-media__vs {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  transform: translate(-50%, -50%);
-}
-.journey-focus-media__vs > span:first-child {
-  display: flex;
-  width: 2.25rem;
-  height: 2.25rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  border: 1px solid rgb(212 179 90 / 0.8);
-  background: #07111f;
-  box-shadow: 0 0 14px -2px rgb(243 220 160 / 0.5);
-  font-size: 0.75rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  color: #f3dca0;
-}
-.journey-focus-media__vs-metric {
-  padding: 0 0.3rem;
-  border-radius: 0.25rem;
-  background: rgb(0 0 0 / 0.7);
-  font-size: 0.5625rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #e8c97a;
+  text-shadow: 0 1px 1px #000;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 /* The board's splash underlays. Each side's box, bled to the board's edge
@@ -16604,25 +16611,6 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   object-fit: cover;
   object-position: 50% 20%;
   filter: saturate(0.85) brightness(0.7);
-}
-/* The Matchup side tiles: the same treatment, inside the tile. */
-.journey-matchup-side__splash {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 22%;
-  opacity: 0.4;
-  filter: saturate(0.85) brightness(0.6);
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, #000, rgb(0 0 0 / 0.25));
-  mask-image: linear-gradient(90deg, #000, rgb(0 0 0 / 0.25));
-}
-.journey-matchup-side[data-side="opponent"] .journey-matchup-side__splash {
-  -webkit-mask-image: linear-gradient(270deg, #000, rgb(0 0 0 / 0.25));
-  mask-image: linear-gradient(270deg, #000, rgb(0 0 0 / 0.25));
 }
 /* The current question's role emblems in the board's step header: the head
    is 0.75rem tall on a phone board and 1rem on the band, so the marks follow
