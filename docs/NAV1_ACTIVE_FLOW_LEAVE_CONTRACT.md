@@ -1,6 +1,27 @@
 # NAV1-E — Active Ranked / Daily leave contract
 
-Status: E1 substrate, E2 standalone Ranked wiring, and E3 Daily parent wiring implemented; E2Q deferred
+Status: E1 substrate, E2 standalone Ranked wiring, and E3 Daily parent wiring complete; E4 combined core certification recorded below; E2Q deferred
+
+## E4 integration certification record (2026-09-28)
+
+The combined line was rebuilt from fetched `origin/main` at
+`3011a416cb1e1ce85bf33bea117b20dc91c42865`. NAV1 A–E, PLAY1, E1, E2, and E3
+were missing from main and were applied in dependency order. Main already carried
+the upstream SFX2 commits through `dd510777`; E2's local `cfa79d72`/`17fd030d`
+copies were patch-equivalent and were not replayed.
+
+Real Chromium certifies active and locked standalone Ranked POP attempts,
+Stay/Leave/Forward, terminal authority cancelling a pending POP, mobile dialog
+focus/layout, Daily parent Back/Continue/Exit/Forward, and Daily completion while
+the parent dialog is open. Request logs prove ordinary leave sends no Forfeit,
+abandon, cancellation, or invented termination request. Hosted Ranked remains
+owned by Daily and has no standalone blocker. E2Q queue protection and PLAY1
+user-initiated exit policy remain intentionally deferred.
+
+The dedicated E4 lane does not yet contain a server-driven ordinary-round
+reveal fixture, a separately named Daily hidden-settling scenario, or a
+stage-result warning/recovery scenario. E4 must not be marked fully complete
+until those remaining named scenarios are added and pass.
 Audit base: `576e9dd309094d725afafc837408e329815d927c` (`NAV1-D`)  
 Frontend remote observed after fetch: `origin/main` = `4b3be0cbe2767d3107f4462082755066b26b398b`  
 Backend remote observed after fetch: `origin/master` = `acb2a946d65e8afb0deba02a5dec9165d8414716`

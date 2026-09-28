@@ -1,5 +1,22 @@
 # NAV1 — Back / Navigation Semantics Audit
 
+## E4 combined active-flow certification record
+
+On 2026-09-28 the active-flow work was integrated from fetched `origin/main`
+`3011a416cb1e1ce85bf33bea117b20dc91c42865` on
+`codex/nav1-e4-active-flow-integration`. The line contains NAV1 A–E, PLAY1,
+E1, E2, and E3. SFX2 was retained from main; its E2-local equivalents were
+correctly omitted.
+
+Chromium certification confirms one owner dialog per active surface, natural
+POP/Forward recovery without sentinel entries, terminal authority resetting a
+pending transition, and zero ordinary-leave Forfeit/abandon traffic. Refresh
+remains server recovery with no unload interception. Queue protection (E2Q)
+and PLAY1 user-exit semantics remain separate follow-up work.
+
+Remaining E4 browser cases: a genuine ordinary-round reveal, a separately
+identified hidden/settling Daily child, and stage-result warning/recovery.
+
 ## Objective
 Audit Mogzy's browser Back behavior and every in-product Back/Home/Parent/Close/Cancel/Exit navigation path. Produce an explicit route/state contract before changing product code.
 

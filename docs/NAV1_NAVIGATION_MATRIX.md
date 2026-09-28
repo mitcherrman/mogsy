@@ -1,5 +1,13 @@
 # NAV1 current-state navigation matrix
 
+E4 certification note (2026-09-28): the matrix is implemented through E3 and
+its combined core is certified on a current-main integration line. Ranked and Daily each
+have exactly one owning guard, hosted Ranked has none, terminal completion
+cancels stale blocked navigation, and ordinary exits issue no Forfeit/abandon
+mutation. Genuine Ranked reveal, named Daily hidden-settling, and Daily
+stage-result warning/recovery browser cases remain before E4 completion. E2Q
+and PLAY1 user-initiated exit remain deferred.
+
 Audit date: 2026-09-26  
 Code audited: `main@4b3be0cbe2767d3107f4462082755066b26b398b` plus the NAV1 seed document commit `64e0c2dc9c595eed4eced302f343a1256e44e85f`.
 
