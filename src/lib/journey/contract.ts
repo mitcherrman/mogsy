@@ -112,6 +112,21 @@ export interface JourneySide {
   items: JourneyItem[];
   stats: JourneyStat[];
   vitals: JourneyVitals | null;
+  /**
+   * JP3 — ability VALUES the current question asks or relies on, named by
+   * the server's value-free withheld field (`abilities.<slot>.raw_damage`).
+   * Drawn as the board's `?` readout until the learner's knowledge fills it.
+   * Never a number: the value is only ever the reveal's (K2). Absent = none.
+   */
+  readouts?: JourneyAbilityReadout[];
+}
+
+/** JP3 — one withheld ability value (see `JourneySide.readouts`). */
+export interface JourneyAbilityReadout {
+  slot: AbilitySlot;
+  /** The only anchorable ability value today (`knowledge.ts`). */
+  kind: "raw_damage";
+  reason: "asked" | "recalled";
 }
 
 export type JourneyEvent =

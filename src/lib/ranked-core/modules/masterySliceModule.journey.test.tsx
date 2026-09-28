@@ -279,8 +279,10 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
     afterReveal();
     expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
     expect(screen.getByTestId("journey-child")).toHaveAttribute("data-render-path", "combat");
-    // Every digit of the served number, on the board — never rounded.
-    expect(screen.getByTestId("journey-stat-subject-attack_damage")).toHaveTextContent("70.1625");
+    // JP3 — the served number, whole for display (70.1625 → 70); every digit
+    // of it is still there, in the exact-value note.
+    expect(screen.getByTestId("journey-stat-subject-attack_damage")).toHaveTextContent(/^AD70$/);
+    expect(screen.getByTestId("journey-stat-subject-attack_damage").getAttribute("title")).toMatch(/Exact value 70\.1625/);
     // The recalled armor is a board chip naming its source, never a number.
     expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveTextContent(/recall · step 1/);
     const f = screen.getByTestId("journey-stated-formula");
@@ -300,9 +302,14 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
     expect(text()).not.toMatch(/Builds on/i);
   });
 
-  it("the Combat reveal is the backend's text, verbatim — no local derivation", () => {
+  it("the Combat reveal is the backend's text — no local derivation; its derived value whole for display", () => {
     show(snap("zed.standard", "child2-reveal"));
-    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent("55.034 damage, which rounds to 55");
+    const e = screen.getByTestId("journey-reveal-explanation");
+    // JP3 — "…: 55.034 damage, which rounds to 55 for this question." reads
+    // "…: 55 damage."; the exact value is the hover note. Nothing is computed.
+    expect(e).toHaveTextContent(/recalled target armor, 3 attacker level.*: 55 damage\.$/);
+    expect(e.textContent).not.toContain("55.034");
+    expect(e.getAttribute("title")).toMatch(/Exact value 55\.034 · shown as 55, rounded for display/);
     // J3 serves no structured working (raw → effective armor → mitigation → final).
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
   });

@@ -62,7 +62,9 @@ import { ratioStatLabel, explicitAdText } from "@/lib/journey/statWording";
 import {
   combatPremiseOf, combatQuestionSentence, percent, premiseValue, type CombatPremise,
 } from "./JourneyCombatQuestion";
-import { JourneyCombatWorking } from "./JourneyCombatWorking";
+import {
+  combatCalc, displayExplanation, JourneyCalcFlow, rawCalcCells, statCalcCells, type CalcCell,
+} from "./JourneyCalcFlow";
 
 /** Which words a child is drawn with. The ANSWER path is the same for all of them. */
 export type JourneyQuestionKind = "combat" | "recall" | "comparison" | "prose";
@@ -134,6 +136,36 @@ function StatedFormula({ formula, rank }: { formula: JourneyFormula; rank: numbe
 }
 
 /**
+ * JP3 — the same served parts as `rawWorkingParts`, as calculation cells:
+ *   [Base · R1  70] + [bonus AD  70% × 21] = [Raw damage  85]
+ * `null` when any part is not served.
+ */
+export function rawCalcPartsOf(premise: CombatPremise, formula: JourneyFormula | null, answer: string | null) {
+  if (!formula || premise.rank === null || answer === null) return null;
+  const flat = formula.flatByRank[premise.rank - 1];
+  if (flat === undefined) return null;
+  const ratios: { ratio: number; stat: string; label: string; value: number }[] = [];
+  for (const r of formula.ratios) {
+    const value = premiseValue(premise, r.stat);
+    if (typeof value !== "number") return null;
+    ratios.push({ ratio: r.ratio, stat: r.stat, label: r.label, value });
+  }
+  return { rank: premise.rank, flat, ratios, answer };
+}
+
+/** JP3 — a champion stat recall's own semantics (champion, metric, level), or null. */
+function statRecallOf(challenge: MasterySliceChallengeView) {
+  const p = challenge.promptSemantics as Record<string, unknown> | null | undefined;
+  if (!p || p.template !== "champion_stat_at_level") return null;
+  const ctx = (p.context ?? {}) as Record<string, unknown>;
+  return {
+    champion: typeof p.champion_display === "string" ? p.champion_display : "",
+    metric: typeof p.metric === "string" ? p.metric : "",
+    level: typeof ctx.champion_level === "number" ? ctx.champion_level : null,
+  };
+}
+
+/**
  * JP2 — a raw-damage answer's working, laid out from SERVED parts only: the
  * formula the learner was taught (the ledger's value), the stat values the
  * premise states, and the reveal's own answer. Nothing is multiplied, summed
@@ -162,11 +194,13 @@ export function rawWorkingParts(premise: CombatPremise, formula: JourneyFormula 
 
 /**
  * The reveal, in the prompt region's reserved box: the verdict and the answer,
- * then the working in short ROWS (one step of the reasoning per line) — the
- * server's Combat working, else a raw result laid out from served parts, else
- * the served explanation.
+ * then (JP3) the working as a CALCULATION — compact cells, operators, the
+ * answer as the culmination (`JourneyCalcFlow`): the server's Combat working,
+ * else a raw result from served parts, else a stat recall's own semantics.
+ * Anything else keeps the served explanation, with a derived value's exact
+ * digits moved to a hover note (`displayExplanation`).
  */
-function JourneyReveal({ question, correct, timedOut, answer, explanation, working, learnedFormula }: {
+function JourneyReveal({ question, correct, timedOut, answer, explanation, working, learnedFormula, rawRecalled, statRecall }: {
   question: JourneyQuestion;
   correct: boolean;
   /** No answer was submitted: the clock ran out on this child. */
@@ -176,30 +210,41 @@ function JourneyReveal({ question, correct, timedOut, answer, explanation, worki
   explanation: string;
   working: CombatWorking | null;
   learnedFormula: JourneyFormula | null;
+  /** The raw damage this Combat answer applies was established by an earlier step. */
+  rawRecalled: boolean;
+  statRecall: { champion: string; metric: string; level: number | null } | null;
 }) {
-  const raw = question.premise?.mitigation === "before_armor"
-    ? rawWorkingParts(question.premise, learnedFormula, answer) : null;
+  const shown = displayExplanation(explanation);
+  let cells: CalcCell[] | null = null;
+  let caption: { text: string | null; exact: string | null } = { text: null, exact: null };
+  let kind: string | null = null;
+  if (working) {
+    const calc = combatCalc(working, rawRecalled);
+    cells = calc.cells;
+    caption = { text: calc.caption, exact: calc.exact };
+    kind = "combat";
+  } else if (question.premise?.mitigation === "before_armor") {
+    const parts = rawCalcPartsOf(question.premise, learnedFormula, answer);
+    if (parts) { cells = rawCalcCells(parts); kind = "raw"; }
+  } else if (statRecall && answer !== null) {
+    cells = statCalcCells(statRecall, answer, shown.exact);
+    if (cells) kind = "stat";
+  }
   return (
-    <div data-testid="journey-reveal" role="status" aria-live="polite" className="journey-reveal">
+    <div data-testid="journey-reveal" role="status" aria-live="polite" className="journey-reveal"
+      data-working={kind ?? (shown.text ? "explanation" : "none")}>
       <p data-testid="journey-reveal-verdict" data-correct={correct ? "true" : "false"}
         className={`journey-reveal__verdict ${correct ? "journey-reveal__verdict--correct" : "journey-reveal__verdict--wrong"}`}>
         {correct ? "Correct" : timedOut ? "Time's up" : "Not quite"}
         {answer !== null && <> · <span data-testid="journey-reveal-answer">{answer}</span></>}
       </p>
-      {working ? (
-        <JourneyCombatWorking working={working} rows className="journey-reveal__working" />
-      ) : raw ? (
-        <p data-testid="journey-raw-working" className="journey-reveal__working journey-reveal__rows">
-          <span className="journey-reveal__row font-semibold">{raw.what}</span>{" "}
-          <span className="journey-reveal__row tabular-nums">{raw.expression}</span>{" "}
-          <span className="journey-reveal__row">
-            <span aria-hidden className="opacity-60">≈</span>{" "}
-            <span className="font-black tabular-nums">{raw.answer}</span>{" "}
-            <span className="opacity-80">physical damage before armor</span>
-          </span>
+      {cells ? (
+        <JourneyCalcFlow cells={cells} caption={caption.text} captionExact={caption.exact}
+          testId={kind === "combat" ? "journey-combat-working" : kind === "raw" ? "journey-raw-working" : "journey-stat-working"} />
+      ) : shown.text ? (
+        <p data-testid="journey-reveal-explanation" className="journey-reveal__working" title={shown.exact ?? undefined}>
+          {shown.text}
         </p>
-      ) : explanation ? (
-        <p data-testid="journey-reveal-explanation" className="journey-reveal__working">{explanation}</p>
       ) : null}
     </div>
   );
@@ -272,7 +317,9 @@ export function JourneyStageQuestion({
         <JourneyReveal question={question} correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
           answer={labelOf(reveal.correctValue)}
           explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
-          working={combatWorking} learnedFormula={journey.learnedFormula ?? null} />
+          working={combatWorking} learnedFormula={journey.learnedFormula ?? null}
+          rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
+          statRecall={statRecallOf(challenge)} />
       )}
     </div>
   );

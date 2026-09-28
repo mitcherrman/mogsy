@@ -185,8 +185,8 @@ describe("grouping, objects and sides", () => {
     const card = knowledgeCard(q);
     expect(card.title).toBe("Q · R1");
     expect(card.lines.map((l) => [l.icon, l.value, l.tail, stepLabel(l.step)])).toEqual([
-      ["cooldown", "12s", null, "Step 1"],
-      ["haste", "11s", "10 AH", "Step 3"],
+      ["cooldown", "12s", null, "learned Step 1"],
+      ["haste", "11s", "10 AH", "learned Step 3"],
     ]);
     // JP2 — on the board the card is titled with the ability's own name.
     expect(knowledgeCard(q, "Thundering Smash").title).toBe("Q · Thundering Smash · R1");
@@ -207,15 +207,22 @@ describe("grouping, objects and sides", () => {
     expect(marksOf(t).size).toBe(0);
   });
 
-  it("an opponent champion fact marks the OPPONENT portrait by its K1 key", () => {
+  it("an opponent champion fact lands on the OPPONENT's side by its K1 key — JP3: on the stat it fills", () => {
     const s = snap("pantheon.standard", "child0-reveal");
     expect(summary(marksOf(s))).toEqual({ "opponent:leona": [["champion_stat:leona:armor:L3", "50", 1]] });
     show(s);
-    expect(screen.getByTestId("journey-know-opponent-champion")).toBeInTheDocument();
+    // JP3 — ONE grammar: the learned value fills Leona's `Armor ?` and its `!`
+    // rides on that chip; the portrait keeps only what no chip shows.
+    const armor = screen.getByTestId("journey-stat-opponent-armor");
+    expect(armor).toHaveAttribute("data-face", "learned");
+    expect(armor).toHaveTextContent(/^Armor50!$/);
+    expect(screen.getByTestId("journey-know-opponent-stat-armor")).toBeInTheDocument();
+    expect(screen.queryByTestId("journey-know-opponent-champion")).toBeNull();
     expect(screen.queryByTestId("journey-know-subject-champion")).toBeNull();
     const card = knowledgeCard(marksOf(s).get("opponent:leona")!);
     expect(card.title).toBe("Lv3");
-    expect(card.lines.map((l) => [l.label, l.value, stepLabel(l.step)])).toEqual([["Armor", "50", "Step 1"]]);
+    expect(knowledgeCard(marksOf(s).get("opponent:leona")!, null, "Leona").title).toBe("Leona · Lv3");
+    expect(card.lines.map((l) => [l.label, l.value, stepLabel(l.step)])).toEqual([["Armor", "50", "learned Step 1"]]);
   });
 
   it("a mark whose champion is not on that side draws nothing (keys are side + champion)", () => {

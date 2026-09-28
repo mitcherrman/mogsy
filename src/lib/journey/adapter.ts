@@ -37,7 +37,7 @@
  * learner state inferred from correctness, nothing read from a reveal.
  */
 import type {
-  AbilitySlot, JourneyAbility, JourneyEvent, JourneyFocusRef, JourneyItem,
+  AbilitySlot, JourneyAbility, JourneyAbilityReadout, JourneyEvent, JourneyFocusRef, JourneyItem,
   JourneyPublicState, JourneySide, JourneySideId, JourneyStat, JourneyTransition,
 } from "./contract";
 import { ABILITY_SLOTS, JourneyContractError } from "./contract";
@@ -174,13 +174,30 @@ function statsOf(state: J3State, side: J3Side, recalls: J3Child["recalls"]): Jou
   return JOURNEY_STAT_KEYS.filter((k) => out.has(k)).map((k) => out.get(k)!);
 }
 
-function boardSide3(s: J3SideState, stats: JourneyStat[]): JourneySide {
+/**
+ * JP3 — the ability values this state asks or relies on, from the withheld
+ * FIELD names only (value-free). Only the raw result anchors (the same one
+ * field `knowledge.ts` anchors K2 on); after-armor damage relates two objects
+ * and is never a board readout.
+ */
+function readoutsOf(state: J3State, side: J3Side): JourneyAbilityReadout[] {
+  const out: JourneyAbilityReadout[] = [];
+  for (const w of state.withheld) {
+    if (w.side !== side) continue;
+    const m = /^abilities\.([QWER])\.raw_damage$/.exec(w.field);
+    if (m) out.push({ slot: m[1] as AbilitySlot, kind: "raw_damage", reason: w.reason === "asked" ? "asked" : "recalled" });
+  }
+  return out;
+}
+
+function boardSide3(s: J3SideState, stats: JourneyStat[], readouts: JourneyAbilityReadout[] = []): JourneySide {
   const abilities: JourneyAbility[] = s.abilities.map((a) => ({
     slot: a.slot, rank: a.rank, maxRank: null, name: a.name, icon: null,
   }));
   return {
     side: SIDE3[s.side], championId: s.championId, championName: s.champion, icon: null,
     level: s.level, abilities, items: itemsOf(s.inventory), stats, vitals: null,
+    ...(readouts.length ? { readouts } : {}),
   };
 }
 
@@ -320,7 +337,10 @@ export function adaptJourneyJ3(j: JourneyJ3, cursor: JourneyCursor): JourneyView
       nodeId: transition ? transition.toNode : `sv${latest.state.stateVersion}`,
       nodeLabel: transition ? transition.label : null,
     },
-    sides: [boardSide3(sides3.player, stats.player), boardSide3(sides3.opponent, stats.opponent)],
+    sides: [
+      boardSide3(sides3.player, stats.player, pending ? [] : readoutsOf(latest.state, "player")),
+      boardSide3(sides3.opponent, stats.opponent, pending ? [] : readoutsOf(latest.state, "opponent")),
+    ],
     transition,
     focus,
   };

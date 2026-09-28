@@ -15,13 +15,14 @@ import type { JourneyPublicState, JourneySide } from "@/lib/journey/contract";
 import { journeySide } from "@/lib/journey/contract";
 import { eventLine, markKey, transitionMarks } from "@/lib/journey/beat";
 import { formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
+import { learnedStatFact, NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyPortrait, LevelBadge, sideRim } from "./JourneyPrimitives";
 
-function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneySide }) {
+function SideDetail({ state, side, knowledge }: { state: JourneyPublicState; side: JourneySide; knowledge: JourneyKnowledge }) {
   const marks = transitionMarks(state.transition);
   const id = side.side;
   return (
@@ -67,11 +68,15 @@ function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneyS
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 text-xs">
           {side.stats.map((s) => {
             const delta = marks.stat.get(markKey(id, s.key));
+            // JP3 — the board's grammar: a withheld stat the learner has
+            // established reads as that value, with where it was learned.
+            const learned = s.withheld ? learnedStatFact(knowledge, side, s, state.step.index) : null;
             return (
               <div key={s.key} className="contents" data-testid={`journey-sheet-stat-${id}-${s.key}`}>
                 <dt className="text-white/70">{JOURNEY_STAT_META[s.key].long}</dt>
                 <dd className="text-right font-bold tabular-nums text-white">
-                  {s.withheld && s.withheldReason === "recalled"
+                  {learned ? `${learned.display} · learned Step ${learned.child + 1}`
+                    : s.withheld && s.withheldReason === "recalled"
                     ? `recall it${s.recalledFrom ? ` — ${s.recalledFrom.source} in step ${s.recalledFrom.child + 1}` : ""}`
                     : s.withheld || s.value === null ? "? — asked in this question"
                     : delta ? `${formatStatValue(delta.from, s.key)} → ${formatStatValue(delta.to, s.key)}`
@@ -105,8 +110,10 @@ function SideDetail({ state, side }: { state: JourneyPublicState; side: JourneyS
   );
 }
 
-export function JourneyStateSheet({ state, open, onOpenChange }: {
+export function JourneyStateSheet({ state, open, onOpenChange, knowledge = NO_KNOWLEDGE }: {
   state: JourneyPublicState;
+  /** JP3 — the learner's established facts (the board's own), for withheld stats. */
+  knowledge?: JourneyKnowledge;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -126,8 +133,8 @@ export function JourneyStateSheet({ state, open, onOpenChange }: {
           </SheetHeader>
           <MasteryAssetsProvider>
             <div className="grid gap-3 sm:grid-cols-2">
-              <SideDetail state={state} side={state.sides[0]} />
-              <SideDetail state={state} side={state.sides[1]} />
+              <SideDetail state={state} side={state.sides[0]} knowledge={knowledge} />
+              <SideDetail state={state} side={state.sides[1]} knowledge={knowledge} />
             </div>
           </MasteryAssetsProvider>
           {state.transition && (

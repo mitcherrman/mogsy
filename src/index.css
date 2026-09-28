@@ -16623,3 +16623,418 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
    width, so the prose surface's own meta row (drawn below `lg` only) does not
    repeat them; its category label stays. */
 .journey-question [data-testid="question-meta-row"] [data-testid="question-role-emblems"] { display: none; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   JP3 — JOURNEY VISUAL LANGUAGE.
+   Inside the JP2 stage contract: nothing here sizes the board, the prompt
+   region, the answer region or the reveal box. Every rule is colour, art,
+   alignment inside a fixed box, or a transform/shadow animation.
+
+   The two surfaces stay deliberately different — the dark board is the Rift
+   (game state), the parchment is the Academy (reasoning) — and are joined by
+   one vocabulary: the same gold (#e8c97a / #d4b35a), the same corner
+   brackets (`--jp3-corners`), the same `!` for learned knowledge, the same
+   blue-correct / red-incorrect tablet semantics the arena already uses.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --jp3-gold: #e8c97a;
+  --jp3-corner-c: rgba(232, 201, 122, 0.7);
+  --jp3-corner-l: 7px;
+}
+/* The shared corner bracket: four gold L's, drawn as background layers on an
+   absolutely positioned pseudo-element (lays out nothing). */
+.journey-board::before,
+.journey-question [data-quiz-choice]:not(:has(img))::after,
+.journey-calc__cell--final::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left top / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left top / 1px var(--jp3-corner-l) no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right top / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right top / 1px var(--jp3-corner-l) no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left bottom / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left bottom / 1px var(--jp3-corner-l) no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right bottom / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right bottom / 1px var(--jp3-corner-l) no-repeat;
+}
+
+/* ── 1. THE HOST: the Journey is the focal point on desktop ────────────────
+   A Journey-specific presentation STATE of the existing Ranked shell, keyed
+   on the Journey's own viewport being in the centre column (`:has`), so
+   ordinary Ranked is untouched by construction. The centre track widens
+   (54 → 60 at lg, → 64 from xl: +11% / +19%), the banners give up the width
+   and recede; identity, score and match context all stay. Mobile is not a
+   three-column arena and is left as it is. */
+@media (min-width: 1024px) {
+  .ranked-arena-grid:has(.journey-viewport) {
+    grid-template-columns: minmax(0, 20fr) minmax(0, 60fr) minmax(0, 20fr);
+  }
+  /* The banner's fixed-width status pill follows the narrower cloth. */
+  .ranked-arena-grid:has(.journey-viewport) .ranked-banner [data-testid^="status-"],
+  .ranked-arena-grid:has(.journey-viewport) .ranked-banner [data-testid^="outcome-"] {
+    width: min(10.5rem, calc(100% - 2 * var(--banner-inset)));
+  }
+  /* Recede: the champion crest and the module history step back; the name,
+     the score and the round status stay at full strength. */
+  .ranked-arena-grid:has(.journey-viewport) .ranked-banner [data-testid^="journey-crest-"],
+  .ranked-arena-grid:has(.journey-viewport) .ranked-banner [data-testid^="module-history-"] {
+    opacity: 0.72;
+  }
+  .ranked-arena-grid:has(.journey-viewport) .ranked-banner {
+    --banner-glow: rgba(201, 168, 76, 0.06);
+  }
+}
+@media (min-width: 1280px) {
+  .ranked-arena-grid:has(.journey-viewport) {
+    grid-template-columns: minmax(0, 18fr) minmax(0, 64fr) minmax(0, 18fr);
+  }
+}
+
+/* ── 2. THE BOARD'S ART: champion media, not texture ──────────────────────
+   Band only. Each champion's loading-screen art stands at its OUTER edge,
+   face and upper body (the art is composed on the champion, so a top-anchored
+   cover crop keeps the face whole), fading into a dark centre where the VS
+   and the state read. The sides' content hugs the seam, so the art's open
+   outer third is where the face is seen. The phone's compact rows keep the
+   quieter per-row splash. */
+.journey-board__art { display: none; }
+@container (min-width: 26rem) {
+  .journey-side__splash { display: none; }
+  /* Each art box reaches from the board's outer edge to just past the
+     picture; the picture is an UPPER-BODY crop (150% of the board's height,
+     `cqh`, the band being a size container) whose centre line — where
+     loading-screen art puts the face — sits 9% of the board's width in from
+     the edge, in the margin the seam-hugging content leaves open. */
+  .journey-board__art {
+    --jp3-art-h: 150cqh;
+    --jp3-face-x: 9cqw;
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: calc(var(--jp3-face-x) + var(--jp3-art-h) * 0.275 + 6cqw);
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .journey-board__art--subject {
+    left: 0;
+    -webkit-mask-image:
+      linear-gradient(90deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
+      linear-gradient(180deg, #000 70%, transparent 100%);
+    mask-image:
+      linear-gradient(90deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
+      linear-gradient(180deg, #000 70%, transparent 100%);
+  }
+  .journey-board__art--opponent {
+    right: 0;
+    -webkit-mask-image:
+      linear-gradient(270deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
+      linear-gradient(180deg, #000 70%, transparent 100%);
+    mask-image:
+      linear-gradient(270deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
+      linear-gradient(180deg, #000 70%, transparent 100%);
+  }
+  .journey-board__art img {
+    position: absolute;
+    top: -2cqh;
+    height: var(--jp3-art-h);
+    width: auto;
+    max-width: none;
+    aspect-ratio: 308 / 560;
+    object-fit: cover;
+    object-position: 50% 0;
+    filter: saturate(0.95) brightness(0.8) contrast(1.05);
+  }
+  .journey-board__art--subject img { left: calc(var(--jp3-face-x) - var(--jp3-art-h) * 0.275); }
+  .journey-board__art--opponent img { right: calc(var(--jp3-face-x) - var(--jp3-art-h) * 0.275); }
+  /* A splash (no loading art served): the same box, cover-cropped high. */
+  .journey-board__art[data-art="splash"] img {
+    left: 0; right: 0; width: 100%; height: 100%; top: 0; aspect-ratio: auto; object-position: 62% 18%;
+  }
+  /* The dark centre: the state's reading lane. Above the art, below the UI. */
+  .journey-board::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 34% 75% at 50% 55%, rgb(6 13 24 / 0.82), transparent 100%),
+      linear-gradient(180deg, rgb(6 13 24 / 0.55), transparent 22%, transparent 78%, rgb(6 13 24 / 0.6));
+  }
+  .journey-board > .journey-board__head,
+  .journey-board > .journey-board__sides { position: relative; z-index: 1; }
+  /* The sides' content hugs the seam (the state reads in the dark centre);
+     the art owns the outer edges. */
+  .journey-side[data-side="subject"] { justify-items: end; }
+  .journey-side[data-side="subject"] .journey-side__items,
+  .journey-side[data-side="subject"] .journey-side__stats { justify-self: end; justify-content: flex-end; }
+  .journey-side[data-side="opponent"] { justify-items: start; }
+  .journey-side[data-side="opponent"] .journey-side__items,
+  .journey-side[data-side="opponent"] .journey-side__stats { justify-self: start; justify-content: flex-start; }
+  .journey-side__champion { text-shadow: 0 1px 2px #000, 0 0 10px rgb(0 0 0 / 0.8); }
+}
+/* The board's corner brackets (the connective tissue with the parchment). */
+.journey-board::before { inset: 5px; z-index: 2; --jp3-corner-c: rgba(232, 201, 122, 0.45); }
+/* The circular portraits step back a little on the tall desktop board: the
+   art is the champion's picture now. */
+@container (min-width: 34rem) and (min-height: 17rem) {
+  .journey-vars { --jb-portrait: 3.5rem; }
+}
+
+/* ── 3. LEARNED KNOWLEDGE: one gold `!`, and the board fills in ────────── */
+.journey-chip--learned {
+  border-color: rgb(232 201 122 / 0.85);
+  background: linear-gradient(180deg, rgb(232 201 122 / 0.24), rgb(232 201 122 / 0.1));
+  box-shadow: inset 0 1px 0 rgb(255 243 208 / 0.18);
+}
+/* The inline `!` at the end of a learned chip: same badge, in the flow. */
+.journey-know--chip {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex-shrink: 0;
+  margin-left: 1px;
+}
+/* A readout's label: long on the band, short in a compact row. */
+.journey-long { display: none; }
+.journey-short { display: inline; }
+@container (min-width: 26rem) {
+  .journey-long { display: inline; }
+  .journey-short { display: none; }
+}
+/* The moment of learning: the value arrives into the chip, the chip glows
+   once, the `!` pops in — then everything settles into the learned face. */
+@keyframes journey-learned-glow {
+  0% { box-shadow: 0 0 0 0 rgb(243 220 160 / 0); filter: none; }
+  30% { box-shadow: 0 0 0 2px rgb(243 220 160 / 0.95), 0 0 18px rgb(243 220 160 / 0.7); filter: brightness(1.3); }
+  100% { box-shadow: 0 0 0 0 rgb(243 220 160 / 0); filter: none; }
+}
+@keyframes journey-learned-in {
+  from { transform: translateY(45%) scale(0.7); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes journey-know-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.35); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-chip[data-just-learned="true"] { animation: journey-learned-glow 1.2s ease-out 1; }
+  .journey-chip[data-just-learned="true"] .journey-learned-value {
+    animation: journey-learned-in 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .journey-know[data-just-learned="true"] { animation: journey-know-pop 520ms 220ms cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+}
+
+/* ── 4. THE MICRO-CHAIN: causality, subordinate to the board ───────────── */
+.journey-chain {
+  display: inline-flex;
+  min-width: 0;
+  flex-shrink: 1;
+  align-items: center;
+  margin: 0 0 0 0.5rem;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  letter-spacing: 0.04em;
+}
+/* The header makes room for the chain: "Calc" is its icon (it keeps its
+   accessible name and a title) until the board is wide enough for both, and
+   a phone board drops the question's role emblems from this one line. */
+.journey-board__btn-text { display: none; }
+@container (min-width: 48rem) {
+  .journey-board__btn-text { display: inline; }
+}
+/* The question's role emblems give the chain their room until the board is
+   wide enough for both (they stay in the DOM and in the State sheet's step). */
+@container (max-width: 47.99rem) {
+  .journey-board__head:has(.journey-chain) .journey-board__roles { display: none; }
+}
+.journey-chain__node { display: inline-flex; flex-shrink: 0; align-items: center; gap: 3px; white-space: nowrap; }
+.journey-chain__link { margin: 0 1px; color: rgb(232 201 122 / 0.45); letter-spacing: 0; }
+/* A phone board's header has no room for both "Step N of M" and the chain:
+   the chain says it (the step stays in the accessible name). */
+@container (max-width: 25.99rem) {
+  .journey-board__eyebrow:has(.journey-chain) [data-testid="journey-step"] {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .journey-board__eyebrow:has(.journey-chain) .journey-chain { margin-left: 0; }
+}
+.journey-chain__dot {
+  display: inline-flex;
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgb(255 255 255 / 0.28);
+}
+.journey-chain__node[data-state="done"] .journey-chain__dot { border-color: var(--jp3-gold); background: var(--jp3-gold); }
+.journey-chain__check { width: 0.4rem; height: 0.4rem; color: #2a1f08; }
+.journey-chain__node[data-state="current"] .journey-chain__dot {
+  border-color: #f3dca0;
+  background: radial-gradient(circle, #f3dca0 0 38%, transparent 44%);
+  box-shadow: 0 0 0 2px rgb(243 220 160 / 0.28);
+}
+.journey-chain__label { color: rgb(255 255 255 / 0.55); }
+.journey-chain__node[data-state="current"] .journey-chain__label { color: #f3dca0; font-weight: 800; }
+/* THE CHAIN FITS ITSELF (`JourneyChain` measures its line): `full` names
+   every reached step, `current` only the step on screen, `dots` is nodes
+   only. The eyebrow takes whatever the buttons leave. */
+.journey-board__eyebrow:has(.journey-chain) { flex: 1 1 0; }
+.journey-chain__node:not([data-state="current"]) .journey-chain__label { display: none; }
+.journey-chain[data-fit="full"] .journey-chain__node .journey-chain__label { display: inline; }
+.journey-chain[data-fit="full"] .journey-chain__link { margin: 0 2px; }
+.journey-chain[data-fit="dots"] .journey-chain__label,
+.journey-chain[data-fit="dots"] .journey-chain__link { display: none; }
+.journey-chain[data-fit="dots"] .journey-chain__node + .journey-chain__node { margin-left: 3px; }
+.journey-board__node-label { display: inline-block; max-width: 100%; vertical-align: middle; }
+/* The chain never shrinks (a clipped node would misstate the chain); a
+   transition note beside it (a Daily's "Leona buys Cloth Armor") truncates. */
+.journey-chain { flex-shrink: 0; }
+
+
+/* ── 5. THE REVEAL AS A CALCULATION ────────────────────────────────────── */
+.journey-calc-wrap { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+/* A formula the cells follow from: one line, at reading size; a formula too
+   long for a phone line ends in an ellipsis (its full text is the title). */
+.journey-calc__caption {
+  overflow: hidden;
+  color: #3a2c10;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 640px) { .journey-calc__caption { font-size: 0.8125rem; } }
+.journey-calc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  row-gap: 4px;
+  margin: 1px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.journey-calc__step { display: inline-flex; align-items: center; }
+.journey-calc__op {
+  padding: 0 5px;
+  color: #8a6d2c;
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.journey-calc__cell {
+  position: relative;
+  display: inline-flex;
+  min-width: 3.75rem;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 8px 3px;
+  border: 1px solid rgb(122 98 54 / 0.42);
+  border-radius: 6px;
+  background: rgb(255 250 235 / 0.58);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5);
+}
+.journey-calc__label {
+  color: #6b5426;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.journey-calc__value {
+  color: #2a1f08;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* The culmination: the Journey's answer, in the gold of the board. */
+.journey-calc__cell--final {
+  --jp3-corner-c: rgba(122, 86, 20, 0.85);
+  --jp3-corner-l: 6px;
+  border: 1.5px solid #b8860b;
+  background: linear-gradient(180deg, rgb(243 220 160 / 0.85), rgb(232 201 122 / 0.5));
+  box-shadow: 0 2px 8px -4px rgb(92 73 38 / 0.6), inset 0 1px 0 rgb(255 250 230 / 0.7);
+}
+.journey-calc__cell--final::after { inset: 2px; }
+.journey-calc__cell--final .journey-calc__label { color: #5a3f0c; }
+.journey-calc__cell--final .journey-calc__value { color: #2a1a02; font-size: 1.25rem; line-height: 1.1; }
+@media (min-width: 1280px) {
+  .journey-calc__value { font-size: 1.0625rem; }
+  .journey-calc__cell--final .journey-calc__value { font-size: 1.375rem; }
+}
+
+/* ── 6. THE PARCHMENT'S ENGRAVING: whole, centred, faded — never sliced ───
+   The ordinary card prints the champion/combat drawing at 180% of the card,
+   cropped by the sheet (a composition reviewed for a card with a tall media
+   band above). Under the Journey's opaque board that crop showed only an arm
+   and half a face, cut by the card edge. On the Journey stage the drawing is
+   a plate printed into the page instead: the WHOLE composition, scaled to the
+   question region's height, centred, its torn paper edge dissolved by a mask
+   sized to the drawing itself, quiet under the prompt and the tablets. The
+   phone keeps no motif (as everywhere). */
+.journey-question .question-motif-layer:is([data-motif-art="items"], [data-motif-art="spells"])::before,
+.journey-question .question-surface-stack > .question-motif-layer:is([data-motif-art="champ-combat"])::before {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 704 / 561;
+  transform: translate(-50%, -50%);
+  background-size: 100% 100%;
+  background-position: center;
+  filter: grayscale(1) sepia(0.3) brightness(1.12) contrast(1.35);
+  opacity: 0.2;
+  -webkit-mask-image: radial-gradient(closest-side, #000 52%, rgb(0 0 0 / 0.5) 74%, transparent 96%);
+  mask-image: radial-gradient(closest-side, #000 52%, rgb(0 0 0 / 0.5) 74%, transparent 96%);
+}
+.journey-question .question-motif-layer:is([data-motif-art="items"], [data-motif-art="spells"])::before {
+  aspect-ratio: 1 / 1;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* ── 7. THE ANSWER TABLETS: a restrained Academy edge ───────────────────
+   Colour and a corner bracket only — no padding, border-width or size
+   change, so the JP2 answer geometry is exactly what it was. */
+.ranked-academy .journey-question [data-answers-state] [data-quiz-choice]:not(:has(img)) {
+  border-color: rgba(212, 179, 90, 0.5);
+}
+.journey-question [data-quiz-choice]:not(:has(img))::after {
+  inset: 2px;
+  --jp3-corner-c: rgba(232, 201, 122, 0.42);
+  --jp3-corner-l: 5px;
+  border-radius: 4px;
+}
+/* The "Your pick" stamp sits in the bottom-right corner: that bracket steps
+   aside for it (it read as a full stop after the word). */
+.journey-question [data-quiz-choice]:has([data-testid="answer-your-pick"])::after {
+  background:
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left top / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left top / 1px var(--jp3-corner-l) no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right top / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right top / 1px var(--jp3-corner-l) no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left bottom / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left bottom / 1px var(--jp3-corner-l) no-repeat;
+}
+.journey-question [data-quiz-choice][data-choice-state="selected"]::after { --jp3-corner-c: rgba(246, 230, 187, 0.9); }
+.journey-question [data-quiz-choice][data-choice-state="correct"]::after { --jp3-corner-c: rgba(143, 208, 245, 0.9); }
+.journey-question [data-quiz-choice][data-choice-state="incorrect-selected"]::after { --jp3-corner-c: rgba(226, 117, 123, 0.9); }
+.ranked-academy .journey-question [data-answers-state] [data-quiz-choice]:enabled:hover::after {
+  --jp3-corner-c: rgba(243, 220, 160, 0.85);
+}

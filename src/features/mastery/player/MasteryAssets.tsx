@@ -19,6 +19,12 @@ export interface MasteryAssets {
    * absence as "no art".
    */
   championSplashUrl?: (championId: string, displayName?: string | null) => string | null;
+  /**
+   * JP3 — the champion's LOADING-SCREEN art (portrait orientation, composed on
+   * the champion), or null. Optional like the splash; decorative callers fall
+   * back to the splash, then to nothing.
+   */
+  championLoadingUrl?: (championId: string, displayName?: string | null) => string | null;
 }
 
 export const MasteryAssetsContext = createContext<MasteryAssets>({

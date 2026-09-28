@@ -31,10 +31,12 @@
  * reveal (`holdPrevious`), the board keeps showing the state that child was
  * asked against, and the beat waits — the transition follows the reveal.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { JourneyPublicState } from "@/lib/journey/contract";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import { NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
+import { journeyChain } from "@/lib/journey/chain";
+import type { JourneyChildContext } from "@/lib/journey/adapter";
 import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBand";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyStateBoard } from "./JourneyStateBoard";
@@ -44,8 +46,19 @@ import { useJourneyBeat } from "./useJourneyBeat";
 import { JourneyWorkbenchSheet } from "./workbench/JourneyWorkbenchSheet";
 
 export function JourneyModuleStage({
-  state, skewMs = 0, holdPrevious = false, questionRoles = null, knowledge = NO_KNOWLEDGE, children,
+  state, skewMs = 0, holdPrevious = false, questionRoles = null, knowledge = NO_KNOWLEDGE,
+  reached = null, answeredThrough = 0, children,
 }: {
+  /**
+   * JP3 — the reached children (their served asks name the micro-chain's
+   * nodes). Null draws no chain.
+   */
+  reached?: readonly Pick<JourneyChildContext, "index" | "asks">[] | null;
+  /**
+   * JP3 — the server's next challenge index for this viewer (`own_next_challenge_index`):
+   * every step before it is answered and revealed, so it reads as done.
+   */
+  answeredThrough?: number;
   /** The viewer's current canonical public Journey state. */
   state: JourneyPublicState;
   skewMs?: number;
@@ -71,6 +84,11 @@ export function JourneyModuleStage({
   const board = shown.current;
 
   const beatActive = useJourneyBeat(board.transition, skewMs, holdPrevious);
+  // JP3 — the chain follows the BOARD ON SCREEN (the held child during its
+  // reveal), which is done once its reveal shows.
+  const chain = useMemo(() => (reached
+    ? journeyChain(reached, board.step.count, board.step.index, holdPrevious || board.step.index < answeredThrough)
+    : null), [reached, board.step.count, board.step.index, holdPrevious, answeredThrough]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [formulasOpen, setFormulasOpen] = useState(false);
 
@@ -88,7 +106,7 @@ export function JourneyModuleStage({
         <ScenarioMediaBand key={board.journeyKey} aspect="band" compact data-band-kind="journey"
           className="journey-band">
           <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}
-            questionRoles={beatActive ? null : questionRoles} knowledge={knowledge}
+            questionRoles={beatActive ? null : questionRoles} knowledge={knowledge} chain={chain}
             beatStamp={beatActive ? <JourneyBeatStamp key={board.step.index} state={board} /> : null}
             onOpenFormulas={() => setFormulasOpen(true)}>
             {beatActive && <JourneyTransitionBeat key={board.step.index} state={board} />}
@@ -108,7 +126,7 @@ export function JourneyModuleStage({
             </div>
           )}
         </div>
-        <JourneyStateSheet state={board} open={sheetOpen} onOpenChange={setSheetOpen} />
+        <JourneyStateSheet state={board} open={sheetOpen} onOpenChange={setSheetOpen} knowledge={knowledge} />
         <JourneyWorkbenchSheet open={formulasOpen} onOpenChange={setFormulasOpen} />
       </div>
     </MasteryAssetsProvider>

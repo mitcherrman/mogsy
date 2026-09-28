@@ -91,7 +91,8 @@ describe("the transition beat is the server's, and gates the next question", () 
     act(() => { vi.advanceTimersByTime(5_000); });
     const armor = screen.getByTestId("journey-stat-opponent-armor");
     expect(armor).toHaveAttribute("data-face", "delta");
-    expect(armor).toHaveTextContent(/51\.59.*91\.59/);
+    // JP3 — derived stats read whole (51.59 → 52, 91.59 → 92).
+    expect(armor).toHaveTextContent(/52.*→.*92/);
     expect(screen.getByTestId("journey-item-opponent-0")).toHaveAttribute("data-new", "true");
   });
 
@@ -193,7 +194,7 @@ describe("Matchup and Combat presentation", () => {
     const sheet = screen.getByTestId("journey-state-sheet");
     expect(within(sheet).getByTestId("journey-sheet-side-subject")).toHaveTextContent("Jarvan IV");
     expect(within(sheet).getByTestId("journey-sheet-side-opponent")).toHaveTextContent("Chain Vest");
-    expect(within(sheet).getByTestId("journey-sheet-changes")).toHaveTextContent("Olaf · Armor 51.59 → 91.59");
+    expect(within(sheet).getByTestId("journey-sheet-changes")).toHaveTextContent("Olaf · Armor 52 → 92");
   });
 });
 

@@ -7,7 +7,7 @@ import {
   ARC_C_CHILD_2_PREMISE, ARC_F_CHILD_0, ARC_F_CHILD_1_UNLOCK, withBeat,
 } from "./fixtures";
 import { beatActiveAt, beatRemainingMs, eventDelaysMs, eventLine, transitionMarks } from "./beat";
-import { formatStatValue, JOURNEY_STAT_KEYS } from "./stats";
+import { exactNumber, exactValueNote, formatStatValue, JOURNEY_STAT_KEYS } from "./stats";
 
 type Wire = Record<string, unknown>;
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
@@ -181,14 +181,21 @@ describe("the beat and its lasting marks", () => {
     expect(Math.max(...eventDelaysMs(8, 2400))).toBeLessThanOrEqual(2400 * 0.8);
   });
 
-  it("formats the server's number without rounding a stated premise away", () => {
-    expect(formatStatValue(44.195, "armor")).toBe("44.195");
-    expect(formatStatValue(91.59, "armor")).toBe("91.59");
+  it("JP3 — a derived board stat is shown WHOLE, as League shows it; its exact value is a note", () => {
+    expect(formatStatValue(44.195, "armor")).toBe("44");
+    expect(formatStatValue(91.59, "armor")).toBe("92");
+    expect(formatStatValue(24.024, "armor")).toBe("24");
+    expect(formatStatValue(20.8, "bonus_attack_damage")).toBe("21");
     expect(formatStatValue(20, "bonus_attack_damage")).toBe("20");
     expect(formatStatValue(30, "armor_penetration_percent")).toBe("30%");
-    // JOURNEY-UI3 — J3 states attack damage with FOUR decimals; every digit stays.
-    expect(formatStatValue(70.1625, "attack_damage")).toBe("70.1625");
-    expect(formatStatValue(68.8675, "attack_damage")).toBe("68.8675");
-    expect(formatStatValue(0.1 + 0.2, "armor")).toBe("0.3");   // float noise only is stripped
+    expect(formatStatValue(70.1625, "attack_damage")).toBe("70");
+    expect(formatStatValue(68.8675, "attack_damage")).toBe("69");
+    expect(formatStatValue(-0.4, "armor")).toBe("0");
+    // The exact served number survives, one hover away — never "rounded up".
+    expect(exactNumber(0.1 + 0.2)).toBe("0.3");   // float noise only is stripped
+    expect(exactValueNote(84.56)).toBe(
+      "Exact value 84.56 · shown as 85, rounded for display. Calculations use the exact value.");
+    expect(exactValueNote(24)).toBeNull();
+    expect(exactValueNote(84.56)).not.toMatch(/rounded up/);
   });
 });

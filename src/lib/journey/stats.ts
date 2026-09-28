@@ -65,16 +65,49 @@ export function isJourneyStatKey(v: unknown): v is JourneyStatKey {
 }
 
 /**
- * The server's number, printed with EVERY digit it has: canonical premises
- * carry them (an armor of 44.195, an attack damage of 70.1625 — J3 states the
- * latter with four decimals), and the board must not disagree with the
- * premise by rounding it. `toPrecision(12)` only strips binary float noise;
- * trailing zeros are dropped. Formatting only — never arithmetic.
+ * JP3 — THE DISPLAY PRECISION POLICY (owner lock).
+ *
+ * A DERIVED game-state number — a stat at a level (armor 24.024), a bonus AD
+ * built from growth (20.8), a raw or mitigated damage (84.56, 68.1804) — is
+ * shown as League shows it: a whole number. The canonical number is untouched
+ * everywhere else: the server computes with it, the reveal's exact value stays
+ * in the payload, and a hover title can still name it ("rounded for display").
+ *
+ * A decimal that IS the taught fact (a formula's rank value, Zed E's 92.5) is
+ * never passed through here: formulas are printed from their served strings.
+ *
+ * Display only — nothing is ever computed from the rounded value.
+ */
+export function displayWhole(value: number): string {
+  // `+ 0` folds a rounded -0 into 0.
+  return String(Math.round(value) + 0);
+}
+
+/** The exact served number, only binary float noise stripped (for a hover title). */
+export function exactNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(12)));
+}
+
+/** True when the display rounding hid digits (so an exact-value title is worth offering). */
+export const isRoundedForDisplay = (value: number) => displayWhole(value) !== exactNumber(value);
+
+/**
+ * "Exact value 84.56 · rounded for display to 85. Calculations use the exact
+ * value." — the optional, unobtrusive exact-value note (a `title`), or null
+ * when nothing was rounded. Never "rounded up".
+ */
+export function exactValueNote(value: number): string | null {
+  return isRoundedForDisplay(value)
+    ? `Exact value ${exactNumber(value)} · shown as ${displayWhole(value)}, rounded for display. Calculations use the exact value.`
+    : null;
+}
+
+/**
+ * A board stat, as the player reads it: whole (see `displayWhole`), with the
+ * stat's unit. Formatting only — never arithmetic.
  */
 export function formatStatValue(value: number, key: JourneyStatKey): string {
-  const text = Number.isInteger(value)
-    ? String(value)
-    : String(Number(value.toPrecision(12)));
+  const text = displayWhole(value);
   return JOURNEY_STAT_META[key].unit === "percent" ? `${text}%` : text;
 }
 

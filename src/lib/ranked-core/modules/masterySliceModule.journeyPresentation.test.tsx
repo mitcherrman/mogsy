@@ -172,7 +172,7 @@ describe("the board's splash underlays use the public champion identity", () => 
   });
 });
 
-describe("the Journey banner's role emblem is the participant's frozen match role only", () => {
+describe("JP3 — while a Journey runs, the banner draws no match role (the board is the scenario)", () => {
   const combatant = (over: Partial<CombatantView> = {}): CombatantView => ({
     playerId: "you", name: "You", tag: "Jungle", side: "player", classId: "tank",
     roleId: "jungle", identityMode: "role", score: 0, hp: 150, maxHp: 170, xp: 0, level: 1,
@@ -189,18 +189,38 @@ describe("the Journey banner's role emblem is the participant's frozen match rol
     return journeyRailIdentity(view.board, "subject");
   };
 
-  it("draws RoleEmblem from `roleId` beside the role name (the Journey's own role string is 'bot')", () => {
+  it("a Journey banner draws neither the match role's name nor its emblem ('Jungle' is not the Journey's lane)", () => {
     render(<CombatantPanel combatant={combatant()} presentation="banner" damage={[]} journey={rail()} />);
-    const tag = screen.getByTestId("identity-tag-you");
-    expect(within(tag).getByTestId("role-emblem")).toHaveAttribute("data-role", "jungle");
+    expect(screen.queryByTestId("identity-tag-you")).toBeNull();
+    expect(screen.queryByTestId("role-emblem")).toBeNull();
+    expect(screen.getByTestId("combatant-you").textContent).not.toMatch(/jungle/i);
+    // Identity and score stay: the name, the champion crest, the tally.
+    expect(screen.getByTestId("combatant-you")).toHaveTextContent("You");
+    expect(screen.getByTestId("journey-crest-subject")).toBeInTheDocument();
+    expect(screen.getByTestId("score-you")).toBeInTheDocument();
   });
 
-  it("a role-less participant gets none; outside a Journey the mascot says it and no emblem is added", () => {
-    const { unmount } = render(<CombatantPanel combatant={combatant({ roleId: null, tag: undefined })}
-      presentation="banner" damage={[]} journey={rail()} />);
-    expect(within(screen.getByTestId("identity-tag-you")).queryByTestId("role-emblem")).toBeNull();
-    unmount();
+  it("outside a Journey the banner is unchanged: the role's name, and the mascot says the rest", () => {
     render(<CombatantPanel combatant={combatant()} presentation="banner" damage={[]} />);
+    expect(screen.getByTestId("identity-tag-you")).toHaveTextContent("Jungle");
     expect(within(screen.getByTestId("identity-tag-you")).queryByTestId("role-emblem")).toBeNull();
+  });
+
+  it("the phone match bar drops the match-role emblem during a Journey, and keeps it otherwise", async () => {
+    const { MobileMatchBar } = await import("@/components/ranked-arena/MobileMatchBar");
+    const barRail = (journey: ReturnType<typeof rail> | null) => ({
+      kind: "combatant" as const, combatant: combatant(), presentation: "banner" as const, damage: [], outcome: null,
+      damageDealt: null, feedback: null, reaction: null, award: null, journey,
+    });
+    const other = { ...barRail(null), combatant: combatant({ playerId: "opp", name: "Bot", side: "opponent", roleId: "top", tag: "Top" }) };
+    const header = {
+      eyebrow: "Ranked Duel", title: "10 / 10", transitionNote: null, playtestNote: null, presenceNote: null,
+      timerLabel: "Journey timer", timer: { durationSeconds: 120, remainingSeconds: 100, paused: false, urgent: false },
+    };
+    const { unmount } = render(<MobileMatchBar header={header} left={barRail(rail())} right={other} progressionEnabled={false} />);
+    expect(within(screen.getByTestId("mobile-combatant-you")).queryByTestId("role-emblem")).toBeNull();
+    unmount();
+    render(<MobileMatchBar header={header} left={barRail(null)} right={other} progressionEnabled={false} />);
+    expect(within(screen.getByTestId("mobile-combatant-you")).getByTestId("role-emblem")).toHaveAttribute("data-role", "jungle");
   });
 });

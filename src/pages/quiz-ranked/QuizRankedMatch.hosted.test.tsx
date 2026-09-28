@@ -654,7 +654,7 @@ describe("JOURNEY5 — a hosted Journey's final child", () => {
     await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
     await waitFor(() => expect(shownPhase()).toHaveAttribute("data-revealing", "true"), { timeout: 4000 });
     expect(shownPhase()).toHaveAttribute("data-challenge-index", "4");
-    expect(screen.getByTestId("journey-combat-working")).toHaveTextContent("Answer 90");
+    expect(screen.getByTestId("journey-combat-working-final")).toHaveTextContent("Final damage90");
     // The pool's frozen remainder, PAUSED — own_finished no longer un-pauses it.
     await waitFor(() => expect(clockText()).toHaveTextContent("1:50"), { timeout: 4000 });
     expect(clockText()).toHaveAttribute("data-timer-state", "paused");

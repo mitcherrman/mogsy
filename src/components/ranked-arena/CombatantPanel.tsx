@@ -41,7 +41,6 @@ import { ClassIdentity, classIdentityFor } from "./classIdentity";
 import { ModuleBubble } from "./ModuleBubble";
 import { AwardPops, type AwardEvent } from "./AwardPops";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
-import { RoleEmblem } from "./RoleEmblem";
 
 /**
  * THE ONE SIDE RULE (AI1 Phase 2B follow-up).
@@ -873,7 +872,14 @@ export function CombatantPanel({
    * On a role match this is always a non-empty string, which is what keeps the
    * two columns' identity rows the same shape when only one side has a role.
    */
-  const identityLabel = roleLayout ? (tag ?? role.label) : tag;
+  /*
+   * JP3 — while a Journey is on the stage, the column's MATCH role ("Jungle",
+   * "Top") is not drawn: it names the participant's queue role, not the frozen
+   * game state the Journey is about, and beside the Journey's champion crest it
+   * read as that champion's lane. The state board is the scenario's one
+   * authority. The header row keeps its reserved height, so nothing moves.
+   */
+  const identityLabel = journey ? null : roleLayout ? (tag ?? role.label) : tag;
   // The opponent column is the horizontal REFLECTION of the player's, not a
   // second layout that resembles it: one structure, one rule, and every row
   // below takes its alignment from this. `side` survives only where the two
@@ -971,16 +977,9 @@ export function CombatantPanel({
                   className="h-4 w-4 shrink-0 select-none rounded-[3px] object-cover [object-position:50%_22%] sm:hidden"
                 />
               )}
-              {/* JOURNEY-PRES-V1 — a Journey's crest slot shows the CHAMPION,
-                  which took the role mascot (and so any picture of the role)
-                  off the banner. The small RQ1 emblem puts it back beside the
-                  role's name, from the participant's FROZEN match role
-                  (`players[].role` → `roleId`) and nothing else: no Journey
-                  recipe role, no inference. A role-less participant gets
-                  none. Outside a Journey the mascot already says it. */}
-              {roleLayout && journey && role.role && (
-                <RoleEmblem role={role.role} size="sm" decorative className="opacity-90" />
-              )}
+              {/* (JOURNEY-PRES-V1 drew the match role's emblem here during a
+                  Journey; JP3 draws no match role at all while one runs —
+                  see `identityLabel`.) */}
               <span className="truncate">{identityLabel}</span>
             </div>
           )}

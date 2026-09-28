@@ -132,17 +132,21 @@ describe("JOURNEY5 — structured Combat working on the reveal", () => {
   it("the final child's reveal draws the server's working as THE reveal line; the serialized prose is not repeated", () => {
     playIntoFinalWindow(pantheonStandardFinalWindow("correct"));
     const w = screen.getByTestId("journey-combat-working");
-    expect(w).toHaveTextContent(
-      "Formula (E rank 1): 55 + 100% total AD (81.4745) + 150% bonus AD (10)");
-    expect(within(w).getByTestId("journey-combat-working-raw")).toHaveTextContent("151.4745");
-    expect(within(w).getByTestId("journey-combat-working-armor")).toHaveTextContent("68.872");
-    expect(w.querySelector("[data-step='penetration']")).toHaveTextContent("No penetration");
-    expect(within(w).getByTestId("journey-combat-working-effective")).toHaveTextContent("68.872");
-    expect(within(w).getByTestId("journey-combat-working-multiplier")).toHaveTextContent("0.5922");
-    expect(within(w).getByTestId("journey-combat-working-final")).toHaveTextContent("89.6978");
-    expect(within(w).getByTestId("journey-combat-working-answer")).toHaveTextContent("90");
-    // Stated armor: no recall note.
-    expect(within(w).queryByTestId("journey-combat-working-armor-source")).toBeNull();
+    // JP3 — a calculation: the served formula as one caption line (its derived
+    // stat whole for display), then cells from the raw damage it gives.
+    expect(within(w).getByTestId("journey-combat-working-formula")).toHaveTextContent(
+      "E R1: 55 + 100% total AD (81) + 150% bonus AD (10)");
+    expect(within(w).getByTestId("journey-combat-working-formula").getAttribute("title")).toMatch(/Exact value 81\.4745/);
+    expect(within(w).getByTestId("journey-combat-working-raw")).toHaveTextContent(/^Raw damage151$/);
+    expect(within(w).getByTestId("journey-combat-working-armor")).toHaveTextContent(/^Leona armor69$/);
+    // No penetration: no penetration / effective-armor cells (armor is used as is).
+    expect(within(w).queryByTestId("journey-combat-working-penetration")).toBeNull();
+    expect(within(w).queryByTestId("journey-combat-working-effective")).toBeNull();
+    expect(within(w).getByTestId("journey-combat-working-multiplier")).toHaveTextContent("×0.5922");
+    // The culmination is the SERVED answer; the unrounded 89.6978 is only a hover note.
+    expect(within(w).getByTestId("journey-combat-working-final")).toHaveTextContent(/^Final damage90$/);
+    expect(within(w).getByTestId("journey-combat-working-final").getAttribute("title")).toMatch(/Exact value 89\.6978/);
+    expect(w.textContent).not.toMatch(/151\.4745|68\.872|89\.6978/);
     // JP2 — the working says it all, in the prompt's own box: the backend's
     // serialized explanation is not appended under it.
     expect(screen.queryByTestId("journey-reveal-explanation")).toBeNull();
@@ -153,17 +157,24 @@ describe("JOURNEY5 — structured Combat working on the reveal", () => {
     show(pantheonStandardChild3RevealWithWorking());
     expect(phase()).toHaveAttribute("data-revealing", "true");
     const w = screen.getByTestId("journey-combat-working");
-    expect(within(w).getByTestId("journey-combat-working-armor")).toHaveTextContent("50.08");
-    expect(within(w).getByTestId("journey-combat-working-armor-source")).toHaveTextContent("(recalled from step 1)");
-    expect(w.querySelector("[data-step='armor']")).toHaveTextContent("→ Leona armor 50.08 (recalled from step 1)");
-    expect(within(w).getByTestId("journey-combat-working-answer")).toHaveTextContent("83");
+    // JP3 — the value actually used, whole for display (its exact value on
+    // hover); where it was learned is on the board (the armor chip's `!`).
+    expect(within(w).getByTestId("journey-combat-working-armor")).toHaveTextContent(/^Leona armor50$/);
+    expect(within(w).getByTestId("journey-combat-working-armor").getAttribute("title")).toMatch(/Exact value 50\.08/);
+    expect(w.querySelector("[data-step='armor']")).toHaveTextContent("→Leona armor50");
+    expect(within(w).getByTestId("journey-combat-working-final")).toHaveTextContent(/83$/);
   });
 
   it("no combat_working on the wire → today's prose-only reveal, unchanged (real capture)", () => {
     show(realSnap("pantheon.standard", "child2-reveal"));
     expect(phase()).toHaveAttribute("data-revealing", "true");
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
-    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent("82.534 damage, which rounds to 83");
+    // JP3 — the served prose, its derived value shown whole ("rounded for
+    // display" is the hover note; the prose is otherwise verbatim).
+    const e = screen.getByTestId("journey-reveal-explanation");
+    expect(e).toHaveTextContent(/: 83 damage\.$/);
+    expect(e.textContent).not.toContain("82.534");
+    expect(e.getAttribute("title")).toMatch(/Exact value 82\.534 · shown as 83, rounded for display/);
   });
 
   it("a MALFORMED combat_working drops only the working: the match keeps rendering the prose reveal", () => {
@@ -173,7 +184,7 @@ describe("JOURNEY5 — structured Combat working on the reveal", () => {
     show(s);
     expect(phase()).toHaveAttribute("data-revealing", "true");
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
-    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent("82.534 damage, which rounds to 83");
+    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent(/: 83 damage\.$/);
   });
 
   it("a live (unrevealed) Combat child never draws a working", () => {
