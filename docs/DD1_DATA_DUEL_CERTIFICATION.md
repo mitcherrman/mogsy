@@ -320,9 +320,116 @@ Both orders were proven on real bodies.
 ## 15. Remaining blockers
 
 None of them is code. These are the gates before **deploy**:
-1. Run the canonical-DB suites and the one canonical end-to-end in §6 against a populated `lol_calc.db`. This could not be done on this machine.
+1. ~~Run the canonical-DB suites and the one canonical end-to-end in §6.~~ **Done in DD1-D: PASS (§17).**
 2. Keep the merge order in §14 (JP2 before the frontend), or accept the interim duplicate Journey art.
 
 ## 16. Production verdict
 
 **READY TO MERGE.**
+
+## 17. DD1-D — real canonical-data certification
+
+**Verdict: REAL-DATA CERTIFICATION: PASS. The DD1 backend is cleared to merge.** This closes item 1 of §15. No DD1 code was changed.
+
+### DB
+
+The populated canonical DB is `C:\Users\mlmit\mogzy-data\lol_calc.db`. It sits outside the repos, which is why DD1-C's Desktop search missed it.
+
+- Size and identity: 6,217,244,672 bytes, sha256 `0c79f2fb…d1af3ff`, 219 tables.
+- Contents:
+  - 173 `champions` and 173 `champion_stats` rows
+  - 692 `champion_abilities`, each with a wiki `authority_revision_id` and `review_status = reviewed`
+  - 12,397 `quiz_questions`
+- Handling:
+  - The original was opened read-only.
+  - The SQLite backup API copied it into disposable, detached worktrees outside OneDrive: `dd1d-cert` at backend `3f85e3d2`, and `dd1d-base` at `origin/master` `26ef8829`.
+  - The original's sha256 was the same before and after.
+
+### Suites
+
+The run covered the §6 list plus `test_setup_state_backwards_compat`, all against canonical copies.
+
+| Tree | Failed | Errors |
+|---|---|---|
+| DD1 | 33 | 5 |
+| Baseline | 34 | 5 |
+
+- `test_dd1_comparison_values.py` (53 tests) passes in full.
+- DD1's failures are a **strict subset** of baseline's.
+- The one difference is `test_ranked_public_routes::test_submission_flow_and_resume`. It is flaky on both trees: fail, fail, fail, pass on each.
+- The remaining failures are pre-existing on baseline:
+  - `test_mastery_live_api` fails with `MASTERY_SET_NOT_FOUND`, because the canonical DB has no published legacy Syndra sets.
+  - `test_gr1_matchstate1`: 2 failed, 5 errors.
+  - `test_ranked_public_lifecycle`: 2 failed.
+- The previously skipped `test_setup_state_backwards_compat` now runs.
+
+### Canonical end-to-end
+
+**Setup.**
+- The real `api_server.app` routes were driven.
+- Only `get_db_path`, `get_utc_now` and `require_match_identity` were overridden.
+- `RANKED_MASTERY_REVEAL_WINDOW_MS=1750` (Phase C).
+- The match was a Matchup `mastery_slice`, N=6, **Ahri vs Syndra**, generated from canonical data.
+
+For every child below, the frozen, submit, GET and Review values are identical.
+
+| # | canonical_ref | Values | Correct | Pick |
+|---|---|---|---|---|
+| 0 | `ability_cooldown_compare:Ahri:E:vs:Syndra:E:r1` | 12 / 15 seconds, lesser, Δ3 | ahri | ✓ |
+| 1 | `champion_stat_compare:hp5` | 2.5 / 6.5 per 5 seconds, greater, Δ4 | syndra | ✗ |
+| 2 | `champion_stat_compare:hp` | 590 / 583 health, Δ7 | ahri | ✓ |
+| 3 | `ability_cooldown_compare:…:R:…:r1` | 140 / 120 seconds, lesser, Δ20 | syndra | ✗ |
+| 4 | `champion_stat_compare:armor` | 21 / 25 armor, Δ4 | syndra | ✓ |
+| 5 | `champion_stat_compare:attack_range` | 550 / 550 units, Δ0 (**natural tie**) | tie | ✗ |
+
+**Source check.** Every value equals its row in the original DB:
+- `champion_stats`, dated 2026-05-23
+- `champion_abilities`, revisions 3909373, 4008068, 4007764 and 4024661
+
+**Second pair.** Garen vs Darius was also run. Its values were 5/17, 16/6, 32/32 (tie), 6/8, 6.6/0 and 64/69.
+
+**Pre-reveal.**
+- `segment_payload_json` has no key.
+- No pre-answer GET carries any of these outside `own_challenge_reveals`:
+  - `comparison_values`
+  - `correct_answer`
+  - the explanation
+  - value strings
+  - "wins by"
+- `own_challenge_reveals` holds only indices below i.
+
+**Post-reveal.**
+- `contract == "comparison_values.v1"`.
+- The side tokens equal `answer_options[0..1]`.
+- Grading (`is_correct` / `correct_answer`) is unchanged.
+
+**Flag off** (reveal window unset). No submit or GET carries the key. Review does.
+
+**Review.**
+- A mid-match Review returns `409 RANKED_MATCH_NOT_COMPLETE` and carries no key.
+- On a resolved round, every row equals its frozen block.
+- Unanswered children of a round resolved by timeout or forfeit also carry the block. Pristine `origin/master` already discloses `correct_answer` and the explanation for those rows, with the same numbers. DD1 therefore adds values only where correctness is already disclosed.
+
+### Frontend cross-check
+
+The canonical served bodies went through this branch's own path:
+1. `readPublicRound`
+2. `readComparisonValues`
+3. the `masterySliceModule.Viewport` Data Duel
+4. `readMatchReview` / `QuestionReviewCard`
+
+A throwaway clone of `masterySliceModule.dataDuel.served.test.tsx` covered all 6 Ahri/Syndra children and 2 Garen/Darius children. The result was **25/25**. The original served test still passes 16/16.
+
+- The reader accepts the block.
+- Displays render verbatim with `unit_label`.
+- The canonical side comes from `correct_answer`, and the value-swap mutation still holds.
+- The tie reads "550 units each".
+- The pre-answer DOM carries no values.
+- The clone and its fixture were deleted, not committed.
+
+### Not certified by real data
+
+- No widened-precision case arose naturally.
+- No percent unit exists in the real data.
+- Both remain certified through the real composer on fixtures (§4).
+- No real case hit the prose bug in §10(b).
