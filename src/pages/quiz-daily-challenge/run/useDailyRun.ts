@@ -100,7 +100,13 @@ function messageFor(e: unknown): string {
   return "Something went wrong. Your progress is saved.";
 }
 
-export function useDailyRun(transport: DailyRunTransport): DailyRunState {
+/**
+ * `autoStart` — the player already pressed Play on the Ranked Hub, so a day
+ * with no run is started here, on arrival, instead of behind a Begin screen.
+ * Without it (a bare URL load) nothing is created: `startToday` is a POST that
+ * may mint an identity, and USERS1 forbids a page load doing that.
+ */
+export function useDailyRun(transport: DailyRunTransport, autoStart = false): DailyRunState {
   const { play: playSfx } = useSfx();
   const [load, setLoad] = useState<DailyRunLoad>("loading");
   const [run, setRun] = useState<DailyRun | null>(null);
@@ -210,7 +216,15 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
       try {
         const today = await transport.readToday();
         if (cancelled || !mounted.current) return;
-        if (!today) { setLoad("ready"); return; }
+        if (!today) {
+          if (!autoStart) { setLoad("ready"); return; }
+          const next = await ask(() => transport.startToday());
+          if (cancelled || !mounted.current) return;
+          if (!next) { setLoad("ready"); return; }
+          setDailyIntroUp(true);
+          after(DAILY_INTRO_MS, () => setDailyIntroUp(false));
+          return;
+        }
         // A run nobody has played a stage of yet is still an arrival.
         const untouched = today.status === "active" && today.currentStageIndex === 0
           && today.stages[0].status === "pending";
@@ -227,7 +241,9 @@ export function useDailyRun(transport: DailyRunTransport): DailyRunState {
       }
     })();
     return () => { cancelled = true; };
-  }, [transport, adopt, after]);
+  // `autoStart` is read once, on arrival — it is an intent, not a mode.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transport, adopt, after, ask]);
 
   const start = useCallback(() => {
     void (async () => {

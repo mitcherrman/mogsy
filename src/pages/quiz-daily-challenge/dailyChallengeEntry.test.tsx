@@ -51,8 +51,8 @@ describe("routing", () => {
 });
 
 describe("the PLAY handoff", () => {
-  it("opens the Daily parent run", () => {
-    expect(QUIZ).toContain('onPlayDailyChallenge={() => navigate("/quiz/daily-challenge")}');
+  it("opens the Daily parent run, carrying the Play intent (no Begin screen)", () => {
+    expect(QUIZ).toContain('navigate("/quiz/daily-challenge", { state: DAILY_START_STATE })');
   });
 
   it("hands the record the parent run's status", () => {

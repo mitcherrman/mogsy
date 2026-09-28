@@ -28,6 +28,7 @@ import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 // Daily Score Attack hub entry: shown instead of the legacy Daily card only
 // when the backend reports the new mode enabled (server feature flag).
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
+import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { QUIZ_CATEGORY_ICONS } from "@/components/quiz/QuizCategoryStrip";
 import {
   loadPracticeCategoryQuestions,
@@ -1418,7 +1419,8 @@ export default function Quiz() {
               /* The Daily Challenge is DC2 and nothing else. The legacy
                  five-question in-page flow that used to answer this press is
                  gone from this file entirely — see the handoff. */
-              onPlayDailyChallenge={() => navigate("/quiz/daily-challenge")}
+              onPlayDailyChallenge={() =>
+                navigate("/quiz/daily-challenge", { state: DAILY_START_STATE })}
               playModes={playModeVisibility(appSettings.policy)}
               rankedAvailabilityOpen={rankedAvailability.open}
               /* ARENA1 Step 5 §19 — the record's Daily clause reads DC2, the

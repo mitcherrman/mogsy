@@ -9,7 +9,8 @@
  * through the real controller, in `QuizRankedMatch.hosted.test.tsx`.
  */
 import { act, cleanup, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { DAILY_START_STATE } from "@/lib/daily-challenge/run/entry";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockAuth = vi.hoisted(() => ({
@@ -59,10 +60,19 @@ const continueOn = async () => {
   await flush(10);
 };
 
-function mount(t: FixtureTransport) {
+/**
+ * Mount the page at its route. `play` arrives as the Ranked Hub's Play does,
+ * carrying the start intent; without it the load is a bare URL visit.
+ */
+function mount(t: FixtureTransport, { play = true }: { play?: boolean } = {}) {
   return render(
-    <MemoryRouter>
-      <DailyRunPage transport={t} StageMatch={FakeStageMatch} viewerUserId="userA" />
+    <MemoryRouter initialEntries={[{ pathname: "/quiz/daily-challenge",
+      state: play ? DAILY_START_STATE : null }]}>
+      <Routes>
+        <Route path="/quiz/daily-challenge"
+          element={<DailyRunPage transport={t} StageMatch={FakeStageMatch} viewerUserId="userA" />} />
+        <Route path="/quiz" element={<div data-testid="hub-stand-in" />} />
+      </Routes>
     </MemoryRouter>);
 }
 
@@ -93,10 +103,9 @@ describe("one Daily Challenge, stage by stage", () => {
     const t = createFixtureTransport(FOUR_STAGE_DAY);
     mount(t);
     await flush();
-    expect(q("daily-run-entry")).not.toBeNull();
-
-    await act(async () => { screen.getByTestId("daily-run-start").click(); });
-    await flush();
+    // HUB Play → straight into the run: no Begin screen, one start.
+    expect(q("daily-run-entry")).toBeNull();
+    expect(t.calls.filter((c) => c === "startToday")).toEqual(["startToday"]);
     // The Daily intro: one challenge, its whole lineup, Review last.
     expect(phase()).toBe("daily-intro");
     const ladder = within(screen.getByTestId("daily-intro")).getByTestId("daily-stage-ladder");
@@ -435,10 +444,8 @@ describe("a guest's first Daily (owner decision: sign up at the END to save)", (
     mockAuth.user = { id: "guest-1", is_anonymous: true };
     const t = createFixtureTransport(FOUR_STAGE_DAY);
     mount(t);
-    await flush();
-    const begin = screen.getByRole("button", { name: /begin/i });
-    await act(async () => { begin.click(); });
     await flush(10);
+    expect(screen.queryByRole("button", { name: /begin/i })).toBeNull();
     expect(t.calls).toContain("startToday");
     expect(q("daily-save-gate")).toBeNull();
     expect(screen.queryByText(/create account/i)).toBeNull();
@@ -734,5 +741,91 @@ describe("B7 — a Survival strike-out's chrome stays 3/3 until the stage result
     // Continue leaves the result: Review has no strike chrome at all.
     await continueOn();
     expect(q("daily-strikes")).toBeNull();
+  });
+});
+
+describe("DAILY PLAY FLOW — Hub Play starts the Daily, no Begin screen", () => {
+  it("a first Daily: Play creates the run once and reaches Stage 1's gameplay with no second click", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY);
+    mount(t);
+    await flush();
+    expect(screen.queryByText("Today's Challenge")).toBeNull();
+    expect(q("daily-run-start")).toBeNull();
+    expect(phase()).toBe("daily-intro");
+    await flush(DAILY_INTRO_MS + 10);
+    expect(phase()).toBe("stage-intro");
+    await flush(STAGE_INTRO_MIN_MS + 50);
+    expect(phase()).toBe("stage-play");
+    expect(q("fake-stage-match")).not.toBeNull();
+    expect(t.calls.filter((c) => c === "startToday")).toHaveLength(1);
+    expect(t.calls.filter((c) => c.startsWith("launch"))).toEqual(["launch:0"]);
+  });
+
+  it("an in-progress Daily resumes its current stage — Play creates nothing", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY);
+    await t.startToday();
+    await t.launchStage(t.wire().run_id as string, 0);
+    t.calls.length = 0;
+    mount(t);
+    await flush(10);
+    expect(t.calls).not.toContain("startToday");
+    expect(phase()).toBe("stage-play");
+    expect(q("fake-stage-match")!.getAttribute("data-entry")).toBe("recovered");
+  });
+
+  it("a completed Daily shows its completion — no second run, no Stage 1 relaunch", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY, {
+      existing: wireRun(FOUR_STAGE_DAY, { status: "completed", outcome: "reviewed", current_stage_index: null }, {
+        0: { status: "completed", result: wireResult() },
+        1: { status: "completed", result: wireResult() },
+        2: { status: "completed", result: wireResult() },
+        3: { status: "completed", result: wireResult({ misses: 0 }) },
+      }),
+    });
+    mount(t);
+    await flush(10);
+    expect(phase()).toBe("complete");
+    expect(q("fake-stage-match")).toBeNull();
+    expect(t.calls).not.toContain("startToday");
+    expect(t.calls.filter((c) => c.startsWith("launch"))).toEqual([]);
+  });
+
+  it("a bare visit with no run creates nothing and returns to the hub", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY);
+    mount(t, { play: false });
+    await flush(10);
+    expect(t.calls).toEqual(["readToday"]);
+    expect(q("hub-stand-in")).not.toBeNull();
+  });
+
+  it("a bare visit with a run still resumes it (the Ranked resume redirect and the save return)", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY);
+    await t.startToday();
+    t.calls.length = 0;
+    mount(t, { play: false });
+    await flush(10);
+    expect(t.calls).not.toContain("startToday");
+    expect(q("hub-stand-in")).toBeNull();
+    expect(phase()).not.toBeNull();
+  });
+
+  it("a failed start says so and retries in place with Try again — never Begin", async () => {
+    const t = createFixtureTransport(FOUR_STAGE_DAY);
+    const real = t.startToday.bind(t);
+    let fail = true;
+    t.startToday = async (signal) => {
+      if (fail) { fail = false; t.calls.push("startToday"); throw new Error("offline"); }
+      return real(signal);
+    };
+    mount(t);
+    await flush(10);
+    expect(q("daily-run-error")).not.toBeNull();
+    const retry = screen.getByTestId("daily-run-start");
+    expect(retry).toHaveTextContent(/try again/i);
+    expect(screen.queryByRole("button", { name: /begin/i })).toBeNull();
+    await act(async () => { retry.click(); });
+    await flush(10);
+    expect(phase()).toBe("daily-intro");
+    expect(t.calls.filter((c) => c === "startToday")).toHaveLength(2);
   });
 });

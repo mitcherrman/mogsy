@@ -6,7 +6,7 @@
  * canonical match (`QuizRankedMatch` → `CanonicalArena`), mounted as a HOSTED
  * match (`MatchHost`) so the Daily owns what surrounds each stage:
  *
- *   entry ─► Daily intro ─► stage tag ─► [canonical match] ─► stage result
+ *   Hub Play ─► Daily intro ─► stage tag ─► [canonical match] ─► stage result
  *         ─(Continue)─► next stage tag ─► … ─► Review ─► Review's result
  *         ─(Continue)─► the one final completion
  *
@@ -14,10 +14,10 @@
  * same arena; between stages the Daily's own beats hold the same shell, so
  * the page never drops to a blank frame.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
-import { Loader2, Swords } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Loader2, RotateCcw } from "lucide-react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArenaShell, arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,8 +29,10 @@ import { DailyIntroBeat, StageIntroBeat } from "./DailyRunBeats";
 import { DailyStageResult, type StageResultPlacement } from "./DailyStageResult";
 import { DailyCompletion } from "./DailyCompletion";
 import { useDailyRun } from "./useDailyRun";
+import { hasDailyStartIntent } from "@/lib/daily-challenge/run/entry";
 
 export const DAILY_EYEBROW = "Daily Challenge";
+
 
 /** What the page needs from a stage's match. `QuizRankedMatch` in production. */
 export interface StageMatchProps {
@@ -61,7 +63,16 @@ export function DailyRunPage({
    */
   stageResultPlacement?: StageResultPlacement;
 }) {
-  const dc = useDailyRun(transport);
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Read the Play intent ONCE, then drop it from history so Back/Reload never
+  // re-sends a start the player did not press again.
+  const [autoStart] = useState(() => hasDailyStartIntent(location.state));
+  useEffect(() => {
+    if (autoStart) navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const dc = useDailyRun(transport, autoStart);
   const { user } = useAuth();
   const viewerUserId = viewerOverride ?? user?.id ?? null;
   const { onChildSettled, onChildPhase, onChildPlayerFinished, onChildSurvivalStatus } = dc;
@@ -108,25 +119,29 @@ export function DailyRunPage({
   }
 
   if (dc.load === "ready" || !run || !flow) {
+    // No run today and no Play press behind this load (a bare URL): send the
+    // player to the hub, where Play starts it. Nothing is created here.
+    if (!dc.error && !dc.busy && !autoStart) return <Navigate to="/quiz" replace />;
+    // A start in flight (the arrival's, or Try again's) is still loading.
+    if (!dc.error) {
+      return shell(
+        <div data-testid="daily-run-loading" className="ranked-panel mx-auto flex items-center gap-2 p-6">
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">Opening today's challenge…</p>
+        </div>);
+    }
+    // The start (or the read) failed: say so, and let the player try again.
     return shell(
-      <div data-testid="daily-run-entry" className="ranked-panel ranked-folio mx-auto max-w-lg space-y-4 p-6">
-        <div className="space-y-1">
-          <p className="ranked-eyebrow">Daily Challenge</p>
-          <h2 className="ranked-title text-xl font-bold leading-tight">Today's Challenge</h2>
+      <div data-testid="daily-run-start-error" className="ranked-panel mx-auto max-w-lg space-y-3 p-6">
+        <p role="alert" data-testid="daily-run-error" className="text-sm text-destructive">{dc.error}</p>
+        <div className="flex gap-2">
+          <Button type="button" data-testid="daily-run-start" onClick={dc.start}
+            disabled={dc.busy} className="gap-1.5">
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            {dc.busy ? "Starting…" : "Try again"}
+          </Button>
+          <Button asChild variant="outline"><Link to="/quiz">Back to Leaguecraft</Link></Button>
         </div>
-        <ul className="space-y-1.5 text-xs text-muted-foreground">
-          <li>One challenge, a few short stages — each with its own rules.</li>
-          <li>Stages can be Standard, Time Trial or Survival.</li>
-          <li>Review closes the day with the questions you missed.</li>
-        </ul>
-        {dc.error && (
-          <p role="alert" data-testid="daily-run-error" className="text-xs text-destructive">{dc.error}</p>
-        )}
-        <Button type="button" data-testid="daily-run-start" onClick={dc.start}
-          disabled={dc.busy} className="gap-1.5">
-          <Swords className="h-4 w-4" aria-hidden="true" />
-          {dc.busy ? "Starting…" : "Begin"}
-        </Button>
       </div>);
   }
 
