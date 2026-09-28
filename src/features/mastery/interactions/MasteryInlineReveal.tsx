@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 /**
  * The concise factual reveal that sits BELOW the answer choices.
  *
@@ -17,17 +15,13 @@ import type { ReactNode } from "react";
  * backend's own explanation under the existing Mastery numeric policy. Where
  * the payload states no such detail, none is shown — never invented.
  *
- * JOURNEY5 — a caller may pass the server's STRUCTURED working (`working`,
- * e.g. a Journey Combat child's `combat_working`). It then becomes the primary
- * reveal, directly under the answer, and the served prose stays available as
- * secondary text (collapsed, so the reveal keeps its height budget). Without
- * it, this renders exactly as before.
+ * (A Journey child's structured Combat working is drawn by the Journey stage's
+ * own reveal layer — `JourneyStageQuestion` — not here.)
  */
 export function MasteryInlineReveal({
   correct,
   answerLabel,
   explanation,
-  working = null,
 }: {
   /** Server-authoritative correctness. Never computed here. */
   readonly correct: boolean;
@@ -35,8 +29,6 @@ export function MasteryInlineReveal({
   readonly answerLabel: string | null;
   /** The backend's concise explanation, if the payload carries one. */
   readonly explanation: string | null;
-  /** JOURNEY5 — the server's structured working, already rendered; primary when present. */
-  readonly working?: ReactNode;
 }) {
   return (
     <div
@@ -56,17 +48,11 @@ export function MasteryInlineReveal({
           </span>
         </p>
       )}
-      {working}
-      {explanation && (working ? (
-        <details data-testid="mastery-reveal-explanation-secondary" className="text-xs text-muted-foreground">
-          <summary className="cursor-pointer select-none">Explanation</summary>
-          <p data-testid="mastery-reveal-explanation">{explanation}</p>
-        </details>
-      ) : (
+      {explanation && (
         <p data-testid="mastery-reveal-explanation" className="text-muted-foreground">
           {explanation}
         </p>
-      ))}
+      )}
     </div>
   );
 }

@@ -1,0 +1,181 @@
+"""JP2 capture harness -- the Zed/Ahri REFERENCE Journey (admin preset
+``admin.zed_ahri_reference_journey``) through the real HTTP route.
+
+The M1/K2 harness (``mogsy/src/lib/journey/__fixtures__/m1``) with ONE change:
+the match is created with the admin preset instead of a Daily-shaped public
+format, and -- exactly as ``test_jref2_admin_reference_journey_preset`` does --
+the Journey composes against the canonical DB opened ``mode=ro``. The Ranked
+tables live in a seeded scratch DB. Nothing canonical or production is written.
+Scratch only; NOT part of the backend repo.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sqlite3
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+OUT = os.environ["JOURNEY_CAPTURE_OUT"]
+PRESET = "admin.zed_ahri_reference_journey"
+CHAMPS = ("Zed", "Ahri")
+T0 = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
+A = "0d44d444-0000-4000-8000-000000000004"
+REVEAL_MS = 1750
+
+
+@pytest.fixture
+def ranked_db(monkeypatch):
+    canonical = os.environ["LOL_CALC_DB_PATH"]
+    monkeypatch.setenv("RANKED_PUBLIC_ENABLED", "1")
+    monkeypatch.setenv("RANKED_FORMATS_ENABLED", "1")
+    monkeypatch.setenv("LOL_CALC_DB_PATH", canonical)
+    monkeypatch.setenv("RANKED_RATELIMIT_ENABLED", "0")
+    monkeypatch.delenv("RANKED_MASTERY_REVEAL_WINDOW_MS", raising=False)
+    monkeypatch.delenv("RANKED_BOT_ENABLED", raising=False)
+    from mastery.identity.champion_identity import reset_identity_registry_cache
+    reset_identity_registry_cache()
+    from migrate_quiz_attempts_v2 import migrate as migrate_attempts
+    from test_gr1_combatq1_ranked_serving import COMBAT_TABLES
+    from test_gr1_player_serving_slice import _copy_tables
+    from test_ranked_mastery_on_demand import (
+        E2E_CHAMPIONS, _clone_champion_tables, _seeded_db)
+    path = _seeded_db()
+    migrate_attempts(path)
+    _clone_champion_tables(path, champions=tuple(set(E2E_CHAMPIONS + CHAMPS)))
+    _copy_tables(path, COMBAT_TABLES)
+    # JREF2's `canonical_journeys`: compose against the canonical DB, read-only.
+    from ranked_modules import mastery_state_slice as MSS
+    real = MSS.compose_journey
+
+    def _compose(_conn, **kw):
+        c = sqlite3.connect(f"file:{canonical}?mode=ro", uri=True,
+                            check_same_thread=False)
+        c.row_factory = sqlite3.Row
+        try:
+            return real(c, **kw)
+        finally:
+            c.close()
+    monkeypatch.setattr(MSS, "compose_journey", _compose)
+    return path
+
+
+@pytest.fixture
+def http(ranked_db):
+    from fastapi.testclient import TestClient
+    from api_server import app
+    from routes import ranked_public as routes
+    from routes.supabase_auth import Identity, get_identity
+    clock = {"now": T0}
+    app.dependency_overrides[routes.get_db_path] = lambda: ranked_db
+    app.dependency_overrides[routes.get_utc_now] = lambda: clock["now"]
+    app.dependency_overrides[get_identity] = lambda: Identity(
+        user_id=A, verified=True, is_anonymous=False, token="t")
+    yield {"db": ranked_db, "clock": clock, "client": TestClient(app)}
+    app.dependency_overrides.clear()
+
+
+def _get(http, mid, at):
+    http["clock"]["now"] = at
+    r = http["client"].get(f"/api/ranked/matches/{mid}")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _payloads(db, mid):
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM ranked_rounds WHERE match_id = ? "
+                           "AND round_number = 1", (mid,)).fetchone()
+        return (json.loads(row["segment_payload_json"]),
+                json.loads(row["segment_private_json"]))
+    finally:
+        conn.close()
+
+
+def _dump(name, snaps, answers):
+    os.makedirs(os.path.join(OUT, "answers"), exist_ok=True)
+    with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8") as fh:
+        json.dump(snaps, fh, separators=(",", ":"), ensure_ascii=False, default=str)
+    with open(os.path.join(OUT, "answers", f"{name}.answers.json"), "w",
+              encoding="utf-8") as fh:
+        json.dump(answers, fh, indent=1, ensure_ascii=False, default=str)
+
+
+def _walk(http, name, *, wrong=(), think_s=8, timeout_child=None):
+    from ranked_public import service
+    db = http["db"]
+    mid = f"jp2-{name}"
+    service.create_bot_match(db, match_id=mid, human_user_id=A,
+                             human_class="tank", now=T0, preset=PRESET)
+    public, private = _payloads(db, mid)
+    count = len(private["challenges"])
+    answers = [{"index": i, "correct_answer": c["correct_answer"],
+                "answer_options": c.get("answer_options")}
+               for i, c in enumerate(private["challenges"])]
+    delays = public["journey"]["open_delays_ms"]
+    snaps = []
+
+    def snap(label, at):
+        snaps.append({"label": label, "at": at.isoformat(),
+                      "envelope": _get(http, mid, at)})
+        return snaps[-1]["envelope"]
+
+    env = snap("child0-leadin", T0 + timedelta(milliseconds=10))
+    opened = datetime.fromisoformat(
+        env["payload"]["segment_state"]["own_card_started_at"])
+    snap("child0-open", opened + timedelta(milliseconds=100))
+    for index in range(count):
+        live_at = opened + timedelta(seconds=think_s / 4)
+        live = snap(f"child{index}-live", live_at)
+        at = opened + timedelta(seconds=think_s)
+        if index == timeout_child:
+            # The POOLED clock runs out at the live read + what it had left.
+            left = live["payload"]["segment_state"]["active_time_remaining_ms"]
+            gone = live_at + timedelta(milliseconds=left + 300)
+            snap(f"child{index}-timeout-reveal", gone)
+            snap(f"child{index}-timeout-reconnect", gone + timedelta(milliseconds=700))
+            snap(f"child{index}-timeout", gone + timedelta(seconds=10))
+            break
+        row = private["challenges"][index]
+        choice = row["correct_answer"]
+        if index in wrong:
+            choice = next((o for o in (row.get("answer_options") or []) if o != choice), "1")
+        service.submit_challenge(db, mid, A, 1, index, {"selected": choice}, at)
+        snap(f"child{index}-reveal", at + timedelta(milliseconds=500))
+        snap(f"child{index}-reveal-late", at + timedelta(milliseconds=1500))
+        if index == count - 1:
+            snap("final-reconnect", at + timedelta(milliseconds=1200))
+            snap("finished", at + timedelta(seconds=5))
+            break
+        delay = int(delays[index + 1]) if index + 1 < len(delays) else 0
+        if delay:
+            snap(f"child{index + 1}-beat-start",
+                 at + timedelta(milliseconds=REVEAL_MS + 10))
+            snap(f"child{index + 1}-beat",
+                 at + timedelta(milliseconds=REVEAL_MS + delay // 2))
+        env = snap(f"child{index + 1}-open",
+                   at + timedelta(milliseconds=REVEAL_MS + delay + 100))
+        opened = datetime.fromisoformat(
+            env["payload"]["segment_state"]["own_card_started_at"])
+    return snaps, answers
+
+
+def test_capture_reference_correct(http):
+    snaps, answers = _walk(http, "correct")
+    _dump("zed_ahri.reference", snaps, answers)
+
+
+def test_capture_reference_wrong(http):
+    # Step 1 wrong (a formula distractor) and step 3 wrong: every later child
+    # must still be served, and each reveal must still establish its fact.
+    snaps, answers = _walk(http, "wrong", wrong=(0, 2))
+    _dump("zed_ahri.reference.wrong", snaps, answers)
+
+
+def test_capture_reference_timeout(http):
+    # The final child spends the rest of the pooled clock.
+    snaps, answers = _walk(http, "timeout", timeout_child=3)
+    _dump("zed_ahri.reference.timeout", snaps, answers)

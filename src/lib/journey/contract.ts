@@ -68,6 +68,11 @@ export interface JourneyItem {
   itemId: number | null;
   name: string;
   icon: string | null;
+  /**
+   * JP2 — how many units this slot draws: identical STACKABLE consumables share
+   * one slot, as in the game (`lib/journey/inventory.ts`). Absent = 1.
+   */
+  quantity?: number;
 }
 
 /**

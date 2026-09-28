@@ -114,3 +114,18 @@ export function JourneyModuleStage({
     </MasteryAssetsProvider>
   );
 }
+
+/**
+ * JP2 — THE STAGE BEFORE ITS FIRST CHILD (the lead-in). No child is reached,
+ * so there is no state to draw — but the stage's two regions are already
+ * there, the board's as an empty box of the board's own size, so the first
+ * child opens INTO the stage instead of the stage appearing around it.
+ */
+export function JourneyStageLeadIn({ children }: { children: ReactNode }) {
+  return (
+    <div data-testid="journey-stage" data-beat="idle" className="journey-stage flex flex-col gap-2">
+      <div aria-hidden data-testid="journey-band-placeholder" className="journey-band journey-band--empty" />
+      <div data-testid="journey-question" className="journey-question relative">{children}</div>
+    </div>
+  );
+}

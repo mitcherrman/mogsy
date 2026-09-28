@@ -1,0 +1,42 @@
+[
+ {
+  "index": 0,
+  "correct_answer": "70 / 92.5 / 115 / 137.5 / 160 (+70% bonus AD)",
+  "answer_options": [
+   "70 / 92.5 / 115 / 137.5 / 160 (+70% bonus AD)",
+   "70 / 92.5 / 115 / 137.5 / 160 (+70% AD)",
+   "92.5 / 115 / 137.5 / 160 / 182.5 (+70% bonus AD)",
+   "70 / 92.5 / 115 / 137.5 / 160 (+50% bonus AD)"
+  ]
+ },
+ {
+  "index": 1,
+  "correct_answer": "85",
+  "answer_options": [
+   "65",
+   "55",
+   "75",
+   "85"
+  ]
+ },
+ {
+  "index": 2,
+  "correct_answer": "24",
+  "answer_options": [
+   "24",
+   "18",
+   "19",
+   "23"
+  ]
+ },
+ {
+  "index": 3,
+  "correct_answer": "68",
+  "answer_options": [
+   "88",
+   "53",
+   "83",
+   "68"
+  ]
+ }
+]

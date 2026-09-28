@@ -9,13 +9,16 @@
  * `lib/journey/combatWorking.ts`), printed verbatim. This component performs
  * ZERO Combat arithmetic: no term is computed, nothing is summed, subtracted,
  * multiplied or rounded. The only conversions are presentational — a served
- * ratio coefficient written as a percentage (the premise's own `percent`), and
- * a 0-based teaching child named as "step N", the Journey's existing wording.
+ * ratio coefficient written as a percentage (the premise's own `percent`), a
+ * ratio's stat said in the Journey's AD wording (`ratioStatLabel`: "total
+ * AD" beside "bonus AD", never a bare "attack damage"), and a 0-based teaching
+ * child named as "step N", the Journey's existing wording.
  *
  * Colours inherit from the surface it sits in, so the same rows read on the
  * dark Journey card and on the light review ledger.
  */
 import type { CombatWorking } from "@/lib/journey/combatWorking";
+import { ratioStatLabel } from "@/lib/journey/statWording";
 import { percent } from "./JourneyCombatQuestion";
 
 interface Step {
@@ -38,7 +41,7 @@ export function combatWorkingSteps(w: CombatWorking): Step[] {
       key: "formula",
       label: `Formula (${w.ability.slot} rank ${w.ability.rank})`,
       value: `${w.formula.flat}${w.formula.ratios
-        .map((r) => ` + ${percent(r.ratio)} ${r.label} (${r.value})`).join("")}`,
+        .map((r) => ` + ${percent(r.ratio)} ${ratioStatLabel(r.stat, r.label)} (${r.value})`).join("")}`,
     },
     { key: "raw", label: "Raw", value: String(w.rawDamage) },
     {

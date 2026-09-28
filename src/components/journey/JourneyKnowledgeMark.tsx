@@ -3,8 +3,12 @@
  * Journey has established facts about, and a small popover listing them.
  *
  *   E · R1
- *   ⏱ 5s ①
- *   ⚡ 11s · 10 AH ③
+ *   ⏱ 5s                 Step 1
+ *   ⚡ 11s · 10 AH       Step 3
+ *
+ *   E · Shadow Slash · R1                               (JP2)
+ *   ƒ Formula 70 / 92.5 / 115 / 137.5 / 160 (+70% bonus AD)   Step 1
+ *   ⚔ Raw damage 85      Step 2
  *
  * The `!` means "the Journey established something about this", never "you
  * answered it correctly" (a wrong answer + reveal marks it the same way).
@@ -16,20 +20,22 @@
  * viewport. The badge is absolutely positioned: it lays out nothing.
  */
 import { useRef, useState } from "react";
-import { Timer, Zap } from "lucide-react";
+import { SquareFunction, Sword, Timer, Zap } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { knowledgeCard, stepMarker, type KnowledgeObjectMark } from "@/lib/journey/knowledge";
+import { knowledgeCard, stepLabel, type KnowledgeObjectMark } from "@/lib/journey/knowledge";
 
-export function JourneyKnowledgeMark({ mark, name, placement, testId }: {
+export function JourneyKnowledgeMark({ mark, name, abilityName = null, placement, testId }: {
   mark: KnowledgeObjectMark;
   /** The object's accessible name, e.g. "Zed E". */
   name: string;
+  /** The board's own name for the ability ("Shadow Slash"), titling its card. */
+  abilityName?: string | null;
   placement: "ability" | "portrait";
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
   const pinned = useRef(false);
-  const card = knowledgeCard(mark);
+  const card = knowledgeCard(mark, abilityName);
   const set = (next: boolean, pin = false) => {
     pinned.current = next && pin;
     setOpen(next);
@@ -55,17 +61,23 @@ export function JourneyKnowledgeMark({ mark, name, placement, testId }: {
       <PopoverContent side="top" align="center" sideOffset={4} collisionPadding={8}
         data-testid={`${testId}-pop`} aria-label={`Known facts: ${name}`}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="journey-know-pop w-auto max-w-[min(14rem,calc(100vw-16px))] p-0">
+        className="journey-know-pop w-auto max-w-[min(17rem,calc(100vw-16px))] p-0">
         {card.title && <div className="journey-know-pop__title">{card.title}</div>}
         <ul className="journey-know-pop__lines">
           {card.lines.map((l) => (
-            <li key={`${l.step}:${l.value}:${l.tail ?? ""}`} className="journey-know-pop__line" aria-label={l.spoken}>
+            <li key={`${l.step}:${l.value}:${l.tail ?? ""}`} aria-label={l.spoken}
+              className={`journey-know-pop__line${l.wrap ? " journey-know-pop__line--wrap" : ""}`}>
               {l.icon === "cooldown" && <Timer aria-hidden className="journey-know-pop__icon" strokeWidth={2.5} />}
               {l.icon === "haste" && <Zap aria-hidden className="journey-know-pop__icon" strokeWidth={2.5} />}
-              {l.lead && <span aria-hidden className="text-white/60">{l.lead}</span>}
-              <span aria-hidden className="font-black text-white">{l.value}</span>
-              {l.tail && <span aria-hidden className="text-white/60">· {l.tail}</span>}
-              <span aria-hidden className="journey-know-pop__step">{stepMarker(l.step)}</span>
+              {l.icon === "formula" && <SquareFunction aria-hidden className="journey-know-pop__icon" strokeWidth={2.5} />}
+              {l.icon === "damage" && <Sword aria-hidden className="journey-know-pop__icon" strokeWidth={2.5} />}
+              <span aria-hidden className="journey-know-pop__fact">
+                {l.lead && <span className="text-white/60">{l.lead} </span>}
+                {l.label && <span className="text-white/70">{l.label} </span>}
+                <span className="font-black text-white">{l.value}</span>
+                {l.tail && <span className="text-white/60"> · {l.tail}</span>}
+              </span>
+              <span aria-hidden className="journey-know-pop__step">{stepLabel(l.step)}</span>
             </li>
           ))}
         </ul>

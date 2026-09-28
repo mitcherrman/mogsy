@@ -35,7 +35,7 @@ describe("JourneyCombatWorking", () => {
     render(<JourneyCombatWorking working={read(PANTHEON_E_WORKING_RECALLED)} />);
     const w = screen.getByTestId("journey-combat-working");
     expect(w.textContent).toBe(
-      "Formula (E rank 1): 55 + 100% attack damage (68.8675) + 150% bonus attack damage (0)"
+      "Formula (E rank 1): 55 + 100% total AD (68.8675) + 150% bonus AD (0)"
       + "→ Raw 123.8675→ Leona armor 50.08 (recalled from step 1)→ No penetration"
       + "→ Effective armor 50.08→ × 0.6663→ 82.5343→ Answer 83");
     expect(within(w).getByTestId("journey-combat-working-armor-source")).toHaveTextContent("recalled from step 1");
@@ -45,7 +45,7 @@ describe("JourneyCombatWorking", () => {
     render(<JourneyCombatWorking working={read(ZED_E_WORKING_LETHALITY)} />);
     const w = screen.getByTestId("journey-combat-working");
     expect(w.querySelector("[data-step='penetration']")).toHaveTextContent(/^→ Lethality 10$/);
-    expect(w).toHaveTextContent("Formula (E rank 1): 70 + 70% bonus attack damage (20)");
+    expect(w).toHaveTextContent("Formula (E rank 1): 70 + 70% bonus AD (20)");
     expect(w).toHaveTextContent("Ahri armor 27.195");
     expect(within(w).queryByTestId("journey-combat-working-armor-source")).toBeNull();
     expect(within(w).getByTestId("journey-combat-working-effective")).toHaveTextContent("17.195");
@@ -66,17 +66,27 @@ describe("JourneyCombatWorking", () => {
   });
 });
 
-describe("combatQuestionSentence — ability_component", () => {
-  const premise = (pairs: CombatPremise["pairs"]): CombatPremise => ({
+describe("combatQuestionSentence — the semantic question (JP2)", () => {
+  const premise = (pairs: CombatPremise["pairs"], over: Partial<CombatPremise> = {}): CombatPremise => ({
     champion: "Pantheon", ability: "Aegis Assault", slot: "E", rank: 1,
-    metric: "ability_physical_damage_after_armor", pairs,
+    metric: "ability_physical_damage_after_armor", mitigation: "after_armor", pairs, ...over,
   });
-  it("states the served component verbatim beside the slot and rank", () => {
+  it("after armor: names the ability by rank and the target — no serialized state", () => {
+    expect(combatQuestionSentence(premise([["target", "Leona"], ["target_level", 3], ["attacker_items", "Long Sword"]])))
+      .toBe("How much physical damage does Pantheon's Rank 1 Aegis Assault deal to Leona?");
+  });
+  it("states the served ability component verbatim, closing the sentence", () => {
     expect(combatQuestionSentence(premise([["target", "Leona"], ["ability_component", "unempowered cast (no Mortal Will)"]])))
-      .toBe("How much physical damage, after armor, does Pantheon's Aegis Assault (E, rank 1, unempowered cast (no Mortal Will)) deal to Leona?");
+      .toBe("How much physical damage does Pantheon's Rank 1 Aegis Assault deal to Leona, unempowered cast (no Mortal Will)?");
   });
-  it("without one, the sentence is unchanged", () => {
-    expect(combatQuestionSentence(premise([["target", "Leona"]])))
-      .toBe("How much physical damage, after armor, does Pantheon's Aegis Assault (E, rank 1) deal to Leona?");
+  it("before armor (the raw template): never 'after armor', never a target", () => {
+    const raw = premise([["attacker_level", 2], ["bonus_attack_damage", 20.8], ["item_effects", "inactive"]], {
+      champion: "Zed", ability: "Shadow Slash", metric: "ability_physical_damage_before_armor", mitigation: "before_armor",
+    });
+    expect(combatQuestionSentence(raw)).toBe("How much physical damage does Zed's Rank 1 Shadow Slash deal before armor?");
+  });
+  it("a premise with no rank or ability name still asks in words", () => {
+    expect(combatQuestionSentence(premise([["target", "Leona"]], { rank: null, ability: "" })))
+      .toBe("How much physical damage does Pantheon's E deal to Leona?");
   });
 });

@@ -42,6 +42,7 @@ import type {
 } from "./contract";
 import { ABILITY_SLOTS, JourneyContractError } from "./contract";
 import { JOURNEY_STAT_KEYS, type JourneyStatKey } from "./stats";
+import { slotOfLatest, stackInventory } from "./inventory";
 import {
   readJourneyJ2, type J2Child, type J2Side, type J2SideState, type J2Transition, type JourneyJ2,
 } from "./j2";
@@ -97,6 +98,13 @@ export interface JourneyChildContext {
   asks: JourneyAsks;
   /** A formula this child STATES (Combat), exactly as served. */
   formula: JourneyFormula | null;
+  /**
+   * JP2 — the asked ability's formula as the learner ledger has ESTABLISHED it
+   * by an earlier reveal (`learner.established`, kind
+   * `ability_damage_formula`), exactly as served; null when none. What a reveal
+   * lays a Combat answer's working out from when the server serves no working.
+   */
+  learnedFormula?: JourneyFormula | null;
   /** Facts this child RECALLS: their numbers are withheld; the teacher is named. */
   recalled: JourneyRecall[];
   /** Backend learner-ledger links (earlier children this one reinforces). */
@@ -124,10 +132,18 @@ export interface JourneyView {
 
 const SIDE3: Record<J3Side, JourneySideId> = { player: "subject", opponent: "opponent" };
 
+/**
+ * The wire's inventory (one entry per unit) → the board's six slots. JP2:
+ * identical stackable consumables share one slot with a count, as in the game
+ * (`stackInventory`); the units themselves are unchanged.
+ */
 function itemsOf(inv: { itemId: string; name: string }[]): JourneyItem[] {
-  return inv.slice(0, 6).map((it, slot) => {
+  return stackInventory(inv).slice(0, 6).map((it, slot) => {
     const n = Number(it.itemId);
-    return { slot, itemId: Number.isInteger(n) && n > 0 ? n : null, name: it.name, icon: null };
+    return {
+      slot, itemId: Number.isInteger(n) && n > 0 ? n : null, name: it.name, icon: null,
+      ...(it.quantity > 1 ? { quantity: it.quantity } : {}),
+    };
   });
 }
 
@@ -197,9 +213,8 @@ function events3(ts: J3Transition[], inventories: Record<J3Side, { itemId: strin
       else out.push({ kind: "ability_rank", side, slot: e.slot, from: e.from, to: e.to });
     }
     if (e.type === "item_acquired") {
-      const inv = inventories[e.side];
-      let slot = -1;
-      for (let i = inv.length - 1; i >= 0; i -= 1) if (inv[i].itemId === e.itemId) { slot = i; break; }
+      // The slot the board DRAWS it in: a stacked potion arrives in its stack.
+      const slot = slotOfLatest(stackInventory(inventories[e.side]), e.itemId);
       const n = Number(e.itemId);
       out.push({
         kind: "purchase", side, group: t.presentation === "first_back" ? "first_back" : null,
@@ -237,9 +252,19 @@ function focus3(state: J3State, stats: Record<J3Side, JourneyStat[]>): JourneyPu
   return { refs, combat: null };
 }
 
+/** The ledger's revealed formula for the ability this child asks about, if any. */
+function learnedFormula3(c: J3Child): JourneyFormula | null {
+  for (const e of c.learner.established) {
+    if (e.kind !== "ability_damage_formula" || e.source !== "revealed") continue;
+    const v = e.value;
+    if (typeof v === "object" && v.slot === c.asks.subjectRef) return v;
+  }
+  return null;
+}
+
 function childContext3(c: J3Child): JourneyChildContext {
   return {
-    index: c.index, engine: c.engine, asks: c.asks, formula: c.formula,
+    index: c.index, engine: c.engine, asks: c.asks, formula: c.formula, learnedFormula: learnedFormula3(c),
     recalled: c.recalls.map((r) => ({
       fact: r.fact, what: r.what, slot: r.slot, champion: r.champion,
       source: r.source, establishedInChild: r.establishedInChild,
