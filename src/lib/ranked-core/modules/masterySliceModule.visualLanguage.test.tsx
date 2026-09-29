@@ -75,8 +75,10 @@ function play(file: string, visit: (s: CaptureSnapshot) => void) {
   }
   return r;
 }
-const chainNow = () => [...document.querySelectorAll<HTMLElement>("[data-testid^='journey-chain-']")]
-  .map((n) => `${n.dataset.state}:${n.querySelector(".journey-chain__label")?.textContent ?? ""}`).join(" ");
+// JP4 — the JP3 "micro-chain" is the JOURNEY PATH (curriculum progress), named
+// apart from a reveal's Reasoning Chain.
+const chainNow = () => [...document.querySelectorAll<HTMLElement>("[data-testid^='journey-path-']")]
+  .map((n) => `${n.dataset.state}:${n.querySelector(".journey-path__label")?.textContent ?? ""}`).join(" ");
 const fresh = () => [...document.querySelectorAll<HTMLElement>("[data-just-learned='true']")]
   .map((e) => e.dataset.testid).sort();
 const CSS = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
@@ -96,7 +98,7 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     }
   });
 
-  it("`?` → value: E raw damage at Step 2, Ahri armor at Step 3 — each filled only from its reveal on", () => {
+  it("JP4 — `?` → value → settled `!`: each value arrives at its reveal, then lives on its object's mark", () => {
     const seen: string[] = [];
     play(REF, (s) => {
       const raw = screen.queryByTestId("journey-readout-subject-E");
@@ -106,11 +108,15 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     });
     const at = (label: string) => seen.find((x) => x.startsWith(`${label}|`))!;
     expect(at("child0-live")).toBe("child0-live|raw=-|armor=-");
-    expect(at("child1-live")).toBe("child1-live|raw=withheld:E raw damageraw?|armor=-");
-    expect(at("child1-reveal")).toBe("child1-reveal|raw=learned:E raw damageraw85!|armor=-");
-    expect(at("child2-live")).toBe("child2-live|raw=learned:E raw damageraw85!|armor=withheld:Armor?");
-    expect(at("child2-reveal")).toBe("child2-reveal|raw=learned:E raw damageraw85!|armor=learned:Armor24!");
-    expect(at("child3-live")).toBe("child3-live|raw=learned:E raw damageraw85!|armor=learned:Armor24!");
+    // Asked: the `?` on its anchor ("Raw damage" long, "Raw" short: one shows per density).
+    expect(at("child1-live")).toBe("child1-live|raw=asked:Raw damageRaw?|armor=-");
+    // The reveal moment: the value arrives, with its `!`.
+    expect(at("child1-reveal")).toBe("child1-reveal|raw=revealed:Raw damageRaw85!|armor=-");
+    // Settled: the raw damage is Zed E's `!` — not reprinted.
+    expect(at("child2-live")).toBe("child2-live|raw=-|armor=asked:Armor?");
+    expect(at("child2-reveal")).toBe("child2-reveal|raw=-|armor=revealed:Armor24!");
+    // Settled and relied on: the armor's anchor and its `!`; the value is a recall.
+    expect(at("child3-live")).toBe("child3-live|raw=-|armor=learned:Armor!");
   });
 
   it("the learning glow follows the LEDGER: right, wrong and timed-out reveals all glow the same fact once", () => {
@@ -134,7 +140,7 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "learned");
   });
 
-  it("the glow settles: ~1.6s later the value keeps its learned face without the glow", () => {
+  it("the glow settles: ~1.6s later the value keeps its revealed face without the glow", () => {
     const all = live(REF);
     const i = all.findIndex((s) => s.label === "child1-reveal");
     vi.setSystemTime(Date.parse(all[i - 1].at));
@@ -144,7 +150,7 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-just-learned", "true");
     act(() => { vi.advanceTimersByTime(1700); });
     expect(screen.getByTestId("journey-readout-subject-E")).not.toHaveAttribute("data-just-learned");
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-face", "learned");
+    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-face", "revealed");
   });
 
   it("a fresh mount (a reload) replays no glow — the notebook is simply there", () => {
@@ -163,12 +169,12 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
 
   it("a Daily Journey keeps the same grammar (K1 Pantheon: Leona's armor fills its chip)", () => {
     show(snap("k1/pantheon.standard", "child0-reveal"));
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "learned");
+    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "revealed");
     expect(screen.getByTestId("journey-know-opponent-stat-armor")).toBeInTheDocument();
   });
 });
 
-describe("the micro-chain", () => {
+describe("the Journey Path (JP3 micro-chain)", () => {
   it("names REACHED steps from their served asks; future steps are bare (the server has not published them)", () => {
     const at: Record<string, string> = {};
     play(REF, (s) => { at[s.label] = chainNow(); });
@@ -214,8 +220,17 @@ describe("the micro-chain", () => {
 });
 
 describe("display precision (owner lock)", () => {
-  /** Decimals visible in the stage's TEXT (hover titles are the exact-value notes). */
-  const visibleDecimals = () => (screen.getByTestId("journey-stage").textContent ?? "").match(/×?\d+\.\d+/g) ?? [];
+  /**
+   * Decimals visible in the stage's TEXT (exact values live in hover titles and
+   * the Reasoning Chain's exact-working card, closed here). JP4: the armor
+   * formula node's "≈ 0.806" is the served multiplier, drawn as the formula it
+   * is — the one coefficient the primary chain shows.
+   */
+  const visibleDecimals = () => {
+    const stage = screen.getByTestId("journey-stage").cloneNode(true) as HTMLElement;
+    stage.querySelectorAll(".journey-node--formula .journey-node__value").forEach((n) => n.remove());
+    return (stage.textContent ?? "").match(/×?\d+\.\d+/g) ?? [];
+  };
   // Canonical TAUGHT decimals: the formula's own rank values, as served.
   const TAUGHT = new Set(["92.5", "137.5", "182.5", "12.5"]);
 

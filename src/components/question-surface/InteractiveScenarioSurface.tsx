@@ -101,6 +101,12 @@ export interface InteractiveScenarioSurfaceProps {
   verdict?: QuizFeedbackVerdict | null;
   /** Optional short context line under the prompt (text, or inline marked-up text). */
   context?: ReactNode;
+  /**
+   * JP4 — an optional RICH rendering of `question.prompt` (the same words,
+   * with inline subject icons). Absent everywhere but the Journey stage, so
+   * every other caller renders exactly the served string as before.
+   */
+  promptNode?: ReactNode;
 }
 
 /**
@@ -178,6 +184,7 @@ export function InteractiveScenarioSurface({
   feedback = null,
   verdict = null,
   context = null,
+  promptNode = null,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
   // Pre-reveal premise fields only — see resolveBandProfile. Recomputed per
@@ -304,7 +311,7 @@ export function InteractiveScenarioSurface({
             </span>
           )
         )}
-        <h2 className={`${promptSize} font-semibold leading-snug`}>{question.prompt}</h2>
+        <h2 className={`${promptSize} font-semibold leading-snug`}>{promptNode ?? question.prompt}</h2>
         {context && <p data-testid="scenario-context" className="text-sm text-muted-foreground">{context}</p>}
       </header>
 

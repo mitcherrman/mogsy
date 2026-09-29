@@ -141,7 +141,8 @@ describe("answer safety in the DOM", () => {
   it("a withheld stat is `?` and its value appears nowhere on the board or in the sheet", () => {
     render(stage(read(ARC_C_CHILD_0_WITHHELD), "c0"));
     const armor = screen.getByTestId("journey-stat-opponent-armor");
-    expect(armor).toHaveAttribute("data-face", "withheld");
+    // JP4 — the anchor's `asked` face (JP3 "withheld"): the stat's mnemonic, its name, `?`.
+    expect(armor).toHaveAttribute("data-face", "asked");
     expect(armor).toHaveTextContent("Armor?");
     fireEvent.click(screen.getByTestId("journey-open-state"));
     expect(screen.getByTestId("journey-sheet-stat-opponent-armor")).toHaveTextContent("asked in this question");
@@ -180,12 +181,16 @@ describe("Matchup and Combat presentation", () => {
     expect(screen.getByTestId("journey-stat-subject-ability_haste")).not.toHaveAttribute("data-focus");
   });
 
-  it("compact keeps at most two stats per side: the asked-about first, then the changed", () => {
+  it("JP4 — one anchor row per half, at most two, on every density: the asked-about and changed first", () => {
     render(stage(read(ARC_A_ALT_LEVEL_UP, NOW - 10_000), "alt"));
-    const cells = within(screen.getByTestId("journey-side-subject")).getAllByTestId(/journey-stat-subject-/)
-      .map((chip) => [chip.getAttribute("data-testid")!.replace("journey-stat-subject-", ""),
-        chip.parentElement!.getAttribute("data-compact")]);
-    expect(cells).toEqual([["lethality", "true"], ["bonus_attack_damage", "true"], ["ability_haste", "false"]]);
+    const row = screen.getByTestId("journey-anchors-subject");
+    const keys = within(row).getAllByTestId(/^journey-stat-subject-[a-z_]+$/)
+      .map((chip) => chip.getAttribute("data-testid")!.replace("journey-stat-subject-", ""));
+    // Chosen by importance, drawn in reading order; ability haste waits in the State sheet.
+    expect(keys).toEqual(["bonus_attack_damage", "lethality"]);
+    expect(row).toHaveAttribute("data-count", "2");
+    fireEvent.click(screen.getByTestId("journey-open-state"));
+    expect(screen.getByTestId("journey-sheet-stat-subject-ability_haste")).toBeInTheDocument();
   });
 
   it("the State sheet shows both sides together", () => {

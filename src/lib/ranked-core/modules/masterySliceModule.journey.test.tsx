@@ -137,7 +137,7 @@ describe("answer leaks — the reached prefix only", () => {
     const answer = String(answersOf(v)[0].correct_answer);   // Lee Sin's L3 armor, as asked
     show(snap(v, "child0-live"));
     const board = screen.getByTestId("journey-board");
-    expect(within(board).getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "withheld");
+    expect(within(board).getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "asked");
     expect(board.textContent).not.toContain(answer);
     fireEvent.click(screen.getByTestId("journey-open-state"));
     const sheet = screen.getByTestId("journey-state-sheet");
@@ -151,7 +151,7 @@ describe("answer leaks — the reached prefix only", () => {
     show(snap("zed.standard", "child2-open"));
     afterReveal();
     const chip = within(screen.getByTestId("journey-board")).getByTestId("journey-stat-opponent-armor");
-    expect(chip).toHaveAttribute("data-face", "recalled");
+    expect(chip).toHaveAttribute("data-face", "recall");
     expect(chip).toHaveTextContent(/recall · step 1/i);
     // JP2 — no premise panel restates the board beneath it.
     expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
@@ -320,7 +320,7 @@ describe("Daily Review: a re-asked Journey child renders (captured live)", () =>
     show(snap("review.reask", "reask-live"));
     expect(screen.getByTestId("journey-board")).toBeInTheDocument();
     expect(screen.getByTestId("journey-step")).toHaveTextContent("Step 1 of 1");
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "withheld");
+    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "asked");
     expect(screen.getByTestId("journey-board").textContent).not.toContain(String(answersOf("review.reask")[0].correct_answer));
   });
 });

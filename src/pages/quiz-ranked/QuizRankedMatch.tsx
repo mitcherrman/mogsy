@@ -1378,9 +1378,15 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
    * shows its Journey champion (the viewer's side is the Journey's player, the
    * opponent's side its opponent) in the role mascot's box. Absent for every
    * other module, which therefore renders exactly as it always has.
+   *
+   * JP4 — THE HOST OWNS ITS PLAYER COLUMNS; the Journey owns only the centre
+   * stage. A HOSTED match (a Daily stage, Standard or Survival: `host` is set)
+   * keeps its host's own column presentation — identity, role mascot, points,
+   * status, module history — while its stage is a Journey. Only an unhosted
+   * Ranked match (the admin reference Journey today) draws the Journey crest.
    */
   const journeySeg = m.segmentState ?? m.publicRound?.segmentState ?? null;
-  const journeyRails = journeySeg?.journey
+  const journeyRails = journeySeg?.journey && !host
     ? journeyRailsFor(journeySeg.journey, {
       ownNextChallengeIndex: journeySeg.ownNextChallengeIndex,
       ownCardStartedAt: journeySeg.ownCardStartedAt,

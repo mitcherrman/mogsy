@@ -2,11 +2,11 @@
  * K2 — THE KNOWLEDGE MARK: a tiny `!` at the top-right of a board object the
  * Journey has established facts about, and a small popover listing them.
  *
- *   E · R1
+ *   E · Rank 1
  *   ⏱ 5s                 Step 1
  *   ⚡ 11s · 10 AH       Step 3
  *
- *   E · Shadow Slash · R1                               (JP2)
+ *   E · Shadow Slash · Rank 1   ("Rank", never "R1": JP4)
  *   ƒ Formula 70 / 92.5 / 115 / 137.5 / 160 (+70% bonus AD)   Step 1
  *   ⚔ Raw damage 85      Step 2
  *

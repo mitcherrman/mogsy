@@ -16677,12 +16677,15 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
     width: min(10.5rem, calc(100% - 2 * var(--banner-inset)));
   }
   /* Recede: the champion crest and the module history step back; the name,
-     the score and the round status stay at full strength. */
-  .ranked-arena-grid:has(.journey-viewport) .ranked-banner [data-testid^="journey-crest-"],
-  .ranked-arena-grid:has(.journey-viewport) .ranked-banner [data-testid^="module-history-"] {
+     the score and the round status stay at full strength.
+     JP4 — only where the Journey OWNS the columns (it drew its crest: an
+     unhosted Ranked match). A host's own columns — a Daily stage's — keep
+     their presentation; the centre's width is the only Journey change there. */
+  .ranked-arena-grid:has(.journey-viewport):has([data-testid^="journey-crest-"]) .ranked-banner [data-testid^="journey-crest-"],
+  .ranked-arena-grid:has(.journey-viewport):has([data-testid^="journey-crest-"]) .ranked-banner [data-testid^="module-history-"] {
     opacity: 0.72;
   }
-  .ranked-arena-grid:has(.journey-viewport) .ranked-banner {
+  .ranked-arena-grid:has(.journey-viewport):has([data-testid^="journey-crest-"]) .ranked-banner {
     --banner-glow: rgba(201, 168, 76, 0.06);
   }
 }
@@ -16832,8 +16835,10 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   .journey-know[data-just-learned="true"] { animation: journey-know-pop 520ms 220ms cubic-bezier(0.2, 0.8, 0.3, 1) both; }
 }
 
-/* ── 4. THE MICRO-CHAIN: causality, subordinate to the board ───────────── */
-.journey-chain {
+/* ── 4. THE JOURNEY PATH (JP4 name; JP3 "micro-chain"): where am I in the
+   lesson — curriculum progress, subordinate to the board. NOT the Reasoning
+   Chain (a reveal's causal working). ─────────────────────────────────── */
+.journey-path {
   display: inline-flex;
   min-width: 0;
   flex-shrink: 1;
@@ -16854,19 +16859,19 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
 /* The question's role emblems give the chain their room until the board is
    wide enough for both (they stay in the DOM and in the State sheet's step). */
 @container (max-width: 47.99rem) {
-  .journey-board__head:has(.journey-chain) .journey-board__roles { display: none; }
+  .journey-board__head:has(.journey-path) .journey-board__roles { display: none; }
 }
-.journey-chain__node { display: inline-flex; flex-shrink: 0; align-items: center; gap: 3px; white-space: nowrap; }
-.journey-chain__link { margin: 0 1px; color: rgb(232 201 122 / 0.45); letter-spacing: 0; }
+.journey-path__node { display: inline-flex; flex-shrink: 0; align-items: center; gap: 3px; white-space: nowrap; }
+.journey-path__link { margin: 0 1px; color: rgb(232 201 122 / 0.45); letter-spacing: 0; }
 /* A phone board's header has no room for both "Step N of M" and the chain:
    the chain says it (the step stays in the accessible name). */
 @container (max-width: 25.99rem) {
-  .journey-board__eyebrow:has(.journey-chain) [data-testid="journey-step"] {
+  .journey-board__eyebrow:has(.journey-path) [data-testid="journey-step"] {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
-  .journey-board__eyebrow:has(.journey-chain) .journey-chain { margin-left: 0; }
+  .journey-board__eyebrow:has(.journey-path) .journey-path { margin-left: 0; }
 }
-.journey-chain__dot {
+.journey-path__dot {
   display: inline-flex;
   width: 0.5rem;
   height: 0.5rem;
@@ -16876,29 +16881,29 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   border-radius: 9999px;
   border: 1px solid rgb(255 255 255 / 0.28);
 }
-.journey-chain__node[data-state="done"] .journey-chain__dot { border-color: var(--jp3-gold); background: var(--jp3-gold); }
-.journey-chain__check { width: 0.4rem; height: 0.4rem; color: #2a1f08; }
-.journey-chain__node[data-state="current"] .journey-chain__dot {
+.journey-path__node[data-state="done"] .journey-path__dot { border-color: var(--jp3-gold); background: var(--jp3-gold); }
+.journey-path__check { width: 0.4rem; height: 0.4rem; color: #2a1f08; }
+.journey-path__node[data-state="current"] .journey-path__dot {
   border-color: #f3dca0;
   background: radial-gradient(circle, #f3dca0 0 38%, transparent 44%);
   box-shadow: 0 0 0 2px rgb(243 220 160 / 0.28);
 }
-.journey-chain__label { color: rgb(255 255 255 / 0.55); }
-.journey-chain__node[data-state="current"] .journey-chain__label { color: #f3dca0; font-weight: 800; }
+.journey-path__label { color: rgb(255 255 255 / 0.55); }
+.journey-path__node[data-state="current"] .journey-path__label { color: #f3dca0; font-weight: 800; }
 /* THE CHAIN FITS ITSELF (`JourneyChain` measures its line): `full` names
    every reached step, `current` only the step on screen, `dots` is nodes
    only. The eyebrow takes whatever the buttons leave. */
-.journey-board__eyebrow:has(.journey-chain) { flex: 1 1 0; }
-.journey-chain__node:not([data-state="current"]) .journey-chain__label { display: none; }
-.journey-chain[data-fit="full"] .journey-chain__node .journey-chain__label { display: inline; }
-.journey-chain[data-fit="full"] .journey-chain__link { margin: 0 2px; }
-.journey-chain[data-fit="dots"] .journey-chain__label,
-.journey-chain[data-fit="dots"] .journey-chain__link { display: none; }
-.journey-chain[data-fit="dots"] .journey-chain__node + .journey-chain__node { margin-left: 3px; }
+.journey-board__eyebrow:has(.journey-path) { flex: 1 1 0; }
+.journey-path__node:not([data-state="current"]) .journey-path__label { display: none; }
+.journey-path[data-fit="full"] .journey-path__node .journey-path__label { display: inline; }
+.journey-path[data-fit="full"] .journey-path__link { margin: 0 2px; }
+.journey-path[data-fit="dots"] .journey-path__label,
+.journey-path[data-fit="dots"] .journey-path__link { display: none; }
+.journey-path[data-fit="dots"] .journey-path__node + .journey-path__node { margin-left: 3px; }
 .journey-board__node-label { display: inline-block; max-width: 100%; vertical-align: middle; }
 /* The chain never shrinks (a clipped node would misstate the chain); a
    transition note beside it (a Daily's "Leona buys Cloth Armor") truncates. */
-.journey-chain { flex-shrink: 0; }
+.journey-path { flex-shrink: 0; }
 
 
 /* ── 5. THE REVEAL AS A CALCULATION ────────────────────────────────────── */
@@ -17037,4 +17042,538 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
 .journey-question [data-quiz-choice][data-choice-state="incorrect-selected"]::after { --jp3-corner-c: rgba(226, 117, 123, 0.9); }
 .ranked-academy .journey-question [data-answers-state] [data-quiz-choice]:enabled:hover::after {
   --jp3-corner-c: rgba(243, 220, 160, 0.85);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   JP4 — JOURNEY REASONING & STATE LANGUAGE.
+   Inside the JP2 stage contract, as JP3: nothing here moves the board, the
+   prompt region, the answer region or the reveal box. JP4 changes how content
+   COMPOSES inside those fixed boxes:
+
+     1. the question: a fixed box, adaptive type (fitted, centred, balanced);
+     2. one icon vocabulary at standard sizes (stat mnemonics are ROUND
+        badges, items SQUARE tiles, shards the owner's art);
+     3. the board: both halves one fixed geometry — the shard column and ONE
+        fixed-height anchor row, never growing chips;
+     4. one shared scene under both champions;
+     5. the `!` coach;
+     6. the Reasoning Chain: fixed-size nodes, strong operators.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── 1. THE QUESTION: fixed box, adaptive type ──────────────────────────── */
+.journey-stage { --jq-q-min: 17px; --jq-q-max: 23px; }
+@media (min-width: 640px) { .journey-stage { --jq-q-min: 17px; --jq-q-max: 26px; } }
+@media (min-width: 1024px) { .journey-stage { --jq-q-min: 18px; --jq-q-max: 30px; } }
+.journey-question .journey-ask [data-testid="scenario-surface"] > header {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+/* The fitted size (`useFittedQuestion` writes `--jq-q-fs` on the host before
+   paint); out-specifies JP2's fixed per-width sizes. */
+.ranked-academy .ranked-folio .journey-question .journey-ask [data-testid="scenario-surface"] > header h2,
+.journey-question .journey-ask [data-testid="scenario-surface"] > header h2 {
+  font-size: var(--jq-q-fs, 1.125rem);
+  line-height: 1.28;
+  text-wrap: balance;
+  max-width: 44ch;
+}
+.journey-question .journey-ask [data-testid="scenario-context"] { text-align: center; }
+/* A subject icon stays with its word. */
+.journey-q-subject { white-space: nowrap; }
+
+/* ── 2. THE ICON VOCABULARY ───────────────────────────────────────────────── */
+.journey-ico {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgb(0 0 0 / 0.55);
+  color: #f3dca0;
+  font-size: 0.5rem;
+  font-weight: 900;
+}
+.journey-ico img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* A STAT MNEMONIC: round, gold-ringed — a symbol, never an inventory slot. */
+.journey-ico--mnemonic {
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1.5px #c9a24a, 0 0 0 2.5px rgb(0 0 0 / 0.45);
+}
+.journey-ico--mnemonic img { transform: scale(1.22); }
+/* An ITEM in the state: the inventory's own square tile. */
+.journey-ico--item { border-radius: 3px; border: 1px solid rgb(212 179 90 / 0.6); }
+/* A shard: the owner's art is already a ringed disc. */
+.journey-ico--shard { border-radius: 9999px; background: transparent; }
+.journey-ico--ability { border-radius: 4px; border: 1px solid rgb(212 179 90 / 0.6); }
+.journey-ico--champion { border-radius: 9999px; box-shadow: 0 0 0 1.5px #d4b35a; }
+.journey-ico--none { background: transparent; }
+/* The standard sizes. */
+.journey-ico--inline {
+  font-size: inherit;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.28em;
+  vertical-align: -0.2em;
+}
+.journey-ico--anchor { width: calc(var(--jb-chip-h) - 4px); height: calc(var(--jb-chip-h) - 4px); }
+.journey-ico--source { width: calc(var(--jb-chip-h) * 0.62); height: calc(var(--jb-chip-h) * 0.62); }
+.journey-ico--board { width: 100%; aspect-ratio: 1 / 1; height: auto; }
+.journey-ico--node { width: 1.125rem; height: 1.125rem; }
+/* On the parchment the rings read in dark gold. */
+.journey-question .journey-ico--mnemonic,
+.journey-reveal .journey-ico--mnemonic { box-shadow: 0 0 0 1.5px #8a6d2c, 0 0 0 2.5px rgb(255 250 235 / 0.7); }
+.journey-question .journey-ico--ability,
+.journey-reveal .journey-ico--ability,
+.journey-question .journey-ico--item,
+.journey-reveal .journey-ico--item { border-color: #8a6d2c; }
+.journey-question .journey-ico--champion,
+.journey-reveal .journey-ico--champion { box-shadow: 0 0 0 1.5px #8a6d2c; }
+
+/* ── 3. THE BOARD: one fixed geometry per half ─────────────────────────────
+   The shard page is a fixed column beside the portrait (three shards, the
+   portrait's height); the anchor row is ONE fixed-height line of at most two
+   anchors. Neither grows a half: a half is the same box on every step. */
+.journey-side__shards {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  width: calc((var(--jb-portrait) - 2px) / 3);
+  height: var(--jb-portrait);
+}
+.journey-side__shard { display: flex; }
+.journey-side__anchors {
+  grid-area: stats;
+  display: flex;
+  min-width: 0;
+  height: var(--jb-chip-h);
+  align-items: center;
+  justify-self: end;
+  gap: 4px;
+}
+/* Compact (phone) rows: the shard page rides the portrait's outer edge, as
+   League draws a rune page on a portrait, so it costs the name no width. */
+.journey-side__id > .journey-side__shards {
+  position: relative;
+  z-index: 2;
+  grid-area: portrait;
+  justify-self: start;
+  margin-left: -6px;
+  width: calc(var(--jb-portrait) * 0.3);
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.8));
+}
+@container (min-width: 26rem) {
+  .journey-side__id > .journey-side__shards {
+    position: static;
+    margin-left: 0;
+    width: calc((var(--jb-portrait) - 2px) / 3);
+    filter: none;
+  }
+  .journey-side__anchors { gap: 5px; }
+  .journey-side[data-side="subject"] .journey-side__anchors { justify-self: end; justify-content: flex-end; }
+  .journey-side[data-side="opponent"] .journey-side__anchors { justify-self: start; justify-content: flex-start; }
+}
+/* One anchor: icon-led, fixed height, never wrapping. */
+.journey-anchor {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px 0 2px;
+  border: 1px solid rgb(212 179 90 / 0.4);
+  border-radius: 9999px;
+  background: rgb(4 10 18 / 0.78);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+button.journey-anchor { cursor: pointer; font: inherit; font-weight: 700; }
+button.journey-anchor:hover, button.journey-anchor[data-state="open"] { border-color: rgb(243 220 160 / 0.85); }
+button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset: 1px; }
+.journey-anchor__label { color: rgb(255 255 255 / 0.72); }
+.journey-anchor__value { font-weight: 900; color: #fff; }
+.journey-anchor__recall { color: #f3dca0; text-transform: none; letter-spacing: 0; }
+/* A transition's change, kept all child long: "52 → 92", green. */
+.journey-anchor__from { margin-right: 3px; color: rgb(255 255 255 / 0.55); text-decoration: line-through; text-decoration-color: rgb(255 255 255 / 0.4); }
+.journey-anchor__arrow { margin-right: 3px; color: #8fd0a0; }
+.journey-anchor__sources { display: none; gap: 2px; margin-left: 1px; }
+/* A phone row is narrow: an anchor is its icon and value (the label is in its
+   accessible name), so the champion's name keeps its room. */
+@container (max-width: 25.99rem) {
+  .journey-anchor__label { display: none; }
+  .journey-anchor { gap: 3px; padding: 0 6px 0 2px; }
+  .journey-anchor--learned { padding-right: 2px; }
+}
+/* The sources ride the anchor only where the board is roomy; a narrower
+   board keeps them one tap away (the anchor still opens their breakdown). */
+@container (min-width: 34rem) {
+  .journey-anchor__sources { display: inline-flex; }
+}
+/* `?`: the value this question asks. */
+.journey-anchor--asked { border-style: dashed; border-color: rgb(232 201 122 / 0.75); background: rgb(38 28 6 / 0.72); }
+.journey-anchor--asked .journey-anchor__value { color: #f3dca0; }
+/* The moment of learning: the value arrives, glows once. */
+.journey-anchor--revealed {
+  border-color: rgb(232 201 122 / 0.9);
+  background: linear-gradient(180deg, rgb(92 70 18 / 0.92), rgb(46 34 8 / 0.92));
+}
+.journey-anchor--revealed .journey-anchor__value { color: #fff3d0; }
+/* Settled: learned earlier — the object and its `!`; the value is a recall. */
+.journey-anchor--learned { border-color: rgb(232 201 122 / 0.6); padding-right: 3px; }
+.journey-anchor--recall { border-style: dashed; }
+@media (prefers-reduced-motion: no-preference) {
+  .journey-anchor[data-just-learned="true"] { animation: journey-learned-glow 1.2s ease-out 1; }
+  .journey-anchor[data-just-learned="true"] .journey-learned-value {
+    animation: journey-learned-in 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+}
+/* The Bonus AD sources card. */
+.journey-sources { padding: 4px 7px 5px; }
+.journey-sources__rows { display: flex; flex-direction: column; gap: 2px; margin: 3px 0 2px; }
+.journey-sources__row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.journey-sources__row .journey-ico--inline { width: 1rem; height: 1rem; margin: 0; }
+.journey-sources__name { flex: 1 1 auto; color: rgb(255 255 255 / 0.85); }
+.journey-sources__value { margin-left: auto; padding-left: 10px; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+.journey-sources__total {
+  display: flex;
+  border-top: 1px solid rgb(232 201 122 / 0.35);
+  padding-top: 2px;
+  color: #e8c97a;
+  font-weight: 800;
+}
+.journey-sources__shown { color: rgb(255 255 255 / 0.6); font-size: 0.625rem; }
+
+/* ── 4. ONE SCENE under both champions ─────────────────────────────────────
+   The lane spans the whole board; each champion's art fades in from its own
+   edge over it; the readability grades sit above both; the state above all.
+   The centre is the shared Rift, never a black seam. */
+.journey-board__scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.journey-board__scene img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% 62%;
+  filter: saturate(0.75) brightness(0.42) contrast(1.05);
+  transform: scale(1.04);
+}
+.journey-board > .journey-board__head,
+.journey-board > .journey-board__sides { position: relative; z-index: 1; }
+@container (min-width: 26rem) {
+  /* The readability grade: a soft reading lane, the environment still seen. */
+  .journey-board::after {
+    background:
+      radial-gradient(ellipse 30% 70% at 50% 55%, rgb(6 13 24 / 0.5), transparent 100%),
+      linear-gradient(90deg, transparent 18%, rgb(6 13 24 / 0.28) 50%, transparent 82%),
+      linear-gradient(180deg, rgb(6 13 24 / 0.6), transparent 24%, transparent 72%, rgb(6 13 24 / 0.7));
+  }
+}
+/* The phone rows' own splash sits over the scene, quieter. */
+.journey-side__splash { opacity: 0.34; }
+/* The seam's VS / arrow reads on the scene. */
+.journey-board__seam > * { border-radius: 9999px; }
+
+/* ── 5. THE `!` COACH ───────────────────────────────────────────────────── */
+@keyframes journey-coach-in {
+  from { opacity: 0; transform: translate(-50%, 6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes journey-know-coach {
+  0%, 100% { box-shadow: 0 1px 3px rgb(0 0 0 / 0.6); transform: none; }
+  50% { box-shadow: 0 0 0 3px rgb(243 220 160 / 0.55), 0 0 14px rgb(243 220 160 / 0.8); transform: scale(1.25); }
+}
+.journey-coach {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 8px;
+  display: flex;
+  max-width: calc(100% - 20px);
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 6px;
+  border: 1px solid rgb(232 201 122 / 0.75);
+  border-radius: 9999px;
+  background: rgb(7 17 31 / 0.95);
+  box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.9);
+  color: #f3dca0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  transform: translateX(-50%);
+  cursor: default;
+}
+.journey-coach__text { min-width: 0; }
+.journey-coach__how { color: #fff; white-space: nowrap; }
+/* Two anchors share the row: the readout says "Raw" (its icon names the ability). */
+.journey-side__anchors[data-count="2"] .journey-long { display: none; }
+.journey-side__anchors[data-count="2"] .journey-short { display: inline; }
+.journey-coach__mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #e8c97a;
+  color: #2a1f08;
+  font-weight: 900;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-coach { animation: journey-coach-in 260ms ease-out both; }
+  .journey-board[data-coach="true"] .journey-know[data-just-learned="true"] {
+    animation: journey-know-coach 900ms ease-in-out 3;
+  }
+}
+@container (max-width: 25.99rem) {
+  .journey-coach { font-size: 0.6875rem; bottom: 4px; padding: 4px 10px 4px 5px; }
+}
+
+/* ── 6. THE REASONING CHAIN ─────────────────────────────────────────────────
+   The reveal box is the prompt's (fixed). Its top line carries the verdict,
+   the chain's subject and the exact-working control; the chain sits centred
+   in what is left. Every node is the same box. */
+.journey-reveal { gap: 0.375rem; }
+.journey-reveal__top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.journey-reveal__top .journey-reveal__verdict { flex-shrink: 0; white-space: nowrap; }
+.journey-reasoning__head { display: inline-flex; min-width: 0; align-items: center; gap: 8px; }
+.journey-reasoning__subject {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: #3a2c10;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.journey-reasoning__subject .journey-ico--inline { margin-right: 0; }
+.journey-reasoning__subject-text { flex-shrink: 0; }
+.journey-reasoning__caption {
+  overflow: hidden;
+  color: #6b5426;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.journey-reasoning__caption::before { content: "·"; margin-right: 5px; }
+.journey-exact-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 5px;
+  border: 1px solid rgb(122 98 54 / 0.5);
+  border-radius: 9999px;
+  background: rgb(255 250 235 / 0.6);
+  color: #5a3f0c;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.journey-exact-btn:hover, .journey-exact-btn[data-state="open"] { background: rgb(243 220 160 / 0.85); }
+.journey-exact__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0 1px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.journey-reasoning { display: flex; min-height: 0; flex: 1 1 auto; align-items: center; justify-content: center; }
+.journey-reasoning__chain {
+  --jn-w: 4.75rem;
+  --jn-h: 3.75rem;
+  --jop-w: 0.8125rem;
+  --jop-fs: 1.125rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  row-gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* A node's WIDTH follows the reveal box's own width (a container: the chain
+   must fit the column it is in, whatever the viewport); its HEIGHT follows
+   the viewport, because the reveal box's height is the stage's per-viewport
+   reserve. Every node of a chain takes the same tier: one box, always. */
+.journey-reveal { container: jreveal / inline-size; }
+.journey-reasoning__chain { --jn-w: 4.5rem; }
+.journey-reasoning__chain[data-density="dense"] { --jn-w: 4.5rem; --jn-h: 3.25rem; --jop-w: 0.75rem; --jop-fs: 1rem; }
+@container jreveal (min-width: 26rem) {
+  .journey-reasoning__chain { --jn-w: 5.75rem; --jop-w: 1.25rem; --jop-fs: 1.375rem; }
+  .journey-reasoning__chain[data-density="dense"] { --jn-w: 4.25rem; --jop-w: 0.75rem; --jop-fs: 1.125rem; }
+}
+@container jreveal (min-width: 38.75rem) {
+  .journey-reasoning__chain { --jn-w: 7.75rem; --jop-w: 1.875rem; --jop-fs: 1.75rem; }
+  .journey-reasoning__chain[data-density="dense"] { --jn-w: 5.5rem; --jop-w: 1.25rem; --jop-fs: 1.375rem; }
+}
+@media (min-width: 640px) {
+  .journey-reasoning__chain { --jn-h: 3.5rem; }
+  .journey-reasoning__chain[data-density="dense"] { --jn-h: 3.5rem; }
+}
+@media (min-width: 1024px) {
+  .journey-reasoning__chain { --jn-h: 3.75rem; }
+  .journey-reasoning__chain[data-density="dense"] { --jn-h: 3.75rem; }
+}
+.journey-reasoning__step { display: inline-flex; align-items: center; }
+/* Operators you can see: large, dark, unmistakably an equation. */
+.journey-op {
+  display: inline-flex;
+  width: var(--jop-w);
+  justify-content: center;
+  color: #5a3f0c;
+  font-size: var(--jop-fs);
+  font-weight: 900;
+  line-height: 1;
+}
+/* The arrow is drawn (a stroked SVG), as heavy as the + and =. */
+.journey-op svg { width: calc(var(--jop-fs) * 0.9); height: calc(var(--jop-fs) * 0.9); }
+.journey-node {
+  position: relative;
+  display: grid;
+  width: var(--jn-w);
+  height: var(--jn-h);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  justify-items: center;
+  align-content: center;
+  padding: 3px 4px 4px;
+  border: 1px solid rgb(122 98 54 / 0.45);
+  border-radius: 8px;
+  background: rgb(255 250 235 / 0.66);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 1px 3px -1px rgb(92 73 38 / 0.35);
+  text-align: center;
+}
+/* The node's icon: one fixed corner, so it never takes a row. */
+.journey-node > .journey-ico { position: absolute; top: 4px; left: 4px; }
+.journey-node__expr {
+  display: flex;
+  min-height: 0;
+  align-items: flex-end;
+  justify-content: center;
+  padding-left: 0.875rem;
+  color: #6b5426;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.journey-node__value {
+  color: #2a1f08;
+  font-size: 1.125rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.journey-node__label {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  color: #6b5426;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+@media (min-width: 640px) {
+  .journey-node__label { font-size: 0.5625rem; letter-spacing: 0.05em; }
+}
+/* A wide reveal has room for every label on one line. */
+@container jreveal (min-width: 38.75rem) {
+  .journey-node__label { letter-spacing: 0.06em; -webkit-line-clamp: 1; white-space: nowrap; }
+}
+@media (min-width: 1024px) {
+  .journey-node__expr { font-size: 0.6875rem; }
+  .journey-node__value { font-size: 1.3125rem; }
+  .journey-node__label { font-size: 0.625rem; }
+}
+/* The answer: the board's gold, and the corner brackets. */
+.journey-node--final {
+  --jp3-corner-c: rgba(122, 86, 20, 0.85);
+  --jp3-corner-l: 6px;
+  border: 1.5px solid #b8860b;
+  background: linear-gradient(180deg, rgb(243 220 160 / 0.9), rgb(232 201 122 / 0.55));
+  box-shadow: 0 2px 8px -4px rgb(92 73 38 / 0.6), inset 0 1px 0 rgb(255 250 230 / 0.7);
+}
+.journey-node--final::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left top / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) left top / 1px var(--jp3-corner-l) no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right bottom / var(--jp3-corner-l) 1px no-repeat,
+    linear-gradient(var(--jp3-corner-c), var(--jp3-corner-c)) right bottom / 1px var(--jp3-corner-l) no-repeat;
+}
+.journey-node--final .journey-node__value { color: #2a1a02; font-size: 1.375rem; }
+@media (min-width: 1024px) { .journey-node--final .journey-node__value { font-size: 1.625rem; } }
+/* The armor formula, as a fraction: 100 over (100 + armor). */
+.journey-frac {
+  display: inline-grid;
+  justify-items: center;
+  color: #3a2c10;
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.journey-frac__bar { width: 100%; height: 1.5px; margin: 1px 0; background: #6b5426; }
+@media (min-width: 1024px) { .journey-frac { font-size: 0.6875rem; } }
+.journey-node--formula .journey-node__expr { padding-left: 0; }
+.journey-node--formula .journey-node__value { font-size: 1rem; }
+@media (min-width: 1024px) { .journey-node--formula .journey-node__value { font-size: 1.125rem; } }
+/* A taught fact (a formula): its subject and the fact, at reading size. */
+.journey-reveal__fact {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #2a1f08;
+}
+.journey-reveal__fact .journey-ico--node { width: 2rem; height: 2rem; }
+.journey-reveal__fact-text { display: flex; flex-direction: column; min-width: 0; }
+.journey-reveal__fact-name { color: #6b5426; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.journey-reveal__fact-value { font-size: 1.125rem; font-weight: 900; font-variant-numeric: tabular-nums; text-wrap: balance; }
+@media (min-width: 1024px) { .journey-reveal__fact-value { font-size: 1.3125rem; } }
+/* A phone's verdict line: the subject yields its room to the verdict. */
+@media (max-width: 639px) {
+  .journey-node > .journey-ico { top: 3px; left: 3px; width: 0.8125rem; height: 0.8125rem; }
+  .journey-node__expr { padding-left: 0.625rem; font-size: 0.5rem; }
+  .journey-frac { font-size: 0.5625rem; }
+  .journey-node--formula .journey-node__value { font-size: 0.875rem; }
+  .journey-node__value { font-size: 1rem; }
+  .journey-node--final .journey-node__value { font-size: 1.25rem; }
+  .journey-reasoning__caption { display: none; }
+  .journey-exact-btn__text { display: none; }
+  .journey-exact-btn { padding: 2px 4px; }
+  .journey-reasoning__subject { font-size: 0.75rem; }
 }

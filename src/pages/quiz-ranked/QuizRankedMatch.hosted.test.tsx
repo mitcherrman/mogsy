@@ -532,15 +532,18 @@ function capture(name: string, label: string): CapturePayload {
 const clockText = () => screen.getAllByTestId("timer-value")[0];
 
 describe("JOURNEY-UI3 — a hosted Journey module", () => {
-  it("a live Journey: champion crests replace the role mascots, and the board is in the arena", async () => {
+  // JP4 — THE HOST OWNS ITS PLAYER COLUMNS. A hosted match (a Daily stage) keeps
+  // its own column presentation — the role mascots — while its stage is a
+  // Journey; only an unhosted Ranked match draws the Journey crest.
+  it("a live hosted Journey: the host's role mascots stay (no Journey crest), and the board is in the arena", async () => {
     startedAt = Date.now() - 4000;
     const p = capture("zed.standard", "child1-open");
     journeyEnvelope = { segment: p.segment, segment_state: p.segment_state };
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="recovered" host={hostOf()} />);
     await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
-    expect(screen.getByTestId("journey-crest-subject")).toHaveAccessibleName(/^Zed, level 3/);
-    expect(screen.getByTestId("journey-crest-opponent")).toHaveAccessibleName(/^Ahri, level 3/);
-    expect(screen.queryByTestId("role-crest")).toBeNull();
+    expect(screen.queryByTestId("journey-crest-subject")).toBeNull();
+    expect(screen.queryByTestId("journey-crest-opponent")).toBeNull();
+    expect(screen.queryAllByTestId("role-crest").length).toBeGreaterThan(0);
   }, 25000);
 
   it("Standard: the header is the POOLED Journey clock — the server's remainder, never the round deadline", async () => {
@@ -654,7 +657,7 @@ describe("JOURNEY5 — a hosted Journey's final child", () => {
     await screen.findByTestId("journey-board", undefined, { timeout: 8000 });
     await waitFor(() => expect(shownPhase()).toHaveAttribute("data-revealing", "true"), { timeout: 4000 });
     expect(shownPhase()).toHaveAttribute("data-challenge-index", "4");
-    expect(screen.getByTestId("journey-combat-working-final")).toHaveTextContent("Final damage90");
+    expect(screen.getByTestId("journey-combat-working-final")).toHaveTextContent("90Final damage");
     // The pool's frozen remainder, PAUSED — own_finished no longer un-pauses it.
     await waitFor(() => expect(clockText()).toHaveTextContent("1:50"), { timeout: 4000 });
     expect(clockText()).toHaveAttribute("data-timer-state", "paused");

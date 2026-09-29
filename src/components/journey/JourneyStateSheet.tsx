@@ -10,17 +10,23 @@
  * The existing bottom `Sheet` (Radix dialog): it opens over the arena from the
  * board's State control on a phone and on a desktop alike, and closing it
  * returns focus to that control.
+ *
+ * JP4 — the sheet is the board's FULL inspection: each side's stat-shard page
+ * (served ids and names), a stated stat's served sources (Doran's Blade +10,
+ * Adaptive Force +5.4 …) and, for a learned value, where it was learned. A
+ * permanent legend says what the board's gold `!` means.
  */
 import type { JourneyPublicState, JourneySide } from "@/lib/journey/contract";
 import { journeySide } from "@/lib/journey/contract";
 import { eventLine, markKey, transitionMarks } from "@/lib/journey/beat";
-import { formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
+import { exactNumber, formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import { learnedStatFact, NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyPortrait, LevelBadge, sideRim } from "./JourneyPrimitives";
+import { ItemIcon, ShardIcon } from "./JourneyIcons";
 
 function SideDetail({ state, side, knowledge }: { state: JourneyPublicState; side: JourneySide; knowledge: JourneyKnowledge }) {
   const marks = transitionMarks(state.transition);
@@ -48,6 +54,20 @@ function SideDetail({ state, side, knowledge }: { state: JourneyPublicState; sid
           </div>
         ))}
       </dl>
+      {side.shards && side.shards.length > 0 && (
+        <div data-testid={`journey-sheet-shards-${id}`}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stat shards</p>
+          <ul className="space-y-0.5 text-xs text-white/85">
+            {side.shards.map((sh) => (
+              <li key={sh.row} className="flex items-center gap-1.5" data-shard-id={sh.shardId}>
+                <ShardIcon shardId={sh.shardId} name={sh.name} size="inline" />
+                <span>{sh.name}</span>
+                <span className="text-white/45">· {sh.row}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Items</p>
         {side.items.length === 0 ? (
@@ -84,6 +104,25 @@ function SideDetail({ state, side, knowledge }: { state: JourneyPublicState; sid
                         marks.gain.has(markKey(id, s.key))
                           ? ` (${formatStatGain(marks.gain.get(markKey(id, s.key))!, s.key)} from the last change)` : ""}`)}
                 </dd>
+                {s.sources && s.sources.length > 0 && s.value !== null && (
+                  <dd className="col-span-2 mb-1 pl-2" data-testid={`journey-sheet-sources-${id}-${s.key}`}>
+                    <ul className="space-y-0.5 text-[11px] text-white/70">
+                      {s.sources.map((src, i) => (
+                        <li key={i} className="flex items-center gap-1.5">
+                          {src.kind === "item"
+                            ? <ItemIcon itemId={src.itemId} name={src.name} size="inline" />
+                            : <ShardIcon shardId={src.shardId} name={src.name} size="inline" />}
+                          <span>{src.name}</span>
+                          <span className="ml-auto font-bold tabular-nums text-white/85">+{exactNumber(src.value)}</span>
+                        </li>
+                      ))}
+                      <li className="flex border-t border-white/10 pt-0.5">
+                        <span>Exact</span>
+                        <span className="ml-auto font-bold tabular-nums text-white/85">{exactNumber(s.value)}</span>
+                      </li>
+                    </ul>
+                  </dd>
+                )}
               </div>
             );
           })}
@@ -137,6 +176,10 @@ export function JourneyStateSheet({ state, open, onOpenChange, knowledge = NO_KN
               <SideDetail state={state} side={state.sides[1]} knowledge={knowledge} />
             </div>
           </MasteryAssetsProvider>
+          <p data-testid="journey-sheet-legend" className="flex items-center gap-2 text-xs text-white/70">
+            <span aria-hidden className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#e8c97a] text-[10px] font-black text-[#2a1f08]">!</span>
+            <span><span className="font-bold text-[#f3dca0]">Learned knowledge.</span> Hover or tap a <span aria-hidden>!</span> on the board to recall what the Journey established.</span>
+          </p>
           {state.transition && (
             <section data-testid="journey-sheet-changes">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

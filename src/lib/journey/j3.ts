@@ -64,7 +64,20 @@ export interface J3SideState {
   abilities: J3Ability[];
   inventory: J3Item[];
   stats: Partial<Record<JourneyStatKey, J3StatValue>>;
+  /** JP4 — the side's stat-shard page (`stat_mods`), row order; null when not published. */
+  statMods: J3StatMod[] | null;
+  /** JP4 — reconciled provenance of a STATED stat (`stat_sources`); empty when none. */
+  statSources: Partial<Record<JourneyStatKey, J3StatSource[]>>;
 }
+
+export type J3ShardRow = "offense" | "flex" | "defense";
+export interface J3StatMod { row: J3ShardRow; id: string; name: string }
+export type J3StatSource =
+  | { kind: "item"; itemId: string; name: string; value: number }
+  | { kind: "stat_mod"; row: J3ShardRow; id: string; name: string; value: number };
+
+/** The shard rows, in page order (backend `stat_mods.ROWS`). */
+export const J3_SHARD_ROWS: readonly J3ShardRow[] = ["offense", "flex", "defense"];
 
 export type J3Focus =
   | { engine: "champion"; objective: string; side: J3Side; slot: AbilitySlot | null; stat: JourneyStatKey | null }
@@ -277,8 +290,54 @@ function readFormula(v: unknown, l: string): J3Formula {
   };
 }
 
+const shardRow = (v: unknown, l: string): J3ShardRow =>
+  ((J3_SHARD_ROWS as readonly unknown[]).includes(v) ? v as J3ShardRow : fail(`${l} must be offense|flex|defense`));
+
+/** JP4 — `stat_mods`: exactly one shard per row, in page order. */
+function readStatMods(v: unknown, l: string): J3StatMod[] {
+  const mods = arr(v, l).map((m, i) => {
+    const x = shape(m, `${l}[${i}]`, ["row", "id", "name"]);
+    return { row: shardRow(x.row, `${l}[${i}].row`), id: str(x.id, `${l}[${i}].id`), name: str(x.name, `${l}[${i}].name`) };
+  });
+  if (mods.map((m) => m.row).join() !== J3_SHARD_ROWS.join()) fail(`${l} must be one shard per row, offense, flex, defense`);
+  return mods;
+}
+
+/**
+ * JP4 — `stat_sources`: per stated stat, each source's share. Only a stat the
+ * state STATES as a number may carry sources (the server reconciled them to
+ * it); a shard source must be one of this side's own shards.
+ */
+function readStatSources(v: unknown, l: string, stats: J3SideState["stats"], mods: J3StatMod[] | null) {
+  const raw = shape(v, l, Object.keys((v ?? {}) as Rec), []);
+  const out: Partial<Record<JourneyStatKey, J3StatSource[]>> = {};
+  for (const [k, list] of Object.entries(raw)) {
+    const key = statKey(k, `${l} key`);
+    if (typeof stats[key] !== "number") fail(`${l}.${k} names a stat the state does not state`);
+    out[key] = arr(list, `${l}.${k}`).map((p, i): J3StatSource => {
+      const pl = `${l}.${k}[${i}]`;
+      const kind = (p as Rec | null)?.kind;
+      if (kind === "item") {
+        const x = shape(p, pl, ["kind", "item_id", "name", "value"]);
+        return { kind, itemId: str(x.item_id, `${pl}.item_id`), name: str(x.name, `${pl}.name`), value: num(x.value, `${pl}.value`) };
+      }
+      if (kind === "stat_mod") {
+        const x = shape(p, pl, ["kind", "row", "id", "name", "value"]);
+        const row = shardRow(x.row, `${pl}.row`);
+        const id = str(x.id, `${pl}.id`);
+        if (!mods?.some((m) => m.row === row && m.id === id)) fail(`${pl} is not one of this side's shards`);
+        return { kind, row, id, name: str(x.name, `${pl}.name`), value: num(x.value, `${pl}.value`) };
+      }
+      return fail(`${pl}.kind must be item|stat_mod`);
+    });
+  }
+  return out;
+}
+
 function readSideState(v: unknown, l: string, expected: J3Side): J3SideState {
-  const o = shape(v, l, ["side", "champion_id", "champion", "level", "abilities", "inventory", "stats"]);
+  // JP4: `stat_mods` / `stat_sources` are optional (additive to v1).
+  const o = shape(v, l, ["side", "champion_id", "champion", "level", "abilities", "inventory", "stats", "stat_mods", "stat_sources"],
+    ["side", "champion_id", "champion", "level", "abilities", "inventory", "stats"]);
   if (side(o.side, `${l}.side`) !== expected) fail(`${l}.side must be ${expected}`);
   const abilities = arr(o.abilities, `${l}.abilities`).map((a, i) => {
     const x = shape(a, `${l}.abilities[${i}]`, ["slot", "name", "rank", "unlocked"]);
@@ -295,6 +354,8 @@ function readSideState(v: unknown, l: string, expected: J3Side): J3SideState {
     const key = statKey(k, `${l}.stats key`);
     stats[key] = val === "recalled" ? "recalled" : num(val, `${l}.stats.${k}`);
   }
+  const statMods = o.stat_mods === undefined ? null : readStatMods(o.stat_mods, `${l}.stat_mods`);
+  const statSources = o.stat_sources === undefined ? {} : readStatSources(o.stat_sources, `${l}.stat_sources`, stats, statMods);
   return {
     side: expected,
     championId: str(o.champion_id, `${l}.champion_id`),
@@ -306,6 +367,8 @@ function readSideState(v: unknown, l: string, expected: J3Side): J3SideState {
       return { itemId: str(x.item_id, `${l}.inventory[${i}].item_id`), name: str(x.name, `${l}.inventory[${i}].name`) };
     }),
     stats,
+    statMods,
+    statSources,
   };
 }
 

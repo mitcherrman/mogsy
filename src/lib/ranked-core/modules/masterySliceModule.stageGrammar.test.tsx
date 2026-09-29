@@ -88,6 +88,11 @@ const popText = (testId: string) => {
 };
 const CSS = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 
+// Several tests open Radix popovers (the `!` cards, the exact working, a
+// stat's sources) across whole timelines; jsdom makes each open costly, so the
+// file takes the repo's usual long-test budget.
+vi.setConfig({ testTimeout: 25_000 });
+
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -177,36 +182,43 @@ describe("Step 2 — the question asks; the board states", () => {
     // No helper copy: no "Builds on", no internal scenario state.
     expect(child().textContent).not.toMatch(/builds on|item effects/i);
     expect(screen.queryByTestId("scenario-context")).toBeNull();
-    // The state it is read at is the BOARD's — JP3: a derived stat reads whole
-    // (20.8 → 21), its exact value one hover away, "rounded for display".
+    // The state it is read at is the BOARD's — a derived stat reads whole
+    // (20.8 → 21). JP4: where 21 comes from is on the anchor itself (its served
+    // sources), and the exact value is in that breakdown, "rounded for display".
     const bonus = screen.getByTestId("journey-stat-subject-bonus_attack_damage");
     expect(bonus).toHaveTextContent(/^Bonus AD21$/);
-    expect(bonus.getAttribute("title")).toMatch(/Exact value 20\.8 · shown as 21, rounded for display/);
-    expect(bonus.getAttribute("title")).not.toMatch(/rounded up/);
-    // JP3 — the value this step asks is the board's `?` readout on Zed E.
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-face", "withheld");
+    fireEvent.click(bonus);
+    const sources = screen.getByTestId("journey-stat-subject-bonus_attack_damage-pop");
+    expect(sources).toHaveTextContent(/Doran's Blade\s*\+10.*Adaptive Force\s*\+5\.4.*Adaptive Force\s*\+5\.4.*Exact\s*20\.8/);
+    expect(sources).toHaveTextContent("Shown as 21 · rounded for display");
+    expect(sources.textContent).not.toMatch(/rounded up/);
+    // The value this step asks is the board's `?` anchor on Zed E.
+    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-face", "asked");
     expect(screen.getByTestId("journey-readout-subject-E")).toHaveTextContent(/\?$/);
     expect(screen.getByTestId("journey-level-subject")).toHaveTextContent("2");
     expect(screen.getByTestId("journey-ability-subject-E")).toHaveAttribute("data-rank", "1");
   });
 
-  it("the reveal lays out the formula applied as CALCULATION CELLS, from SERVED parts only", () => {
+  it("JP4 — the reveal is a Reasoning Chain in the learned formula's own words: 70 + 70% of 21 = 15 = 85", () => {
     show(snap(REF, "child1-reveal"));
     const w = screen.getByTestId("journey-raw-working");
-    // JP3 — cells, not sentences: [Base · R1 70] + [bonus AD 70% × 21] = [Raw damage 85].
-    const cell = (k: string) => within(w).getByTestId(`journey-raw-working-${k}`);
-    expect(cell("base")).toHaveTextContent(/^Base · R170$/);
-    expect(cell("ratio-0")).toHaveTextContent(/^bonus AD70% × 21$/);
-    expect(cell("final")).toHaveTextContent(/^Raw damage85$/);
-    expect(cell("final").className).toMatch(/journey-calc__cell--final/);
-    expect([...w.querySelectorAll(".journey-calc__op")].map((o) => o.textContent)).toEqual(["+", "="]);
-    // No arithmetic: every number drawn is the taught formula's, the premise's
-    // (whole, for display) or the answer.
-    expect([...w.querySelectorAll(".journey-calc__label")].map((l) => l.textContent))
-      .toEqual(["Base · R1", "bonus AD", "Raw damage"]);
-    expect([...w.querySelectorAll(".journey-calc__value")].map((v) => v.textContent))
-      .toEqual(["70", "70% × 21", "85"]);
-    expect(cell("ratio-0").getAttribute("title")).toMatch(/Exact value 20\.8/);
+    const node = (k: string) => within(w).getByTestId(`journey-raw-working-${k}`);
+    // "Rank 1", never "R1" (which reads as the R ability).
+    expect(screen.getByTestId("journey-raw-working-subject")).toHaveTextContent(/^Shadow Slash — Rank 1$/);
+    expect(document.body.textContent).not.toMatch(/\bR1\b/);
+    expect(node("base")).toHaveTextContent(/^70Base damage$/);
+    expect(node("ratio-0")).toHaveTextContent(/^70% of 21 =15Bonus AD damage$/);
+    expect(node("final")).toHaveTextContent(/^85Raw damage$/);
+    expect(node("final").className).toMatch(/journey-node--final/);
+    expect([...w.querySelectorAll(".journey-op")].map((o) => o.getAttribute("data-op"))).toEqual(["+", "="]);
+    // Primary math is whole; the exact working is behind the info control.
+    expect(w.textContent).not.toMatch(/20\.8|14\.56|84\.56/);
+    fireEvent.click(screen.getByTestId("journey-raw-working-exact"));
+    const exact = screen.getByTestId("journey-raw-working-exact-pop");
+    expect(exact).toHaveTextContent("Exact bonus AD: 20.8");
+    expect(exact).toHaveTextContent("70% of 20.8 = 14.56");
+    expect(exact).toHaveTextContent("70 + 14.56 = 84.56");
+    expect(exact).toHaveTextContent("Shown as 85 · rounded for display");
     expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent("Correct · 85");
     // The backend's serialized explanation is not appended under it.
     expect(screen.queryByTestId("journey-reveal-explanation")).toBeNull();
@@ -217,71 +229,80 @@ describe("Step 3 — Ahri's armor in the same grammar", () => {
   it("asks in words, answers on the grid; after the reveal the armor lives on Ahri", () => {
     show(snap(REF, "child2-live"));
     expect(heading()).toHaveTextContent("At level 2, what is Ahri's Armor?");
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "withheld");
+    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "asked");
     expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveTextContent(/^Armor\?$/);
-    // Zed E's raw damage, learned at Step 2, stays on the board (the notebook).
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveTextContent(/85/);
-    expect(marks()).toEqual(["subject-E:2", "subject-readout-E:1"]);
+    // JP4 — Zed E's raw damage, learned at Step 2, is NOT reprinted: it lives
+    // on Zed E's `!` (the notebook), one hover away.
+    expect(screen.queryByTestId("journey-readout-subject-E")).toBeNull();
+    expect(marks()).toEqual(["subject-E:2"]);
     cleanup();
     show(snap(REF, "child2-reveal"));
-    // JP3 — ONE grammar: the learned value FILLS the `?` (Armor ? → Armor 24 !),
-    // and its `!` rides on the chip; no separate portrait mark for it.
+    // The reveal MOMENT: the value fills the `?` (Armor ? → Armor 24 !).
     const armor = screen.getByTestId("journey-stat-opponent-armor");
-    expect(armor).toHaveAttribute("data-face", "learned");
+    expect(armor).toHaveAttribute("data-face", "revealed");
     expect(within(armor).getByTestId("journey-stat-opponent-armor-learned")).toHaveTextContent("24");
-    expect(marks()).toEqual(["opponent-stat-armor:1", "subject-E:2", "subject-readout-E:1"]);
+    expect(marks()).toEqual(["opponent-stat-armor:1", "subject-E:2"]);
     expect(screen.queryByTestId("journey-know-opponent-champion")).toBeNull();
     expect(popText("journey-know-opponent-stat-armor")).toMatch(/Ahri · Lv2.*Armor 24.*learned Step 3/);
-    // The reveal: "Level 2 → Ahri armor 24", the served prose's 24.024 only on hover.
+    // The reveal: [Ahri · Lv 2] → [Armor · 24]; 24.024 only in the exact working.
     const w = screen.getByTestId("journey-stat-working");
-    expect(within(w).getByTestId("journey-stat-working-level")).toHaveTextContent(/^AhriLevel 2$/);
-    expect(within(w).getByTestId("journey-stat-working-final")).toHaveTextContent(/^Ahri armor24$/);
+    expect(within(w).getByTestId("journey-stat-working-level")).toHaveTextContent(/^Lv 2Ahri$/);
+    expect(within(w).getByTestId("journey-stat-working-final")).toHaveTextContent(/^24Armor$/);
     expect(w.textContent).not.toContain("24.024");
-    expect(within(w).getByTestId("journey-stat-working-final").getAttribute("title")).toMatch(/Exact value 24\.024/);
+    fireEvent.click(screen.getByTestId("journey-stat-working-exact"));
+    expect(screen.getByTestId("journey-stat-working-exact-pop")).toHaveTextContent("Exact armor at level 2: 24.024");
   });
 });
 
 describe("Step 4 — the culmination reads off the board", () => {
-  it("asks the application; no dependency manifest; the prerequisites are the board's", () => {
+  it("asks the application; no dependency manifest; the prerequisites are the board's `!`", () => {
     show(snap(REF, "child3-live"));
     expect(heading()).toHaveTextContent("How much physical damage does Zed's Rank 1 Shadow Slash deal to Ahri?");
     expect(document.body.textContent).not.toMatch(/Raw damage · recalled|recall · revealed in step|not part of this question's premise/);
     // The chain is on the board, not in a helper line under the question.
     expect(child().textContent).not.toMatch(/builds on|item effects/i);
-    // JP3 — the recalled armor is the learner's own knowledge, filled in on the
-    // board (no special "recall · step 3" pill); the raw damage likewise.
+    // JP4 — settled knowledge is NOT reprinted: Ahri's armor is its anchor and
+    // its `!` (the value one hover away); Zed's raw damage is Zed E's `!`.
     const armor = screen.getByTestId("journey-stat-opponent-armor");
     expect(armor).toHaveAttribute("data-face", "learned");
-    expect(armor.textContent).not.toMatch(/recall/i);
-    expect(armor).toHaveTextContent(/^Armor24!$/);
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-face", "learned");
-    expect(screen.getByTestId("journey-readout-subject-E-value")).toHaveTextContent("85");
+    expect(armor.textContent).not.toMatch(/recall|24/i);
+    expect(armor).toHaveTextContent(/^Armor!$/);
+    expect(screen.queryByTestId("journey-readout-subject-E")).toBeNull();
+    expect(screen.getByTestId("journey-board").textContent).not.toMatch(/\b85\b|\b24\b/);
+    // Irrelevant zero modifiers are not board state.
+    expect(screen.queryByTestId("journey-stat-subject-lethality")).toBeNull();
+    expect(screen.queryByTestId("journey-stat-subject-armor_penetration_percent")).toBeNull();
     // One object accumulates its facts; the canonical taught decimal (92.5) stays.
     expect(popText("journey-know-subject-E")).toMatch(
-      /E · Shadow Slash · R1.*Formula 70 \/ 92\.5 \/ 115 \/ 137\.5 \/ 160 \(\+70% bonus AD\).*learned Step 1.*Raw damage 85.*learned Step 2/);
+      /E · Shadow Slash · Rank 1.*Formula 70 \/ 92\.5 \/ 115 \/ 137\.5 \/ 160 \(\+70% bonus AD\).*learned Step 1.*Raw damage 85.*learned Step 2/);
     expect(popText("journey-know-opponent-stat-armor")).toMatch(/Armor 24.*learned Step 3/);
   });
 
-  it("the reveal is the server's working as CALCULATION CELLS: raw 85 → armor 24 → ×0.8063 → 68", () => {
+  it("JP4 — the reveal is the server's working as a Reasoning Chain: 85 → 24 → 100 / (100 + 24) ≈ 0.806 → 68", () => {
     show(snap(REF, "child3-reveal"));
     const w = screen.getByTestId("journey-combat-working");
     expect(screen.getByTestId("journey-reveal")).toContainElement(w);
-    const cell = (k: string) => within(w).getByTestId(`journey-combat-working-${k}`);
+    const node = (k: string) => within(w).getByTestId(`journey-combat-working-${k}`);
     // The server's numbers, derived ones whole for display (84.56 → 85,
-    // 24.024 → 24), the served coefficient as served, the served answer last.
-    expect(cell("raw")).toHaveTextContent(/^Raw damage85$/);
-    expect(cell("armor")).toHaveTextContent(/^Ahri armor24$/);
-    expect(cell("multiplier")).toHaveTextContent(/^Armor multiplier×0\.8063$/);
-    expect(cell("final")).toHaveTextContent(/^Final damage68$/);
-    expect(cell("final").className).toMatch(/journey-calc__cell--final/);
-    expect([...w.querySelectorAll(".journey-calc__op")].map((o) => o.textContent)).toEqual(["→", "→", "→"]);
+    // 24.024 → 24); the served multiplier drawn as the armor formula it is.
+    expect(node("raw")).toHaveTextContent(/^85Raw damage$/);
+    expect(node("armor")).toHaveTextContent(/^24Ahri armor$/);
+    expect(within(w).getByTestId("journey-combat-working-multiplier-fraction")).toHaveTextContent("100100 + 24");
+    expect(within(w).getByTestId("journey-combat-working-multiplier-value")).toHaveTextContent("≈ 0.806");
+    expect(node("final")).toHaveTextContent(/^68Final damage$/);
+    expect(node("final").className).toMatch(/journey-node--final/);
+    expect([...w.querySelectorAll(".journey-op")].map((o) => o.getAttribute("data-op"))).toEqual(["→", "→", "→"]);
     // The raw damage was established at Step 2 (on the board): no formula re-derived.
     expect(screen.queryByTestId("journey-combat-working-formula")).toBeNull();
-    // No derived decimal in the reveal's text; the exact values are hover notes.
-    expect(w.textContent).not.toMatch(/84\.56|24\.024|68\.18/);
-    expect(cell("raw").getAttribute("title")).toMatch(/Exact value 84\.56 · shown as 85, rounded for display/);
-    expect(cell("armor").getAttribute("title")).toMatch(/Exact value 24\.024/);
-    expect(cell("final").getAttribute("title")).toMatch(/Exact value 68\.1804/);
+    // No derived decimal in the chain; the exact working is one tap away.
+    expect(w.textContent).not.toMatch(/84\.56|24\.024|68\.18|0\.8063/);
+    fireEvent.click(screen.getByTestId("journey-combat-working-exact"));
+    const exact = screen.getByTestId("journey-combat-working-exact-pop");
+    expect(exact).toHaveTextContent("Exact raw damage: 84.56");
+    expect(exact).toHaveTextContent("Ahri armor: 24.024");
+    expect(exact).toHaveTextContent("100 ÷ (100 + 24.024) = 0.8063");
+    expect(exact).toHaveTextContent("84.56 × 0.8063 ≈ 68.1804");
+    expect(exact).toHaveTextContent("Shown as 68 · rounded for display");
   });
 });
 
@@ -298,18 +319,19 @@ describe("K2 — the board is the memory surface", () => {
     expect(at("child0-live")).toBe("");
     expect(at("child0-reveal")).toBe("subject-E:1");                            // the formula
     expect(at("child1-live")).toBe("subject-E:1");                              // raw not yet revealed
-    // JP3: a learned value's `!` rides on the board value it fills.
-    expect(at("child1-reveal")).toBe("subject-E:2,subject-readout-E:1");        // + raw damage (E raw 85 !)
-    expect(at("child2-live")).toBe("subject-E:2,subject-readout-E:1");          // armor not yet revealed
-    expect(at("child2-reveal")).toBe("opponent-stat-armor:1,subject-E:2,subject-readout-E:1"); // + Armor 24 !
-    expect(at("finished")).toBe("opponent-stat-armor:1,subject-E:2,subject-readout-E:1");
+    // The reveal moment: the raw value arrives on its anchor, with its `!`…
+    expect(at("child1-reveal")).toBe("subject-E:2,subject-readout-E:1");
+    // …then settles into Zed E's own `!` (JP4: never reprinted).
+    expect(at("child2-live")).toBe("subject-E:2");
+    expect(at("child2-reveal")).toBe("opponent-stat-armor:1,subject-E:2");     // + Armor 24 !
+    expect(at("finished")).toBe("opponent-stat-armor:1,subject-E:2");
   });
 
   it("a WRONG answer still establishes the fact by its reveal (steps 1 and 3 answered wrong)", () => {
     const t = timeline(WRONG);
     const at = (label: string) => t.find((x) => x.startsWith(`${label} `))!.slice(label.length + 1);
     expect(at("child0-reveal")).toBe("subject-E:1");
-    expect(at("child2-reveal")).toBe("opponent-stat-armor:1,subject-E:2,subject-readout-E:1");
+    expect(at("child2-reveal")).toBe("opponent-stat-armor:1,subject-E:2");
     cleanup();
     show(snap(WRONG, "child3-live"));
     expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "learned");
@@ -319,7 +341,7 @@ describe("K2 — the board is the memory surface", () => {
   it("a TIMEOUT reveal shows in place, says so, and keeps every earlier fact", () => {
     show(snap(TIMEOUT, "child3-timeout-reveal"));
     expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent("Time's up · 68");
-    expect(marks()).toEqual(["opponent-stat-armor:1", "subject-E:2", "subject-readout-E:1"]);
+    expect(marks()).toEqual(["opponent-stat-armor:1", "subject-E:2"]);
   });
 
   it("no child's own fact is known while it is asked (leak sweep over every open/live snapshot)", () => {

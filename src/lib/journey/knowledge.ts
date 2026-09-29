@@ -245,14 +245,14 @@ export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | n
     // A formula holds at every rank, so it never splits the header's rank.
     const ranked = facts.filter((f) => f.kind !== "ability_damage_formula");
     const rank = common(ranked.map((f) => f.context.rank ?? null));
-    const title = [object.slot, abilityName, rank ? `R${rank}` : null].filter(Boolean).join(" · ");
+    const title = [object.slot, abilityName, rank ? `Rank ${rank}` : null].filter(Boolean).join(" · ");
     const name = abilityName ?? object.slot;
     return {
       title,
       lines: facts.map((f) => {
         const step = f.child + 1;
         const rankWords = f.context.rank ? ` at rank ${f.context.rank}` : "";
-        const lead = f.kind !== "ability_damage_formula" && rank === undefined && f.context.rank ? `R${f.context.rank}` : null;
+        const lead = f.kind !== "ability_damage_formula" && rank === undefined && f.context.rank ? `Rank ${f.context.rank}` : null;
         if (f.kind === "ability_damage_formula") {
           const value = explicitAdText(f.display);
           return { icon: "formula", label: "Formula", lead: null, value, tail: null, step, wrap: true,

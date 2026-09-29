@@ -38,7 +38,7 @@
  */
 import type {
   AbilitySlot, JourneyAbility, JourneyAbilityReadout, JourneyEvent, JourneyFocusRef, JourneyItem,
-  JourneyPublicState, JourneySide, JourneySideId, JourneyStat, JourneyTransition,
+  JourneyPublicState, JourneySide, JourneySideId, JourneyStat, JourneyStatSource, JourneyTransition,
 } from "./contract";
 import { ABILITY_SLOTS, JourneyContractError } from "./contract";
 import { JOURNEY_STAT_KEYS, type JourneyStatKey } from "./stats";
@@ -47,7 +47,7 @@ import {
   readJourneyJ2, type J2Child, type J2Side, type J2SideState, type J2Transition, type JourneyJ2,
 } from "./j2";
 import {
-  readJourneyJ3, type J3Child, type J3Side, type J3SideState, type J3State,
+  readJourneyJ3, type J3Child, type J3Side, type J3SideState, type J3State, type J3StatSource,
   type J3Transition, type JourneyJ3,
 } from "./j3";
 
@@ -111,6 +111,9 @@ export interface JourneyChildContext {
   reinforces: number[];
   playerChampion: string;
   opponentChampion: string;
+  /** JP4 — the champions' ids (for their portraits beside the question); absent on J2. */
+  playerChampionId?: string;
+  opponentChampionId?: string;
   /**
    * JOURNEY-UI3 — the ATTACKER's premise stats the board itself shows for this
    * child (J3 states them on the public state), keyed as the Combat scenario
@@ -167,9 +170,16 @@ function statsOf(state: J3State, side: J3Side, recalls: J3Child["recalls"]): Jou
       });
     }
   }
+  const sources = state.sides[side].statSources;
   for (const [k, v] of Object.entries(values)) {
     const key = k as JourneyStatKey;
-    if (typeof v === "number" && !out.has(key)) out.set(key, { key, withheld: false, value: v, withheldReason: null });
+    if (typeof v !== "number" || out.has(key)) continue;
+    const served = sources[key];
+    out.set(key, {
+      key, withheld: false, value: v, withheldReason: null,
+      // JP4 — the server's reconciled provenance, carried as served.
+      ...(served?.length ? { sources: served.map(sourceOf) } : {}),
+    });
   }
   return JOURNEY_STAT_KEYS.filter((k) => out.has(k)).map((k) => out.get(k)!);
 }
@@ -190,6 +200,14 @@ function readoutsOf(state: J3State, side: J3Side): JourneyAbilityReadout[] {
   return out;
 }
 
+function sourceOf(p: J3StatSource): JourneyStatSource {
+  if (p.kind === "item") {
+    const n = Number(p.itemId);
+    return { kind: "item", itemId: Number.isInteger(n) && n > 0 ? n : null, name: p.name, value: p.value };
+  }
+  return { kind: "stat_mod", row: p.row, shardId: p.id, name: p.name, value: p.value };
+}
+
 function boardSide3(s: J3SideState, stats: JourneyStat[], readouts: JourneyAbilityReadout[] = []): JourneySide {
   const abilities: JourneyAbility[] = s.abilities.map((a) => ({
     slot: a.slot, rank: a.rank, maxRank: null, name: a.name, icon: null,
@@ -198,13 +216,14 @@ function boardSide3(s: J3SideState, stats: JourneyStat[], readouts: JourneyAbili
     side: SIDE3[s.side], championId: s.championId, championName: s.champion, icon: null,
     level: s.level, abilities, items: itemsOf(s.inventory), stats, vitals: null,
     ...(readouts.length ? { readouts } : {}),
+    ...(s.statMods ? { shards: s.statMods.map((m) => ({ row: m.row, shardId: m.id, name: m.name })) } : {}),
   };
 }
 
 /** The reached state with a pending transition's typed events applied (identity + kit + items only). */
 function applyEvents(state: J3State, ts: J3Transition[]): Record<J3Side, J3SideState> {
   const copy = (s: J3SideState): J3SideState => ({
-    ...s, abilities: s.abilities.map((a) => ({ ...a })), inventory: [...s.inventory], stats: {},
+    ...s, abilities: s.abilities.map((a) => ({ ...a })), inventory: [...s.inventory], stats: {}, statSources: {},
   });
   const next: Record<J3Side, J3SideState> = { player: copy(state.sides.player), opponent: copy(state.sides.opponent) };
   for (const t of ts) for (const e of t.events) {
@@ -288,6 +307,7 @@ function childContext3(c: J3Child): JourneyChildContext {
     })),
     reinforces: c.reinforces,
     playerChampion: c.state.sides.player.champion, opponentChampion: c.state.sides.opponent.champion,
+    playerChampionId: c.state.sides.player.championId, opponentChampionId: c.state.sides.opponent.championId,
     boardStats: c.state.focus?.engine === "combat"
       ? Object.entries(c.state.sides[c.state.focus.side].stats)
         .filter(([, v]) => typeof v === "number").map(([k]) => k)

@@ -20,6 +20,12 @@
  * placeholder up (`QuizRankedMatch`'s DC-SURV-UX branch).
  *
  *   /dev/journey-arena?capture=zed&step=6
+ *
+ * JP4 — THE HOST IS MODELLED. The flanks are the HOST's, as in production
+ * (`QuizRankedMatch`): the admin reference Journey (`jref-*`) is an unhosted
+ * Ranked Bot match, so its flanks draw the Journey crest; every other capture
+ * is a Daily stage (Standard or Survival), whose flanks keep the Daily's own
+ * presentation. `?host=ranked|daily` overrides.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
@@ -39,9 +45,15 @@ const combatant = (over: Partial<CombatantView>): CombatantView => ({
   hasAbilitySelected: false, ...over,
 });
 
-export function journeyArenaView(round: PublicRoundView, at: string, skewMs: number): ArenaViewModel {
+export type HarnessHost = "ranked" | "daily";
+
+/** The host a capture was recorded under: the admin reference is Ranked; the rest are Daily stages. */
+export const hostOfCapture = (capture: string): HarnessHost => (capture.startsWith("jref") ? "ranked" : "daily");
+
+export function journeyArenaView(round: PublicRoundView, at: string, skewMs: number, host: HarnessHost = "ranked"): ArenaViewModel {
   const seg = round.segmentState!;
-  const rails = seg.journey ? journeyRailsFor(seg.journey, {
+  // A hosted (Daily) match keeps its own columns: no Journey rails.
+  const rails = seg.journey && host === "ranked" ? journeyRailsFor(seg.journey, {
     ownNextChallengeIndex: seg.ownNextChallengeIndex,
     ownCardStartedAt: seg.ownCardStartedAt, ownFinished: seg.ownFinished,
   }) : null;
@@ -83,10 +95,14 @@ export function journeyArenaView(round: PublicRoundView, at: string, skewMs: num
   } as ArenaViewModel;
 }
 
-function readParams(): { capture: CaptureKey; step: number } {
+function readParams(): { capture: CaptureKey; step: number; host: HarnessHost | null } {
   const p = new URLSearchParams(window.location.search);
   const c = (p.get("capture") ?? "zed") as CaptureKey;
-  return { capture: c in J3_CAPTURES ? c : "zed", step: Math.max(0, Number(p.get("step") ?? "1") || 0) };
+  const h = p.get("host");
+  return {
+    capture: c in J3_CAPTURES ? c : "zed", step: Math.max(0, Number(p.get("step") ?? "1") || 0),
+    host: h === "ranked" || h === "daily" ? h : null,
+  };
 }
 
 export default function JourneyArenaHarness() {
@@ -120,13 +136,16 @@ export default function JourneyArenaHarness() {
   // Strike 3, or the match already settled (the last child's answer completes
   // a one-module capture): the hosted Daily shows its placeholder here.
   const stopped = round?.ruleset?.ownStageFinished === true || (round !== null && !round.segmentState);
+  const host = initial.host ?? hostOfCapture(capture);
+  // One truncating line: the dev label must never change the page's height
+  // (a label that wraps differently per snapshot would move the stage).
   const chrome = (
-    <p className="text-sm font-semibold">
-      Daily Challenge · Journey · J3 capture: {capture} · {snap?.label ?? "…"}
+    <p className="truncate text-sm font-semibold">
+      {host === "ranked" ? "Ranked Bot · Reference Journey" : "Daily Challenge · Journey"} · capture: {capture} · {snap?.label ?? "…"}
     </p>
   );
   return (
-    <div data-testid="journey-arena-harness" data-capture={capture} data-label={snap?.label} className="relative">
+    <div data-testid="journey-arena-harness" data-capture={capture} data-label={snap?.label} data-host={host} className="relative">
       <nav aria-label="Journey capture controls"
         className="fixed bottom-2 left-1/2 z-[60] flex max-w-[96vw] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-md border border-white/15 bg-black/85 px-2 py-1 text-[11px] text-white">
         <select data-testid="harness-capture" value={capture} className="bg-black"
@@ -148,7 +167,7 @@ export default function JourneyArenaHarness() {
         <CanonicalArena view={null} chrome={chrome}
           recovering={{ eyebrow: "Daily Challenge", message: "Stage complete…" }} />
       ) : (
-        <CanonicalArena key={capture} view={journeyArenaView(round, snap.at, skewMs)} chrome={chrome} />
+        <CanonicalArena key={capture} view={journeyArenaView(round, snap.at, skewMs, host)} chrome={chrome} />
       )}
     </div>
   );

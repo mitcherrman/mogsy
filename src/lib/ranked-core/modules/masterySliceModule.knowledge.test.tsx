@@ -70,6 +70,10 @@ const pointer = (el: Element, type: "pointerover" | "pointerout", pointerType: "
 const badges = () => screen.queryAllByTestId(/^journey-know-(subject|opponent)-[A-Za-z]+$/);
 const popText = (testId: string) => screen.getByTestId(`${testId}-pop`).textContent ?? "";
 
+// The `!` popovers open in jsdom (costly under a full-suite load): the repo's
+// usual long-test budget.
+vi.setConfig({ testTimeout: 25_000 });
+
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -183,13 +187,13 @@ describe("grouping, objects and sides", () => {
     const s = snap("voli.standard", "child2-reveal");
     const q = marksOf(s).get("player:volibear:Q")!;
     const card = knowledgeCard(q);
-    expect(card.title).toBe("Q · R1");
+    expect(card.title).toBe("Q · Rank 1");
     expect(card.lines.map((l) => [l.icon, l.value, l.tail, stepLabel(l.step)])).toEqual([
       ["cooldown", "12s", null, "learned Step 1"],
       ["haste", "11s", "10 AH", "learned Step 3"],
     ]);
     // JP2 — on the board the card is titled with the ability's own name.
-    expect(knowledgeCard(q, "Thundering Smash").title).toBe("Q · Thundering Smash · R1");
+    expect(knowledgeCard(q, "Thundering Smash").title).toBe("Q · Thundering Smash · Rank 1");
     show(s);
     expect(screen.getAllByTestId("journey-know-subject-Q")).toHaveLength(1);
     expect(screen.getByTestId("journey-know-subject-Q")).toHaveAttribute("data-facts", "2");
@@ -212,9 +216,11 @@ describe("grouping, objects and sides", () => {
     expect(summary(marksOf(s))).toEqual({ "opponent:leona": [["champion_stat:leona:armor:L3", "50", 1]] });
     show(s);
     // JP3 — ONE grammar: the learned value fills Leona's `Armor ?` and its `!`
-    // rides on that chip; the portrait keeps only what no chip shows.
+    // rides on that anchor; the portrait keeps only what no anchor shows.
+    // JP4 — at the reveal that teaches it the face is `revealed` (the value
+    // shown); on a later step it settles to `learned` (the `!` alone).
     const armor = screen.getByTestId("journey-stat-opponent-armor");
-    expect(armor).toHaveAttribute("data-face", "learned");
+    expect(armor).toHaveAttribute("data-face", "revealed");
     expect(armor).toHaveTextContent(/^Armor50!$/);
     expect(screen.getByTestId("journey-know-opponent-stat-armor")).toBeInTheDocument();
     expect(screen.queryByTestId("journey-know-opponent-champion")).toBeNull();
@@ -263,7 +269,7 @@ describe("the final child and reconnects", () => {
     ]);
     show(s);
     fireEvent.click(screen.getByTestId("journey-know-subject-R"));
-    expect(popText("journey-know-subject-R")).toMatch(/R · .*R1.*140s.*Step 2.*127s.*10 AH.*Step 3/);
+    expect(popText("journey-know-subject-R")).toMatch(/R · .*Rank 1.*140s.*Step 2.*127s.*10 AH.*Step 3/);
   });
 
   it("a flat cooldown (rank null) titles the card by slot alone", () => {
@@ -331,7 +337,7 @@ describe("interaction", () => {
     expect(b).toHaveAccessibleName("Known facts: Volibear Q");
     pointer(b, "pointerover", "mouse");
     expect(open()).not.toBeNull();
-    expect(popText("journey-know-subject-Q")).toMatch(/Q · .*R1.*12s.*Step 1.*11s.*10 AH.*Step 3/);
+    expect(popText("journey-know-subject-Q")).toMatch(/Q · .*Rank 1.*12s.*Step 1.*11s.*10 AH.*Step 3/);
     pointer(b, "pointerout", "mouse");
     expect(open()).toBeNull();
   });
