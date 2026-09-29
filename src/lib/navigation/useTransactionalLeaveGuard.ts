@@ -9,7 +9,8 @@ import type { ReactNode } from "react";
 export type TransactionalLeaveKind =
   | "ranked_match"
   | "ranked_queue"
-  | "daily_run";
+  | "daily_run"
+  | "practice_session";
 
 export type TransactionalLeaveBypass =
   | "AUTHORITATIVE_TERMINAL"

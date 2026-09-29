@@ -14,9 +14,30 @@
  * It must also not mutate ownership: OWNED is Ranked's
  * `ranked_question_discoveries` ledger and Practice has never written to it.
  */
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, RouterProvider, useLocation } from "react-router-dom";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const NativeRequest = globalThis.Request;
+class RouterTestRequest {
+  readonly url: string;
+  readonly method: string;
+  readonly signal: AbortSignal | null;
+  readonly headers: Headers;
+  constructor(input: string | URL, init: RequestInit = {}) {
+    this.url = String(input);
+    this.method = init.method ?? "GET";
+    this.signal = init.signal ?? null;
+    this.headers = new Headers(init.headers);
+  }
+}
+
+beforeAll(() => {
+  globalThis.Request = RouterTestRequest as unknown as typeof Request;
+});
+afterAll(() => {
+  globalThis.Request = NativeRequest;
+});
 
 const sfx = vi.hoisted(() => ({ play: vi.fn() }));
 vi.mock("@/lib/audio/useSfx", () => ({ useSfx: () => sfx }));
@@ -113,6 +134,28 @@ vi.mock("@/lib/quiz/api", () => ({
 }));
 
 import QuizPage from "./Quiz";
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location-probe">{location.pathname}{location.search}{location.hash}</div>;
+}
+
+function mountDataRouter(initialEntries = ["/origin", "/quiz"], initialIndex = 1) {
+  const router = createMemoryRouter([
+    { path: "/quiz", element: <QuizPage /> },
+    { path: "*", element: <LocationProbe /> },
+  ], { initialEntries, initialIndex });
+  render(<RouterProvider router={router} />);
+  return router;
+}
+
+async function startActiveDataPractice() {
+  const router = mountDataRouter();
+  await waitFor(() => expect(screen.getByTestId("leaguecraft-workspace")).toBeTruthy());
+  await startSetPractice();
+  await waitFor(() => expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy());
+  return router;
+}
 
 /** Start the catalog-wide set through History's empty-record action. */
 async function startSetPractice() {
@@ -245,5 +288,78 @@ describe("Practice — remediating the run you just played", () => {
     await playASessionWithOneMiss();
     expect(screen.queryByTestId("practice-missed-cta")).toBeNull();
     expect(screen.getByRole("button", { name: /Play again/ })).toBeTruthy();
+  });
+});
+
+describe("Practice — NAV1-P1 exit safety", () => {
+  it("keeps the exact POP on Stay, then proceeds it on Leave without resurrecting the run", async () => {
+    const router = await startActiveDataPractice();
+
+    await act(() => router.navigate(-1));
+    expect(await screen.findAllByRole("alertdialog", { name: "Leave practice?" })).toHaveLength(1);
+    expect(router.state.location.pathname).toBe("/quiz");
+    expect(screen.getByText(QUESTIONS[0].question_text)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Stay in Practice" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(router.state.location.pathname).toBe("/quiz");
+
+    await act(() => router.navigate(-1));
+    fireEvent.click(await screen.findByRole("button", { name: "Leave Practice" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/origin"));
+    expect(router.state.historyAction).toBe("POP");
+
+    await act(() => router.navigate(1));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quiz"));
+    expect(screen.queryByText(QUESTIONS[0].question_text)).toBeNull();
+    expect(await screen.findByTestId("leaguecraft-workspace")).toBeTruthy();
+  });
+
+  it("guards header and same-route hash/search departures, but not terminal result", async () => {
+    const router = await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("link", { name: "Back to League hub" }));
+    expect(await screen.findAllByRole("alertdialog", { name: "Leave practice?" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Stay in Practice" }));
+
+    await act(() => router.navigate("/quiz?play=1#history"));
+    expect(await screen.findByRole("alertdialog", { name: "Leave practice?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Stay in Practice" }));
+    expect(router.state.location.pathname + router.state.location.search + router.state.location.hash).toBe("/quiz");
+  });
+
+  it("installs beforeunload only for an unfinished run", async () => {
+    const add = vi.spyOn(window, "addEventListener");
+    const remove = vi.spyOn(window, "removeEventListener");
+    await startActiveDataPractice();
+    expect(add.mock.calls.some(([name]) => name === "beforeunload")).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Next question/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Gamma/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await screen.findByText("Quiz Complete");
+    expect(remove.mock.calls.some(([name]) => name === "beforeunload")).toBe(true);
+    add.mockRestore();
+    remove.mockRestore();
+  });
+
+  it("resets terminal result and enters HUB4 Review through SPA navigation", async () => {
+    submitAnswerMock.mockImplementation(async (payload: { question_id: number }) => ({
+      is_correct: true,
+      correct_answer: payload.question_id === 11 ? "Alpha" : "Gamma",
+      explanation: "Correct.",
+    }));
+    const router = await startActiveDataPractice();
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Next question/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Gamma/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /See results/ }));
+    await screen.findByText("Quiz Complete");
+
+    fireEvent.click(screen.getByRole("button", { name: "Review your questions" }));
+    await waitFor(() => expect(router.state.location.pathname + router.state.location.hash).toBe("/quiz#history"));
+    expect(screen.queryByText("Quiz Complete")).toBeNull();
+    expect(await screen.findByText("Owned & Missed")).toBeTruthy();
+    expect(screen.queryByRole("alertdialog", { name: "Leave practice?" })).toBeNull();
   });
 });

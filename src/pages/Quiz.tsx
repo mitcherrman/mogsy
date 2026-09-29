@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useContext, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { track, useSurfaceEvent } from "@/lib/analytics";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, UNSAFE_DataRouterContext, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Sparkles, Package, Swords, Target, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -67,8 +67,16 @@ import {
 import type { QuizOnboardingConfig } from "@/pages/QuizAdmin";
 import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import QuizSignUpNudge from "@/components/quiz/QuizSignUpNudge";
+import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
+import { useTransactionalLeaveGuard } from "@/lib/navigation/useTransactionalLeaveGuard";
+import {
+  isUnfinishedPracticePhase,
+  PRACTICE_LEAVE_COPY,
+  shouldBlockPracticeDeparture,
+  type PracticePhase,
+} from "@/lib/quiz/practiceLeaveContract";
 
-type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
+type QuizPhase = PracticePhase;
 
 /**
  * Leaguecraft hub module visibility.
@@ -311,6 +319,44 @@ const RANKED_ACCOUNT_TOAST_ID = "ranked-account-required";
  */
 const PLAY_RETURN_PARAM = "play";
 const ROLE_RETURN_PARAM = "role";
+
+function PracticeRouterLeaveGuard({ active }: { active: boolean }) {
+  const guard = useTransactionalLeaveGuard({
+    active,
+    kind: "practice_session",
+    copy: PRACTICE_LEAVE_COPY,
+    shouldBlock: shouldBlockPracticeDeparture,
+  });
+  return <TransactionalLeaveDialog
+    open={guard.confirmationOpen}
+    title={guard.copy.title}
+    body={guard.copy.body}
+    stayLabel={guard.copy.stayLabel}
+    leaveLabel={guard.copy.leaveLabel}
+    onStay={guard.stay}
+    onLeave={guard.leave}
+    busy={guard.state === "proceeding"}
+  />;
+}
+
+function PracticeLeaveProtection({ active }: { active: boolean }) {
+  // Production uses createBrowserRouter. Keeping the blocker in a child lets
+  // legacy component tests that intentionally use MemoryRouter render Quiz
+  // without calling React Router's data-router-only useBlocker hook.
+  const dataRouter = useContext(UNSAFE_DataRouterContext);
+
+  useEffect(() => {
+    if (!active) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [active]);
+
+  return dataRouter ? <PracticeRouterLeaveGuard active={active} /> : null;
+}
 
 export default function Quiz() {
   /**
@@ -1120,6 +1166,27 @@ export default function Quiz() {
     }
   }, [currentCategoryId, currentSet, handleSelectCategory, handleSelectSet]);
 
+  const resetPracticeToHub = useCallback(() => {
+    setPhase("sets");
+    setCurrentSet(null);
+    setCurrentCategoryId(null);
+    setQuestions([]);
+    setScore(0);
+    setSessionAnswers([]);
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setFillBlankValue("");
+    setAnswerResult(null);
+    setErrorMsg("");
+  }, []);
+
+  const handleOpenHistoryReview = useCallback(() => {
+    // Result is terminal, so no bypass is needed. Reset first so the same
+    // /quiz component exposes HUB4's History owner when the hash arrives.
+    resetPracticeToHub();
+    navigate("/quiz#review");
+  }, [navigate, resetPracticeToHub]);
+
   /**
    * THE FINISHED SESSION, in the shared result model.
    *
@@ -1163,16 +1230,17 @@ export default function Quiz() {
         }
         : {
           label: "Review your questions",
-          onClick: () => { window.location.assign("/quiz#review"); },
+          onClick: handleOpenHistoryReview,
         },
       tertiary: {
         label: currentCategoryId ? "Back to Leaguecraft" : "Choose another set",
-        onClick: () => { setPhase("sets"); },
+        onClick: resetPracticeToHub,
       },
     };
     return model;
   }, [sessionAnswers, score, questions.length, currentSet, answerResult,
-    missedQuestions, handlePlayAgain, handlePracticeMissed, currentCategoryId]);
+    missedQuestions, handlePlayAgain, handlePracticeMissed, currentCategoryId,
+    handleOpenHistoryReview, resetPracticeToHub]);
 
   const handleRetry = useCallback(() => {
     setPhase("sets");
@@ -1217,6 +1285,8 @@ export default function Quiz() {
       {showNudge && !showGate && (
         <QuizSignUpNudge returnTo="/quiz" />
       )}
+
+      <PracticeLeaveProtection active={isUnfinishedPracticePhase(phase)} />
 
       <SEOHead
         title="Mogzy League Quiz — Test Your LoL Knowledge"

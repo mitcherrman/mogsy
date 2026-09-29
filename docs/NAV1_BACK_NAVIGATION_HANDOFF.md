@@ -491,14 +491,15 @@ and legacy guided-playtest ownership remain unchanged. Full re-audit,
 certification and integration instructions are recorded below. No active-game
 Back/leave contract was implemented.
 
-### NAV1-P — Practice session boundary (separate/deferred)
+### NAV1-P1 — Practice session boundary (implemented)
 
-Files: `Quiz.tsx`, possibly a small practice-session route/state module, tests.
-Content: one meaningful session boundary; active leave handling; no history per
-question; SPA result Review.
-Conflicts: HIGH. **BLOCKED** until Practice/Study Hall/Quiz Forge integration.
-Parallel/cherry-pick: **no** against active shared-file work; rebase and single
-owner integration required.
+Current-main HUB4/HUB7 integration is authoritative, so this is no longer
+blocked on Practice Builder or Study Hall work. `loading-questions` and
+`active` use the shared transactional router blocker; terminal result does not.
+Result Review resets local state, navigates through the SPA, and lets HUB4
+canonicalize `#review` to `#history` with Owned & Missed open. No session URL,
+persistence, synthetic history, or per-question entry was added. See
+[`NAV1_PRACTICE_HANDOFF.md`](./NAV1_PRACTICE_HANDOFF.md).
 
 ### NAV1-E — Ranked/Daily active-flow leave contract
 
@@ -743,9 +744,10 @@ Still separate work:
   distinguishes canonical/hidden live children, warns about the mount-local
   result beat, preserves the original POP/PUSH destination, and cancels stale
   navigation when the run completes.
-- **P1: Practice meaningful-history boundary**, pending Practice/Study Hall
-  integration on shared `Quiz.tsx` and workspace files.
-- Deferred Premium anchors in Practice Builder/Trends, and History/Review IA.
+- **Resolved NAV1-P1:** unfinished Practice now guards exact router departures;
+  terminal Review is SPA navigation into current HUB4 History.
+- Practice persistence/refresh recovery remains separate. Practice Builder and
+  the old Trends pane are not current `/quiz` consumer scope.
 - Legacy guided-playtest document exits and the terminal header overlap.
 
 Recommended next task: **NAV1-E1 supported blocker substrate**, after the owner
