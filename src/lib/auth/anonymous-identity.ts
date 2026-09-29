@@ -38,7 +38,7 @@
 //   Daily Challenge          starting / advancing a run       lib/daily-challenge/run/client.ts (POST only)
 //   Ranked                   match writes                     lib/ranked-public/client.ts (non-GET)
 //   Champion Mastery         session writes                   features/mastery/live/api.ts (non-GET)
-//   Stat Check online        creating / joining a room        lib/stat-check-online/client.ts (non-GET)
+//   Champion Card Duel       creating / joining a room        lib/champion-card-duel-online/client.ts (non-GET)
 //   Combat Lab               running a metered simulation     lib/combat-lab/api.ts (non-GET)
 //   Combat Sim Battles       submitting a prediction          lib/combat-battles/api.ts (non-admin, non-GET)
 //   Team Sim                 submitting a billable run        lib/combat-lab/team-sim/client.ts
@@ -71,7 +71,7 @@ export type AnonymousIdentityReason =
   | "meta_reflex_vote"
   | "builder_write"
   | "ranked_write"
-  | "stat_check_room"
+  | "stat_check_room" // frozen persisted mint id (Champion Card Duel rooms); do not rename
   | "combat_lab_run"
   | "combat_battles_prediction"
   | "team_sim_run";

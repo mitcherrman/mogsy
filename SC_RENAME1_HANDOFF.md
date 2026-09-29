@@ -178,3 +178,10 @@ Worktree: `.worktrees/sc-rename1` (branch `sc-rename1-phase1`, from main `30b75c
 - Not renamed (new on main after SC-RENAME1's base, outside Phase 1 scope, left for follow-up): `src/lib/analytics/activityLifecycle.ts` display strings "Stat Check — Bot/Private Match" (ids `stat_check_*_match` are analytics identifiers), `anonymous-identity.ts` comment + `stat_check_room` id, `reportable-question.tsx` comment.
 - Meta Reflex untouched (only the SC-RENAME1 testid/copy change in `Quiz.metaReflex.test.tsx`).
 - Verification: `vite build` OK; `tsc` 2 errors, both in unrelated files (`OnboardingProfile.tsx`, `identity/connections.ts`); 18 targeted test failures identical to pristine `origin/main` (FriendActionMenu.invite, feedback/contract DB-mirror, Quiz.hub h1, ChampionCardDuelPage item UI, statCategoryIcons); all other targeted suites pass.
+
+## Final residual cleanup
+- `analytics/activityLifecycle.ts`: humanName/entityGrain now "Champion Card Duel — Bot Match", "— Private Match", "one local/private Champion Card Duel match". `activityId`s `stat_check_bot_match` / `stat_check_private_match` frozen.
+- `anonymous-identity.ts`: mode table row now "Champion Card Duel" with current client path; `stat_check_room` unchanged and annotated as a frozen persisted mint id.
+- `reportable-question.tsx` comment: "Stat Check" -> "Champion Card Duel".
+- Certification: every remaining `Stat Check`/`stat-check`/`stat_check`/`SC_*`/`sc-*` in `src` is one of: wire contract (`/api/stat-check`, `stat_check.*.v1`, `SC_*`); legacy route (`/quiz/stat-check*`, `/dev/stat-check`, incl. tests); persisted analytics/data id (`stat_check_*_match`, `stat_check_room`); deterministic seed/golden (`stat-check-v1`, `stat-check-tabletop-v2`, `sc-golden:*`); persisted feedback category (`"Stat Check"` in `feedback/contract.ts`); generic/unrelated (`AcademyWelcomePage.test` "stat check" pill guard, `--sc-fit`, `sc-1`/`sc-2` scenario-card ids). Historical migrations/docs untouched. No current human-readable text identifies Champion Card Duel as Stat Check.
+- Checks: 16 affected test files (218 tests) pass; `vite build` OK.
