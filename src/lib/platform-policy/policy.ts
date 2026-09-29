@@ -61,7 +61,7 @@ export interface PlatformPolicy {
      *
      * PRESENTATION ONLY. This flag must never influence authorization,
      * `is_bot` filtering, analytics, SEO noindex behaviour, soft-disable
-     * behaviour, or (in Phase B) the Stat Check bot runtime. Master-admin
+     * behaviour, or (in Phase B) the Champion Card Duel bot runtime. Master-admin
      * surfaces always show the real bot state and ignore this value entirely.
      * `profiles.is_bot` remains authoritative internally in both states.
      */

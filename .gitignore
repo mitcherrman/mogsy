@@ -27,7 +27,7 @@ dist-ssr
 out
 .remotion
 
-# Stat Check diagnostics: local snapshot of the live champion-stats payload
+# Champion Card Duel diagnostics: local snapshot of the live champion-stats payload
 # (acquired outside tests; never commit live stat values)
 roster.local.json
 

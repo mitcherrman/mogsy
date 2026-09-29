@@ -25,7 +25,7 @@
  *
  * WHAT THIS DELIBERATELY DOES NOT DO
  * ──────────────────────────────────
- * It does not reach for the Stat Check invite rooms. Those are a different
+ * It does not reach for the Champion Card Duel invite rooms. Those are a different
  * game with a different room lifecycle and no Ranked rating; wiring them here
  * would produce an invite that works and then starts the wrong match. See the
  * seam module for the full statement.

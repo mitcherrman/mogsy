@@ -6,7 +6,7 @@ import MogzyIdentityMenu from "./MogzyIdentityMenu";
  * Covers the persistent user-notification path: who sees the bell, which types
  * it renders, and how it behaves when a query or a write fails.
  *
- * The Stat Check invite section has its own suite
+ * The Champion Card Duel invite section has its own suite
  * (MogzyIdentityMenu.invites.test.tsx) and is stubbed empty here.
  */
 
@@ -19,8 +19,8 @@ const invitesHook = vi.hoisted(() => ({
   decline: vi.fn(),
   refresh: vi.fn(),
 }));
-vi.mock("@/hooks/useStatCheckInvites", () => ({
-  useStatCheckInvites: () => invitesHook,
+vi.mock("@/hooks/useChampionCardDuelInvites", () => ({
+  useChampionCardDuelInvites: () => invitesHook,
 }));
 
 const navigate = vi.hoisted(() => vi.fn());
@@ -360,7 +360,7 @@ describe("MogzyIdentityMenu — Mark all read vs actionable invites", () => {
     await waitFor(() =>
       expect(bell.getAttribute("aria-label")).toBe("Open notifications: 1 pending invitation"),
     );
-    expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
+    expect(screen.getByTestId("ccd-invite-notification")).toBeTruthy();
     expect(screen.queryByText("Mark all read")).toBeNull();
   });
 
@@ -375,6 +375,6 @@ describe("MogzyIdentityMenu — Mark all read vs actionable invites", () => {
     }];
     await openBell();
     await screen.findByText("No notifications yet");
-    expect(screen.queryByTestId("sc-invite-notification")).toBeNull();
+    expect(screen.queryByTestId("ccd-invite-notification")).toBeNull();
   });
 });

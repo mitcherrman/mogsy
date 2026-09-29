@@ -45,8 +45,8 @@
  * `friendships` / `user_blocks` / `user_notifications`. Every arrival is a
  * re-read, never a payload.
  *
- * Inviting a known friend to Stat Check has an entry point on the Friends tab,
- * which passes `canInviteToStatCheck` to FriendActionMenu. Only that tab may —
+ * Inviting a known friend to Champion Card Duel has an entry point on the Friends tab,
+ * which passes `canInviteToChampionCardDuel` to FriendActionMenu. Only that tab may —
  * it is the only one whose rows are guaranteed `status === "accepted"`. The
  * backend re-derives the sender from the JWT and re-checks friendship and
  * blocks anyway, so the prop is an affordance, not the security boundary.
@@ -370,7 +370,7 @@ export default function FloatingFriendsButton({ lifted = false }: FloatingFriend
                              `friends`, which useFriends already filters to
                              status === "accepted". The other tabs must not
                              pass this. */
-                          canInviteToStatCheck
+                          canInviteToChampionCardDuel
                         />
                       </div>
                     ))}

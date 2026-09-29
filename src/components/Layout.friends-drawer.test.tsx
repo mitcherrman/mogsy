@@ -1,6 +1,6 @@
 /**
  * The friends drawer is a floating overlay. It belongs on ordinary League
- * pages, but never on a full-bleed Stat Check gameplay surface, where it would
+ * pages, but never on a full-bleed Champion Card Duel gameplay surface, where it would
  * sit on top of the tabletop and its trigger would compete with the board for
  * clicks.
  */
@@ -46,17 +46,17 @@ describe("friends drawer placement", () => {
     expect(screen.queryByTestId("friends-drawer")).not.toBeNull();
   });
 
-  it("is suppressed on the live Stat Check room surface", () => {
+  it("is suppressed on the live Champion Card Duel room surface", () => {
     renderAt("/quiz/stat-check/room/ABCD12");
     expect(screen.queryByTestId("friends-drawer")).toBeNull();
   });
 
-  it("is suppressed on the Stat Check mode-select entrance", () => {
+  it("is suppressed on the Champion Card Duel mode-select entrance", () => {
     renderAt("/quiz/stat-check");
     expect(screen.queryByTestId("friends-drawer")).toBeNull();
   });
 
-  it("is suppressed on the Stat Check dev tabletop", () => {
+  it("is suppressed on the Champion Card Duel dev tabletop", () => {
     renderAt("/dev/stat-check");
     expect(screen.queryByTestId("friends-drawer")).toBeNull();
   });

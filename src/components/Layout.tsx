@@ -22,7 +22,7 @@ export default function Layout() {
   // COM1-2B. One Supabase Realtime subscription for the signed-in account's
   // friendships and blocks, mounted here because Layout is the only shell
   // component that is always present — the Community drawer is suppressed on
-  // Stat Check surfaces and the HUD bell renders only for a full account, so
+  // Champion Card Duel surfaces and the HUD bell renders only for a full account, so
   // neither can own it. It holds no state: every frame becomes one
   // `notifyFriendsChanged()` signal and every social view re-reads from the
   // server. No-op for guests.
@@ -73,11 +73,11 @@ export default function Layout() {
 
   // Full-bleed routes escape the centered max-w-7xl reading column so a game
   // table can use the whole viewport. The page supplies its own background
-  // and gutters. Stat Check tabletop (dev + live routes), the /lol academy
+  // and gutters. Champion Card Duel tabletop (dev + live routes), the /lol academy
   // library hub, and the Leaguecraft hub at /quiz — each paints an environment
   // that has to reach the viewport edges rather than stop at the reading
   // column.
-  const isStatCheckSurface =
+  const isChampionCardDuelSurface =
     pathname === "/dev/stat-check" || pathname.startsWith("/quiz/stat-check");
   // Ranked Duel qualifies too (RA11): its Frame carries its own centred
   // max-width steps and px-4 gutters, and the academy backdrop is a fixed
@@ -95,12 +95,12 @@ export default function Layout() {
   // `<main>` 1216px and the page's own max-w-6xl narrowed that to 1104px of
   // content — 57% of the viewport, with 408px of dead gutter each side. It
   // brings its own max-width and gutters (ResearchPage `wide`), like the rest.
-  const isFullBleed = isStatCheckSurface || pathname === "/lol" || pathname === "/quiz"
+  const isFullBleed = isChampionCardDuelSurface || pathname === "/lol" || pathname === "/quiz"
     || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector"
     || pathname === "/dev/ranked-shell-probe" || pathname === "/admin/quiz-content"
     || pathname === PRO_PLAY_MATCHUP_ROUTE;
 
-  // The friends drawer is a floating overlay. On the full-bleed Stat Check
+  // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would
   // compete with the board for clicks, so it is suppressed there. The /lol hub
   // is full-bleed but not a gameplay surface, so the drawer stays.
@@ -110,7 +110,7 @@ export default function Layout() {
   // an internal admin tool, and both were landing on top of it once the
   // console reached the viewport edges.
   const isAdminConsole = pathname === "/admin/quiz-content";
-  const showFriendsDrawer = !isStatCheckSurface && !isAdminConsole;
+  const showFriendsDrawer = !isChampionCardDuelSurface && !isAdminConsole;
 
   // After first paint, warm the chunks the user is most likely to visit next.
   // LEGACY1 deleted /home, /play, /swipe and /shop with the retired product, so

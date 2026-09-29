@@ -15,7 +15,7 @@ import type { ChampionBackdrop, ChapterChampions } from "./academyChapters";
  * in `src/academy/welcome/` — the public original is 2.6 MB, which is not a
  * reasonable first-visit cost for a decorative frame, and this page renders it
  * at ~1000px at most. Originals untouched; the same treatment HI1-2 gave the
- * Stat Check art.
+ * Champion Card Duel art.
  *
  * GEOMETRY. Measured from the PNG's alpha, and identical in the derivative
  * because it is a pure downscale (see AcademyBroadcastSurface for the full

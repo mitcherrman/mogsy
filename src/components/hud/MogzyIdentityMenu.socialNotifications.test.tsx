@@ -30,7 +30,7 @@ const invitesHook = vi.hoisted(() => ({
   decline: vi.fn(),
   refresh: vi.fn(),
 }));
-vi.mock("@/hooks/useStatCheckInvites", () => ({ useStatCheckInvites: () => invitesHook }));
+vi.mock("@/hooks/useChampionCardDuelInvites", () => ({ useChampionCardDuelInvites: () => invitesHook }));
 
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", () => ({

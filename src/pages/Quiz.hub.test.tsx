@@ -585,13 +585,13 @@ describe("Leaguecraft hub — Mastery", () => {
 });
 
 describe("Leaguecraft hub — modes withheld from this page", () => {
-  it("still withholds Stat Check, Meta Reflex and Achievements", async () => {
+  it("still withholds Champion Card Duel, Meta Reflex and Achievements", async () => {
     // PT1.7A surfaced the three FINISHED Free modules (Time Trial, Knowledge
-    // Breakdown, the practice packs) and moved nothing else. Stat Check and
+    // Breakdown, the practice packs) and moved nothing else. Champion Card Duel and
     // Meta Reflex keep their own public routes; Achievements is rendered on
     // /profile and /quiz/diagnostics, so this page is not its only host.
     const { container } = await renderHub();
-    expect(container.querySelector('[data-testid="hub-stat-check-link"]')).toBeNull();
+    expect(container.querySelector('[data-testid="hub-champion-card-duel-link"]')).toBeNull();
     expect(container.querySelector('[data-testid="hub-meta-reflex-link"]')).toBeNull();
     expect(screen.queryByText("Achievements")).toBeNull();
     // The pre-redesign five-card practice grid stays withheld too: it is the

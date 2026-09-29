@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useBlocks, useReportUser } from "@/hooks/useBlocks";
 import { useNavigate } from "react-router-dom";
-import { statCheckOnlineApi, StatCheckApiError } from "@/lib/stat-check-online/client";
+import { championCardDuelOnlineApi, ChampionCardDuelApiError } from "@/lib/champion-card-duel-online/client";
 
 interface FriendActionMenuProps {
   targetProfileId: string;
@@ -27,7 +27,7 @@ interface FriendActionMenuProps {
   onRemoveFriend?: (friendshipId: string) => Promise<void>;
   onBlocked?: () => void;
   /**
-   * Show "Invite to Stat Check". Callers must pass this ONLY for an accepted
+   * Show "Invite to Champion Card Duel". Callers must pass this ONLY for an accepted
    * friend: this menu is also rendered for strangers on /user/:profileId, and
    * `friendshipId` alone does not distinguish accepted from pending.
    *
@@ -35,7 +35,7 @@ interface FriendActionMenuProps {
    * re-derives the sender from the JWT and requires an accepted friendship with
    * no block in either direction, at both create and accept.
    */
-  canInviteToStatCheck?: boolean;
+  canInviteToChampionCardDuel?: boolean;
 }
 
 const REPORT_REASONS = [
@@ -53,7 +53,7 @@ export default function FriendActionMenu({
   friendshipId,
   onRemoveFriend,
   onBlocked,
-  canInviteToStatCheck = false,
+  canInviteToChampionCardDuel = false,
 }: FriendActionMenuProps) {
   const navigate = useNavigate();
   const { blockUser } = useBlocks();
@@ -106,15 +106,15 @@ export default function FriendActionMenu({
   const handleInvite = async () => {
     setInviting(true);
     try {
-      const invite = await statCheckOnlineApi.createInvite(targetProfileId);
-      toast.success(`Invited ${targetName} to Stat Check`);
+      const invite = await championCardDuelOnlineApi.createInvite(targetProfileId);
+      toast.success(`Invited ${targetName} to Champion Card Duel`);
       navigate(invite.joinPath);
     } catch (error) {
-      const code = error instanceof StatCheckApiError ? error.code : null;
-      const status = error instanceof StatCheckApiError ? error.status : 0;
+      const code = error instanceof ChampionCardDuelApiError ? error.code : null;
+      const status = error instanceof ChampionCardDuelApiError ? error.status : 0;
       toast.error(
         status === 404
-          ? "Stat Check invites are not available yet"
+          ? "Champion Card Duel invites are not available yet"
           : code === "SC_INVITE_NOT_FRIENDS"
             ? "You can only invite accepted friends"
             : code === "SC_INVITE_BLOCKED"
@@ -150,14 +150,14 @@ export default function FriendActionMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          {canInviteToStatCheck && (
+          {canInviteToChampionCardDuel && (
             <DropdownMenuItem
-              data-testid="invite-to-stat-check"
+              data-testid="invite-to-champion-card-duel"
               disabled={inviting}
               onClick={handleInvite}
             >
               <Swords className="h-4 w-4 mr-2" />
-              {inviting ? "Sending invite..." : "Invite to Stat Check"}
+              {inviting ? "Sending invite..." : "Invite to Champion Card Duel"}
             </DropdownMenuItem>
           )}
           {friendshipId && onRemoveFriend && (

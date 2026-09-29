@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * The four primary hub destinations (2026-09-02 IA cleanup). `combat-lab` is
  * kept as the id for the destination now titled "Combat Simulation" — the
  * route, guide id and components stay `combat-lab`; only the label changed.
- * `stat-check`, `quiz-history` and `patch-reports` were retired as primary
+ * `champion-card-duel`, `quiz-history` and `patch-reports` were retired as primary
  * destinations; their routes and pages are untouched.
  */
 export type HubGuideModeId =

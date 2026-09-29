@@ -11,8 +11,8 @@
  *
  * WHAT THIS IS NOT ALLOWED TO BECOME
  * ──────────────────────────────────
- * The Stat Check invite rooms (`useStatCheckInvites`,
- * `lib/stat-check-online/inviteContracts`) are a DIFFERENT game with a
+ * The Champion Card Duel invite rooms (`useChampionCardDuelInvites`,
+ * `lib/champion-card-duel-online/inviteContracts`) are a DIFFERENT game with a
  * different room lifecycle, a different scoring model and no Ranked rating.
  * Pointing this seam at them would produce an invite that appears to work and
  * then starts the wrong match, which is worse than an invite that honestly

@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { StatCheckApiError } from "@/lib/stat-check-online/client";
+import { ChampionCardDuelApiError } from "@/lib/champion-card-duel-online/client";
 import FriendActionMenu from "./FriendActionMenu";
 
 const api = vi.hoisted(() => ({ createInvite: vi.fn() }));
-vi.mock("@/lib/stat-check-online/client", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/lib/stat-check-online/client")>();
-  return { ...original, statCheckOnlineApi: api };
+vi.mock("@/lib/champion-card-duel-online/client", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/champion-card-duel-online/client")>();
+  return { ...original, championCardDuelOnlineApi: api };
 });
 
 const navigate = vi.hoisted(() => vi.fn());
@@ -41,23 +41,23 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("FriendActionMenu — Invite to Stat Check", () => {
+describe("FriendActionMenu — Invite to Champion Card Duel", () => {
   it("is hidden by default", async () => {
     open();
     await screen.findByText("Report");
-    expect(screen.queryByTestId("invite-to-stat-check")).toBeNull();
+    expect(screen.queryByTestId("invite-to-champion-card-duel")).toBeNull();
   });
 
   it("is hidden for a pending request even though a friendship row exists", async () => {
     // The gate is the resolved friend status, not the presence of a row.
-    open({ friendshipId: "f1", canInviteToStatCheck: false });
+    open({ friendshipId: "f1", canInviteToChampionCardDuel: false });
     await screen.findByText("Report");
-    expect(screen.queryByTestId("invite-to-stat-check")).toBeNull();
+    expect(screen.queryByTestId("invite-to-champion-card-duel")).toBeNull();
   });
 
   it("is shown for an accepted friend", async () => {
-    open({ friendshipId: "f1", canInviteToStatCheck: true });
-    expect(await screen.findByTestId("invite-to-stat-check")).toBeTruthy();
+    open({ friendshipId: "f1", canInviteToChampionCardDuel: true });
+    expect(await screen.findByTestId("invite-to-champion-card-duel")).toBeTruthy();
   });
 
   it("sends the invite by profile id and navigates to the existing room route", async () => {
@@ -69,8 +69,8 @@ describe("FriendActionMenu — Invite to Stat Check", () => {
       reused: false,
       joinPath: "/quiz/stat-check/room/ABCD2345",
     });
-    open({ canInviteToStatCheck: true });
-    fireEvent.click(await screen.findByTestId("invite-to-stat-check"));
+    open({ canInviteToChampionCardDuel: true });
+    fireEvent.click(await screen.findByTestId("invite-to-champion-card-duel"));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/quiz/stat-check/room/ABCD2345"));
     // The only argument is a profile id — never an auth user id.
@@ -79,22 +79,22 @@ describe("FriendActionMenu — Invite to Stat Check", () => {
   });
 
   it("reports the feature being disabled without navigating", async () => {
-    api.createInvite.mockRejectedValue(new StatCheckApiError("backend", 404, "nope"));
-    open({ canInviteToStatCheck: true });
-    fireEvent.click(await screen.findByTestId("invite-to-stat-check"));
+    api.createInvite.mockRejectedValue(new ChampionCardDuelApiError("backend", 404, "nope"));
+    open({ canInviteToChampionCardDuel: true });
+    fireEvent.click(await screen.findByTestId("invite-to-champion-card-duel"));
 
     await waitFor(() =>
-      expect(toasts.error).toHaveBeenCalledWith("Stat Check invites are not available yet"),
+      expect(toasts.error).toHaveBeenCalledWith("Champion Card Duel invites are not available yet"),
     );
     expect(navigate).not.toHaveBeenCalled();
   });
 
   it("surfaces a server-side friendship rejection", async () => {
     api.createInvite.mockRejectedValue(
-      new StatCheckApiError("backend", 403, "no", "SC_INVITE_NOT_FRIENDS"),
+      new ChampionCardDuelApiError("backend", 403, "no", "SC_INVITE_NOT_FRIENDS"),
     );
-    open({ canInviteToStatCheck: true });
-    fireEvent.click(await screen.findByTestId("invite-to-stat-check"));
+    open({ canInviteToChampionCardDuel: true });
+    fireEvent.click(await screen.findByTestId("invite-to-champion-card-duel"));
 
     await waitFor(() =>
       expect(toasts.error).toHaveBeenCalledWith("You can only invite accepted friends"),
@@ -104,10 +104,10 @@ describe("FriendActionMenu — Invite to Stat Check", () => {
 
   it("surfaces a server-side block rejection without naming the block", async () => {
     api.createInvite.mockRejectedValue(
-      new StatCheckApiError("backend", 403, "no", "SC_INVITE_BLOCKED"),
+      new ChampionCardDuelApiError("backend", 403, "no", "SC_INVITE_BLOCKED"),
     );
-    open({ canInviteToStatCheck: true });
-    fireEvent.click(await screen.findByTestId("invite-to-stat-check"));
+    open({ canInviteToChampionCardDuel: true });
+    fireEvent.click(await screen.findByTestId("invite-to-champion-card-duel"));
 
     await waitFor(() =>
       expect(toasts.error).toHaveBeenCalledWith("This invite is not available"),
@@ -115,8 +115,8 @@ describe("FriendActionMenu — Invite to Stat Check", () => {
   });
 
   it("keeps Report and Block available alongside the invite", async () => {
-    open({ canInviteToStatCheck: true });
-    await screen.findByTestId("invite-to-stat-check");
+    open({ canInviteToChampionCardDuel: true });
+    await screen.findByTestId("invite-to-champion-card-duel");
     expect(screen.getByText("Report")).toBeTruthy();
     expect(screen.getByText("Block")).toBeTruthy();
   });

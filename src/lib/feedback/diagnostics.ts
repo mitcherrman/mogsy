@@ -75,7 +75,7 @@ export function pickAllowedKeys(input: Record<string, unknown>): FeedbackClientM
 /**
  * The route a report was filed from, as a bare path.
  *
- * Query string and hash are stripped, not escaped: Stat Check room codes and
+ * Query string and hash are stripped, not escaped: Champion Card Duel room codes and
  * friend-invite codes live in query strings, and a diagnostics field is no
  * place to retain a credential. Truncated to the column's CHECK limit, which
  * also rejects '?' and '#' server-side if this is ever bypassed.

@@ -38,7 +38,7 @@
 // A request refused because the OTHER party blocked the caller reports the
 // same neutral sentence as any other refusal. Telling someone "they blocked
 // you" hands them information the blocker deliberately withheld. This matches
-// the Stat Check backend, which answers `SC_INVITE_BLOCKED` with
+// the Champion Card Duel backend, which answers `SC_INVITE_BLOCKED` with
 // "This invite is not available." rather than naming the cause.
 // ---------------------------------------------------------------------------
 

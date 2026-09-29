@@ -7,7 +7,7 @@
  * a hub card.
  *
  * The LC1 redesign makes /quiz a Ranked-first one-page hub, and WITHHOLDS that
- * card along with the other standalone modes (Time Trial, Stat Check,
+ * card along with the other standalone modes (Time Trial, Champion Card Duel,
  * Knowledge Breakdown, Achievements) — see HUB_MODULES in Quiz.tsx. Withheld is
  * not retired: the card, its route and its branding are all intact, and
  * flipping HUB_MODULES.metaReflex restores it in place.
@@ -142,9 +142,9 @@ describe("Leaguecraft → Meta Reflex, withheld from the Ranked-first hub", () =
     await renderHub();
     // Mastery Journey is the one standalone mode the Ranked-first hub still
     // hosts — one quiet link in the lobby's utility row since the Practice
-    // panel that used to carry it was withheld. Stat Check is withheld with
+    // panel that used to carry it was withheld. Champion Card Duel is withheld with
     // Meta Reflex, at /quiz/stat-check.
     expect(screen.getByTestId("hub-mastery-link").getAttribute("href")).toBe("/quiz/mastery");
-    expect(screen.queryByTestId("hub-stat-check-link")).toBeNull();
+    expect(screen.queryByTestId("hub-champion-card-duel-link")).toBeNull();
   });
 });

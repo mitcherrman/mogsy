@@ -2,7 +2,7 @@
 // COM1-2B — mounts live social synchronisation for the signed-in account.
 //
 // Mounted ONCE, from Layout, because Layout is the only shell component that is
-// always present: the Community drawer is suppressed on Stat Check surfaces and
+// always present: the Community drawer is suppressed on Champion Card Duel surfaces and
 // the HUD bell renders only for a full account, so neither can own the
 // subscription. `startSocialRealtime` is reference-counted anyway, so a second
 // mount would share the topic rather than duplicate it.

@@ -1,3 +1,5 @@
+> **SC-RENAME1 note:** this mode is now named **Champion Card Duel** (`champion_card_duel`). The text below is a historical record written when it was called "Stat Check"; file paths and identifiers in it predate the rename. Live URLs (`/quiz/stat-check*`, `/dev/stat-check`), the `/api/stat-check/*` backend paths and `stat_check.*.v1` / `SC_*` wire codes are intentionally unchanged.
+
 # Stat Check Claude Handoff
 
 ## 1. Project Identity

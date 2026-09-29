@@ -112,7 +112,7 @@ export const FEEDBACK_REPRODUCIBILITY_LABELS: Record<FeedbackReproducibility, st
 /**
  * Product areas, audited against the six LolHub destinations (LolHub.tsx) and
  * the /quiz sub-routes on main. This is classification data only — FB1 reads no
- * mode's code and imports nothing from Ranked, Daily, Stat Check or Combat Lab.
+ * mode's code and imports nothing from Ranked, Daily, Champion Card Duel or Combat Lab.
  *
  * Deliberately absent:
  *   "Meta Reflex"  — not a destination; it lives inside Leaguecraft and the
@@ -127,6 +127,12 @@ export const FEEDBACK_REPRODUCIBILITY_LABELS: Record<FeedbackReproducibility, st
  *
  * The database seeds this same list into app_settings.feedback_config, which
  * stays the runtime authority so the owner can edit it without a deploy.
+ *
+ * PERSISTED COMPATIBILITY (SC-RENAME1): the "Stat Check" category value is the
+ * legacy stored name of the Champion Card Duel area (/quiz/stat-check). It is
+ * kept verbatim because existing feedback rows and the seeded feedback_config
+ * carry it; it is NOT the canonical identity of Champion Card Duel. Migrating
+ * or relabelling it is a separate, later task.
  */
 export const FEEDBACK_CATEGORIES = [
   "General",

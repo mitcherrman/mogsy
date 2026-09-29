@@ -23,11 +23,11 @@ const ok = (joinPath = "/quiz/stat-check/room/ABCD2345") => ({ ok: true, joinPat
 const conflict = (details: Record<string, unknown>, code = "SC_ACTIVE_ROOM_EXISTS") => ({
   ok: false,
   code,
-  message: "You already have a Stat Check room.",
+  message: "You already have a Champion Card Duel room.",
   details,
 });
-vi.mock("@/hooks/useStatCheckInvites", () => ({
-  useStatCheckInvites: () => invitesHook,
+vi.mock("@/hooks/useChampionCardDuelInvites", () => ({
+  useChampionCardDuelInvites: () => invitesHook,
 }));
 
 const navigate = vi.hoisted(() => vi.fn());
@@ -147,26 +147,26 @@ async function openBell() {
   fireEvent.click(bell);
 }
 
-describe("MogzyIdentityMenu — Stat Check invites", () => {
+describe("MogzyIdentityMenu — Champion Card Duel invites", () => {
   it("renders nothing extra when there are no invites", async () => {
     await openBell();
-    expect(screen.queryByTestId("sc-invite-notification")).toBeNull();
+    expect(screen.queryByTestId("ccd-invite-notification")).toBeNull();
   });
 
   it("renders an actionable invite row", async () => {
     invitesHook.invites = [invite()];
     await openBell();
-    expect(await screen.findByTestId("sc-invite-notification")).toBeTruthy();
-    expect(screen.getByText("Rivals invited you to Stat Check")).toBeTruthy();
-    expect(screen.getByTestId("sc-invite-accept")).toBeTruthy();
-    expect(screen.getByTestId("sc-invite-decline")).toBeTruthy();
+    expect(await screen.findByTestId("ccd-invite-notification")).toBeTruthy();
+    expect(screen.getByText("Rivals invited you to Champion Card Duel")).toBeTruthy();
+    expect(screen.getByTestId("ccd-invite-accept")).toBeTruthy();
+    expect(screen.getByTestId("ccd-invite-decline")).toBeTruthy();
   });
 
   it("accept navigates through the existing room route", async () => {
     invitesHook.invites = [invite()];
     invitesHook.accept.mockResolvedValue(ok());
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/quiz/stat-check/room/ABCD2345"));
     expect(invitesHook.accept).toHaveBeenCalledWith("tok_a");
@@ -178,7 +178,7 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
       ok: false, code: "SC_INVITE_EXPIRED", message: "This invite has expired.", details: null,
     });
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
 
     await waitFor(() =>
       expect(toasts.error).toHaveBeenCalledWith("This invite has expired."),
@@ -192,19 +192,19 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
       conflict({ room_state: "open", other_player_present: false, can_close: true }),
     );
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
 
-    expect(await screen.findByTestId("sc-room-conflict-dialog")).toBeTruthy();
-    expect(screen.getByText("Switch Stat Check rooms?")).toBeTruthy();
+    expect(await screen.findByTestId("ccd-room-conflict-dialog")).toBeTruthy();
+    expect(screen.getByText("Switch Champion Card Duel rooms?")).toBeTruthy();
     expect(
       screen.getByText(
-        "You already have a Stat Check room open. Leave it and join your friend's room?",
+        "You already have a Champion Card Duel room open. Leave it and join your friend's room?",
       ),
     ).toBeTruthy();
-    expect(screen.getByTestId("sc-conflict-switch").textContent).toBe("Switch and Join");
-    expect(screen.getByTestId("sc-conflict-keep").textContent).toBe("Keep My Room");
+    expect(screen.getByTestId("ccd-conflict-switch").textContent).toBe("Switch and Join");
+    expect(screen.getByTestId("ccd-conflict-keep").textContent).toBe("Keep My Room");
     // The invite is NOT removed by a recoverable conflict.
-    expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
+    expect(screen.getByTestId("ccd-invite-notification")).toBeTruthy();
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -214,15 +214,15 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
       conflict({ room_state: "open", other_player_present: true, can_close: true }),
     );
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
 
     expect(
       await screen.findByText(
         "Another player is already waiting in your current room. Switching will close that room for everyone.",
       ),
     ).toBeTruthy();
-    expect(screen.getByTestId("sc-conflict-switch").textContent).toBe("Close Room and Join");
-    expect(screen.getByTestId("sc-conflict-keep").textContent).toBe("Keep Current Room");
+    expect(screen.getByTestId("ccd-conflict-switch").textContent).toBe("Close Room and Join");
+    expect(screen.getByTestId("ccd-conflict-keep").textContent).toBe("Keep Current Room");
   });
 
   it("an active match is a blocking message with no switch offered", async () => {
@@ -231,15 +231,15 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
       conflict({ room_state: "active", other_player_present: true, can_close: false }),
     );
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
 
     expect(
       await screen.findByText(
         "Finish or leave your current match before joining this invite.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByTestId("sc-conflict-switch")).toBeNull();
-    expect(screen.getByTestId("sc-conflict-dismiss")).toBeTruthy();
+    expect(screen.queryByTestId("ccd-conflict-switch")).toBeNull();
+    expect(screen.getByTestId("ccd-conflict-dismiss")).toBeTruthy();
   });
 
   it("a room the user does not own is blocking and uses the backend message", async () => {
@@ -251,14 +251,14 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
       details: { room_state: "open", other_player_present: true, can_close: false },
     });
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
 
     expect(
       await screen.findByText(
         "You are in another player's room. Leave it before joining this invite.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByTestId("sc-conflict-switch")).toBeNull();
+    expect(screen.queryByTestId("ccd-conflict-switch")).toBeNull();
   });
 
   it("Keep My Room changes nothing", async () => {
@@ -267,13 +267,13 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
       conflict({ room_state: "open", other_player_present: false, can_close: true }),
     );
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
-    fireEvent.click(await screen.findByTestId("sc-conflict-keep"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-conflict-keep"));
 
-    await waitFor(() => expect(screen.queryByTestId("sc-room-conflict-dialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId("ccd-room-conflict-dialog")).toBeNull());
     expect(invitesHook.acceptSwitch).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
-    expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
+    expect(screen.getByTestId("ccd-invite-notification")).toBeTruthy();
   });
 
   it("Switch and Join calls accept-switch without the eviction confirmation", async () => {
@@ -283,8 +283,8 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
     );
     invitesHook.acceptSwitch.mockResolvedValue(ok());
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
-    fireEvent.click(await screen.findByTestId("sc-conflict-switch"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-conflict-switch"));
 
     await waitFor(() => expect(invitesHook.acceptSwitch).toHaveBeenCalledWith("tok_a", false));
     await waitFor(() =>
@@ -299,8 +299,8 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
     );
     invitesHook.acceptSwitch.mockResolvedValue(ok());
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
-    fireEvent.click(await screen.findByTestId("sc-conflict-switch"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-conflict-switch"));
 
     await waitFor(() => expect(invitesHook.acceptSwitch).toHaveBeenCalledWith("tok_a", true));
   });
@@ -315,14 +315,14 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
       details: null,
     });
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
-    fireEvent.click(await screen.findByTestId("sc-conflict-switch"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-conflict-switch"));
 
     await waitFor(() =>
       expect(toasts.error).toHaveBeenCalledWith("This room already has two players."),
     );
     expect(navigate).not.toHaveBeenCalled();
-    expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
+    expect(screen.getByTestId("ccd-invite-notification")).toBeTruthy();
   });
 
   it("opening the bell triggers an immediate refresh", async () => {
@@ -336,7 +336,7 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
   it("decline calls the hook and never navigates", async () => {
     invitesHook.invites = [invite()];
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-decline"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-decline"));
 
     await waitFor(() => expect(invitesHook.decline).toHaveBeenCalledWith("tok_a"));
     expect(navigate).not.toHaveBeenCalled();
@@ -346,8 +346,8 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
     invitesHook.invites = [invite()];
     invitesHook.busyToken = "tok_a";
     await openBell();
-    expect((await screen.findByTestId("sc-invite-accept")).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByTestId("sc-invite-decline").hasAttribute("disabled")).toBe(true);
+    expect((await screen.findByTestId("ccd-invite-accept")).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByTestId("ccd-invite-decline").hasAttribute("disabled")).toBe(true);
   });
 
   it("counts invites in the unread badge", async () => {
@@ -360,7 +360,7 @@ describe("MogzyIdentityMenu — Stat Check invites", () => {
     invitesHook.invites = [invite()];
     invitesHook.accept.mockResolvedValue(ok());
     await openBell();
-    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("ccd-invite-accept"));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     // The only writes this component ever makes are read-receipts, and the
     // invite path makes none at all.

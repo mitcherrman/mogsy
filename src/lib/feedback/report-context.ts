@@ -254,7 +254,7 @@ export function buildQuestionReportContext(args: {
  * Query parameters worth keeping on a page report.
  *
  * ALLOW-LIST, not a filter. `capturePageUrl` strips the query string entirely
- * because Stat Check room codes and friend-invite codes live there, and FB1's
+ * because Champion Card Duel room codes and friend-invite codes live there, and FB1's
  * rule is that a diagnostics field is no place to retain a credential. A page
  * report genuinely benefits from knowing *which* patch report or *which* tab
  * the visitor was looking at, so a small allow-list is reintroduced here —

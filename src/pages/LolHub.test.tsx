@@ -139,7 +139,7 @@ const HUB_DESTINATIONS = [
 
 /** Retired from the primary hub (2026-09-02) — routes and pages preserved. */
 const RETIRED_PRIMARY_DESTINATIONS = [
-  { title: "Stat Check", to: "/quiz/stat-check" },
+  { title: "Champion Card Duel", to: "/quiz/stat-check" },
   { title: "Quiz History", to: "/lol/history" },
   { title: "Patch Reports", to: "/lol/patch-reports" },
 ];
@@ -189,7 +189,7 @@ describe("LolHub — navigation structure", () => {
     );
   });
 
-  it("no longer links Stat Check, Quiz History or Patch Reports from the hub", () => {
+  it("no longer links Champion Card Duel, Quiz History or Patch Reports from the hub", () => {
     // The routes still exist (App.startupFallbacks.test.ts guards them) and
     // each keeps its own front door — Quiz.tsx, the Leaguecraft workspace
     // History pane / profile, and the Broadcast centerpiece respectively.

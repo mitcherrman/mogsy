@@ -34,11 +34,11 @@ describe("the Ranked invite gateway in force today", () => {
   });
 });
 
-describe("the seam does not reach for the Stat Check rooms", () => {
+describe("the seam does not reach for the Champion Card Duel rooms", () => {
   const read = (path: string) =>
     readFileSync(resolve(process.cwd(), path), "utf8");
 
-  it("neither the seam nor the view imports Stat Check invite code", () => {
+  it("neither the seam nor the view imports Champion Card Duel invite code", () => {
     for (const path of [
       "src/lib/ranked-public/rankedInvite.ts",
       "src/components/quiz/play-scroll/InvitePlayView.tsx",
@@ -48,9 +48,9 @@ describe("the seam does not reach for the Stat Check rooms", () => {
         .split("\n")
         .filter((line) => line.trimStart().startsWith("import"))
         .join("\n");
-      expect(imports).not.toContain("useStatCheckInvites");
-      expect(imports).not.toContain("stat-check-online");
-      expect(imports).not.toContain("stat-check");
+      expect(imports).not.toContain("useChampionCardDuelInvites");
+      expect(imports).not.toContain("champion-card-duel-online");
+      expect(imports).not.toContain("champion-card-duel");
     }
   });
 

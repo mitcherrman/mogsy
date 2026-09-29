@@ -169,13 +169,13 @@ const CombatBattlesAdmin = lazy(() => import("./pages/admin/CombatBattlesAdmin")
 
 // Dev-only prototype — local mock state, not linked from any navigation.
 const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype/RankedDuelPrototype"));
-const StatCheckPage = lazy(() => import("./pages/dev/stat-check/StatCheckPage"));
-const StatCheckRoomPage = lazy(() => import("./pages/dev/stat-check/online/StatCheckRoomPage"));
+const ChampionCardDuelPage = lazy(() => import("./pages/dev/champion-card-duel/ChampionCardDuelPage"));
+const ChampionCardDuelRoomPage = lazy(() => import("./pages/dev/champion-card-duel/online/ChampionCardDuelRoomPage"));
 
-// Public Stat Check entrance: mode selection plus the production-safe bot shell
+// Public Champion Card Duel entrance: mode selection plus the production-safe bot shell
 // (both reuse the components above; neither forks the game or the room flow).
-const StatCheckModeSelectPage = lazy(() => import("./pages/stat-check/StatCheckModeSelectPage"));
-const StatCheckBotPage = lazy(() => import("./pages/stat-check/StatCheckBotPage"));
+const ChampionCardDuelModeSelectPage = lazy(() => import("./pages/champion-card-duel/ChampionCardDuelModeSelectPage"));
+const ChampionCardDuelBotPage = lazy(() => import("./pages/champion-card-duel/ChampionCardDuelBotPage"));
 
 // DCMOD: the Daily Challenge is a parent run of canonical Ranked child stages.
 // The standalone score-attack Time Trial (/quiz/daily) is retired: Time Trial
@@ -600,11 +600,11 @@ export const appRouter = createBrowserRouter(
                   <Route path="/security" element={<Suspense fallback={<RouteFallback />}><Security /></Suspense>} />
                   <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
                   <Route path="/dev/ranked-duel" element={<Suspense fallback={<RouteFallback />}><RankedDuelPrototype /></Suspense>} />
-                  <Route path="/dev/stat-check" element={<Suspense fallback={<RouteFallback />}><StatCheckPage /></Suspense>} />
-                  <Route path="/quiz/stat-check" element={<Suspense fallback={<RouteFallback />}><StatCheckModeSelectPage /></Suspense>} />
-                  <Route path="/quiz/stat-check/bot" element={<Suspense fallback={<RouteFallback />}><StatCheckBotPage /></Suspense>} />
-                  <Route path="/quiz/stat-check/private" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
-                  <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
+                  <Route path="/dev/stat-check" element={<Suspense fallback={<RouteFallback />}><ChampionCardDuelPage /></Suspense>} />
+                  <Route path="/quiz/stat-check" element={<Suspense fallback={<RouteFallback />}><ChampionCardDuelModeSelectPage /></Suspense>} />
+                  <Route path="/quiz/stat-check/bot" element={<Suspense fallback={<RouteFallback />}><ChampionCardDuelBotPage /></Suspense>} />
+                  <Route path="/quiz/stat-check/private" element={<Suspense fallback={<RouteFallback />}><ChampionCardDuelRoomPage /></Suspense>} />
+                  <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><ChampionCardDuelRoomPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/journey-arena" element={<Suspense fallback={<RouteFallback />}><JourneyArenaHarness /></Suspense>} />
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />

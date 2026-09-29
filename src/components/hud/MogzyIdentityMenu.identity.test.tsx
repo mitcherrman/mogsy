@@ -51,7 +51,7 @@ const invitesHook = vi.hoisted(() => ({
   decline: vi.fn(),
   refresh: vi.fn(),
 }));
-vi.mock("@/hooks/useStatCheckInvites", () => ({ useStatCheckInvites: () => invitesHook }));
+vi.mock("@/hooks/useChampionCardDuelInvites", () => ({ useChampionCardDuelInvites: () => invitesHook }));
 
 const authState = vi.hoisted(() => ({
   user: { id: "auth-uid", is_anonymous: false } as

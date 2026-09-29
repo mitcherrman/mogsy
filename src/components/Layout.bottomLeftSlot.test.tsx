@@ -100,7 +100,7 @@ describe("nothing lands on the Community button's coordinates", () => {
   });
 
   it("leaves the corner empty on a surface that suppresses the Community drawer", () => {
-    // Stat Check gameplay hides the drawer. Nothing must take its place there.
+    // Champion Card Duel gameplay hides the drawer. Nothing must take its place there.
     const { container } = renderAt("/quiz/stat-check/room/ABCD12");
     const corner = Array.from(container.querySelectorAll<HTMLElement>("*")).filter((el) =>
       isBottomLeft(el),

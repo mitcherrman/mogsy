@@ -17,7 +17,7 @@
 //   1. an EXPLICIT, safe, internal `returnTo` — the destination the user was
 //      actually trying to reach;
 //   2. contextual continuation carried in that same returnTo (a Ranked lobby,
-//      a Stat Check room, an invite deep link are all just paths);
+//      a Champion Card Duel room, an invite deep link are all just paths);
 //   3. a genuinely mandatory account requirement — today there are NONE.
 //      Email verification is explicitly NOT one (AUTH1 §3), and since TUT1 the
 //      forced Ranked tutorial that used to occupy this slot no longer exists at

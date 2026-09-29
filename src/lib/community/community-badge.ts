@@ -3,7 +3,7 @@
 //
 // Pure, and deliberately in lib rather than beside the component: the
 // definition of "actionable" is a product decision COM1-3 will extend when it
-// hoists the Stat Check invite count, and it should be readable and testable
+// hoists the Champion Card Duel invite count, and it should be readable and testable
 // without mounting a drawer.
 // ---------------------------------------------------------------------------
 
@@ -20,8 +20,8 @@
  *   outgoing requests           — the other person's move, not yours
  *   read/unread notifications   — the HUD bell's semantics, not this button's
  *   blocked users               — already resolved
- *   Stat Check invites          — genuinely actionable, but the only count
- *     available is `useStatCheckInvites`, which POLLS a flag-gated backend
+ *   Champion Card Duel invites          — genuinely actionable, but the only count
+ *     available is `useChampionCardDuelInvites`, which POLLS a flag-gated backend
  *     route every 30s. The HUD bell already mounts it; mounting it a second
  *     time here would be a parallel poller for one number. Left for COM1-3,
  *     which can hoist that hook once and share it. The bell keeps showing them

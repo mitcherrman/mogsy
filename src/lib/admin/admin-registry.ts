@@ -182,7 +182,7 @@ export const ADMIN_AREAS: AdminArea[] = [
       { id: "battles", label: "Combat Battles", summary: "Event lifecycle: create, validate, publish, void, settle." },
       { id: "team-sim", label: "Team Sim", summary: "The SIM2 team simulator and its configuration health." },
       { id: "combat-lab", label: "Combat Lab", summary: "Champion assets and engine diagnostics." },
-      { id: "stat-check", label: "Stat Check", summary: "The shipped Stat Check surfaces." },
+      { id: "champion-card-duel", label: "Champion Card Duel", summary: "The shipped Champion Card Duel surfaces." },
     ],
   },
   {
@@ -1081,11 +1081,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Kept in place as a contextual affordance. Moving it out of the champion profile would make it harder to use, not easier; it is recorded here so it is no longer invisible to an inventory.",
   },
   {
-    id: "stat-check",
-    title: "Stat Check",
-    description: "The shipped Stat Check mode-select, bot shell and private rooms.",
+    id: "champion-card-duel",
+    title: "Champion Card Duel",
+    description: "The shipped Champion Card Duel mode-select, bot shell and private rooms.",
     area: "simulation",
-    section: "stat-check",
+    section: "champion-card-duel",
     kind: "route",
     path: "/quiz/stat-check",
     oldLocation: "/quiz/stat-check",
@@ -1775,9 +1775,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
   // DEVELOPER
   // =========================================================================
   {
-    id: "dev-stat-check",
-    title: "Stat Check Prototype",
-    description: "The Stat Check design prototype. The shipped surfaces live under /quiz/stat-check.",
+    id: "dev-champion-card-duel",
+    title: "Champion Card Duel Prototype",
+    description: "The Champion Card Duel design prototype. The shipped surfaces live under /quiz/stat-check.",
     area: "developer",
     section: "prototypes",
     kind: "route",

@@ -74,9 +74,9 @@ type HubDestination = {
 // derive from index parity (even → left, odd → right), the mobile list walks
 // it in order, and every entry carries the `guideId` that keys
 // HUB_GUIDE_MODES, so a destination cannot exist without Mogzy being able to
-// describe it. Stat Check, Quiz History and Patch Reports were retired from
+// describe it. Champion Card Duel, Quiz History and Patch Reports were retired from
 // the primary hub on 2026-09-02 (IA cleanup); their routes, pages and other
-// front doors are untouched — Stat Check from Quiz.tsx, Quiz History from the
+// front doors are untouched — Champion Card Duel from Quiz.tsx, Quiz History from the
 // Leaguecraft workspace History pane and the profile, Patch Reports from the
 // Academy Broadcast centerpiece below. Pro Play was promoted from the
 // standalone gold panel it shipped as into a full peer destination.

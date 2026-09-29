@@ -84,7 +84,7 @@ type QuizPhase = PracticePhase;
  * The hub is Ranked-first: everything on the main page has to serve the
  * play → review → practice → play loop. The modules below still exist in
  * full — their routes, components, data loaders and handlers are untouched.
- * Most also have another host today (Time Trial at /quiz/daily, Stat Check
+ * Most also have another host today (Time Trial at /quiz/daily, Champion Card Duel
  * at /quiz/stat-check, Achievements on /profile and /quiz/diagnostics); the
  * Knowledge Breakdown card has no other host, so its flag is its only route
  * back. They are only withheld from THIS page's presentation, and flipping
@@ -93,8 +93,8 @@ type QuizPhase = PracticePhase;
  * This is a navigation/visibility decision, never a deletion.
  */
 type HubModuleFlags = {
-  /** Standalone Stat Check entry — lives at /quiz/stat-check. */
-  statCheck: boolean;
+  /** Standalone Champion Card Duel entry — lives at /quiz/stat-check. */
+  championCardDuel: boolean;
   /** Standalone Meta Reflex entry — lives at its own public /league-swipe URL. */
   metaReflex: boolean;
   /** Full per-category mastery breakdown. The hub is its only host, so this
@@ -131,7 +131,7 @@ type HubModuleFlags = {
  * navigation on the page twice. The packs came back; their old grid did not.
  */
 const HUB_MODULES: HubModuleFlags = {
-  statCheck: false,
+  championCardDuel: false,
   metaReflex: false,
   knowledgeBreakdown: true,
   achievements: false,
@@ -1551,19 +1551,19 @@ export default function Quiz() {
             {/* DCMOD: the standalone Time Trial is retired — it is a Daily
                 Challenge stage now (the `time_trial` ruleset). */}
 
-            {/* Stat Check — the card game entrance, live at /quiz/stat-check. */}
-            {HUB_MODULES.statCheck && (
-              <div className="mt-3" data-testid="hub-stat-check-section">
+            {/* Champion Card Duel — the card game entrance, live at /quiz/stat-check. */}
+            {HUB_MODULES.championCardDuel && (
+              <div className="mt-3" data-testid="hub-champion-card-duel-section">
                 <Link
                   to="/quiz/stat-check"
                   className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  data-testid="hub-stat-check-link"
+                  data-testid="hub-champion-card-duel-link"
                 >
                   <Card className="transition-colors hover:border-primary/50">
                     <CardHeader className="pb-1">
                       <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
                         <Layers className="h-4 w-4" aria-hidden="true" />
-                        Stat Check
+                        Champion Card Duel
                       </CardTitle>
                       <CardDescription className="text-xs">
                         Build a hand and compare champion stats across three lanes.

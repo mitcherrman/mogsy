@@ -32,7 +32,7 @@ import type {
  * `globalThis.ResizeObserver = RO` at module scope, which is a permanent
  * mutation of a shared global: vitest reuses a worker across files, so a
  * no-op observer leaked into every suite that ran after this one and made
- * Combat Lab, LolHub and Stat Check fail intermittently depending on file
+ * Combat Lab, LolHub and Champion Card Duel fail intermittently depending on file
  * order. `vi.stubGlobal` + `unstubAllGlobals` scopes it to this file, which
  * is what makes the full-suite failure set reproducible again.
  */

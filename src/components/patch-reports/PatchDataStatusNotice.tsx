@@ -6,7 +6,7 @@ import type { PatchReconciliation } from "@/lib/patch-reports/api";
  * A patch report reads as an authoritative account of the patch, and the line
  * beside it — "Report built <date>" — reads as the date Mogzy became current.
  * They are different claims. Publishing the report is `promote-report`;
- * updating what Combat Lab, Stat Check and the quiz banks COMPUTE is
+ * updating what Combat Lab, Champion Card Duel and the quiz banks COMPUTE is
  * `reconcile-knowledge`, a later step that can hold changes or fail outright.
  *
  * V26.18 is why this exists: the report published normally and the

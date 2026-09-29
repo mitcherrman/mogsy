@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useStatCheckInvites, type StatCheckInvite } from "@/hooks/useStatCheckInvites";
+import { useChampionCardDuelInvites, type ChampionCardDuelInvite } from "@/hooks/useChampionCardDuelInvites";
 import { isFailure } from "@/lib/result-narrowing";
 import {
   Dialog,
@@ -171,7 +171,7 @@ const footerItemClass =
 
 /** Live invites only. The backend drops expired rows from the inbox, but the
  *  poll is 30s wide — filtering here means a dead invite is never actionable. */
-const isLiveInvite = (invite: StatCheckInvite, nowMs: number) => {
+const isLiveInvite = (invite: ChampionCardDuelInvite, nowMs: number) => {
   const expiry = new Date(invite.expiresAt).getTime();
   return Number.isNaN(expiry) || expiry > nowMs;
 };
@@ -244,30 +244,30 @@ export default function MogzyIdentityMenu() {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const {
-    invites: statCheckInvites,
+    invites: championCardDuelInvites,
     accept: acceptInvite,
     acceptSwitch: acceptInviteSwitch,
     decline: declineInvite,
     refresh: refreshInvites,
     busyToken,
-  } = useStatCheckInvites();
+  } = useChampionCardDuelInvites();
 
   // Ticks only while invites are on screen, so an invite that ages out
   // disappears without waiting for the next 30s poll.
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
-    if (statCheckInvites.length === 0) return;
+    if (championCardDuelInvites.length === 0) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 10_000);
     return () => window.clearInterval(timer);
-  }, [statCheckInvites.length]);
+  }, [championCardDuelInvites.length]);
 
   const liveInvites = useMemo(
-    () => statCheckInvites.filter(invite => isLiveInvite(invite, nowMs)),
-    [statCheckInvites, nowMs],
+    () => championCardDuelInvites.filter(invite => isLiveInvite(invite, nowMs)),
+    [championCardDuelInvites, nowMs],
   );
 
   const [roomConflict, setRoomConflict] = useState<
-    { invite: StatCheckInvite; mode: "empty" | "occupied" | "blocked"; message: string } | null
+    { invite: ChampionCardDuelInvite; mode: "empty" | "occupied" | "blocked"; message: string } | null
   >(null);
 
   const loadNotifications = useCallback(async () => {
@@ -647,7 +647,7 @@ export default function MogzyIdentityMenu() {
   };
 
   const handleAcceptOutcome = (
-    invite: StatCheckInvite,
+    invite: ChampionCardDuelInvite,
     outcome: Awaited<ReturnType<typeof acceptInvite>>,
   ) => {
     if (!isFailure(outcome)) {
@@ -692,7 +692,7 @@ export default function MogzyIdentityMenu() {
    * Two counts, deliberately not merged.
    *
    * `unreadCount` is informational and is what "Mark all read" clears.
-   * `actionableCount` is pending Stat Check invites, which are resolved by
+   * `actionableCount` is pending Champion Card Duel invites, which are resolved by
    * accepting or declining — never by reading. Folding invites into the unread
    * total made "Mark all read" look broken, because the badge could not reach
    * zero while an invite was still open.
@@ -1108,7 +1108,7 @@ export default function MogzyIdentityMenu() {
               })}
 
               {/*
-                * Stat Check invites — the actionable section. Backend-owned and
+                * Champion Card Duel invites — the actionable section. Backend-owned and
                 * resolved by accepting or declining, never by being read, so they
                 * are labelled as requiring action and are excluded from the
                 * unread count that "Mark all read" clears.
@@ -1118,7 +1118,7 @@ export default function MogzyIdentityMenu() {
                 return (
                   <div
                     key={invite.inviteToken}
-                    data-testid="sc-invite-notification"
+                    data-testid="ccd-invite-notification"
                     className="w-full px-3 py-2.5 border-b border-border last:border-0 bg-primary/5"
                   >
                     <div className="flex items-start gap-2">
@@ -1132,7 +1132,7 @@ export default function MogzyIdentityMenu() {
                           Needs your response
                         </p>
                         <p className="text-xs font-medium text-foreground">
-                          {invite.displayName} invited you to Stat Check
+                          {invite.displayName} invited you to Champion Card Duel
                         </p>
                         <p className="text-[9px] text-muted-foreground mt-0.5">
                           {new Date(invite.createdAt).toLocaleString()}
@@ -1140,7 +1140,7 @@ export default function MogzyIdentityMenu() {
                         <div className="flex gap-1.5 mt-1.5">
                           <button
                             type="button"
-                            data-testid="sc-invite-accept"
+                            data-testid="ccd-invite-accept"
                             disabled={busy}
                             onClick={async () => {
                               handleAcceptOutcome(invite, await acceptInvite(invite.inviteToken));
@@ -1151,7 +1151,7 @@ export default function MogzyIdentityMenu() {
                           </button>
                           <button
                             type="button"
-                            data-testid="sc-invite-decline"
+                            data-testid="ccd-invite-decline"
                             aria-label="Decline invite"
                             disabled={busy}
                             onClick={() => void declineInvite(invite.inviteToken)}
@@ -1231,24 +1231,24 @@ export default function MogzyIdentityMenu() {
           if (!next) setRoomConflict(null);
         }}
       >
-        <DialogContent className="max-w-sm" data-testid="sc-room-conflict-dialog">
+        <DialogContent className="max-w-sm" data-testid="ccd-room-conflict-dialog">
           <DialogHeader>
             <DialogTitle>
               {roomConflict?.mode === "blocked"
                 ? "You're already in a match"
-                : "Switch Stat Check rooms?"}
+                : "Switch Champion Card Duel rooms?"}
             </DialogTitle>
-            <DialogDescription data-testid="sc-room-conflict-body">
+            <DialogDescription data-testid="ccd-room-conflict-body">
               {roomConflict?.mode === "blocked"
                 ? roomConflict.message
                 : roomConflict?.mode === "occupied"
                   ? "Another player is already waiting in your current room. Switching will close that room for everyone."
-                  : "You already have a Stat Check room open. Leave it and join your friend's room?"}
+                  : "You already have a Champion Card Duel room open. Leave it and join your friend's room?"}
             </DialogDescription>
           </DialogHeader>
           {roomConflict?.mode === "blocked" ? (
             <Button
-              data-testid="sc-conflict-dismiss"
+              data-testid="ccd-conflict-dismiss"
               onClick={() => setRoomConflict(null)}
               className="w-full"
             >
@@ -1258,14 +1258,14 @@ export default function MogzyIdentityMenu() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                data-testid="sc-conflict-keep"
+                data-testid="ccd-conflict-keep"
                 onClick={() => setRoomConflict(null)}
                 className="flex-1"
               >
                 {roomConflict?.mode === "occupied" ? "Keep Current Room" : "Keep My Room"}
               </Button>
               <Button
-                data-testid="sc-conflict-switch"
+                data-testid="ccd-conflict-switch"
                 disabled={busyToken === roomConflict?.invite.inviteToken}
                 onClick={async () => {
                   if (!roomConflict) return;
