@@ -185,3 +185,13 @@ Worktree: `.worktrees/sc-rename1` (branch `sc-rename1-phase1`, from main `30b75c
 - `reportable-question.tsx` comment: "Stat Check" -> "Champion Card Duel".
 - Certification: every remaining `Stat Check`/`stat-check`/`stat_check`/`SC_*`/`sc-*` in `src` is one of: wire contract (`/api/stat-check`, `stat_check.*.v1`, `SC_*`); legacy route (`/quiz/stat-check*`, `/dev/stat-check`, incl. tests); persisted analytics/data id (`stat_check_*_match`, `stat_check_room`); deterministic seed/golden (`stat-check-v1`, `stat-check-tabletop-v2`, `sc-golden:*`); persisted feedback category (`"Stat Check"` in `feedback/contract.ts`); generic/unrelated (`AcademyWelcomePage.test` "stat check" pill guard, `--sc-fit`, `sc-1`/`sc-2` scenario-card ids). Historical migrations/docs untouched. No current human-readable text identifies Champion Card Duel as Stat Check.
 - Checks: 16 affected test files (218 tests) pass; `vite build` OK.
+
+---
+
+# RE-INTEGRATION ONTO origin/main 55776ec6 (NAV1-P1)
+
+- `origin/main` moved 29ceafe9 -> `55776ec6` (single commit `NAV1-P1: guard unfinished Practice navigation`, 9 files: NAV1 docs, practice-exit e2e, `useTransactionalLeaveGuard`, `practiceLeaveContract(+test)`, `Quiz.practiceMissed.test`, `Quiz.tsx`).
+- Overlap with SC-RENAME1 files: only `src/pages/Quiz.tsx`. Branch `sc-rename1-reint` (worktree `.worktrees/sc-rename1-reint`) = clean cherry-pick of the three certified commits `fc0abd90`, `9dcfb166`, `f4e49d13`. **No conflicts**; NAV1 Quiz.tsx changes (leave guard, PracticePhase) and the Champion Card Duel hub flag/testid renames merged textually without overlap. New NAV1 files introduce no Stat Check identifiers (only a prose mention in `docs/NAV1_*`, historical doc, left as-is).
+- `vite build`: succeeds.
+- Vitest (all 37 changed test files + NAV1 `Quiz.practiceMissed`, `practiceLeaveContract`): 38/39 files, 737 tests pass. Sole failure `Quiz.hub.test > keeps exactly one h1` is **identical on unmodified origin/main 55776ec6** (pre-existing).
+- Residual search: only wire paths/schema strings, legacy routes (incl. route regexes and returnTo test strings), feedback category `"Stat Check"` + comment, frozen seeds, welcome-page regression-guard label `"stat check"`. No current human-readable reference calls Champion Card Duel "Stat Check". Meta Reflex untouched.
