@@ -46,5 +46,5 @@ covers desktop Back/Forward/history length, header, HUD, replay, result, Review
 without reload, and a 390×844 viewport.
 
 Practice persistence/refresh recovery is intentionally not implemented.
-E2Q, PLAY1/RB3 playtest exits, Daily completion, Stat Check, Team Sim, and true
+PLAY1/RB3 playtest exits, Daily completion, Stat Check, Team Sim, and true
 Safari/iOS swipe behavior remain separate work.

@@ -1,6 +1,6 @@
 # NAV1-E — Active Ranked / Daily leave contract
 
-Status: E1 substrate, E2 standalone Ranked wiring, E3 Daily parent wiring, and E4/E4B combined browser certification complete; E2Q deferred
+Status: E1 substrate, E2 standalone Ranked wiring, E2Q Ranked queue wiring, E3 Daily parent wiring, and E4/E4B combined browser certification complete
 
 ## E4 integration certification record (2026-09-28)
 
@@ -15,8 +15,8 @@ Stay/Leave/Forward, terminal authority cancelling a pending POP, mobile dialog
 focus/layout, Daily parent Back/Continue/Exit/Forward, and Daily completion while
 the parent dialog is open. Request logs prove ordinary leave sends no Forfeit,
 abandon, cancellation, or invented termination request. Hosted Ranked remains
-owned by Daily and has no standalone blocker. E2Q queue protection and PLAY1
-user-initiated exit policy remain intentionally deferred.
+owned by Daily and has no standalone blocker. E2Q queue protection is certified
+in `NAV1_E2Q_QUEUE_HANDOFF.md`; PLAY1 user-initiated exit policy remains deferred.
 
 E4B completed the remaining named browser cases with contract-valid fixtures.
 The standalone Ranked route advances through its normal projection/controller
@@ -737,7 +737,8 @@ Parallel: test authoring can begin earlier; certification/merge is last.
 Completed by E4/E4B on 2026-09-28. The full deterministic NAV1 Chromium lane
 passes, including ordinary Ranked reveal, Daily hidden Survival settlement,
 Daily stage-result non-replay with native Forward recovery, and Daily mobile
-viewport ownership. E2Q was not included and remains deferred.
+viewport ownership. E2Q is separately certified in
+`NAV1_E2Q_QUEUE_HANDOFF.md`.
 
 ## 17. Unresolved owner decisions
 
@@ -746,9 +747,8 @@ Only these require owner input before code:
 1. **Approve the data-router prerequisite.** The supported blocker cannot run
    under current `BrowserRouter`. This contract rejects a custom POP/history
    trap; if the route migration is not acceptable, implementation must pause.
-2. **Schedule queue protection.** E2Q is required for a complete entry-to-match
-   transaction contract, but it collides with PLAY1 and need not block the P1
-   active-match/Daily fixes.
+2. **Queue protection is resolved.** E2Q now owns the Play Scroll queue through
+   `matched + matchId`; see `NAV1_E2Q_QUEUE_HANDOFF.md`.
 3. **PLAY1 user-exit ownership.** PLAY1's deliberate host checkpoint is a
    bypass, but its own browser/header/HUD exit policy must be confirmed by the
    PLAY1 owner rather than inherited from standalone Ranked or Daily.
@@ -814,8 +814,8 @@ Final integration certification:
   were outside NAV1; the only reported Ranked geometry failure set reproduced
   identically on pristine current main (3 failures / 66 tests).
 
-NAV1-E implementation and certification are complete. Deferred scope remains
-E2Q Ranked queue navigation, PLAY1 user-exit policy, remaining
+NAV1-E implementation and certification are complete. E2Q queue navigation is
+also complete. Deferred scope remains PLAY1 user-exit policy, remaining
 History/Practice NAV1 work, and true iOS/WebKit swipe-Back certification.
 
 ## 18. Recommendation
@@ -823,9 +823,8 @@ History/Practice NAV1 work, and true iOS/WebKit swipe-Back certification.
 Implement NAV1-E1 first because every correct POP/PUSH/REPLACE contract depends
 on supported router-level blocking and exact history restoration. Rebase it
 after PLAY1's current route ownership. Then run E2 and E3 in parallel with one
-owner per high-conflict surface, and certify them together in E4. Defer E2Q
-only if PLAY1 ownership cannot be scheduled; do not substitute a partial
-browser-Back-only handler.
+owner per high-conflict surface, and certify them together in E4. E2Q was
+subsequently completed without a partial browser-Back-only handler.
 
 ## 19. NAV1-E1 implementation status
 

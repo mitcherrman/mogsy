@@ -11,8 +11,9 @@ correctly omitted.
 Chromium certification confirms one owner dialog per active surface, natural
 POP/Forward recovery without sentinel entries, terminal authority resetting a
 pending transition, and zero ordinary-leave Forfeit/abandon traffic. Refresh
-remains server recovery with no unload interception. Queue protection (E2Q)
-and PLAY1 user-exit semantics remain separate follow-up work.
+remains server recovery with no unload interception. Queue protection (E2Q) is
+now certified in `NAV1_E2Q_QUEUE_HANDOFF.md`; PLAY1 user-exit semantics remain
+separate follow-up work.
 
 E4B closes the remaining browser cases. A genuine server-projected ordinary
 Ranked reveal preserves the exact POP through Stay/Leave and recovers by native
@@ -49,9 +50,10 @@ base `576e9dd309094d725afafc837408e329815d927c`. NAV1-E1 now implements only
 its supported router, blocker, typed-bypass and accessible-dialog substrate.
 The executable state, history, copy, ownership, race and batch contract is
 [`NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md`](./NAV1_ACTIVE_FLOW_LEAVE_CONTRACT.md).
-E3 Daily product wiring is implemented at `DailyRunPage`. E2/E2Q have not
-started: standalone Ranked match and Ranked queue do not yet invoke the
-blocker. Forfeit and Daily server orchestration remain unchanged.
+E2 standalone Ranked, E2Q Ranked queue, and E3 Daily product wiring are now
+implemented. The queue details and certification live in
+`NAV1_E2Q_QUEUE_HANDOFF.md`. Forfeit and Daily server orchestration remain
+unchanged.
 
 ## Important current findings
 
@@ -919,14 +921,13 @@ history shim or product workaround was added.
 
 NAV1-A safe temporal Back, NAV1-B Profile/Settings/UserProfile/reset fallbacks,
 NAV1-C Premium contextual return and NAV1-D terminal REPLACE all pass their
-unit/browser regression suites. Ranked, Daily and the Ranked queue are not
-guarded. Forfeit and global HUD semantics are unchanged. No `beforeunload`,
+unit/browser regression suites. Ranked, Daily, and the Ranked queue are now
+guarded by their single owners. Forfeit and global HUD semantics are unchanged. No `beforeunload`,
 `pagehide`, `unload`, `popstate`, beacon, keepalive, fake entry or history
 repair was added.
 
-E2 and E3 are safe to start in parallel after this commit because their owner
-surfaces are disjoint. E2Q still requires explicit PLAY1 owner scheduling and
-must not run concurrently with further PLAY1 queue edits.
+E2, E2Q, and E3 are complete. Further PLAY1 queue edits must preserve E2Q's
+single queue owner and queue-to-match handoff.
 
 The first audit must specifically answer:
 1. Every place browser Back can produce a surprising destination.
@@ -966,5 +967,5 @@ SFX2 reconciliation replayed only `02ac1b47` and owner tip `2153d4c8` onto E1;
 the unrelated release-line merge parent of `dd510777` was not absorbed. E2
 does not change the sound observer or arena/audio ownership.
 
-Deferred exactly as before: E2Q Ranked queue, E3 Daily parent guarding, and
-PLAY1 user-exit policy.
+E2Q Ranked queue and E3 Daily parent guarding are complete. PLAY1 user-exit
+policy remains deferred.
