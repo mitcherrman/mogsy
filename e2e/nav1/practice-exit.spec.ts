@@ -120,7 +120,7 @@ test("missed-question replay is unfinished and guarded", async ({ page }) => {
   await finish(page, false);
   await page.getByTestId("practice-missed-cta").click();
   await expect(page.getByText(question.question_text)).toBeVisible();
-  await page.goBack();
+  await page.evaluate(() => history.back());
   await expect(page.getByRole("alertdialog", { name: "Leave practice?" })).toHaveCount(1);
 });
 

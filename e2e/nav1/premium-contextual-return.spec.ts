@@ -69,6 +69,7 @@ test("direct and external-style initial Premium entries use the deterministic Hu
   await page.goto("/lol/premium");
   await page.getByRole("button", { name: "Go back" }).click();
   await expect(page).toHaveURL(/\/lol$/);
+  await expect(page.getByTestId("academy-desktop-title")).toBeAttached();
 
   await page.goto("/about");
   await page.goto("/lol/premium");

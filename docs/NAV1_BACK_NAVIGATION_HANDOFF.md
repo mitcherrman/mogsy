@@ -28,8 +28,10 @@ per-stage entry.
 
 The Daily mobile smoke uses a 390x844 Chromium viewport and certifies dialog
 layout/focus plus Back, header, HUD, and one-modal ownership. It does not claim
-iOS Safari swipe-back coverage. **E4B required test coverage only; no runtime
-changes.**
+iOS Safari swipe-back coverage. NAV1-WK1 now records the precise successor
+status: **WebKit history/POP certified; physical iOS edge-swipe smoke test
+remains.** See [`NAV1_WK1_WEBKIT_HANDOFF.md`](./NAV1_WK1_WEBKIT_HANDOFF.md).
+**E4B required test coverage only; no runtime changes.**
 
 ## Objective
 Audit Mogzy's browser Back behavior and every in-product Back/Home/Parent/Close/Cancel/Exit navigation path. Produce an explicit route/state contract before changing product code.

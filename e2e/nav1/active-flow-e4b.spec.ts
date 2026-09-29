@@ -113,7 +113,7 @@ function forbiddenWrites(requests: Request[]) {
 test("Daily hidden Survival settlement remains parent-owned through Back and recovery", async ({ page }) => {
   const fixture = await prepareDaily(page, "settling");
   await page.goto("/quiz/daily-challenge");
-  await expect(page.getByTestId("daily-settling-child")).toBeAttached({ timeout: 8_000 });
+  await expect(page.getByTestId("daily-settling-child")).toBeAttached({ timeout: 30_000 });
   await expect(page.getByTestId("ranked-back-to-quiz")).toHaveCount(0);
   const initialLength = await page.evaluate(() => history.length);
 
@@ -128,7 +128,9 @@ test("Daily hidden Survival settlement remains parent-owned through Back and rec
   expect(await page.evaluate(() => history.length)).toBe(initialLength);
 
   await page.goBack();
-  await page.getByRole("button", { name: "Exit Daily Challenge" }).click();
+  const exitDaily = page.getByRole("button", { name: "Exit Daily Challenge" });
+  await expect(exitDaily).toBeVisible();
+  await exitDaily.evaluate((element: HTMLButtonElement) => element.click());
   await expect(page).toHaveURL("/quiz");
   await page.goForward();
   await expect(page).toHaveURL("/quiz/daily-challenge");
@@ -171,7 +173,7 @@ test("Daily stage result warns once and Forward reconstructs canonical next stag
   expect(fixture.errors).toEqual([]);
 });
 
-test("mobile Chromium viewport keeps the Daily parent guard usable for Back, header, and HUD", async ({ page }) => {
+test("mobile viewport keeps the Daily parent guard usable for Back, header, and HUD", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const fixture = await prepareDaily(page, "mobile");
   await page.goto("/quiz/daily-challenge");

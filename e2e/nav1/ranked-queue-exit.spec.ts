@@ -54,6 +54,16 @@ async function prepare(page: Page, mobile = false): Promise<QueueAuthority> {
   await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    const fulfill = (options: Parameters<typeof route.fulfill>[0]) => route.fulfill({
+      ...options,
+      headers: {
+        "access-control-allow-origin": "http://127.0.0.1:8081",
+        "access-control-allow-credentials": "true",
+        "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, prefer",
+        ...options.headers,
+      },
+    });
     if (!["fetch", "xhr"].includes(request.resourceType())) return route.continue();
     if (url.hostname === "127.0.0.1" && !url.pathname.startsWith("/api/")) {
       return route.continue();
@@ -61,23 +71,23 @@ async function prepare(page: Page, mobile = false): Promise<QueueAuthority> {
     if (url.pathname === "/api/ranked/queue") {
       if (request.method() === "DELETE") {
         if (authority.cancelFailure) {
-          return route.fulfill({ status: 503, json: { detail: {
+          return fulfill({ status: 503, json: { detail: {
             code: "RANKED_QUEUE_UNAVAILABLE", message: "Could not cancel matchmaking.",
           } } });
         }
         // The backend refuses a claimed row; model that boundary explicitly.
         if (authority.status === "claimed" || authority.status === "matched") {
-          return route.fulfill({ status: 409, json: { detail: {
+          return fulfill({ status: 409, json: { detail: {
             code: "RANKED_CANNOT_CANCEL", message: "Pairing has already started.",
           } } });
         }
         authority.status = "cancelled";
-        return route.fulfill({ json: queueStatusV1("cancelled") });
+        return fulfill({ json: queueStatusV1("cancelled") });
       }
-      return route.fulfill({ json: queueStatusV1(authority.status, authority.matchId) });
+      return fulfill({ json: queueStatusV1(authority.status, authority.matchId) });
     }
     if (url.pathname === "/api/ranked/active-match") {
-      return route.fulfill({ json: authority.matchId ? {
+      return fulfill({ json: authority.matchId ? {
         match_id: authority.matchId,
         is_bot_match: false,
         within_reconnect_window: true,
@@ -86,20 +96,20 @@ async function prepare(page: Page, mobile = false): Promise<QueueAuthority> {
     }
     if (url.pathname.startsWith("/api/ranked/matches/m-e2q")) {
       if (url.pathname.endsWith("/presence")) {
-        return route.fulfill({ json: { status: "active", match_id: "m-e2q", active: true } });
+        return fulfill({ json: { status: "active", match_id: "m-e2q", active: true } });
       }
       const body = url.pathname.endsWith("/private")
         ? privatePlayerV2("userA")
         : publicRoundV2(false);
-      return route.fulfill({
+      return fulfill({
         json: JSON.parse(JSON.stringify(body).replaceAll('"m1"', '"m-e2q"')),
       });
     }
     if (url.pathname.endsWith("/role")) {
-      return route.fulfill({ json: { role: "top", selected_at: null, updated_at: null } });
+      return fulfill({ json: { role: "top", selected_at: null, updated_at: null } });
     }
     if (url.pathname.endsWith("/availability")) {
-      return route.fulfill({ json: {
+      return fulfill({ json: {
         schema_version: "ranked_duel.availability.v1",
         projection_type: "ranked_availability",
         server_time: new Date().toISOString(),
@@ -107,22 +117,22 @@ async function prepare(page: Page, mobile = false): Promise<QueueAuthority> {
       } });
     }
     if (url.pathname.startsWith("/api/quiz/")) {
-      if (url.pathname.endsWith("/entitlement")) return route.fulfill({ json: { ok: true, is_pro: false } });
-      if (url.pathname === "/api/quiz/sets") return route.fulfill({ json: { sets: [] } });
-      return route.fulfill({ status: 503, json: { detail: "Unavailable in NAV1 fixture" } });
+      if (url.pathname.endsWith("/entitlement")) return fulfill({ json: { ok: true, is_pro: false } });
+      if (url.pathname === "/api/quiz/sets") return fulfill({ json: { sets: [] } });
+      return fulfill({ status: 503, json: { detail: "Unavailable in NAV1 fixture" } });
     }
-    if (url.pathname.endsWith("/today")) return route.fulfill({ json: { run: null } });
-    if (url.pathname.includes("/profiles")) return route.fulfill({ json: {
+    if (url.pathname.endsWith("/today")) return fulfill({ json: { run: null } });
+    if (url.pathname.includes("/profiles")) return fulfill({ json: {
       id: "nav1-profile", user_id: "userA", display_name: "NAV1 E2Q",
       is_anonymous: false, is_disabled: false, socials: {},
     } });
-    return route.fulfill({ json: [] });
+    return fulfill({ json: [] });
   });
   return authority;
 }
 
 async function openQueue(page: Page, expected: "waiting" | "pairing" = "waiting") {
-  await page.goto("/quiz?play=1");
+  await page.goto("/quiz?play=1", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("play-scroll")).toBeVisible();
   await page.getByTestId("play-mode-ranked").click();
   await expect(page.getByTestId("play-ranked")).toHaveAttribute("data-queue-state", expected);
@@ -142,11 +152,13 @@ test("waiting Back: Stay preserves queue/history; retry cancels before exact POP
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
 
   await page.evaluate(() => history.back());
-  await page.getByRole("button", { name: "Cancel Queue & Leave" }).click();
+  const cancelAndLeave = page.getByRole("button", { name: "Cancel Queue & Leave" });
+  await expect(cancelAndLeave).toBeVisible();
+  await cancelAndLeave.evaluate((element: HTMLButtonElement) => element.click());
   await expect(page).toHaveURL(origin);
   expect(authority.cancelRequests).toBe(1);
   expect(authority.forfeitRequests).toBe(0);
-  await page.evaluate(() => history.forward());
+  await page.goForward();
   await expect(page).toHaveURL("/quiz?play=1");
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
 });

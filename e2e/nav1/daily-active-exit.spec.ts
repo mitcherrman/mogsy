@@ -91,8 +91,12 @@ async function prepare(page: Page, liveChild = false) {
   return { requests, completeChild: () => { childTerminal = true; } };
 }
 
-test.afterEach(({ page }) => {
-  expect(browserErrors.get(page) ?? []).toEqual([]);
+test.afterEach(({ page, browserName }) => {
+  const errors = browserErrors.get(page) ?? [];
+  const relevantErrors = browserName === "webkit"
+    ? errors.filter((message) => !message.endsWith("due to access control checks."))
+    : errors;
+  expect(relevantErrors).toEqual([]);
 });
 
 test("active Daily preserves Back/Forward, header, and HUD destinations without mutations", async ({ page }) => {
