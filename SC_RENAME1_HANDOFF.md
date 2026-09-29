@@ -165,3 +165,16 @@ Worktree: `.worktrees/sc-rename1` (branch `sc-rename1-phase1`, from main `30b75c
 
 ## Readiness for SC-RENAME2
 **Ready.** Namespace evacuation is complete except the deliberate compat strings above. SC-RENAME2 candidates: move URLs to `/quiz/champion-card-duel*` with redirects preserving `:inviteCode`; feedback category migration; then the Meta Reflex display rename.
+
+---
+
+# INTEGRATION INTO origin/main
+
+- Branch `sc-rename1-integration` (worktree `.worktrees/sc-rename1-int`), cherry-pick of `21edf6fc` onto `origin/main` `29ceafe9`.
+- Conflicts: `src/App.tsx` (routes), `src/pages/Quiz.tsx` (`HubModuleFlags`/`HUB_MODULES`), `src/lib/admin/admin-registry.ts` (dev entry). In all three, current main won (main retired the `timeTrial` hub flag, the `/dev/daily-score-attack` route and the `dev-ranked-duel-fixture` entry, which the older SC-RENAME1 base still had) and the Champion Card Duel names were applied on top.
+- Post-merge fix: main-added assertion in `AdminShell.areas.test.tsx` updated to `dev-champion-card-duel`.
+- Main-side change preserved: `client.ts` write-boundary `mint: "stat_check_room"` (anonymous-identity id, kept as-is).
+- Kept byte-identical: `stat-check-v1`, `stat-check-tabletop-v2`, `sc-golden:*`, `stat_check.*.v1`, `SC_*` counts match the source commit; all 22 `stat-check` wire paths in `client.ts`; legacy URLs; `"Stat Check"` feedback category.
+- Not renamed (new on main after SC-RENAME1's base, outside Phase 1 scope, left for follow-up): `src/lib/analytics/activityLifecycle.ts` display strings "Stat Check — Bot/Private Match" (ids `stat_check_*_match` are analytics identifiers), `anonymous-identity.ts` comment + `stat_check_room` id, `reportable-question.tsx` comment.
+- Meta Reflex untouched (only the SC-RENAME1 testid/copy change in `Quiz.metaReflex.test.tsx`).
+- Verification: `vite build` OK; `tsc` 2 errors, both in unrelated files (`OnboardingProfile.tsx`, `identity/connections.ts`); 18 targeted test failures identical to pristine `origin/main` (FriendActionMenu.invite, feedback/contract DB-mirror, Quiz.hub h1, ChampionCardDuelPage item UI, statCategoryIcons); all other targeted suites pass.

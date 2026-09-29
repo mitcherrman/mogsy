@@ -532,7 +532,7 @@ describe("16 · Developer tools remain reachable and are labelled", () => {
   it("lists prototypes with an explicit Developer label", async () => {
     renderAdmin("/admin/developer?section=prototypes");
     await screen.findByTestId("admin-area-developer");
-    expect(screen.getByTestId("admin-tool-devlabel-dev-stat-check")).toBeTruthy();
+    expect(screen.getByTestId("admin-tool-devlabel-dev-champion-card-duel")).toBeTruthy();
     expect(screen.getByTestId("developer-mastery-prototypes")).toBeTruthy();
   });
 
