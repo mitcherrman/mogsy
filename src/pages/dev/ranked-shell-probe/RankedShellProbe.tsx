@@ -15,7 +15,8 @@
  *
  * `?q=` selects the question state to serve:
  *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
- *   stressA | stressB | metareflex | junglePet | junglePetBase | jungleRule |
+ *   stressA | stressB | metareflex | orderforge (OF1-B: an Order Forge segment; `?forge=locked|revealed`
+ *   serves the viewer past their Lock In) | junglePet | junglePetBase | jungleRule |
  *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
  *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
  *   base-stat recall) | abilityCost (QF1.2A: a real `ability_cost_rank`
@@ -59,6 +60,7 @@ import { RankedFinalRoundWarning } from "@/components/ranked-arena/RankedFinalRo
 import { RankedMatchOutro } from "@/components/ranked-arena/RankedMatchOutro";
 import {
   matchResultPointsV1, metaReflexSegmentMeta, metaReflexState, modulePointsBlock,
+  orderForgeChallengeReveal, orderForgeSegmentMeta, orderForgeState,
   privatePlayerV2, publicRoundV2, withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
 import {
@@ -91,7 +93,7 @@ const VIEWER = "userA";
  * dictate the normal UI.
  */
 export const PROBE_STATES = [
-  "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex",
+  "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex", "orderforge",
   "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
   "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
   "spellCooldown",
@@ -211,6 +213,15 @@ function masterySegment(kind: "recall" | "compare" | "stat") {
         challenge_count: 3,
         challenges: [0, 1, 2].map((i) => masteryChallenge(kind, i)) } },
   };
+}
+
+/** `?forge=locked|revealed` serves the viewer past their Lock In (OF1-B). */
+function orderForgeProbeState() {
+  const mode = new URLSearchParams(window.location.search).get("forge");
+  if (mode === "revealed") {
+    return orderForgeState({ own_challenge_reveals: [orderForgeChallengeReveal()] }, true);
+  }
+  return orderForgeState({}, mode === "locked");
 }
 
 function questionFor(state: ProbeState) {
@@ -424,6 +435,10 @@ function publicFor(state: ProbeState, role: string | null) {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
     payload.segment_state = metaReflexState(0);
+  } else if (state === "orderforge") {
+    payload.question = null;
+    payload.segment = orderForgeSegmentMeta();
+    payload.segment_state = orderForgeProbeState();
   } else if (state === "masteryRecall" || state === "masteryCompare" || state === "masteryStat") {
     const seg = masterySegment(state === "masteryRecall" ? "recall"
       : state === "masteryStat" ? "stat" : "compare");
@@ -464,6 +479,10 @@ function privateFor(state: ProbeState) {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
     payload.segment_state = metaReflexState(0);
+  } else if (state === "orderforge") {
+    payload.question = null;
+    payload.segment = orderForgeSegmentMeta();
+    payload.segment_state = orderForgeProbeState();
   } else if (state === "masteryRecall" || state === "masteryCompare" || state === "masteryStat") {
     const seg = masterySegment(state === "masteryRecall" ? "recall"
       : state === "masteryStat" ? "stat" : "compare");

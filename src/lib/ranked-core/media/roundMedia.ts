@@ -215,7 +215,8 @@ function decorativeUrls(
  *   * `quiz` — band (family / compact / cinematic) + option icons + motif;
  *   * Meta Reflex (`meta_reflex` block) — both sides of ALL five cards;
  *   * legacy Item Cost Duel (`item_cost` block) — both sides of every challenge;
- *   * Mastery slice (`mastery_slice` block) — every challenge's band + motif.
+ *   * Mastery slice (`mastery_slice` block) — every challenge's band + motif;
+ *   * Order Forge (`order_forge` block) — every card's art.
  */
 export function rankedRoundMedia(
   round: PublicRoundView | null | undefined, opts: RoundMediaOptions = {},
@@ -241,6 +242,8 @@ export function rankedRoundMedia(
       critical.add(resolveQuizAssetUrl(ch.left.assetPath));
       critical.add(resolveQuizAssetUrl(ch.right.assetPath));
     }
+  } else if (block?.contract === "order_forge") {
+    for (const e of block.entries) critical.add(resolveQuizAssetUrl(e.media?.src));
   } else if (block?.contract === "mastery_slice") {
     for (const ch of block.challenges) {
       if (renderPathFor(ch) === "prose") {

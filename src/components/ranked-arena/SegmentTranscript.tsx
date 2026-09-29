@@ -23,6 +23,7 @@ import type {
 } from "@/lib/ranked-public/contracts";
 import {
   MASTERY_SLICE_MODULE_ID,
+  ORDER_FORGE_MODULE_ID,
   META_REFLEX_MIXED_VERSION,
   revealChoiceEntityId,
 } from "@/lib/ranked-public/contracts";
@@ -45,6 +46,7 @@ const RESULT_LABEL: Record<SegmentResult, string> = {
  */
 export function segmentTitle(reveal: SegmentRevealView): string {
   if (reveal.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
+  if (reveal.moduleId === ORDER_FORGE_MODULE_ID) return "Order Forge";
   return reveal.moduleVersion >= META_REFLEX_MIXED_VERSION
     ? META_REFLEX_LABEL : "Item Cost Duel";
 }
@@ -101,6 +103,53 @@ export function SegmentTranscript({
   const them = opponentUserId ? reveal.players[opponentUserId] : undefined;
   if (!you) return null;
   const result = you.segmentResult;
+
+  // OF1-B - an order_forge settlement has no per-card tallies: it is one
+  // sequence, shown against the canonical one. Settled, so both orders are
+  // terminal data and the opponent's may be named.
+  if (reveal.orderForge) {
+    const of = reveal.orderForge;
+    const name = (id: string) => of.labels[id] ?? id;
+    const row = (label: string, ids: string[] | null, testId: string) => (
+      <div data-testid={testId}>
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd>{ids ? ids.map(name).join(" → ") : "No answer"}</dd>
+      </div>
+    );
+    const placed = (pid: string) => {
+      const marks = of.positionCorrect[pid] ?? [];
+      return marks.length > 0
+        ? `${marks.filter(Boolean).length}/${marks.length} in place` : null;
+    };
+    const yourPlaced = placed(viewerUserId);
+    return (
+      <section className="ranked-panel space-y-3 p-3 sm:p-4"
+               data-testid="icd-transcript" aria-labelledby="icd-transcript-heading">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="icd-transcript-heading" className="font-semibold">
+            {segmentTitle(reveal)} — segment result
+          </h4>
+          <p className="text-sm font-semibold" data-testid="icd-transcript-result">
+            {result ? RESULT_LABEL[result] : "—"}
+            {damageDealt !== null && (
+              <span className="ml-2 font-normal text-muted-foreground"
+                    data-testid="icd-transcript-damage">{damageDealt} damage</span>
+            )}
+          </p>
+        </header>
+        <dl className="space-y-1 text-sm" data-testid="order-forge-transcript">
+          {row(`${viewerLabel}`, of.orders[viewerUserId] ?? null, "of-transcript-you")}
+          {opponentUserId && row("Opponent", of.orders[opponentUserId] ?? null, "of-transcript-them")}
+          {row("Correct order", of.canonicalOrder, "of-transcript-correct")}
+        </dl>
+        {yourPlaced && (
+          <p className="text-xs text-muted-foreground" data-testid="of-transcript-placed">
+            {yourPlaced}
+          </p>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="ranked-panel space-y-3 p-3 sm:p-4"

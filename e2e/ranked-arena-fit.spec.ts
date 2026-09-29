@@ -532,3 +532,72 @@ test.describe("RMOB2 compact phone HUD", () => {
     for (const r of m.reach) expect(r.ok, `${r.id} lost its 44px touch height`).toBe(true);
   });
 });
+
+/**
+ * OF1-B — ORDER FORGE FITS. The Lock In and every card must be inside the
+ * nearest clipping ancestor at every locked desktop viewport, in the open AND
+ * the revealed state (`?forge=revealed` is the taller one), and on a phone the
+ * page must stay scrollable with 44px handle / arrow targets.
+ */
+const FORGE_STATES = [
+  { q: "orderforge", anchor: "forge-lock", what: "open" },
+  { q: "orderforge&forge=revealed", anchor: "forge-verdict", what: "revealed" },
+] as const;
+
+const forgeFit = () => {
+  const anchors = ["forge-lock", "forge-verdict"];
+  const el = anchors.map((id) => document.querySelector(`[data-testid="${id}"]`))
+    .find((e): e is Element => !!e)!;
+  let clip: Element | null = el.parentElement;
+  while (clip && getComputedStyle(clip).overflowY === "visible") clip = clip.parentElement;
+  const box = clip!.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { inside: r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5,
+    spill: clip!.scrollHeight - clip!.clientHeight };
+};
+
+for (const vp of LOCKED) {
+  test.describe(`Order Forge @ ${vp.w}x${vp.h}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h } });
+    for (const st of FORGE_STATES) {
+      test(`seats the ${st.what} state inside the arena`, async ({ page }) => {
+        await page.goto(`/dev/ranked-shell-probe?q=${st.q}`);
+        await page.waitForSelector(`[data-testid="${st.anchor}"]`);
+        await page.waitForTimeout(900);
+        const fit = await page.evaluate(forgeFit);
+        expect(fit.inside, `${st.anchor} is outside the parchment`).toBe(true);
+        expect(fit.spill, "the question panel clips Order Forge").toBeLessThanOrEqual(0);
+      });
+    }
+  });
+}
+
+for (const size of [{ w: 360, h: 740 }, { w: 360, h: 800 }]) {
+  test.describe(`Order Forge phone ${size.w}x${size.h}`, () => {
+    test.use({ viewport: { width: size.w, height: size.h }, isMobile: true, hasTouch: true });
+    test("scrolls the page and keeps every control 44px", async ({ page }) => {
+      await page.goto(`/dev/ranked-shell-probe?q=orderforge${LIVE_PHONE}`);
+      await page.waitForSelector('[data-testid="forge-lock"]');
+      await page.waitForTimeout(900);
+      const m = await page.evaluate(() => {
+        const box = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect();
+        const grip = box("forge-grip-e0");
+        const up = box("forge-up-e1");
+        const grab = (document.querySelector('[data-testid="forge-grip-e0"]') as HTMLElement).style.touchAction;
+        return {
+          grip: [grip.width, grip.height], up: [up.width, up.height], grab,
+          hOverflow: document.documentElement.scrollWidth > innerWidth,
+          reachable: document.documentElement.scrollHeight >= document.querySelector(
+            '[data-testid="forge-lock"]')!.getBoundingClientRect().bottom,
+        };
+      });
+      expect(m.grip[0]).toBeGreaterThanOrEqual(44);
+      expect(m.grip[1]).toBeGreaterThanOrEqual(44);
+      expect(m.up[0]).toBeGreaterThanOrEqual(44);
+      expect(m.up[1]).toBeGreaterThanOrEqual(44);
+      expect(m.grab).toBe("none");
+      expect(m.hOverflow, "horizontal overflow").toBe(false);
+      expect(m.reachable, "Lock In is not reachable by scrolling").toBe(true);
+    });
+  });
+}

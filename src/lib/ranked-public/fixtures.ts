@@ -507,3 +507,85 @@ export function matchResultPointsV1(
   } as typeof env.payload;
   return env;
 }
+
+// ------------------------------------------------------------ Order Forge
+
+/**
+ * ASSUMED backend shape of an `order_forge.v1` segment (OF1-B). The exact
+ * public/reveal field names are not yet committed on the backend; every one of
+ * them is read in ONE place (`contracts.ts`: `readOrderForgeBlock`,
+ * `readChallengeReveals`, `readOrderForgeSettlement`, `reviewOrderForge`), so a
+ * rename lands there and in this file.
+ */
+export function orderForgeSegmentMeta(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    module_id: "order_forge", module_version: 1, challenge_count: 1,
+    challenge_index: 0, segment_number: 2, phase: "challenges",
+    ability_deadline: null, challenge_started_at: CARD_STARTED,
+    challenge_deadline: "2026-07-18T12:00:36+00:00", pressure_applied: false,
+    resolved: false, ...over,
+  };
+}
+
+/** Public entries in the server's SHUFFLED display order (no value, no rank). */
+export function orderForgeEntries() {
+  return ["Kindlegem", "Infinity Edge", "Long Sword", "Sunfire Aegis", "Zhonya's Hourglass"]
+    .map((label, i) => ({ entry_id: `e${i}`, label, media: null }));
+}
+
+/** Backend-shaped `segment_state`; `locked` puts the viewer past their Lock In. */
+export function orderForgeState(over: Partial<Record<string, unknown>> = {}, locked = false) {
+  return {
+    active: true,
+    segment_number: 2,
+    module_id: "order_forge",
+    module_version: 1,
+    phase: "challenges",
+    challenge_count: 1,
+    ability_deadline: null,
+    challenge_started_at: CARD_STARTED,
+    challenge_deadline: "2026-07-18T12:00:36+00:00",
+    pressure_applied: false,
+    own_ability: {
+      selected_ability_id: null, confirmed: false,
+      available_ability_ids: [], unavailable_ability_ids: {},
+    },
+    opponent_ability_confirmed: false,
+    own_next_challenge_index: locked ? 1 : 0,
+    own_submitted_choices: [locked ? { order: ["e3", "e0", "e4", "e1", "e2"] } : null],
+    own_challenges_completed: locked ? 1 : 0,
+    opponent_challenges_completed: 0,
+    opponent_finished: false,
+    own_finished: locked,
+    reveal_window_ms: 2500,
+    challenges: {
+      family: "item_cost",
+      prompt: "Order these items by gold cost",
+      metric_label: "Gold cost",
+      direction_labels: { first: "Cheapest", last: "Most expensive" },
+      reveal_window_ms: 2500,
+      challenges: [{ challenge_index: 0, entries: orderForgeEntries() }],
+    },
+    own_challenge_reveals: [],
+    ...over,
+  };
+}
+
+/** The viewer's own reveal for challenge 0, only present once they have locked. */
+export function orderForgeChallengeReveal(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    challenge_index: 0,
+    is_correct: false,
+    order: ["e3", "e0", "e4", "e1", "e2"],
+    canonical_order: ["e2", "e0", "e3", "e4", "e1"],
+    position_correct: [false, true, false, false, false],
+    entries: [
+      { entry_id: "e0", label: "Kindlegem", value_display: "800 g" },
+      { entry_id: "e1", label: "Infinity Edge", value_display: "3600 g" },
+      { entry_id: "e2", label: "Long Sword", value_display: "350 g" },
+      { entry_id: "e3", label: "Sunfire Aegis", value_display: "2700 g" },
+      { entry_id: "e4", label: "Zhonya's Hourglass", value_display: "3250 g" },
+    ],
+    ...over,
+  };
+}

@@ -259,6 +259,15 @@ describe("segment challenge submission", () => {
     expect(JSON.parse(calls[1].init.body as string)).toEqual({ item_id: "Doran's Ring" });
   });
 
+  it("posts an Order Forge answer as `{order}` and never as an item or card id", async () => {
+    stub(() => json(ack));
+    await api.submitSegmentChallenge("m1", 2, 0, { order: ["e3", "e0", "e4", "e1", "e2"] });
+    expect(calls[0].url).toMatch(/\/segments\/2\/challenges\/0$/);
+    const body = JSON.parse(calls[0].init.body as string);
+    expect(body).toEqual({ order: ["e3", "e0", "e4", "e1", "e2"] });
+    expect("item_id" in body || "card_id" in body || "selected" in body).toBe(false);
+  });
+
   it("carries no correctness, timing or index in the body", async () => {
     stub(() => json(ack));
     await api.submitSegmentChallenge("m1", 1, 4, { selected: "9" });

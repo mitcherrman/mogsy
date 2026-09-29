@@ -7,6 +7,7 @@ import {
   itemCostDuelModule,
   masterySliceModule,
   metaReflexModule,
+  orderForgeModule,
   registeredModuleIds,
   rendererForSegment,
   quizModule,
@@ -17,13 +18,14 @@ describe("ranked module renderer registry", () => {
     // UPDATED IN PHASE 4F (was: item_cost_duel + quiz). mastery_slice.v1 is a
     // Ranked-Mastery-Module proof of concept, gated by its own fail-closed
     // flag + allowlist on the backend, exactly like Item Cost Duel.
-    expect(registeredModuleIds()).toEqual(["item_cost_duel", "mastery_slice", "quiz"]);
+    expect(registeredModuleIds()).toEqual(["item_cost_duel", "mastery_slice", "order_forge", "quiz"]);
   });
 
   it("resolves each renderer by id", () => {
     expect(getModuleRenderer("quiz")).toBe(quizModule);
     expect(getModuleRenderer("item_cost_duel")).toBe(itemCostDuelModule);
     expect(getModuleRenderer("mastery_slice")).toBe(masterySliceModule);
+    expect(getModuleRenderer("order_forge")).toBe(orderForgeModule);
   });
 
   it("falls back to quiz when no segment discriminator is present", () => {

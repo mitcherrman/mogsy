@@ -511,7 +511,16 @@ export type SegmentChoice =
   | { itemId: string }
   | { cardId: string }
   /** `mastery_slice.v1` (Phase 4F): the Mastery step's chosen answer. */
-  | { selected: string | number | boolean };
+  | { selected: string | number | boolean }
+  /**
+   * `order_forge.v1`: the WHOLE sequence is the answer — the ids of the cards,
+   * in the order the player arranged them. Never sent as `item_id`/`card_id`.
+   */
+  | { order: readonly string[] };
+
+const assertNever = (x: never): never => {
+  throw new Error(`Unsupported segment choice: ${JSON.stringify(x)}`);
+};
 
 /**
  * Submit one challenge. The body carries the chosen card/item token and nothing
@@ -532,7 +541,9 @@ export const submitSegmentChallenge = (
       method: "POST",
       body: "cardId" in choice ? { card_id: choice.cardId }
         : "selected" in choice ? { selected: choice.selected }
-        : { item_id: choice.itemId },
+        : "order" in choice ? { order: [...choice.order] }
+        : "itemId" in choice ? { item_id: choice.itemId }
+        : assertNever(choice),
       signal,
     });
 

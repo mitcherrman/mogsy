@@ -20,8 +20,9 @@
 //     and what the true value is are facts it is handed, never facts it
 //     derives.
 //
-// Responses are a strict subset of the production `SegmentChoice` scalar
-// transport, so a host maps them 1:1 without widening it.
+// Responses are a strict subset of the production `SegmentChoice` transport
+// (a scalar `selected`, or Order Forge's `order` list), so a host maps them 1:1
+// without widening it.
 // ---------------------------------------------------------------------------
 
 import type { SegmentChoice } from "@/lib/ranked-public/client";
@@ -97,3 +98,45 @@ export type DataDuelResponse = { selected: string };
 // Compile-time proof that the response is a production transport shape.
 type Assert<T extends true> = T;
 export type _DuelIsSegmentChoice = Assert<DataDuelResponse extends SegmentChoice ? true : false>;
+
+// ---------------------------------------------------------------- Order Forge
+
+/** One card in the sequence. */
+export interface OrderEntry {
+  /**
+   * Opaque id the response carries (a positional token in the server's
+   * shuffled display, never derived from rank). Never displayed.
+   */
+  token: string;
+  label: string;
+  media?: SubjectMedia | null;
+}
+
+/** Everything a player may see before the reveal. */
+export interface OrderForgePublic {
+  prompt: string;
+  /** The ordered quantity, short: "Gold cost". */
+  metricLabel: string;
+  /** What the first and the last position mean: "Cheapest" / "Most expensive". */
+  directionLabels: { first: string; last: string };
+  /** The cards in the server's shuffled display order. */
+  entries: readonly OrderEntry[];
+}
+
+/** Authority-supplied, post-lock only. The primitive displays it and grades nothing. */
+export interface OrderForgeReveal {
+  /** The order the player locked, as the server recorded it. */
+  order: readonly string[];
+  /** The canonical order. Only ever supplied here. */
+  canonicalOrder: readonly string[];
+  /** The authority's formatted value per token ("800 g"). May be empty. */
+  valueDisplay: Readonly<Record<string, string>>;
+  /** Per-position marks for `order`, straight from the authority; display only. */
+  positionCorrect: readonly boolean[];
+  /** The authority's verdict on the whole sequence; null when it stated none. */
+  isCorrect: boolean | null;
+}
+
+export type OrderForgeResponse = { order: readonly string[] };
+
+export type _OrderForgeIsSegmentChoice = Assert<OrderForgeResponse extends SegmentChoice ? true : false>;

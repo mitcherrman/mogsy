@@ -481,6 +481,63 @@ function MasterySliceBody({ round }: { round: ReviewRound }) {
   );
 }
 
+/**
+ * One `order_forge` round, reviewed: the viewer's sequence beside the correct
+ * one. Every fact (order, value, per-position mark) is the backend's; an
+ * unrevealed round has no canonical order and shows only what was asked.
+ */
+function OrderForgeBody({ round }: { round: ReviewRound }) {
+  const of = round.orderForge;
+  if (!of) return null;
+  const byId = new Map(of.entries.map((e) => [e.entryId, e]));
+  const list = (ids: string[] | null, marks: boolean[], testId: string) => (
+    <ol className="space-y-1" data-testid={testId}>
+      {(ids ?? []).map((id, i) => {
+        const e = byId.get(id);
+        const mark = marks[i];
+        const tone = mark === undefined ? TONE.idle : mark ? TONE.correct : TONE.incorrect;
+        return (
+          <li key={id} data-position={i + 1} data-mark={mark === undefined ? "none" : String(mark)}
+            className="flex items-center gap-1.5 rounded border px-1.5 py-1 text-[11.5px]"
+            style={{ color: tone.ink, borderColor: tone.edge, background: tone.fill }}>
+            <span className="w-4 shrink-0 text-center font-bold tabular-nums">{i + 1}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{e?.label ?? id}</span>
+            {e?.valueDisplay && <span className="shrink-0 tabular-nums">{e.valueDisplay}</span>}
+            {mark !== undefined && (
+              mark
+                ? <Check className="h-3 w-3 shrink-0" aria-label="In the right place" />
+                : <X className="h-3 w-3 shrink-0" aria-label="In the wrong place" />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+  return (
+    <div className="space-y-2" data-testid="review-order-forge">
+      {of.viewerOrder === null && (
+        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          {of.outcome === "timeout" ? "You did not lock in an order." : "No order was locked in."}
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {of.viewerOrder !== null && (
+          <div className="space-y-1">
+            <SectionLabel>My order</SectionLabel>
+            {list(of.viewerOrder, of.positionCorrect, "review-order-mine")}
+          </div>
+        )}
+        {round.revealed && of.canonicalOrder !== null && (
+          <div className="space-y-1">
+            <SectionLabel>Correct order</SectionLabel>
+            {list(of.canonicalOrder, [], "review-order-correct")}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MetaReflexBody({ round }: { round: ReviewRound }) {
   const cards = round.challenges ?? [];
   const sub = round.viewerSubmission;
@@ -568,6 +625,8 @@ export default function QuestionReviewCard({
       ? "Meta Reflex"
       : round.kind === "mastery_slice"
         ? "Mastery"
+        : round.kind === "order_forge"
+        ? "Order Forge"
         : round.category
           ? prettyCategory(round.category)
           : icon.label;
@@ -603,6 +662,8 @@ export default function QuestionReviewCard({
         <MetaReflexBody round={round} />
       ) : round.kind === "mastery_slice" ? (
         <MasterySliceBody round={round} />
+      ) : round.kind === "order_forge" ? (
+        <OrderForgeBody round={round} />
       ) : (
         <QuizBody round={round} />
       )}

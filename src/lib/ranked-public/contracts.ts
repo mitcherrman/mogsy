@@ -233,6 +233,63 @@ export interface SegmentChallengeView {
  * how two of them would eventually disagree.
  */
 export const MASTERY_SLICE_MODULE_ID = "mastery_slice";
+export const ORDER_FORGE_MODULE_ID = "order_forge";
+
+/** One card of an `order_forge` segment, in the server's shuffled display order. */
+export interface OrderForgeEntryView {
+  /** Opaque positional token (`e0`...). Carries no entity name and no rank. */
+  entryId: string;
+  label: string;
+  media: { src: string | null; alt: string } | null;
+}
+
+/**
+ * The pre-reveal public block of an `order_forge` segment.
+ *
+ * Deliberately has NO field that could hold a value, rank or ordering: the
+ * server's public payload carries none, and this reader refuses one.
+ */
+export interface OrderForgeBlockView {
+  prompt: string;
+  metricLabel: string;
+  directionLabels: { first: string; last: string };
+  entries: OrderForgeEntryView[];
+}
+
+/**
+ * The viewer's own post-lock reveal for their `order_forge` challenge: their
+ * sequence beside the canonical one. Every field is the server's statement;
+ * nothing is graded or ordered client-side.
+ */
+export interface OrderForgeChallengeReveal {
+  order: string[];
+  canonicalOrder: string[];
+  /** entry id -> the authority's formatted value ("800 g"). May be empty. */
+  valueDisplay: Record<string, string>;
+  /** Per-position marks for `order`; display only, empty when not stated. */
+  positionCorrect: boolean[];
+  isCorrect: boolean | null;
+}
+
+/** A settled `order_forge` segment, from `segment_reveal` (both players' orders). */
+export interface OrderForgeSettlement {
+  canonicalOrder: string[];
+  valueDisplay: Record<string, string>;
+  labels: Record<string, string>;
+  /** player id -> that player's submitted order (null: no answer). */
+  orders: Record<string, string[] | null>;
+  positionCorrect: Record<string, boolean[]>;
+}
+
+/** One reviewed `order_forge` round (`ranked_duel.match_review.v1`). */
+export interface ReviewOrderForge {
+  entries: { entryId: string; label: string; media: string | null; valueDisplay: string | null }[];
+  viewerOrder: string[] | null;
+  canonicalOrder: string[] | null;
+  /** The backend's word: `correct`, `incorrect` or `timeout`. */
+  outcome: string | null;
+  positionCorrect: boolean[];
+}
 
 /**
  * One pre-reveal Mastery Slice challenge (`mastery_slice.v1`, Phase 4F proof
@@ -496,6 +553,8 @@ export interface MasteryChallengeReveal {
    * single-choice children, whose shown value IS `correctAnswer`.
    */
   correctAnswerDisplay?: string | null;
+  /** Present only on an `order_forge` reveal (that module reads it; the rest ignore it). */
+  orderForge?: OrderForgeChallengeReveal | null;
   explanation: string | null;
   answerOptions: string[];
   /**
@@ -516,7 +575,8 @@ export interface MasteryChallengeReveal {
 export type SegmentBlockView =
   | { contract: "item_cost"; challenges: SegmentChallengeView[] }
   | { contract: "meta_reflex"; cards: MetaReflexCard[] }
-  | { contract: "mastery_slice"; challenges: MasterySliceChallengeView[] };
+  | { contract: "mastery_slice"; challenges: MasterySliceChallengeView[] }
+  | ({ contract: "order_forge" } & OrderForgeBlockView);
 
 /** The viewer's OWN ability state inside a multi-challenge segment. */
 export interface SegmentAbilityView {
@@ -550,7 +610,8 @@ export interface SegmentStateView {
   ownAbility: SegmentAbilityView;
   opponentAbilityConfirmed: boolean;
   ownNextChallengeIndex: number;
-  ownSubmittedChoices: (string | null)[];
+  /** A scalar token per challenge; an `order_forge` challenge echoes its whole order. */
+  ownSubmittedChoices: (string | readonly string[] | null)[];
   ownChallengesCompleted: number;
   opponentChallengesCompleted: number;
   opponentFinished: boolean;
@@ -1122,6 +1183,9 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   // `FORBIDDEN_PRE_REVEAL_KEYS`); they may arrive only inside the lifted-out
   // `own_challenge_reveals`.
   "comparison_values",
+  // OF1-B - an order_forge segment's canonical sequence and per-position marks
+  // are reveal-only; they may arrive only inside `own_challenge_reveals`.
+  "canonical_order", "position_correct", "value_display",
 ]);
 
 /**
@@ -1290,12 +1354,81 @@ export function readMasterySliceChallenge(v: unknown, label: string): MasterySli
   };
 }
 
+function readOrderForgeMedia(v: unknown, label: string): OrderForgeEntryView["media"] {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") return { src: v, alt: "" };
+  const m = rec(v, label);
+  return { src: nstr(m.src, `${label}.src`), alt: typeof m.alt === "string" ? m.alt : "" };
+}
+
+/**
+ * The `order_forge` public block. The ONE place the server's public field names
+ * are read, so a rename lands here and nowhere else.
+ */
+function readOrderForgeBlock(
+  block: Record<string, unknown>, list: unknown[],
+): OrderForgeBlockView {
+  const first = rec(list[0], "challenges[0]");
+  const entries = Array.isArray(first.entries) ? first.entries : [];
+  const dir = rec(block.direction_labels, "direction_labels");
+  return {
+    prompt: str(block.prompt, "challenges.prompt"),
+    metricLabel: str(block.metric_label, "challenges.metric_label"),
+    directionLabels: {
+      first: str(dir.first, "direction_labels.first"),
+      last: str(dir.last, "direction_labels.last"),
+    },
+    entries: entries.map((e, i) => {
+      const o = rec(e, `entries[${i}]`);
+      return {
+        entryId: str(o.entry_id, `entries[${i}].entry_id`),
+        label: str(o.label, `entries[${i}].label`),
+        media: readOrderForgeMedia(o.media, `entries[${i}].media`),
+      };
+    }),
+  };
+}
+
+/** A list of ids, refusing anything else (an order is ids and nothing more). */
+function idList(v: unknown, label: string): string[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  return v.map((x, i) => str(x, `${label}[${i}]`));
+}
+
+function markList(v: unknown, label: string): boolean[] {
+  if (v === null || v === undefined) return [];
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  return v.map((x, i) => bool(x, `${label}[${i}]`));
+}
+
+/** `{id: "800 g"}` or `[{entry_id, value_display}]`, whichever the server sends. */
+function displayMap(v: unknown, label: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (Array.isArray(v)) {
+    v.forEach((e, i) => {
+      const o = rec(e, `${label}[${i}]`);
+      const id = str(o.entry_id, `${label}[${i}].entry_id`);
+      if (typeof o.value_display === "string") out[id] = o.value_display;
+    });
+  } else if (v && typeof v === "object") {
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof val === "string") out[k] = val;
+    }
+  }
+  return out;
+}
+
 function readSegmentBlock(
   raw: unknown, moduleId: string, moduleVersion: number,
 ): SegmentBlockView | null {
   if (raw === null || raw === undefined) return null;
   const block = rec(raw, "segment_state.challenges");
   const list = Array.isArray(block.challenges) ? block.challenges : [];
+  // Dispatched on the module id BEFORE the version fall-through: an unknown id
+  // would otherwise be read as an item-cost block and throw on `left`.
+  if (moduleId === ORDER_FORGE_MODULE_ID) {
+    return { contract: "order_forge", ...readOrderForgeBlock(block, list) };
+  }
   if (moduleId === MASTERY_SLICE_MODULE_ID) {
     return {
       contract: "mastery_slice",
@@ -1330,8 +1463,14 @@ function readSegmentBlock(
  */
 function readSubmittedChoices(
   raw: unknown, moduleId: string, moduleVersion: number,
-): (string | null)[] {
+): (string | readonly string[] | null)[] {
   const choices = Array.isArray(raw) ? raw : [];
+  if (moduleId === ORDER_FORGE_MODULE_ID) {
+    return choices.map((c) => {
+      if (c === null || c === undefined) return null;
+      return idList(rec(c, "own_submitted_choices[]").order, "own_submitted_choices[].order");
+    });
+  }
   const key = moduleId === MASTERY_SLICE_MODULE_ID
     ? "selected"
     : moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
@@ -1418,7 +1557,9 @@ function readSettledCardReveals(v: unknown, activeIndex: number): SettledCardRev
  * The reader REFUSES a payload that discloses a challenge the viewer can still
  * answer rather than filtering it away, so a contract breach is loud.
  */
-function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallengeReveal[] {
+function readChallengeReveals(
+  v: unknown, activeIndex: number, moduleId: string,
+): MasteryChallengeReveal[] {
   if (v === null || v === undefined) return [];
   if (!Array.isArray(v)) {
     throw new RankedPublicParseError("own_challenge_reveals must be an array");
@@ -1431,6 +1572,20 @@ function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallenge
       throw new RankedPublicParseError(
         `${label} discloses challenge ${challengeIndex} while the viewer may `
         + `still answer challenge ${activeIndex}`);
+    }
+    if (moduleId === ORDER_FORGE_MODULE_ID) {
+      return {
+        challengeIndex,
+        isCorrect: o.is_correct === true,
+        playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
+        orderForge: {
+          order: idList(o.order, `${label}.order`),
+          canonicalOrder: idList(o.canonical_order, `${label}.canonical_order`),
+          valueDisplay: displayMap(o.value_display ?? o.entries, `${label}.entries`),
+          positionCorrect: markList(o.position_correct, `${label}.position_correct`),
+          isCorrect: nbool(o.is_correct, `${label}.is_correct`),
+        },
+      };
     }
     const asText = (raw: unknown): string | null =>
       raw === null || raw === undefined ? null : String(raw);
@@ -1530,7 +1685,7 @@ function readSegmentState(v: unknown): SegmentStateView | null {
     // reveals, no window" rather than as a parse failure.
     ownChallengeReveals: readChallengeReveals(
       o[CHALLENGE_REVEAL_KEY],
-      num(o.own_next_challenge_index, "own_next_challenge_index")),
+      num(o.own_next_challenge_index, "own_next_challenge_index"), moduleId),
     revealWindowMs: nnum(o.reveal_window_ms, "reveal_window_ms"),
     journey: readJourneyBlock(journeyRaw),
     // Optional on the wire: a pre-JOURNEY3 backend sends none of the three.
@@ -1711,6 +1866,8 @@ export interface SegmentRevealView {
   challenges: SegmentRevealChallenge[];
   /** Present only on a `mastery_slice` settlement; empty on every other. */
   masteryChallenges: SegmentRevealMasteryChallenge[];
+  /** Present only on an `order_forge` settlement; null on every other. */
+  orderForge?: OrderForgeSettlement | null;
   players: Record<string, SegmentRevealPlayer>;
   /** Already-public display metadata, keyed by item id. Empty for v4, whose
    * cards carry their own labels. */
@@ -1734,10 +1891,31 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   if (raw === null || raw === undefined) return null;
   const o = rec(raw, "segment_reveal");
   const challenges = Array.isArray(o.challenges) ? o.challenges : [];
+  const moduleId = str(o.module_id, "segment_reveal.module_id");
+  const isOrderForge = moduleId === ORDER_FORGE_MODULE_ID;
   const players: Record<string, SegmentRevealPlayer> = {};
   for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
     const p = rec(value, `players.${pid}`);
     const result = nstr(p.segment_result, `players.${pid}.segment_result`);
+    if (isOrderForge) {
+      // An order_forge player has no per-card tallies: one sequence, one
+      // verdict. Tolerant on purpose - every field here is display-only.
+      players[pid] = {
+        segmentResult: result && _SEGMENT_RESULTS.has(result) ? (result as SegmentResult) : null,
+        correct: nnum(p.correct, `players.${pid}.correct`) ?? 0,
+        incorrect: nnum(p.incorrect, `players.${pid}.incorrect`) ?? 0,
+        unanswered: nnum(p.unanswered, `players.${pid}.unanswered`) ?? 0,
+        totalResponseMs: nnum(p.total_response_ms, `players.${pid}.total_response_ms`)
+          ?? nnum(p.duration_ms, `players.${pid}.duration_ms`) ?? 0,
+        perChallengeMs: [],
+        choices: [],
+        perfect: false,
+        speedBonus: nnum(p.speed_bonus_points, `players.${pid}.speed_bonus_points`)
+          ?? nnum(p.speed_bonus, `players.${pid}.speed_bonus`) ?? 0,
+        damageDealt: nnum(p.damage_dealt, `players.${pid}.damage_dealt`),
+      };
+      continue;
+    }
     players[pid] = {
       segmentResult: result && _SEGMENT_RESULTS.has(result)
         ? (result as SegmentResult) : null,
@@ -1769,20 +1947,42 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   // that settled it — never by a field probe. A Mastery slice settles answered
   // QUESTIONS, and offering those to the card reader would fail on a missing
   // `left_item_id` and take the whole post-segment beat down with it.
-  const moduleId = str(o.module_id, "segment_reveal.module_id");
   const isMastery = moduleId === MASTERY_SLICE_MODULE_ID;
   return {
     moduleId,
     moduleVersion,
     challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
-    challenges: isMastery
+    challenges: isMastery || isOrderForge
       ? []
       : challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
+    orderForge: isOrderForge ? readOrderForgeSettlement(o) : null,
     masteryChallenges: isMastery
       ? challenges.map((c, i) => readRevealMasteryChallenge(c, i))
       : [],
     players,
     items,
+  };
+}
+
+function readOrderForgeSettlement(o: Record<string, unknown>): OrderForgeSettlement {
+  const entries = Array.isArray(o.entries) ? o.entries : [];
+  const labels: Record<string, string> = {};
+  entries.forEach((e, i) => {
+    const x = rec(e, `segment_reveal.entries[${i}]`);
+    labels[str(x.entry_id, `entries[${i}].entry_id`)] = str(x.label, `entries[${i}].label`);
+  });
+  const orders: Record<string, string[] | null> = {};
+  const positionCorrect: Record<string, boolean[]> = {};
+  for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
+    const p = rec(value, `players.${pid}`);
+    orders[pid] = p.order === null || p.order === undefined
+      ? null : idList(p.order, `players.${pid}.order`);
+    positionCorrect[pid] = markList(p.position_correct, `players.${pid}.position_correct`);
+  }
+  return {
+    canonicalOrder: idList(o.canonical_order, "segment_reveal.canonical_order"),
+    valueDisplay: displayMap(o.entries, "segment_reveal.entries"),
+    labels, orders, positionCorrect,
   };
 }
 
@@ -2265,7 +2465,7 @@ export interface ReviewMasteryChallenge {
 
 export interface ReviewRound {
   roundNumber: number;
-  kind: "quiz" | "meta_reflex" | "mastery_slice";
+  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge";
   moduleId: string;
   category: string | null;
   canonicalQuestionRef: string | null;
@@ -2289,6 +2489,8 @@ export interface ReviewRound {
   challenges: ReviewChallenge[] | null;
   /** Present only on a `mastery_slice` round; null on every other kind. */
   masteryChallenges: ReviewMasteryChallenge[] | null;
+  /** Present only on an `order_forge` round; null on every other kind. */
+  orderForge?: ReviewOrderForge | null;
   viewerSubmission: ReviewSubmission;
 }
 
@@ -2413,6 +2615,43 @@ function reviewMasteryChallenge(raw: unknown, label: string,
 }
 
 /**
+ * One `order_forge` review round. The inverse of the live guard: an unrevealed
+ * round must not carry the canonical order or any value (a backend regression
+ * fails loudly here rather than printing the answer to a round that can be
+ * asked again).
+ */
+function reviewOrderForge(
+  r: Record<string, unknown>, label: string, revealed: boolean,
+): ReviewOrderForge {
+  const entries = Array.isArray(r.entries) ? r.entries : [];
+  const canonicalOrder = r.canonical_order === null || r.canonical_order === undefined
+    ? null : idList(r.canonical_order, `${label}.canonical_order`);
+  const parsed = entries.map((e, i) => {
+    const x = rec(e, `${label}.entries[${i}]`);
+    const media = x.media;
+    return {
+      entryId: str(x.entry_id, `${label}.entries[${i}].entry_id`),
+      label: str(x.label, `${label}.entries[${i}].label`),
+      media: typeof media === "string" ? media
+        : media && typeof media === "object" ? nstr((media as Record<string, unknown>).src,
+          `${label}.entries[${i}].media.src`) : null,
+      valueDisplay: nstr(x.value_display, `${label}.entries[${i}].value_display`),
+    };
+  });
+  if (!revealed && (canonicalOrder !== null || parsed.some((e) => e.valueDisplay !== null))) {
+    throw new RankedPublicParseError(`${label} is not revealed but carried the canonical order`);
+  }
+  return {
+    entries: parsed,
+    viewerOrder: r.viewer_order === null || r.viewer_order === undefined
+      ? null : idList(r.viewer_order, `${label}.viewer_order`),
+    canonicalOrder,
+    outcome: nstr(r.outcome, `${label}.outcome`),
+    positionCorrect: markList(r.position_correct, `${label}.position_correct`),
+  };
+}
+
+/**
  * Post-match review (`ranked_duel.match_review.v1`).
  *
  * This is the ONE reader that expects a correct answer, so the guard that
@@ -2431,7 +2670,8 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const label = `rounds[${i}]`;
     const r = rec(raw, label);
     const kind = str(r.kind, `${label}.kind`);
-    if (kind !== "quiz" && kind !== "meta_reflex" && kind !== "mastery_slice") {
+    if (kind !== "quiz" && kind !== "meta_reflex" && kind !== "mastery_slice"
+      && kind !== "order_forge") {
       throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
     }
     const revealed = bool(r.revealed, `${label}.revealed`);
@@ -2467,7 +2707,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     // challenge would end up coerced into a card shape it has no sides for.
     let challenges: ReviewChallenge[] | null = null;
     let masteryChallenges: ReviewMasteryChallenge[] | null = null;
-    if (Array.isArray(r.challenges)) {
+    if (Array.isArray(r.challenges) && kind !== "order_forge") {
       if (kind === "mastery_slice") {
         masteryChallenges = r.challenges.map((c, j) =>
           reviewMasteryChallenge(c, `${label}.challenges[${j}]`, revealed));
@@ -2481,6 +2721,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
       }
     }
 
+    const orderForge = kind === "order_forge" ? reviewOrderForge(r, label, revealed) : null;
     const sub = rec(r.viewer_submission, `${label}.viewer_submission`);
     return {
       roundNumber: num(r.round_number, `${label}.round_number`),
@@ -2495,6 +2736,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
       question,
       challenges,
       masteryChallenges,
+      orderForge,
       viewerSubmission: {
         answerIndex: nnum(sub.answer_index, `${label}.viewer_submission.answer_index`),
         isCorrect: nbool(sub.is_correct, `${label}.viewer_submission.is_correct`),

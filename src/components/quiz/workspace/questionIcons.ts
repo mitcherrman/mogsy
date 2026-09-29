@@ -182,7 +182,9 @@ export function questionIconLabel(
       ? "Meta Reflex"
       : round.kind === "mastery_slice"
         ? "Mastery"
-        : resolveQuestionIcon(round.iconHint).label;
+        : round.kind === "order_forge"
+          ? "Order Forge"
+          : resolveQuestionIcon(round.iconHint).label;
   const outcome = questionOutcome(round);
   const state =
     outcome === "correct" ? "correct"
@@ -211,6 +213,11 @@ export type QuestionOutcome = "correct" | "incorrect" | "unanswered";
  */
 export function questionOutcome(round: ReviewRound): QuestionOutcome {
   if (!round.revealed) return "unanswered";
+  if (round.orderForge) {
+    // The backend's own word for the sequence; nothing is graded here.
+    const o = round.orderForge.outcome;
+    return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
+  }
   const sub = round.viewerSubmission;
   if (sub.challengeCount !== null && sub.isCorrect === null) {
     const total = sub.challengeCount;
