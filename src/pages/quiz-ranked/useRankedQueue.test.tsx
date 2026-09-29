@@ -98,9 +98,25 @@ describe("useRankedQueue", () => {
     const { result } = renderHook(() => useRankedQueue());
     await flush();
     expect(result.current.state).toBe("waiting");
-    act(() => result.current.cancel());
-    await flush();
+    let cancellation: Awaited<ReturnType<typeof result.current.cancelAndWait>> | undefined;
+    await act(async () => { cancellation = await result.current.cancelAndWait(); });
     expect(result.current.state).toBe("selecting_class");
+    expect(cancellation).toBe("cancelled");
+  });
+
+  it("a cancellation failure preserves queue ownership for retry", async () => {
+    state.status = "waiting";
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.cancelError = new Error("cancel unavailable");
+
+    let cancellation: Awaited<ReturnType<typeof result.current.cancelAndWait>> | undefined;
+    await act(async () => { cancellation = await result.current.cancelAndWait(); });
+
+    expect(cancellation).toBe("failed");
+    expect(result.current.state).toBe("waiting");
+    expect(result.current.error).toBe("cancel unavailable");
+    expect(result.current.canCancel).toBe(true);
   });
 
   it("an ineligible account becomes unavailable with player-facing copy", async () => {

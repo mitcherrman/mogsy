@@ -35,8 +35,10 @@ export function TransactionalLeaveDialog({
   const handlingRef = useRef(false);
 
   useEffect(() => {
-    if (!open) handlingRef.current = false;
-  }, [open]);
+    // An asynchronous owner can fail while the same dialog stays open. Once
+    // its busy phase ends, permit another explicit attempt.
+    if (!open || !busy) handlingRef.current = false;
+  }, [busy, open]);
 
   const handleStay = useCallback(() => {
     if (busy || handlingRef.current) return;
@@ -57,7 +59,7 @@ export function TransactionalLeaveDialog({
         if (!nextOpen) handleStay();
       }}
     >
-      <AlertDialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto">
+      <AlertDialogContent className="z-[70] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription asChild>

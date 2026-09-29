@@ -179,6 +179,7 @@ export default function LeaguecraftHub({
   playModes,
   dailyChallenge = null,
   playScrollOpenOnMount = false,
+  onPlayScrollOpenChange,
   sets,
   onSelectSet,
   onSelectCategory,
@@ -301,6 +302,9 @@ export default function LeaguecraftHub({
    * to the proper entry experience rather than resurrecting its old menu.
    */
   playScrollOpenOnMount?: boolean;
+  /** Lets the route ensure only the currently active transactional surface
+   * registers React Router's single supported blocker. */
+  onPlayScrollOpenChange?: (open: boolean) => void;
   sets: QuizSet[];
   onSelectSet: (set: QuizSet) => void;
   history: QuizHistoryResponse | null;
@@ -365,6 +369,9 @@ export default function LeaguecraftHub({
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
 
   const [playOpen, setPlayOpen] = useState(playScrollOpenOnMount);
+  useEffect(() => {
+    onPlayScrollOpenChange?.(playOpen);
+  }, [onPlayScrollOpenChange, playOpen]);
   // The seal the record was opened from, so the record can put focus back on
   // it when it closes. Explicit rather than left to Radix, which restores to
   // whatever had focus when the dialog mounted — `document.body` on every

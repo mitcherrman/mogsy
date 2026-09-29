@@ -15,6 +15,7 @@ export type TransactionalLeaveKind =
 export type TransactionalLeaveBypass =
   | "AUTHORITATIVE_TERMINAL"
   | "HOST_RETURN"
+  | "MATCH_HANDOFF"
   | "AUTH_RECOVERY"
   | "ROUTE_RECOVERY";
 

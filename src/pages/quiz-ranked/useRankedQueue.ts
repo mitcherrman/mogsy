@@ -58,6 +58,11 @@ export type QueueState =
 
 export type RankedClass = "tank" | "mage" | "marksman";
 
+export type QueueCancellationResult =
+  | "cancelled"
+  | "still_owned"
+  | "failed";
+
 const POLL_MS = 2000;
 const MAX_BACKOFF_MS = 8000;
 /** The pairing window is short; poll it faster than the ordinary wait. */
@@ -138,6 +143,8 @@ export interface QueueController {
    */
   joinWithoutClass: (options?: { matchWithBot?: boolean; preset?: string }) => void;
   cancel: () => void;
+  /** The same canonical cancellation, exposed to navigation so it can wait. */
+  cancelAndWait: () => Promise<QueueCancellationResult>;
   /**
    * PLAY1: whether Cancel is a legal action right now. False during the
    * pairing window, where the server has already committed the match and a
@@ -409,7 +416,7 @@ export function useRankedQueue(): QueueController {
         handleError(e, "action");
       }
     })();
-  }, [applyStatus, enterPairing, handleError, poll]);
+  }, [applyStatus, handleError, offerReconnect, poll]);
 
   const join = useCallback(() => joinAs(selectedClass), [joinAs, selectedClass]);
 
@@ -440,46 +447,59 @@ export function useRankedQueue(): QueueController {
         handleError(e, "action");
       }
     })();
-  }, [applyStatus, enterPairing, handleError, poll]);
+  }, [applyStatus, handleError, offerReconnect, poll]);
 
-  const cancel = useCallback(() => {
+  const cancelAndWait = useCallback(async (): Promise<QueueCancellationResult> => {
     // Cancelling twice would race two DELETEs; the pairing window cannot be
     // cancelled at all and must not even ask.
-    if (stateRef.current !== "waiting") return;
+    if (stateRef.current !== "waiting") return "still_owned";
     stateRef.current = "cancelling";
     setState("cancelling");
-    (async () => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      try {
-        const s = await api.cancelQueue(controller.signal);
-        clearTimer();
-        const resolved = applyStatus(s);
-        // A cancel that races pairing can still come back `claimed`: the
-        // server accepted the request and answered with the entry it actually
-        // has. Resume the pairing window rather than returning to the menu.
-        if (resolved === "pairing") {
-          failuresRef.current = 0;
-          timerRef.current = window.setTimeout(() => void poll(), PAIRING_POLL_MS);
-        }
-      } catch (e) {
-        if (api.isAborted(e)) return;
-        // THE CANCEL-VS-PAIRING RACE. The server refused because it had
-        // already claimed this entry for a match. That is a successful
-        // pairing, not a failed action — recover the match instead of
-        // dropping the player back to the menu.
-        if (e instanceof RankedApiError && e.code === "RANKED_CANNOT_CANCEL") {
-          await enterPairing(controller.signal);
-          return;
-        }
-        handleError(e, "action");
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const s = await api.cancelQueue(controller.signal);
+      clearTimer();
+      const resolved = applyStatus(s);
+      // A cancel that races pairing can still come back `claimed`: the
+      // server answered with the entry it actually has. Resume the pairing
+      // window and do not let a navigation caller mistake this for success.
+      if (resolved === "pairing") {
+        failuresRef.current = 0;
+        timerRef.current = window.setTimeout(() => void poll(), PAIRING_POLL_MS);
+        return "still_owned";
       }
-    })();
-  }, [applyStatus, enterPairing, handleError, poll]);
+      return resolved === "selecting_class" ? "cancelled" : "still_owned";
+    } catch (e) {
+      if (api.isAborted(e)) return "failed";
+      // THE CANCEL-VS-PAIRING RACE. The server refused because it had
+      // already claimed this entry for a match. That is a successful
+      // pairing, not a failed action — recover the match instead of
+      // dropping the player back to the menu.
+      if (e instanceof RankedApiError && e.code === "RANKED_CANNOT_CANCEL") {
+        await enterPairing(controller.signal);
+        return "still_owned";
+      }
+
+      // A failed DELETE proves nothing about ownership. Keep the waiting
+      // state and its polling/guard instead of returning to selection.
+      setError(e instanceof Error ? e.message : "queue error");
+      setState("waiting");
+      stateRef.current = "waiting";
+      failuresRef.current = 0;
+      clearTimer();
+      timerRef.current = window.setTimeout(() => void poll(), POLL_MS);
+      return "failed";
+    }
+  }, [applyStatus, enterPairing, poll]);
+
+  const cancel = useCallback(() => {
+    void cancelAndWait();
+  }, [cancelAndWait]);
 
   return {
     state, status, matchId, selectedClass, unavailableReason, error,
-    setSelectedClass, join, joinAs, joinWithoutClass, cancel,
+    setSelectedClass, join, joinAs, joinWithoutClass, cancel, cancelAndWait,
     canCancel: state === "waiting",
     reconnectMatch, reconnect,
   };

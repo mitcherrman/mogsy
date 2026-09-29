@@ -339,7 +339,13 @@ function PracticeRouterLeaveGuard({ active }: { active: boolean }) {
   />;
 }
 
-function PracticeLeaveProtection({ active }: { active: boolean }) {
+function PracticeLeaveProtection({
+  active,
+  registered,
+}: {
+  active: boolean;
+  registered: boolean;
+}) {
   // Production uses createBrowserRouter. Keeping the blocker in a child lets
   // legacy component tests that intentionally use MemoryRouter render Quiz
   // without calling React Router's data-router-only useBlocker hook.
@@ -355,7 +361,10 @@ function PracticeLeaveProtection({ active }: { active: boolean }) {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [active]);
 
-  return dataRouter ? <PracticeRouterLeaveGuard active={active} /> : null;
+  // React Router supports one blocker at a time. Keep Practice's blocker
+  // mounted across its own idle/result/replay phase changes, but unregister it
+  // while the Play Scroll can become the queue owner.
+  return dataRouter && registered ? <PracticeRouterLeaveGuard active={active} /> : null;
 }
 
 export default function Quiz() {
@@ -450,6 +459,7 @@ export default function Quiz() {
     // the signup gate sends a guest on. See `PLAY_RETURN_PARAM`.
     return new URLSearchParams(location.search).get(PLAY_RETURN_PARAM) === "1";
   });
+  const [playScrollOpen, setPlayScrollOpen] = useState(openPlayOnMount);
 
   /**
    * PLAY — opens the record. It no longer writes anything.
@@ -1286,7 +1296,10 @@ export default function Quiz() {
         <QuizSignUpNudge returnTo="/quiz" />
       )}
 
-      <PracticeLeaveProtection active={isUnfinishedPracticePhase(phase)} />
+      <PracticeLeaveProtection
+        active={isUnfinishedPracticePhase(phase)}
+        registered={!playScrollOpen}
+      />
 
       <SEOHead
         title="Mogzy League Quiz — Test Your LoL Knowledge"
@@ -1498,6 +1511,7 @@ export default function Quiz() {
                  legacy payload for it to disagree with. */
               dailyChallenge={dailyStatus}
               playScrollOpenOnMount={openPlayOnMount}
+              onPlayScrollOpenChange={setPlayScrollOpen}
               sets={sets}
               onSelectSet={handleSelectSet}
               /* PRAC1: the category rail IS the Practice chooser. A tile press

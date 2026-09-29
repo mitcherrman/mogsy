@@ -52,6 +52,7 @@ const h = vi.hoisted(() => ({
     joinAs: vi.fn(),
     joinWithoutClass: vi.fn(),
     cancel: vi.fn(),
+    cancelAndWait: vi.fn(),
   },
   friends: {
     friends: [] as unknown[],

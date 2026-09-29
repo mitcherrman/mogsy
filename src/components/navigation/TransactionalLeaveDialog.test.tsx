@@ -67,4 +67,23 @@ describe("TransactionalLeaveDialog", () => {
     expect(screen.getByRole("button", { name: "Stay" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Leave" })).toBeDisabled();
   });
+
+  it("allows retry after an asynchronous owner fails and clears busy", () => {
+    const onLeave = vi.fn();
+    const props = {
+      open: true,
+      title: "Leave fixture?",
+      body: "Neutral body",
+      stayLabel: "Stay",
+      leaveLabel: "Leave",
+      onStay: vi.fn(),
+      onLeave,
+    };
+    const { rerender } = render(<TransactionalLeaveDialog {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Leave" }));
+    rerender(<TransactionalLeaveDialog {...props} busy />);
+    rerender(<TransactionalLeaveDialog {...props} busy={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Leave" }));
+    expect(onLeave).toHaveBeenCalledTimes(2);
+  });
 });

@@ -36,6 +36,7 @@ vi.mock("./useRankedQueue", () => ({
     join: vi.fn(),
     joinAs: vi.fn(),
     cancel: vi.fn(),
+    cancelAndWait: vi.fn(),
   }),
 }));
 vi.mock("@/lib/ranked-public/client", () => ({

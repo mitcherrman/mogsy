@@ -161,6 +161,10 @@ export default function PlayScrollPreviewPage() {
     joinAs: () => setBeat("waiting"),
     joinWithoutClass: () => setBeat("waiting"),
     cancel: () => setBeat("selecting_class"),
+    cancelAndWait: async () => {
+      setBeat("selecting_class");
+      return "cancelled";
+    },
   };
 
   return (

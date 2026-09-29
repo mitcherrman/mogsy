@@ -47,7 +47,7 @@ vi.mock("@/pages/quiz-ranked/useRankedQueue", () => ({
     state: "selecting_class", status: null, matchId: null, selectedClass: "tank",
     unavailableReason: null, error: null, canCancel: false,
     setSelectedClass: vi.fn(), join: vi.fn(), joinAs: vi.fn(),
-    joinWithoutClass: vi.fn(), cancel: vi.fn(),
+    joinWithoutClass: vi.fn(), cancel: vi.fn(), cancelAndWait: vi.fn(),
   }),
 }));
 vi.mock("@/hooks/useFriends", () => ({
