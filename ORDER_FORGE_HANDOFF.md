@@ -348,7 +348,7 @@ If any field name differs, the fix is confined to those four readers and `fixtur
 
 ### Commit
 
-See the SHA line at the bottom of this file.
+**6ffa725f** on `of1/order-forge` (frontend only; based on `origin/main` @ `cb2ccff7`). Not pushed, not deployed.
 
 ## Next integration task
 
