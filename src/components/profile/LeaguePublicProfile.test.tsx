@@ -30,10 +30,6 @@ vi.mock("@/lib/quiz/api", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/league-swipe/api", () => ({
-  fetchMyRecentResults: vi.fn(async () => []),
-}));
-
 const PROGRESS: QuizProgress = {
   total_xp: 890,
   total_attempts: 31,
@@ -127,5 +123,31 @@ describe("LeaguePublicProfile — category contract", () => {
     setApi({ progress: { total_attempts: 0, accuracy: 0 } });
     renderPublicProfile();
     expect(await screen.findByText(/RiftMaster hasn't played the League Quiz yet/)).toBeTruthy();
+  });
+});
+
+// LS-RETIRE1 — standalone League Swipe is retired. The profile must not surface
+// its history, link into its routes, or advertise it as a playable mode.
+describe("LeaguePublicProfile — League Swipe retirement", () => {
+  it.each([true, false])(
+    "renders no Recent League Takes section (isOwnProfile=%s)",
+    async (isOwnProfile) => {
+      setApi({});
+      renderPublicProfile({ isOwnProfile });
+      expect(await screen.findByText("League Quiz Record")).toBeTruthy();
+      expect(screen.queryByText("Recent League Takes")).toBeNull();
+      expect(screen.queryByText(/View all swipe stats/)).toBeNull();
+      expect(screen.queryByText(/takes/i)).toBeNull();
+    },
+  );
+
+  it("offers no Meta Reflex / League Swipe CTA, only the surviving ones", async () => {
+    setApi({});
+    renderPublicProfile({ isOwnProfile: true });
+    expect(await screen.findByRole("button", { name: /Play League Quiz/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /League Hub/ })).toBeTruthy();
+    expect(screen.queryByText(/Meta Reflex/)).toBeNull();
+    expect(screen.queryByText(/swipe/i)).toBeNull();
+    expect(screen.getAllByRole("button")).toHaveLength(2);
   });
 });

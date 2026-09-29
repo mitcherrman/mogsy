@@ -155,6 +155,42 @@ describe("LEGACY1 — the capabilities that were rehomed still exist", () => {
     // match surface is called an arena, and Diamond is a rank tier.
     expect(hits(/ranked-arena/).length).toBeGreaterThan(0);
     expect(hits(/DIAMOND/).length).toBeGreaterThan(0);
-    expect(hits(/league-swipe/).length).toBeGreaterThan(0);
+    // Meta Reflex itself is CURRENT: it lives on as a Ranked/Daily module. Only
+    // its standalone predecessor (League Swipe, below) was retired.
+    expect(hits(/metaReflexModule/).length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// LS-RETIRE1 — standalone League Swipe (the old standalone "Meta Reflex") is
+// retired. Its historical league_swipe_* tables and migrations are kept on
+// purpose (history); what must not come back is active code treating it as a
+// playable mode.
+// ---------------------------------------------------------------------------
+
+describe("LS-RETIRE1 — standalone League Swipe stays retired", () => {
+  it("imports nothing from the retired League Swipe namespace or pages", () => {
+    expect(hits(/["']@\/lib\/league-swipe(\/|["'])/)).toEqual([]);
+    expect(hits(/["'][./\w-]*lib\/league-swipe/)).toEqual([]);
+    expect(hits(/pages\/LeagueSwipe/)).toEqual([]);
+    expect(hits(/\bLeagueSwipe(Hub|Game|Stats)\b/)).toEqual([]);
+  });
+
+  it("reads and writes no league_swipe_* table or RPC", () => {
+    expect(hits(/league_swipe_/)).toEqual([]);
+  });
+
+  it("keeps /league-swipe only as legacy redirects to /quiz, plus the changelog record", () => {
+    // lol-changelog.ts is a historical record of which routes a past release
+    // touched, rendered as text — not a route or a link.
+    expect(hits(/league-swipe/).sort()).toEqual(["src/App.tsx", "src/lib/lol-changelog.ts"]);
+    const app = SOURCES.find((f) => f.path === "src/App.tsx")!.text;
+    const lines = app.split(/\r?\n/).filter((l) => l.includes("league-swipe"));
+    expect(lines).toHaveLength(3);
+    for (const line of lines) {
+      expect(line).toMatch(
+        /<Route path="\/league-swipe(\/stats|\/:gameSlug)?" element=\{<Navigate to="\/quiz" replace \/>\} \/>/,
+      );
+    }
   });
 });

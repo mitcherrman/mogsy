@@ -46,7 +46,6 @@ const ROUTES: RouteSpec[] = [
   { path: "/profile", label: "Profile", group: "App", authed: true },
   { path: "/settings", label: "Settings", group: "App" },
   { path: "/feedback", label: "Feedback", group: "App", authed: true },
-  { path: "/league-swipe", label: "Meta Reflex", group: "Game" },
   { path: "/combat-lab", label: "Combat Lab", group: "Content" },
   { path: "/quiz", label: "Quiz", group: "Content" },
   { path: "/admin", label: "Admin Overview", group: "Admin", authed: true },

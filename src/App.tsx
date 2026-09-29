@@ -72,9 +72,6 @@ const Quiz = R.Quiz.Component;
 const QuizDiagnostics = R.QuizDiagnostics.Component;
 const QuizAdmin = R.QuizAdmin.Component;
 const LolHub = R.LolHub.Component;
-const LeagueSwipeHub = R.LeagueSwipeHub.Component;
-const LeagueSwipeGame = R.LeagueSwipeGame.Component;
-const LeagueSwipeStats = R.LeagueSwipeStats.Component;
 const LolTierList = R.LolTierList.Component;
 const LolDevChangelog = R.LolDevChangelog.Component;
 const ItemDetail = R.ItemDetail.Component;
@@ -529,9 +526,16 @@ export const appRouter = createBrowserRouter(
                       held. Drawing the hub's geometry here made the visitor
                       watch the page assemble; a plain surface just resolves. */}
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
-                  <Route path="/league-swipe" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeHub /></Suspense>} />
-                  <Route path="/league-swipe/stats" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeStats /></Suspense>} />
-                  <Route path="/league-swipe/:gameSlug" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeGame /></Suspense>} />
+                  {/* LS-RETIRE1 — standalone League Swipe (the old standalone
+                      "Meta Reflex") is retired; Meta Reflex lives on inside
+                      Ranked and Daily. These are legacy-bookmark redirects
+                      only. They are declared explicitly so the bare
+                      `/league-swipe` never falls through to the root `/:slug`
+                      invite-link resolver. Historical league_swipe_* data is
+                      untouched in Supabase. */}
+                  <Route path="/league-swipe" element={<Navigate to="/quiz" replace />} />
+                  <Route path="/league-swipe/stats" element={<Navigate to="/quiz" replace />} />
+                  <Route path="/league-swipe/:gameSlug" element={<Navigate to="/quiz" replace />} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
                   <Route path="/lol/mechanics" element={<Suspense fallback={<RouteFallback />}><MechanicsExplorerPage /></Suspense>} />
                   <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LeagueDocsLanding /></Suspense>} />

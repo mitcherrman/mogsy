@@ -587,12 +587,15 @@ describe("Leaguecraft hub — Mastery", () => {
 describe("Leaguecraft hub — modes withheld from this page", () => {
   it("still withholds Champion Card Duel, Meta Reflex and Achievements", async () => {
     // PT1.7A surfaced the three FINISHED Free modules (Time Trial, Knowledge
-    // Breakdown, the practice packs) and moved nothing else. Champion Card Duel and
-    // Meta Reflex keep their own public routes; Achievements is rendered on
-    // /profile and /quiz/diagnostics, so this page is not its only host.
+    // Breakdown, the practice packs) and moved nothing else. Champion Card Duel
+    // keeps its own public route; Achievements is rendered on /profile and
+    // /quiz/diagnostics, so this page is not its only host. The standalone Meta
+    // Reflex card is gone entirely (LS-RETIRE1 retired /league-swipe*); Meta
+    // Reflex itself lives on inside Ranked and Daily.
     const { container } = await renderHub();
     expect(container.querySelector('[data-testid="hub-champion-card-duel-link"]')).toBeNull();
     expect(container.querySelector('[data-testid="hub-meta-reflex-link"]')).toBeNull();
+    expect(container.querySelector('a[href^="/league-swipe"]')).toBeNull();
     expect(screen.queryByText("Achievements")).toBeNull();
     // The pre-redesign five-card practice grid stays withheld too: it is the
     // same five sets the restored packs already carry, in a louder shape.

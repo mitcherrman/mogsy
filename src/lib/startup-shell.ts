@@ -41,15 +41,7 @@ export function isLolSectionPath(pathname: string): boolean {
     pathname === "/combat-lab" ||
     pathname.startsWith("/combat-lab/") ||
     pathname === "/quiz" ||
-    pathname.startsWith("/quiz/") ||
-    // Meta Reflex (internally League Swipe). Its absence here was the root
-    // cause of the surface rendering with neither `theme-lol` nor `dark`, so it
-    // inherited whatever sitewide Mogsy theme the visitor happened to have —
-    // putting the cards' hardcoded near-black text on a near-black ground for
-    // light-OS users. It is League content and belongs in the League theme,
-    // even though its historical public URL sits outside /lol and /quiz.
-    pathname === "/league-swipe" ||
-    pathname.startsWith("/league-swipe/")
+    pathname.startsWith("/quiz/")
   );
 }
 

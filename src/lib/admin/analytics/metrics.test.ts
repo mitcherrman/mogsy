@@ -354,15 +354,15 @@ describe("gameplay branches", () => {
   };
   const modes = Object.fromEntries(computeGameplay(ds, r7).map((m) => [m.mode.id, m]));
 
-  it("presents the current branches, none derived from another; retired DSA is not one", () => {
+  it("presents the current branches, none derived from another; retired DSA and standalone Meta Reflex are not ones", () => {
     expect(computeGameplay(ds, r7).map((m) => m.mode.label)).toEqual([
       "Practice Quiz",
       "Ranked — canonical matches (all hosts)",
-      "Meta Reflex",
       "Legacy Champion Mastery",
     ]);
     // The full registry still governs every historical name.
     expect(GAMEPLAY_MODES.map((m) => m.id)).toContain("dsa");
+    expect(GAMEPLAY_MODES.map((m) => m.id)).toContain("meta_reflex");
     expect(modes.ranked.started).toBe(2);
     expect(modes.practice.started).toBe(1);
   });
@@ -381,11 +381,18 @@ describe("gameplay branches", () => {
     expect(formatRate(modes.ranked.completion)).toBe("1 / 2");
   });
 
-  it("has no authoritative start/complete for Meta Reflex, and says so", () => {
-    expect(modes.meta_reflex.openedEvents).toBe(1);
-    expect(modes.meta_reflex.started).toBeNull();
-    expect(modes.meta_reflex.completed).toBeNull();
-    expect(modes.meta_reflex.mode.gap).toMatch(/no authoritative emitter/i);
+  // LS-RETIRE1 — the standalone surface is retired. Its historical event name
+  // stays governed under an explicitly retired label, and is never presented
+  // as a current gameplay branch, even when historical rows are in range.
+  it("keeps standalone Meta Reflex governed as retired, never as a current mode", () => {
+    const legacy = GAMEPLAY_MODES.find((m) => m.id === "meta_reflex")!;
+    expect(legacy.label).toBe("Legacy Meta Reflex (retired)");
+    expect(legacy.presentation).toBe("retired");
+    expect(legacy.opened).toBe("meta_reflex_opened");
+    expect(legacy.started).toBeNull();
+    expect(legacy.completed).toBeNull();
+    expect(legacy.gap).toMatch(/retired/i);
+    expect(modes.meta_reflex).toBeUndefined();
   });
 
   it("reserves exactly the eight B3 names as server-authoritative", () => {
@@ -642,7 +649,7 @@ describe("system health", () => {
     expect(h.sessionsWithoutVisitorRow).toBe(1);
   });
 
-  it("does not count Meta Reflex opens as an ingestion gap (it has no Railway emitter)", () => {
+  it("does not count historical Meta Reflex opens as an ingestion gap (it never had a Railway emitter)", () => {
     const ds: AnalyticsDataset = {
       events: [web("meta_reflex_opened", NOW - HOUR, "V", "s")],
       sessions: [],

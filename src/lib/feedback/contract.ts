@@ -115,8 +115,8 @@ export const FEEDBACK_REPRODUCIBILITY_LABELS: Record<FeedbackReproducibility, st
  * mode's code and imports nothing from Ranked, Daily, Champion Card Duel or Combat Lab.
  *
  * Deliberately absent:
- *   "Meta Reflex"  — not a destination; it lives inside Leaguecraft and the
- *                    League Swipe hub subsection is behind SHOW_SWIPE_GAMES=false.
+ *   "Meta Reflex"  — not a destination; it lives inside Ranked/Daily. Its
+ *                    standalone League Swipe surface was retired (LS-RETIRE1).
  *   "Mobile / UI"  — a dimension, not an area. A mobile bug in Ranked is a
  *                    Ranked bug; the viewport is captured automatically.
  *   "Mechanics Explorer" — /lol/mechanics is not on main yet (MECH1 5B1).

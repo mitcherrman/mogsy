@@ -70,7 +70,6 @@ const MODERN_LEAGUE_SURFACES = [
   "/quiz/ranked",              // Ranked
   "/quiz/daily-challenge",     // Daily
   "/combat-lab",               // Combat Lab
-  "/league-swipe",             // Meta Reflex
 ];
 
 /** Surfaces outside the League section that the legacy system DID recolour. */

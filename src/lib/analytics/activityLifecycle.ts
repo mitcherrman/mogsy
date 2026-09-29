@@ -93,15 +93,15 @@ export const ACTIVITY_LIFECYCLE_REGISTRY = [
   }),
   activity({
     activityId: "meta_reflex_round",
-    humanName: "Meta Reflex",
+    humanName: "Legacy Meta Reflex (retired)",
     opened: { owner: "browser", boundary: "A specific live Meta Reflex game surface is reached, not merely the picker hub." },
     started: { owner: "browser", boundary: "A matchup is dealt and assigned a client_submission_id." },
     terminal: { owner: "server", boundary: "recordSwipeResult accepts/deduplicates that client_submission_id and returns the canonical round result." },
     entityGrain: "one dealt Meta Reflex matchup/attempt, not an unbounded visit",
     entityId: "client_submission_id",
     validTerminalOutcomes: ["completed", "abandoned", "failed", "cancelled"],
-    currentEvents: ["meta_reflex_opened"],
-    migrationNotes: "Existing opened event is hub reach and must not stand in for a round open/start. Retire unused meta_reflex_started/completed reserved names unless they are redefined at this round grain.",
+    currentEvents: [],
+    migrationNotes: "RETIRED by LS-RETIRE1: the standalone League Swipe surface (and recordSwipeResult) no longer exists, so nothing emits for this grain. Kept only so historical meta_reflex_opened rows and the standalone result history kept in Supabase stay governed. Meta Reflex as played today is a segment inside canonical Ranked (ranked_match) and Daily; it is not this activity.",
   }),
   activity({
     activityId: "leaguecraft_matchup_study",

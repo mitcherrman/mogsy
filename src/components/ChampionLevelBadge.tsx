@@ -24,12 +24,12 @@
 // level-independent card, and a player would have no way to tell "at level 1"
 // from "level does not apply here".
 //
-// WHY IT IS SHARED
-// Ranked Meta Reflex and standalone League Swipe have entirely separate card
-// renderers (different state models, geometry and testids) and touch no common
-// component. That is exactly why this one is shared: the level is the same
-// fact on both surfaces, and two copies of a pill are two things free to
-// drift.
+// WHY IT IS A SHARED COMPONENT
+// It was written to be shared by Ranked Meta Reflex and the standalone League
+// Swipe game, whose card renderers had nothing else in common. LS-RETIRE1
+// retired the standalone game; Ranked/Daily Meta Reflex is now its consumer.
+// Kept as its own component so any future surface showing a frozen champion
+// level reuses one pill instead of growing a second copy free to drift.
 // ---------------------------------------------------------------------------
 
 /** Text prefix. Deliberately "LVL", never "LEVEL" — see MRLVL1_HANDOFF.md. */

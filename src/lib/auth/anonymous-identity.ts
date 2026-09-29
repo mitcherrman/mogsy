@@ -42,7 +42,6 @@
 //   Combat Lab               running a metered simulation     lib/combat-lab/api.ts (non-GET)
 //   Combat Sim Battles       submitting a prediction          lib/combat-battles/api.ts (non-admin, non-GET)
 //   Team Sim                 submitting a billable run        lib/combat-lab/team-sim/client.ts
-//   Meta Reflex              casting a vote                   pages/LeagueSwipeGame.tsx
 //
 // The clients above express the rule as "non-GET mints, GET does not". That is
 // not laziness about which endpoint needs what — it is the honest boundary:
@@ -68,7 +67,6 @@ export type AnonymousIdentityReason =
   | "quiz_write"
   | "daily_challenge_run"
   | "mastery_write"
-  | "meta_reflex_vote"
   | "builder_write"
   | "ranked_write"
   | "stat_check_room" // frozen persisted mint id (Champion Card Duel rooms); do not rename

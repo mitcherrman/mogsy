@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BrainCircuit, Swords, Zap, Shield, Check } from "lucide-react";
+import { ArrowRight, BrainCircuit, Swords, Shield, Check } from "lucide-react";
 import {
   type ChampionManifest,
   getChampionSplash,
 } from "@/hooks/useChampionAssets";
 import { useSfx } from "@/lib/audio/useSfx";
-import { META_REFLEX_NAME, META_REFLEX_ROUTE } from "@/lib/league-swipe/branding";
 
-export type TrainingModeKey = "quiz" | "lab" | "swipe";
+export type TrainingModeKey = "quiz" | "lab";
 
 type TrainingMode = {
   key: TrainingModeKey;
@@ -19,6 +18,9 @@ type TrainingMode = {
   Icon: React.ElementType;
 };
 
+// NOTE: this component has no importer — it was unmounted by the 2026-07-29 hub
+// redesign and left behind. LS-RETIRE1 removed its third mode, the retired
+// standalone Meta Reflex entry.
 const TRAINING_MODES: TrainingMode[] = [
   {
     key: "quiz",
@@ -35,17 +37,6 @@ const TRAINING_MODES: TrainingMode[] = [
     championName: "Akali",
     description: "Simulate builds, combos, damage, and patch changes.",
     Icon: Swords,
-  },
-  {
-    // NOTE: this component has no importer — it was unmounted by the 2026-07-29
-    // hub redesign and left behind. Branded from the shared constant anyway, so
-    // that if it is ever remounted it cannot reintroduce the retired name.
-    key: "swipe",
-    label: META_REFLEX_NAME,
-    to: META_REFLEX_ROUTE,
-    championName: "Jinx",
-    description: "Vote, compare, and see what the League community thinks.",
-    Icon: Zap,
   },
 ];
 
@@ -311,16 +302,5 @@ function ModePanel({ modeKey }: { modeKey: TrainingModeKey }) {
     );
   }
 
-  return (
-    <div className={frame} style={clip}>
-      <div className="text-[9px] uppercase tracking-[0.2em] text-[#0ac8ff]/80 font-bold mb-1.5">
-        Community Pick
-      </div>
-      <div className="flex items-center gap-2 text-[11px] font-bold">
-        <span className="rounded border border-[#0ac8ff]/50 bg-[#0ac8ff]/15 px-2 py-1 text-[#8fdcff]">Jinx 62%</span>
-        <span className="text-[9px] uppercase tracking-widest text-[#a09b8c]">vs</span>
-        <span className="rounded border border-white/10 px-2 py-1 text-[#a09b8c]">Vi 38%</span>
-      </div>
-    </div>
-  );
+  return null;
 }

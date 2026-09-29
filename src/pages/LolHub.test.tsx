@@ -1,7 +1,7 @@
 /**
  * /lol homepage navigation structure: the academy library hub renders every
- * approved destination (desktop volumes + mobile physical books), the League Swipe
- * subsection stays hidden, and landing analytics stay wired.
+ * approved destination (desktop volumes + mobile physical books), the retired
+ * League Swipe subsection stays gone, and landing analytics stay wired.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -227,9 +227,9 @@ describe("LolHub — navigation structure", () => {
   });
 
   it("no longer carries the Meta Reflex subsection or any of its duels", () => {
-    // Removed from the HOMEPAGE only. The feature keeps its own front doors at
-    // /league-swipe and inside Leaguecraft; this asserts the hub stopped
-    // competing with its own navigation, not that anything was deleted.
+    // Removed from the HOMEPAGE on 2026-09-04. The standalone surface was later
+    // retired outright (LS-RETIRE1: /league-swipe* now redirects to /quiz);
+    // Meta Reflex itself lives on inside Ranked/Daily.
     const { container } = renderHub();
     expect(screen.queryByTestId("lol-hub-meta-reflex-section")).toBeNull();
     expect(container.textContent).not.toMatch(/Meta Reflex|League Swipe|Two options\. One tap\./);

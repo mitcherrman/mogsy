@@ -8,7 +8,8 @@ import { ArrowRight } from "lucide-react";
  * the accent "border", the inner offset div is the panel surface, both
  * sharing the same clip so the chamfer reads as a framed edge.
  *
- * `compact` renders the denser variant used by the League Swipe game grid.
+ * `compact` renders the denser variant (originally built for the since-retired
+ * standalone League Swipe game grid).
  */
 
 const PANEL_CLIP =

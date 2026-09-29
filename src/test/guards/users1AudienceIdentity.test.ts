@@ -62,7 +62,6 @@ describe("USERS1 guard · a page visit is not a user account", () => {
       "pages/LolHub.tsx",
       "pages/Quiz.tsx",
       "pages/CombatLab.tsx",
-      "pages/LeagueSwipeGame.tsx",
     ]) {
       const file = RUNTIME.find((f) => f.path === page);
       expect(file, page).toBeTruthy();
@@ -70,20 +69,11 @@ describe("USERS1 guard · a page visit is not a user account", () => {
     }
   });
 
-  /**
-   * Meta Reflex is the one page that still mints, and it must do it at the
-   * VOTE — a durable per-voter write the RPC keys on auth.uid() — and not on
-   * mount. The positive half of the guard: deleting this call would silently
-   * stop anonymous playtesters' votes counting toward community ranking.
-   */
-  it("keeps Meta Reflex's mint at the vote, where the write actually is", () => {
-    const page = RUNTIME.find((f) => f.path === "pages/LeagueSwipeGame.tsx")!;
-    expect(page.code).toMatch(/ensureAnonymousIdentity\("meta_reflex_vote"\)/);
-    // lastIndexOf, not indexOf: the first occurrence is the import.
-    const mintAt = page.code.lastIndexOf("ensureAnonymousIdentity");
-    const handlerAt = page.code.indexOf("const handleChoose");
-    expect(handlerAt).toBeGreaterThan(-1);
-    expect(mintAt).toBeGreaterThan(handlerAt);
+  // LS-RETIRE1: the standalone League Swipe game page, which minted at the
+  // vote ("meta_reflex_vote"), is retired. Nothing may mint for it any more.
+  it("no longer mints for the retired standalone Meta Reflex vote", () => {
+    const minters = RUNTIME.filter((f) => /meta_reflex_vote/.test(f.code)).map((f) => f.path);
+    expect(minters).toEqual([]);
   });
 
   it("reads user-owned data with the non-minting helper", () => {

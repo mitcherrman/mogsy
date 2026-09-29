@@ -1134,8 +1134,8 @@ export default function LolHub() {
           nothing floats below the scene and no destination was lost.
 
           Meta Reflex and the legacy News & Blog grid were removed from this
-          area on 2026-09-04 and stay removed; their own front doors
-          (/league-swipe, /blog) are untouched. */}
+          area on 2026-09-04 and stay removed. /blog keeps its own front door;
+          standalone Meta Reflex was later retired outright (LS-RETIRE1). */}
       <AcademyCommons
         onBackToHall={() => navigateHubFold("hall")}
         navHintRevealed={settledHint === "commons"}

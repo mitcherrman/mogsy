@@ -143,14 +143,18 @@ export const GAMEPLAY_MODES: GameplayMode[] = [
     presentation: "current",
   },
   {
+    // LS-RETIRE1 retired the standalone League Swipe surface that emitted
+    // `meta_reflex_opened`. The id and event name are kept so historical rows
+    // stay governed; it is never presented as a current mode. Meta Reflex as
+    // played today is a segment inside Ranked/Daily and is measured there.
     id: "meta_reflex",
-    label: "Meta Reflex",
+    label: "Legacy Meta Reflex (retired)",
     opened: "meta_reflex_opened",
     started: null,
     completed: null,
     grain: "—",
-    gap: "No authoritative emitter: Meta Reflex truth lives in Supabase (league_swipe_results), not Railway (§20.1).",
-    presentation: "current",
+    gap: "Retired standalone surface (LS-RETIRE1); no emitter. Historical play truth stays in its Supabase history tables, never Railway (§20.1).",
+    presentation: "retired",
   },
   {
     id: "mastery",
@@ -173,7 +177,7 @@ export const GAMEPLAY_MODES: GameplayMode[] = [
   },
 ];
 
-/** The branches the Admin presents as gameplay. Retired DSA is never one of them. */
+/** The branches the Admin presents as gameplay. Retired DSA and retired standalone Meta Reflex are never among them. */
 export const CURRENT_GAMEPLAY_MODES: GameplayMode[] = GAMEPLAY_MODES.filter(
   (m) => m.presentation !== "retired",
 );

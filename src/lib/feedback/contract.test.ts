@@ -219,8 +219,8 @@ describe("categoryForRoute", () => {
 
 describe("taxonomy is audited against the shipped product", () => {
   it("excludes destinations that do not exist on main", () => {
-    // Meta Reflex is not a hub destination — it lives inside Leaguecraft, and
-    // the League Swipe subsection is behind SHOW_SWIPE_GAMES = false.
+    // Meta Reflex is not a hub destination — it lives inside Ranked/Daily, and
+    // its standalone League Swipe surface was retired (LS-RETIRE1).
     // /lol/mechanics (MECH1 5B1) has not landed on main.
     expect(FEEDBACK_CATEGORIES).not.toContain("Meta Reflex");
     expect(FEEDBACK_CATEGORIES).not.toContain("Mechanics Explorer");

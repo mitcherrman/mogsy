@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BrainCircuit, Swords, Trophy, Target, Flame, Medal, MessageSquareQuote,
-  Lock, CheckCircle2, XCircle,
+  BrainCircuit, Trophy, Target, Flame, Medal,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,8 +17,6 @@ import {
   type QuizCategoryStat,
 } from "@/lib/quiz/api";
 import { pickBestCategory } from "@/lib/profile/view-model";
-import { fetchMyRecentResults, type SwipeOwnResult } from "@/lib/league-swipe/api";
-import { META_REFLEX_NAME } from "@/lib/league-swipe/branding";
 import type { ProfileTheme } from "@/lib/profile-themes";
 
 type ThemeStyles = ProfileTheme["styles"];
@@ -26,12 +24,6 @@ type ThemeStyles = ProfileTheme["styles"];
 function fmtPct(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
   return `${Number(n).toFixed(Math.abs(n - Math.round(n)) < 0.05 ? 0 : 1)}%`;
-}
-
-function prettyEntity(slug: string) {
-  return slug
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function SectionCard({
@@ -100,10 +92,12 @@ function StatTile({
 
 /**
  * Lean public League profile: competitive stat showcase, badge shelf,
- * recent takes, strengths/weaknesses, and a challenge CTA. All data comes
- * from the existing quiz API and League Swipe tables — no schema changes.
- * Swipe history is RLS-scoped to the viewer, so "recent takes" only shows
- * real data on your own profile; other profiles get a clean placeholder.
+ * strengths/weaknesses, and a challenge CTA. All data comes from the quiz API.
+ *
+ * LS-RETIRE1 removed the "Recent League Takes" section: it read the retired
+ * standalone League Swipe tables and linked into its routes. That history is
+ * still intact in Supabase (`league_swipe_results`); it is simply no longer
+ * surfaced here.
  */
 export default function LeaguePublicProfile({
   userId,
@@ -134,12 +128,6 @@ export default function LeaguePublicProfile({
     queryKey: ["quiz-achievements", userId],
     queryFn: () => quizApi.getAchievements(userId!),
     enabled: !!userId,
-  });
-
-  const { data: recentTakes } = useQuery({
-    queryKey: ["swipe-recent-results"],
-    queryFn: () => fetchMyRecentResults(5),
-    enabled: isOwnProfile,
   });
 
   const achievements: QuizAchievement[] =
@@ -281,46 +269,6 @@ export default function LeaguePublicProfile({
         )}
       </SectionCard>
 
-      {/* Recent takes */}
-      <SectionCard title="Recent League Takes" icon={MessageSquareQuote} themeStyles={themeStyles} delay={0.16}>
-        {isOwnProfile && (recentTakes?.length ?? 0) > 0 ? (
-          <div className="space-y-2">
-            {(recentTakes as SwipeOwnResult[]).map((r, i) => (
-              <div
-                key={`${r.createdAt}-${i}`}
-                className={cn(
-                  "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
-                  themeStyles.innerBorder || "border-border/50",
-                  themeStyles.innerBg || "bg-background/40",
-                )}
-              >
-                <span className={cn("text-xs min-w-0 truncate", themeStyles.textColor || "text-foreground")}>
-                  Picked <span className="font-semibold">{prettyEntity(r.selectedEntity)}</span> over{" "}
-                  <span className="font-semibold">{prettyEntity(r.otherEntity)}</span>
-                </span>
-                {/* Server-derived. An unjudged answer (null) shows no marker at
-                    all — it is not a miss, and a red X would say it was. */}
-                {r.verifiedCorrect !== null &&
-                  (r.verifiedCorrect ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-                  ) : (
-                    <XCircle className="h-4 w-4 shrink-0 text-red-400" />
-                  ))}
-              </div>
-            ))}
-            <Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate("/league-swipe/stats")}>
-              View all swipe stats
-            </Button>
-          </div>
-        ) : (
-          <p className={cn("text-sm", themeStyles.mutedColor || "text-muted-foreground")}>
-            {isOwnProfile
-              ? `No takes yet — play ${META_REFLEX_NAME} to put your opinions on record.`
-              : `${displayName}'s League takes aren't public yet. Public takes are coming soon.`}
-          </p>
-        )}
-      </SectionCard>
-
       {/* CTA */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -337,9 +285,6 @@ export default function LeaguePublicProfile({
           <Button size="sm" onClick={() => navigate("/quiz")}>
             <BrainCircuit className="h-3.5 w-3.5 mr-1" />
             {isOwnProfile ? "Play League Quiz" : "Challenge with a Quiz"}
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => navigate("/league-swipe")}>
-            <Swords className="h-3.5 w-3.5 mr-1" /> {META_REFLEX_NAME}
           </Button>
           <Button size="sm" variant="secondary" onClick={() => navigate("/lol")}>
             <Trophy className="h-3.5 w-3.5 mr-1" /> League Hub

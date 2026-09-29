@@ -216,7 +216,6 @@ describe("each canonical surface emits its own event, from its own file", () => 
     ["pages/Quiz.tsx", "leaguecraft_opened"],
     ["pages/Quiz.tsx", "practice_quiz_opened"],
     ["pages/quiz-ranked/QuizRankedPage.tsx", "ranked_opened"],
-    ["pages/LeagueSwipeHub.tsx", "meta_reflex_opened"],
     ["pages/quiz-mastery/MasteryJourneysPage.tsx", "mastery_opened"],
     // DCMOD retired the standalone Time Trial page, and with it `dsa_opened`.
     ["pages/Auth.tsx", "signup_viewed"],
@@ -232,7 +231,6 @@ describe("each canonical surface emits its own event, from its own file", () => 
       "hub_entered",
       "leaguecraft_opened",
       "ranked_opened",
-      "meta_reflex_opened",
       "mastery_opened",
     ];
     for (const event of surfaces) {
@@ -241,6 +239,17 @@ describe("each canonical surface emits its own event, from its own file", () => 
         .map(({ path }) => path);
       expect(emitters, event).toHaveLength(1);
     }
+  });
+
+  // LS-RETIRE1 retired the standalone League Swipe hub, which was the only
+  // emitter of `meta_reflex_opened`. The name stays registered in the analytics
+  // contract so historical rows remain governed, but nothing may emit it now —
+  // Ranked/Daily Meta Reflex is measured inside `ranked_*` / Daily.
+  it("emits the retired standalone Meta Reflex surface event from nowhere", () => {
+    const emitters = productionSources({ analyticsLibrary: false })
+      .filter(({ source }) => emits(source, "meta_reflex_opened"))
+      .map(({ path }) => path);
+    expect(emitters).toEqual([]);
   });
 });
 

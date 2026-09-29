@@ -38,6 +38,13 @@ describe("canonical activity lifecycle registry", () => {
     expect(Object.keys(ACTIVITY_LIFECYCLE_BY_ID).some((id) => id.includes("dsa"))).toBe(false);
   });
 
+  it("keeps the retired standalone Meta Reflex round governed but emitting nothing", () => {
+    const legacy = ACTIVITY_LIFECYCLE_BY_ID.meta_reflex_round;
+    expect(legacy.humanName).toBe("Legacy Meta Reflex (retired)");
+    expect(legacy.currentEvents).toEqual([]);
+    expect(legacy.migrationNotes).toContain("LS-RETIRE1");
+  });
+
   it("does not mistake the browser Practice diagnostic for completion authority", () => {
     const practice = ACTIVITY_LIFECYCLE_BY_ID.practice_quiz;
     expect(practice.terminal.owner).toBe("server");
