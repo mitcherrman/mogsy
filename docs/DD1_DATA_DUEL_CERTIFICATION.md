@@ -433,3 +433,17 @@ A throwaway clone of `masterySliceModule.dataDuel.served.test.tsx` covered all 6
 - No percent unit exists in the real data.
 - Both remain certified through the real composer on fixtures (§4).
 - No real case hit the prose bug in §10(b).
+
+---
+
+## DD1-F — landed onto current main
+
+- **Base:** `origin/main` `083190d8` (NAV1 final integration; includes JP2 `50f9ff88`, HUB7, PLAY1).
+- **DD1 source:** `dd1/c-data-duel-integration` `99dea17b` (5 commits, cherry-picked with history; no conflicts).
+- **Intervening main work:** JP2 stage grammar, HUB6/HUB7, NAV1-A..E4, PLAY1, Daily direct-start. Only overlap with DD1: `MasterySliceChallengeSurface.tsx`, `masterySliceModule.tsx` (auto-merged; semantics re-read — Journey children still go through `JourneyChild`/`JourneyStageQuestion`, DD1 only changes `OrdinaryChild`).
+- **JP2 boundary:** `masterySliceModule.dataDuel.integration.test.tsx` proves ordinary comparison → one Data Duel; Journey comparison → zero Data Duel, exactly one `journey-child`, no matchup-sides; legacy and structured reveals render.
+- **NAV1:** no DD1 file overlaps NAV1 surfaces; NAV1 untouched, its tests not re-run.
+- **Tests:** DD1/JP2/Mastery/Ranked/Review suites pass. Failures seen: `QuestionTimeline.test.tsx` (14) fail identically on clean main; `QuestionReviewHost` and `stageGrammar` timeouts under full-suite load pass when run alone.
+- **Typecheck:** identical to clean main (2 pre-existing errors: OnboardingProfile, identity/connections). ESLint: 0 errors. `vite build`: OK; bundle contains `comparison_values.v1`, no MIG lab, no JourneyMatchupSides, no journey-visual-language (JP3).
+- **Not re-run:** browser visual QA matrix (layout unchanged from DD1-C certification; JP2 boundary covered by tests). Recommend a post-publish spot check.
+- **Next step:** owner presses Publish in Lovable.
