@@ -204,3 +204,23 @@ The guard suite and `rg -n "league-swipe|LeagueSwipe" src` catch any resurrectio
 - **Naming collision to resolve there:** Champion Card Duel already owns `/quiz/stat-check*` and `/dev/stat-check`, and the frozen mint id `"stat_check_room"`.
 - `/league-swipe*` must remain redirect-only. Do not reuse it for Stat Check.
 - The `meta_reflex_*` analytics names and ids are persisted history. Do not rename them as part of a UI rename.
+
+## 11. Integration onto current `origin/main` (2026-09-30)
+
+- **Starting `origin/main`:** `b8651dbe2182d7684cdd9401585dacf6c423d040` (NAV1-WK1). Original retirement base was `cb2ccff7`.
+- **Branch / worktree:** `ls-retire1/integration-main` at `.worktrees/ls-retire1-int`. Not pushed.
+- **Main since `cb2ccff7`:** exactly one commit (`b8651dbe`), touching only `docs/NAV1_*`, `docs/NAV1_WK1_WEBKIT_HANDOFF.md` and `e2e/nav1/*`. It has zero file overlap with the retirement.
+- **Method:** `git cherry-pick 37edf9f4` → clean, **0 conflicts**. Nothing hand-resolved; no League Swipe file restored.
+- **Protected paths:** `git diff b8651dbe..HEAD` touches nothing under `supabase/`, `src/integrations/`, `backend/`, ranked/daily/champion-card-duel code.
+
+### Certification
+| Gate | Result |
+|---|---|
+| `vite build` | ✅ succeeds; no `LeagueSwipe*` chunk. `league-swipe` only in `index-*.js` (3 redirects) and `LolDevChangelog-*.js` (history). |
+| Retirement / App routing / profile / analytics-admin / guards / Quiz hub / funnel / feedback (45 files) | 646 pass / 12 fail. New `App.leagueSwipeRetirement.test.tsx` and all retirement assertions green. |
+| Ranked/Daily Meta Reflex + Champion Card Duel + quiz components + level badge (124 files) | 2080 pass / 16 fail (`playModeCard.styles` ×2, `QuestionTimeline` MALT B1 ×14; none import touched code). |
+| Baseline compare | All 12 + 16 failures reproduce on a pristine `b8651dbe` checkout using the same `node_modules`. Exception noted: a second pristine checkout with its **own** install passed `LeagueProfileStats` guest and `QuestionTimeline`, but a pristine `b8651dbe` using the shared `node_modules` fails them identically (15/15), so that difference is environment (install), not this change. |
+| Remaining baseline failures | `App.routing-contract` ×2, `feedback/contract` ×5, `Quiz.hub` h1, `noStaticLeagueFacts`, `users1AudienceIdentity` ×2, `playModeCard.styles` ×2 — identical on pristine `b8651dbe`. |
+
+### Residual search (`League ?Swipe|league_swipe|league-swipe`, excluding `supabase/` and generated types)
+Runtime code: `App.tsx` (3 redirects + comment), `lol-changelog.ts` (historical string). Comments only: `HexPanelLink`, `LeaguePublicProfile`, `metrics.ts`, `activityLifecycle.ts`, `feedback/contract.ts`. Tests/guards asserting absence or redirect: `App.leagueSwipeRetirement`, `noRetiredMogsyArchitecture`, `LeaguePublicProfile`, `Quiz.hub`, `LolHub`, `canonicalSurfaces`, `users1AudienceIdentity`, `feedback/contract.test`. Docs/handoffs: historical. **No import of `src/lib/league-swipe`; no active implementation.**
