@@ -31,7 +31,7 @@ import type {
   SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import {
-  META_REFLEX_MIXED_VERSION, readSegmentSettlement,
+  META_REFLEX_MIXED_VERSION, ORDER_FORGE_MODULE_ID, readSegmentSettlement,
 } from "@/lib/ranked-public/contracts";
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
@@ -1237,6 +1237,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       return runSegmentAction((segment) =>
         api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice),
       (segment) => {
+        // OF3-F2 - Order Forge's one card locks with the light Ranked lock,
+        // only now that the server has accepted it. The module plays nothing.
+        if (segmentState?.moduleId === ORDER_FORGE_MODULE_ID) {
+          playSfx("ranked.answer.lock", {
+            eventId: `ranked:${matchId}:segment:${segment}:card:0:lock`,
+          });
+          return;
+        }
         if (segmentState?.moduleId !== "item_cost_duel"
             || segmentState.moduleVersion < META_REFLEX_MIXED_VERSION) return;
         playSfx("ranked.meta.action", {

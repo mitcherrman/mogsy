@@ -23,7 +23,8 @@ vi.mock("@/lib/backend-auth", () => ({
 import { useRankedMatch, HEARTBEAT_MS } from "./useRankedMatch";
 import {
   icdChallengeState, icdResolvedPayload, icdSegmentMeta, icdSegmentState,
-  metaReflexSegmentMeta, metaReflexState, privatePlayerV2, publicRoundV2,
+  metaReflexSegmentMeta, metaReflexState, orderForgeSegmentMeta, orderForgeState,
+  privatePlayerV2, publicRoundV2,
 } from "@/lib/ranked-public/fixtures";
 
 interface Backend {
@@ -189,6 +190,44 @@ describe("useRankedMatch — multi-challenge segments", () => {
     expect(sfx.play).toHaveBeenCalledWith("ranked.meta.action", {
       eventId: "ranked:m1:segment:4:card:1:action",
     });
+  });
+
+  it("OF3-F2: sounds an accepted Order Forge lock once with stable identity", async () => {
+    backend.segmentState = orderForgeState();
+    backend.segmentMeta = orderForgeSegmentMeta();
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    act(() => {
+      void result.current.submitSegmentChallenge(0, { order: ["e3", "e0", "e4", "e1", "e2"] });
+    });
+    await settle();
+    expect(sfx.play).toHaveBeenCalledTimes(1);
+    expect(sfx.play).toHaveBeenCalledWith("ranked.answer.lock", {
+      eventId: "ranked:m1:segment:2:card:0:lock",
+    });
+  });
+
+  it("OF3-F2: a refused Order Forge lock is silent", async () => {
+    backend.segmentState = orderForgeState();
+    backend.segmentMeta = orderForgeSegmentMeta();
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
+      const u = String(url);
+      if (u.endsWith("/resume")) return json(resumeEnvelope());
+      if (u.endsWith("/private")) return json(privateBody());
+      if (u.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
+      if (u.includes("/challenges/")) {
+        return json({ detail: { code: "RANKED_SEGMENT_COMPLETE", message: "done" } }, 409);
+      }
+      if (/\/matches\/m1$/.test(u) && (init.method ?? "GET") === "GET") return json(publicBody());
+      return json({}, 200);
+    }) as unknown as typeof fetch);
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    act(() => {
+      void result.current.submitSegmentChallenge(0, { order: ["e3", "e0", "e4", "e1", "e2"] });
+    });
+    await settle();
+    expect(sfx.play).not.toHaveBeenCalled();
   });
 
   it("keeps a rejected Meta Reflex card action silent", async () => {

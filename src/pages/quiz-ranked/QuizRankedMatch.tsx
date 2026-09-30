@@ -899,6 +899,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     surfaceRound,
     lastResolved: m.lastResolved,
     lastSegmentRoundNumber: m.lastSegmentRoundNumber,
+    lastSegmentSettlement: m.lastSegmentSettlement,
     revealHold: m.revealHold,
     result: m.result,
     // The result sting belongs to the outro beat, not to the completion
