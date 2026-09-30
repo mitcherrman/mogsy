@@ -102,4 +102,4 @@ See the final report in the session. The push goes to `origin/main`, then the ow
 
 1. **The Premium matrix still sells the Builder.** `src/lib/premium/matrix.ts` (`practice-builder`, and `recurring-weaknesses`' "one-tap handoff into the Practice Builder") and `/lol/premium` still describe it, but the Builder now has no entry point. It needs a destination (planned: Combat Simulation / Quiz Forge) or copy changes. Not changed here, because that is a commercial decision.
 2. Knowledge Breakdown and the Mastery / Diagnostics utility line still sit below History (pre-existing and out of HUB7 scope).
-3. The global HUD overflows by 52px at 320 @ 200% text (pre-existing).
+3. **Resolved by UX1-A:** the global HUD's fixed phone geometry no longer scales beyond the viewport at 200% text; the 320px regression is covered by geometry tests.

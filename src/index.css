@@ -15189,18 +15189,23 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .global-hud > div {
     /* Centre the 36px painted controls in a transparent 44px interaction
        band. This keeps the invisible hit extensions inside the viewport even
-       though the visible chrome is materially smaller. */
-    height: 2.75rem;
+       though the visible chrome is materially smaller. Pixel dimensions are
+       deliberate here: browser text scaling must enlarge the label, not the
+       fixed control boxes around it, or the right cluster grows past a narrow
+       viewport before it has any opportunity to reflow. */
+    height: 44px;
+    padding-left: 8px;
+    padding-right: calc(8px + var(--removed-body-scroll-bar-size, 0px));
   }
   .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"],
     [data-testid="academy-radio-hud-trigger"], [data-testid="hud-page-report"],
     [data-testid="hud-notifications-trigger"]) {
     position: relative;
-    width: 2rem;
-    height: 2rem;
+    width: 32px;
+    height: 32px;
   }
   .global-hud [data-testid="hud-notifications-trigger"] {
-    width: 1.5rem;
+    width: 24px;
   }
   .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"],
     [data-testid="academy-radio-hud-trigger"], [data-testid="hud-page-report"],
@@ -15210,8 +15215,8 @@ html.hub-commons-in-view .hextech-ambience-layer {
     inset: -6px 0;
   }
   .global-hud :is([data-testid="hud-home"], [data-testid="hud-profile"]) .h-9.w-9 {
-    width: 1.6875rem;
-    height: 1.6875rem;
+    width: 27px;
+    height: 27px;
   }
   .global-hud [data-testid="academy-radio-hud-trigger"] svg {
     width: 1rem;
@@ -15226,15 +15231,15 @@ html.hub-commons-in-view .hextech-ambience-layer {
     height: 0.75rem;
   }
   .global-hud [data-testid="hud-profile"] + span[aria-hidden="true"] {
-    height: 1.25rem;
+    height: 20px;
   }
   /* The conversion chip is already wider than 44px. Its invisible extension
      preserves a 44px-tall target while the visible chip remains deliberately
      quiet beside the primary controls. */
   .global-hud [data-testid="hud-signup-chip"] {
     position: relative;
-    height: 1.5rem;
-    padding-inline: 0.25rem;
+    height: 24px;
+    padding-inline: 4px;
     font-size: 10px;
   }
   .global-hud [data-testid="hud-signup-chip"]::after {
@@ -15261,14 +15266,14 @@ html.hub-commons-in-view .hextech-ambience-layer {
    from the right-edge launcher. */
 @media (max-width: 767.98px) {
   html.hub-floating-controls-collapsed .global-hud-right {
-    width: 2.75rem;
-    height: 2.75rem;
-    margin-right: calc(-0.5rem - var(--removed-body-scroll-bar-size, 0px));
+    width: 44px;
+    height: 44px;
+    margin-right: calc(-8px - var(--removed-body-scroll-bar-size, 0px));
   }
   html.hub-floating-controls-collapsed .global-hud-controls {
     position: absolute;
     right: 0;
-    top: 0.25rem;
+    top: 4px;
     transform-origin: right center;
     transition:
       transform 180ms ease,
@@ -15298,8 +15303,14 @@ html.hub-commons-in-view .hextech-ambience-layer {
     position: absolute;
     right: 0;
     top: 0;
+    width: 44px;
+    height: 44px;
     opacity: 1;
     transition: opacity 150ms ease;
+  }
+  .global-hud-expand > .h-9.w-9 {
+    width: 36px;
+    height: 36px;
   }
   .global-hud-right[data-hub-expanded="true"] .global-hud-expand {
     pointer-events: none;
