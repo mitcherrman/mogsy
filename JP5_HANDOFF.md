@@ -7,7 +7,114 @@
 | JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · `ccdbac38` docs (round 2) · **`f578ecc4` round 3 (typed workings, per-child timing, Step 2 + haste)** · the round-3 docs commit |
 | Backend | **Round 3: `jp5/journey-structured-working` at `96fff403`** (worktree `League_Combat_Simulator/.worktrees/jp5-structured-working`, from JP4 `fc95e81e`, which is untouched). Rounds 1–2 were read-only audits (§7–§10). |
 | Production / Railway / Patch Ops / items / Order Forge / other worktrees | **Untouched.** Nothing pushed, merged, integrated or deployed. |
+| Round 4 | **The champion notebook (§R4)**: frontend `9a7a1760` + `1e46ecb7`, backend `a9a4be2e` (armor provenance in `stat_sources`). Retained board bubbles removed; stage geometry unchanged; freed space measured, not applied. |
 | Status | **Not owner-approved.** Round 3 (§0) implements the bounded foundation: one typed working carrier, per-child reveal windows, Step 2 composition, haste Stage 1 — certified locally. §7–§9 below are the round-2 designs it implemented (§0 records what was actually built and where it differs). Open items: §0.7. |
+
+## R4. Round 4 — one job each: the board, the Reasoning Chain, the champion notebook
+
+**Status: implemented and certified locally; NOT owner-approved.** No geometry change was made (the owner reviews the geometry pass first, §R4.6). Nothing pushed, merged, integrated or deployed.
+
+| | Frontend | Backend |
+|---|---|---|
+| Round-4 commits | `9a7a1760` code + re-captured fixtures · `1e46ecb7` grouped transition notes · the docs commit after it | `a9a4be2e` (on `96fff403`) |
+
+### R4.1 Audit — the authority reused (verified in code and on the real captures)
+
+| Question | Answer | Where |
+|---|---|---|
+| Stat-at-level authority? | **Yes.** K1 `champion_stat_at_level` facts: `context {stat, level}`, the champion object, the establishing child, the exact value; K2 joins the reveal's display. The backend asks it only where no item touches the stat, so it is the champion's own base at that level. | `knowledge.ts`, ledger `established[]` |
+| Item/stat-modified values served as canonical values? | **Yes, where a premise states them**: each child's public state carries the numbers its premise states (Leona armor 65.08 after Cloth Armor; 68.872 at level 4; Zed bonus AD 20.8). Never all stats: only what a question stated. | `child.state.sides[].stats` |
+| Multiple authored checkpoints? | **Yes.** Every child's state carries its node on the Journey's state path (`state_version`); transitions carry the node they lead into and a served `note` ("Leona buys Cloth Armor."). No arbitrary "Level 3 + Ruby" construct exists — none is invented. | `J3State.stateVersion`, `J3Transition` |
+| Learned values tied to a state? | **Yes**: the establishing child → its `state_version`. | ledger `child` |
+| Provenance? | **Partial → one additive gap.** `stat_sources` (JP4) served only bonus AD (items + shards). A stated armor had none. | backend `_stat_sources` |
+
+### R4.2 The one backend gap, and the smallest additive contract (`a9a4be2e`)
+
+`stat_sources` now also explains a stated **armor**, through the existing carrier and fail-closed rule: a new part kind `{"kind": "level", "level", "value"}` — the champion's base armor at the state's level (the resolved state's own `armor.at_level`, the value a `champion_stat_at_level` question teaches) — then each item's own canonical armor. Published only when the parts reproduce the stated value at the binding precision; a side with a shard page is not modelled (no breakdown). Not part of `state_key`: no composition pin moves.
+
+Real values: Leona 65.08 = Lv 3 base **50.08** + Cloth Armor **15**; 68.872 = Lv 4 base **53.872** + Cloth Armor 15; Lee Sin 46.1925 = Lv 4 base alone.
+
+Deploy note: the JP4/JP5 frontend reader was strict about source kinds; round 4's reader accepts `level`. The pre-round-4 JP5 frontend must not meet this backend (both are unreleased; ship together, frontend first).
+
+Backend tests: 4 new in `test_jp5_structured_working.py` (the Leona values, reconcile + level-first shape across three recipes, fail-closed, no `state_key` movement); `test_jref1…::test_jp4_a_daily_side…` now reads bonus AD by key. Differential regression: **1021 passed / 67 failed — the 67 are exactly the pristine `fc95e81e` baseline's.**
+
+### R4.3 The board: retained scalar bubbles removed
+
+Removed from both halves, on every density: `Bonus AD 21` (+ its source badges), `Raw 85 !`, `Armor ?` / `Armor 24 !` / `Armor !`, `recall` faces and the transition-delta chips. `anchors.ts` and `JourneyStateAnchor.tsx` are deleted, with their CSS.
+
+Kept: portraits, level, Q/W/E/R (each ability keeps its own learned `!` — formula, raw damage, cooldowns), items (new items stay marked all child long), shards, the transition beat, the State sheet (every stat, deltas, asked/recalled wording), current-focus outlines. The former anchor row keeps its reserved box, **empty and `aria-hidden`**, so the JP2 stage has not moved (§R4.6).
+
+**Consequence for the owner** (the locked decision, applied literally): at Step 2 the raw-damage question's input, Zed's bonus AD 21, is no longer printed on the board (JP2's "no helper lines" keeps it out of the sentence too). It is one tap away in Zed's notebook, and Zed's portrait is **outlined** whenever the question on screen states his stats (served: a premise states exactly its question's inputs). If the owner wants inputs visible without a tap, the natural home is the Reasoning Chain's live row (its job: "surface whatever values the current question requires") — not built, because "Step 2 live remains clean" is also locked.
+
+### R4.4 The champion notebook (`JourneyChampionNotebook`, `lib/journey/notebook.ts`)
+
+The circular portrait is a button. It opens a compact sheet (a Radix popover, portalled, collision-padded; 16.5rem, inside the viewport at every certified width):
+
+```
+AHRI · Lv 2                              [Current state ▾]
+HP          —
+Armor       24   Lv 2 base · learned Step 3   ▾   → Exact · shown 24 · 24.024
+MR / AD / Bonus AD / AP / AH   —
+```
+
+**Data model** — `championNotebook(journey, knowledge, side, stepOnScreen) → { key, championName, current, learned, checkpoints[] }`; a checkpoint is `{ node (state_version), level, note, firstStep, lastStep, entries: { [stat]: { display, how: "learned" | "stated", step, level, exact, sources } } }`.
+
+* **learned** = K2's revealed `champion_stat_at_level` facts (display verbatim; the exact once the ledger lists it) in the node of the child that taught them;
+* **stated** = the numbers a REACHED child's premise stated for this champion, whole via the board's own `formatStatValue`, with their served `stat_sources`;
+* only reached children are read (no later state, and the open child's asked stat is withheld and dropped by K2); nothing is carried into a later node (after Cloth Armor, Leona's level-3 base is not her armor); no arithmetic.
+* rows are the fixed League order HP, Armor, MR, AD, Bonus AD, AP, AH (no stat-category filter, no move speed: nothing serves it); unknown rows stay `—`;
+* the selector appears only when more than one authored state has been reached; it defaults to the board's state; each other state is labelled by its steps, level and served transition note;
+* a row with served provenance or a rounded exact opens in place (item / shard icons, `Lv N base`, the exact total);
+* the portrait wears the gold `!` when a stat was LEARNED by a reveal (right, wrong or timed out alike), glowing once when it arrives.
+
+Base vs modified reads naturally: `Armor 24 · Lv 2 base · learned Step 3` vs `Armor 65 · Lv 3 · Cloth Armor · stated Step 4` → `Lv 3 base 50.08 · Cloth Armor +15 · 65.08`.
+
+### R4.5 Certification
+
+* **Frontend tests**: Journey + surface + ranked-public + quiz-ranked + mastery suites **1988/1988** (157 files) at `9a7a1760`; the note fix adds one assertion (notebook suites 18/18). New: `jp5.notebook.test.ts` (the join on the real captures: stated with sources, learned only from its reveal, wrong = right, the Cloth Armor and level-4 states, no unreached state, grouped transition notes) and `masterySliceModule.notebook.test.tsx` (no chip on ANY snapshot of the reference and Pantheon Journeys; what stays; the portrait button and sheet; Zed / Ahri / Leona in the DOM; the input outline; the Reasoning Chain unchanged). Thirty older tests that pinned the chips were rewritten to assert the same facts where they now live (notebook, ability `!`, State sheet) — none was dropped for being inconvenient. `tsc`: only the 2 known Supabase errors. ESLint: 0 errors; no warning in a changed file.
+* **Geometry**: the full sweep (9 captures × 375/390/768/1024/1280/1440/1920, every snapshot, each reveal also tapped compressed; 1,680 states): **0 violations, 0 page errors, every region set identical to round 3's** — the stage has not moved. Every notebook sheet opened in the screenshots is fully inside the viewport (375 → 1280).
+* **Ordinary Ranked**: `/dev/ranked-shell-probe`, JP4 `bb2c60f4` vs round 4, 22 states × 1280×800 / 390×844: **0 pixels over 24/255 in all 44 states** on a clean run. Two earlier runs differed only in account-dependent chrome (the floating Friends button appears once a fresh context's Supabase sign-in completes; Supabase was intermittently timing out) — in different places from run to run, in a component neither branch touches.
+* **Hosts**: Ranked Bot reference, Daily Standard (Pantheon, Volibear), Daily Survival (Ahri, Volibear) — the same board component and join everywhere.
+* **Tooling note**: `fonts.googleapis.com` timed out from this machine for part of the session (gstatic did not). `pw.cjs` can serve the cached stylesheets with `JP5_OFFLINE_FONTS=1`; the certified sweep and all screenshots ran with the live fonts after the network recovered.
+
+### R4.6 Freed board space — measured, NOT applied (owner review)
+
+The former anchor row is kept, empty (`aria-hidden`), so nothing moved. What it holds, per champion half (measured on the production client path, `freed.cjs`):
+
+| Viewport | Board | Where the row is | Space it now wastes |
+|---|---|---|---|
+| 375×812, 390×844 | 337/352 × 200 | on each half's **name line** (`portrait 40px · name 129px · row 147px`) | **horizontal**: a 147px column. Names still truncate beside it ("PAN…" 46 of the 82px "PANTHEON" needs; "LEO…"). No vertical gain. |
+| 768×1024 | 698 × 240 | the last grid row of each half | **21.6px + 8px gap ≈ 30px** of height |
+| 1024×768 | 500 × 214 | the last grid row | **19.2px + 6px gap ≈ 25px** |
+| 1280×800, 1440×900, 1920×1080 | 700/679 wide | the last grid row | **24px + 12px gap = 36px**; each half's content now ends at 154 of its 190px |
+
+**Recommendation for a later, owner-reviewed geometry pass (not implemented):**
+1. **Phones — cleaner, not shorter.** Give the name line the empty column: champion names read in full ("PANTHEON", "LEONA") with no change to the board's 200px or the question region. Lowest risk, clearest visible win.
+2. **Tablet/desktop — shorter board, not larger internals.** Removing the row lets each half end at its content: 25–36px of board height per breakpoint. The best use is to give it to the **question/reveal region** (the prompt box is 96–100px at 768/1280+, the tightest reserve on the stage; +25–36px there removes most of the live-chain yield/compact pressure and lets the Reasoning Chain's expanded tier breathe), rather than enlarging board art. That touches the JP2 stage reserves (`--jq-prompt-h`, board band heights), so it needs its own sweep and owner sign-off.
+3. Do not reuse the row for new board content: it would re-introduce the retained-scalar role the owner removed.
+
+### R4.7 Reasoning Chain — unchanged
+
+Step 2 live stays clean; Step 4 live still resurfaces `85 → 24 → ? Final damage`; expanded / compressed / reopen, haste, per-child timing and the served workings are untouched (their tests pass unchanged). The copy changes the owner is leaning toward (Step 2 patch-note parentheses; haste "≈ 9.1% reduced" / "≈ 1.1s shorter"; damage deltas) are **not** in this round.
+
+### R4.8 Screenshots (`docs/handoffs/jp5-equation-unfold/r4/`, live fonts, JP5-backend captures)
+
+| File (`jp5-r4-…`) | |
+|---|---|
+| `board-desktop-step2-live`, `board-desktop-step4-live`, `board-mobile-step2-live`, `board-mobile-step4-live` | **after**: no retained bubbles. **Before** = round 3's `r3/jp5-r3-desktop-step2-live`, `-desktop-step4-live`, `-mobile-step2-live`, `-mobile-step4-live` (Bonus AD 21, Raw 85 !, Armor !) |
+| `zed-desktop-after-step2`, `zed-mobile-after-step2` | Zed after Step 2: Bonus AD 21, opened to Doran's Blade +10 · Adaptive Force +5.4 ×2 · exact 20.8 |
+| `ahri-desktop-before-armor` | Ahri while Step 3 asks her armor: every row `—` |
+| `ahri-desktop-armor-learned`, `ahri-mobile-armor-learned` | Ahri after Step 3: Armor 24 · Lv 2 base · learned Step 3 · exact 24.024 |
+| `leona-desktop-cloth-armor`, `leona-mobile-cloth-armor`, `leona-mobile375-cloth-armor` | the modified stat: Armor 65 = Lv 3 base 50.08 + Cloth Armor 15 |
+| `leona-desktop-earlier-state` | the selector on the earlier state: Armor 50 · Lv 3 base · learned Step 1 |
+| `leona-desktop-level4` | the level-4 state: Armor 69 (Lv 4 base 53.872 + Cloth Armor 15), both transition notes |
+
+### R4.9 Open for the owner
+
+1. Visual approval of the notebook sheet and the portrait `!` / input outline.
+2. **Step 2's input** is now one tap away (R4.3): accept, or allow a live-chain input row at Step 2.
+3. The geometry pass (R4.6): phones first (names), then the tablet/desktop height.
+4. The copy changes still pending (R4.7).
 
 ## 0. Round 3 — the foundation (typed working, per-child timing, Step 2, haste)
 
