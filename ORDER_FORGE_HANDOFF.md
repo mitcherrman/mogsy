@@ -734,3 +734,24 @@ None. All four frontend cherry-picks applied cleanly. The 63 files the trunk cha
 5. Confirm a non-admin gets 403 `RANKED_PRESET_NOT_AUTHORIZED` for `admin.order_forge`.
 6. Admin smoke test and phone check: OF1-C checklist steps 6 and 7 (there is no launch UI; call `joinQueue` with `preset: "admin.order_forge"`).
 7. Rollback: revert the backend first.
+
+## OF1-E: production deployment and smoke (2026-09-30)
+
+**Verdict: OF1 BLOCKED — frontend not live: `main` holds Order Forge but mogzy.lol still serves the old bundle; it needs the owner to press Publish in Lovable (a push does not deploy it). The backend was deliberately NOT pushed.**
+
+### Done
+- Trunks re-fetched: frontend `origin/main` `9abc6244`, backend `origin/master` `1002230a`; both unchanged since OF1-D, so no re-integration.
+- Pre-deploy checks: backend 187 passed, 4 skipped, 4 failed (same 4 known no-question-bank baseline failures); frontend `src/lib/ranked-public` + `interaction-grammar` 26 files / 324 tests pass; eslint on the 23 touched TS files 0 errors (5 warnings); `vite build` passes.
+- Frontend pushed as a fast-forward: `origin/main` `9abc6244..392c1310` (contains `OrderForge.tsx`, `orderForgeModule.tsx`, the server-capture fixture). **Final frontend main SHA: `392c1310b562f4f89a1a32fad0b3c76e2d3715e3`** (this note is a later docs-only commit).
+
+### Frontend deployment result: NOT LIVE
+After the push and ~5 minutes, https://mogzy.lol served `index-BFJFCj_G.js`; neither it nor its `contracts-C24E90vJ.js` / `reviewRoles-CPNIqPrM.js` chunks contain `order_forge` (the local build of `392c1310` does, in `contracts-*`, `reviewRoles-*`, `QuizRankedMatch-*`).
+
+### Not run (gated on the frontend being live)
+- Backend push to `master` (`4ffff8f5`, Railway auto-deploys from master, no migration): NOT DONE. Backend master SHA remains `1002230a`.
+- Readiness report, non-admin 403, admin smoke, mobile, backend log check: NOT RUN. Note these also need production access this session does not have (no production DB, no admin session, no Railway log access).
+
+### To resume
+1. Owner: Lovable, Share -> Publish. Confirm `curl -s https://mogzy.lol/ | grep -o 'assets/index-[^"]*'` changes and a chunk contains `order_forge`.
+2. Push backend: `git push origin 4ffff8f5:master` from `League_Combat_Simulator/.worktrees/of1d-integration` (fast-forward; `origin/master` `1002230a` is its ancestor). Wait for Railway `web` SUCCESS and `/api/health` 200.
+3. Then checklist steps 5-8 above (readiness report, non-admin 403, admin smoke with `joinQueue(..., {matchWithBot: true, preset: "admin.order_forge"})`, phone check, logs).
