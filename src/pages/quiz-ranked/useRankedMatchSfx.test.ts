@@ -169,6 +169,102 @@ describe("Ranked semantic SFX observation", () => {
     });
   });
 
+  describe("OF3-F2 — Order Forge: one verdict cue under one event id", () => {
+    const OF = "order_forge.1#2";
+    const VERDICT_ID = "ranked:m1:segment:2:card:0:verdict";
+    const forge = (over: Partial<RankedSfxObservation> = {}) => base({
+      moduleKey: OF, roundKey: OF, orderForgeSegment: 2, orderForgeOwnVerdict: null,
+      ...over,
+    });
+    const settled = (isCorrect: boolean, over: Partial<RankedSfxObservation> = {}) => forge({
+      settlementRound: 2, settlementLive: true,
+      orderForgeSettled: { segmentNumber: 2, isCorrect }, ...over,
+    });
+    const events = (r: ReturnType<typeof step>) => r.emissions.map((e) => e.event);
+
+    it("a correct own reveal sounds exactly one correct cue; a repeat poll is silent", () => {
+      const initial = step(null, forge());
+      const revealed = step(initial.watch, forge({ orderForgeOwnVerdict: true }));
+      expect(revealed.emissions).toEqual([
+        { event: "ranked.answer.correct", eventId: VERDICT_ID }]);
+      expect(step(revealed.watch, forge({ orderForgeOwnVerdict: true })).emissions).toEqual([]);
+    });
+
+    it("an incorrect own reveal sounds exactly one incorrect cue", () => {
+      const initial = step(null, forge());
+      expect(step(initial.watch, forge({ orderForgeOwnVerdict: false })).emissions).toEqual([
+        { event: "ranked.answer.incorrect", eventId: VERDICT_ID }]);
+    });
+
+    it("a reveal that is not yet stated (null) is silent", () => {
+      const initial = step(null, forge());
+      expect(step(initial.watch, forge({ orderForgeOwnVerdict: null })).emissions).toEqual([]);
+    });
+
+    it("settled fallback sounds the verdict when the own reveal was never observed", () => {
+      const initial = step(null, forge());
+      const fast = step(initial.watch, settled(true));
+      expect(fast.emissions).toEqual([{ event: "ranked.answer.correct", eventId: VERDICT_ID }]);
+      expect(events(step(initial.watch, settled(false)))).toEqual(["ranked.answer.incorrect"]);
+    });
+
+    it("the fallback verdict is the settlement's only cue: no award or speed stacks", () => {
+      const initial = step(null, forge());
+      const fast = step(initial.watch, settled(true, {
+        ownAward: { pointsAwarded: 3, speedBonusPoints: 1 },
+      }));
+      expect(events(fast)).toEqual(["ranked.answer.correct"]);
+    });
+
+    it("own reveal then settled fallback carry the SAME eventId (engine dedupe keeps it once)", () => {
+      const initial = step(null, forge());
+      const own = step(initial.watch, forge({ orderForgeOwnVerdict: true }));
+      const fallback = step(own.watch, settled(true, { orderForgeOwnVerdict: true }));
+      const ids = [...own.emissions, ...fallback.emissions].map((e) => e.eventId);
+      expect(ids.length).toBe(2);
+      // The engine drops a repeated id (sfx.test.tsx: "dedupes a stable eventId").
+      expect(new Set(ids)).toEqual(new Set([VERDICT_ID]));
+    });
+
+    it("after an own-reveal verdict the settlement keeps its ordinary award", () => {
+      const initial = step(null, forge());
+      const own = step(initial.watch, forge({ orderForgeOwnVerdict: true }));
+      const done = step(own.watch, settled(true, {
+        orderForgeOwnVerdict: true, ownAward: { pointsAwarded: 3, speedBonusPoints: 0 },
+      }));
+      expect(events(done)).toEqual(["ranked.answer.correct", "ranked.points.awarded"]);
+      expect(done.emissions[0].eventId).toBe(VERDICT_ID);
+    });
+
+    it("hydration or reload of an already-settled / already-revealed segment is silent", () => {
+      expect(step(null, forge({ orderForgeOwnVerdict: true })).emissions).toEqual([]);
+      expect(step(null, settled(true)).emissions).toEqual([]);
+      const hydrated = step(null, settled(false));
+      expect(step(hydrated.watch, settled(false)).emissions).toEqual([]);
+    });
+
+    it("a timed-out settlement (no verdict stated) is silent", () => {
+      const initial = step(null, forge());
+      expect(step(initial.watch, forge({
+        settlementRound: 2, settlementLive: true, orderForgeSettled: null,
+      })).emissions).toEqual([]);
+    });
+
+    it("reorder actions change nothing the observer reads, so emit nothing", () => {
+      const initial = step(null, forge());
+      expect(step(initial.watch, forge()).emissions).toEqual([]);
+    });
+
+    it("leaves the Standard verdict/award hierarchy unchanged", () => {
+      const initial = step(null, base());
+      const standard = step(initial.watch, base({
+        settlementRound: 1, settlementLive: true, ownSettlementOutcome: "incorrect",
+        ownAward: { pointsAwarded: 3, speedBonusPoints: 1 },
+      }));
+      expect(events(standard)).toEqual(["ranked.answer.incorrect"]);
+    });
+  });
+
   it("uses owner-only Meta reveals and coalesces public opponent progress", () => {
     const meta = base({
       moduleKey: "item_cost_duel.4#4",

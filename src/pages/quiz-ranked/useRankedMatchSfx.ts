@@ -4,9 +4,9 @@ import type { SfxEvent } from "@/lib/audio/sfx-registry";
 import { useSfx } from "@/lib/audio/useSfx";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type {
-  MatchResultView, PublicRoundView, SettledCardReveal,
+  MatchResultView, PublicRoundView, SegmentSettlementView, SettledCardReveal,
 } from "@/lib/ranked-public/contracts";
-import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
+import { META_REFLEX_MIXED_VERSION, ORDER_FORGE_MODULE_ID } from "@/lib/ranked-public/contracts";
 
 export interface RankedSfxEmission {
   event: SfxEvent;
@@ -31,6 +31,20 @@ export interface RankedSfxObservation {
    */
   journeyKey?: string | null;
   journeyOwnReveals?: readonly { challengeIndex: number; isCorrect: boolean }[];
+  /**
+   * OF3-F2 - an Order Forge segment's number and the viewer's own verdict from
+   * `ownChallengeReveals[0].orderForge.isCorrect` (null until that reveal is
+   * published). `null` segment for every non-Order-Forge round.
+   */
+  orderForgeSegment?: number | null;
+  orderForgeOwnVerdict?: boolean | null;
+  /**
+   * OF3-F2 - the SETTLED Order Forge segment's verdict for the viewer, read
+   * from the authoritative `segment_reveal`. The fallback for a segment that
+   * settled on the lock, so the in-viewport own reveal was never observed. A
+   * segment's round number IS its segment number, so this carries the same id.
+   */
+  orderForgeSettled?: { segmentNumber: number; isCorrect: boolean } | null;
   settlementRound: number | null;
   settlementLive: boolean;
   ownSettlementOutcome: "correct" | "incorrect" | "timed_out" | null;
@@ -60,6 +74,8 @@ export interface RankedSfxObservation {
 export interface RankedSfxWatch extends RankedSfxObservation {
   sawLive: boolean;
   terminalSounded: boolean;
+  /** OF3-F2 - the Order Forge segment whose verdict this watch has announced. */
+  orderForgeVerdictSegment?: number | null;
 }
 
 /**
@@ -146,6 +162,45 @@ export function observeRankedSfx(
     }
   }
 
+  // OF3-F2 - ONE verdict per Order Forge segment, under ONE event id. The
+  // verdict is a single card (`card:0`), and both sources below name it with
+  // the same id, so whichever path arrives second is dropped by the engine's
+  // global eventId dedupe rather than by a second dedupe here.
+  const orderForgeId = (segment: number) => id(`segment:${segment}:card:0:verdict`);
+  const verdictEvent = (isCorrect: boolean): SfxEvent =>
+    isCorrect ? "ranked.answer.correct" : "ranked.answer.incorrect";
+  let orderForgeVerdictSegment = previous.orderForgeVerdictSegment ?? null;
+  const orderForgeSegment = current.orderForgeSegment ?? null;
+  if (orderForgeSegment !== null && !current.terminal
+      && typeof current.orderForgeOwnVerdict === "boolean") {
+    // Only a NEW reveal sounds: a baseline that already carries it is history.
+    const seen = orderForgeSegment === (previous.orderForgeSegment ?? null)
+      && typeof previous.orderForgeOwnVerdict === "boolean";
+    if (!seen) {
+      emissions.push({
+        event: verdictEvent(current.orderForgeOwnVerdict),
+        eventId: orderForgeId(orderForgeSegment),
+      });
+      orderForgeVerdictSegment = orderForgeSegment;
+    }
+  }
+  let orderForgeFallbackSounded = false;
+  if (current.orderForgeSettled
+      && current.settlementRound !== null
+      && current.settlementRound !== previous.settlementRound
+      && current.settlementLive
+      && !current.terminal) {
+    const settled = current.orderForgeSettled;
+    // Same id as the own-reveal path; emitted even when that path already
+    // sounded so the engine's dedupe is the single guarantee of "once".
+    emissions.push({
+      event: verdictEvent(settled.isCorrect),
+      eventId: orderForgeId(settled.segmentNumber),
+    });
+    orderForgeFallbackSounded = orderForgeVerdictSegment !== settled.segmentNumber;
+    orderForgeVerdictSegment = settled.segmentNumber;
+  }
+
   if (current.settlementRound !== null
       && current.settlementRound !== previous.settlementRound
       && current.settlementLive
@@ -164,7 +219,10 @@ export function observeRankedSfx(
     // Reflex module completion), which carries no per-question verdict here.
     const verdictSounded = current.ownSettlementOutcome === "correct"
       || current.ownSettlementOutcome === "incorrect";
-    if (!verdictSounded && current.ownAward && current.ownAward.pointsAwarded > 0) {
+    // OF3-F2 - a fallback verdict IS this settlement's cue; the award must not
+    // stack behind it (see above). When the verdict came earlier from the own
+    // reveal, the settlement keeps its ordinary award.
+    if (!verdictSounded && !orderForgeFallbackSounded && current.ownAward && current.ownAward.pointsAwarded > 0) {
       emissions.push({ event: "ranked.points.awarded", eventId: `${settlementId}:award` });
       if (current.ownAward.speedBonusPoints > 0) {
         emissions.push({ event: "ranked.speed.bonus", eventId: `${settlementId}:speed-bonus` });
@@ -187,6 +245,7 @@ export function observeRankedSfx(
       ...current,
       sawLive: previous.sawLive || !current.terminal,
       terminalSounded,
+      orderForgeVerdictSegment,
     },
     emissions,
   };
@@ -213,6 +272,26 @@ function terminalResult(
   return result.winnerUserId === viewerUserId ? "victory" : "defeat";
 }
 
+/**
+ * The viewer's verdict from a settled Order Forge `segment_reveal`, or null
+ * when the settlement is another module's, is not for the settled round, or
+ * states neither a correct nor an incorrect sequence (a timeout is silent).
+ */
+function orderForgeSettledVerdict(
+  settlement: SegmentSettlementView | null,
+  settlementRound: number | null,
+  segmentRound: number | null,
+  viewerUserId: string,
+): RankedSfxObservation["orderForgeSettled"] {
+  if (!settlement || settlement.reveal.moduleId !== ORDER_FORGE_MODULE_ID
+      || settlementRound === null || segmentRound !== settlementRound) return null;
+  const own = settlement.reveal.players[viewerUserId];
+  if (!own) return null;
+  if (own.correct > 0) return { segmentNumber: settlementRound, isCorrect: true };
+  if (own.incorrect > 0) return { segmentNumber: settlementRound, isCorrect: false };
+  return null;
+}
+
 export interface UseRankedMatchSfxInput {
   matchId: string;
   viewerUserId: string;
@@ -220,6 +299,8 @@ export interface UseRankedMatchSfxInput {
   surfaceRound: PublicRoundView | null;
   lastResolved: ResolvedRoundView | null;
   lastSegmentRoundNumber: number | null;
+  /** OF3-F2 - the settled segment transcript, for the Order Forge verdict fallback. */
+  lastSegmentSettlement?: SegmentSettlementView | null;
   revealHold: boolean;
   result: MatchResultView | null;
   /** RFX1 2B3 — see `RankedSfxObservation.outcomeMoment`. */
@@ -258,6 +339,13 @@ export function useRankedMatchSfx(input: UseRankedMatchSfxInput): void {
       journeyKey: segment?.journey
         ? `${segment.moduleId}.${segment.moduleVersion}#${segment.segmentNumber}` : null,
       journeyOwnReveals: segment?.journey ? segment.ownChallengeReveals : [],
+      orderForgeSegment: segment?.moduleId === ORDER_FORGE_MODULE_ID
+        ? segment.segmentNumber : null,
+      orderForgeOwnVerdict: segment?.moduleId === ORDER_FORGE_MODULE_ID
+        ? segment.ownChallengeReveals[0]?.orderForge?.isCorrect ?? null : null,
+      orderForgeSettled: orderForgeSettledVerdict(
+        input.lastSegmentSettlement ?? null, settlement?.roundNumber ?? null,
+        input.lastSegmentRoundNumber, input.viewerUserId),
       settlementRound: settlement?.roundNumber ?? null,
       settlementLive: input.revealHold,
       // Multi-card modules publish their own per-card verdict stream. Their
