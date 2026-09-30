@@ -665,3 +665,72 @@ What is in place instead:
 ### Out of scope for V1
 
 Daily / Weak Areas / history integration, SFX for lock and reveal, richer per-position animation, a launch surface for the preset, and showing the comparison in the viewport during the settle beat.
+
+## OF1-D: current-trunk integration (DONE, 2026-09-30)
+
+**Verdict: READY FOR DEPLOYMENT**, with one manual pre-deploy check still owed: the production item-data readiness report (see "Production readiness" below). Nothing was pushed or deployed. This section supersedes step 1 of the OF1-C deployment checklist.
+
+### Starting trunks (fetched 2026-09-30, confirmed with `git ls-remote`)
+
+| Repo | Trunk | SHA at integration | Drift since the OF1 base |
+|---|---|---|---|
+| Frontend `mogsy` | `origin/main` | `9abc62448308930bb0c553cfc41f486e9f1dcbd7` | 3 commits past `cb2ccff7` (NAV1-WK1 WebKit certification, LS-RETIRE1 League Swipe retirement and its record) |
+| Backend `League_Combat_Simulator` | `origin/master` | `1002230adc12beefc24f402520d6dd5dbc646a84` | none; still the OF1 base |
+
+### Integration branches
+
+| Repo | Branch | Worktree | Final SHA |
+|---|---|---|---|
+| Frontend | `of1d/order-forge-integration` | `mogsy/.worktrees/of1d-integration` | code: **`33278874d8d97ff9d07e6ae6805c5f22c7944b51`**; the branch tip is docs-only commits on top of it (this file) |
+| Backend | `of1d/order-forge-integration` | `League_Combat_Simulator/.worktrees/of1d-integration` | **`4ffff8f5499c7314555ea0864bba9715f3001550`** (the certified SHA itself) |
+
+Both branches are local only. The primary checkouts (both on `envvis1-batch1-scene-channel`, dirty) and the `of1/order-forge` branches were not touched.
+
+### What was integrated
+
+**Frontend:** cherry-picked onto `origin/main` @ `9abc6244`, in order. No merge of the old branch.
+
+| Certified commit | Integrated as | Content |
+|---|---|---|
+| `6ffa725f` | `fcf10bcf` | OF1-B: primitive, module renderer, contracts, review, tests |
+| `a022eb06` | `47d26360` | docs only (this file) |
+| `45d0daec` | `33278874` | OF1-C: server-capture certification, keyboard-focus fix |
+| `82b22c48` | `b5284312` | docs only (this file) |
+
+**Backend:** `origin/master` has not moved since the OF1 base, so the integration branch is `origin/master` fast-forwarded to `4ffff8f5` (`a7e5fdbd`, `55c7fd85`, `48c5092a`, `4ffff8f5`). No cherry-pick was needed and the SHAs are unchanged.
+
+### Conflicts and resolutions
+
+None. All four frontend cherry-picks applied cleanly. The 63 files the trunk changed and the 25 files Order Forge changed do not overlap, and all 24 Order Forge source/test files on the integration branch are byte-identical to the certified tip (`git diff of1/order-forge HEAD` over those paths is empty).
+
+### Seam check against current trunk
+
+- Backend trunk is unchanged, so `SegmentChallengeIn`, response serialization, review/reveal shapes and preset handling are exactly as certified.
+- Frontend trunk drift touches no file under `src/lib/ranked-public`, `src/lib/ranked-core`, `src/components/ranked-arena`, `src/components/interaction-grammar` or `src/components/quiz/workspace`; the only ranked-named files are two NAV1 e2e specs. A scan of the drift for `preset`, `joinQueue`, `ModuleRenderer`, `rendererForSegment`, `CanonicalArena`, `SegmentChoice`, `segment_reveal` and `readMatchReview` finds nothing. The `ModuleRenderer` registry semantics, Ranked review/reveal readers, preset handling and `CanonicalArena` ownership are unchanged.
+
+### Tests re-run on the integration branches
+
+**Backend** (`python -m pytest test_order_forge_module.py test_order_forge_flow.py test_order_forge_wire_contract.py test_ranked_modules_quiz_parity.py test_jref2_admin_reference_journey_preset.py test_ranked_playtest_preset.py -p no:cacheprovider`): **187 passed, 4 skipped, 4 failed.** The 4 failures are the same "ordinary bot match" cases OF1-C recorded as failing on the untouched baseline (`test_jref2_...::test_an_ordinary_bot_match_is_unchanged` and three in `test_ranked_playtest_preset.py`): this environment has no question bank. These files cover every item requested: module tests, service/HTTP flow, wire contract, result validation, data-unavailable -> 503, the last-5-seconds lock with `pressure_seconds=0`, `bot_schedule`, review serialization and duplicate submission (see the OF1-C table for the test names).
+
+**Frontend:**
+
+- `vitest run src/lib/ranked-public src/components/interaction-grammar src/lib/ranked-core/modules` plus `SegmentTranscript`, `SegmentResultBeat` and `QuestionReview*`: 52 files, **738 passed, 1 failed**. The one failure was a 50 s Radix popover test in `QuestionReviewHost.test.tsx` timing out under load; re-run alone, that file passes 16 of 16. This set includes the primitive, module, server-capture contract, registry, review, transcript, serializer and keyboard/accessibility tests.
+- `vitest run src/components/ranked-arena`: 552 passed, 7 failed in 3 files (`AnswerGrid.elimination`, `DailyOnCanonicalArena.boundary`, `QuestionStageGeometry`). Same files and same count as the baseline OF1-C measured at `cb2ccff7`. Not re-measured on a bare `9abc6244` baseline; trunk drift touches none of these files.
+- `tsc -p tsconfig.app.json --noEmit`: only the 3 known baseline files error (`OnboardingProfile`, `identity/connections`, `practiceLeaveContract.test`).
+- `eslint` on the Order Forge files: 0 errors, 5 react-refresh warnings.
+- `vite build`: passes.
+- Playwright `playwright.arena.config.ts -g "Order Forge"`: **all 22 pass, but not in one clean run.** With `--retries=2`: 18 passed first time, 4 passed on retry. Every recorded failure was the dev route rendering a blank page for 60 s (a `waitForSelector` timeout on the Vite dev server in this environment); no recorded failure was a fit or 44 px assertion. Two earlier runs without retries gave 21/22 and 19/22, failing different tests each time.
+
+### Production readiness
+
+**NOT RUN: no production access from this environment.** There is no production database connection or copy here, and the worktree's local `lol_calc.db` is empty (`order_forge_readiness_report.py` stops with `CostAuthorityUnavailable: item_canonical is unpopulated`). Pool sufficiency, the number of qualifying 5-item sets with >=100 g adjacent gaps, missing image paths and exclusions are therefore all **unknown**. This is the only manual pre-deploy check left. The preset fails closed (503 `RANKED_FORMAT_UNSERVABLE`) if the pool cannot serve, and it is admin-only.
+
+### Remaining deployment steps
+
+1. **Manual pre-deploy check:** run `python order_forge_readiness_report.py <production db>` (read-only) from backend `4ffff8f5`. Require exit 0 / `READY`; record `max_selectable`, excluded items and missing image files here.
+2. Re-fetch both trunks. If `origin/main` is still `9abc6244` and `origin/master` still `1002230a`, push both `of1d/order-forge-integration` branches and open the PRs (frontend tip; backend `4ffff8f5`). If either trunk moved, re-integrate first.
+3. Merge and **deploy the frontend first**. Confirm an ordinary Ranked match and match review still work.
+4. Merge and **deploy the backend second**. No migration. Confirm an ordinary Ranked bot match still starts.
+5. Confirm a non-admin gets 403 `RANKED_PRESET_NOT_AUTHORIZED` for `admin.order_forge`.
+6. Admin smoke test and phone check: OF1-C checklist steps 6 and 7 (there is no launch UI; call `joinQueue` with `preset: "admin.order_forge"`).
+7. Rollback: revert the backend first.
