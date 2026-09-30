@@ -388,8 +388,9 @@ describe("the Reasoning Chain: one node grammar, strong operators", () => {
     for (const o of ops) expect(o.querySelector("svg")).not.toBeNull();
     cleanup();
     show(snap(REF, "child1-reveal"));
+    // JP5: the raw answer follows by an ARROW (70 + 15 is not how 84.56 was reached).
     expect([...document.querySelectorAll<HTMLElement>(".journey-op")].map((o) => o.textContent))
-      .toEqual(["+plus", "=equals"]);
+      .toEqual(["+plus", "gives"]);
   });
 });
 

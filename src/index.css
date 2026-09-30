@@ -17709,8 +17709,10 @@ button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset
    per-viewport prompt reserve, which also holds the verdict line and the bar. */
 /* The chain and its bar share one column, as wide as the chain (the whole box
    where the chain wraps), so the bar runs from the first node to the last. */
-.journey-reveal[data-unfold] { gap: 0.25rem; }
-.journey-reveal[data-unfold] .journey-reasoning {
+.journey-reveal[data-unfold],
+.journey-reveal[data-compose] { gap: 0.25rem; }
+.journey-reveal[data-unfold] .journey-reasoning,
+.journey-reveal[data-compose] .journey-reasoning {
   display: grid;
   grid-template-columns: fit-content(100%);
   align-content: center;
@@ -17733,9 +17735,19 @@ button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset
 @container jreveal (min-width: 38.75rem) {
   .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-w: 5.75rem; --jop-w: 1.25rem; --jop-fs: 1.375rem; }
 }
-@media (min-width: 640px) { .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-h: 3rem; } }
-@media (min-width: 1024px) { .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-h: 3.75rem; } }
-@media (min-width: 1280px) { .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-h: 3.25rem; } }
+.journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 2.75rem; row-gap: 3px; }
+@media (min-width: 640px) {
+  .journey-reveal[data-unfold] .journey-reasoning__chain,
+  .journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 3rem; }
+}
+@media (min-width: 1024px) {
+  .journey-reveal[data-unfold] .journey-reasoning__chain,
+  .journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 3.75rem; }
+}
+@media (min-width: 1280px) {
+  .journey-reveal[data-unfold] .journey-reasoning__chain,
+  .journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 3.25rem; }
+}
 .journey-reveal[data-unfold] .journey-node { padding: 2px 3px 3px; }
 .journey-reveal[data-unfold] .journey-node__value { font-size: 1.0625rem; }
 .journey-reveal[data-unfold] .journey-node--final .journey-node__value { font-size: 1.25rem; }
@@ -17797,9 +17809,10 @@ button.journey-node {
 .journey-node__fold svg { width: 100%; height: 100%; }
 
 /* ── 3. THE MAGNITUDE BAR ───────────────────────────────────────────────────
-   The whole (raw damage), and the share of it that remains. `--jm-ratio` is
-   the SERVED coefficient (`mitigation_multiplier`), set on the element; the
-   fill's width is that ratio and nothing else. */
+   The whole, and the share of it that remains — the raw damage the armor lets
+   through, the base cooldown the haste leaves. `--jm-ratio` is the SERVED
+   coefficient (`mitigation_multiplier` / `cooldown_multiplier`), set on the
+   element; the fill's width is that ratio and nothing else. */
 .journey-magnitude {
   display: flex;
   width: 100%;
@@ -17838,6 +17851,67 @@ button.journey-node {
 /* Compressed: the summary stands alone (the bar keeps its row, so nothing jumps). */
 .journey-reveal[data-unfold="compressed"] .journey-magnitude { opacity: 0; }
 
+/* ── 3b. THE COMPOSITION BAR (JP5 Step 2) ───────────────────────────────────
+   A raw damage built from its terms: the base segment and each scaling
+   segment side by side, together the raw total at the bar's end. Each
+   segment's `flex-grow` is its OWN served term value (`--jc-w`), so the base
+   and the scaling part fill the track in exactly their served proportion —
+   nothing is divided or subtracted to size them. Same row height as the
+   magnitude bar, so the reveal box holds it the same way. */
+.journey-composition {
+  display: flex;
+  width: 100%;
+  height: 0.875rem;
+  align-items: center;
+  gap: 6px;
+  color: #6b5426;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.journey-composition b { color: #2a1f08; font-size: 0.6875rem; font-weight: 900; letter-spacing: 0; }
+.journey-composition__track {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 0.875rem;
+  gap: 2px;
+}
+.journey-composition__part {
+  display: inline-flex;
+  flex: var(--jc-w) 1 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  padding: 0 4px;
+  background: linear-gradient(90deg, #a5790f, #c99a2e);
+  box-shadow: inset 0 1px 0 rgb(255 250 230 / 0.45);
+}
+.journey-composition__part b,
+.journey-composition__part .journey-composition__label { color: #fff8e6; }
+/* The scaling term: the same gold, lighter — it is ADDED to the base. */
+.journey-composition__part[data-index]:not([data-index="0"]) {
+  background: linear-gradient(90deg, #d9ae45, #efcf78);
+}
+.journey-composition__part[data-index]:not([data-index="0"]) b,
+.journey-composition__part[data-index]:not([data-index="0"]) .journey-composition__label { color: #3a2c10; }
+.journey-composition__track > .journey-composition__part:first-child { border-radius: 9999px 3px 3px 9999px; }
+.journey-composition__track > .journey-composition__part:last-child { border-radius: 3px 9999px 9999px 3px; }
+.journey-composition__end { flex: 0 0 auto; }
+/* Below the widest reveal box the terms keep their numbers and the words give
+   way (a small scaling term's segment holds its number, not "Bonus AD"); the
+   chain's own nodes still name each term. */
+@container jreveal (max-width: 38.74rem) {
+  .journey-composition__label { display: none; }
+}
+
 /* ── 4. MOTION ──────────────────────────────────────────────────────────────
    ALL AT ONCE: every step the reveal adds enters in the same 260ms — there is
    no per-step delay anywhere. Then the bar contracts from the whole to the
@@ -17851,15 +17925,21 @@ button.journey-node {
 @keyframes journey-magnitude-land {
   from { opacity: 0; }
 }
+@keyframes journey-composition-join {
+  from { opacity: 0; transform: translateX(calc(-0.75rem - var(--jc-i, 0) * 0.5rem)); margin-right: 6px; }
+}
 @keyframes journey-transform-hint {
   0%, 100% { box-shadow: 0 0 0 0 rgb(184 134 11 / 0); }
   45% { box-shadow: 0 0 0 4px rgb(184 134 11 / 0.45); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .journey-reveal[data-unfold] .journey-reasoning__step:not([data-given]),
-  .journey-reveal[data-unfold] .journey-magnitude { animation: journey-unfold-in 260ms ease-out; }
-  .journey-magnitude__fill { animation: journey-magnitude-contract 720ms cubic-bezier(0.4, 0, 0.2, 1) 320ms backwards; }
-  .journey-magnitude__end--to { animation: journey-magnitude-land 220ms ease-out 960ms backwards; }
+  .journey-reveal[data-unfold] .journey-magnitude,
+  .journey-reveal[data-compose] .journey-reasoning__step:not([data-given]) { animation: journey-unfold-in 260ms ease-out; }
+  .journey-magnitude__fill { animation: journey-magnitude-contract 440ms cubic-bezier(0.4, 0, 0.2, 1) 120ms backwards; }
+  .journey-magnitude__end--to { animation: journey-magnitude-land 160ms ease-out 440ms backwards; }
+  .journey-composition__part { animation: journey-composition-join 420ms cubic-bezier(0.4, 0, 0.2, 1) calc(80ms + var(--jc-i, 0) * 60ms) backwards; }
+  .journey-composition__end { animation: journey-magnitude-land 160ms ease-out 440ms backwards; }
   .journey-magnitude { transition: opacity 220ms ease; }
   .journey-reveal[data-unfold] .journey-reasoning__step[data-detail] {
     transition: max-width 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms ease, visibility 0s linear 0s;
@@ -17875,4 +17955,6 @@ button.journey-node {
 html.reduce-motion .journey-reveal[data-unfold] .journey-reasoning__step,
 html.reduce-motion .journey-reveal[data-unfold] .journey-node,
 html.reduce-motion .journey-magnitude,
-html.reduce-motion .journey-magnitude * { animation: none !important; transition: none !important; }
+html.reduce-motion .journey-magnitude *,
+html.reduce-motion .journey-composition,
+html.reduce-motion .journey-composition * { animation: none !important; transition: none !important; }

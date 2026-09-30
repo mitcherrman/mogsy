@@ -18,7 +18,8 @@ import { readJourneyJ3 } from "./j3";
 import type { CaptureSnapshot } from "./realFixtures";
 import type { CombatWorking } from "./combatWorking";
 import { mnemonicForMetric, mnemonicForStat, SHARD_ART_BASE, SHARD_ART_FILES, shardArtUrl, STAT_MNEMONICS } from "./statIcons";
-import { combatReasoning, explainedExact, isArmorFormula, rawReasoning, rankWords, statReasoning } from "./reasoning";
+import { combatReasoning, isArmorFormula, rawReasoning, rawWordsReasoning, rankWords, statReasoning } from "./reasoning";
+import type { RawDamageWorking } from "./combatWorking";
 
 type Wire = Record<string, unknown>;
 const JREF = resolve(process.cwd(), "src/lib/journey/__fixtures__/jref");
@@ -150,35 +151,67 @@ describe("the icon vocabulary (owner locks)", () => {
 describe("Reasoning Chain builders: served numbers, League-style primary, exact apart", () => {
   const ratio = { ratio: 0.7, stat: "bonus_attack_damage", label: "bonus attack damage", value: 20.8 };
 
-  it("Step 2: 70 + (70% of 21 = 15) = 85, 'Rank 1', from the taught formula, the stated stat and the reveal", () => {
-    const r = rawReasoning({ champion: "Zed", slot: "E", ability: "Shadow Slash", rank: 1, flat: 70,
-      ratios: [ratio], answer: "85", exactRaw: 84.56 });
+  // JP5 — Step 2 is drawn from the server's `raw_damage_working` (the served
+  // contribution, never raw − flat), and the answer follows by an ARROW: the
+  // shown 70 + 15 is not how 84.56 was reached.
+  const rawWorking: RawDamageWorking = {
+    contract: "raw_damage_working.v1", calculation: "physical_ability_raw_damage", damageType: "physical",
+    attacker: { side: "player", champion: "Zed" }, ability: { slot: "E", name: "Shadow Slash", rank: 1 },
+    formula: { flat: 70, ratios: [{ stat: "bonus_attack_damage", label: "bonus attack damage", ratio: 0.7, value: 20.8 }] },
+    terms: [{ term: "flat", value: 70 }, { term: "ratio", stat: "bonus_attack_damage", value: 14.56 }],
+    rawDamage: 84.56, answer: "85",
+  };
+
+  it("Step 2: 70 + (70% of 21 ≈ 15) → 85, 'Rank 1', from the SERVED working", () => {
+    const r = rawReasoning(rawWorking);
     expect(r.subject?.text).toBe("Shadow Slash — Rank 1");
     expect(rankWords(1)).toBe("Rank 1");
     expect(r.nodes.map((n) => [n.op ?? null, n.expression ?? null, n.value, n.label])).toEqual([
       [null, null, "70", "Base damage"],
-      ["+", "70% of 21 =", "15", "Bonus AD damage"],
-      ["=", null, "85", "Raw damage"],
+      ["+", "70% of 21 ≈", "15", "Bonus AD damage"],
+      ["→", null, "85", "Raw damage"],
     ]);
     expect(r.exact).toEqual([
       "Exact bonus AD: 20.8", "70% of 20.8 = 14.56", "70 + 14.56 = 84.56", "Shown as 85 · rounded for display"]);
-    expect(JSON.stringify(r)).not.toMatch(/R1\b|× 21|rounded up/);
+    expect(JSON.stringify(r)).not.toMatch(/R1\b|× 21|rounded up|= 85/);
+    // The composition bar: the served terms, weighted by their served values.
+    expect(r.composition).toEqual({
+      parts: [{ key: "base", value: "70", label: "base", weight: 70 },
+        { key: "ratio-0", value: "15", label: "Bonus AD", weight: 14.56 }],
+      total: "85", totalLabel: "raw",
+    });
   });
 
-  it("without the reveal's exact result, the term is its words only (nothing is multiplied here)", () => {
-    const r = rawReasoning({ champion: "Zed", slot: "E", ability: "Shadow Slash", rank: 1, flat: 70,
-      ratios: [ratio], answer: "85", exactRaw: null });
-    expect(r.nodes[1]).toMatchObject({ value: "70% of 21" });
-    expect(r.nodes[1].expression).toBeUndefined();
-    expect(explainedExact("Zed …: 84.56 damage, which rounds to 85 for this question.")).toBe(84.56);
-    expect(explainedExact("no rounding sentence")).toBeNull();
+  it("Step 2 with a whole stat and an exact term writes `=`; a taught decimal base stays a decimal", () => {
+    const r = rawReasoning({ ...rawWorking,
+      formula: { flat: 92.5, ratios: [{ ...rawWorking.formula.ratios[0], value: 20 }] },
+      terms: [{ term: "flat", value: 92.5 }, { term: "ratio", stat: "bonus_attack_damage", value: 14 }],
+      rawDamage: 106.5, answer: "107" });
+    expect(r.nodes[0].value).toBe("92.5");
+    expect(r.nodes[1].expression).toBe("70% of 20 =");
   });
 
-  it("Step 3: [Ahri · Lv 2] → [Armor · 24]", () => {
-    const r = statReasoning({ champion: "Ahri", championId: "ahri", metric: "base_armor", level: 2 }, "24", 24.024)!;
+  it("a reveal WITHOUT a served working (a backend before JP5) keeps the formula in words only", () => {
+    const r = rawWordsReasoning({ champion: "Zed", slot: "E", ability: "Shadow Slash", rank: 1, flat: 70,
+      ratios: [ratio], answer: "85" });
+    expect(r.nodes.map((n) => [n.op ?? null, n.expression ?? null, n.value, n.label])).toEqual([
+      [null, null, "70", "Base damage"], ["+", "70% of", "21", "Bonus AD"], ["→", null, "85", "Raw damage"]]);
+    expect(r.composition).toBeUndefined();
+    expect(r.exact).toEqual(["Exact bonus AD: 20.8"]);
+  });
+
+  it("no reveal reads a number out of its explanation prose (the JP4 regex is gone)", () => {
+    for (const f of ["src/lib/journey/reasoning.ts", "src/components/journey/JourneyStageQuestion.tsx"]) {
+      const src = readFileSync(resolve(process.cwd(), f), "utf8");
+      expect(src).not.toMatch(/explainedExact|which rounds to|exactRaw/);
+    }
+  });
+
+  it("Step 3: [Ahri · Lv 2] → [Armor · 24] (no Exact line: nothing structured serves 24.024 at this reveal)", () => {
+    const r = statReasoning({ champion: "Ahri", championId: "ahri", metric: "base_armor", level: 2 }, "24")!;
     expect(r.nodes.map((n) => [n.op ?? null, n.value, n.label, n.icon?.kind])).toEqual([
       [null, "Lv 2", "Ahri", "champion"], ["→", "24", "Armor", "stat"]]);
-    expect(r.exact).toEqual(["Exact armor at level 2: 24.024", "Shown as 24 · rounded for display"]);
+    expect(r.exact).toBeNull();
   });
 
   const working = (over: Partial<CombatWorking> = {}): CombatWorking => ({

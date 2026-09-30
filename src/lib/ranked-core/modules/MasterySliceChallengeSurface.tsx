@@ -41,7 +41,7 @@ import { readComparisonSemantics } from "@/features/mastery/contracts/comparison
 import { PROMPT_TEMPLATES, readPromptSemantics } from "@/features/mastery/contracts/promptSemantics";
 import type { JourneyChildContext } from "@/lib/journey/adapter";
 import { JourneyStageQuestion } from "@/components/journey/JourneyStageQuestion";
-import type { CombatWorking } from "@/lib/journey/combatWorking";
+import type { JourneyWorking } from "@/lib/journey/combatWorking";
 import { readNumericConstraints } from "@/features/mastery/contracts/playerQuestion";
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import type { PlayerAnswer } from "@/features/mastery/player/useMasteryFixtureSession";
@@ -276,7 +276,7 @@ export function ProseChallenge({
  * slice's length, which is the same number for the same reason.
  */
 export function MasterySliceChallengeSurface({
-  challenge, total, submitting, onSubmit, reveal = null, journey = null, combatWorking = null,
+  challenge, total, submitting, onSubmit, reveal = null, journey = null, working = null,
   revealWindowMs = null, revealEndsAt = null,
 }: {
   challenge: MasterySliceChallengeView;
@@ -292,10 +292,11 @@ export function MasterySliceChallengeSurface({
   revealWindowMs?: number | null;
   revealEndsAt?: number | null;
   /**
-   * JOURNEY5 — the held reveal's server `combat_working`, if any. Drawn only
-   * while `reveal` is set, and only by a Journey Combat child.
+   * JOURNEY5 / JP5 — the held reveal's served working (the `combat_working`
+   * carrier, read as its typed calculation), if any. Drawn only while
+   * `reveal` is set, and only by a Journey child.
    */
-  combatWorking?: CombatWorking | null;
+  working?: JourneyWorking | null;
   /**
    * JOURNEY-UI2 — this child's Journey context. Present only inside a Journey
    * module, where the board owns the media region (no band is drawn here) and
@@ -306,7 +307,7 @@ export function MasterySliceChallengeSurface({
   if (journey) {
     return (
       <JourneyChild challenge={challenge} total={total} submitting={submitting}
-        onSubmit={onSubmit} reveal={reveal} journey={journey} combatWorking={combatWorking}
+        onSubmit={onSubmit} reveal={reveal} journey={journey} working={working}
         revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} />
     );
   }
@@ -326,7 +327,7 @@ export function MasterySliceChallengeSurface({
  * place. The kind of child changes only its words. A child answered by typing
  * (a numeric free-entry recall) keeps its Mastery renderer, in the same frame.
  */
-function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, combatWorking,
+function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, working,
   revealWindowMs, revealEndsAt }: {
   challenge: MasterySliceChallengeView;
   total: number;
@@ -334,7 +335,7 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   onSubmit: (answer: PlayerAnswer) => void;
   reveal: MasteryQuestionReveal | null;
   journey: JourneyChildContext;
-  combatWorking: CombatWorking | null;
+  working: JourneyWorking | null;
   revealWindowMs: number | null;
   revealEndsAt: number | null;
 }) {
@@ -360,7 +361,7 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   }
   return (
     <JourneyStageQuestion challenge={challenge} journey={journey} submitting={submitting}
-      onSubmit={onSubmit} reveal={reveal} combatWorking={combatWorking}
+      onSubmit={onSubmit} reveal={reveal} working={working}
       revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} />
   );
 }

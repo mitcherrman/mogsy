@@ -34,13 +34,17 @@
  *
  * A chain with no `detail` has no phases and is drawn exactly as JP4 drew it.
  * The MAGNITUDE BAR under an expanded chain is sized by a served coefficient
- * (`--jm-ratio`); nothing here computes one.
+ * (`--jm-ratio`: the armor multiplier's damage taken, the haste multiplier's
+ * cooldown kept); the COMPOSITION BAR under a raw-damage chain is its served
+ * terms side by side (`--jc-w`: each term's own served value). Nothing here
+ * computes either.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, FoldHorizontal, Info, UnfoldHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  unfoldCompressAtMs, type ReasonIcon, type ReasonMagnitude, type ReasonNode, type Reasoning,
+  unfoldCompressAtMs, type ReasonComposition, type ReasonIcon, type ReasonMagnitude, type ReasonNode,
+  type Reasoning,
 } from "@/lib/journey/reasoning";
 import { mnemonicForStat } from "@/lib/journey/statIcons";
 import { JOURNEY_STAT_META } from "@/lib/journey/stats";
@@ -169,6 +173,8 @@ export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggl
   // break sits at its middle, and only the stylesheet decides whether it breaks.
   const breakBefore = phase === "expanded" && nodes.length > 4 ? Math.ceil(nodes.length / 2) : -1;
   const magnitude = phase === "expanded" || phase === "compressed" ? reasoning.magnitude ?? null : null;
+  // A composition has no fold: it is drawn whenever the chain is a reveal.
+  const composition = phase === "live" ? null : reasoning.composition ?? null;
   return (
     <Root data-testid={testId} data-reasoning={reasoning.kind} className="journey-reasoning" role="group"
       aria-label={phase === "live" ? "What this step builds on" : "How the answer follows"}>
@@ -199,6 +205,7 @@ export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggl
         })}
       </List>
       {magnitude && <JourneyMagnitude magnitude={magnitude} testId={`${testId}-magnitude`} folded={folded} />}
+      {composition && <JourneyComposition composition={composition} testId={`${testId}-composition`} />}
     </Root>
   );
 }
@@ -217,7 +224,7 @@ export function JourneyMagnitude({ magnitude, testId, folded = false }: {
   return (
     <div className="journey-magnitude" data-testid={testId} data-ratio={magnitude.ratio}
       role="img" {...(folded ? { "aria-hidden": true } : {})}
-      aria-label={`${magnitude.from} ${magnitude.fromLabel}, ${magnitude.percent} taken: ${magnitude.to} ${magnitude.toLabel}`}
+      aria-label={`${magnitude.from} ${magnitude.fromLabel}, ${magnitude.percent} ${magnitude.kept ?? "taken"}: ${magnitude.to} ${magnitude.toLabel}`}
       style={{ "--jm-ratio": String(magnitude.ratio) } as CSSProperties}>
       <span aria-hidden className="journey-magnitude__end">
         <b>{magnitude.from}</b> {magnitude.fromLabel}
@@ -233,14 +240,43 @@ export function JourneyMagnitude({ magnitude, testId, folded = false }: {
 }
 
 /**
- * JP5 — the unfold's phase, inside the server's reveal window.
+ * JP5 — THE COMPOSITION BAR: a raw damage built from its terms. Each served
+ * term is one segment, sized by its OWN served value (`--jc-w`, a flex weight:
+ * the stylesheet lays them side by side, so 70 and 14.56 fill 70 : 14.56 of
+ * the track with no quotient taken here). With motion the segments slide in
+ * and close up into one bar; without it they are simply drawn.
+ */
+export function JourneyComposition({ composition, testId }: { composition: ReasonComposition; testId: string }) {
+  const spoken = composition.parts.map((p) => `${p.value} ${p.label}`).join(" plus ");
+  return (
+    <div className="journey-composition" data-testid={testId} role="img"
+      aria-label={`${spoken}: ${composition.total} ${composition.totalLabel}`}>
+      <span aria-hidden className="journey-composition__track">
+        {composition.parts.map((p, i) => (
+          <span key={p.key} className="journey-composition__part" data-part={p.key} data-index={i}
+            data-testid={`${testId}-${p.key}`} data-weight={p.weight}
+            style={{ "--jc-w": String(p.weight), "--jc-i": String(i) } as CSSProperties}>
+            <b>{p.value}</b> <span className="journey-composition__label">{p.label}</span>
+          </span>
+        ))}
+      </span>
+      <span aria-hidden className="journey-composition__end">
+        <b>{composition.total}</b> {composition.totalLabel}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * JP5 — the unfold's phase, inside the window the server granted this child.
  *
- * `windowMs` is the server's frozen reveal window and `endsAt` the client-clock
- * instant its reveal ends (null when the server names none). The chain opens
- * EXPANDED and, when the window is long enough to be divided
- * (`unfoldCompressAtMs`), compresses once at that point of the SERVER's window
- * — so a reload mid-reveal lands where the reveal actually is. No timer here
- * holds a reveal open: when the child leaves, this unmounts with it.
+ * `windowMs` is that window (the child's own, or the segment's) and `endsAt`
+ * the client-clock instant its reveal ends (null when the server names none).
+ * The chain opens EXPANDED and, when the window is long enough to be divided
+ * (`unfoldCompressAtMs`: a fixed, measured point), compresses once at that
+ * point of the SERVER's window — so a reload mid-reveal lands where the reveal
+ * actually is. No timer here holds a reveal open: when the child leaves, this
+ * unmounts with it.
  *
  * A tap takes over: from then on the chain is only what the learner set it to
  * (reopened stays open, closed stays closed) until the child leaves.

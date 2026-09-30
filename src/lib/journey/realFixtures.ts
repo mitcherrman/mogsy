@@ -63,16 +63,25 @@ export const J3_CAPTURES = {
   "jref-zed-ahri": "jref/zed_ahri.reference",
   "jref-zed-ahri-wrong": "jref/zed_ahri.reference.wrong",
   "jref-zed-ahri-timeout": "jref/zed_ahri.reference.timeout",
+  // JP5 — the same two harnesses on the JP5 backend (typed workings + per-child
+  // reveal windows, `jp5/journey-structured-working`): `__fixtures__/jp5/`.
+  "jp5-ref-zed-ahri": "jp5/zed_ahri.reference",
+  "jp5-ref-zed-ahri-wrong": "jp5/zed_ahri.reference.wrong",
+  "jp5-ref-zed-ahri-timeout": "jp5/zed_ahri.reference.timeout",
+  "jp5-voli": "jp5/voli.standard",
+  "jp5-pantheon": "jp5/pantheon.standard",
+  "jp5-voli-survival": "jp5/voli.survival",
+  "jp5-ahri-survival": "jp5/ahri.survival",
 } as const;
 export type CaptureKey = keyof typeof J3_CAPTURES;
 
 const loaders = import.meta.glob<CaptureSnapshot[]>(
   ["./__fixtures__/j3/*.json", "./__fixtures__/j4/*.json", "./__fixtures__/k1/*.json", "./__fixtures__/m1/*.json",
-    "./__fixtures__/jref/*.json"], { import: "default" });
+    "./__fixtures__/jref/*.json", "./__fixtures__/jp5/*.json"], { import: "default" });
 
 export async function loadCapture(key: CaptureKey): Promise<CaptureSnapshot[]> {
   const file = J3_CAPTURES[key];
-  const load = loaders[/^(j4|k1|m1|jref)\//.test(file) ? `./__fixtures__/${file}.json` : `./__fixtures__/j3/${file}.json`];
+  const load = loaders[/^(j4|k1|m1|jref|jp5)\//.test(file) ? `./__fixtures__/${file}.json` : `./__fixtures__/j3/${file}.json`];
   if (!load) throw new Error(`no capture ${key}`);
   return load();
 }

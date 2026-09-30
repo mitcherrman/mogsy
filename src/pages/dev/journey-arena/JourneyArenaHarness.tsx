@@ -35,8 +35,8 @@
  * captures replay at the window they were captured with.
  *
  * `&revealChild=3` limits the probe to ONE child's reveal (0-based): every other
- * reveal keeps its captured window — a preview of a per-child reveal window,
- * which the server does not serve today.
+ * reveal keeps its captured window. The `jp5-*` captures carry the server's own
+ * per-child windows (`own_reveal_window_ms`); the probe overrides that too.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
@@ -59,7 +59,8 @@ const combatant = (over: Partial<CombatantView>): CombatantView => ({
 export type HarnessHost = "ranked" | "daily";
 
 /** The host a capture was recorded under: the admin reference is Ranked; the rest are Daily stages. */
-export const hostOfCapture = (capture: string): HarnessHost => (capture.startsWith("jref") ? "ranked" : "daily");
+export const hostOfCapture = (capture: string): HarnessHost =>
+  (capture.startsWith("jref") || capture.startsWith("jp5-ref") ? "ranked" : "daily");
 
 export function journeyArenaView(round: PublicRoundView, at: string, skewMs: number, host: HarnessHost = "ranked"): ArenaViewModel {
   const seg = round.segmentState!;
@@ -119,6 +120,8 @@ export function withRevealWindow(snap: CaptureSnapshot, ms: number, child: numbe
   if (!seg || typeof seg.reveal_window_ms !== "number") return snap;
   if (child !== null && seg.own_revealing_card_index !== child) return snap;
   seg.reveal_window_ms = ms;
+  // A per-child segment names the revealing child's own window: the probe is it.
+  if (typeof seg.own_reveal_window_ms === "number") seg.own_reveal_window_ms = ms;
   if (seg.own_revealing_card_index !== null && typeof seg.own_reveal_until === "string") {
     const until = Date.parse(snap.at) + ms;
     if (typeof seg.own_card_started_at === "string") {

@@ -50,7 +50,12 @@
  * fits around it). The board and its `!` marks are untouched: this resurfaces
  * what the board already holds. On the reveal a chain with derivation detail
  * unfolds all at once, compresses, and reopens on a tap (`useEquationUnfold`),
- * all inside the server's own reveal window.
+ * all inside the window the server granted THIS child.
+ *
+ * JP5 — ONE PIPELINE. Every derived reveal is the server's TYPED working
+ * (`readJourneyWorking`: after armor, raw damage, cooldown under haste) →
+ * its Reasoning Chain (`reasoning.ts`) → the chain's small choreography. No
+ * reveal reads a number out of its explanation prose.
  *
  * Presentation only: nothing here grades, computes or rounds.
  */
@@ -66,13 +71,16 @@ import { readComparisonSemantics } from "@/features/mastery/contracts/comparison
 import { formatRecallPrompt } from "@/features/mastery/interactions/formatPromptSemantics";
 import { formatComparisonPrompt } from "@/features/mastery/interactions/formatComparisonSemantics";
 import { COMPARISON_TIE_TOKEN } from "@/features/mastery/interactions/ComparisonQuestionView";
-import type { CombatWorking } from "@/lib/journey/combatWorking";
+import {
+  COOLDOWN_WORKING_CONTRACT, RAW_DAMAGE_WORKING_CONTRACT, type JourneyWorking,
+} from "@/lib/journey/combatWorking";
 import type { AbilitySlot } from "@/lib/journey/contract";
 import { ratioStatLabel, explicitAdText } from "@/lib/journey/statWording";
 import { mnemonicForMetric } from "@/lib/journey/statIcons";
 import { isJourneyStatKey, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import {
-  combatReasoning, explainedExact, liveReasoning, rawReasoning, statReasoning, unfolds, type Reasoning,
+  combatReasoning, cooldownReasoning, liveReasoning, rawReasoning, rawWordsReasoning, statReasoning, unfolds,
+  type Reasoning,
 } from "@/lib/journey/reasoning";
 import {
   combatPremiseOf, combatQuestionSentence, percent, premiseValue, type CombatPremise,
@@ -154,7 +162,8 @@ function StatedFormula({ formula, rank }: { formula: JourneyFormula; rank: numbe
 /**
  * JP3 — the served parts of a raw-damage answer: the taught formula's flat
  * value at the premise's rank, each ratio with the premise's stated stat, and
- * the reveal's answer. `null` when any part is not served.
+ * the reveal's answer. `null` when any part is not served. JP5: used only by a
+ * reveal WITHOUT a served working (words only; nothing derived from them).
  */
 export function rawCalcPartsOf(premise: CombatPremise, formula: JourneyFormula | null, answer: string | null) {
   if (!formula || premise.rank === null || answer === null) return null;
@@ -224,12 +233,26 @@ export function promptSubjectsFor(challenge: MasterySliceChallengeView, journey:
   return [...championSubject(journey.playerChampion), ...championSubject(journey.opponentChampion)];
 }
 
+/** The Reasoning Chain a served working draws, by its typed calculation. */
+export function workingReasoning(working: JourneyWorking, rawRecalled: boolean): Reasoning {
+  switch (working.contract) {
+    case RAW_DAMAGE_WORKING_CONTRACT: return rawReasoning(working);
+    case COOLDOWN_WORKING_CONTRACT: return cooldownReasoning(working);
+    default: return combatReasoning(working, rawRecalled);
+  }
+}
+
+const CHAIN_TEST_IDS: Record<Reasoning["kind"], string> = {
+  combat: "journey-combat-working", raw: "journey-raw-working", cooldown: "journey-cooldown-working",
+  stat: "journey-stat-working", live: "journey-live-chain",
+};
+
 /**
  * The reveal, in the prompt region's reserved box: the verdict and the answer,
  * then (JP4) the REASONING CHAIN when the child has a real derivation — the
- * server's Combat working, a raw result from served parts, a stat recall's own
- * semantics — or, for a taught fact (a formula), the fact itself beside its
- * subject. Anything else keeps the served explanation, whole-number display.
+ * server's typed working (JP5), a stat recall's own semantics — or, for a
+ * taught fact (a formula), the fact itself beside its subject. Anything else
+ * keeps the served explanation, whole-number display.
  */
 function JourneyReveal({ challenge, journey, question, correct, timedOut, answer, explanation, working,
   learnedFormula, rawRecalled, windowMs, endsAt }: {
@@ -242,7 +265,7 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   /** The correct answer as its tablet draws it. */
   answer: string | null;
   explanation: string;
-  working: CombatWorking | null;
+  working: JourneyWorking | null;
   learnedFormula: JourneyFormula | null;
   /** The raw damage this Combat answer applies was established by an earlier step. */
   rawRecalled: boolean;
@@ -254,31 +277,29 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   const statRecall = statRecallOf(challenge);
   let reasoning: Reasoning | null = null;
   if (working) {
-    reasoning = combatReasoning(working, rawRecalled);
+    reasoning = workingReasoning(working, rawRecalled);
   } else if (question.premise?.mitigation === "before_armor") {
+    // A backend before JP5 serves no raw working: the formula in words only.
     const parts = rawCalcPartsOf(question.premise, learnedFormula, answer);
     if (parts) {
-      reasoning = rawReasoning({
-        ...parts, champion: question.premise.champion, slot: question.premise.slot,
-        ability: question.premise.ability, exactRaw: explainedExact(explanation),
-      });
+      reasoning = rawWordsReasoning({ ...parts, champion: question.premise.champion,
+        slot: question.premise.slot, ability: question.premise.ability });
     }
   } else if (statRecall && answer !== null) {
-    reasoning = statReasoning({ ...statRecall, championId: championIdOf(journey, statRecall.champion) },
-      answer, explainedExact(explanation));
+    reasoning = statReasoning({ ...statRecall, championId: championIdOf(journey, statRecall.champion) }, answer);
   }
   const fact = !reasoning && challenge.questionFamily === FORMULA_FAMILY
     ? promptSubjectsFor(challenge, journey, question).find((s) => s.kind === "ability") ?? null : null;
   const kind = reasoning?.kind ?? (fact ? "fact" : null);
-  const chainId = reasoning?.kind === "combat" ? "journey-combat-working"
-    : reasoning?.kind === "raw" ? "journey-raw-working" : "journey-stat-working";
+  const chainId = CHAIN_TEST_IDS[reasoning?.kind ?? "stat"];
   // JP5 — a chain with derivation detail unfolds, compresses and reopens.
   const folds = reasoning !== null && unfolds(reasoning);
   const unfold = useEquationUnfold(folds, windowMs, endsAt);
   return (
     <div data-testid="journey-reveal" role="status" aria-live="polite" className="journey-reveal"
       data-working={kind ?? (shown.text ? "explanation" : "none")}
-      {...(folds ? { "data-unfold": unfold.phase, "data-unfold-by": unfold.manual ? "learner" : "reveal" } : {})}>
+      {...(folds ? { "data-unfold": unfold.phase, "data-unfold-by": unfold.manual ? "learner" : "reveal" } : {})}
+      {...(reasoning?.composition ? { "data-compose": "true" } : {})}>
       <div className="journey-reveal__top">
         <p data-testid="journey-reveal-verdict" data-correct={correct ? "true" : "false"}
           className={`journey-reveal__verdict ${correct ? "journey-reveal__verdict--correct" : "journey-reveal__verdict--wrong"}`}>
@@ -308,15 +329,16 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
 }
 
 export function JourneyStageQuestion({
-  challenge, journey, submitting, onSubmit, reveal, combatWorking = null, revealWindowMs = null, revealEndsAt = null,
+  challenge, journey, submitting, onSubmit, reveal, working = null, revealWindowMs = null, revealEndsAt = null,
 }: {
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
   reveal: MasteryQuestionReveal | null;
-  combatWorking?: CombatWorking | null;
-  /** JP5 — the server's frozen reveal window (`reveal_window_ms`). */
+  /** JP5 — the held reveal's served working, as its typed calculation. */
+  working?: JourneyWorking | null;
+  /** JP5 — the window the server granted this child's reveal. */
   revealWindowMs?: number | null;
   /** JP5 — the client-clock instant the server's reveal ends (`own_reveal_until`), or null. */
   revealEndsAt?: number | null;
@@ -403,7 +425,7 @@ export function JourneyStageQuestion({
           correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
           answer={labelOf(reveal.correctValue)}
           explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
-          working={combatWorking} learnedFormula={journey.learnedFormula ?? null}
+          working={working} learnedFormula={journey.learnedFormula ?? null}
           rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
           windowMs={revealWindowMs} endsAt={revealEndsAt} />
       )}

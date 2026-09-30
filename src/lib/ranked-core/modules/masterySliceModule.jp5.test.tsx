@@ -36,6 +36,20 @@ const PANTHEON = "m1/pantheon.standard";
 const VOLI = "m1/voli.standard";
 const VOLI_SURVIVAL = "m1/voli.survival";
 const AHRI_SURVIVAL = "m1/ahri.survival";
+// JP5 — the same harnesses on the JP5 backend: typed workings, per-child windows.
+const J5_REF = "jp5/zed_ahri.reference";
+const J5_WRONG = "jp5/zed_ahri.reference.wrong";
+const J5_TIMEOUT = "jp5/zed_ahri.reference.timeout";
+const J5_VOLI = "jp5/voli.standard";
+const J5_PANTHEON = "jp5/pantheon.standard";
+const J5_VOLI_SURVIVAL = "jp5/voli.survival";
+const J5_AHRI_SURVIVAL = "jp5/ahri.survival";
+/** How far into its reveal a captured reveal snapshot was read (the harness reads at +500ms). */
+const intoReveal = (s: CaptureSnapshot) => {
+  const seg = segWire(s);
+  const w = (seg.own_reveal_window_ms ?? seg.reveal_window_ms) as number;
+  return w - (Date.parse(seg.own_reveal_until as string) - Date.parse(s.at));
+};
 const snap = (n: string, label: string) => {
   const s = load(n).find((x) => x.label === label);
   if (!s) throw new Error(`${n}: ${label}`);
@@ -204,7 +218,7 @@ describe("the EQUATION UNFOLD: the whole derivation, all at once", () => {
   });
 
   it("all at once in the stylesheet too: one entrance for every new step, no per-step delay anywhere", () => {
-    expect(JP5).toMatch(/\.journey-reveal\[data-unfold\] \.journey-reasoning__step:not\(\[data-given\]\),\n\s*\.journey-reveal\[data-unfold\] \.journey-magnitude \{ animation: journey-unfold-in 260ms ease-out; \}/);
+    expect(JP5).toMatch(/\.journey-reveal\[data-unfold\] \.journey-reasoning__step:not\(\[data-given\]\),\n\s*\.journey-reveal\[data-unfold\] \.journey-magnitude,\n\s*\.journey-reveal\[data-compose\] \.journey-reasoning__step:not\(\[data-given\]\) \{ animation: journey-unfold-in 260ms ease-out; \}/);
     // No serial reveal: no step is addressed by position, and no step's animation is delayed.
     expect(JP5).not.toMatch(/journey-reasoning__step[^{]*:nth/);
     expect(JP5).not.toMatch(/journey-unfold-in[^;]*\d+ms[^;]*\d+ms/);
@@ -238,18 +252,129 @@ describe("the EQUATION UNFOLD: the whole derivation, all at once", () => {
     expect(reveal()).not.toHaveAttribute("data-unfold");
   });
 
-  it("a chain with no derivation detail does not unfold: Steps 2 and 3 are exactly JP4's", () => {
-    show(snap(REF, "child1-reveal"));
+  it("a chain with no derivation detail does not unfold: Step 2 composes (no fold), Step 3 is JP4's", () => {
+    show(snap(J5_REF, "child1-reveal"));
     expect(reveal()).not.toHaveAttribute("data-unfold");
+    expect(reveal()).toHaveAttribute("data-compose", "true");
     const raw = screen.getByTestId("journey-raw-working");
     expect(raw.querySelector("ol")).not.toHaveAttribute("data-phase");
     expect([...raw.querySelectorAll(".journey-node")].map((n) => n.textContent)).toEqual([
-      "70Base damage", "70% of 21 =15Bonus AD damage", "85Raw damage"]);
+      "70Base damage", "70% of 21 ≈15Bonus AD damage", "85Raw damage"]);
     expect(raw.querySelector("button.journey-node, .journey-magnitude")).toBeNull();
     cleanup();
-    show(snap(REF, "child2-reveal"));
+    show(snap(J5_REF, "child2-reveal"));
     expect(reveal()).not.toHaveAttribute("data-unfold");
-    expect(screen.getByTestId("journey-stat-working").querySelector(".journey-magnitude")).toBeNull();
+    expect(screen.getByTestId("journey-stat-working").querySelector(".journey-magnitude, .journey-composition")).toBeNull();
+  });
+
+  it("a reveal from a backend BEFORE JP5 (no raw working) keeps Step 2 in words: no number derived, no bar", () => {
+    show(snap(REF, "child1-reveal"));
+    const raw = screen.getByTestId("journey-raw-working");
+    expect([...raw.querySelectorAll(".journey-node")].map((n) => n.textContent)).toEqual([
+      "70Base damage", "70% of21Bonus AD", "85Raw damage"]);
+    expect(raw.querySelector(".journey-composition")).toBeNull();
+    expect(reveal()).not.toHaveAttribute("data-compose");
+  });
+});
+
+describe("STEP 2 — the raw damage composes from the SERVED terms", () => {
+  const bar = () => screen.getByTestId("journey-raw-working-composition");
+  it("base + scaling segments build the raw bar; each segment's weight is its served term", () => {
+    show(snap(J5_REF, "child1-reveal"));
+    expect(bar()).toHaveAccessibleName("70 base plus 15 Bonus AD: 85 raw");
+    const base = within(bar()).getByTestId("journey-raw-working-composition-base");
+    const scaling = within(bar()).getByTestId("journey-raw-working-composition-ratio-0");
+    expect(base).toHaveAttribute("data-weight", "70");
+    expect(scaling).toHaveAttribute("data-weight", "14.56");
+    expect(base.style.getPropertyValue("--jc-w")).toBe("70");
+    expect(scaling.style.getPropertyValue("--jc-w")).toBe("14.56");
+    expect(bar().textContent).toBe("70 base15 Bonus AD85 raw");
+  });
+
+  it("the stylesheet sizes a segment by its own weight; the client divides nothing", () => {
+    expect(JP5).toMatch(/\.journey-composition__part \{[^}]*flex: var\(--jc-w\) 1 0;/);
+    const drawn = readFileSync(resolve(process.cwd(), "src/components/journey/JourneyReasoning.tsx"), "utf8");
+    expect(drawn).toContain('"--jc-w": String(p.weight)');
+    expect(drawn).not.toMatch(/weight\s*[/*]/);
+  });
+
+  it("the Exact working is the served one: 70% of 20.8 = 14.56, 70 + 14.56 = 84.56", () => {
+    show(snap(J5_REF, "child1-reveal"));
+    fireEvent.click(screen.getByTestId("journey-raw-working-exact"));
+    const exact = screen.getByTestId("journey-raw-working-exact-pop");
+    expect(exact).toHaveTextContent("70% of 20.8 = 14.56");
+    expect(exact).toHaveTextContent("70 + 14.56 = 84.56");
+    expect(exact).toHaveTextContent("Shown as 85 · rounded for display");
+  });
+
+  it("right and wrong compose the same (the answer is not the learner's)", () => {
+    show(snap(J5_WRONG, "child1-reveal"));
+    expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent("Not quite · 85");
+    expect(bar()).toHaveAccessibleName("70 base plus 15 Bonus AD: 85 raw");
+  });
+
+  it("its reveal holds the server's 4000ms window for THIS child, then leaves", () => {
+    const s = snap(J5_REF, "child1-reveal");
+    expect(segWire(s).own_reveal_window_ms).toBe(4000);
+    expect(segWire(s).reveal_window_ms).toBe(1750);
+    show(s);
+    const left = 4000 - intoReveal(s);
+    tick(left - 1);
+    expect(screen.queryByTestId("journey-reveal")).not.toBeNull();
+    tick(1);
+    expect(screen.queryByTestId("journey-reveal")).toBeNull();
+  });
+});
+
+describe("HASTE — the cooldown unfolds from the SERVED working (Volibear)", () => {
+  const haste = () => screen.getByTestId("journey-cooldown-working");
+  const nodesOf = () => [...haste().querySelectorAll<HTMLElement>("li.journey-reasoning__step")]
+    .filter((li) => li.getAttribute("aria-hidden") !== "true")
+    .map((li) => li.querySelector(".journey-node")!.textContent);
+  it("BASE COOLDOWN → ABILITY HASTE → the multiplier → the new cooldown, with the duration bar", () => {
+    show(snap(J5_VOLI, "child2-reveal"));
+    expect(reveal()).toHaveAttribute("data-unfold", "expanded");
+    expect(nodesOf()).toEqual(["12sBase cooldown", "10Ability haste", "100100 + 10Formula", "0.909Multiplier",
+      "90.9%Cooldown kept", "11sNew cooldown"]);
+    const bar = screen.getByTestId("journey-cooldown-working-magnitude");
+    expect(bar).toHaveAttribute("data-ratio", "0.9091");
+    expect(bar.style.getPropertyValue("--jm-ratio")).toBe("0.9091");
+    expect(bar).toHaveAccessibleName("12s base, 90.9% kept: 11s effective");
+    expect(haste().textContent).not.toMatch(/10\.9|=/);
+  });
+
+  it("folds at the fixed point inside its 6000ms window and reopens on a tap", () => {
+    const s = snap(J5_VOLI, "child2-reveal");
+    expect(segWire(s).own_reveal_window_ms).toBe(6000);
+    show(s);
+    tick(3200 - intoReveal(s) - 1);
+    expect(reveal()).toHaveAttribute("data-unfold", "expanded");
+    tick(1);
+    expect(reveal()).toHaveAttribute("data-unfold", "compressed");
+    expect(nodesOf()).toEqual(["12sBase cooldown", "10Ability haste", "90.9%Cooldown kept", "11sNew cooldown"]);
+    fireEvent.click(within(haste()).getByRole("button", { name: /Cooldown kept/ }));
+    expect(reveal()).toHaveAttribute("data-unfold", "expanded");
+  });
+
+  it("the Exact working is the served one, never an equality of shown numbers", () => {
+    show(snap(J5_VOLI, "child2-reveal"));
+    fireEvent.click(screen.getByTestId("journey-cooldown-working-exact"));
+    const exact = screen.getByTestId("journey-cooldown-working-exact-pop");
+    expect(exact).toHaveTextContent("100 ÷ (100 + 10) = 0.9091");
+    expect(exact).toHaveTextContent("12 × 0.9091 ≈ 10.9091 seconds");
+    expect(exact).toHaveTextContent("Shown as 11 · rounded for display");
+  });
+
+  it("generic: an R under haste in a Survival Journey (Ahri) draws the same chain from its own working", () => {
+    show(snap(J5_AHRI_SURVIVAL, "child2-reveal"));
+    expect(reveal()).toHaveAttribute("data-unfold", "expanded");
+    expect(nodesOf().at(-1)).toBe("127sNew cooldown");
+    expect(nodesOf()[1]).toMatch(/Ability haste$/);
+  });
+
+  it("no live chain for a haste child (Stage 1: nothing it relies on is served)", () => {
+    show(snap(J5_VOLI, "child2-live"));
+    expect(screen.queryByTestId("journey-live")).toBeNull();
   });
 });
 
@@ -258,50 +383,80 @@ describe("auto-compress, inside the SERVER's reveal window", () => {
     const s = snap(REF, "child3-reveal");
     expect(segWire(s).reveal_window_ms).toBe(1750);
     show(s);
-    tick(1749);
+    // Held for what is LEFT of the server's window (read 500ms in), never folded.
+    tick(1750 - intoReveal(s) - 1);
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     expect(texts(readable())).toEqual(EXPANDED);
+    tick(1);
+    expect(screen.queryByTestId("journey-reveal")).toBeNull();
   });
 
-  it.each([[3500, 2100], [4000, 2400], [4500, 2700]])(
-    "a served %ims window: expanded, then compressed at %ims of it — and the reveal still ends with the window",
-    (windowMs, compressAt) => {
-      show(withRevealWindow(snap(REF, "child3-reveal"), windowMs));
-      tick(compressAt - 1);
-      expect(reveal()).toHaveAttribute("data-unfold", "expanded");
-      tick(1);
-      expect(reveal()).toHaveAttribute("data-unfold", "compressed");
-      expect(reveal()).toHaveAttribute("data-unfold-by", "reveal");
-      expect(texts(readable())).toEqual(COMPRESSED);
-      // The folded steps are out of the reading and the tab order, not merely unseen.
-      const folded = steps().filter((li) => li.dataset.detail === "true");
-      expect(folded).toHaveLength(2);
-      for (const li of folded) { expect(li).toHaveAttribute("aria-hidden", "true"); expect(li).toHaveAttribute("inert"); }
-      // Nothing extends the reveal: it is gone exactly when the server's window is.
-      tick(windowMs - compressAt - 1);
-      expect(screen.queryByTestId("journey-reveal")).not.toBeNull();
-      tick(1);
-      expect(screen.queryByTestId("journey-reveal")).toBeNull();
-    });
-
-  it("follows the SERVER's clock: a reload late in the window lands compressed, and replays nothing", () => {
-    const s = withRevealWindow(snap(REF, "child3-reveal"), 4000);
-    show(s, Date.parse(s.at) + 3000);                       // 3.0s into a 4.0s reveal
-    expect(reveal()).toHaveAttribute("data-unfold", "compressed");
-    cleanup();
-    show(s, Date.parse(s.at) + 1000);                       // 1.0s in: still expanded, compresses 1.4s later
+  it("a probe window that would leave the compact chain < 1.2s is never divided (4000ms)", () => {
+    show(withRevealWindow(snap(REF, "child3-reveal"), 4000));
+    tick(3999);
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
-    tick(1399);
+  });
+
+  it("the SERVED 6000ms window: expanded, then folded at the fixed 3200ms — and the reveal ends with the window", () => {
+    const s = snap(J5_REF, "child3-reveal");
+    expect(segWire(s).own_reveal_window_ms).toBe(6000);
+    show(s);
+    const at = intoReveal(s);                                   // the capture was read 500ms in
+    expect(at).toBe(500);
+    tick(3200 - at - 1);
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     tick(1);
     expect(reveal()).toHaveAttribute("data-unfold", "compressed");
+    expect(reveal()).toHaveAttribute("data-unfold-by", "reveal");
+    expect(texts(readable())).toEqual(COMPRESSED);
+    // The folded steps are out of the reading and the tab order, not merely unseen.
+    const folded = steps().filter((li) => li.dataset.detail === "true");
+    expect(folded).toHaveLength(2);
+    for (const li of folded) { expect(li).toHaveAttribute("aria-hidden", "true"); expect(li).toHaveAttribute("inert"); }
+    // Nothing extends the reveal: it is gone exactly when the server's window is.
+    tick(6000 - 3200 - 1);
+    expect(screen.queryByTestId("journey-reveal")).not.toBeNull();
+    tick(1);
+    expect(screen.queryByTestId("journey-reveal")).toBeNull();
+  });
+
+  it("wrong and timed out hold the same 6000ms and fold at the same point", () => {
+    for (const [file, label] of [[J5_WRONG, "child3-reveal"], [J5_TIMEOUT, "child3-timeout-reveal"]] as const) {
+      const s = snap(file, label);
+      expect(segWire(s).own_reveal_window_ms, file).toBe(6000);
+      show(s);
+      tick(3200 - intoReveal(s));
+      expect(reveal(), file).toHaveAttribute("data-unfold", "compressed");
+      cleanup();
+    }
+  });
+
+  it("follows the SERVER's clock: a reload late in the window lands compressed, and replays nothing", () => {
+    show(snap(J5_REF, "child3-reveal-compressed"));             // 3.7s into the 6.0s reveal
+    expect(reveal()).toHaveAttribute("data-unfold", "compressed");
+    cleanup();
+    const late = snap(J5_REF, "child3-reveal-late");            // 1.5s in: folds 1.7s later
+    show(late);
+    expect(reveal()).toHaveAttribute("data-unfold", "expanded");
+    tick(3200 - intoReveal(late) - 1);
+    expect(reveal()).toHaveAttribute("data-unfold", "expanded");
+    tick(1);
+    expect(reveal()).toHaveAttribute("data-unfold", "compressed");
+  });
+
+  it("a SIMPLE child of the same Journey keeps the fast 1750ms (per-child, not Journey-wide)", () => {
+    const s = snap(J5_REF, "child2-reveal");
+    expect(segWire(s).own_reveal_window_ms).toBe(1750);
+    show(s);
+    tick(1750 - intoReveal(s));
+    expect(screen.queryByTestId("journey-reveal")).toBeNull();
   });
 });
 
 describe("manual reopen: the compressed transformation is a control", () => {
   it("the 80.6% node is a button that says what it does; tapping it reopens the full equation", () => {
-    show(withRevealWindow(snap(REF, "child3-reveal"), 4000));
-    tick(2400);
+    show(snap(J5_REF, "child3-reveal"));
+    tick(2700);
     const t = transform();
     expect(t.tagName).toBe("BUTTON");
     expect(t).toHaveAttribute("aria-expanded", "false");
@@ -316,33 +471,33 @@ describe("manual reopen: the compressed transformation is a control", () => {
   });
 
   it("a reopened equation STAYS open until it is closed or the child leaves (no second auto-compress)", () => {
-    show(withRevealWindow(snap(REF, "child3-reveal"), 4000));
-    tick(2400);
-    fireEvent.click(transform());                           // reopened at 2.4s
-    tick(1599);                                             // …to the last millisecond of the window
+    show(snap(J5_REF, "child3-reveal"));                    // 0.5s into the 6.0s window
+    tick(2700);
+    fireEvent.click(transform());                           // reopened at 3.2s
+    tick(2799);                                             // …to the last millisecond of the window
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     tick(1);                                                // the child leaves: the reveal goes with it
     expect(screen.queryByTestId("journey-reveal")).toBeNull();
   });
 
   it("closing it again is the learner's too, and it stays closed", () => {
-    show(withRevealWindow(snap(REF, "child3-reveal"), 4500));
+    show(snap(J5_REF, "child3-reveal"));
     tick(2700);
     fireEvent.click(transform());
     fireEvent.click(transform());
     expect(reveal()).toHaveAttribute("data-unfold", "compressed");
     expect(reveal()).toHaveAttribute("data-unfold-by", "learner");
-    tick(1700);
+    tick(2000);
     expect(reveal()).toHaveAttribute("data-unfold", "compressed");
   });
 
   it("a tap BEFORE the auto-compress takes over: the chain is then only what the learner set it to", () => {
-    show(withRevealWindow(snap(REF, "child3-reveal"), 4000));
+    show(snap(J5_REF, "child3-reveal"));
     tick(500);
     fireEvent.click(transform());                           // closed early, by hand
     expect(reveal()).toHaveAttribute("data-unfold", "compressed");
     fireEvent.click(transform());                           // and reopened
-    tick(3000);                                             // past the 2.4s point: no auto-compress now
+    tick(4000);                                             // past the 3.2s point: no auto-compress now
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
   });
 
@@ -449,7 +604,7 @@ describe("reduced motion", () => {
     expect(still.length).toBeGreaterThan(0);
     for (const l of still) expect(l).toMatch(/animation: none !important; transition: none !important;/);
     expect(JP5).toMatch(/html\.reduce-motion \.journey-reveal\[data-unfold\] \.journey-reasoning__step,/);
-    expect(JP5).toMatch(/html\.reduce-motion \.journey-magnitude \* \{ animation: none !important; transition: none !important; \}/);
+    expect(JP5).toMatch(/html\.reduce-motion \.journey-magnitude \*,\nhtml\.reduce-motion \.journey-composition,\nhtml\.reduce-motion \.journey-composition \* \{ animation: none !important; transition: none !important; \}/);
   });
 
   it("without motion the bar is simply drawn at the served ratio, and the fold is an instant state", () => {
@@ -461,9 +616,9 @@ describe("reduced motion", () => {
   it("the phases themselves do not depend on motion: expanded → compressed → reopened still happen", () => {
     document.documentElement.classList.add("reduce-motion");
     try {
-      show(withRevealWindow(snap(REF, "child3-reveal"), 4000));
+      show(snap(J5_REF, "child3-reveal"));
       expect(texts(readable())).toEqual(EXPANDED);
-      tick(2400);
+      tick(2700);
       expect(texts(readable())).toEqual(COMPRESSED);
       fireEvent.click(transform());
       expect(texts(readable())).toEqual(EXPANDED);
@@ -592,9 +747,10 @@ describe("every Journey host draws the same chain", () => {
     show(s);
     expect(screen.getByTestId("journey-live-chain").textContent).toBe("50Leona armorgives?Final damage");
     cleanup();
-    show(withRevealWindow(snap(PANTHEON, "child2-reveal"), 4000));
+    const r = snap(J5_PANTHEON, "child2-reveal");               // the JP5 backend: 6000ms for this child
+    show(r);
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
-    tick(2400);
+    tick(3200 - intoReveal(r));
     expect(reveal()).toHaveAttribute("data-unfold", "compressed");
     expect(texts(readable())).toEqual(["124Raw damage", "50Leona armor", "66.6%Damage taken", "83Final damage"]);
   });
@@ -610,7 +766,7 @@ describe("every Journey host draws the same chain", () => {
     expect(screen.getByTestId("journey-combat-working-magnitude")).toBeInTheDocument();
   });
 
-  it("Survival's haste and cooldown children keep their JP4 reveal: no chain is invented for them", () => {
+  it("before JP5 a haste reveal had no working: its prose stays, and no chain is invented", () => {
     show(snap(AHRI_SURVIVAL, "child2-reveal"));
     expect(reveal()).toHaveAttribute("data-working", "explanation");
     expect(reveal()).not.toHaveAttribute("data-unfold");
@@ -619,6 +775,22 @@ describe("every Journey host draws the same chain", () => {
     show(snap(VOLI, "child4-reveal"));                        // a cooldown comparison
     expect(reveal()).toHaveAttribute("data-working", "explanation");
     expect(document.querySelector(".journey-reasoning")).toBeNull();
+  });
+
+  it("Daily Survival on the JP5 backend: haste and Combat both unfold, each on its own 6000ms", () => {
+    for (const label of ["child1-reveal", "child2-reveal"]) {
+      const s = snap(J5_VOLI_SURVIVAL, label);
+      expect(segWire(s).own_reveal_window_ms, label).toBe(6000);
+      show(s);
+      expect(reveal(), label).toHaveAttribute("data-unfold", "expanded");
+      cleanup();
+    }
+    // A cooldown comparison keeps its prose (no comparison chain until main's
+    // `comparison_values.v1` is integrated) and its fast window.
+    const cmp = snap(J5_VOLI, "child4-reveal");
+    expect(segWire(cmp).own_reveal_window_ms).toBe(1750);
+    show(cmp);
+    expect(reveal()).toHaveAttribute("data-working", "explanation");
   });
 });
 

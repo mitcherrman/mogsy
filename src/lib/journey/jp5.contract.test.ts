@@ -21,7 +21,7 @@ import type { CombatWorking } from "./combatWorking";
 import type { CaptureSnapshot } from "./realFixtures";
 import {
   combatReasoning, liveReasoning, sharePercent, unfoldCompressAtMs, unfolds,
-  UNFOLD_EXPANDED_SHARE, UNFOLD_MIN_COMPRESSED_MS,
+  UNFOLD_COMPRESS_AT_MS, UNFOLD_MIN_COMPRESSED_MS,
 } from "./reasoning";
 
 const FIX = resolve(process.cwd(), "src/lib/journey/__fixtures__");
@@ -274,18 +274,19 @@ describe("the chain's three moments (builders)", () => {
   });
 });
 
-describe("the unfold divides the SERVER's reveal window; it never lengthens it", () => {
-  it("compresses only where the compressed chain is left a usable stretch", () => {
-    expect(unfoldCompressAtMs(1750)).toBeNull();            // production today: stays expanded
-    expect(unfoldCompressAtMs(3500)).toBe(2100);
-    expect(unfoldCompressAtMs(4000)).toBe(2400);
-    expect(unfoldCompressAtMs(4500)).toBe(2700);
+describe("the unfold choreographs inside the SERVER's window for this child; it never lengthens it", () => {
+  it("folds at ONE measured fixed point, only where the compact chain is left a usable stretch", () => {
+    expect(UNFOLD_COMPRESS_AT_MS).toBe(3200);
+    expect(unfoldCompressAtMs(1750)).toBeNull();            // a simple reveal: stays expanded
+    expect(unfoldCompressAtMs(4000)).toBeNull();            // 0.8 s left: not worth folding
+    expect(unfoldCompressAtMs(4400)).toBe(3200);
+    expect(unfoldCompressAtMs(6000)).toBe(3200);            // the served complex window
     expect(unfoldCompressAtMs(null)).toBeNull();
     expect(unfoldCompressAtMs(0)).toBeNull();
-    for (const w of [1750, 2500, 3000, 3500, 4000, 4500, 6000]) {
+    for (const w of [1750, 2500, 3000, 3500, 4000, 4500, 6000, 9000]) {
       const c = unfoldCompressAtMs(w);
       if (c === null) continue;
-      expect(c).toBe(Math.round(w * UNFOLD_EXPANDED_SHARE));
+      expect(c).toBe(UNFOLD_COMPRESS_AT_MS);                // not a share of the window
       expect(c).toBeLessThan(w);                            // always inside the window
       expect(w - c).toBeGreaterThanOrEqual(UNFOLD_MIN_COMPRESSED_MS);
     }

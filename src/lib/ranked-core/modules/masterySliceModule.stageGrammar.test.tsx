@@ -199,18 +199,24 @@ describe("Step 2 — the question asks; the board states", () => {
     expect(screen.getByTestId("journey-ability-subject-E")).toHaveAttribute("data-rank", "1");
   });
 
-  it("JP4 — the reveal is a Reasoning Chain in the learned formula's own words: 70 + 70% of 21 = 15 = 85", () => {
-    show(snap(REF, "child1-reveal"));
+  it("JP5 — the reveal is a Reasoning Chain from the SERVED raw working: 70 + 70% of 21 ≈ 15 → 85", () => {
+    // The JP5 backend's capture: its reveal carries `raw_damage_working.v1`.
+    show(snap("../jp5/zed_ahri.reference", "child1-reveal"));
     const w = screen.getByTestId("journey-raw-working");
     const node = (k: string) => within(w).getByTestId(`journey-raw-working-${k}`);
     // "Rank 1", never "R1" (which reads as the R ability).
     expect(screen.getByTestId("journey-raw-working-subject")).toHaveTextContent(/^Shadow Slash — Rank 1$/);
     expect(document.body.textContent).not.toMatch(/\bR1\b/);
     expect(node("base")).toHaveTextContent(/^70Base damage$/);
-    expect(node("ratio-0")).toHaveTextContent(/^70% of 21 =15Bonus AD damage$/);
+    expect(node("ratio-0")).toHaveTextContent(/^70% of 21 ≈15Bonus AD damage$/);
     expect(node("final")).toHaveTextContent(/^85Raw damage$/);
     expect(node("final").className).toMatch(/journey-node--final/);
-    expect([...w.querySelectorAll(".journey-op")].map((o) => o.getAttribute("data-op"))).toEqual(["+", "="]);
+    expect([...w.querySelectorAll(".journey-op")].map((o) => o.getAttribute("data-op"))).toEqual(["+", "→"]);
+    // The composition bar: base + scaling segments, sized by the SERVED terms.
+    const bar = screen.getByTestId("journey-raw-working-composition");
+    expect(within(bar).getByTestId("journey-raw-working-composition-base")).toHaveAttribute("data-weight", "70");
+    expect(within(bar).getByTestId("journey-raw-working-composition-ratio-0")).toHaveAttribute("data-weight", "14.56");
+    expect(bar).toHaveAttribute("aria-label", "70 base plus 15 Bonus AD: 85 raw");
     // Primary math is whole; the exact working is behind the info control.
     expect(w.textContent).not.toMatch(/20\.8|14\.56|84\.56/);
     fireEvent.click(screen.getByTestId("journey-raw-working-exact"));
@@ -249,8 +255,9 @@ describe("Step 3 — Ahri's armor in the same grammar", () => {
     expect(within(w).getByTestId("journey-stat-working-level")).toHaveTextContent(/^Lv 2Ahri$/);
     expect(within(w).getByTestId("journey-stat-working-final")).toHaveTextContent(/^24Armor$/);
     expect(w.textContent).not.toContain("24.024");
-    fireEvent.click(screen.getByTestId("journey-stat-working-exact"));
-    expect(screen.getByTestId("journey-stat-working-exact-pop")).toHaveTextContent("Exact armor at level 2: 24.024");
+    // JP5: no Exact control — 24.024 is served only in the reveal's prose here,
+    // which is no longer parsed; it reaches Step 4 as an established value.
+    expect(screen.queryByTestId("journey-stat-working-exact")).toBeNull();
   });
 });
 

@@ -5,14 +5,15 @@
  * Chain is a reveal's causal working, drawn as fixed-size nodes joined by
  * strong operators, so a learner recognises an equation at a glance:
  *
- *   Step 2   [70 · Base damage] + [70% of 21 = 15 · Bonus AD damage] = [85 · Raw damage]
+ *   Step 2   [70 · Base damage] + [70% of 21 ≈ 15 · Bonus AD damage] → [85 · Raw damage]
  *   Step 3   [Ahri · Lv 2] → [24 · Armor]
  *   Step 4   [85 · Raw] → [24 · Ahri armor] → [100 / (100 + 24) ≈ 0.806] → [68 · Final]
+ *   Haste    [12s · Base cooldown] → [10 · Ability haste] → [100 / (100 + 10)] → [90.9%] → [11s · Effective]
  *
- * A chain is only ever a REAL derivation, from served structure: the taught
- * formula + a stated stat + the reveal (raw damage), a recall's own semantics
- * (a stat at a level), the server's `combat_working` (after armor). Anything
- * else gets no chain.
+ * A chain is only ever a REAL derivation, from served structure: the server's
+ * TYPED working (`combatWorking.ts` — raw damage, after armor, cooldown under
+ * haste), or a recall's own semantics (a stat at a level). Anything else gets
+ * no chain.
  *
  * PRIMARY vs EXACT. The nodes speak League: derived values whole (`displayWhole`),
  * taught decimals as taught. The exact working — the decimals that explain
@@ -20,11 +21,11 @@
  * drawn behind an info control, never in the chain.
  *
  * NO SECOND COMBAT ENGINE. Every number is served: the formula's flat and
- * ratio, the stated stat, the reveal's exact result (from its own
- * explanation), the working's armor / multiplier / final. The only arithmetic
- * is laying a served total out as its served parts (raw − flat = the ratio
- * term) and CHECKING that the served multiplier is the known armor formula
- * before drawing it as that formula — it is never computed for display.
+ * ratio, the exact stat the evaluator used, each term's contribution, the raw
+ * total, the armor / haste multiplier, the final value. Nothing is parsed out
+ * of prose. The only arithmetic is CHECKING a served number against the
+ * formula it claims to be (the armor or haste multiplier; a term's product;
+ * the terms' sum) before an `=` is written — never computing one to show.
  *
  * JP5 — THE SAME CHAIN, THREE MOMENTS. Not a second component:
  *
@@ -46,7 +47,7 @@
 import type { JourneyAsks, JourneyPrerequisite } from "./adapter";
 import { chainNoun } from "./chain";
 import type { AbilitySlot } from "./contract";
-import type { CombatWorking } from "./combatWorking";
+import type { CombatWorking, CooldownWorking, RawDamageWorking } from "./combatWorking";
 import { ratioStatLabel } from "./statWording";
 import { displayWhole, exactNumber, isRoundedForDisplay, isJourneyStatKey, JOURNEY_STAT_META, type JourneyStatKey } from "./stats";
 
@@ -97,10 +98,23 @@ export interface ReasonMagnitude {
   toLabel: string;
   /** `ratio` as a share ("80.6%"). */
   percent: string;
+  /** What the share IS, in words: damage "taken" (default), cooldown "kept". */
+  kept?: string;
+}
+
+/**
+ * JP5 — a sum drawn as one bar: each served term a segment, in formula order,
+ * together making the served total. `weight` is the SERVED term value (the
+ * stylesheet sizes segments by it directly); `value` is how the chain shows it.
+ */
+export interface ReasonComposition {
+  parts: { key: string; value: string; label: string; weight: number }[];
+  total: string;
+  totalLabel: string;
 }
 
 export interface Reasoning {
-  kind: "raw" | "stat" | "combat" | "live";
+  kind: "raw" | "stat" | "combat" | "cooldown" | "live";
   /** The subject line above the chain ("Shadow Slash — Rank 1"). */
   subject: { icon: ReasonIcon | null; text: string } | null;
   /** A one-line formula the chain follows from (a Combat child that states it). */
@@ -110,6 +124,8 @@ export interface Reasoning {
   exact: string[] | null;
   /** JP5 — the magnitude bar, when the chain is a served reduction of one. */
   magnitude?: ReasonMagnitude | null;
+  /** JP5 — the composition bar, when the chain is a served sum of terms. */
+  composition?: ReasonComposition | null;
 }
 
 const pct = (ratio: number) => `${Number((ratio * 100).toFixed(4))}%`;
@@ -119,54 +135,93 @@ const slotOf = (s: string): AbilitySlot | null => (s === "Q" || s === "W" || s =
 /** "Rank 1" — never "R1", which reads as the R ability. */
 export const rankWords = (rank: number) => `Rank ${rank}`;
 
-/**
- * The exact number a served explanation states before rounding it
- * ("…: 84.56 damage, which rounds to 85 for this question."), or null.
- */
-export function explainedExact(explanation: string | null | undefined): number | null {
-  const m = /: (-?\d+(?:\.\d+)?) [a-z][a-z ]*, which rounds to -?\d+ for this question\.$/i.exec((explanation ?? "").trim());
-  return m ? Number(m[1]) : null;
-}
+/** Is `a` the same number as `b` (to float noise)? Decides `=` against `≈` only. */
+const same = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b));
 
 /**
- * STEP 2 — a raw (before armor) result: the taught formula at the premise's
- * rank, the premise's stated stat, and the reveal. With one ratio and the
- * reveal's exact result, the ratio term is the served raw minus the served
- * flat — its value in the learner's words, "70% of 21 = 15".
+ * STEP 2 — a raw (before armor) result, from the server's `raw_damage_working`:
+ * the flat base at the rank, each ratio's CONTRIBUTION as the server laid it
+ * out (the ratio of the exact stat the evaluator bound), and the raw total. In
+ * the learner's words "70% of 21 ≈ 15": the stat and the term shown whole, so
+ * `≈` unless both are exact already. The answer follows by an arrow — rounded
+ * terms need not add up to the rounded answer, and nothing here pretends so.
  */
-export function rawReasoning(parts: {
-  champion: string; slot: string; ability: string; rank: number; flat: number;
-  ratios: { ratio: number; stat: string; label: string; value: number }[];
-  answer: string; exactRaw: number | null;
-}): Reasoning {
-  const slot = slotOf(parts.slot);
-  const abilityIcon: ReasonIcon | null = slot ? { kind: "ability", champion: parts.champion, slot } : null;
-  const single = parts.ratios.length === 1 ? parts.ratios[0] : null;
-  const term = single && parts.exactRaw !== null ? parts.exactRaw - parts.flat : null;
+export function rawReasoning(w: RawDamageWorking): Reasoning {
+  const slot = slotOf(w.ability.slot);
+  const abilityIcon: ReasonIcon | null = slot ? { kind: "ability", champion: w.attacker.champion, slot } : null;
+  const terms = w.terms.slice(1);
   const nodes: ReasonNode[] = [
-    { key: "base", label: "Base damage", value: String(parts.flat), icon: abilityIcon },
-    ...parts.ratios.map((r, i): ReasonNode => {
+    // A flat base is a canonical fact (92.5 stays 92.5), shown as served.
+    { key: "base", label: "Base damage", value: exactNumber(w.formula.flat), icon: abilityIcon },
+    ...w.formula.ratios.map((r, i): ReasonNode => {
       const stat = r.stat === "bonus_attack_damage" || r.stat === "attack_damage" ? r.stat : null;
-      const words = `${pct(r.ratio)} of ${displayWhole(r.value)}`;
+      const term = terms[i].value;
+      const exactTerm = !isRoundedForDisplay(r.value) && !isRoundedForDisplay(term) && same(r.ratio * r.value, term);
       return {
         key: `ratio-${i}`, op: "+",
         label: capitalize(`${ratioStatLabel(r.stat, r.label)} damage`),
         icon: stat && isJourneyStatKey(stat) ? { kind: "stat", stat } : null,
-        ...(term !== null ? { expression: `${words} =`, value: displayWhole(term) } : { value: words }),
+        expression: `${pct(r.ratio)} of ${displayWhole(r.value)} ${exactTerm ? "=" : "≈"}`,
+        value: displayWhole(term),
       };
     }),
-    { key: "final", label: "Raw damage", value: parts.answer, op: "=", final: true, icon: abilityIcon },
+    { key: "final", label: "Raw damage", value: w.answer, op: "→", final: true, icon: abilityIcon },
   ];
   const exact: string[] = [];
-  if (single) {
-    const label = ratioStatLabel(single.stat, single.label);
-    if (isRoundedForDisplay(single.value)) exact.push(`Exact ${label}: ${exactNumber(single.value)}`);
-    if (term !== null && parts.exactRaw !== null) {
-      exact.push(`${pct(single.ratio)} of ${exactNumber(single.value)} = ${exactNumber(term)}`);
-      exact.push(`${parts.flat} + ${exactNumber(term)} = ${exactNumber(parts.exactRaw)}`);
-      if (isRoundedForDisplay(parts.exactRaw)) exact.push(`Shown as ${displayWhole(parts.exactRaw)} · rounded for display`);
-    }
-  }
+  w.formula.ratios.forEach((r, i) => {
+    const label = ratioStatLabel(r.stat, r.label);
+    if (isRoundedForDisplay(r.value)) exact.push(`Exact ${label}: ${exactNumber(r.value)}`);
+    const term = terms[i].value;
+    exact.push(`${pct(r.ratio)} of ${exactNumber(r.value)} ${same(r.ratio * r.value, term) ? "=" : "≈"} ${exactNumber(term)}`);
+  });
+  const sum = w.terms.reduce((a, t) => a + t.value, 0);
+  exact.push(`${w.terms.map((t) => exactNumber(t.value)).join(" + ")} ${same(sum, w.rawDamage) ? "=" : "≈"} ${exactNumber(w.rawDamage)}`);
+  if (isRoundedForDisplay(w.rawDamage)) exact.push(`Shown as ${w.answer} · rounded for display`);
+  const composition: ReasonComposition = {
+    parts: [
+      { key: "base", value: exactNumber(w.formula.flat), label: "base", weight: w.formula.flat },
+      ...w.formula.ratios.map((r, i) => ({
+        key: `ratio-${i}`, value: displayWhole(terms[i].value), weight: terms[i].value,
+        label: JOURNEY_STAT_META[isJourneyStatKey(r.stat) ? r.stat : "attack_damage"].short,
+      })),
+    ],
+    total: w.answer, totalLabel: "raw",
+  };
+  return {
+    kind: "raw",
+    subject: { icon: abilityIcon, text: `${w.ability.name || w.ability.slot} — ${rankWords(w.ability.rank)}` },
+    caption: null, nodes, exact, composition,
+  };
+}
+
+/**
+ * STEP 2 on a reveal that carries NO served working (a backend before JP5):
+ * the taught formula at the premise's rank and the premise's stated stat, in
+ * WORDS only — "70% of 21", no contribution and no total arithmetic — then the
+ * reveal's answer. Nothing is parsed from the explanation.
+ */
+export function rawWordsReasoning(parts: {
+  champion: string; slot: string; ability: string; rank: number; flat: number;
+  ratios: { ratio: number; stat: string; label: string; value: number }[]; answer: string;
+}): Reasoning {
+  const slot = slotOf(parts.slot);
+  const abilityIcon: ReasonIcon | null = slot ? { kind: "ability", champion: parts.champion, slot } : null;
+  const nodes: ReasonNode[] = [
+    { key: "base", label: "Base damage", value: exactNumber(parts.flat), icon: abilityIcon },
+    ...parts.ratios.map((r, i): ReasonNode => {
+      const stat = r.stat === "bonus_attack_damage" || r.stat === "attack_damage" ? r.stat : null;
+      // "70% of" over "21 · Bonus AD": the stat is the node's number; no
+      // damage figure is drawn, because none is served.
+      return {
+        key: `ratio-${i}`, op: "+", label: capitalize(ratioStatLabel(r.stat, r.label)),
+        icon: stat && isJourneyStatKey(stat) ? { kind: "stat", stat } : null,
+        expression: `${pct(r.ratio)} of`, value: displayWhole(r.value),
+      };
+    }),
+    { key: "final", label: "Raw damage", value: parts.answer, op: "→", final: true, icon: abilityIcon },
+  ];
+  const exact = parts.ratios.filter((r) => isRoundedForDisplay(r.value))
+    .map((r) => `Exact ${ratioStatLabel(r.stat, r.label)}: ${exactNumber(r.value)}`);
   return {
     kind: "raw",
     subject: { icon: abilityIcon, text: `${parts.ability || parts.slot} — ${rankWords(parts.rank)}` },
@@ -174,10 +229,15 @@ export function rawReasoning(parts: {
   };
 }
 
-/** STEP 3 — a champion stat at a level: the recall's own semantics and the reveal. */
+/**
+ * STEP 3 — a champion stat at a level: the recall's own semantics and the
+ * reveal. JP5: no Exact line — the exact stat is served nowhere structured at
+ * this child's own reveal (only in its prose, which is not parsed); it reaches
+ * the next child as an established value.
+ */
 export function statReasoning(sem: {
   champion: string; championId: string | null; metric: string; level: number | null;
-}, answer: string, exact: number | null): Reasoning | null {
+}, answer: string): Reasoning | null {
   const stat = sem.metric.replace(/^base_/, "");
   if (!isJourneyStatKey(stat) || sem.level === null || !sem.champion) return null;
   const meta = JOURNEY_STAT_META[stat];
@@ -188,10 +248,7 @@ export function statReasoning(sem: {
         icon: sem.championId ? { kind: "champion", championId: sem.championId, champion: sem.champion } : null },
       { key: "final", label: meta.long, value: answer, op: "→", final: true, icon: { kind: "stat", stat } },
     ],
-    exact: exact !== null && isRoundedForDisplay(exact)
-      ? [`Exact ${meta.long.toLowerCase()} at level ${sem.level}: ${exactNumber(exact)}`,
-        `Shown as ${displayWhole(exact)} · rounded for display`]
-      : null,
+    exact: null,
   };
 }
 
@@ -271,6 +328,63 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
   };
 }
 
+/**
+ * The served haste multiplier IS the haste formula for the served ability
+ * haste (to the server's 4-place rounding) — only then is it drawn as
+ * 100 / (100 + haste).
+ */
+export function isHasteFormula(abilityHaste: number, multiplier: number): boolean {
+  return abilityHaste >= 0 && Math.abs(100 / (100 + abilityHaste) - multiplier) <= 0.00051;
+}
+
+/** Seconds, as a League tooltip writes them ("12s", "7.5s"). */
+const seconds = (v: string) => `${v}s`;
+
+/**
+ * HASTE — a cooldown under ability haste, from the server's `cooldown_working`:
+ * the base cooldown, the haste, the served multiplier written three ways (the
+ * formula and the decimal are DETAIL; the share is the TRANSFORM the chain
+ * folds into), and the answer. The bar is the base DURATION shortening to the
+ * served share. The same fold, reopen and timing as the armor unfold.
+ */
+export function cooldownReasoning(w: CooldownWorking): Reasoning {
+  const slot = slotOf(w.ability.slot);
+  const abilityIcon: ReasonIcon | null = slot ? { kind: "ability", champion: w.champion.champion, slot } : null;
+  const m = w.cooldownMultiplier;
+  const formula = isHasteFormula(w.abilityHaste, m);
+  const nodes: ReasonNode[] = [
+    // The base cooldown is a canonical fact: shown as served (7.5 stays 7.5).
+    { key: "base", label: "Base cooldown", value: seconds(exactNumber(w.baseCooldown)), icon: abilityIcon },
+    { key: "haste", label: "Ability haste", value: exactNumber(w.abilityHaste), op: "→",
+      icon: { kind: "stat", stat: "ability_haste" } },
+  ];
+  if (formula) {
+    nodes.push(
+      { key: "haste-formula", label: "Formula", op: "→", icon: null, value: "", detail: true,
+        fraction: { top: "100", bottom: `100 + ${exactNumber(w.abilityHaste)}` } },
+      { key: "decimal", label: "Multiplier", op: "→", icon: null, detail: true, value: m.toFixed(3) },
+      { key: "multiplier", label: "Cooldown kept", op: "→", icon: null, transform: true, value: sharePercent(m) },
+    );
+  } else {
+    nodes.push({ key: "multiplier", label: "Cooldown multiplier", op: "→", icon: null, value: `×${m}` });
+  }
+  nodes.push({ key: "final", label: "New cooldown", value: seconds(w.answer), op: "→", final: true,
+    icon: abilityIcon });
+  const exact = [
+    ...(formula ? [`100 ÷ (100 + ${exactNumber(w.abilityHaste)}) = ${exactNumber(m)}`]
+      : [`Cooldown multiplier: ${exactNumber(m)}`]),
+    `${exactNumber(w.baseCooldown)} × ${exactNumber(m)} ≈ ${exactNumber(w.effectiveCooldown)} ${w.unit}`,
+    ...(isRoundedForDisplay(w.effectiveCooldown) ? [`Shown as ${w.answer} · rounded for display`] : []),
+  ];
+  return {
+    kind: "cooldown",
+    subject: { icon: abilityIcon, text: `${w.ability.name || w.ability.slot} — ${rankWords(w.ability.rank)}` },
+    caption: null, nodes, exact,
+    magnitude: { ratio: m, from: seconds(exactNumber(w.baseCooldown)), to: seconds(w.answer),
+      fromLabel: "base", toLabel: "effective", percent: sharePercent(m), kept: "kept" },
+  };
+}
+
 /** A served coefficient as the share it is (0.8063 → "80.6%"). Formatting only. */
 export function sharePercent(coefficient: number): string {
   return `${Number((coefficient * 100).toFixed(1))}%`;
@@ -319,20 +433,27 @@ export function liveReasoning(prerequisites: readonly JourneyPrerequisite[],
 
 // ── JP5 — THE UNFOLD'S TIMING, inside the server's reveal window ──────────────
 //
-// A reveal lasts exactly as long as the server says (`reveal_window_ms`, the
-// number its clock compensation was computed against). This only DIVIDES that
-// window: expanded first, compressed for the rest. A window too short to leave
-// the compressed chain a usable stretch is never divided — the derivation
-// stays open until the child leaves. Nothing here lengthens a reveal.
+// A reveal lasts exactly as long as the server grants THIS child
+// (`own_reveal_window_ms`, else `reveal_window_ms`: the number its clocks were
+// computed against). The chain only choreographs inside it, on MEASURED fixed
+// phases rather than a share of the window:
+//
+//   0 ms         the whole derivation is on screen at once;
+//   ~0.6 s       its bar has settled (the stylesheet's motion);
+//   3.2 s        it folds to the compact chain (≈2.6 s of settled reading);
+//   the rest     the compact chain, tappable to reopen until the child leaves.
+//
+// A window too short to leave the compact chain a usable stretch is never
+// divided — the derivation stays open until the child leaves (1750 ms). Nothing
+// here lengthens a reveal.
 
-/** The share of the window the full derivation is shown for. */
-export const UNFOLD_EXPANDED_SHARE = 0.6;
+/** When the expanded derivation folds, in ms from the reveal's start. */
+export const UNFOLD_COMPRESS_AT_MS = 3200;
 /** The least the compressed chain must be on screen for compressing to be worth it. */
 export const UNFOLD_MIN_COMPRESSED_MS = 1200;
 
 /** Milliseconds into the reveal at which the chain compresses; null = never by itself. */
 export function unfoldCompressAtMs(windowMs: number | null | undefined): number | null {
   if (typeof windowMs !== "number" || !(windowMs > 0)) return null;
-  const at = Math.round(windowMs * UNFOLD_EXPANDED_SHARE);
-  return windowMs - at >= UNFOLD_MIN_COMPRESSED_MS ? at : null;
+  return windowMs - UNFOLD_COMPRESS_AT_MS >= UNFOLD_MIN_COMPRESSED_MS ? UNFOLD_COMPRESS_AT_MS : null;
 }
