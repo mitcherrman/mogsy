@@ -511,11 +511,13 @@ export function matchResultPointsV1(
 // ------------------------------------------------------------ Order Forge
 
 /**
- * ASSUMED backend shape of an `order_forge.v1` segment (OF1-B). The exact
- * public/reveal field names are not yet committed on the backend; every one of
- * them is read in ONE place (`contracts.ts`: `readOrderForgeBlock`,
+ * Hand-written `order_forge.v1` segment fixtures, for the probe and the unit
+ * tests. Field names match the committed backend (reconciled in OF1-C); the
+ * proof of that is NOT this file but `__fixtures__/orderForgeServerCapture.json`,
+ * real server bodies read by `contracts.orderForge.serverCapture.test.tsx`.
+ * Every wire name is read in ONE place (`contracts.ts`: `readOrderForgeBlock`,
  * `readChallengeReveals`, `readOrderForgeSettlement`, `reviewOrderForge`), so a
- * rename lands there and in this file.
+ * rename lands there, in the capture and in this file.
  */
 export function orderForgeSegmentMeta(over: Partial<Record<string, unknown>> = {}) {
   return {

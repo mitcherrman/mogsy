@@ -80,15 +80,16 @@ function CardRow({
   index: number;
   total: number;
   disabled: boolean;
-  onMove: (dir: Dir) => void;
+  /** `via` is the control that asked, so focus can stay on it after the move. */
+  onMove: (dir: Dir, via: Dir | "grip") => void;
   buttonRef: (key: string, el: HTMLButtonElement | null) => void;
   reduced: boolean;
 }) {
   const controls = useDragControls();
   const key = (d: Dir | "grip") => `${entry.token}:${d}`;
   const onGripKey = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "ArrowUp") { e.preventDefault(); onMove("up"); }
-    else if (e.key === "ArrowDown") { e.preventDefault(); onMove("down"); }
+    if (e.key === "ArrowUp") { e.preventDefault(); onMove("up", "grip"); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); onMove("down", "grip"); }
   };
   const where = `position ${index + 1} of ${total}`;
   return (
@@ -114,14 +115,14 @@ function CardRow({
         <button type="button" data-testid={`forge-up-${entry.token}`}
           ref={(el) => buttonRef(key("up"), el)}
           aria-label={`Move ${entry.label} up (currently ${where})`}
-          disabled={disabled || index === 0} onClick={() => onMove("up")}
+          disabled={disabled || index === 0} onClick={() => onMove("up", "up")}
           className="flex h-11 w-11 items-center justify-center rounded-md border border-transparent hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30">
           <ArrowUp aria-hidden className="!size-5" />
         </button>
         <button type="button" data-testid={`forge-down-${entry.token}`}
           ref={(el) => buttonRef(key("down"), el)}
           aria-label={`Move ${entry.label} down (currently ${where})`}
-          disabled={disabled || index === total - 1} onClick={() => onMove("down")}
+          disabled={disabled || index === total - 1} onClick={() => onMove("down", "down")}
           className="flex h-11 w-11 items-center justify-center rounded-md border border-transparent hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30">
           <ArrowDown aria-hidden className="!size-5" />
         </button>
@@ -253,7 +254,7 @@ export function OrderForge({
               {order.map((token, i) => (
                 <CardRow key={token} entry={byToken.get(token)!} index={i} total={total}
                   disabled={!open} reduced={reduced} buttonRef={setButton}
-                  onMove={(dir) => move(token, dir, dir)} />
+                  onMove={(dir, via) => move(token, dir, via)} />
               ))}
             </Reorder.Group>
           ) : (

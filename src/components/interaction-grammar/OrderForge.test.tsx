@@ -86,6 +86,27 @@ describe("OrderForge — open", () => {
     expect(positions()).toEqual(["e0", "e1", "e2", "e3", "e4"]);
   });
 
+  it("keeps focus on the control that moved the card, so a key can be pressed again", () => {
+    // OF1-C: an arrow key on the grip used to hand focus to the up/down
+    // button, and the next arrow key then did nothing.
+    render(<Harness />);
+    const grip = screen.getByTestId("forge-grip-e0");
+    grip.focus();
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(screen.getByTestId("forge-grip-e0"));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    expect(positions()).toEqual(["e1", "e2", "e0", "e3", "e4"]);
+    expect(document.activeElement).toBe(screen.getByTestId("forge-grip-e0"));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
+    expect(positions()).toEqual(["e1", "e0", "e2", "e3", "e4"]);
+    // A button press keeps focus on that button...
+    screen.getByTestId("forge-up-e0").focus();
+    fireEvent.click(screen.getByTestId("forge-up-e0"));
+    expect(positions()).toEqual(["e0", "e1", "e2", "e3", "e4"]);
+    // ...until the card reaches an end and the button disables: then its grip.
+    expect(document.activeElement).toBe(screen.getByTestId("forge-grip-e0"));
+  });
+
   it("makes drag start only from the grip: it alone has touch-action:none", () => {
     render(<Harness />);
     expect(screen.getByTestId("forge-grip-e1").style.touchAction).toBe("none");
