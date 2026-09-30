@@ -278,7 +278,7 @@ describe("Step 4 — the culmination reads off the board", () => {
     expect(popText("journey-know-opponent-stat-armor")).toMatch(/Armor 24.*learned Step 3/);
   });
 
-  it("JP4 — the reveal is the server's working as a Reasoning Chain: 85 → 24 → 100 / (100 + 24) ≈ 0.806 → 68", () => {
+  it("JP5 — the reveal is the server's working as a Reasoning Chain: 85 → 24 → 100 / (100 + 24) → 0.806 → 80.6% → 68", () => {
     show(snap(REF, "child3-reveal"));
     const w = screen.getByTestId("journey-combat-working");
     expect(screen.getByTestId("journey-reveal")).toContainElement(w);
@@ -287,11 +287,13 @@ describe("Step 4 — the culmination reads off the board", () => {
     // 24.024 → 24); the served multiplier drawn as the armor formula it is.
     expect(node("raw")).toHaveTextContent(/^85Raw damage$/);
     expect(node("armor")).toHaveTextContent(/^24Ahri armor$/);
-    expect(within(w).getByTestId("journey-combat-working-multiplier-fraction")).toHaveTextContent("100100 + 24");
-    expect(within(w).getByTestId("journey-combat-working-multiplier-value")).toHaveTextContent("≈ 0.806");
+    expect(within(w).getByTestId("journey-combat-working-armor-formula-fraction")).toHaveTextContent("100100 + 24");
+    expect(within(w).getByTestId("journey-combat-working-decimal-value")).toHaveTextContent(/^0\.806$/);
+    expect(within(w).getByTestId("journey-combat-working-multiplier-value")).toHaveTextContent(/^80\.6%$/);
     expect(node("final")).toHaveTextContent(/^68Final damage$/);
     expect(node("final").className).toMatch(/journey-node--final/);
-    expect([...w.querySelectorAll(".journey-op")].map((o) => o.getAttribute("data-op"))).toEqual(["→", "→", "→"]);
+    // Arrows only — never `×` or `=`: 85 × 0.806 is not how 68 was reached.
+    expect([...w.querySelectorAll(".journey-op")].map((o) => o.getAttribute("data-op"))).toEqual(["→", "→", "→", "→", "→"]);
     // The raw damage was established at Step 2 (on the board): no formula re-derived.
     expect(screen.queryByTestId("journey-combat-working-formula")).toBeNull();
     // No derived decimal in the chain; the exact working is one tap away.

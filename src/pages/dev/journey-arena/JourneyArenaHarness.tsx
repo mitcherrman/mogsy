@@ -26,6 +26,13 @@
  * Ranked Bot match, so its flanks draw the Journey crest; every other capture
  * is a Daily stage (Standard or Survival), whose flanks keep the Daily's own
  * presentation. `?host=ranked|daily` overrides.
+ *
+ * JP5 — A PROBE FOR THE REVEAL WINDOW (`?revealMs=3500`). DEV ONLY: it rewrites
+ * the captured snapshot's `reveal_window_ms` (and the instants that follow
+ * from it) before the production parser reads it, so the real client path runs
+ * the reveal it WOULD run if the server froze that window. It changes no
+ * server, no fixture file and no production default: without the parameter the
+ * captures replay at the window they were captured with.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
@@ -95,13 +102,37 @@ export function journeyArenaView(round: PublicRoundView, at: string, skewMs: num
   } as ArenaViewModel;
 }
 
-function readParams(): { capture: CaptureKey; step: number; host: HarnessHost | null } {
+/**
+ * JP5 — one capture, as the server would have sent it with a different frozen
+ * reveal window (dev / probe / tests only; see the header). On a snapshot that
+ * is revealing, the reveal starts at the snapshot's own instant and the next
+ * card keeps the gap it was captured with after it.
+ */
+export function withRevealWindow(snap: CaptureSnapshot, ms: number): CaptureSnapshot {
+  const envelope = structuredClone(snap.envelope) as { payload?: { segment_state?: Record<string, unknown> | null } };
+  const seg = envelope.payload?.segment_state;
+  if (!seg || typeof seg.reveal_window_ms !== "number") return snap;
+  seg.reveal_window_ms = ms;
+  if (seg.own_revealing_card_index !== null && typeof seg.own_reveal_until === "string") {
+    const until = Date.parse(snap.at) + ms;
+    if (typeof seg.own_card_started_at === "string") {
+      const lag = Date.parse(seg.own_card_started_at) - Date.parse(seg.own_reveal_until);
+      seg.own_card_started_at = new Date(until + lag).toISOString();
+    }
+    seg.own_reveal_until = new Date(until).toISOString();
+  }
+  return { ...snap, envelope: envelope as CaptureSnapshot["envelope"] };
+}
+
+function readParams(): { capture: CaptureKey; step: number; host: HarnessHost | null; revealMs: number | null } {
   const p = new URLSearchParams(window.location.search);
   const c = (p.get("capture") ?? "zed") as CaptureKey;
   const h = p.get("host");
+  const ms = Number(p.get("revealMs"));
   return {
     capture: c in J3_CAPTURES ? c : "zed", step: Math.max(0, Number(p.get("step") ?? "1") || 0),
     host: h === "ranked" || h === "daily" ? h : null,
+    revealMs: Number.isInteger(ms) && ms > 0 ? ms : null,
   };
 }
 
@@ -121,7 +152,9 @@ export default function JourneyArenaHarness() {
   }, [capture]);
 
   const go = (n: number) => { setStep(n); setShownAt(Date.now()); };
-  const snap: CaptureSnapshot | null = snaps ? snaps[Math.min(step, snaps.length - 1)] : null;
+  const captured: CaptureSnapshot | null = snaps ? snaps[Math.min(step, snaps.length - 1)] : null;
+  const snap = useMemo(() => (captured && initial.revealMs ? withRevealWindow(captured, initial.revealMs) : captured),
+    [captured, initial.revealMs]);
   const round = useMemo(() => (snap ? readPublicRound(snap.envelope) : null), [snap]);
   // Server now = the capture instant, running on from the moment it was shown.
   const skewMs = snap ? Date.parse(snap.at) - shownAt : 0;
@@ -142,10 +175,12 @@ export default function JourneyArenaHarness() {
   const chrome = (
     <p className="truncate text-sm font-semibold">
       {host === "ranked" ? "Ranked Bot · Reference Journey" : "Daily Challenge · Journey"} · capture: {capture} · {snap?.label ?? "…"}
+      {initial.revealMs ? ` · probe reveal ${initial.revealMs}ms` : ""}
     </p>
   );
   return (
-    <div data-testid="journey-arena-harness" data-capture={capture} data-label={snap?.label} data-host={host} className="relative">
+    <div data-testid="journey-arena-harness" data-capture={capture} data-label={snap?.label} data-host={host}
+      data-reveal-ms={initial.revealMs ?? undefined} className="relative">
       <nav aria-label="Journey capture controls"
         className="fixed bottom-2 left-1/2 z-[60] flex max-w-[96vw] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-md border border-white/15 bg-black/85 px-2 py-1 text-[11px] text-white">
         <select data-testid="harness-capture" value={capture} className="bg-black"

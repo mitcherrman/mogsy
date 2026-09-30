@@ -215,11 +215,14 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   // JOURNEY-UI2/UI3 — a Journey segment: ONE board for the whole module, mounted
   // around every branch below (question, beat, waiting) so it never remounts
   // between children. Fed the server's reached-prefix public block only.
+  // JP5 — and the settled reveals: a child's prerequisites are joined to the
+  // values the learner was SHOWN (the same reveals K2 marks the board from).
   const journey = useMemo(() => journeyViewFor(state.journey, {
     ownNextChallengeIndex: state.ownNextChallengeIndex,
     ownCardStartedAt: state.ownCardStartedAt,
     ownFinished: state.ownFinished,
-  }), [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished]);
+  }, state.ownChallengeReveals),
+  [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished, state.ownChallengeReveals]);
   // K2 — the Journey's established facts, joined with the settled reveals
   // that carry their player-facing values (K1 §1.3). All reveals, not just the
   // held one: an earlier child's fact stays marked for the whole Journey.
@@ -333,6 +336,10 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
         reveal={reveal}
         journey={journey ? journey.children[current.challengeIndex] ?? null : null}
         combatWorking={reveal && holding ? holding.combatWorking ?? null : null}
+        // JP5 — the server's own window and the instant its reveal ends, so the
+        // Reasoning Chain divides THAT window. It is never lengthened here.
+        revealWindowMs={windowMs}
+        revealEndsAt={Number.isNaN(revealUntilMs) ? null : revealUntilMs - skewMs}
       />
     </div>,
     current.roles ?? null,

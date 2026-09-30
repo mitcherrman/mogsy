@@ -25,7 +25,26 @@
  * is laying a served total out as its served parts (raw − flat = the ratio
  * term) and CHECKING that the served multiplier is the known armor formula
  * before drawing it as that formula — it is never computed for display.
+ *
+ * JP5 — THE SAME CHAIN, THREE MOMENTS. Not a second component:
+ *
+ *   LIVE        [85 · Raw damage] → [24 · Ahri armor] → [? · Final damage]
+ *               the established facts this child RELIES ON, resurfaced
+ *               (`JourneyPrerequisite`: relies_on → established → the reveal's
+ *               display), then the asked value as `?`.
+ *   EXPANDED    [85] → [24] → [100 / (100 + 24)] → [0.806] → [80.6% · Damage taken] → [68]
+ *               the reveal's full derivation, all at once.
+ *   COMPRESSED  [85] → [24] → [80.6% · Damage taken] → [68]
+ *               the `detail` nodes folded into the `transform` node, which
+ *               reopens them.
+ *
+ * The fraction, the decimal and the percent are three WRITINGS of one served
+ * number (`mitigation_multiplier`); none is an operand. The chain is arrows,
+ * never `×` or `=`: 85 × 0.806 is not how 68 was reached (the exact working is
+ * 84.56 × 0.8063 ≈ 68.18, behind the Exact control).
  */
+import type { JourneyAsks, JourneyPrerequisite } from "./adapter";
+import { chainNoun } from "./chain";
 import type { AbilitySlot } from "./contract";
 import type { CombatWorking } from "./combatWorking";
 import { ratioStatLabel } from "./statWording";
@@ -52,10 +71,34 @@ export interface ReasonNode {
   /** The operator drawn BEFORE this node. */
   op?: ReasonOp;
   final?: boolean;
+  /** JP5 — established by an EARLIER step (a prerequisite): on screen before the reveal. */
+  given?: boolean;
+  /** JP5 — the asked value, not answered yet: its value is `?`. */
+  asked?: boolean;
+  /** JP5 — a derivation step the compressed chain folds away. */
+  detail?: boolean;
+  /** JP5 — what the `detail` steps fold INTO; it reopens them. */
+  transform?: boolean;
+}
+
+/**
+ * JP5 — how much of a magnitude survives a transformation: the bar under the
+ * expanded chain. `ratio` is a SERVED coefficient (the working's
+ * `mitigation_multiplier`), never a quotient of two displayed numbers.
+ */
+export interface ReasonMagnitude {
+  ratio: number;
+  /** The whole (raw damage) and what remains (the answer), as the chain shows them. */
+  from: string;
+  to: string;
+  fromLabel: string;
+  toLabel: string;
+  /** `ratio` as a share ("80.6%"). */
+  percent: string;
 }
 
 export interface Reasoning {
-  kind: "raw" | "stat" | "combat";
+  kind: "raw" | "stat" | "combat" | "live";
   /** The subject line above the chain ("Shadow Slash — Rank 1"). */
   subject: { icon: ReasonIcon | null; text: string } | null;
   /** A one-line formula the chain follows from (a Combat child that states it). */
@@ -63,6 +106,8 @@ export interface Reasoning {
   nodes: ReasonNode[];
   /** Exact working, one line each; null when nothing was rounded. */
   exact: string[] | null;
+  /** JP5 — the magnitude bar, when the chain is a served reduction of one. */
+  magnitude?: ReasonMagnitude | null;
 }
 
 const pct = (ratio: number) => `${Number((ratio * 100).toFixed(4))}%`;
@@ -162,9 +207,9 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
   const slot = slotOf(w.ability.slot);
   const abilityIcon: ReasonIcon | null = slot ? { kind: "ability", champion: w.attacker.champion, slot } : null;
   const nodes: ReasonNode[] = [
-    { key: "raw", label: "Raw damage", value: displayWhole(w.rawDamage), icon: abilityIcon },
+    { key: "raw", label: "Raw damage", value: displayWhole(w.rawDamage), icon: abilityIcon, given: rawRecalled },
     { key: "armor", label: `${w.target.champion} armor`, value: displayWhole(w.targetArmor.value), op: "→",
-      icon: { kind: "stat", stat: "armor" } },
+      icon: { kind: "stat", stat: "armor" }, given: w.targetArmor.source === "recalled" },
   ];
   const pen: string[] = [];
   if (w.penetration.lethality !== 0) pen.push(`${displayWhole(w.penetration.lethality)} lethality`);
@@ -177,11 +222,21 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
       icon: { kind: "stat", stat: "armor" } });
   }
   const formula = isArmorFormula(w.effectiveArmor, w.mitigationMultiplier);
-  nodes.push(formula
-    ? { key: "multiplier", label: "Damage taken", op: "→", icon: null,
-      fraction: { top: "100", bottom: `100 + ${displayWhole(w.effectiveArmor)}` },
-      value: `≈ ${w.mitigationMultiplier.toFixed(3)}` }
-    : { key: "multiplier", label: "Armor multiplier", op: "→", icon: null, value: `×${w.mitigationMultiplier}` });
+  if (formula) {
+    // JP5 — the one served multiplier, written three ways: as the formula it
+    // was checked against, as the decimal served, and as the share of the raw
+    // damage taken. The first two are the derivation's DETAIL.
+    nodes.push(
+      { key: "armor-formula", label: "Armor formula", op: "→", icon: null, value: "", detail: true,
+        fraction: { top: "100", bottom: `100 + ${displayWhole(w.effectiveArmor)}` } },
+      { key: "decimal", label: "Multiplier", op: "→", icon: null, detail: true,
+        value: w.mitigationMultiplier.toFixed(3) },
+      { key: "multiplier", label: "Damage taken", op: "→", icon: null, transform: true,
+        value: sharePercent(w.mitigationMultiplier) },
+    );
+  } else {
+    nodes.push({ key: "multiplier", label: "Armor multiplier", op: "→", icon: null, value: `×${w.mitigationMultiplier}` });
+  }
   nodes.push({ key: "final", label: "Final damage", value: w.answer, op: "→", final: true, icon: abilityIcon });
   // Not recalled: the served formula the raw damage follows from, under the subject line.
   const caption = rawRecalled ? null
@@ -200,9 +255,79 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
     `${exactNumber(w.rawDamage)} × ${exactNumber(w.mitigationMultiplier)} ≈ ${exactNumber(w.finalDamage)}`,
     ...(isRoundedForDisplay(w.finalDamage) ? [`Shown as ${w.answer} · rounded for display`] : []),
   ];
+  // JP5 — the bar: the raw damage contracting to the share the armor lets
+  // through. Only a real reduction is a magnitude (0 < served multiplier ≤ 1).
+  const m = w.mitigationMultiplier;
+  const magnitude: ReasonMagnitude | null = m > 0 && m <= 1
+    ? { ratio: m, from: displayWhole(w.rawDamage), to: w.answer, fromLabel: "raw", toLabel: "final", percent: sharePercent(m) }
+    : null;
   return {
     kind: "combat",
     subject: rawRecalled ? null : { icon: abilityIcon, text: `${w.ability.name || w.ability.slot} — ${rankWords(w.ability.rank)}` },
-    caption, nodes, exact,
+    caption, nodes, exact, magnitude,
   };
+}
+
+/** A served coefficient as the share it is (0.8063 → "80.6%"). Formatting only. */
+export function sharePercent(coefficient: number): string {
+  return `${Number((coefficient * 100).toFixed(1))}%`;
+}
+
+/** Does this chain fold (it has derivation detail, and a node to fold it into)? */
+export const unfolds = (r: Reasoning) => r.nodes.some((n) => n.detail) && r.nodes.some((n) => n.transform);
+
+/**
+ * JP5 — LIVE: the prerequisites this child relies on, then the asked value.
+ *
+ * A prerequisite becomes a node only when it is a compact value the learner was
+ * SHOWN (its reveal's display) of a kind this closed vocabulary can name — a
+ * raw damage, a champion stat. A formula is not a number and has no node; a
+ * fact a premise stated is on the card that states it. With no node there is
+ * no live chain, and the question stands alone exactly as before.
+ *
+ * The asked node's value is the literal `?`: nothing of the answer is read.
+ */
+export function liveReasoning(prerequisites: readonly JourneyPrerequisite[],
+  asks: Pick<JourneyAsks, "family" | "metric" | "subjectRef" | "subject">): Reasoning | null {
+  const asked = chainNoun(asks);
+  if (!asked) return null;
+  const nodes: ReasonNode[] = [];
+  for (const p of prerequisites) {
+    if (p.display === null) continue;
+    let node: Pick<ReasonNode, "label" | "value" | "icon"> | null = null;
+    if (p.kind === "ability_raw_damage" && p.slot && p.champion) {
+      node = { label: "Raw damage", value: p.display, icon: { kind: "ability", champion: p.champion, slot: p.slot } };
+    } else if (p.kind === "champion_stat_at_level" && p.champion && isJourneyStatKey(p.stat)) {
+      node = { label: `${p.champion} ${JOURNEY_STAT_META[p.stat].long.toLowerCase()}`, value: p.display,
+        icon: { kind: "stat", stat: p.stat } };
+    }
+    if (node) nodes.push({ ...node, key: `given-${nodes.length}`, given: true, ...(nodes.length ? { op: "→" as const } : {}) });
+  }
+  if (nodes.length === 0) return null;
+  const slot = slotOf(asks.subjectRef);
+  nodes.push({
+    key: "asked", label: asked, value: "?", op: "→", final: true, asked: true,
+    icon: slot && typeof asks.subject === "string" ? { kind: "ability", champion: asks.subject, slot } : null,
+  });
+  return { kind: "live", subject: null, caption: null, nodes, exact: null };
+}
+
+// ── JP5 — THE UNFOLD'S TIMING, inside the server's reveal window ──────────────
+//
+// A reveal lasts exactly as long as the server says (`reveal_window_ms`, the
+// number its clock compensation was computed against). This only DIVIDES that
+// window: expanded first, compressed for the rest. A window too short to leave
+// the compressed chain a usable stretch is never divided — the derivation
+// stays open until the child leaves. Nothing here lengthens a reveal.
+
+/** The share of the window the full derivation is shown for. */
+export const UNFOLD_EXPANDED_SHARE = 0.6;
+/** The least the compressed chain must be on screen for compressing to be worth it. */
+export const UNFOLD_MIN_COMPRESSED_MS = 1200;
+
+/** Milliseconds into the reveal at which the chain compresses; null = never by itself. */
+export function unfoldCompressAtMs(windowMs: number | null | undefined): number | null {
+  if (typeof windowMs !== "number" || !(windowMs > 0)) return null;
+  const at = Math.round(windowMs * UNFOLD_EXPANDED_SHARE);
+  return windowMs - at >= UNFOLD_MIN_COMPRESSED_MS ? at : null;
 }

@@ -277,12 +277,20 @@ export function ProseChallenge({
  */
 export function MasterySliceChallengeSurface({
   challenge, total, submitting, onSubmit, reveal = null, journey = null, combatWorking = null,
+  revealWindowMs = null, revealEndsAt = null,
 }: {
   challenge: MasterySliceChallengeView;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
   reveal?: MasteryQuestionReveal | null;
+  /**
+   * JP5 — the server's frozen reveal window and the client-clock instant its
+   * reveal ends. Read only by a Journey child's Reasoning Chain, to DIVIDE the
+   * window (expanded, then compressed); never to extend it.
+   */
+  revealWindowMs?: number | null;
+  revealEndsAt?: number | null;
   /**
    * JOURNEY5 — the held reveal's server `combat_working`, if any. Drawn only
    * while `reveal` is set, and only by a Journey Combat child.
@@ -298,7 +306,8 @@ export function MasterySliceChallengeSurface({
   if (journey) {
     return (
       <JourneyChild challenge={challenge} total={total} submitting={submitting}
-        onSubmit={onSubmit} reveal={reveal} journey={journey} combatWorking={combatWorking} />
+        onSubmit={onSubmit} reveal={reveal} journey={journey} combatWorking={combatWorking}
+        revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} />
     );
   }
   return (
@@ -317,7 +326,8 @@ export function MasterySliceChallengeSurface({
  * place. The kind of child changes only its words. A child answered by typing
  * (a numeric free-entry recall) keeps its Mastery renderer, in the same frame.
  */
-function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, combatWorking }: {
+function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, combatWorking,
+  revealWindowMs, revealEndsAt }: {
   challenge: MasterySliceChallengeView;
   total: number;
   submitting: boolean;
@@ -325,6 +335,8 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   reveal: MasteryQuestionReveal | null;
   journey: JourneyChildContext;
   combatWorking: CombatWorking | null;
+  revealWindowMs: number | null;
+  revealEndsAt: number | null;
 }) {
   const path = renderPathFor(challenge);
   // A structural renderer throws on a template it cannot phrase; such a child
@@ -348,7 +360,8 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   }
   return (
     <JourneyStageQuestion challenge={challenge} journey={journey} submitting={submitting}
-      onSubmit={onSubmit} reveal={reveal} combatWorking={combatWorking} />
+      onSubmit={onSubmit} reveal={reveal} combatWorking={combatWorking}
+      revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} />
   );
 }
 

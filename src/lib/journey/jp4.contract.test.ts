@@ -192,10 +192,13 @@ describe("Reasoning Chain builders: served numbers, League-style primary, exact 
     effectiveArmor: 24.024, mitigationMultiplier: 0.8063, finalDamage: 68.1804, answer: "68", ...over,
   });
 
-  it("Step 4: 85 → 24 → 100 / (100 + 24) ≈ 0.806 → 68, the exact working apart", () => {
+  // JP5 supersedes JP4's merged "100 / (100 + 24) ≈ 0.806" node: the served
+  // multiplier is written three ways, the first two being the chain's detail.
+  it("Step 4: 85 → 24 → 100 / (100 + 24) → 0.806 → 80.6% → 68, the exact working apart", () => {
     const r = combatReasoning(working(), true);
     expect(r.nodes.map((n) => [n.op ?? null, n.value, n.label])).toEqual([
-      [null, "85", "Raw damage"], ["→", "24", "Ahri armor"], ["→", "≈ 0.806", "Damage taken"], ["→", "68", "Final damage"]]);
+      [null, "85", "Raw damage"], ["→", "24", "Ahri armor"], ["→", "", "Armor formula"], ["→", "0.806", "Multiplier"],
+      ["→", "80.6%", "Damage taken"], ["→", "68", "Final damage"]]);
     expect(r.nodes[2].fraction).toEqual({ top: "100", bottom: "100 + 24" });
     expect(r.subject).toBeNull();                    // raw recalled: nothing re-derived
     expect(r.exact).toEqual([

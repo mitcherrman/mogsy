@@ -370,10 +370,13 @@ describe("the Reasoning Chain: one node grammar, strong operators", () => {
       const nodes = [...document.querySelectorAll<HTMLElement>(".journey-node")];
       expect(nodes.length, label).toBeGreaterThan(1);
       for (const n of nodes) expect(n.getAttribute("style"), label).toBeNull();
-      expect(document.querySelector(".journey-reasoning__chain")).toHaveAttribute("data-density", "regular");
+      // JP5 — Step 4's chain is its whole derivation (six nodes): the dense tier.
+      expect(document.querySelector(".journey-reasoning__chain"))
+        .toHaveAttribute("data-density", label === "child3-reveal" ? "dense" : "regular");
       cleanup();
     }
-    const rule = (sel: string) => CSS.slice(CSS.lastIndexOf(`${sel} {`), CSS.indexOf("}", CSS.lastIndexOf(`${sel} {`)));
+    // The node's and the operator's OWN rules (a line of their own in the sheet).
+    const rule = (sel: string) => CSS.slice(CSS.lastIndexOf(`\n${sel} {`), CSS.indexOf("}", CSS.lastIndexOf(`\n${sel} {`)));
     expect(rule(".journey-node")).toMatch(/width: var\(--jn-w\);[\s\S]*height: var\(--jn-h\)/);
     expect(rule(".journey-op")).toMatch(/font-size: var\(--jop-fs\);[\s\S]*font-weight: 900/);
   });
@@ -381,7 +384,7 @@ describe("the Reasoning Chain: one node grammar, strong operators", () => {
   it("operators are read as words and drawn large; the arrow is a drawn stroke, not a faint glyph", () => {
     show(snap(REF, "child3-reveal"));
     const ops = [...document.querySelectorAll<HTMLElement>(".journey-op")];
-    expect(ops.map((o) => o.textContent)).toEqual(["gives", "gives", "gives"]);
+    expect(ops.map((o) => o.textContent)).toEqual(["gives", "gives", "gives", "gives", "gives"]);
     for (const o of ops) expect(o.querySelector("svg")).not.toBeNull();
     cleanup();
     show(snap(REF, "child1-reveal"));

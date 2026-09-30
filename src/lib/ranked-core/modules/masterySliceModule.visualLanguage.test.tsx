@@ -222,13 +222,15 @@ describe("the Journey Path (JP3 micro-chain)", () => {
 describe("display precision (owner lock)", () => {
   /**
    * Decimals visible in the stage's TEXT (exact values live in hover titles and
-   * the Reasoning Chain's exact-working card, closed here). JP4: the armor
-   * formula node's "≈ 0.806" is the served multiplier, drawn as the formula it
-   * is — the one coefficient the primary chain shows.
+   * the Reasoning Chain's exact-working card, closed here). JP5: the SERVED
+   * armor multiplier is the one coefficient the primary chain shows — written
+   * as the decimal served ("0.806") and as the share it is ("80.6%"), beside
+   * the formula it was checked against.
    */
   const visibleDecimals = () => {
     const stage = screen.getByTestId("journey-stage").cloneNode(true) as HTMLElement;
-    stage.querySelectorAll(".journey-node--formula .journey-node__value").forEach((n) => n.remove());
+    stage.querySelectorAll('[data-node="decimal"] .journey-node__value, [data-node="multiplier"] .journey-node__value')
+      .forEach((n) => n.remove());
     return (stage.textContent ?? "").match(/×?\d+\.\d+/g) ?? [];
   };
   // Canonical TAUGHT decimals: the formula's own rank values, as served.

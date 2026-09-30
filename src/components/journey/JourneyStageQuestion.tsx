@@ -43,6 +43,15 @@
  * A child answered by TYPING (a numeric free-entry recall) keeps its Mastery
  * renderer — a text box cannot be one tap — inside the same reserved frame.
  *
+ * JP5 — THE REASONING CHAIN STARTS BEFORE THE ANSWER. A child that RELIES ON
+ * established facts (`journey.prerequisites`, the adapter's generic join)
+ * shows them under its question as the live chain — `85 Raw damage → 24 Ahri
+ * armor → ? Final damage` — inside the same prompt box (the question's type
+ * fits around it). The board and its `!` marks are untouched: this resurfaces
+ * what the board already holds. On the reveal a chain with derivation detail
+ * unfolds all at once, compresses, and reopens on a tap (`useEquationUnfold`),
+ * all inside the server's own reveal window.
+ *
  * Presentation only: nothing here grades, computes or rounds.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -63,13 +72,13 @@ import { ratioStatLabel, explicitAdText } from "@/lib/journey/statWording";
 import { mnemonicForMetric } from "@/lib/journey/statIcons";
 import { isJourneyStatKey, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import {
-  combatReasoning, explainedExact, rawReasoning, statReasoning, type Reasoning,
+  combatReasoning, explainedExact, liveReasoning, rawReasoning, statReasoning, unfolds, type Reasoning,
 } from "@/lib/journey/reasoning";
 import {
   combatPremiseOf, combatQuestionSentence, percent, premiseValue, type CombatPremise,
 } from "./JourneyCombatQuestion";
 import { displayExplanation } from "./JourneyCalcFlow";
-import { JourneyReasoningChain, JourneyReasoningHead } from "./JourneyReasoning";
+import { JourneyReasoningChain, JourneyReasoningHead, useEquationUnfold } from "./JourneyReasoning";
 import { AbilityIcon } from "./JourneyIcons";
 import { JourneyQuestionText, useFittedQuestion, type PromptSubject } from "./JourneyQuestionText";
 
@@ -223,7 +232,7 @@ export function promptSubjectsFor(challenge: MasterySliceChallengeView, journey:
  * subject. Anything else keeps the served explanation, whole-number display.
  */
 function JourneyReveal({ challenge, journey, question, correct, timedOut, answer, explanation, working,
-  learnedFormula, rawRecalled }: {
+  learnedFormula, rawRecalled, windowMs, endsAt }: {
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
   question: JourneyQuestion;
@@ -237,6 +246,9 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   learnedFormula: JourneyFormula | null;
   /** The raw damage this Combat answer applies was established by an earlier step. */
   rawRecalled: boolean;
+  /** JP5 — the server's reveal window, and the client-clock instant it ends (null when unnamed). */
+  windowMs: number | null;
+  endsAt: number | null;
 }) {
   const shown = displayExplanation(explanation);
   const statRecall = statRecallOf(challenge);
@@ -260,9 +272,13 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   const kind = reasoning?.kind ?? (fact ? "fact" : null);
   const chainId = reasoning?.kind === "combat" ? "journey-combat-working"
     : reasoning?.kind === "raw" ? "journey-raw-working" : "journey-stat-working";
+  // JP5 — a chain with derivation detail unfolds, compresses and reopens.
+  const folds = reasoning !== null && unfolds(reasoning);
+  const unfold = useEquationUnfold(folds, windowMs, endsAt);
   return (
     <div data-testid="journey-reveal" role="status" aria-live="polite" className="journey-reveal"
-      data-working={kind ?? (shown.text ? "explanation" : "none")}>
+      data-working={kind ?? (shown.text ? "explanation" : "none")}
+      {...(folds ? { "data-unfold": unfold.phase, "data-unfold-by": unfold.manual ? "learner" : "reveal" } : {})}>
       <div className="journey-reveal__top">
         <p data-testid="journey-reveal-verdict" data-correct={correct ? "true" : "false"}
           className={`journey-reveal__verdict ${correct ? "journey-reveal__verdict--correct" : "journey-reveal__verdict--wrong"}`}>
@@ -272,7 +288,8 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
         {reasoning && <JourneyReasoningHead reasoning={reasoning} testId={chainId} />}
       </div>
       {reasoning ? (
-        <JourneyReasoningChain reasoning={reasoning} testId={chainId} />
+        <JourneyReasoningChain reasoning={reasoning} testId={chainId}
+          {...(folds ? { phase: unfold.phase, onToggle: unfold.toggle } : {})} />
       ) : fact && fact.kind === "ability" && answer !== null ? (
         <p data-testid="journey-reveal-fact" className="journey-reveal__fact">
           <AbilityIcon champion={fact.champion} slot={fact.slot} size="node" />
@@ -291,7 +308,7 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
 }
 
 export function JourneyStageQuestion({
-  challenge, journey, submitting, onSubmit, reveal, combatWorking = null,
+  challenge, journey, submitting, onSubmit, reveal, combatWorking = null, revealWindowMs = null, revealEndsAt = null,
 }: {
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
@@ -299,12 +316,18 @@ export function JourneyStageQuestion({
   onSubmit: (answer: PlayerAnswer) => void;
   reveal: MasteryQuestionReveal | null;
   combatWorking?: CombatWorking | null;
+  /** JP5 — the server's frozen reveal window (`reveal_window_ms`). */
+  revealWindowMs?: number | null;
+  /** JP5 — the client-clock instant the server's reveal ends (`own_reveal_until`), or null. */
+  revealEndsAt?: number | null;
 }) {
   const question = useMemo(() => journeyQuestionFor(challenge, journey), [challenge, journey]);
   const subjects = useMemo(() => promptSubjectsFor(challenge, journey, question), [challenge, journey, question]);
-  // JP4 — a fixed prompt box, adaptive type: fitted before paint.
+  // JP5 — the live chain: what this child relies on, then the asked `?`.
+  const live = useMemo(() => liveReasoning(journey.prerequisites ?? [], journey.asks), [journey]);
+  // JP4 — a fixed prompt box, adaptive type: fitted before paint (JP5: around the live chain).
   const host = useRef<HTMLDivElement>(null);
-  useFittedQuestion(host, `${challenge.challengeIndex}:${question.sentence}`);
+  useFittedQuestion(host, `${challenge.challengeIndex}:${question.sentence}:${live ? live.nodes.length : 0}`);
   const view: QuestionView = useMemo(() => ({
     questionId: `journey-${challenge.challengeIndex}`,
     prompt: question.sentence,
@@ -357,6 +380,12 @@ export function JourneyStageQuestion({
         reveal={revealing ? { revealed: true, isCorrect: reveal.correct, correctOptionId: optionId(reveal.correctValue) } : null}
         context={context}
         promptNode={<JourneyQuestionText sentence={question.sentence} subjects={subjects} />}
+        // Live only: on the reveal the chain is the reveal layer's (one chain on screen).
+        promptFooter={live && !revealing && (
+          <div className="journey-live" data-testid="journey-live" data-yields="true">
+            <JourneyReasoningChain reasoning={live} testId="journey-live-chain" phase="live" />
+          </div>
+        )}
       />
       {revealing && (
         <JourneyReveal challenge={challenge} journey={journey} question={question}
@@ -364,7 +393,8 @@ export function JourneyStageQuestion({
           answer={labelOf(reveal.correctValue)}
           explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
           working={combatWorking} learnedFormula={journey.learnedFormula ?? null}
-          rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")} />
+          rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
+          windowMs={revealWindowMs} endsAt={revealEndsAt} />
       )}
     </div>
   );

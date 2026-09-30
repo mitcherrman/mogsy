@@ -91,6 +91,51 @@ export interface JourneyRecall {
   establishedInChild: number;
 }
 
+/** The settled reveal fields the prerequisite join reads (K2's own three; `knowledge.ts`). */
+export interface JourneyRevealDisplay {
+  challengeIndex: number;
+  correctAnswer: string | null;
+  correctAnswerDisplay?: string | null;
+}
+
+/**
+ * JP5 — A PREREQUISITE: an established fact THIS child relies on, resurfaced.
+ *
+ * A generic three-way join, all of it served:
+ *
+ *   child.learner.relies_on[]        which facts this child depends on
+ *     → child.learner.established[]  the same fact id: its kind, K1 object /
+ *                                    context, and its canonical value
+ *     → reveal(established.child)    the value as the learner was SHOWN it
+ *                                    (`correct_answer_display ?? correct_answer`)
+ *
+ * `display` is K2's rule (`knowledge.ts`): the reveal's text, verbatim — the
+ * ledger's canonical number (84.56) is never printed or rounded for it. A fact
+ * a premise STATED has no reveal and so no `display`; nor has one whose reveal
+ * is not in the payload. Nothing is inferred: a child that publishes no
+ * `relies_on` has no prerequisites, whatever its ledger holds.
+ */
+export interface JourneyPrerequisite {
+  fact: string;
+  /** The ledger's fact kind (`ability_raw_damage`, `champion_stat_at_level`, …). */
+  kind: string;
+  /** What the child uses it as (`raw_damage`, `target_armor`, `ability_damage`). */
+  what: string;
+  source: "stated" | "revealed";
+  /** The EARLIER child that established it (always before this one). */
+  establishedInChild: number;
+  /** The reveal's player-facing value, verbatim; null when no reveal carries one. */
+  display: string | null;
+  /** The ledger's canonical value, as served (the exact working only). */
+  value: number | string | JourneyFormula;
+  /** Whose fact it is, as the child's own recall names it; null when it names none. */
+  champion: string | null;
+  slot: AbilitySlot | null;
+  /** K1 context, when the fact carries one (a stat and its level). */
+  stat: string | null;
+  level: number | null;
+}
+
 /** What the question renderer needs from the Journey for ONE child. */
 export interface JourneyChildContext {
   index: number;
@@ -107,6 +152,8 @@ export interface JourneyChildContext {
   learnedFormula?: JourneyFormula | null;
   /** Facts this child RECALLS: their numbers are withheld; the teacher is named. */
   recalled: JourneyRecall[];
+  /** JP5 — the established facts this child relies on, joined (`JourneyPrerequisite`). Absent on J2. */
+  prerequisites?: JourneyPrerequisite[];
   /** Backend learner-ledger links (earlier children this one reinforces). */
   reinforces: number[];
   playerChampion: string;
@@ -298,13 +345,39 @@ function learnedFormula3(c: J3Child): JourneyFormula | null {
   return null;
 }
 
-function childContext3(c: J3Child): JourneyChildContext {
+/**
+ * JP5 — `relies_on` → `established` → the establishing child's reveal display.
+ * Fails closed per fact: one that is not in this child's own ledger, that an
+ * earlier child did not establish, or that is the fact this child ASKS, is
+ * dropped — a prerequisite is never the current answer.
+ */
+function prerequisites3(c: J3Child, reveals: readonly JourneyRevealDisplay[]): JourneyPrerequisite[] {
+  const out: JourneyPrerequisite[] = [];
+  for (const r of c.learner.reliesOn) {
+    const e = c.learner.established.find((x) => x.fact === r.fact);
+    if (!e || e.child >= c.index || e.fact === c.learner.asksFact?.fact) continue;
+    const recall = c.recalls.find((x) => x.fact === r.fact) ?? null;
+    const reveal = e.source === "revealed" ? reveals.find((x) => x.challengeIndex === e.child) ?? null : null;
+    const shown = reveal ? reveal.correctAnswerDisplay ?? reveal.correctAnswer ?? null : null;
+    out.push({
+      fact: e.fact, kind: e.kind, what: r.what, source: e.source, establishedInChild: e.child,
+      display: shown === "" ? null : shown, value: e.value,
+      champion: recall?.champion ?? null,
+      slot: recall?.slot ?? e.knowledge?.object?.slot ?? null,
+      stat: e.knowledge?.context.stat ?? null, level: e.knowledge?.context.level ?? null,
+    });
+  }
+  return out;
+}
+
+function childContext3(c: J3Child, reveals: readonly JourneyRevealDisplay[]): JourneyChildContext {
   return {
     index: c.index, engine: c.engine, asks: c.asks, formula: c.formula, learnedFormula: learnedFormula3(c),
     recalled: c.recalls.map((r) => ({
       fact: r.fact, what: r.what, slot: r.slot, champion: r.champion,
       source: r.source, establishedInChild: r.establishedInChild,
     })),
+    prerequisites: prerequisites3(c, reveals),
     reinforces: c.reinforces,
     playerChampion: c.state.sides.player.champion, opponentChampion: c.state.sides.opponent.champion,
     playerChampionId: c.state.sides.player.championId, opponentChampionId: c.state.sides.opponent.championId,
@@ -315,8 +388,13 @@ function childContext3(c: J3Child): JourneyChildContext {
   };
 }
 
-/** J3 (already read) + cursor → the board's view and the reached children's context. */
-export function adaptJourneyJ3(j: JourneyJ3, cursor: JourneyCursor): JourneyView | null {
+/**
+ * J3 (already read) + cursor → the board's view and the reached children's
+ * context. `reveals` (JP5) are the segment's settled reveals: only the
+ * prerequisite join reads them, and only for their display text.
+ */
+export function adaptJourneyJ3(j: JourneyJ3, cursor: JourneyCursor,
+  reveals: readonly JourneyRevealDisplay[] = []): JourneyView | null {
   const reached = j.children;
   const latest = reached.length ? reached[reached.length - 1] : null;
   if (!latest) return null;                 // nothing reached yet: nothing to stand on
@@ -364,7 +442,10 @@ export function adaptJourneyJ3(j: JourneyJ3, cursor: JourneyCursor): JourneyView
     transition,
     focus,
   };
-  return { board, children: reached.map(childContext3), pendingChildIndex: pending ? reached.length : null };
+  return {
+    board, children: reached.map((c) => childContext3(c, reveals)),
+    pendingChildIndex: pending ? reached.length : null,
+  };
 }
 
 // ═══════════════════════════════════════════════ J2 (isolated, legacy) ═══
@@ -529,10 +610,11 @@ export function adaptJourneyJ2(j: JourneyJ2, cursor: JourneyCursor): JourneyView
 // ═══════════════════════════════════════════════════════ entry points ═══
 
 /** The production path: a parsed J3 block → view, tolerant at the surface. */
-export function journeyViewFor(j: JourneyJ3 | null | undefined, cursor: JourneyCursor): JourneyView | null {
+export function journeyViewFor(j: JourneyJ3 | null | undefined, cursor: JourneyCursor,
+  reveals: readonly JourneyRevealDisplay[] = []): JourneyView | null {
   if (!j) return null;
   try {
-    return adaptJourneyJ3(j, cursor);
+    return adaptJourneyJ3(j, cursor, reveals);
   } catch (e) {
     if (e instanceof JourneyContractError) return null;
     throw e;

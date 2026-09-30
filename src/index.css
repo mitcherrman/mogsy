@@ -17577,3 +17577,253 @@ button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset
   .journey-exact-btn { padding: 2px 4px; }
   .journey-reasoning__subject { font-size: 0.75rem; }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   JP5 — THE REASONING CHAIN, BEFORE AND AFTER THE ANSWER.
+   Inside the JP2 stage contract, as JP3 and JP4: nothing here moves the board,
+   the prompt region, the answer region or the reveal box. The SAME chain of
+   the SAME nodes is drawn at three moments:
+
+     1. LIVE        under the question, in the prompt box: the established
+                    facts this child relies on, then the asked `?`;
+     2. EXPANDED    in the reveal box: the whole derivation, all at once, with
+                    the magnitude bar under it;
+     3. COMPRESSED  the derivation's detail folded into the transformation
+                    node, which reopens it.
+
+   MOTION is declared only under `prefers-reduced-motion: no-preference`, and
+   the app's own `html.reduce-motion` switches it off: without motion the
+   chain is simply drawn in its phase and the bar at its served ratio.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── 1. LIVE ─────────────────────────────────────────────────────────────────
+   One slim row of the chain's own nodes. It takes its room from the question
+   (`useFittedQuestion` fits the type around it) and, where even the smallest
+   type cannot make room, it yields — the prompt box never grows for it. */
+.journey-live {
+  display: flex;
+  width: 100%;
+  align-self: stretch;
+  justify-content: center;
+  margin-top: 0.375rem;
+  container: jlive / inline-size;
+}
+.journey-ask[data-live-fit="yielded"] .journey-live { display: none; }
+/* Beside the chain the sentence may run the box's full width (fewer lines). */
+.journey-question .journey-ask:not([data-live-fit="yielded"]):has(.journey-live) [data-testid="scenario-surface"] > header h2 {
+  max-width: none;
+}
+.journey-live .journey-reasoning { flex: 0 0 auto; }
+.journey-reasoning__chain[data-phase="live"] {
+  --jn-w: 5rem;
+  --jn-h: 2.5rem;
+  --jop-w: 1rem;
+  --jop-fs: 1.0625rem;
+  flex-wrap: nowrap;
+}
+@container jlive (min-width: 26rem) {
+  .journey-reasoning__chain[data-phase="live"] { --jn-w: 7.25rem; --jop-w: 1.625rem; --jop-fs: 1.375rem; }
+}
+.journey-reasoning__chain[data-phase="live"] .journey-node {
+  grid-template-rows: auto auto;
+  padding: 2px 4px 3px;
+}
+.journey-reasoning__chain[data-phase="live"] .journey-node__expr { display: none; }
+.journey-reasoning__chain[data-phase="live"] .journey-node > .journey-ico { top: 3px; left: 3px; width: 0.875rem; height: 0.875rem; }
+.journey-reasoning__chain[data-phase="live"] .journey-node__value,
+.journey-reasoning__chain[data-phase="live"] .journey-node--final .journey-node__value { font-size: 1.0625rem; }
+.journey-reasoning__chain[data-phase="live"] .journey-node__label { -webkit-line-clamp: 1; white-space: nowrap; }
+/* THE ONE-LINE FORM (`data-live-fit="inline"`): where the box also holds a long
+   question and a stated formula, the same nodes lie on one text-high line. */
+.journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] { --jop-w: 1.125rem; --jop-fs: 1rem; }
+.journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node {
+  display: inline-flex;
+  width: auto;
+  height: 1.5rem;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0 0.5rem 0 0.25rem;
+  border-radius: 9999px;
+}
+.journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node > .journey-ico { position: static; }
+.journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node__value,
+.journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node--final .journey-node__value { font-size: 0.9375rem; }
+.journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node--final::after { display: none; }
+/* The asked value: the answer's own gold box, open. */
+.journey-node--asked { border-style: dashed; }
+.journey-node--asked .journey-node__value { color: #7a5614; }
+
+/* ── 2. THE EQUATION UNFOLD ─────────────────────────────────────────────────
+   A chain that folds keeps ONE node size through all its phases (sized for the
+   expanded derivation), so compressing moves nodes together without resizing
+   any. Widths follow the reveal box (a container); heights the stage's
+   per-viewport prompt reserve, which also holds the verdict line and the bar. */
+/* The chain and its bar share one column, as wide as the chain (the whole box
+   where the chain wraps), so the bar runs from the first node to the last. */
+.journey-reveal[data-unfold] { gap: 0.25rem; }
+.journey-reveal[data-unfold] .journey-reasoning {
+  display: grid;
+  grid-template-columns: fit-content(100%);
+  align-content: center;
+  justify-content: center;
+  justify-items: center;
+  row-gap: 3px;
+}
+.journey-reveal[data-unfold] .journey-reasoning__chain {
+  /* A phone: three to a row expanded, all four in one row compressed (the
+     narrowest certified box is 337px: 4 x 72 + 3 x 13). */
+  --jn-w: 4.5rem;
+  --jn-h: 2.75rem;
+  --jop-w: 0.8125rem;
+  --jop-fs: 1rem;
+  row-gap: 3px;
+}
+@container jreveal (min-width: 26rem) {
+  .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-w: 4.25rem; --jop-w: 0.75rem; --jop-fs: 1rem; flex-wrap: nowrap; }
+}
+@container jreveal (min-width: 38.75rem) {
+  .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-w: 5.75rem; --jop-w: 1.25rem; --jop-fs: 1.375rem; }
+}
+@media (min-width: 640px) { .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-h: 3rem; } }
+@media (min-width: 1024px) { .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-h: 3.75rem; } }
+@media (min-width: 1280px) { .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-h: 3.25rem; } }
+.journey-reveal[data-unfold] .journey-node { padding: 2px 3px 3px; }
+.journey-reveal[data-unfold] .journey-node__value { font-size: 1.0625rem; }
+.journey-reveal[data-unfold] .journey-node--final .journey-node__value { font-size: 1.25rem; }
+.journey-reveal[data-unfold] .journey-node__label { font-size: 0.5rem; letter-spacing: 0.02em; }
+@media (min-width: 1024px) {
+  .journey-reveal[data-unfold] .journey-node__value { font-size: 1.1875rem; }
+  .journey-reveal[data-unfold] .journey-node--final .journey-node__value { font-size: 1.4375rem; }
+  .journey-reveal[data-unfold] .journey-node__label { font-size: 0.5625rem; letter-spacing: 0.02em; }
+}
+/* The formula, alone in its node: the fraction IS the value. */
+.journey-node--fraction .journey-node__expr { align-items: center; padding-left: 0; }
+.journey-node--fraction .journey-frac { font-size: 0.75rem; font-weight: 900; color: #2a1f08; }
+@media (min-width: 1024px) { .journey-node--fraction .journey-frac { font-size: 0.8125rem; } }
+@media (max-width: 639px) { .journey-node--fraction .journey-frac { font-size: 0.6875rem; } }
+
+/* TWO ROWS where one cannot hold the derivation (a phone): a deliberate break
+   at its middle, the second row opening with its own arrow. */
+.journey-reasoning__break { display: none; }
+@container jreveal (max-width: 25.99rem) {
+  .journey-reasoning__chain[data-phase="expanded"] > .journey-reasoning__break {
+    display: block;
+    flex-basis: 100%;
+    height: 0;
+  }
+}
+
+/* FOLDING: a detail step closes to nothing; the others do not change. */
+.journey-reveal[data-unfold] .journey-reasoning__step { max-width: calc(var(--jn-w) + var(--jop-w) + 2px); }
+.journey-reasoning__chain[data-phase="compressed"] > .journey-reasoning__step[data-detail] {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* THE TRANSFORMATION NODE is a control: it reopens (and closes) the detail. */
+button.journey-node {
+  appearance: none;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.journey-node--transform { border: 1.5px solid #8a6d2c; }
+.journey-node--transform:hover,
+.journey-node--transform:focus-visible { background: rgb(243 220 160 / 0.85); }
+.journey-node--transform:focus-visible { outline: 2px solid #5a3f0c; outline-offset: 2px; }
+/* Its fold glyph takes the far corner, clear of a wide value ("80.6%"). */
+.journey-node--transform > .journey-node__fold,
+.journey-reasoning__chain .journey-node--transform > .journey-node__fold {
+  top: 3px;
+  right: 3px;
+  left: auto;
+  width: 0.75rem;
+  height: 0.75rem;
+  overflow: visible;
+  color: #5a3f0c;
+}
+.journey-node__fold svg { width: 100%; height: 100%; }
+
+/* ── 3. THE MAGNITUDE BAR ───────────────────────────────────────────────────
+   The whole (raw damage), and the share of it that remains. `--jm-ratio` is
+   the SERVED coefficient (`mitigation_multiplier`), set on the element; the
+   fill's width is that ratio and nothing else. */
+.journey-magnitude {
+  display: flex;
+  width: 100%;
+  height: 0.75rem;
+  align-items: center;
+  gap: 6px;
+  color: #6b5426;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.journey-magnitude b { color: #2a1f08; font-size: 0.6875rem; font-weight: 900; letter-spacing: 0; }
+.journey-magnitude__end { flex: 0 0 auto; }
+.journey-magnitude__track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 0.4375rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  /* What the armor took: hatched, never solid. */
+  background: repeating-linear-gradient(135deg, rgb(122 98 54 / 0.34) 0 3px, rgb(122 98 54 / 0.12) 3px 6px);
+  box-shadow: inset 0 0 0 1px rgb(122 98 54 / 0.5);
+}
+.journey-magnitude__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--jm-ratio) * 100%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a5790f, #e0b64a);
+  box-shadow: inset 0 1px 0 rgb(255 250 230 / 0.55);
+}
+/* Compressed: the summary stands alone (the bar keeps its row, so nothing jumps). */
+.journey-reveal[data-unfold="compressed"] .journey-magnitude { opacity: 0; }
+
+/* ── 4. MOTION ──────────────────────────────────────────────────────────────
+   ALL AT ONCE: every step the reveal adds enters in the same 260ms — there is
+   no per-step delay anywhere. Then the bar contracts from the whole to the
+   served share and its endpoint lands. */
+@keyframes journey-unfold-in {
+  from { opacity: 0; transform: translateX(-0.5rem); }
+}
+@keyframes journey-magnitude-contract {
+  from { width: 100%; }
+}
+@keyframes journey-magnitude-land {
+  from { opacity: 0; }
+}
+@keyframes journey-transform-hint {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(184 134 11 / 0); }
+  45% { box-shadow: 0 0 0 4px rgb(184 134 11 / 0.45); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-reveal[data-unfold] .journey-reasoning__step:not([data-given]),
+  .journey-reveal[data-unfold] .journey-magnitude { animation: journey-unfold-in 260ms ease-out; }
+  .journey-magnitude__fill { animation: journey-magnitude-contract 720ms cubic-bezier(0.4, 0, 0.2, 1) 320ms backwards; }
+  .journey-magnitude__end--to { animation: journey-magnitude-land 220ms ease-out 960ms backwards; }
+  .journey-magnitude { transition: opacity 220ms ease; }
+  .journey-reveal[data-unfold] .journey-reasoning__step[data-detail] {
+    transition: max-width 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms ease, visibility 0s linear 0s;
+  }
+  .journey-reasoning__chain[data-phase="compressed"] > .journey-reasoning__step[data-detail] {
+    transition: max-width 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms ease, visibility 0s linear 320ms;
+  }
+  /* The reveal folded it: the node it folded into says it can be reopened. */
+  .journey-reveal[data-unfold="compressed"][data-unfold-by="reveal"] .journey-node--transform {
+    animation: journey-transform-hint 700ms ease-in-out 320ms 2;
+  }
+}
+html.reduce-motion .journey-reveal[data-unfold] .journey-reasoning__step,
+html.reduce-motion .journey-reveal[data-unfold] .journey-node,
+html.reduce-motion .journey-magnitude,
+html.reduce-motion .journey-magnitude * { animation: none !important; transition: none !important; }

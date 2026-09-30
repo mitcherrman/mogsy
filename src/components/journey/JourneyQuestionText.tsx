@@ -119,7 +119,8 @@ export function useFittedQuestion(hostRef: RefObject<HTMLElement>, key: string) 
     const title = header?.querySelector<HTMLElement>("h2");
     if (!host || !header || !title) return;
     let lastWidth = -1;
-    const fit = () => {
+    /** Fit once; true when the content fits the box at the size chosen. */
+    const fitOnce = (): boolean => {
       const cs = getComputedStyle(host);
       const min = px(cs.getPropertyValue("--jq-q-min"), 17);
       const max = px(cs.getPropertyValue("--jq-q-max"), 24);
@@ -134,10 +135,13 @@ export function useFittedQuestion(hostRef: RefObject<HTMLElement>, key: string) 
         return extent > 0 ? extent
           : shown.reduce((n, c, i) => n + c.offsetHeight + (i > 0 ? gap : 0), 0);
       };
+      // A yielding block (the live chain) must also fit the box's WIDTH; the
+      // type size cannot help it there.
+      const wide = () => shown.some((c) => c.hasAttribute("data-yields") && c.scrollWidth > c.clientWidth + 1);
       let lo = min * 2;
       let hi = max * 2;
       host.style.setProperty("--jq-q-fs", `${max}px`);
-      if (used() <= room) { host.dataset.qFit = String(max); return; }
+      if (used() <= room) { host.dataset.qFit = String(max); return !wide(); }
       while (lo < hi) {
         const mid = Math.ceil((lo + hi) / 2);
         host.style.setProperty("--jq-q-fs", `${mid / 2}px`);
@@ -145,6 +149,22 @@ export function useFittedQuestion(hostRef: RefObject<HTMLElement>, key: string) 
       }
       host.style.setProperty("--jq-q-fs", `${lo / 2}px`);
       host.dataset.qFit = String(lo / 2);
+      return used() <= room && !wide();
+    };
+    // JP5 — THE BOX NEVER GROWS. A block marked `data-yields` (the live
+    // Reasoning Chain) takes its room from the question's type. Where the
+    // question cannot fit beside it even at its smallest size, the block steps
+    // down — first to its one-line form (`inline`), then away (`yielded`) — and
+    // the question is fitted again. The prompt box, and so the answers under
+    // it, never move for it.
+    const fit = () => {
+      delete host.dataset.liveFit;
+      if (!header.querySelector("[data-yields]")) { fitOnce(); return; }
+      for (const tier of ["inline", "yielded"] as const) {
+        if (fitOnce()) return;
+        host.dataset.liveFit = tier;
+      }
+      fitOnce();
     };
     fit();
     lastWidth = header.clientWidth;
