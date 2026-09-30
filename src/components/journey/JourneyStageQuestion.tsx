@@ -352,9 +352,21 @@ export function JourneyStageQuestion({
   // option, from the server payload, so a reload lands on the same picture.
   const shown = revealing ? (optionId(reveal.selectedValue) ?? picked) : picked;
   const open = !submitting && !revealing;
-  const context = question.statedFormula
-    ? <StatedFormula formula={question.statedFormula} rank={question.premise?.rank ?? null} />
-    : null;
+  // JP5 — live only: on the reveal the chain is the reveal layer's (one chain on
+  // screen). Beside a formula the child STATES, the chain belongs to that
+  // premise line (phrasing elements), so its compact form can finish the
+  // formula's own last line where the box has no row to spare (a phone).
+  const showLive = live !== null && !revealing;
+  const context = question.statedFormula ? (
+    <>
+      <StatedFormula formula={question.statedFormula} rank={question.premise?.rank ?? null} />
+      {showLive && (
+        <span className="journey-live journey-live--premise" data-testid="journey-live" data-yields="true">
+          <JourneyReasoningChain reasoning={live} testId="journey-live-chain" phase="live" inline />
+        </span>
+      )}
+    </>
+  ) : null;
 
   return (
     <div ref={host} data-testid="journey-child" data-render-path={question.kind} data-revealing={revealing ? "true" : undefined}
@@ -380,8 +392,7 @@ export function JourneyStageQuestion({
         reveal={revealing ? { revealed: true, isCorrect: reveal.correct, correctOptionId: optionId(reveal.correctValue) } : null}
         context={context}
         promptNode={<JourneyQuestionText sentence={question.sentence} subjects={subjects} />}
-        // Live only: on the reveal the chain is the reveal layer's (one chain on screen).
-        promptFooter={live && !revealing && (
+        promptFooter={showLive && !question.statedFormula && (
           <div className="journey-live" data-testid="journey-live" data-yields="true">
             <JourneyReasoningChain reasoning={live} testId="journey-live-chain" phase="live" />
           </div>

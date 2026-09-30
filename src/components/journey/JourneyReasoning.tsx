@@ -26,6 +26,12 @@
  *   compressed  the `detail` nodes folded away; the `transform` node is a
  *               button that reopens them (and closes them again).
  *
+ * The live chain steps down where the prompt box is tight (the stylesheet, by
+ * `data-live-fit` on the question): stacked nodes, then one line of them, then
+ * the COMPACT form — `[armor] 50 → ? Final` — which is small enough to sit on
+ * the last line of a formula the child states. For that it can be rendered
+ * from phrasing elements only (`inline`), so it may live inside that line.
+ *
  * A chain with no `detail` has no phases and is drawn exactly as JP4 drew it.
  * The MAGNITUDE BAR under an expanded chain is sized by a served coefficient
  * (`--jm-ratio`); nothing here computes one.
@@ -96,7 +102,8 @@ export function JourneyReasoningNode({ node, testId, open, onToggle }: {
       {node.value !== "" && (
         <span aria-hidden className="journey-node__value" data-testid={`${testId}-value`}>{node.value}</span>
       )}
-      <span aria-hidden className="journey-node__label">{node.label}</span>
+      <span aria-hidden className="journey-node__label"
+        {...(node.short ? { "data-short": node.short } : {})}>{node.label}</span>
     </>
   );
   if (onToggle) {
@@ -139,13 +146,23 @@ export function JourneyReasoningHead({ reasoning, testId }: { reasoning: Reasoni
   );
 }
 
-export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggle }: {
+export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggle, inline = false }: {
   reasoning: Reasoning;
   testId: string;
   phase?: ChainPhase | null;
   /** JP5 — fold / reopen; passed only for a chain that folds. */
   onToggle?: () => void;
+  /**
+   * JP5 — draw the chain from phrasing elements (spans carrying the list roles)
+   * so it can sit INSIDE a line of text: the live chain beside a stated formula.
+   */
+  inline?: boolean;
 }) {
+  const Root = inline ? "span" : "div";
+  const List = inline ? "span" : "ol";
+  const Item = inline ? "span" : "li";
+  const listRole = inline ? { role: "list" } : {};
+  const itemRole = inline ? { role: "listitem" } : {};
   const nodes = reasoning.nodes;
   const folded = phase === "compressed";
   // A long derivation takes two rows where one cannot hold it (a phone): the
@@ -153,16 +170,16 @@ export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggl
   const breakBefore = phase === "expanded" && nodes.length > 4 ? Math.ceil(nodes.length / 2) : -1;
   const magnitude = phase === "expanded" || phase === "compressed" ? reasoning.magnitude ?? null : null;
   return (
-    <div data-testid={testId} data-reasoning={reasoning.kind} className="journey-reasoning" role="group"
+    <Root data-testid={testId} data-reasoning={reasoning.kind} className="journey-reasoning" role="group"
       aria-label={phase === "live" ? "What this step builds on" : "How the answer follows"}>
-      <ol className="journey-reasoning__chain" data-nodes={nodes.length}
+      <List className="journey-reasoning__chain" data-nodes={nodes.length} {...listRole}
         data-density={nodes.length > 4 ? "dense" : "regular"}
         {...(phase ? { "data-phase": phase } : {})}>
         {nodes.flatMap((n, i) => {
           const hidden = folded && n.detail === true;
           return [
-            i === breakBefore && <li key="row-break" aria-hidden className="journey-reasoning__break" />,
-            <li key={n.key} className="journey-reasoning__step"
+            i === breakBefore && <Item key="row-break" aria-hidden className="journey-reasoning__break" />,
+            <Item key={n.key} className="journey-reasoning__step" {...itemRole}
               {...(n.detail ? { "data-detail": "true" } : {})}
               {...(n.given ? { "data-given": "true" } : {})}
               // A folded step is out of the reading and tab order, not just out of sight.
@@ -177,12 +194,12 @@ export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggl
               )}
               <JourneyReasoningNode node={n} testId={`${testId}-${n.key}`}
                 {...(n.transform && onToggle ? { open: !folded, onToggle } : {})} />
-            </li>,
+            </Item>,
           ];
         })}
-      </ol>
+      </List>
       {magnitude && <JourneyMagnitude magnitude={magnitude} testId={`${testId}-magnitude`} folded={folded} />}
-    </div>
+    </Root>
   );
 }
 

@@ -152,6 +152,39 @@ describe("LIVE: what this step builds on, before the answer", () => {
     expect(screen.getByTestId("journey-stated-formula")).toHaveTextContent("Aegis Assault (E)");
     expect(screen.getByTestId("journey-live-chain").textContent).not.toMatch(/55|105/);
   });
+
+  it("beside a stated formula the chain belongs to that premise line, in phrasing elements only", () => {
+    show(snap(PANTHEON, "child2-live"));
+    const premise = screen.getByTestId("scenario-context");
+    const live = screen.getByTestId("journey-live");
+    expect(premise).toContainElement(live);
+    expect(live.className).toMatch(/journey-live--premise/);
+    expect(live).toHaveAttribute("data-yields", "true");
+    // A <p> may hold only phrasing content: no div / ol / li anywhere inside it.
+    expect(premise.querySelector("div, ol, ul, li")).toBeNull();
+    // The list semantics survive as roles.
+    expect(within(live).getByRole("list")).toBeInTheDocument();
+    expect(within(live).getAllByRole("listitem")).toHaveLength(2);
+    // The compact form's one-word name for the asked value is carried, not derived in CSS.
+    expect(live.querySelector('[data-node="asked"] .journey-node__label')).toHaveAttribute("data-short", "Final");
+    // Spoken, the dependency is whole: whose armor, and what is asked.
+    expect(within(live).getByRole("group", { name: "Leona armor: 50" })).toBeInTheDocument();
+    // Without a stated formula (Zed Step 4) the chain is the prompt's own last block, as before.
+    cleanup();
+    show(snap(REF, "child3-live"));
+    expect(screen.queryByTestId("scenario-context")).toBeNull();
+    expect(screen.getByTestId("journey-live").tagName).toBe("DIV");
+  });
+
+  it("the COMPACT form (a phone): mnemonic + value → `?` + kind, finishing the formula's last line", () => {
+    // [armor] 50 → ? Final: labels give way (the spoken label keeps them), the
+    // asked node keeps its one-word kind, the chain flows inline in the premise line.
+    expect(JP5).toMatch(/\.journey-ask\[data-live-fit="compact"\] \.journey-live--premise \{\n\s*display: inline-flex;/);
+    expect(JP5).toMatch(/\.journey-ask\[data-live-fit="compact"\] \.journey-reasoning__chain\[data-phase="live"\] \.journey-node__label \{ display: none; \}/);
+    expect(JP5).toMatch(/\.journey-node__label\[data-short\]::after \{\n\s*content: attr\(data-short\);/);
+    // Never taller than the text line it sits on (1rem), so the premise line does not grow.
+    expect(JP5).toMatch(/\.journey-ask\[data-live-fit="compact"\] \.journey-reasoning__chain\[data-phase="live"\] \.journey-node \{[^}]*height: 1rem;/);
+  });
 });
 
 describe("the EQUATION UNFOLD: the whole derivation, all at once", () => {
@@ -486,7 +519,7 @@ describe("the fixed stage: nothing here moves a region (JP2)", () => {
         <div ref={host} style={{ ["--jq-q-min" as string]: "17px", ["--jq-q-max" as string]: "24px" }}>
           <header data-surface-region="prompt" style={{ minHeight: `${room}px` }}>
             <h2 data-lines={lines}>question</h2>
-            <div data-yields="true" data-stacked="40" data-inline="24">chain</div>
+            <div data-yields="true" data-stacked="40" data-inline="24" data-compact="12">chain</div>
           </header>
         </div>
       );
@@ -502,7 +535,10 @@ describe("the fixed stage: nothing here moves a region (JP2)", () => {
         configurable: true,
         get(this: HTMLElement) {
           if (this.tagName === "H2") return parseFloat(host(this).style.getPropertyValue("--jq-q-fs")) * Number(this.dataset.lines);
-          if (this.dataset.yields) return Number(host(this).dataset.liveFit === "inline" ? this.dataset.inline : this.dataset.stacked);
+          if (this.dataset.yields) {
+            const tier = host(this).dataset.liveFit;
+            return Number(tier === "inline" ? this.dataset.inline : tier === "compact" ? this.dataset.compact : this.dataset.stacked);
+          }
           return 0;
         },
       });
@@ -527,11 +563,12 @@ describe("the fixed stage: nothing here moves a region (JP2)", () => {
       return out;
     };
 
-    it("stacked where it fits; the one-line form where only that fits; yielded where neither does", () => {
+    it("stacked where it fits; then one line; then the compact form; yielded only where none does", () => {
       expect(fit(2, 100)).toEqual([24, "stacked"]);          // 2 × 24 + 40 = 88
       expect(fit(2, 80)).toEqual([20, "stacked"]);           // the type makes the room: 2 × 20 + 40
       expect(fit(3, 80)).toEqual([18.5, "inline"]);          // 3 × 17 + 40 > 80; 3 × 18.5 + 24 ≤ 80
-      expect(fit(3, 70)).toEqual([23, "yielded"]);           // 3 × 17 + 24 > 70: the question alone
+      expect(fit(3, 70)).toEqual([19, "compact"]);           // 3 × 17 + 24 > 70; 3 × 19 + 12 ≤ 70
+      expect(fit(4, 75)).toEqual([18.5, "yielded"]);         // 4 × 17 + 12 > 75: the question alone, 4 × 18.5 ≤ 75
       expect(fit(4, 60)).toEqual([17, "yielded"]);           // never below the floor
     });
   });

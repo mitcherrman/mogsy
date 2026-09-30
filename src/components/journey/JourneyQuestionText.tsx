@@ -137,7 +137,8 @@ export function useFittedQuestion(hostRef: RefObject<HTMLElement>, key: string) 
       };
       // A yielding block (the live chain) must also fit the box's WIDTH; the
       // type size cannot help it there.
-      const wide = () => shown.some((c) => c.hasAttribute("data-yields") && c.scrollWidth > c.clientWidth + 1);
+      const wide = () => [...header.querySelectorAll<HTMLElement>("[data-yields]")]
+        .some((c) => c.offsetParent !== null && c.scrollWidth > c.clientWidth + 1);
       let lo = min * 2;
       let hi = max * 2;
       host.style.setProperty("--jq-q-fs", `${max}px`);
@@ -154,13 +155,14 @@ export function useFittedQuestion(hostRef: RefObject<HTMLElement>, key: string) 
     // JP5 — THE BOX NEVER GROWS. A block marked `data-yields` (the live
     // Reasoning Chain) takes its room from the question's type. Where the
     // question cannot fit beside it even at its smallest size, the block steps
-    // down — first to its one-line form (`inline`), then away (`yielded`) — and
-    // the question is fitted again. The prompt box, and so the answers under
-    // it, never move for it.
+    // down — to one line of its nodes (`inline`), then to its compact form
+    // (`compact`: icon + value → `?`, small enough to finish a stated formula's
+    // last line), and only then away (`yielded`) — and the question is fitted
+    // again. The prompt box, and so the answers under it, never move for it.
     const fit = () => {
       delete host.dataset.liveFit;
       if (!header.querySelector("[data-yields]")) { fitOnce(); return; }
-      for (const tier of ["inline", "yielded"] as const) {
+      for (const tier of ["inline", "compact", "yielded"] as const) {
         if (fitOnce()) return;
         host.dataset.liveFit = tier;
       }

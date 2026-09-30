@@ -75,6 +75,8 @@ export interface ReasonNode {
   given?: boolean;
   /** JP5 — the asked value, not answered yet: its value is `?`. */
   asked?: boolean;
+  /** JP5 — the label's one-word form, for the compact live chain ("Final"). */
+  short?: string;
   /** JP5 — a derivation step the compressed chain folds away. */
   detail?: boolean;
   /** JP5 — what the `detail` steps fold INTO; it reopens them. */
@@ -306,8 +308,10 @@ export function liveReasoning(prerequisites: readonly JourneyPrerequisite[],
   }
   if (nodes.length === 0) return null;
   const slot = slotOf(asks.subjectRef);
+  // The compact form names a damage result by its kind alone ("Final", "Raw").
+  const short = /^(Final|Raw) damage$/.exec(asked)?.[1];
   nodes.push({
-    key: "asked", label: asked, value: "?", op: "→", final: true, asked: true,
+    key: "asked", label: asked, value: "?", op: "→", final: true, asked: true, ...(short ? { short } : {}),
     icon: slot && typeof asks.subject === "string" ? { kind: "ability", champion: asks.subject, slot } : null,
   });
   return { kind: "live", subject: null, caption: null, nodes, exact: null };

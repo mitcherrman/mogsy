@@ -17609,6 +17609,9 @@ button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset
   container: jlive / inline-size;
 }
 .journey-ask[data-live-fit="yielded"] .journey-live { display: none; }
+/* Inside the premise line it keeps the prompt's own 4px rhythm (the header's
+   spacing does not reach into that line). */
+.journey-live--premise { margin-top: 0.25rem; }
 /* Beside the chain the sentence may run the box's full width (fewer lines). */
 .journey-question .journey-ask:not([data-live-fit="yielded"]):has(.journey-live) [data-testid="scenario-surface"] > header h2 {
   max-width: none;
@@ -17649,6 +17652,52 @@ button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset
 .journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node__value,
 .journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node--final .journey-node__value { font-size: 0.9375rem; }
 .journey-ask[data-live-fit="inline"] .journey-reasoning__chain[data-phase="live"] .journey-node--final::after { display: none; }
+/* THE COMPACT FORM (`data-live-fit="compact"`): the dependency at its semantic
+   minimum — the stat's mnemonic and its value, then the open `?` named by kind
+   alone: `[armor] 50 → ? Final`. The champion's name gives way (the board's
+   target already says whose armor it is; the full name stays in the spoken
+   label). Beside a stated formula it finishes that formula's last line, so it
+   takes no row the box does not have. */
+.journey-ask[data-live-fit="compact"] .journey-live { margin-top: 2px; }
+.journey-ask[data-live-fit="compact"] .journey-live--premise {
+  display: inline-flex;
+  width: auto;
+  margin: 0 0 0 0.375rem;
+  vertical-align: middle;
+  container-type: normal;
+}
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] { --jop-w: 0.75rem; --jop-fs: 0.6875rem; }
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node {
+  display: inline-flex;
+  width: auto;
+  height: 1rem;
+  align-items: center;
+  gap: 2px;
+  padding: 0 5px 0 2px;
+  border-radius: 9999px;
+}
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node > .journey-ico {
+  position: static;
+  width: 0.75rem;
+  height: 0.75rem;
+}
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node__value,
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node--final .journey-node__value {
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node__label { display: none; }
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node__label[data-short] {
+  display: inline;
+  font-size: 0;
+}
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node__label[data-short]::after {
+  content: attr(data-short);
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
+}
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node--asked > .journey-ico,
+.journey-ask[data-live-fit="compact"] .journey-reasoning__chain[data-phase="live"] .journey-node--final::after { display: none; }
 /* The asked value: the answer's own gold box, open. */
 .journey-node--asked { border-style: dashed; }
 .journey-node--asked .journey-node__value { color: #7a5614; }

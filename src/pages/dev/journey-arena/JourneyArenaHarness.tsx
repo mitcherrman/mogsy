@@ -33,6 +33,10 @@
  * the reveal it WOULD run if the server froze that window. It changes no
  * server, no fixture file and no production default: without the parameter the
  * captures replay at the window they were captured with.
+ *
+ * `&revealChild=3` limits the probe to ONE child's reveal (0-based): every other
+ * reveal keeps its captured window — a preview of a per-child reveal window,
+ * which the server does not serve today.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
@@ -106,12 +110,14 @@ export function journeyArenaView(round: PublicRoundView, at: string, skewMs: num
  * JP5 — one capture, as the server would have sent it with a different frozen
  * reveal window (dev / probe / tests only; see the header). On a snapshot that
  * is revealing, the reveal starts at the snapshot's own instant and the next
- * card keeps the gap it was captured with after it.
+ * card keeps the gap it was captured with after it. With `child`, only that
+ * child's reveal is rewritten.
  */
-export function withRevealWindow(snap: CaptureSnapshot, ms: number): CaptureSnapshot {
+export function withRevealWindow(snap: CaptureSnapshot, ms: number, child: number | null = null): CaptureSnapshot {
   const envelope = structuredClone(snap.envelope) as { payload?: { segment_state?: Record<string, unknown> | null } };
   const seg = envelope.payload?.segment_state;
   if (!seg || typeof seg.reveal_window_ms !== "number") return snap;
+  if (child !== null && seg.own_revealing_card_index !== child) return snap;
   seg.reveal_window_ms = ms;
   if (seg.own_revealing_card_index !== null && typeof seg.own_reveal_until === "string") {
     const until = Date.parse(snap.at) + ms;
@@ -124,15 +130,19 @@ export function withRevealWindow(snap: CaptureSnapshot, ms: number): CaptureSnap
   return { ...snap, envelope: envelope as CaptureSnapshot["envelope"] };
 }
 
-function readParams(): { capture: CaptureKey; step: number; host: HarnessHost | null; revealMs: number | null } {
+function readParams(): {
+  capture: CaptureKey; step: number; host: HarnessHost | null; revealMs: number | null; revealChild: number | null;
+} {
   const p = new URLSearchParams(window.location.search);
   const c = (p.get("capture") ?? "zed") as CaptureKey;
   const h = p.get("host");
   const ms = Number(p.get("revealMs"));
+  const child = p.get("revealChild");
   return {
     capture: c in J3_CAPTURES ? c : "zed", step: Math.max(0, Number(p.get("step") ?? "1") || 0),
     host: h === "ranked" || h === "daily" ? h : null,
     revealMs: Number.isInteger(ms) && ms > 0 ? ms : null,
+    revealChild: child !== null && /^\d+$/.test(child) ? Number(child) : null,
   };
 }
 
@@ -153,8 +163,9 @@ export default function JourneyArenaHarness() {
 
   const go = (n: number) => { setStep(n); setShownAt(Date.now()); };
   const captured: CaptureSnapshot | null = snaps ? snaps[Math.min(step, snaps.length - 1)] : null;
-  const snap = useMemo(() => (captured && initial.revealMs ? withRevealWindow(captured, initial.revealMs) : captured),
-    [captured, initial.revealMs]);
+  const snap = useMemo(() => (captured && initial.revealMs
+    ? withRevealWindow(captured, initial.revealMs, initial.revealChild) : captured),
+  [captured, initial.revealMs, initial.revealChild]);
   const round = useMemo(() => (snap ? readPublicRound(snap.envelope) : null), [snap]);
   // Server now = the capture instant, running on from the moment it was shown.
   const skewMs = snap ? Date.parse(snap.at) - shownAt : 0;
@@ -175,7 +186,7 @@ export default function JourneyArenaHarness() {
   const chrome = (
     <p className="truncate text-sm font-semibold">
       {host === "ranked" ? "Ranked Bot · Reference Journey" : "Daily Challenge · Journey"} · capture: {capture} · {snap?.label ?? "…"}
-      {initial.revealMs ? ` · probe reveal ${initial.revealMs}ms` : ""}
+      {initial.revealMs ? ` · probe reveal ${initial.revealMs}ms${initial.revealChild !== null ? ` (step ${initial.revealChild + 1} only)` : ""}` : ""}
     </p>
   );
   return (
