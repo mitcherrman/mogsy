@@ -60,7 +60,7 @@ export interface NotebookCheckpoint {
   /** The node on the Journey's state path (`state_version`). */
   node: number;
   level: number;
-  /** The served transition note that led into this node; null for the first. */
+  /** The served transition notes that led into this node since the previous reached one; null for the first. */
   note: string | null;
   /** 1-based steps played in this node. */
   firstStep: number;
@@ -97,9 +97,7 @@ export function championNotebook(journey: JourneyJ3 | null | undefined, knowledg
   const byNode = new Map<number, NotebookCheckpoint>();
   const checkpoint = (node: number, level: number, step: number) => {
     const cp = byNode.get(node) ?? {
-      node, level, firstStep: step, lastStep: step, entries: {},
-      note: journey.transitions.filter((t) => t.stateVersion === node && t.beforeChild <= stepIndex)
-        .map((t) => t.note).join(" ") || null,
+      node, level, firstStep: step, lastStep: step, entries: {}, note: null,
     };
     cp.firstStep = Math.min(cp.firstStep, step);
     cp.lastStep = Math.max(cp.lastStep, step);
@@ -146,6 +144,15 @@ export function championNotebook(journey: JourneyJ3 | null | undefined, knowledg
     };
   }
   const checkpoints = [...byNode.values()].sort((a, b) => a.node - b.node);
+  // A state's note: EVERY served transition since the previous reached state
+  // (two transitions can lead into one state, and the node between them is
+  // never on screen — e.g. "Both reach level 4." then "Pantheon buys a Long Sword.").
+  checkpoints.forEach((cp, i) => {
+    const after = i === 0 ? -1 : checkpoints[i - 1].node;
+    cp.note = journey.transitions
+      .filter((t) => t.stateVersion > after && t.stateVersion <= cp.node && t.beforeChild <= stepIndex)
+      .map((t) => t.note).join(" ") || null;
+  });
   return {
     key, championName: onScreen.state.sides[side].champion, checkpoints,
     current: onScreen.state.stateVersion, learned,

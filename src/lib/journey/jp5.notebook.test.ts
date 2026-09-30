@@ -106,6 +106,9 @@ describe("a MODIFIED stat: Pantheon / Leona (Cloth Armor, then level 4)", () => 
     const armor = current(leona).entries.armor!;
     expect(armor).toMatchObject({ display: "69", level: 4, exact: 68.872 });
     expect(armor.sources[0]).toEqual({ kind: "level", level: 4, value: 53.872 });
+    // Two served transitions lead into this state (the node between them is
+    // never on screen): the note names both, never only the last.
+    expect(current(leona).note).toBe("Both champions reach level 4. Pantheon buys a Long Sword.");
   });
 
   it("never a state the learner has not reached", () => {
