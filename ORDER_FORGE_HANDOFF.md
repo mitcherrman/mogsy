@@ -274,7 +274,7 @@ Rejected for V1:
 
 - **OF1-C (integration and certification): DONE. Verdict and the FINAL contract are in the last section, "OF1-C", which supersedes every shape written earlier in this file.**
 - **OF1-A (backend): DONE**, commits a7e5fdbd, 55c7fd85, then the OF1-C fixes 48c5092a and 4ffff8f5. Not deployed.
-- **OF1-B (frontend): DONE**, commits 6ffa725f, a022eb06, then the OF1-C commit named in the last section. Not deployed.
+- **OF1-B (frontend): DONE**, commits 6ffa725f, a022eb06, then the OF1-C commit `45d0daec`. Not deployed.
 - Historical: the backend had no commits when OF1-B ran, so OF1-B was built against assumed shapes. OF1-C checked those against real server bytes and found three mismatches in the settled reveal (fixed on the backend).
 
 ## OF1-A: backend implementation (DONE)
@@ -421,7 +421,7 @@ If any field name differs, the fix is confined to those four readers and `fixtur
 | Repo | Branch | Final SHA | OF1-C commits |
 |---|---|---|---|
 | Backend `League_Combat_Simulator` | `of1/order-forge` | **`4ffff8f5499c7314555ea0864bba9715f3001550`** | `48c5092a`, `4ffff8f5` |
-| Frontend `mogsy` | `of1/order-forge` | **`OF1C_FRONTEND_SHA`** | one code commit plus the commit recording its SHA here |
+| Frontend `mogsy` | `of1/order-forge` | **`45d0daec40dce386652cd8bf36355e6c1616194c`** (code and tests) | `45d0daec`, then a docs-only commit recording this SHA at the branch tip |
 
 Neither branch is pushed or deployed.
 
@@ -653,7 +653,7 @@ What is in place instead:
 
 ### Deployment checklist
 
-1. Push both `of1/order-forge` branches and open the PRs. Frontend `OF1C_FRONTEND_SHA`, backend `4ffff8f5`. Both are based on old trunks (`origin/main` @ `cb2ccff7`, `origin/master` @ `1002230a`): rebase or merge current trunk first and re-run the targeted tests above, including the capture test on both sides.
+1. Push both `of1/order-forge` branches and open the PRs. Frontend `45d0daec` (plus the docs commit at the tip), backend `4ffff8f5`. Both are based on old trunks (`origin/main` @ `cb2ccff7`, `origin/master` @ `1002230a`): rebase or merge current trunk first and re-run the targeted tests above, including the capture test on both sides.
 2. **Deploy the frontend first.** It is inert until a backend serves `order_forge`. Confirm an ordinary Ranked match and match review still work.
 3. **Deploy the backend second.** No migration. Confirm an ordinary Ranked bot match still starts.
 4. Confirm a non-admin account gets 403 `RANKED_PRESET_NOT_AUTHORIZED` for `admin.order_forge`.
