@@ -66,7 +66,7 @@ describe("the backend's stat_mods / stat_sources: read strictly, optional, never
     expect(zed.shards?.map((x) => x.shardId)).toEqual(["5008", "5008", "5001"]);
     const bonus = zed.stats.find((x) => x.key === "bonus_attack_damage")!;
     expect(bonus.value).toBe(20.8);
-    expect(bonus.sources?.map((x) => [x.kind, x.name, x.value])).toEqual([
+    expect(bonus.sources?.map((x) => [x.kind, x.kind === "level" ? null : x.name, x.value])).toEqual([
       ["item", "Doran's Blade", 10], ["stat_mod", "Adaptive Force", 5.4], ["stat_mod", "Adaptive Force", 5.4]]);
   });
 

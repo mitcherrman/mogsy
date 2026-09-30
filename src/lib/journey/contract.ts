@@ -103,7 +103,9 @@ export interface JourneyStat {
 /** JP4 — one source's share of a stated stat (served, never derived here). */
 export type JourneyStatSource =
   | { kind: "item"; itemId: number | null; name: string; value: number }
-  | { kind: "stat_mod"; row: JourneyShardRow; shardId: string; name: string; value: number };
+  | { kind: "stat_mod"; row: JourneyShardRow; shardId: string; name: string; value: number }
+  /** JP5 — the champion's own base at the state's level (served; armor). */
+  | { kind: "level"; level: number; value: number };
 
 export type JourneyShardRow = "offense" | "flex" | "defense";
 

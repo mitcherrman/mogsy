@@ -291,11 +291,11 @@ export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | n
 // ── JP3 — THE BOARD AS THE LEARNER'S NOTEBOOK ─────────────────────────────
 //
 // One grammar: a gold `!` means the learner established knowledge about THIS
-// piece of game state earlier in the Journey. It sits on the most specific
-// board object the fact is about — an ability's facts on its icon, a stat's
-// fact on that stat's chip, anything else on the champion's portrait — and a
-// learned value FILLS the board's `?` for it (Armor ? → Armor 24). Joins only:
-// the facts and their displays are K2's, never recomputed or inferred.
+// piece of game state earlier in the Journey. It sits on the board object the
+// fact is about — an ability's facts on its icon; (JP5) a champion's stats on
+// its portrait, which opens the champion's notebook (`notebook.ts`). The board
+// no longer prints stat values or `?` bubbles. Joins only: the facts and their
+// displays are K2's, never recomputed or inferred.
 
 /** A board stat that is withheld (`?` or recalled), as the chip sees it. */
 export interface WithheldStatRef {
@@ -320,23 +320,3 @@ export function learnedStatFact(
   if (child === null) return null;
   return mark.facts.find((f) => f.kind === "champion_stat_at_level" && f.context.stat === stat.key && f.child === child) ?? null;
 }
-
-/** The latest learned raw-damage fact on one ability, or null. */
-export function learnedRawDamage(
-  knowledge: JourneyKnowledge, side: Pick<JourneySide, "side" | "championId">, slot: AbilitySlot,
-): KnowledgeFact | null {
-  const mark = knowledge.get(knowledgeKeyFor(side, slot));
-  const raws = mark ? mark.facts.filter((f) => f.kind === "ability_raw_damage") : [];
-  return raws.length ? raws[raws.length - 1] : null;
-}
-
-/** One object's mark without the given facts (drawn elsewhere); null when none remain. */
-export function markWithout(mark: KnowledgeObjectMark | null, drawn: ReadonlySet<string>): KnowledgeObjectMark | null {
-  if (!mark) return null;
-  const facts = mark.facts.filter((f) => !drawn.has(f.fact));
-  return facts.length ? { ...mark, facts } : null;
-}
-
-/** A single fact as its own mark (a stat chip's `!`). */
-export const markOf = (mark: KnowledgeObjectMark, fact: KnowledgeFact): KnowledgeObjectMark =>
-  ({ key: mark.key, object: mark.object, facts: [fact] });

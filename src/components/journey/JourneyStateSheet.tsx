@@ -27,6 +27,7 @@ import {
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyPortrait, LevelBadge, sideRim } from "./JourneyPrimitives";
 import { ItemIcon, ShardIcon } from "./JourneyIcons";
+import { JourneyStatSourceRow } from "./JourneyChampionNotebook";
 
 function SideDetail({ state, side, knowledge }: { state: JourneyPublicState; side: JourneySide; knowledge: JourneyKnowledge }) {
   const marks = transitionMarks(state.transition);
@@ -107,15 +108,8 @@ function SideDetail({ state, side, knowledge }: { state: JourneyPublicState; sid
                 {s.sources && s.sources.length > 0 && s.value !== null && (
                   <dd className="col-span-2 mb-1 pl-2" data-testid={`journey-sheet-sources-${id}-${s.key}`}>
                     <ul className="space-y-0.5 text-[11px] text-white/70">
-                      {s.sources.map((src, i) => (
-                        <li key={i} className="flex items-center gap-1.5">
-                          {src.kind === "item"
-                            ? <ItemIcon itemId={src.itemId} name={src.name} size="inline" />
-                            : <ShardIcon shardId={src.shardId} name={src.name} size="inline" />}
-                          <span>{src.name}</span>
-                          <span className="ml-auto font-bold tabular-nums text-white/85">+{exactNumber(src.value)}</span>
-                        </li>
-                      ))}
+                      {/* JP5 — one served-source row (item, shard, or the level base) everywhere. */}
+                      {s.sources.map((src, i) => <JourneyStatSourceRow key={i} source={src} />)}
                       <li className="flex border-t border-white/10 pt-0.5">
                         <span>Exact</span>
                         <span className="ml-auto font-bold tabular-nums text-white/85">{exactNumber(s.value)}</span>

@@ -35,6 +35,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { JourneyPublicState } from "@/lib/journey/contract";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import { NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
+import type { JourneyJ3 } from "@/lib/journey/j3";
 import { journeyChain } from "@/lib/journey/chain";
 import type { JourneyChildContext } from "@/lib/journey/adapter";
 import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBand";
@@ -47,8 +48,10 @@ import { JourneyWorkbenchSheet } from "./workbench/JourneyWorkbenchSheet";
 
 export function JourneyModuleStage({
   state, skewMs = 0, holdPrevious = false, questionRoles = null, knowledge = NO_KNOWLEDGE,
-  reached = null, answeredThrough = 0, children,
+  reached = null, answeredThrough = 0, journey = null, children,
 }: {
+  /** JP5 — the served Journey block (reached prefix): the portrait notebooks read it. */
+  journey?: JourneyJ3 | null;
   /**
    * JP3 — the reached children (their served asks name the micro-chain's
    * nodes). Null draws no chain.
@@ -106,7 +109,7 @@ export function JourneyModuleStage({
         <ScenarioMediaBand key={board.journeyKey} aspect="band" compact data-band-kind="journey"
           className="journey-band">
           <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}
-            questionRoles={beatActive ? null : questionRoles} knowledge={knowledge} chain={chain}
+            questionRoles={beatActive ? null : questionRoles} knowledge={knowledge} chain={chain} journey={journey}
             beatStamp={beatActive ? <JourneyBeatStamp key={board.step.index} state={board} /> : null}
             onOpenFormulas={() => setFormulasOpen(true)}>
             {beatActive && <JourneyTransitionBeat key={board.step.index} state={board} />}

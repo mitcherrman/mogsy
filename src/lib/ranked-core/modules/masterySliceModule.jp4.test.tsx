@@ -151,8 +151,8 @@ describe("the board: two mirrored fixed halves", () => {
       const k = CSS.indexOf(`${sel} {`);
       return k < 0 ? "" : CSS.slice(k, CSS.indexOf("}", k));
     };
+    // JP5 — the row is kept (empty) at its fixed height: the stage does not move.
     expect(rule(".journey-side__anchors")).toMatch(/height: var\(--jb-chip-h\)/);
-    expect(rule(".journey-anchor")).toMatch(/white-space: nowrap/);
     expect(rule(".journey-side__shards")).toMatch(/height: var\(--jb-portrait\)/);
   });
 
@@ -166,23 +166,18 @@ describe("the board: two mirrored fixed halves", () => {
 });
 
 describe("stat mnemonics are symbols, never inventory", () => {
-  it("Bonus AD wears the Long Sword as a ROUND badge outside the item slots; Doran's Blade stays an item", () => {
+  it("JP5 — no stat mnemonic badge on the board; a stat's sources are its notebook's, drawn as the ITEMS and SHARDS they are", () => {
     show(snap(REF, "child1-live"));
-    const bonus = screen.getByTestId("journey-stat-subject-bonus_attack_damage");
-    const mnemonic = screen.getByTestId("journey-stat-subject-bonus_attack_damage-icon");
-    expect(mnemonic).toHaveAttribute("data-icon-kind", "stat");
-    expect(mnemonic).toHaveAttribute("data-mnemonic", "1036");
-    expect(mnemonic.className).toMatch(/journey-ico--mnemonic/);
-    expect(mnemonic.getAttribute("aria-hidden")).toBe("true");
-    expect(screen.getByTestId("journey-items-subject")).not.toContainElement(mnemonic);
+    expect(screen.queryByTestId("journey-stat-subject-bonus_attack_damage")).toBeNull();
     // No slot holds a Long Sword: the champion does not own the mnemonic.
     expect(screen.getByTestId("journey-items-subject").querySelector("[data-item-id='1036']")).toBeNull();
-    // The real item source is drawn as an ITEM tile.
-    const blade = screen.getByTestId("journey-stat-subject-bonus_attack_damage-source-0");
-    expect(blade).toHaveAttribute("data-icon-kind", "item");
+    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
+    fireEvent.click(screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-toggle"));
+    const sources = screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-sources");
+    const blade = sources.querySelector("[data-source-kind='item'] [data-icon-kind='item']")!;
     expect(blade).toHaveAttribute("data-item-id", "1055");
     expect(blade.className).toMatch(/journey-ico--item/);
-    expect(bonus).toContainElement(blade);
+    expect(sources.querySelectorAll("[data-source-kind='stat_mod'] [data-icon-kind='shard']")).toHaveLength(2);
   });
 
   it("the stylesheet: a mnemonic is round and ringed, an item square — the two never share a shape", () => {
@@ -193,27 +188,23 @@ describe("stat mnemonics are symbols, never inventory", () => {
 });
 
 describe("Bonus AD provenance: where 21 comes from", () => {
-  it("the anchor carries its served sources (item + two shards) and opens their breakdown", () => {
+  it("Zed's notebook carries its served sources (item + two shards) and their exact total", () => {
     show(snap(REF, "child1-live"));
-    const bonus = screen.getByTestId("journey-stat-subject-bonus_attack_damage");
-    expect(bonus.tagName).toBe("BUTTON");
-    const kinds = [...screen.getByTestId("journey-stat-subject-bonus_attack_damage-sources").children]
-      .map((e) => `${(e as HTMLElement).dataset.iconKind}:${(e as HTMLElement).dataset.itemId ?? (e as HTMLElement).dataset.shardId}`);
-    expect(kinds).toEqual(["item:1055", "shard:5008", "shard:5008"]);
-    fireEvent.click(bonus);
-    const card = screen.getByTestId("journey-sources-card");
-    expect([...card.querySelectorAll("[data-source-kind]")].map((r) => r.getAttribute("aria-label")))
+    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
+    fireEvent.click(screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-toggle"));
+    const sources = screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-sources");
+    expect([...sources.querySelectorAll("[data-source-kind]")].map((r) => r.getAttribute("aria-label")))
       .toEqual(["Doran's Blade: +10", "Adaptive Force: +5.4", "Adaptive Force: +5.4"]);
-    expect(card).toHaveTextContent("Exact20.8");
-    expect(card).toHaveTextContent("Shown as 21 · rounded for display");
+    expect(sources).toHaveTextContent("Exact · shown 2120.8");
   });
 
-  it("a stat with no served sources is a plain anchor (nothing is derived to fill it)", () => {
+  it("a stat with no served sources lists none (nothing is derived to fill it)", () => {
     show(m1snap("pantheon.standard", "child2-live"));
-    for (const a of document.querySelectorAll<HTMLElement>(".journey-anchor")) {
-      expect(a.tagName).toBe("SPAN");
-      expect(a.querySelector(".journey-anchor__sources")).toBeNull();
-    }
+    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
+    const toggle = screen.queryByTestId("journey-notebook-subject-row-attack_damage-toggle");
+    if (toggle) fireEvent.click(toggle);
+    const list = screen.queryByTestId("journey-notebook-subject-row-attack_damage-sources");
+    expect(list?.querySelectorAll("[data-source-kind]").length ?? 0).toBe(0);
   });
 });
 
@@ -228,15 +219,16 @@ describe("the notebook: learned facts are recalled, not reprinted", () => {
         if (b) {
           // Step 2's raw 85 is never printed again on the board…
           expect(b.textContent, `${file} ${s.label}`).not.toMatch(/\b85\b/);
-          // …and Step 3's armor 24 only at its own reveal (the moment).
-          if (!/^child2-reveal/.test(s.label)) expect(b.textContent, `${file} ${s.label}`).not.toMatch(/\b24\b/);
+          // …and (JP5) Step 3's armor 24 never is: it lives in Ahri's notebook.
+          expect(b.textContent, `${file} ${s.label}`).not.toMatch(/\b24\b/);
         }
         unmount();
       }
     }
     show(snap(REF, "child3-live"));
     expect(popText("journey-know-subject-E")).toMatch(/Raw damage 85.*learned Step 2/);
-    expect(popText("journey-know-opponent-stat-armor")).toMatch(/Armor 24.*learned Step 3/);
+    fireEvent.click(screen.getByTestId("journey-notebook-opponent"));
+    expect(screen.getByTestId("journey-notebook-opponent-row-armor").textContent).toMatch(/^Armor24Lv 2 base · learned Step 3/);
   });
 });
 
@@ -266,7 +258,8 @@ describe("the `!` coach: taught once", () => {
     const reveal1 = snap(REF, "child1-reveal");
     stepTo(r, live1, reveal0);
     stepTo(r, reveal1, live1);
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-just-learned", "true");
+    // (JP5: the raw damage lands on Zed E's own `!`, which glows.)
+    expect(screen.getByTestId("journey-know-subject-E")).toHaveAttribute("data-just-learned", "true");
     expect(screen.queryByTestId("journey-know-coach")).toBeNull();
   });
 

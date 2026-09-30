@@ -74,7 +74,9 @@ export type J3ShardRow = "offense" | "flex" | "defense";
 export interface J3StatMod { row: J3ShardRow; id: string; name: string }
 export type J3StatSource =
   | { kind: "item"; itemId: string; name: string; value: number }
-  | { kind: "stat_mod"; row: J3ShardRow; id: string; name: string; value: number };
+  | { kind: "stat_mod"; row: J3ShardRow; id: string; name: string; value: number }
+  /** JP5 — the champion's own base at the state's level (armor). */
+  | { kind: "level"; level: number; value: number };
 
 /** The shard rows, in page order (backend `stat_mods.ROWS`). */
 export const J3_SHARD_ROWS: readonly J3ShardRow[] = ["offense", "flex", "defense"];
@@ -328,7 +330,12 @@ function readStatSources(v: unknown, l: string, stats: J3SideState["stats"], mod
         if (!mods?.some((m) => m.row === row && m.id === id)) fail(`${pl} is not one of this side's shards`);
         return { kind, row, id, name: str(x.name, `${pl}.name`), value: num(x.value, `${pl}.value`) };
       }
-      return fail(`${pl}.kind must be item|stat_mod`);
+      if (kind === "level") {
+        // JP5 — the champion's own base at the state's level (served armor provenance).
+        const x = shape(p, pl, ["kind", "level", "value"]);
+        return { kind, level: int(x.level, `${pl}.level`, 1), value: num(x.value, `${pl}.value`) };
+      }
+      return fail(`${pl}.kind must be item|stat_mod|level`);
     });
   }
   return out;

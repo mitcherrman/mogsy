@@ -17176,78 +17176,136 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   .journey-side[data-side="subject"] .journey-side__anchors { justify-self: end; justify-content: flex-end; }
   .journey-side[data-side="opponent"] .journey-side__anchors { justify-self: start; justify-content: flex-start; }
 }
-/* One anchor: icon-led, fixed height, never wrapping. */
-.journey-anchor {
+/* JP5 — THE PORTRAIT IS A CONTROL: it opens the champion's stat notebook.
+   Same box as the portrait (a button around it), so nothing on the board moves;
+   a question about one of this champion's stats outlines it (focus), and a
+   stat LEARNED by a reveal wears the existing gold `!` at its corner. */
+.journey-portrait-btn {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.journey-portrait-btn:focus-visible { outline: 2px solid #f3dca0; outline-offset: 2px; }
+.journey-portrait-btn:hover > span:first-child,
+.journey-portrait-btn[data-state="open"] > span:first-child { box-shadow: 0 0 0 2px rgb(243 220 160 / 0.85); }
+.journey-portrait-btn[data-focus="true"] > span:first-child { box-shadow: 0 0 0 2px rgb(232 201 122 / 0.95), 0 0 10px rgb(232 201 122 / 0.45); }
+.journey-portrait-btn > .journey-know { pointer-events: none; }
+
+/* JP5 — THE NOTEBOOK SHEET: a small League stat table that fills in. Unknown
+   rows stay visibly unknown (—); a row with served provenance opens in place. */
+.journey-notebook { padding: 0; }
+.journey-notebook__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 5px;
+  border-bottom: 1px solid rgb(212 179 90 / 0.3);
+}
+.journey-notebook__title {
+  min-width: 0;
+  overflow: hidden;
+  color: #f3dca0;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journey-notebook__lv { color: rgb(255 255 255 / 0.7); letter-spacing: 0.08em; }
+.journey-notebook__state {
+  position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 4px;
-  padding: 0 7px 0 2px;
-  border: 1px solid rgb(212 179 90 / 0.4);
-  border-radius: 9999px;
-  background: rgb(4 10 18 / 0.78);
-  color: #fff;
+  max-width: 9.5rem;
+  color: rgb(255 255 255 / 0.85);
+  font-size: 0.625rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+}
+.journey-notebook__state select {
+  max-width: 100%;
+  appearance: none;
+  padding: 1px 16px 1px 6px;
+  border: 1px solid rgb(212 179 90 / 0.45);
+  border-radius: 9999px;
+  background: rgb(4 10 18 / 0.85);
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.journey-notebook__state select:focus-visible { outline: 2px solid #f3dca0; outline-offset: 1px; }
+.journey-notebook__state-chev { position: absolute; right: 4px; width: 10px; height: 10px; pointer-events: none; }
+.journey-notebook__state--fixed { padding: 1px 6px; color: rgb(255 255 255 / 0.6); }
+.journey-notebook__note { margin: 0; padding: 3px 8px 0; color: rgb(255 255 255 / 0.6); font-size: 0.625rem; }
+.journey-notebook__rows { display: flex; flex-direction: column; margin: 0; padding: 3px 0 5px; list-style: none; }
+.journey-notebook__line {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 4.25rem auto 1fr auto;
+  align-items: baseline;
+  gap: 6px;
+  padding: 1px 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.journey-notebook__row[data-known="false"] {
+  display: grid;
+  grid-template-columns: 4.25rem auto;
+  gap: 6px;
+  padding: 1px 8px;
+}
+button.journey-notebook__line { cursor: pointer; }
+button.journey-notebook__line:hover, button.journey-notebook__line[aria-expanded="true"] { background: rgb(243 220 160 / 0.08); }
+button.journey-notebook__line:focus-visible { outline: 2px solid #f3dca0; outline-offset: -2px; }
+.journey-notebook__stat { color: rgb(255 255 255 / 0.7); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.625rem; }
+.journey-notebook__value { color: #fff; font-weight: 900; font-variant-numeric: tabular-nums; }
+.journey-notebook__value--unknown { color: rgb(255 255 255 / 0.3); font-weight: 700; }
+.journey-notebook__row[data-how="learned"] .journey-notebook__value { color: #f3dca0; }
+.journey-notebook__basis {
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(255 255 255 / 0.55);
+  font-size: 0.625rem;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
-button.journey-anchor { cursor: pointer; font: inherit; font-weight: 700; }
-button.journey-anchor:hover, button.journey-anchor[data-state="open"] { border-color: rgb(243 220 160 / 0.85); }
-button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset: 1px; }
-.journey-anchor__label { color: rgb(255 255 255 / 0.72); }
-.journey-anchor__value { font-weight: 900; color: #fff; }
-.journey-anchor__recall { color: #f3dca0; text-transform: none; letter-spacing: 0; }
-/* A transition's change, kept all child long: "52 → 92", green. */
-.journey-anchor__from { margin-right: 3px; color: rgb(255 255 255 / 0.55); text-decoration: line-through; text-decoration-color: rgb(255 255 255 / 0.4); }
-.journey-anchor__arrow { margin-right: 3px; color: #8fd0a0; }
-.journey-anchor__sources { display: none; gap: 2px; margin-left: 1px; }
-/* A phone row is narrow: an anchor is its icon and value (the label is in its
-   accessible name), so the champion's name keeps its room. */
-@container (max-width: 25.99rem) {
-  .journey-anchor__label { display: none; }
-  .journey-anchor { gap: 3px; padding: 0 6px 0 2px; }
-  .journey-anchor--learned { padding-right: 2px; }
+.journey-notebook__chev { width: 11px; height: 11px; align-self: center; color: rgb(243 220 160 / 0.8); transition: transform 150ms ease; }
+.journey-notebook__sources { display: flex; flex-direction: column; gap: 2px; margin: 1px 8px 4px 1.25rem; padding: 3px 0 0; list-style: none; }
+
+/* One served stat source (item, shard, or the level base) — the notebook's and
+   the State sheet's rows. */
+.journey-source-row { display: flex; align-items: center; gap: 6px; font-size: 0.6875rem; white-space: nowrap; }
+.journey-source-row .journey-ico--inline { width: 1rem; height: 1rem; margin: 0; }
+.journey-source-row__lv {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(212 179 90 / 0.5);
+  border-radius: 3px;
+  color: #f3dca0;
+  font-size: 0.5rem;
+  font-weight: 900;
 }
-/* The sources ride the anchor only where the board is roomy; a narrower
-   board keeps them one tap away (the anchor still opens their breakdown). */
-@container (min-width: 34rem) {
-  .journey-anchor__sources { display: inline-flex; }
-}
-/* `?`: the value this question asks. */
-.journey-anchor--asked { border-style: dashed; border-color: rgb(232 201 122 / 0.75); background: rgb(38 28 6 / 0.72); }
-.journey-anchor--asked .journey-anchor__value { color: #f3dca0; }
-/* The moment of learning: the value arrives, glows once. */
-.journey-anchor--revealed {
-  border-color: rgb(232 201 122 / 0.9);
-  background: linear-gradient(180deg, rgb(92 70 18 / 0.92), rgb(46 34 8 / 0.92));
-}
-.journey-anchor--revealed .journey-anchor__value { color: #fff3d0; }
-/* Settled: learned earlier — the object and its `!`; the value is a recall. */
-.journey-anchor--learned { border-color: rgb(232 201 122 / 0.6); padding-right: 3px; }
-.journey-anchor--recall { border-style: dashed; }
-@media (prefers-reduced-motion: no-preference) {
-  .journey-anchor[data-just-learned="true"] { animation: journey-learned-glow 1.2s ease-out 1; }
-  .journey-anchor[data-just-learned="true"] .journey-learned-value {
-    animation: journey-learned-in 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
-  }
-}
-/* The Bonus AD sources card. */
-.journey-sources { padding: 4px 7px 5px; }
-.journey-sources__rows { display: flex; flex-direction: column; gap: 2px; margin: 3px 0 2px; }
-.journey-sources__row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.journey-sources__row .journey-ico--inline { width: 1rem; height: 1rem; margin: 0; }
-.journey-sources__name { flex: 1 1 auto; color: rgb(255 255 255 / 0.85); }
-.journey-sources__value { margin-left: auto; padding-left: 10px; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
-.journey-sources__total {
-  display: flex;
-  border-top: 1px solid rgb(232 201 122 / 0.35);
-  padding-top: 2px;
-  color: #e8c97a;
-  font-weight: 800;
-}
-.journey-sources__shown { color: rgb(255 255 255 / 0.6); font-size: 0.625rem; }
+.journey-source-row__name { flex: 1 1 auto; color: rgb(255 255 255 / 0.85); }
+.journey-source-row__value { margin-left: auto; padding-left: 10px; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+.journey-source-row--total { border-top: 1px solid rgb(232 201 122 / 0.35); padding-top: 2px; }
+.journey-source-row--total .journey-source-row__name { color: #e8c97a; font-weight: 800; }
 
 /* ── 4. ONE SCENE under both champions ─────────────────────────────────────
    The lane spans the whole board; each champion's art fades in from its own
@@ -17316,9 +17374,6 @@ button.journey-anchor:focus-visible { outline: 2px solid #f3dca0; outline-offset
 }
 .journey-coach__text { min-width: 0; }
 .journey-coach__how { color: #fff; white-space: nowrap; }
-/* Two anchors share the row: the readout says "Raw" (its icon names the ability). */
-.journey-side__anchors[data-count="2"] .journey-long { display: none; }
-.journey-side__anchors[data-count="2"] .journey-short { display: inline; }
 .journey-coach__mark {
   display: inline-flex;
   flex-shrink: 0;

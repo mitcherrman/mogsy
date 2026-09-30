@@ -86,22 +86,24 @@ describe("the transition beat is the server's, and gates the next question", () 
     expect(q("journey-beat")).toBeNull();
   });
 
-  it("the deltas outlive the beat: they stay for the whole child", () => {
+  it("the deltas outlive the beat: they stay for the whole child (the new item on the board, the numbers in the State sheet)", () => {
     render(stage(read(ARC_A_CHILD_4, NOW), "c4"));
     act(() => { vi.advanceTimersByTime(5_000); });
-    const armor = screen.getByTestId("journey-stat-opponent-armor");
-    expect(armor).toHaveAttribute("data-face", "delta");
-    // JP3 — derived stats read whole (51.59 → 52, 91.59 → 92).
-    expect(armor).toHaveTextContent(/52.*→.*92/);
+    // JP5 — no stat bubble on the board: the change is the new item, marked.
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
     expect(screen.getByTestId("journey-item-opponent-0")).toHaveAttribute("data-new", "true");
+    // JP3 — derived stats read whole (51.59 → 52, 91.59 → 92), one tap away.
+    fireEvent.click(screen.getByTestId("journey-open-state"));
+    expect(screen.getByTestId("journey-sheet-stat-opponent-armor")).toHaveTextContent(/52.*→.*92/);
   });
 
   it("a refresh after the server's instant plays no beat", () => {
     render(stage(read(ARC_A_CHILD_2, NOW - 10_000), "c2"));
     expect(screen.getByTestId("journey-stage")).toHaveAttribute("data-beat", "idle");
     expect(isInert()).toBe(false);
-    // …and the marks are still there.
-    expect(screen.getByTestId("journey-stat-subject-ability_haste")).toHaveAttribute("data-face", "delta");
+    // …and the change is still there (JP5: in the State sheet, not a board bubble).
+    fireEvent.click(screen.getByTestId("journey-open-state"));
+    expect(screen.getByTestId("journey-sheet-stat-subject-ability_haste")).toHaveTextContent("→");
   });
 
   it("no server instant = no beat: the client never invents one", () => {
@@ -138,12 +140,12 @@ describe("the transition beat is the server's, and gates the next question", () 
 });
 
 describe("answer safety in the DOM", () => {
-  it("a withheld stat is `?` and its value appears nowhere on the board or in the sheet", () => {
+  it("a withheld stat's value appears nowhere on the board or in the sheet", () => {
     render(stage(read(ARC_C_CHILD_0_WITHHELD), "c0"));
-    const armor = screen.getByTestId("journey-stat-opponent-armor");
-    // JP4 — the anchor's `asked` face (JP3 "withheld"): the stat's mnemonic, its name, `?`.
-    expect(armor).toHaveAttribute("data-face", "asked");
-    expect(armor).toHaveTextContent("Armor?");
+    // JP5 — the board prints no stat at all (the question asks it in words).
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
+    // The question is about the opponent's stat: its portrait is outlined.
+    expect(screen.getByTestId("journey-notebook-opponent")).toHaveAttribute("data-focus", "true");
     fireEvent.click(screen.getByTestId("journey-open-state"));
     expect(screen.getByTestId("journey-sheet-stat-opponent-armor")).toHaveTextContent("asked in this question");
     expect(document.body.innerHTML).not.toContain("44.195");
@@ -174,23 +176,25 @@ describe("Matchup and Combat presentation", () => {
     expect(screen.getByTestId("journey-side-subject")).toHaveAttribute("data-combat-role", "attacker");
     expect(screen.getByTestId("journey-side-opponent")).toHaveAttribute("data-combat-role", "target");
     expect(screen.getByTestId("journey-seam")).toHaveAttribute("data-seam", "combat");
-    for (const id of ["journey-ability-subject-Q", "journey-stat-subject-bonus_attack_damage",
-      "journey-stat-opponent-armor", "journey-item-opponent-0"]) {
+    // JP5 — the stats the question is about outline their champion's portrait
+    // (the notebook), not a board bubble.
+    for (const id of ["journey-ability-subject-Q", "journey-notebook-subject",
+      "journey-notebook-opponent", "journey-item-opponent-0"]) {
       expect(screen.getByTestId(id)).toHaveAttribute("data-focus", "true");
     }
-    expect(screen.getByTestId("journey-stat-subject-ability_haste")).not.toHaveAttribute("data-focus");
   });
 
-  it("JP4 — one anchor row per half, at most two, on every density: the asked-about and changed first", () => {
+  it("JP5 — the former anchor row keeps its box, EMPTY; every stat waits in the State sheet", () => {
     render(stage(read(ARC_A_ALT_LEVEL_UP, NOW - 10_000), "alt"));
-    const row = screen.getByTestId("journey-anchors-subject");
-    const keys = within(row).getAllByTestId(/^journey-stat-subject-[a-z_]+$/)
-      .map((chip) => chip.getAttribute("data-testid")!.replace("journey-stat-subject-", ""));
-    // Chosen by importance, drawn in reading order; ability haste waits in the State sheet.
-    expect(keys).toEqual(["bonus_attack_damage", "lethality"]);
-    expect(row).toHaveAttribute("data-count", "2");
+    for (const side of ["subject", "opponent"]) {
+      const row = screen.getByTestId(`journey-anchors-${side}`);
+      expect(row.childElementCount).toBe(0);
+      expect(row).toHaveAttribute("aria-hidden", "true");
+    }
     fireEvent.click(screen.getByTestId("journey-open-state"));
-    expect(screen.getByTestId("journey-sheet-stat-subject-ability_haste")).toBeInTheDocument();
+    for (const key of ["bonus_attack_damage", "lethality", "ability_haste"]) {
+      expect(screen.getByTestId(`journey-sheet-stat-subject-${key}`)).toBeInTheDocument();
+    }
   });
 
   it("the State sheet shows both sides together", () => {

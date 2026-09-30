@@ -252,7 +252,7 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   const inJourney = (node: ReactNode, questionRoles: MasterySliceChallengeView["roles"] = null) => (journey
     ? (
       <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}
-        questionRoles={questionRoles} knowledge={knowledge}
+        questionRoles={questionRoles} knowledge={knowledge} journey={state.journey}
         // JP3 — the micro-chain's nodes: the reached steps' served asks.
         reached={journey.children} answeredThrough={state.ownFinished ? state.challengeCount : state.ownNextChallengeIndex}>
         {node}

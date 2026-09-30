@@ -98,25 +98,21 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     }
   });
 
-  it("JP4 — `?` → value → settled `!`: each value arrives at its reveal, then lives on its object's mark", () => {
+  it("JP5 — no `?` or value bubble ever: each value arrives at its reveal on its OBJECT's `!` (ability, or portrait notebook)", () => {
     const seen: string[] = [];
     play(REF, (s) => {
-      const raw = screen.queryByTestId("journey-readout-subject-E");
-      const armor = screen.queryByTestId("journey-stat-opponent-armor");
-      seen.push(`${s.label}|raw=${raw ? `${raw.dataset.face}:${raw.textContent}` : "-"}|armor=${
-        armor ? `${armor.dataset.face}:${armor.textContent}` : "-"}`);
+      const e = screen.queryByTestId("journey-know-subject-E");
+      const ahri = screen.queryByTestId("journey-notebook-opponent-mark");
+      const bubbles = document.querySelectorAll("[data-testid^='journey-readout-'], [data-testid^='journey-stat-subject-'], [data-testid^='journey-stat-opponent-']").length;
+      seen.push(`${s.label}|E=${e ? e.dataset.facts : "-"}|ahri=${ahri ? "!" : "-"}|bubbles=${bubbles}`);
     });
     const at = (label: string) => seen.find((x) => x.startsWith(`${label}|`))!;
-    expect(at("child0-live")).toBe("child0-live|raw=-|armor=-");
-    // Asked: the `?` on its anchor ("Raw damage" long, "Raw" short: one shows per density).
-    expect(at("child1-live")).toBe("child1-live|raw=asked:Raw damageRaw?|armor=-");
-    // The reveal moment: the value arrives, with its `!`.
-    expect(at("child1-reveal")).toBe("child1-reveal|raw=revealed:Raw damageRaw85!|armor=-");
-    // Settled: the raw damage is Zed E's `!` — not reprinted.
-    expect(at("child2-live")).toBe("child2-live|raw=-|armor=asked:Armor?");
-    expect(at("child2-reveal")).toBe("child2-reveal|raw=-|armor=revealed:Armor24!");
-    // Settled and relied on: the armor's anchor and its `!`; the value is a recall.
-    expect(at("child3-live")).toBe("child3-live|raw=-|armor=learned:Armor!");
+    expect(at("child0-live")).toBe("child0-live|E=-|ahri=-|bubbles=0");
+    expect(at("child1-live")).toBe("child1-live|E=1|ahri=-|bubbles=0");       // the formula
+    expect(at("child1-reveal")).toBe("child1-reveal|E=2|ahri=-|bubbles=0");   // + raw damage 85
+    expect(at("child2-live")).toBe("child2-live|E=2|ahri=-|bubbles=0");       // Ahri's armor is asked
+    expect(at("child2-reveal")).toBe("child2-reveal|E=2|ahri=!|bubbles=0");   // + her armor 24
+    expect(at("child3-live")).toBe("child3-live|E=2|ahri=!|bubbles=0");
   });
 
   it("the learning glow follows the LEDGER: right, wrong and timed-out reveals all glow the same fact once", () => {
@@ -126,8 +122,8 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
       const at = (label: string) => glows.find((x) => x.startsWith(`${label}:`))!.slice(label.length + 1);
       // The glow arrives WITH the reveal that establishes the fact…
       expect(at("child0-reveal"), file).toBe("journey-know-subject-E");
-      expect(at("child1-reveal"), file).toBe("journey-know-subject-E,journey-know-subject-readout-E,journey-readout-subject-E");
-      expect(at("child2-reveal"), file).toBe("journey-know-opponent-stat-armor,journey-stat-opponent-armor");
+      expect(at("child1-reveal"), file).toBe("journey-know-subject-E");
+      expect(at("child2-reveal"), file).toBe("journey-notebook-opponent-mark");
       // …and never on a live child (nothing is learned before its reveal).
       expect(at("child1-live"), file).toBe("");
       cleanup();
@@ -137,26 +133,26 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     const glows: string[] = [];
     play(TIMEOUT, (s) => { glows.push(`${s.label}:${fresh().join(",")}`); });
     expect(glows.find((x) => x.startsWith("child3-timeout-reveal:"))).toBe("child3-timeout-reveal:");
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "learned");
+    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
   });
 
-  it("the glow settles: ~1.6s later the value keeps its revealed face without the glow", () => {
+  it("the glow settles: ~1.6s later the `!` stays, without the glow", () => {
     const all = live(REF);
     const i = all.findIndex((s) => s.label === "child1-reveal");
     vi.setSystemTime(Date.parse(all[i - 1].at));
     const r = render(view(all[i - 1]));
     vi.setSystemTime(Date.parse(all[i].at));
     r.rerender(view(all[i]));
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-just-learned", "true");
+    expect(screen.getByTestId("journey-know-subject-E")).toHaveAttribute("data-just-learned", "true");
     act(() => { vi.advanceTimersByTime(1700); });
-    expect(screen.getByTestId("journey-readout-subject-E")).not.toHaveAttribute("data-just-learned");
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-face", "revealed");
+    expect(screen.getByTestId("journey-know-subject-E")).not.toHaveAttribute("data-just-learned");
+    expect(screen.getByTestId("journey-know-subject-E")).toHaveAttribute("data-facts", "2");
   });
 
   it("a fresh mount (a reload) replays no glow — the notebook is simply there", () => {
     show(snap(REF, "child3-live"));
     expect(fresh()).toEqual([]);
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "learned");
+    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
   });
 
   it("the State sheet speaks the same grammar: Ahri's armor reads '24 · learned Step 3', not 'recall it'", () => {
@@ -167,10 +163,10 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     expect(row.textContent).not.toMatch(/recall/i);
   });
 
-  it("a Daily Journey keeps the same grammar (K1 Pantheon: Leona's armor fills its chip)", () => {
+  it("a Daily Journey keeps the same grammar (K1 Pantheon: Leona's armor is in her portrait's notebook)", () => {
     show(snap("k1/pantheon.standard", "child0-reveal"));
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "revealed");
-    expect(screen.getByTestId("journey-know-opponent-stat-armor")).toBeInTheDocument();
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
+    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
   });
 });
 

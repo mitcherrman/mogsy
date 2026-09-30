@@ -14,9 +14,9 @@
  * answered it correctly" (a wrong answer + reveal marks it the same way).
  *
  * JP3 — ONE GRAMMAR. The gold `!` is the only learned-knowledge sign on the
- * board: on an ability's icon for its facts, inline on a stat's chip for that
- * stat ("Armor 24 !", which replaced the "Armor recall · step 3" pill), on the
- * portrait for anything else about the champion. Lines read "learned Step N".
+ * board: on an ability's icon for its facts. JP5: a champion's stats live in its
+ * portrait's notebook (`JourneyChampionNotebook`), which wears the same `!`; the
+ * board carries no stat chips. Lines read "learned Step N".
  *
  * Interaction: a mouse hover opens it and leaving closes it; a click or tap
  * pins it open, a second click/tap or an outside tap closes it; Enter/Space
@@ -38,10 +38,9 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, championN
   /** The champion's name, titling a champion / stat card ("Ahri · Lv2"). */
   championName?: string | null;
   /**
-   * `ability` / `portrait`: pinned to the icon's corner. `chip` (JP3): inline
-   * at the end of a learned value chip ("Armor 24 !"), so it never clips.
+   * `ability`: pinned to the icon's corner (the only placement since JP5).
    */
-  placement: "ability" | "portrait" | "chip";
+  placement: "ability";
   /** JP3 — established just now: the badge settles in with one short glow. */
   fresh?: boolean;
   testId: string;

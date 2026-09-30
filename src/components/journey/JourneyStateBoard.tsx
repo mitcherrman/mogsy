@@ -32,8 +32,8 @@
  * The champion is the side's public identity (`side.championName`, already
  * printed beside it), so the art discloses nothing the board does not.
  *
- * K2 — KNOWLEDGE MARKS. A portrait or ability the Journey has established
- * facts about wears a tiny `!` (`JourneyKnowledgeMark`), keyed by K1's object
+ * K2 — KNOWLEDGE MARKS. An ability the Journey has established facts about
+ * (JP5: and a portrait, through its notebook) wears a tiny `!`, keyed by K1's object
  * key (`player:<champion>:<slot>` / `opponent:<champion>`). Each portrait and
  * ability sits in a same-size `journey-know-host`, marked or not, so a mark
  * appearing changes no box. Items are never marked (K1 has no item fact).
@@ -56,6 +56,15 @@
  * positioned: the board's box never depends on art loading.
  *
  * JP3 — THE MICRO-CHAIN beside "Step N of M" (`lib/journey/chain.ts`).
+ *
+ * JP5 — ONE JOB EACH. The board is the CURRENT League objects: portraits,
+ * abilities (with their own learned `!`), items, shards, level. It no longer
+ * carries retained scalar bubbles ("Bonus AD 21", "Raw 85 !", "Armor !"):
+ * a champion's stats live in its PORTRAIT's notebook (`JourneyChampionNotebook`
+ * — what the learner has established, state by state), and the values the
+ * current question needs are the Reasoning Chain's. The anchor row keeps its
+ * reserved height, empty, so the JP2 stage geometry has not moved (its space
+ * is measured for a later, owner-reviewed geometry pass).
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
@@ -67,20 +76,17 @@ import type {
 } from "@/lib/journey/contract";
 import { itemGainTags, markKey, rankFrom, transitionMarks, type JourneyMarks } from "@/lib/journey/beat";
 import {
-  knowledgeKeyFor, markOf, markWithout, NO_KNOWLEDGE,
-  type JourneyKnowledge, type KnowledgeFact,
+  knowledgeKeyFor, NO_KNOWLEDGE, type JourneyKnowledge, type KnowledgeFact,
 } from "@/lib/journey/knowledge";
 import type { JourneyChainNode } from "@/lib/journey/chain";
-import { BOARD_ANCHOR_LIMIT, boardAnchors } from "@/lib/journey/anchors";
+import type { JourneyJ3 } from "@/lib/journey/j3";
+import { championNotebook, statesInputsAt } from "@/lib/journey/notebook";
 import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
 import { AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge } from "./JourneyPrimitives";
 import { JourneyKnowledgeMark } from "./JourneyKnowledgeMark";
-import { JourneyStateAnchor } from "./JourneyStateAnchor";
+import { JourneyChampionNotebook } from "./JourneyChampionNotebook";
 import { ShardIcon } from "./JourneyIcons";
 import { useKnowledgeCoach } from "./useKnowledgeCoach";
-
-/** A board half's anchor row holds at most this many (JP4, `anchors.ts`); the sheet shows every stat. */
-export const COMPACT_STAT_LIMIT = BOARD_ANCHOR_LIMIT;
 
 /**
  * JP4 — the board's shared ground: ONE lane scene under both champions, so the
@@ -199,7 +205,7 @@ function ShardPage({ side }: { side: JourneySide }) {
   );
 }
 
-function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn }: {
+function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, journey }: {
   state: JourneyPublicState;
   side: JourneySide;
   marks: JourneyMarks;
@@ -210,16 +216,14 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn }:
   fresh: ReadonlySet<string>;
   /** JP4 — either side has a shard page: both halves draw the column. */
   shardColumn: boolean;
+  /** JP5 — the served Journey block (reached prefix): the portrait notebook's source. */
+  journey: JourneyJ3 | null;
 }) {
   const id = side.side;
   const championKey = knowledgeKeyFor(side);
   const isFresh = (objectKey: string, f: KnowledgeFact) => fresh.has(`${objectKey}#${f.fact}`);
-  // JP4 — the fixed anchor row (`anchors.ts`). A learned stat's `!` rides on
-  // its anchor, so the portrait keeps only what no anchor shows.
-  const anchors = boardAnchors(state, side, knowledge, marks);
-  const championFull = knowledge.get(championKey) ?? null;
-  const drawnFacts = new Set(anchors.flatMap((a) => (a.kind === "stat" && a.fact ? [a.fact.fact] : [])));
-  const championMark = markWithout(championFull, drawnFacts);
+  const notebook = championNotebook(journey, knowledge, id === "subject" ? "player" : "opponent", state.step.index);
+  const championFacts = knowledge.get(championKey)?.facts ?? [];
   const focus = focusSet(state.focus.refs, id);
   const combat = state.focus.combat;
   const role = combat ? (combat.attacker === id ? "Attacker" : "Target") : null;
@@ -234,12 +238,11 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn }:
       <header className="journey-side__id">
         {shardColumn && <ShardPage side={side} />}
         <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}>
-          <JourneyPortrait side={side} />
-          {championMark && (
-            <JourneyKnowledgeMark mark={championMark} name={side.championName} championName={side.championName}
-              placement="portrait" fresh={championMark.facts.some((f) => isFresh(championKey, f))}
-              testId={`journey-know-${id}-champion`} />
-          )}
+          {/* JP5 — the portrait IS the champion's stat notebook. */}
+          <JourneyChampionNotebook side={side} notebook={notebook}
+            focused={focus.stats.size > 0 || statesInputsAt(notebook, state.step.index + 1)}
+            fresh={championFacts.some((f) => f.kind === "champion_stat_at_level" && isFresh(championKey, f))}
+            testId={`journey-notebook-${id}`} />
         </span>
         <div className="journey-side__name min-w-0">
           <span className="journey-side__champion truncate font-black uppercase tracking-[0.08em] text-white"
@@ -286,35 +289,9 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn }:
             return tags ? [[slot, tags] as const] : [];
           })) : undefined} />
       </div>
-      <div className="journey-side__anchors" data-testid={`journey-anchors-${id}`} data-count={anchors.length}>
-        {anchors.map((a) => {
-          let mark: ReactNode = null;
-          let isNew = false;
-          if (a.kind === "stat" && a.fact && championFull && (a.face === "revealed" || a.face === "learned")) {
-            isNew = isFresh(championKey, a.fact);
-            mark = (
-              <JourneyKnowledgeMark mark={markOf(championFull, a.fact)} name={`${side.championName} ${a.key}`}
-                championName={side.championName} placement="chip" fresh={isNew}
-                testId={`journey-know-${id}-stat-${a.key}`} />
-            );
-          }
-          if (a.kind === "readout" && a.fact && a.face === "revealed") {
-            const abilityMark = knowledge.get(knowledgeKeyFor(side, a.slot)) ?? null;
-            if (abilityMark) {
-              isNew = isFresh(abilityMark.key, a.fact);
-              mark = (
-                <JourneyKnowledgeMark mark={markOf(abilityMark, a.fact)} name={`${side.championName} ${a.slot} raw damage`}
-                  abilityName={side.abilities.find((x) => x.slot === a.slot)?.name ?? null} placement="chip" fresh={isNew}
-                  testId={`journey-know-${id}-readout-${a.slot}`} />
-              );
-            }
-          }
-          return (
-            <JourneyStateAnchor key={a.kind === "stat" ? a.key : `readout-${a.slot}`} side={side} anchor={a}
-              mark={mark} fresh={isNew} />
-          );
-        })}
-      </div>
+      {/* JP5 — the former anchor row: its box is kept (empty) so nothing on the
+          stage moves until the owner reviews the geometry pass. */}
+      <div aria-hidden className="journey-side__anchors" data-testid={`journey-anchors-${id}`} data-count={0} />
     </section>
   );
 }
@@ -379,9 +356,11 @@ function JourneyPath({ nodes }: { nodes: readonly JourneyChainNode[] }) {
 
 export function JourneyStateBoard({
   state, beatActive = false, onOpenDetail, onOpenFormulas, questionRoles = null, knowledge = NO_KNOWLEDGE,
-  beatStamp = null, chain = null, children,
+  beatStamp = null, chain = null, journey = null, children,
 }: {
   state: JourneyPublicState;
+  /** JP5 — the served Journey block (reached prefix), for the portrait notebooks. */
+  journey?: JourneyJ3 | null;
   /** JP3 — the micro-chain for the step on screen (`journeyChain`); null draws none. */
   chain?: readonly JourneyChainNode[] | null;
   /** K2 — the established facts to mark on this board's objects. */
@@ -472,7 +451,7 @@ export function JourneyStateBoard({
       <SideArt side={opponent} />
       <div className="journey-board__sides">
         <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} fresh={fresh}
-          shardColumn={shardColumn} />
+          shardColumn={shardColumn} journey={journey} />
         <div aria-hidden className="journey-board__seam" data-testid="journey-seam"
           data-seam={combat ? "combat" : "versus"}>
           {combat ? (
@@ -482,7 +461,7 @@ export function JourneyStateBoard({
           )}
         </div>
         <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} fresh={fresh}
-          shardColumn={shardColumn} />
+          shardColumn={shardColumn} journey={journey} />
       </div>
       {coach.visible && (
         <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={coach.dismiss}>

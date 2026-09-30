@@ -128,8 +128,9 @@ describe("LIVE: what this step builds on, before the answer", () => {
     show(snap(REF, "child3-live"));
     const board = screen.getByTestId("journey-board");
     expect(board.querySelector(".journey-reasoning, .journey-node")).toBeNull();
-    const marks = [...board.querySelectorAll<HTMLButtonElement>("button.journey-know")];
-    expect(marks.length).toBeGreaterThanOrEqual(2);              // Zed E, Ahri's armor
+    // Zed E's `!` (formula, raw damage) and Ahri's notebook `!` (her armor).
+    expect(board.querySelectorAll("button.journey-know")).toHaveLength(1);
+    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
     expect(board.textContent).not.toMatch(/\b85\b|\b24\b/);       // the notebook never reprints (JP4)
   });
 

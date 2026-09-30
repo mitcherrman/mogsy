@@ -252,6 +252,7 @@ function sourceOf(p: J3StatSource): JourneyStatSource {
     const n = Number(p.itemId);
     return { kind: "item", itemId: Number.isInteger(n) && n > 0 ? n : null, name: p.name, value: p.value };
   }
+  if (p.kind === "level") return { kind: "level", level: p.level, value: p.value };
   return { kind: "stat_mod", row: p.row, shardId: p.id, name: p.name, value: p.value };
 }
 

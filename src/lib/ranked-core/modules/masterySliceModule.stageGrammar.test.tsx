@@ -78,8 +78,18 @@ const child = () => screen.getByTestId("journey-child");
 const heading = () => within(child()).getByRole("heading", { level: 2 });
 const tablets = () => [...child().querySelectorAll<HTMLButtonElement>("[data-quiz-choice]")];
 const labels = () => tablets().map((b) => b.querySelector("[data-choice-letter]")!.nextElementSibling!.textContent);
-const marks = () => [...document.querySelectorAll<HTMLButtonElement>("button.journey-know")]
-  .map((b) => `${b.dataset.testid!.replace("journey-know-", "")}:${b.dataset.facts}`).sort();
+/** Every learned-history `!` on the board: an ability's (with its fact count) and (JP5) a portrait notebook's. */
+const marks = () => [
+  ...[...document.querySelectorAll<HTMLButtonElement>("button.journey-know")]
+    .map((b) => `${b.dataset.testid!.replace("journey-know-", "")}:${b.dataset.facts}`),
+  ...[...document.querySelectorAll<HTMLElement>(".journey-portrait-btn > .journey-know")]
+    .map((b) => b.dataset.testid!.replace(/^journey-notebook-(\w+)-mark$/, "$1-notebook")),
+].sort();
+/** A champion's notebook row, opened from its portrait. */
+const notebookRow = (side: "subject" | "opponent", stat: string) => {
+  fireEvent.click(screen.getByTestId(`journey-notebook-${side}`));
+  return screen.getByTestId(`journey-notebook-${side}-row-${stat}`);
+};
 const popText = (testId: string) => {
   fireEvent.click(screen.getByTestId(testId));
   const t = screen.getByTestId(`${testId}-pop`).textContent ?? "";
@@ -182,19 +192,18 @@ describe("Step 2 — the question asks; the board states", () => {
     // No helper copy: no "Builds on", no internal scenario state.
     expect(child().textContent).not.toMatch(/builds on|item effects/i);
     expect(screen.queryByTestId("scenario-context")).toBeNull();
-    // The state it is read at is the BOARD's — a derived stat reads whole
-    // (20.8 → 21). JP4: where 21 comes from is on the anchor itself (its served
-    // sources), and the exact value is in that breakdown, "rounded for display".
-    const bonus = screen.getByTestId("journey-stat-subject-bonus_attack_damage");
-    expect(bonus).toHaveTextContent(/^Bonus AD21$/);
-    fireEvent.click(bonus);
-    const sources = screen.getByTestId("journey-stat-subject-bonus_attack_damage-pop");
-    expect(sources).toHaveTextContent(/Doran's Blade\s*\+10.*Adaptive Force\s*\+5\.4.*Adaptive Force\s*\+5\.4.*Exact\s*20\.8/);
-    expect(sources).toHaveTextContent("Shown as 21 · rounded for display");
+    // JP5 — the state it is read at is ZED'S (his portrait is outlined: the
+    // question states his bonus AD); a derived stat reads whole (20.8 → 21),
+    // where it comes from and its exact value one tap away in his notebook.
+    expect(screen.getByTestId("journey-notebook-subject")).toHaveAttribute("data-focus", "true");
+    const bonus = notebookRow("subject", "bonus_attack_damage");
+    expect(bonus.textContent).toMatch(/^Bonus AD21/);
+    fireEvent.click(screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-toggle"));
+    const sources = screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-sources");
+    expect(sources).toHaveTextContent(/Doran's Blade\s*\+10.*Adaptive Force\s*\+5\.4.*Adaptive Force\s*\+5\.4.*Exact · shown 21\s*20\.8/);
     expect(sources.textContent).not.toMatch(/rounded up/);
-    // The value this step asks is the board's `?` anchor on Zed E.
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveAttribute("data-face", "asked");
-    expect(screen.getByTestId("journey-readout-subject-E")).toHaveTextContent(/\?$/);
+    // The value this step asks is asked in words: no board bubble.
+    expect(screen.queryByTestId("journey-readout-subject-E")).toBeNull();
     expect(screen.getByTestId("journey-level-subject")).toHaveTextContent("2");
     expect(screen.getByTestId("journey-ability-subject-E")).toHaveAttribute("data-rank", "1");
   });
@@ -235,21 +244,18 @@ describe("Step 3 — Ahri's armor in the same grammar", () => {
   it("asks in words, answers on the grid; after the reveal the armor lives on Ahri", () => {
     show(snap(REF, "child2-live"));
     expect(heading()).toHaveTextContent("At level 2, what is Ahri's Armor?");
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "asked");
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveTextContent(/^Armor\?$/);
+    // JP5 — no `?` bubble: the question asks in words; Ahri's portrait is outlined.
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
+    expect(screen.getByTestId("journey-notebook-opponent")).toHaveAttribute("data-focus", "true");
     // JP4 — Zed E's raw damage, learned at Step 2, is NOT reprinted: it lives
-    // on Zed E's `!` (the notebook), one hover away.
+    // on Zed E's `!`, one hover away.
     expect(screen.queryByTestId("journey-readout-subject-E")).toBeNull();
     expect(marks()).toEqual(["subject-E:2"]);
     cleanup();
     show(snap(REF, "child2-reveal"));
-    // The reveal MOMENT: the value fills the `?` (Armor ? → Armor 24 !).
-    const armor = screen.getByTestId("journey-stat-opponent-armor");
-    expect(armor).toHaveAttribute("data-face", "revealed");
-    expect(within(armor).getByTestId("journey-stat-opponent-armor-learned")).toHaveTextContent("24");
-    expect(marks()).toEqual(["opponent-stat-armor:1", "subject-E:2"]);
-    expect(screen.queryByTestId("journey-know-opponent-champion")).toBeNull();
-    expect(popText("journey-know-opponent-stat-armor")).toMatch(/Ahri · Lv2.*Armor 24.*learned Step 3/);
+    // The reveal MOMENT: Ahri's portrait takes the `!`; her notebook knows 24.
+    expect(marks()).toEqual(["opponent-notebook", "subject-E:2"]);
+    expect(notebookRow("opponent", "armor").textContent).toMatch(/^Armor24Lv 2 base · learned Step 3/);
     // The reveal: [Ahri · Lv 2] → [Armor · 24]; 24.024 only in the exact working.
     const w = screen.getByTestId("journey-stat-working");
     expect(within(w).getByTestId("journey-stat-working-level")).toHaveTextContent(/^Lv 2Ahri$/);
@@ -268,12 +274,10 @@ describe("Step 4 — the culmination reads off the board", () => {
     expect(document.body.textContent).not.toMatch(/Raw damage · recalled|recall · revealed in step|not part of this question's premise/);
     // The chain is on the board, not in a helper line under the question.
     expect(child().textContent).not.toMatch(/builds on|item effects/i);
-    // JP4 — settled knowledge is NOT reprinted: Ahri's armor is its anchor and
-    // its `!` (the value one hover away); Zed's raw damage is Zed E's `!`.
-    const armor = screen.getByTestId("journey-stat-opponent-armor");
-    expect(armor).toHaveAttribute("data-face", "learned");
-    expect(armor.textContent).not.toMatch(/recall|24/i);
-    expect(armor).toHaveTextContent(/^Armor!$/);
+    // Settled knowledge is NOT reprinted on the board: Ahri's armor is in her
+    // notebook (the portrait's `!`); Zed's raw damage is Zed E's `!`. (The
+    // Reasoning Chain resurfaces both for this question.)
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
     expect(screen.queryByTestId("journey-readout-subject-E")).toBeNull();
     expect(screen.getByTestId("journey-board").textContent).not.toMatch(/\b85\b|\b24\b/);
     // Irrelevant zero modifiers are not board state.
@@ -282,7 +286,7 @@ describe("Step 4 — the culmination reads off the board", () => {
     // One object accumulates its facts; the canonical taught decimal (92.5) stays.
     expect(popText("journey-know-subject-E")).toMatch(
       /E · Shadow Slash · Rank 1.*Formula 70 \/ 92\.5 \/ 115 \/ 137\.5 \/ 160 \(\+70% bonus AD\).*learned Step 1.*Raw damage 85.*learned Step 2/);
-    expect(popText("journey-know-opponent-stat-armor")).toMatch(/Armor 24.*learned Step 3/);
+    expect(notebookRow("opponent", "armor").textContent).toMatch(/^Armor24.*learned Step 3/);
   });
 
   it("JP5 — the reveal is the server's working as a Reasoning Chain: 85 → 24 → 100 / (100 + 24) → 0.806 → 80.6% → 68", () => {
@@ -328,29 +332,27 @@ describe("K2 — the board is the memory surface", () => {
     expect(at("child0-live")).toBe("");
     expect(at("child0-reveal")).toBe("subject-E:1");                            // the formula
     expect(at("child1-live")).toBe("subject-E:1");                              // raw not yet revealed
-    // The reveal moment: the raw value arrives on its anchor, with its `!`…
-    expect(at("child1-reveal")).toBe("subject-E:2,subject-readout-E:1");
-    // …then settles into Zed E's own `!` (JP4: never reprinted).
+    // The reveal moment: the raw value joins Zed E's own `!` (JP5: no board bubble).
+    expect(at("child1-reveal")).toBe("subject-E:2");                            // + raw 85 on E's `!`
     expect(at("child2-live")).toBe("subject-E:2");
-    expect(at("child2-reveal")).toBe("opponent-stat-armor:1,subject-E:2");     // + Armor 24 !
-    expect(at("finished")).toBe("opponent-stat-armor:1,subject-E:2");
+    expect(at("child2-reveal")).toBe("opponent-notebook,subject-E:2");          // + Ahri's armor
+    expect(at("finished")).toBe("opponent-notebook,subject-E:2");
   });
 
   it("a WRONG answer still establishes the fact by its reveal (steps 1 and 3 answered wrong)", () => {
     const t = timeline(WRONG);
     const at = (label: string) => t.find((x) => x.startsWith(`${label} `))!.slice(label.length + 1);
     expect(at("child0-reveal")).toBe("subject-E:1");
-    expect(at("child2-reveal")).toBe("opponent-stat-armor:1,subject-E:2");
+    expect(at("child2-reveal")).toBe("opponent-notebook,subject-E:2");
     cleanup();
     show(snap(WRONG, "child3-live"));
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "learned");
-    expect(popText("journey-know-opponent-stat-armor")).toMatch(/Armor 24.*learned Step 3/);
+    expect(notebookRow("opponent", "armor").textContent).toMatch(/^Armor24.*learned Step 3/);
   });
 
   it("a TIMEOUT reveal shows in place, says so, and keeps every earlier fact", () => {
     show(snap(TIMEOUT, "child3-timeout-reveal"));
     expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent("Time's up · 68");
-    expect(marks()).toEqual(["opponent-stat-armor:1", "subject-E:2"]);
+    expect(marks()).toEqual(["opponent-notebook", "subject-E:2"]);
   });
 
   it("no child's own fact is known while it is asked (leak sweep over every open/live snapshot)", () => {
