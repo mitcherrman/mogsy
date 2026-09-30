@@ -60,16 +60,34 @@ export function moveToken(order: readonly string[], token: string, dir: Dir): st
   return next;
 }
 
+/**
+ * F1 - the big-desktop tier. The arena locks the stage to the viewport height
+ * on desktop, so the larger cards use the literal `lg:[@media(min-height:860px)]:`
+ * variant (width AND height): a short laptop keeps compact rows, only wider.
+ * Literal classes, because Tailwind cannot see an interpolated variant.
+ */
+
 /** Off-arena legibility; inside `.ranked-academy` the tablet paint takes over. */
 const CARD_SURFACE = "border-[#7a6236]/55 bg-[#f4e9cc] text-[#2c2417] dark:bg-card dark:text-foreground";
 
 function Rail({ text, edge }: { text: string; edge: "first" | "last" }) {
   return (
     <p data-testid={`forge-rail-${edge}`}
-      className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--ranked-ink-muted,#5a4a2e)]">
+      className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--ranked-ink-muted,#5a4a2e)] md:text-[11px] md:tracking-[0.26em]">
       <span aria-hidden>{edge === "first" ? "▼" : "▲"}</span>
       {edge === "first" ? "Start" : "End"}: {text}
+      <span aria-hidden className="hidden h-px flex-1 bg-gradient-to-r from-[#7a6236]/50 to-transparent md:block" />
     </p>
+  );
+}
+
+/** The 1-5 numeral: a filled badge, so the top-to-bottom flow reads at a glance. */
+function RankBadge({ n, testId }: { n: number; testId: string }) {
+  return (
+    <span aria-hidden data-testid={testId}
+      className="flex w-6 shrink-0 items-center justify-center self-center font-serif text-lg font-black tabular-nums text-[#7a6236] sm:w-7 md:h-9 md:w-9 md:rounded-full md:border md:border-[#7a6236]/50 md:bg-[#7a6236]/10 md:text-xl lg:h-8 lg:w-8 lg:text-lg xl:text-xl">
+      {n}
+    </span>
   );
 }
 
@@ -98,20 +116,17 @@ function CardRow({
       layout={reduced ? undefined : "position"}
       transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }}
       whileDrag={reduced ? undefined : { scale: 1.02, zIndex: 20 }}
-      className={`relative flex min-h-[56px] list-none items-stretch gap-1.5 rounded-lg border px-1.5 py-1.5 sm:gap-2 sm:px-2 shadow-sm lg:min-h-[48px] lg:py-0.5 ${CARD_SURFACE}`}>
-      <span aria-hidden data-testid={`forge-rank-${entry.token}`}
-        className="flex w-5 shrink-0 items-center justify-center font-serif text-lg font-black tabular-nums text-[#7a6236] sm:w-7">
-        {index + 1}
-      </span>
+      className={`relative flex min-h-[56px] list-none items-stretch gap-1.5 rounded-lg border px-1.5 py-1.5 sm:gap-2 sm:px-2 shadow-sm md:gap-4 md:px-3 lg:min-h-[52px] lg:py-0.5 lg:[@media(min-height:860px)]:min-h-[76px] lg:[@media(min-height:860px)]:py-2 ${CARD_SURFACE}`}>
+      <RankBadge n={index + 1} testId={`forge-rank-${entry.token}`} />
       <SubjectArt media={entry.media} monogram={entry.label.slice(0, 1)}
-        className="h-8 w-8 shrink-0 self-center rounded-md sm:h-11 sm:w-11 lg:h-9 lg:w-9" />
+        className={`h-8 w-8 shrink-0 self-center rounded-md sm:h-11 sm:w-11 md:h-12 md:w-12 lg:h-10 lg:w-10 lg:[@media(min-height:860px)]:h-14 lg:[@media(min-height:860px)]:w-14`} />
       {/* Wraps to two lines rather than truncating: on a 375px phone the three
           44px controls leave room for about 80px of name, and an ordering
           game whose card names are cut off is not playable. */}
-      <span className="flex min-w-0 flex-1 items-center text-sm font-bold leading-tight sm:text-base">
+      <span className="flex min-w-0 flex-1 items-center text-sm font-bold leading-tight sm:text-base md:text-lg lg:text-base xl:text-lg">
         <span className="line-clamp-2 break-words">{entry.label}</span>
       </span>
-      <span className="flex shrink-0 items-center gap-0.5">
+      <span className="flex shrink-0 items-center gap-0.5 md:gap-1.5">
         <button type="button" data-testid={`forge-up-${entry.token}`}
           ref={(el) => buttonRef(key("up"), el)}
           aria-label={`Move ${entry.label} up (currently ${where})`}
@@ -152,14 +167,12 @@ function StaticRow({
   const state = mark === null ? "neutral" : mark ? "right" : "wrong";
   return (
     <li data-testid={testId} data-position={index + 1} data-mark={state}
-      className={`flex min-h-[52px] items-center gap-2 rounded-lg border px-2 py-1.5 lg:min-h-[44px] lg:py-0.5 ${CARD_SURFACE} ${
+      className={`flex min-h-[52px] items-center gap-2 rounded-lg border px-2 py-1.5 md:gap-3 md:px-3 lg:gap-2 lg:px-2 lg:min-h-[44px] lg:py-0.5 lg:[@media(min-height:860px)]:min-h-[64px] ${CARD_SURFACE} ${
         state === "right" ? "ring-2 ring-emerald-500" : state === "wrong" ? "ring-2 ring-destructive" : ""}`}>
-      <span aria-hidden className="flex w-5 shrink-0 justify-center font-serif text-lg font-black tabular-nums text-[#7a6236] sm:w-7">
-        {index + 1}
-      </span>
+      <RankBadge n={index + 1} testId={`${testId}-rank`} />
       <SubjectArt media={entry.media} monogram={entry.label.slice(0, 1)}
-        className="h-8 w-8 shrink-0 rounded-md sm:h-10 sm:w-10 lg:h-8 lg:w-8" />
-      <span className="line-clamp-2 min-w-0 flex-1 break-words text-sm font-bold leading-tight sm:text-[15px]">{entry.label}</span>
+        className={`h-8 w-8 shrink-0 rounded-md sm:h-10 sm:w-10 md:h-11 md:w-11 lg:h-8 lg:w-8 lg:[@media(min-height:860px)]:h-12 lg:[@media(min-height:860px)]:w-12`} />
+      <span className="line-clamp-2 min-w-0 flex-1 break-words text-sm font-bold leading-tight sm:text-[15px] md:text-base">{entry.label}</span>
       {value !== null && (
         <span data-testid={`${testId}-value`}
           className="shrink-0 font-serif text-base font-black tabular-nums">{value}</span>
@@ -231,7 +244,7 @@ export function OrderForge({
       <header className="flex flex-col items-center gap-1.5 text-center">
         <MetricChip>{content.metricLabel}</MetricChip>
         <h2 id={promptId} ref={promptRef} tabIndex={-1} data-testid="forge-prompt"
-          className="max-w-[40rem] outline-none font-serif text-[1.05rem] font-bold leading-snug text-[var(--ranked-ink,#2c2417)] sm:text-xl lg:text-lg xl:text-xl">
+          className="max-w-[40rem] md:max-w-[52rem] outline-none font-serif text-[1.05rem] font-bold leading-snug text-[var(--ranked-ink,#2c2417)] sm:text-xl lg:text-lg xl:text-xl">
           {content.prompt}
         </h2>
         {open && (
@@ -243,14 +256,14 @@ export function OrderForge({
       </header>
 
       {phase !== "revealed" && (
-        <div className="mx-auto flex w-full max-w-[34rem] flex-col gap-1.5"
+        <div className="mx-auto flex w-full max-w-[34rem] flex-col gap-1.5 md:max-w-[44rem] xl:max-w-[52rem]"
           data-state={open ? "open" : "locked"}>
           <Rail edge="first" text={content.directionLabels.first} />
           {open ? (
             <Reorder.Group as="ol" axis="y" values={order}
               onReorder={(next: string[]) => onChange(next)}
               aria-labelledby={promptId} aria-describedby={hintId}
-              data-testid="forge-list" className="flex flex-col gap-2 p-0 lg:gap-1.5">
+              data-testid="forge-list" className={`flex flex-col gap-2 p-0 md:gap-2.5 lg:gap-1.5 lg:[@media(min-height:860px)]:gap-2.5`}>
               {order.map((token, i) => (
                 <CardRow key={token} entry={byToken.get(token)!} index={i} total={total}
                   disabled={!open} reduced={reduced} buttonRef={setButton}
@@ -259,7 +272,7 @@ export function OrderForge({
             </Reorder.Group>
           ) : (
             <ol aria-labelledby={promptId} data-testid="forge-list-locked"
-              className="flex flex-col gap-2 p-0">
+              className={`flex flex-col gap-2 p-0 md:gap-2.5 lg:gap-1.5 lg:[@media(min-height:860px)]:gap-2.5`}>
               {order.map((token, i) => (
                 <StaticRow key={token} entry={byToken.get(token)!} index={i}
                   mark={null} value={null} testId={`forge-locked-${token}`} />
@@ -272,7 +285,7 @@ export function OrderForge({
 
       {phase === "revealed" && reveal && (
         <div data-testid="forge-reveal"
-          className="mx-auto grid w-full max-w-[52rem] grid-cols-1 gap-4 md:grid-cols-2">
+          className="mx-auto grid w-full max-w-[52rem] grid-cols-1 gap-4 md:grid-cols-2 xl:max-w-[60rem] xl:gap-6">
           <section aria-labelledby={`${promptId}-mine`} data-testid="forge-reveal-mine"
             className="flex flex-col gap-1.5">
             <h3 id={`${promptId}-mine`}
@@ -319,7 +332,7 @@ export function OrderForge({
         {open && (
           <>
             <Button type="button" data-testid="forge-lock" onClick={lock}
-              className="min-h-[48px] w-full max-w-[34rem] border border-[#d5b66f]/80 bg-[#2a2110] uppercase tracking-[0.2em] text-[#f6e6bb] hover:bg-[#3a2d14]">
+              className={`min-h-[48px] w-full max-w-[34rem] border border-[#d5b66f]/80 bg-[#2a2110] uppercase tracking-[0.2em] text-[#f6e6bb] shadow-md hover:bg-[#3a2d14] md:max-w-[44rem] md:text-base xl:max-w-[52rem] lg:[@media(min-height:860px)]:min-h-[56px]`}>
               <Lock aria-hidden /> Lock in this order
             </Button>
             <p className="text-[11px] text-[var(--ranked-ink-muted,#5a4a2e)] lg:sr-only">

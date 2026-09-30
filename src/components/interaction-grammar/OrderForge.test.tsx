@@ -220,3 +220,12 @@ describe("OrderForge — source contract", () => {
     expect(src).toContain("controls.start(e)");
   });
 });
+
+describe("OrderForge F1 layout", () => {
+  it("keeps the wider desktop stack and big-desktop tier as literal classes", () => {
+    render(<OrderForge content={CONTENT} phase="open" value={[]} onChange={() => {}} onLock={() => {}} />);
+    expect(screen.getByTestId("forge-list").parentElement!.className).toContain("xl:max-w-[52rem]");
+    expect(screen.getByTestId("forge-lock").className).toContain("lg:[@media(min-height:860px)]:min-h-[56px]");
+    expect(screen.getByTestId(`forge-rank-${CONTENT.entries[0].token}`).className).toContain("md:rounded-full");
+  });
+});

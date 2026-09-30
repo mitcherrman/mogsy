@@ -18,6 +18,7 @@ import { OrderForge } from "@/components/interaction-grammar/OrderForge";
 import type {
   OrderForgePublic, OrderForgeReveal,
 } from "@/lib/interaction-grammar/types";
+import baseShop from "@/assets/ranked/base-shop.jpg";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 import type { QuestionView } from "@/lib/ranked-core/viewTypes";
@@ -152,7 +153,16 @@ function OrderForgeViewport({ segmentState, actions, skewMs, publicRound }: Modu
     );
   }
   return (
-    <div className="space-y-3">
+    <div className="relative isolate space-y-3" data-testid="order-forge-viewport">
+      {/* Decorative backdrop: a soft, darkened, desaturated texture behind the
+          cards. Module-local, static, and inert to every pointer. */}
+      <div aria-hidden data-testid="order-forge-backdrop"
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-lg">
+        <img src={baseShop} alt="" aria-hidden draggable={false}
+          className="h-full w-full object-cover opacity-[0.25]"
+          style={{ filter: "blur(3px) saturate(0.8)" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#f4e9cc]/55 via-[#f4e9cc]/20 to-[#f4e9cc]/60 dark:from-background/70 dark:via-background/40 dark:to-background/75" />
+      </div>
       <OrderForgePhase state={segmentState} actions={actions} skewMs={skewMs}
         roundStartedAt={publicRound?.activeRound?.startedAt ?? null} />
       {actions.error && (
