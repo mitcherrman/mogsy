@@ -136,12 +136,15 @@ describe("RFX1 2B3 visual — the shared beat vocabulary", () => {
   });
 
   it("sizes both major beats against the VIEWPORT so neither can add a scroll", () => {
-    const at = css.indexOf(".ranked-entry-intro {");
-    const block = css.slice(at, css.indexOf("}", at));
     // A `min()` against the viewport, never a fixed height: the beat fills the
-    // room it is in and can never ask for more than there is.
-    expect(block).toMatch(/min-height:\s*min\(/);
-    expect(block).toContain("100svh");
+    // room it is in and can never ask for more than there is. Both beats read
+    // it from the one duel-stage property (asserted below).
+    const at = css.indexOf("--ranked-duel-stage-h: min(");
+    expect(at, "the duel stage must be a viewport min()").toBeGreaterThan(-1);
+    expect(css.slice(at, css.indexOf(";", at))).toContain("100svh");
+    // Declared on `:root`, so a beat hosted outside `.ranked-shell` (the
+    // `?beat=outro` preview) still resolves it instead of collapsing.
+    expect(css.slice(css.lastIndexOf("{", at) - 8, at)).toContain(":root");
   });
 
   it("reuses existing art only — no new asset, and never the PLAY seal", () => {
@@ -171,5 +174,25 @@ describe("RFX1 2B3 visual — the shared beat vocabulary", () => {
       const block = css.slice(at, css.indexOf("}", at));
       expect(block).toContain("ranked-beat-fade 180ms");
     }
+  });
+  it("takes the beat overlay OUT of the shell's flow, by specificity", () => {
+    // `.ranked-shell > *` is `position: relative; z-index: 1`. A single-class
+    // utility on the overlay ties it and loses on source order — which is how
+    // the layer collapsed to 0px at the shell's bottom edge.
+    const at = css.indexOf(".ranked-shell > .ranked-beat-layer {");
+    expect(at, "the overlay needs its own two-class rule").toBeGreaterThan(-1);
+    const block = css.slice(at, css.indexOf("}", at));
+    expect(block).toContain("position: absolute");
+    expect(block).toContain("inset: 0");
+    expect(block).toContain("z-index: 40");
+    expect(at).toBeGreaterThan(css.indexOf(".ranked-shell > * {"));
+  });
+
+  it("composes the intro and the outro in ONE duel-stage box", () => {
+    const intro = css.slice(css.indexOf(".ranked-entry-intro {"));
+    expect(intro.slice(0, intro.indexOf("}"))).toContain("min-height: var(--ranked-duel-stage-h)");
+    const at = css.indexOf(".ranked-match-outro > .ranked-beat__inner {");
+    expect(at).toBeGreaterThan(-1);
+    expect(css.slice(at, css.indexOf("}", at))).toContain("min-height: var(--ranked-duel-stage-h)");
   });
 });

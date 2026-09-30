@@ -716,6 +716,17 @@
   position: relative;
   z-index: 1;
 }
+/* RFX1 — THE BEAT OVERLAY IS THE ONE CHILD THAT IS NOT IN FLOW. The rule above
+   has the same specificity as Tailwind's `.absolute` / `.inset-0` / `.z-40`
+   and comes later, so those utilities on the overlay were dead: it rendered as
+   a 0px flex item at the shell's bottom edge and the outro spilled below the
+   fold from there. Two classes, so this outranks `> *` by specificity rather
+   than by source order. */
+.ranked-shell > .ranked-beat-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+}
 
 .ranked-panel {
   position: relative;
@@ -15554,8 +15565,21 @@ html.hub-commons-in-view .hextech-ambience-layer {
    in a slot that does not stretch. The min-height below is what makes the
    beat fill the room it is in, and it is a `min()` against the viewport so it
    can never be the thing that introduces a scroll. */
+/* THE DUEL STAGE — the one box both major beats compose in. The intro fills
+   it; the outro centres its composition in the same box at the top of the
+   shell, so the score resolves on the axis the VS held rather than on the
+   centre of a shell that also carries the timeline and the phone bottom bar.
+   On `:root`, not `.ranked-shell`: the `?beat=outro` probe preview hosts the
+   outro outside the shell, and an unresolved property there silently drops
+   the min-height and pins the composition to the top of the screen. */
+:root {
+  --ranked-duel-stage-h: min(30rem, calc(100svh - 13rem));
+}
+@media (min-width: 640px) {
+  :root { --ranked-duel-stage-h: min(44rem, calc(100vh - 10rem)); }
+}
 .ranked-entry-intro {
-  min-height: min(30rem, calc(100svh - 13rem));
+  min-height: var(--ranked-duel-stage-h);
   padding: 1.25rem 1rem;
   gap: 0;
 }
@@ -15645,7 +15669,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
        31% of the viewport with ~350px of unused chamber under it. 44rem puts
        it near 40% and fills the presentation region, and the `calc` term is
        what stops it ever asking for more room than the shell has. */
-    min-height: min(44rem, calc(100vh - 10rem));
+    min-height: var(--ranked-duel-stage-h);
     padding: 2rem 1.5rem;
   }
   .ranked-entry-intro__board { gap: 1.5rem; max-width: 46rem; margin-top: 1.5rem; }
@@ -15795,7 +15819,15 @@ html.hub-commons-in-view .hextech-ambience-layer {
 .ranked-match-outro {
   position: absolute;
   inset: 0;
-  padding: 1rem;
+  /* The scrim covers the whole shell; the COMPOSITION does not centre in it.
+     It centres in the duel stage — the intro's own box — so the outro is the
+     intro's bookend by construction, not by a tuned offset. */
+  justify-content: flex-start;
+  padding: 0 1rem;
+}
+.ranked-match-outro > .ranked-beat__inner {
+  min-height: var(--ranked-duel-stage-h);
+  justify-content: center;
 }
 /* DEEPER THAN THE INTRO'S, and the difference is not decoration.
    The intro sits over the arena's empty placeholder — there is nothing behind

@@ -86,8 +86,12 @@ describe("RFX1 2B3 visual — the outro uses the overlay seam", () => {
     // Input is closed by `started_at` and by the controller's phase — never
     // by this layer. A layer that took clicks would be a curtain.
     expect(layer.className).toContain("pointer-events-none");
-    expect(layer.className).toContain("absolute");
-    expect(layer.className).toContain("inset-0");
+    // NOT `absolute inset-0`: `.ranked-shell > *` resets those utilities on a
+    // direct child of the shell. `ranked-beat-layer` carries a two-class rule
+    // that outranks it (asserted in rankedBeats.css.rfx1b3v.test.ts; the real
+    // rects are measured in e2e/ranked-outro-axis.spec.ts).
+    expect(layer.className).toContain("ranked-beat-layer");
+    expect(layer.className).not.toMatch(/(absolute|inset-0|z-40)/);
   });
 
   it("still hosts the medium warning on the same layer", () => {

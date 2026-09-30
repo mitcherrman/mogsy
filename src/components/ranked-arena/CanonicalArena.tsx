@@ -861,7 +861,12 @@ export function CanonicalArena({
           outro is rendered second, so were they ever to coincide the ending
           would win, which is the correct precedence. */}
       {(warning || outro) && (
-        <div className="pointer-events-none absolute inset-0 z-40 flex items-center
+        // `ranked-beat-layer`, NOT `absolute inset-0 z-40`: this is a direct
+        // child of `.ranked-shell`, whose `> *` rule (same specificity, later
+        // in the cascade) silently reset those utilities to `relative` /
+        // `z-index: 1` and collapsed the layer to a 0px flex item at the
+        // shell's BOTTOM edge. The class's rule in index.css outranks it.
+        <div className="ranked-beat-layer pointer-events-none flex items-center
                         justify-center" data-testid="ranked-warning-layer">
           {warning}
           {outro}
