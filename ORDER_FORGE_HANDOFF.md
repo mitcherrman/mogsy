@@ -765,3 +765,7 @@ After the push and ~5 minutes, https://mogzy.lol served `index-BFJFCj_G.js`; nei
 - **Non-admin 403: NOT RUN.** An unauthenticated POST to `/api/ranked/queue` with the preset returns 401 `AUTH_REQUIRED` (not the 403 check). Needs a non-admin session.
 - **Admin smoke, phone check: NOT RUN.** Claude in Chrome is not connected, and this session may not sign in or enter passwords. Needs an admin session (launch via `joinQueue(..., {matchWithBot: true, preset: "admin.order_forge"})`).
 - Defects found: none.
+
+## OF2: direction flipped to most expensive -> cheapest (2026-09-30)
+
+Human playtest decision. The server's canonical order is now descending gold cost and `direction_labels` is `{first: "Most expensive", last: "Cheapest"}` (backend `ranked_modules/order_forge.py`). The frontend renders whatever the server sends, so no runtime code changed here: only comments, test labels and the regenerated `orderForgeServerCapture.json`. Older sections above that say "cheapest -> most expensive" describe OF1 as first shipped. Matches created before the flip replay unchanged because each segment freezes its own `canonical_order` and `direction_labels`; no `module_version` bump.

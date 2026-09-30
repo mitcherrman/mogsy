@@ -117,7 +117,7 @@ export interface OrderForgePublic {
   prompt: string;
   /** The ordered quantity, short: "Gold cost". */
   metricLabel: string;
-  /** What the first and the last position mean: "Cheapest" / "Most expensive". */
+  /** What the first and the last position mean: "Most expensive" / "Cheapest". */
   directionLabels: { first: string; last: string };
   /** The cards in the server's shuffled display order. */
   entries: readonly OrderEntry[];

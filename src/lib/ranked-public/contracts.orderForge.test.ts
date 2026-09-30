@@ -27,7 +27,7 @@ describe("order_forge segment state", () => {
       contract: "order_forge",
       prompt: "Order these items by gold cost",
       metricLabel: "Gold cost",
-      directionLabels: { first: "Cheapest", last: "Most expensive" },
+      directionLabels: { first: "Most expensive", last: "Cheapest" },
       entries: [
         { entryId: "e0", label: "Kindlegem", media: null },
         { entryId: "e1", label: "Infinity Edge", media: null },

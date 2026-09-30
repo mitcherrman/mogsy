@@ -564,7 +564,7 @@ export function orderForgeState(over: Partial<Record<string, unknown>> = {}, loc
       family: "item_cost",
       prompt: "Order these items by gold cost",
       metric_label: "Gold cost",
-      direction_labels: { first: "Cheapest", last: "Most expensive" },
+      direction_labels: { first: "Most expensive", last: "Cheapest" },
       reveal_window_ms: 2500,
       challenges: [{ challenge_index: 0, entries: orderForgeEntries() }],
     },

@@ -133,7 +133,7 @@ describe("server capture — live segment", () => {
       contract: "order_forge",
       prompt: "Order these items by gold cost",
       metricLabel: "Gold cost",
-      directionLabels: { first: "Cheapest", last: "Most expensive" },
+      directionLabels: { first: "Most expensive", last: "Cheapest" },
       entries: served.map((e) => ({ entryId: e.entry_id, label: e.label, media: e.media })),
     });
     expect(served).toHaveLength(5);

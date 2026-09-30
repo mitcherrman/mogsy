@@ -11,7 +11,7 @@ import type {
 const CONTENT: OrderForgePublic = {
   prompt: "Order these items by gold cost",
   metricLabel: "Gold cost",
-  directionLabels: { first: "Cheapest", last: "Most expensive" },
+  directionLabels: { first: "Most expensive", last: "Cheapest" },
   entries: [
     { token: "e0", label: "Kindlegem" },
     { token: "e1", label: "Infinity Edge" },
@@ -57,8 +57,8 @@ describe("OrderForge — open", () => {
   it("shows the cards in the dealt order with the direction stated both ends", () => {
     render(<Harness />);
     expect(positions()).toEqual(["e0", "e1", "e2", "e3", "e4"]);
-    expect(screen.getByTestId("forge-rail-first")).toHaveTextContent("Cheapest");
-    expect(screen.getByTestId("forge-rail-last")).toHaveTextContent("Most expensive");
+    expect(screen.getByTestId("forge-rail-first")).toHaveTextContent("Most expensive");
+    expect(screen.getByTestId("forge-rail-last")).toHaveTextContent("Cheapest");
     expect(screen.getByTestId("forge-prompt")).toHaveTextContent("Order these items by gold cost");
   });
 

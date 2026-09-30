@@ -2,7 +2,7 @@
  * MIG — ORDER FORGE. The first structured-response primitive.
  *
  * The player is dealt a handful of cards and arranges them into a sequence
- * along one stated direction ("Cheapest" at the top, "Most expensive" at the
+ * along one stated direction ("Most expensive" at the top, "Cheapest" at the
  * bottom). The SEQUENCE is the answer: one Lock In, no per-card questions.
  *
  *   OPEN → drag / nudge cards into order → LOCK IN → (caller-owned) → REVEAL
