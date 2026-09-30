@@ -755,3 +755,13 @@ After the push and ~5 minutes, https://mogzy.lol served `index-BFJFCj_G.js`; nei
 1. Owner: Lovable, Share -> Publish. Confirm `curl -s https://mogzy.lol/ | grep -o 'assets/index-[^"]*'` changes and a chunk contains `order_forge`.
 2. Push backend: `git push origin 4ffff8f5:master` from `League_Combat_Simulator/.worktrees/of1d-integration` (fast-forward; `origin/master` `1002230a` is its ancestor). Wait for Railway `web` SUCCESS and `/api/health` 200.
 3. Then checklist steps 5-8 above (readiness report, non-admin 403, admin smoke with `joinQueue(..., {matchWithBot: true, preset: "admin.order_forge"})`, phone check, logs).
+
+### OF1-E resumed (2026-09-30, after Lovable publish)
+- **Frontend live: YES.** mogzy.lol serves `index-BbzXuvE4.js`; `QuizRankedMatch-CMW7IP4c.js`, `contracts-DdnKEGjF.js` and `reviewRoles-CKRr6Caj.js` contain `order_forge`. Frontend main at deploy: `623ce3ce` (code `392c1310`).
+- **Backend pushed:** `origin/master` `1002230a..4ffff8f5` (fast-forward). Final backend master SHA: `4ffff8f5499c7314555ea0864bba9715f3001550`.
+- **Backend deploy:** Railway `web` deployment `53818a2d-36c4-4529-aa02-aa830678533b` SUCCESS. Startup clean (`[ranked] readiness ... servable`, Uvicorn up). One 502 seconds after SUCCESS while the container started; `/api/health` then 200.
+- **Readiness (run on the production container via `railway ssh`, `/data/lol_calc.db`):** READY. 192 eligible of 192, `item_cost:5:100` `max_selectable` 29 (need 5), 50 distinct prices (50..3500), 0 excluded for no image path, 0 image files missing on disk.
+- **Logs:** no Order Forge lines, tracebacks or errors in the tail after deploy (no smoke traffic yet).
+- **Non-admin 403: NOT RUN.** An unauthenticated POST to `/api/ranked/queue` with the preset returns 401 `AUTH_REQUIRED` (not the 403 check). Needs a non-admin session.
+- **Admin smoke, phone check: NOT RUN.** Claude in Chrome is not connected, and this session may not sign in or enter passwords. Needs an admin session (launch via `joinQueue(..., {matchWithBot: true, preset: "admin.order_forge"})`).
+- Defects found: none.
