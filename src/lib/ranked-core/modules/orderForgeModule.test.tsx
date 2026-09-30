@@ -158,3 +158,23 @@ describe("order_forge module renderer — summary", () => {
     expect(orderForgeModule.summaryLabel(parse(orderForgeState({}, true)), null)).toBe("Order locked in");
   });
 });
+
+describe("order_forge module renderer — F1 backdrop", () => {
+  it("draws the base-shop backdrop as decorative, inert, static art behind the cards", () => {
+    const parsed = parse(orderForgeState());
+    render(view(parsed.segmentState, actions()));
+    const backdrop = screen.getByTestId("order-forge-backdrop");
+    expect(backdrop).toHaveAttribute("aria-hidden", "true");
+    expect(backdrop.className).toContain("pointer-events-none");
+    expect(backdrop.className).toContain("-z-10");
+    const img = backdrop.querySelector("img")!;
+    expect(img).toHaveAttribute("alt", "");
+    expect(img.getAttribute("src")).toContain("base-shop");
+    expect(img.className).not.toMatch(/animate|transition/);
+    expect(img.style.filter).toContain("blur(3px)");
+    expect(img.style.filter).toContain("saturate(0.8)");
+    // Never a tab stop or an accessible name: the cards are still the only controls.
+    expect(backdrop.querySelector("button, a, [tabindex]")).toBeNull();
+    expect(screen.getByTestId("order-forge-viewport").className).toContain("isolate");
+  });
+});

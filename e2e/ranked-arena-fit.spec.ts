@@ -601,3 +601,61 @@ for (const size of [{ w: 360, h: 740 }, { w: 360, h: 800 }]) {
     });
   });
 }
+
+/**
+ * OF3-F1 — the base-shop backdrop is decorative only: it captures no pointer,
+ * nothing overflows sideways, and grip drag / up-down / keyboard still reorder.
+ */
+const forgeOrder = () => Array.from(document.querySelectorAll('[data-testid^="forge-card-"]'))
+  .map((e) => e.getAttribute("data-testid")!.replace("forge-card-", ""));
+
+for (const vp of [{ w: 1600, h: 900 }, { w: 1280, h: 720 }, { w: 360, h: 800 }]) {
+  test.describe(`Order Forge F1 backdrop + input @ ${vp.w}x${vp.h}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h } });
+    test("backdrop is inert and every reorder path still works", async ({ page }) => {
+      await page.goto(`/dev/ranked-shell-probe?q=orderforge&lead=1500${vp.w < 600 ? LIVE_PHONE : ""}`);
+      await page.waitForSelector('[data-testid="forge-lock"]');
+      // The probe opens the challenge a few seconds out; until then it is inert.
+      await page.waitForSelector('[data-testid="order-forge-phase"]:not([data-not-open])', { timeout: 30_000 });
+      await page.waitForTimeout(300);
+      const m = await page.evaluate(() => {
+        const bd = document.querySelector('[data-testid="order-forge-backdrop"]')!;
+        const img = bd.querySelector("img")!;
+        const card = document.querySelector('[data-testid^="forge-card-"]')!.getBoundingClientRect();
+        const hit = document.elementFromPoint(card.left + card.width / 2, card.top + card.height / 2);
+        const br = bd.getBoundingClientRect();
+        return {
+          ptr: getComputedStyle(bd).pointerEvents, imgPtr: getComputedStyle(img).pointerEvents,
+          anim: getComputedStyle(img).animationName, hidden: bd.getAttribute("aria-hidden"),
+          captured: !!hit && bd.contains(hit), hOverflow: document.documentElement.scrollWidth > innerWidth,
+          backdropInsidePage: br.left >= -0.5 && br.right <= innerWidth + 0.5,
+        };
+      });
+      expect(m.ptr).toBe("none");
+      expect(m.anim).toBe("none");
+      expect(m.hidden).toBe("true");
+      expect(m.captured, "backdrop sits over a card").toBe(false);
+      expect(m.hOverflow, "horizontal overflow").toBe(false);
+      expect(m.backdropInsidePage).toBe(true);
+
+      const before = await page.evaluate(forgeOrder);
+      // up/down buttons
+      await page.click(`[data-testid="forge-down-${before[0]}"]`);
+      expect(await page.evaluate(forgeOrder)).toEqual([before[1], before[0], ...before.slice(2)]);
+      // keyboard on the grip
+      await page.focus(`[data-testid="forge-grip-${before[0]}"]`);
+      await page.keyboard.press("ArrowDown");
+      expect((await page.evaluate(forgeOrder))[2]).toBe(before[0]);
+      // pointer drag from the grip
+      const g = (await page.locator(`[data-testid="forge-grip-${before[4]}"]`).boundingBox())!;
+      await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(g.x + g.width / 2, g.y - 70, { steps: 12 });
+      await page.mouse.move(g.x + g.width / 2, g.y - 150, { steps: 12 });
+      await page.mouse.up();
+      await page.waitForTimeout(400);
+      const after = await page.evaluate(forgeOrder);
+      expect(after.indexOf(before[4]), "grip drag moved the card up").toBeLessThan(4);
+    });
+  });
+}
