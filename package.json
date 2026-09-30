@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:frontend": "playwright test -c playwright.frontend.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "video:studio": "remotion studio",
     "video:prepare": "tsx scripts/prepare-quiz-video.ts",

@@ -1,6 +1,6 @@
 # UX1-A — Global HUD narrow-phone / large-text reflow
 
-Date: 2026-09-30. Branch `codex/ux1a-hud-reflow`, from fetched `origin/main` `9abc62448308930bb0c553cfc41f486e9f1dcbd7`.
+Date: 2026-09-30. Branch `codex/ux1a-hud-reflow`; originally based on `9abc62448308930bb0c553cfc41f486e9f1dcbd7`, then recertified after rebasing onto fetched `origin/main` `87a78f88c377207661b0180515b5712b85a4965f`.
 
 ## Reproduction and cause
 
@@ -39,3 +39,15 @@ All after controls are inside the visual viewport. Sign Up remains readable and 
 - `tsc -p tsconfig.app.json --noEmit`: the UX1-A files add no errors; the command retains current-main errors in `OnboardingProfile.tsx`, `identity/connections.ts`, and four `practiceLeaveContract.test.ts` assertions.
 
 No route, navigation, auth, signup, queue, or gameplay semantics changed. No remaining UX1-A issue is known.
+
+## Post-rebase browser certification
+
+The first manual post-rebase run started Vite without `VITE_E2E_AUTH=1`. Its six nominal signed-in cases were therefore guests and correctly retained `hud-signup-chip`; this was an E2E environment error, not a HUD regression.
+
+`playwright.frontend.config.ts` is now the canonical frontend-only runner. It follows the NAV1 pattern: Windows-safe `npx vite`, no backend `globalSetup`, no reference DB, an isolated `127.0.0.1:8124` server, and `VITE_E2E_AUTH=1` passed directly through `webServer.env`. Run UX1-A from one terminal with:
+
+```powershell
+npm run test:e2e:frontend -- e2e/ux1a-global-hud-reflow.spec.ts
+```
+
+After the `87a78f88` rebase this command passed 14/14. All six signed-in matrix cases omitted Sign Up while keeping profile and notifications present and focusable. Guest cases retained Sign Up. Collapsed, expanded, outside-click close, and representative global routes passed. No runtime file required a post-rebase change.
