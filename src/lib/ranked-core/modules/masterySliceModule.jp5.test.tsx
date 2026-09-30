@@ -73,7 +73,7 @@ const steps = () => [...chain().querySelectorAll<HTMLElement>("li.journey-reason
 const readable = () => steps().filter((li) => li.getAttribute("aria-hidden") !== "true");
 const texts = (lis: HTMLElement[]) => lis.map((li) => li.querySelector(".journey-node")!.textContent);
 const transform = () => within(chain()).getByRole("button", { name: /Damage taken/ });
-const EXPANDED = ["85Raw damage", "24Ahri armor", "100100 + 24Armor formula", "0.806Multiplier", "80.6%Damage taken", "68Final damage"];
+const EXPANDED = ["85Raw damage", "24Ahri armor", "100100 + 24Formula", "0.806Multiplier", "80.6%Damage taken", "68Final damage"];
 const COMPRESSED = ["85Raw damage", "24Ahri armor", "80.6%Damage taken", "68Final damage"];
 
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); resetKnowledgeCoach(); });
@@ -374,7 +374,7 @@ describe("GENERIC reuse: Pantheon/Leona's learned armor, then its Combat applica
     show(snap(PANTHEON, "child2-reveal"));
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     expect(texts(readable())).toEqual([
-      "124Raw damage", "50Leona armor", "100100 + 50Armor formula", "0.666Multiplier", "66.6%Damage taken", "83Final damage"]);
+      "124Raw damage", "50Leona armor", "100100 + 50Formula", "0.666Multiplier", "66.6%Damage taken", "83Final damage"]);
     // Leona's armor was learned at Step 1 (given); the raw damage comes from the
     // formula this child STATES, so it is part of what the reveal adds.
     expect(steps().map((li) => li.dataset.given ?? "new")).toEqual(["new", "true", "new", "new", "new", "new"]);
@@ -569,7 +569,7 @@ describe("every Journey host draws the same chain", () => {
     show(s);
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     expect(steps()).toHaveLength(6);
-    expect(texts(readable()).slice(2, 5).map((t) => t!.replace(/^[\d.%+ ]+/, ""))).toEqual(["Armor formula", "Multiplier", "Damage taken"]);
+    expect(texts(readable()).slice(2, 5).map((t) => t!.replace(/^[\d.%+ ]+/, ""))).toEqual(["Formula", "Multiplier", "Damage taken"]);
     expect(screen.getByTestId("journey-combat-working-magnitude")).toBeInTheDocument();
   });
 

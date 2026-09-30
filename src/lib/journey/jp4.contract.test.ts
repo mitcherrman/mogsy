@@ -197,7 +197,7 @@ describe("Reasoning Chain builders: served numbers, League-style primary, exact 
   it("Step 4: 85 → 24 → 100 / (100 + 24) → 0.806 → 80.6% → 68, the exact working apart", () => {
     const r = combatReasoning(working(), true);
     expect(r.nodes.map((n) => [n.op ?? null, n.value, n.label])).toEqual([
-      [null, "85", "Raw damage"], ["→", "24", "Ahri armor"], ["→", "", "Armor formula"], ["→", "0.806", "Multiplier"],
+      [null, "85", "Raw damage"], ["→", "24", "Ahri armor"], ["→", "", "Formula"], ["→", "0.806", "Multiplier"],
       ["→", "80.6%", "Damage taken"], ["→", "68", "Final damage"]]);
     expect(r.nodes[2].fraction).toEqual({ top: "100", bottom: "100 + 24" });
     expect(r.subject).toBeNull();                    // raw recalled: nothing re-derived

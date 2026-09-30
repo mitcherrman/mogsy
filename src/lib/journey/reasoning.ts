@@ -227,7 +227,8 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
     // was checked against, as the decimal served, and as the share of the raw
     // damage taken. The first two are the derivation's DETAIL.
     nodes.push(
-      { key: "armor-formula", label: "Armor formula", op: "→", icon: null, value: "", detail: true,
+      // (A one-word label: the node is the narrowest tier's width on a phone.)
+      { key: "armor-formula", label: "Formula", op: "→", icon: null, value: "", detail: true,
         fraction: { top: "100", bottom: `100 + ${displayWhole(w.effectiveArmor)}` } },
       { key: "decimal", label: "Multiplier", op: "→", icon: null, detail: true,
         value: w.mitigationMultiplier.toFixed(3) },

@@ -17820,7 +17820,7 @@ button.journey-node {
   }
   /* The reveal folded it: the node it folded into says it can be reopened. */
   .journey-reveal[data-unfold="compressed"][data-unfold-by="reveal"] .journey-node--transform {
-    animation: journey-transform-hint 700ms ease-in-out 320ms 2;
+    animation: journey-transform-hint 640ms ease-in-out 320ms;
   }
 }
 html.reduce-motion .journey-reveal[data-unfold] .journey-reasoning__step,
