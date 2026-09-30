@@ -54,6 +54,7 @@ import { ADMIN_AREAS_BY_ID, toolsForSection } from "@/lib/admin/admin-registry";
 import { cn } from "@/lib/utils";
 import RankedFormatBuilder from "@/pages/admin/ranked/RankedFormatBuilder";
 import { ReferenceJourneyLaunch } from "@/pages/admin/ranked/ReferenceJourneyLaunch";
+import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
 const rankedTools = (view: string) =>
@@ -301,6 +302,13 @@ export default function AdminRankedPage() {
                 testId="ranked-reference-journeys"
               >
                 <ReferenceJourneyLaunch />
+              </AdminPanel>
+              <AdminPanel
+                title="Order Forge"
+                description="Owner playtest of the Order Forge module, played through the normal Ranked Bot shell."
+                testId="ranked-order-forge"
+              >
+                <OrderForgeLaunch />
               </AdminPanel>
               <AdminPanel
                 title="Playtests"

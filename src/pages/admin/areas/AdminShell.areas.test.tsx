@@ -369,6 +369,13 @@ describe("7 · Ranked Admin home renders", () => {
     expect(within(panel).getByText(/future gaps/i)).toBeTruthy();
     expect(within(panel).getByText(/no allowlist/i)).toBeTruthy();
   });
+
+  it("offers Play Order Forge in Ranked > Playtests", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const button = await screen.findByTestId("order-forge-launch-button");
+    expect(button.textContent).toBe("Play Order Forge");
+    expect(screen.getByTestId("reference-journey-launch-button")).toBeTruthy();
+  });
 });
 
 describe("8 & 9 · normal Ranked and Ranked Bot access are untouched", () => {
