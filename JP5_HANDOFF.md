@@ -4,10 +4,104 @@
 |---|---|
 | Frontend branch / worktree | `jp5/journey-equation-unfold` at `mogsy/.worktrees/jp5-equation-unfold` |
 | Starting SHA | `bb2c60f4` (JP4 screenshots + handoff; JP4 code `9ed7938b`), verified clean before branching |
-| JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · the docs commit after it (round 2: this handoff, timing, screenshots) |
-| Backend | **Not modified.** Read-only audits of `League_Combat_Simulator/.worktrees/jp4-stat-mods-contract` (`fc95e81e`): §7–§10. |
+| JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · `ccdbac38` docs (round 2) · **`f578ecc4` round 3 (typed workings, per-child timing, Step 2 + haste)** · the round-3 docs commit |
+| Backend | **Round 3: `jp5/journey-structured-working` at `96fff403`** (worktree `League_Combat_Simulator/.worktrees/jp5-structured-working`, from JP4 `fc95e81e`, which is untouched). Rounds 1–2 were read-only audits (§7–§10). |
 | Production / Railway / Patch Ops / items / Order Forge / other worktrees | **Untouched.** Nothing pushed, merged, integrated or deployed. |
-| Status | **Not owner-approved.** Phase A works and is certified locally; the owner rejected a Journey-wide 4000ms window and the Pantheon phone drop (both addressed in round 2). All backend work is proposal only (§7–§10). Open decisions: §12. |
+| Status | **Not owner-approved.** Round 3 (§0) implements the bounded foundation: one typed working carrier, per-child reveal windows, Step 2 composition, haste Stage 1 — certified locally. §7–§9 below are the round-2 designs it implemented (§0 records what was actually built and where it differs). Open items: §0.7. |
+
+## 0. Round 3 — the foundation (typed working, per-child timing, Step 2, haste)
+
+**Status: implemented and certified locally; NOT owner-approved.** Nothing pushed, merged, integrated or deployed.
+
+| | Frontend | Backend |
+|---|---|---|
+| Branch / worktree | `jp5/journey-equation-unfold` · `mogsy/.worktrees/jp5-equation-unfold` | `jp5/journey-structured-working` · `League_Combat_Simulator/.worktrees/jp5-structured-working` (NEW, from JP4 `fc95e81e`) |
+| Round-3 commits | `f578ecc4` code + captures · the docs commit after it (this handoff, timing, screenshots) | `96fff403` |
+| Untouched | JP4 worktrees, every other worktree, production, Railway, Patch Ops, items, Order Forge | `jp4/journey-stat-mods-contract` (`fc95e81e`, clean) |
+
+A detached checkout `League_Combat_Simulator/.worktrees/jp5-baseline` (`fc95e81e`) exists only to run the backend baseline; it is clean and can be removed.
+
+### 0.1 One carrier, typed calculations (implemented)
+
+Every Journey working travels ONE path: `Produced.working` → `JourneySlice.workings` → the private row's `combat_working` → that child's own reveal (`own_challenge_reveals[]`, the submit response's `challenge_reveal`) and its review row. `contract` names the shape; `calculation` says what it explains. Old readers ignore an unknown contract (the JOURNEY5 reader's exact-key allowlist returns null).
+
+| Contract | `calculation` | Fields (all served, 4 dp) | Emitted only when |
+|---|---|---|---|
+| `combat_working.v1` | `physical_ability_damage` | unchanged | (unchanged) |
+| `raw_damage_working.v1` | `physical_ability_raw_damage` | `attacker`, `ability`, `formula {flat, ratios[{stat,label,ratio,value}]}` (the after-armor sub-shape; `value` = the EXACT stat the evaluator bound, `result.formula_bindings`), `terms [{term:"flat",value}, {term:"ratio",stat,value}]`, `raw_damage` | flat + Σ ratio×bound stat reproduces `result.raw_damage` unrounded, AND the rounded terms reproduce the rounded total |
+| `cooldown_working.v1` | `cooldown_under_haste` | `champion`, `ability`, `base_cooldown`, `ability_haste`, `cooldown_multiplier` (= `calculate_cooldown.haste_to_cooldown_multiplier`, the function the state derivation used), `effective_cooldown`, `unit` | base × multiplier reproduces the candidate's answer |
+
+`answer` (the display string) is injected at reveal time by the existing `combat_working_reveal`, for every variant. A working that does not reconcile is omitted; the child still composes and its reveal keeps its prose. No champion-specific code; no pin input moves (workings live on private rows only; `_pin` hashes the Journey blocks).
+
+Real values (canonical DB): Zed E r1 `70 + 0.7 × 20.8 = 70 + 14.56 = 84.56`; Volibear Q r1 `12 × 0.9091 → 10.9091` (answer 11); Olaf Q r3 (flat shape) `9 → 8.1818`; Ahri R under Kindlegem → 127.
+
+Frontend: `readJourneyWorking` (`lib/journey/combatWorking.ts`) dispatches on `contract` to one allowlist reader per variant (fail closed; the raw reader also refuses terms out of formula order or not summing to the served total). `MasteryChallengeReveal.working` carries the typed block; `combatWorking` stays the after-armor variant only for older readers (review card).
+
+### 0.2 Per-child reveal timing (implemented)
+
+* **Freeze** (`ranked_modules/mastery_slice.py`): `journey_reveal_windows(workings, base)` — per child, the window for the calculation its reveal PRESENTS, from `JOURNEY_WORKING_REVEAL_WINDOWS_MS = {physical_ability_damage: 6000 (only a real reduction, 0 < m ≤ 1), physical_ability_raw_damage: 4000, cooldown_under_haste: 6000}`; everything else keeps the base (1750). A policy never shortens a longer base. The list is frozen as top-level `reveal_windows_ms` **only when non-uniform**; `reveal_window_ms` stays the base and the switch. Outcome-independent: a wrong answer or a timeout is revealed exactly as long as a right one.
+* **Read** (`ranked_public/segment_flow.py`): `reveal_windows_from_payload` returns the scalar, or a per-child tuple (missing/invalid entries fall back to the scalar, never 0; the list alone switches nothing on); `window_at(windows, i)`. Every reader indexes by child: `card_schedule` / `_pooled_schedule` (`available = settled + windows[i]`), the final hold (`_final_hold`: the last REACHED child's own window, read after the chain, so a pool exhausted on an earlier child holds THAT child's window; still none after a strike stop), `durations_ms`, `reveal_compensation_seconds` (Σ windows[:n−1]), `card_schedules`, `resolve_outcomes`, `start_card_deadline`.
+* **Service**: compensation at all three sites; `_open_segment` now passes the final hold too (the pre-existing omission: the open-time deadline now equals the rehydrated one); bot stamps `Σ windows[j<idx]` and `card_start = stamp + windows[idx] + beat`; `own_reveal_until` uses the revealing child's window. New client fields, **only on per-child segments** (absent otherwise, so every other payload keeps its key set): `segment_state.own_reveal_window_ms`, submit response `challenge_reveal_window_ms`.
+* **Frontend**: the hold uses `own_reveal_window_ms ?? reveal_window_ms` (read once per held reveal) and is armed for what is LEFT of the server's reveal (`own_reveal_until`), so a reveal remounted mid-way (reload) never outlives the server. The Journey poll after a reveal uses the same window.
+
+Pooled clocks are unaffected by construction (a card's duration is `settled − started`; reveals sit between). Certified end to end (below).
+
+### 0.3 Choreography inside the granted window (measured)
+
+`reasoning.ts`: `UNFOLD_COMPRESS_AT_MS = 3200` (a fixed, measured point — no longer 60% of the window), `UNFOLD_MIN_COMPRESSED_MS = 1200`: a window shorter than 4400 ms never folds (1750 stays expanded). Motion tightened so the bar settles in ~0.6 s (was ~1.2 s): contract 440 ms from 120 ms, endpoint lands at 440–600 ms.
+
+Measured on the real client path (`/dev/journey-arena`, JP5 captures, reveal starting at mount; desktop 1280×800, phone 390×844 within 20 ms). Raw logs + contact sheets: `docs/handoffs/jp5-equation-unfold/timing-r3/`.
+
+| Reveal (served window) | Bar / segments settled | Folds | Fold done | Settled expanded (readable) | Compact state, no tap | Reopened visible after a tap at fold + 0.5 s / + 1.0 s | Gone |
+|---|---|---|---|---|---|---|---|
+| Step 4 after armor (6000) | 0.60 s | 3.19 s | 3.55 s | **2.59 s** | **2.46 s** | **2.25 s / 1.74 s** | 6.01 s |
+| Haste (6000) | 0.60 s | 3.20 s | 3.54 s | **2.60 s** | **2.44 s** | — / **1.70 s** | 5.98 s |
+| Step 2 raw composition (4000) | 0.60 s (segments joined 0.50–0.56 s) | — (never folds) | — | **3.40 s** | — | — | 3.99 s |
+| Simple reveals (1750) | — | never | — | 1750 ms, unchanged | — | — | — |
+
+Round 2's 60/40 split at 6000 gave 2.42 s expanded, 2.09 s compressed and 1.53 / 1.01 s reopened; the fixed fold and the faster bar give **+0.2 s of reading, +0.4 s of compact state and +0.7 s of reopened time** in the same 6000 ms. **Step 2 at 4000 ms**: 3.4 s of settled reading for a three-node sum (3500 would leave ≈2.9 s; the simple 1750 leaves ≈1.2 s). **Haste at 6000 ms**: the same choreography as the armor unfold, so the same window.
+
+### 0.4 Step 2 — raw-damage composition
+
+`rawReasoning(working)`: `[70 · Base damage] + [70% of 21 ≈ | 15 · Bonus AD damage] → [85 · Raw damage]` — the term is the SERVED contribution (14.56, shown 15), the `≈` is written because the stat and the term are rounded for display (a whole stat and an exact term write `=`), and the answer follows by an arrow (70 + 15 is not how 84.56 was reached). Exact: `Exact bonus AD: 20.8 · 70% of 20.8 = 14.56 · 70 + 14.56 = 84.56 · Shown as 85`. Below it the **composition bar**: the base segment and the scaling segment side by side, each `flex-grow`-weighted by its own served term (`--jc-w: 70` / `14.56` — no quotient in the client), ending at `85 raw`; segments slide in and close up (~0.6 s). The reveal box keeps the unfold's node heights, so the bar fits the JP2 box.
+
+**The regex and the subtraction are deleted** (`explainedExact`, `exactRaw`, `raw − flat`); a source-guard test forbids them. A reveal from a backend BEFORE JP5 (no working) keeps a words-only chain `[70] + [70% of · 21 · Bonus AD] → [85]` from the taught formula and the stated stat — no number derived — so the frontend can ship before the backend without Step 2 losing its chain.
+
+**Consequence (owner decision):** Step 3's Exact line ("Exact armor at level 2: 24.024") also came from the prose regex. Nothing structured serves 24.024 at Step 3's own reveal (it reaches Step 4 as an established value), so Step 3 now has no Exact control. Restoring it needs a served value (e.g. a `champion_stat_at_level` working) — not built (outside the bounded foundation).
+
+### 0.5 Ability haste — Stage 1
+
+`cooldownReasoning(working)`: `[12s · Base cooldown] → [10 · Ability haste] → [100 / (100 + 10)] → [0.909] → [90.9% · Cooldown kept] → [11s · New cooldown]`, the formula and decimal are DETAIL, the share is the TRANSFORM (tap to reopen) — the same fold, reopen and timing as the armor unfold, and the **duration bar** is the existing magnitude bar at the served `cooldown_multiplier` (`12s base … 11s effective`). The formula is drawn only when the served multiplier IS `100/(100+AH)` (checked, never computed). Certified on Volibear (Daily Standard + Survival) and, generically, Ahri R under Kindlegem (Survival). No live chain (Stage 2 not built: no base-cooldown dependency is served).
+
+### 0.6 Certification
+
+**Tests**
+* Backend: `test_jp5_structured_working.py` **37/37** (reading the frozen windows incl. malformed lists; per-card and pooled chains with mixed windows; timeout followed by its own window; the final hold = the last REACHED child's window, incl. pool exhaustion on a long child and no hold after a strike; pool paused through a long reveal; `projected_terminal_at` monotone; block durations; compensation; the freeze policy; the reference and haste workings on the canonical DB; fail-closed raw/cooldown builders; end to end on the reference preset: frozen list `[1750, 4000, 1750, 6000]`, `own_reveal_window_ms` / `own_reveal_until` through reconnects, the pool unchanged through the long reveal, the final 6000 ms hold for **correct, wrong and timeout**, and the bot's stamps measuring only its think time (mutation-checked: fails with the scalar offset)).
+* Backend differential regression (41 suites: Journey 2–5, K1, motion, JREF1/2, JCHAIN1, JFND1, JX2, DD1, DCMOD, DCSURV, DSC1, TTC1, DCGR products, ranked mastery reveal/secrecy/on-demand/applied-chain, segment timer, answer safety, stat shards, per-question reveal): **1017 passed / 67 failed; the 67 are exactly the pristine `fc95e81e` baseline's** (canonical-DB drift pins, `quiz1_segment_config`, `ranked_mastery_applied_chain`, two per-question-reveal key-set tests) — no new failure, none fixed. Five end-to-end tests that hard-coded 1750 ms for every child now read the child's own window (`test_journey5_release` helper, `test_journey_motion_v1_beats`, `test_journey2_core`, `test_journey3_daily`, `test_journey_k1_knowledge_objects`); the Survival driver in `test_dcgr_content_products` polls up to 12 s (was 4.8 s) for the next card.
+* Frontend: Journey + surface set (`lib/journey`, `components/journey`, `ranked-core/modules`, `question-surface`, `pages/dev/journey-arena`) **779/779**; with `ranked-public`, `quiz-ranked`, `features/mastery` **1970/1970**. New: `jp5.working.test.ts` (typed readers on the real captures, no working before settle, fail-closed); Step 2 / haste / per-child-timing DOM tests in `masterySliceModule.jp5.test.tsx`. `tsc -p tsconfig.app.json`: only the 2 known Supabase errors. ESLint on changed files: 0 errors.
+
+**Geometry** — the full sweep (`.claude/jp5-scripts/sweep.cjs`: every snapshot of 9 captures — the 7 JP5 captures + the pre-JP5 reference and Pantheon — at 375/390/768/1024/1280/1440/1920, each reveal also tapped compressed; 1,680 states): **0 page errors; every region set identical to the certified JP2–JP5 sets** (the Survival captures' second set at ≥1024 is the known Survival board shift, identical to round 2's). Violations found and fixed during the sweep: the words-only Step 2 term was too wide on a phone (now `70% of` over `21 · Bonus AD`), and the composition's "15" clipped at 1024 (segment words now show only in the widest reveal box); after the fixes the reference captures re-swept at all seven widths with **0 violations**, and the final screenshot probes report 0 violations. Node sizes stay uniform through expanded → compressed (390: 6×72×44 in two rows → 4 in one; 1280: 6×92×52 → 4); the reveal box is filled to its fixed height and never beyond (140/140 phone, 100/100 desktop).
+
+**Ordinary Ranked** — `/dev/ranked-shell-probe`, JP4 (`bb2c60f4`) vs JP5 round 3, 22 states × 1280×800 and 390×844: **0 pixels over 24/255** anywhere.
+
+**Hosts** — Daily Standard (Volibear, Pantheon), Daily Survival (Volibear, Ahri) and the Ranked Bot reference preset, all captured on the JP5 backend and swept; the hold/timing path is the same module for all three.
+
+**Screenshots** — `docs/handoffs/jp5-equation-unfold/r3/jp5-r3-*.jpg` (served windows, no probe; the reveal snapshot is read 0.5 s in): Step 2 live/reveal (1280, 390, 1920); Step 4 live/expanded/compressed/reopened (1280), timeout expanded, expanded at 1440, live/expanded/compressed (390); haste expanded/compressed (1280, 390), expanded at 768; Ahri R haste (375); **Pantheon compact live at 375 and 390** (`[armor] 50 → ? Final`, unchanged); Pantheon Step 3 expanded (1280). Timing contact sheets: `timing-r3/`. Videos (not in git): `.claude/jp5-timing-recordings/`.
+
+### 0.7 Remaining before owner visual approval
+
+1. **Visual approval** of the Step 2 composition bar, the haste chain + duration bar, the 3.2 s fold point, and the "New cooldown" / "Cooldown kept" labels (the owner's "Effective cooldown" clipped in the phone and dense-desktop node; "New cooldown" is the same length class as "Final damage").
+2. **Policy numbers**: after armor 6000, raw 4000 (measured ≈3.4 s of settled reading; 3500 would leave ≈2.9 s), haste 6000. They are backend constants in one table.
+3. **Step 3 Exact line** (0.4): accept its removal, or commission a served stat value.
+4. **Readable reopen**: at 6000 ms a tap 1.0 s after the fold leaves ≈1.7 s of reopened equation (0.5 s → ≈2.25 s). The learner-held reveal (§7.3) remains unbuilt.
+5. **Deploy order** is free: new frontend on an old backend keeps JP4/round-2 behaviour (words-only Step 2, scalar windows); old frontend on the new backend ignores the new contracts and holds for the scalar window then "opening…" until the server opens the next child (it cannot answer early).
+6. **Cooldown comparison** (§10) and **Haste Stage 2** stay deferred as before; integration of JP3–JP5 onto main is still the prerequisite for the comparison chain.
+
+### 0.8 Files (round 3)
+
+**Backend** (`96fff403`): `mastery/setup_state/journey.py` (`raw_damage_working`, `cooldown_working`, the contract/calculation constants, wired into `_produce_raw_damage` / `_produce_cooldown`); `ranked_modules/mastery_slice.py` (`JOURNEY_WORKING_REVEAL_WINDOWS_MS`, `journey_reveal_windows`, `PAYLOAD_REVEAL_WINDOWS_MS`, frozen in `_generate_journey`); `ranked_public/segment_flow.py` (`REVEAL_WINDOWS_KEY`, `reveal_windows_ms` / `_from_payload`, `window_at`, `final_reveal_from_payload`, `_final_hold`, per-child chains, durations, compensation); `ranked_public/service.py` (compensation sites, `_open_segment` final hold, bot offsets, `own_reveal_until`, `own_reveal_window_ms`, `challenge_reveal_window_ms`); tests as in §0.6.
+
+**Frontend** (`f578ecc4`): `lib/journey/combatWorking.ts` (typed readers, `readJourneyWorking`); `lib/ranked-public/contracts.ts` (`MasteryChallengeReveal.working`, `SegmentStateView.ownRevealWindowMs`); `lib/journey/reasoning.ts` (`rawReasoning(working)`, `rawWordsReasoning`, `cooldownReasoning`, `isHasteFormula`, `ReasonComposition`, `UNFOLD_COMPRESS_AT_MS`; `explainedExact` deleted); `components/journey/JourneyReasoning.tsx` (`JourneyComposition`, magnitude wording); `components/journey/JourneyStageQuestion.tsx` (`workingReasoning`, `data-compose`); `lib/ranked-core/modules/masterySliceModule.tsx` + `MasterySliceChallengeSurface.tsx` (per-child hold, `working` prop); `pages/quiz-ranked/useRankedMatch.ts` (poll after the child's own window); `pages/dev/journey-arena/JourneyArenaHarness.tsx` (probe rewrites the own window; `jp5-ref-*` hosted as Ranked); `lib/journey/realFixtures.ts` + `__fixtures__/jp5/`; `index.css` (composition bar, shared unfold heights, faster bar); tests.
 
 ## 1. Objective
 
@@ -65,7 +159,7 @@ The board and its `!` marks are unchanged, and so is the JP2 stage geometry.
 
 **Reveal.** A Combat working whose multiplier is the armor formula yields six nodes; the fraction and the decimal fold away. Nodes established earlier are `given` and do not animate in. A multiplier that is not the armor formula keeps JP4's single node. Steps 2 and 3 are exactly JP4's.
 
-**Timing.** Compress at 60% of the server's window, measured on the server's clock (`own_reveal_until`), so a reload mid-reveal lands in the right phase; a window leaving under 1.2s for the compressed state is not divided (production's 1750ms stays expanded). A tap takes over until the child leaves.
+**Timing.** (Round 3: a fixed fold at 3200 ms, §0.3; this paragraph described round 2's 60% split.) Measured on the server's clock (`own_reveal_until`), so a reload mid-reveal lands in the right phase; a window leaving under 1.2s for the compressed state is not divided (1750ms stays expanded). A tap takes over until the child leaves.
 
 **Reduced motion** (OS setting or `html.reduce-motion`): no animation or transition; the bar is drawn at the served ratio; phases still switch.
 
@@ -113,7 +207,7 @@ Question type beside a live chain, JP4 → JP5 (measured on both at 390, 1280, 1
 * **Broad run vs JP4** (round 1, 4,105 vs 4,042 tests): 12 shared unrelated failures (`AnswerGrid.elimination` 2, `QuestionStageGeometry` 3, `LobbyPreviewPage` 2, `syntheticRankedHistory` 1, `statCategoryIcons` 1, `StatCheckPage` 3); 2 JP5-only in that run, both passing in isolation (a CRLF working-copy artefact, now resolved; a load-sensitive TeamSim test).
 * `tsc -p tsconfig.app.json`: the same 2 pre-existing Supabase errors. ESLint on changed files: 0 errors.
 
-## 7. Reveal timing: measurements and a per-child design (no backend change made)
+## 7. Reveal timing: measurements and a per-child design (round 2 — IMPLEMENTED in round 3, §0.2–§0.3)
 
 ### 7.1 Measurements (dev probe only, Step 4 only)
 
@@ -179,7 +273,7 @@ Verified in `ranked_public/segment_flow.py` ("sf"), `ranked_public/service.py` (
 
 A bounded, server-authoritative "hold" (the learner reopens; the server extends that one reveal once, up to a cap) is the only way to guarantee reading time after a reopen. It is much larger: a new action endpoint, a new persisted table (reveal rows are insert-only) and migration, new schedule inputs through every reader above, worst-case deadline budgeting (the cap for every unrevealed child, for both players), and a PvP griefing lever (the opponent's completion waits on holds). Recommendation: decide 7.2 first; treat 7.3 as a separate design only if ~1s of reopened time is not acceptable.
 
-## 8. Step 2: structured raw-damage working (design only)
+## 8. Step 2: structured raw-damage working (round-2 design — implemented in round 3 through the ONE carrier, not a new key: §0.1, §0.4)
 
 **The debt.** JP4's `rawReasoning()` shows `70% of 21 = 15` from `84.56 − 70`: `84.56` is regex-parsed from the reveal's explanation prose (`explainedExact`) and the subtraction runs in the client. (The same prose parse also supplies Step 3's Exact line.) The contribution is not served anywhere.
 
@@ -210,7 +304,7 @@ A bounded, server-authoritative "hold" (the learner reopens; the server extends 
 
 **Tests** — backend: the reference child's values (70, 0.7, 20.8, 14.56, 84.56; reconciles), fail-closed omission, private-row only, disclosed only after settle, present in review, re-ask `source: stated`, forbidden-key walk, pins unchanged. Frontend: fail-closed reader, the chain's numbers equal the served terms, no prose parsing left (source guard), legacy reveal words-only.
 
-## 9. Ability haste: verified recipes and a staged extension (design only)
+## 9. Ability haste: verified recipes and a staged extension (Stage 1 implemented in round 3 on the ONE carrier as `cooldown_under_haste`: §0.1, §0.5; Stage 2 not built)
 
 **Verified against the recipe catalog and the canonical-DB tests** (`mastery/setup_state/data/journey_recipes.v1.json`; haste children resolve to `combat_cooldown` per `test_journey4_catalog.py`; ranks from `skill_paths.v1.json`; AH from the item data):
 
@@ -312,6 +406,14 @@ Every committed shot was retaken until all of its images had loaded (the board's
 
 ## 14. Next task
 
-1. Owner decisions (§12).
-2. Then, in the approved order: the backend per-child window (§7.2), `raw_damage_working` (§8), `cooldown_working` (§9 stage 1) — each with the tests listed — and a re-capture of the reference and M1 Journeys on that backend.
-3. Integrate JP3–JP5 onto main; then the comparison chain (§10).
+1. Owner visual approval of round 3 (§0.7): the Step 2 composition bar, the haste chain and duration bar, the fixed fold point, the labels, and the three policy windows.
+2. Owner decisions in §0.7 (Step 3 Exact line; readable reopen).
+3. Then integrate: backend `jp5/journey-structured-working` onto master and JP3–JP5 frontend onto main on dedicated integration branches (either may deploy first, §0.7.5); re-capture on the integrated backend; then the comparison chain (§10).
+4. Stop generalizing (owner's hard stop): no infrastructure for shields, DPS, on-hit, healing, penetration chains, thresholds or an animation DSL until real Journey content needs it.
+
+## 15. Worktree hygiene (round 3)
+
+* Frontend and backend worktrees: `git status --short` clean after the docs commit.
+* The capture, sweep, timing, screenshot and ranked-diff scripts used in round 3 are kept (git-excluded) in `mogsy/.worktrees/jp5-equation-unfold/.claude/jp5-scripts/` (run with cwd = this worktree, dev server `jp5-vite` on 8095; `ranked-diff.cjs` also needs `jp4-vite-cwd` on 8096; `capture_jp5_test.py` runs from the backend worktree with `LOL_CALC_DB_PATH=C:/Users/mlmit/mogzy-data/lol_calc.db` and `JOURNEY_CAPTURE_OUT`; `run_be.sh <worktree> <out>` is the backend differential suite).
+* `League_Combat_Simulator/.worktrees/jp5-baseline` is a detached `fc95e81e` checkout used only for the backend baseline run; safe to remove.
+* Do not edit `src/` while a sweep runs: Vite's reload destroys the page context mid-sweep.
