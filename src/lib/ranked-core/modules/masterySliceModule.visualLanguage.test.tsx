@@ -233,7 +233,7 @@ describe("display precision (owner lock)", () => {
     });
     stage.querySelectorAll('[data-node="decimal"] .journey-node__value, [data-node="multiplier"] .journey-node__value, .journey-magnitude__delta')
       .forEach((n) => n.remove());
-    return (stage.textContent ?? "").match(/×?\d+\.\d+/g) ?? [];
+    return (stage.textContent ?? "").match(/×?\d+\.\d+/g) ?? ([] as string[]);
   };
   // Canonical TAUGHT decimals: the formula's own rank values, as served.
   const TAUGHT = new Set(["92.5", "137.5", "182.5", "12.5"]);
@@ -366,7 +366,7 @@ describe("the host and the parchment (stylesheet)", () => {
     const arena = readFileSync(resolve(process.cwd(), "src/components/ranked-arena/CanonicalArena.tsx"), "utf8");
     expect(arena).toContain("lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)]");
     // Every host rule is scoped by the Journey's own viewport.
-    const hostRules = CSS.match(/[^}\n]*\.ranked-arena-grid[^{]*\{/g) ?? [];
+    const hostRules = CSS.match(/[^}\n]*\.ranked-arena-grid[^{]*\{/g) ?? ([] as string[]);
     for (const r of hostRules.filter((x) => !x.includes("data-phone-arena"))) expect(r).toContain(":has(.journey-viewport)");
   });
 

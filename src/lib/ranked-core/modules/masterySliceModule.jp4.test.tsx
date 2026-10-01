@@ -418,7 +418,7 @@ describe("the host owns its Player Columns", () => {
     expect(match).toMatch(/const journeyRails = journeySeg\?\.journey && !host\s*\n?\s*\? journeyRailsFor\(/);
     // The Journey's recede of the banners applies only where the Journey drew
     // its crest (it owns the columns) — a host's module history is its own.
-    const recede = (CSS.match(/[^}\n]*\[data-testid\^="module-history-"\][^{]*\{/g) ?? [])
+    const recede = (CSS.match(/[^}\n]*\[data-testid\^="module-history-"\][^{]*\{/g) ?? ([] as string[]))
       .filter((r) => r.includes(".journey-viewport"));
     expect(recede.length).toBeGreaterThan(0);
     for (const r of recede) expect(r).toContain(':has([data-testid^="journey-crest-"])');
