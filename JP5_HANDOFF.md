@@ -7,12 +7,84 @@
 | JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · `ccdbac38` docs (round 2) · **`f578ecc4` round 3 (typed workings, per-child timing, Step 2 + haste)** · the round-3 docs commit |
 | Backend | **Round 3: `jp5/journey-structured-working` at `96fff403`** (worktree `League_Combat_Simulator/.worktrees/jp5-structured-working`, from JP4 `fc95e81e`, which is untouched). Rounds 1–2 were read-only audits (§7–§10). |
 | Production / Railway / Patch Ops / items / Order Forge / other worktrees | **Untouched.** Nothing pushed, merged, integrated or deployed. |
+| Round 9 | **Final polish (§R9)**: one container-derived unit sizes the band board's objects (tiers are floors); champion art fades to zero exactly at its own edge (no seam). Frontend code + docs commits after §R8's. Backend unchanged. |
 | Round 8 | **Geometry pass (§R8)**: the empty anchor row removed; phone names take its column; above a phone its height moved from the board to the prompt / Reasoning Chain box (+16 / +24 / +28px). Frontend code + docs commits after §R7's. Backend unchanged. |
 | Round 7 | **Polish 2 (§R7)**: Zed's compact row without the shard count; the hint arrives when a portrait first becomes reviewable, under a new key. Frontend code + docs commits after §R6's. Backend unchanged. |
 | Round 6 | **Polish (§R6)**: portrait `!` for any established or stated stat; hint "Tap champion portraits to review stats."; compact rows without history; Step 4 delta `≈16.4 dmg`. Frontend code + docs commits after §R5's. Backend unchanged. |
 | Round 5 | **Terminology + reduction copy (§R5)**: presentation only — `(Bonus AD)`, `19.4% Reduced` / `≈16 less`, `9.1% Reduced` / `≈1.1s shorter`; "notebook" retired for **champion portrait popup**. Frontend code commit + docs commit after §R4's. Backend unchanged. |
 | Round 4 | **The champion portrait popup (§R4)**: frontend `9a7a1760` + `1e46ecb7`, backend `a9a4be2e` (armor provenance in `stat_sources`). Retained board bubbles removed; stage geometry unchanged; freed space measured, not applied. |
 | Status | **Not owner-approved.** Round 3 (§0) implements the bounded foundation: one typed working carrier, per-child reveal windows, Step 2 composition, haste Stage 1 — certified locally. §7–§9 below are the round-2 designs it implemented (§0 records what was actually built and where it differs). Open items: §0.7. |
+
+## R9. Round 9 — final polish: the board fills its band; one seamless scene
+
+**Status: implemented and certified locally; NOT owner-approved.** Presentation only (`src/index.css`): no geometry, no state-dependent sizing, no timing, contract, popup, Reasoning Chain or ordinary-Ranked change. Round-8 stage proportions untouched (board / question heights identical at every width). Backend unchanged (`a9a4be2e`). Nothing pushed, merged, integrated or deployed.
+
+### R9.1 Audit
+
+* **Board fill.** The objects were sized by three discrete band tiers (26rem / roomy 34rem×14rem / tall 34rem×17rem), so a board taller or wider than its tier's design size drew the same objects with empty band around them. Measured (each half's content box against the half): 768 — 120 of 180px high; 1024 — 98 of 152px; 1280 / 1440 / 1920 — always 154px of content while the board is 274 / 362 / 530px tall. Phones (stacked rows) already used 100% of their width.
+* **Seams.** Each champion's art box reaches 6cqw past the picture's own inner edge, and its mask was still ≈35% opaque there (`#000 45%, 0.5 72%, transparent 98%` of the box) — so the picture ended on a hard vertical line over the lane, made more visible by the brightness step (art at `brightness(0.8)` over the lane at `0.42`).
+
+### R9.2 The responsive sizing rule (one rule, band boards ≥ 26rem)
+
+The band (`scenario-hero`) is a size container, so `cqh` / `cqw` are the board's own height / width (verified: 100cqh = the board's height). The band tiers now set FLOORS (`--jb-portrait-min`, `--jb-ability-min`, `--jb-slot-min`, the old values); one unit derived only from the band's size drives the objects:
+
+```
+--jb-fit:      min(23.8cqh − 17.5px, 7.6cqw − 9px, 3.5rem)          /* one ability icon */
+--jb-ability:  max(floor, u)
+--jb-slot:     max(floor, 0.875u)
+--jb-portrait: max(floor, 1.4u, min((100cqh − 48px)·0.78 − 20px − 1.875u, 30cqw − 120px, 6rem))
+```
+
+* height term: a half stacks portrait + abilities + items (1.4 + 1 + 0.875 u) and two row gaps (≈20px), allowed ≈78% of the band under its head and padding (≈48px);
+* width term: the widest row (six item slots + gaps) within ≈80% of a half (the outer fifth is the champion art's);
+* the portrait — the one row with width to spare — also takes the height the three rows leave, bounded by its own width allowance (shard column + portrait + gaps + a 7rem name allowance in the same 80%) and 6rem.
+
+No selector reads a step, a phase, a reveal or a champion; every child at a viewport draws the same board (pinned by a stylesheet test). Phones (< 26rem) keep their tier sizes — the stacked rows were already width-bound, so names, `!`, outline and popup hit target are unchanged there. The `!` and the outline are positioned from the same tokens, so they follow the portrait; the portrait button is the portrait's own box, so the popup's hit target grows with it.
+
+Measured after (content box of a half, `board-fill.cjs`):
+
+| Viewport | Board | Ability / portrait / item slot (px) before → after (measured) | Half content (h) before → after | Notes |
+|---|---|---|---|---|
+| 375 / 390 | 337–352 × 200 | 24 / 40 / 22 → unchanged | 48 of 78 → unchanged | width-bound rows; names full |
+| 768×1024 | 698 × 224 | 32 / 44 / 28 → 36 / 50 / 31 | 120 → 133 of 180 | height-bound |
+| 1024×768 | 500 × 190 | 26 / 36 / 24 → 28 / 39 / 24 | 98 → 103 of 152 | width-bound (narrow card) |
+| 1280×800 | 700 × 274 | 40 / 56 / 34 → 44 / 74 / 39 | 154 → 180 | width-bound icons; portrait takes the height |
+| 1440×900 | 700 × 362 | 40 / 56 / 34 → 44 / 90 / 39 | 154 → 197 | |
+| 1920×1080 | 679 × 530 | 40 / 56 / 34 → 43 / 84 / 37 | 154 → 188 | still airy: the card column is ≈680px wide, so six item slots bound the icons; the art fills the rest |
+
+Names: all full at every width (Pantheon 107 / 107 at 1280+, 88 / 88 at 768, 75 / 75 at 1024).
+
+### R9.3 The art blend
+
+`.journey-board__art` (band only; the art system, crop and positions unchanged):
+
+```
+--jp3-fade-0: var(--jp3-face-x);                     /* the face's centre line */
+--jp3-fade-l: calc(var(--jp3-art-h) * 0.275);        /* face → the picture's own inner edge */
+mask: linear-gradient(<toward the seam>, #000 fade-0, 0.86 @20%, 0.64 @40%, 0.38 @60%,
+                      0.16 @80%, 0.04 @93%, transparent @100% of the span)
+      ∩ linear-gradient(180deg, #000 55%, 0.7 72%, 0.3 88%, transparent 100%)
+```
+
+The fade now reaches zero exactly at the picture's edge (no residual opacity, so no hard line), across the whole open span, on an eased curve with no plateau; near the blend the art is mostly lane, which matches the brightness without a new overlay. The lane scene, the reading grade and the dark centre are unchanged, so the lane is not obscured. Pinned by a stylesheet test (the fade ends at `fade-0 + fade-l`; strictly decreasing stops).
+
+### R9.4 Certification
+
+* **Geometry sweep** (9 captures — reference right / wrong / timeout, Pantheon, Volibear, Ahri Survival, Volibear Survival, JREF, M1 Pantheon — × 375 / 390 / 768 / 1024 / 1280 / 1440 / 1920, every snapshot, each reveal also tapped compressed; **1,680 states**): **0 violations, 0 page errors; every width × capture's region sets identical to round 8's** — the stage (board / prompt / answers boxes) did not move at all, and no state moves another.
+* **Full-stage captures** (56: the 28 targets of R9.5, before and after): 0 violations, no document x-scroll, no page errors.
+* **Champion portrait popups** (`popups-r8.cjs`, Zed / Ahri / Leona / Pantheon, a provenance row open, × 7 widths): 28/28 inside the viewport.
+* **Ordinary Ranked** (`/dev/ranked-shell-probe`, 22 states × 1280×800 / 390×844, round 8 vs round 9): every element box identical in all 44 states.
+* **Tests**: the certification set **1990/1991** (157 files; +2 stylesheet tests: the fit rule reads only the band's size and the tiers are floors; the art fade ends at the picture's edge with strictly decreasing stops). The one failure is `masterySliceModule.portraitPopup` › "Ahri's armor…" timing out at 5s under the full parallel run only — the same load-sensitive failure as §R8.4 (it fails identically on the untouched round-7 checkout and passes alone); the 6 vitest worker RPC timeouts print as before. `tsc`: the 2 known Supabase errors. ESLint: 0 errors.
+* **Capture tooling note**: Railway assets, Google font files and Supabase were intermittently very slow from this machine during the run; `pw.cjs` gained an opt-in disk cache (`JP5_ASSET_CACHE`) so every shot is taken with the real fonts and all board images loaded.
+
+### R9.5 Screenshots (`docs/handoffs/jp5-equation-unfold/r9/`)
+
+Full stage, before (round 8, `f5588d0f`) and after, at 375 / 390 / 768 / 1024 / 1280 / 1440 / 1920: `jp5-r9-{before,after}-<width>-zed-ahri-step4-live`, `-pantheon-step4-live`, `-voli-step3-live`, `-zed-ahri-step4-expanded`. Board crops for the blend and fill comparison: `board-{before,after}-<width>-{zed-ahri,pantheon}-step4-live.png`. All captured with the real fonts and every board image loaded (phones: 0 unloaded images; band boards: only the two hidden phone-row splashes, which are `display: none` there and lazy).
+
+### R9.6 Remaining notes
+
+1. **Tall desktop boards (1440, 1920)** remain partly open vertically: the six-slot item row bounds the icons at the card's ≈680–700px width. Filling more would need a wider card column or a different item-row composition — both outside this pass.
+2. **768**: the opponent's art span is short (the picture only extends ≈92px past the face line at that board height), so the fade is short too; it is soft but more noticeable than at 1280+.
 
 ## R8. Round 8 — geometry pass: the freed board space, redistributed once
 
