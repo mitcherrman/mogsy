@@ -240,12 +240,24 @@ describe("the `!` coach: taught once", () => {
     r.rerender(view(s));
   };
 
-  it("the first learned `!` brings the coach; it leaves by itself and never comes back", () => {
+  it("the first portrait to gain its `!` brings the coach — not before; it leaves by itself and never comes back", () => {
+    // A viewer who saw JP4's board-based coach still gets this one: its own key.
+    window.localStorage.setItem("mogzy.journey.knowledgeCoach.v1", "seen");
+    expect(KNOWLEDGE_COACH_KEY).toBe("mogzy.journey.portraitCoach.v1");
     const live0 = snap(REF, "child0-live");
     const reveal0 = snap(REF, "child0-reveal");
+    const live1 = snap(REF, "child1-live");
     const r = show(live0);
     expect(screen.queryByTestId("journey-know-coach")).toBeNull();
+    // Step 1's reveal teaches Zed E's formula (an ability `!`), but no portrait is
+    // reviewable yet: no coach.
     stepTo(r, reveal0, live0);
+    expect(screen.getByTestId("journey-know-subject-E")).toBeInTheDocument();
+    expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
+    expect(screen.queryByTestId("journey-know-coach")).toBeNull();
+    // Step 2 states Zed's bonus AD: his portrait gains its `!` — the coach, now.
+    stepTo(r, live1, reveal0);
+    expect(screen.getByTestId("journey-portrait-popup-subject-mark")).toBeInTheDocument();
     const coach = screen.getByTestId("journey-know-coach");
     expect(coach).toHaveTextContent(COACH);
     expect(coach).toHaveAttribute("role", "status");
@@ -253,19 +265,19 @@ describe("the `!` coach: taught once", () => {
     expect(window.localStorage.getItem(KNOWLEDGE_COACH_KEY)).toBe("seen");
     act(() => { vi.advanceTimersByTime(KNOWLEDGE_COACH_MS + 10); });
     expect(screen.queryByTestId("journey-know-coach")).toBeNull();
-    // The next learned fact (Step 2's raw damage) glows — no second coach.
-    const live1 = snap(REF, "child1-live");
-    const reveal1 = snap(REF, "child1-reveal");
-    stepTo(r, live1, reveal0);
-    stepTo(r, reveal1, live1);
-    // (JP5: the raw damage lands on Zed E's own `!`, which glows.)
-    expect(screen.getByTestId("journey-know-subject-E")).toHaveAttribute("data-just-learned", "true");
+    // Ahri's portrait gains its `!` at Step 3's reveal — no second coach.
+    const live2 = snap(REF, "child2-live");
+    const reveal2 = snap(REF, "child2-reveal");
+    stepTo(r, snap(REF, "child1-reveal"), live1);
+    stepTo(r, live2, snap(REF, "child1-reveal"));
+    stepTo(r, reveal2, live2);
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
     expect(screen.queryByTestId("journey-know-coach")).toBeNull();
   });
 
-  it("a tap dismisses it; a reload mid-Journey shows none (the learned `!` is simply there)", () => {
-    const r = show(snap(REF, "child0-live"));
-    stepTo(r, snap(REF, "child0-reveal"), snap(REF, "child0-live"));
+  it("a tap dismisses it; a reload mid-Journey shows none (the `!` is simply there)", () => {
+    const r = show(snap(REF, "child0-reveal"));
+    stepTo(r, snap(REF, "child1-live"), snap(REF, "child0-reveal"));
     fireEvent.pointerDown(screen.getByTestId("journey-know-coach"));
     expect(screen.queryByTestId("journey-know-coach")).toBeNull();
     cleanup();

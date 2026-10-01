@@ -1,17 +1,20 @@
 /**
- * JP4 — TEACH THE `!` ONCE.
+ * JP4 — TEACH THE `!` ONCE (JP5: the portrait's `!`).
  *
- * Learned history lives on the board's objects: a learned value is NOT
- * reprinted on later steps, and a champion's stats are reviewed in its champion
- * portrait popup. So the first time a `!` arrives (a reveal establishing a
- * fact), a short coach says so — "Tap champion portraits to review stats." —
- * and the fresh `!` pulses. It leaves by itself (or on the first tap), and it does
- * not come back: seen once per browser (a per-viewer convenience, so plain
- * storage; if storage is unavailable, once per page load).
+ * A champion's stats are reviewed in its champion portrait popup, which wears
+ * the `!` once it holds any established or stated stat. So the first time a
+ * portrait BECOMES reviewable while the learner watches, a short coach says so
+ * — "Tap champion portraits to review stats." It leaves by itself (or on the
+ * first tap), and it does not come back: seen once per browser (a per-viewer
+ * convenience, so plain storage; if storage is unavailable, once per page load).
+ *
+ * The key is the instruction's own: it replaced JP4's board-based "Learned facts
+ * live on the board" coach (`mogzy.journey.knowledgeCoach.v1`), so a viewer who
+ * saw that one still gets this one once.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export const KNOWLEDGE_COACH_KEY = "mogzy.journey.knowledgeCoach.v1";
+export const KNOWLEDGE_COACH_KEY = "mogzy.journey.portraitCoach.v1";
 /** How long the coach stays up by itself. */
 export const KNOWLEDGE_COACH_MS = 5200;
 
@@ -33,7 +36,7 @@ export function resetKnowledgeCoach() {
   try { window.localStorage.removeItem(KNOWLEDGE_COACH_KEY); } catch { /* nothing to reset */ }
 }
 
-/** `learnedNow`: a fact was established just now (the board's one-shot glow). */
+/** `learnedNow`: a champion portrait became reviewable just now (it gained its `!`). */
 export function useKnowledgeCoach(learnedNow: boolean) {
   const [visible, setVisible] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -70,7 +70,7 @@ describe("the reference Journey (Zed / Ahri)", () => {
     expect(bonus).toMatchObject({ display: "21", how: "stated", step: 2, level: 2, exact: 20.8 });
     expect(bonus.sources.map((s) => [s.kind, s.kind === "level" ? s.level : s.name, s.value])).toEqual([
       ["item", "Doran's Blade", 10], ["stat_mod", "Adaptive Force", 5.4], ["stat_mod", "Adaptive Force", 5.4]]);
-    expect(entryBasis(bonus)).toBe("Lv 2 · Doran's Blade · 2 shards");
+    expect(entryBasis(bonus)).toBe("Lv 2 · Doran's Blade");
     // Only what was stated: no other row is known.
     expect(Object.keys(current(zed).entries)).toEqual(["bonus_attack_damage"]);
   });

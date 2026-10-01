@@ -112,7 +112,7 @@ describe("the portrait opens the champion portrait popup", () => {
     openSheet("subject");
     const bonus = row("subject", "bonus_attack_damage");
     expect(bonus).toHaveAttribute("data-how", "stated");
-    expect(bonus.textContent).toMatch(/^Bonus AD21Lv 2 · Doran's Blade · 2 shards/);
+    expect(bonus.textContent).toBe("Bonus AD21Lv 2 · Doran's Blade");
     expect(bonus.textContent).not.toMatch(/stated|learned|Step/);
     fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-toggle"));
     const sources = screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-sources");

@@ -174,6 +174,20 @@ function SideSplash({ side }: { side: JourneySide }) {
   );
 }
 
+/**
+ * JP5 — did a champion portrait become reviewable (its popup now holds a stat,
+ * so it wears the `!`) SINCE THE LAST RENDER? True for that one render. A mount
+ * that already shows a reviewable portrait (a reload mid-Journey) is not a
+ * moment, so it says no.
+ */
+function usePortraitBecameReviewable(journey: JourneyJ3 | null, knowledge: JourneyKnowledge, step: number): boolean {
+  const now = (["player", "opponent"] as const).map((s) => championPortraitPopup(journey, knowledge, s, step)?.known ?? false);
+  const prev = useRef(now);
+  const became = now.some((k, i) => k && !prev.current[i]);
+  useEffect(() => { prev.current = now; });
+  return became;
+}
+
 /** JP3 — every established fact, keyed by object (for the one-shot glow). */
 function learnedKeysOf(knowledge: JourneyKnowledge): string[] {
   const out: string[] = [];
@@ -394,8 +408,8 @@ export function JourneyStateBoard({
   const fresh = useJustLearned(learnedKeysOf(knowledge));
   // JP4 — one shard column for both halves when either has a page.
   const shardColumn = Boolean(subject.shards?.length || opponent.shards?.length);
-  // JP4 — the first learned `!` of a Journey teaches the mechanic once.
-  const coach = useKnowledgeCoach(fresh.size > 0);
+  // JP5 — the first portrait to become reviewable (gain its `!`) teaches the mechanic once.
+  const coach = useKnowledgeCoach(usePortraitBecameReviewable(journey, knowledge, state.step.index));
   return (
     <div data-testid="journey-board" data-journey-key={state.journeyKey}
       data-step={state.step.index} data-node={state.step.nodeId}

@@ -167,15 +167,14 @@ export function championPortraitPopup(journey: JourneyJ3 | null | undefined, kno
 
 /**
  * How a row says what its value is, compactly — the player-facing state only:
- * "Lv 2", "Lv 3 · Cloth Armor", "Lv 2 · Doran's Blade · 2 shards". No history
- * (how or at which step it was established stays on the entry, unprinted); the
- * numbers are one tap away (the row's sources and Exact).
+ * "Lv 2", "Lv 3 · Cloth Armor", "Lv 2 · Doran's Blade". No history (how or at
+ * which step it was established stays on the entry, unprinted) and no shard
+ * count (owner: it made the row truncate); every source, shards included, and
+ * the Exact are one tap away in the row's provenance.
  */
 export function entryBasis(e: PortraitPopupEntry): string {
   const items = e.sources.flatMap((s) => (s.kind === "item" ? [s.name] : []));
-  const shards = e.sources.filter((s) => s.kind === "stat_mod").length;
-  if (items.length === 0 && shards === 0) return `Lv ${e.level}`;
-  return [`Lv ${e.level}`, ...items, ...(shards ? [shards === 1 ? "1 shard" : `${shards} shards`] : [])].join(" · ");
+  return [`Lv ${e.level}`, ...items].join(" · ");
 }
 
 /**
