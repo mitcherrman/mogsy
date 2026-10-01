@@ -600,3 +600,55 @@ the short-wide Hub bubble placement, and of limitation 1 if the Academy Updates 
 
 `mg/integration-ftue`: code tip `027e9205`, certification handoff `6d49f56d`, plus this record-only commit on top
 (base `origin/main` `f87240f8`). Pushed to `origin/mg/integration-ftue` only.
+
+## MG-GEOM: final Hub geometry adjustment (`mg/fix-final-geometry`)
+
+Base `mg/integration-ftue` `8c8c739a`. Only `src/pages/LolHub.tsx` changed (Hub-authored placement and lean data; the frozen
+`mogzy-guide` API, mobile, Landing, Welcome, Leaguecraft, auth, analytics and persistence are untouched).
+
+**Fix**
+1. `HUB_LEFT_BUBBLE_QUERY` = `(min-width:768px) and (max-width:1399px) and (max-height:800px)`: the desktop bubble is always
+   on Mogzy's LEFT. It clears the radio dock (1024×700 was 22px over; 800×600 was 49px), the book columns and the Academy
+   Updates mark (the mark does not lean, so a right-hand bubble covers it). Wider/taller viewports keep the MG-INT rule
+   (`HUB_SIDE_BUBBLE_QUERY`, unchanged), because their books are larger and a left bubble would reach them (1440×900: 40px into
+   Archives).
+2. `HUB_NARROW_QUERY` = `(min-width:768px) and (max-width:1279px)`: hover and first-use leans use `near` (32px) instead of `far`
+   (96px). `far` plus a left bubble reaches the book column under ~1100px, and a right lean puts the left bubble onto the mark
+   under ~1190px. At ≥1280 the authored `far` lean is unchanged. The data in `hub-guide.ts` is not edited; the override is applied
+   where the guide is activated.
+
+**Defect findings**
+- Defect 1 (1024×700 bubble over radio): reproduced at 22px, fixed.
+- Defect 2 (lean into books at 800–1023): in short viewports Mogzy never reached the books; the real collision was the left
+  bubble (and, at tall portrait sizes such as 768×1024, Mogzy himself: 36px into Archives with `far`). `near` removes the Mogzy overlap.
+- Defect 3 (Updates mark vs bubble): the switch is dormant in code (`DEFAULT_PLATFORM_POLICY.academy.updatesEnabled = false`; the
+  `academy_updates_enabled` row is seeded `false`; it renders only with the row on AND a published entry). The production row cannot
+  be read from the repo, so its state is still unknown. Fixed inside the left-bubble region; remains outside it (see below).
+
+**Browser matrix** (Chromium pane, real `/lol` in a same-origin iframe at each size; Updates mark forced on for the check with a
+temporary, uncommitted harness; lean landing forced because the pane pauses animations when hidden). Geometry measured: bubble vs
+radio dock, the four books, the mark, viewport edges; Mogzy vs radio and books.
+
+| viewport | first-use (left lean) | hover L / R | ambient | result |
+|---|---|---|---|---|
+| 800×600 | left bubble | ✓ / ✓ | ✓ | clear; bubble 3px from Leaguecraft column (tightest) |
+| 900×700 | ✓ | ✓ / ✓ | ✓ | clear |
+| 1024×700 | ✓ | ✓ / ✓ | ✓ | clear (was 22px over radio) |
+| 1024×768 | ✓ | ✓ / ✓ | ✓ | clear |
+| 1280×720 | ✓ | ✓ / ✓ | ✓ | clear |
+| 1280×800 | ✓ | ✓ / ✓ | ✓ | clear |
+| 1366×768 | ✓ | ✓ / ✓ | ✓ | clear |
+| 1440×900 | right bubble | mark overlap 44×44 on left-lean states | clear | see remaining |
+| 1536×864 | right bubble | mark overlap on left-lean states | clear | see remaining |
+| 800×900, 1024×900, 1024×1000 | top bubble | ✓ | ✓ | clear |
+| 768×1024, 820×1180 | top bubble | Mogzy clear; bubble corner 9px into the book column | ✓ | see remaining |
+| 390×844, 375×667 | right of Mogzy | n/a | ✓ | unchanged: in bounds, 8px edge margin, no books/dock |
+
+**Tests/build:** `LolHub*`, `mogzy-guide`, `components/lol` = 16 files / 373 tests green; `eslint src/pages/LolHub.tsx` clean;
+`tsc -p tsconfig.app.json` no errors in `LolHub.tsx`; `vite build` passes.
+
+**Remaining visible defects**
+1. Academy Updates ON, ≥1400px wide (or 801–930px tall at 1025–1399px): a left-lean bubble (first-use, Leaguecraft/Archives hover) still
+   sits over the mark (44×44), which stays on top and usable. Books are too large there for a left bubble; fixing it needs a mark/bubble
+   change outside Hub-authored lean data.
+2. 768–~850px wide with height >930px (portrait tablets): the top bubble's corner reaches ~9px into the book column. Not in the matrix.

@@ -219,16 +219,25 @@ const HUB_FIRST_USE_MESSAGE: GuideMessage = {
  * guide did; mobile is the in-flow mobile-mogzy-zone slot (no anchor), with the
  * bubble beside him so it never covers the books below.
  *
- * MG-INT: on SHORT, WIDE desktops the bubble moves beside his head. There the
- * top bubble rises into the Academy Radio dock (≈55px over the 90px dock at
- * 1366×768 and 1280×720, 30px at 1280×800) — the collision the retired guide's
- * bubble offsets were authored to avoid. A scan of 1024–1920 × 700–1200 found
- * the overlap exactly in `HUB_SIDE_BUBBLE_QUERY`; every taller viewport keeps
- * ≥26px of clearance, so the top bubble stays wherever it fits. Beside him the
- * bubble goes to the centre-lane side of a left lean, and otherwise to his
- * LEFT: his right shoulder carries the Academy Updates mark.
+ * MG-INT: on SHORT, WIDE desktops (`HUB_SIDE_BUBBLE_QUERY`) the top bubble rises
+ * into the Academy Radio dock (~55px at 1366x768, ~30px at 1280x800), so the
+ * bubble goes beside his head: to the centre-lane side of a left lean, else to
+ * his LEFT (his right shoulder carries the Academy Updates mark).
+ *
+ * MG-GEOM: the dock collision also exists below 1025px (~22px at 1024x700, ~49px
+ * at 800x600). On small laptops and tablets (`HUB_LEFT_BUBBLE_QUERY`, measured
+ * to have room between the book column and Mogzy) the bubble is ALWAYS on his
+ * left, which clears the dock, the books and the Academy Updates mark (the mark
+ * does not lean, so a right-hand bubble covers it). Wider or taller viewports
+ * have larger books, so the left bubble would reach them: they keep the MG-INT
+ * rule, whose left-lean bubble can still sit under the mark when Updates is on.
+ * Below 1280px the lean is `near` (`HUB_NARROW_QUERY`): a `far` lean pushes the
+ * left bubble into the book column under ~1100px and a right lean pushes the
+ * bubble onto the mark under ~1190px.
  */
 const HUB_SIDE_BUBBLE_QUERY = "(min-width: 1025px) and (max-height: 930px)";
+const HUB_LEFT_BUBBLE_QUERY = "(min-width: 768px) and (max-width: 1399px) and (max-height: 800px)";
+const HUB_NARROW_QUERY = "(min-width: 768px) and (max-width: 1279px)";
 const HUB_GUIDE_DESKTOP: GuidePlacement = {
   anchor: { bottom: "16%", centerX: true },
   size: "clamp(97px,9.7vw,167px)",
@@ -676,6 +685,7 @@ export default function LolHub() {
   // The substrate's localStorage-backed once-only record, created per Hub mount
   // (the in-memory fallback therefore only matters if storage is blocked).
   const [guideStorage] = useState(() => createGuideStorage());
+  const narrowLean = useMediaQuery(HUB_NARROW_QUERY);
   const guideMessages = useMemo<GuideMessage[]>(() => {
     const name = (displayName || ACADEMY_FALLBACK_NAME).slice(0, ACADEMY_NAME_MAX_LENGTH);
     const ambient = ACADEMY_LINES.map((_, i) => {
@@ -686,8 +696,11 @@ export default function LolHub() {
         text: ACADEMY_LINES[idx](name),
       };
     });
-    return [HUB_FIRST_USE_MESSAGE, ...ambient];
-  }, [displayName, academyLineStart]);
+    const firstUse = narrowLean
+      ? { ...HUB_FIRST_USE_MESSAGE, target: { ...HUB_FIRST_USE_MESSAGE.target!, distance: "near" as const } }
+      : HUB_FIRST_USE_MESSAGE;
+    return [firstUse, ...ambient];
+  }, [displayName, academyLineStart, narrowLean]);
   const {
     message: guideMessage,
     hover: guideHover,
@@ -699,17 +712,25 @@ export default function LolHub() {
     storage: guideStorage,
   });
   const sideBubble = useMediaQuery(HUB_SIDE_BUBBLE_QUERY);
-  const desktopGuidePlacement = !sideBubble
-    ? HUB_GUIDE_PLACEMENT
-    : guideMessage?.target?.direction === "left"
-      ? HUB_GUIDE_PLACEMENT_SIDE_RIGHT
-      : HUB_GUIDE_PLACEMENT_SIDE_LEFT;
+  const leftBubble = useMediaQuery(HUB_LEFT_BUBBLE_QUERY);
+  const desktopGuidePlacement = leftBubble
+    ? HUB_GUIDE_PLACEMENT_SIDE_LEFT
+    : !sideBubble
+      ? HUB_GUIDE_PLACEMENT
+      : guideMessage?.target?.direction === "left"
+        ? HUB_GUIDE_PLACEMENT_SIDE_RIGHT
+        : HUB_GUIDE_PLACEMENT_SIDE_LEFT;
   const activateGuide = useCallback(
     (id: HubGuideModeId) => {
       const mode = HUB_GUIDE_MODES[id];
-      guideHover({ id: `hub-${id}`, title: mode.title, text: mode.description, target: mode.target });
+      guideHover({
+        id: `hub-${id}`,
+        title: mode.title,
+        text: mode.description,
+        target: narrowLean ? { ...mode.target, distance: "near" } : mode.target,
+      });
     },
-    [guideHover],
+    [guideHover, narrowLean],
   );
 
   // Decide during the FIRST render, not in an effect: an effect runs after
