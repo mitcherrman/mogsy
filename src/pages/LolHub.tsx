@@ -15,6 +15,7 @@ import {
   useGuideLayout,
   useMogzyGuide,
   type GuideMessage,
+  type GuidePlacement,
   type GuidePlacements,
   createGuideStorage,
 } from "@/components/mogzy-guide";
@@ -217,20 +218,54 @@ const HUB_FIRST_USE_MESSAGE: GuideMessage = {
  * Authored placement. Desktop sits in the central lane exactly where the old
  * guide did; mobile is the in-flow mobile-mogzy-zone slot (no anchor), with the
  * bubble beside him so it never covers the books below.
+ *
+ * MG-INT: on SHORT, WIDE desktops the bubble moves beside his head. There the
+ * top bubble rises into the Academy Radio dock (≈55px over the 90px dock at
+ * 1366×768 and 1280×720, 30px at 1280×800) — the collision the retired guide's
+ * bubble offsets were authored to avoid. A scan of 1024–1920 × 700–1200 found
+ * the overlap exactly in `HUB_SIDE_BUBBLE_QUERY`; every taller viewport keeps
+ * ≥26px of clearance, so the top bubble stays wherever it fits. Beside him the
+ * bubble goes to the centre-lane side of a left lean, and otherwise to his
+ * LEFT: his right shoulder carries the Academy Updates mark.
  */
+const HUB_SIDE_BUBBLE_QUERY = "(min-width: 1025px) and (max-height: 930px)";
+const HUB_GUIDE_DESKTOP: GuidePlacement = {
+  anchor: { bottom: "16%", centerX: true },
+  size: "clamp(97px,9.7vw,167px)",
+  bubbleSide: "top",
+  bubbleWidth: "clamp(170px,15vw,230px)",
+};
 const HUB_GUIDE_PLACEMENT: GuidePlacements = {
-  desktop: {
-    anchor: { bottom: "16%", centerX: true },
-    size: "clamp(97px,9.7vw,167px)",
-    bubbleSide: "top",
-    bubbleWidth: "clamp(170px,15vw,230px)",
-  },
+  desktop: HUB_GUIDE_DESKTOP,
   mobile: {
     size: "clamp(84px,24vw,100px)",
     bubbleSide: "right",
     bubbleWidth: "min(160px,42vw)",
   },
 };
+const HUB_GUIDE_PLACEMENT_SIDE_RIGHT: GuidePlacements = {
+  ...HUB_GUIDE_PLACEMENT,
+  desktop: { ...HUB_GUIDE_DESKTOP, bubbleSide: "right" },
+};
+const HUB_GUIDE_PLACEMENT_SIDE_LEFT: GuidePlacements = {
+  ...HUB_GUIDE_PLACEMENT,
+  desktop: { ...HUB_GUIDE_DESKTOP, bubbleSide: "left" },
+};
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.(query)?.matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia?.(query);
+    if (!mq) return;
+    const sync = () => setMatches(mq.matches);
+    sync();
+    mq.addEventListener?.("change", sync);
+    return () => mq.removeEventListener?.("change", sync);
+  }, [query]);
+  return matches;
+}
 
 /**
  * The class that arms the two-screen scroll snap. It goes on `html` because
@@ -663,6 +698,12 @@ export default function LolHub() {
     messages: guideMessages,
     storage: guideStorage,
   });
+  const sideBubble = useMediaQuery(HUB_SIDE_BUBBLE_QUERY);
+  const desktopGuidePlacement = !sideBubble
+    ? HUB_GUIDE_PLACEMENT
+    : guideMessage?.target?.direction === "left"
+      ? HUB_GUIDE_PLACEMENT_SIDE_RIGHT
+      : HUB_GUIDE_PLACEMENT_SIDE_LEFT;
   const activateGuide = useCallback(
     (id: HubGuideModeId) => {
       const mode = HUB_GUIDE_MODES[id];
@@ -1099,7 +1140,7 @@ export default function LolHub() {
                   <MogzyGuide
                     surface="hub"
                     message={guideMessage}
-                    placement={HUB_GUIDE_PLACEMENT}
+                    placement={desktopGuidePlacement}
                     layout="desktop"
                     onDismiss={dismissGuide}
                   />

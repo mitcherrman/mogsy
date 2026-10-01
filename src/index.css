@@ -3399,28 +3399,18 @@ html.high-contrast * { text-shadow: none !important; }
 
 /* Mogzy contextual lean — the glide toward the hovered/focused card.
    The 340ms/overshoot easing here is the ORIGINAL authored intent from
-   MogzyHubGuide (see the comment on the lean layer); it lived in Tailwind's
+   the retired Hub-only guide; it lived in Tailwind's
    `duration-[340ms] ease-[cubic-bezier(0.3,1.06,0.35,1)]` utilities, which
    this build never emits — no arbitrary `duration-[…]` value appears
    anywhere in the generated CSS, only the named scale — so the glide had
    silently been running at the 150ms ease-in-out default that
    `transition-transform` ships. Authoring it here makes the shipped number
-   the intended number, and keeps it tunable in one place.
-   The bubble and its tail are the SAME gesture on the same curve: they ride
-   this layer for the travel itself, and these two rules carry only their own
-   offsets/fade, which must land on the same beat as the glide or the bubble
-   arrives ahead of the mascot it belongs to. */
+   the intended number, and keeps it tunable in one place. The Mogzy Guide
+   substrate (src/components/mogzy-guide) rides this layer; its bubble lives
+   inside it, so bubble and mascot travel as one gesture. */
 .mogzy-lean-glide {
   transition: transform 340ms cubic-bezier(0.3, 1.06, 0.35, 1);
   transform: translate(var(--guide-lean-x, 0px), var(--guide-lean-y, 0px));
-}
-.mogzy-lean-bubble {
-  transition:
-    opacity 340ms cubic-bezier(0.3, 1.06, 0.35, 1),
-    transform 340ms cubic-bezier(0.3, 1.06, 0.35, 1);
-}
-.mogzy-lean-bubble-tail {
-  transition: left 340ms cubic-bezier(0.3, 1.06, 0.35, 1);
 }
 
 /* Mogzy directional facing (mascot animation prototype).
@@ -3764,9 +3754,9 @@ html.high-contrast * { text-shadow: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .academy-mogzy-float { animation: none !important; }
-  /* No hop, no mirror-turn: the facing layer is pinned by its own
-     motion-reduce override in MogzyHubGuide, and the click reaction is
-     cancelled outright here. */
+  /* No hop, no mirror-turn: the facing layer is pinned below (and the Mogzy
+     Guide omits the turn entirely), and the click reaction is cancelled
+     outright here. */
   .mogzy-click-react { animation: none !important; }
   /* WHATSNEW1: the "new" state stays in the accessible name and in the
      mark's full-opacity treatment; only the halo stops. */
@@ -3775,8 +3765,6 @@ html.high-contrast * { text-shadow: none !important; }
      unchanged in effect from the motion-reduce utilities these rules
      replace; only the duration they were always meant to have is fixed. */
   .mogzy-lean-glide { transition: none !important; transform: none !important; }
-  .mogzy-lean-bubble { transition: none !important; }
-  .mogzy-lean-bubble-tail { transition: none !important; }
   /* Facing is pinned to the unmirrored artwork, exactly as the contextual
      lean is pinned: a mascot that never moves should not turn either. */
   .mogzy-facing-turn { transition: none !important; transform: none !important; }
