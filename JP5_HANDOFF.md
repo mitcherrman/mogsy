@@ -7,11 +7,75 @@
 | JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · `ccdbac38` docs (round 2) · **`f578ecc4` round 3 (typed workings, per-child timing, Step 2 + haste)** · the round-3 docs commit |
 | Backend | **Round 3: `jp5/journey-structured-working` at `96fff403`** (worktree `League_Combat_Simulator/.worktrees/jp5-structured-working`, from JP4 `fc95e81e`, which is untouched). Rounds 1–2 were read-only audits (§7–§10). |
 | Production / Railway / Patch Ops / items / Order Forge / other worktrees | **Untouched.** Nothing pushed, merged, integrated or deployed. |
+| Round 8 | **Geometry pass (§R8)**: the empty anchor row removed; phone names take its column; above a phone its height moved from the board to the prompt / Reasoning Chain box (+16 / +24 / +28px). Frontend code + docs commits after §R7's. Backend unchanged. |
 | Round 7 | **Polish 2 (§R7)**: Zed's compact row without the shard count; the hint arrives when a portrait first becomes reviewable, under a new key. Frontend code + docs commits after §R6's. Backend unchanged. |
 | Round 6 | **Polish (§R6)**: portrait `!` for any established or stated stat; hint "Tap champion portraits to review stats."; compact rows without history; Step 4 delta `≈16.4 dmg`. Frontend code + docs commits after §R5's. Backend unchanged. |
 | Round 5 | **Terminology + reduction copy (§R5)**: presentation only — `(Bonus AD)`, `19.4% Reduced` / `≈16 less`, `9.1% Reduced` / `≈1.1s shorter`; "notebook" retired for **champion portrait popup**. Frontend code commit + docs commit after §R4's. Backend unchanged. |
 | Round 4 | **The champion portrait popup (§R4)**: frontend `9a7a1760` + `1e46ecb7`, backend `a9a4be2e` (armor provenance in `stat_sources`). Retained board bubbles removed; stage geometry unchanged; freed space measured, not applied. |
 | Status | **Not owner-approved.** Round 3 (§0) implements the bounded foundation: one typed working carrier, per-child reveal windows, Step 2 composition, haste Stage 1 — certified locally. §7–§9 below are the round-2 designs it implemented (§0 records what was actually built and where it differs). Open items: §0.7. |
+
+## R8. Round 8 — geometry pass: the freed board space, redistributed once
+
+**Status: implemented and certified locally; NOT owner-approved.** Layout only: no information added; popup, `!` rule, first-use hint, Reasoning Chain semantics, Step 2 / Step 4 / haste presentation, per-child timing, contracts, Exact and backend authority are untouched. Backend unchanged (`a9a4be2e`). Nothing pushed, merged, integrated or deployed.
+
+### R8.1 Audit (before any edit)
+
+* **The empty row/column.** `JourneyStateBoard` still rendered `<div class="journey-side__anchors">` per half (round 4 emptied it but kept its box so nothing moved). It sat in the side grid's `stats` area: on a phone `"portrait name stats" / "portrait kit items"`, above a phone `"id" "kit" "items" "stats"`. The `stats` area's other rules (`.journey-side__stats`, `.journey-stat-cell`) matched no element any more.
+* **Phone width trap.** The compact grid's third column is `auto`, sized by the ITEMS row below; the name line could not enter it because the empty anchors box owned that column on row 1. So the name had `1fr` of what the kit row left: Pantheon 45.7px of the 82px it needs at 390, 30.7px at 375 (≈147px stood empty beside it, as measured in R4.6).
+* **Desktop/tablet height reserve.** Above a phone the anchors row was a real grid row: `--jb-chip-h` (1.2–1.5rem) + the half's row gap (6–12px) — the 25–36px of R4.6. At 640–1023 the board is a fixed band (`--jb-band-h: 15rem`); from 1024 the board is `flex: 1` and takes what the fixed question box (`--jq-prompt-h` + gap + `--jq-answers-h`) leaves.
+* **Clean levers.** The existing JP2 reserve tokens only: `--jb-band-h` and `--jq-prompt-h` in the `.journey-stage` block, plus the side grid's `grid-template-areas`. No parallel layout system.
+* **Is shortening the board necessary?** From 1024 the board *is* the remainder, so giving the prompt height necessarily shortens it — by exactly the freed row. Two board tiers bound how far: the tall desktop tier needs a band of at least 17rem (272px; 1280×800 was 302, so at most 30px can go) and the tablet's roomy tier at least 14rem (224px; 768 was 240, so at most 16px). A first attempt at +28px at 768 dropped the board a tier (names and icons shrank: Pantheon 88 → 75px) and was reverted to +16px.
+* **Where the room helps.** The Reasoning Chain's node size is per-viewport (`--jn-h`) and its width follows the reveal box, so extra prompt height becomes air around the chain and its bar (and a larger fit for long live prompts), not larger nodes. Measured spare inside the reveal box before: 768 Step 2 **7.6px**, 1280 / 1440 Step 4 / haste **9.6px**, 1920 Step 2 **7.6px** (1024 already had 37.6px; its long live Pantheon prompt used 135.6 of 136px).
+
+### R8.2 The change (`src/index.css`, `src/components/journey/JourneyStateBoard.tsx`)
+
+1. The anchors element is removed from the board, with its CSS and the dead `stats`-area rules (`.journey-side__stats`, `.journey-stat-cell`).
+2. Phone grid: `grid-template-areas: "portrait name name" "portrait kit items"` — the name line runs over the former anchors column. Board height unchanged (200px).
+3. Above a phone: `grid-template-areas: "id" "kit" "items"`.
+4. Reserves (`.journey-stage`, the one JP2 block):
+
+| Width | `--jb-band-h` | `--jq-prompt-h` | Net |
+|---|---|---|---|
+| < 640 | 12.5rem (unchanged) | 8.75rem (unchanged) | 0 |
+| 640–1023 | 15rem → **14rem** | 6rem → **7rem** | board −16, prompt +16 (stays at the roomy tier's 14rem floor) |
+| 1024–1279 | flex (remainder) | 8.5rem → **10rem** | board −24, prompt +24 |
+| ≥ 1280 | flex (remainder) | 6.25rem → **8rem** | board −28, prompt +28 (1280×800 board 274 ≥ 272) |
+
+Answers reserves, the gap and every tier threshold are unchanged; the stage height is unchanged at every width (the answers origin is the same coordinate as before, e.g. 545.2px at 1280×800).
+
+### R8.3 Measured before → after (production client path, `layout-r8.cjs`; `r8/layout-{before,after}.json`)
+
+| Target | Board h | Question h | Prompt / reveal box | Spare in reveal (chain + bar) | Names (box / needs) |
+|---|---|---|---|---|---|
+| 375 ref Step 2/4 live | 200 → 200 | 432 → 432 | 140 → 140 | — | Ahri 31.1 → **35.8** / 36; Zed 29 / 29 |
+| 390 Pantheon Step 4 live | 200 → 200 | 432 → 432 | 140 → 140 | — | Pantheon 45.7 → **81.5** / 82; Leona 45.9 → **50.1** / 50 |
+| 375 Pantheon | 200 → 200 | 432 → 432 | 140 | — | Pantheon 30.7 → **81.5** / 82 |
+| 390 Volibear Step 3 live | 200 → 200 | 432 → 432 | 140 | — | Volibear 73 / 73 (fit before) |
+| 768 Step 2 reveal | 240 → **224** | 348 → **364** | 96 → **112** | 7.6 → **23.6** | unchanged |
+| 768 Pantheon Step 4 live | 240 → 224 | 348 → 364 | 96 → 112 (used 96 → 99.8) | — | Pantheon 87.8 / 88 unchanged |
+| 1024 Step 4 expanded | 214 → **190** | 324 → **348** | 136 → **160** | 37.6 → **61.6** | unchanged |
+| 1024 Pantheon Step 4 live | 214 → 190 | 324 → 348 | 136 → 160 (used 135.6 → 153.6) | — | unchanged |
+| 1280 Step 4 expanded | 302 → **274** | 268 → **296** | 100 → **128** | 9.6 → **37.6** | unchanged |
+| 1280 Pantheon Step 4 live | 302 → 274 | 268 → 296 | 100 → 128 (used 99.8 → 115.2) | — | unchanged |
+| 1440 haste expanded | 390 → **362** | 268 → **296** | 100 → **128** | 9.6 → **37.6** | unchanged |
+| 1920 Step 2 reveal | 558 → **530** | 268 → **296** | 100 → **128** | 7.6 → **35.6** | unchanged |
+
+### R8.4 Certification
+
+* **Geometry sweep** (the full one: 9 captures — reference right / wrong / timeout, Pantheon, Volibear, Ahri Survival, Volibear Survival, JREF, M1 Pantheon — × 375 / 390 / 768 / 1024 / 1280 / 1440 / 1920, every snapshot, each reveal also tapped compressed; **1,680 states**): **0 violations, 0 page errors** (no clipping, no overlap, no document x-scroll). Against round 4's sweep of the same states: **every width × capture has the same number of distinct region sets** (no state moves another region); the 45 combinations at 640px and up moved once, by the R8.2 numbers; the 18 phone combinations are identical.
+* **Champion portrait popups** (`popups-r8.cjs`: Zed, Ahri, Leona, Pantheon, a provenance row expanded, × 7 widths): 28/28 inside the viewport, no x-scroll.
+* **Ordinary Ranked** (`/dev/ranked-shell-probe`, 22 states × 1280×800 / 390×844, round-7 checkout vs round 8): **every element's box identical in all 44 states.** Pixel diff: 390 identical (at most 2px over 24/255); 1280 shows anti-aliasing changes inside question-text glyphs only (at most 0.25% of pixels, no box moved; the same server against itself shows none). Not a layout change; noted for completeness.
+* **Tests**: the certification set (Journey + question-surface + ranked-public + quiz-ranked + mastery + dev arena): **1988/1989** — the one failure is `masterySliceModule.portraitPopup` › "Ahri's armor…" timing out at 5s **only under the full parallel run** (it passes alone: 2/2 runs). The identical run on the untouched round-7 checkout fails the same test the same way, so it is load-sensitive and pre-existing, not this pass (the other suites' 6–7 vitest worker RPC timeouts print as in §R6.2). Updated for the removed row: `JourneyModuleStage.test.tsx`, `masterySliceModule.jp4.test.tsx` (the stylesheet pins the new grid areas and the absence of the row), `masterySliceModule.portraitPopup.test.tsx`. `tsc`: the 2 known Supabase errors. ESLint: 0 errors.
+
+### R8.5 Screenshots (`docs/handoffs/jp5-equation-unfold/r8/`, full stage, before and after)
+
+`jp5-r8-{before,after}-…`: `375-ref-step2-live`, `375-ref-step4-live`, `375-pantheon-popup` (popup open), `390-pantheon-step4-live`, `390-voli-step3-live` (popup closed: name balance), `768-step2-reveal`, `768-pantheon-step4-live`, `1024-step4-expanded`, `1024-step2-reveal`, `1024-haste-expanded`, `1024-pantheon-step4-live`, `1280-step4-expanded`, `1280-pantheon-step4-live`, `1440-haste-expanded`, `1920-step2-reveal`.
+
+### R8.6 Remaining visual notes for final approval
+
+1. **768 keeps about 14px of quiet board space**: the row freed about 30px there, but only 16px could move without dropping the board below its roomy tier (14rem). Giving the rest would need the tier floor itself lowered (a tier-threshold change) — not done.
+2. **1280×800 board at 274px** sits 2px above its tall-tier floor (272). A 1280-wide viewport about 28px shorter than before now meets the smaller tier (the board takes the remainder).
+3. **1024 reveal** now has about 30px of air above and below the chain; the gain there is mostly for long live prompts.
 
 ## R7. Round 7 — polish 2: Zed's compact row, hint timing and key
 
