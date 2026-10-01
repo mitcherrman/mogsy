@@ -33,12 +33,12 @@
  * printed beside it), so the art discloses nothing the board does not.
  *
  * K2 — KNOWLEDGE MARKS. An ability the Journey has established facts about
- * (JP5: and a portrait, through its notebook) wears a tiny `!`, keyed by K1's object
+ * (JP5: and a portrait, through its champion portrait popup) wears a tiny `!`, keyed by K1's object
  * key (`player:<champion>:<slot>` / `opponent:<champion>`). Each portrait and
  * ability sits in a same-size `journey-know-host`, marked or not, so a mark
  * appearing changes no box. Items are never marked (K1 has no item fact).
  *
- * JP3 — THE BOARD IS THE LEARNER'S NOTEBOOK. One grammar (`knowledge.ts`): a
+ * JP3 — LEARNED HISTORY LIVES ON THE BOARD'S OBJECTS. One grammar (`knowledge.ts`): a
  * learned value FILLS the board's `?` for it — Ahri's "Armor ?" becomes
  * "Armor 24 !" at Step 3's reveal and stays; Zed's "E raw damage ?" becomes
  * "E raw damage 85 !" at Step 2's. The `!` sits on the most specific object:
@@ -60,7 +60,7 @@
  * JP5 — ONE JOB EACH. The board is the CURRENT League objects: portraits,
  * abilities (with their own learned `!`), items, shards, level. It no longer
  * carries retained scalar bubbles ("Bonus AD 21", "Raw 85 !", "Armor !"):
- * a champion's stats live in its PORTRAIT's notebook (`JourneyChampionNotebook`
+ * a champion's stats live in its champion portrait popup (`JourneyChampionPortraitPopup`
  * — what the learner has established, state by state), and the values the
  * current question needs are the Reasoning Chain's. The anchor row keeps its
  * reserved height, empty, so the JP2 stage geometry has not moved (its space
@@ -80,11 +80,11 @@ import {
 } from "@/lib/journey/knowledge";
 import type { JourneyChainNode } from "@/lib/journey/chain";
 import type { JourneyJ3 } from "@/lib/journey/j3";
-import { championNotebook, statesInputsAt } from "@/lib/journey/notebook";
+import { championPortraitPopup, statesInputsAt } from "@/lib/journey/portraitPopup";
 import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
 import { AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge } from "./JourneyPrimitives";
 import { JourneyKnowledgeMark } from "./JourneyKnowledgeMark";
-import { JourneyChampionNotebook } from "./JourneyChampionNotebook";
+import { JourneyChampionPortraitPopup } from "./JourneyChampionPortraitPopup";
 import { ShardIcon } from "./JourneyIcons";
 import { useKnowledgeCoach } from "./useKnowledgeCoach";
 
@@ -216,13 +216,13 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
   fresh: ReadonlySet<string>;
   /** JP4 — either side has a shard page: both halves draw the column. */
   shardColumn: boolean;
-  /** JP5 — the served Journey block (reached prefix): the portrait notebook's source. */
+  /** JP5 — the served Journey block (reached prefix): the champion portrait popup's source. */
   journey: JourneyJ3 | null;
 }) {
   const id = side.side;
   const championKey = knowledgeKeyFor(side);
   const isFresh = (objectKey: string, f: KnowledgeFact) => fresh.has(`${objectKey}#${f.fact}`);
-  const notebook = championNotebook(journey, knowledge, id === "subject" ? "player" : "opponent", state.step.index);
+  const popup = championPortraitPopup(journey, knowledge, id === "subject" ? "player" : "opponent", state.step.index);
   const championFacts = knowledge.get(championKey)?.facts ?? [];
   const focus = focusSet(state.focus.refs, id);
   const combat = state.focus.combat;
@@ -238,11 +238,11 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
       <header className="journey-side__id">
         {shardColumn && <ShardPage side={side} />}
         <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}>
-          {/* JP5 — the portrait IS the champion's stat notebook. */}
-          <JourneyChampionNotebook side={side} notebook={notebook}
-            focused={focus.stats.size > 0 || statesInputsAt(notebook, state.step.index + 1)}
+          {/* JP5 — the portrait opens the champion portrait popup. */}
+          <JourneyChampionPortraitPopup side={side} popup={popup}
+            focused={focus.stats.size > 0 || statesInputsAt(popup, state.step.index + 1)}
             fresh={championFacts.some((f) => f.kind === "champion_stat_at_level" && isFresh(championKey, f))}
-            testId={`journey-notebook-${id}`} />
+            testId={`journey-portrait-popup-${id}`} />
         </span>
         <div className="journey-side__name min-w-0">
           <span className="journey-side__champion truncate font-black uppercase tracking-[0.08em] text-white"
@@ -359,7 +359,7 @@ export function JourneyStateBoard({
   beatStamp = null, chain = null, journey = null, children,
 }: {
   state: JourneyPublicState;
-  /** JP5 — the served Journey block (reached prefix), for the portrait notebooks. */
+  /** JP5 — the served Journey block (reached prefix), for the champion portrait popups. */
   journey?: JourneyJ3 | null;
   /** JP3 — the micro-chain for the step on screen (`journeyChain`); null draws none. */
   chain?: readonly JourneyChainNode[] | null;

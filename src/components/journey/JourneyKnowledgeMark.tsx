@@ -15,7 +15,7 @@
  *
  * JP3 — ONE GRAMMAR. The gold `!` is the only learned-knowledge sign on the
  * board: on an ability's icon for its facts. JP5: a champion's stats live in its
- * portrait's notebook (`JourneyChampionNotebook`), which wears the same `!`; the
+ * champion portrait popup (`JourneyChampionPortraitPopup`), which wears the same `!`; the
  * board carries no stat chips. Lines read "learned Step N".
  *
  * Interaction: a mouse hover opens it and leaving closes it; a click or tap

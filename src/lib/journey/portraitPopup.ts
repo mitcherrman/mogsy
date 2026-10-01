@@ -1,5 +1,5 @@
 /**
- * JP5 — THE CHAMPION NOTEBOOK: what the learner has established about ONE
+ * JP5 — THE CHAMPION PORTRAIT POPUP: what the learner has established about ONE
  * champion's stats, state by state. The board's portrait opens it; the board
  * itself no longer carries retained scalar bubbles (the Reasoning Chain
  * surfaces what the current question needs; the board is current objects).
@@ -36,11 +36,11 @@ import { formatStatValue, isJourneyStatKey, JOURNEY_STAT_META, type JourneyStatK
  * as a table that fills in — not a list that grows. Only stats the Journey can
  * state or teach (no move speed: nothing serves it).
  */
-export const NOTEBOOK_STATS: readonly JourneyStatKey[] = [
+export const PORTRAIT_POPUP_STATS: readonly JourneyStatKey[] = [
   "health", "armor", "magic_resist", "attack_damage", "bonus_attack_damage", "ability_power", "ability_haste",
 ];
 
-export interface NotebookEntry {
+export interface PortraitPopupEntry {
   stat: JourneyStatKey;
   /** As the learner was shown it: the reveal's display, or the stated number whole. */
   display: string;
@@ -56,7 +56,7 @@ export interface NotebookEntry {
   sources: JourneyStatSource[];
 }
 
-export interface NotebookCheckpoint {
+export interface PortraitPopupCheckpoint {
   /** The node on the Journey's state path (`state_version`). */
   node: number;
   level: number;
@@ -65,15 +65,15 @@ export interface NotebookCheckpoint {
   /** 1-based steps played in this node. */
   firstStep: number;
   lastStep: number;
-  entries: Partial<Record<JourneyStatKey, NotebookEntry>>;
+  entries: Partial<Record<JourneyStatKey, PortraitPopupEntry>>;
 }
 
-export interface ChampionNotebook {
+export interface ChampionPortraitPopup {
   /** K1's champion key (`player:ahri` / `opponent:leona`). */
   key: string;
   championName: string;
   /** Reached checkpoints, oldest first. */
-  checkpoints: NotebookCheckpoint[];
+  checkpoints: PortraitPopupCheckpoint[];
   /** The node the board is on (the default the sheet opens at). */
   current: number;
   /** Any champion stat LEARNED by a reveal — the portrait's `!`. */
@@ -83,18 +83,18 @@ export interface ChampionNotebook {
 const sideOf = (s: J3Side): "subject" | "opponent" => (s === "player" ? "subject" : "opponent");
 
 /**
- * One champion's notebook as of the board's step `stepIndex` (0-based child on
+ * One champion portrait popup as of the board's step `stepIndex` (0-based child on
  * screen). `null` when the Journey block is not the J3 contract.
  */
-export function championNotebook(journey: JourneyJ3 | null | undefined, knowledge: JourneyKnowledge,
-  side: J3Side, stepIndex: number): ChampionNotebook | null {
+export function championPortraitPopup(journey: JourneyJ3 | null | undefined, knowledge: JourneyKnowledge,
+  side: J3Side, stepIndex: number): ChampionPortraitPopup | null {
   if (!journey || journey.reask) return null;
   const reached = journey.children.filter((c) => c.index <= stepIndex);
   const onScreen = reached.find((c) => c.index === stepIndex) ?? reached[reached.length - 1];
   if (!onScreen) return null;
   const championId = onScreen.state.sides[side].championId;
   const key = knowledgeKeyFor({ side: sideOf(side), championId });
-  const byNode = new Map<number, NotebookCheckpoint>();
+  const byNode = new Map<number, PortraitPopupCheckpoint>();
   const checkpoint = (node: number, level: number, step: number) => {
     const cp = byNode.get(node) ?? {
       node, level, firstStep: step, lastStep: step, entries: {}, note: null,
@@ -109,7 +109,7 @@ export function championNotebook(journey: JourneyJ3 | null | undefined, knowledg
     const cp = checkpoint(c.state.stateVersion, s.level, c.index + 1);
     // STATED: the numbers this child's premise stated for this champion.
     for (const [k, v] of Object.entries(s.stats)) {
-      if (typeof v !== "number" || !isJourneyStatKey(k) || !NOTEBOOK_STATS.includes(k)) continue;
+      if (typeof v !== "number" || !isJourneyStatKey(k) || !PORTRAIT_POPUP_STATS.includes(k)) continue;
       const served = s.statSources[k] ?? [];
       cp.entries[k] = {
         stat: k, display: formatStatValue(v, k), how: "stated", step: c.index + 1, level: s.level, exact: v,
@@ -128,7 +128,7 @@ export function championNotebook(journey: JourneyJ3 | null | undefined, knowledg
   let learned = false;
   for (const f of knowledge.get(key)?.facts ?? []) {
     const stat = f.context.stat;
-    if (f.kind !== "champion_stat_at_level" || !stat || !isJourneyStatKey(stat) || !NOTEBOOK_STATS.includes(stat)) continue;
+    if (f.kind !== "champion_stat_at_level" || !stat || !isJourneyStatKey(stat) || !PORTRAIT_POPUP_STATS.includes(stat)) continue;
     const teacher = reached.find((c) => c.index === f.child);
     if (!teacher) continue;
     learned = true;
@@ -164,7 +164,7 @@ export function championNotebook(journey: JourneyJ3 | null | undefined, knowledg
  * Armor", "Lv 2 · Doran's Blade · 2 shards". Words only; the numbers are one
  * tap away (the row's sources).
  */
-export function entryBasis(e: NotebookEntry): string {
+export function entryBasis(e: PortraitPopupEntry): string {
   const items = e.sources.flatMap((s) => (s.kind === "item" ? [s.name] : []));
   const shards = e.sources.filter((s) => s.kind === "stat_mod").length;
   if (items.length === 0 && shards === 0) return e.how === "learned" ? `Lv ${e.level} base` : `Lv ${e.level}`;
@@ -176,10 +176,10 @@ export function entryBasis(e: NotebookEntry): string {
  * stats? Those are its inputs (a premise states exactly what the question
  * needs), so the portrait is outlined as where to look.
  */
-export function statesInputsAt(nb: ChampionNotebook | null, step: number): boolean {
-  const cp = nb?.checkpoints.find((c) => c.node === nb.current);
+export function statesInputsAt(popup: ChampionPortraitPopup | null, step: number): boolean {
+  const cp = popup?.checkpoints.find((c) => c.node === popup.current);
   return Boolean(cp && Object.values(cp.entries).some((e) => e?.how === "stated" && e.step === step));
 }
 
-/** The short name of a notebook row ("Armor", "Bonus AD"). */
-export const notebookLabel = (k: JourneyStatKey) => JOURNEY_STAT_META[k].short;
+/** The short name of a champion portrait popup row ("Armor", "Bonus AD"). */
+export const portraitPopupLabel = (k: JourneyStatKey) => JOURNEY_STAT_META[k].short;

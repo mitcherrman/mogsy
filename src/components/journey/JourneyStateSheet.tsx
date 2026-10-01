@@ -27,7 +27,7 @@ import {
 import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import { JourneyPortrait, LevelBadge, sideRim } from "./JourneyPrimitives";
 import { ItemIcon, ShardIcon } from "./JourneyIcons";
-import { JourneyStatSourceRow } from "./JourneyChampionNotebook";
+import { JourneyStatSourceRow } from "./JourneyChampionPortraitPopup";
 
 function SideDetail({ state, side, knowledge }: { state: JourneyPublicState; side: JourneySide; knowledge: JourneyKnowledge }) {
   const marks = transitionMarks(state.transition);

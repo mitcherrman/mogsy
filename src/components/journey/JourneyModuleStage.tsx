@@ -50,7 +50,7 @@ export function JourneyModuleStage({
   state, skewMs = 0, holdPrevious = false, questionRoles = null, knowledge = NO_KNOWLEDGE,
   reached = null, answeredThrough = 0, journey = null, children,
 }: {
-  /** JP5 — the served Journey block (reached prefix): the portrait notebooks read it. */
+  /** JP5 — the served Journey block (reached prefix): the champion portrait popups read it. */
   journey?: JourneyJ3 | null;
   /**
    * JP3 — the reached children (their served asks name the micro-chain's

@@ -33,14 +33,15 @@
  *               the established facts this child RELIES ON, resurfaced
  *               (`JourneyPrerequisite`: relies_on → established → the reveal's
  *               display), then the asked value as `?`.
- *   EXPANDED    [85] → [24] → [100 / (100 + 24)] → [0.806] → [80.6% · Damage taken] → [68]
+ *   EXPANDED    [85] → [24] → [100 / (100 + 24)] → [0.806] → [19.4% · Reduced] → [68]
  *               the reveal's full derivation, all at once.
- *   COMPRESSED  [85] → [24] → [80.6% · Damage taken] → [68]
+ *   COMPRESSED  [85] → [24] → [19.4% · Reduced] → [68]
  *               the `detail` nodes folded into the `transform` node, which
  *               reopens them.
  *
  * The fraction, the decimal and the percent are three WRITINGS of one served
- * number (`mitigation_multiplier`); none is an operand. The chain is arrows,
+ * number (`mitigation_multiplier`); none is an operand. (The percent is the
+ * share it REMOVES — League's own way of saying a reduction, owner-locked.) The chain is arrows,
  * never `×` or `=`: 85 × 0.806 is not how 68 was reached (the exact working is
  * 84.56 × 0.8063 ≈ 68.18, behind the Exact control).
  */
@@ -98,8 +99,10 @@ export interface ReasonMagnitude {
   toLabel: string;
   /** `ratio` as a share ("80.6%"). */
   percent: string;
-  /** What the share IS, in words: damage "taken" (default), cooldown "kept". */
+  /** What the share IS, in words ("reduced"). */
   kept?: string;
+  /** JP5 — the flat change between the two served ends ("≈16 less", "≈1.1s shorter"). */
+  delta?: string;
 }
 
 /**
@@ -159,7 +162,9 @@ export function rawReasoning(w: RawDamageWorking): Reasoning {
       const exactTerm = !isRoundedForDisplay(r.value) && !isRoundedForDisplay(term) && same(r.ratio * r.value, term);
       return {
         key: `ratio-${i}`, op: "+",
-        label: capitalize(`${ratioStatLabel(r.stat, r.label)} damage`),
+        // League's tooltip / patch-note convention: the scaling source in
+        // parentheses, "15 (Bonus AD)" (owner-locked copy).
+        label: `(${capitalize(ratioStatLabel(r.stat, r.label))})`,
         icon: stat && isJourneyStatKey(stat) ? { kind: "stat", stat } : null,
         expression: `${pct(r.ratio)} of ${displayWhole(r.value)} ${exactTerm ? "=" : "≈"}`,
         value: displayWhole(term),
@@ -291,8 +296,8 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
         fraction: { top: "100", bottom: `100 + ${displayWhole(w.effectiveArmor)}` } },
       { key: "decimal", label: "Multiplier", op: "→", icon: null, detail: true,
         value: w.mitigationMultiplier.toFixed(3) },
-      { key: "multiplier", label: "Damage taken", op: "→", icon: null, transform: true,
-        value: sharePercent(w.mitigationMultiplier) },
+      { key: "multiplier", label: "Reduced", op: "→", icon: null, transform: true,
+        value: reductionPercent(w.mitigationMultiplier) },
     );
   } else {
     nodes.push({ key: "multiplier", label: "Armor multiplier", op: "→", icon: null, value: `×${w.mitigationMultiplier}` });
@@ -319,7 +324,9 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
   // through. Only a real reduction is a magnitude (0 < served multiplier ≤ 1).
   const m = w.mitigationMultiplier;
   const magnitude: ReasonMagnitude | null = m > 0 && m <= 1
-    ? { ratio: m, from: displayWhole(w.rawDamage), to: w.answer, fromLabel: "raw", toLabel: "final", percent: sharePercent(m) }
+    ? { ratio: m, from: displayWhole(w.rawDamage), to: w.answer, fromLabel: "raw", toLabel: "final",
+      percent: reductionPercent(m), kept: "reduced",
+      delta: `${approxWhole(w.rawDamage - w.finalDamage)} less` }
     : null;
   return {
     kind: "combat",
@@ -363,7 +370,7 @@ export function cooldownReasoning(w: CooldownWorking): Reasoning {
       { key: "haste-formula", label: "Formula", op: "→", icon: null, value: "", detail: true,
         fraction: { top: "100", bottom: `100 + ${exactNumber(w.abilityHaste)}` } },
       { key: "decimal", label: "Multiplier", op: "→", icon: null, detail: true, value: m.toFixed(3) },
-      { key: "multiplier", label: "Cooldown kept", op: "→", icon: null, transform: true, value: sharePercent(m) },
+      { key: "multiplier", label: "Reduced", op: "→", icon: null, transform: true, value: reductionPercent(m) },
     );
   } else {
     nodes.push({ key: "multiplier", label: "Cooldown multiplier", op: "→", icon: null, value: `×${m}` });
@@ -381,13 +388,34 @@ export function cooldownReasoning(w: CooldownWorking): Reasoning {
     subject: { icon: abilityIcon, text: `${w.ability.name || w.ability.slot} — ${rankWords(w.ability.rank)}` },
     caption: null, nodes, exact,
     magnitude: { ratio: m, from: seconds(exactNumber(w.baseCooldown)), to: seconds(w.answer),
-      fromLabel: "base", toLabel: "effective", percent: sharePercent(m), kept: "kept" },
+      fromLabel: "base", toLabel: "effective", percent: reductionPercent(m), kept: "reduced",
+      delta: `${approxTenths(w.baseCooldown - w.effectiveCooldown)}s shorter` },
   };
 }
 
-/** A served coefficient as the share it is (0.8063 → "80.6%"). Formatting only. */
-export function sharePercent(coefficient: number): string {
-  return `${Number((coefficient * 100).toFixed(1))}%`;
+/**
+ * The share a served multiplier REMOVES (0.8063 → "19.4%", 0.9091 → "9.1%"):
+ * the same served number written as the reduction it is (owner-locked:
+ * "9.1% reduced", never "10% cooldown reduction" for 10 haste). Formatting
+ * of the served value only.
+ */
+export function reductionPercent(coefficient: number): string {
+  return `${Number(((1 - coefficient) * 100).toFixed(1))}%`;
+}
+
+/**
+ * JP5 — the flat change between two SERVED exact values (raw → final damage,
+ * base → effective cooldown), as the bar may say it: whole damage, tenths of a
+ * second, with `≈` whenever rounding was needed. Never from the displayed
+ * whole numbers (85 − 68 would claim 17; the served 84.56 − 68.1804 is ≈16).
+ */
+export function approxWhole(diff: number): string {
+  const shown = displayWhole(diff);
+  return Number(shown) === diff ? shown : `≈${shown}`;
+}
+export function approxTenths(diff: number): string {
+  const shown = String(Number(diff.toFixed(1)));
+  return Number(shown) === diff ? shown : `≈${shown}`;
 }
 
 /** Does this chain fold (it has derivation detail, and a node to fold it into)? */

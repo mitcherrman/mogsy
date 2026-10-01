@@ -4,7 +4,7 @@
  *   * the BOARD is current objects: no retained scalar bubbles ("Bonus AD 21",
  *     "Raw 85 !", "Armor ?/24 !") on any snapshot; portraits, abilities (and
  *     their own `!`), items and shards stay; the former anchor row keeps its box;
- *   * the PORTRAIT opens the champion's notebook: established stats only, in
+ *   * the PORTRAIT opens the champion portrait popup: established stats only, in
  *     the authored state they belong to, with their served provenance;
  *   * the REASONING CHAIN is unchanged.
  */
@@ -43,12 +43,12 @@ function show(s: CaptureSnapshot) {
   );
 }
 const board = () => screen.getByTestId("journey-board");
-const portrait = (side: "subject" | "opponent") => screen.getByTestId(`journey-notebook-${side}`);
+const portrait = (side: "subject" | "opponent") => screen.getByTestId(`journey-portrait-popup-${side}`);
 const openSheet = (side: "subject" | "opponent") => {
   fireEvent.click(portrait(side));
-  return screen.getByTestId(`journey-notebook-${side}-sheet`);
+  return screen.getByTestId(`journey-portrait-popup-${side}-sheet`);
 };
-const row = (side: "subject" | "opponent", stat: string) => screen.getByTestId(`journey-notebook-${side}-row-${stat}`);
+const row = (side: "subject" | "opponent", stat: string) => screen.getByTestId(`journey-portrait-popup-${side}-row-${stat}`);
 
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); resetKnowledgeCoach(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); resetKnowledgeCoach(); });
@@ -91,7 +91,7 @@ describe("the board is current objects: no retained scalar bubbles", () => {
   });
 });
 
-describe("the portrait opens the champion's notebook", () => {
+describe("the portrait opens the champion portrait popup", () => {
   it("every portrait is a button; the sheet is a small stat table that starts empty", () => {
     show(snap(REF, "child0-live"));
     expect(portrait("subject").tagName).toBe("BUTTON");
@@ -104,7 +104,7 @@ describe("the portrait opens the champion's notebook", () => {
       ["health", "armor", "magic_resist", "attack_damage", "bonus_attack_damage", "ability_power", "ability_haste"]);
     expect(rows.every((r) => r.getAttribute("data-known") === "false")).toBe(true);
     // Nothing known yet: every value is the unknown mark.
-    expect(within(sheet).getByTestId("journey-notebook-opponent-rows").textContent).not.toMatch(/\d/);
+    expect(within(sheet).getByTestId("journey-portrait-popup-opponent-rows").textContent).not.toMatch(/\d/);
   });
 
   it("Zed after Step 2: Bonus AD 21, stated, with its served sources one tap away", () => {
@@ -113,24 +113,24 @@ describe("the portrait opens the champion's notebook", () => {
     const bonus = row("subject", "bonus_attack_damage");
     expect(bonus).toHaveAttribute("data-how", "stated");
     expect(bonus.textContent).toMatch(/^Bonus AD21Lv 2 · Doran's Blade · 2 shards · stated Step 2/);
-    fireEvent.click(screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-toggle"));
-    const sources = screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-sources");
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-toggle"));
+    const sources = screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-sources");
     expect([...sources.querySelectorAll("li")].map((li) => li.getAttribute("aria-label"))).toEqual([
       "Doran's Blade: +10", "Adaptive Force: +5.4", "Adaptive Force: +5.4", "Exact 20.8"]);
     // Zed's other stats were never established.
     expect(row("subject", "armor")).toHaveAttribute("data-known", "false");
     // Nothing he learned by a reveal: no `!` on his portrait.
-    expect(screen.queryByTestId("journey-notebook-subject-mark")).toBeNull();
+    expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
   });
 
   it("Ahri's armor: unknown while Step 3 asks it, LEARNED (24, Lv 2 base) from its reveal, with the `!`", () => {
     show(snap(REF, "child2-live"));
     openSheet("opponent");
     expect(row("opponent", "armor")).toHaveAttribute("data-known", "false");
-    expect(screen.queryByTestId("journey-notebook-opponent-mark")).toBeNull();
+    expect(screen.queryByTestId("journey-portrait-popup-opponent-mark")).toBeNull();
     cleanup();
     show(snap(REF, "child2-reveal"));
-    expect(screen.getByTestId("journey-notebook-opponent-mark")).toHaveTextContent("!");
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toHaveTextContent("!");
     expect(portrait("opponent")).toHaveAccessibleName("Ahri stats, learned facts");
     openSheet("opponent");
     const armor = row("opponent", "armor");
@@ -152,13 +152,13 @@ describe("a MODIFIED stat across authored states (Pantheon / Leona)", () => {
   it("after Cloth Armor: the current state states 65 = Lv 3 base + Cloth Armor; the earlier state keeps 50", () => {
     show(snap(PANTHEON, "child3-live"));
     const sheet = openSheet("opponent");
-    expect(within(sheet).getByTestId("journey-notebook-opponent-note")).toHaveTextContent("Leona buys Cloth Armor.");
-    const select = within(sheet).getByTestId("journey-notebook-opponent-state") as HTMLSelectElement;
+    expect(within(sheet).getByTestId("journey-portrait-popup-opponent-note")).toHaveTextContent("Leona buys Cloth Armor.");
+    const select = within(sheet).getByTestId("journey-portrait-popup-opponent-state") as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toEqual(["Steps 1–3 · Lv 3", "Current state"]);
     const armor = row("opponent", "armor");
     expect(armor.textContent).toMatch(/^Armor65Lv 3 · Cloth Armor · stated Step 4/);
-    fireEvent.click(screen.getByTestId("journey-notebook-opponent-row-armor-toggle"));
-    expect([...screen.getByTestId("journey-notebook-opponent-row-armor-sources").querySelectorAll("li")]
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-opponent-row-armor-toggle"));
+    expect([...screen.getByTestId("journey-portrait-popup-opponent-row-armor-sources").querySelectorAll("li")]
       .map((li) => li.getAttribute("aria-label"))).toEqual(["Lv 3 base: 50.08", "Cloth Armor: +15", "Exact 65.08"]);
     // The earlier authored state: what Step 1 taught, as taught.
     fireEvent.change(select, { target: { value: "0" } });
@@ -168,7 +168,7 @@ describe("a MODIFIED stat across authored states (Pantheon / Leona)", () => {
   it("the sheet opens at the board's current state, and only reached states are listed", () => {
     show(snap(PANTHEON, "child2-live"));
     const sheet = openSheet("opponent");
-    expect(within(sheet).queryByTestId("journey-notebook-opponent-state")).toBeNull();
+    expect(within(sheet).queryByTestId("journey-portrait-popup-opponent-state")).toBeNull();
     expect(within(sheet).getByText("Current state")).toBeInTheDocument();
     expect(row("opponent", "armor").textContent).toMatch(/^Armor50/);
   });

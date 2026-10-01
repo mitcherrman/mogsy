@@ -86,9 +86,9 @@ const steps = () => [...chain().querySelectorAll<HTMLElement>("li.journey-reason
 /** The steps a learner can read: a folded step is `aria-hidden` and `inert`. */
 const readable = () => steps().filter((li) => li.getAttribute("aria-hidden") !== "true");
 const texts = (lis: HTMLElement[]) => lis.map((li) => li.querySelector(".journey-node")!.textContent);
-const transform = () => within(chain()).getByRole("button", { name: /Damage taken/ });
-const EXPANDED = ["85Raw damage", "24Ahri armor", "100100 + 24Formula", "0.806Multiplier", "80.6%Damage taken", "68Final damage"];
-const COMPRESSED = ["85Raw damage", "24Ahri armor", "80.6%Damage taken", "68Final damage"];
+const transform = () => within(chain()).getByRole("button", { name: /Reduced/ });
+const EXPANDED = ["85Raw damage", "24Ahri armor", "100100 + 24Formula", "0.806Multiplier", "19.4%Reduced", "68Final damage"];
+const COMPRESSED = ["85Raw damage", "24Ahri armor", "19.4%Reduced", "68Final damage"];
 
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); resetKnowledgeCoach(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); resetKnowledgeCoach(); });
@@ -128,10 +128,10 @@ describe("LIVE: what this step builds on, before the answer", () => {
     show(snap(REF, "child3-live"));
     const board = screen.getByTestId("journey-board");
     expect(board.querySelector(".journey-reasoning, .journey-node")).toBeNull();
-    // Zed E's `!` (formula, raw damage) and Ahri's notebook `!` (her armor).
+    // Zed E's `!` (formula, raw damage) and Ahri's portrait `!` (her armor).
     expect(board.querySelectorAll("button.journey-know")).toHaveLength(1);
-    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
-    expect(board.textContent).not.toMatch(/\b85\b|\b24\b/);       // the notebook never reprints (JP4)
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
+    expect(board.textContent).not.toMatch(/\b85\b|\b24\b/);       // the board never reprints (JP4)
   });
 
   it("Step 2 keeps its JP4 question: it relies on the FORMULA, which is not a value to chain (owner)", () => {
@@ -260,7 +260,7 @@ describe("the EQUATION UNFOLD: the whole derivation, all at once", () => {
     const raw = screen.getByTestId("journey-raw-working");
     expect(raw.querySelector("ol")).not.toHaveAttribute("data-phase");
     expect([...raw.querySelectorAll(".journey-node")].map((n) => n.textContent)).toEqual([
-      "70Base damage", "70% of 21 ≈15Bonus AD damage", "85Raw damage"]);
+      "70Base damage", "70% of 21 ≈15(Bonus AD)", "85Raw damage"]);
     expect(raw.querySelector("button.journey-node, .journey-magnitude")).toBeNull();
     cleanup();
     show(snap(J5_REF, "child2-reveal"));
@@ -336,12 +336,16 @@ describe("HASTE — the cooldown unfolds from the SERVED working (Volibear)", ()
     show(snap(J5_VOLI, "child2-reveal"));
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     expect(nodesOf()).toEqual(["12sBase cooldown", "10Ability haste", "100100 + 10Formula", "0.909Multiplier",
-      "90.9%Cooldown kept", "11sNew cooldown"]);
+      "9.1%Reduced", "11sNew cooldown"]);
     const bar = screen.getByTestId("journey-cooldown-working-magnitude");
     expect(bar).toHaveAttribute("data-ratio", "0.9091");
     expect(bar.style.getPropertyValue("--jm-ratio")).toBe("0.9091");
-    expect(bar).toHaveAccessibleName("12s base, 90.9% kept: 11s effective");
+    expect(bar).toHaveAccessibleName("12s base, 9.1% reduced: 11s effective (≈1.1s shorter)");
+    expect(screen.getByTestId("journey-cooldown-working-magnitude-delta")).toHaveTextContent(/^≈1\.1s shorter$/);
     expect(haste().textContent).not.toMatch(/10\.9|=/);
+    // Owner lock (round 5): the reduction, never the share kept, never "of base",
+    // never 10 haste read as "10% cooldown reduction".
+    expect(haste().textContent).not.toMatch(/kept|90\.9|of base|10% cooldown reduction/i);
   });
 
   it("folds at the fixed point inside its 6000ms window and reopens on a tap", () => {
@@ -352,8 +356,8 @@ describe("HASTE — the cooldown unfolds from the SERVED working (Volibear)", ()
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     tick(1);
     expect(reveal()).toHaveAttribute("data-unfold", "compressed");
-    expect(nodesOf()).toEqual(["12sBase cooldown", "10Ability haste", "90.9%Cooldown kept", "11sNew cooldown"]);
-    fireEvent.click(within(haste()).getByRole("button", { name: /Cooldown kept/ }));
+    expect(nodesOf()).toEqual(["12sBase cooldown", "10Ability haste", "9.1%Reduced", "11sNew cooldown"]);
+    fireEvent.click(within(haste()).getByRole("button", { name: /Reduced/ }));
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
   });
 
@@ -455,18 +459,18 @@ describe("auto-compress, inside the SERVER's reveal window", () => {
 });
 
 describe("manual reopen: the compressed transformation is a control", () => {
-  it("the 80.6% node is a button that says what it does; tapping it reopens the full equation", () => {
+  it("the 19.4% node is a button that says what it does; tapping it reopens the full equation", () => {
     show(snap(J5_REF, "child3-reveal"));
     tick(2700);
     const t = transform();
     expect(t.tagName).toBe("BUTTON");
     expect(t).toHaveAttribute("aria-expanded", "false");
-    expect(t).toHaveAccessibleName("Damage taken: 80.6%. Show the full equation");
+    expect(t).toHaveAccessibleName("Reduced: 19.4%. Show the full equation");
     fireEvent.click(t);
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     expect(reveal()).toHaveAttribute("data-unfold-by", "learner");
     expect(transform()).toHaveAttribute("aria-expanded", "true");
-    expect(transform()).toHaveAccessibleName("Damage taken: 80.6%. Hide the full equation");
+    expect(transform()).toHaveAccessibleName("Reduced: 19.4%. Hide the full equation");
     expect(texts(readable())).toEqual(EXPANDED);
     for (const li of steps()) expect(li).not.toHaveAttribute("inert");
   });
@@ -516,8 +520,8 @@ describe("the magnitude bar is sized by the SERVED multiplier", () => {
     show(snap(REF, "child3-reveal"));
     expect(bar()).toHaveAttribute("data-ratio", "0.8063");
     expect(bar().style.getPropertyValue("--jm-ratio")).toBe("0.8063");
-    expect(bar()).toHaveAccessibleName("85 raw, 80.6% taken: 68 final");
-    expect(bar().textContent).toBe("85 raw68 final");
+    expect(bar()).toHaveAccessibleName("85 raw, 19.4% reduced: 68 final (≈16 less)");
+    expect(bar().textContent).toBe("85 raw68 final≈16 less");
     expect(chain()).toContainElement(bar());                 // under the equation, in the same reveal box
   });
 
@@ -540,14 +544,14 @@ describe("the magnitude bar is sized by the SERVED multiplier", () => {
     show(s);
     expect(bar()).toHaveAttribute("data-ratio", "0.5");
     expect(bar().style.getPropertyValue("--jm-ratio")).toBe("0.5");
-    expect(bar().textContent).toBe("85 raw68 final");
-    expect(transform()).toHaveTextContent("50%Damage taken");
+    expect(bar().textContent).toBe("85 raw68 final≈16 less");
+    expect(transform()).toHaveTextContent("50%Reduced");
   });
 
   it("Pantheon/Leona: the same bar at that Journey's own served multiplier (0.6663)", () => {
     show(snap(PANTHEON, "child2-reveal"));
     expect(bar()).toHaveAttribute("data-ratio", "0.6663");
-    expect(bar()).toHaveAccessibleName("124 raw, 66.6% taken: 83 final");
+    expect(bar()).toHaveAccessibleName("124 raw, 33.4% reduced: 83 final (≈41 less)");
   });
 
   it("compressed: the bar is out of the reading (the four-node summary stands alone)", () => {
@@ -563,7 +567,7 @@ describe("GENERIC reuse: Pantheon/Leona's learned armor, then its Combat applica
     show(snap(PANTHEON, "child2-reveal"));
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     expect(texts(readable())).toEqual([
-      "124Raw damage", "50Leona armor", "100100 + 50Formula", "0.666Multiplier", "66.6%Damage taken", "83Final damage"]);
+      "124Raw damage", "50Leona armor", "100100 + 50Formula", "0.666Multiplier", "33.4%Reduced", "83Final damage"]);
     // Leona's armor was learned at Step 1 (given); the raw damage comes from the
     // formula this child STATES, so it is part of what the reveal adds.
     expect(steps().map((li) => li.dataset.given ?? "new")).toEqual(["new", "true", "new", "new", "new", "new"]);
@@ -753,7 +757,7 @@ describe("every Journey host draws the same chain", () => {
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     tick(3200 - intoReveal(r));
     expect(reveal()).toHaveAttribute("data-unfold", "compressed");
-    expect(texts(readable())).toEqual(["124Raw damage", "50Leona armor", "66.6%Damage taken", "83Final damage"]);
+    expect(texts(readable())).toEqual(["124Raw damage", "50Leona armor", "33.4%Reduced", "83Final damage"]);
   });
 
   it("Daily Survival (Volibear): a Combat child there unfolds the same way, on its own per-child clock", () => {
@@ -763,7 +767,7 @@ describe("every Journey host draws the same chain", () => {
     show(s);
     expect(reveal()).toHaveAttribute("data-unfold", "expanded");
     expect(steps()).toHaveLength(6);
-    expect(texts(readable()).slice(2, 5).map((t) => t!.replace(/^[\d.%+ ]+/, ""))).toEqual(["Formula", "Multiplier", "Damage taken"]);
+    expect(texts(readable()).slice(2, 5).map((t) => t!.replace(/^[\d.%+ ]+/, ""))).toEqual(["Formula", "Multiplier", "Reduced"]);
     expect(screen.getByTestId("journey-combat-working-magnitude")).toBeInTheDocument();
   });
 

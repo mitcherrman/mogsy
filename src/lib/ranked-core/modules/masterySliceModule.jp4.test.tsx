@@ -5,7 +5,7 @@
  *
  *   * the board: authoritative shards, mirrored fixed halves, one anchor row,
  *     stat mnemonics that cannot be read as inventory, served bonus-AD sources;
- *   * the notebook: a learned value is recalled from its `!`, not reprinted —
+ *   * learned history: a learned value is recalled from its `!`, not reprinted —
  *     and the first `!` teaches itself once (the coach);
  *   * the question: subject icons that reinforce nouns; a fixed box, adaptive type;
  *   * the Reasoning Chain: fixed nodes, strong operators;
@@ -166,14 +166,14 @@ describe("the board: two mirrored fixed halves", () => {
 });
 
 describe("stat mnemonics are symbols, never inventory", () => {
-  it("JP5 — no stat mnemonic badge on the board; a stat's sources are its notebook's, drawn as the ITEMS and SHARDS they are", () => {
+  it("JP5 — no stat mnemonic badge on the board; a stat's sources are in the champion portrait popup, drawn as the ITEMS and SHARDS they are", () => {
     show(snap(REF, "child1-live"));
     expect(screen.queryByTestId("journey-stat-subject-bonus_attack_damage")).toBeNull();
     // No slot holds a Long Sword: the champion does not own the mnemonic.
     expect(screen.getByTestId("journey-items-subject").querySelector("[data-item-id='1036']")).toBeNull();
-    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
-    fireEvent.click(screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-toggle"));
-    const sources = screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-sources");
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-toggle"));
+    const sources = screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-sources");
     const blade = sources.querySelector("[data-source-kind='item'] [data-icon-kind='item']")!;
     expect(blade).toHaveAttribute("data-item-id", "1055");
     expect(blade.className).toMatch(/journey-ico--item/);
@@ -188,11 +188,11 @@ describe("stat mnemonics are symbols, never inventory", () => {
 });
 
 describe("Bonus AD provenance: where 21 comes from", () => {
-  it("Zed's notebook carries its served sources (item + two shards) and their exact total", () => {
+  it("Zed's champion portrait popup carries its served sources (item + two shards) and their exact total", () => {
     show(snap(REF, "child1-live"));
-    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
-    fireEvent.click(screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-toggle"));
-    const sources = screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage-sources");
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-toggle"));
+    const sources = screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-sources");
     expect([...sources.querySelectorAll("[data-source-kind]")].map((r) => r.getAttribute("aria-label")))
       .toEqual(["Doran's Blade: +10", "Adaptive Force: +5.4", "Adaptive Force: +5.4"]);
     expect(sources).toHaveTextContent("Exact · shown 2120.8");
@@ -200,15 +200,15 @@ describe("Bonus AD provenance: where 21 comes from", () => {
 
   it("a stat with no served sources lists none (nothing is derived to fill it)", () => {
     show(m1snap("pantheon.standard", "child2-live"));
-    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
-    const toggle = screen.queryByTestId("journey-notebook-subject-row-attack_damage-toggle");
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
+    const toggle = screen.queryByTestId("journey-portrait-popup-subject-row-attack_damage-toggle");
     if (toggle) fireEvent.click(toggle);
-    const list = screen.queryByTestId("journey-notebook-subject-row-attack_damage-sources");
+    const list = screen.queryByTestId("journey-portrait-popup-subject-row-attack_damage-sources");
     expect(list?.querySelectorAll("[data-source-kind]").length ?? 0).toBe(0);
   });
 });
 
-describe("the notebook: learned facts are recalled, not reprinted", () => {
+describe("learned history: learned facts are recalled, not reprinted", () => {
   it("after its reveal a learned value never reappears as board text; it is one `!` away", () => {
     for (const file of [REF, WRONG, TIMEOUT]) {
       for (const s of live(file)) {
@@ -219,7 +219,7 @@ describe("the notebook: learned facts are recalled, not reprinted", () => {
         if (b) {
           // Step 2's raw 85 is never printed again on the board…
           expect(b.textContent, `${file} ${s.label}`).not.toMatch(/\b85\b/);
-          // …and (JP5) Step 3's armor 24 never is: it lives in Ahri's notebook.
+          // …and (JP5) Step 3's armor 24 never is: it lives in Ahri's champion portrait popup.
           expect(b.textContent, `${file} ${s.label}`).not.toMatch(/\b24\b/);
         }
         unmount();
@@ -227,8 +227,8 @@ describe("the notebook: learned facts are recalled, not reprinted", () => {
     }
     show(snap(REF, "child3-live"));
     expect(popText("journey-know-subject-E")).toMatch(/Raw damage 85.*learned Step 2/);
-    fireEvent.click(screen.getByTestId("journey-notebook-opponent"));
-    expect(screen.getByTestId("journey-notebook-opponent-row-armor").textContent).toMatch(/^Armor24Lv 2 base · learned Step 3/);
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-opponent"));
+    expect(screen.getByTestId("journey-portrait-popup-opponent-row-armor").textContent).toMatch(/^Armor24Lv 2 base · learned Step 3/);
   });
 });
 
@@ -263,7 +263,7 @@ describe("the `!` coach: taught once", () => {
     expect(screen.queryByTestId("journey-know-coach")).toBeNull();
   });
 
-  it("a tap dismisses it; a reload mid-Journey shows none (the notebook is simply there)", () => {
+  it("a tap dismisses it; a reload mid-Journey shows none (the learned `!` is simply there)", () => {
     const r = show(snap(REF, "child0-live"));
     stepTo(r, snap(REF, "child0-reveal"), snap(REF, "child0-live"));
     fireEvent.pointerDown(screen.getByTestId("journey-know-coach"));

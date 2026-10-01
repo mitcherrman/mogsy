@@ -145,7 +145,7 @@ describe("answer safety in the DOM", () => {
     // JP5 — the board prints no stat at all (the question asks it in words).
     expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
     // The question is about the opponent's stat: its portrait is outlined.
-    expect(screen.getByTestId("journey-notebook-opponent")).toHaveAttribute("data-focus", "true");
+    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-focus", "true");
     fireEvent.click(screen.getByTestId("journey-open-state"));
     expect(screen.getByTestId("journey-sheet-stat-opponent-armor")).toHaveTextContent("asked in this question");
     expect(document.body.innerHTML).not.toContain("44.195");
@@ -177,9 +177,9 @@ describe("Matchup and Combat presentation", () => {
     expect(screen.getByTestId("journey-side-opponent")).toHaveAttribute("data-combat-role", "target");
     expect(screen.getByTestId("journey-seam")).toHaveAttribute("data-seam", "combat");
     // JP5 — the stats the question is about outline their champion's portrait
-    // (the notebook), not a board bubble.
-    for (const id of ["journey-ability-subject-Q", "journey-notebook-subject",
-      "journey-notebook-opponent", "journey-item-opponent-0"]) {
+    // (its champion portrait popup), not a board bubble.
+    for (const id of ["journey-ability-subject-Q", "journey-portrait-popup-subject",
+      "journey-portrait-popup-opponent", "journey-item-opponent-0"]) {
       expect(screen.getByTestId(id)).toHaveAttribute("data-focus", "true");
     }
   });

@@ -1,7 +1,7 @@
 /**
- * JP5 — THE CHAMPION NOTEBOOK: the board's circular portrait is a control.
+ * JP5 — THE CHAMPION PORTRAIT POPUP: the board's circular portrait is a control.
  * Click / tap it for a compact sheet of that champion's stats as the learner
- * has ESTABLISHED them (`lib/journey/notebook.ts`) — a small League stat
+ * has ESTABLISHED them (`lib/journey/portraitPopup.ts`) — a small League stat
  * table that starts mostly empty and fills in as the Journey teaches:
  *
  *   AHRI · Lv 2                   [Current state ▾]
@@ -25,8 +25,8 @@ import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { JourneySide, JourneyStatSource } from "@/lib/journey/contract";
 import {
-  entryBasis, notebookLabel, NOTEBOOK_STATS, type ChampionNotebook, type NotebookCheckpoint, type NotebookEntry,
-} from "@/lib/journey/notebook";
+  entryBasis, portraitPopupLabel, PORTRAIT_POPUP_STATS, type ChampionPortraitPopup, type PortraitPopupCheckpoint, type PortraitPopupEntry,
+} from "@/lib/journey/portraitPopup";
 import { exactNumber, isRoundedForDisplay, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import { ItemIcon, ShardIcon } from "./JourneyIcons";
 import { JourneyPortrait } from "./JourneyPrimitives";
@@ -50,20 +50,20 @@ export function JourneyStatSourceRow({ source, testId }: { source: JourneyStatSo
   );
 }
 
-const checkpointLabel = (cp: NotebookCheckpoint, current: boolean) => {
+const checkpointLabel = (cp: PortraitPopupCheckpoint, current: boolean) => {
   const steps = cp.firstStep === cp.lastStep ? `Step ${cp.firstStep}` : `Steps ${cp.firstStep}–${cp.lastStep}`;
   return current ? "Current state" : [steps, `Lv ${cp.level}`, cp.note].filter(Boolean).join(" · ");
 };
 
-function Row({ stat, entry, testId }: { stat: (typeof NOTEBOOK_STATS)[number]; entry: NotebookEntry | undefined; testId: string }) {
+function Row({ stat, entry, testId }: { stat: (typeof PORTRAIT_POPUP_STATS)[number]; entry: PortraitPopupEntry | undefined; testId: string }) {
   const [open, setOpen] = useState(false);
-  const label = notebookLabel(stat);
+  const label = portraitPopupLabel(stat);
   if (!entry) {
     return (
-      <li className="journey-notebook__row" data-stat={stat} data-known="false" data-testid={testId}
+      <li className="journey-portrait-popup__row" data-stat={stat} data-known="false" data-testid={testId}
         aria-label={`${JOURNEY_STAT_META[stat].long}: not established`}>
-        <span aria-hidden className="journey-notebook__stat">{label}</span>
-        <span aria-hidden className="journey-notebook__value journey-notebook__value--unknown">—</span>
+        <span aria-hidden className="journey-portrait-popup__stat">{label}</span>
+        <span aria-hidden className="journey-portrait-popup__value journey-portrait-popup__value--unknown">—</span>
       </li>
     );
   }
@@ -72,24 +72,24 @@ function Row({ stat, entry, testId }: { stat: (typeof NOTEBOOK_STATS)[number]; e
   const spoken = `${JOURNEY_STAT_META[stat].long}: ${entry.display}, ${basis}`;
   const body = (
     <>
-      <span aria-hidden className="journey-notebook__stat">{label}</span>
-      <span aria-hidden className="journey-notebook__value">{entry.display}</span>
-      <span aria-hidden className="journey-notebook__basis">{basis}</span>
+      <span aria-hidden className="journey-portrait-popup__stat">{label}</span>
+      <span aria-hidden className="journey-portrait-popup__value">{entry.display}</span>
+      <span aria-hidden className="journey-portrait-popup__basis">{basis}</span>
     </>
   );
   return (
-    <li className="journey-notebook__row" data-stat={stat} data-known="true" data-how={entry.how} data-testid={testId}>
+    <li className="journey-portrait-popup__row" data-stat={stat} data-known="true" data-how={entry.how} data-testid={testId}>
       {detail ? (
-        <button type="button" className="journey-notebook__line" aria-expanded={open} aria-label={`${spoken}. ${open ? "Hide" : "Show"} where it comes from`}
+        <button type="button" className="journey-portrait-popup__line" aria-expanded={open} aria-label={`${spoken}. ${open ? "Hide" : "Show"} where it comes from`}
           onClick={() => setOpen((o) => !o)} data-testid={`${testId}-toggle`}>
           {body}
-          <ChevronDown aria-hidden className={`journey-notebook__chev ${open ? "rotate-180" : ""}`} strokeWidth={2.5} />
+          <ChevronDown aria-hidden className={`journey-portrait-popup__chev ${open ? "rotate-180" : ""}`} strokeWidth={2.5} />
         </button>
       ) : (
-        <span className="journey-notebook__line" role="group" aria-label={spoken}>{body}</span>
+        <span className="journey-portrait-popup__line" role="group" aria-label={spoken}>{body}</span>
       )}
       {detail && open && (
-        <ul className="journey-notebook__sources" data-testid={`${testId}-sources`}>
+        <ul className="journey-portrait-popup__sources" data-testid={`${testId}-sources`}>
           {entry.sources.map((s, i) => <JourneyStatSourceRow key={i} source={s} testId={`${testId}-source-${i}`} />)}
           {entry.exact !== null && (
             <li className="journey-source-row journey-source-row--total" aria-label={`Exact ${exactNumber(entry.exact)}`}>
@@ -105,9 +105,9 @@ function Row({ stat, entry, testId }: { stat: (typeof NOTEBOOK_STATS)[number]; e
   );
 }
 
-export function JourneyChampionNotebook({ side, notebook, fresh = false, focused = false, testId }: {
+export function JourneyChampionPortraitPopup({ side, popup, fresh = false, focused = false, testId }: {
   side: JourneySide;
-  notebook: ChampionNotebook | null;
+  popup: ChampionPortraitPopup | null;
   /** A stat was learned just now: the `!` settles in with one glow (JP3). */
   fresh?: boolean;
   /** The question on screen is about one of this champion's stats. */
@@ -115,13 +115,13 @@ export function JourneyChampionNotebook({ side, notebook, fresh = false, focused
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
-  const current = notebook?.current ?? null;
+  const current = popup?.current ?? null;
   const [picked, setPicked] = useState<number | null>(current);
   // The sheet follows the board: a new state on screen resets the choice to it.
   useEffect(() => { setPicked(current); }, [current]);
-  const checkpoints = notebook?.checkpoints ?? [];
+  const checkpoints = popup?.checkpoints ?? [];
   const cp = checkpoints.find((c) => c.node === picked) ?? checkpoints.find((c) => c.node === current) ?? null;
-  const learned = notebook?.learned ?? false;
+  const learned = popup?.learned ?? false;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -138,13 +138,13 @@ export function JourneyChampionNotebook({ side, notebook, fresh = false, focused
       <PopoverContent side="bottom" align="center" sideOffset={6} collisionPadding={8}
         data-testid={`${testId}-sheet`} aria-label={`${side.championName} stats`}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="journey-know-pop journey-notebook w-[min(16.5rem,calc(100vw-16px))] p-0">
-        <div className="journey-notebook__head">
-          <span className="journey-notebook__title">
-            {side.championName}{cp ? <span className="journey-notebook__lv"> · Lv {cp.level}</span> : null}
+        className="journey-know-pop journey-portrait-popup w-[min(16.5rem,calc(100vw-16px))] p-0">
+        <div className="journey-portrait-popup__head">
+          <span className="journey-portrait-popup__title">
+            {side.championName}{cp ? <span className="journey-portrait-popup__lv"> · Lv {cp.level}</span> : null}
           </span>
           {checkpoints.length > 1 ? (
-            <label className="journey-notebook__state">
+            <label className="journey-portrait-popup__state">
               <span className="sr-only">Journey state</span>
               <select data-testid={`${testId}-state`} value={cp?.node ?? ""}
                 onChange={(e) => setPicked(Number(e.target.value))}>
@@ -152,16 +152,16 @@ export function JourneyChampionNotebook({ side, notebook, fresh = false, focused
                   <option key={c.node} value={c.node}>{checkpointLabel(c, c.node === current)}</option>
                 ))}
               </select>
-              <ChevronDown aria-hidden className="journey-notebook__state-chev" strokeWidth={2.5} />
+              <ChevronDown aria-hidden className="journey-portrait-popup__state-chev" strokeWidth={2.5} />
             </label>
           ) : (
-            <span className="journey-notebook__state journey-notebook__state--fixed">Current state</span>
+            <span className="journey-portrait-popup__state journey-portrait-popup__state--fixed">Current state</span>
           )}
         </div>
         {/* The served transition that led into this state ("Leona buys Cloth Armor."). */}
-        {cp?.note && <p className="journey-notebook__note" data-testid={`${testId}-note`}>{cp.note}</p>}
-        <ul className="journey-notebook__rows" data-testid={`${testId}-rows`} data-node={cp?.node}>
-          {NOTEBOOK_STATS.map((stat) => (
+        {cp?.note && <p className="journey-portrait-popup__note" data-testid={`${testId}-note`}>{cp.note}</p>}
+        <ul className="journey-portrait-popup__rows" data-testid={`${testId}-rows`} data-node={cp?.node}>
+          {PORTRAIT_POPUP_STATS.map((stat) => (
             <Row key={`${cp?.node}:${stat}`} stat={stat} entry={cp?.entries[stat]} testId={`${testId}-row-${stat}`} />
           ))}
         </ul>

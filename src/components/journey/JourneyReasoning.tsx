@@ -224,7 +224,8 @@ export function JourneyMagnitude({ magnitude, testId, folded = false }: {
   return (
     <div className="journey-magnitude" data-testid={testId} data-ratio={magnitude.ratio}
       role="img" {...(folded ? { "aria-hidden": true } : {})}
-      aria-label={`${magnitude.from} ${magnitude.fromLabel}, ${magnitude.percent} ${magnitude.kept ?? "taken"}: ${magnitude.to} ${magnitude.toLabel}`}
+      aria-label={`${magnitude.from} ${magnitude.fromLabel}, ${magnitude.percent} ${magnitude.kept ?? "taken"}: ${magnitude.to} ${magnitude.toLabel}${
+        magnitude.delta ? ` (${magnitude.delta})` : ""}`}
       style={{ "--jm-ratio": String(magnitude.ratio) } as CSSProperties}>
       <span aria-hidden className="journey-magnitude__end">
         <b>{magnitude.from}</b> {magnitude.fromLabel}
@@ -235,6 +236,10 @@ export function JourneyMagnitude({ magnitude, testId, folded = false }: {
       <span aria-hidden className="journey-magnitude__end journey-magnitude__end--to">
         <b>{magnitude.to}</b> {magnitude.toLabel}
       </span>
+      {/* JP5 — the flat change, after the end it arrives at ("≈1.1s shorter"). */}
+      {magnitude.delta && (
+        <span aria-hidden className="journey-magnitude__delta" data-testid={`${testId}-delta`}>{magnitude.delta}</span>
+      )}
     </div>
   );
 }

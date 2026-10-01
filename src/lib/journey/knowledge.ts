@@ -288,12 +288,12 @@ export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | n
   };
 }
 
-// ── JP3 — THE BOARD AS THE LEARNER'S NOTEBOOK ─────────────────────────────
+// ── JP3 — LEARNED HISTORY ON THE BOARD'S OBJECTS ─────────────────────────────
 //
 // One grammar: a gold `!` means the learner established knowledge about THIS
 // piece of game state earlier in the Journey. It sits on the board object the
 // fact is about — an ability's facts on its icon; (JP5) a champion's stats on
-// its portrait, which opens the champion's notebook (`notebook.ts`). The board
+// its portrait, which opens the champion portrait popup (`portraitPopup.ts`). The board
 // no longer prints stat values or `?` bubbles. Joins only: the facts and their
 // displays are K2's, never recomputed or inferred.
 

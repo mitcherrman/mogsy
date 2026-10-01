@@ -139,7 +139,7 @@ describe("answer leaks — the reached prefix only", () => {
     const board = screen.getByTestId("journey-board");
     // JP5 — no stat bubble; the asked champion's portrait is outlined instead.
     expect(within(board).queryByTestId("journey-stat-opponent-armor")).toBeNull();
-    expect(screen.getByTestId("journey-notebook-opponent")).toHaveAttribute("data-focus", "true");
+    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-focus", "true");
     expect(board.textContent).not.toContain(answer);
     fireEvent.click(screen.getByTestId("journey-open-state"));
     const sheet = screen.getByTestId("journey-state-sheet");
@@ -272,20 +272,20 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
       .toHaveTextContent("Olaf E (Reckless Swing) at rank 1: 11 seconds. Sett E (Facebreaker) at rank 1: 16 seconds.");
   });
 
-  it("Combat, stated: the served formula is stated WITH the question; the stats are the champion's notebook's", () => {
+  it("Combat, stated: the served formula is stated WITH the question; the stats are in the champion portrait popup", () => {
     show(snap("voli.standard", "child2-open"));
     afterReveal();
     expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
     expect(screen.getByTestId("journey-child")).toHaveAttribute("data-render-path", "combat");
-    // JP5 — the premise's inputs live in the attacker's notebook (its portrait
+    // JP5 — the premise's inputs live in the attacker's champion portrait popup (its portrait
     // is outlined): the served number, whole for display (70.1625 → 70), every
     // digit of it one tap away.
-    expect(screen.getByTestId("journey-notebook-subject")).toHaveAttribute("data-focus", "true");
-    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
-    const ad = screen.getByTestId("journey-notebook-subject-row-attack_damage");
+    expect(screen.getByTestId("journey-portrait-popup-subject")).toHaveAttribute("data-focus", "true");
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
+    const ad = screen.getByTestId("journey-portrait-popup-subject-row-attack_damage");
     expect(ad.textContent).toMatch(/^AD70Lv \d+ · stated Step 3/);
-    fireEvent.click(screen.getByTestId("journey-notebook-subject-row-attack_damage-toggle"));
-    expect(screen.getByTestId("journey-notebook-subject-row-attack_damage-sources")).toHaveTextContent(/70\.1625/);
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-attack_damage-toggle"));
+    expect(screen.getByTestId("journey-portrait-popup-subject-row-attack_damage-sources")).toHaveTextContent(/70\.1625/);
     // The recalled armor is never a number on the board.
     expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
     const f = screen.getByTestId("journey-stated-formula");
@@ -300,8 +300,8 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
     afterReveal();
     expect(screen.queryByTestId("journey-stated-formula")).toBeNull();
     expect(text()).not.toMatch(/10 \/ 20 \/ 30/);
-    fireEvent.click(screen.getByTestId("journey-notebook-subject"));
-    expect(screen.getByTestId("journey-notebook-subject-row-bonus_attack_damage").textContent).toMatch(/^Bonus AD20/);
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
+    expect(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage").textContent).toMatch(/^Bonus AD20/);
     // What steps 1 and 3 established is on the board; no helper line repeats it.
     expect(text()).not.toMatch(/Builds on/i);
   });

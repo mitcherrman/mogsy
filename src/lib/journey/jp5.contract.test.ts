@@ -20,7 +20,7 @@ import { adaptJourneyJ3, type JourneyChildContext, type JourneyPrerequisite } fr
 import type { CombatWorking } from "./combatWorking";
 import type { CaptureSnapshot } from "./realFixtures";
 import {
-  combatReasoning, liveReasoning, sharePercent, unfoldCompressAtMs, unfolds,
+  approxTenths, approxWhole, combatReasoning, liveReasoning, reductionPercent, unfoldCompressAtMs, unfolds,
   UNFOLD_COMPRESS_AT_MS, UNFOLD_MIN_COMPRESSED_MS,
 } from "./reasoning";
 
@@ -240,7 +240,7 @@ describe("the chain's three moments (builders)", () => {
     expect(r.nodes.filter((n) => n.given).map((n) => n.key)).toEqual(["raw", "armor"]);
     // COMPRESSED is the same list without its detail.
     expect(r.nodes.filter((n) => !n.detail).map((n) => [n.value, n.label])).toEqual([
-      ["85", "Raw damage"], ["24", "Ahri armor"], ["80.6%", "Damage taken"], ["68", "Final damage"]]);
+      ["85", "Raw damage"], ["24", "Ahri armor"], ["19.4%", "Reduced"], ["68", "Final damage"]]);
   });
 
   it("never implies 85 × 0.806 = 68: arrows only; the exact working is 84.56 × 0.8063 ≈ 68.1804, apart", () => {
@@ -253,7 +253,8 @@ describe("the chain's three moments (builders)", () => {
 
   it("the magnitude's ratio is the SERVED multiplier — not final ÷ raw, not the displayed numbers", () => {
     expect(combatReasoning(working(), true).magnitude).toEqual({
-      ratio: 0.8063, from: "85", to: "68", fromLabel: "raw", toLabel: "final", percent: "80.6%" });
+      ratio: 0.8063, from: "85", to: "68", fromLabel: "raw", toLabel: "final",
+      percent: "19.4%", kept: "reduced", delta: "≈16 less" });
     // A working whose multiplier disagrees with its own rounded numbers: the bar follows the multiplier.
     const odd = combatReasoning(working({ mitigationMultiplier: 0.5, answer: "68" }), true);
     expect(odd.magnitude!.ratio).toBe(0.5);
@@ -262,9 +263,17 @@ describe("the chain's three moments (builders)", () => {
     expect(combatReasoning(working({ effectiveArmor: -10, mitigationMultiplier: 1.0909 }), true).magnitude).toBeNull();
     const src = readFileSync(resolve(process.cwd(), "src/lib/journey/reasoning.ts"), "utf8");
     expect(src).not.toMatch(/finalDamage\s*\/|\/\s*w\.rawDamage|Number\(w\.answer\)/);
-    expect(sharePercent(0.8063)).toBe("80.6%");
-    expect(sharePercent(0.6663)).toBe("66.6%");
-    expect(sharePercent(1)).toBe("100%");
+    // Owner lock (round 5): the percent is the share REMOVED, never the share kept.
+    expect(reductionPercent(0.8063)).toBe("19.4%");
+    expect(reductionPercent(0.6663)).toBe("33.4%");
+    expect(reductionPercent(100 / 110)).toBe("9.1%");
+    expect(reductionPercent(1)).toBe("0%");
+    // The flat difference is of the SERVED exact values (84.56 − 68.1804), not the
+    // displayed 85 − 68 = 17; `≈` whenever it was rounded.
+    expect(approxWhole(84.56 - 68.1804)).toBe("≈16");
+    expect(approxWhole(20)).toBe("20");
+    expect(approxTenths(12 - 12 * (100 / 110))).toBe("≈1.1");
+    expect(approxTenths(1.5)).toBe("1.5");
   });
 
   it("a multiplier that is NOT the armor formula keeps JP4's single node: nothing to unfold", () => {

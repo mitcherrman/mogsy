@@ -1,7 +1,7 @@
 /**
  * JP4 — TEACH THE `!` ONCE.
  *
- * The board is the learner's notebook: a learned value is NOT reprinted on
+ * Learned history lives on the board: a learned value is NOT reprinted on
  * later steps, it is recalled from the gold `!` on the object it is about. So
  * the first time a `!` arrives (a reveal establishing a fact), a short coach
  * says so — "Learned facts live on the board. Hover or tap to recall." — and

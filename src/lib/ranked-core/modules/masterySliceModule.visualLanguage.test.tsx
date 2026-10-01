@@ -86,7 +86,7 @@ const CSS = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
-describe("one learned-knowledge grammar: the board is the notebook", () => {
+describe("one learned-knowledge grammar: learned history lives on the board's objects", () => {
   it("no 'recall' pill anywhere once the learner holds the value (every reference snapshot, all three paths)", () => {
     for (const file of [REF, WRONG, TIMEOUT]) {
       for (const s of live(file)) {
@@ -98,11 +98,11 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     }
   });
 
-  it("JP5 — no `?` or value bubble ever: each value arrives at its reveal on its OBJECT's `!` (ability, or portrait notebook)", () => {
+  it("JP5 — no `?` or value bubble ever: each value arrives at its reveal on its OBJECT's `!` (ability, or champion portrait popup)", () => {
     const seen: string[] = [];
     play(REF, (s) => {
       const e = screen.queryByTestId("journey-know-subject-E");
-      const ahri = screen.queryByTestId("journey-notebook-opponent-mark");
+      const ahri = screen.queryByTestId("journey-portrait-popup-opponent-mark");
       const bubbles = document.querySelectorAll("[data-testid^='journey-readout-'], [data-testid^='journey-stat-subject-'], [data-testid^='journey-stat-opponent-']").length;
       seen.push(`${s.label}|E=${e ? e.dataset.facts : "-"}|ahri=${ahri ? "!" : "-"}|bubbles=${bubbles}`);
     });
@@ -123,7 +123,7 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
       // The glow arrives WITH the reveal that establishes the fact…
       expect(at("child0-reveal"), file).toBe("journey-know-subject-E");
       expect(at("child1-reveal"), file).toBe("journey-know-subject-E");
-      expect(at("child2-reveal"), file).toBe("journey-notebook-opponent-mark");
+      expect(at("child2-reveal"), file).toBe("journey-portrait-popup-opponent-mark");
       // …and never on a live child (nothing is learned before its reveal).
       expect(at("child1-live"), file).toBe("");
       cleanup();
@@ -133,7 +133,7 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     const glows: string[] = [];
     play(TIMEOUT, (s) => { glows.push(`${s.label}:${fresh().join(",")}`); });
     expect(glows.find((x) => x.startsWith("child3-timeout-reveal:"))).toBe("child3-timeout-reveal:");
-    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
   });
 
   it("the glow settles: ~1.6s later the `!` stays, without the glow", () => {
@@ -149,10 +149,10 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     expect(screen.getByTestId("journey-know-subject-E")).toHaveAttribute("data-facts", "2");
   });
 
-  it("a fresh mount (a reload) replays no glow — the notebook is simply there", () => {
+  it("a fresh mount (a reload) replays no glow — the learned `!` is simply there", () => {
     show(snap(REF, "child3-live"));
     expect(fresh()).toEqual([]);
-    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
   });
 
   it("the State sheet speaks the same grammar: Ahri's armor reads '24 · learned Step 3', not 'recall it'", () => {
@@ -163,10 +163,10 @@ describe("one learned-knowledge grammar: the board is the notebook", () => {
     expect(row.textContent).not.toMatch(/recall/i);
   });
 
-  it("a Daily Journey keeps the same grammar (K1 Pantheon: Leona's armor is in her portrait's notebook)", () => {
+  it("a Daily Journey keeps the same grammar (K1 Pantheon: Leona's armor is in her champion portrait popup)", () => {
     show(snap("k1/pantheon.standard", "child0-reveal"));
     expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
-    expect(screen.getByTestId("journey-notebook-opponent-mark")).toBeInTheDocument();
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
   });
 });
 

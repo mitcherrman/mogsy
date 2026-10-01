@@ -211,17 +211,17 @@ describe("grouping, objects and sides", () => {
     expect(marksOf(t).size).toBe(0);
   });
 
-  it("an opponent champion fact lands on the OPPONENT's side by its K1 key — JP5: in its portrait's notebook", () => {
+  it("an opponent champion fact lands on the OPPONENT's side by its K1 key — JP5: in its champion portrait popup", () => {
     const s = snap("pantheon.standard", "child0-reveal");
     expect(summary(marksOf(s))).toEqual({ "opponent:leona": [["champion_stat:leona:armor:L3", "50", 1]] });
     show(s);
-    // JP5 — ONE place for a champion's stats: its portrait's notebook, marked
+    // JP5 — ONE place for a champion's stats: its champion portrait popup, marked
     // with the gold `!`; the board prints no stat bubble.
     expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
-    expect(screen.getByTestId("journey-notebook-opponent-mark")).toHaveTextContent("!");
-    expect(screen.queryByTestId("journey-notebook-subject-mark")).toBeNull();
-    fireEvent.click(screen.getByTestId("journey-notebook-opponent"));
-    expect(screen.getByTestId("journey-notebook-opponent-row-armor").textContent).toMatch(/^Armor50Lv 3 base · learned Step 1/);
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toHaveTextContent("!");
+    expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-opponent"));
+    expect(screen.getByTestId("journey-portrait-popup-opponent-row-armor").textContent).toMatch(/^Armor50Lv 3 base · learned Step 1/);
     const card = knowledgeCard(marksOf(s).get("opponent:leona")!);
     expect(card.title).toBe("Lv3");
     expect(knowledgeCard(marksOf(s).get("opponent:leona")!, null, "Leona").title).toBe("Leona · Lv3");
@@ -370,7 +370,7 @@ describe("JP1 layout is intact", () => {
     show(snap("voli.standard", "child2-reveal"));
     for (const side of ["subject", "opponent"]) {
       const portrait = screen.getByTestId(`journey-portrait-${side}`);
-      // JP5 — the portrait sits in its notebook button, in the same host.
+      // JP5 — the portrait sits in its portrait-popup button, in the same host.
       expect(portrait.parentElement).toHaveClass("journey-portrait-btn");
       expect(portrait.parentElement!.parentElement).toHaveClass("journey-know-host", "journey-know-host--portrait");
       for (const slot of ["Q", "W", "E", "R"]) {

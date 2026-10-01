@@ -143,10 +143,10 @@ describe("JOURNEY5 — structured Combat working on the reveal", () => {
     expect(within(w).queryByTestId("journey-combat-working-penetration")).toBeNull();
     expect(within(w).queryByTestId("journey-combat-working-effective")).toBeNull();
     // The served multiplier is the armor formula for the served armor: drawn as
-    // it (JP5: the formula, the decimal served, and the share taken).
+    // it (JP5: the formula, the decimal served, and the share it removes).
     expect(within(w).getByTestId("journey-combat-working-armor-formula-fraction")).toHaveTextContent("100100 + 69");
     expect(within(w).getByTestId("journey-combat-working-decimal-value")).toHaveTextContent(/^0\.592$/);
-    expect(within(w).getByTestId("journey-combat-working-multiplier-value")).toHaveTextContent(/^59\.2%$/);
+    expect(within(w).getByTestId("journey-combat-working-multiplier-value")).toHaveTextContent(/^40\.8%$/);
     // The culmination is the SERVED answer; the unrounded numbers are the exact working only.
     expect(within(w).getByTestId("journey-combat-working-final")).toHaveTextContent(/^90Final damage$/);
     expect(w.textContent).not.toMatch(/151\.4745|68\.872|89\.6978|0\.5922/);
