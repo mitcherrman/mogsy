@@ -7,10 +7,75 @@
 | JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · `ccdbac38` docs (round 2) · **`f578ecc4` round 3 (typed workings, per-child timing, Step 2 + haste)** · the round-3 docs commit |
 | Backend | **Round 3: `jp5/journey-structured-working` at `96fff403`** (worktree `League_Combat_Simulator/.worktrees/jp5-structured-working`, from JP4 `fc95e81e`, which is untouched). Rounds 1–2 were read-only audits (§7–§10). |
 | Production / Railway / Patch Ops / items / Order Forge / other worktrees | **Untouched.** Nothing pushed, merged, integrated or deployed. |
-| Round 4 | **The champion notebook (§R4)**: frontend `9a7a1760` + `1e46ecb7`, backend `a9a4be2e` (armor provenance in `stat_sources`). Retained board bubbles removed; stage geometry unchanged; freed space measured, not applied. |
+| Round 5 | **Terminology + reduction copy (§R5)**: presentation only — `(Bonus AD)`, `19.4% Reduced` / `≈16 less`, `9.1% Reduced` / `≈1.1s shorter`; "notebook" retired for **champion portrait popup**. Frontend code commit + docs commit after §R4's. Backend unchanged. |
+| Round 4 | **The champion portrait popup (§R4)**: frontend `9a7a1760` + `1e46ecb7`, backend `a9a4be2e` (armor provenance in `stat_sources`). Retained board bubbles removed; stage geometry unchanged; freed space measured, not applied. |
 | Status | **Not owner-approved.** Round 3 (§0) implements the bounded foundation: one typed working carrier, per-child reveal windows, Step 2 composition, haste Stage 1 — certified locally. §7–§9 below are the round-2 designs it implemented (§0 records what was actually built and where it differs). Open items: §0.7. |
 
-## R4. Round 4 — one job each: the board, the Reasoning Chain, the champion notebook
+## R5. Round 5 — terminology and reduction copy (presentation only)
+
+**Status: implemented and certified locally; NOT owner-approved.** Copy and presentation only: no calculation, served value, contract, popup behaviour or stage geometry changed. Backend untouched this round (still `a9a4be2e`). Nothing pushed, merged, integrated or deployed.
+
+### R5.1 Terminology (owner-locked)
+
+The words are **board**, **champion portrait popup**, **mini scenario**, **Reasoning Chain**, **Journey Path**, **Exact**. "Notebook", "knowledge sheet", "workspace" and "context surface" are gone from code, tests and this handoff (`git grep -niE "notebook|knowledge sheet|context surface" -- src` is empty).
+
+| Was | Now |
+|---|---|
+| `JourneyChampionNotebook.tsx` | `JourneyChampionPortraitPopup.tsx` |
+| `lib/journey/notebook.ts` (`championNotebook`, `NotebookEntry`, `NotebookCheckpoint`, `NOTEBOOK_STATS`) | `lib/journey/portraitPopup.ts` (`championPortraitPopup`, `PortraitPopupEntry`, `PortraitPopupCheckpoint`, `PORTRAIT_POPUP_STATS`) |
+| `jp5.notebook.test.ts`, `masterySliceModule.notebook.test.tsx` | `jp5.portraitPopup.test.ts`, `masterySliceModule.portraitPopup.test.tsx` |
+| test ids / classes `journey-notebook-*` | `journey-portrait-popup-*` |
+| stage-grammar mark label `opponent-notebook` | `opponent-portrait` |
+
+The popup itself is unchanged from round 4 (per reached authored state, established or stated knowledge only, provenance when served, selector only with more than one state, no stat-category filter, no calculator). Board bubbles stay removed; the portrait keeps its `!` and opens the popup. **Bonus AD 21 lives only in Zed's champion portrait popup** — nothing new shows it, and Step 2 stays clean.
+
+### R5.2 Copy
+
+| Where | Round 4 | Round 5 |
+|---|---|---|
+| Step 2 composition node | `70% of 21 ≈ 15` / BONUS AD DAMAGE | `70% of 21 ≈ 15` / **(BONUS AD)** — League's parenthetical scaling source |
+| Step 4 transformation node | `80.6%` / DAMAGE TAKEN | **`19.4%` / REDUCED** |
+| Step 4 magnitude bar | `85 raw · 68 final` | `85 raw · 68 final` · **`≈16 less`** |
+| Haste transformation node | `90.9%` / COOLDOWN KEPT | **`9.1%` / REDUCED** |
+| Haste duration bar | `12s base · 11s effective` | `12s base · 11s effective` · **`≈1.1s shorter`** |
+| Bar accessible names | `85 raw, 80.6% taken: 68 final` | `85 raw, 19.4% reduced: 68 final (≈16 less)`; `12s base, 9.1% reduced: 11s effective (≈1.1s shorter)` |
+
+* The percentage is the share the **served** multiplier removes, `1 − mitigation_multiplier` (0.8063 → 19.4%, 100/110 → 9.1%, Leona 0.6663 → 33.4%). Never "90.9% of base", never "10% cooldown reduction" for 10 haste (a test pins both out of the haste chain).
+* The flat difference is of the two **served exact** values — `raw_damage − final_damage` (84.56 − 68.1804 = 16.38 → `≈16`), `base − effective cooldown` (12 − 10.909 → `≈1.1s`) — never of the displayed whole numbers (85 − 68 would claim 17). `≈` whenever rounding was needed. It is computed client-side from the served working (`approxWhole` / `approxTenths` in `reasoning.ts`), formatting only; if the owner prefers, the backend can serve it on the working instead.
+* Percentage reduction is in the Reasoning Chain; the flat difference sits at the end of the magnitude bar, after the value it arrives at. Compressed chains drop the bar as before, so the compressed reading is `85 → 24 → 19.4% Reduced → 68` and `12s → 10 → 9.1% Reduced → 11s`.
+* Precision unchanged: player-facing rounding stays (Ahri Armor 24, never 24.024 outside Exact); Exact still holds the full working.
+* `sharePercent` (the "share kept" writer) is removed: nothing draws it.
+
+**Fit** (`copy-fit-r5.cjs`, expanded reveal, 375 / 390 / 768 / 1024 / 1280 / 1920, Step 2, Step 4, Volibear haste, Ahri survival haste `≈12.7s shorter`): no node text clipped, no bar label overlapping another or leaving the bar. On a 390 phone the haste bar reads `12s base` 0–47px, `11s effective` 201–273px, `≈1.1s shorter` 279–352px of 352px — fits without crowding, so no narrow-container hiding was added.
+
+### R5.3 Certification
+
+* **Frontend tests**: the round-4 certification set (Journey + question-surface + ranked-public + quiz-ranked + mastery + dev arena) **1988/1988** (157 files). Updated for the copy only: the old wording ("Bonus AD damage", "Damage taken", "Cooldown kept", 80.6% / 90.9% / 66.6% / 59.2%) and the renamed ids; new assertions pin `reductionPercent`, `approxWhole` / `approxTenths` (the served difference, not 85 − 68), the delta element and both bar accessible names (`≈16 less`, `≈41 less` for Leona, `≈1.1s shorter`), and that the haste chain never says "kept", "90.9", "of base" or "10% cooldown reduction". `tsc`: only the 2 known Supabase errors. ESLint: 0 errors.
+* **Geometry** (focused, the four captures whose reveals changed copy — reference Zed/Ahri, Pantheon/Leona, Volibear, Ahri survival — × 375/390/768/1024/1280/1920, every snapshot: 726 states): **0 violations, 0 page errors, all 24 region sets identical to round 4's.** The stage has not moved.
+* **Backend**: untouched this round (`a9a4be2e`, clean).
+
+### R5.4 Screenshots (`docs/handoffs/jp5-equation-unfold/r5/`, live fonts, JP5-backend captures)
+
+| File (`jp5-r5-…`) | |
+|---|---|
+| `zed-popup-desktop-after-step2`, `zed-popup-mobile-after-step2` | Zed's champion portrait popup after Step 2: Bonus AD 21 (its only home), provenance open: Doran's Blade +10 · Adaptive Force +5.4 ×2 · Exact 20.8 |
+| `ahri-popup-desktop-armor-learned`, `ahri-popup-mobile-armor-learned` | Ahri after Step 3: Armor 24 · Lv 2 base · learned Step 3 · Exact 24.024 (the row stays 24) |
+| `leona-popup-desktop-modified-armor`, `leona-popup-mobile-modified-armor` | Leona's modified Armor, provenance expanded: Lv 3 base 50.08 + Cloth Armor +15 · Exact 65.08; state selector + served note |
+| `board-desktop-step2-live`, `board-desktop-step4-live`, `board-mobile-step4-live` | the cleaned board: no retained bubbles |
+| `portrait-detail-step4-live.png`, `portrait-detail-mobile-step4-live.png` | 2× crop of the board at Step 4 live: Ahri's portrait `!` and active outline (her armor is an input), Zed E's `!` and outline |
+| `step2-reveal-desktop`, `step2-reveal-mobile` | Step 2 reveal: `70 Base damage + 70% of 21 ≈ 15 (Bonus AD) → 85 Raw damage`, composition bar |
+| `step4-expanded-desktop`, `step4-expanded-mobile`, `step4-compressed-desktop` | Step 4: `19.4% Reduced`; bar `85 raw … 68 final · ≈16 less` (expanded); four-node summary (compressed) |
+| `haste-expanded-desktop`, `haste-compressed-desktop`, `haste-expanded-mobile`, `haste-compressed-mobile`, `haste-expanded-tablet768` | Volibear Q haste: `9.1% Reduced`; bar `12s base … 11s effective · ≈1.1s shorter` (expanded); `12s → 10 → 9.1% Reduced → 11s` (compressed) |
+
+Every popup opened is fully inside the viewport (264px wide; 1280 and 390). Seen in passing, unchanged from round 4: on a 1280 board, the Leona Armor row's meta line ellipsizes after "stated" (the full "stated Step 4" is in the row's accessible name); the first-visit K2 coach bubble ("Learned facts live on the board…") overlays the opponent half on the phone shots, as it did in round 3.
+
+### R5.5 Open for the owner
+
+1. Visual approval of the copy (R5.2) and the champion portrait popups (R5.4).
+2. Whether the flat differences should be served by the backend rather than formatted client-side from the served working.
+3. The geometry pass remains unstarted (R4.6 measurements and recommendation stand: phones ≈147px horizontal, tablet/desktop ≈25–36px vertical).
+
+## R4. Round 4 — one job each: the board, the Reasoning Chain, the champion portrait popup
 
 **Status: implemented and certified locally; NOT owner-approved.** No geometry change was made (the owner reviews the geometry pass first, §R4.6). Nothing pushed, merged, integrated or deployed.
 
@@ -44,9 +109,9 @@ Removed from both halves, on every density: `Bonus AD 21` (+ its source badges),
 
 Kept: portraits, level, Q/W/E/R (each ability keeps its own learned `!` — formula, raw damage, cooldowns), items (new items stay marked all child long), shards, the transition beat, the State sheet (every stat, deltas, asked/recalled wording), current-focus outlines. The former anchor row keeps its reserved box, **empty and `aria-hidden`**, so the JP2 stage has not moved (§R4.6).
 
-**Consequence for the owner** (the locked decision, applied literally): at Step 2 the raw-damage question's input, Zed's bonus AD 21, is no longer printed on the board (JP2's "no helper lines" keeps it out of the sentence too). It is one tap away in Zed's notebook, and Zed's portrait is **outlined** whenever the question on screen states his stats (served: a premise states exactly its question's inputs). If the owner wants inputs visible without a tap, the natural home is the Reasoning Chain's live row (its job: "surface whatever values the current question requires") — not built, because "Step 2 live remains clean" is also locked.
+**Consequence for the owner** (the locked decision, applied literally): at Step 2 the raw-damage question's input, Zed's bonus AD 21, is no longer printed on the board (JP2's "no helper lines" keeps it out of the sentence too). It is one tap away in Zed's champion portrait popup, and Zed's portrait is **outlined** whenever the question on screen states his stats (served: a premise states exactly its question's inputs). If the owner wants inputs visible without a tap, the natural home is the Reasoning Chain's live row (its job: "surface whatever values the current question requires") — not built, because "Step 2 live remains clean" is also locked.
 
-### R4.4 The champion notebook (`JourneyChampionNotebook`, `lib/journey/notebook.ts`)
+### R4.4 The champion portrait popup (`JourneyChampionPortraitPopup`, `lib/journey/portraitPopup.ts`)
 
 The circular portrait is a button. It opens a compact sheet (a Radix popover, portalled, collision-padded; 16.5rem, inside the viewport at every certified width):
 
@@ -57,7 +122,7 @@ Armor       24   Lv 2 base · learned Step 3   ▾   → Exact · shown 24 · 24
 MR / AD / Bonus AD / AP / AH   —
 ```
 
-**Data model** — `championNotebook(journey, knowledge, side, stepOnScreen) → { key, championName, current, learned, checkpoints[] }`; a checkpoint is `{ node (state_version), level, note, firstStep, lastStep, entries: { [stat]: { display, how: "learned" | "stated", step, level, exact, sources } } }`.
+**Data model** — `championPortraitPopup(journey, knowledge, side, stepOnScreen) → { key, championName, current, learned, checkpoints[] }`; a checkpoint is `{ node (state_version), level, note, firstStep, lastStep, entries: { [stat]: { display, how: "learned" | "stated", step, level, exact, sources } } }`.
 
 * **learned** = K2's revealed `champion_stat_at_level` facts (display verbatim; the exact once the ledger lists it) in the node of the child that taught them;
 * **stated** = the numbers a REACHED child's premise stated for this champion, whole via the board's own `formatStatValue`, with their served `stat_sources`;
@@ -71,8 +136,8 @@ Base vs modified reads naturally: `Armor 24 · Lv 2 base · learned Step 3` vs `
 
 ### R4.5 Certification
 
-* **Frontend tests**: Journey + surface + ranked-public + quiz-ranked + mastery suites **1988/1988** (157 files) at `9a7a1760`; the note fix adds one assertion (notebook suites 18/18). New: `jp5.notebook.test.ts` (the join on the real captures: stated with sources, learned only from its reveal, wrong = right, the Cloth Armor and level-4 states, no unreached state, grouped transition notes) and `masterySliceModule.notebook.test.tsx` (no chip on ANY snapshot of the reference and Pantheon Journeys; what stays; the portrait button and sheet; Zed / Ahri / Leona in the DOM; the input outline; the Reasoning Chain unchanged). Thirty older tests that pinned the chips were rewritten to assert the same facts where they now live (notebook, ability `!`, State sheet) — none was dropped for being inconvenient. `tsc`: only the 2 known Supabase errors. ESLint: 0 errors; no warning in a changed file.
-* **Geometry**: the full sweep (9 captures × 375/390/768/1024/1280/1440/1920, every snapshot, each reveal also tapped compressed; 1,680 states): **0 violations, 0 page errors, every region set identical to round 3's** — the stage has not moved. Every notebook sheet opened in the screenshots is fully inside the viewport (375 → 1280).
+* **Frontend tests**: Journey + surface + ranked-public + quiz-ranked + mastery suites **1988/1988** (157 files) at `9a7a1760`; the note fix adds one assertion (popup suites 18/18). New: `jp5.portraitPopup.test.ts` (the join on the real captures: stated with sources, learned only from its reveal, wrong = right, the Cloth Armor and level-4 states, no unreached state, grouped transition notes) and `masterySliceModule.portraitPopup.test.tsx` (no chip on ANY snapshot of the reference and Pantheon Journeys; what stays; the portrait button and sheet; Zed / Ahri / Leona in the DOM; the input outline; the Reasoning Chain unchanged). Thirty older tests that pinned the chips were rewritten to assert the same facts where they now live (champion portrait popup, ability `!`, State sheet) — none was dropped for being inconvenient. `tsc`: only the 2 known Supabase errors. ESLint: 0 errors; no warning in a changed file.
+* **Geometry**: the full sweep (9 captures × 375/390/768/1024/1280/1440/1920, every snapshot, each reveal also tapped compressed; 1,680 states): **0 violations, 0 page errors, every region set identical to round 3's** — the stage has not moved. Every champion portrait popup opened in the screenshots is fully inside the viewport (375 → 1280).
 * **Ordinary Ranked**: `/dev/ranked-shell-probe`, JP4 `bb2c60f4` vs round 4, 22 states × 1280×800 / 390×844: **0 pixels over 24/255 in all 44 states** on a clean run. Two earlier runs differed only in account-dependent chrome (the floating Friends button appears once a fresh context's Supabase sign-in completes; Supabase was intermittently timing out) — in different places from run to run, in a component neither branch touches.
 * **Hosts**: Ranked Bot reference, Daily Standard (Pantheon, Volibear), Daily Survival (Ahri, Volibear) — the same board component and join everywhere.
 * **Tooling note**: `fonts.googleapis.com` timed out from this machine for part of the session (gstatic did not). `pw.cjs` can serve the cached stylesheets with `JP5_OFFLINE_FONTS=1`; the certified sweep and all screenshots ran with the live fonts after the network recovered.
@@ -111,7 +176,7 @@ Step 2 live stays clean; Step 4 live still resurfaces `85 → 24 → ? Final dam
 
 ### R4.9 Open for the owner
 
-1. Visual approval of the notebook sheet and the portrait `!` / input outline.
+1. Visual approval of the champion portrait popup and the portrait `!` / input outline.
 2. **Step 2's input** is now one tap away (R4.3): accept, or allow a live-chain input row at Step 2.
 3. The geometry pass (R4.6): phones first (names), then the tablet/desktop height.
 4. The copy changes still pending (R4.7).
