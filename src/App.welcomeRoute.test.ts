@@ -45,3 +45,24 @@ describe("/welcome route", () => {
     expect(source).toContain('path="/lol"');
   });
 });
+
+describe("root entrance (MG-B)", () => {
+  it("runs automatically and hands off to the Hub — no click-gated Welcome funnel", () => {
+    const line = source
+      .split("\n")
+      .find((l) => l.includes("<MogzyEntryV2") && l.includes('seo="root"'));
+    expect(line, "root route no longer renders MogzyEntryV2").toBeTruthy();
+    expect(line).toContain("autoEnter");
+  });
+
+  it("keeps the dev preview as the interactive gate", () => {
+    const line = source.split("\n").find((l) => l.includes('path="/dev/mogzy-entry-v2"'))!;
+    expect(line).toContain("<MogzyEntryV2 />");
+    expect(line).not.toContain("autoEnter");
+  });
+
+  it("does not redirect /welcome away for anyone", () => {
+    const line = source.split("\n").find((l) => l.includes('path="/welcome"'))!;
+    expect(line).not.toContain("Navigate");
+  });
+});
