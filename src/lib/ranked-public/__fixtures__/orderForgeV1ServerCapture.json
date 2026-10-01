@@ -35,30 +35,24 @@
  },
  "meta": {
   "canonical_order_segment_1": [
-   "e1",
    "e4",
-   "e3",
+   "e1",
    "e0",
+   "e3",
    "e2"
   ],
-  "families": [
-   "champion_stat:hp@lvl18",
-   "item_cost",
-   "champion_stat:ad@lvl18"
-  ],
-  "module_version": 2,
   "preset": "admin.order_forge",
   "submitted_order_segment_1": [
    "e2",
-   "e4",
-   "e3",
+   "e1",
    "e0",
-   "e1"
+   "e3",
+   "e4"
   ],
   "viewer_user_id": "0a11d111-0000-4000-8000-000000000001"
  },
  "private_after_bot_settled": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:50.450000+00:00",
@@ -70,7 +64,7 @@
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -122,10 +116,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "role": null,
-     "score": 2,
-     "total_xp": 21
+     "score": 4,
+     "total_xp": 24
     }
    ],
    "presence": {
@@ -138,7 +132,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:3",
+    "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -165,7 +159,7 @@
     "challenge_index": 0,
     "challenge_started_at": "2026-09-09T12:00:20.450000+00:00",
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "phase": "challenges",
     "pressure_applied": false,
     "resolved": false,
@@ -200,58 +194,58 @@
        "entries": [
         {
          "entry_id": "e0",
-         "label": "Zed",
+         "label": "Item 019",
          "media": {
           "alt": "",
-          "src": "assets/champions/Zed/icon.png"
+          "src": "assets/items/19.png"
          }
         },
         {
          "entry_id": "e1",
-         "label": "Extra12",
+         "label": "Item 022",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra12/icon.png"
+          "src": "assets/items/22.png"
          }
         },
         {
          "entry_id": "e2",
-         "label": "Extra29",
+         "label": "Item 034",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra29/icon.png"
+          "src": "assets/items/34.png"
          }
         },
         {
          "entry_id": "e3",
-         "label": "Extra36",
+         "label": "Item 005",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra36/icon.png"
+          "src": "assets/items/5.png"
          }
         },
         {
          "entry_id": "e4",
-         "label": "Extra05",
+         "label": "Item 011",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra05/icon.png"
+          "src": "assets/items/11.png"
          }
         }
        ]
       }
      ],
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
-     "family": "champion_stat:ad@lvl18",
-     "metric_label": "Attack Damage (lvl 18)",
-     "prompt": "Order these champions by Attack Damage at level 18",
+     "family": "item_cost",
+     "metric_label": "Gold cost",
+     "prompt": "Order these items by gold cost",
      "reveal_window_ms": 2500
     },
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "opponent_ability_confirmed": false,
     "opponent_challenges_completed": 0,
     "opponent_finished": false,
@@ -290,7 +284,7 @@
   "server_time": "2026-09-09T12:00:15+00:00"
  },
  "private_after_refusal": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -302,7 +296,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -354,7 +348,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -370,7 +364,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+    "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -397,7 +391,7 @@
     "challenge_index": 0,
     "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "phase": "challenges",
     "pressure_applied": false,
     "resolved": false,
@@ -432,58 +426,58 @@
        "entries": [
         {
          "entry_id": "e0",
-         "label": "Extra23",
+         "label": "Item 016",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra23/icon.png"
+          "src": "assets/items/16.png"
          }
         },
         {
          "entry_id": "e1",
-         "label": "Extra27",
+         "label": "Item 026",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra27/icon.png"
+          "src": "assets/items/26.png"
          }
         },
         {
          "entry_id": "e2",
-         "label": "Extra00",
+         "label": "Item 002",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra00/icon.png"
+          "src": "assets/items/2.png"
          }
         },
         {
          "entry_id": "e3",
-         "label": "Sona",
+         "label": "Item 009",
          "media": {
           "alt": "",
-          "src": "assets/champions/Sona/icon.png"
+          "src": "assets/items/9.png"
          }
         },
         {
          "entry_id": "e4",
-         "label": "Extra31",
+         "label": "Item 033",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra31/icon.png"
+          "src": "assets/items/33.png"
          }
         }
        ]
       }
      ],
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
-     "family": "champion_stat:hp@lvl18",
-     "metric_label": "Health (lvl 18)",
-     "prompt": "Order these champions by Health at level 18",
+     "family": "item_cost",
+     "metric_label": "Gold cost",
+     "prompt": "Order these items by gold cost",
      "reveal_window_ms": 2500
     },
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "opponent_ability_confirmed": false,
     "opponent_challenges_completed": 0,
     "opponent_finished": false,
@@ -522,7 +516,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "private_locked": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -534,7 +528,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -586,7 +580,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -602,7 +596,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+    "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -629,7 +623,7 @@
     "challenge_index": 1,
     "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "phase": "challenges",
     "pressure_applied": false,
     "resolved": false,
@@ -664,58 +658,58 @@
        "entries": [
         {
          "entry_id": "e0",
-         "label": "Extra23",
+         "label": "Item 016",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra23/icon.png"
+          "src": "assets/items/16.png"
          }
         },
         {
          "entry_id": "e1",
-         "label": "Extra27",
+         "label": "Item 026",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra27/icon.png"
+          "src": "assets/items/26.png"
          }
         },
         {
          "entry_id": "e2",
-         "label": "Extra00",
+         "label": "Item 002",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra00/icon.png"
+          "src": "assets/items/2.png"
          }
         },
         {
          "entry_id": "e3",
-         "label": "Sona",
+         "label": "Item 009",
          "media": {
           "alt": "",
-          "src": "assets/champions/Sona/icon.png"
+          "src": "assets/items/9.png"
          }
         },
         {
          "entry_id": "e4",
-         "label": "Extra31",
+         "label": "Item 033",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra31/icon.png"
+          "src": "assets/items/33.png"
          }
         }
        ]
       }
      ],
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
-     "family": "champion_stat:hp@lvl18",
-     "metric_label": "Health (lvl 18)",
-     "prompt": "Order these champions by Health at level 18",
+     "family": "item_cost",
+     "metric_label": "Gold cost",
+     "prompt": "Order these items by gold cost",
      "reveal_window_ms": 2500
     },
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "opponent_ability_confirmed": false,
     "opponent_challenges_completed": 0,
     "opponent_finished": false,
@@ -734,47 +728,47 @@
     "own_challenge_reveals": [
      {
       "canonical_order": [
-       "e1",
        "e4",
-       "e3",
+       "e1",
        "e0",
+       "e3",
        "e2"
       ],
       "challenge_index": 0,
       "entries": [
        {
-        "entry_id": "e1",
-        "label": "Extra27",
-        "value_display": "2,878 HP"
-       },
-       {
         "entry_id": "e4",
-        "label": "Extra31",
-        "value_display": "2,494 HP"
+        "label": "Item 033",
+        "value_display": "1750 g"
        },
        {
-        "entry_id": "e3",
-        "label": "Sona",
-        "value_display": "2,250 HP"
+        "entry_id": "e1",
+        "label": "Item 026",
+        "value_display": "1400 g"
        },
        {
         "entry_id": "e0",
-        "label": "Extra23",
-        "value_display": "1,982 HP"
+        "label": "Item 016",
+        "value_display": "900 g"
+       },
+       {
+        "entry_id": "e3",
+        "label": "Item 009",
+        "value_display": "550 g"
        },
        {
         "entry_id": "e2",
-        "label": "Extra00",
-        "value_display": "1,690 HP"
+        "label": "Item 002",
+        "value_display": "200 g"
        }
       ],
       "is_correct": false,
       "order": [
        "e2",
-       "e4",
-       "e3",
+       "e1",
        "e0",
-       "e1"
+       "e3",
+       "e4"
       ],
       "position_correct": [
        false,
@@ -794,10 +788,10 @@
      {
       "order": [
        "e2",
-       "e4",
-       "e3",
+       "e1",
        "e0",
-       "e1"
+       "e3",
+       "e4"
       ]
      }
     ],
@@ -815,7 +809,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "private_open": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -827,7 +821,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -879,7 +873,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -895,7 +889,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+    "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -922,7 +916,7 @@
     "challenge_index": 0,
     "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "phase": "challenges",
     "pressure_applied": false,
     "resolved": false,
@@ -957,58 +951,58 @@
        "entries": [
         {
          "entry_id": "e0",
-         "label": "Extra23",
+         "label": "Item 016",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra23/icon.png"
+          "src": "assets/items/16.png"
          }
         },
         {
          "entry_id": "e1",
-         "label": "Extra27",
+         "label": "Item 026",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra27/icon.png"
+          "src": "assets/items/26.png"
          }
         },
         {
          "entry_id": "e2",
-         "label": "Extra00",
+         "label": "Item 002",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra00/icon.png"
+          "src": "assets/items/2.png"
          }
         },
         {
          "entry_id": "e3",
-         "label": "Sona",
+         "label": "Item 009",
          "media": {
           "alt": "",
-          "src": "assets/champions/Sona/icon.png"
+          "src": "assets/items/9.png"
          }
         },
         {
          "entry_id": "e4",
-         "label": "Extra31",
+         "label": "Item 033",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra31/icon.png"
+          "src": "assets/items/33.png"
          }
         }
        ]
       }
      ],
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
-     "family": "champion_stat:hp@lvl18",
-     "metric_label": "Health (lvl 18)",
-     "prompt": "Order these champions by Health at level 18",
+     "family": "item_cost",
+     "metric_label": "Gold cost",
+     "prompt": "Order these items by gold cost",
      "reveal_window_ms": 2500
     },
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "opponent_ability_confirmed": false,
     "opponent_challenges_completed": 0,
     "opponent_finished": false,
@@ -1047,7 +1041,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "public_locked": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -1059,7 +1053,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1085,7 +1079,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -1107,7 +1101,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+    "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1140,7 +1134,7 @@
     "challenge_index": 1,
     "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "phase": "challenges",
     "pressure_applied": false,
     "resolved": false,
@@ -1175,58 +1169,58 @@
        "entries": [
         {
          "entry_id": "e0",
-         "label": "Extra23",
+         "label": "Item 016",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra23/icon.png"
+          "src": "assets/items/16.png"
          }
         },
         {
          "entry_id": "e1",
-         "label": "Extra27",
+         "label": "Item 026",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra27/icon.png"
+          "src": "assets/items/26.png"
          }
         },
         {
          "entry_id": "e2",
-         "label": "Extra00",
+         "label": "Item 002",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra00/icon.png"
+          "src": "assets/items/2.png"
          }
         },
         {
          "entry_id": "e3",
-         "label": "Sona",
+         "label": "Item 009",
          "media": {
           "alt": "",
-          "src": "assets/champions/Sona/icon.png"
+          "src": "assets/items/9.png"
          }
         },
         {
          "entry_id": "e4",
-         "label": "Extra31",
+         "label": "Item 033",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra31/icon.png"
+          "src": "assets/items/33.png"
          }
         }
        ]
       }
      ],
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
-     "family": "champion_stat:hp@lvl18",
-     "metric_label": "Health (lvl 18)",
-     "prompt": "Order these champions by Health at level 18",
+     "family": "item_cost",
+     "metric_label": "Gold cost",
+     "prompt": "Order these items by gold cost",
      "reveal_window_ms": 2500
     },
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "opponent_ability_confirmed": false,
     "opponent_challenges_completed": 0,
     "opponent_finished": false,
@@ -1245,47 +1239,47 @@
     "own_challenge_reveals": [
      {
       "canonical_order": [
-       "e1",
        "e4",
-       "e3",
+       "e1",
        "e0",
+       "e3",
        "e2"
       ],
       "challenge_index": 0,
       "entries": [
        {
-        "entry_id": "e1",
-        "label": "Extra27",
-        "value_display": "2,878 HP"
-       },
-       {
         "entry_id": "e4",
-        "label": "Extra31",
-        "value_display": "2,494 HP"
+        "label": "Item 033",
+        "value_display": "1750 g"
        },
        {
-        "entry_id": "e3",
-        "label": "Sona",
-        "value_display": "2,250 HP"
+        "entry_id": "e1",
+        "label": "Item 026",
+        "value_display": "1400 g"
        },
        {
         "entry_id": "e0",
-        "label": "Extra23",
-        "value_display": "1,982 HP"
+        "label": "Item 016",
+        "value_display": "900 g"
+       },
+       {
+        "entry_id": "e3",
+        "label": "Item 009",
+        "value_display": "550 g"
        },
        {
         "entry_id": "e2",
-        "label": "Extra00",
-        "value_display": "1,690 HP"
+        "label": "Item 002",
+        "value_display": "200 g"
        }
       ],
       "is_correct": false,
       "order": [
        "e2",
-       "e4",
-       "e3",
+       "e1",
        "e0",
-       "e1"
+       "e3",
+       "e4"
       ],
       "position_correct": [
        false,
@@ -1305,10 +1299,10 @@
      {
       "order": [
        "e2",
-       "e4",
-       "e3",
+       "e1",
        "e0",
-       "e1"
+       "e3",
+       "e4"
       ]
      }
     ],
@@ -1326,7 +1320,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "public_open": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -1338,7 +1332,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1364,7 +1358,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -1386,7 +1380,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+    "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1419,7 +1413,7 @@
     "challenge_index": 0,
     "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "phase": "challenges",
     "pressure_applied": false,
     "resolved": false,
@@ -1454,58 +1448,58 @@
        "entries": [
         {
          "entry_id": "e0",
-         "label": "Extra23",
+         "label": "Item 016",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra23/icon.png"
+          "src": "assets/items/16.png"
          }
         },
         {
          "entry_id": "e1",
-         "label": "Extra27",
+         "label": "Item 026",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra27/icon.png"
+          "src": "assets/items/26.png"
          }
         },
         {
          "entry_id": "e2",
-         "label": "Extra00",
+         "label": "Item 002",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra00/icon.png"
+          "src": "assets/items/2.png"
          }
         },
         {
          "entry_id": "e3",
-         "label": "Sona",
+         "label": "Item 009",
          "media": {
           "alt": "",
-          "src": "assets/champions/Sona/icon.png"
+          "src": "assets/items/9.png"
          }
         },
         {
          "entry_id": "e4",
-         "label": "Extra31",
+         "label": "Item 033",
          "media": {
           "alt": "",
-          "src": "assets/champions/Extra31/icon.png"
+          "src": "assets/items/33.png"
          }
         }
        ]
       }
      ],
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
-     "family": "champion_stat:hp@lvl18",
-     "metric_label": "Health (lvl 18)",
-     "prompt": "Order these champions by Health at level 18",
+     "family": "item_cost",
+     "metric_label": "Gold cost",
+     "prompt": "Order these items by gold cost",
      "reveal_window_ms": 2500
     },
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "opponent_ability_confirmed": false,
     "opponent_challenges_completed": 0,
     "opponent_finished": false,
@@ -1544,11 +1538,11 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "queue_join": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "class_id": null,
    "enqueued_at": "2026-09-09T12:00:00+00:00",
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "queue_version": 1,
    "role": null,
    "status": "matched"
@@ -1559,16 +1553,16 @@
   "server_time": "2026-09-09T12:00:00+00:00"
  },
  "resolved_correct": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:00:43.900000+00:00",
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_c6174516d7d17365": 170
+    "p_6151c7ea566ef4bf": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -1578,11 +1572,11 @@
      "score_before": 0,
      "speed_bonus_points": 1
     },
-    "p_c6174516d7d17365": {
+    "p_6151c7ea566ef4bf": {
      "base_points": 2,
      "points_awarded": 2,
-     "score_after": 2,
-     "score_before": 0,
+     "score_after": 4,
+     "score_before": 2,
      "speed_bonus_points": 0
     }
    },
@@ -1632,7 +1626,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 1,
+      "consecutive_correct": 2,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -1654,64 +1648,64 @@
      "level_before": 1,
      "level_up_events": [],
      "outcome": "correct",
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "points_awarded": 2,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 2,
-     "score_before": 0,
+     "score_after": 4,
+     "score_before": 2,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:22.952371+00:00",
+     "submitted_at": "2026-09-09T12:00:24.358261+00:00",
      "timed_out": false,
-     "total_xp_after": 21,
+     "total_xp_after": 24,
      "xp_gained": 12
     }
    ],
    "presentation_ms": 5450,
    "pressure_applied": true,
-   "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:2",
+   "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:2",
    "round_number": 2,
    "segment_reveal": {
     "canonical_order": [
-     "e1",
-     "e4",
-     "e3",
      "e0",
-     "e2"
+     "e2",
+     "e3",
+     "e4",
+     "e1"
     ],
     "challenge_count": 1,
     "correct_points": 2,
     "entries": [
      {
-      "entry_id": "e1",
-      "label": "Jak'Sho, The Protean",
-      "value_display": "3,200 gold"
-     },
-     {
-      "entry_id": "e4",
-      "label": "Nashor's Tooth",
-      "value_display": "3,000 gold"
-     },
-     {
-      "entry_id": "e3",
-      "label": "Hexdrinker",
-      "value_display": "1,300 gold"
-     },
-     {
       "entry_id": "e0",
-      "label": "Fiendish Codex",
-      "value_display": "850 gold"
+      "label": "Item 034",
+      "value_display": "1800 g"
      },
      {
       "entry_id": "e2",
-      "label": "Cloth Armor",
-      "value_display": "300 gold"
+      "label": "Item 019",
+      "value_display": "1050 g"
+     },
+     {
+      "entry_id": "e3",
+      "label": "Item 017",
+      "value_display": "950 g"
+     },
+     {
+      "entry_id": "e4",
+      "label": "Item 005",
+      "value_display": "350 g"
+     },
+     {
+      "entry_id": "e1",
+      "label": "Item 002",
+      "value_display": "200 g"
      }
     ],
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "players": {
      "0a11d111-0000-4000-8000-000000000001": {
       "base_points": 2,
@@ -1720,11 +1714,11 @@
       "finished_first": true,
       "incorrect": 0,
       "order": [
-       "e1",
-       "e4",
-       "e3",
        "e0",
-       "e2"
+       "e2",
+       "e3",
+       "e4",
+       "e1"
       ],
       "points_awarded": 3,
       "position_correct": [
@@ -1738,18 +1732,18 @@
       "speed_bonus_points": 1,
       "unanswered": 0
      },
-     "p_c6174516d7d17365": {
+     "p_6151c7ea566ef4bf": {
       "base_points": 2,
       "correct": 1,
-      "duration_ms": 9052,
+      "duration_ms": 10458,
       "finished_first": false,
       "incorrect": 0,
       "order": [
-       "e1",
-       "e4",
-       "e3",
        "e0",
-       "e2"
+       "e2",
+       "e3",
+       "e4",
+       "e1"
       ],
       "points_awarded": 2,
       "position_correct": [
@@ -1776,16 +1770,16 @@
   "server_time": "2026-09-09T12:00:18+00:00"
  },
  "resolved_incorrect": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:00:34.400000+00:00",
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_c6174516d7d17365": 170
+    "p_6151c7ea566ef4bf": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -1795,10 +1789,10 @@
      "score_before": 0,
      "speed_bonus_points": 0
     },
-    "p_c6174516d7d17365": {
-     "base_points": 0,
-     "points_awarded": 0,
-     "score_after": 0,
+    "p_6151c7ea566ef4bf": {
+     "base_points": 2,
+     "points_awarded": 2,
+     "score_after": 2,
      "score_before": 0,
      "speed_bonus_points": 0
     }
@@ -1849,7 +1843,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 0,
+      "consecutive_correct": 1,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -1870,65 +1864,65 @@
      "level_after": 1,
      "level_before": 1,
      "level_up_events": [],
-     "outcome": "incorrect",
-     "player_id": "p_c6174516d7d17365",
-     "points_awarded": 0,
+     "outcome": "correct",
+     "player_id": "p_6151c7ea566ef4bf",
+     "points_awarded": 2,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 0,
+     "score_after": 2,
      "score_before": 0,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:10.737712+00:00",
+     "submitted_at": "2026-09-09T12:00:12.524289+00:00",
      "timed_out": false,
-     "total_xp_after": 9,
-     "xp_gained": 9
+     "total_xp_after": 12,
+     "xp_gained": 12
     }
    ],
    "presentation_ms": 2900,
    "pressure_applied": true,
-   "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+   "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
    "round_number": 1,
    "segment_reveal": {
     "canonical_order": [
-     "e1",
      "e4",
-     "e3",
+     "e1",
      "e0",
+     "e3",
      "e2"
     ],
     "challenge_count": 1,
     "correct_points": 2,
     "entries": [
      {
-      "entry_id": "e1",
-      "label": "Extra27",
-      "value_display": "2,878 HP"
-     },
-     {
       "entry_id": "e4",
-      "label": "Extra31",
-      "value_display": "2,494 HP"
+      "label": "Item 033",
+      "value_display": "1750 g"
      },
      {
-      "entry_id": "e3",
-      "label": "Sona",
-      "value_display": "2,250 HP"
+      "entry_id": "e1",
+      "label": "Item 026",
+      "value_display": "1400 g"
      },
      {
       "entry_id": "e0",
-      "label": "Extra23",
-      "value_display": "1,982 HP"
+      "label": "Item 016",
+      "value_display": "900 g"
+     },
+     {
+      "entry_id": "e3",
+      "label": "Item 009",
+      "value_display": "550 g"
      },
      {
       "entry_id": "e2",
-      "label": "Extra00",
-      "value_display": "1,690 HP"
+      "label": "Item 002",
+      "value_display": "200 g"
      }
     ],
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "players": {
      "0a11d111-0000-4000-8000-000000000001": {
       "base_points": 0,
@@ -1938,10 +1932,10 @@
       "incorrect": 1,
       "order": [
        "e2",
-       "e4",
-       "e3",
+       "e1",
        "e0",
-       "e1"
+       "e3",
+       "e4"
       ],
       "points_awarded": 0,
       "position_correct": [
@@ -1951,32 +1945,32 @@
        true,
        false
       ],
-      "segment_result": "draw",
+      "segment_result": "loss",
       "speed_bonus_points": 0,
       "unanswered": 0
      },
-     "p_c6174516d7d17365": {
-      "base_points": 0,
-      "correct": 0,
-      "duration_ms": 6338,
+     "p_6151c7ea566ef4bf": {
+      "base_points": 2,
+      "correct": 1,
+      "duration_ms": 8124,
       "finished_first": false,
-      "incorrect": 1,
+      "incorrect": 0,
       "order": [
        "e4",
        "e1",
-       "e3",
        "e0",
+       "e3",
        "e2"
       ],
-      "points_awarded": 0,
+      "points_awarded": 2,
       "position_correct": [
-       false,
-       false,
+       true,
+       true,
        true,
        true,
        true
       ],
-      "segment_result": "draw",
+      "segment_result": "win",
       "speed_bonus_points": 0,
       "unanswered": 0
      }
@@ -1993,16 +1987,16 @@
   "server_time": "2026-09-09T12:00:11+00:00"
  },
  "resolved_timeout": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "completion_reason": "segments_complete",
    "end_reason": "deadline_expired",
    "final_deadline": "2026-09-09T12:00:50.450000+00:00",
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "match_over": true,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_c6174516d7d17365": 170
+    "p_6151c7ea566ef4bf": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -2012,11 +2006,11 @@
      "score_before": 3,
      "speed_bonus_points": 0
     },
-    "p_c6174516d7d17365": {
+    "p_6151c7ea566ef4bf": {
      "base_points": 2,
      "points_awarded": 3,
-     "score_after": 5,
-     "score_before": 2,
+     "score_after": 7,
+     "score_before": 4,
      "speed_bonus_points": 1
     }
    },
@@ -2066,7 +2060,7 @@
     {
      "answered_first": true,
      "carryover": {
-      "consecutive_correct": 2,
+      "consecutive_correct": 3,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -2088,64 +2082,64 @@
      "level_before": 1,
      "level_up_events": [],
      "outcome": "correct",
-     "player_id": "p_c6174516d7d17365",
+     "player_id": "p_6151c7ea566ef4bf",
      "points_awarded": 3,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 5,
-     "score_before": 2,
+     "score_after": 7,
+     "score_before": 4,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:29.368832+00:00",
+     "submitted_at": "2026-09-09T12:00:29.844487+00:00",
      "timed_out": false,
-     "total_xp_after": 33,
+     "total_xp_after": 36,
      "xp_gained": 12
     }
    ],
    "presentation_ms": 2900,
    "pressure_applied": true,
-   "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:3",
+   "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:3",
    "round_number": 3,
    "segment_reveal": {
     "canonical_order": [
      "e2",
      "e1",
      "e0",
-     "e3",
-     "e4"
+     "e4",
+     "e3"
     ],
     "challenge_count": 1,
     "correct_points": 2,
     "entries": [
      {
       "entry_id": "e2",
-      "label": "Extra29",
-      "value_display": "131 AD"
+      "label": "Item 034",
+      "value_display": "1800 g"
      },
      {
       "entry_id": "e1",
-      "label": "Extra12",
-      "value_display": "122 AD"
+      "label": "Item 022",
+      "value_display": "1200 g"
      },
      {
       "entry_id": "e0",
-      "label": "Zed",
-      "value_display": "114 AD"
-     },
-     {
-      "entry_id": "e3",
-      "label": "Extra36",
-      "value_display": "105 AD"
+      "label": "Item 019",
+      "value_display": "1050 g"
      },
      {
       "entry_id": "e4",
-      "label": "Extra05",
-      "value_display": "92 AD"
+      "label": "Item 011",
+      "value_display": "650 g"
+     },
+     {
+      "entry_id": "e3",
+      "label": "Item 005",
+      "value_display": "350 g"
      }
     ],
     "module_id": "order_forge",
-    "module_version": 2,
+    "module_version": 1,
     "players": {
      "0a11d111-0000-4000-8000-000000000001": {
       "base_points": 0,
@@ -2160,18 +2154,18 @@
       "speed_bonus_points": 0,
       "unanswered": 1
      },
-     "p_c6174516d7d17365": {
+     "p_6151c7ea566ef4bf": {
       "base_points": 2,
       "correct": 1,
-      "duration_ms": 8919,
+      "duration_ms": 9394,
       "finished_first": true,
       "incorrect": 0,
       "order": [
        "e2",
        "e1",
        "e0",
-       "e3",
-       "e4"
+       "e4",
+       "e3"
       ],
       "points_awarded": 3,
       "position_correct": [
@@ -2190,7 +2184,7 @@
     "speed_bonus_points": 1
    },
    "started_at": "2026-09-09T12:00:20.450000+00:00",
-   "winner_id": "p_c6174516d7d17365"
+   "winner_id": "p_6151c7ea566ef4bf"
   },
   "projection_type": "resolved_round",
   "round_number": 3,
@@ -2198,11 +2192,11 @@
   "server_time": "2026-09-09T12:01:05+00:00"
  },
  "result": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "completion_reason": "segments_complete",
    "final_round_number": 3,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "outcome": "decisive",
    "rating_application_status": "skipped",
    "rating_policy_version": "elo.v1",
@@ -2210,14 +2204,14 @@
    "scoring": {
     "final_scores": {
      "0a11d111-0000-4000-8000-000000000001": 3,
-     "p_c6174516d7d17365": 5
+     "p_6151c7ea566ef4bf": 7
     },
     "match_length": 3,
     "model": "points",
     "modules_played": 3
    },
    "terminal_reason": "combat",
-   "winner_user_id": "p_c6174516d7d17365"
+   "winner_user_id": "p_6151c7ea566ef4bf"
   },
   "projection_type": "match_result",
   "round_number": 3,
@@ -2225,19 +2219,19 @@
   "server_time": "2026-09-09T12:01:35+00:00"
  },
  "resume_final": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "latest_resolved_round": {
-    "match_id": "rkb_010ec1ff019015df4abdb78c",
+    "match_id": "rkb_dd053490e369b7f0b12df947",
     "payload": {
      "completion_reason": "segments_complete",
      "end_reason": "deadline_expired",
      "final_deadline": "2026-09-09T12:00:50.450000+00:00",
-     "match_id": "rkb_010ec1ff019015df4abdb78c",
+     "match_id": "rkb_dd053490e369b7f0b12df947",
      "match_over": true,
      "max_hp": {
       "0a11d111-0000-4000-8000-000000000001": 170,
-      "p_c6174516d7d17365": 170
+      "p_6151c7ea566ef4bf": 170
      },
      "module_points": {
       "0a11d111-0000-4000-8000-000000000001": {
@@ -2247,11 +2241,11 @@
        "score_before": 3,
        "speed_bonus_points": 0
       },
-      "p_c6174516d7d17365": {
+      "p_6151c7ea566ef4bf": {
        "base_points": 2,
        "points_awarded": 3,
-       "score_after": 5,
-       "score_before": 2,
+       "score_after": 7,
+       "score_before": 4,
        "speed_bonus_points": 1
       }
      },
@@ -2301,7 +2295,7 @@
       {
        "answered_first": true,
        "carryover": {
-        "consecutive_correct": 2,
+        "consecutive_correct": 3,
         "effects_consumed": [],
         "effects_gained": []
        },
@@ -2323,64 +2317,64 @@
        "level_before": 1,
        "level_up_events": [],
        "outcome": "correct",
-       "player_id": "p_c6174516d7d17365",
+       "player_id": "p_6151c7ea566ef4bf",
        "points_awarded": 3,
        "reached_zero_hp": false,
        "remaining_charges": {
         "tank.fortify": 3
        },
-       "score_after": 5,
-       "score_before": 2,
+       "score_after": 7,
+       "score_before": 4,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:29.368832+00:00",
+       "submitted_at": "2026-09-09T12:00:29.844487+00:00",
        "timed_out": false,
-       "total_xp_after": 33,
+       "total_xp_after": 36,
        "xp_gained": 12
       }
      ],
      "presentation_ms": 2900,
      "pressure_applied": true,
-     "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:3",
+     "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:3",
      "round_number": 3,
      "segment_reveal": {
       "canonical_order": [
        "e2",
        "e1",
        "e0",
-       "e3",
-       "e4"
+       "e4",
+       "e3"
       ],
       "challenge_count": 1,
       "correct_points": 2,
       "entries": [
        {
         "entry_id": "e2",
-        "label": "Extra29",
-        "value_display": "131 AD"
+        "label": "Item 034",
+        "value_display": "1800 g"
        },
        {
         "entry_id": "e1",
-        "label": "Extra12",
-        "value_display": "122 AD"
+        "label": "Item 022",
+        "value_display": "1200 g"
        },
        {
         "entry_id": "e0",
-        "label": "Zed",
-        "value_display": "114 AD"
-       },
-       {
-        "entry_id": "e3",
-        "label": "Extra36",
-        "value_display": "105 AD"
+        "label": "Item 019",
+        "value_display": "1050 g"
        },
        {
         "entry_id": "e4",
-        "label": "Extra05",
-        "value_display": "92 AD"
+        "label": "Item 011",
+        "value_display": "650 g"
+       },
+       {
+        "entry_id": "e3",
+        "label": "Item 005",
+        "value_display": "350 g"
        }
       ],
       "module_id": "order_forge",
-      "module_version": 2,
+      "module_version": 1,
       "players": {
        "0a11d111-0000-4000-8000-000000000001": {
         "base_points": 0,
@@ -2395,18 +2389,18 @@
         "speed_bonus_points": 0,
         "unanswered": 1
        },
-       "p_c6174516d7d17365": {
+       "p_6151c7ea566ef4bf": {
         "base_points": 2,
         "correct": 1,
-        "duration_ms": 8919,
+        "duration_ms": 9394,
         "finished_first": true,
         "incorrect": 0,
         "order": [
          "e2",
          "e1",
          "e0",
-         "e3",
-         "e4"
+         "e4",
+         "e3"
         ],
         "points_awarded": 3,
         "position_correct": [
@@ -2425,7 +2419,7 @@
       "speed_bonus_points": 1
      },
      "started_at": "2026-09-09T12:00:20.450000+00:00",
-     "winner_id": "p_c6174516d7d17365"
+     "winner_id": "p_6151c7ea566ef4bf"
     },
     "projection_type": "resolved_round",
     "round_number": 3,
@@ -2441,12 +2435,12 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_010ec1ff019015df4abdb78c",
+    "match_id": "rkb_dd053490e369b7f0b12df947",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
-     "match_id": "rkb_010ec1ff019015df4abdb78c",
+     "match_id": "rkb_dd053490e369b7f0b12df947",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -2498,10 +2492,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_c6174516d7d17365",
+       "player_id": "p_6151c7ea566ef4bf",
        "role": null,
-       "score": 5,
-       "total_xp": 33
+       "score": 7,
+       "total_xp": 36
       }
      ],
      "presence": {
@@ -2514,7 +2508,7 @@
      "ruleset": null,
      "segment": null,
      "segment_state": null,
-     "winner_id": "p_c6174516d7d17365"
+     "winner_id": "p_6151c7ea566ef4bf"
     },
     "projection_type": "private_player",
     "round_number": null,
@@ -2522,12 +2516,12 @@
     "server_time": "2026-09-09T12:01:35+00:00"
    },
    "public": {
-    "match_id": "rkb_010ec1ff019015df4abdb78c",
+    "match_id": "rkb_dd053490e369b7f0b12df947",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
-     "match_id": "rkb_010ec1ff019015df4abdb78c",
+     "match_id": "rkb_dd053490e369b7f0b12df947",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -2553,10 +2547,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_c6174516d7d17365",
+       "player_id": "p_6151c7ea566ef4bf",
        "role": null,
-       "score": 5,
-       "total_xp": 33
+       "score": 7,
+       "total_xp": 36
       }
      ],
      "playtest": {
@@ -2581,7 +2575,7 @@
      },
      "segment": null,
      "segment_state": null,
-     "winner_id": "p_c6174516d7d17365"
+     "winner_id": "p_6151c7ea566ef4bf"
     },
     "projection_type": "public_round",
     "round_number": null,
@@ -2589,11 +2583,11 @@
     "server_time": "2026-09-09T12:01:35+00:00"
    },
    "result": {
-    "match_id": "rkb_010ec1ff019015df4abdb78c",
+    "match_id": "rkb_dd053490e369b7f0b12df947",
     "payload": {
      "completion_reason": "segments_complete",
      "final_round_number": 3,
-     "match_id": "rkb_010ec1ff019015df4abdb78c",
+     "match_id": "rkb_dd053490e369b7f0b12df947",
      "outcome": "decisive",
      "rating_application_status": "skipped",
      "rating_policy_version": "elo.v1",
@@ -2601,14 +2595,14 @@
      "scoring": {
       "final_scores": {
        "0a11d111-0000-4000-8000-000000000001": 3,
-       "p_c6174516d7d17365": 5
+       "p_6151c7ea566ef4bf": 7
       },
       "match_length": 3,
       "model": "points",
       "modules_played": 3
      },
      "terminal_reason": "combat",
-     "winner_user_id": "p_c6174516d7d17365"
+     "winner_user_id": "p_6151c7ea566ef4bf"
     },
     "projection_type": "match_result",
     "round_number": 3,
@@ -2622,7 +2616,7 @@
   "server_time": "2026-09-09T12:01:35+00:00"
  },
  "resume_locked": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "latest_resolved_round": null,
    "match_over": false,
@@ -2634,7 +2628,7 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_010ec1ff019015df4abdb78c",
+    "match_id": "rkb_dd053490e369b7f0b12df947",
     "payload": {
      "active_round": {
       "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -2646,7 +2640,7 @@
      },
      "completed_rounds": 0,
      "completion_reason": null,
-     "match_id": "rkb_010ec1ff019015df4abdb78c",
+     "match_id": "rkb_dd053490e369b7f0b12df947",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -2698,7 +2692,7 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_c6174516d7d17365",
+       "player_id": "p_6151c7ea566ef4bf",
        "role": null,
        "score": 0,
        "total_xp": 0
@@ -2714,7 +2708,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+      "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -2741,7 +2735,7 @@
       "challenge_index": 1,
       "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
       "module_id": "order_forge",
-      "module_version": 2,
+      "module_version": 1,
       "phase": "challenges",
       "pressure_applied": false,
       "resolved": false,
@@ -2776,58 +2770,58 @@
          "entries": [
           {
            "entry_id": "e0",
-           "label": "Extra23",
+           "label": "Item 016",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra23/icon.png"
+            "src": "assets/items/16.png"
            }
           },
           {
            "entry_id": "e1",
-           "label": "Extra27",
+           "label": "Item 026",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra27/icon.png"
+            "src": "assets/items/26.png"
            }
           },
           {
            "entry_id": "e2",
-           "label": "Extra00",
+           "label": "Item 002",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra00/icon.png"
+            "src": "assets/items/2.png"
            }
           },
           {
            "entry_id": "e3",
-           "label": "Sona",
+           "label": "Item 009",
            "media": {
             "alt": "",
-            "src": "assets/champions/Sona/icon.png"
+            "src": "assets/items/9.png"
            }
           },
           {
            "entry_id": "e4",
-           "label": "Extra31",
+           "label": "Item 033",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra31/icon.png"
+            "src": "assets/items/33.png"
            }
           }
          ]
         }
        ],
        "direction_labels": {
-        "first": "Highest",
-        "last": "Lowest"
+        "first": "Most expensive",
+        "last": "Cheapest"
        },
-       "family": "champion_stat:hp@lvl18",
-       "metric_label": "Health (lvl 18)",
-       "prompt": "Order these champions by Health at level 18",
+       "family": "item_cost",
+       "metric_label": "Gold cost",
+       "prompt": "Order these items by gold cost",
        "reveal_window_ms": 2500
       },
       "module_id": "order_forge",
-      "module_version": 2,
+      "module_version": 1,
       "opponent_ability_confirmed": false,
       "opponent_challenges_completed": 0,
       "opponent_finished": false,
@@ -2846,47 +2840,47 @@
       "own_challenge_reveals": [
        {
         "canonical_order": [
-         "e1",
          "e4",
-         "e3",
+         "e1",
          "e0",
+         "e3",
          "e2"
         ],
         "challenge_index": 0,
         "entries": [
          {
-          "entry_id": "e1",
-          "label": "Extra27",
-          "value_display": "2,878 HP"
-         },
-         {
           "entry_id": "e4",
-          "label": "Extra31",
-          "value_display": "2,494 HP"
+          "label": "Item 033",
+          "value_display": "1750 g"
          },
          {
-          "entry_id": "e3",
-          "label": "Sona",
-          "value_display": "2,250 HP"
+          "entry_id": "e1",
+          "label": "Item 026",
+          "value_display": "1400 g"
          },
          {
           "entry_id": "e0",
-          "label": "Extra23",
-          "value_display": "1,982 HP"
+          "label": "Item 016",
+          "value_display": "900 g"
+         },
+         {
+          "entry_id": "e3",
+          "label": "Item 009",
+          "value_display": "550 g"
          },
          {
           "entry_id": "e2",
-          "label": "Extra00",
-          "value_display": "1,690 HP"
+          "label": "Item 002",
+          "value_display": "200 g"
          }
         ],
         "is_correct": false,
         "order": [
          "e2",
-         "e4",
-         "e3",
+         "e1",
          "e0",
-         "e1"
+         "e3",
+         "e4"
         ],
         "position_correct": [
          false,
@@ -2906,10 +2900,10 @@
        {
         "order": [
          "e2",
-         "e4",
-         "e3",
+         "e1",
          "e0",
-         "e1"
+         "e3",
+         "e4"
         ]
        }
       ],
@@ -2927,7 +2921,7 @@
     "server_time": "2026-09-09T12:00:08+00:00"
    },
    "public": {
-    "match_id": "rkb_010ec1ff019015df4abdb78c",
+    "match_id": "rkb_dd053490e369b7f0b12df947",
     "payload": {
      "active_round": {
       "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -2939,7 +2933,7 @@
      },
      "completed_rounds": 0,
      "completion_reason": null,
-     "match_id": "rkb_010ec1ff019015df4abdb78c",
+     "match_id": "rkb_dd053490e369b7f0b12df947",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -2965,7 +2959,7 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_c6174516d7d17365",
+       "player_id": "p_6151c7ea566ef4bf",
        "role": null,
        "score": 0,
        "total_xp": 0
@@ -2987,7 +2981,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "order_forge:rkb_010ec1ff019015df4abdb78c:1",
+      "question_id": "order_forge:rkb_dd053490e369b7f0b12df947:1",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -3020,7 +3014,7 @@
       "challenge_index": 1,
       "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
       "module_id": "order_forge",
-      "module_version": 2,
+      "module_version": 1,
       "phase": "challenges",
       "pressure_applied": false,
       "resolved": false,
@@ -3055,58 +3049,58 @@
          "entries": [
           {
            "entry_id": "e0",
-           "label": "Extra23",
+           "label": "Item 016",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra23/icon.png"
+            "src": "assets/items/16.png"
            }
           },
           {
            "entry_id": "e1",
-           "label": "Extra27",
+           "label": "Item 026",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra27/icon.png"
+            "src": "assets/items/26.png"
            }
           },
           {
            "entry_id": "e2",
-           "label": "Extra00",
+           "label": "Item 002",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra00/icon.png"
+            "src": "assets/items/2.png"
            }
           },
           {
            "entry_id": "e3",
-           "label": "Sona",
+           "label": "Item 009",
            "media": {
             "alt": "",
-            "src": "assets/champions/Sona/icon.png"
+            "src": "assets/items/9.png"
            }
           },
           {
            "entry_id": "e4",
-           "label": "Extra31",
+           "label": "Item 033",
            "media": {
             "alt": "",
-            "src": "assets/champions/Extra31/icon.png"
+            "src": "assets/items/33.png"
            }
           }
          ]
         }
        ],
        "direction_labels": {
-        "first": "Highest",
-        "last": "Lowest"
+        "first": "Most expensive",
+        "last": "Cheapest"
        },
-       "family": "champion_stat:hp@lvl18",
-       "metric_label": "Health (lvl 18)",
-       "prompt": "Order these champions by Health at level 18",
+       "family": "item_cost",
+       "metric_label": "Gold cost",
+       "prompt": "Order these items by gold cost",
        "reveal_window_ms": 2500
       },
       "module_id": "order_forge",
-      "module_version": 2,
+      "module_version": 1,
       "opponent_ability_confirmed": false,
       "opponent_challenges_completed": 0,
       "opponent_finished": false,
@@ -3125,47 +3119,47 @@
       "own_challenge_reveals": [
        {
         "canonical_order": [
-         "e1",
          "e4",
-         "e3",
+         "e1",
          "e0",
+         "e3",
          "e2"
         ],
         "challenge_index": 0,
         "entries": [
          {
-          "entry_id": "e1",
-          "label": "Extra27",
-          "value_display": "2,878 HP"
-         },
-         {
           "entry_id": "e4",
-          "label": "Extra31",
-          "value_display": "2,494 HP"
+          "label": "Item 033",
+          "value_display": "1750 g"
          },
          {
-          "entry_id": "e3",
-          "label": "Sona",
-          "value_display": "2,250 HP"
+          "entry_id": "e1",
+          "label": "Item 026",
+          "value_display": "1400 g"
          },
          {
           "entry_id": "e0",
-          "label": "Extra23",
-          "value_display": "1,982 HP"
+          "label": "Item 016",
+          "value_display": "900 g"
+         },
+         {
+          "entry_id": "e3",
+          "label": "Item 009",
+          "value_display": "550 g"
          },
          {
           "entry_id": "e2",
-          "label": "Extra00",
-          "value_display": "1,690 HP"
+          "label": "Item 002",
+          "value_display": "200 g"
          }
         ],
         "is_correct": false,
         "order": [
          "e2",
-         "e4",
-         "e3",
+         "e1",
          "e0",
-         "e1"
+         "e3",
+         "e4"
         ],
         "position_correct": [
          false,
@@ -3185,10 +3179,10 @@
        {
         "order": [
          "e2",
-         "e4",
-         "e3",
+         "e1",
          "e0",
-         "e1"
+         "e3",
+         "e4"
         ]
        }
       ],
@@ -3213,74 +3207,74 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "review": {
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "payload": {
    "final_round_number": 3,
-   "match_id": "rkb_010ec1ff019015df4abdb78c",
+   "match_id": "rkb_dd053490e369b7f0b12df947",
    "round_count": 3,
    "rounds": [
     {
      "canonical_order": [
-      "e1",
       "e4",
-      "e3",
+      "e1",
       "e0",
+      "e3",
       "e2"
      ],
      "canonical_question_ref": null,
      "category": null,
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
      "entries": [
       {
        "entry_id": "e0",
-       "label": "Extra23",
+       "label": "Item 016",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra23/icon.png"
+        "src": "assets/items/16.png"
        },
-       "value_display": "1,982 HP"
+       "value_display": "900 g"
       },
       {
        "entry_id": "e1",
-       "label": "Extra27",
+       "label": "Item 026",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra27/icon.png"
+        "src": "assets/items/26.png"
        },
-       "value_display": "2,878 HP"
+       "value_display": "1400 g"
       },
       {
        "entry_id": "e2",
-       "label": "Extra00",
+       "label": "Item 002",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra00/icon.png"
+        "src": "assets/items/2.png"
        },
-       "value_display": "1,690 HP"
+       "value_display": "200 g"
       },
       {
        "entry_id": "e3",
-       "label": "Sona",
+       "label": "Item 009",
        "media": {
         "alt": "",
-        "src": "assets/champions/Sona/icon.png"
+        "src": "assets/items/9.png"
        },
-       "value_display": "2,250 HP"
+       "value_display": "550 g"
       },
       {
        "entry_id": "e4",
-       "label": "Extra31",
+       "label": "Item 033",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra31/icon.png"
+        "src": "assets/items/33.png"
        },
-       "value_display": "2,494 HP"
+       "value_display": "1750 g"
       }
      ],
-     "family": "champion_stat:hp@lvl18",
+     "family": "item_cost",
      "icon_hint": {
       "icon": null,
       "key": null,
@@ -3288,7 +3282,7 @@
      },
      "is_correct": false,
      "kind": "order_forge",
-     "metric_label": "Health (lvl 18)",
+     "metric_label": "Gold cost",
      "module_id": "order_forge",
      "outcome": "incorrect",
      "position_correct": [
@@ -3298,7 +3292,7 @@
       true,
       false
      ],
-     "prompt": "Order these champions by Health at level 18",
+     "prompt": "Order these items by gold cost",
      "question": null,
      "revealed": true,
      "round_number": 1,
@@ -3315,10 +3309,10 @@
      },
      "viewer_order": [
       "e2",
-      "e4",
-      "e3",
+      "e1",
       "e0",
-      "e1"
+      "e3",
+      "e4"
      ],
      "viewer_submission": {
       "answer_index": null,
@@ -3330,11 +3324,11 @@
     },
     {
      "canonical_order": [
-      "e1",
-      "e4",
-      "e3",
       "e0",
-      "e2"
+      "e2",
+      "e3",
+      "e4",
+      "e1"
      ],
      "canonical_question_ref": null,
      "category": null,
@@ -3345,48 +3339,48 @@
      "entries": [
       {
        "entry_id": "e0",
-       "label": "Fiendish Codex",
+       "label": "Item 034",
        "media": {
         "alt": "",
-        "src": "assets/items/3108.png"
+        "src": "assets/items/34.png"
        },
-       "value_display": "850 gold"
+       "value_display": "1800 g"
       },
       {
        "entry_id": "e1",
-       "label": "Jak'Sho, The Protean",
+       "label": "Item 002",
        "media": {
         "alt": "",
-        "src": "assets/items/6665.png"
+        "src": "assets/items/2.png"
        },
-       "value_display": "3,200 gold"
+       "value_display": "200 g"
       },
       {
        "entry_id": "e2",
-       "label": "Cloth Armor",
+       "label": "Item 019",
        "media": {
         "alt": "",
-        "src": "assets/items/1029.png"
+        "src": "assets/items/19.png"
        },
-       "value_display": "300 gold"
+       "value_display": "1050 g"
       },
       {
        "entry_id": "e3",
-       "label": "Hexdrinker",
+       "label": "Item 017",
        "media": {
         "alt": "",
-        "src": "assets/items/3155.png"
+        "src": "assets/items/17.png"
        },
-       "value_display": "1,300 gold"
+       "value_display": "950 g"
       },
       {
        "entry_id": "e4",
-       "label": "Nashor's Tooth",
+       "label": "Item 005",
        "media": {
         "alt": "",
-        "src": "assets/items/3115.png"
+        "src": "assets/items/5.png"
        },
-       "value_display": "3,000 gold"
+       "value_display": "350 g"
       }
      ],
      "family": "item_cost",
@@ -3423,11 +3417,11 @@
       "tier": null
      },
      "viewer_order": [
-      "e1",
-      "e4",
-      "e3",
       "e0",
-      "e2"
+      "e2",
+      "e3",
+      "e4",
+      "e1"
      ],
      "viewer_submission": {
       "answer_index": null,
@@ -3442,63 +3436,63 @@
       "e2",
       "e1",
       "e0",
-      "e3",
-      "e4"
+      "e4",
+      "e3"
      ],
      "canonical_question_ref": null,
      "category": null,
      "direction_labels": {
-      "first": "Highest",
-      "last": "Lowest"
+      "first": "Most expensive",
+      "last": "Cheapest"
      },
      "entries": [
       {
        "entry_id": "e0",
-       "label": "Zed",
+       "label": "Item 019",
        "media": {
         "alt": "",
-        "src": "assets/champions/Zed/icon.png"
+        "src": "assets/items/19.png"
        },
-       "value_display": "114 AD"
+       "value_display": "1050 g"
       },
       {
        "entry_id": "e1",
-       "label": "Extra12",
+       "label": "Item 022",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra12/icon.png"
+        "src": "assets/items/22.png"
        },
-       "value_display": "122 AD"
+       "value_display": "1200 g"
       },
       {
        "entry_id": "e2",
-       "label": "Extra29",
+       "label": "Item 034",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra29/icon.png"
+        "src": "assets/items/34.png"
        },
-       "value_display": "131 AD"
+       "value_display": "1800 g"
       },
       {
        "entry_id": "e3",
-       "label": "Extra36",
+       "label": "Item 005",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra36/icon.png"
+        "src": "assets/items/5.png"
        },
-       "value_display": "105 AD"
+       "value_display": "350 g"
       },
       {
        "entry_id": "e4",
-       "label": "Extra05",
+       "label": "Item 011",
        "media": {
         "alt": "",
-        "src": "assets/champions/Extra05/icon.png"
+        "src": "assets/items/11.png"
        },
-       "value_display": "92 AD"
+       "value_display": "650 g"
       }
      ],
-     "family": "champion_stat:ad@lvl18",
+     "family": "item_cost",
      "icon_hint": {
       "icon": null,
       "key": null,
@@ -3506,11 +3500,11 @@
      },
      "is_correct": null,
      "kind": "order_forge",
-     "metric_label": "Attack Damage (lvl 18)",
+     "metric_label": "Gold cost",
      "module_id": "order_forge",
      "outcome": "timeout",
      "position_correct": [],
-     "prompt": "Order these champions by Attack Damage at level 18",
+     "prompt": "Order these items by gold cost",
      "question": null,
      "revealed": true,
      "round_number": 3,
@@ -3545,47 +3539,47 @@
   "challenge_index": 0,
   "challenge_reveal": {
    "canonical_order": [
-    "e1",
     "e4",
-    "e3",
+    "e1",
     "e0",
+    "e3",
     "e2"
    ],
    "challenge_index": 0,
    "entries": [
     {
-     "entry_id": "e1",
-     "label": "Extra27",
-     "value_display": "2,878 HP"
-    },
-    {
      "entry_id": "e4",
-     "label": "Extra31",
-     "value_display": "2,494 HP"
+     "label": "Item 033",
+     "value_display": "1750 g"
     },
     {
-     "entry_id": "e3",
-     "label": "Sona",
-     "value_display": "2,250 HP"
+     "entry_id": "e1",
+     "label": "Item 026",
+     "value_display": "1400 g"
     },
     {
      "entry_id": "e0",
-     "label": "Extra23",
-     "value_display": "1,982 HP"
+     "label": "Item 016",
+     "value_display": "900 g"
+    },
+    {
+     "entry_id": "e3",
+     "label": "Item 009",
+     "value_display": "550 g"
     },
     {
      "entry_id": "e2",
-     "label": "Extra00",
-     "value_display": "1,690 HP"
+     "label": "Item 002",
+     "value_display": "200 g"
     }
    ],
    "is_correct": false,
    "order": [
     "e2",
-    "e4",
-    "e3",
+    "e1",
     "e0",
-    "e1"
+    "e3",
+    "e4"
    ],
    "position_correct": [
     false,
@@ -3597,7 +3591,7 @@
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "next_challenge_index": 1,
   "reveal_window_ms": 2500,
   "segment_number": 1,
@@ -3608,47 +3602,47 @@
   "challenge_index": 0,
   "challenge_reveal": {
    "canonical_order": [
-    "e1",
-    "e4",
-    "e3",
     "e0",
-    "e2"
+    "e2",
+    "e3",
+    "e4",
+    "e1"
    ],
    "challenge_index": 0,
    "entries": [
     {
-     "entry_id": "e1",
-     "label": "Jak'Sho, The Protean",
-     "value_display": "3,200 gold"
-    },
-    {
-     "entry_id": "e4",
-     "label": "Nashor's Tooth",
-     "value_display": "3,000 gold"
-    },
-    {
-     "entry_id": "e3",
-     "label": "Hexdrinker",
-     "value_display": "1,300 gold"
-    },
-    {
      "entry_id": "e0",
-     "label": "Fiendish Codex",
-     "value_display": "850 gold"
+     "label": "Item 034",
+     "value_display": "1800 g"
     },
     {
      "entry_id": "e2",
-     "label": "Cloth Armor",
-     "value_display": "300 gold"
+     "label": "Item 019",
+     "value_display": "1050 g"
+    },
+    {
+     "entry_id": "e3",
+     "label": "Item 017",
+     "value_display": "950 g"
+    },
+    {
+     "entry_id": "e4",
+     "label": "Item 005",
+     "value_display": "350 g"
+    },
+    {
+     "entry_id": "e1",
+     "label": "Item 002",
+     "value_display": "200 g"
     }
    ],
    "is_correct": true,
    "order": [
-    "e1",
-    "e4",
-    "e3",
     "e0",
-    "e2"
+    "e2",
+    "e3",
+    "e4",
+    "e1"
    ],
    "position_correct": [
     true,
@@ -3660,7 +3654,7 @@
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "next_challenge_index": 1,
   "reveal_window_ms": 2500,
   "segment_number": 2,
@@ -3671,47 +3665,47 @@
   "challenge_index": 0,
   "challenge_reveal": {
    "canonical_order": [
-    "e1",
     "e4",
-    "e3",
+    "e1",
     "e0",
+    "e3",
     "e2"
    ],
    "challenge_index": 0,
    "entries": [
     {
-     "entry_id": "e1",
-     "label": "Extra27",
-     "value_display": "2,878 HP"
-    },
-    {
      "entry_id": "e4",
-     "label": "Extra31",
-     "value_display": "2,494 HP"
+     "label": "Item 033",
+     "value_display": "1750 g"
     },
     {
-     "entry_id": "e3",
-     "label": "Sona",
-     "value_display": "2,250 HP"
+     "entry_id": "e1",
+     "label": "Item 026",
+     "value_display": "1400 g"
     },
     {
      "entry_id": "e0",
-     "label": "Extra23",
-     "value_display": "1,982 HP"
+     "label": "Item 016",
+     "value_display": "900 g"
+    },
+    {
+     "entry_id": "e3",
+     "label": "Item 009",
+     "value_display": "550 g"
     },
     {
      "entry_id": "e2",
-     "label": "Extra00",
-     "value_display": "1,690 HP"
+     "label": "Item 002",
+     "value_display": "200 g"
     }
    ],
    "is_correct": false,
    "order": [
     "e2",
-    "e4",
-    "e3",
+    "e1",
     "e0",
-    "e1"
+    "e3",
+    "e4"
    ],
    "position_correct": [
     false,
@@ -3723,59 +3717,59 @@
   },
   "conflicting": true,
   "idempotent": true,
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "next_challenge_index": 1,
   "reveal_window_ms": 2500,
   "segment_number": 1,
   "segment_resolved": false,
   "status": "accepted"
  },
- "submit_request_bytes": "{\"order\":[\"e2\",\"e4\",\"e3\",\"e0\",\"e1\"]}",
+ "submit_request_bytes": "{\"order\":[\"e2\",\"e1\",\"e0\",\"e3\",\"e4\"]}",
  "submit_retry": {
   "challenge_index": 0,
   "challenge_reveal": {
    "canonical_order": [
-    "e1",
     "e4",
-    "e3",
+    "e1",
     "e0",
+    "e3",
     "e2"
    ],
    "challenge_index": 0,
    "entries": [
     {
-     "entry_id": "e1",
-     "label": "Extra27",
-     "value_display": "2,878 HP"
-    },
-    {
      "entry_id": "e4",
-     "label": "Extra31",
-     "value_display": "2,494 HP"
+     "label": "Item 033",
+     "value_display": "1750 g"
     },
     {
-     "entry_id": "e3",
-     "label": "Sona",
-     "value_display": "2,250 HP"
+     "entry_id": "e1",
+     "label": "Item 026",
+     "value_display": "1400 g"
     },
     {
      "entry_id": "e0",
-     "label": "Extra23",
-     "value_display": "1,982 HP"
+     "label": "Item 016",
+     "value_display": "900 g"
+    },
+    {
+     "entry_id": "e3",
+     "label": "Item 009",
+     "value_display": "550 g"
     },
     {
      "entry_id": "e2",
-     "label": "Extra00",
-     "value_display": "1,690 HP"
+     "label": "Item 002",
+     "value_display": "200 g"
     }
    ],
    "is_correct": false,
    "order": [
     "e2",
-    "e4",
-    "e3",
+    "e1",
     "e0",
-    "e1"
+    "e3",
+    "e4"
    ],
    "position_correct": [
     false,
@@ -3787,7 +3781,7 @@
   },
   "conflicting": false,
   "idempotent": true,
-  "match_id": "rkb_010ec1ff019015df4abdb78c",
+  "match_id": "rkb_dd053490e369b7f0b12df947",
   "next_challenge_index": 1,
   "reveal_window_ms": 2500,
   "segment_number": 1,

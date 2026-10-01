@@ -1,7 +1,7 @@
 /**
  * OF1-C — Order Forge against REAL server JSON.
  *
- * `__fixtures__/orderForgeServerCapture.json` is not hand-written. It is the
+ * `__fixtures__/orderForgeV1ServerCapture.json` (the V1 capture, frozen) is not hand-written. It is the
  * set of HTTP response bodies the backend's
  * `test_order_forge_wire_contract.py` collected while playing one admin
  * `admin.order_forge` match through the real Ranked routes (queue join,
@@ -27,7 +27,7 @@ import { orderForgeModule } from "@/lib/ranked-core/modules/orderForgeModule";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import type { ModuleSegmentActions } from "@/lib/ranked-core/modules/types";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
-import capture from "./__fixtures__/orderForgeServerCapture.json";
+import capture from "./__fixtures__/orderForgeV1ServerCapture.json";
 import {
   readMatchResult, readMatchReview, readPrivatePlayer, readPublicRound,
   readQueueStatus, readResolvedEnvelope, readResume, readSegmentSettlement,

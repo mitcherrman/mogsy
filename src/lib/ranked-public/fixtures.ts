@@ -513,8 +513,8 @@ export function matchResultPointsV1(
 /**
  * Hand-written `order_forge.v1` segment fixtures, for the probe and the unit
  * tests. Field names match the committed backend (reconciled in OF1-C); the
- * proof of that is NOT this file but `__fixtures__/orderForgeServerCapture.json`,
- * real server bodies read by `contracts.orderForge.serverCapture.test.tsx`.
+ * proof of that is NOT this file but `__fixtures__/orderForgeServerCapture.json` (V2) and `orderForgeV1ServerCapture.json` (V1),
+ * real server bodies read by `contracts.orderForge.{v1ServerCapture,v2ServerCapture}.test.tsx`.
  * Every wire name is read in ONE place (`contracts.ts`: `readOrderForgeBlock`,
  * `readChallengeReveals`, `readOrderForgeSettlement`, `reviewOrderForge`), so a
  * rename lands there, in the capture and in this file.
