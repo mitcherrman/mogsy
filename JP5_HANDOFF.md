@@ -7,9 +7,52 @@
 | JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · `ccdbac38` docs (round 2) · **`f578ecc4` round 3 (typed workings, per-child timing, Step 2 + haste)** · the round-3 docs commit |
 | Backend | **Round 3: `jp5/journey-structured-working` at `96fff403`** (worktree `League_Combat_Simulator/.worktrees/jp5-structured-working`, from JP4 `fc95e81e`, which is untouched). Rounds 1–2 were read-only audits (§7–§10). |
 | Production / Railway / Patch Ops / items / Order Forge / other worktrees | **Untouched.** Nothing pushed, merged, integrated or deployed. |
+| Round 6 | **Polish (§R6)**: portrait `!` for any established or stated stat; hint "Tap champion portraits to review stats."; compact rows without history; Step 4 delta `≈16.4 dmg`. Frontend code + docs commits after §R5's. Backend unchanged. |
 | Round 5 | **Terminology + reduction copy (§R5)**: presentation only — `(Bonus AD)`, `19.4% Reduced` / `≈16 less`, `9.1% Reduced` / `≈1.1s shorter`; "notebook" retired for **champion portrait popup**. Frontend code commit + docs commit after §R4's. Backend unchanged. |
 | Round 4 | **The champion portrait popup (§R4)**: frontend `9a7a1760` + `1e46ecb7`, backend `a9a4be2e` (armor provenance in `stat_sources`). Retained board bubbles removed; stage geometry unchanged; freed space measured, not applied. |
 | Status | **Not owner-approved.** Round 3 (§0) implements the bounded foundation: one typed working carrier, per-child reveal windows, Step 2 composition, haste Stage 1 — certified locally. §7–§9 below are the round-2 designs it implemented (§0 records what was actually built and where it differs). Open items: §0.7. |
+
+## R6. Round 6 — polish: portrait `!`, first-use hint, compact rows, damage delta
+
+**Status: implemented and certified locally; NOT owner-approved.** Presentation only: architecture, timing contracts, the popup's state/provenance model, Step 4 / haste behaviour and JP2 geometry are unchanged. Backend untouched (`a9a4be2e`). Nothing pushed, merged, integrated or deployed. The geometry pass is not started (R4.6 measurements stand: phones ≈147px horizontal, tablet/desktop ≈25–36px vertical).
+
+| # | Owner correction | Implemented |
+|---|---|---|
+| 1 | Portrait `!` when the popup holds ANY established or stated stat, every champion | `ChampionPortraitPopup.known` = some reached checkpoint has an entry; the portrait's `!` reads `known` (was `learned`, reveal-only). `learned` stays on the model with its own meaning and still drives the one-shot glow. Accessible name: "Zed stats, stats to review". The active outline (`statesInputsAt`) is unchanged. Effect: Zed's `!` appears with Step 2 (its premise states his Bonus AD), Pantheon's when his stats are stated. |
+| 2 | Replace the stale first-use hint | Same `useKnowledgeCoach` mechanism, trigger, timing and storage key: **"Tap champion portraits to review stats."** |
+| 3 | Compact rows without history | `entryBasis` is the state only: `ARMOR 65  Lv 3 · Cloth Armor`, `ARMOR 24  Lv 2`, `BONUS AD 21  Lv 2 · Doran's Blade · 2 shards` — no `learned Step N` / `stated Step N` / `base`. Expanded provenance unchanged (`Lv 3 base 50.08 · Cloth Armor +15 · Exact 65.08`; Ahri's Exact 24.024). `how` / `step` stay on each entry (`data-how`), unprinted. Popup width unchanged (16.5rem). |
+| 4 | Step 4 flat delta `≈16.4 DMG` | `approxTenths(raw_damage − final_damage)` + " dmg" over the two served exact values (84.56 − 68.1804 = 16.3796 → `≈16.4`; Leona 123.8675 − 82.5343 → `≈41.3`). No backend field. `approxWhole` removed. `19.4% Reduced`, `9.1% Reduced`, `≈1.1s shorter` unchanged. |
+
+**Precision lock.** The visual-language "no derived decimal on screen" test now exempts the magnitude delta — the owner-approved approximate difference — and pins its form instead (`≈N.N dmg` / `≈N.Ns shorter`, `≈` whenever rounded). Every other decimal rule is unchanged.
+
+**Observed, not changed (outside the approved list):**
+* Zed's compact Bonus AD row still ellipsizes on the 264px popup: `Lv 2 · Doran's Blade · 2 sh…` (the full basis is in its accessible name and the expanded provenance lists every source). Leona's and Ahri's rows now fit. Options if wanted: drop the shard count from the compact basis (the shards stay in provenance), or widen the popup.
+* The hint still arrives with the first learned `!` of a Journey (Step 1's reveal, Zed E's formula), when no portrait has a `!` yet; the portraits do open their popups there. The storage key is unchanged (`mogzy.journey.knowledgeCoach.v1`), so a browser that saw the old hint will not see the new one — bump the key if returning viewers should see it.
+
+### R6.1 Files changed
+
+Code: `src/lib/journey/portraitPopup.ts` (`known`, `entryBasis`), `src/components/journey/JourneyChampionPortraitPopup.tsx` (the `!` rule, compact basis, accessible name, `data-known`), `src/components/journey/JourneyStateBoard.tsx` (hint copy), `src/components/journey/useKnowledgeCoach.ts` (doc), `src/lib/journey/reasoning.ts` (`≈16.4 dmg`, `approxWhole` removed), `src/index.css` (comment only).
+Tests: `src/lib/journey/jp5.contract.test.ts`, `src/lib/journey/jp5.portraitPopup.test.ts` (new: the `!` rule over every snapshot of all seven JP5 captures, both sides — `known` iff a reached state holds a stat, learned ⇒ known, stated-only marks exist), and `masterySliceModule.{journey,jp4,jp5,knowledge,portraitPopup,stageGrammar,visualLanguage}.test.tsx` (copy, the portrait timeline now includes `subject-portrait` from Step 2, the coach text, the precision exemption).
+
+### R6.2 Certification
+
+* **Frontend tests**: the certification set (Journey + question-surface + ranked-public + quiz-ranked + mastery + dev arena) **1989/1989** (157 files; +1 new). `tsc`: only the 2 known Supabase errors. ESLint: 0 errors.
+* **Vitest worker warnings (pre-existing, disclosed late):** the run also prints 6 `[vitest-worker]: Timeout calling "onTaskUpdate"` unhandled errors. They are the RPC heartbeat timing out while the long snapshot-sweep files run (`masterySliceModule.{knowledge,stageGrammar,portraitPopup,jp4,jp5}` take 100–170s each in parallel). **The round-5 run had the same 6** (the saved round-5 output shows them; R5.3 reported only the pass count). No test fails. A DOM-level version of the new `!` test (opening every popup on every snapshot) made this worse — it blocked the worker — so the generic check lives at the library level instead; the DOM wiring is covered by the stage-grammar timeline over every reference snapshot.
+* **Copy fit** (`copy-fit-r5.cjs`, 375 → 1920): `≈16.4 dmg` sits inside every bar, no overlap, no clipped node (390 phone: `68 final` 251–294px, `≈16.4 dmg` 300–352px of 352px).
+* **Geometry** (focused: reference, Pantheon, Volibear, Ahri survival × 375/390/768/1024/1280/1920; 726 states): **0 violations, 0 page errors, all 24 region sets identical to round 5's.**
+* **Backend**: unchanged, `a9a4be2e`, clean.
+
+### R6.3 Screenshots (`docs/handoffs/jp5-equation-unfold/r6/`)
+
+| File (`jp5-r6-…`) | |
+|---|---|
+| `zed-portrait-popup-desktop`, `zed-portrait-popup-mobile` | Zed's portrait with the `!` (stated Bonus AD only), popup open with provenance |
+| `ahri-portrait-popup-desktop`, `ahri-portrait-popup-mobile`, `ahri-portrait-popup-exact-desktop` | Ahri's `!` and compact `ARMOR 24  Lv 2`; the detail with Exact 24.024 |
+| `leona-compact-desktop`, `leona-compact-mobile` | Leona's compact `ARMOR 65  Lv 3 · Cloth Armor` (fits); Pantheon's `!` from his stated stats |
+| `leona-provenance-desktop`, `leona-provenance-mobile` | expanded: Lv 3 base 50.08 · Cloth Armor +15 · Exact 65.08 |
+| `portrait-detail-step2-live.png`, `portrait-detail-step4-live.png`, `portrait-detail-mobile-step4-live.png` | 2× board crops: Zed's `!` + active outline at Step 2 live; both portraits' `!` at Step 4 with Ahri outlined |
+| `hint-desktop`, `hint-mobile` | the first-use hint: "Tap champion portraits to review stats." |
+| `step4-expanded-desktop`, `step4-expanded-mobile`, `step4-expanded-tablet768` | `19.4% Reduced`; bar `85 raw … 68 final · ≈16.4 dmg` |
 
 ## R5. Round 5 — terminology and reduction copy (presentation only)
 
@@ -50,7 +93,7 @@ The popup itself is unchanged from round 4 (per reached authored state, establis
 
 ### R5.3 Certification
 
-* **Frontend tests**: the round-4 certification set (Journey + question-surface + ranked-public + quiz-ranked + mastery + dev arena) **1988/1988** (157 files). Updated for the copy only: the old wording ("Bonus AD damage", "Damage taken", "Cooldown kept", 80.6% / 90.9% / 66.6% / 59.2%) and the renamed ids; new assertions pin `reductionPercent`, `approxWhole` / `approxTenths` (the served difference, not 85 − 68), the delta element and both bar accessible names (`≈16 less`, `≈41 less` for Leona, `≈1.1s shorter`), and that the haste chain never says "kept", "90.9", "of base" or "10% cooldown reduction". `tsc`: only the 2 known Supabase errors. ESLint: 0 errors.
+* **Frontend tests**: the round-4 certification set (Journey + question-surface + ranked-public + quiz-ranked + mastery + dev arena) **1988/1988** (157 files). (Correction, round 6: that run also printed 6 pre-existing vitest worker RPC timeouts — no failing test; see §R6.2.) Updated for the copy only: the old wording ("Bonus AD damage", "Damage taken", "Cooldown kept", 80.6% / 90.9% / 66.6% / 59.2%) and the renamed ids; new assertions pin `reductionPercent`, `approxWhole` / `approxTenths` (the served difference, not 85 − 68), the delta element and both bar accessible names (`≈16 less`, `≈41 less` for Leona, `≈1.1s shorter`), and that the haste chain never says "kept", "90.9", "of base" or "10% cooldown reduction". `tsc`: only the 2 known Supabase errors. ESLint: 0 errors.
 * **Geometry** (focused, the four captures whose reveals changed copy — reference Zed/Ahri, Pantheon/Leona, Volibear, Ahri survival — × 375/390/768/1024/1280/1920, every snapshot: 726 states): **0 violations, 0 page errors, all 24 region sets identical to round 4's.** The stage has not moved.
 * **Backend**: untouched this round (`a9a4be2e`, clean).
 
