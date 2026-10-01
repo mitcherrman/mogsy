@@ -22,7 +22,7 @@
  *
  * Props-driven: the hub owns selection (it also drives the lanes).
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ArrowRight, RefreshCw, WifiOff } from "lucide-react";
 
@@ -200,8 +200,37 @@ function Rail({
   const now = useMinuteClock();
   const live = series.filter((s) => s.state === "live");
   const previous = series.filter((s) => s.state !== "live");
+
+  /* UP NEXT sits at the end of a scrolling rail, so on a busy rail it starts
+   * past the fold. While its first chip is cut off, a pill pinned to the
+   * rail's right edge says so and scrolls to it (horizontally only: no page
+   * movement, no extra height). */
+  const railRef = useRef<HTMLDivElement>(null);
+  const [nextHidden, setNextHidden] = useState(false);
+  const measure = useCallback(() => {
+    const rail = railRef.current;
+    const chip = rail?.querySelector('[data-testid="upcoming-chip"]');
+    if (!rail || !chip) return setNextHidden(false);
+    setNextHidden(chip.getBoundingClientRect().right > rail.getBoundingClientRect().right + 1);
+  }, []);
+  useEffect(() => {
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [measure, series, upcoming, selectedKey, upcomingId]);
+  const jumpToNext = () => {
+    const rail = railRef.current;
+    const label = rail?.querySelector('[data-testid="upcoming-chip"]')?.previousElementSibling;
+    if (!rail || !label) return;
+    rail.scrollBy({
+      left: label.getBoundingClientRect().left - rail.getBoundingClientRect().left - 12,
+      behavior: "smooth",
+    });
+  };
   return (
     <div
+      ref={railRef}
+      onScroll={measure}
       className="flex snap-x items-center gap-1.5 overflow-x-auto border-b border-border/60 bg-background/40 px-3 py-2 sm:py-1.5 [scrollbar-color:rgba(201,168,76,0.35)_transparent] [scrollbar-width:thin]"
       role="group"
       aria-label="Choose a match"
@@ -234,6 +263,18 @@ function Rail({
           now={now}
         />
       ))}
+      {nextHidden && (
+        <button
+          type="button"
+          onClick={jumpToNext}
+          aria-label="Jump to up next matches"
+          data-testid="rail-jump-next"
+          className="sticky right-0 ml-auto flex shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-background px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary shadow-[-12px_0_10px_hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Up next
+          <ArrowRight className="h-3 w-3" aria-hidden />
+        </button>
+      )}
     </div>
   );
 }
@@ -274,10 +315,9 @@ function TeamIdentity({
     </span>
   );
 
-  const sub = [
-    src && full !== label ? full : !src && full !== label ? label : null,
-    sideLabel ? (side === "blue" ? "Blue" : "Red") : null,
-  ].filter(Boolean);
+  const fullLine = src && full !== label ? full : !src && full !== label ? label : null;
+  const sideText = sideLabel ? (side === "blue" ? "Blue" : "Red") : null;
+  const sub = [fullLine, sideText].filter(Boolean);
 
   return (
     <div
@@ -306,7 +346,15 @@ function TeamIdentity({
         )}
         {(sub.length > 0 || winner) && (
           <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground [overflow-wrap:anywhere]">
-            {sub.join(" · ")}
+            {/* A crest already identifies the team: a long full name has no
+                room beside it on a phone (it split mid-word at 360px). */}
+            {fullLine && (
+              <span className={src ? "max-sm:hidden" : undefined}>
+                {fullLine}
+                {sideText ? " · " : ""}
+              </span>
+            )}
+            {sideText}
             {winner && <span className={cn("ml-1.5", SIDE_TEXT[side])}>· Winner</span>}
           </div>
         )}

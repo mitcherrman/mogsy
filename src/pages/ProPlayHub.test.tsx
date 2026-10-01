@@ -836,6 +836,31 @@ describe("PPH3 · UP NEXT", () => {
     expect(within(board).queryByRole("link", { name: /KT profile/ })).toBeNull();
   });
 
+  it("points at UP NEXT from the rail's edge only while its first chip is cut off", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [upcomingMatch("u1", "HLE", "KT")] });
+    const rect = (right: number) => ({ left: 0, top: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, right, toJSON: () => ({}) }) as DOMRect;
+    let chipRight = 900;
+    const spy = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      const id = this.getAttribute("data-testid");
+      return rect(id === "upcoming-chip" ? chipRight : id === "match-rail" ? 600 : 0);
+    });
+    const scrollBy = vi.fn();
+    Element.prototype.scrollBy = scrollBy;
+    try {
+      renderHub();
+      const jump = await screen.findByTestId("rail-jump-next");
+      fireEvent.click(jump);
+      expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ behavior: "smooth" }));
+      // Scrolled into view: the pill goes away.
+      chipRight = 500;
+      fireEvent.scroll(screen.getByTestId("match-rail"));
+      await waitFor(() => expect(screen.queryByTestId("rail-jump-next")).toBeNull());
+    } finally {
+      spy.mockRestore();
+      delete Element.prototype.scrollBy;
+    }
+  });
+
   it("falls back to the played games when ?next= names a match no longer upcoming", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [] });
     renderHub(`${PRO_PLAY_ROUTE}?next=gone`);
