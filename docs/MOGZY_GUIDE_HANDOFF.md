@@ -199,3 +199,70 @@ Goal: add the guide to the Leaguecraft surface as the first consumer of **contex
 4. Tests: message selection from product state, once-per-browser persistence (inject a
    `storage`), reduced motion, phone layout, no navigation/product side effects from the guide.
 5. Do not fork the substrate; report any contract gap back to MG-A's owner.
+
+---
+
+## MG-C — Hub (`/lol`) completion state
+
+Branch `mg/c-hub-guide` (origin/main `6231bfb6` + MG-A `6111462c`; no MG-B/MG-D files).
+The frozen MG-A contract above is unchanged; `src/components/mogzy-guide` was **not** edited.
+
+### What shipped
+
+- `LolHub` now owns ONE `useMogzyGuide({ surface: "hub" })` and renders ONE `<MogzyGuide surface="hub">`
+  chosen by `useGuideLayout()` (desktop → central lane, mobile → `mobile-mogzy-zone`). Previously both
+  existed in the DOM; now only the active layout renders, so there is a single live region and a single
+  once-only record.
+- Messages: `welcome-leaguecraft` (`first-use`, `once:"show"`, `ttlMs:8000`, `dismissible`, hop cue, lean
+  left toward Leaguecraft); the three Academy lines as `ambient` (`academy-line-{0,1,2}`, rotated from a
+  random start, `Summoner` fallback, name capped at 24 chars so copy stays ≤100); per-destination
+  `hover` messages `hub-{guideId}` via `hover()`/`clearHover()` from the book cards' existing handlers.
+- `HUB_GUIDE_MODES` is now data only: `{ id, title, description, target }` (`target` replaces lean/bubble px).
+  `hubGuideDescriptionId` and the sr-only `aria-describedby` descriptions are unchanged (hover/focus AT path).
+- The desktop guide wrapper is **no longer `aria-hidden`** (the substrate hides its own bubble and mascot) so
+  the first-use text reaches the live region. The Academy Updates mark is still a sibling, not inside the guide.
+- The header's personalized line (`.academy-personal-line` + its CSS) was removed; Mogzy speaks it instead.
+- Placement: desktop anchor `{bottom:"16%",centerX:true}`, size `clamp(97px,9.7vw,167px)`, `bubbleSide:"top"`,
+  `bubbleWidth:"clamp(170px,15vw,230px)"`; mobile in-flow, `clamp(84px,24vw,100px)`, `bubbleSide:"right"`,
+  `bubbleWidth:"min(160px,42vw)"`, `interactive` (label "Mogzy, Academy guide").
+- Persistence uses `createGuideStorage()` created per Hub mount (so tests are isolated); key
+  `mogzy-guide:v1:hub:welcome-leaguecraft`.
+
+### Removed / retained
+
+- Deleted `src/components/lol/MogzyHubGuide.tsx` (fully replaced, no importers left).
+- Retained `src/components/lol/hub-guide.ts` as compatibility data (see above); `useHubGuideState` and the lean/bubble
+  px model are gone.
+- `.mogzy-lean-bubble*` rules in `index.css` are now unreferenced by the Hub guide (still pinned nowhere);
+  left in place — delete in a cleanup once nothing else is confirmed to use them.
+- `AcademyUpdates.tsx` comments still mention `MogzyHubGuide`; geometry is identical (same anchor/size), comments only.
+
+### Behaviour differences vs the old guide (frozen-API limits, accepted)
+
+1. Bubble is **above** Mogzy (`bubbleSide:"top"`), not beside his head; the old `bubble.x/y/yNarrow` offsets are
+   not expressible. At narrow desktop widths the top bubble can touch the radio dock's lower edge.
+2. Lean is `far` = 96px capped at 18vw; the old guide capped at 7vw. At ~1024px the glide is longer than before.
+3. Desktop Mogzy is no longer clickable (no hop on click): making him `interactive` would add a focus stop ahead of
+   the cards, which the old code deliberately avoided. Mobile keeps the tap-to-hop button. First-use still hops via `cue`.
+4. A live first-use message blocks hover reactions (contract rule) for up to 8s on a visitor's first Hub visit only;
+   Escape only reaches the guide when focus is inside it, so on desktop the welcome simply times out.
+5. Per-mount storage: if `localStorage` is blocked the welcome re-shows per Hub mount rather than once per page load.
+
+### Verification
+
+- `npx vitest run src/pages/LolHub.test.tsx src/components/mogzy-guide src/components/lol` — 360 pass.
+  New/updated LolHub tests: first-use once-only + not blocking + announced, Escape dismissal, priority
+  (first-use > hover > ambient, ambient never replaces either), Summoner fallback, phone layout (single guide in
+  the mobile zone, bubble side right), reduced motion, hover/focus/describedby, Hall/Commons snap + hub analytics
+  tests untouched and green. ESLint clean on touched files; `tsc -p tsconfig.app.json` has no errors in touched files.
+- Real browser (Vite, Chromium pane 800×609 and 375×812): first-use welcome leans toward Leaguecraft and expires;
+  hover on Pro Play leans right with the top bubble; mobile bubble stays in bounds (right edge 313/375, no horizontal
+  scroll), Mogzy sits between title and books without covering them; `html.reduce-motion` → `data-motion="still"`,
+  no float/turn/glide. A ≥1024px / 1440px desktop pass was not captured (pane max 800px wide) — check at MG-INT.
+
+### MG-INT notes
+
+- Merge order is irrelevant to MG-B/MG-D: this branch touches only `LolHub.tsx`, `LolHub.test.tsx`,
+  `components/lol/hub-guide.ts`, `MogzyHubGuide.tsx` (deleted), `index.css` (9 deleted lines) and this doc.
+- Conflict risk: `src/index.css` (removed `.academy-personal-line` block + its reduced-motion line) and this doc (append-only).
+- Check at integration: 1440px Hub (bubble vs radio dock), and that no other surface imports `hub-guide` types.
