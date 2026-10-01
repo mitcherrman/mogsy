@@ -66,7 +66,7 @@ export default function HubSection({
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
           )}
         </div>
-        {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
+        {action && <div className="flex max-w-full flex-wrap gap-2">{action}</div>}
       </header>
       {children}
     </section>

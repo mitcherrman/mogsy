@@ -480,7 +480,8 @@ describe("Match Workspace", () => {
   it("links the lane to Combat Lab, the matchup study, Pro Data and the Archives", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
-    const lane = within(await screen.findByTestId("lane-matchup"));
+    await screen.findByTestId("lane-matchup");
+    const lane = within(await findWorkspace());
     expect(lane.getByRole("link", { name: /Combat Lab/i }).getAttribute("href")).toBe(
       "/combat-lab?attacker=ambessa&defender=camille",
     );

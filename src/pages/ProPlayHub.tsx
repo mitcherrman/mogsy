@@ -189,6 +189,9 @@ export default function ProPlayHub() {
         {/* The statistics table keeps its own wide layout and its URL
             contract; it is content on this page, not a tool tile. */}
         <section id={PRO_STATS_ANCHOR} aria-label="Pro Stats" className="scroll-mt-20 pb-6">
+          <div className="mb-3">
+            <HubKicker>Pro Stats</HubKicker>
+          </div>
           <ProStatsExplorer />
         </section>
       </div>

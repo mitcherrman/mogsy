@@ -196,7 +196,7 @@ export default function MatchCenter({
 
       {/* rail — the live page's cards; horizontally scrollable */}
       <div
-        className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1"
+        className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-2 [scrollbar-color:rgba(201,168,76,0.35)_transparent] [scrollbar-width:thin]"
         role="group"
         aria-label="Choose a match"
       >

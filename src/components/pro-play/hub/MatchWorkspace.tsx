@@ -278,7 +278,7 @@ function StudyLinks({ blue, red }: { blue: string; red: string }) {
       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Study this lane
       </p>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
         {items.map(({ to, label, hint, Icon }) => (
           <Link
             key={label}
@@ -323,7 +323,7 @@ function LanePicker({
   manifest: ChampionManifest | null | undefined;
 }) {
   return (
-    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Choose a lane">
+    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 [scrollbar-color:rgba(201,168,76,0.35)_transparent] [scrollbar-width:thin]" role="group" aria-label="Choose a lane">
       {lanes.map(({ lane, blue, red }) => {
         const active = lane === value;
         return (
@@ -398,12 +398,15 @@ export default function MatchWorkspace({
       <div className="space-y-4">
         <LanePicker lanes={lanes} value={current.lane} onChange={setLane} manifest={manifest} />
         <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-          <div className="space-y-3">
+          {/* The lane itself stays in view while the reader works down the
+              longer evidence column beside it. */}
+          <div className="space-y-3 lg:sticky lg:top-20 lg:self-start">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {HUB_LANE_LABEL[current.lane]} lane · this game
             </p>
             <LanePlayer player={current.blue} side="blue" team={game.teams.blue} manifest={manifest} />
             <LanePlayer player={current.red} side="red" team={game.teams.red} manifest={manifest} />
+            {blueChamp && redChamp && <StudyLinks blue={blueChamp} red={redChamp} />}
           </div>
           <div className="space-y-3" data-testid="lane-matchup">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -412,13 +415,10 @@ export default function MatchWorkspace({
                 : "Champion matchup"}
             </p>
             {blueChamp && redChamp ? (
-              <>
-                <ChampionPair blue={blueChamp} red={redChamp} />
-                <StudyLinks blue={blueChamp} red={redChamp} />
-              </>
+              <ChampionPair blue={blueChamp} red={redChamp} />
             ) : (
               <p className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-                A champion in this lane wasn't identified, so there is no champion
+                A champion in this lane wasn&apos;t identified, so there is no champion
                 matchup to look up.
               </p>
             )}
