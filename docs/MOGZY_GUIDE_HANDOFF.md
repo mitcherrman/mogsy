@@ -428,3 +428,170 @@ Hub/Landing/Welcome, no auth/onboarding-gate/analytics-library change.
   `guideLine` to `QuizSignUpGate`; both default off.
 - The throwaway gate harness (`mgd-harness.*`) and `.claude/launch.json` entries used for the visual
   checks are untracked/git-excluded and not part of the branch.
+
+---
+
+# MG-INT — integration and FTUE certification
+
+Branch `mg/integration-ftue`, cut from `origin/main` **`f87240f8`** (OF3-F3). Main had moved one commit past the
+feature branches' base `6231bfb6`; `f87240f8` touches only Order Forge fixtures/tests and
+`src/lib/ranked-public/fixtures.ts`, no overlap with any MG file. **Not merged, not published, not deployed.**
+
+## Integrated commits (cherry-picked in dependency order)
+
+| Phase | Source | On this branch |
+|---|---|---|
+| MG-A substrate | `6111462c` | `3311bc6f` |
+| MG-B automatic Landing / preserved Welcome | `4ec10794` | `cdb7e66e` |
+| MG-C Hub migration (code) | `e6f64ac9` | `95d36ce7` |
+| MG-C handoff notes | `5c50f4cf` | `5d57b732` |
+| MG-D Leaguecraft + signup (code) | `913ec332` | `38ff032e` |
+| MG-D handoff notes | `18345e0c` | `5d0f9a67` |
+| MG-INT fix + cleanup | — | `027e9205` |
+
+`mg/d-leaguecraft-conversion` tip `18345e0c` = MG-A + `913ec332` + `18345e0c`; MG-A was picked once.
+Against `18345e0c`, the only source differences on this branch are MG-B, MG-C and main's OF3-F3, so nothing was
+lost in the merge.
+
+## Conflict resolutions
+
+- `docs/MOGZY_GUIDE_HANDOFF.md`: MG-C and MG-D both appended after MG-A's text. Kept **both**, MG-C first, then
+  MG-D, separated by a rule; no phase text was dropped or edited.
+- `src/index.css`: **no conflict**. MG-A's `.mogzy-guide-*` block (end of file) and MG-C's removal of
+  `.academy-personal-line` (and its reduced-motion line) applied cleanly; unrelated main CSS is unchanged.
+- All code files applied without conflicts. `src/components/mogzy-guide` is byte-identical to MG-A `6111462c`.
+
+## Final behaviour (new anonymous visitor)
+
+1. `/`: the Mogzy Academy entrance plays on its own: 1.8 s hold + 780 ms door/zoom ≈ **2.6 s** (measured 2.60–2.68 s
+   from mount to `/lol`), then `navigate("/lol", {replace:true})`. "Enter Mogzy" remains as an optional skip (measured
+   840 ms to `/lol`). Under reduced motion: 450 ms + 220 ms (measured 750 ms). The Hub chunk is prefetched during the
+   hold. `landing_viewed` is unchanged (root only, once per session). Nothing is written to `mogsy.academyWelcome.v1`.
+2. `/lol` Hub: the first-use "Welcome to the Academy / Start with Leaguecraft and see what you know." appears about
+   160 ms after arrival, leans toward Leaguecraft, is announced once and expires at 8 s (`once:"show"`); ambient lines
+   then rotate, and hover/focus reactions work. Any destination can be chosen at any time.
+3. `/quiz` (Leaguecraft): once the role state settles, the first-use "Start here / Pick the role you know best."
+   appears about 170 ms after arrival. A role pick brings "Ready? Press Play." (contextual, 3.5 s, small down-lean),
+   then Mogzy leaves the lobby. There is no guide on the match-entry record, the Daily Challenge or the quiz runner.
+4. Result: the existing gate policy (soft nudge 3; hard prompt armed at 5 and shown only on completion; anonymous only)
+   shows the Mogzy-voiced prompt: "Not bad." at ≥60 % or "Good practice." otherwise, plus "Want me to keep track of
+   your progress?".
+5. `/welcome` is no longer on the automatic path but remains a direct route: it renders all five chapters, including
+   the registration chapter.
+
+## Integration change: Hub bubble vs radio dock (the one defect found)
+
+MG-C's desktop `bubbleSide:"top"` rose into the Academy Radio dock on short, wide desktops. It did so for first-use,
+hover **and** ambient lines. The bubble is `pointer-events:none`, so the dock still worked, but it was visibly covered.
+
+| viewport | top-bubble overlap with the 90 px dock |
+|---|---|
+| 1366×768 | 56 px |
+| 1280×720 | 55 px |
+| 1280×800 | 30 px |
+| 1536×864 | 3–19 px |
+| 1440×900, 1920×1080, 1024×768 | clear (≥ 6 px) |
+
+A scan of 1024–1920 × 700–1200 (iframe, real layout) put every overlap inside
+`(min-width: 1025px) and (max-height: 930px)`; all taller viewports keep ≥ 26 px of clearance.
+
+**Fix** (in `LolHub.tsx`, authored placement data only, frozen API): inside that query the desktop bubble goes beside
+Mogzy's head. It sits on his right when he leans left (toward the centre lane), and otherwise on his left, away from
+the Academy Updates mark on his right shoulder. Everywhere else MG-C's top bubble is unchanged, and mobile is unchanged.
+
+Verified: no dock, book or edge overlap for first-use, all four hovers and ambient at 1366×768 and 1280×800; top
+mode is clean at 1920×1080 and 1024×768. This restores the retired guide's intent: its `bubble` offsets existed to
+keep the bubble out of the dock.
+
+## TTL judgements (no change)
+
+- **Hub first-use 8 s: kept.** After a 2.6 s non-interactive Landing, the welcome appears within ~160 ms, so the
+  visitor never waits on it, and it is the journey's one explicit pointer to Leaguecraft. The cost is that hover
+  reactions are held for up to 8 s, on the first Hub visit only (a contract rule); navigation, focus descriptions and
+  the books stay fully live. Noticeable, but not clearly excessive. A conservative trim (e.g. to 6 s) is an owner call.
+- **Leaguecraft first-use 14 s: kept.** The Leaguecraft guide blocks nothing: that surface has no hover reactions,
+  and the guide leaves as soon as the reader picks a role or presses PLAY. A long TTL therefore has no interaction cost.
+- **Post-role bubble: kept.** It is ~20 characters for 3.5 s, never covers the stage or PLAY, and is not harmful;
+  no `silent` API was added.
+
+## Cleanup (after combining)
+
+- Removed `.mogzy-lean-bubble` / `.mogzy-lean-bubble-tail` and their reduced-motion lines: zero references in `src`
+  after MG-C, and no test scanned them. `.mogzy-lean-glide` stays because the substrate uses it.
+- Refreshed comments that named the deleted `MogzyHubGuide` in `index.css` and `AcademyUpdates.tsx` (comments only).
+  One such comment inside `src/components/mogzy-guide/MogzyGuide.tsx` (≈ line 307) still says "see MogzyHubGuide";
+  it was left alone so the frozen substrate stays byte-identical to MG-A.
+- `hub-guide.ts` is still imported by `LolHub.tsx` (copy, descriptions, targets), so it is not dead code.
+
+## Tests
+
+- Affected suites on the integration branch (109 files: mogzy-guide, entry v2, welcome, LolHub, components/lol,
+  components/quiz, Quiz.guide/hub/playScroll/rankedRole/practiceMissed, onboarding-gate, Auth/AuthCallback, lib/auth,
+  App route tests, ProtectedRoute, analytics instrumentation, lobby-preview): 2315 pass / 41 fail on a full-parallel run.
+  Re-running the failing files at `--maxWorkers=3` on both branches: **the integration failure set equals clean
+  `origin/main` `f87240f8`** (27 baseline failures). The 14 extra lobby-preview/QuestionReviewHost failures were
+  parallel-load timeouts; they pass at matched concurrency (311/311).
+- After the MG-INT fix: 26 Mogzy/Landing/Welcome/Hub/Leaguecraft/gate files pass **575/575**; Hub + `components/lol`
+  pass 319/319.
+- All 36 test files that read `src/index.css`: 12 failures on **both** branches, with identical names (pre-existing
+  CRLF/source-scan geometry tests: `tomeGeometry` ×4, `playModeCard.styles` ×4, QuestionMotifLayer, and others).
+- Baseline-only failures (pre-existing on `origin/main`): `App.routing-contract` retired multiplayer redirects ×2,
+  `playModeCard.styles`, `QuestionTimeline` MALT B1 ×13 (jsdom popover cost), `Quiz.hub` "exactly one h1",
+  `Quiz.rankedRole` "commits NOTHING for Practice", `welcome/tomeGeometry` ×4, `LobbyPreviewPage.premiumAnalytics` L1 percentile.
+- `vite build` passes. `tsc -p tsconfig.app.json` reports no errors in touched files. ESLint on every touched file
+  reports only the 13 `no-explicit-any` + 1 `exhaustive-deps` findings that `origin/main` has on the same untouched lines.
+- Analytics: event names are unchanged and `landing_viewed` stays root-only. Gate events gain
+  `presentation:"mogzy_guide"` only when the guide line is shown; there are no new events and no duplicates (asserted
+  in `QuizSignUpGate.test.tsx`).
+
+## Browser certification (Edge pane, Vite dev server on this worktree)
+
+| surface | viewports | result |
+|---|---|---|
+| Landing | 1440×900, 1280×800 | auto 2.60 s, skip 0.84 s, reduced motion 0.75 s; Back during the hold stays on the previous page (the pending hand-off is cleared); no loop; no Welcome storage write |
+| Hub first-use / hover / ambient | 1440×900, 1366×768, 1280×800, 1280×720, 1024×768, 1536×864, 1920×1080 | after the fix: no dock or book overlap; Leaguecraft visible; one live region; first-use announced, hover/ambient not; no desktop focus stop; 4 `aria-describedby` descriptions |
+| Hub mobile | 390×844, 375×667 | bubble right of Mogzy, in bounds, books clear (at 390 the bubble top meets the title baseline, no letters covered); Hall→Commons scroll; single tap target |
+| Leaguecraft | 1440×900, 1024×768, 768×1024, 390×844, 375×667, 667×375 | first-use bubble clear of stepper, PLAY and figure faces; post-pick "Press Play" + lean; no repeat on a 2nd pick; no guide after PLAY; a returning visitor sees no guide |
+| Signup prompt | 1440×900, 390×844, 320×568, 667×375 | Mogzy + bubble in the card head; heading/body/benefits intact; Create Account → `/auth?mode=signup&returnTo=%2Fquiz`, Sign in → `/auth?returnTo=%2Fquiz`, Keep Playing as Guest dismisses; one live region; at 667×375 the buttons need the card's own scroll, as the plain gate already does (Create Account at y 339, plain gate y 357) |
+| Reduced motion (one journey) | 1280×800 | Landing short path; Hub and Leaguecraft `data-motion="still"`, no float or lean; messages still announced |
+| `/welcome` | 1280×800 | renders directly, 5 chapters, registration chapter (username/rank/Enter the register/Sign In) |
+
+## Not exercised in a real browser (and why)
+
+- **Live quiz run → result → gate, and the Daily Challenge:** the quiz session backend (Supabase) does not respond from
+  this machine ("We couldn't start a session"). The gate was rendered from the real component with the exact props
+  `Quiz.tsx` passes (throwaway harness, deleted). Thresholds, mid-run arming and post-completion display are covered
+  through the real `/quiz` page in `Quiz.guide.test.tsx`.
+- **Signed-in visitor / real auth round trip:** no test account is reachable, and signing in to the remote project is
+  out of scope. Covered by `Quiz.guide.test.tsx` (no prompt when signed in; a saved role gets no first-use) and the auth tests.
+- **Welcome registration submit:** it would write to the remote Supabase project. The page and its tests are unchanged
+  since main (`AcademyWelcomePage.test.tsx` passes).
+- Ranked availability is closed in this dev environment, so PLAY goes to the Daily Challenge (existing
+  `LeaguecraftHub.openPlay` behaviour); the record path is covered by the MG-D tests.
+
+## Remaining limitations
+
+1. **Academy Updates mark vs side bubble.** This applies only inside the short-wide query, and only when the admin
+   switch `academy_updates_enabled` is on with published entries. There, a left-lean bubble (first-use, Leaguecraft or
+   Archives hover) sits under the mark: about 44 px of the bubble's left side is covered, and the mark (z-20) stays
+   usable. No frozen-API placement clears the dock, the books and the mark at once there. The production switch state
+   was not checked.
+2. **1024×700-class viewports** (tablet landscape with browser chrome) keep the top bubble, which overlaps the dock by
+   ~22 px. A side placement collides with the books or the mark there.
+3. **800–1023 px desktop layout:** a far lean pushes Mogzy and either bubble side into the book columns, because the
+   lane is 200 px wide. This is MG-C's known 18vw-cap limitation, unchanged by MG-INT.
+4. Landing's reduced-motion path follows the **OS** setting only (framer-motion `useReducedMotion`). The app's own
+   Reduce Motion setting stills the guides but not the entrance timing. Pre-existing.
+5. A brand-new visitor who opens `/quiz` directly is sent to the Hub first (`redirect_to_hub`). Leaguecraft's
+   first-use is not consumed by that redirect (verified).
+6. The default guide storage keeps an in-memory mirror per page load (MG-A), so clearing `localStorage` mid-session
+   does not re-arm a once-only message until reload. This only matters for testing.
+7. The MG-A/MG-C/MG-D frozen-API limitations listed above still stand: no silent reaction, the 768 px substrate
+   breakpoint, and no keyboard dismissal for non-interactive guides.
+
+## Verdict
+
+The integration is clean. The combined FTUE behaves as specified, with one integration defect fixed (Hub bubble over
+the radio dock). Tests match the `origin/main` baseline and the build passes. **Safe to merge after owner review** of
+the short-wide Hub bubble placement, and of limitation 1 if the Academy Updates switch is on in production.
+**Do not publish Lovable or deploy from this pass.**
