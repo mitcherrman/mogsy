@@ -396,7 +396,7 @@ export function TeamPanel({
 
 /* ── player rows ─────────────────────────────────────────────────────────── */
 
-function ChampionIcon({
+export function ChampionIcon({
   championId,
   championName,
   manifest,
