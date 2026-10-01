@@ -145,7 +145,12 @@ function stageLabel(m: TournamentMatch) {
   return parts.join(" · ");
 }
 
-function MatchRow({ match, byCode }: { match: TournamentMatch; byCode: Map<string, TournamentParticipant> }) {
+function MatchRow({ match, byCode, compact = false }: {
+  match: TournamentMatch;
+  byCode: Map<string, TournamentParticipant>;
+  /** Always the stacked (phone) layout — for narrow columns like the bracket. */
+  compact?: boolean;
+}) {
   const score = scoreText(match);
   const href = matchHref(match);
   const [a, b] = match.teams;
@@ -171,11 +176,15 @@ function MatchRow({ match, byCode }: { match: TournamentMatch; byCode: Map<strin
       data-testid="tournament-match"
       data-match-id={match.match_id}
       data-state={match.state}
-      className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-4 sm:px-4"
+      className={cn("flex flex-col gap-2 px-3 py-2.5", !compact && "sm:flex-row sm:items-center sm:gap-4 sm:px-4")}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 sm:w-44 sm:flex-col sm:items-start sm:gap-1">
+      <div className={cn("flex shrink-0 items-center gap-2", !compact && "sm:w-44 sm:flex-col sm:items-start sm:gap-1")}>
         <span className="text-xs font-medium tabular-nums text-foreground/80">{localStart(match.scheduled_start)}</span>
-        <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{stageLabel(match)}</span>
+        <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+          {compact ? (match.best_of ? `Bo${match.best_of}` : null) : stageLabel(match)}
+        </span>
+        {/* Phones: the state rides the top line instead of taking its own. */}
+        <MatchStateBadge state={match.state} size="sm" className={cn("ml-auto", !compact && "sm:hidden")} />
       </div>
       <div className="min-w-0 flex-1">
         {href ? (
@@ -186,18 +195,22 @@ function MatchRow({ match, byCode }: { match: TournamentMatch; byCode: Map<strin
           body
         )}
       </div>
-      <div className="flex shrink-0 items-center justify-end sm:w-28">
+      <div className={cn("hidden shrink-0 items-center justify-end", !compact && "sm:flex sm:w-28")}>
         <MatchStateBadge state={match.state} size="sm" />
       </div>
     </li>
   );
 }
 
-function MatchList({ matches, byCode }: { matches: TournamentMatch[]; byCode: Map<string, TournamentParticipant> }) {
+function MatchList({ matches, byCode, compact }: {
+  matches: TournamentMatch[];
+  byCode: Map<string, TournamentParticipant>;
+  compact?: boolean;
+}) {
   return (
     <ul className={cn(CARD, "divide-y divide-border/50")}>
       {matches.map((m) => (
-        <MatchRow key={m.match_id} match={m} byCode={byCode} />
+        <MatchRow key={m.match_id} match={m} byCode={byCode} compact={compact} />
       ))}
     </ul>
   );
@@ -388,12 +401,12 @@ function TournamentBody({ data, now }: { data: TournamentResponse; now: number }
       </Section>
     ),
     bracket: rounds.length > 0 && (
-      <Section id="bracket" kicker="Knockout stage" title={`${ctx.stages.find((s) => s.key === "knockout")?.venue ?? ""}`.trim() || undefined}>
+      <Section id="bracket" kicker={["Knockout stage", ctx.stages.find((s) => s.key === "knockout")?.venue].filter(Boolean).join(" · ")}>
         <div className="grid gap-3 lg:grid-cols-3">
           {rounds.map((r) => (
             <div key={r.round} className="space-y-2" data-testid="bracket-round">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{r.round}</p>
-              <MatchList matches={r.matches} byCode={byCode} />
+              <MatchList matches={r.matches} byCode={byCode} compact />
             </div>
           ))}
         </div>
