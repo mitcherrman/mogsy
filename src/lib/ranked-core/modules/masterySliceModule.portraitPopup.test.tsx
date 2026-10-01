@@ -123,6 +123,9 @@ describe("the portrait opens the champion portrait popup", () => {
     expect(portrait("subject")).toHaveAccessibleName("Zed stats, stats to review");
   });
 
+  // Two full Viewport mounts and two Radix popovers in jsdom: ≈17s alone and
+  // ≈30s under the full parallel suite on this machine, so this one test gets
+  // its own ceiling instead of the 5s default (the global default is unchanged).
   it("Ahri's armor: unknown while Step 3 asks it, LEARNED (24, Lv 2) from its reveal, with the `!`", () => {
     show(snap(REF, "child2-live"));
     openSheet("opponent");
@@ -136,7 +139,7 @@ describe("the portrait opens the champion portrait popup", () => {
     const armor = row("opponent", "armor");
     expect(armor).toHaveAttribute("data-how", "learned");
     expect(armor.textContent).toBe("Armor24Lv 2");
-  });
+  }, 60_000);
 
   it("the portrait whose stats the question states is outlined (where its inputs are)", () => {
     show(snap(REF, "child1-live"));                                // Step 2 states Zed's bonus AD
