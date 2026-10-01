@@ -3762,13 +3762,6 @@ html.high-contrast * { text-shadow: none !important; }
   50%      { opacity: 0.55; }
 }
 
-/* Personalized academy line — one subtle entrance fade, no looping motion. */
-@keyframes academy-line-in {
-  from { opacity: 0; transform: translateY(-3px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.academy-personal-line { animation: academy-line-in 480ms ease-out both; }
-
 @media (prefers-reduced-motion: reduce) {
   .academy-mogzy-float { animation: none !important; }
   /* No hop, no mirror-turn: the facing layer is pinned by its own
@@ -3825,8 +3818,6 @@ html.high-contrast * { text-shadow: none !important; }
     transform: none !important;
   }
   .role-mascot-interactive { cursor: default; }
-  /* No fade: the line is simply present at full opacity. */
-  .academy-personal-line { animation: none !important; }
 }
 
 /* Shared layout tokens — sm+ overrides (see :root above). */
