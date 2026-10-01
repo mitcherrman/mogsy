@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Swords, Flame, BrainCircuit, FileText, Trophy, ChevronDown } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
@@ -10,12 +10,18 @@ import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets"
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
-import MogzyHubGuide from "@/components/lol/MogzyHubGuide";
+import {
+  MogzyGuide,
+  useGuideLayout,
+  useMogzyGuide,
+  type GuideMessage,
+  type GuidePlacements,
+  createGuideStorage,
+} from "@/components/mogzy-guide";
 import AcademyUpdates from "@/components/lol/AcademyUpdates";
 import {
   HUB_GUIDE_MODES,
   hubGuideDescriptionId,
-  useHubGuideState,
   type HubGuideModeId,
 } from "@/components/lol/hub-guide";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -177,15 +183,54 @@ const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
 const RIGHT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 1);
 /** Mobile list order = registry order (desktop reading order). */
 const ALL_DESTINATIONS = HUB_DESTINATIONS;
-// Personalized academy lines. One is picked at random per hub entry and stays
-// fixed for the whole visit (see academyLineIndex below).
+// Personalized academy lines, spoken by Mogzy as `ambient` guide messages. The
+// pick order starts at a random line per hub entry (see academyLineStart).
 const ACADEMY_LINES: ((name: string) => string)[] = [
   (name) => `Have you been studying, ${name}?`,
   (name) => `Remember to train your combat skills, ${name}.`,
   (name) => `Don’t fall behind on the patch notes, ${name}!`,
 ];
+/** Keeps the longest line within the guide's compact-copy limit for any display name. */
+const ACADEMY_NAME_MAX_LENGTH = 24;
 /** Fallback address for anonymous users and profiles with no display name. */
 const ACADEMY_FALLBACK_NAME = "Summoner";
+
+/**
+ * Mogzy's one-time Hub welcome. A recommendation only: no modal, no
+ * acknowledgement, nothing disabled. `once: "show"` makes it a first-visit
+ * message per browser; it stays up for the visit it was shown on, then fades
+ * on its own.
+ */
+const HUB_FIRST_USE_MESSAGE: GuideMessage = {
+  id: "welcome-leaguecraft",
+  priority: "first-use",
+  title: "Welcome to the Academy",
+  text: "Start with Leaguecraft and see what you know.",
+  target: { direction: "left", distance: "far" },
+  cue: "hop",
+  ttlMs: 8000,
+  dismissible: true,
+  once: "show",
+};
+
+/**
+ * Authored placement. Desktop sits in the central lane exactly where the old
+ * guide did; mobile is the in-flow mobile-mogzy-zone slot (no anchor), with the
+ * bubble beside him so it never covers the books below.
+ */
+const HUB_GUIDE_PLACEMENT: GuidePlacements = {
+  desktop: {
+    anchor: { bottom: "16%", centerX: true },
+    size: "clamp(97px,9.7vw,167px)",
+    bubbleSide: "top",
+    bubbleWidth: "clamp(170px,15vw,230px)",
+  },
+  mobile: {
+    size: "clamp(84px,24vw,100px)",
+    bubbleSide: "right",
+    bubbleWidth: "min(160px,42vw)",
+  },
+};
 
 /**
  * The class that arms the two-screen scroll snap. It goes on `html` because
@@ -246,9 +291,9 @@ export default function LolHub() {
   const { data: championAssets } = useChampionAssets();
   // One Patch Brief feed serves the desktop and mobile centerpieces alike.
   const broadcastFeed = usePatchBriefFeed();
-  // Pick the academy line ONCE per mount — lazy initializer, so no Math.random()
-  // during render and the line never changes while the user stays on the hub.
-  const [academyLineIndex] = useState(() => Math.floor(Math.random() * ACADEMY_LINES.length));
+  // Pick the first ambient line ONCE per mount — lazy initializer, so no
+  // Math.random() during render and the rotation never reshuffles mid-visit.
+  const [academyLineStart] = useState(() => Math.floor(Math.random() * ACADEMY_LINES.length));
   const [displayName, setDisplayName] = useState<string | null>(null);
   /**
    * Which screen's navigation hint is currently offered, or null while the
@@ -587,14 +632,44 @@ export default function LolHub() {
     };
   }, [user, isAnonymous]);
 
-  const academyLine = ACADEMY_LINES[academyLineIndex](displayName || ACADEMY_FALLBACK_NAME);
-
-  // Mogzy's contextual guide: hover/focus on a desktop book card reports its
-  // mode upward; MogzyHubGuide renders the reaction. Deactivation is delayed
-  // slightly inside the hook so moving between adjacent cards never flashes
-  // the idle state.
-  const { activeModeId, activate: activateGuide, deactivate: deactivateGuide } =
-    useHubGuideState();
+  // Mogzy's guide (MG-A substrate). Messages are derived from Hub state each
+  // render: the one-time welcome (first-use), the personalized Academy lines
+  // (ambient, rotated from the random start) and, via hover()/clearHover() from
+  // the desktop book cards, the per-destination reaction. Priority and the
+  // 140ms hover grace live in the hook.
+  const guideLayout = useGuideLayout();
+  // The substrate's localStorage-backed once-only record, created per Hub mount
+  // (the in-memory fallback therefore only matters if storage is blocked).
+  const [guideStorage] = useState(() => createGuideStorage());
+  const guideMessages = useMemo<GuideMessage[]>(() => {
+    const name = (displayName || ACADEMY_FALLBACK_NAME).slice(0, ACADEMY_NAME_MAX_LENGTH);
+    const ambient = ACADEMY_LINES.map((_, i) => {
+      const idx = (academyLineStart + i) % ACADEMY_LINES.length;
+      return {
+        id: `academy-line-${idx}`,
+        priority: "ambient" as const,
+        text: ACADEMY_LINES[idx](name),
+      };
+    });
+    return [HUB_FIRST_USE_MESSAGE, ...ambient];
+  }, [displayName, academyLineStart]);
+  const {
+    message: guideMessage,
+    hover: guideHover,
+    clearHover: deactivateGuide,
+    dismiss: dismissGuide,
+  } = useMogzyGuide({
+    surface: "hub",
+    messages: guideMessages,
+    storage: guideStorage,
+  });
+  const activateGuide = useCallback(
+    (id: HubGuideModeId) => {
+      const mode = HUB_GUIDE_MODES[id];
+      guideHover({ id: `hub-${id}`, title: mode.title, text: mode.description, target: mode.target });
+    },
+    [guideHover],
+  );
 
   // Decide during the FIRST render, not in an effect: an effect runs after
   // paint, so the books would already be sitting in their final places for a
@@ -926,12 +1001,6 @@ export default function LolHub() {
               <span className="block text-balance">Mogzy’s Academy of</span>
               <span className="block text-balance">Leaguecraft and Technology</span>
             </h1>
-            {/* Randomized personalized academy line (desktop). Chosen once per
-                mount; the entrance fade is disabled under prefers-reduced-motion
-                by .academy-personal-line in index.css. */}
-            <p className="academy-personal-line mx-auto mt-1 hidden text-[13px] leading-tight tracking-[0.02em] text-[#7ad6ff]/85 md:block lg:text-sm">
-              {academyLine}
-            </p>
           </header>
 
           {/* Mobile Mogzy gets a real central stage between the title and the
@@ -946,7 +1015,17 @@ export default function LolHub() {
             data-testid="mobile-mogzy-zone"
             className="pointer-events-none relative z-20 -mt-0.5 flex h-28 w-full items-center justify-center md:hidden"
           >
-            <MogzyHubGuide activeModeId={null} variant="mobile" />
+            {guideLayout === "mobile" && (
+              <MogzyGuide
+                surface="hub"
+                message={guideMessage}
+                placement={HUB_GUIDE_PLACEMENT}
+                layout="mobile"
+                interactive
+                triggerLabel="Mogzy, Academy guide"
+                onDismiss={dismissGuide}
+              />
+            )}
           </div>
 
           {/* Screen-reader-only guide descriptions. Each desktop book card
@@ -997,14 +1076,13 @@ export default function LolHub() {
                   style={{ width: CENTERPIECE_WIDTH_CSS }}
                 />
               </div>
-              {/* Mogzy contextual guide — replaces the static mascot float
-                  with identical geometry (the guide's root IS the same
-                  academy-mogzy-float / bottom-[16%] wrapper). aria-hidden
-                  stays scoped to the mascot subtree exactly as before — the
-                  interactive Broadcast centerpiece above must stay visible to
-                  AT — and z-10 keeps the speech bubble above the transformed
-                  book columns. Pointer events stay off: the guide never
-                  blocks a card or the radio dock.
+              {/* Mogzy guide (MG-A substrate) — same anchor geometry as the
+                  retired Hub-only guide (bottom-[16%], centred). The wrapper is
+                  NOT aria-hidden any more: the guide hides its own bubble and
+                  mascot, and its one polite live region has to be reachable to
+                  announce the first-use welcome. z-10 keeps the speech bubble
+                  above the transformed book columns. Pointer events stay off:
+                  the guide never blocks a card or the radio dock.
 
                   The 3.25rem offsets undo the spacing pass for Mogzy alone:
                   the container moved that much padding from top to bottom, so
@@ -1016,11 +1094,16 @@ export default function LolHub() {
                   and his painted pedestal do not. The box hangs 3.25rem into
                   the container's bottom padding, which the section still owns,
                   so nothing clips. */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-[3.25rem] -bottom-[3.25rem] z-10"
-              >
-                <MogzyHubGuide activeModeId={activeModeId} />
+              <div className="pointer-events-none absolute inset-x-0 top-[3.25rem] -bottom-[3.25rem] z-10">
+                {guideLayout === "desktop" && (
+                  <MogzyGuide
+                    surface="hub"
+                    message={guideMessage}
+                    placement={HUB_GUIDE_PLACEMENT}
+                    layout="desktop"
+                    onDismiss={dismissGuide}
+                  />
+                )}
               </div>
               {/* Academy Updates (WHATSNEW1) — a SIBLING of the guide wrapper,
                   never a child of it. The wrapper above is aria-hidden and
