@@ -92,6 +92,31 @@ export interface JourneyStat {
   withheldReason?: "asked" | "recalled" | null;
   /** For a `recalled` stat: the step that established it, and how. */
   recalledFrom?: { child: number; source: "stated" | "revealed" } | null;
+  /**
+   * JP4 — where a STATED value comes from, source by source (backend
+   * `stat_sources`: each item's and shard's share, reconciled server-side to
+   * the stated value). Provenance only; absent when the server published none.
+   */
+  sources?: JourneyStatSource[];
+}
+
+/** JP4 — one source's share of a stated stat (served, never derived here). */
+export type JourneyStatSource =
+  | { kind: "item"; itemId: number | null; name: string; value: number }
+  | { kind: "stat_mod"; row: JourneyShardRow; shardId: string; name: string; value: number }
+  /** JP5 — the champion's own base at the state's level (served; armor). */
+  | { kind: "level"; level: number; value: number };
+
+export type JourneyShardRow = "offense" | "flex" | "defense";
+
+/**
+ * JP4 — one row of a side's stat-shard page (backend `stat_mods`), in the
+ * canonical stat-mod authority's own id and name. Scenario STATE, like items.
+ */
+export interface JourneyShard {
+  row: JourneyShardRow;
+  shardId: string;
+  name: string;
 }
 
 /** Tracked vitals. Absent = the Journey does not track them and nothing is drawn. */
@@ -112,6 +137,23 @@ export interface JourneySide {
   items: JourneyItem[];
   stats: JourneyStat[];
   vitals: JourneyVitals | null;
+  /**
+   * JP3 — ability VALUES the current question asks or relies on, named by
+   * the server's value-free withheld field (`abilities.<slot>.raw_damage`).
+   * Drawn as the board's `?` readout until the learner's knowledge fills it.
+   * Never a number: the value is only ever the reveal's (K2). Absent = none.
+   */
+  readouts?: JourneyAbilityReadout[];
+  /** JP4 — the side's stat-shard page, row order. Absent = the side has none published. */
+  shards?: JourneyShard[];
+}
+
+/** JP3 — one withheld ability value (see `JourneySide.readouts`). */
+export interface JourneyAbilityReadout {
+  slot: AbilitySlot;
+  /** The only anchorable ability value today (`knowledge.ts`). */
+  kind: "raw_damage";
+  reason: "asked" | "recalled";
 }
 
 export type JourneyEvent =

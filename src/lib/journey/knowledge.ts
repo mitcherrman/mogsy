@@ -219,8 +219,8 @@ export interface KnowledgeCard {
   lines: KnowledgeLine[];
 }
 
-/** JP2 — a fact's provenance, as the Journey says it: "Step 2". */
-export const stepLabel = (step: number) => `Step ${step}`;
+/** A fact's provenance, as the Journey says it: "learned Step 2" (JP3). */
+export const stepLabel = (step: number) => `learned Step ${step}`;
 
 const withUnit = (v: string, unit: "seconds" | null) => (unit === "seconds" ? `${v}s` : v);
 const statLabel = (stat: string | undefined) =>
@@ -238,20 +238,21 @@ function common<T>(xs: T[]): T | undefined {
  * One object's facts as a popover card. `abilityName` (the board's own label
  * for the ability) only titles the card; nothing is read from it.
  */
-export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | null = null): KnowledgeCard {
+export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | null = null,
+  championName: string | null = null): KnowledgeCard {
   const { object, facts } = mark;
   if (object.type === "ability") {
     // A formula holds at every rank, so it never splits the header's rank.
     const ranked = facts.filter((f) => f.kind !== "ability_damage_formula");
     const rank = common(ranked.map((f) => f.context.rank ?? null));
-    const title = [object.slot, abilityName, rank ? `R${rank}` : null].filter(Boolean).join(" · ");
+    const title = [object.slot, abilityName, rank ? `Rank ${rank}` : null].filter(Boolean).join(" · ");
     const name = abilityName ?? object.slot;
     return {
       title,
       lines: facts.map((f) => {
         const step = f.child + 1;
         const rankWords = f.context.rank ? ` at rank ${f.context.rank}` : "";
-        const lead = f.kind !== "ability_damage_formula" && rank === undefined && f.context.rank ? `R${f.context.rank}` : null;
+        const lead = f.kind !== "ability_damage_formula" && rank === undefined && f.context.rank ? `Rank ${f.context.rank}` : null;
         if (f.kind === "ability_damage_formula") {
           const value = explicitAdText(f.display);
           return { icon: "formula", label: "Formula", lead: null, value, tail: null, step, wrap: true,
@@ -273,7 +274,7 @@ export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | n
   }
   const level = common(facts.map((f) => f.context.level));
   return {
-    title: level !== undefined ? `Lv${level}` : "",
+    title: [championName, level !== undefined ? `Lv${level}` : null].filter(Boolean).join(" · "),
     lines: facts.map((f) => ({
       icon: "stat",
       label: statLabel(f.context.stat),
@@ -285,4 +286,37 @@ export function knowledgeCard(mark: KnowledgeObjectMark, abilityName: string | n
       spoken: `${statLong(f.context.stat)}${f.context.level !== undefined ? ` at level ${f.context.level}` : ""}: ${withUnit(f.display, f.unit)}, ${stepLabel(f.child + 1)}`,
     })),
   };
+}
+
+// ── JP3 — LEARNED HISTORY ON THE BOARD'S OBJECTS ─────────────────────────────
+//
+// One grammar: a gold `!` means the learner established knowledge about THIS
+// piece of game state earlier in the Journey. It sits on the board object the
+// fact is about — an ability's facts on its icon; (JP5) a champion's stats on
+// its portrait, which opens the champion portrait popup (`portraitPopup.ts`). The board
+// no longer prints stat values or `?` bubbles. Joins only: the facts and their
+// displays are K2's, never recomputed or inferred.
+
+/** A board stat that is withheld (`?` or recalled), as the chip sees it. */
+export interface WithheldStatRef {
+  key: string;
+  withheldReason?: "asked" | "recalled" | null;
+  recalledFrom?: { child: number } | null;
+}
+
+/**
+ * The learned fact that fills a WITHHELD stat chip, or null. An asked stat is
+ * filled by the fact its own child establishes (present only once that child
+ * is revealed — K2 drops the open child's fact); a recalled stat by the fact
+ * the server says it recalls (the establishing child).
+ */
+export function learnedStatFact(
+  knowledge: JourneyKnowledge, side: Pick<JourneySide, "side" | "championId">, stat: WithheldStatRef, stepIndex: number,
+): KnowledgeFact | null {
+  const mark = knowledge.get(knowledgeKeyFor(side));
+  if (!mark) return null;
+  const child = stat.withheldReason === "asked" ? stepIndex
+    : stat.withheldReason === "recalled" ? stat.recalledFrom?.child ?? null : null;
+  if (child === null) return null;
+  return mark.facts.find((f) => f.kind === "champion_stat_at_level" && f.context.stat === stat.key && f.child === child) ?? null;
 }

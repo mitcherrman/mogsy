@@ -2,16 +2,21 @@
  * K2 — THE KNOWLEDGE MARK: a tiny `!` at the top-right of a board object the
  * Journey has established facts about, and a small popover listing them.
  *
- *   E · R1
+ *   E · Rank 1
  *   ⏱ 5s                 Step 1
  *   ⚡ 11s · 10 AH       Step 3
  *
- *   E · Shadow Slash · R1                               (JP2)
+ *   E · Shadow Slash · Rank 1   ("Rank", never "R1": JP4)
  *   ƒ Formula 70 / 92.5 / 115 / 137.5 / 160 (+70% bonus AD)   Step 1
  *   ⚔ Raw damage 85      Step 2
  *
  * The `!` means "the Journey established something about this", never "you
  * answered it correctly" (a wrong answer + reveal marks it the same way).
+ *
+ * JP3 — ONE GRAMMAR. The gold `!` is the only learned-knowledge sign on the
+ * board: on an ability's icon for its facts. JP5: a champion's stats live in its
+ * champion portrait popup (`JourneyChampionPortraitPopup`), which wears the same `!`; the
+ * board carries no stat chips. Lines read "learned Step N".
  *
  * Interaction: a mouse hover opens it and leaving closes it; a click or tap
  * pins it open, a second click/tap or an outside tap closes it; Enter/Space
@@ -24,18 +29,25 @@ import { SquareFunction, Sword, Timer, Zap } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { knowledgeCard, stepLabel, type KnowledgeObjectMark } from "@/lib/journey/knowledge";
 
-export function JourneyKnowledgeMark({ mark, name, abilityName = null, placement, testId }: {
+export function JourneyKnowledgeMark({ mark, name, abilityName = null, championName = null, placement, fresh = false, testId }: {
   mark: KnowledgeObjectMark;
   /** The object's accessible name, e.g. "Zed E". */
   name: string;
   /** The board's own name for the ability ("Shadow Slash"), titling its card. */
   abilityName?: string | null;
-  placement: "ability" | "portrait";
+  /** The champion's name, titling a champion / stat card ("Ahri · Lv2"). */
+  championName?: string | null;
+  /**
+   * `ability`: pinned to the icon's corner (the only placement since JP5).
+   */
+  placement: "ability";
+  /** JP3 — established just now: the badge settles in with one short glow. */
+  fresh?: boolean;
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
   const pinned = useRef(false);
-  const card = knowledgeCard(mark, abilityName);
+  const card = knowledgeCard(mark, abilityName, championName);
   const set = (next: boolean, pin = false) => {
     pinned.current = next && pin;
     setOpen(next);
@@ -44,6 +56,7 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, placement
     <Popover open={open} onOpenChange={(next) => set(next)}>
       <PopoverTrigger asChild>
         <button type="button" data-testid={testId} data-facts={mark.facts.length}
+          data-just-learned={fresh ? "true" : undefined}
           aria-label={`Known facts: ${name}`}
           className={`journey-know journey-know--${placement}`}
           onPointerEnter={(e) => { if (e.pointerType === "mouse" && !open) set(true); }}

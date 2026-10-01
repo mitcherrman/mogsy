@@ -1,0 +1,65 @@
+{
+ "windowMs": 1750,
+ "viewport": "390x844",
+ "compressAt": null,
+ "tappedAt": null,
+ "events": [
+  [
+   "reveal mounted (expanded)",
+   0
+  ],
+  [
+   "unfold-in done",
+   261
+  ],
+  [
+   "bar contracted",
+   1034
+  ],
+  [
+   "bar endpoint landed",
+   1181
+  ],
+  [
+   "reveal gone",
+   1766
+  ]
+ ],
+ "frames": [
+  {
+   "at": -1,
+   "actual": -1,
+   "caption": "live, before the answer",
+   "reveal": false
+  },
+  {
+   "at": 700,
+   "actual": 702,
+   "caption": "unfolded; bar contracting",
+   "reveal": true,
+   "phase": "expanded",
+   "by": "reveal",
+   "bar": 0.82
+  },
+  {
+   "at": 1300,
+   "actual": 1312,
+   "caption": "expanded, settled",
+   "reveal": true,
+   "phase": "expanded",
+   "by": "reveal",
+   "bar": 0.806
+  },
+  {
+   "at": 1550,
+   "actual": 1552,
+   "caption": "last look",
+   "reveal": true,
+   "phase": "expanded",
+   "by": "reveal",
+   "bar": 0.806
+  }
+ ],
+ "sheet": "jp5-timing-1750ms-mobile.jpg",
+ "video": "jp5-timing-1750ms-mobile.webm"
+}

@@ -70,6 +70,10 @@ const pointer = (el: Element, type: "pointerover" | "pointerout", pointerType: "
 const badges = () => screen.queryAllByTestId(/^journey-know-(subject|opponent)-[A-Za-z]+$/);
 const popText = (testId: string) => screen.getByTestId(`${testId}-pop`).textContent ?? "";
 
+// The `!` popovers open in jsdom (costly under a full-suite load): the repo's
+// usual long-test budget.
+vi.setConfig({ testTimeout: 25_000 });
+
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -183,13 +187,13 @@ describe("grouping, objects and sides", () => {
     const s = snap("voli.standard", "child2-reveal");
     const q = marksOf(s).get("player:volibear:Q")!;
     const card = knowledgeCard(q);
-    expect(card.title).toBe("Q · R1");
+    expect(card.title).toBe("Q · Rank 1");
     expect(card.lines.map((l) => [l.icon, l.value, l.tail, stepLabel(l.step)])).toEqual([
-      ["cooldown", "12s", null, "Step 1"],
-      ["haste", "11s", "10 AH", "Step 3"],
+      ["cooldown", "12s", null, "learned Step 1"],
+      ["haste", "11s", "10 AH", "learned Step 3"],
     ]);
     // JP2 — on the board the card is titled with the ability's own name.
-    expect(knowledgeCard(q, "Thundering Smash").title).toBe("Q · Thundering Smash · R1");
+    expect(knowledgeCard(q, "Thundering Smash").title).toBe("Q · Thundering Smash · Rank 1");
     show(s);
     expect(screen.getAllByTestId("journey-know-subject-Q")).toHaveLength(1);
     expect(screen.getByTestId("journey-know-subject-Q")).toHaveAttribute("data-facts", "2");
@@ -207,15 +211,22 @@ describe("grouping, objects and sides", () => {
     expect(marksOf(t).size).toBe(0);
   });
 
-  it("an opponent champion fact marks the OPPONENT portrait by its K1 key", () => {
+  it("an opponent champion fact lands on the OPPONENT's side by its K1 key — JP5: in its champion portrait popup", () => {
     const s = snap("pantheon.standard", "child0-reveal");
     expect(summary(marksOf(s))).toEqual({ "opponent:leona": [["champion_stat:leona:armor:L3", "50", 1]] });
     show(s);
-    expect(screen.getByTestId("journey-know-opponent-champion")).toBeInTheDocument();
-    expect(screen.queryByTestId("journey-know-subject-champion")).toBeNull();
+    // JP5 — ONE place for a champion's stats: its champion portrait popup, marked
+    // with the gold `!`; the board prints no stat bubble.
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
+    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toHaveTextContent("!");
+    // Pantheon's popup holds nothing yet: no `!` on his portrait.
+    expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-opponent"));
+    expect(screen.getByTestId("journey-portrait-popup-opponent-row-armor").textContent).toBe("Armor50Lv 3");
     const card = knowledgeCard(marksOf(s).get("opponent:leona")!);
     expect(card.title).toBe("Lv3");
-    expect(card.lines.map((l) => [l.label, l.value, stepLabel(l.step)])).toEqual([["Armor", "50", "Step 1"]]);
+    expect(knowledgeCard(marksOf(s).get("opponent:leona")!, null, "Leona").title).toBe("Leona · Lv3");
+    expect(card.lines.map((l) => [l.label, l.value, stepLabel(l.step)])).toEqual([["Armor", "50", "learned Step 1"]]);
   });
 
   it("a mark whose champion is not on that side draws nothing (keys are side + champion)", () => {
@@ -256,7 +267,7 @@ describe("the final child and reconnects", () => {
     ]);
     show(s);
     fireEvent.click(screen.getByTestId("journey-know-subject-R"));
-    expect(popText("journey-know-subject-R")).toMatch(/R · .*R1.*140s.*Step 2.*127s.*10 AH.*Step 3/);
+    expect(popText("journey-know-subject-R")).toMatch(/R · .*Rank 1.*140s.*Step 2.*127s.*10 AH.*Step 3/);
   });
 
   it("a flat cooldown (rank null) titles the card by slot alone", () => {
@@ -324,7 +335,7 @@ describe("interaction", () => {
     expect(b).toHaveAccessibleName("Known facts: Volibear Q");
     pointer(b, "pointerover", "mouse");
     expect(open()).not.toBeNull();
-    expect(popText("journey-know-subject-Q")).toMatch(/Q · .*R1.*12s.*Step 1.*11s.*10 AH.*Step 3/);
+    expect(popText("journey-know-subject-Q")).toMatch(/Q · .*Rank 1.*12s.*Step 1.*11s.*10 AH.*Step 3/);
     pointer(b, "pointerout", "mouse");
     expect(open()).toBeNull();
   });
@@ -360,7 +371,9 @@ describe("JP1 layout is intact", () => {
     show(snap("voli.standard", "child2-reveal"));
     for (const side of ["subject", "opponent"]) {
       const portrait = screen.getByTestId(`journey-portrait-${side}`);
-      expect(portrait.parentElement).toHaveClass("journey-know-host", "journey-know-host--portrait");
+      // JP5 — the portrait sits in its portrait-popup button, in the same host.
+      expect(portrait.parentElement).toHaveClass("journey-portrait-btn");
+      expect(portrait.parentElement!.parentElement).toHaveClass("journey-know-host", "journey-know-host--portrait");
       for (const slot of ["Q", "W", "E", "R"]) {
         const ability = screen.getByTestId(`journey-ability-${side}-${slot}`);
         expect(ability.parentElement).toHaveClass("journey-know-host", "journey-know-host--ability");

@@ -15,12 +15,12 @@
  * Every value drawn is the server's. These components format; they never
  * derive, add or convert.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Lock } from "lucide-react";
 import type {
   AbilitySlot, JourneyAbility, JourneyItem, JourneySide, JourneyStat,
 } from "@/lib/journey/contract";
-import { formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
+import { exactValueNote, formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import { getAbilityIconUrl } from "@/lib/combat-lab/abilityIcons";
 import { resolveAssetUrl } from "@/hooks/useChampionAssets";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
@@ -216,12 +216,16 @@ export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: 
 }
 
 /**
- * One premise stat. Three faces in one fixed-height chip:
- *   plain    "Armor 51.59"
- *   delta    "Armor 51.59 → 91.59"   (the server's from/to, kept all child long)
- *   withheld "Armor ?"                (the value is NOT in the payload)
+ * One premise stat. Its faces, in one fixed-height chip:
+ *   plain    "Armor 52"                (JP3: derived values shown whole)
+ *   delta    "Armor 52 → 92"           (the server's from/to, kept all child long)
+ *   withheld "Armor ?"                 (the value is NOT in the payload)
+ *   recalled "Armor recall · step 3"   (withheld; the learner must remember it)
+ *   learned  "Armor 24 !"              (JP3: withheld on the wire, FILLED by the
+ *                                       learner's own established fact — K2's
+ *                                       reveal display, never a served stat)
  */
-export function StatChip({ side, stat, delta = null, gain = null, focused = false }: {
+export function StatChip({ side, stat, delta = null, gain = null, focused = false, learned = null }: {
   side: JourneySide["side"];
   stat: JourneyStat;
   delta?: { from: number; to: number } | null;
@@ -233,33 +237,51 @@ export function StatChip({ side, stat, delta = null, gain = null, focused = fals
    */
   gain?: number | null;
   focused?: boolean;
+  /**
+   * JP3 — the learner's established value for this WITHHELD stat (its reveal's
+   * display, verbatim), its step, its `!` and whether it was learned just now.
+   */
+  learned?: { display: string; step: number; mark: ReactNode; fresh: boolean } | null;
 }) {
   const meta = JOURNEY_STAT_META[stat.key];
   const value = stat.withheld ? null : stat.value;
   const recalled = stat.withheld && stat.withheldReason === "recalled";
-  const face = recalled ? "recalled" : value === null ? "withheld" : delta ? "delta" : gain !== null ? "gained" : "plain";
+  const face = learned ? "learned" : recalled ? "recalled" : value === null ? "withheld" : delta ? "delta" : gain !== null ? "gained" : "plain";
   const from = stat.recalledFrom ? `step ${stat.recalledFrom.child + 1}` : null;
+  const exact = value !== null && !delta ? exactValueNote(value) : null;
   return (
     <span data-testid={`journey-stat-${side}-${stat.key}`} data-face={face}
       data-gain={gain !== null && value !== null ? gain : undefined}
       data-focus={focused ? "true" : undefined}
-      aria-label={recalled ? `${meta.long}: recall it${from ? ` from ${from}` : ""}`
+      data-just-learned={learned?.fresh ? "true" : undefined}
+      title={exact ?? undefined}
+      aria-label={learned ? `${meta.long}: ${learned.display}, learned Step ${learned.step}`
+        : recalled ? `${meta.long}: recall it${from ? ` from ${from}` : ""}`
         : value === null ? `${meta.long}: asked in this question`
         : delta ? `${meta.long}: ${formatStatValue(delta.from, stat.key)} to ${formatStatValue(delta.to, stat.key)}`
           : `${meta.long}: ${formatStatValue(value, stat.key)}${gain !== null ? ` (${formatStatGain(gain, stat.key)} from the last change)` : ""}`}
-      className={`journey-chip inline-flex shrink-0 items-baseline gap-1 whitespace-nowrap rounded-md border px-1.5 font-semibold uppercase tracking-[0.12em] ${
-        face === "delta" || face === "gained" ? "journey-chip--delta" : face === "withheld" || face === "recalled"
+      className={`journey-chip inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-1.5 font-semibold uppercase tracking-[0.12em] ${
+        face === "learned" ? "journey-chip--learned"
+          : face === "delta" || face === "gained" ? "journey-chip--delta" : face === "withheld" || face === "recalled"
           ? "border-dashed border-[#e8c97a]/60 bg-[#e8c97a]/10" : "border-[#d4b35a]/30 bg-black/50"} ${
         focused ? "journey-focus" : ""}`}>
       <span className="text-white/70">{meta.short}</span>
-      {recalled ? (
-        // The number is NOT on the wire: this question relies on the learner
-        // remembering it. Say where it came from; never print a value.
+      {learned ? (
+        <>
+          <span key={learned.display} className="journey-learned-value font-black text-[#fff3d0]"
+            data-testid={`journey-stat-${side}-${stat.key}-learned`}>
+            {learned.display}
+          </span>
+          {learned.mark}
+        </>
+      ) : recalled ? (
+        // The number is NOT on the wire and the learner has no established
+        // value for it: say where it came from; never print a value.
         <span className="font-black normal-case tracking-normal text-[#f3dca0]" data-testid={`journey-stat-${side}-${stat.key}-recall`}>
           recall{from ? ` · ${from}` : ""}
         </span>
       ) : value === null ? (
-        <span className="font-black text-[#f3dca0]">?</span>
+        <span className="journey-unknown font-black text-[#f3dca0]">?</span>
       ) : delta ? (
         <>
           <span className="text-white/55">{formatStatValue(delta.from, stat.key)}</span>
@@ -268,6 +290,46 @@ export function StatChip({ side, stat, delta = null, gain = null, focused = fals
         </>
       ) : (
         <span className="font-black text-white">{formatStatValue(value, stat.key)}</span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * JP3 — an ability VALUE readout ("E raw damage ?" → "E raw damage 85 !"):
+ * the board's slot for a value the Journey asks about an ability. `?` while
+ * asked and not yet established; the learner's established value (K2's reveal
+ * display) once it is. Same fixed-height chip as a stat.
+ */
+export function AbilityReadoutChip({ side, slot, label, learned, focused = false }: {
+  side: JourneySide["side"];
+  slot: AbilitySlot;
+  /** "raw damage" (band) / "raw" (compact). */
+  label: { long: string; short: string };
+  learned: { display: string; step: number; mark: ReactNode; fresh: boolean } | null;
+  focused?: boolean;
+}) {
+  return (
+    <span data-testid={`journey-readout-${side}-${slot}`} data-face={learned ? "learned" : "withheld"}
+      data-just-learned={learned?.fresh ? "true" : undefined}
+      aria-label={learned ? `${slot} ${label.long}: ${learned.display}, learned Step ${learned.step}`
+        : `${slot} ${label.long}: asked in this question`}
+      className={`journey-chip inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-1.5 font-semibold uppercase tracking-[0.12em] ${
+        learned ? "journey-chip--learned" : "border-dashed border-[#e8c97a]/60 bg-[#e8c97a]/10"} ${
+        focused ? "journey-focus" : ""}`}>
+      <span className="text-white/70">
+        {slot} <span className="journey-long">{label.long}</span><span aria-hidden className="journey-short">{label.short}</span>
+      </span>
+      {learned ? (
+        <>
+          <span key={learned.display} className="journey-learned-value font-black text-[#fff3d0]"
+            data-testid={`journey-readout-${side}-${slot}-value`}>
+            {learned.display}
+          </span>
+          {learned.mark}
+        </>
+      ) : (
+        <span className="journey-unknown font-black text-[#f3dca0]">?</span>
       )}
     </span>
   );

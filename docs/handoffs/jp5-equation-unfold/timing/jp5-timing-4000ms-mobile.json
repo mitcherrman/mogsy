@@ -1,0 +1,99 @@
+{
+ "windowMs": 4000,
+ "viewport": "390x844",
+ "compressAt": 2400,
+ "tappedAt": null,
+ "events": [
+  [
+   "reveal mounted (expanded)",
+   0
+  ],
+  [
+   "unfold-in done",
+   262
+  ],
+  [
+   "bar contracted",
+   1036
+  ],
+  [
+   "bar endpoint landed",
+   1182
+  ],
+  [
+   "phase compressed (by reveal)",
+   2400
+  ],
+  [
+   "fold transition done",
+   2730
+  ],
+  [
+   "fold transition done",
+   2730
+  ],
+  [
+   "reopen hint pulsed",
+   3370
+  ],
+  [
+   "reveal gone",
+   4006
+  ]
+ ],
+ "frames": [
+  {
+   "at": -1,
+   "actual": -1,
+   "caption": "live, before the answer",
+   "reveal": false
+  },
+  {
+   "at": 700,
+   "actual": 709,
+   "caption": "unfolded; bar contracting",
+   "reveal": true,
+   "phase": "expanded",
+   "by": "reveal",
+   "bar": 0.82
+  },
+  {
+   "at": 1300,
+   "actual": 1303,
+   "caption": "expanded, settled",
+   "reveal": true,
+   "phase": "expanded",
+   "by": "reveal",
+   "bar": 0.806
+  },
+  {
+   "at": 2560,
+   "actual": 2568,
+   "caption": "folding",
+   "reveal": true,
+   "phase": "compressed",
+   "by": "reveal",
+   "bar": 0.806
+  },
+  {
+   "at": 2920,
+   "actual": 2923,
+   "caption": "compressed",
+   "reveal": true,
+   "phase": "compressed",
+   "by": "reveal",
+   "bar": 0.806
+  },
+  {
+   "at": 3800,
+   "actual": 3809,
+   "caption": "last look",
+   "reveal": true,
+   "phase": "compressed",
+   "by": "reveal",
+   "bar": 0.806
+  }
+ ],
+ "sheet": "jp5-timing-4000ms-mobile.jpg",
+ "video": "jp5-timing-4000ms-mobile.webm"
+}

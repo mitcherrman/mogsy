@@ -1,0 +1,1194 @@
+{
+ "375-ref-step2-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 337,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 337,
+   "h": 280
+  },
+  "promptUsed": 117.8,
+  "liveFit": null,
+  "qFit": "23",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 29,
+    "needs": 29,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 31.1,
+    "needs": 36,
+    "truncated": true
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "375-ref-step4-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 337,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 337,
+   "h": 280
+  },
+  "promptUsed": 126.5,
+  "live": {
+   "x": 51.5,
+   "y": 440.5,
+   "w": 272,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "21.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 29,
+    "needs": 29,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 31.1,
+    "needs": 36,
+    "truncated": true
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "390-pantheon-step4-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 352,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 352,
+   "h": 280
+  },
+  "promptUsed": 137.6,
+  "liveFit": null,
+  "qFit": "21.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 45.7,
+    "needs": 82,
+    "truncated": true
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 45.9,
+    "needs": 50,
+    "truncated": true
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "390-voli-step3-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 352,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 352,
+   "h": 280
+  },
+  "promptUsed": 117.8,
+  "liveFit": null,
+  "qFit": "23",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 73.3,
+    "needs": 73,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 55.6,
+    "needs": 56,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "375-pantheon-popup": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 337,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 337,
+   "h": 280
+  },
+  "promptUsed": 137.6,
+  "liveFit": null,
+  "qFit": "21.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": {
+   "w": 264,
+   "h": 187,
+   "inViewport": true
+  },
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 30.7,
+    "needs": 82,
+    "truncated": true
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 30.9,
+    "needs": 50,
+    "truncated": true
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "768-step2-reveal": {
+  "board": {
+   "x": 35,
+   "y": 155.3,
+   "w": 698,
+   "h": 240
+  },
+  "question": {
+   "x": 35,
+   "y": 403.3,
+   "w": 698,
+   "h": 348
+  },
+  "prompt": {
+   "x": 35,
+   "y": 403.3,
+   "w": 698,
+   "h": 96
+  },
+  "answers": {
+   "x": 35,
+   "y": 507.3,
+   "w": 698,
+   "h": 240
+  },
+  "reveal": {
+   "x": 35,
+   "y": 403.3,
+   "w": 698,
+   "h": 96
+  },
+  "revealUsedH": 96,
+  "chain": {
+   "x": 168,
+   "y": 432.4,
+   "w": 432,
+   "h": 48
+  },
+  "liveFit": null,
+  "qFit": "26",
+  "phase": null,
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 31.3,
+    "needs": 31,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 38.5,
+    "needs": 39,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 196,
+    "cols": "317px",
+    "rows": "44px 32px 28px 21.5938px",
+    "contentBottom": 149.6
+   },
+   {
+    "side": "opponent",
+    "h": 196,
+    "cols": "317px",
+    "rows": "44px 32px 28px 21.5938px",
+    "contentBottom": 149.6
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 96,
+   "verdict": 23.4,
+   "content": 65,
+   "spare": 7.6,
+   "gapAbove": 5.8,
+   "gapBelow": 1.8
+  }
+ },
+ "1024-step4-expanded": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 214.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 324
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 136
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "reveal": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 136
+  },
+  "revealUsedH": 136,
+  "chain": {
+   "x": 278,
+   "y": 393.4,
+   "w": 468,
+   "h": 60
+  },
+  "liveFit": null,
+  "qFit": "26.5",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 26.8,
+    "needs": 27,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 33,
+    "needs": 33,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 176.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   },
+   {
+    "side": "opponent",
+    "h": 176.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 136,
+   "verdict": 23.4,
+   "content": 75,
+   "spare": 37.6,
+   "gapAbove": 20.8,
+   "gapBelow": 16.8
+  }
+ },
+ "1280-step4-expanded": {
+  "board": {
+   "x": 289.8,
+   "y": 127,
+   "w": 700.4,
+   "h": 302.2
+  },
+  "question": {
+   "x": 289.8,
+   "y": 437.2,
+   "w": 700.4,
+   "h": 268
+  },
+  "prompt": {
+   "x": 289.8,
+   "y": 437.2,
+   "w": 700.4,
+   "h": 100
+  },
+  "answers": {
+   "x": 289.8,
+   "y": 545.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "reveal": {
+   "x": 289.8,
+   "y": 437.2,
+   "w": 700.4,
+   "h": 100
+  },
+  "revealUsedH": 100,
+  "chain": {
+   "x": 314,
+   "y": 467.4,
+   "w": 652,
+   "h": 52
+  },
+  "liveFit": null,
+  "qFit": "21.5",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 190,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   },
+   {
+    "side": "opponent",
+    "h": 190,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 100,
+   "verdict": 23.4,
+   "content": 67,
+   "spare": 9.6,
+   "gapAbove": 6.8,
+   "gapBelow": 2.8
+  }
+ },
+ "1440-haste-expanded": {
+  "board": {
+   "x": 369.8,
+   "y": 133,
+   "w": 700.4,
+   "h": 390.2
+  },
+  "question": {
+   "x": 369.8,
+   "y": 531.2,
+   "w": 700.4,
+   "h": 268
+  },
+  "prompt": {
+   "x": 369.8,
+   "y": 531.2,
+   "w": 700.4,
+   "h": 100
+  },
+  "answers": {
+   "x": 369.8,
+   "y": 643.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "reveal": {
+   "x": 369.8,
+   "y": 531.2,
+   "w": 700.4,
+   "h": 100
+  },
+  "revealUsedH": 100,
+  "chain": {
+   "x": 394,
+   "y": 561.4,
+   "w": 652,
+   "h": 52
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 95.8,
+    "needs": 96,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 72.7,
+    "needs": 73,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 190,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   },
+   {
+    "side": "opponent",
+    "h": 190,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 100,
+   "verdict": 23.4,
+   "content": 67,
+   "spare": 9.6,
+   "gapAbove": 6.8,
+   "gapBelow": 2.8
+  }
+ },
+ "1920-step2-reveal": {
+  "board": {
+   "x": 620.4,
+   "y": 145,
+   "w": 679.3,
+   "h": 558.2
+  },
+  "question": {
+   "x": 620.4,
+   "y": 711.2,
+   "w": 679.3,
+   "h": 268
+  },
+  "prompt": {
+   "x": 620.4,
+   "y": 711.2,
+   "w": 679.3,
+   "h": 100
+  },
+  "answers": {
+   "x": 620.4,
+   "y": 823.2,
+   "w": 679.3,
+   "h": 156
+  },
+  "reveal": {
+   "x": 620.4,
+   "y": 711.2,
+   "w": 679.3,
+   "h": 100
+  },
+  "revealUsedH": 100,
+  "chain": {
+   "x": 744,
+   "y": 740.4,
+   "w": 432,
+   "h": 52
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": null,
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 190,
+    "cols": "303.625px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   },
+   {
+    "side": "opponent",
+    "h": 190,
+    "cols": "303.641px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 100,
+   "verdict": 23.4,
+   "content": 69,
+   "spare": 7.6,
+   "gapAbove": 5.8,
+   "gapBelow": 1.8
+  }
+ },
+ "768-pantheon-step4-live": {
+  "board": {
+   "x": 35,
+   "y": 155.3,
+   "w": 698,
+   "h": 240
+  },
+  "question": {
+   "x": 35,
+   "y": 403.3,
+   "w": 698,
+   "h": 348
+  },
+  "prompt": {
+   "x": 35,
+   "y": 403.3,
+   "w": 698,
+   "h": 96
+  },
+  "answers": {
+   "x": 35,
+   "y": 507.3,
+   "w": 698,
+   "h": 240
+  },
+  "promptUsed": 96,
+  "liveFit": null,
+  "qFit": "25",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 87.8,
+    "needs": 88,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 53.9,
+    "needs": 54,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 196,
+    "cols": "317px",
+    "rows": "44px 32px 28px 21.5938px",
+    "contentBottom": 149.6
+   },
+   {
+    "side": "opponent",
+    "h": 196,
+    "cols": "317px",
+    "rows": "44px 32px 28px 21.5938px",
+    "contentBottom": 149.6
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1280-pantheon-step4-live": {
+  "board": {
+   "x": 289.8,
+   "y": 127,
+   "w": 700.4,
+   "h": 302.2
+  },
+  "question": {
+   "x": 289.8,
+   "y": 437.2,
+   "w": 700.4,
+   "h": 268
+  },
+  "prompt": {
+   "x": 289.8,
+   "y": 437.2,
+   "w": 700.4,
+   "h": 100
+  },
+  "answers": {
+   "x": 289.8,
+   "y": 545.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "promptUsed": 99.8,
+  "liveFit": null,
+  "qFit": "26",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 106.6,
+    "needs": 107,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 65.5,
+    "needs": 66,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 190,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   },
+   {
+    "side": "opponent",
+    "h": 190,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px 24px",
+    "contentBottom": 190
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1024-pantheon-step4-live": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 214.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 324
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 136
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "promptUsed": 135.6,
+  "liveFit": null,
+  "qFit": "26.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 75.2,
+    "needs": 75,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 46.2,
+    "needs": 46,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 176.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   },
+   {
+    "side": "opponent",
+    "h": 176.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1024-haste-expanded": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 214.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 324
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 136
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "reveal": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 136
+  },
+  "revealUsedH": 136,
+  "chain": {
+   "x": 278,
+   "y": 393.4,
+   "w": 468,
+   "h": 60
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 67.6,
+    "needs": 68,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 51.3,
+    "needs": 51,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 176.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   },
+   {
+    "side": "opponent",
+    "h": 176.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 136,
+   "verdict": 23.4,
+   "content": 75,
+   "spare": 37.6,
+   "gapAbove": 20.8,
+   "gapBelow": 16.8
+  }
+ },
+ "1024-step2-reveal": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 214.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 324
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 136
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "reveal": {
+   "x": 261.8,
+   "y": 349.2,
+   "w": 500.4,
+   "h": 136
+  },
+  "revealUsedH": 136,
+  "chain": {
+   "x": 354,
+   "y": 392.4,
+   "w": 316,
+   "h": 60
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": null,
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 26.8,
+    "needs": 27,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 33,
+    "needs": 33,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 176.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   },
+   {
+    "side": "opponent",
+    "h": 176.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px 19.1875px",
+    "contentBottom": 123.6
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 136,
+   "verdict": 23.4,
+   "content": 77,
+   "spare": 35.6,
+   "gapAbove": 19.8,
+   "gapBelow": 15.8
+  }
+ }
+}

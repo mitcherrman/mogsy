@@ -32,29 +32,68 @@
  * The champion is the side's public identity (`side.championName`, already
  * printed beside it), so the art discloses nothing the board does not.
  *
- * K2 — KNOWLEDGE MARKS. A portrait or ability the Journey has established
- * facts about wears a tiny `!` (`JourneyKnowledgeMark`), keyed by K1's object
+ * K2 — KNOWLEDGE MARKS. An ability the Journey has established facts about
+ * (JP5: and a portrait, through its champion portrait popup) wears a tiny `!`, keyed by K1's object
  * key (`player:<champion>:<slot>` / `opponent:<champion>`). Each portrait and
  * ability sits in a same-size `journey-know-host`, marked or not, so a mark
  * appearing changes no box. Items are never marked (K1 has no item fact).
+ *
+ * JP3 — LEARNED HISTORY LIVES ON THE BOARD'S OBJECTS. One grammar (`knowledge.ts`): a
+ * learned value FILLS the board's `?` for it — Ahri's "Armor ?" becomes
+ * "Armor 24 !" at Step 3's reveal and stays; Zed's "E raw damage ?" becomes
+ * "E raw damage 85 !" at Step 2's. The `!` sits on the most specific object:
+ * the stat chip for a stat, the ability icon for the ability's facts, the
+ * portrait for anything else. The moment a value is learned it glows once
+ * (`useJustLearned`), then settles. What is learned is K2's join over the
+ * learner ledger, so a wrong answer or a timeout fills it exactly as a right
+ * one does; an unreached child fills nothing.
+ *
+ * JP3 — THE ART. On the band the champions' art is a board-level layer: each
+ * champion's loading-screen art (composed on the champion; the splash if
+ * absent) large at its OUTER edge, face and upper body, darkening into the
+ * seam so the state stays the brightest thing on it. The compact phone rows
+ * keep their quieter per-row splash. Decorative, `aria-hidden`, absolutely
+ * positioned: the board's box never depends on art loading.
+ *
+ * JP3 — THE MICRO-CHAIN beside "Step N of M" (`lib/journey/chain.ts`).
+ *
+ * JP5 — ONE JOB EACH. The board is the CURRENT League objects: portraits,
+ * abilities (with their own learned `!`), items, shards, level. It no longer
+ * carries retained scalar bubbles ("Bonus AD 21", "Raw 85 !", "Armor !"):
+ * a champion's stats live in its champion portrait popup (`JourneyChampionPortraitPopup`
+ * — what the learner has established, state by state), and the values the
+ * current question needs are the Reasoning Chain's. The former anchor row is
+ * gone (JP5 geometry pass): a phone's name line takes its column, and above a
+ * phone its height went to the question region (`--jq-prompt-h`).
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import type { RankedRole } from "@/lib/ranked-public/roles";
-import { ArrowRight, Calculator, PanelTopOpen } from "lucide-react";
+import { ArrowRight, Calculator, Check, PanelTopOpen } from "lucide-react";
 import type {
   JourneyFocusRef, JourneyPublicState, JourneySide, JourneySideId,
 } from "@/lib/journey/contract";
 import { itemGainTags, markKey, rankFrom, transitionMarks, type JourneyMarks } from "@/lib/journey/beat";
-import { knowledgeKeyFor, NO_KNOWLEDGE, type JourneyKnowledge } from "@/lib/journey/knowledge";
 import {
-  AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge, StatChip,
-} from "./JourneyPrimitives";
+  knowledgeKeyFor, NO_KNOWLEDGE, type JourneyKnowledge, type KnowledgeFact,
+} from "@/lib/journey/knowledge";
+import type { JourneyChainNode } from "@/lib/journey/chain";
+import type { JourneyJ3 } from "@/lib/journey/j3";
+import { championPortraitPopup, statesInputsAt } from "@/lib/journey/portraitPopup";
+import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
+import { AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge } from "./JourneyPrimitives";
 import { JourneyKnowledgeMark } from "./JourneyKnowledgeMark";
+import { JourneyChampionPortraitPopup } from "./JourneyChampionPortraitPopup";
+import { ShardIcon } from "./JourneyIcons";
+import { useKnowledgeCoach } from "./useKnowledgeCoach";
 
-/** Compact rows show at most this many stats; the sheet shows them all. */
-export const COMPACT_STAT_LIMIT = 2;
+/**
+ * JP4 — the board's shared ground: ONE lane scene under both champions, so the
+ * seam shows the Rift rather than a black gap. The owner's ENVVIS1 lane art,
+ * through the existing scene seam (its background only; no foreground).
+ */
+const BOARD_SCENE = resolveEnvironmentSceneArt("lane_minion")?.background ?? null;
 
 function focusSet(refs: JourneyFocusRef[], side: JourneySideId) {
   const stats = new Set<string>();
@@ -71,7 +110,56 @@ function focusSet(refs: JourneyFocusRef[], side: JourneySideId) {
   return { stats, abilities, items, level };
 }
 
-/** The side's decorative splash underlay. Nothing when there is no art. */
+/**
+ * JP3 — one champion's art on the band, at the board's outer edge. The
+ * loading-screen art first (portrait, composed on the champion, so the crop
+ * lands on the face), else the splash. Nothing when there is no art.
+ */
+function SideArt({ side }: { side: JourneySide }) {
+  const assets = useMasteryAssets();
+  const [broken, setBroken] = useState(0);
+  const loading = assets.championLoadingUrl?.(side.championId, side.championName) ?? null;
+  const splash = assets.championSplashUrl?.(side.championId, side.championName) ?? null;
+  const candidates = [loading ? { url: loading, kind: "loading" } : null, splash ? { url: splash, kind: "splash" } : null]
+    .filter((c): c is { url: string; kind: string } => c !== null);
+  const art = candidates[broken] ?? null;
+  if (!art) return null;
+  return (
+    <span aria-hidden data-testid={`journey-art-${side.side}`} data-champion={side.championName}
+      data-art={art.kind} className={`journey-board__art journey-board__art--${side.side}`}>
+      <img key={art.url} src={art.url} alt="" draggable={false} decoding="async"
+        onError={() => setBroken((n) => n + 1)} />
+    </span>
+  );
+}
+
+/**
+ * JP3 — which learned keys appeared SINCE THE LAST RENDER, kept for one short
+ * glow. The first render seeds silently (a reload mid-Journey replays no
+ * glow); after that, a key that arrives — a reveal establishing a fact — is
+ * "just learned" for ~1.6s. Reads only which facts exist, never correctness.
+ */
+function useJustLearned(keys: readonly string[]): ReadonlySet<string> {
+  const seen = useRef<Set<string> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  const signature = keys.join("|");
+  useEffect(() => {
+    if (seen.current === null) { seen.current = new Set(keys); return; }
+    const added = keys.filter((k) => !seen.current!.has(k));
+    for (const k of keys) seen.current.add(k);
+    if (added.length === 0) return;
+    setFresh(new Set(added));
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setFresh(new Set()), 1600);
+    // `signature` is `keys`, by value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  return fresh;
+}
+
+/** The side's decorative splash underlay (compact phone rows). Nothing when there is no art. */
 function SideSplash({ side }: { side: JourneySide }) {
   const assets = useMasteryAssets();
   const [broken, setBroken] = useState(false);
@@ -86,29 +174,74 @@ function SideSplash({ side }: { side: JourneySide }) {
   );
 }
 
-function SidePanel({ state, side, marks, knowledge, gains }: {
+/**
+ * JP5 — did a champion portrait become reviewable (its popup now holds a stat,
+ * so it wears the `!`) SINCE THE LAST RENDER? True for that one render. A mount
+ * that already shows a reviewable portrait (a reload mid-Journey) is not a
+ * moment, so it says no.
+ */
+function usePortraitBecameReviewable(journey: JourneyJ3 | null, knowledge: JourneyKnowledge, step: number): boolean {
+  const now = (["player", "opponent"] as const).map((s) => championPortraitPopup(journey, knowledge, s, step)?.known ?? false);
+  const prev = useRef(now);
+  const became = now.some((k, i) => k && !prev.current[i]);
+  useEffect(() => { prev.current = now; });
+  return became;
+}
+
+/** JP3 — every established fact, keyed by object (for the one-shot glow). */
+function learnedKeysOf(knowledge: JourneyKnowledge): string[] {
+  const out: string[] = [];
+  for (const m of knowledge.values()) for (const f of m.facts) out.push(`${m.key}#${f.fact}`);
+  return out;
+}
+
+/**
+ * JP4 — a side's stat-shard page: three shards in a fixed column beside the
+ * portrait, in row order (offense, flex, defense), the served ids and names.
+ * When the OTHER side has a page and this one does not, the same column is
+ * drawn empty, so the two halves keep one geometry.
+ */
+function ShardPage({ side }: { side: JourneySide }) {
+  const shards = side.shards ?? [];
+  return (
+    <span className="journey-side__shards" role={shards.length ? "list" : undefined}
+      aria-label={shards.length ? `${side.championName} stat shards` : undefined}
+      aria-hidden={shards.length ? undefined : true}
+      data-testid={`journey-shards-${side.side}`} data-count={shards.length}>
+      {shards.map((sh) => (
+        <span key={sh.row} role="listitem" aria-label={`${sh.name}, ${sh.row} shard`} className="journey-side__shard"
+          data-row={sh.row}>
+          <ShardIcon shardId={sh.shardId} name={`${sh.name} · ${sh.row} shard`} size="board"
+            testId={`journey-shard-${side.side}-${sh.row}`} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, journey }: {
   state: JourneyPublicState;
   side: JourneySide;
   marks: JourneyMarks;
   knowledge: JourneyKnowledge;
   /** MOTION-V1 — while the beat runs: a new item's server stat lines, by `side:slot`. */
   gains: ReadonlyMap<string, string[]> | null;
+  /** JP3 — fact keys learned just now (`useJustLearned`). */
+  fresh: ReadonlySet<string>;
+  /** JP4 — either side has a shard page: both halves draw the column. */
+  shardColumn: boolean;
+  /** JP5 — the served Journey block (reached prefix): the champion portrait popup's source. */
+  journey: JourneyJ3 | null;
 }) {
   const id = side.side;
-  const championMark = knowledge.get(knowledgeKeyFor(side)) ?? null;
+  const championKey = knowledgeKeyFor(side);
+  const isFresh = (objectKey: string, f: KnowledgeFact) => fresh.has(`${objectKey}#${f.fact}`);
+  const popup = championPortraitPopup(journey, knowledge, id === "subject" ? "player" : "opponent", state.step.index);
+  const championFacts = knowledge.get(championKey)?.facts ?? [];
   const focus = focusSet(state.focus.refs, id);
   const combat = state.focus.combat;
   const role = combat ? (combat.attacker === id ? "Attacker" : "Target") : null;
   const newSlots = new Set(side.items.map((it) => it.slot).filter((s) => marks.newItems.has(markKey(id, s))));
-  // Compact priority: what the question is about, then what just changed.
-  const ranked = [...side.stats].sort((a, b) => {
-    const changed = (key: string) => marks.stat.has(markKey(id, key)) || marks.gain.has(markKey(id, key));
-    const score = (key: string) => (focus.stats.has(key) ? 2 : 0) + (changed(key) ? 1 : 0);
-    return score(b.key) - score(a.key);
-  });
-  const compactKeys = new Set(ranked
-    .filter((s) => focus.stats.has(s.key) || marks.stat.has(markKey(id, s.key)) || marks.gain.has(markKey(id, s.key)))
-    .slice(0, COMPACT_STAT_LIMIT).map((s) => s.key));
   const level = marks.level[id] ?? null;
   return (
     <section data-testid={`journey-side-${id}`} data-side={id}
@@ -117,12 +250,13 @@ function SidePanel({ state, side, marks, knowledge, gains }: {
       className="journey-side">
       <SideSplash side={side} />
       <header className="journey-side__id">
+        {shardColumn && <ShardPage side={side} />}
         <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}>
-          <JourneyPortrait side={side} />
-          {championMark && (
-            <JourneyKnowledgeMark mark={championMark} name={side.championName} placement="portrait"
-              testId={`journey-know-${id}-champion`} />
-          )}
+          {/* JP5 — the portrait opens the champion portrait popup. */}
+          <JourneyChampionPortraitPopup side={side} popup={popup}
+            focused={focus.stats.size > 0 || statesInputsAt(popup, state.step.index + 1)}
+            fresh={championFacts.some((f) => f.kind === "champion_stat_at_level" && isFresh(championKey, f))}
+            testId={`journey-portrait-popup-${id}`} />
         </span>
         <div className="journey-side__name min-w-0">
           <span className="journey-side__champion truncate font-black uppercase tracking-[0.08em] text-white"
@@ -155,7 +289,7 @@ function SidePanel({ state, side, marks, knowledge, gains }: {
                 focused={focus.abilities.has(a.slot)} />
               {known && (
                 <JourneyKnowledgeMark mark={known} name={`${side.championName} ${a.slot}`} abilityName={a.name}
-                  placement="ability"
+                  placement="ability" fresh={known.facts.some((f) => isFresh(known.key, f))}
                   testId={`journey-know-${id}-${a.slot}`} />
               )}
             </span>
@@ -169,26 +303,77 @@ function SidePanel({ state, side, marks, knowledge, gains }: {
             return tags ? [[slot, tags] as const] : [];
           })) : undefined} />
       </div>
-      <div className="journey-side__stats">
-        {ranked.map((s) => (
-          <span key={s.key} className="journey-stat-cell"
-            data-compact={compactKeys.has(s.key) ? "true" : "false"}>
-            <StatChip side={id} stat={s}
-              delta={marks.stat.get(markKey(id, s.key)) ?? null}
-              gain={marks.gain.get(markKey(id, s.key)) ?? null}
-              focused={focus.stats.has(s.key)} />
-          </span>
-        ))}
-      </div>
     </section>
+  );
+}
+
+/**
+ * JP3 — the micro-chain: one node per step, the reached steps named from their
+ * served asks, the future ones bare. Subordinate to the board: header-sized.
+ *
+ * IT FITS ITSELF, NEVER CLIPS. The header line is fixed-height and shares
+ * its run with "Step N of M" (and a Daily's transition note), and how long a
+ * chain is depends on how many steps are named and how. So the chain tries
+ * its forms in order — every reached step named, only the current one named,
+ * nodes only — and keeps the first that fits its line, re-measuring when the
+ * line resizes. Only what is inside the line changes; no box moves.
+ */
+const CHAIN_FITS = ["full", "current", "dots"] as const;
+type ChainFit = (typeof CHAIN_FITS)[number];
+
+function JourneyPath({ nodes }: { nodes: readonly JourneyChainNode[] }) {
+  const ref = useRef<HTMLOListElement>(null);
+  const [fit, setFit] = useState<ChainFit>("full");
+  const signature = nodes.map((n) => `${n.state}:${n.label ?? ""}`).join("|");
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const line = el?.parentElement;
+    if (!el || !line) return;
+    // A Daily's transition note shares the line: a form fits only if the note
+    // keeps a readable run (it truncates, but is never squeezed to nothing).
+    const NOTE_MIN = 96;
+    const measure = () => {
+      const note = line.querySelector<HTMLElement>(".journey-board__node-label");
+      for (const f of CHAIN_FITS) {
+        el.dataset.fit = f;
+        const noteOk = !note || note.clientWidth >= Math.min(note.scrollWidth, NOTE_MIN);
+        if (line.scrollWidth <= line.clientWidth + 1 && noteOk) { setFit(f); return; }
+      }
+      setFit("dots");
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(line);
+    return () => ro.disconnect();
+  }, [signature]);
+  return (
+    <ol ref={ref} data-testid="journey-path" data-fit={fit} className="journey-path" aria-label="Journey path">
+      {nodes.map((n, i) => (
+        <li key={n.index} data-testid={`journey-path-${n.index}`} data-state={n.state}
+          aria-label={`Step ${n.index + 1}${n.label ? `, ${n.label}` : ""}: ${
+            n.state === "done" ? "established" : n.state === "current" ? "current" : "ahead"}`}
+          className="journey-path__node">
+          {i > 0 && <span aria-hidden className="journey-path__link">→</span>}
+          <span aria-hidden className="journey-path__dot">
+            {n.state === "done" && <Check className="journey-path__check" strokeWidth={3.5} />}
+          </span>
+          {n.label && <span aria-hidden className="journey-path__label">{n.label}</span>}
+        </li>
+      ))}
+    </ol>
   );
 }
 
 export function JourneyStateBoard({
   state, beatActive = false, onOpenDetail, onOpenFormulas, questionRoles = null, knowledge = NO_KNOWLEDGE,
-  beatStamp = null, children,
+  beatStamp = null, chain = null, journey = null, children,
 }: {
   state: JourneyPublicState;
+  /** JP5 — the served Journey block (reached prefix), for the champion portrait popups. */
+  journey?: JourneyJ3 | null;
+  /** JP3 — the micro-chain for the step on screen (`journeyChain`); null draws none. */
+  chain?: readonly JourneyChainNode[] | null;
   /** K2 — the established facts to mark on this board's objects. */
   knowledge?: JourneyKnowledge;
   /**
@@ -217,16 +402,29 @@ export function JourneyStateBoard({
   const gains = beatActive ? itemGainTags(state.transition) : null;
   const [subject, opponent] = state.sides;
   const combat = state.focus.combat;
+  const fresh = useJustLearned(learnedKeysOf(knowledge));
+  // JP4 — one shard column for both halves when either has a page.
+  const shardColumn = Boolean(subject.shards?.length || opponent.shards?.length);
+  // JP5 — the first portrait to become reviewable (gain its `!`) teaches the mechanic once.
+  const coach = useKnowledgeCoach(usePortraitBecameReviewable(journey, knowledge, state.step.index));
   return (
     <div data-testid="journey-board" data-journey-key={state.journeyKey}
       data-step={state.step.index} data-node={state.step.nodeId}
       data-beat={beatActive ? "active" : "idle"}
+      data-shards={shardColumn ? "true" : undefined}
+      data-coach={coach.visible ? "true" : undefined}
       className="journey-vars journey-board">
+      {BOARD_SCENE && (
+        <span aria-hidden data-testid="journey-scene" className="journey-board__scene">
+          <img src={BOARD_SCENE} alt="" draggable={false} decoding="async" />
+        </span>
+      )}
       <div className="journey-board__head">
         <span className="journey-board__eyebrow truncate">
           <span className="text-[#e8c97a]">Journey</span>
           <span aria-hidden className="px-1 text-white/35">·</span>
           <span data-testid="journey-step">Step {state.step.index + 1} of {state.step.count}</span>
+          {chain && chain.length > 1 && !beatStamp && <JourneyPath nodes={chain} />}
           {beatStamp ? (
             <>
               <span aria-hidden className="px-1 text-white/35">·</span>
@@ -235,7 +433,7 @@ export function JourneyStateBoard({
           ) : state.step.nodeLabel && (
             <>
               <span aria-hidden className="px-1 text-white/35">·</span>
-              <span data-testid="journey-node-label" className="text-white/75">{state.step.nodeLabel}</span>
+              <span data-testid="journey-node-label" className="journey-board__node-label min-w-0 truncate text-white/75">{state.step.nodeLabel}</span>
             </>
           )}
         </span>
@@ -251,16 +449,20 @@ export function JourneyStateBoard({
         )}
         {onOpenFormulas && (
           <button type="button" onClick={onOpenFormulas} data-testid="journey-open-formulas"
-            aria-label="Formulas and calculator"
+            aria-label="Formulas and calculator" title="Formulas and calculator"
             className="journey-board__state-btn inline-flex shrink-0 items-center gap-1 rounded-md border border-[#d4b35a]/40 bg-black/50 px-1.5 font-bold uppercase tracking-[0.16em] text-[#f3dca0] hover:bg-[#d4b35a]/15">
             <Calculator aria-hidden className="h-3 w-3" />
-            Calc
+            {/* JP3 — icon-only where the header also carries the micro-chain. */}
+            <span className="journey-board__btn-text">Calc</span>
           </button>
         )}
         </span>
       </div>
+      <SideArt side={subject} />
+      <SideArt side={opponent} />
       <div className="journey-board__sides">
-        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} />
+        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} fresh={fresh}
+          shardColumn={shardColumn} journey={journey} />
         <div aria-hidden className="journey-board__seam" data-testid="journey-seam"
           data-seam={combat ? "combat" : "versus"}>
           {combat ? (
@@ -269,8 +471,17 @@ export function JourneyStateBoard({
             <span className="font-black tracking-[0.2em] text-[#e8c97a]/80">VS</span>
           )}
         </div>
-        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} />
+        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} fresh={fresh}
+          shardColumn={shardColumn} journey={journey} />
       </div>
+      {coach.visible && (
+        <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={coach.dismiss}>
+          <span aria-hidden className="journey-coach__mark">!</span>
+          <span className="journey-coach__text">
+            Tap champion portraits <span className="journey-coach__how">to review stats.</span>
+          </span>
+        </p>
+      )}
       {children}
     </div>
   );

@@ -20,6 +20,23 @@
  * placeholder up (`QuizRankedMatch`'s DC-SURV-UX branch).
  *
  *   /dev/journey-arena?capture=zed&step=6
+ *
+ * JP4 — THE HOST IS MODELLED. The flanks are the HOST's, as in production
+ * (`QuizRankedMatch`): the admin reference Journey (`jref-*`) is an unhosted
+ * Ranked Bot match, so its flanks draw the Journey crest; every other capture
+ * is a Daily stage (Standard or Survival), whose flanks keep the Daily's own
+ * presentation. `?host=ranked|daily` overrides.
+ *
+ * JP5 — A PROBE FOR THE REVEAL WINDOW (`?revealMs=3500`). DEV ONLY: it rewrites
+ * the captured snapshot's `reveal_window_ms` (and the instants that follow
+ * from it) before the production parser reads it, so the real client path runs
+ * the reveal it WOULD run if the server froze that window. It changes no
+ * server, no fixture file and no production default: without the parameter the
+ * captures replay at the window they were captured with.
+ *
+ * `&revealChild=3` limits the probe to ONE child's reveal (0-based): every other
+ * reveal keeps its captured window. The `jp5-*` captures carry the server's own
+ * per-child windows (`own_reveal_window_ms`); the probe overrides that too.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
@@ -39,9 +56,16 @@ const combatant = (over: Partial<CombatantView>): CombatantView => ({
   hasAbilitySelected: false, ...over,
 });
 
-export function journeyArenaView(round: PublicRoundView, at: string, skewMs: number): ArenaViewModel {
+export type HarnessHost = "ranked" | "daily";
+
+/** The host a capture was recorded under: the admin reference is Ranked; the rest are Daily stages. */
+export const hostOfCapture = (capture: string): HarnessHost =>
+  (capture.startsWith("jref") || capture.startsWith("jp5-ref") ? "ranked" : "daily");
+
+export function journeyArenaView(round: PublicRoundView, at: string, skewMs: number, host: HarnessHost = "ranked"): ArenaViewModel {
   const seg = round.segmentState!;
-  const rails = seg.journey ? journeyRailsFor(seg.journey, {
+  // A hosted (Daily) match keeps its own columns: no Journey rails.
+  const rails = seg.journey && host === "ranked" ? journeyRailsFor(seg.journey, {
     ownNextChallengeIndex: seg.ownNextChallengeIndex,
     ownCardStartedAt: seg.ownCardStartedAt, ownFinished: seg.ownFinished,
   }) : null;
@@ -83,10 +107,46 @@ export function journeyArenaView(round: PublicRoundView, at: string, skewMs: num
   } as ArenaViewModel;
 }
 
-function readParams(): { capture: CaptureKey; step: number } {
+/**
+ * JP5 — one capture, as the server would have sent it with a different frozen
+ * reveal window (dev / probe / tests only; see the header). On a snapshot that
+ * is revealing, the reveal starts at the snapshot's own instant and the next
+ * card keeps the gap it was captured with after it. With `child`, only that
+ * child's reveal is rewritten.
+ */
+export function withRevealWindow(snap: CaptureSnapshot, ms: number, child: number | null = null): CaptureSnapshot {
+  const envelope = structuredClone(snap.envelope) as { payload?: { segment_state?: Record<string, unknown> | null } };
+  const seg = envelope.payload?.segment_state;
+  if (!seg || typeof seg.reveal_window_ms !== "number") return snap;
+  if (child !== null && seg.own_revealing_card_index !== child) return snap;
+  seg.reveal_window_ms = ms;
+  // A per-child segment names the revealing child's own window: the probe is it.
+  if (typeof seg.own_reveal_window_ms === "number") seg.own_reveal_window_ms = ms;
+  if (seg.own_revealing_card_index !== null && typeof seg.own_reveal_until === "string") {
+    const until = Date.parse(snap.at) + ms;
+    if (typeof seg.own_card_started_at === "string") {
+      const lag = Date.parse(seg.own_card_started_at) - Date.parse(seg.own_reveal_until);
+      seg.own_card_started_at = new Date(until + lag).toISOString();
+    }
+    seg.own_reveal_until = new Date(until).toISOString();
+  }
+  return { ...snap, envelope: envelope as CaptureSnapshot["envelope"] };
+}
+
+function readParams(): {
+  capture: CaptureKey; step: number; host: HarnessHost | null; revealMs: number | null; revealChild: number | null;
+} {
   const p = new URLSearchParams(window.location.search);
   const c = (p.get("capture") ?? "zed") as CaptureKey;
-  return { capture: c in J3_CAPTURES ? c : "zed", step: Math.max(0, Number(p.get("step") ?? "1") || 0) };
+  const h = p.get("host");
+  const ms = Number(p.get("revealMs"));
+  const child = p.get("revealChild");
+  return {
+    capture: c in J3_CAPTURES ? c : "zed", step: Math.max(0, Number(p.get("step") ?? "1") || 0),
+    host: h === "ranked" || h === "daily" ? h : null,
+    revealMs: Number.isInteger(ms) && ms > 0 ? ms : null,
+    revealChild: child !== null && /^\d+$/.test(child) ? Number(child) : null,
+  };
 }
 
 export default function JourneyArenaHarness() {
@@ -105,7 +165,10 @@ export default function JourneyArenaHarness() {
   }, [capture]);
 
   const go = (n: number) => { setStep(n); setShownAt(Date.now()); };
-  const snap: CaptureSnapshot | null = snaps ? snaps[Math.min(step, snaps.length - 1)] : null;
+  const captured: CaptureSnapshot | null = snaps ? snaps[Math.min(step, snaps.length - 1)] : null;
+  const snap = useMemo(() => (captured && initial.revealMs
+    ? withRevealWindow(captured, initial.revealMs, initial.revealChild) : captured),
+  [captured, initial.revealMs, initial.revealChild]);
   const round = useMemo(() => (snap ? readPublicRound(snap.envelope) : null), [snap]);
   // Server now = the capture instant, running on from the moment it was shown.
   const skewMs = snap ? Date.parse(snap.at) - shownAt : 0;
@@ -120,13 +183,18 @@ export default function JourneyArenaHarness() {
   // Strike 3, or the match already settled (the last child's answer completes
   // a one-module capture): the hosted Daily shows its placeholder here.
   const stopped = round?.ruleset?.ownStageFinished === true || (round !== null && !round.segmentState);
+  const host = initial.host ?? hostOfCapture(capture);
+  // One truncating line: the dev label must never change the page's height
+  // (a label that wraps differently per snapshot would move the stage).
   const chrome = (
-    <p className="text-sm font-semibold">
-      Daily Challenge · Journey · J3 capture: {capture} · {snap?.label ?? "…"}
+    <p className="truncate text-sm font-semibold">
+      {host === "ranked" ? "Ranked Bot · Reference Journey" : "Daily Challenge · Journey"} · capture: {capture} · {snap?.label ?? "…"}
+      {initial.revealMs ? ` · probe reveal ${initial.revealMs}ms${initial.revealChild !== null ? ` (step ${initial.revealChild + 1} only)` : ""}` : ""}
     </p>
   );
   return (
-    <div data-testid="journey-arena-harness" data-capture={capture} data-label={snap?.label} className="relative">
+    <div data-testid="journey-arena-harness" data-capture={capture} data-label={snap?.label} data-host={host}
+      data-reveal-ms={initial.revealMs ?? undefined} className="relative">
       <nav aria-label="Journey capture controls"
         className="fixed bottom-2 left-1/2 z-[60] flex max-w-[96vw] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-md border border-white/15 bg-black/85 px-2 py-1 text-[11px] text-white">
         <select data-testid="harness-capture" value={capture} className="bg-black"
@@ -148,7 +216,7 @@ export default function JourneyArenaHarness() {
         <CanonicalArena view={null} chrome={chrome}
           recovering={{ eyebrow: "Daily Challenge", message: "Stage complete…" }} />
       ) : (
-        <CanonicalArena key={capture} view={journeyArenaView(round, snap.at, skewMs)} chrome={chrome} />
+        <CanonicalArena key={capture} view={journeyArenaView(round, snap.at, skewMs, host)} chrome={chrome} />
       )}
     </div>
   );

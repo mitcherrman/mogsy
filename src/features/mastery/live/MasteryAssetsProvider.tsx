@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { getChampionIcon, getChampionSplash, type ChampionManifest } from "@/hooks/useChampionAssets";
+import { getChampionIcon, getChampionLoading, getChampionSplash, type ChampionManifest } from "@/hooks/useChampionAssets";
 import { MasteryAssetsContext, type MasteryAssets } from "../player/MasteryAssets";
 import { championName } from "../player/playerFormat";
 
@@ -52,6 +52,11 @@ export function MasteryAssetsProvider({ children }: { children: ReactNode }) {
       championSplashUrl: (championId, displayName) =>
         getChampionSplash(manifest, displayName ?? championName(championId)) ??
         getChampionSplash(manifest, championName(championId)),
+      // JP3 — the loading-screen art: the same illustration, composed on the
+      // champion, so a board crop lands on the face without guessing.
+      championLoadingUrl: (championId, displayName) =>
+        getChampionLoading(manifest, displayName ?? championName(championId)) ??
+        getChampionLoading(manifest, championName(championId)),
       itemIconUrl: (itemId) =>
         itemId === null || itemId === undefined ? null : `${API_BASE}/assets/items/${itemId}.png`,
     }),

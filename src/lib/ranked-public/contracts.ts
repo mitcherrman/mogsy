@@ -29,7 +29,9 @@ import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
 import { isJourneyJ3, readJourneyJ3, type JourneyJ3 } from "@/lib/journey/j3";
 import { JourneyContractError } from "@/lib/journey/contract";
-import { readCombatWorking, type CombatWorking } from "@/lib/journey/combatWorking";
+import {
+  readCombatWorking, readJourneyWorking, type CombatWorking, type JourneyWorking,
+} from "@/lib/journey/combatWorking";
 import {
   readComparisonValues, type ComparisonValues,
 } from "@/features/mastery/contracts/comparisonValues";
@@ -570,6 +572,12 @@ export interface MasteryChallengeReveal {
    * OR it is off-contract (the reveal then renders as before the block).
    */
   comparisonValues?: ComparisonValues | null;
+  /**
+   * JP5 — the same served block read as its TYPED calculation (after armor,
+   * raw damage, cooldown under haste). The Journey Reasoning Chain reads this;
+   * `combatWorking` stays the after-armor variant only, for older readers.
+   */
+  working?: JourneyWorking | null;
 }
 
 export type SegmentBlockView =
@@ -667,6 +675,12 @@ export interface SegmentStateView {
    * response-time arithmetic were computed against.
    */
   revealWindowMs: number | null;
+  /**
+   * JP5 — the REVEALING child's own window, when the segment froze one per
+   * child (`own_reveal_window_ms`); null otherwise. The Journey holds its
+   * reveal for this, falling back to `revealWindowMs`.
+   */
+  ownRevealWindowMs?: number | null;
   /**
    * JOURNEY-UI3 — a Mastery Journey segment's public block (J3,
    * `journey_public_state.v1`), REACHED PREFIX only. It passes the generic
@@ -1594,6 +1608,8 @@ function readChallengeReveals(
     const combatWorking = readCombatWorking(o.combat_working);
     // DD1 — likewise only a comparison reveal carries it.
     const comparisonValues = readComparisonValues(o.comparison_values);
+    // JP5 — the one carrier's typed calculation (after armor, raw, haste).
+    const working = readJourneyWorking(o.combat_working);
     // K2 — likewise only when the wire carries a display string.
     const display = asText(o.correct_answer_display);
     return {
@@ -1607,6 +1623,7 @@ function readChallengeReveals(
       ...(display !== null ? { correctAnswerDisplay: display } : {}),
       ...(combatWorking ? { combatWorking } : {}),
       ...(comparisonValues ? { comparisonValues } : {}),
+      ...(working ? { working } : {}),
     };
   });
 }
@@ -1687,6 +1704,7 @@ function readSegmentState(v: unknown): SegmentStateView | null {
       o[CHALLENGE_REVEAL_KEY],
       num(o.own_next_challenge_index, "own_next_challenge_index"), moduleId),
     revealWindowMs: nnum(o.reveal_window_ms, "reveal_window_ms"),
+    ownRevealWindowMs: nnum(o.own_reveal_window_ms, "own_reveal_window_ms"),
     journey: readJourneyBlock(journeyRaw),
     // Optional on the wire: a pre-JOURNEY3 backend sends none of the three.
     activeTimeMs: nnum(o.active_time_ms, "active_time_ms"),

@@ -1159,7 +1159,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     return () => window.clearTimeout(id);
   }, [journeyOpensAt, skewMs, poke]);
   const journeyRevealing = segmentState?.journey ? segmentState.ownRevealingCardIndex : null;
-  const journeyRevealMs = segmentState?.journey ? segmentState.revealWindowMs : null;
+  // JP5 — the revealing child's OWN window when the segment froze one per child.
+  const journeyRevealMs = segmentState?.journey
+    ? segmentState.ownRevealWindowMs ?? segmentState.revealWindowMs : null;
   useEffect(() => {
     if (journeyRevealing === null || !journeyRevealMs) return;
     // First observed right after the submit that settled it: its window ends

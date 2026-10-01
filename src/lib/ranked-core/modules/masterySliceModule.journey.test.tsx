@@ -132,12 +132,14 @@ describe("answer leaks — the reached prefix only", () => {
       .toHaveAttribute("aria-label", expect.stringContaining("Serrated Dirk"));
   });
 
-  it("a withheld asked stat is `?` on the board AND in the State sheet — its value in neither", () => {
+  it("a withheld asked stat is asked in the State sheet — its value on neither the board nor the sheet", () => {
     const v = "voli.standard";
     const answer = String(answersOf(v)[0].correct_answer);   // Lee Sin's L3 armor, as asked
     show(snap(v, "child0-live"));
     const board = screen.getByTestId("journey-board");
-    expect(within(board).getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "withheld");
+    // JP5 — no stat bubble; the asked champion's portrait is outlined instead.
+    expect(within(board).queryByTestId("journey-stat-opponent-armor")).toBeNull();
+    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-focus", "true");
     expect(board.textContent).not.toContain(answer);
     fireEvent.click(screen.getByTestId("journey-open-state"));
     const sheet = screen.getByTestId("journey-state-sheet");
@@ -147,12 +149,10 @@ describe("answer leaks — the reached prefix only", () => {
     expect(sheet.textContent).not.toMatch(/null|undefined|— ·/);
   });
 
-  it("a RECALLED armor names its teaching step on the board and the sheet — never the number", () => {
+  it("a RECALLED armor names its teaching step in the sheet — never the number, and no board bubble", () => {
     show(snap("zed.standard", "child2-open"));
     afterReveal();
-    const chip = within(screen.getByTestId("journey-board")).getByTestId("journey-stat-opponent-armor");
-    expect(chip).toHaveAttribute("data-face", "recalled");
-    expect(chip).toHaveTextContent(/recall · step 1/i);
+    expect(within(screen.getByTestId("journey-board")).queryByTestId("journey-stat-opponent-armor")).toBeNull();
     // JP2 — no premise panel restates the board beneath it.
     expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
     fireEvent.click(screen.getByTestId("journey-open-state"));
@@ -202,17 +202,15 @@ describe("the server-timed transition beat", () => {
     expect(screen.getByTestId("journey-next-pending")).toHaveTextContent(/opening|opens/);
   });
 
-  it("the next poll exposes the child; the purchase and its stat delta stay marked through it", () => {
+  it("the next poll exposes the child; the purchase stays marked through it (its delta in the State sheet)", () => {
     play("zed.standard", "child3-open");
     expect(screen.getByTestId("journey-stage")).toHaveAttribute("data-beat", "idle");
     expect(screen.getByTestId("journey-child")).toBeInTheDocument();
     expect(screen.getByTestId("journey-item-subject-0")).toHaveAttribute("data-new", "true");
-    // The server's delta is marked beside the server's value — never summed.
-    expect(screen.getByTestId("journey-stat-subject-lethality")).toHaveTextContent(/10/);
-    const chip = screen.getByTestId("journey-stat-subject-lethality");
-    expect(chip).toHaveAttribute("data-face", "gained");
-    expect(chip).toHaveAttribute("data-gain", "10");
-    expect(chip).toHaveAccessibleName(/Lethality: 10 \(\+10 from the last change\)/);
+    // JP5 — no stat bubble; the server's delta beside the server's value — never summed.
+    expect(screen.queryByTestId("journey-stat-subject-lethality")).toBeNull();
+    fireEvent.click(screen.getByTestId("journey-open-state"));
+    expect(screen.getByTestId("journey-sheet-stat-subject-lethality")).toHaveTextContent(/10 \(\+10 from the last change\)/);
   });
 
   it("a level-6 beat raises both levels and unlocks both Rs, as served", () => {
@@ -274,15 +272,22 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
       .toHaveTextContent("Olaf E (Reckless Swing) at rank 1: 11 seconds. Sett E (Facebreaker) at rank 1: 16 seconds.");
   });
 
-  it("Combat, stated: the served formula is stated WITH the question; the stats are the board's", () => {
+  it("Combat, stated: the served formula is stated WITH the question; the stats are in the champion portrait popup", () => {
     show(snap("voli.standard", "child2-open"));
     afterReveal();
     expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
     expect(screen.getByTestId("journey-child")).toHaveAttribute("data-render-path", "combat");
-    // Every digit of the served number, on the board — never rounded.
-    expect(screen.getByTestId("journey-stat-subject-attack_damage")).toHaveTextContent("70.1625");
-    // The recalled armor is a board chip naming its source, never a number.
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveTextContent(/recall · step 1/);
+    // JP5 — the premise's inputs live in the attacker's champion portrait popup (its portrait
+    // is outlined): the served number, whole for display (70.1625 → 70), every
+    // digit of it one tap away.
+    expect(screen.getByTestId("journey-portrait-popup-subject")).toHaveAttribute("data-focus", "true");
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
+    const ad = screen.getByTestId("journey-portrait-popup-subject-row-attack_damage");
+    expect(ad.textContent).toMatch(/^AD70Lv \d+$/);
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-attack_damage-toggle"));
+    expect(screen.getByTestId("journey-portrait-popup-subject-row-attack_damage-sources")).toHaveTextContent(/70\.1625/);
+    // The recalled armor is never a number on the board.
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
     const f = screen.getByTestId("journey-stated-formula");
     expect(f).toHaveTextContent("10 / 20 / 30 / 40 / 50");
     expect(f).toHaveTextContent("+ 100% total AD");
@@ -295,14 +300,20 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
     afterReveal();
     expect(screen.queryByTestId("journey-stated-formula")).toBeNull();
     expect(text()).not.toMatch(/10 \/ 20 \/ 30/);
-    expect(screen.getByTestId("journey-stat-subject-bonus_attack_damage")).toHaveTextContent("20");
+    fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
+    expect(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage").textContent).toMatch(/^Bonus AD20/);
     // What steps 1 and 3 established is on the board; no helper line repeats it.
     expect(text()).not.toMatch(/Builds on/i);
   });
 
-  it("the Combat reveal is the backend's text, verbatim — no local derivation", () => {
+  it("the Combat reveal is the backend's text — no local derivation; its derived value whole for display", () => {
     show(snap("zed.standard", "child2-reveal"));
-    expect(screen.getByTestId("journey-reveal-explanation")).toHaveTextContent("55.034 damage, which rounds to 55");
+    const e = screen.getByTestId("journey-reveal-explanation");
+    // JP3 — "…: 55.034 damage, which rounds to 55 for this question." reads
+    // "…: 55 damage."; the exact value is the hover note. Nothing is computed.
+    expect(e).toHaveTextContent(/recalled target armor, 3 attacker level.*: 55 damage\.$/);
+    expect(e.textContent).not.toContain("55.034");
+    expect(e.getAttribute("title")).toMatch(/Exact value 55\.034 · shown as 55, rounded for display/);
     // J3 serves no structured working (raw → effective armor → mitigation → final).
     expect(screen.queryByTestId("journey-combat-working")).toBeNull();
   });
@@ -313,7 +324,7 @@ describe("Daily Review: a re-asked Journey child renders (captured live)", () =>
     show(snap("review.reask", "reask-live"));
     expect(screen.getByTestId("journey-board")).toBeInTheDocument();
     expect(screen.getByTestId("journey-step")).toHaveTextContent("Step 1 of 1");
-    expect(screen.getByTestId("journey-stat-opponent-armor")).toHaveAttribute("data-face", "withheld");
+    expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
     expect(screen.getByTestId("journey-board").textContent).not.toContain(String(answersOf("review.reask")[0].correct_answer));
   });
 });

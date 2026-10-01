@@ -1,0 +1,2123 @@
+{
+ "375-zed-ahri-step4-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 337,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 337,
+   "h": 280
+  },
+  "promptUsed": 126.5,
+  "live": {
+   "x": 51.5,
+   "y": 440.5,
+   "w": 272,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "21.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 29,
+    "needs": 29,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 35.8,
+    "needs": 36,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "375-pantheon-step4-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 337,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 337,
+   "h": 280
+  },
+  "promptUsed": 137.6,
+  "liveFit": null,
+  "qFit": "21.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 81.5,
+    "needs": 82,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 50.1,
+    "needs": 50,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "375-voli-step3-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 337,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 337,
+   "h": 280
+  },
+  "promptUsed": 117.8,
+  "liveFit": null,
+  "qFit": "23",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 73.3,
+    "needs": 73,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 55.6,
+    "needs": 56,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "375-zed-ahri-step4-expanded": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 337,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 337,
+   "h": 280
+  },
+  "reveal": {
+   "x": 19,
+   "y": 347.3,
+   "w": 337,
+   "h": 140
+  },
+  "revealUsedH": 140,
+  "chain": {
+   "x": 19,
+   "y": 376.4,
+   "w": 337,
+   "h": 94
+  },
+  "liveFit": null,
+  "qFit": "21.5",
+  "phase": "expanded",
+  "rows": 2,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 29,
+    "needs": 29,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 35.8,
+    "needs": 36,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 114px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 140,
+   "verdict": 23.4,
+   "content": 109,
+   "spare": 7.6,
+   "gapAbove": 5.8,
+   "gapBelow": 1.8
+  }
+ },
+ "390-zed-ahri-step4-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 352,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 352,
+   "h": 280
+  },
+  "promptUsed": 130.4,
+  "live": {
+   "x": 59,
+   "y": 442.4,
+   "w": 272,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "22.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 29,
+    "needs": 29,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 35.8,
+    "needs": 36,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "390-pantheon-step4-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 352,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 352,
+   "h": 280
+  },
+  "promptUsed": 137.6,
+  "liveFit": null,
+  "qFit": "21.5",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 81.5,
+    "needs": 82,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 50.1,
+    "needs": 50,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "390-voli-step3-live": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 352,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 352,
+   "h": 280
+  },
+  "promptUsed": 117.8,
+  "liveFit": null,
+  "qFit": "23",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 73.3,
+    "needs": 73,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 55.6,
+    "needs": 56,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "390-zed-ahri-step4-expanded": {
+  "board": {
+   "x": 19,
+   "y": 139.3,
+   "w": 352,
+   "h": 200
+  },
+  "question": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 432
+  },
+  "prompt": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 140
+  },
+  "answers": {
+   "x": 19,
+   "y": 495.3,
+   "w": 352,
+   "h": 280
+  },
+  "reveal": {
+   "x": 19,
+   "y": 347.3,
+   "w": 352,
+   "h": 140
+  },
+  "revealUsedH": 140,
+  "chain": {
+   "x": 19,
+   "y": 376.4,
+   "w": 352,
+   "h": 94
+  },
+  "liveFit": null,
+  "qFit": "22.5",
+  "phase": "expanded",
+  "rows": 2,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 29,
+    "needs": 29,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 35.8,
+    "needs": 36,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   },
+   {
+    "side": "opponent",
+    "h": 77.5,
+    "cols": "40px 129px 147px",
+    "rows": "18px 24px",
+    "contentBottom": 62.8
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 140,
+   "verdict": 23.4,
+   "content": 109,
+   "spare": 7.6,
+   "gapAbove": 5.8,
+   "gapBelow": 1.8
+  }
+ },
+ "768-zed-ahri-step4-live": {
+  "board": {
+   "x": 35,
+   "y": 155.3,
+   "w": 698,
+   "h": 224
+  },
+  "question": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 364
+  },
+  "prompt": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 112
+  },
+  "answers": {
+   "x": 35,
+   "y": 507.3,
+   "w": 698,
+   "h": 240
+  },
+  "promptUsed": 110.5,
+  "live": {
+   "x": 184,
+   "y": 458.5,
+   "w": 400,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "26",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 31.3,
+    "needs": 31,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 38.5,
+    "needs": 39,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   },
+   {
+    "side": "opponent",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "768-pantheon-step4-live": {
+  "board": {
+   "x": 35,
+   "y": 155.3,
+   "w": 698,
+   "h": 224
+  },
+  "question": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 364
+  },
+  "prompt": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 112
+  },
+  "answers": {
+   "x": 35,
+   "y": 507.3,
+   "w": 698,
+   "h": 240
+  },
+  "promptUsed": 99.8,
+  "liveFit": null,
+  "qFit": "26",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 87.8,
+    "needs": 88,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 53.9,
+    "needs": 54,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   },
+   {
+    "side": "opponent",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "768-voli-step3-live": {
+  "board": {
+   "x": 35,
+   "y": 155.3,
+   "w": 698,
+   "h": 224
+  },
+  "question": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 364
+  },
+  "prompt": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 112
+  },
+  "answers": {
+   "x": 35,
+   "y": 507.3,
+   "w": 698,
+   "h": 240
+  },
+  "promptUsed": 66.5,
+  "liveFit": null,
+  "qFit": "26",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 78.9,
+    "needs": 79,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 59.9,
+    "needs": 60,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   },
+   {
+    "side": "opponent",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "768-zed-ahri-step4-expanded": {
+  "board": {
+   "x": 35,
+   "y": 155.3,
+   "w": 698,
+   "h": 224
+  },
+  "question": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 364
+  },
+  "prompt": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 112
+  },
+  "answers": {
+   "x": 35,
+   "y": 507.3,
+   "w": 698,
+   "h": 240
+  },
+  "reveal": {
+   "x": 35,
+   "y": 387.3,
+   "w": 698,
+   "h": 112
+  },
+  "revealUsedH": 112,
+  "chain": {
+   "x": 58,
+   "y": 425.4,
+   "w": 652,
+   "h": 48
+  },
+  "liveFit": null,
+  "qFit": "26",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 31.3,
+    "needs": 31,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 38.5,
+    "needs": 39,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   },
+   {
+    "side": "opponent",
+    "h": 180,
+    "cols": "317px",
+    "rows": "44px 32px 28px",
+    "contentBottom": 120
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 112,
+   "verdict": 23.4,
+   "content": 63,
+   "spare": 25.6,
+   "gapAbove": 14.8,
+   "gapBelow": 10.8
+  }
+ },
+ "1024-zed-ahri-step4-live": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 190.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 348
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 160
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "promptUsed": 159.2,
+  "live": {
+   "x": 312,
+   "y": 444.8,
+   "w": 400,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 26.8,
+    "needs": 27,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 33,
+    "needs": 33,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 152.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   },
+   {
+    "side": "opponent",
+    "h": 152.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1024-pantheon-step4-live": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 190.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 348
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 160
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "promptUsed": 153.6,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 75.2,
+    "needs": 75,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 46.2,
+    "needs": 46,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 152.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   },
+   {
+    "side": "opponent",
+    "h": 152.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1024-voli-step3-live": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 190.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 348
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 160
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "promptUsed": 115.2,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 67.6,
+    "needs": 68,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 51.3,
+    "needs": 51,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 152.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   },
+   {
+    "side": "opponent",
+    "h": 152.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1024-zed-ahri-step4-expanded": {
+  "board": {
+   "x": 261.8,
+   "y": 127,
+   "w": 500.4,
+   "h": 190.2
+  },
+  "question": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 348
+  },
+  "prompt": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 160
+  },
+  "answers": {
+   "x": 261.8,
+   "y": 493.2,
+   "w": 500.4,
+   "h": 176
+  },
+  "reveal": {
+   "x": 261.8,
+   "y": 325.2,
+   "w": 500.4,
+   "h": 160
+  },
+  "revealUsedH": 160,
+  "chain": {
+   "x": 278,
+   "y": 381.4,
+   "w": 468,
+   "h": 60
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 26.8,
+    "needs": 27,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 33,
+    "needs": 33,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 152.2,
+    "cols": "220.188px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   },
+   {
+    "side": "opponent",
+    "h": 152.2,
+    "cols": "220.203px",
+    "rows": "36.3906px 26px 24px",
+    "contentBottom": 98.4
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 160,
+   "verdict": 23.4,
+   "content": 75,
+   "spare": 61.6,
+   "gapAbove": 32.8,
+   "gapBelow": 28.8
+  }
+ },
+ "1280-zed-ahri-step4-live": {
+  "board": {
+   "x": 289.8,
+   "y": 127,
+   "w": 700.4,
+   "h": 274.2
+  },
+  "question": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 289.8,
+   "y": 545.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "promptUsed": 120.8,
+  "live": {
+   "x": 440,
+   "y": 493.6,
+   "w": 400,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1280-pantheon-step4-live": {
+  "board": {
+   "x": 289.8,
+   "y": 127,
+   "w": 700.4,
+   "h": 274.2
+  },
+  "question": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 289.8,
+   "y": 545.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "promptUsed": 115.2,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 106.6,
+    "needs": 107,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 65.5,
+    "needs": 66,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1280-voli-step3-live": {
+  "board": {
+   "x": 289.8,
+   "y": 127,
+   "w": 700.4,
+   "h": 274.2
+  },
+  "question": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 289.8,
+   "y": 545.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "promptUsed": 76.8,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 95.8,
+    "needs": 96,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 72.7,
+    "needs": 73,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1280-zed-ahri-step4-expanded": {
+  "board": {
+   "x": 289.8,
+   "y": 127,
+   "w": 700.4,
+   "h": 274.2
+  },
+  "question": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 289.8,
+   "y": 545.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "reveal": {
+   "x": 289.8,
+   "y": 409.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "revealUsedH": 128,
+  "chain": {
+   "x": 314,
+   "y": 453.4,
+   "w": 652,
+   "h": 52
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 128,
+   "verdict": 23.4,
+   "content": 67,
+   "spare": 37.6,
+   "gapAbove": 20.8,
+   "gapBelow": 16.8
+  }
+ },
+ "1440-zed-ahri-step4-live": {
+  "board": {
+   "x": 369.8,
+   "y": 133,
+   "w": 700.4,
+   "h": 362.2
+  },
+  "question": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 369.8,
+   "y": 643.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "promptUsed": 120.8,
+  "live": {
+   "x": 520,
+   "y": 587.6,
+   "w": 400,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1440-pantheon-step4-live": {
+  "board": {
+   "x": 369.8,
+   "y": 133,
+   "w": 700.4,
+   "h": 362.2
+  },
+  "question": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 369.8,
+   "y": 643.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "promptUsed": 115.2,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 106.6,
+    "needs": 107,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 65.5,
+    "needs": 66,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1440-voli-step3-live": {
+  "board": {
+   "x": 369.8,
+   "y": 133,
+   "w": 700.4,
+   "h": 362.2
+  },
+  "question": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 369.8,
+   "y": 643.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "promptUsed": 76.8,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 95.8,
+    "needs": 96,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 72.7,
+    "needs": 73,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1440-zed-ahri-step4-expanded": {
+  "board": {
+   "x": 369.8,
+   "y": 133,
+   "w": 700.4,
+   "h": 362.2
+  },
+  "question": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 296
+  },
+  "prompt": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "answers": {
+   "x": 369.8,
+   "y": 643.2,
+   "w": 700.4,
+   "h": 156
+  },
+  "reveal": {
+   "x": 369.8,
+   "y": 503.2,
+   "w": 700.4,
+   "h": 128
+  },
+  "revealUsedH": 128,
+  "chain": {
+   "x": 394,
+   "y": 547.4,
+   "w": 652,
+   "h": 52
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "314.188px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "314.203px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 128,
+   "verdict": 23.4,
+   "content": 67,
+   "spare": 37.6,
+   "gapAbove": 20.8,
+   "gapBelow": 16.8
+  }
+ },
+ "1920-zed-ahri-step4-live": {
+  "board": {
+   "x": 620.4,
+   "y": 145,
+   "w": 679.3,
+   "h": 530.2
+  },
+  "question": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 296
+  },
+  "prompt": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 128
+  },
+  "answers": {
+   "x": 620.4,
+   "y": 823.2,
+   "w": 679.3,
+   "h": 156
+  },
+  "promptUsed": 120.8,
+  "live": {
+   "x": 760,
+   "y": 767.6,
+   "w": 400,
+   "h": 40
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "303.625px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "303.641px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1920-pantheon-step4-live": {
+  "board": {
+   "x": 620.4,
+   "y": 145,
+   "w": 679.3,
+   "h": 530.2
+  },
+  "question": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 296
+  },
+  "prompt": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 128
+  },
+  "answers": {
+   "x": 620.4,
+   "y": 823.2,
+   "w": 679.3,
+   "h": 156
+  },
+  "promptUsed": 115.2,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Pantheon",
+    "box": 106.6,
+    "needs": 107,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Leona",
+    "box": 65.5,
+    "needs": 66,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "303.625px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "303.641px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1920-voli-step3-live": {
+  "board": {
+   "x": 620.4,
+   "y": 145,
+   "w": 679.3,
+   "h": 530.2
+  },
+  "question": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 296
+  },
+  "prompt": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 128
+  },
+  "answers": {
+   "x": 620.4,
+   "y": 823.2,
+   "w": 679.3,
+   "h": 156
+  },
+  "promptUsed": 115.2,
+  "liveFit": null,
+  "qFit": "30",
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Volibear",
+    "box": 95.8,
+    "needs": 96,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Lee Sin",
+    "box": 72.7,
+    "needs": 73,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "303.625px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "303.641px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": null
+ },
+ "1920-zed-ahri-step4-expanded": {
+  "board": {
+   "x": 620.4,
+   "y": 145,
+   "w": 679.3,
+   "h": 530.2
+  },
+  "question": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 296
+  },
+  "prompt": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 128
+  },
+  "answers": {
+   "x": 620.4,
+   "y": 823.2,
+   "w": 679.3,
+   "h": 156
+  },
+  "reveal": {
+   "x": 620.4,
+   "y": 683.2,
+   "w": 679.3,
+   "h": 128
+  },
+  "revealUsedH": 128,
+  "chain": {
+   "x": 634,
+   "y": 727.4,
+   "w": 652,
+   "h": 52
+  },
+  "liveFit": null,
+  "qFit": "30",
+  "phase": "expanded",
+  "rows": 1,
+  "violations": [],
+  "pageErrors": 0,
+  "popup": null,
+  "names": [
+   {
+    "side": "subject",
+    "text": "Zed",
+    "box": 38,
+    "needs": 38,
+    "truncated": false
+   },
+   {
+    "side": "opponent",
+    "text": "Ahri",
+    "box": 46.8,
+    "needs": 47,
+    "truncated": false
+   }
+  ],
+  "sides": [
+   {
+    "side": "subject",
+    "h": 154,
+    "cols": "303.625px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   },
+   {
+    "side": "opponent",
+    "h": 154,
+    "cols": "303.641px",
+    "rows": "56px 40px 34px",
+    "contentBottom": 154
+   }
+  ],
+  "scroll": {
+   "x": false,
+   "y": true
+  },
+  "breathing": {
+   "box": 128,
+   "verdict": 23.4,
+   "content": 67,
+   "spare": 37.6,
+   "gapAbove": 20.8,
+   "gapBelow": 16.8
+  }
+ }
+}

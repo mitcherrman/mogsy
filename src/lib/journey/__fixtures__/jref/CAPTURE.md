@@ -30,3 +30,14 @@ The profiles (`zed.mid.v1` / `ahri.mid.v1`) and the checkpoint (1:45, wave 3) ar
 | Level | Bonus AD | Formula | Raw damage | Armor | After armor |
 |---|---|---|---|---|---|
 | 2 / 2 | 20.8 | `70 / 92.5 / 115 / 137.5 / 160 (+70% bonus AD)` | 84.56 → 85 | 24.024 → 24 | 68.1804 → 68 |
+
+## JP4 re-capture (backend `fc95e81e`, branch `jp4/journey-stat-mods-contract`)
+
+The three captures above were **re-captured** for JP4 with the same harness (`capture_jp2_test.py.txt`, unchanged) against the JP4 backend commit `fc95e81e` (base `origin/master` `1002230a`), which adds two **optional** public side keys:
+
+* `stat_mods` — each side's authoritative stat-shard page, row order: Zed `5008 / 5008 / 5001` (Adaptive Force, Adaptive Force, Health Scaling), Ahri `5005 / 5008 / 5001` (Attack Speed, Adaptive Force, Health Scaling). On every child.
+* `stat_sources.bonus_attack_damage` — on child 1 (Zed, where the premise states `20.8`): Doran's Blade `10`, Adaptive Force `5.4`, Adaptive Force `5.4`, reconciled server-side.
+
+Verified against the JP2 capture: **identical except** (a) the two new keys, (b) the reference `state_key` (the shard page is part of it now), and (c) the **bot opponent's** pacing and result fields (`opponent_challenges_completed`, the round deadline it drives, the final score / winner). (c) is not JP4: the bot's timing is nondeterministic run to run on identical code (two consecutive captures on `fc95e81e` differ in the same fields). Every Journey field, the viewer's clock, every question, option, answer and reveal is identical.
+
+The canonical DB was the local read-only copy used by the JP4 backend certification (see `JP4_STAT_MODS_CONTRACT_HANDOFF.md` in the backend).

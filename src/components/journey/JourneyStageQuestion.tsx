@@ -43,9 +43,23 @@
  * A child answered by TYPING (a numeric free-entry recall) keeps its Mastery
  * renderer — a text box cannot be one tap — inside the same reserved frame.
  *
+ * JP5 — THE REASONING CHAIN STARTS BEFORE THE ANSWER. A child that RELIES ON
+ * established facts (`journey.prerequisites`, the adapter's generic join)
+ * shows them under its question as the live chain — `85 Raw damage → 24 Ahri
+ * armor → ? Final damage` — inside the same prompt box (the question's type
+ * fits around it). The board and its `!` marks are untouched: this resurfaces
+ * what the board already holds. On the reveal a chain with derivation detail
+ * unfolds all at once, compresses, and reopens on a tap (`useEquationUnfold`),
+ * all inside the window the server granted THIS child.
+ *
+ * JP5 — ONE PIPELINE. Every derived reveal is the server's TYPED working
+ * (`readJourneyWorking`: after armor, raw damage, cooldown under haste) →
+ * its Reasoning Chain (`reasoning.ts`) → the chain's small choreography. No
+ * reveal reads a number out of its explanation prose.
+ *
  * Presentation only: nothing here grades, computes or rounds.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import type { AnswerOptionView, QuestionView } from "@/lib/ranked-core/viewTypes";
 import type { MasterySliceChallengeView } from "@/lib/ranked-public/contracts";
@@ -57,12 +71,24 @@ import { readComparisonSemantics } from "@/features/mastery/contracts/comparison
 import { formatRecallPrompt } from "@/features/mastery/interactions/formatPromptSemantics";
 import { formatComparisonPrompt } from "@/features/mastery/interactions/formatComparisonSemantics";
 import { COMPARISON_TIE_TOKEN } from "@/features/mastery/interactions/ComparisonQuestionView";
-import type { CombatWorking } from "@/lib/journey/combatWorking";
+import {
+  COOLDOWN_WORKING_CONTRACT, RAW_DAMAGE_WORKING_CONTRACT, type JourneyWorking,
+} from "@/lib/journey/combatWorking";
+import type { AbilitySlot } from "@/lib/journey/contract";
 import { ratioStatLabel, explicitAdText } from "@/lib/journey/statWording";
+import { mnemonicForMetric } from "@/lib/journey/statIcons";
+import { isJourneyStatKey, JOURNEY_STAT_META } from "@/lib/journey/stats";
+import {
+  combatReasoning, cooldownReasoning, liveReasoning, rawReasoning, rawWordsReasoning, statReasoning, unfolds,
+  type Reasoning,
+} from "@/lib/journey/reasoning";
 import {
   combatPremiseOf, combatQuestionSentence, percent, premiseValue, type CombatPremise,
 } from "./JourneyCombatQuestion";
-import { JourneyCombatWorking } from "./JourneyCombatWorking";
+import { displayExplanation } from "./JourneyCalcFlow";
+import { JourneyReasoningChain, JourneyReasoningHead, useEquationUnfold } from "./JourneyReasoning";
+import { AbilityIcon } from "./JourneyIcons";
+import { JourneyQuestionText, useFittedQuestion, type PromptSubject } from "./JourneyQuestionText";
 
 /** Which words a child is drawn with. The ANSWER path is the same for all of them. */
 export type JourneyQuestionKind = "combat" | "recall" | "comparison" | "prose";
@@ -134,39 +160,104 @@ function StatedFormula({ formula, rank }: { formula: JourneyFormula; rank: numbe
 }
 
 /**
- * JP2 — a raw-damage answer's working, laid out from SERVED parts only: the
- * formula the learner was taught (the ledger's value), the stat values the
- * premise states, and the reveal's own answer. Nothing is multiplied, summed
- * or rounded here; where a part is not served, no working is drawn.
- *
- *   Rank 1 Shadow Slash
- *   70 + (70% × 20.8 bonus AD)
- *   ≈ 85 physical damage before armor
+ * JP3 — the served parts of a raw-damage answer: the taught formula's flat
+ * value at the premise's rank, each ratio with the premise's stated stat, and
+ * the reveal's answer. `null` when any part is not served. JP5: used only by a
+ * reveal WITHOUT a served working (words only; nothing derived from them).
  */
-export function rawWorkingParts(premise: CombatPremise, formula: JourneyFormula | null, answer: string | null) {
+export function rawCalcPartsOf(premise: CombatPremise, formula: JourneyFormula | null, answer: string | null) {
   if (!formula || premise.rank === null || answer === null) return null;
   const flat = formula.flatByRank[premise.rank - 1];
   if (flat === undefined) return null;
-  const terms: string[] = [];
+  const ratios: { ratio: number; stat: string; label: string; value: number }[] = [];
   for (const r of formula.ratios) {
     const value = premiseValue(premise, r.stat);
     if (typeof value !== "number") return null;
-    terms.push(`(${percent(r.ratio)} × ${value} ${ratioStatLabel(r.stat, r.label)})`);
+    ratios.push({ ratio: r.ratio, stat: r.stat, label: r.label, value });
   }
+  return { rank: premise.rank, flat, ratios, answer };
+}
+
+/** JP3 — a champion stat recall's own semantics (champion, metric, level), or null. */
+function statRecallOf(challenge: MasterySliceChallengeView) {
+  const p = challenge.promptSemantics as Record<string, unknown> | null | undefined;
+  if (!p || p.template !== "champion_stat_at_level") return null;
+  const ctx = (p.context ?? {}) as Record<string, unknown>;
   return {
-    what: `Rank ${premise.rank} ${premise.ability || premise.slot}`,
-    expression: [String(flat), ...terms].join(" + "),
-    answer,
+    champion: typeof p.champion_display === "string" ? p.champion_display : "",
+    metric: typeof p.metric === "string" ? p.metric : "",
+    level: typeof ctx.champion_level === "number" ? ctx.champion_level : null,
   };
 }
 
+const ABILITY_SLOTS_SET = new Set(["Q", "W", "E", "R"]);
+
+/** The board's id for a champion named in the question (its portrait), or null. */
+function championIdOf(journey: JourneyChildContext, name: string | undefined | null): string | null {
+  if (!name) return null;
+  if (name === journey.playerChampion) return journey.playerChampionId ?? name;
+  if (name === journey.opponentChampion) return journey.opponentChampionId ?? name;
+  return null;
+}
+
+/**
+ * JP4 — which nouns of this question get a subject icon (`JourneyQuestionText`):
+ * a rule per question kind, from the served semantics only.
+ */
+export function promptSubjectsFor(challenge: MasterySliceChallengeView, journey: JourneyChildContext,
+  question: JourneyQuestion): PromptSubject[] {
+  const p = (challenge.promptSemantics ?? {}) as Record<string, unknown>;
+  const text = (v: unknown) => (typeof v === "string" ? v : "");
+  const champion = text(p.champion_display);
+  const slot = text(p.subject_ref);
+  const abilityName = text(p.ability_name);
+  const ability: PromptSubject[] = abilityName && champion && ABILITY_SLOTS_SET.has(slot)
+    ? [{ kind: "ability", text: abilityName, champion, slot: slot as AbilitySlot }] : [];
+  const championSubject = (name: string | null | undefined): PromptSubject[] => {
+    const id = championIdOf(journey, name);
+    return id && name ? [{ kind: "champion", text: name, championId: id }] : [];
+  };
+  if (question.kind === "combat" && question.premise) {
+    const target = premiseValue(question.premise, "target");
+    return [...ability, ...championSubject(typeof target === "string" ? target : null)];
+  }
+  if (p.template === "ability_damage_formula") return ability;
+  if (p.template === "champion_stat_at_level") {
+    const mnemonic = mnemonicForMetric(text(p.metric));
+    const stat = text(p.metric).replace(/^base_/, "");
+    const word = isJourneyStatKey(stat) ? JOURNEY_STAT_META[stat].long : "";
+    return [...championSubject(champion),
+      ...(mnemonic && word ? [{ kind: "stat" as const, text: word, mnemonic }] : [])];
+  }
+  // Anything else: the champions it names, at most two.
+  return [...championSubject(journey.playerChampion), ...championSubject(journey.opponentChampion)];
+}
+
+/** The Reasoning Chain a served working draws, by its typed calculation. */
+export function workingReasoning(working: JourneyWorking, rawRecalled: boolean): Reasoning {
+  switch (working.contract) {
+    case RAW_DAMAGE_WORKING_CONTRACT: return rawReasoning(working);
+    case COOLDOWN_WORKING_CONTRACT: return cooldownReasoning(working);
+    default: return combatReasoning(working, rawRecalled);
+  }
+}
+
+const CHAIN_TEST_IDS: Record<Reasoning["kind"], string> = {
+  combat: "journey-combat-working", raw: "journey-raw-working", cooldown: "journey-cooldown-working",
+  stat: "journey-stat-working", live: "journey-live-chain",
+};
+
 /**
  * The reveal, in the prompt region's reserved box: the verdict and the answer,
- * then the working in short ROWS (one step of the reasoning per line) — the
- * server's Combat working, else a raw result laid out from served parts, else
- * the served explanation.
+ * then (JP4) the REASONING CHAIN when the child has a real derivation — the
+ * server's typed working (JP5), a stat recall's own semantics — or, for a
+ * taught fact (a formula), the fact itself beside its subject. Anything else
+ * keeps the served explanation, whole-number display.
  */
-function JourneyReveal({ question, correct, timedOut, answer, explanation, working, learnedFormula }: {
+function JourneyReveal({ challenge, journey, question, correct, timedOut, answer, explanation, working,
+  learnedFormula, rawRecalled, windowMs, endsAt }: {
+  challenge: MasterySliceChallengeView;
+  journey: JourneyChildContext;
   question: JourneyQuestion;
   correct: boolean;
   /** No answer was submitted: the clock ran out on this child. */
@@ -174,48 +265,91 @@ function JourneyReveal({ question, correct, timedOut, answer, explanation, worki
   /** The correct answer as its tablet draws it. */
   answer: string | null;
   explanation: string;
-  working: CombatWorking | null;
+  working: JourneyWorking | null;
   learnedFormula: JourneyFormula | null;
+  /** The raw damage this Combat answer applies was established by an earlier step. */
+  rawRecalled: boolean;
+  /** JP5 — the server's reveal window, and the client-clock instant it ends (null when unnamed). */
+  windowMs: number | null;
+  endsAt: number | null;
 }) {
-  const raw = question.premise?.mitigation === "before_armor"
-    ? rawWorkingParts(question.premise, learnedFormula, answer) : null;
+  const shown = displayExplanation(explanation);
+  const statRecall = statRecallOf(challenge);
+  let reasoning: Reasoning | null = null;
+  if (working) {
+    reasoning = workingReasoning(working, rawRecalled);
+  } else if (question.premise?.mitigation === "before_armor") {
+    // A backend before JP5 serves no raw working: the formula in words only.
+    const parts = rawCalcPartsOf(question.premise, learnedFormula, answer);
+    if (parts) {
+      reasoning = rawWordsReasoning({ ...parts, champion: question.premise.champion,
+        slot: question.premise.slot, ability: question.premise.ability });
+    }
+  } else if (statRecall && answer !== null) {
+    reasoning = statReasoning({ ...statRecall, championId: championIdOf(journey, statRecall.champion) }, answer);
+  }
+  const fact = !reasoning && challenge.questionFamily === FORMULA_FAMILY
+    ? promptSubjectsFor(challenge, journey, question).find((s) => s.kind === "ability") ?? null : null;
+  const kind = reasoning?.kind ?? (fact ? "fact" : null);
+  const chainId = CHAIN_TEST_IDS[reasoning?.kind ?? "stat"];
+  // JP5 — a chain with derivation detail unfolds, compresses and reopens.
+  const folds = reasoning !== null && unfolds(reasoning);
+  const unfold = useEquationUnfold(folds, windowMs, endsAt);
   return (
-    <div data-testid="journey-reveal" role="status" aria-live="polite" className="journey-reveal">
-      <p data-testid="journey-reveal-verdict" data-correct={correct ? "true" : "false"}
-        className={`journey-reveal__verdict ${correct ? "journey-reveal__verdict--correct" : "journey-reveal__verdict--wrong"}`}>
-        {correct ? "Correct" : timedOut ? "Time's up" : "Not quite"}
-        {answer !== null && <> · <span data-testid="journey-reveal-answer">{answer}</span></>}
-      </p>
-      {working ? (
-        <JourneyCombatWorking working={working} rows className="journey-reveal__working" />
-      ) : raw ? (
-        <p data-testid="journey-raw-working" className="journey-reveal__working journey-reveal__rows">
-          <span className="journey-reveal__row font-semibold">{raw.what}</span>{" "}
-          <span className="journey-reveal__row tabular-nums">{raw.expression}</span>{" "}
-          <span className="journey-reveal__row">
-            <span aria-hidden className="opacity-60">≈</span>{" "}
-            <span className="font-black tabular-nums">{raw.answer}</span>{" "}
-            <span className="opacity-80">physical damage before armor</span>
+    <div data-testid="journey-reveal" role="status" aria-live="polite" className="journey-reveal"
+      data-working={kind ?? (shown.text ? "explanation" : "none")}
+      {...(folds ? { "data-unfold": unfold.phase, "data-unfold-by": unfold.manual ? "learner" : "reveal" } : {})}
+      {...(reasoning?.composition ? { "data-compose": "true" } : {})}>
+      <div className="journey-reveal__top">
+        <p data-testid="journey-reveal-verdict" data-correct={correct ? "true" : "false"}
+          className={`journey-reveal__verdict ${correct ? "journey-reveal__verdict--correct" : "journey-reveal__verdict--wrong"}`}>
+          {correct ? "Correct" : timedOut ? "Time's up" : "Not quite"}
+          {answer !== null && !fact && <> · <span data-testid="journey-reveal-answer">{answer}</span></>}
+        </p>
+        {reasoning && <JourneyReasoningHead reasoning={reasoning} testId={chainId} />}
+      </div>
+      {reasoning ? (
+        <JourneyReasoningChain reasoning={reasoning} testId={chainId}
+          {...(folds ? { phase: unfold.phase, onToggle: unfold.toggle } : {})} />
+      ) : fact && fact.kind === "ability" && answer !== null ? (
+        <p data-testid="journey-reveal-fact" className="journey-reveal__fact">
+          <AbilityIcon champion={fact.champion} slot={fact.slot} size="node" />
+          <span className="journey-reveal__fact-text">
+            <span className="journey-reveal__fact-name">{fact.text} ({fact.slot})</span>
+            <span className="journey-reveal__fact-value" data-testid="journey-reveal-answer">{answer}</span>
           </span>
         </p>
-      ) : explanation ? (
-        <p data-testid="journey-reveal-explanation" className="journey-reveal__working">{explanation}</p>
+      ) : shown.text ? (
+        <p data-testid="journey-reveal-explanation" className="journey-reveal__working" title={shown.exact ?? undefined}>
+          {shown.text}
+        </p>
       ) : null}
     </div>
   );
 }
 
 export function JourneyStageQuestion({
-  challenge, journey, submitting, onSubmit, reveal, combatWorking = null,
+  challenge, journey, submitting, onSubmit, reveal, working = null, revealWindowMs = null, revealEndsAt = null,
 }: {
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
   reveal: MasteryQuestionReveal | null;
-  combatWorking?: CombatWorking | null;
+  /** JP5 — the held reveal's served working, as its typed calculation. */
+  working?: JourneyWorking | null;
+  /** JP5 — the window the server granted this child's reveal. */
+  revealWindowMs?: number | null;
+  /** JP5 — the client-clock instant the server's reveal ends (`own_reveal_until`), or null. */
+  revealEndsAt?: number | null;
 }) {
   const question = useMemo(() => journeyQuestionFor(challenge, journey), [challenge, journey]);
+  const subjects = useMemo(() => promptSubjectsFor(challenge, journey, question), [challenge, journey, question]);
+  // JP5 — the live chain: what this child relies on, then the asked `?`.
+  const live = useMemo(() => liveReasoning(journey.prerequisites ?? [], journey.asks), [journey]);
+  // JP4 — a fixed prompt box, adaptive type: fitted before paint (JP5: around the live chain).
+  const host = useRef<HTMLDivElement>(null);
+  useFittedQuestion(host, `${challenge.challengeIndex}:${question.sentence}:${live ? live.nodes.length : 0}`);
   const view: QuestionView = useMemo(() => ({
     questionId: `journey-${challenge.challengeIndex}`,
     prompt: question.sentence,
@@ -240,12 +374,24 @@ export function JourneyStageQuestion({
   // option, from the server payload, so a reload lands on the same picture.
   const shown = revealing ? (optionId(reveal.selectedValue) ?? picked) : picked;
   const open = !submitting && !revealing;
-  const context = question.statedFormula
-    ? <StatedFormula formula={question.statedFormula} rank={question.premise?.rank ?? null} />
-    : null;
+  // JP5 — live only: on the reveal the chain is the reveal layer's (one chain on
+  // screen). Beside a formula the child STATES, the chain belongs to that
+  // premise line (phrasing elements), so its compact form can finish the
+  // formula's own last line where the box has no row to spare (a phone).
+  const showLive = live !== null && !revealing;
+  const context = question.statedFormula ? (
+    <>
+      <StatedFormula formula={question.statedFormula} rank={question.premise?.rank ?? null} />
+      {showLive && (
+        <span className="journey-live journey-live--premise" data-testid="journey-live" data-yields="true">
+          <JourneyReasoningChain reasoning={live} testId="journey-live-chain" phase="live" inline />
+        </span>
+      )}
+    </>
+  ) : null;
 
   return (
-    <div data-testid="journey-child" data-render-path={question.kind} data-revealing={revealing ? "true" : undefined}
+    <div ref={host} data-testid="journey-child" data-render-path={question.kind} data-revealing={revealing ? "true" : undefined}
       className="journey-ask">
       <InteractiveScenarioSurface
         question={view}
@@ -267,12 +413,21 @@ export function JourneyStageQuestion({
         scenarioSource={null}
         reveal={revealing ? { revealed: true, isCorrect: reveal.correct, correctOptionId: optionId(reveal.correctValue) } : null}
         context={context}
+        promptNode={<JourneyQuestionText sentence={question.sentence} subjects={subjects} />}
+        promptFooter={showLive && !question.statedFormula && (
+          <div className="journey-live" data-testid="journey-live" data-yields="true">
+            <JourneyReasoningChain reasoning={live} testId="journey-live-chain" phase="live" />
+          </div>
+        )}
       />
       {revealing && (
-        <JourneyReveal question={question} correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
+        <JourneyReveal challenge={challenge} journey={journey} question={question}
+          correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
           answer={labelOf(reveal.correctValue)}
           explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
-          working={combatWorking} learnedFormula={journey.learnedFormula ?? null} />
+          working={working} learnedFormula={journey.learnedFormula ?? null}
+          rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
+          windowMs={revealWindowMs} endsAt={revealEndsAt} />
       )}
     </div>
   );

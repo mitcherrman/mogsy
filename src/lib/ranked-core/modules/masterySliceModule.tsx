@@ -39,7 +39,7 @@
 // required fields of the contract.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { journeyViewFor } from "@/lib/journey/adapter";
 import { journeyKnowledge } from "@/lib/journey/knowledge";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
@@ -181,6 +181,23 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
       && (Number.isNaN(revealUntilMs) || revealUntilMs > Date.now() + skewMs));
   const holding = latest !== null && latest.challengeIndex > dismissed && serverStillRevealing
     ? latest : null;
+  // JP5 — PER-CHILD REVEAL WINDOWS. A Journey whose children differ names the
+  // revealing child's OWN window (`own_reveal_window_ms`); the hold, and the
+  // Reasoning Chain's choreography inside it, use that. Read once per held
+  // reveal, so a later poll (which no longer names it) cannot re-arm the hold.
+  // The hold itself ends when the SERVER's reveal does: a reveal mounted part
+  // way through (a reload, a late first poll) is held only for what the server
+  // has left of it, never a fresh full window past `own_reveal_until` (the
+  // next child would already be open, its clock running behind the reveal).
+  const heldWindow = useRef<{ index: number; ms: number | null; holdMs: number } | null>(null);
+  if (holding && heldWindow.current?.index !== holding.challengeIndex) {
+    const ms = state.ownRevealWindowMs ?? windowMs;
+    const full = revealDurationMs(ms);
+    const left = Number.isNaN(revealUntilMs) ? full : revealUntilMs - (Date.now() + skewMs);
+    heldWindow.current = { index: holding.challengeIndex, ms, holdMs: Math.max(0, Math.min(full, left)) };
+  }
+  const childWindowMs = holding && heldWindow.current ? heldWindow.current.ms : windowMs;
+  const holdMs = holding && heldWindow.current ? heldWindow.current.holdMs : revealDurationMs(windowMs);
 
   // ONE timer, keyed on the held challenge's own index — so a duplicate poll,
   // a re-render, or a second state update cannot stack a second advance, and a
@@ -188,16 +205,16 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   //
   // RELOAD/RESUME: the reveal is re-derived from persisted rows on every poll,
   // so a reload mid-reveal simply finds the same `holding` and arms the timer
-  // fresh on mount. The remaining milliseconds are deliberately NOT
-  // reconstructed: there is no persisted reveal-start to reconstruct them from,
-  // and showing the full window again is the simplest behaviour that cannot
-  // affect scoring — the server subtracts exactly one window from the next
-  // challenge's response time regardless of how long the client actually
-  // paused, and no answer or advance is re-submitted.
+  // fresh on mount. Where the server states when the reveal ends
+  // (`own_reveal_until`, a Journey), the timer is armed for what is LEFT of it
+  // (JP5: the long per-child windows made the old full-window re-hold visible);
+  // without it the full window is shown again, which cannot affect scoring —
+  // the server subtracts exactly one window from the next challenge's response
+  // time regardless of how long the client actually paused.
   useRevealAutoAdvance(
     holding ? holding.challengeIndex : null,
     () => setDismissed(holding ? holding.challengeIndex : -1),
-    revealDurationMs(windowMs),
+    holdMs,
   );
 
   const revealed = holding ? challenges[holding.challengeIndex] ?? null : null;
@@ -217,11 +234,14 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   // JOURNEY-UI2/UI3 — a Journey segment: ONE board for the whole module, mounted
   // around every branch below (question, beat, waiting) so it never remounts
   // between children. Fed the server's reached-prefix public block only.
+  // JP5 — and the settled reveals: a child's prerequisites are joined to the
+  // values the learner was SHOWN (the same reveals K2 marks the board from).
   const journey = useMemo(() => journeyViewFor(state.journey, {
     ownNextChallengeIndex: state.ownNextChallengeIndex,
     ownCardStartedAt: state.ownCardStartedAt,
     ownFinished: state.ownFinished,
-  }), [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished]);
+  }, state.ownChallengeReveals),
+  [state.journey, state.ownNextChallengeIndex, state.ownCardStartedAt, state.ownFinished, state.ownChallengeReveals]);
   // K2 — the Journey's established facts, joined with the settled reveals
   // that carry their player-facing values (K1 §1.3). All reveals, not just the
   // held one: an earlier child's fact stays marked for the whole Journey.
@@ -234,7 +254,9 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   const inJourney = (node: ReactNode, questionRoles: MasterySliceChallengeView["roles"] = null) => (journey
     ? (
       <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}
-        questionRoles={questionRoles} knowledge={knowledge}>
+        questionRoles={questionRoles} knowledge={knowledge} journey={state.journey}
+        // JP3 — the micro-chain's nodes: the reached steps' served asks.
+        reached={journey.children} answeredThrough={state.ownFinished ? state.challengeCount : state.ownNextChallengeIndex}>
         {node}
       </JourneyModuleStage>
     ) : node);
@@ -332,7 +354,12 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
         onSubmit={onSubmit}
         reveal={reveal}
         journey={journey ? journey.children[current.challengeIndex] ?? null : null}
-        combatWorking={reveal && holding ? holding.combatWorking ?? null : null}
+        working={reveal && holding ? holding.working ?? null : null}
+        // JP5 — the server's own window FOR THIS CHILD and the instant its
+        // reveal ends, so the Reasoning Chain choreographs inside THAT window.
+        // It is never lengthened here.
+        revealWindowMs={childWindowMs}
+        revealEndsAt={Number.isNaN(revealUntilMs) ? null : revealUntilMs - skewMs}
       />
     </div>,
     current.roles ?? null,

@@ -117,7 +117,9 @@ function Side({ rail, progressionEnabled }: { rail: CombatantRail; progressionEn
         <div className={`flex min-w-0 items-center gap-1 ${row}`}>
           <span data-testid={`mobile-name-${c.playerId}`} title={c.name}
             className="min-w-0 truncate text-[13px] font-bold leading-tight">{c.name}</span>
-          {role.role !== null && (
+          {/* JP3 — no match-role emblem while a Journey runs: beside the
+              Journey's champion crest it read as that champion's lane. */}
+          {role.role !== null && !rail.journey && (
             <RoleEmblem role={role.role} size="sm" className="opacity-90" />
           )}
         </div>
