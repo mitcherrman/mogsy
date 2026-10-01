@@ -4,6 +4,7 @@ import { GraduationCap, Library } from "lucide-react";
 import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
 import RankedPlayScroll from "@/components/quiz/play-scroll/RankedPlayScroll";
+import LeaguecraftGuide from "@/components/quiz/LeaguecraftGuide";
  
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { useSfx } from "@/lib/audio/useSfx";
@@ -207,6 +208,7 @@ export default function LeaguecraftHub({
   championKnowledge,
   analyticsSource,
   demoAnalyticsRoleDimension,
+  roleGuide = false,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -364,6 +366,14 @@ export default function LeaguecraftHub({
    * and REVIEW reads the real collection when a reader opens it.
    */
   ownedQuestionsPreview?: QuestionLibraryState;
+  /**
+   * MG-D: show Mogzy's role guidance on the lobby. Pass `true` only once the
+   * host's role state has SETTLED (loaded, or known to be absent) — the guide
+   * decides whether to offer "pick a role" from whether a role is on the stage
+   * at that moment. Off by default: previews and fixture hosts render the lobby
+   * exactly as before. Presentation only — the guide reads, never writes.
+   */
+  roleGuide?: boolean;
 }) {
   const canonicalSfx = useSfx();
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
@@ -377,6 +387,17 @@ export default function LeaguecraftHub({
   // whatever had focus when the dialog mounted — `document.body` on every
   // browser that does not focus a button on click.
   const playSealRef = useRef<HTMLButtonElement | null>(null);
+  // MG-D: how many times the reader moved the role stage this visit. The role
+  // itself is still the host's (`onSelectRankedRole` is called exactly as
+  // before); this only lets Mogzy notice that a choice happened.
+  const [rolePicks, setRolePicks] = useState(0);
+  const handleSelectRole = useCallback(
+    (role: RankedRole) => {
+      setRolePicks((n) => n + 1);
+      onSelectRankedRole?.(role);
+    },
+    [onSelectRankedRole],
+  );
   /* ─── HUB4: ONE HISTORY SURFACE, ADDRESSABLE AT #history ────────────────
      History is the lower workspace's only surface, at `/quiz#history`. The
      two hashes that used to name peer tabs still land: `#review` opens the
@@ -592,7 +613,7 @@ export default function LeaguecraftHub({
           playDisabled={playDisabled}
           playButtonRef={playSealRef}
           rankedRole={rankedRole}
-          onSelectRole={onSelectRankedRole}
+          onSelectRole={onSelectRankedRole ? handleSelectRole : undefined}
           roleSelectDisabled={roleSelectDisabled}
           roleSaving={roleSaving}
           rankedProgression={rankedProgression}
@@ -605,6 +626,16 @@ export default function LeaguecraftHub({
           championKnowledge={championKnowledge}
           analyticsSource={analyticsSource}
           demoAnalyticsRoleDimension={demoAnalyticsRoleDimension}
+          guide={
+            roleGuide ? (
+              <LeaguecraftGuide
+                hasRole={rankedRole !== null}
+                rolePicks={rolePicks}
+                playOpen={playOpen}
+                playDisabled={playDisabled}
+              />
+            ) : null
+          }
         />
       </section>
 

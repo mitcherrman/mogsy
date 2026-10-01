@@ -245,6 +245,7 @@ export default function RankedLobbyHero({
   championKnowledge = productionChampionKnowledge,
   analyticsSource,
   demoAnalyticsRoleDimension,
+  guide = null,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -296,6 +297,13 @@ export default function RankedLobbyHero({
    *  what enables the carousel's Role control; production passes nothing and
    *  the control is inert, because the contract has no role dimension. */
   demoAnalyticsRoleDimension?: (report: TrendReport, role: RankedRole | null) => TrendReport;
+  /**
+   * MG-D — an optional guide mounted inside the CENTRE scroll, whose content box
+   * is the authored coordinate space for it. Pure pass-through: the hero reads
+   * nothing from it and lays nothing out around it (the guide is absolutely
+   * positioned and pointer-inert).
+   */
+  guide?: React.ReactNode;
 }) {
   // ── Competitive identity (RE1-owned values, rendered as given) ──────────
   const tier = rankedProgression?.tier ?? null;
@@ -506,6 +514,7 @@ export default function RankedLobbyHero({
         data-testid="hero-play-column"
       >
         <LobbyPanel variant="scroll" order="centre" emphasis className="items-center text-center">
+        {guide}
         {/* The lobby's one genuine pre-match DECISION, and since RL1 the only
             heading on this sheet — the LEAGUECRAFT wordmark and the RANKED
             eyebrow above it are gone and nothing replaces them. `ceremonial`
