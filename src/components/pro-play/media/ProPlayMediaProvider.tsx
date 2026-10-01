@@ -38,11 +38,12 @@ import {
   mediaSrc,
   type EntityMedia,
   type MediaBatch,
+  type MediaEntityType,
 } from "@/lib/pro-play/mediaApi";
 
 interface MediaContextValue {
-  entry: (entityType: "team" | "player", entityKey: string) => EntityMedia | undefined;
-  src: (entityType: "team" | "player", entityKey: string) => string | null;
+  entry: (entityType: MediaEntityType, entityKey: string) => EntityMedia | undefined;
+  src: (entityType: MediaEntityType, entityKey: string) => string | null;
   /** False when the backend could not verify identities at all. Surfaces are
    *  free to ignore it; it exists so a screen of monograms is diagnosable. */
   identityAvailable: boolean;
@@ -62,12 +63,12 @@ const ProPlayMediaContext = createContext<MediaContextValue>(EMPTY);
 const CACHE = new Map<string, MediaBatch | null>();
 const INFLIGHT = new Map<string, Promise<MediaBatch | null>>();
 
-function load(cacheKey: string, teams: string[], players: string[]) {
+function load(cacheKey: string, teams: string[], players: string[], leagues: string[]) {
   const cached = CACHE.get(cacheKey);
   if (cached !== undefined) return Promise.resolve(cached);
   const existing = INFLIGHT.get(cacheKey);
   if (existing) return existing;
-  const request = fetchProPlayMedia({ teams, players })
+  const request = fetchProPlayMedia({ teams, players, leagues })
     .then((batch) => {
       // A null (network failure, 5xx) is NOT cached: every slot falls back for
       // this render, and the next screen that needs these keys tries again.
@@ -88,10 +89,13 @@ export function __resetProPlayMediaCache() {
 export function ProPlayMediaProvider({
   teams = [],
   players = [],
+  leagues = [],
   children,
 }: {
   teams?: (string | null | undefined)[];
   players?: (string | null | undefined)[];
+  /** Upstream league slugs ("demacia_cup") for event marks. */
+  leagues?: (string | null | undefined)[];
   children: ReactNode;
 }) {
   // Sorted and de-duplicated so a re-render that reorders the same entities
@@ -105,26 +109,31 @@ export function ProPlayMediaProvider({
     [players],
   );
 
-  const cacheKey = `${teamKeys.join("\u001f")}|${playerKeys.join("\u001f")}`;
+  const leagueKeys = useMemo(
+    () => [...new Set(leagues.filter((k): k is string => Boolean(k)))].sort(),
+    [leagues],
+  );
+
+  const cacheKey = `${teamKeys.join("\u001f")}|${playerKeys.join("\u001f")}|${leagueKeys.join("\u001f")}`;
   const [data, setData] = useState<MediaBatch | null>(
     () => CACHE.get(cacheKey) ?? null,
   );
 
   useEffect(() => {
-    if (!teamKeys.length && !playerKeys.length) {
+    if (!teamKeys.length && !playerKeys.length && !leagueKeys.length) {
       setData(null);
       return;
     }
     let live = true;
     // A cache hit still lands through setState so the first paint of a
     // revisited screen is a single render, not a flash of monograms.
-    load(cacheKey, teamKeys, playerKeys).then((batch) => {
+    load(cacheKey, teamKeys, playerKeys, leagueKeys).then((batch) => {
       if (live) setData(batch);
     });
     return () => {
       live = false;
     };
-  }, [cacheKey, teamKeys, playerKeys]);
+  }, [cacheKey, teamKeys, playerKeys, leagueKeys]);
 
   const value = useMemo<MediaContextValue>(() => {
     const index = indexMedia(data);
@@ -143,7 +152,7 @@ export function ProPlayMediaProvider({
 /** Media for one entity. Returns null art outside a provider — by design, so a
  *  component can be rendered in isolation (or in a test) without one. */
 export function useEntityMedia(
-  entityType: "team" | "player",
+  entityType: MediaEntityType,
   entityKey?: string | null,
 ) {
   const context = useContext(ProPlayMediaContext);

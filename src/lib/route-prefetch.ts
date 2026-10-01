@@ -82,6 +82,7 @@ export const Routes = {
   ProPlayTeamProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayTeamProfile")),
   ProPlayChampionProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayChampionProfile")),
   ProPlayMatchup: lazyWithRetry(() => import("@/pages/pro-play/ProPlayMatchup")),
+  ProPlayTournament: lazyWithRetry(() => import("@/pages/pro-play/ProPlayTournament")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
   AdminQuizBroadcast: lazyWithRetry(() => import("@/pages/admin/AdminQuizBroadcast")),
   QuizBroadcastView: lazyWithRetry(() => import("@/pages/admin/QuizBroadcastView")),
@@ -146,6 +147,7 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p.startsWith("/lol/pro-play/player/"), keys: ["ProPlayPlayerProfile", "ProPlayTeamProfile"] },
   { test: (p) => p.startsWith("/lol/pro-play/team/"), keys: ["ProPlayTeamProfile", "ProPlayPlayerProfile"] },
   { test: (p) => p.startsWith("/lol/pro-play/champion/"), keys: ["ProPlayChampionProfile"] },
+  { test: (p) => p.startsWith("/lol/pro-play/tournament/"), keys: ["ProPlayTournament", "ProPlayTeamProfile"] },
   // The Explorer links out to the player and team profiles from every
   // resolved side, so they are worth the same prefetch as from search.
   {

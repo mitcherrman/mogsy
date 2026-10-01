@@ -30,8 +30,12 @@ const API_BASE_URL = (
 /** "art" — an approved asset was selected. "fallback" — draw the monogram. */
 export type MediaState = "art" | "fallback";
 
+/** A competition (`league`) is keyed by upstream's league slug, e.g.
+ *  "demacia_cup" — verified server-side against LIVE1's league registry. */
+export type MediaEntityType = "team" | "player" | "league";
+
 export interface EntityMedia {
-  entity_type: "team" | "player";
+  entity_type: MediaEntityType;
   entity_key: string;
   media_type: string;
   state: MediaState;
@@ -65,19 +69,15 @@ export interface MediaBatch {
 export interface MediaRequest {
   teams?: string[];
   players?: string[];
+  leagues?: string[];
 }
 
-/** Resolve every slot on a screen in one request. Never throws. */
-export async function fetchProPlayMedia(
-  request: MediaRequest,
-  signal?: AbortSignal,
-): Promise<MediaBatch | null> {
-  const params = new URLSearchParams();
-  for (const key of request.teams ?? []) params.append("team", key);
-  for (const key of request.players ?? []) params.append("player", key);
-  if (![...params].length) {
-    return { ok: true, contract_version: "", count: 0, identity_available: true, results: [] };
-  }
+/** The backend's per-request cap (`routes/pro_play_media.MAX_BATCH`). A screen
+ *  that draws more — a tournament field is 12 crests and 60 portraits — is
+ *  split into several requests and merged, still one answer per screen. */
+export const MEDIA_BATCH_MAX = 40;
+
+async function fetchBatch(params: URLSearchParams, signal?: AbortSignal) {
   try {
     const response = await fetch(
       `${API_BASE_URL}/api/pro-play/media/resolve?${params.toString()}`,
@@ -88,6 +88,37 @@ export async function fetchProPlayMedia(
   } catch {
     return null;
   }
+}
+
+/** Resolve every slot on a screen. Never throws. Any failed chunk fails the
+ *  whole answer (null), so a screen never shows half its media. */
+export async function fetchProPlayMedia(
+  request: MediaRequest,
+  signal?: AbortSignal,
+): Promise<MediaBatch | null> {
+  const pairs: [string, string][] = [
+    ...(request.teams ?? []).map((k): [string, string] => ["team", k]),
+    ...(request.players ?? []).map((k): [string, string] => ["player", k]),
+    ...(request.leagues ?? []).map((k): [string, string] => ["league", k]),
+  ];
+  if (!pairs.length) {
+    return { ok: true, contract_version: "", count: 0, identity_available: true, results: [] };
+  }
+  const chunks: URLSearchParams[] = [];
+  for (let i = 0; i < pairs.length; i += MEDIA_BATCH_MAX) {
+    chunks.push(new URLSearchParams(pairs.slice(i, i + MEDIA_BATCH_MAX)));
+  }
+  const batches = await Promise.all(chunks.map((params) => fetchBatch(params, signal)));
+  if (batches.some((b) => b === null)) return null;
+  if (batches.length === 1) return batches[0];
+  const results = batches.flatMap((b) => b!.results ?? []);
+  return {
+    ok: batches.every((b) => b!.ok),
+    contract_version: batches[0]!.contract_version,
+    count: results.length,
+    identity_available: batches.every((b) => b!.identity_available),
+    results,
+  };
 }
 
 /** The URL for an entry's art, or null when the slot must fall back. */
@@ -105,7 +136,7 @@ export function indexMedia(batch: MediaBatch | null | undefined) {
   return index;
 }
 
-export function mediaKey(entityType: "team" | "player", entityKey: string) {
+export function mediaKey(entityType: MediaEntityType, entityKey: string) {
   return `${entityType}:${entityKey}`;
 }
 

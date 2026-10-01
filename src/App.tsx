@@ -32,6 +32,7 @@ import {
   PRO_PLAY_PLAYER_ROUTE,
   PRO_PLAY_SEARCH_ROUTE,
   PRO_PLAY_TEAM_ROUTE,
+  PRO_PLAY_TOURNAMENT_ROUTE,
 } from "@/lib/pro-play/routes";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
@@ -98,6 +99,7 @@ const ProPlayPlayerProfile = R.ProPlayPlayerProfile.Component;
 const ProPlayTeamProfile = R.ProPlayTeamProfile.Component;
 const ProPlayChampionProfile = R.ProPlayChampionProfile.Component;
 const ProPlayMatchup = R.ProPlayMatchup.Component;
+const ProPlayTournament = R.ProPlayTournament.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
 const QuizBroadcastView = R.QuizBroadcastView.Component;
@@ -590,6 +592,7 @@ export const appRouter = createBrowserRouter(
                       research routes above; its whole selection lives in the
                       query string, so the path takes no parameters. */}
                   <Route path={PRO_PLAY_MATCHUP_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayMatchup /></Suspense>} />
+                  <Route path={PRO_PLAY_TOURNAMENT_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTournament /></Suspense>} />
                   {/* LIVE1 match centre. It shipped at /esports/live (below,
                       now a redirect) before Pro Play had a hub; this is its
                       canonical URL. Same component, one page. */}

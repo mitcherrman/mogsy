@@ -85,6 +85,21 @@ export function proPlayProfileUrl(kind: ProPlayEntityKind, key: string): string 
 }
 
 /**
+ * A tournament context page (DCGI1): an event's identity, field and
+ * tournament lineups, schedule, results and records — whatever the event's
+ * phase makes true. The id is the backend registry's `context_id`
+ * (`pro_authority/tournament_context.py`), e.g. "dcgi-2026".
+ */
+export const PRO_PLAY_TOURNAMENT_ROUTE = "/lol/pro-play/tournament/:contextId";
+
+export function proPlayTournamentUrl(contextId: string): string {
+  return `/lol/pro-play/tournament/${encodeURIComponent(contextId)}`;
+}
+
+/** The tournament the hub currently points readers at. */
+export const PRO_PLAY_FEATURED_TOURNAMENT = "dcgi-2026";
+
+/**
  * The Worlds Matchup Explorer: configure two teams, a lane, two players and
  * two champions, and read both sides over the four standard scopes.
  *

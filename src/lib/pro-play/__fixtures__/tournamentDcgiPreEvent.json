@@ -1,0 +1,1288 @@
+{
+ "contract_version": "tournament_context_v1",
+ "generated_at": "2026-10-01T20:00:00.000+00:00",
+ "source": "getSchedule",
+ "source_ok": true,
+ "stale": false,
+ "fetched_at": "2026-10-01T20:00:00.000+00:00",
+ "context": {
+  "context_id": "dcgi-2026",
+  "name": "Demacia Cup Global Invitational 2026",
+  "short_name": "DCGI",
+  "league": {
+   "slug": "demacia_cup",
+   "id": "117126995932274206"
+  },
+  "tournament": {
+   "id": "117133773242499009",
+   "slug": "demacia_cup_2026"
+  },
+  "starts": "2026-10-03",
+  "ends": "2026-10-17",
+  "regions": [
+   "LPL",
+   "LCK",
+   "LEC",
+   "LCS",
+   "LCP",
+   "CBLOL"
+  ],
+  "stages": [
+   {
+    "key": "swiss",
+    "name": "Swiss Stage",
+    "block_names": [
+     "Swiss"
+    ],
+    "starts": "2026-10-03",
+    "ends": "2026-10-08",
+    "venue": "Online",
+    "format_note": "Round 1 is best-of-one; every later Swiss match is best-of-three. Pairings after Round 1 are drawn as results come in."
+   },
+   {
+    "key": "knockout",
+    "name": "Knockout Stage",
+    "block_names": [
+     "Quarterfinals",
+     "Semifinals",
+     "Finals"
+    ],
+    "starts": "2026-10-12",
+    "ends": "2026-10-17",
+    "venue": "Beijing",
+    "format_note": "Single elimination, best-of-five."
+   }
+  ],
+  "participants": [
+   {
+    "code": "JDG",
+    "team_key": "JD Gaming",
+    "region": "LPL",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Xiaoxu",
+      "handle": "Xiaoxu",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Xiaofang",
+      "handle": "Xiaofang",
+      "change": "DCGI lineup change"
+     },
+     {
+      "role": "mid",
+      "player_key": "Angel (Xiang Tao)",
+      "handle": "Angel",
+      "change": "DCGI lineup change"
+     },
+     {
+      "role": "bot",
+      "player_key": "GALA",
+      "handle": "GALA",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Vampire",
+      "handle": "Vampire",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "WE",
+    "team_key": "Team WE",
+    "region": "LPL",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Cube (Dai Yi)",
+      "handle": "Cube",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Monki",
+      "handle": "Monki",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "Karis",
+      "handle": "Karis",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "About",
+      "handle": "About",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Erha",
+      "handle": "Erha",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "LGD",
+    "team_key": "LGD Gaming",
+    "region": "LPL",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Burdol",
+      "handle": "Burdol",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Heng",
+      "handle": "Heng",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "Tangyuan",
+      "handle": "Tangyuan",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Shaoye",
+      "handle": "Shaoye",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Crisp",
+      "handle": "Crisp",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "KT",
+    "team_key": "KT Rolster",
+    "region": "LCK",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "PerfecT (Lee Seung-min)",
+      "handle": "PerfecT",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Cuzz",
+      "handle": "Cuzz",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "Bdd",
+      "handle": "Bdd",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Jiwoo",
+      "handle": "Jiwoo",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Effort",
+      "handle": "Effort",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "BFX",
+    "team_key": "BNK FEARX",
+    "region": "LCK",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Clear (Song Hyeon-min)",
+      "handle": "Clear",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Raptor (Jeon Eo-jin)",
+      "handle": "Raptor",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "VicLa",
+      "handle": "VicLa",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Taeyoon (Kim Tae-yoon)",
+      "handle": "Taeyoon",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Kellin",
+      "handle": "Kellin",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "BRO",
+    "team_key": "HANJIN BRION",
+    "region": "LCK",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Casting",
+      "handle": "Casting",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "GIDEON",
+      "handle": "GIDEON",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "Roamer",
+      "handle": "Roamer",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Teddy",
+      "handle": "Teddy",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Namgung",
+      "handle": "Namgung",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "NAVI",
+    "team_key": "Natus Vincere",
+    "region": "LEC",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Maynter",
+      "handle": "Maynter",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Rhilech",
+      "handle": "Rhilech",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "Poby",
+      "handle": "Poby",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "SamD",
+      "handle": "SamD",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Parus",
+      "handle": "Parus",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "VIT",
+    "team_key": "Team Vitality",
+    "region": "LEC",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Naak Nako",
+      "handle": "Naak Nako",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Lyncas",
+      "handle": "Lyncas",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "FIESTA (An Hyeon-seo)",
+      "handle": "FIESTA",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Carzzy",
+      "handle": "Carzzy",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Fleshy",
+      "handle": "Fleshy",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "SR",
+    "team_key": "Shopify Rebellion",
+    "region": "LCS",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Fudge",
+      "handle": "Fudge",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Contractz",
+      "handle": "Contractz",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "Zinie",
+      "handle": "Zinie",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Bvoy",
+      "handle": "Bvoy",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Zeyzal",
+      "handle": "Zeyzal",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "FLY",
+    "team_key": "FlyQuest",
+    "region": "LCS",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Gakgos",
+      "handle": "Gakgos",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Gryffinn",
+      "handle": "Gryffinn",
+      "change": null
+     },
+     {
+      "role": "mid",
+      "player_key": "Quad",
+      "handle": "Quad",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Massu",
+      "handle": "Massu",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Cryogen",
+      "handle": "Cryogen",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "GAM",
+    "team_key": "GAM Esports",
+    "region": "LCP",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Kiaya",
+      "handle": "Kiaya",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Tiphat",
+      "handle": "Tiphat",
+      "change": "On loan for DCGI"
+     },
+     {
+      "role": "mid",
+      "player_key": "Gloryy",
+      "handle": "Gloryy",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Artemis (Trần Quốc Hưng)",
+      "handle": "Artemis",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Taki (Đinh Anh Tài)",
+      "handle": "Taki",
+      "change": null
+     }
+    ]
+   },
+   {
+    "code": "RED",
+    "team_key": "RED Canids",
+    "region": "CBLOL",
+    "lineup": [
+     {
+      "role": "top",
+      "player_key": "Zynts",
+      "handle": "zynts",
+      "change": null
+     },
+     {
+      "role": "jungle",
+      "player_key": "Aegis (Gabriel Lemos)",
+      "handle": "Aegis",
+      "change": "Replaces STEPZ for DCGI"
+     },
+     {
+      "role": "mid",
+      "player_key": "Fuuu",
+      "handle": "Fuuu",
+      "change": null
+     },
+     {
+      "role": "bot",
+      "player_key": "Morttheus",
+      "handle": "Morttheus",
+      "change": null
+     },
+     {
+      "role": "support",
+      "player_key": "Manel",
+      "handle": "Manel",
+      "change": null
+     }
+    ]
+   }
+  ],
+  "related": [
+   {
+    "name": "World Championship 2026",
+    "league_slug": "worlds",
+    "starts": "2026-10-15",
+    "ends": "2026-11-14",
+    "relation": "DCGI is played by teams from the same six regions that did not qualify for Worlds 2026; each region's qualified teams play at Worlds."
+   }
+  ],
+  "sources": [
+   "lolesports getSchedule / getLeagues (league demacia_cup)",
+   "Leaguepedia: 2026 Demacia Cup Global Invitational",
+   "Liquipedia: Demacia Cup Global Invitational 2026"
+  ],
+  "notes": []
+ },
+ "state": {
+  "phase": "pre_event",
+  "next_match_id": "117133805552196841",
+  "matches": [
+   {
+    "match_id": "117133805552196841",
+    "scheduled_start": "2026-10-03T08:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "RED",
+      "upstream_name": "RED Kalunga",
+      "team_key": "RED Canids",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": "NAVI",
+      "upstream_name": "Natus Vincere",
+      "team_key": "Natus Vincere",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262379",
+    "scheduled_start": "2026-10-03T09:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "LGD",
+      "upstream_name": "LGD GAMING",
+      "team_key": "LGD Gaming",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": "FLY",
+      "upstream_name": "FlyQuest",
+      "team_key": "FlyQuest",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262381",
+    "scheduled_start": "2026-10-03T10:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "SR",
+      "upstream_name": "Shopify Rebellion",
+      "team_key": "Shopify Rebellion",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": "KT",
+      "upstream_name": "kt Rolster",
+      "team_key": "KT Rolster",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262383",
+    "scheduled_start": "2026-10-03T11:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "VIT",
+      "upstream_name": "Team Vitality",
+      "team_key": "Team Vitality",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": "BFX",
+      "upstream_name": "BNK FEARX",
+      "team_key": "BNK FEARX",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262385",
+    "scheduled_start": "2026-10-03T12:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "GAM",
+      "upstream_name": "GAM Esports",
+      "team_key": "GAM Esports",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": "WE",
+      "upstream_name": "Xi'an Team WE",
+      "team_key": "Team WE",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262387",
+    "scheduled_start": "2026-10-03T13:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 1,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": "BRO",
+      "upstream_name": "HANJIN BRION",
+      "team_key": "HANJIN BRION",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": "JDG",
+      "upstream_name": "Beijing JDG Esports",
+      "team_key": "JD Gaming",
+      "tbd": false,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262389",
+    "scheduled_start": "2026-10-04T07:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262393",
+    "scheduled_start": "2026-10-04T09:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262397",
+    "scheduled_start": "2026-10-04T11:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262401",
+    "scheduled_start": "2026-10-05T07:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262405",
+    "scheduled_start": "2026-10-05T09:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262409",
+    "scheduled_start": "2026-10-05T11:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262413",
+    "scheduled_start": "2026-10-06T07:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262417",
+    "scheduled_start": "2026-10-06T09:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133805552262421",
+    "scheduled_start": "2026-10-06T11:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133816701918794",
+    "scheduled_start": "2026-10-07T07:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133816701918798",
+    "scheduled_start": "2026-10-07T09:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133816701918802",
+    "scheduled_start": "2026-10-07T11:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830114188936",
+    "scheduled_start": "2026-10-08T09:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830114188940",
+    "scheduled_start": "2026-10-08T11:00:00Z",
+    "stage": "swiss",
+    "block_name": "Swiss",
+    "best_of": 3,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830110912093",
+    "scheduled_start": "2026-10-12T06:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830110912099",
+    "scheduled_start": "2026-10-12T09:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830110912105",
+    "scheduled_start": "2026-10-13T06:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830110912111",
+    "scheduled_start": "2026-10-13T09:00:00Z",
+    "stage": "knockout",
+    "block_name": "Quarterfinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830110912117",
+    "scheduled_start": "2026-10-14T09:00:00Z",
+    "stage": "knockout",
+    "block_name": "Semifinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830110912123",
+    "scheduled_start": "2026-10-15T09:00:00Z",
+    "stage": "knockout",
+    "block_name": "Semifinals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   },
+   {
+    "match_id": "117133830110912129",
+    "scheduled_start": "2026-10-17T09:00:00Z",
+    "stage": "knockout",
+    "block_name": "Finals",
+    "best_of": 5,
+    "state": "upcoming",
+    "teams": [
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     },
+     {
+      "code": null,
+      "upstream_name": null,
+      "team_key": null,
+      "tbd": true,
+      "game_wins": 0,
+      "outcome": null
+     }
+    ],
+    "winner_code": null,
+    "live1_game_ids": []
+   }
+  ],
+  "swiss_records": [],
+  "knockout_teams": [],
+  "counts": {
+   "matches": 27,
+   "completed": 0,
+   "live": 0
+  },
+  "warnings": []
+ }
+}

@@ -9,13 +9,14 @@ import { HubKicker } from "@/components/pro-play/hub/HubSection";
 import MatchCenter from "@/components/pro-play/hub/MatchCenter";
 import MatchWorkspace from "@/components/pro-play/hub/MatchWorkspace";
 import ProPlayDiscovery, { SearchEntry } from "@/components/pro-play/hub/ProPlayDiscovery";
+import TournamentSpotlight from "@/components/pro-play/hub/TournamentSpotlight";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { useChampionAssets } from "@/hooks/useChampionAssets";
 import { fetchLiveGame } from "@/lib/live-esports/api";
 import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useUpcoming } from "@/lib/live-esports/hooks";
 import { gamesNeedingResult, groupSeries, railUpcoming, type TeamStates } from "@/lib/pro-play/hubSeries";
 import { lanePlayerKey, nextHubAutoGame } from "@/lib/pro-play/hubSelection";
-import { PRO_PLAY_LIVE_GAME_PARAM, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
+import { PRO_PLAY_FEATURED_TOURNAMENT, PRO_PLAY_LIVE_GAME_PARAM, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
 
 /**
  * Pro Play hub — the landing page behind the academy hub's Pro Play book.
@@ -182,6 +183,12 @@ export default function ProPlayHub() {
     ],
     [series, upcoming, selected],
   );
+  // Event marks for the event band and the UP NEXT rail (DCGI1): league
+  // slugs resolve through the same media authority as crests.
+  const mediaLeagues = useMemo(
+    () => [...upcoming.map((m) => m.league.slug), selected?.competition?.league.slug],
+    [upcoming, selected],
+  );
   const lanePlayers = match.players.data?.players;
   const mediaPlayers = useMemo(() => (lanePlayers ?? []).map(lanePlayerKey), [lanePlayers]);
 
@@ -217,8 +224,10 @@ export default function ProPlayHub() {
           </a>
         </header>
 
+        <TournamentSpotlight contextId={PRO_PLAY_FEATURED_TOURNAMENT} />
+
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_288px]">
-          <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers}>
+          <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
             <MatchCenter
               feed={feed}
               match={match}
