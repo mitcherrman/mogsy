@@ -54,7 +54,7 @@ beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: false }); resetKnowledg
 afterEach(() => { cleanup(); vi.useRealTimers(); resetKnowledgeCoach(); });
 
 describe("the board is current objects: no retained scalar bubbles", () => {
-  it("no anchor chip on ANY snapshot of the reference and Pantheon Journeys; the row keeps its box, empty", () => {
+  it("no anchor chip on ANY snapshot of the reference and Pantheon Journeys; the row itself is gone", () => {
     for (const file of [REF, PANTHEON]) {
       for (const s of load(file).filter((x) => (x.envelope.payload as { segment_state: unknown }).segment_state)) {
         show(s);
@@ -62,11 +62,8 @@ describe("the board is current objects: no retained scalar bubbles", () => {
         const b = board();
         expect(b.querySelector(".journey-anchor, [data-testid^='journey-stat-'], [data-testid^='journey-readout-']"),
           `${file} ${s.label}`).toBeNull();
-        for (const side of ["subject", "opponent"]) {
-          const anchors = screen.getByTestId(`journey-anchors-${side}`);
-          expect(anchors.childElementCount, `${file} ${s.label}`).toBe(0);
-          expect(anchors).toHaveAttribute("aria-hidden", "true");
-        }
+        // JP5 geometry pass: the empty reserved row is removed, not just emptied.
+        expect(b.querySelector(".journey-side__anchors"), `${file} ${s.label}`).toBeNull();
         // No learned or stated SCALAR is printed on either champion's half (the
         // header's Journey Path names STEPS, not values).
         // (A transition beat's own "+15 Armor" gain tag on the new item is the

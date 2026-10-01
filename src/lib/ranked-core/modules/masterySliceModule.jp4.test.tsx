@@ -136,23 +136,24 @@ describe("the board: two mirrored fixed halves", () => {
           const rows = (side: "subject" | "opponent") => [...half(side).children]
             .map((c) => c.className.split(" ").find((k) => k.startsWith("journey-side__")) ?? c.className).join(",");
           expect(rows("subject"), `${file} ${s.label}`).toBe(rows("opponent"));
-          for (const side of ["subject", "opponent"] as const) {
-            const n = screen.getByTestId(`journey-anchors-${side}`).querySelectorAll(".journey-anchor").length;
-            expect(n, `${file} ${s.label} ${side}`).toBeLessThanOrEqual(2);
-          }
+          // JP5 — no anchor row at all (the geometry pass removed its box).
+          expect(document.querySelector(".journey-side__anchors, .journey-anchor"), `${file} ${s.label}`).toBeNull();
         }
         unmount();
       }
     }
   });
 
-  it("the anchor row is ONE fixed-height line; a half never grows for its state (stylesheet)", () => {
+  it("a half's rows are fixed boxes, and the former anchor row is gone (stylesheet)", () => {
     const rule = (sel: string) => {
       const k = CSS.indexOf(`${sel} {`);
       return k < 0 ? "" : CSS.slice(k, CSS.indexOf("}", k));
     };
-    // JP5 — the row is kept (empty) at its fixed height: the stage does not move.
-    expect(rule(".journey-side__anchors")).toMatch(/height: var\(--jb-chip-h\)/);
+    // JP5 geometry pass — the empty anchor row is removed from both densities: a
+    // phone's name line spans its column; above a phone a half is id / kit / items.
+    expect(CSS).not.toMatch(/journey-side__anchors|grid-area: stats|"stats"/);
+    expect(CSS).toMatch(/grid-template-areas: "portrait name name" "portrait kit items";/);
+    expect(CSS).toMatch(/grid-template-areas: "id" "kit" "items";/);
     expect(rule(".journey-side__shards")).toMatch(/height: var\(--jb-portrait\)/);
   });
 

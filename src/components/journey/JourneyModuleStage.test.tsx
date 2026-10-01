@@ -184,13 +184,12 @@ describe("Matchup and Combat presentation", () => {
     }
   });
 
-  it("JP5 — the former anchor row keeps its box, EMPTY; every stat waits in the State sheet", () => {
+  it("JP5 — the former anchor row is gone (geometry pass); every stat waits in the State sheet", () => {
     render(stage(read(ARC_A_ALT_LEVEL_UP, NOW - 10_000), "alt"));
     for (const side of ["subject", "opponent"]) {
-      const row = screen.getByTestId(`journey-anchors-${side}`);
-      expect(row.childElementCount).toBe(0);
-      expect(row).toHaveAttribute("aria-hidden", "true");
+      expect(screen.queryByTestId(`journey-anchors-${side}`)).toBeNull();
     }
+    expect(document.querySelector(".journey-side__anchors")).toBeNull();
     fireEvent.click(screen.getByTestId("journey-open-state"));
     for (const key of ["bonus_attack_damage", "lethality", "ability_haste"]) {
       expect(screen.getByTestId(`journey-sheet-stat-subject-${key}`)).toBeInTheDocument();

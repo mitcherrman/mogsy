@@ -62,9 +62,9 @@
  * carries retained scalar bubbles ("Bonus AD 21", "Raw 85 !", "Armor !"):
  * a champion's stats live in its champion portrait popup (`JourneyChampionPortraitPopup`
  * — what the learner has established, state by state), and the values the
- * current question needs are the Reasoning Chain's. The anchor row keeps its
- * reserved height, empty, so the JP2 stage geometry has not moved (its space
- * is measured for a later, owner-reviewed geometry pass).
+ * current question needs are the Reasoning Chain's. The former anchor row is
+ * gone (JP5 geometry pass): a phone's name line takes its column, and above a
+ * phone its height went to the question region (`--jq-prompt-h`).
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
@@ -303,9 +303,6 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
             return tags ? [[slot, tags] as const] : [];
           })) : undefined} />
       </div>
-      {/* JP5 — the former anchor row: its box is kept (empty) so nothing on the
-          stage moves until the owner reviews the geometry pass. */}
-      <div aria-hidden className="journey-side__anchors" data-testid={`journey-anchors-${id}`} data-count={0} />
     </section>
   );
 }

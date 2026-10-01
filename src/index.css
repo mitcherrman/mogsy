@@ -15989,14 +15989,15 @@ html.hub-commons-in-view .hextech-ambience-layer {
   background: linear-gradient(90deg, transparent, rgb(212 179 90 / 0.6), transparent);
 }
 .journey-board__seam > * { display: none; }
-/* Compact (a phone): one row per side, ~36px, the portrait spanning both
-   lines —   [portrait] NAME · Lv · role ............ focus stats
+/* Compact (a phone): one row per side, the portrait spanning both lines; the
+   name line runs the full width (JP5: over the former anchor column) —
+             [portrait] NAME · Lv · role
              [        ] Q W E R  ▢▢▢▢▢▢                          */
 .journey-side {
   display: grid;
   min-width: 0;
   grid-template-columns: var(--jb-portrait) minmax(0, 1fr) auto;
-  grid-template-areas: "portrait name stats" "portrait kit items";
+  grid-template-areas: "portrait name name" "portrait kit items";
   align-content: center;
   align-items: center;
   column-gap: 5px;
@@ -16008,19 +16009,9 @@ html.hub-commons-in-view .hextech-ambience-layer {
 .journey-side__champion { font-size: 0.625rem; line-height: 0.75rem; }
 .journey-side__kit { grid-area: kit; display: flex; gap: 3px; }
 .journey-side__items { grid-area: items; justify-self: end; }
-.journey-side__stats {
-  grid-area: stats;
-  display: flex;
-  justify-self: end;
-  gap: 3px;
-  overflow: hidden;
-}
-.journey-side__stats { align-items: center; }
-.journey-stat-cell { display: inline-flex; }
 /* Compact names the combat role in three letters, so the champion keeps the room. */
 .journey-role-long { display: none; }
 .journey-role-short { display: inline; }
-.journey-stat-cell[data-compact="false"] { display: none; }
 
 @container (min-width: 26rem) {
   .journey-vars {
@@ -16048,7 +16039,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-board__seam > * { display: block; background: #07111f; padding: 2px 0; }
   .journey-side {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "id" "kit" "items" "stats";
+    grid-template-areas: "id" "kit" "items";
     align-content: start;
     row-gap: 6px;
   }
@@ -16056,9 +16047,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-side__name { flex-direction: column; align-items: flex-start; gap: 2px; }
   .journey-side__kit { gap: 4px; }
   .journey-side__champion { font-size: 0.75rem; line-height: 0.95rem; }
-  .journey-side__items, .journey-side__stats { justify-self: start; }
-  .journey-side__stats { flex-wrap: wrap; overflow: visible; }
-  .journey-stat-cell[data-compact="false"] { display: inline-flex; }
+  .journey-side__items { justify-self: start; }
   .journey-role-long { display: inline; }
   .journey-role-short { display: none; }
   /* The opponent faces the subject: mirrored to the outer edge. */
@@ -16067,8 +16056,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .journey-side[data-side="opponent"] .journey-side__name { align-items: flex-end; }
   /* Abilities stay Q W E R on both sides — the order players read — and only
      the alignment mirrors. */
-  .journey-side[data-side="opponent"] .journey-side__items,
-  .journey-side[data-side="opponent"] .journey-side__stats { justify-self: end; justify-content: flex-end; }
+  .journey-side[data-side="opponent"] .journey-side__items { justify-self: end; justify-content: flex-end; }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -16314,21 +16302,29 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
      stretch to fill), in px.
        375–390   108 / 121 / 271     768          67 /  92 / 224
        1024       81 / 132 / 173     1280–1920    70 /  96 / 149
-     The prompt box holds the REVEAL too, so it is sized for the larger. */
+     The prompt box holds the REVEAL too, so it is sized for the larger.
+     JP5 geometry pass: the board's former anchor row (≈25–36px above a phone)
+     is gone; its height moved to the prompt box (the mini scenario / Reasoning
+     Chain): +16px at 640–1023 (the band gives the same 16px and stays at
+     14rem, its roomy tier's floor — 28px would drop it to the smaller tier),
+     +24px at 1024–1279 and +28px from 1280 (there the board takes what the
+     question leaves, so it gives exactly that; at 1280×800 it stays ≥ 17rem,
+     its tall desktop tier). Phones keep their heights: the row was a column
+     there. */
   --jb-band-h: 12.5rem;   /* phone: a stacked board with room for real icons */
   --jq-prompt-h: 8.75rem;
   --jq-answers-h: 17.5rem;
 }
 @media (min-width: 640px) {
   .journey-stage {
-    --jb-band-h: 15rem;
-    --jq-prompt-h: 6rem;
+    --jb-band-h: 14rem;
+    --jq-prompt-h: 7rem;
     --jq-answers-h: 15rem;
   }
 }
 @media (min-width: 1024px) {
   .journey-stage {
-    --jq-prompt-h: 8.5rem;
+    --jq-prompt-h: 10rem;
     --jq-answers-h: 11rem;
   }
 }
@@ -16336,7 +16332,7 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
    the board takes the rest of the card. */
 @media (min-width: 1280px) {
   .journey-stage {
-    --jq-prompt-h: 6.25rem;
+    --jq-prompt-h: 8rem;
     --jq-answers-h: 9.75rem;
   }
 }
@@ -16775,11 +16771,9 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   /* The sides' content hugs the seam (the state reads in the dark centre);
      the art owns the outer edges. */
   .journey-side[data-side="subject"] { justify-items: end; }
-  .journey-side[data-side="subject"] .journey-side__items,
-  .journey-side[data-side="subject"] .journey-side__stats { justify-self: end; justify-content: flex-end; }
+  .journey-side[data-side="subject"] .journey-side__items { justify-self: end; justify-content: flex-end; }
   .journey-side[data-side="opponent"] { justify-items: start; }
-  .journey-side[data-side="opponent"] .journey-side__items,
-  .journey-side[data-side="opponent"] .journey-side__stats { justify-self: start; justify-content: flex-start; }
+  .journey-side[data-side="opponent"] .journey-side__items { justify-self: start; justify-content: flex-start; }
   .journey-side__champion { text-shadow: 0 1px 2px #000, 0 0 10px rgb(0 0 0 / 0.8); }
 }
 /* The board's corner brackets (the connective tissue with the parchment). */
@@ -17145,15 +17139,6 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
   height: var(--jb-portrait);
 }
 .journey-side__shard { display: flex; }
-.journey-side__anchors {
-  grid-area: stats;
-  display: flex;
-  min-width: 0;
-  height: var(--jb-chip-h);
-  align-items: center;
-  justify-self: end;
-  gap: 4px;
-}
 /* Compact (phone) rows: the shard page rides the portrait's outer edge, as
    League draws a rune page on a portrait, so it costs the name no width. */
 .journey-side__id > .journey-side__shards {
@@ -17172,9 +17157,6 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
     width: calc((var(--jb-portrait) - 2px) / 3);
     filter: none;
   }
-  .journey-side__anchors { gap: 5px; }
-  .journey-side[data-side="subject"] .journey-side__anchors { justify-self: end; justify-content: flex-end; }
-  .journey-side[data-side="opponent"] .journey-side__anchors { justify-self: start; justify-content: flex-start; }
 }
 /* JP5 — THE PORTRAIT IS A CONTROL: it opens the champion portrait popup.
    Same box as the portrait (a button around it), so nothing on the board moves;
