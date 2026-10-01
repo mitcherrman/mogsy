@@ -2,11 +2,11 @@
 
 | | Frontend | Backend |
 |---|---|---|
-| Integration base (remote, fetched 2026-10-01) | `origin/main` **`f87240f8`** (OF3-F3) | `origin/master` **`9440d5e1`** (OF3-B4) |
+| Integration base (remote, fetched 2026-10-01) | `origin/main` **`f87240f8`** (OF3-F3), then **`42c4b897`** (MG-GEOM; main moved during the session, merged in) | `origin/master` **`9440d5e1`** (OF3-B4), then **`05247b73`** (PPH3; merged in) |
 | Integration branch | `jpint/journey-jp3-jp5-main` | `jpint/journey-jp4-jp5-master` |
 | Worktree | `mogsy/.worktrees/jpint-frontend` | `League_Combat_Simulator/.worktrees/jpint-backend` |
-| Integrated code tip | **`25dedf78`** (this handoff + screenshots: the docs commit after it) | **`ebb777b2`** |
-| Baseline checkouts (detached, test-only) | `mogsy/.worktrees/jpint-fe-baseline` @ `f87240f8` | `League_Combat_Simulator/.worktrees/jpint-be-baseline` @ `9440d5e1` |
+| **Integrated tip (certify / release this)** | **`b782e72e`** + the docs commit after it (this handoff's final revision) | **`49b8b434`** |
+| Baseline checkouts (detached, test-only) | `mogsy/.worktrees/jpint-fe-baseline` @ `42c4b897` (was `f87240f8`) | `League_Combat_Simulator/.worktrees/jpint-be-baseline` @ `9440d5e1` |
 | Source branches | `jp5/journey-equation-unfold`: only the test-timeout commit `3cb209b1` added | `jp5/journey-structured-working` @ `a9a4be2e`: untouched |
 
 **Nothing pushed, merged into `main`/`master`, or deployed.** Production DB, Railway, Lovable, Patch Ops, items and Order Forge untouched. **Stop for owner approval.**
@@ -18,7 +18,7 @@
 
 ## 2. Commits integrated
 
-**Frontend** (`jpint/journey-jp3-jp5-main`, on `f87240f8`):
+**Frontend** (`jpint/journey-jp3-jp5-main`, first on `f87240f8`):
 
 | Commit | |
 |---|---|
@@ -27,7 +27,16 @@
 | `31734b53` | test-only: three `match(…) ?? []` fallbacks typed `string[]` (tsc on main's tree, §4) |
 | `25dedf78` | the cooldown-comparison Reasoning Chain (§5) |
 
-**Backend** (`jpint/journey-jp4-jp5-master`, on `9440d5e1`): `ebb777b2` = **merge** of `jp5/journey-structured-working` @ `a9a4be2e` (JP4 `fc95e81e`, JP5 `96fff403`, `a9a4be2e`). No other backend change.
+**Backend** (`jpint/journey-jp4-jp5-master`, first on `9440d5e1`): `ebb777b2` = **merge** of `jp5/journey-structured-working` @ `a9a4be2e` (JP4 `fc95e81e`, JP5 `96fff403`, `a9a4be2e`). No other backend change.
+
+**Remotes moved during the session**, and were merged in, then everything was re-certified on the new tips (§6):
+
+| Commit | |
+|---|---|
+| FE `b782e72e` | **merge** of `origin/main` @ `42c4b897` (MG-A … MG-GEOM, Mogzy Guide; 10 commits). One conflict, `src/index.css` (both appended): main's `.mogzy-guide-*` block stays ahead of the Journey block, which stays the stylesheet's last block (the JP5 stylesheet tests read it so). 3-way checked. |
+| BE `49b8b434` | **merge** of `origin/master` @ `05247b73` (PPH3 live-esports route; no file in common) |
+
+Both are merges onto the integration branch; `main` / `master` themselves were never touched. Re-check the remotes again immediately before release.
 
 Merges rather than cherry-picks, so every approved SHA is in the integrated history as it was approved (the JP2 precedent).
 
@@ -77,53 +86,54 @@ Tests: `masterySliceModule.comparison.test.tsx` (11: both real Journeys, correct
 
 ### Frontend
 
-* **Full Vitest suite, integration `25dedf78` vs main `f87240f8`**, run in fresh processes per chunk (one process exhausts a worker's heap on this machine, main too; §8):
+* **Full Vitest suite, FINAL: integration `b782e72e` vs main `42c4b897`**, each in fresh processes per chunk (one process exhausts a worker's heap on this machine, main too; §8), run one tree at a time:
 
-  | Chunk | main | integration |
+  | Chunk | main `42c4b897` | integration `b782e72e` |
   |---|---|---|
-  | `src/pages/` | 4182 passed / 13 failed | 4180 / 15 (the +2: below) |
+  | `src/pages/` | 4219 passed / 13 failed | 4219 / 13 |
   | `src/lib/` (Journey, ranked-core, ranked-public, question-surface…) | 4152 / 13 | **4328 / 13** (+176 = the JP3–JP5 and comparison tests) |
-  | `src/components/` (journey, ranked-arena, question-surface, interaction-grammar…) | 3206 / 30 | 3206 / 30 |
-  | the rest (`features`, `graph1`, `hooks`, `test`, `video`, `App`, `scripts`, `supabase`) | 1507 / 27 | 1507 / 27 |
-  | **total** | **13047 / 83** | **13221 / 85** |
+  | `src/components/` (journey, ranked-arena, question-surface, interaction-grammar, Mogzy Guide…) | 3275 / 30 | 3275 / 30 |
+  | `features` / `graph1` / `hooks` / `video` / `scripts`+`supabase` | 934 / 0 | 934 / 0 |
+  | `src/test/` (minus the OOM file, below) | 453 / 25 | 453 / 25 |
+  | `src/App*` | 123 / 2 | 123 / 2 |
+  | **total** | **13156 / 83** | **13332 / 83** |
 
-  * **0 new failures from the integration, 0 baseline-only failures.** The 83 shared failures are all pre-existing on main and outside Journey (security/migration contracts, feedback/username contract mirrors, `quiz-screenshot` shell tests, `QuestionTimeline`, `FriendActionMenu`, Esports `ArchivePage`, champion-card-duel, `QuestionStageGeometry` / `DailyOnCanonicalArena.boundary` / `AnswerGrid.elimination`, two `App.routing-contract` routes…).
-  * The +2 are **load flakes in main's own HUB6 suite** (`LobbyPreviewPage.premiumAnalytics` › Daily Overview L14, two 5 s timeouts). They passed in the first integration pass, pass **39/39 alone** on integration, and integration touches none of their files. Not changed (outside this scope).
+  * **Failure sets identical: 0 new, 0 baseline-only.** The 83 are all pre-existing on main and outside Journey (security/migration contracts, feedback/username contract mirrors, `quiz-screenshot` shell tests, `QuestionTimeline`, `FriendActionMenu`, Esports `ArchivePage`, champion-card-duel, `QuestionStageGeometry` / `DailyOnCanonicalArena.boundary` / `AnswerGrid.elimination`, two `App.routing-contract` routes…).
   * Excluded on both: `src/test/security/pt2cProfileFrameAuthority.test.ts`, which **exhausts a 4 GB worker heap alone, on main** (pre-existing).
-  * Vitest worker RPC timeouts (`onTaskUpdate`), printed as unhandled errors under load: main 2 / 3 / 0 (lib / pages / components), integration 5 / 3 / 1. Pre-existing class, reported, not counted as passes.
-  * The first integration pass (on `9dd8f026`) caught 2 JP5 stylesheet tests that pin exact selector lists my comparison CSS had extended; `25dedf78` restores those rules verbatim and adds the comparison's rules separately (same declarations; sweep and screenshots are unaffected). JP5 + comparison suites then 69/69.
+  * Vitest worker RPC timeouts (`onTaskUpdate`) print as unhandled errors under load on both trees; pre-existing class, reported, not counted as passes.
+  * Earlier passes, for the record: on `f87240f8` / `25dedf78` the same picture (83 shared, 0 baseline-only) apart from 2 load timeouts in main's own HUB6 `LobbyPreviewPage.premiumAnalytics` while two suites ran at once (they pass 39/39 alone, and in the final run). The very first pass (on `9dd8f026`) caught 2 JP5 stylesheet tests that pin exact selector lists my comparison CSS had extended; `25dedf78` restored those rules verbatim and added the comparison's separately (same declarations).
 * **The "Ahri's armor…" test** passes inside the full `src/lib/` chunk with its own ceiling; the JP5 certification set had it as its only failure before `3cb209b1`.
 
-* **tsc** (`-p tsconfig.app.json`): integration = main's baseline exactly. 6 errors, all pre-existing on `f87240f8` (the 2 known Supabase + 4 in NAV1's `practiceLeaveContract.test.ts`); 0 new.
-* **ESLint** (`src`): integration 306 errors / 242 warnings vs main 306 / 235. **0 new errors**; the +7 warnings are `react-refresh/only-export-components` in Journey files that do not exist on main (the same warnings are on the approved JP5 branch).
-* **Geometry sweep** (`sweep.cjs`, integrated build `9dd8f026` = `25dedf78` minus a selector regrouping, 9 captures × 375/390/768/1024/1280/1440/1920, every snapshot, each reveal also tapped compressed): **1,680 states, 0 violations, 0 page errors; all 63 viewport × capture region sets identical to the approved round-9 sweep.** The stage did not move.
+* **tsc** (`-p tsconfig.app.json`, on `b782e72e` and earlier tips): integration = main's baseline exactly. 6 errors, all pre-existing on main (the 2 known Supabase + 4 in NAV1's `practiceLeaveContract.test.ts`); 0 new.
+* **ESLint** (`src`, `25dedf78` vs `f87240f8`; the MG merge adds no Journey code): integration 306 errors / 242 warnings vs main 306 / 235. **0 new errors**; the +7 warnings are `react-refresh/only-export-components` in Journey files that do not exist on main (the same warnings are on the approved JP5 branch).
+* **Geometry sweep** (`sweep.cjs`, run on `9dd8f026` and again on the final `b782e72e`, 9 captures × 375/390/768/1024/1280/1440/1920, every snapshot, each reveal also tapped compressed): **both runs: 1,680 states, 0 violations, 0 page errors; all 63 viewport × capture region sets identical to the approved round-9 sweep.** The stage did not move.
 * **Screenshots** (`shots-int.cjs`, 18): 0 violations, no document x-scroll, no page errors.
-* **Ordinary Ranked** (`/dev/ranked-shell-probe`, main `f87240f8` vs integration, 23 states × 1280×800 / 390×844, animations frozen): **0 pixels over 24/255 in all 46 states**, including Order Forge, Meta Reflex and the ordinary Data Duel comparison.
+* **Ordinary Ranked** (`/dev/ranked-shell-probe`, 23 states × 1280×800 / 390×844, animations frozen): main `f87240f8` vs `25dedf78`: **0 pixels over 24/255 in all 46 states**; main `42c4b897` vs final `b782e72e` (twice): 45 states 0, and `probe-media` at 1280 has **one pixel** over (28/255 at 725,500, inside the media art, where ≈6,900 pixels differ by ≤8: image-resampling noise, not layout). Includes Order Forge, Meta Reflex and the ordinary Data Duel comparison.
 * **Hosts:** Ranked Bot reference (`jp5-ref-*`), Daily Standard (Pantheon, Volibear), Daily Survival (Ahri, Volibear), JREF and M1 captures. Same board / reveal component everywhere, all in the sweep.
 * **Approved states verified on the integrated build:** Zed/Ahri Step 2 raw composition (`(Bonus AD)`), Step 4 unfold (`19.4% Reduced`, `≈16.4 DMG`) / compress / reopen, Pantheon/Leona dependency reuse and Leona's Cloth Armor provenance popup, Ahri's popup, portrait `!` and hint, Volibear haste (`9.1% Reduced`, `≈1.1s shorter`), correct / wrong / timeout, reload mid-reveal and per-child windows (DOM suites), Round-8 geometry and Round-9 fill/blend (region sets + screenshots).
 
 ### Backend
 
-* **Differential suite** (`run_be.sh`: 37 Journey / Daily / Survival / DD1 / ranked-mastery / segment-timer suites + all Order Forge, module-stats, quiz-parity and RR2 suites): **integration `ebb777b2`: 1846 passed / 67 failed; master baseline `9440d5e1`: 1796 passed / 67 failed, the identical 67** (0 new, 0 fixed). The +50 are JP4/JP5's tests (incl. `test_jp5_structured_working.py`: workings, per-child windows, pooled clock through long reveals, final hold for correct/wrong/timeout, bot offsets, reconnects).
+* **Differential suite** (`run_be.sh`: 37 Journey / Daily / Survival / DD1 / ranked-mastery / segment-timer suites + all Order Forge, module-stats, quiz-parity and RR2 suites): **final integration `49b8b434`: 1859 passed / 67 failed** (+ PPH3's `test_live_esports_upcoming.py`); `ebb777b2`: 1846 / 67; **master baseline `9440d5e1`: 1796 / 67, the identical 67** (0 new, 0 fixed). The +50 are JP4/JP5's tests (incl. `test_jp5_structured_working.py`: workings, per-child windows, pooled clock through long reveals, final hold for correct/wrong/timeout, bot offsets, reconnects).
 * **Baseline-only failures (environmental, unchanged since JP4):** `test_jchain1_curriculum_contract` 31, `test_quiz1_segment_config` 18, `test_ranked_mastery_applied_chain` 11, `test_dcmod_c_content_sets` 3, `mastery/tests/test_mastery_per_question_reveal` 2 (key-set), `test_jfnd1_foundation_integration` 1, `test_journey_k1_knowledge_objects` 1 (canonical-DB drift pins / config).
 
 ## 7. Deployment compatibility (audited, not deployed)
 
 Re-evaluated on the real contracts, by parsing every real capture with each build's own readers:
 
-| Frontend ↓ / backend → | current production backend (`9440d5e1` line, DD1) | integrated backend (`ebb777b2`, JP4/JP5) |
+| Frontend ↓ / backend → | current production backend (master line, DD1) | integrated backend (`49b8b434`, JP4/JP5) |
 |---|---|---|
-| **current production frontend** (`f87240f8`) | today | **BREAKS.** `readPublicRound` throws on every Journey snapshot once a child's state carries JP4's keys: `state.sides.player carries a field J3 does not publish: "stat_mods"` / `"stat_sources"` (Zed/Ahri 23 of 24 snapshots, Volibear 29 of 35, Pantheon 16 of 35) |
-| **integrated frontend** (`25dedf78`) | **works**: 0 parse errors on the production-master capture (`jref`, `fe942a58`), Motion (`m1`) and JP5 captures. Step 2 words-only, scalar windows, no armor provenance. **The comparison chain is live immediately** (DD1 is already in production) | works: everything |
+| **current production frontend** (main line: `f87240f8`, and `42c4b897`, whose Journey / ranked-public / mastery-contract readers are unchanged) | today | **BREAKS.** `readPublicRound` throws on every Journey snapshot once a child's state carries JP4's keys: `state.sides.player carries a field J3 does not publish: "stat_mods"` / `"stat_sources"` (Zed/Ahri 23 of 24 snapshots, Volibear 29 of 35, Pantheon 16 of 35) |
+| **integrated frontend** (`b782e72e`) | **works**: 0 parse errors on the production-master capture (`jref`, `fe942a58`), Motion (`m1`) and JP5 captures. Step 2 words-only, scalar windows, no armor provenance. **The comparison chain is live immediately** (DD1 is already in production) | works: everything |
 
 **The historical rule still holds: frontend first → verify → backend second.**
 
 **Recommended release sequence**
-1. **R0 (rollback point):** record the live SHAs (frontend publish = `f87240f8`?, Railway web = `9440d5e1`?). *Not verified from here; confirm before step 2.*
-2. Owner approves; land the frontend: fast-forward `main` to the integrated frontend tip (main has not moved since `f87240f8`; re-check, else re-merge) → push → Lovable publish.
+1. **R0 (rollback point):** record the live SHAs (Lovable publish of the main line, Railway `web` of the master line). *Not verified from here; confirm before step 2.*
+2. Owner approves; land the frontend: re-fetch; if `origin/main` is still `42c4b897`, fast-forward `main` to the integrated frontend tip (else merge the new main into the integration branch and re-run the Journey set) → push → Lovable publish.
 3. **Verify on production with the old backend:** a Daily Journey (Pantheon or Volibear) plays end to end; the comparison chain shows; Step 2 words-only; ordinary Ranked, Order Forge, Daily, Survival unchanged.
 4. **R1 (rollback point):** new frontend + old backend, a stable state.
-5. Land the backend: fast-forward `master` to `ebb777b2` (re-check master has not moved) → push → Railway deploy.
+5. Land the backend: re-fetch; if `origin/master` is still `05247b73`, fast-forward `master` to `49b8b434` (else merge and re-run `run_be.sh`) → push → Railway deploy.
 6. **Verify:** typed workings (Step 2 composition bar, Step 4 unfold, haste), per-child reveal windows (6000 / 4000 / 1750), Leona's armor provenance, the reference Journey for an admin, Order Forge v2 admin preset.
 
 **Rollback**
@@ -143,10 +153,10 @@ Re-evaluated on the real contracts, by parsing every real capture with each buil
 
 | Worktree | Branch @ tip | Status |
 |---|---|---|
-| `mogsy/.worktrees/jpint-frontend` | `jpint/journey-jp3-jp5-main` @ the docs commit after `25dedf78` | clean |
+| `mogsy/.worktrees/jpint-frontend` | `jpint/journey-jp3-jp5-main` @ the docs commit after `b782e72e` | clean |
 | `mogsy/.worktrees/jp5-equation-unfold` | `jp5/journey-equation-unfold` @ `3cb209b1` | clean |
-| `mogsy/.worktrees/jpint-fe-baseline` | detached @ `f87240f8` | ` M src/index.css` (line endings only) |
-| `League_Combat_Simulator/.worktrees/jpint-backend` | `jpint/journey-jp4-jp5-master` @ `ebb777b2` | clean |
+| `mogsy/.worktrees/jpint-fe-baseline` | detached @ `42c4b897` | ` M src/index.css` (line endings only) |
+| `League_Combat_Simulator/.worktrees/jpint-backend` | `jpint/journey-jp4-jp5-master` @ `49b8b434` | clean |
 | `League_Combat_Simulator/.worktrees/jp5-structured-working` | `jp5/journey-structured-working` @ `a9a4be2e` | clean |
 | `League_Combat_Simulator/.worktrees/jpint-be-baseline` | detached @ `9440d5e1` | clean |
 
