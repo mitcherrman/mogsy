@@ -7,7 +7,7 @@ import ProStatsExplorer from "@/components/pro-play/ProStatsExplorer";
 import { HubKicker } from "@/components/pro-play/hub/HubSection";
 import MatchCenter from "@/components/pro-play/hub/MatchCenter";
 import MatchWorkspace from "@/components/pro-play/hub/MatchWorkspace";
-import ProPlayDiscovery from "@/components/pro-play/hub/ProPlayDiscovery";
+import ProPlayDiscovery, { SearchEntry } from "@/components/pro-play/hub/ProPlayDiscovery";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { useChampionAssets } from "@/hooks/useChampionAssets";
 import { useLiveFeed, useLiveMatch } from "@/lib/live-esports/hooks";
@@ -17,14 +17,16 @@ import { PRO_PLAY_LIVE_GAME_PARAM, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes"
 /**
  * Pro Play hub — the landing page behind the academy hub's Pro Play book.
  *
- * MATCH-CENTRED (PPH1). One selected game drives the top of the page:
+ * MATCH-CENTRED (PPH1, composed for density in PPH2.1). A slim header —
+ * back, the area's name, search — and then one selected game drives the page:
  *
- * 1. **Match Center** — the live game if one is on, otherwise the latest
- *    finished one, with a rail to switch and a link to the full match centre.
- * 2. **Match Workspace** — that game's ten players, lane by lane, joined to
- *    the public profiles, statistics, the champion-pair graph and the study
- *    destinations.
- * 3. **Discovery** — match-independent: search, featured graphs, full tools.
+ * 1. **Match Center** — one board: the live game if one is on, otherwise the
+ *    latest finished one; a rail to switch; the score; objectives and gold.
+ * 2. **Match Workspace** — inside that board: the ten players as five
+ *    mirrored lane rows. A row opens in place with the players' careers, the
+ *    champion pair across pro play and the study destinations.
+ * 3. **Discovery** — beside it, match-independent: featured graphs, a glimpse
+ *    of the statistics table, the full tools.
  * 4. **Pro Stats** — the statistics table, unchanged. Its URL contract
  *    (`/lol/pro-play?view=…&player=…`, built by `statsExplorerUrl`) is how
  *    every profile's "View in Pro Stats" lands here, so it stays on this page.
@@ -125,45 +127,37 @@ export default function ProPlayHub() {
         description="Professional League of Legends — the live or latest pro match, lane-by-lane player and champion context, search, data graphs and statistics drawn from real pro match history."
         path={PRO_PLAY_ROUTE}
       />
-      {/* A faint gold wash behind the top of the page: the area's colour, on
-          the page rather than on every card. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(201,168,76,0.12),transparent_65%)]"
-      />
-      <div className="relative mx-auto w-full max-w-6xl space-y-10 px-4 py-6 sm:py-8">
-        <div>
+      <div className="relative mx-auto w-full max-w-[1400px] space-y-4 px-3 pb-8 sm:px-6 lg:px-0">
+        {/* Minimal header: the way back, the area's name, and search — the
+            match is the page's introduction. */}
+        <header className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border/60 py-2 sm:min-h-14">
           <Link
             to="/lol"
-            className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Back to the Academy"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:min-h-0"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back to the Academy
+            Academy
           </Link>
+          <h1 className="flex items-center gap-2 text-lg font-bold tracking-wide text-[#e3c66f]">
+            <Trophy className="h-4 w-4 text-[#c9a84c]" aria-hidden="true" />
+            Pro Play
+          </h1>
+          <SearchEntry className="order-last w-full sm:order-none sm:w-auto sm:min-w-[18rem] sm:max-w-xl sm:flex-1" />
+          <a
+            href={`#${PRO_STATS_ANCHOR}`}
+            className="ml-auto hidden text-sm font-medium text-muted-foreground hover:text-foreground hover:underline md:inline"
+          >
+            Player statistics
+          </a>
+        </header>
 
-          <header className="flex items-center gap-4">
-            <span
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#c9a84c]/40 bg-[#c9a84c]/10 shadow-[0_0_30px_-8px_rgba(201,168,76,0.5)]"
-              aria-hidden="true"
-            >
-              <Trophy className="h-6 w-6 text-[#c9a84c]" />
-            </span>
-            <div className="min-w-0">
-              <HubKicker>Mogzy Academy</HubKicker>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Pro Play</h1>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                Professional League of Legends — drawn from real pro match history.
-              </p>
-            </div>
-          </header>
-        </div>
-
-        {/* One media request for the selected game's two teams, shared by the
-            scoreboard and the workspace's team links. */}
-        <ProPlayMediaProvider
-          teams={[selected?.teams.blue?.resolved_page, selected?.teams.red?.resolved_page]}
-        >
-          <div className="space-y-10">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_288px]">
+          {/* One media request for the selected game's two teams, shared by
+              the score header's crests and profile links. */}
+          <ProPlayMediaProvider
+            teams={[selected?.teams.blue?.resolved_page, selected?.teams.red?.resolved_page]}
+          >
             <MatchCenter
               feed={feed}
               match={match}
@@ -171,24 +165,26 @@ export default function ProPlayHub() {
               pinnedId={pinnedId}
               onSelect={select}
               onClearPin={clearPin}
+              lanes={
+                selected && (
+                  <MatchWorkspace
+                    game={selected}
+                    players={match.players.data?.players}
+                    loading={match.players.isLoading}
+                    failed={match.players.isError}
+                    manifest={manifest}
+                  />
+                )
+              }
             />
-            {selected && (
-              <MatchWorkspace
-                game={selected}
-                players={match.players.data?.players}
-                loading={match.players.isLoading}
-                failed={match.players.isError}
-                manifest={manifest}
-              />
-            )}
-          </div>
-        </ProPlayMediaProvider>
+          </ProPlayMediaProvider>
 
-        <ProPlayDiscovery />
+          <ProPlayDiscovery manifest={manifest} />
+        </div>
 
         {/* The statistics table keeps its own wide layout and its URL
             contract; it is content on this page, not a tool tile. */}
-        <section id={PRO_STATS_ANCHOR} aria-label="Pro Stats" className="scroll-mt-20 pb-6">
+        <section id={PRO_STATS_ANCHOR} aria-label="Pro Stats" className="scroll-mt-4 pt-4">
           <div className="mb-3">
             <HubKicker>Pro Stats</HubKicker>
           </div>

@@ -1,5 +1,5 @@
 /**
- * Pro Play hub — match-centred (PPH1).
+ * Pro Play hub — match-centred (PPH1), composed as one match board (PPH2.1).
  *
  * Pins the three sections and their contracts: the Match Center's selection
  * (live first, then a FINISHED game, `?game=` never overridden), the
@@ -362,7 +362,8 @@ describe("Match Center selection", () => {
     renderHub(`${PRO_PLAY_ROUTE}?game=OLD`);
     expect(await summaryTitle()).toMatch(/FNC/);
     // The rail always shows what is selected.
-    expect(within(matchCenter()).getAllByRole("button", { pressed: true }).length).toBe(1);
+    const rail = within(matchCenter()).getByRole("group", { name: /Choose a match/i });
+    expect(within(rail).getAllByRole("button", { pressed: true }).length).toBe(1);
   });
 
   it("says so when a pinned game does not exist, and offers the latest instead", async () => {
@@ -404,8 +405,37 @@ describe("Match Center selection", () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
     await screen.findByTestId("match-summary");
-    await within(matchCenter()).findByText("WINNER");
-    expect(within(matchCenter()).getAllByText("WINNER")).toHaveLength(1);
+    await waitFor(() => expect(screen.getByTestId("team-blue").textContent).toMatch(/Winner/));
+    expect(screen.getByTestId("team-red").textContent).not.toMatch(/Winner/);
+    // The score is the two teams' kills, in one place.
+    expect(within(matchCenter()).getByLabelText("Kills 20 to 8")).toBeTruthy();
+  });
+
+  it("merges competition and match facts into one line, with no 'nothing live' chrome", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    const meta = await screen.findByTestId("match-meta");
+    expect(meta.textContent).toMatch(/LCK · Week 4 · .*Bo3 · Game 1 · Series 0–0 · Patch 16\.17/);
+    expect(screen.queryByText(/Nothing is live/i)).toBeNull();
+  });
+
+  it("names a team in full when no crest resolves, never an empty initials frame", async () => {
+    installBackend({
+      recent: [
+        summary("R1", "GEN", "T1", {
+          teams: {
+            blue: { name: "Gen.G Esports Extremely Long Organisation Name", code: "GEN", esports_team_id: "b", resolved_page: null, series_wins: 0 },
+            red: { name: "T1", code: "T1", esports_team_id: "r", resolved_page: "T1", series_wins: 0 },
+          },
+        }),
+      ],
+    });
+    renderHub();
+    const blue = await screen.findByTestId("team-blue");
+    expect(blue.textContent).toMatch(/Gen\.G Esports Extremely Long Organisation Name/);
+    expect(within(blue).queryByTestId("team-crest")).toBeNull();
+    // No canonical page: no profile link is invented.
+    expect(within(blue).queryByRole("link")).toBeNull();
   });
 
   it("hides the gold chart for a one-frame game and shows it when there is history", async () => {
@@ -447,20 +477,43 @@ describe("Match Workspace", () => {
     renderHub();
     const ws = within(await findWorkspace());
     const picker = await ws.findByRole("group", { name: /Choose a lane/i });
-    const lanes = within(picker).getAllByRole("button").map((b) => b.textContent?.replace(/[A-Z]{2}/g, "").trim());
-    expect(lanes.map((l) => l?.match(/Top|Jungle|Mid|Bot|Support/)?.[0])).toEqual(["Top", "Mid"]);
+    const rows = within(picker).getAllByRole("button");
+    expect(rows.map((b) => b.getAttribute("data-testid"))).toEqual(["lane-row-top", "lane-row-mid"]);
     expect(within(picker).getByRole("button", { name: /Top/ }).getAttribute("aria-pressed")).toBe("true");
+    // Every row says it expands; only the selected one is open.
+    expect(rows.map((b) => b.getAttribute("aria-expanded"))).toEqual(["true", "false"]);
     expect(within(ws.getByTestId("lane-player-blue")).getByText("Kiin")).toBeTruthy();
     expect(within(ws.getByTestId("lane-player-red")).getByText("Doran")).toBeTruthy();
   });
 
-  it("links resolved players to their profiles and shows their career row with its scope", async () => {
+  it("shows both lineups at once: player, KDA, CS and gold, and the lane's gold difference", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      players: [
+        lanePlayer(1, "blue", "top", "Kiin", "Ambessa", { total_gold: 14598, creep_score: 277, kills: 7, deaths: 1, assists: 9 }),
+        lanePlayer(6, "red", "top", "Doran", "Camille", { total_gold: 7933 }),
+        lanePlayer(3, "blue", "mid", "Chovy", "Azir", { total_gold: 10000 }),
+        lanePlayer(8, "red", "mid", "Faker", "Orianna", { total_gold: null }),
+      ],
+    });
+    renderHub();
+    const top = await screen.findByTestId("lane-row-top");
+    expect(top.textContent).toMatch(/Kiin/);
+    expect(top.textContent).toMatch(/7\/1\/9/);
+    expect(top.textContent).toMatch(/277 CS · 14\.6k/);
+    expect(top.textContent).toMatch(/Doran/);
+    expect(top.textContent).toMatch(/\+6\.7k/);
+    // Missing gold on one side: no difference is shown, never a zero.
+    expect(screen.getByTestId("lane-row-mid").textContent).not.toMatch(/[+−±]\d/);
+  });
+
+  it("links resolved players to their profiles and shows their career line with its scope", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
     const blue = within(await screen.findByTestId("lane-player-blue"));
-    expect(blue.getAllByRole("link", { name: "Kiin" })[0].getAttribute("href")).toBe("/lol/pro-play/player/Kiin");
-    expect(await blue.findByText("4.52")).toBeTruthy();
-    expect(blue.getByTestId("career-scope").textContent).toMatch(/Career · All seasons · all competitions/);
+    expect(blue.getByRole("link", { name: "Profile" }).getAttribute("href")).toBe("/lol/pro-play/player/Kiin");
+    await waitFor(() => expect(blue.getByTestId("career-line").textContent).toMatch(/KDA 4\.52/));
+    expect(blue.getByTestId("career-line").getAttribute("title")).toBe("Career · All seasons · all competitions");
     expect(blue.getByRole("link", { name: /Stats row/i }).getAttribute("href")).toBe(
       "/lol/pro-play?view=players&player=Kiin",
     );
@@ -491,8 +544,14 @@ describe("Match Workspace", () => {
     expect(lane.getByRole("link", { name: /Pro Data/i }).getAttribute("href")).toBe(
       "/lol/pro-play/graphs?focus=matchup&a=ambessa&b=camille",
     );
-    expect(lane.getByRole("link", { name: "Ambessa" }).getAttribute("href")).toBe("/lol/docs/champions/ambessa");
-    expect(lane.getByRole("link", { name: "Camille" }).getAttribute("href")).toBe("/lol/docs/champions/camille");
+    const hrefs = (name: string) => lane.getAllByRole("link", { name }).map((a) => a.getAttribute("href"));
+    // Each champion: its pro play profile and its Archives page.
+    expect(hrefs("Ambessa")).toEqual(["/lol/pro-play/champion/Ambessa", "/lol/docs/champions/ambessa"]);
+    expect(hrefs("Camille")).toEqual(["/lol/pro-play/champion/Camille", "/lol/docs/champions/camille"]);
+    // The pair record, compact, with its sample said in words.
+    const pair = lane.getByTestId("champion-matchup");
+    expect(pair.textContent).toMatch(/7–5/);
+    expect(pair.textContent).toMatch(/12 games · Ambessa 58\.3%/);
   });
 
   it("switches lanes, and keeps an unresolved player as plain text with no profile", async () => {
@@ -500,22 +559,24 @@ describe("Match Workspace", () => {
     renderHub();
     const picker = await screen.findByRole("group", { name: /Choose a lane/i });
     fireEvent.click(within(picker).getByRole("button", { name: /Mid/ }));
+    expect(within(picker).getByRole("button", { name: /Mid/ }).getAttribute("aria-expanded")).toBe("true");
     const red = within(await screen.findByTestId("lane-player-red"));
     await red.findByText("T1 Mystery");
     expect(red.queryByRole("link", { name: "T1 Mystery" })).toBeNull();
     expect(red.queryByRole("link", { name: /Profile/i })).toBeNull();
-    expect(red.getByText(/isn't matched to a Pro Play profile/i)).toBeTruthy();
+    expect(red.getByText(/Not matched to a Pro Play profile/i)).toBeTruthy();
     await waitFor(() =>
       expect(requests.some((r) => r.includes("a=azir") && r.includes("b=orianna"))).toBe(true),
     );
   });
 
-  it("links both teams to their profiles", async () => {
+  it("links both teams to their profiles from the score header", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
-    const ws = within(await findWorkspace());
-    expect(ws.getByRole("link", { name: /GEN profile/ }).getAttribute("href")).toBe("/lol/pro-play/team/GEN");
-    expect(ws.getByRole("link", { name: /T1 profile/ }).getAttribute("href")).toBe("/lol/pro-play/team/T1");
+    await screen.findByTestId("match-summary");
+    const mc = within(matchCenter());
+    expect(mc.getByRole("link", { name: /GEN profile/ }).getAttribute("href")).toBe("/lol/pro-play/team/GEN");
+    expect(mc.getByRole("link", { name: /T1 profile/ }).getAttribute("href")).toBe("/lol/pro-play/team/T1");
   });
 
   it("never links the gated Matchup Explorer and invents no match quiz", async () => {
@@ -565,7 +626,7 @@ describe("Discovery", () => {
     installBackend({ recent: [] });
     renderHub();
     const cards = screen.getAllByTestId(/^featured-/);
-    expect(cards).toHaveLength(6);
+    expect(cards).toHaveLength(4);
     for (const card of cards) expect(card.getAttribute("href")).toMatch(/^\/lol\/pro-play\/graphs\?focus=/);
   });
 
@@ -580,14 +641,14 @@ describe("Discovery", () => {
       PRO_PLAY_LIVE_ARCHIVE_ROUTE,
       PRO_PLAY_QUIZ_ROUTE,
     ]);
-    expect(within(nav).getByRole("link", { name: /Live & Recent Matches/i }).textContent).toMatch(/just finished/i);
+    expect(within(nav).getByRole("link", { name: /Live & Recent/i }).getAttribute("title")).toMatch(/just finished/i);
   });
 
   it("sounds one analytical handoff for Matchup Explorer and keeps plain navigation silent", () => {
     installBackend({ recent: [] });
     renderHub();
     const nav = screen.getByRole("navigation", { name: /Pro Play tools/i });
-    fireEvent.click(within(nav).getByRole("link", { name: /Live & Recent Matches/i }));
+    fireEvent.click(within(nav).getByRole("link", { name: /Live & Recent/i }));
     expect(sfx.play).not.toHaveBeenCalled();
     fireEvent.click(within(nav).getByRole("link", { name: /Matchup Explorer/i }));
     expect(sfx.play).toHaveBeenCalledOnce();
@@ -596,6 +657,18 @@ describe("Discovery", () => {
 });
 
 /* ── Pro Stats stays ────────────────────────────────────────────────────── */
+
+describe("Stats glimpse", () => {
+  it("previews the explorer's own default request and leads down to it", async () => {
+    installBackend({ recent: [] });
+    renderHub();
+    const glimpse = await screen.findByTestId("stats-glimpse");
+    await waitFor(() =>
+      expect(requests.some((r) => r.includes("/api/pro-play/stats/players?sort=games&dir=desc&page_size=25"))).toBe(true),
+    );
+    expect(within(glimpse).getByRole("link", { name: /Full player statistics/i }).getAttribute("href")).toBe("#pro-stats");
+  });
+});
 
 describe("Pro Stats Explorer", () => {
   it("stays on the hub", () => {

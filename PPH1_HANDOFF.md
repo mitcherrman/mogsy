@@ -177,3 +177,66 @@ and the ArchivePage are untouched.
 8. `FeaturedGraphs` renders its own `h2` ("Start here") inside the Discover
    section's `h2`. This is cosmetic heading nesting from the existing
    component.
+
+---
+
+# PPH2.1 — compact match-board refinement (2026-10-01)
+
+Visual/layout pass only, implementing the approved PPH2.1 concept plus the
+seven refinements. No backend, API contract, selection logic, `?game=`,
+Live page, Stats Explorer or entity-resolution change. Upcoming, a public
+Matchup Explorer link in the match area, and any per-match quiz stay out.
+
+## Composition
+
+- **Header**: back to Academy · small "Pro Play" · search (moved here from
+  Discovery so it is usable first) · "Player statistics" anchor. The large
+  title block and gold wash are gone.
+- **Match Center = one board**: compact rail chips → score header → one
+  merged metadata line → lanes | objectives + gold.
+  - Team identity: real `TeamCrest` when the canonical team resolves to art;
+    otherwise the full team name in restrained side colour (no initials box).
+    Team name links to the profile when `resolved_page` exists.
+  - Score is the two teams' kills; `StatusPill` + clock under it. "Nothing is
+    live" copy removed; FINAL/Done already says it.
+  - Objectives (gold/towers/drakes/inhibitors/barons) mirrored; one 5-up row
+    on phones. Gold chart is the live page's `GoldChart`. "Open full match
+    centre" and "Match archive" are quiet text links.
+- **Lanes inside the board**: five mirrored rows (name + CS·gold → KDA →
+  44px/40px champion icon toward the centre), thin side stripes, lane label +
+  chevron + per-lane gold difference (blue − red from the two players'
+  `total_gold`; hidden when either is null). Selected row opens in place —
+  no nested card — with compact champion-pair record (+ sample disclaimer),
+  one career line per player, player text links, and one row of study links.
+- **Discovery** beside the board: 4 featured questions with real champion
+  icons, a 3-row glimpse of the Stats Explorer's own default request (same
+  React Query key, so no second fetch) fading into "Full player statistics
+  below", and the full-tools nav (one quiet line on desktop, tap grid on
+  phones).
+
+## Files
+
+| File | Change |
+|---|---|
+| `src/pages/ProPlayHub.tsx` | Minimal header with search; board + Discovery grid; lanes passed into the Match Center |
+| `src/components/pro-play/hub/MatchCenter.tsx` | Rewritten as the single match board |
+| `src/components/pro-play/hub/MatchWorkspace.tsx` | Mirrored lane rows + in-place expansion (replaces picker + `ChampionMatchupPanel`) |
+| `src/components/pro-play/hub/ProPlayDiscovery.tsx` | Compact search export, featured list, stats glimpse, single tools nav (short labels, description as `title`) |
+| `src/components/pro-play/hub/HubSection.tsx` | Unused section frame removed; `HubKicker` kept |
+| `src/lib/pro-play/hubSelection.ts` | `laneGoldDiff`, `signedKGold`, `laneRowName` (drops this team's broadcast tag from an unresolved in-game name), `HUB_LANE_SHORT` |
+| `src/pages/esports/live/components.tsx` | `ChampionIcon` gains optional `className`; default render unchanged |
+| tests | `hubSelection.test.ts` (+3 describes), `ProPlayHub.test.tsx` updated for the board (+5 tests) |
+
+## Verification
+
+- Browser, dev server on the production API, real CBLOL LOS vs KBM (final):
+  - 1440×900: whole board ends at 883px; Player Statistics starts at 899. No
+    truncated text, no horizontal overflow, no console errors.
+  - 390×844 / 375×812: no horizontal overflow; nothing truncated; all hub
+    links/buttons ≥44px tall except the search box's inner input (the 44px
+    form control is the target). Board ends at 1671px, Discovery at
+    ~2070–2124px (≈2.5 screens; the match board alone ≈1.8).
+  - `/lol/pro-play/live` unchanged (same 32px icons, no errors).
+- Long team name: unit-tested (`names a team in full when no crest resolves`).
+- Unresolved player: real data (LOS Zest) shows "Not matched to a Pro Play
+  profile — no career record", no profile links.

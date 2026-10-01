@@ -5,11 +5,14 @@ import { describe, expect, it } from "vitest";
 
 import type { LiveGameSummary, LivePlayer } from "@/lib/live-esports/api";
 import {
+  laneGoldDiff,
   laneMatchups,
   lanePlayerKey,
   lanePlayerName,
+  laneRowName,
   nextHubAutoGame,
   pickHubGame,
+  signedKGold,
 } from "./hubSelection";
 
 function game(id: string, label: LiveGameSummary["freshness"]["label"]): LiveGameSummary {
@@ -133,5 +136,40 @@ describe("lane player identity", () => {
   it("names a player by resolved name, else in-game name", () => {
     expect(lanePlayerName(player("blue", "top", { resolved_player_name: null, summoner_name: "ESB X" }))).toBe("ESB X");
     expect(lanePlayerName(player("blue", "top", { resolved_player_name: null, summoner_name: null }))).toBe("Unknown player");
+  });
+});
+
+describe("lane gold difference", () => {
+  it("is blue minus red, from the two players' own gold", () => {
+    const [top] = laneMatchups([
+      player("blue", "top", { total_gold: 14598 }),
+      player("red", "top", { total_gold: 7933 }),
+    ]);
+    expect(laneGoldDiff(top)).toBe(6665);
+    expect(signedKGold(6665)).toBe("+6.7k");
+    expect(signedKGold(-698)).toBe("−698");
+    expect(signedKGold(-1698)).toBe("−1.7k");
+    expect(signedKGold(0)).toBe("±0");
+  });
+
+  it("is unknown, never zero, when either side's gold is missing", () => {
+    const [top] = laneMatchups([
+      player("blue", "top", { total_gold: 14598 }),
+      player("red", "top", { total_gold: null }),
+    ]);
+    expect(laneGoldDiff(top)).toBeNull();
+  });
+});
+
+describe("lane row name", () => {
+  it("drops this team's broadcast tag from an unresolved in-game name", () => {
+    const p = player("blue", "top", { resolved_player_name: null, summoner_name: "LOS Zest" });
+    expect(laneRowName(p, "LOS")).toBe("Zest");
+    expect(laneRowName(p, "KBM")).toBe("LOS Zest");
+    expect(laneRowName(p, null)).toBe("LOS Zest");
+  });
+
+  it("prints a resolved name as is", () => {
+    expect(laneRowName(player("blue", "top", { resolved_player_name: "LOS Zest" }), "LOS")).toBe("LOS Zest");
   });
 });

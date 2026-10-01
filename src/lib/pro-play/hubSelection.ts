@@ -60,6 +60,15 @@ export const HUB_LANE_LABEL: Record<HubLane, string> = {
   support: "Support",
 };
 
+/** Phone-width lane labels: the row's centre column is ~52px wide. */
+export const HUB_LANE_SHORT: Record<HubLane, string> = {
+  top: "Top",
+  jungle: "Jgl",
+  mid: "Mid",
+  bottom: "Bot",
+  support: "Sup",
+};
+
 export type LaneMatchup = {
   lane: HubLane;
   blue: LivePlayer;
@@ -89,8 +98,42 @@ export function lanePlayerName(p: LivePlayer): string {
   return p.resolved_player_name || p.summoner_name || "Unknown player";
 }
 
+/**
+ * The name a lane row prints. The broadcast's in-game name carries the team
+ * tag ("LOS Zest"); beside a row already split by side, the tag is noise, so
+ * it is dropped when it is exactly this team's code. A resolved name is
+ * printed as is.
+ */
+export function laneRowName(p: LivePlayer, teamCode: string | null | undefined): string {
+  const name = lanePlayerName(p);
+  if (p.resolved_player_name || !teamCode) return name;
+  const prefix = `${teamCode} `;
+  return name.startsWith(prefix) && name.length > prefix.length ? name.slice(prefix.length) : name;
+}
+
 /** The canonical Pro Play player key, only when the identity resolved. */
 export function lanePlayerKey(p: LivePlayer): string | null {
   if ((p.resolution_method ?? "").startsWith("unresolved")) return null;
   return p.resolved_player_page || null;
+}
+
+/**
+ * Blue's gold minus red's for one lane pair, from the two players' own
+ * `total_gold` in this game — the same per-player numbers the match centre
+ * prints. `null` when either side's gold was not published: a missing number
+ * is never read as zero.
+ */
+export function laneGoldDiff(m: LaneMatchup): number | null {
+  const b = m.blue.total_gold;
+  const r = m.red.total_gold;
+  if (b == null || r == null) return null;
+  return b - r;
+}
+
+/** "+6.7k" / "−0.7k" / "±0" — signed, one decimal of thousands. */
+export function signedKGold(diff: number): string {
+  if (diff === 0) return "±0";
+  const abs = Math.abs(diff);
+  const text = abs >= 1000 ? `${(abs / 1000).toFixed(1)}k` : String(abs);
+  return `${diff > 0 ? "+" : "−"}${text}`;
 }

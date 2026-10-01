@@ -1,35 +1,35 @@
 /**
- * The Match Workspace — the selected game's ten players, one lane at a time.
+ * The Match Workspace — the selected game's ten players as five mirrored lane
+ * rows inside the Match Center board. Picking a row opens that lane in place:
+ * both players' careers, the champion pair across pro play, and the study
+ * destinations.
  *
  * WHAT IT IS ALLOWED TO SAY. Every surface here is an existing public system
  * keyed by identities the live feed already resolved:
  *
  * - the lane pair comes from the game's own `role` + `side`;
- * - each player's career row is `useEntityStats` — the Stats Explorer's own
- *   request, career across all competitions, printed with its own scope;
- * - the champion pair is GRAPH1's `/champion-matchup` through the public
- *   `ChampionMatchupPanel`, which says on screen that it is the broad
- *   professional sample and NOT these two players;
+ * - the per-lane gold difference is the two players' own `total_gold`;
+ * - each player's career line is `useEntityStats` — the Stats Explorer's own
+ *   request, career across all competitions, with its scope on the line;
+ * - the champion pair is GRAPH1's `/champion-matchup`, and the line under it
+ *   says on screen that it is the broad professional sample and NOT these two
+ *   players;
  * - the study links are the existing Combat Lab, Leaguecraft matchup study,
  *   Pro Data pair graph and Archives contracts.
  *
  * WHAT IT DELIBERATELY DOES NOT DO. No Matchup Explorer link: it is
- * admin-gated front and back, and a public reader would land on an auth wall
- * (the team profile removed its link for the same reason). No quiz: the Pro
- * Play quiz API cannot filter by match, and a general quiz under a heading
- * about this game would be a claim it cannot keep. No head-to-head record for
- * the two PLAYERS: that is the Explorer's exact study, gated.
+ * admin-gated front and back, and a public reader would land on an auth wall.
+ * No quiz: the Pro Play quiz API cannot filter by match. No head-to-head
+ * record for the two PLAYERS: that is the Explorer's exact study, gated.
  *
  * Props-driven: the hub passes the game and its players.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, BarChart3, BookOpen, FlaskConical, GraduationCap } from "lucide-react";
+import { BarChart3, BookOpen, ChevronDown, FlaskConical, GraduationCap } from "lucide-react";
 
-import ChampionMatchupPanel from "@/components/graph1/ChampionMatchupPanel";
-import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import { Skeleton } from "@/components/ui/skeleton";
-import { championMatchupHref } from "@/graph1/championMatchup";
+import { championMatchupHref, matchupPct } from "@/graph1/championMatchup";
 import { useGraph1ChampionMatchup } from "@/graph1/useGraph1ChampionMatchup";
 import type { ChampionManifest } from "@/hooks/useChampionAssets";
 import { buildCombatLabMatchupUrl } from "@/lib/combat-lab/matchup-link";
@@ -40,9 +40,13 @@ import { statsExplorerUrl, statsScopeLabel, useEntityStats } from "@/lib/pro-pla
 import { graphEntityId, graphUrl } from "@/lib/pro-play/graphHandoff";
 import {
   HUB_LANE_LABEL,
+  HUB_LANE_SHORT,
+  laneGoldDiff,
   laneMatchups,
   lanePlayerKey,
   lanePlayerName,
+  laneRowName,
+  signedKGold,
   type HubLane,
   type LaneMatchup,
 } from "@/lib/pro-play/hubSelection";
@@ -51,180 +55,184 @@ import type { ProStatsPlayerRow } from "@/lib/pro-play/statsApi";
 import { matchupStudyHref } from "@/lib/quiz/matchupApi";
 import { cn } from "@/lib/utils";
 import { ChampionIcon } from "@/pages/esports/live/components";
-import { kgold, matchTitle, num, teamLabel } from "@/pages/esports/live/lib";
+import { kgold, num } from "@/pages/esports/live/lib";
 
-import HubSection from "./HubSection";
+type Side = "blue" | "red";
 
 const PCT = (v: number | null | undefined) =>
   v == null ? "—" : `${(v * 100).toFixed(1)}%`;
 
-/* ── small pieces ───────────────────────────────────────────────────────── */
+/** Text links in the expansion. Full 44px tap height on touch layouts. */
+const TEXT_LINK =
+  "inline-flex min-h-11 items-center gap-1 font-medium text-foreground/85 underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0";
 
-function WorkspaceLink({
-  to,
-  children,
-  title,
-}: {
-  to: string;
-  children: React.ReactNode;
-  title?: string;
-}) {
-  return (
-    <Link
-      to={to}
-      title={title}
-      className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-background/40 px-2 py-1 text-xs font-medium text-foreground/90 transition-colors hover:border-[#c9a84c]/60 hover:text-[#e3c66f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {children}
-    </Link>
-  );
-}
+/* ── one lane row ───────────────────────────────────────────────────────── */
 
-function Stat({ label, value, title }: { label: string; value: string; title?: string }) {
-  return (
-    <div title={title} className="min-w-0">
-      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-semibold tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
-/* ── one lane player ────────────────────────────────────────────────────── */
-
-function CareerStats({ playerKey }: { playerKey: string }) {
-  const stats = useEntityStats("players", playerKey);
-  if (stats.status === "loading") return <Skeleton className="h-10 w-full" />;
-  if (stats.status === "error")
-    return <p className="text-xs text-muted-foreground">Career statistics are unavailable right now.</p>;
-  if (stats.status === "absent")
-    return <p className="text-xs text-muted-foreground">No games for this player in the Pro Play statistics yet.</p>;
-  const row = stats.row as ProStatsPlayerRow;
-  return (
-    <div>
-      <dl className="grid grid-cols-4 gap-2">
-        <Stat label="Games" value={num(row.games)} title="Canonical games" />
-        <Stat label="W–L" value={`${num(row.wins)}–${num(row.losses)}`} />
-        <Stat label="Win %" value={PCT(row.win_rate)} />
-        <Stat
-          label="KDA"
-          value={row.kda == null ? "—" : row.kda.toFixed(2)}
-          title={`Over ${num(row.stat_backed_games)} games carrying statistics`}
-        />
-      </dl>
-      <p className="mt-1 text-[10px] text-muted-foreground" data-testid="career-scope">
-        Career · {statsScopeLabel(stats.response)}
-      </p>
-    </div>
-  );
-}
-
-function LanePlayer({
+function RowSide({
   player,
   side,
-  team,
+  teamCode,
   manifest,
 }: {
   player: LivePlayer;
-  side: "blue" | "red";
-  team: LiveGameSummary["teams"]["blue"];
+  side: Side;
+  teamCode: string | null | undefined;
   manifest: ChampionManifest | null | undefined;
 }) {
-  const key = lanePlayerKey(player);
-  const name = lanePlayerName(player);
-  const champion = player.resolved_champion_name;
+  const red = side === "red";
+  const kda = `${num(player.kills)}/${num(player.deaths)}/${num(player.assists)}`;
   return (
-    <div
+    <span
       className={cn(
-        "relative rounded-xl border bg-card/60 p-3",
-        side === "blue" ? "border-sky-500/25" : "border-rose-500/25",
+        "flex min-w-0 items-center gap-1.5 sm:gap-3",
+        red && "flex-row-reverse text-right",
       )}
-      data-testid={`lane-player-${side}`}
     >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-y-3 left-0 w-0.5 rounded-r",
-          side === "blue" ? "bg-sky-500" : "bg-rose-500",
-        )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-bold text-foreground sm:text-[15px]" title={lanePlayerName(player)}>
+          {laneRowName(player, teamCode)}
+        </span>
+        <span className="block text-sm font-bold tabular-nums text-foreground/90 sm:hidden">{kda}</span>
+        <span className="block truncate text-xs tabular-nums text-muted-foreground">
+          {num(player.creep_score)} CS · {kgold(player.total_gold)}
+        </span>
+      </span>
+      <span className="hidden shrink-0 text-base font-bold tabular-nums text-foreground/90 sm:block">{kda}</span>
+      <ChampionIcon
+        championId={player.champion_id}
+        championName={player.resolved_champion_name}
+        manifest={manifest}
+        className="h-10 w-10 rounded-md sm:h-11 sm:w-11"
       />
-      <div className="flex items-center gap-3">
-        <ChampionIcon
-          championId={player.champion_id}
-          championName={champion}
-          manifest={manifest}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            {key ? (
-              <Link
-                to={proPlayProfileUrl("player", key)}
-                className="truncate text-sm font-semibold hover:text-[#e3c66f] hover:underline"
-              >
-                {name}
-              </Link>
-            ) : (
-              <span className="truncate text-sm font-semibold" title="Not matched to a Pro Play profile">
-                {name}
-              </span>
-            )}
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              {team?.code || teamLabel(team)}
-            </span>
-          </div>
-          <p className="truncate text-xs text-muted-foreground">
-            {champion ?? "Champion unknown"}
-            <span className="mx-1.5">·</span>
-            <span className="tabular-nums">
-              {num(player.kills)}/{num(player.deaths)}/{num(player.assists)}
-            </span>
-            <span className="mx-1.5">·</span>
-            <span className="tabular-nums">{num(player.creep_score)} CS</span>
-            <span className="mx-1.5">·</span>
-            <span className="tabular-nums">{kgold(player.total_gold)}</span>
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-3 border-t border-border/60 pt-3">
-        {key ? (
-          <CareerStats playerKey={key} />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            This player isn't matched to a Pro Play profile, so there is no career
-            record to show.
-          </p>
-        )}
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {key && (
-          <>
-            <WorkspaceLink to={proPlayProfileUrl("player", key)}>Profile</WorkspaceLink>
-            <WorkspaceLink
-              to={graphUrl("player", "champions", graphEntityId("player", key))}
-              title="Race this player's champions in Pro Data"
-            >
-              Champion graph
-            </WorkspaceLink>
-            <WorkspaceLink
-              to={statsExplorerUrl("players", key)}
-              title="This player as a row in the Pro Stats table"
-            >
-              Stats row
-            </WorkspaceLink>
-          </>
-        )}
-        {champion && (
-          <WorkspaceLink to={proPlayProfileUrl("champion", champion)} title={`${champion} in pro play`}>
-            {champion} in pro play
-          </WorkspaceLink>
-        )}
-      </div>
-    </div>
+    </span>
   );
 }
 
-/* ── the champion pair ──────────────────────────────────────────────────── */
+function LaneRow({
+  matchup,
+  active,
+  onPick,
+  manifest,
+  panelId,
+  codes,
+}: {
+  codes: { blue: string | null | undefined; red: string | null | undefined };
+  matchup: LaneMatchup;
+  active: boolean;
+  onPick: () => void;
+  manifest: ChampionManifest | null | undefined;
+  panelId: string;
+}) {
+  const diff = laneGoldDiff(matchup);
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      aria-pressed={active}
+      aria-expanded={active}
+      aria-controls={active ? panelId : undefined}
+      data-testid={`lane-row-${matchup.lane}`}
+      className={cn(
+        "relative grid w-full grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-1 rounded-lg border px-1.5 py-2 text-left transition-colors sm:grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)] sm:gap-3 sm:px-3",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // A thin side stripe at each end: the only team colour on the row.
+        "before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-r before:bg-sky-500/70",
+        "after:absolute after:inset-y-2 after:right-0 after:w-0.5 after:rounded-l after:bg-rose-500/70",
+        active
+          ? "border-[#c9a84c]/45 bg-[#c9a84c]/[0.06]"
+          : "border-transparent hover:bg-muted/30",
+      )}
+    >
+      <RowSide player={matchup.blue} side="blue" teamCode={codes.blue} manifest={manifest} />
+      <span className="flex flex-col items-center gap-0.5">
+        <span
+          className={cn(
+            "flex items-center gap-0.5 text-[11px] font-bold uppercase tracking-[0.1em]",
+            active ? "text-[#e3c66f]" : "text-muted-foreground",
+          )}
+        >
+          <span className="sm:hidden" aria-hidden="true">{HUB_LANE_SHORT[matchup.lane]}</span>
+          <span className="sr-only sm:not-sr-only">{HUB_LANE_LABEL[matchup.lane]}</span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn("h-3.5 w-3.5 transition-transform", active && "rotate-180")}
+          />
+        </span>
+        {diff != null && (
+          <span
+            className={cn(
+              "text-xs font-semibold tabular-nums",
+              diff > 0 ? "text-sky-300" : diff < 0 ? "text-rose-300" : "text-muted-foreground",
+            )}
+            title="Gold difference between the two players in this game (blue minus red)"
+          >
+            {signedKGold(diff)}
+          </span>
+        )}
+      </span>
+      <RowSide player={matchup.red} side="red" teamCode={codes.red} manifest={manifest} />
+    </button>
+  );
+}
+
+/* ── the expansion ──────────────────────────────────────────────────────── */
+
+function CareerLine({ playerKey }: { playerKey: string }) {
+  const stats = useEntityStats("players", playerKey);
+  if (stats.status === "loading") return <Skeleton className="h-4 w-40" />;
+  if (stats.status === "error")
+    return <p className="text-xs text-muted-foreground">Career statistics are unavailable right now.</p>;
+  if (stats.status === "absent")
+    return <p className="text-xs text-muted-foreground">No games in the Pro Play statistics yet.</p>;
+  const row = stats.row as ProStatsPlayerRow;
+  const scope = statsScopeLabel(stats.response);
+  return (
+    <p className="text-xs text-muted-foreground" data-testid="career-line" title={`Career · ${scope}`}>
+      <span data-testid="career-scope">Career</span>{" "}
+      <span className="font-semibold tabular-nums text-foreground/90">
+        {num(row.games)} games · {num(row.wins)}–{num(row.losses)} · {PCT(row.win_rate)} · KDA{" "}
+        {row.kda == null ? "—" : row.kda.toFixed(2)}
+      </span>
+    </p>
+  );
+}
+
+function LanePlayer({ player, side }: { player: LivePlayer; side: Side }) {
+  const key = lanePlayerKey(player);
+  const name = lanePlayerName(player);
+  const red = side === "red";
+  return (
+    <div className={cn("min-w-0 space-y-0.5", red && "text-right")} data-testid={`lane-player-${side}`}>
+      <p className="truncate text-sm font-bold" title={key ? name : "Not matched to a Pro Play profile"}>
+        {name}
+      </p>
+      {key ? (
+        <>
+          <CareerLine playerKey={key} />
+          <p className={cn("flex flex-wrap gap-x-3 text-xs", red && "justify-end")}>
+            <Link to={proPlayProfileUrl("player", key)} className={TEXT_LINK}>
+              Profile
+            </Link>
+            <Link
+              to={graphUrl("player", "champions", graphEntityId("player", key))}
+              className={TEXT_LINK}
+              title="Race this player's champions in Pro Data"
+            >
+              Champion graph
+            </Link>
+            <Link to={statsExplorerUrl("players", key)} className={TEXT_LINK} title="This player as a row in the Pro Stats table">
+              Stats row
+            </Link>
+          </p>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Not matched to a Pro Play profile — no career record.
+        </p>
+      )}
+    </div>
+  );
+}
 
 function ChampionPair({ blue, red }: { blue: string; red: string }) {
   const subject = championSlug(blue);
@@ -232,126 +240,124 @@ function ChampionPair({ blue, red }: { blue: string; red: string }) {
   const same = subject === opponent;
   const pair = useGraph1ChampionMatchup(subject, opponent, undefined, { enabled: !same });
 
+  const names = (
+    <p className="flex items-center justify-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+      <Link to={proPlayProfileUrl("champion", blue)} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline sm:min-h-0" title={`${blue} in pro play`}>
+        {blue}
+      </Link>{" "}
+      vs{" "}
+      <Link to={proPlayProfileUrl("champion", red)} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline sm:min-h-0" title={`${red} in pro play`}>
+        {red}
+      </Link>
+    </p>
+  );
+
+  let body: React.ReactNode;
   if (same) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-        Both sides played {blue} in this lane, so there is no champion matchup to compare.
-      </p>
+    body = <p className="text-xs text-muted-foreground">Both sides played {blue}: no champion matchup to compare.</p>;
+  } else if (pair.isLoading) {
+    body = <Skeleton className="mx-auto h-10 w-40" data-testid="pair-loading" />;
+  } else if (pair.isError || !pair.data) {
+    body = <p className="text-xs text-muted-foreground">The professional record couldn't be loaded right now.</p>;
+  } else if (pair.data.games === 0) {
+    body = <p className="text-xs text-muted-foreground">No professional games between these champions yet.</p>;
+  } else {
+    const d = pair.data;
+    const rate = d.record.winRate ?? 0;
+    body = (
+      <>
+        <p className="text-2xl font-bold leading-none tabular-nums">
+          <span className="text-sky-300">{d.record.wins}</span>
+          <span className="px-1 text-muted-foreground/50">–</span>
+          <span className="text-rose-300">{d.record.losses}</span>
+        </p>
+        <div className="mx-auto mt-1.5 flex h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-rose-400/70" aria-hidden="true">
+          <span className="bg-sky-400" style={{ width: `${Math.round(rate * 1000) / 10}%` }} />
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {num(d.games)} games · {blue} {matchupPct(d.record.winRate)}
+          {d.byYear.length > 0 && (
+            <span className="hidden sm:inline">
+              {" · "}
+              {d.byYear.slice(-2).map((y) => `${y.year}: ${y.games}`).join(", ")}
+            </span>
+          )}
+        </p>
+      </>
     );
   }
-  if (pair.isLoading) return <Skeleton className="h-48 w-full" data-testid="pair-loading" />;
-  if (pair.isError || !pair.data) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-        The professional record for {blue} vs {red} couldn't be loaded right now.
-      </p>
-    );
-  }
-  return <ChampionMatchupPanel data={pair.data} />;
+  return (
+    <div className="min-w-0 text-center" data-testid="champion-matchup">
+      {names}
+      <div className="sm:mt-1">{body}</div>
+    </div>
+  );
 }
 
 function StudyLinks({ blue, red }: { blue: string; red: string }) {
   const a = championSlug(blue);
   const b = championSlug(red);
   const items = [
-    {
-      to: buildCombatLabMatchupUrl({ attacker: blue, defender: red }),
-      label: "Combat Lab",
-      hint: `Simulate ${blue} against ${red}`,
-      Icon: FlaskConical,
-    },
-    {
-      to: matchupStudyHref(a, b),
-      label: "Matchup study",
-      hint: "Leaguecraft questions on this champion pair",
-      Icon: GraduationCap,
-    },
-    {
-      to: championMatchupHref(a, b),
-      label: "Pro Data",
-      hint: "The full pair graph",
-      Icon: BarChart3,
-    },
+    { to: buildCombatLabMatchupUrl({ attacker: blue, defender: red }), label: "Combat Lab", title: `Simulate ${blue} against ${red}`, Icon: FlaskConical },
+    { to: matchupStudyHref(a, b), label: "Matchup study", title: "Leaguecraft questions on this champion pair", Icon: GraduationCap },
+    { to: championMatchupHref(a, b), label: "Pro Data pair graph", title: "The full pair graph", Icon: BarChart3 },
   ];
   return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Study this lane
-      </p>
-      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-        {items.map(({ to, label, hint, Icon }) => (
-          <Link
-            key={label}
-            to={to}
-            className="group flex items-start gap-2 rounded-lg border border-border/70 bg-background/40 p-2.5 transition-colors hover:border-[#c9a84c]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#c9a84c]" aria-hidden="true" />
-            <span className="min-w-0">
-              <span className="flex items-center gap-1 text-sm font-medium">
-                {label}
-                <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
-              </span>
-              <span className="block text-[11px] text-muted-foreground">{hint}</span>
-            </span>
+    <nav aria-label="Study this lane" className="flex flex-wrap items-center justify-center gap-x-3 text-xs sm:gap-x-4">
+      {items.map(({ to, label, title, Icon }) => (
+        <Link key={label} to={to} title={title} className={TEXT_LINK}>
+          <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+          {label}
+        </Link>
+      ))}
+      <span className="inline-flex items-center gap-x-2 whitespace-nowrap">
+        <span className="inline-flex items-center gap-1 text-muted-foreground">
+          <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+          Archives:
+        </span>
+        {[blue, red].map((name) => (
+          <Link key={name} to={championDocPath(championSlug(name))} className={TEXT_LINK}>
+            {name}
           </Link>
         ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        <BookOpen className="h-3.5 w-3.5 text-[#c9a84c]" aria-hidden="true" />
-        <span>Archives:</span>
-        {[blue, red].map((name) => (
-          <WorkspaceLink key={name} to={championDocPath(championSlug(name))}>
-            {name}
-          </WorkspaceLink>
-        ))}
-      </div>
-    </div>
+      </span>
+    </nav>
   );
 }
 
-/* ── lane picker + body ─────────────────────────────────────────────────── */
-
-function LanePicker({
-  lanes,
-  value,
-  onChange,
-  manifest,
-}: {
-  lanes: LaneMatchup[];
-  value: HubLane;
-  onChange: (lane: HubLane) => void;
-  manifest: ChampionManifest | null | undefined;
-}) {
+function LaneDetail({ matchup, id }: { matchup: LaneMatchup; id: string }) {
+  const blueChamp = matchup.blue.resolved_champion_name;
+  const redChamp = matchup.red.resolved_champion_name;
   return (
-    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 [scrollbar-color:rgba(201,168,76,0.35)_transparent] [scrollbar-width:thin]" role="group" aria-label="Choose a lane">
-      {lanes.map(({ lane, blue, red }) => {
-        const active = lane === value;
-        return (
-          <button
-            key={lane}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(lane)}
-            className={cn(
-              "flex shrink-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              active
-                ? "border-[#c9a84c]/70 bg-[#c9a84c]/10 text-[#e3c66f]"
-                : "border-border/70 bg-background/40 text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <span className="scale-75">
-              <ChampionIcon championId={blue.champion_id} championName={blue.resolved_champion_name} manifest={manifest} />
-            </span>
-            {HUB_LANE_LABEL[lane]}
-            <span className="scale-75">
-              <ChampionIcon championId={red.champion_id} championName={red.resolved_champion_name} manifest={manifest} />
-            </span>
-          </button>
-        );
-      })}
+    <div id={id} className="space-y-2 px-3 pb-3 pt-2 sm:px-4" data-testid="lane-matchup">
+      <div className="grid grid-cols-2 items-start gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,13rem)_minmax(0,1fr)]">
+        <LanePlayer player={matchup.blue} side="blue" />
+        <div className="order-first col-span-2 sm:order-none sm:col-span-1">
+          {blueChamp && redChamp ? (
+            <ChampionPair blue={blueChamp} red={redChamp} />
+          ) : (
+            <p className="text-center text-xs text-muted-foreground">
+              A champion in this lane wasn&apos;t identified, so there is no champion matchup to look up.
+            </p>
+          )}
+        </div>
+        <LanePlayer player={matchup.red} side="red" />
+      </div>
+      {blueChamp && redChamp && (
+        <>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Record: every pro game with these champions on opposing teams — not a specific pair of players.
+          </p>
+          <div className="flex justify-center border-t border-border/50 pt-1">
+            <StudyLinks blue={blueChamp} red={redChamp} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+/* ── the board ──────────────────────────────────────────────────────────── */
 
 export default function MatchWorkspace({
   game,
@@ -374,80 +380,48 @@ export default function MatchWorkspace({
   useEffect(() => setLane(null), [game.game_id]);
   const current = lanes.find((l) => l.lane === lane) ?? lanes[0] ?? null;
 
-  const teams = (["blue", "red"] as const).map((side) => ({ side, team: game.teams[side] }));
-
   let body: React.ReactNode;
   if (loading) {
-    body = <Skeleton className="h-64 w-full" data-testid="workspace-loading" />;
+    body = <Skeleton className="h-72 w-full" data-testid="workspace-loading" />;
   } else if (failed || !players?.length) {
     body = (
-      <p className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
-        No player data was published for this game, so there are no lanes to study.
+      <p className="p-6 text-center text-sm text-muted-foreground">
+        No player data was published for this game, so there are no lanes to show.
       </p>
     );
   } else if (!current) {
     body = (
-      <p className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+      <p className="p-6 text-center text-sm text-muted-foreground">
         This game's player roles weren't published, so its lanes can't be paired.
       </p>
     );
   } else {
-    const blueChamp = current.blue.resolved_champion_name;
-    const redChamp = current.red.resolved_champion_name;
     body = (
-      <div className="space-y-4">
-        <LanePicker lanes={lanes} value={current.lane} onChange={setLane} manifest={manifest} />
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-          {/* The lane itself stays in view while the reader works down the
-              longer evidence column beside it. */}
-          <div className="space-y-3 lg:sticky lg:top-20 lg:self-start">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {HUB_LANE_LABEL[current.lane]} lane · this game
-            </p>
-            <LanePlayer player={current.blue} side="blue" team={game.teams.blue} manifest={manifest} />
-            <LanePlayer player={current.red} side="red" team={game.teams.red} manifest={manifest} />
-            {blueChamp && redChamp && <StudyLinks blue={blueChamp} red={redChamp} />}
-          </div>
-          <div className="space-y-3" data-testid="lane-matchup">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {blueChamp && redChamp
-                ? `${blueChamp} vs ${redChamp} · across pro play`
-                : "Champion matchup"}
-            </p>
-            {blueChamp && redChamp ? (
-              <ChampionPair blue={blueChamp} red={redChamp} />
-            ) : (
-              <p className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-                A champion in this lane wasn&apos;t identified, so there is no champion
-                matchup to look up.
-              </p>
-            )}
-          </div>
-        </div>
+      <div role="group" aria-label="Choose a lane" className="space-y-0.5">
+        {lanes.map((m) => {
+          const active = m.lane === current.lane;
+          const panelId = `lane-detail-${m.lane}`;
+          return (
+            <div key={m.lane}>
+              <LaneRow
+                matchup={m}
+                active={active}
+                onPick={() => setLane(m.lane)}
+                manifest={manifest}
+                panelId={panelId}
+                codes={{ blue: game.teams.blue?.code, red: game.teams.red?.code }}
+              />
+              {active && <LaneDetail matchup={m} id={panelId} />}
+            </div>
+          );
+        })}
       </div>
     );
   }
 
   return (
-    <HubSection
-      id="match-workspace"
-      kicker="Match Workspace"
-      title="Lane by lane"
-      description={`The ten players in ${matchTitle(game)} — pick a lane to see who was in it, their pro careers, and how the champion matchup goes across professional play.`}
-      action={teams.map(({ side, team }) =>
-        team?.resolved_page ? (
-          <Link
-            key={side}
-            to={proPlayProfileUrl("team", team.resolved_page)}
-            className="inline-flex items-center gap-2 rounded-lg border border-border/70 bg-background/40 px-2.5 py-1.5 text-xs font-medium transition-colors hover:border-[#c9a84c]/60"
-          >
-            <TeamCrest teamKey={team.resolved_page} name={teamLabel(team)} shortCode={team.code} size="xs" />
-            {teamLabel(team)} profile
-          </Link>
-        ) : null,
-      )}
-    >
+    <section id="match-workspace" aria-label="Lanes" className="px-1 py-2 sm:px-3">
       {body}
-    </HubSection>
+    </section>
   );
 }

@@ -400,10 +400,14 @@ export function ChampionIcon({
   championId,
   championName,
   manifest,
+  className,
 }: {
   championId: string | null;
   championName: string | null;
   manifest: ChampionManifest | null | undefined;
+  /** Size/shape override for callers outside the match centre; the match
+   *  centre itself always renders the default 32px square. */
+  className?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const key = championName || championId || "";
@@ -412,7 +416,7 @@ export function ChampionIcon({
   if (!src || failed) {
     // Honest placeholder: the champion's initials, never a wrong portrait.
     return (
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground">
+      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground", className)}>
         {(key || "?").slice(0, 2).toUpperCase()}
       </div>
     );
@@ -423,7 +427,7 @@ export function ChampionIcon({
       alt={key}
       loading="lazy"
       onError={() => setFailed(true)}
-      className="h-8 w-8 shrink-0 rounded object-cover"
+      className={cn("h-8 w-8 shrink-0 rounded object-cover", className)}
     />
   );
 }
