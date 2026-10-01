@@ -16015,9 +16015,9 @@ html.hub-commons-in-view .hextech-ambience-layer {
 
 @container (min-width: 26rem) {
   .journey-vars {
-    --jb-portrait: 2.25rem;
-    --jb-ability: 1.625rem;
-    --jb-slot: 1.5rem;
+    --jb-portrait-min: 2.25rem;
+    --jb-ability-min: 1.625rem;
+    --jb-slot-min: 1.5rem;
     --jb-pip: 4px;
     --jb-mono: 0.75rem;
     --jb-chip-font: 0.625rem;
@@ -16183,9 +16183,9 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
 /* Roomy band: a wide AND tall band (a large desktop) spends its height. */
 @container (min-width: 34rem) and (min-height: 14rem) {
   .journey-vars {
-    --jb-portrait: 2.75rem;
-    --jb-ability: 2rem;
-    --jb-slot: 1.75rem;
+    --jb-portrait-min: 2.75rem;
+    --jb-ability-min: 2rem;
+    --jb-slot-min: 1.75rem;
     --jb-pip: 5px;
     --jb-chip-font: 0.6875rem;
     --jb-chip-h: 1.35rem;
@@ -16544,9 +16544,9 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
 @container (min-width: 34rem) and (min-height: 17rem) {
   /* A tall DESKTOP board: the primary media. */
   .journey-vars {
-    --jb-portrait: 4rem;
-    --jb-ability: 2.5rem;
-    --jb-slot: 2.125rem;
+    --jb-portrait-min: 4rem;
+    --jb-ability-min: 2.5rem;
+    --jb-slot-min: 2.125rem;
     --jb-pip: 6px;
     --jb-mono: 1rem;
     --jb-chip-font: 0.75rem;
@@ -16720,23 +16720,38 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
     -webkit-mask-composite: source-in;
     mask-composite: intersect;
   }
+  /* JP5 — ONE SCENE, NO SEAMS. The picture's own inner edge sits 6cqw inside
+     its box (at face + 0.275 × art height); the old mask was still ≈35%
+     opaque there, so the image ended on a hard vertical line over the lane.
+     Now the fade starts at the face's centre line and reaches zero exactly at
+     the picture's edge, on an eased curve (no plateau, no knee), so the
+     champion dissolves into the lane across the whole open span. The bottom
+     fade is longer and eased the same way. Brightness is matched by the fade
+     itself: near the blend the art is mostly lane. */
+  .journey-board__art {
+    --jp3-fade-0: var(--jp3-face-x);
+    --jp3-fade-l: calc(var(--jp3-art-h) * 0.275);
+    --jp3-art-mask: linear-gradient(var(--jp3-art-dir),
+      #000 var(--jp3-fade-0),
+      rgb(0 0 0 / 0.86) calc(var(--jp3-fade-0) + var(--jp3-fade-l) * 0.2),
+      rgb(0 0 0 / 0.64) calc(var(--jp3-fade-0) + var(--jp3-fade-l) * 0.4),
+      rgb(0 0 0 / 0.38) calc(var(--jp3-fade-0) + var(--jp3-fade-l) * 0.6),
+      rgb(0 0 0 / 0.16) calc(var(--jp3-fade-0) + var(--jp3-fade-l) * 0.8),
+      rgb(0 0 0 / 0.04) calc(var(--jp3-fade-0) + var(--jp3-fade-l) * 0.93),
+      transparent calc(var(--jp3-fade-0) + var(--jp3-fade-l)));
+    --jp3-art-mask-v: linear-gradient(180deg, #000 55%, rgb(0 0 0 / 0.7) 72%, rgb(0 0 0 / 0.3) 88%, transparent 100%);
+  }
   .journey-board__art--subject {
     left: 0;
-    -webkit-mask-image:
-      linear-gradient(90deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
-      linear-gradient(180deg, #000 70%, transparent 100%);
-    mask-image:
-      linear-gradient(90deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
-      linear-gradient(180deg, #000 70%, transparent 100%);
+    --jp3-art-dir: 90deg;
+    -webkit-mask-image: var(--jp3-art-mask), var(--jp3-art-mask-v);
+    mask-image: var(--jp3-art-mask), var(--jp3-art-mask-v);
   }
   .journey-board__art--opponent {
     right: 0;
-    -webkit-mask-image:
-      linear-gradient(270deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
-      linear-gradient(180deg, #000 70%, transparent 100%);
-    mask-image:
-      linear-gradient(270deg, #000 45%, rgb(0 0 0 / 0.5) 72%, transparent 98%),
-      linear-gradient(180deg, #000 70%, transparent 100%);
+    --jp3-art-dir: 270deg;
+    -webkit-mask-image: var(--jp3-art-mask), var(--jp3-art-mask-v);
+    mask-image: var(--jp3-art-mask), var(--jp3-art-mask-v);
   }
   .journey-board__art img {
     position: absolute;
@@ -16781,7 +16796,40 @@ html.reduce-motion .journey-unlock-lock { display: none !important; }
 /* The circular portraits step back a little on the tall desktop board: the
    art is the champion's picture now. */
 @container (min-width: 34rem) and (min-height: 17rem) {
-  .journey-vars { --jb-portrait: 3.5rem; }
+  .journey-vars { --jb-portrait-min: 3.5rem; }
+}
+
+/* JP5 — THE BOARD FILLS ITS BAND (one rule, every band width).
+   A tier above sets each object's FLOOR; the objects then grow with the band
+   to the size its box allows — one unit `--jb-fit` (an ability icon), derived
+   only from the band's own size (`cqh` / `cqw`: the band is a size
+   container), never from a step, a state or a champion, so every child at a
+   given viewport draws the same board:
+     height  a half stacks portrait + abilities + items (1.4 + 1 + 0.875 units)
+             and two row gaps (≈20px); they may take ≈78% of what the band
+             leaves under its head and padding (≈48px):
+             (0.78 × (100cqh − 48px) − 20px) / 3.275  ≈  23.8cqh − 17.5px
+     width   the widest row, six item slots (6 × 0.875u + 5 gaps), may take
+             ≈80% of a half (50cqw − 36px), the outer fifth being the
+             champion art's:  ≈ 7.6cqw − 9px
+   whichever is smaller, capped at 3.5rem. Slots keep their proportion to it
+   (0.875u). The PORTRAIT — the champion's identity, in the one row with width
+   to spare — is at least 1.4u and takes the height the three rows leave
+   (0.78 × (100cqh − 48px) − 20px − 1.875u), up to its own width allowance:
+   its row (shard column ⅓P + P + two gaps + a name allowance of 7rem) within
+   the same 80% of a half — 30cqw − 120px — and 6rem at most. The phone's
+   stacked rows (< 26rem) are width-bound already and keep their tier sizes. */
+@container (min-width: 26rem) {
+  .journey-vars {
+    --jb-fit: min(calc(23.8cqh - 17.5px), calc(7.6cqw - 9px), 3.5rem);
+    --jb-ability: max(var(--jb-ability-min), var(--jb-fit));
+    --jb-slot: max(var(--jb-slot-min), calc(var(--jb-fit) * 0.875));
+    --jb-portrait: max(
+      var(--jb-portrait-min),
+      calc(var(--jb-fit) * 1.4),
+      min(calc((100cqh - 48px) * 0.78 - 20px - var(--jb-fit) * 1.875), calc(30cqw - 120px), 6rem)
+    );
+  }
 }
 
 /* ── 3. LEARNED KNOWLEDGE: one gold `!`, and the board fills in ────────── */

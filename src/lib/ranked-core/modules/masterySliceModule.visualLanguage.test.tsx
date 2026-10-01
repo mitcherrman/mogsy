@@ -324,6 +324,39 @@ describe("the board's champion art", () => {
     expect(CSS).toMatch(/\.journey-board__art--subject img \{ left: calc\(var\(--jp3-face-x\)/);
     expect(CSS).toMatch(/\.journey-board::after \{[^}]*radial-gradient/);
   });
+
+  it("JP5 — one scene: each art's fade starts at the face line and reaches zero exactly at the picture's own edge, eased", () => {
+    // The picture spans face ± 0.275 × art height; the fade is that open half.
+    expect(CSS).toMatch(/--jp3-fade-0: var\(--jp3-face-x\);/);
+    expect(CSS).toMatch(/--jp3-fade-l: calc\(var\(--jp3-art-h\) \* 0\.275\);/);
+    const mask = /--jp3-art-mask: linear-gradient\(([\s\S]*?)\);\n/.exec(CSS)![1];
+    expect(mask).toMatch(/^var\(--jp3-art-dir\),\s*#000 var\(--jp3-fade-0\),/);
+    expect(mask).toMatch(/transparent calc\(var\(--jp3-fade-0\) \+ var\(--jp3-fade-l\)\)$/);
+    // Eased, no plateau: every stop strictly fades.
+    const alphas = [...mask.matchAll(/rgb\(0 0 0 \/ ([\d.]+)\)/g)].map((m) => Number(m[1]));
+    expect(alphas.length).toBeGreaterThanOrEqual(4);
+    alphas.forEach((a, i) => { if (i) expect(a).toBeLessThan(alphas[i - 1]); });
+  });
+});
+
+describe("JP5 — the board fills its band (stylesheet)", () => {
+  it("one container-derived unit sizes the band board's objects; tiers only set floors; nothing reads a step or a state", () => {
+    const k = CSS.indexOf("--jb-fit: min(");
+    expect(k).toBeGreaterThan(0);
+    const rule = CSS.slice(CSS.lastIndexOf("@container", k), CSS.indexOf("\n}\n", k));
+    expect(rule).toMatch(/^@container \(min-width: 26rem\) \{/);
+    expect(rule).toMatch(/--jb-fit: min\(calc\([\d.]+cqh - [\d.]+px\), calc\([\d.]+cqw - [\d.]+px\), 3\.5rem\);/);
+    expect(rule).toMatch(/--jb-ability: max\(var\(--jb-ability-min\), var\(--jb-fit\)\);/);
+    expect(rule).toMatch(/--jb-slot: max\(var\(--jb-slot-min\), calc\(var\(--jb-fit\) \* 0\.875\)\);/);
+    expect(rule).toMatch(/--jb-portrait: max\(\s*var\(--jb-portrait-min\),\s*calc\(var\(--jb-fit\) \* 1\.4\),/);
+    // Only the band's own size: no step, phase or champion selector in the rule.
+    expect(rule).not.toMatch(/data-step|data-phase|data-unfold|data-revealing|data-champion|\[data-/);
+    // The band tiers set floors (the -min tokens), never the sizes themselves.
+    for (const floor of ["--jb-portrait-min: 2.25rem", "--jb-portrait-min: 2.75rem", "--jb-portrait-min: 3.5rem",
+      "--jb-ability-min: 1.625rem", "--jb-ability-min: 2rem", "--jb-ability-min: 2.5rem"]) expect(CSS).toContain(floor);
+    // The phone's stacked rows keep their tier sizes (width-bound already).
+    expect(CSS).toMatch(/@container \(max-width: 25\.99rem\) and \(min-height: 11rem\) \{[\s\S]*?--jb-portrait: 2\.5rem;/);
+  });
 });
 
 describe("the host and the parchment (stylesheet)", () => {
