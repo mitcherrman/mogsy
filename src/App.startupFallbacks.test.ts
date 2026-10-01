@@ -40,7 +40,7 @@ describe("startup fallbacks are plain surfaces, not skeletons", () => {
   it("gives the entrance its base colour and nothing else", () => {
     const root = appSource
       .split("\n")
-      .find((l) => l.includes("<MogzyEntryV2 seo=\"root\" />"));
+      .find((l) => l.includes("<MogzyEntryV2 seo=\"root\""));
     expect(root).toBeDefined();
     expect(root!).toContain('fallback={<StartupSurface pathname="/" />}');
     expect(root!).not.toContain("RouteLoader");

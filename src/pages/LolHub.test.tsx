@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LolHub from "./LolHub";
 import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
 import { HUB_GUIDE_MODES, type HubGuideModeId } from "@/components/lol/hub-guide";
+import { guideStorageKey, isCompactGuideCopy } from "@/components/mogzy-guide";
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
 // The pinned jsdom does not provide a working Storage — see localStorageStub.
@@ -126,8 +127,14 @@ beforeEach(() => {
   } catch {
     /* jsdom sessionStorage always present; guard for safety */
   }
+  // Mogzy's one-time welcome is first-use and outranks hover, so every test
+  // starts as a RETURNING visitor; the first-use suite clears this on purpose.
+  resetLocalStorage();
+  localStorage.setItem(WELCOME_KEY, "1");
 });
 afterEach(cleanup);
+
+const WELCOME_KEY = guideStorageKey("hub", "welcome-leaguecraft");
 
 // The four primary destinations, in reading order (TL, TR, BL, BR).
 const HUB_DESTINATIONS = [
@@ -597,12 +604,12 @@ describe("LolHub — Mogzy contextual guide", () => {
     expect(el, `desktop card wrapper for ${id}`).toBeTruthy();
     return el!;
   };
-  const bubble = () => screen.getByTestId("mogzy-guide-bubble");
+  const bubble = () => screen.getByTestId("mogzy-guide-hub-bubble");
 
   it("starts idle: bubble hidden, Mogzy not leaning", () => {
     const { container } = renderHub();
     expect(bubble().getAttribute("data-visible")).toBe("false");
-    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-lean"]')!;
+    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-hub-lean"]')!;
     expect(lean.style.getPropertyValue("--guide-lean-x")).toBe("0px");
     expect(lean.style.getPropertyValue("--guide-lean-y")).toBe("0px");
   });
@@ -613,7 +620,7 @@ describe("LolHub — Mogzy contextual guide", () => {
       fireEvent.mouseOver(card(container, guideId));
       const b = bubble();
       expect(b.getAttribute("data-visible")).toBe("true");
-      expect(b.getAttribute("data-active-mode")).toBe(guideId);
+      expect(b.getAttribute("data-message-id")).toBe(`hub-${guideId}`);
       const mode = HUB_GUIDE_MODES[guideId];
       expect(b.textContent).toContain(mode.title);
       expect(b.textContent).toContain(mode.description);
@@ -621,54 +628,31 @@ describe("LolHub — Mogzy contextual guide", () => {
     }
   });
 
-  it("every hub destination participates with a bounded, directional glide", () => {
-    // Config coverage: four cards, four guide entries. Horizontal is the
-    // dominant signal but stays bounded — Mogzy glides toward the hovered
-    // side without leaving his central stage (see hub-guide.ts for the
-    // measured lane clearances behind the 110/40 caps).
+  it("every hub destination participates with a directional lean toward its own side", () => {
+    // Config coverage: four cards, four guide entries; each leans toward the
+    // side of the hub its book is on (left column left, right column right).
     const { container } = renderHub();
     expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(GUIDE_MODES.length);
     const LEFT_MODES: HubGuideModeId[] = ["leaguecraft", "archives"];
     for (const { guideId } of GUIDE_MODES) {
       const mode = HUB_GUIDE_MODES[guideId];
       expect(mode.title.length).toBeGreaterThan(0);
-      expect(mode.description.length).toBeGreaterThan(0);
-      expect(Math.abs(mode.lean.x)).toBeLessThanOrEqual(110);
-      expect(Math.abs(mode.lean.y)).toBeLessThanOrEqual(40);
-      // Direction must match the card's side of the hub.
-      expect(Math.sign(mode.lean.x)).toBe(LEFT_MODES.includes(guideId) ? -1 : 1);
-      // The bubble sits BESIDE Mogzy on the hovered side: a real lateral
-      // offset (past his ~70px half-width so it reads as "next to him",
-      // bounded so it stays attached rather than making a second journey),
-      // pointing the same way as the lean, plus a bounded vertical trim —
-      // a drop from hat-height to head-height. Past ±~60 the bubble either
-      // detaches upward or runs into the bottom row's own card titles.
-      const bubble = mode.bubble ?? { x: 0, y: 0 };
-      expect(Math.abs(bubble.x)).toBeGreaterThanOrEqual(50);
-      expect(Math.abs(bubble.x)).toBeLessThanOrEqual(100);
-      expect(Math.sign(bubble.x)).toBe(Math.sign(mode.lean.x));
-      expect(Math.abs(bubble.y ?? 0)).toBeLessThanOrEqual(60);
-      // Wide desktops must always show the attached, head-height placement:
-      // a responsive narrow-desktop lift may only raise the bubble (more
-      // negative), never push it further down than the wide value.
-      if (bubble.yNarrow !== undefined) {
-        expect(Math.abs(bubble.yNarrow)).toBeLessThanOrEqual(60);
-        expect(bubble.yNarrow).toBeLessThanOrEqual(bubble.y ?? 0);
-      }
+      expect(isCompactGuideCopy({ title: mode.title, text: mode.description }), `${guideId} copy is compact`).toBe(true);
+      expect(mode.target.direction).toBe(LEFT_MODES.includes(guideId) ? "left" : "right");
     }
   });
 
   it("moving directly between two cards swaps the bubble without an idle flash", () => {
     const { container } = renderHub();
     fireEvent.mouseOver(card(container, "leaguecraft"));
-    expect(bubble().getAttribute("data-active-mode")).toBe("leaguecraft");
+    expect(bubble().getAttribute("data-message-id")).toBe("hub-leaguecraft");
     // Leave A then enter B, as a real pointer move fires them — the grace
     // delay must keep the bubble visible across the gap.
     fireEvent.mouseOut(card(container, "leaguecraft"));
     fireEvent.mouseOver(card(container, "combat-lab"));
     const b = bubble();
     expect(b.getAttribute("data-visible")).toBe("true");
-    expect(b.getAttribute("data-active-mode")).toBe("combat-lab");
+    expect(b.getAttribute("data-message-id")).toBe("hub-combat-lab");
     expect(b.textContent).toContain("Combat Simulation");
   });
 
@@ -678,7 +662,7 @@ describe("LolHub — Mogzy contextual guide", () => {
     expect(bubble().getAttribute("data-visible")).toBe("true");
     fireEvent.mouseOut(card(container, "archives"));
     await waitFor(() => expect(bubble().getAttribute("data-visible")).toBe("false"));
-    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-lean"]')!;
+    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-hub-lean"]')!;
     expect(lean.style.getPropertyValue("--guide-lean-x")).toBe("0px");
   });
 
@@ -688,7 +672,7 @@ describe("LolHub — Mogzy contextual guide", () => {
     fireEvent.focusIn(link);
     const b = bubble();
     expect(b.getAttribute("data-visible")).toBe("true");
-    expect(b.getAttribute("data-active-mode")).toBe("archives");
+    expect(b.getAttribute("data-message-id")).toBe("hub-archives");
     fireEvent.focusOut(link);
     await waitFor(() => expect(bubble().getAttribute("data-visible")).toBe("false"));
   });
@@ -702,7 +686,7 @@ describe("LolHub — Mogzy contextual guide", () => {
     fireEvent.focusIn(second);
     const b = bubble();
     expect(b.getAttribute("data-visible")).toBe("true");
-    expect(b.getAttribute("data-active-mode")).toBe("combat-lab");
+    expect(b.getAttribute("data-message-id")).toBe("hub-combat-lab");
   });
 
   it("each desktop card link is described (aria-describedby) by its mode's guide text", () => {
@@ -721,11 +705,14 @@ describe("LolHub — Mogzy contextual guide", () => {
     }
   });
 
-  it("keeps the visual speech bubble decorative (inside the aria-hidden lane), with no live region", () => {
+  it("keeps the speech bubble aria-hidden and never announces hover copy", () => {
     const { container } = renderHub();
-    const b = bubble();
-    expect(b.closest('[aria-hidden="true"]')).toBeTruthy();
-    expect(container.querySelector("[aria-live]")).toBeNull();
+    fireEvent.mouseOver(card(container, "archives"));
+    expect(bubble().getAttribute("aria-hidden")).toBe("true");
+    // The substrate's single polite region exists, but hover is never announced.
+    const live = screen.getByTestId("mogzy-guide-hub-live");
+    expect(container.querySelectorAll("[aria-live]")).toHaveLength(1);
+    expect(live.textContent).toBe("");
   });
 
   it("guide wiring leaves card navigation untouched", () => {
@@ -735,6 +722,94 @@ describe("LolHub — Mogzy contextual guide", () => {
       const link = within(card(container, guideId)).getByRole("link");
       expect(link.getAttribute("href")).toBe(to);
     }
+  });
+});
+
+describe("LolHub — Mogzy guide: first-use, ambient and priority (MG-C)", () => {
+  const card = (container: HTMLElement, id: HubGuideModeId) =>
+    container.querySelector<HTMLElement>(`[data-guide-mode="${id}"]`)!;
+  const bubble = () => screen.getByTestId("mogzy-guide-hub-bubble");
+
+  it("welcomes a first-time visitor toward Leaguecraft, announced, without blocking anything", () => {
+    localStorage.removeItem(WELCOME_KEY);
+    const { container } = renderHub();
+    expect(bubble().getAttribute("data-visible")).toBe("true");
+    expect(bubble().getAttribute("data-priority")).toBe("first-use");
+    expect(bubble().textContent).toMatch(/Leaguecraft/);
+    expect(screen.getByTestId("mogzy-guide-hub-live").textContent).toMatch(/Leaguecraft/);
+    // A recommendation only: no dialog, nothing disabled, every destination still a live link.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^(next|got it)$/i })).toBeNull();
+    for (const d of HUB_DESTINATIONS) {
+      const link = container.querySelector(`[data-guide-mode] a[href="${d.to}"]`)!;
+      expect(link.getAttribute("aria-disabled")).toBeNull();
+      expect(link.hasAttribute("disabled")).toBe(false);
+    }
+    expect(localStorage.getItem(WELCOME_KEY)).toBe("1");
+  });
+
+  it("shows the welcome only once per browser", () => {
+    localStorage.removeItem(WELCOME_KEY);
+    const first = renderHub();
+    expect(bubble().getAttribute("data-priority")).toBe("first-use");
+    first.unmount();
+    renderHub();
+    expect(bubble().getAttribute("data-visible")).toBe("false");
+    expect(screen.getByTestId("mogzy-guide-hub-live").textContent).toBe("");
+  });
+
+  it("the welcome outranks hover; hover works once it is dismissed with Escape", () => {
+    localStorage.removeItem(WELCOME_KEY);
+    const { container } = renderHub();
+    fireEvent.mouseOver(card(container, "archives"));
+    expect(bubble().getAttribute("data-priority")).toBe("first-use");
+    fireEvent.keyDown(screen.getByTestId("mogzy-guide-hub"), { key: "Escape" });
+    expect(bubble().getAttribute("data-priority")).toBe("hover");
+    expect(bubble().getAttribute("data-message-id")).toBe("hub-archives");
+  });
+
+  describe("ambient chatter", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("falls back to Summoner and never interrupts hover", () => {
+      mocks.authUser = null;
+      const { container } = renderHub();
+      expect(bubble().getAttribute("data-visible")).toBe("false");
+      act(() => {
+        vi.advanceTimersByTime(4100);
+      });
+      expect(bubble().getAttribute("data-priority")).toBe("ambient");
+      expect(bubble().textContent).toMatch(/Summoner/);
+      expect(bubble().textContent).toMatch(/studying|combat skills|patch notes/);
+      // Ambient is never announced.
+      expect(screen.getByTestId("mogzy-guide-hub-live").textContent).toBe("");
+      // Hover replaces ambient, then ambient cannot take the bubble back.
+      fireEvent.mouseOver(card(container, "pro-play"));
+      expect(bubble().getAttribute("data-priority")).toBe("hover");
+      act(() => {
+        vi.advanceTimersByTime(30000);
+      });
+      expect(bubble().getAttribute("data-priority")).toBe("hover");
+    });
+
+    it("does not replace the first-use welcome", () => {
+      localStorage.removeItem(WELCOME_KEY);
+      renderHub();
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(bubble().getAttribute("data-priority")).toBe("first-use");
+    });
+  });
+
+  it("the old header chatter line is gone (it is Mogzy's speech now)", () => {
+    const { container } = renderHub();
+    expect(container.querySelector(".academy-personal-line")).toBeNull();
   });
 });
 
@@ -767,14 +842,14 @@ describe("LolHub — TUT1: no first-visit tutorial popup exists", () => {
 
 /**
  * Mascot animation prototype: directional facing + the click reaction.
- * Both live on their own transform layers inside MogzyHubGuide, above the
+ * Both live on their own transform layers inside the Mogzy Guide substrate, above the
  * untouched idle-float root and contextual lean layer.
  */
 describe("LolHub — Mogzy mascot animation prototype", () => {
   const facing = (container: HTMLElement) =>
-    container.querySelector<HTMLElement>('[data-testid="mogzy-guide-facing"]')!;
+    container.querySelector<HTMLElement>('[data-testid="mogzy-guide-hub-facing"]')!;
   const react = (container: HTMLElement) =>
-    container.querySelector<HTMLElement>('[data-testid="mogzy-guide-react"]')!;
+    container.querySelector<HTMLElement>('[data-testid="mogzy-guide-hub-react"]')!;
   const mascot = (container: HTMLElement) =>
     facing(container).querySelector<HTMLImageElement>('img[src*="mogzy-mascot-base"]')!;
   const card = (container: HTMLElement, id: HubGuideModeId) =>
@@ -791,7 +866,7 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
     for (const id of Object.keys(HUB_GUIDE_MODES) as HubGuideModeId[]) {
       fireEvent.mouseOver(card(container, id));
       // The facing must agree with the direction Mogzy is already gliding.
-      const expected = HUB_GUIDE_MODES[id].lean.x > 0 ? "right" : "left";
+      const expected = HUB_GUIDE_MODES[id].target.direction;
       expect(facing(container).getAttribute("data-facing"), id).toBe(expected);
       expect(facing(container).style.getPropertyValue("--mogzy-facing")).toBe(
         expected === "right" ? "-1" : "1",
@@ -815,48 +890,27 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
   it("facing never touches the speech bubble (it must not read mirrored)", () => {
     const { container } = renderHub();
     fireEvent.mouseOver(card(container, "combat-lab"));
-    expect(facing(container).contains(screen.getByTestId("mogzy-guide-bubble"))).toBe(
+    expect(facing(container).contains(screen.getByTestId("mogzy-guide-hub-bubble"))).toBe(
       false,
     );
     expect(facing(container).contains(mascot(container))).toBe(true);
   });
 
-  it("clicking Mogzy plays the reaction without navigating", () => {
+  it("desktop Mogzy is decorative: no button, no focus stop ahead of the cards", () => {
     const { container } = renderHub();
-    expect(react(container).className).not.toContain("mogzy-click-react");
-    fireEvent.click(mascot(container));
-    expect(react(container).className).toContain("mogzy-click-react");
-    // Decorative easter egg only: the mascot is not a link or a button.
     expect(mascot(container).closest("a")).toBeNull();
     expect(mascot(container).closest("button")).toBeNull();
+    expect(screen.queryByTestId("mogzy-guide-hub-trigger")).toBeNull();
   });
 
-  it("rapid repeated clicks restart the reaction instead of sticking", () => {
-    const { container } = renderHub();
-    fireEvent.click(mascot(container));
-    fireEvent.click(mascot(container));
-    fireEvent.click(mascot(container));
-    // Exactly one instance of the class — no accumulation, no stuck state.
-    expect(react(container).className.split(/\s+/).filter((c) => c === "mogzy-click-react"))
-      .toHaveLength(1);
-    // And the animation is self-clearing when it completes.
-    fireEvent.animationEnd(react(container));
-    expect(react(container).className).not.toContain("mogzy-click-react");
-  });
-
-  it("clicking while a card is active leaves that card's state intact", () => {
+  it("hovering a card leans Mogzy toward it on the dedicated lean layer", () => {
     const { container } = renderHub();
     fireEvent.mouseOver(card(container, "archives"));
-    fireEvent.click(mascot(container));
-    const bubble = screen.getByTestId("mogzy-guide-bubble");
-    expect(bubble.getAttribute("data-visible")).toBe("true");
-    expect(bubble.getAttribute("data-active-mode")).toBe("archives");
-    expect(facing(container).getAttribute("data-facing")).toBe("left");
-    // The lean layer is untouched by the reaction — the hop composes on top.
-    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-lean"]')!;
-    expect(lean.style.getPropertyValue("--guide-lean-x")).toContain(
-      String(HUB_GUIDE_MODES["archives"].lean.x),
-    );
+    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-hub-lean"]')!;
+    expect(lean.style.getPropertyValue("--guide-lean-x")).toContain("-");
+    fireEvent.mouseOver(card(container, "pro-play"));
+    expect(lean.style.getPropertyValue("--guide-lean-x")).not.toContain("-");
+    expect(lean.style.getPropertyValue("--guide-lean-x")).not.toBe("0px");
   });
 
   // Regression guard for the bug this phase fixed: these timings used to be
@@ -872,10 +926,8 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
     const rule = (selector: string) =>
       css.slice(css.indexOf(`${selector} {`), css.indexOf("}", css.indexOf(`${selector} {`)));
 
-    // One gesture, one beat: mascot glide, bubble and tail must share it.
+    // One gesture, one beat: the mascot glide carries its authored timing.
     expect(rule(".mogzy-lean-glide")).toContain("340ms");
-    expect(rule(".mogzy-lean-bubble")).toContain("340ms");
-    expect(rule(".mogzy-lean-bubble-tail")).toContain("340ms");
     // Approved prototype timings — do not drift.
     expect(rule(".mogzy-facing-turn")).toContain("280ms");
     expect(rule(".mogzy-click-react")).toContain("540ms");
@@ -883,13 +935,13 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
     // The markup must carry the authored classes rather than re-introducing
     // a duration utility whose value never reaches the page.
     const { container } = renderHub();
-    const lean = container.querySelector('[data-testid="mogzy-guide-lean"]')!;
+    const lean = container.querySelector('[data-testid="mogzy-guide-hub-lean"]')!;
     expect(lean.className).toContain("mogzy-lean-glide");
     expect(lean.className).not.toMatch(/duration-\[/);
     expect(facing(container).className).not.toMatch(/duration-\[/);
   });
 
-  it("reduced motion suppresses the click reaction entirely", () => {
+  it("reduced motion removes idle, lean, turn and hop entirely", () => {
     const original = window.matchMedia;
     window.matchMedia = ((q: string) =>
       ({
@@ -904,7 +956,8 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
       }) as unknown as MediaQueryList) as typeof window.matchMedia;
     try {
       const { container } = renderHub();
-      fireEvent.click(mascot(container));
+      expect(screen.getByTestId("mogzy-guide-hub").getAttribute("data-motion")).toBe("still");
+      expect(container.querySelector(".academy-mogzy-float")).toBeNull();
       expect(react(container).className).not.toContain("mogzy-click-react");
     } finally {
       window.matchMedia = original;
@@ -1052,32 +1105,66 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
   });
 
   it("reuses Mogzy as an accessible mobile interaction host without changing book taps", () => {
-    const { container } = renderHub();
-    const zone = screen.getByTestId("mobile-mogzy-zone");
-    const mobileGuide = screen.getByTestId("mogzy-guide-mobile");
-    const trigger = within(mobileGuide).getByRole("button", {
-      name: "Mogzy, Academy guide",
-    });
-    expect(zone).toHaveClass("relative", "h-28", "items-center", "justify-center", "md:hidden");
-    expect(zone).not.toHaveClass("absolute");
-    expect(trigger).toHaveClass("h-24");
-    expect(mobileGuide).toHaveClass("h-full", "w-full", "items-center", "justify-center");
-    expect(screen.getByTestId("mogzy-guide-bubble-mobile")).toHaveAttribute(
-      "data-visible",
-      "false",
-    );
-    expect(screen.getByTestId("mogzy-guide-bubble-mobile")).toHaveClass(
-      "left-[calc(50%+1.5rem)]",
-      "top-0",
-    );
+    const restore = mockViewport({ mobile: true });
+    try {
+      const { container } = renderHub();
+      const zone = screen.getByTestId("mobile-mogzy-zone");
+      const mobileGuide = screen.getByTestId("mogzy-guide-hub");
+      const trigger = within(mobileGuide).getByRole("button", { name: "Mogzy, Academy guide" });
+      expect(zone).toHaveClass("relative", "h-28", "items-center", "justify-center", "md:hidden");
+      expect(zone).not.toHaveClass("absolute");
+      expect(mobileGuide.getAttribute("data-layout")).toBe("mobile");
+      // Exactly one guide exists at a time: the desktop lane renders none.
+      expect(screen.getAllByTestId("mogzy-guide-hub")).toHaveLength(1);
+      expect(zone.contains(mobileGuide)).toBe(true);
+      expect(screen.getByTestId("mogzy-guide-hub-bubble")).toHaveAttribute("data-visible", "false");
 
-    fireEvent.click(trigger);
-    expect(screen.getByTestId("mogzy-guide-react-mobile").className).toContain(
-      "mogzy-click-react",
-    );
-    expect(container.querySelectorAll('[data-testid="mobile-academy-book"]')).toHaveLength(4);
+      fireEvent.click(trigger);
+      expect(screen.getByTestId("mogzy-guide-hub-react").className).toContain("mogzy-click-react");
+      expect(container.querySelectorAll('[data-testid="mobile-academy-book"]')).toHaveLength(4);
+    } finally {
+      restore();
+    }
+  });
+
+  it("phone: the first-use welcome appears beside Mogzy and is announced", () => {
+    localStorage.removeItem(WELCOME_KEY);
+    const restore = mockViewport({ mobile: true });
+    try {
+      renderHub();
+      const bubble = screen.getByTestId("mogzy-guide-hub-bubble");
+      expect(bubble.getAttribute("data-visible")).toBe("true");
+      expect(bubble.getAttribute("data-priority")).toBe("first-use");
+      expect(bubble.closest("[data-side]")).toHaveAttribute("data-side", "right");
+      expect(screen.getByTestId("mogzy-guide-hub-live").textContent).toMatch(/Leaguecraft/);
+    } finally {
+      restore();
+    }
   });
 });
+
+/** Force the guide's mobile/desktop layout (and optionally reduced motion) through matchMedia. */
+function mockViewport({ mobile, reduced = false }: { mobile: boolean; reduced?: boolean }) {
+  const original = window.matchMedia;
+  window.matchMedia = ((q: string) =>
+    ({
+      matches: q.includes("max-width: 767px")
+        ? mobile
+        : q.includes("prefers-reduced-motion")
+          ? reduced
+          : false,
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList) as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = original;
+  };
+}
 
 /**
  * The two-screen Academy: `/lol` is the Academy Hall and the Academy Commons,
@@ -1520,15 +1607,13 @@ describe("Academy Updates — off in production", () => {
     expect(screen.queryByRole("button", { name: /academy updates/i })).toBeNull();
   });
 
-  it("leaves the Mogzy guide's aria-hidden lane exactly as it was", () => {
+  it("keeps the updates mark out of the Mogzy guide's subtree", () => {
     const { container } = renderHub();
     // The mark mounts as a SIBLING of the guide, never inside it: a focusable
     // button in an aria-hidden subtree would be invisible to assistive tech.
     // Dormant, the sibling layer holds nothing at all.
-    const guide = screen.getByTestId("mogzy-guide-lean");
-    const hiddenLane = guide.closest("[aria-hidden]");
-    expect(hiddenLane).not.toBeNull();
-    expect(hiddenLane!.querySelector("[data-testid='academy-updates-mark']")).toBeNull();
+    const guide = screen.getByTestId("mogzy-guide-hub");
+    expect(guide.querySelector("[data-testid='academy-updates-mark']")).toBeNull();
     // And the dormant feature contributes no empty wrappers to the lane.
     expect(container.querySelectorAll("[data-testid^='academy-updates']")).toHaveLength(0);
   });
@@ -1541,8 +1626,8 @@ describe("Academy Updates — off in production", () => {
     // component, so "disabled" means no element at all. The lane's child
     // count is the assertion that keeps it that way.
     renderHub();
-    const guide = screen.getByTestId("mogzy-guide-lean");
-    const lane = guide.closest("[aria-hidden]")!.parentElement!;
+    const guide = screen.getByTestId("mogzy-guide-hub");
+    const lane = guide.parentElement!.parentElement!;
     expect(lane.children).toHaveLength(2); // the centerpiece, and the guide
   });
 
@@ -1595,7 +1680,7 @@ describe("Academy Updates — on, with a published notice", () => {
     expect(container.querySelectorAll("[data-testid^='academy-updates']")).toHaveLength(0);
   });
 
-  it("leaves the guide's aria-hidden lane untouched when it does appear", async () => {
+  it("keeps the mark outside the guide and any aria-hidden subtree when it appears", async () => {
     // The mark is a focusable, labelled button; it must never end up inside the
     // decorative subtree the Hall marks aria-hidden.
     mocks.academyUpdatesEnabled = true;
@@ -1604,8 +1689,8 @@ describe("Academy Updates — on, with a published notice", () => {
     await waitFor(() =>
       expect(screen.getAllByTestId("academy-updates-mark").length).toBeGreaterThan(0),
     );
-    const guide = screen.getByTestId("mogzy-guide-lean");
-    const hiddenLane = guide.closest("[aria-hidden]")!;
-    expect(hiddenLane.querySelector("[data-testid='academy-updates-mark']")).toBeNull();
+    const guide = screen.getByTestId("mogzy-guide-hub");
+    expect(guide.querySelector("[data-testid='academy-updates-mark']")).toBeNull();
+    expect(screen.getAllByTestId("academy-updates-mark")[0].closest("[aria-hidden='true']")).toBeNull();
   });
 });

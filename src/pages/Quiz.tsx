@@ -62,6 +62,7 @@ import {
 import type { QuizOnboardingConfig } from "@/pages/QuizAdmin";
 import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import QuizSignUpNudge from "@/components/quiz/QuizSignUpNudge";
+import { leaguecraftSignupLine } from "@/components/quiz/leaguecraft-guide";
 import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
 import { useTransactionalLeaveGuard } from "@/lib/navigation/useTransactionalLeaveGuard";
 import {
@@ -1280,6 +1281,9 @@ export default function Quiz() {
           actionCount={anonActionCount}
           returnTo="/quiz"
           onDismiss={() => setShowGate(false)}
+          /* MG-D: Mogzy voices the offer; every control, the returnTo and the
+             guest path are the gate's own and unchanged. */
+          guideLine={leaguecraftSignupLine(score, questions.length)}
         />
       )}
 
@@ -1546,6 +1550,11 @@ export default function Quiz() {
               displayName={profileIdentity.displayName}
               avatarUrl={profileIdentity.avatarUrl}
               signedIn={!!user}
+              /* MG-D: Mogzy's role guidance, offered only once the role has
+                 SETTLED so a saved role that is still loading cannot flash a
+                 prompt that is not true. He reads the lobby; he writes
+                 nothing. */
+              roleGuide={rankedRole.loadState !== "loading"}
             />
 
             {/* ─────────────────────────────────────────────────────────────

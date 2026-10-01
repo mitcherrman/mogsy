@@ -1,9 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { motion } from "framer-motion";
 import { Sparkles, Flame, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MogzyGuide, useMogzyGuide } from "@/components/mogzy-guide";
+import {
+  LEAGUECRAFT_SIGNUP_GUIDE_SURFACE,
+  SIGNUP_GUIDE_PLACEMENT,
+  buildSignupGuideMessage,
+} from "@/components/quiz/leaguecraft-guide";
 import type { QuizProgress } from "@/lib/quiz/api";
 
 interface Props {
@@ -16,6 +22,37 @@ interface Props {
   heading?: string;
   description?: string;
   benefits?: string[];
+  /**
+   * MG-D: when present, Mogzy voices the offer in this line, in place of the
+   * lock icon. Presentation only — the heading, benefits, both buttons, the
+   * guest path, `returnTo` and the counters are identical with or without it.
+   * Hosts that do not pass it (the Daily Challenge) render exactly as before.
+   */
+  guideLine?: string;
+}
+
+/**
+ * Mogzy's head-of-card slot. It reserves his height (the artwork is ~1.33× its
+ * width; see `SIGNUP_GUIDE_PLACEMENT`) and the bubble sits to his right, so the
+ * card grows by little more than the lock icon it replaces.
+ */
+function GateGuide({ line }: { line: string }) {
+  const messages = useMemo(() => [buildSignupGuideMessage(line)], [line]);
+  const controller = useMogzyGuide({ surface: LEAGUECRAFT_SIGNUP_GUIDE_SURFACE, messages });
+  return (
+    <div
+      data-testid="signup-gate-guide"
+      className="relative mx-auto mb-4 flex min-h-[min(85px,14vh)] max-md:min-h-[min(69px,14vh)] w-full max-w-[16.5rem] items-start [@media(max-height:480px)]:mb-2"
+    >
+      <MogzyGuide
+        surface={LEAGUECRAFT_SIGNUP_GUIDE_SURFACE}
+        message={controller.message}
+        placement={SIGNUP_GUIDE_PLACEMENT}
+        onDismiss={controller.dismiss}
+        className="w-full"
+      />
+    </div>
+  );
 }
 
 const DEFAULT_BENEFITS = [
@@ -28,11 +65,16 @@ export default function QuizSignUpGate({
   heading = "Save your score?",
   description = "Create a free account to track your League quiz progress, streaks, and results.",
   benefits = DEFAULT_BENEFITS,
+  guideLine,
 }: Props) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    trackFunnelEvent("quiz_signup_gate_shown", { action_count: actionCount, returnTo });
+    trackFunnelEvent("quiz_signup_gate_shown", {
+      action_count: actionCount,
+      returnTo,
+      ...(guideLine ? { presentation: "mogzy_guide" } : {}),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -52,14 +94,18 @@ export default function QuizSignUpGate({
         initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl border border-[#c9a84c]/40 bg-gradient-to-br from-[#1a1530]/95 via-[#0a1428]/95 to-[#0a0a1a]/95 p-6 max-[430px]:p-5 shadow-[0_0_40px_rgba(0,0,0,0.6)]"
+        className={`w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl border border-[#c9a84c]/40 bg-gradient-to-br from-[#1a1530]/95 via-[#0a1428]/95 to-[#0a0a1a]/95 p-6 max-[430px]:p-5 shadow-[0_0_40px_rgba(0,0,0,0.6)] ${guideLine ? "[@media(max-height:480px)]:pt-3" : ""}`}
       >
-        {/* Lock icon */}
-        <div className="flex justify-center mb-4 [@media(max-height:480px)]:mb-2">
-          <div className="flex h-14 w-14 [@media(max-height:480px)]:h-10 [@media(max-height:480px)]:w-10 items-center justify-center rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10">
-            <Lock className="h-6 w-6 text-[#f0d78c]" />
+        {guideLine ? (
+          <GateGuide line={guideLine} />
+        ) : (
+          /* Lock icon */
+          <div className="flex justify-center mb-4 [@media(max-height:480px)]:mb-2">
+            <div className="flex h-14 w-14 [@media(max-height:480px)]:h-10 [@media(max-height:480px)]:w-10 items-center justify-center rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10">
+              <Lock className="h-6 w-6 text-[#f0d78c]" />
+            </div>
           </div>
-        </div>
+        )}
 
         <h2 className="text-center text-xl font-bold text-[#f5e9c8] mb-1">
           {heading}
@@ -102,7 +148,10 @@ export default function QuizSignUpGate({
         <Button
           className="w-full mb-2 bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
           onClick={() => {
-            trackFunnelEvent("quiz_signup_clicked", { returnTo });
+            trackFunnelEvent("quiz_signup_clicked", {
+              returnTo,
+              ...(guideLine ? { presentation: "mogzy_guide" } : {}),
+            });
             navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`);
           }}
         >
@@ -113,7 +162,10 @@ export default function QuizSignUpGate({
             variant="outline"
             className="w-full mb-2 text-sm"
             onClick={() => {
-              trackFunnelEvent("quiz_guest_continue_clicked", { returnTo });
+              trackFunnelEvent("quiz_guest_continue_clicked", {
+                returnTo,
+                ...(guideLine ? { presentation: "mogzy_guide" } : {}),
+              });
               onDismiss();
             }}
           >

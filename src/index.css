@@ -3399,28 +3399,18 @@ html.high-contrast * { text-shadow: none !important; }
 
 /* Mogzy contextual lean — the glide toward the hovered/focused card.
    The 340ms/overshoot easing here is the ORIGINAL authored intent from
-   MogzyHubGuide (see the comment on the lean layer); it lived in Tailwind's
+   the retired Hub-only guide; it lived in Tailwind's
    `duration-[340ms] ease-[cubic-bezier(0.3,1.06,0.35,1)]` utilities, which
    this build never emits — no arbitrary `duration-[…]` value appears
    anywhere in the generated CSS, only the named scale — so the glide had
    silently been running at the 150ms ease-in-out default that
    `transition-transform` ships. Authoring it here makes the shipped number
-   the intended number, and keeps it tunable in one place.
-   The bubble and its tail are the SAME gesture on the same curve: they ride
-   this layer for the travel itself, and these two rules carry only their own
-   offsets/fade, which must land on the same beat as the glide or the bubble
-   arrives ahead of the mascot it belongs to. */
+   the intended number, and keeps it tunable in one place. The Mogzy Guide
+   substrate (src/components/mogzy-guide) rides this layer; its bubble lives
+   inside it, so bubble and mascot travel as one gesture. */
 .mogzy-lean-glide {
   transition: transform 340ms cubic-bezier(0.3, 1.06, 0.35, 1);
   transform: translate(var(--guide-lean-x, 0px), var(--guide-lean-y, 0px));
-}
-.mogzy-lean-bubble {
-  transition:
-    opacity 340ms cubic-bezier(0.3, 1.06, 0.35, 1),
-    transform 340ms cubic-bezier(0.3, 1.06, 0.35, 1);
-}
-.mogzy-lean-bubble-tail {
-  transition: left 340ms cubic-bezier(0.3, 1.06, 0.35, 1);
 }
 
 /* Mogzy directional facing (mascot animation prototype).
@@ -3762,18 +3752,11 @@ html.high-contrast * { text-shadow: none !important; }
   50%      { opacity: 0.55; }
 }
 
-/* Personalized academy line — one subtle entrance fade, no looping motion. */
-@keyframes academy-line-in {
-  from { opacity: 0; transform: translateY(-3px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.academy-personal-line { animation: academy-line-in 480ms ease-out both; }
-
 @media (prefers-reduced-motion: reduce) {
   .academy-mogzy-float { animation: none !important; }
-  /* No hop, no mirror-turn: the facing layer is pinned by its own
-     motion-reduce override in MogzyHubGuide, and the click reaction is
-     cancelled outright here. */
+  /* No hop, no mirror-turn: the facing layer is pinned below (and the Mogzy
+     Guide omits the turn entirely), and the click reaction is cancelled
+     outright here. */
   .mogzy-click-react { animation: none !important; }
   /* WHATSNEW1: the "new" state stays in the accessible name and in the
      mark's full-opacity treatment; only the halo stops. */
@@ -3782,8 +3765,6 @@ html.high-contrast * { text-shadow: none !important; }
      unchanged in effect from the motion-reduce utilities these rules
      replace; only the duration they were always meant to have is fixed. */
   .mogzy-lean-glide { transition: none !important; transform: none !important; }
-  .mogzy-lean-bubble { transition: none !important; }
-  .mogzy-lean-bubble-tail { transition: none !important; }
   /* Facing is pinned to the unmirrored artwork, exactly as the contextual
      lean is pinned: a mascot that never moves should not turn either. */
   .mogzy-facing-turn { transition: none !important; transform: none !important; }
@@ -3825,8 +3806,6 @@ html.high-contrast * { text-shadow: none !important; }
     transform: none !important;
   }
   .role-mascot-interactive { cursor: default; }
-  /* No fade: the line is simply present at full opacity. */
-  .academy-personal-line { animation: none !important; }
 }
 
 /* Shared layout tokens — sm+ overrides (see :root above). */
@@ -16742,6 +16721,118 @@ html.reduce-motion .history-medal-shine { display: none; }
   .history-lit-pulse,
   .history-medal-shine { display: none; }
 }
+
+/* ========================================================================== */
+/* MG-A — Mogzy Guide substrate (src/components/mogzy-guide).                  */
+/*                                                                            */
+/* Strictly `.mogzy-guide-*`: nothing here touches an existing selector. The   */
+/* guide's MOTION reuses the Hub guide classes above (.academy-mogzy-float,    */
+/* .mogzy-lean-glide, .mogzy-facing-turn, .mogzy-click-react) and so inherits  */
+/* their reduced-motion rules; only the bubble is new. Material copies the     */
+/* Hub bubble's parchment so both read as the same Mogzy.                      */
+/*                                                                            */
+/* Two layers on purpose: `-pos` carries the authored side + the runtime       */
+/* viewport-clamp shift (--guide-clamp-x/y, static, never transitioned);       */
+/* `.mogzy-guide-bubble` carries only the fade, so measuring `-pos` never      */
+/* reads mid-animation.                                                        */
+/* ========================================================================== */
+.mogzy-guide-bubble-pos {
+  --mogzy-guide-bubble-w: min(220px, 60vw);
+  position: absolute;
+  z-index: 10;
+  width: var(--mogzy-guide-bubble-w);
+  transform: translate(var(--guide-clamp-x, 0px), var(--guide-clamp-y, 0px));
+}
+.mogzy-guide-bubble-pos[data-side="top"] {
+  bottom: calc(100% - 6px);
+  left: 50%;
+  margin-left: calc(var(--mogzy-guide-bubble-w) / -2);
+}
+.mogzy-guide-bubble-pos[data-side="bottom"] {
+  top: calc(100% - 6px);
+  left: 50%;
+  margin-left: calc(var(--mogzy-guide-bubble-w) / -2);
+}
+.mogzy-guide-bubble-pos[data-side="left"] {
+  right: calc(100% - 10px);
+  top: 8%;
+}
+.mogzy-guide-bubble-pos[data-side="right"] {
+  left: calc(100% - 10px);
+  top: 8%;
+}
+
+.mogzy-guide-bubble {
+  position: relative;
+  pointer-events: none;
+  border: 1px solid rgba(185, 147, 76, 0.6);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  background-color: #c6b48f;
+  background-image: linear-gradient(178deg, rgba(247,239,217,0.97) 0%, rgba(232,218,186,0.95) 46%, rgba(208,190,152,0.97) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,248,226,0.45), 0 10px 24px rgba(0,0,0,0.5);
+  transition:
+    opacity 340ms cubic-bezier(0.3, 1.06, 0.35, 1),
+    transform 340ms cubic-bezier(0.3, 1.06, 0.35, 1);
+}
+.mogzy-guide-bubble[data-visible="true"] { opacity: 1; transform: translateY(0); }
+.mogzy-guide-bubble[data-visible="false"] { opacity: 0; transform: translateY(6px); }
+.mogzy-guide-bubble-title {
+  margin: 0;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1d2b47;
+}
+.mogzy-guide-bubble-text {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #3f4a63;
+}
+.mogzy-guide-bubble-title + .mogzy-guide-bubble-text { margin-top: 0.125rem; }
+
+/* Tail: a 45° diamond on the edge facing Mogzy, counter-shifted by the clamp
+   so it keeps pointing at him when the bubble was pushed back on-screen. */
+.mogzy-guide-bubble-tail {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #d0be98;
+  border: 0 solid rgba(185, 147, 76, 0.6);
+}
+[data-side="top"] > .mogzy-guide-bubble > .mogzy-guide-bubble-tail {
+  top: 100%;
+  left: clamp(14px, calc(50% - var(--guide-clamp-x, 0px)), calc(100% - 14px));
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-width: 0 1px 1px 0;
+}
+[data-side="bottom"] > .mogzy-guide-bubble > .mogzy-guide-bubble-tail {
+  bottom: 100%;
+  left: clamp(14px, calc(50% - var(--guide-clamp-x, 0px)), calc(100% - 14px));
+  transform: translate(-50%, 50%) rotate(45deg);
+  border-width: 1px 0 0 1px;
+}
+[data-side="left"] > .mogzy-guide-bubble > .mogzy-guide-bubble-tail {
+  left: 100%;
+  top: clamp(14px, calc(26px - var(--guide-clamp-y, 0px)), calc(100% - 14px));
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-width: 1px 1px 0 0;
+}
+[data-side="right"] > .mogzy-guide-bubble > .mogzy-guide-bubble-tail {
+  right: 100%;
+  top: clamp(14px, calc(26px - var(--guide-clamp-y, 0px)), calc(100% - 14px));
+  transform: translate(50%, -50%) rotate(45deg);
+  border-width: 0 0 1px 1px;
+}
+
+/* Reduced motion: the bubble simply appears — no slide, no fade. */
+@media (prefers-reduced-motion: reduce) {
+  .mogzy-guide-bubble { transition: none !important; transform: none !important; }
+}
+html.reduce-motion .mogzy-guide-bubble { transition: none !important; transform: none !important; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    JP3 — JOURNEY VISUAL LANGUAGE.

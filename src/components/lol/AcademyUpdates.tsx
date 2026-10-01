@@ -19,16 +19,15 @@ import { listPublishedUpdates } from "@/lib/lol/academy-updates-store";
  * listing the owner's hand-written announcements. It reads as Mogzy having
  * news, not as a site-wide notification tray.
  *
- * WHY THIS IS ITS OWN COMPONENT, NOT PART OF `MogzyHubGuide`
- * ---------------------------------------------------------
- * The guide renders inside a wrapper the Hall marks `aria-hidden` and
- * `pointer-events-none` (LolHub.tsx), because its speech bubble is decoration
- * that mirrors information already exposed to assistive tech elsewhere. A
- * focusable, labelled button cannot live in an `aria-hidden` subtree. So this
- * mounts as a SIBLING layer that copies the guide's geometry
- * (`bottom-[16%]`, centred in the lane, the same mascot width term) and lands
- * on Mogzy without the guide knowing it exists. `MogzyHubGuide` is untouched:
- * its hover glide, facing and click reaction are unchanged.
+ * WHY THIS IS ITS OWN COMPONENT, NOT PART OF THE HUB'S MOGZY GUIDE
+ * ----------------------------------------------------------------
+ * The guide (`<MogzyGuide surface="hub">`, LolHub.tsx) renders inside a
+ * `pointer-events-none` wrapper and hides its own bubble and mascot from
+ * assistive tech; it owns no controls. A focusable, labelled button does not
+ * belong in there. So this mounts as a SIBLING layer that copies the guide's
+ * geometry (`bottom-[16%]`, centred in the lane, the same mascot width term)
+ * and lands on Mogzy without the guide knowing it exists. The guide is
+ * untouched: its hover glide, facing and reactions are unchanged.
  *
  * DORMANT BY DEFAULT
  * ------------------
@@ -418,7 +417,7 @@ export default function AcademyUpdates({
   }
 
   return (
-    // Mirrors MogzyHubGuide's float wrapper exactly (`inset-x-0 bottom-[16%]`,
+    // Mirrors the Hub guide's anchor exactly (`inset-x-0 bottom-[16%]`,
     // centred), so the mark tracks Mogzy without either component importing
     // the other. The layer ignores the pointer; only the button takes it back.
     // The outer layer repeats the guide wrapper's own offsets (LolHub gives
@@ -431,7 +430,8 @@ export default function AcademyUpdates({
       className="pointer-events-none absolute inset-x-0 top-[3.25rem] -bottom-[3.25rem] z-20"
       style={
         {
-          // Mogzy's own width term, copied from MogzyHubGuide's <img>. His PNG
+          // Mogzy's own width term, copied from the Hub guide's placement
+          // (`HUB_GUIDE_DESKTOP.size` in LolHub.tsx). His PNG
           // is 1024×1536, hence the 1.5 height factor. If his size changes
           // there, change it here.
           "--mogzy-w": "clamp(97px, 9.7vw, 167px)",
@@ -440,7 +440,7 @@ export default function AcademyUpdates({
       }
     >
       {/* Float layer — the same `inset-x-0 bottom-[16%] flex justify-center`
-          MogzyHubGuide's root uses, so the mark tracks Mogzy without either
+          the Hub guide's anchor resolves to, so the mark tracks Mogzy without either
           component importing the other. */}
       <div className="absolute inset-x-0 bottom-[16%] flex justify-center">
         <div className="relative">
