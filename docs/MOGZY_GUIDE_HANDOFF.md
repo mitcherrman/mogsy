@@ -266,3 +266,165 @@ The frozen MG-A contract above is unchanged; `src/components/mogzy-guide` was **
   `components/lol/hub-guide.ts`, `MogzyHubGuide.tsx` (deleted), `index.css` (9 deleted lines) and this doc.
 - Conflict risk: `src/index.css` (removed `.academy-personal-line` block + its reduced-motion line) and this doc (append-only).
 - Check at integration: 1440px Hub (bubble vs radio dock), and that no other surface imports `hub-guide` types.
+
+---
+
+# MG-D — Leaguecraft role guidance + Mogzy-led signup conversion
+
+Branch `mg/d-leaguecraft-conversion` = `origin/main` `6231bfb6` + MG-A `6111462c` + code commit
+`913ec332`. No MG-B (Landing/Welcome) or MG-C (Hub) work is included. MG-A's frozen contract above is
+unchanged and `src/components/mogzy-guide` was **not touched**; MG-D imports only from
+`@/components/mogzy-guide`.
+
+## Journey
+
+Hub → Leaguecraft → role guidance → PLAY → gameplay → result → Mogzy-led account prompt.
+
+### 1. Lobby guide (`surface="leaguecraft"`)
+
+| When | Message | Priority / persistence |
+|---|---|---|
+| First arrival with **no role on the stage** (guest, or an account that never chose) | "Start here — Pick the role you know best." pose `explaining`, `cue:"hop"` | `first-use`, `once:"dismiss"`, `ttlMs` 14 s |
+| The reader moves the role stage (first time this visit) while PLAY is pressable | "Ready? Press Play." pose `base`, `target:{down, near}`, `cue:"hop"` | `contextual`, `ttlMs` 3.5 s, not persisted |
+| Match-entry record open | none (guide `enabled:false`) | — |
+| Quiz runner / results | none — he is not mounted outside the lobby phase | — |
+
+Rules this implements:
+
+- **He reflects, never decides.** `LeaguecraftGuide` receives only `hasRole`, `rolePicks`, `playOpen`,
+  `playDisabled`. No queue, Ranked-availability, auth or role-write state. `onSelectRankedRole` is
+  still called exactly as before (it is `setPendingRankedRole`, local); the role is still written
+  only by the record's Ranked entry (`handleCommitRankedRole`). Tests assert `selectRole` is never
+  called by browsing, by the guide, or by PLAY opening the record.
+- **First-use is evaluated once, when the role state settles.** `Quiz.tsx` passes
+  `roleGuide={rankedRole.loadState !== "loading"}`; the guide latches `!hasRole && !playOpen` at mount.
+  A saved role that is still loading never flashes "pick a role"; an auth-return restored role
+  (`?role=`) and an account with a saved role never see it. Acting on it (a pick, or PLAY) records it
+  via `controller.dismiss`; a visit that ends without either (navigating away) does not consume it, so
+  a redirect or an early exit cannot burn it unseen.
+- **Presence is message-gated.** Mogzy is on the lobby only while he has something to say (+500 ms
+  fade-out linger). A returning player sees the unchanged lobby. This is deliberate: a permanent second
+  Mogzy next to the role-mascot carousel would read as a sixth role.
+- Non-interactive (no extra tab stop in the selection flow), `pointer-events:none`, never blocks input.
+- If the Ranked role read is slow, the guide simply waits (it never appears before the role state is
+  known). Observed once in dev when the remote backend hung; no fallback timer was added.
+
+Wiring: `LeaguecraftHub` gets opt-in `roleGuide?: boolean` (default `false` — `/dev/lobby-preview`
+and every fixture host render exactly as before) and a `rolePicks` counter; `RankedLobbyHero` gets an
+opaque `guide?: ReactNode` slot rendered inside the **centre scroll's** content box (already
+`position:relative`), which is the guide's authored coordinate space.
+
+### 2. Placement (authored in `leaguecraft-guide.ts`)
+
+Anchored to the top-left of the centre scroll's writing area, straddling the paper edge, under
+"Choose your role", bubble **below** him. Free of the role stepper (foot of the stage), dot indicator,
+emblem button (top-right) and the PLAY seal; the bubble never covers the face of the role being
+chosen. Because the anchor is relative to the scroll's own content box it is correct both in the
+three-column rack and when the columns stack (<1024 px).
+
+| Layout | Anchor | Size | Bubble |
+|---|---|---|---|
+| desktop (≥768) | `top:2.4rem; left:-1.75rem` | `clamp(48px,4.4vw,64px)` | bottom, `min(168px,46vw)` |
+| mobile (<768) | `top:2rem; left:-2.9rem` | `clamp(40px,12vw,48px)` | bottom, `min(132px,42vw)` |
+
+### 3. Signup conversion
+
+Policy **not changed**: same `quiz:gate:*` counters (`onboarding-gate.ts` untouched), same config
+source (`app_settings.quiz_onboarding_config`) and defaults — re-verified in code: soft nudge 3,
+hard prompt 5 (no production row), `redirect_to_hub` true; the hard prompt is only *armed* mid-run and
+shown after completion (`handleNext`), never mid-question; soft nudge once per session;
+`returnTo="/quiz"`; `Keep Playing as Guest`; sign-in link; `useAccountUpgrade`/`resetGateState` untouched.
+
+**Chosen path — post-completion prompt: Mogzy-voiced. Soft nudge: left structurally unchanged.**
+
+- `QuizSignUpGate` gains optional `guideLine`. When present the lock icon is replaced by Mogzy
+  (`surface="leaguecraft-signup"`, pose `holdingBook`, in flow at the head of the card, bubble to his
+  right) saying e.g. "Not bad. Want me to keep track of your progress?" (`leaguecraftSignupLine`: ≥60 %
+  → "Not bad.", otherwise "Good practice." — never a verdict on a weak run). The heading, description,
+  benefits list, stats row, three buttons and their handlers are the gate's own. Hosts that do not pass
+  it (the Daily Challenge's save-your-run prompt) are unchanged.
+- **Why the soft nudge was left alone:** it appears *mid-run* at the answer-feedback moment, over the
+  question UI. Making it a Mogzy message would put him in gameplay (explicitly out of scope) and need an
+  anchor inside the quiz layout with real collision risk on phones. The honest MG-D scope is the
+  post-result prompt; the soft nudge keeps its copy, position, once-per-session rule and behavior.
+- **Results page:** `GameResultsShell` is shared by every mode and has no authored mascot space, so no
+  persistent Mogzy was forced into it; he lives in the prompt instead.
+- **Analytics:** no new event, no counter. `quiz_signup_gate_shown`, `quiz_signup_clicked`,
+  `quiz_guest_continue_clicked` gain one metadata key, `presentation: "mogzy_guide"`, **only when the
+  guide line is shown**, so Mogzy-voiced vs plain prompt conversion can be compared. Absent otherwise
+  (existing payloads exact — asserted).
+- **Short phones:** Mogzy is sized with `vh` and the card reserves only his height, so on 667×375 the
+  Create Account button sits at the same y as before (339–379 px) and on 320×568 all three buttons are
+  visible without scrolling.
+
+## Files
+
+New: `src/components/quiz/leaguecraft-guide.ts` (messages, copy, placements — pure),
+`LeaguecraftGuide.tsx`, and tests `leaguecraft-guide.test.ts`, `LeaguecraftGuide.test.tsx`,
+`QuizSignUpGate.test.tsx`, `src/pages/Quiz.guide.test.tsx`.
+Edited: `LeaguecraftHub.tsx` (+`roleGuide`, `rolePicks`), `RankedLobbyHero.tsx` (+`guide` slot),
+`QuizSignUpGate.tsx` (+`guideLine`), `Quiz.tsx` (2 props). **No** CSS, no `mogzy-guide`, no
+Hub/Landing/Welcome, no auth/onboarding-gate/analytics-library change.
+
+## Tests / certification
+
+- New: 4 files, 41 tests — message selection from state, every string within `isCompactGuideCopy`,
+  first-use persistence across mounts (injected storage), consumed by a pick/PLAY, contextual lean, one
+  live region / one announcement per message, reduced motion (`data-motion="still"`, `--guide-lean-y:0`),
+  mobile/desktop layout, absolute (cannot move the lobby); through the real `/quiz` page: first-visit
+  guest, loading role, saved role, no-role account, role change, **no role write**, record opens on
+  `/quiz`, never in the quiz runner, soft nudge at 3 (unchanged copy), hard prompt armed at 5 and shown
+  only after completion, Keep Playing as Guest, Create Account → `/auth?mode=signup&returnTo=%2Fquiz`,
+  no signed-in prompt, no second prompt, exactly one announcing live region.
+- `src/components/mogzy-guide` 41 tests pass (substrate untouched).
+- Regression sweep `src/pages/Quiz*`, `src/components/quiz`, `src/pages/dev/lobby-preview`,
+  `src/pages/quiz-daily-challenge`, `src/test/onboarding-gate.test.ts`: only **pre-existing** failures
+  remain, all reproduced on MG-A `6111462c` itself: `Quiz.hub` "keeps exactly one h1", `Quiz.rankedRole`
+  "commits NOTHING for Practice after a role change", `playModeCard.styles` ×2 (CRLF checkout),
+  `QuestionTimeline` ×14 (jsdom popover cost). `QuestionReviewHost` and
+  `LobbyPreviewPage.premiumAnalytics` only fail under parallel load and pass alone.
+- ESLint on touched files: only pre-existing `no-explicit-any` / `exhaustive-deps` findings on lines MG-D
+  did not touch. `tsc -p tsconfig.app.json`: no errors in touched files.
+- Real browser (Edge, headless, Vite dev server in this worktree; the role endpoint stubbed to a guest
+  401): lobby first-use at 1440×900, 1280×800, 1024×768, 768×1024, 390×844, 375×667, 667×375; post-pick
+  lean at 1440 and 390; `prefers-reduced-motion` (`data-motion="still"`, no float class); signup prompt at
+  1440×900, 390×844, 320×568, 667×375 including the short-height button position above. The bubble never
+  overlapped the stepper, PLAY, or the role figure's face; no horizontal overflow. Not exercised in a real
+  browser: a live end-to-end quiz run and a real auth round trip (no reachable backend session) — those are
+  covered through the real page in jsdom only.
+
+## Frozen-API limitations (for MG-INT — nothing was forked)
+
+1. **No silent reaction.** `lean`/`target`/`cue` exist only on a `GuideMessage`, and a non-null message
+   always shows its bubble with non-empty text. "A nonverbal look toward PLAY with no new bubble" is not
+   expressible, so the post-pick reaction is a ~20-character contextual bubble (3.5 s). Wanted: a message
+   flag such as `silent?: true` (no bubble, no live-region text; motion only).
+2. **Layout breakpoint mismatch.** The substrate's `mobile` is `<768 px`; the Leaguecraft lobby stacks at
+   `<1024 px`. 768–1023 uses `desktop` placement inside a stacked 30 rem scroll. It works because the
+   anchor is relative to the scroll's content box, but a per-surface breakpoint (or `placement.tablet`)
+   would be cleaner.
+3. **`once:"dismiss"` is not recorded on unmount.** That is what this needs (a redirect from `/quiz` before
+   the hub settles must not burn first-use), so leaving the lobby without acting repeats first-use next
+   visit. An explicit `markSeen(id)` on the controller would let a surface decide.
+4. **No keyboard dismissal for a non-interactive guide** (Escape only reaches the guide root when focus is
+   inside it). Mogzy here is deliberately non-interactive; the 14 s ttl and acting on the lobby are the
+   exits. If a persistent "Got it" is ever wanted, MG-INT needs a surface-level control or a focus story.
+5. Vertical targets never mirror, so "toward PLAY" (below, centre) is a short down-lean, not a point.
+
+## MG-INT notes
+
+- **One guide per page.** `/quiz` mounts at most one `MogzyGuide` at a time: the lobby guide
+  (`leaguecraft`) while `phase==="sets"`, the prompt's guide (`leaguecraft-signup`) only on the result
+  phase. They never coexist, so there is one announcing `role="status"` region at any moment. MG-C's Hub
+  guide lives on `/lol` — a different route — so they never share a page; keep it that way.
+- **Storage keys:** `mogzy-guide:v1:leaguecraft:lc-role-first` is the only key MG-D persists. The signup
+  surface persists nothing — the existing `quiz:gate:*` policy alone decides when it appears.
+- **Ordering with MG-B:** if the Welcome/automatic-entry flow introduces Mogzy before a visitor reaches
+  `/quiz`, decide whether `lc-role-first` should be suppressed; today it is independent and shows once.
+- **Reuse:** other hosts can voice their own signup prompt by passing `guideLine` to `QuizSignUpGate`
+  (the Daily Challenge's `DailyCompletion` was deliberately left alone). `leaguecraftSignupLine` is
+  Leaguecraft-specific; other surfaces should supply their own copy.
+- **Rolling back** is one prop each: stop passing `roleGuide` from `Quiz.tsx` and stop passing
+  `guideLine` to `QuizSignUpGate`; both default off.
+- The throwaway gate harness (`mgd-harness.*`) and `.claude/launch.json` entries used for the visual
+  checks are untracked/git-excluded and not part of the branch.
