@@ -595,3 +595,8 @@ The integration is clean. The combined FTUE behaves as specified, with one integ
 the radio dock). Tests match the `origin/main` baseline and the build passes. **Safe to merge after owner review** of
 the short-wide Hub bubble placement, and of limitation 1 if the Academy Updates switch is on in production.
 **Do not publish Lovable or deploy from this pass.**
+
+## Final branch / SHA
+
+`mg/integration-ftue`: code tip `027e9205`, certification handoff `6d49f56d`, plus this record-only commit on top
+(base `origin/main` `f87240f8`). Pushed to `origin/mg/integration-ftue` only.
