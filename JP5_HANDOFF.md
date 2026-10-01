@@ -7,10 +7,28 @@
 | JP5 commits | `628e85b9` feature · `96d3193d` polish · `4dab535c` docs (round 1) · `2fa9cfa5` compact phone chain + per-child probe · `ccdbac38` docs (round 2) · **`f578ecc4` round 3 (typed workings, per-child timing, Step 2 + haste)** · the round-3 docs commit |
 | Backend | **Round 3: `jp5/journey-structured-working` at `96fff403`** (worktree `League_Combat_Simulator/.worktrees/jp5-structured-working`, from JP4 `fc95e81e`, which is untouched). Rounds 1–2 were read-only audits (§7–§10). |
 | Production / Railway / Patch Ops / items / Order Forge / other worktrees | **Untouched.** Nothing pushed, merged, integrated or deployed. |
+| Round 7 | **Polish 2 (§R7)**: Zed's compact row without the shard count; the hint arrives when a portrait first becomes reviewable, under a new key. Frontend code + docs commits after §R6's. Backend unchanged. |
 | Round 6 | **Polish (§R6)**: portrait `!` for any established or stated stat; hint "Tap champion portraits to review stats."; compact rows without history; Step 4 delta `≈16.4 dmg`. Frontend code + docs commits after §R5's. Backend unchanged. |
 | Round 5 | **Terminology + reduction copy (§R5)**: presentation only — `(Bonus AD)`, `19.4% Reduced` / `≈16 less`, `9.1% Reduced` / `≈1.1s shorter`; "notebook" retired for **champion portrait popup**. Frontend code commit + docs commit after §R4's. Backend unchanged. |
 | Round 4 | **The champion portrait popup (§R4)**: frontend `9a7a1760` + `1e46ecb7`, backend `a9a4be2e` (armor provenance in `stat_sources`). Retained board bubbles removed; stage geometry unchanged; freed space measured, not applied. |
 | Status | **Not owner-approved.** Round 3 (§0) implements the bounded foundation: one typed working carrier, per-child reveal windows, Step 2 composition, haste Stage 1 — certified locally. §7–§9 below are the round-2 designs it implemented (§0 records what was actually built and where it differs). Open items: §0.7. |
+
+## R7. Round 7 — polish 2: Zed's compact row, hint timing and key
+
+**Status: implemented and certified locally; NOT owner-approved.** Round 6 is otherwise accepted and unchanged. No architecture, calculation, timing, popup behaviour or geometry change; backend untouched (`a9a4be2e`). Nothing pushed, merged, integrated or deployed; the geometry pass is not started.
+
+| # | Owner correction | Implemented |
+|---|---|---|
+| 1 | Zed's compact Bonus AD row truncated | `entryBasis` drops the shard count: `BONUS AD 21  Lv 2 · Doran's Blade` (fits; popup width unchanged). The expanded provenance still lists Doran's Blade +10, Adaptive Force +5.4 ×2, Exact 20.8. Leona (`Lv 3 · Cloth Armor`) and Ahri (`Lv 2`) read as before. |
+| 2 | Hint before any portrait is reviewable; old key | Same `useKnowledgeCoach` mechanism, now triggered by the first moment a champion portrait **becomes reviewable** (its popup gains a stat → its `!`), per side, tracked across renders (`usePortraitBecameReviewable` in `JourneyStateBoard`). It no longer appears at Step 1's reveal (an ability `!` only). New key **`mogzy.journey.portraitCoach.v1`** (was `mogzy.journey.knowledgeCoach.v1`), so a viewer who saw the old board instruction gets this one once. A mount that already shows a reviewable portrait (a reload mid-Journey) is not that moment: no hint, as before. |
+
+In the reference Journey the hint arrives with Step 2's first frame (`child1-open`), when the premise states Zed's Bonus AD and his portrait gains its `!`; Ahri's `!` at Step 3's reveal does not bring it again.
+
+**Files changed** — code: `src/lib/journey/portraitPopup.ts` (`entryBasis`), `src/components/journey/JourneyStateBoard.tsx` (`usePortraitBecameReviewable`, the coach trigger), `src/components/journey/useKnowledgeCoach.ts` (key, doc). Tests: `src/lib/journey/jp5.portraitPopup.test.ts`, `masterySliceModule.portraitPopup.test.tsx` (compact basis), `masterySliceModule.jp4.test.tsx` (no hint at Step 1's reveal; hint when Zed's portrait gains its `!` even with the old key seen; new key stored; no second hint for Ahri; tap dismisses; reload shows none).
+
+**Certification** (focused): Journey + Journey components + ranked-core modules + dev arena **625/625** (36 files); the 6 pre-existing vitest worker RPC timeouts (§R6.2) print as before, no failing test. `tsc`: the 2 known Supabase errors. ESLint: 0 errors. Popups inside the viewport at 1280 and 390; 0 stage violations on every shot. No geometry sweep: nothing here changes layout (one row's text gets shorter; the hint reuses the existing overlay).
+
+**Screenshots** (`docs/handoffs/jp5-equation-unfold/r7/`, `jp5-r7-…`): `hint-first-portrait-desktop`, `hint-first-portrait-mobile` (Step 2's first frame: Zed's new `!` with the hint); `no-hint-step1-reveal-desktop` (Step 1's reveal: ability `!` only, no hint); `zed-compact-desktop`, `zed-compact-mobile`; `zed-provenance-desktop`, `zed-provenance-mobile`.
 
 ## R6. Round 6 — polish: portrait `!`, first-use hint, compact rows, damage delta
 
