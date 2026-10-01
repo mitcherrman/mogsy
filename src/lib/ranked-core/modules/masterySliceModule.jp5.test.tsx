@@ -520,8 +520,8 @@ describe("the magnitude bar is sized by the SERVED multiplier", () => {
     show(snap(REF, "child3-reveal"));
     expect(bar()).toHaveAttribute("data-ratio", "0.8063");
     expect(bar().style.getPropertyValue("--jm-ratio")).toBe("0.8063");
-    expect(bar()).toHaveAccessibleName("85 raw, 19.4% reduced: 68 final (≈16 less)");
-    expect(bar().textContent).toBe("85 raw68 final≈16 less");
+    expect(bar()).toHaveAccessibleName("85 raw, 19.4% reduced: 68 final (≈16.4 dmg)");
+    expect(bar().textContent).toBe("85 raw68 final≈16.4 dmg");
     expect(chain()).toContainElement(bar());                 // under the equation, in the same reveal box
   });
 
@@ -544,14 +544,14 @@ describe("the magnitude bar is sized by the SERVED multiplier", () => {
     show(s);
     expect(bar()).toHaveAttribute("data-ratio", "0.5");
     expect(bar().style.getPropertyValue("--jm-ratio")).toBe("0.5");
-    expect(bar().textContent).toBe("85 raw68 final≈16 less");
+    expect(bar().textContent).toBe("85 raw68 final≈16.4 dmg");
     expect(transform()).toHaveTextContent("50%Reduced");
   });
 
   it("Pantheon/Leona: the same bar at that Journey's own served multiplier (0.6663)", () => {
     show(snap(PANTHEON, "child2-reveal"));
     expect(bar()).toHaveAttribute("data-ratio", "0.6663");
-    expect(bar()).toHaveAccessibleName("124 raw, 33.4% reduced: 83 final (≈41 less)");
+    expect(bar()).toHaveAccessibleName("124 raw, 33.4% reduced: 83 final (≈41.3 dmg)");
   });
 
   it("compressed: the bar is out of the reading (the four-node summary stands alone)", () => {

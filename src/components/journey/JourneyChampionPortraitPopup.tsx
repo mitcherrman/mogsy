@@ -68,7 +68,7 @@ function Row({ stat, entry, testId }: { stat: (typeof PORTRAIT_POPUP_STATS)[numb
     );
   }
   const detail = entry.sources.length > 0 || (entry.exact !== null && isRoundedForDisplay(entry.exact));
-  const basis = `${entryBasis(entry)} · ${entry.how === "learned" ? "learned" : "stated"} Step ${entry.step}`;
+  const basis = entryBasis(entry);
   const spoken = `${JOURNEY_STAT_META[stat].long}: ${entry.display}, ${basis}`;
   const body = (
     <>
@@ -121,15 +121,15 @@ export function JourneyChampionPortraitPopup({ side, popup, fresh = false, focus
   useEffect(() => { setPicked(current); }, [current]);
   const checkpoints = popup?.checkpoints ?? [];
   const cp = checkpoints.find((c) => c.node === picked) ?? checkpoints.find((c) => c.node === current) ?? null;
-  const learned = popup?.learned ?? false;
+  const known = popup?.known ?? false;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className="journey-portrait-btn" data-testid={testId}
-          data-learned={learned ? "true" : undefined} data-focus={focused ? "true" : undefined}
-          aria-label={`${side.championName} stats${learned ? ", learned facts" : ""}`}>
+          data-known={known ? "true" : undefined} data-focus={focused ? "true" : undefined}
+          aria-label={`${side.championName} stats${known ? ", stats to review" : ""}`}>
           <JourneyPortrait side={side} />
-          {learned && (
+          {known && (
             <span aria-hidden data-testid={`${testId}-mark`} data-just-learned={fresh ? "true" : undefined}
               className="journey-know journey-know--portrait">!</span>
           )}

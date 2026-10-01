@@ -467,7 +467,7 @@ export function JourneyStateBoard({
         <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={coach.dismiss}>
           <span aria-hidden className="journey-coach__mark">!</span>
           <span className="journey-coach__text">
-            Learned facts live on the board. <span className="journey-coach__how">Hover or tap to recall.</span>
+            Tap champion portraits <span className="journey-coach__how">to review stats.</span>
           </span>
         </p>
       )}

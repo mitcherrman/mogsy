@@ -33,6 +33,34 @@ const current = (popup: ChampionPortraitPopup) => popup.checkpoints.find((c) => 
 const REF = "jp5/zed_ahri.reference";
 const PANTHEON = "jp5/pantheon.standard";
 
+describe("the portrait `!` (owner rule): the popup holds an established or stated stat", () => {
+  it("every champion, every snapshot of every JP5 capture: `known` iff a reached state holds a stat; learned ⇒ known", () => {
+    let statedOnly = 0;
+    for (const n of ["zed_ahri.reference", "zed_ahri.reference.wrong", "zed_ahri.reference.timeout",
+      "pantheon.standard", "voli.standard", "ahri.survival", "voli.survival"]) {
+      for (const s of load(`jp5/${n}`)) {
+        const seg = readPublicRound(s.envelope).segmentState;
+        if (!seg?.journey) continue;
+        const knowledge = journeyKnowledge(seg.journey, seg.ownChallengeReveals, seg.ownCardIndex);
+        const onScreen = seg.ownRevealingCardIndex ?? seg.ownCardIndex ?? seg.challengeCount - 1;
+        for (const side of ["player", "opponent"] as const) {
+          const popup = championPortraitPopup(seg.journey, knowledge, side, onScreen);
+          if (!popup) continue;
+          const holds = popup.checkpoints.some((cp) => Object.keys(cp.entries).length > 0);
+          expect(popup.known, `${n} ${s.label} ${side}`).toBe(holds);
+          if (popup.learned) expect(popup.known, `${n} ${s.label} ${side}`).toBe(true);
+          if (popup.known && !popup.learned) statedOnly++;
+        }
+      }
+    }
+    // Not reveal-only: a STATED stat alone marks the portrait (Zed's bonus AD, Step 2 on).
+    expect(statedOnly).toBeGreaterThan(0);
+    const zed = popupAt(REF, "child1-live", "player");
+    expect([zed.learned, zed.known]).toEqual([false, true]);
+    expect(popupAt(REF, "child0-live", "player").known).toBe(false);
+  });
+});
+
 describe("the reference Journey (Zed / Ahri)", () => {
   it("Step 2: Zed's stated bonus AD 21 is in his champion portrait popup with its served sources; nothing is learned yet", () => {
     const zed = popupAt(REF, "child1-live", "player");
@@ -60,7 +88,7 @@ describe("the reference Journey (Zed / Ahri)", () => {
     expect(ahri.learned).toBe(true);
     const armor = current(ahri).entries.armor!;
     expect(armor).toMatchObject({ display: "24", how: "learned", step: 3, level: 2 });
-    expect(entryBasis(armor)).toBe("Lv 2 base");
+    expect(entryBasis(armor)).toBe("Lv 2");
     // Once the ledger lists it (the next child), the served exact rides along.
     const later = current(popupAt(REF, "child3-live", "opponent")).entries.armor!;
     expect(later).toMatchObject({ display: "24", exact: 24.024 });

@@ -228,12 +228,12 @@ describe("learned history: learned facts are recalled, not reprinted", () => {
     show(snap(REF, "child3-live"));
     expect(popText("journey-know-subject-E")).toMatch(/Raw damage 85.*learned Step 2/);
     fireEvent.click(screen.getByTestId("journey-portrait-popup-opponent"));
-    expect(screen.getByTestId("journey-portrait-popup-opponent-row-armor").textContent).toMatch(/^Armor24Lv 2 base · learned Step 3/);
+    expect(screen.getByTestId("journey-portrait-popup-opponent-row-armor").textContent).toBe("Armor24Lv 2");
   });
 });
 
 describe("the `!` coach: taught once", () => {
-  const COACH = "Learned facts live on the board. Hover or tap to recall.";
+  const COACH = "Tap champion portraits to review stats.";
   const stepTo = (r: ReturnType<typeof render>, s: CaptureSnapshot, prev: CaptureSnapshot) => {
     act(() => { vi.advanceTimersByTime(Date.parse(s.at) - Date.parse(prev.at)); });
     vi.setSystemTime(Date.parse(s.at));

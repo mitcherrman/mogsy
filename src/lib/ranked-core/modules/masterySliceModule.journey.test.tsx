@@ -283,7 +283,7 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
     expect(screen.getByTestId("journey-portrait-popup-subject")).toHaveAttribute("data-focus", "true");
     fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
     const ad = screen.getByTestId("journey-portrait-popup-subject-row-attack_damage");
-    expect(ad.textContent).toMatch(/^AD70Lv \d+ · stated Step 3/);
+    expect(ad.textContent).toMatch(/^AD70Lv \d+$/);
     fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-attack_damage-toggle"));
     expect(screen.getByTestId("journey-portrait-popup-subject-row-attack_damage-sources")).toHaveTextContent(/70\.1625/);
     // The recalled armor is never a number on the board.

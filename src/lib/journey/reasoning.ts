@@ -101,7 +101,7 @@ export interface ReasonMagnitude {
   percent: string;
   /** What the share IS, in words ("reduced"). */
   kept?: string;
-  /** JP5 — the flat change between the two served ends ("≈16 less", "≈1.1s shorter"). */
+  /** JP5 — the flat change between the two served ends ("≈16.4 dmg", "≈1.1s shorter"). */
   delta?: string;
 }
 
@@ -326,7 +326,7 @@ export function combatReasoning(w: CombatWorking, rawRecalled: boolean): Reasoni
   const magnitude: ReasonMagnitude | null = m > 0 && m <= 1
     ? { ratio: m, from: displayWhole(w.rawDamage), to: w.answer, fromLabel: "raw", toLabel: "final",
       percent: reductionPercent(m), kept: "reduced",
-      delta: `${approxWhole(w.rawDamage - w.finalDamage)} less` }
+      delta: `${approxTenths(w.rawDamage - w.finalDamage)} dmg` }
     : null;
   return {
     kind: "combat",
@@ -405,14 +405,11 @@ export function reductionPercent(coefficient: number): string {
 
 /**
  * JP5 — the flat change between two SERVED exact values (raw → final damage,
- * base → effective cooldown), as the bar may say it: whole damage, tenths of a
- * second, with `≈` whenever rounding was needed. Never from the displayed
- * whole numbers (85 − 68 would claim 17; the served 84.56 − 68.1804 is ≈16).
+ * base → effective cooldown), as the bar says it: tenths, with `≈` whenever
+ * rounding was needed. Presentation arithmetic over two authoritative served
+ * numbers, never from the displayed whole numbers (85 − 68 would claim 17; the
+ * served 84.56 − 68.1804 = 16.3796 is ≈16.4).
  */
-export function approxWhole(diff: number): string {
-  const shown = displayWhole(diff);
-  return Number(shown) === diff ? shown : `≈${shown}`;
-}
 export function approxTenths(diff: number): string {
   const shown = String(Number(diff.toFixed(1)));
   return Number(shown) === diff ? shown : `≈${shown}`;

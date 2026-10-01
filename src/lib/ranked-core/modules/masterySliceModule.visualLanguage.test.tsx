@@ -220,12 +220,18 @@ describe("display precision (owner lock)", () => {
    * Decimals visible in the stage's TEXT (exact values live in hover titles and
    * the Reasoning Chain's exact-working card, closed here). JP5: the SERVED
    * armor multiplier is the one coefficient the primary chain shows — written
-   * as the decimal served ("0.806") and as the share it is ("80.6%"), beside
-   * the formula it was checked against.
+   * as the decimal served ("0.806") and as the share it removes ("19.4%"),
+   * beside the formula it was checked against. The magnitude bar's flat delta
+   * ("≈16.4 dmg", "≈1.1s shorter") is an owner-approved, explicitly
+   * approximate difference of two served exact values: always marked `≈`
+   * when rounded (pinned below), and not a derived primary value.
    */
   const visibleDecimals = () => {
     const stage = screen.getByTestId("journey-stage").cloneNode(true) as HTMLElement;
-    stage.querySelectorAll('[data-node="decimal"] .journey-node__value, [data-node="multiplier"] .journey-node__value')
+    stage.querySelectorAll(".journey-magnitude__delta").forEach((n) => {
+      expect(n.textContent).toMatch(/^(≈\d+(\.\d)?|\d+(\.\d)?)(s shorter| dmg)$/);
+    });
+    stage.querySelectorAll('[data-node="decimal"] .journey-node__value, [data-node="multiplier"] .journey-node__value, .journey-magnitude__delta')
       .forEach((n) => n.remove());
     return (stage.textContent ?? "").match(/×?\d+\.\d+/g) ?? [];
   };

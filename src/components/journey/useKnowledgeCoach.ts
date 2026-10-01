@@ -1,11 +1,11 @@
 /**
  * JP4 — TEACH THE `!` ONCE.
  *
- * Learned history lives on the board: a learned value is NOT reprinted on
- * later steps, it is recalled from the gold `!` on the object it is about. So
- * the first time a `!` arrives (a reveal establishing a fact), a short coach
- * says so — "Learned facts live on the board. Hover or tap to recall." — and
- * the fresh `!` pulses. It leaves by itself (or on the first tap), and it does
+ * Learned history lives on the board's objects: a learned value is NOT
+ * reprinted on later steps, and a champion's stats are reviewed in its champion
+ * portrait popup. So the first time a `!` arrives (a reveal establishing a
+ * fact), a short coach says so — "Tap champion portraits to review stats." —
+ * and the fresh `!` pulses. It leaves by itself (or on the first tap), and it does
  * not come back: seen once per browser (a per-viewer convenience, so plain
  * storage; if storage is unavailable, once per page load).
  */

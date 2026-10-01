@@ -112,18 +112,21 @@ describe("the portrait opens the champion portrait popup", () => {
     openSheet("subject");
     const bonus = row("subject", "bonus_attack_damage");
     expect(bonus).toHaveAttribute("data-how", "stated");
-    expect(bonus.textContent).toMatch(/^Bonus AD21Lv 2 · Doran's Blade · 2 shards · stated Step 2/);
+    expect(bonus.textContent).toMatch(/^Bonus AD21Lv 2 · Doran's Blade · 2 shards/);
+    expect(bonus.textContent).not.toMatch(/stated|learned|Step/);
     fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-toggle"));
     const sources = screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-sources");
     expect([...sources.querySelectorAll("li")].map((li) => li.getAttribute("aria-label"))).toEqual([
       "Doran's Blade: +10", "Adaptive Force: +5.4", "Adaptive Force: +5.4", "Exact 20.8"]);
     // Zed's other stats were never established.
     expect(row("subject", "armor")).toHaveAttribute("data-known", "false");
-    // Nothing he learned by a reveal: no `!` on his portrait.
-    expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
+    // Owner rule: a popup that holds any established OR stated stat puts the `!`
+    // on its portrait — Zed's stated Bonus AD is enough.
+    expect(screen.getByTestId("journey-portrait-popup-subject-mark")).toHaveTextContent("!");
+    expect(portrait("subject")).toHaveAccessibleName("Zed stats, stats to review");
   });
 
-  it("Ahri's armor: unknown while Step 3 asks it, LEARNED (24, Lv 2 base) from its reveal, with the `!`", () => {
+  it("Ahri's armor: unknown while Step 3 asks it, LEARNED (24, Lv 2) from its reveal, with the `!`", () => {
     show(snap(REF, "child2-live"));
     openSheet("opponent");
     expect(row("opponent", "armor")).toHaveAttribute("data-known", "false");
@@ -131,11 +134,11 @@ describe("the portrait opens the champion portrait popup", () => {
     cleanup();
     show(snap(REF, "child2-reveal"));
     expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toHaveTextContent("!");
-    expect(portrait("opponent")).toHaveAccessibleName("Ahri stats, learned facts");
+    expect(portrait("opponent")).toHaveAccessibleName("Ahri stats, stats to review");
     openSheet("opponent");
     const armor = row("opponent", "armor");
     expect(armor).toHaveAttribute("data-how", "learned");
-    expect(armor.textContent).toMatch(/^Armor24Lv 2 base · learned Step 3/);
+    expect(armor.textContent).toBe("Armor24Lv 2");
   });
 
   it("the portrait whose stats the question states is outlined (where its inputs are)", () => {
@@ -156,13 +159,13 @@ describe("a MODIFIED stat across authored states (Pantheon / Leona)", () => {
     const select = within(sheet).getByTestId("journey-portrait-popup-opponent-state") as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toEqual(["Steps 1–3 · Lv 3", "Current state"]);
     const armor = row("opponent", "armor");
-    expect(armor.textContent).toMatch(/^Armor65Lv 3 · Cloth Armor · stated Step 4/);
+    expect(armor.textContent).toBe("Armor65Lv 3 · Cloth Armor");
     fireEvent.click(screen.getByTestId("journey-portrait-popup-opponent-row-armor-toggle"));
     expect([...screen.getByTestId("journey-portrait-popup-opponent-row-armor-sources").querySelectorAll("li")]
       .map((li) => li.getAttribute("aria-label"))).toEqual(["Lv 3 base: 50.08", "Cloth Armor: +15", "Exact 65.08"]);
     // The earlier authored state: what Step 1 taught, as taught.
     fireEvent.change(select, { target: { value: "0" } });
-    expect(row("opponent", "armor").textContent).toMatch(/^Armor50Lv 3 base · learned Step 1/);
+    expect(row("opponent", "armor").textContent).toBe("Armor50Lv 3");
   });
 
   it("the sheet opens at the board's current state, and only reached states are listed", () => {

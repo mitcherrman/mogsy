@@ -17885,7 +17885,7 @@ button.journey-node {
 }
 .journey-magnitude b { color: #2a1f08; font-size: 0.6875rem; font-weight: 900; letter-spacing: 0; }
 .journey-magnitude__end { flex: 0 0 auto; }
-/* JP5 — the flat change the bar shows ("≈1.1s shorter", "≈16 less"): after
+/* JP5 — the flat change the bar shows ("≈1.1s shorter", "≈16.4 dmg"): after
    the end it arrives at, quieter than the two ends. */
 .journey-magnitude__delta {
   flex: 0 0 auto;

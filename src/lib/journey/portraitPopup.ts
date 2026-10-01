@@ -76,8 +76,13 @@ export interface ChampionPortraitPopup {
   checkpoints: PortraitPopupCheckpoint[];
   /** The node the board is on (the default the sheet opens at). */
   current: number;
-  /** Any champion stat LEARNED by a reveal — the portrait's `!`. */
+  /** Any champion stat LEARNED by a reveal (the fact's own semantics; the glow). */
   learned: boolean;
+  /**
+   * The popup holds at least one champion stat, established or stated, in any
+   * reached state — the portrait's `!` (owner rule, every champion alike).
+   */
+  known: boolean;
 }
 
 const sideOf = (s: J3Side): "subject" | "opponent" => (s === "player" ? "subject" : "opponent");
@@ -156,18 +161,20 @@ export function championPortraitPopup(journey: JourneyJ3 | null | undefined, kno
   return {
     key, championName: onScreen.state.sides[side].champion, checkpoints,
     current: onScreen.state.stateVersion, learned,
+    known: checkpoints.some((cp) => Object.keys(cp.entries).length > 0),
   };
 }
 
 /**
- * How a row says what its value is, compactly: "Lv 2 base", "Lv 3 · Cloth
- * Armor", "Lv 2 · Doran's Blade · 2 shards". Words only; the numbers are one
- * tap away (the row's sources).
+ * How a row says what its value is, compactly — the player-facing state only:
+ * "Lv 2", "Lv 3 · Cloth Armor", "Lv 2 · Doran's Blade · 2 shards". No history
+ * (how or at which step it was established stays on the entry, unprinted); the
+ * numbers are one tap away (the row's sources and Exact).
  */
 export function entryBasis(e: PortraitPopupEntry): string {
   const items = e.sources.flatMap((s) => (s.kind === "item" ? [s.name] : []));
   const shards = e.sources.filter((s) => s.kind === "stat_mod").length;
-  if (items.length === 0 && shards === 0) return e.how === "learned" ? `Lv ${e.level} base` : `Lv ${e.level}`;
+  if (items.length === 0 && shards === 0) return `Lv ${e.level}`;
   return [`Lv ${e.level}`, ...items, ...(shards ? [shards === 1 ? "1 shard" : `${shards} shards`] : [])].join(" · ");
 }
 

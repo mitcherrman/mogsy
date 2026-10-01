@@ -219,9 +219,10 @@ describe("grouping, objects and sides", () => {
     // with the gold `!`; the board prints no stat bubble.
     expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
     expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toHaveTextContent("!");
+    // Pantheon's popup holds nothing yet: no `!` on his portrait.
     expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
     fireEvent.click(screen.getByTestId("journey-portrait-popup-opponent"));
-    expect(screen.getByTestId("journey-portrait-popup-opponent-row-armor").textContent).toMatch(/^Armor50Lv 3 base · learned Step 1/);
+    expect(screen.getByTestId("journey-portrait-popup-opponent-row-armor").textContent).toBe("Armor50Lv 3");
     const card = knowledgeCard(marksOf(s).get("opponent:leona")!);
     expect(card.title).toBe("Lv3");
     expect(knowledgeCard(marksOf(s).get("opponent:leona")!, null, "Leona").title).toBe("Leona · Lv3");
