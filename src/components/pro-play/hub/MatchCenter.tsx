@@ -1,28 +1,46 @@
 /**
- * The hub's Match Center — ONE board for the selected game: the rail to switch
- * games, the score, the lanes (passed in by the hub), and the objectives with
- * the gold lead beside them.
+ * The hub's Match Center — ONE board for the selected match: the rail to
+ * switch matches, the event, the score, the lanes (passed in by the hub), and
+ * the objectives with the gold lead beside them.
  *
  * EVERYTHING HERE IS THE MATCH CENTRE'S OWN DATA. The feed, the detail read,
  * the gold series and the insight story are the live page's hooks under the
  * same cache keys; the status pill, gold chart, winner rule and every label
- * helper are the live page's. This file decides only the compact composition
- * (PPH2.1): the match is the page's primary object, so nothing above it but a
- * slim header, and nothing inside it that repeats what another part says.
+ * helper are the live page's. PPH3 adds three things on top, all derived:
  *
- * Props-driven: the hub owns selection (it also drives the lanes), so this
- * receives the feed, the selected match, an `onSelect` and the lane board.
+ * - the rail is per SERIES, not per game, in three labelled groups —
+ *   LIVE NOW, PREVIOUS MATCH, UP NEXT (`hubSeries.groupSeries`);
+ * - the selected series' games as tabs right after its rail chip (the chip
+ *   carries the series score);
+ * - the event band: the league's mark slot and the competition in
+ *   upstream's words, with the match facts on the same wrapping line;
+ * - an unmistakable state badge — LIVE / COMPLETED / UPCOMING.
+ *
+ * UP NEXT is upstream's schedule (`/upcoming`), never the store's `scheduled`
+ * rows. An upcoming match has no scoreboard, so its board draws identity and
+ * time only — no empty tables.
+ *
+ * Props-driven: the hub owns selection (it also drives the lanes).
  */
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ArrowRight, RefreshCw, WifiOff } from "lucide-react";
 
+import { EventMark } from "@/components/pro-play/media/EventMark";
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import { useEntityMedia } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { LiveGameSummary, LiveTeamState } from "@/lib/live-esports/api";
+import type { LiveCompetition, LiveTeamState, UpcomingMatch } from "@/lib/live-esports/api";
 import type { useLiveFeed, useLiveMatch } from "@/lib/live-esports/hooks";
+import {
+  countdown,
+  gameState,
+  localStart,
+  seriesOf,
+  type HubSeries,
+} from "@/lib/pro-play/hubSeries";
 import {
   PRO_PLAY_LIVE_ARCHIVE_ROUTE,
   proPlayLiveGameUrl,
@@ -32,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { GoldChart, StatusPill } from "@/pages/esports/live/components";
 import { buildStory } from "@/pages/esports/live/insights";
 import {
+  SCOPE_TITLE,
   competitionLine,
   dragonCounts,
   gameClock,
@@ -40,55 +59,182 @@ import {
   matchLine,
   matchTitle,
   num,
-  seriesContext,
+  scopeLabel,
   statusTone,
   teamLabel,
 } from "@/pages/esports/live/lib";
+import MatchStateBadge from "./MatchStateBadge";
 
 type Feed = ReturnType<typeof useLiveFeed>;
 type Match = ReturnType<typeof useLiveMatch>;
 type Side = "blue" | "red";
+type TeamLike = { name: string | null; code: string | null; resolved_page: string | null };
 
 const SIDE_TEXT: Record<Side, string> = { blue: "text-sky-300", red: "text-rose-300" };
 
+/** Re-render once a minute so countdowns stay honest without a ticking clock. */
+function useMinuteClock() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
 /* ── the rail ───────────────────────────────────────────────────────────── */
 
-function RailChip({
-  game,
+function ChipTeam({ team }: { team: TeamLike }) {
+  const key = team.resolved_page ?? null;
+  const { src } = useEntityMedia("team", key);
+  const label = teamLabel(team);
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      {src && <TeamCrest teamKey={key} name={team.name || label} shortCode={team.code} size="xs" />}
+      <span className="whitespace-nowrap">{label}</span>
+    </span>
+  );
+}
+
+const CHIP =
+  "flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-2.5 text-sm font-semibold transition-colors sm:min-h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const chipTone = (selected: boolean) =>
+  selected
+    ? "border-[#c9a84c]/70 bg-[#c9a84c]/10 text-[#f0e6c8]"
+    : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground";
+
+function SeriesChip({
+  series,
   selected,
   onSelect,
 }: {
-  game: LiveGameSummary;
+  series: HubSeries;
   selected: boolean;
   onSelect: () => void;
 }) {
-  const live = statusTone(game.freshness) === "live";
-  const series = seriesContext(game, true);
+  const { a, b, score, bestOf } = series;
+  const focus = series.focus;
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      title={[game.league?.name, game.competition?.stage?.round_name || game.block_name]
+      data-testid="series-chip"
+      title={[focus.league?.name, focus.competition?.stage?.round_name || focus.block_name]
         .filter(Boolean)
         .join(" · ")}
-      className={cn(
-        "flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors sm:min-h-9",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        selected
-          ? "border-[#c9a84c]/70 bg-[#c9a84c]/10 text-[#f0e6c8]"
-          : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
-      )}
+      className={cn(CHIP, chipTone(selected))}
     >
-      {live && (
-        <span className="relative flex h-1.5 w-1.5" aria-label="Live">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        </span>
-      )}
-      <span className="whitespace-nowrap">{matchTitle(game)}</span>
-      {series && <span className="whitespace-nowrap text-xs font-medium opacity-70">{series}</span>}
+      <MatchStateBadge state={series.state} size="sm" />
+      <ChipTeam team={a.team} />
+      <span className="tabular-nums" data-testid="series-score" title={score.known ? "Series score" : "Series score — a result is not recorded"}>
+        {score.a}
+        <span className="px-0.5 opacity-50">–</span>
+        {score.b}
+        {!score.known && <span className="opacity-60">*</span>}
+      </span>
+      <ChipTeam team={b.team} />
+      {bestOf && <span className="whitespace-nowrap text-xs font-medium opacity-60">Bo{bestOf}</span>}
     </button>
+  );
+}
+
+function UpcomingChip({
+  match,
+  selected,
+  onSelect,
+  now,
+}: {
+  match: UpcomingMatch;
+  selected: boolean;
+  onSelect: () => void;
+  now: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      data-testid="upcoming-chip"
+      title={[match.league?.name, match.block_name, localStart(match.scheduled_start)].filter(Boolean).join(" · ")}
+      className={cn(CHIP, chipTone(selected))}
+    >
+      <MatchStateBadge state="upcoming" size="sm" />
+      <ChipTeam team={match.teams.a} />
+      <span className="text-xs font-medium opacity-60">vs</span>
+      <ChipTeam team={match.teams.b} />
+      <span className="whitespace-nowrap text-xs font-medium opacity-70">{countdown(match.scheduled_start, now)}</span>
+    </button>
+  );
+}
+
+function RailLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="flex shrink-0 items-center pl-1 pr-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
+function Rail({
+  series,
+  upcoming,
+  selectedKey,
+  upcomingId,
+  onSelectSeries,
+  onSelectUpcoming,
+  pinnedOutside,
+  gameTabs,
+}: {
+  series: HubSeries[];
+  upcoming: UpcomingMatch[];
+  selectedKey: string | null;
+  upcomingId: string | null;
+  onSelectSeries: (s: HubSeries) => void;
+  onSelectUpcoming: (matchId: string) => void;
+  pinnedOutside: React.ReactNode;
+  /** The selected series' games, drawn right after its chip: a series'
+   *  games belong to the series, and the rail's height is already paid. */
+  gameTabs?: React.ReactNode;
+}) {
+  const now = useMinuteClock();
+  const live = series.filter((s) => s.state === "live");
+  const previous = series.filter((s) => s.state !== "live");
+  return (
+    <div
+      className="flex snap-x items-center gap-1.5 overflow-x-auto border-b border-border/60 bg-background/40 px-3 py-2 sm:py-1.5 [scrollbar-color:rgba(201,168,76,0.35)_transparent] [scrollbar-width:thin]"
+      role="group"
+      aria-label="Choose a match"
+      data-testid="match-rail"
+    >
+      {/* An empty group is not drawn: the board's own COMPLETED badge already
+          says nothing is live (PPH2.1 dropped "nothing is live" copy). */}
+      {live.length > 0 && <RailLabel>Live now</RailLabel>}
+      {live.map((s) => (
+        <span key={s.key} className="contents">
+          <SeriesChip series={s} selected={s.key === selectedKey} onSelect={() => onSelectSeries(s)} />
+          {s.key === selectedKey && gameTabs}
+        </span>
+      ))}
+      {(previous.length > 0 || pinnedOutside) && <RailLabel>Previous match</RailLabel>}
+      {pinnedOutside}
+      {previous.map((s) => (
+        <span key={s.key} className="contents">
+          <SeriesChip series={s} selected={s.key === selectedKey} onSelect={() => onSelectSeries(s)} />
+          {s.key === selectedKey && gameTabs}
+        </span>
+      ))}
+      {upcoming.length > 0 && <RailLabel>Up next</RailLabel>}
+      {upcoming.map((m) => (
+        <UpcomingChip
+          key={m.match_id}
+          match={m}
+          selected={m.match_id === upcomingId}
+          onSelect={() => onSelectUpcoming(m.match_id)}
+          now={now}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -103,10 +249,12 @@ function TeamIdentity({
   team,
   side,
   winner,
+  sideLabel = true,
 }: {
-  team: LiveGameSummary["teams"]["blue"];
+  team: TeamLike;
   side: Side;
   winner: boolean;
+  sideLabel?: boolean;
 }) {
   const key = team?.resolved_page ?? null;
   const { src } = useEntityMedia("team", key);
@@ -126,12 +274,24 @@ function TeamIdentity({
     </span>
   );
 
+  const sub = [
+    src && full !== label ? full : !src && full !== label ? label : null,
+    sideLabel ? (side === "blue" ? "Blue" : "Red") : null,
+  ].filter(Boolean);
+
   return (
     <div
       className={cn("flex min-w-0 items-center gap-3", mirrored && "flex-row-reverse text-right")}
       data-testid={`team-${side}`}
     >
-      {src && <TeamCrest teamKey={key} name={full} shortCode={team?.code} size="lg" />}
+      {/* 44px on phones, 64px from `sm`: a full-size crest in a ~150px half
+          left the team's name a one-word column. */}
+      {src && (
+        <>
+          <TeamCrest teamKey={key} name={full} shortCode={team?.code} size="md" className="sm:hidden" />
+          <TeamCrest teamKey={key} name={full} shortCode={team?.code} size="lg" className="hidden sm:inline-flex" />
+        </>
+      )}
       <div className="min-w-0">
         {key ? (
           <Link
@@ -144,12 +304,125 @@ function TeamIdentity({
         ) : (
           name
         )}
-        <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          {src && full !== label ? `${full} · ` : !src && full !== label ? `${label} · ` : ""}
-          {side === "blue" ? "Blue" : "Red"}
-          {winner && <span className={cn("ml-1.5", SIDE_TEXT[side])}>· Winner</span>}
+        {(sub.length > 0 || winner) && (
+          <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground [overflow-wrap:anywhere]">
+            {sub.join(" · ")}
+            {winner && <span className={cn("ml-1.5", SIDE_TEXT[side])}>· Winner</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── the event band ─────────────────────────────────────────────────────── */
+
+/**
+ * League → tournament → stage, in upstream's words, beside the league's mark
+ * slot, then the quieter match facts (best-of, date, patch) — one wrapping
+ * line, so the event costs one row at desktop width.
+ */
+function EventBand({
+  league,
+  competition,
+  scope,
+  facts,
+  right,
+}: {
+  league: { name: string | null; slug: string | null };
+  competition: string[];
+  scope: string | null;
+  facts: { key: string; text: string; title?: string }[];
+  right?: React.ReactNode;
+}) {
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border/60 px-3 py-1.5 sm:px-4"
+      data-testid="event-band"
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <EventMark name={league.name} slug={league.slug} />
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <p className="flex flex-wrap items-center gap-x-1.5 text-sm font-semibold leading-snug text-foreground/90" data-testid="match-meta">
+            {competition.map((text, i) => (
+              <span key={`${text}-${i}`} className={i === 0 ? "font-bold text-foreground" : undefined}>
+                {i > 0 && <span aria-hidden="true" className="mr-1.5 text-muted-foreground/60">·</span>}
+                {text}
+              </span>
+            ))}
+            {scope && (
+              <span
+                title={SCOPE_TITLE[scope]}
+                className={cn(
+                  "ml-1 rounded px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide",
+                  scope === "International" ? "bg-violet-500/15 text-violet-300" : "bg-muted text-muted-foreground",
+                )}
+              >
+                {scope}
+              </span>
+            )}
+          </p>
+          {facts.length > 0 && (
+            <p className="text-xs text-muted-foreground" data-testid="match-facts">
+              {facts.map((f, i) => (
+                <span key={f.key} title={f.title}>
+                  {i > 0 && <span aria-hidden="true"> · </span>}
+                  {f.text}
+                </span>
+              ))}
+            </p>
+          )}
         </div>
       </div>
+      {right}
+    </div>
+  );
+}
+
+function SeriesTabs({
+  series,
+  selectedId,
+  onSelect,
+}: {
+  series: HubSeries;
+  selectedId: string | null;
+  onSelect: (gameId: string) => void;
+}) {
+  const label = (id: string | null) => {
+    if (!id) return null;
+    if (id === series.a.id) return teamLabel(series.a.team);
+    if (id === series.b.id) return teamLabel(series.b.team);
+    return null;
+  };
+  return (
+    <div className="flex shrink-0 items-center gap-1" data-testid="series-bar" role="group" aria-label="Games in this series">
+      {series.games.length > 1 &&
+        series.games.map(({ game, live, winner }) => {
+          const selected = game.game_id === selectedId;
+          const w = label(winner);
+          return (
+            <button
+              key={game.game_id}
+              type="button"
+              onClick={() => onSelect(game.game_id)}
+              aria-pressed={selected}
+              data-testid="game-tab"
+              title={live ? "In progress" : w ? `${w} won` : "Result not recorded"}
+              className={cn(
+                "inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-semibold tabular-nums transition-colors sm:min-h-7",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected ? "border-[#c9a84c]/70 bg-[#c9a84c]/10 text-[#f0e6c8]" : "border-border/60 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              G{game.game_number ?? "?"}
+              {live ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-label="live" />
+              ) : (
+                <span className="font-medium opacity-75">{w ?? "—"}</span>
+              )}
+            </button>
+          );
+        })}
     </div>
   );
 }
@@ -182,18 +455,60 @@ function Objectives({ blue, red }: { blue?: LiveTeamState; red?: LiveTeamState }
           </div>
         ))}
       </div>
-    <div className="hidden grid-cols-[1fr_auto_1fr] items-baseline gap-x-3 gap-y-1.5 lg:grid" data-testid="hub-objectives">
-      {rows.map(([label, b, r]) => (
-        <div key={label} className="contents">
-          <span className="text-base font-bold tabular-nums text-sky-300">{b}</span>
-          <span className="text-center text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            {label}
-          </span>
-          <span className="text-right text-base font-bold tabular-nums text-rose-300">{r}</span>
-        </div>
-      ))}
-    </div>
+      <div className="hidden grid-cols-[1fr_auto_1fr] items-baseline gap-x-3 gap-y-1.5 lg:grid" data-testid="hub-objectives">
+        {rows.map(([label, b, r]) => (
+          <div key={label} className="contents">
+            <span className="text-base font-bold tabular-nums text-sky-300">{b}</span>
+            <span className="text-center text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              {label}
+            </span>
+            <span className="text-right text-base font-bold tabular-nums text-rose-300">{r}</span>
+          </div>
+        ))}
+      </div>
     </>
+  );
+}
+
+/* ── the upcoming board ─────────────────────────────────────────────────── */
+
+function UpcomingBoard({ match }: { match: UpcomingMatch }) {
+  const now = useMinuteClock();
+  const competition = [match.league?.name, match.block_name].filter(Boolean) as string[];
+  const facts = [
+    ...(match.best_of ? [{ key: "bo", text: `Best of ${match.best_of}` }] : []),
+    { key: "src", text: "Upstream schedule", title: "From the official LoL Esports schedule" },
+  ];
+  const start = localStart(match.scheduled_start);
+  return (
+    <div data-testid="upcoming-summary">
+      <h3 className="sr-only">
+        {teamLabel(match.teams.a)} vs {teamLabel(match.teams.b)}
+      </h3>
+      <EventBand
+        league={{ name: match.league?.name ?? null, slug: match.league?.slug ?? null }}
+        competition={competition}
+        scope={scopeLabel({ league: match.league } as LiveCompetition)}
+        facts={facts}
+      />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 py-5 sm:gap-6 sm:px-6">
+        <TeamIdentity team={match.teams.a} side="blue" winner={false} sideLabel={false} />
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <MatchStateBadge state="upcoming" />
+          <span className="text-2xl font-bold leading-none text-[#e3c66f]">VS</span>
+          {start && (
+            <span className="text-sm font-semibold tabular-nums text-foreground" title={`${match.scheduled_start} UTC, shown in your local time`}>
+              {start}
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground tabular-nums">{countdown(match.scheduled_start, now)}</span>
+        </div>
+        <TeamIdentity team={match.teams.b} side="red" winner={false} sideLabel={false} />
+      </div>
+      <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted-foreground">
+        Sides, lineups, the live score and match evidence appear here once the match starts.
+      </p>
+    </div>
   );
 }
 
@@ -202,25 +517,40 @@ function Objectives({ blue, red }: { blue?: LiveTeamState; red?: LiveTeamState }
 export default function MatchCenter({
   feed,
   match,
+  series,
+  upcoming,
+  upcomingMatch,
   selectedId,
   pinnedId,
   onSelect,
+  onSelectUpcoming,
   onClearPin,
   lanes,
 }: {
   feed: Feed;
   match: Match;
+  series: HubSeries[];
+  upcoming: UpcomingMatch[];
+  /** The selected upcoming match; when set, the board shows it. */
+  upcomingMatch: UpcomingMatch | null;
   selectedId: string | null;
   pinnedId: string | null;
   onSelect: (gameId: string) => void;
+  onSelectUpcoming: (matchId: string) => void;
   onClearPin: () => void;
   /** The lane board for the selected game, drawn inside the match. */
   lanes?: React.ReactNode;
 }) {
-  const { live, recent, selectable, failing } = feed;
+  const { live, selectable, failing } = feed;
   const { selected, isFinal, detail, gold, insights } = match;
   const selectedIsLive = !!selectedId && live.some((g) => g.game_id === selectedId);
-  const title = selectedIsLive ? "Live now" : pinnedId ? "Selected match" : "Latest match";
+  const title = upcomingMatch
+    ? "Up next"
+    : selectedIsLive
+      ? "Live now"
+      : pinnedId
+        ? "Selected match"
+        : "Previous match";
 
   const shell = (body: React.ReactNode) => (
     <section
@@ -281,16 +611,65 @@ export default function MatchCenter({
     );
   }
 
+  const selectedSeries = seriesOf(series, selected?.game_id ?? selectedId);
+  const pinnedOutside =
+    selected && !selectable.some((g) => g.game_id === selected.game_id) ? (
+      <button
+        type="button"
+        aria-pressed={!upcomingMatch}
+        onClick={() => onSelect(selected.game_id)}
+        className={cn(CHIP, chipTone(!upcomingMatch))}
+        data-testid="pinned-chip"
+      >
+        {gameState(selected, false) ? (
+          <MatchStateBadge state={gameState(selected, false)!} size="sm" />
+        ) : (
+          <StatusPill freshness={selected.freshness} />
+        )}
+        <span className="whitespace-nowrap">{matchTitle(selected)}</span>
+        {selected.game_number && <span className="text-xs font-medium opacity-60">G{selected.game_number}</span>}
+      </button>
+    ) : null;
+
+  const rail = (
+    <Rail
+      series={series}
+      upcoming={upcoming}
+      selectedKey={upcomingMatch ? null : (selectedSeries?.key ?? null)}
+      upcomingId={upcomingMatch?.match_id ?? null}
+      onSelectSeries={(s) => onSelect(s.focus.game_id)}
+      onSelectUpcoming={onSelectUpcoming}
+      pinnedOutside={pinnedOutside}
+      gameTabs={
+        selectedSeries && selectedSeries.games.length > 1 && selected ? (
+          <SeriesTabs series={selectedSeries} selectedId={selected.game_id} onSelect={onSelect} />
+        ) : null
+      }
+    />
+  );
+
+  if (upcomingMatch) {
+    return shell(
+      <>
+        {rail}
+        <UpcomingBoard match={upcomingMatch} />
+      </>,
+    );
+  }
+
   if (selectable.length === 0 && !pinnedId) {
     return shell(
-      <div className="p-8 text-center">
-        <p className="text-base font-semibold">No matches right now</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Live games appear here automatically while a supported competition is
-          playing. Every stored game is in the archive.
-        </p>
-        <div className="mt-2">{archiveLink}</div>
-      </div>,
+      <>
+        {upcoming.length > 0 && rail}
+        <div className="p-8 text-center">
+          <p className="text-base font-semibold">No matches right now</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Live games appear here automatically while a supported competition is
+            playing. Every stored game is in the archive.
+          </p>
+          <div className="mt-2">{archiveLink}</div>
+        </div>
+      </>,
     );
   }
 
@@ -328,38 +707,22 @@ export default function MatchCenter({
   const showGold = !gold.isError && goldSeries.length >= 2;
   const state = detail.data?.team_state;
 
-  // One metadata line: competition, then the match facts. The clock is not
-  // repeated here — it sits under the score.
-  const meta = selected
-    ? [
-        ...competitionLine(selected).map((text) => ({ key: text, text, title: undefined as string | undefined })),
-        ...matchLine(selected)
-          .filter((p) => p.kind !== "clock")
-          .map((p) => ({ key: p.kind, text: p.text, title: p.title })),
-      ]
+  const competition = selected ? competitionLine(selected) : [];
+  // The clock sits under the score and the series score in the band's right
+  // half, so neither is repeated in the facts line.
+  const facts: { key: string; text: string; title?: string }[] = selected
+    ? matchLine(selected)
+        .filter((p) => p.kind !== "clock" && p.kind !== "series")
+        .map((p) => ({ key: p.kind as string, text: p.text, title: p.title }))
     : [];
+  if (selected?.best_of) facts.unshift({ key: "bo", text: `Bo${selected.best_of}`, title: undefined });
   const clockText = selected ? gameClock(selected) : null;
+  const badge = selected ? gameState(selected, selectedIsLive) : null;
+  const delayed = selectedIsLive && statusTone(selected?.freshness) === "delayed";
 
   return shell(
     <>
-      {/* rail */}
-      <div
-        className="flex snap-x gap-1.5 overflow-x-auto border-b border-border/60 bg-background/40 px-3 py-2 [scrollbar-color:rgba(201,168,76,0.35)_transparent] [scrollbar-width:thin]"
-        role="group"
-        aria-label="Choose a match"
-      >
-        {selected && !selectable.some((g) => g.game_id === selected.game_id) && (
-          <RailChip game={selected} selected onSelect={() => onSelect(selected.game_id)} />
-        )}
-        {[...live, ...recent].map((g) => (
-          <RailChip
-            key={g.game_id}
-            game={g}
-            selected={g.game_id === selectedId}
-            onSelect={() => onSelect(g.game_id)}
-          />
-        ))}
-      </div>
+      {rail}
 
       {failing && (
         <p role="status" className="flex items-center gap-2 px-4 pt-2 text-xs text-amber-400">
@@ -379,14 +742,24 @@ export default function MatchCenter({
         <div data-testid="match-summary">
           <h3 className="sr-only">{matchTitle(selected)}</h3>
 
+          <EventBand
+            league={{
+              name: selected.competition?.league?.name || selected.league?.name || null,
+              slug: selected.competition?.league?.slug || selected.league?.slug || null,
+            }}
+            competition={competition}
+            scope={scopeLabel(selected.competition)}
+            facts={facts}
+          />
+
           {/* score */}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 pb-2 pt-4 sm:gap-6 sm:px-6">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 py-3 sm:gap-6 sm:px-6 sm:py-2.5">
             <TeamIdentity
               team={selected.teams.blue}
               side="blue"
               winner={isFinal && isWinner(state, "blue")}
             />
-            <div className="text-center">
+            <div className="flex flex-col items-center gap-1.5 text-center">
               {detail.isError ? (
                 <p className="max-w-[10rem] text-xs text-muted-foreground">
                   Couldn't load this game's scoreboard.
@@ -401,9 +774,23 @@ export default function MatchCenter({
                   <span className="text-foreground/70">{num(state?.red?.kills)}</span>
                 </div>
               )}
-              <div className="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                <StatusPill freshness={selected.freshness} />
-                {clockText && <span className="tabular-nums" title="Elapsed game time">{clockText}</span>}
+              <div className="flex flex-col items-center justify-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground tabular-nums sm:flex-row sm:flex-wrap">
+                {/* The state sits where the live page's pill always sat: under
+                    the score, beside the clock — no extra row. */}
+                {badge ? (
+                  <MatchStateBadge state={badge} qualifier={delayed ? "Delayed" : null} />
+                ) : (
+                  <StatusPill freshness={selected.freshness} />
+                )}
+                <span className="whitespace-nowrap">
+                  {selected.game_number && <span>Game {selected.game_number}</span>}
+                  {clockText && (
+                    <span title="Elapsed game time">
+                      {selected.game_number && <span aria-hidden="true"> · </span>}
+                      {clockText}
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
             <TeamIdentity
@@ -412,16 +799,6 @@ export default function MatchCenter({
               winner={isFinal && isWinner(state, "red")}
             />
           </div>
-          {meta.length > 0 && (
-            <p className="px-4 pb-3 text-center text-xs leading-relaxed text-muted-foreground" data-testid="match-meta">
-              {meta.map((m, i) => (
-                <span key={m.key} title={m.title}>
-                  {i > 0 && <span aria-hidden="true"> · </span>}
-                  {m.text}
-                </span>
-              ))}
-            </p>
-          )}
 
           {staleSelected && (
             <p className="mx-4 mb-3 flex items-start gap-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-300">
@@ -440,10 +817,7 @@ export default function MatchCenter({
             >
               {!detail.isError && <Objectives blue={state?.blue} red={state?.red} />}
               {showGold && (
-                <div className="border-t border-border/60 pt-3" data-testid="hub-gold">
-                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                    Gold lead
-                  </p>
+                <div className="border-t border-border/60 pt-3" data-testid="hub-gold" aria-label="Gold lead">
                   <GoldChart series={goldSeries} downsampled={!!gold.data?.downsampled} />
                 </div>
               )}

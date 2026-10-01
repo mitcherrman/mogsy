@@ -137,3 +137,16 @@ export function signedKGold(diff: number): string {
   const text = abs >= 1000 ? `${(abs / 1000).toFixed(1)}k` : String(abs);
   return `${diff > 0 ? "+" : "−"}${text}`;
 }
+
+/**
+ * The lane row's short label for a resolved name carrying a disambiguation
+ * qualifier — "Guti (Moon Jeong-hwan)" prints as "Guti" inside a row that is
+ * already scoped to one team and one game. The full name stays the row's
+ * tooltip and is printed in the lane's expansion; nothing else is shortened.
+ */
+export function laneRowShortName(p: LivePlayer, teamCode: string | null | undefined): string {
+  const name = laneRowName(p, teamCode);
+  if (!p.resolved_player_name) return name;
+  const short = name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return short || name;
+}

@@ -24,6 +24,7 @@ import ProPlayHub, {
   PRO_PLAY_SEARCH_ROUTE,
 } from "./ProPlayHub";
 import { PRO_PLAY_LIVE_ARCHIVE_ROUTE } from "@/lib/pro-play/routes";
+import { __resetProPlayMediaCache } from "@/components/pro-play/media/ProPlayMediaProvider";
 
 const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
 
@@ -169,6 +170,11 @@ type Backend = {
   players?: unknown[];
   goldPoints?: number;
   detail?: (id: string) => unknown;
+  /** `/live-esports/upcoming` matches; undefined = an older backend (404). */
+  upcoming?: unknown[];
+  itemIndex?: { id: number; name: string; slug: string }[];
+  media?: unknown[];
+  teamState?: (id: string) => unknown;
 };
 
 let requests: string[] = [];
@@ -183,6 +189,21 @@ function installBackend(opts: Backend) {
       ({ ok: true, status: 200, json: async () => body }) as unknown as Response;
     const notFound = () =>
       ({ ok: false, status: 404, json: async () => ({}) }) as unknown as Response;
+    if (path.includes("/live-esports/upcoming")) {
+      if (!opts.upcoming) return notFound();
+      return ok({
+        enabled: true,
+        generated_at: "x",
+        source: "getSchedule",
+        source_ok: true,
+        stale: false,
+        fetched_at: "x",
+        horizon_days: 14,
+        limit: 12,
+        matches: opts.upcoming,
+      });
+    }
+    if (/\/api\/items(\?|$)/.test(path)) return ok({ ok: true, count: 0, items: opts.itemIndex ?? [] });
     if (path.includes("/live-esports/live")) {
       if (opts.feedDown) throw new Error("network down");
       return ok({
@@ -223,7 +244,7 @@ function installBackend(opts: Backend) {
         enabled: true,
         generated_at: "x",
         game,
-        team_state: {
+        team_state: opts.teamState?.(id) ?? {
           blue: { kills: 20, total_gold: 60000, towers: 9, inhibitors: 2, barons: 1, dragons: [], frame_ts: null },
           red: { kills: 8, total_gold: 50000, towers: 2, inhibitors: 0, barons: 0, dragons: [], frame_ts: null },
         },
@@ -238,7 +259,7 @@ function installBackend(opts: Backend) {
       const u = new URL(path, "http://x");
       return ok(statsRow(u.searchParams.get("player") ?? ""));
     }
-    if (path.includes("/media/resolve")) return ok({ results: [] });
+    if (path.includes("/media/resolve")) return ok({ results: opts.media ?? [], identity_available: true });
     return ok({});
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -276,6 +297,8 @@ const summaryTitle = async () =>
   (await within(matchCenter()).findByTestId("match-summary")).querySelector("h3")?.textContent;
 
 beforeEach(() => {
+  // The media provider caches per session by key set; every test is a session.
+  __resetProPlayMediaCache();
   sfx.play.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -320,11 +343,13 @@ describe("ProPlayHub identity", () => {
     }
   });
 
-  it("promises no Upcoming matches — there is no schedule source", async () => {
+  it("shows no UP NEXT at all when the backend has no schedule route", async () => {
     installBackend({ recent: [summary("g1", "GEN", "T1")] });
     renderHub();
     await screen.findByTestId("match-summary");
-    expect(screen.queryByText(/upcoming|coming soon/i)).toBeNull();
+    expect(screen.queryByText(/up next/i)).toBeNull();
+    expect(screen.queryByTestId("upcoming-chip")).toBeNull();
+    expect(screen.queryByText(/coming soon/i)).toBeNull();
   });
 });
 
@@ -344,7 +369,7 @@ describe("Match Center selection", () => {
     });
     renderHub();
     expect(await summaryTitle()).toMatch(/GEN/);
-    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Latest match" })).toBeTruthy();
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Previous match" })).toBeTruthy();
   });
 
   it("never overrides an explicit ?game= — even while a game is live", async () => {
@@ -411,11 +436,15 @@ describe("Match Center selection", () => {
     expect(within(matchCenter()).getByLabelText("Kills 20 to 8")).toBeTruthy();
   });
 
-  it("merges competition and match facts into one line, with no 'nothing live' chrome", async () => {
+  it("splits the event (competition) from the match facts, with no 'nothing live' chrome", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
     const meta = await screen.findByTestId("match-meta");
-    expect(meta.textContent).toMatch(/LCK · Week 4 · .*Bo3 · Game 1 · Series 0–0 · Patch 16\.17/);
+    expect(meta.textContent).toMatch(/LCK.*·.*Week 4/);
+    const facts = screen.getByTestId("match-facts");
+    expect(facts.textContent).toMatch(/Bo3 · .*2026 · Patch 16\.17/);
+    // The series score lives on the rail's series chip, not in the facts line.
+    expect(facts.textContent).not.toMatch(/Series/);
     expect(screen.queryByText(/Nothing is live/i)).toBeNull();
   });
 
@@ -692,5 +721,201 @@ describe("Pro Stats Explorer", () => {
     Element.prototype.scrollIntoView = spy;
     renderHub();
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+
+/* ── PPH3: the compact match dossier ────────────────────────────────────── */
+
+const FUTURE = "2099-10-03T05:00:00Z";
+function upcomingMatch(id: string, a: string, b: string, over: Record<string, unknown> = {}) {
+  return {
+    match_id: id,
+    scheduled_start: FUTURE,
+    league: { slug: "lck", name: "LCK", region: "KOREA", scope: "domestic" },
+    block_name: "Playoffs",
+    best_of: 5,
+    teams: {
+      a: { name: a, code: a, resolved_page: a, tbd: false },
+      b: { name: b, code: b, resolved_page: null, tbd: false },
+    },
+    ...over,
+  };
+}
+
+/** Two games of ONE Bo3 series; sides swap for game 2, as they do. */
+function bo3Series() {
+  const g1 = summary("S-G1", "GEN", "T1", { match_id: "m-series", game_number: 1 });
+  const g2 = summary("S-G2", "T1", "GEN", {
+    match_id: "m-series",
+    game_number: 2,
+    teams: {
+      blue: { name: "T1", code: "T1", esports_team_id: "r", resolved_page: "T1", series_wins: 0 },
+      red: { name: "GEN", code: "GEN", esports_team_id: "b", resolved_page: "GEN", series_wins: 1 },
+    },
+  });
+  return [g2, g1];
+}
+
+describe("PPH3 · series and state", () => {
+  it("groups a series' games into ONE rail chip with its series score", async () => {
+    installBackend({ recent: [...bo3Series(), summary("X1", "DK", "KT")] });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    const chips = within(matchCenter()).getAllByTestId("series-chip");
+    expect(chips.length).toBe(2);
+    // Game 1 is read from game 2's entering score (GEN 1–0), and game 2 from
+    // its own final state (blue T1 took more inhibitors): 1–1.
+    await waitFor(() => expect(chips[0].textContent).toMatch(/T1\s*1–1\s*GEN/));
+    expect(within(chips[0]).getByTestId("match-state").textContent).toMatch(/Completed/i);
+  });
+
+  it("puts a tab per played game right after the selected series chip, and switches games", async () => {
+    installBackend({ recent: bo3Series() });
+    renderHub();
+    const bar = await screen.findByTestId("series-bar");
+    const rail = screen.getByTestId("match-rail");
+    expect(rail.contains(bar)).toBe(true);
+    await waitFor(() => expect(within(rail).getByTestId("series-score").textContent).toBe("1–1"));
+    const tabs = within(bar).getAllByTestId("game-tab");
+    expect(tabs.map((t) => t.textContent)).toEqual(["G1GEN", "G2T1"]);
+    fireEvent.click(tabs[0]);
+    await waitFor(() => expect(location.search).toContain("game=S-G1"));
+  });
+
+  it("labels the rail groups LIVE NOW and PREVIOUS MATCH, and a live game LIVE", async () => {
+    installBackend({ live: [liveGame("L1", "HLE", "DK")], recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    const rail = screen.getByTestId("match-rail");
+    expect(rail.textContent).toMatch(/Live now.*Previous match/i);
+    const header = within(screen.getByTestId("match-summary")).getAllByTestId("match-state")[0];
+    expect(header.getAttribute("data-state")).toBe("live");
+    expect(header.textContent).toMatch(/^Live/);
+  });
+
+  it("never shows a LIVE/COMPLETED badge for a stale game — its honest pill stays", async () => {
+    installBackend({ recent: [summary("S1", "KT", "NS", { availability: "live", freshness: STALE })] });
+    renderHub(`${PRO_PLAY_ROUTE}?game=S1`);
+    const s = await screen.findByTestId("match-summary");
+    expect(within(s).queryByTestId("match-state")).toBeNull();
+    expect(within(s).getByText("STALE")).toBeTruthy();
+  });
+
+  it("never treats a store `scheduled` row as a played game or an upcoming match", async () => {
+    installBackend({
+      recent: [
+        summary("R1", "GEN", "T1"),
+        summary("NP", "BFX", "DNS", { availability: "scheduled", freshness: { ...FINAL, label: "no_data" } }),
+      ],
+    });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    expect(within(screen.getByTestId("match-rail")).queryByText("BFX")).toBeNull();
+    expect(screen.queryByText(/up next/i)).toBeNull();
+  });
+});
+
+describe("PPH3 · UP NEXT", () => {
+  it("lists upstream's upcoming matches under UP NEXT and opens one without scaffolding", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [upcomingMatch("u1", "HLE", "KT")] });
+    renderHub();
+    const chip = await screen.findByTestId("upcoming-chip");
+    expect(screen.getByTestId("match-rail").textContent).toMatch(/Up next/i);
+    expect(within(chip).getByTestId("match-state").getAttribute("data-state")).toBe("upcoming");
+    fireEvent.click(chip);
+    await waitFor(() => expect(location.search).toContain("next=u1"));
+    const board = await screen.findByTestId("upcoming-summary");
+    expect(within(board).getByTestId("match-state").textContent).toMatch(/Upcoming/i);
+    expect(board.textContent).toMatch(/Best of 5/);
+    // No empty scoreboard, no lanes for a match that has not started.
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+    expect(document.getElementById("match-workspace")).toBeNull();
+    // The resolved team links to its profile; the unresolved one does not.
+    expect(within(board).getByRole("link", { name: /HLE profile/ })).toBeTruthy();
+    expect(within(board).queryByRole("link", { name: /KT profile/ })).toBeNull();
+  });
+
+  it("falls back to the played games when ?next= names a match no longer upcoming", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [] });
+    renderHub(`${PRO_PLAY_ROUTE}?next=gone`);
+    expect(await summaryTitle()).toMatch(/GEN/);
+  });
+
+  it("picking a played game from the rail leaves the upcoming view", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [upcomingMatch("u1", "HLE", "KT")] });
+    renderHub(`${PRO_PLAY_ROUTE}?next=u1`);
+    await screen.findByTestId("upcoming-summary");
+    fireEvent.click(within(matchCenter()).getAllByTestId("series-chip")[0]);
+    await waitFor(() => expect(location.search).not.toContain("next="));
+    await screen.findByTestId("match-summary");
+  });
+});
+
+describe("PPH3 · entity media", () => {
+  const ITEM_PLAYERS = [
+    lanePlayer(1, "blue", "top", "Kiin", "Ambessa", { items: [3078, 3363, 3111, 2055, 2055] }),
+    lanePlayer(6, "red", "top", "Doran", "Camille", { items: [] }),
+  ];
+
+  it("resolves real item IDs to the asset store's item icons, trinket last, named by the item index", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      players: ITEM_PLAYERS,
+      itemIndex: [{ id: 3078, name: "Trinity Force", slug: "trinity-force" }],
+    });
+    renderHub();
+    const row = await screen.findByTestId("lane-row-top");
+    const strips = within(row).getAllByTestId("item-strip");
+    // A player with no items draws no empty strip.
+    expect(strips.length).toBe(1);
+    const ids = within(strips[0]).getAllByTestId("item-icon").map((el) => el.getAttribute("data-item-id"));
+    // Every served entry, duplicates included; the trinket (3363) moved last.
+    expect(ids).toEqual(["3078", "3111", "2055", "2055", "3363"]);
+    const img = within(strips[0]).getAllByTestId("item-icon")[0].querySelector("img")!;
+    expect(img.getAttribute("src")).toMatch(/assets\/items\/3078\.png$/);
+    await waitFor(() => expect(strips[0].getAttribute("aria-label")).toMatch(/Trinity Force/));
+  });
+
+  it("draws approved player portraits from the media authority, and no empty frame otherwise", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      media: [
+        {
+          entity_type: "player", entity_key: "Kiin", media_type: "player_portrait", state: "art", reason: "ok",
+          display_name: "Kiin", fallback_label: null, asset_path: "assets/esports/players/kiin/p.jpg",
+          mime_type: "image/jpeg", width: 1, height: 1, credit: null, contract_version: "1",
+        },
+      ],
+    });
+    renderHub();
+    const row = await screen.findByTestId("lane-row-top");
+    // Only the player with approved art gets a face; a monogram frame would
+    // only cost the row width (the score header's crest rule).
+    await waitFor(() => {
+      const states = within(row).getAllByTestId("player-portrait").map((el) => el.getAttribute("data-media-state"));
+      expect(states).toEqual(["art"]);
+    });
+    // An unresolved player's portrait is never looked up.
+    const media = requests.filter((r) => r.includes("/media/resolve"));
+    expect(media.some((r) => r.includes("player=Kiin"))).toBe(true);
+    expect(media.some((r) => r.includes("player=T1"))).toBe(false);
+  });
+
+  it("gives the league a first-class event mark with a designed fallback", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    const band = await screen.findByTestId("event-band");
+    const mark = within(band).getByTestId("event-mark");
+    expect(mark.textContent).toBe("LCK");
+    expect(mark.getAttribute("data-media-state")).toBe("placeholder");
+    expect(mark.querySelector("img")).toBeNull();
+  });
+
+  it("puts a real champion icon and level on every lane side", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    const row = await screen.findByTestId("lane-row-top");
+    expect(within(row).getAllByTitle("Level 18").length).toBe(2);
   });
 });

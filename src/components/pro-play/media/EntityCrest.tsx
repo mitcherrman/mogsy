@@ -156,3 +156,67 @@ export function PlayerPortraitSlot({
     </span>
   );
 }
+
+/**
+ * A player's portrait, from the media authority (PPH3).
+ *
+ * Portraits ARE approved now for some players (the authority answers `art`
+ * for e.g. Faker and Chovy), so unlike `PlayerPortraitSlot` above this one
+ * looks the canonical `player_lp_page` up through the same provider as the
+ * crests. No key, no approved art, or a 404 all land on the same designed
+ * monogram frame — never the team crest standing in for a face.
+ *
+ * Face-first framing is the dossier's (`DossierMedia.PlayerPortrait`): these
+ * are 3:2 event photographs of a player at a desk, so the image is scaled
+ * past the round frame and biased upward to land on the face.
+ */
+export function PlayerPortrait({
+  playerKey,
+  name,
+  size = "sm",
+  className,
+  artOnly = false,
+}: {
+  /** Canonical `player_lp_page`, only for a RESOLVED identity. */
+  playerKey?: string | null;
+  name: string;
+  size?: CrestSize;
+  className?: string;
+  /** Draw nothing at all without approved art — the crest rule from the
+   *  hub's score header, for slots where a monogram would only cost width. */
+  artOnly?: boolean;
+}) {
+  const { src } = useEntityMedia("player", playerKey);
+  const [failed, setFailed] = useState(false);
+  const showArt = Boolean(src) && !failed;
+  if (artOnly && !showArt) return null;
+  return (
+    <span
+      data-testid="player-portrait"
+      data-media-state={showArt ? "art" : "placeholder"}
+      title={name}
+      aria-hidden="true"
+      className={[
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden",
+        "rounded-full border bg-muted/40",
+        showArt ? "border-[#c9a84c]/40" : "border-border/60",
+        "font-semibold uppercase leading-none tracking-wide text-muted-foreground",
+        BOX[size].replace(/rounded-\S+/, ""),
+        className ?? "",
+      ].join(" ")}
+    >
+      {showArt ? (
+        <img
+          src={src as string}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full scale-[1.45] object-cover [object-position:center_24%]"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        crestLabel(name)
+      )}
+    </span>
+  );
+}

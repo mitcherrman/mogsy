@@ -486,3 +486,48 @@ export function fetchArchive(
 export function fetchArchiveFacets(): Promise<ArchiveFacets> {
   return getJson("/api/live-esports/history/filters");
 }
+
+/* ── Upcoming matches (PPH3) ────────────────────────────────────────────────
+ * `/upcoming` is upstream's own schedule (getSchedule), filtered server-side
+ * on every request to matches that are `unstarted`, start strictly in the
+ * future, and have no game played. It is NOT the store's `scheduled` rows —
+ * those are past, never-played series games and are never upcoming.
+ *
+ * Teams are named as the schedule names them; `resolved_page` is the same
+ * canonical team identity the rest of LIVE1 carries (null for TBD or an
+ * unmatched name), so crests resolve through the media authority as usual.
+ */
+
+export type UpcomingTeam = {
+  name: string | null;
+  code: string | null;
+  resolved_page: string | null;
+  tbd: boolean;
+};
+
+export type UpcomingMatch = {
+  match_id: string;
+  /** UTC; rendered in the viewer's timezone. */
+  scheduled_start: string;
+  league: LiveCompetition["league"];
+  block_name: string | null;
+  best_of: number | null;
+  teams: { a: UpcomingTeam; b: UpcomingTeam };
+};
+
+export type UpcomingResponse = {
+  enabled: boolean;
+  generated_at: string;
+  source: "getSchedule";
+  /** False when upstream failed; `stale` says whether an older page was used. */
+  source_ok: boolean;
+  stale: boolean;
+  fetched_at: string | null;
+  horizon_days: number;
+  limit: number;
+  matches: UpcomingMatch[];
+};
+
+export function fetchUpcoming(): Promise<UpcomingResponse> {
+  return getJson("/api/live-esports/upcoming");
+}

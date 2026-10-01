@@ -173,3 +173,16 @@ describe("lane row name", () => {
     expect(laneRowName(player("blue", "top", { resolved_player_name: "LOS Zest" }), "LOS")).toBe("LOS Zest");
   });
 });
+
+describe("laneRowShortName", () => {
+  const base = { summoner_name: "T1A Guti", resolved_player_name: "Guti (Moon Jeong-hwan)" } as never;
+  it("drops a resolved name's disambiguation qualifier inside a row only", async () => {
+    const { laneRowShortName, lanePlayerName } = await import("./hubSelection");
+    expect(laneRowShortName(base, "T1A")).toBe("Guti");
+    expect(lanePlayerName(base)).toBe("Guti (Moon Jeong-hwan)");
+  });
+  it("leaves an unresolved in-game name alone apart from the team tag", async () => {
+    const { laneRowShortName } = await import("./hubSelection");
+    expect(laneRowShortName({ summoner_name: "LOS Zest (sub)", resolved_player_name: null } as never, "LOS")).toBe("Zest (sub)");
+  });
+});

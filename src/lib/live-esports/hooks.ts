@@ -24,7 +24,9 @@ import {
   fetchLiveFeed,
   fetchLiveGame,
   fetchLivePlayers,
+  fetchUpcoming,
   type LiveGameSummary,
+  type UpcomingMatch,
 } from "./api";
 
 export const FEED_POLL_MS = 10_000;
@@ -35,6 +37,8 @@ export const FINAL_POLL_MS = false as const;
 export const GOLD_POLL_MS = 30_000;
 /** Insights re-scan the same frames as the gold chart; share its cadence. */
 export const INSIGHTS_POLL_MS = 30_000;
+/** The backend caches the schedule page for 120 s; polling faster buys nothing. */
+export const UPCOMING_POLL_MS = 120_000;
 
 export function useLiveFeed() {
   const feed = useQuery({
@@ -122,4 +126,25 @@ export function useLiveMatch(
   });
 
   return { selected, isFinal, detail, players, gold, insights };
+}
+
+/**
+ * Future matches (PPH3). An unreachable or older backend (no `/upcoming`
+ * route yet) is not an error state for the page: the hub simply has nothing
+ * to put under UP NEXT, so this resolves to an empty list and never retries
+ * into a loop. `matches` is guarded because a 200 from an unexpected shape
+ * must not crash the rail.
+ */
+export function useUpcoming() {
+  const query = useQuery({
+    queryKey: ["live-esports", "upcoming"],
+    queryFn: fetchUpcoming,
+    refetchInterval: UPCOMING_POLL_MS,
+    retry: false,
+  });
+  const matches = useMemo<UpcomingMatch[]>(
+    () => (Array.isArray(query.data?.matches) ? query.data!.matches : []),
+    [query.data],
+  );
+  return { query, matches };
 }

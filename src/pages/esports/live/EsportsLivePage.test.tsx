@@ -338,6 +338,17 @@ describe("match rendering from the production payload shape", () => {
     expect(screen.getAllByText(/7\s*\/\s*2\s*\/\s*8/).length).toBeGreaterThan(0);
   });
 
+  it("draws LIVE1's item IDs as real item icons, never blank squares (PPH3)", async () => {
+    installBackend({ recent: [summary()] });
+    renderPage();
+    await waitFor(() => expect(screen.getAllByTestId("item-strip").length).toBe(2));
+    const icons = screen.getAllByTestId("item-icon");
+    expect(icons.map((el) => el.getAttribute("data-item-id"))).toEqual(["6692", "6333", "3363", "3161"]);
+    expect(icons[0].querySelector("img")?.getAttribute("src")).toMatch(/assets\/items\/6692\.png$/);
+    // The trinket sits apart, last.
+    expect(icons[2].className).toMatch(/rounded-full/);
+  });
+
   it("shows the competition context — league, split, patch, game number", async () => {
     installBackend({ recent: [summary()] });
     renderPage();

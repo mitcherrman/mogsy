@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Trophy } from "lucide-react";
 
@@ -10,8 +11,10 @@ import MatchWorkspace from "@/components/pro-play/hub/MatchWorkspace";
 import ProPlayDiscovery, { SearchEntry } from "@/components/pro-play/hub/ProPlayDiscovery";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { useChampionAssets } from "@/hooks/useChampionAssets";
-import { useLiveFeed, useLiveMatch } from "@/lib/live-esports/hooks";
-import { nextHubAutoGame } from "@/lib/pro-play/hubSelection";
+import { fetchLiveGame } from "@/lib/live-esports/api";
+import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useUpcoming } from "@/lib/live-esports/hooks";
+import { gamesNeedingResult, groupSeries, railUpcoming, type TeamStates } from "@/lib/pro-play/hubSeries";
+import { lanePlayerKey, nextHubAutoGame } from "@/lib/pro-play/hubSelection";
 import { PRO_PLAY_LIVE_GAME_PARAM, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
 
 /**
@@ -31,8 +34,14 @@ import { PRO_PLAY_LIVE_GAME_PARAM, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes"
  *    (`/lol/pro-play?view=…&player=…`, built by `statsExplorerUrl`) is how
  *    every profile's "View in Pro Stats" lands here, so it stays on this page.
  *
- * Nothing on the hub is a placeholder. No Upcoming section: there is no
- * authoritative schedule source yet. No match-specific quiz: the quiz API
+ * PPH3: the rail is per SERIES in three labelled groups — LIVE NOW,
+ * PREVIOUS MATCH, UP NEXT — and every match carries an unmistakable LIVE /
+ * COMPLETED / UPCOMING state. UP NEXT is upstream's schedule
+ * (`/api/live-esports/upcoming`), never the store's `scheduled` rows, which
+ * are past unplayed games. `?next=<match_id>` selects an upcoming match the
+ * way `?game=` selects a played one.
+ *
+ * Nothing on the hub is a placeholder. No match-specific quiz: the quiz API
  * cannot filter by match.
  *
  * Any gate lives at the DESTINATION, never here. NOT to be confused with
@@ -71,6 +80,9 @@ const STATS_EXPLORER_PARAMS = [
 
 export const PRO_STATS_ANCHOR = "pro-stats";
 
+/** Selects an upcoming match (its upstream `match_id`) instead of a game. */
+export const PRO_PLAY_NEXT_PARAM = "next";
+
 export default function ProPlayHub() {
   const [params, setParams] = useSearchParams();
 
@@ -94,12 +106,51 @@ export default function ProPlayHub() {
     selectable.find((g) => g.game_id === selectedId),
   );
   const { data: manifest } = useChampionAssets();
+  const { matches: allUpcoming } = useUpcoming();
+  const upcoming = useMemo(() => railUpcoming(allUpcoming), [allUpcoming]);
+
+  /* Series: the last game of each series has no successor to read its
+   * result from, so its own final team state is read — the SAME query key
+   * the board uses, so the selected game costs nothing extra, and a finished
+   * game is fetched once and never polled. */
+  const roughSeries = useMemo(() => groupSeries(live, recent), [live, recent]);
+  const resultIds = useMemo(() => gamesNeedingResult(roughSeries), [roughSeries]);
+  const results = useQueries({
+    queries: resultIds.map((id) => ({
+      queryKey: ["live-esports", "game", id],
+      queryFn: () => fetchLiveGame(id),
+      refetchInterval: FINAL_POLL_MS,
+    })),
+  });
+  const resultKey = results.map((r) => (r.data ? r.dataUpdatedAt : 0)).join(",");
+  const series = useMemo(() => {
+    const states: Record<string, TeamStates> = {};
+    resultIds.forEach((id, i) => {
+      const state = results[i]?.data?.team_state;
+      if (state) states[id] = state;
+    });
+    return groupSeries(live, recent, states);
+    // `results` is a new array every render; `resultKey` is what changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, recent, resultIds, resultKey]);
+
+  const nextId = params.get(PRO_PLAY_NEXT_PARAM);
+  // A match that has since started (or left the schedule window) is simply
+  // not offered any more: the board falls back to the played games.
+  // A shared link may name a fixture outside the rail's short list.
+  const upcomingMatch = nextId ? (allUpcoming.find((m) => m.match_id === nextId) ?? null) : null;
 
   // Picking a match writes the URL — the copyable address is what is shown —
   // and keeps every Stats Explorer parameter already there.
   const select = (gameId: string) => {
     const next = new URLSearchParams(params);
     next.set(PRO_PLAY_LIVE_GAME_PARAM, gameId);
+    next.delete(PRO_PLAY_NEXT_PARAM);
+    setParams(next, { replace: true });
+  };
+  const selectUpcoming = (matchId: string) => {
+    const next = new URLSearchParams(params);
+    next.set(PRO_PLAY_NEXT_PARAM, matchId);
     setParams(next, { replace: true });
   };
   const clearPin = () => {
@@ -119,6 +170,20 @@ export default function ProPlayHub() {
   }, []);
 
   const selected = match.selected;
+
+  // Every entity the screen draws, in ONE media request: the rail's teams,
+  // the selected game's teams and its ten players' portraits.
+  const mediaTeams = useMemo(
+    () => [
+      ...series.flatMap((x) => [x.a.team.resolved_page, x.b.team.resolved_page]),
+      ...upcoming.flatMap((m) => [m.teams.a.resolved_page, m.teams.b.resolved_page]),
+      selected?.teams.blue?.resolved_page,
+      selected?.teams.red?.resolved_page,
+    ],
+    [series, upcoming, selected],
+  );
+  const lanePlayers = match.players.data?.players;
+  const mediaPlayers = useMemo(() => (lanePlayers ?? []).map(lanePlayerKey), [lanePlayers]);
 
   return (
     <div className="relative min-h-screen bg-background">
@@ -153,17 +218,17 @@ export default function ProPlayHub() {
         </header>
 
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_288px]">
-          {/* One media request for the selected game's two teams, shared by
-              the score header's crests and profile links. */}
-          <ProPlayMediaProvider
-            teams={[selected?.teams.blue?.resolved_page, selected?.teams.red?.resolved_page]}
-          >
+          <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers}>
             <MatchCenter
               feed={feed}
               match={match}
+              series={series}
+              upcoming={upcoming}
+              upcomingMatch={upcomingMatch}
               selectedId={selectedId}
               pinnedId={pinnedId}
               onSelect={select}
+              onSelectUpcoming={selectUpcoming}
               onClearPin={clearPin}
               lanes={
                 selected && (

@@ -1,0 +1,166 @@
+import { describe, expect, it } from "vitest";
+
+import type { LiveGameSummary } from "@/lib/live-esports/api";
+import {
+  countdown,
+  gameState,
+  gamesNeedingResult,
+  groupSeries,
+  leagueMonogram,
+  railUpcoming,
+  seriesOf,
+} from "./hubSeries";
+
+const FINAL = { label: "final" as const, seconds_since_success: 10, source_frame_ts: null, last_attempt_at: null, last_success_at: null };
+
+function team(code: string, wins: number | null) {
+  return { name: code, code, esports_team_id: `id-${code}`, resolved_page: code, series_wins: wins };
+}
+
+function game(
+  id: string,
+  match: string,
+  n: number,
+  blue: [string, number | null],
+  red: [string, number | null],
+  over: Partial<LiveGameSummary> = {},
+): LiveGameSummary {
+  return {
+    game_id: id,
+    match_id: match,
+    league: { slug: "lck", name: "LCK" },
+    block_name: null,
+    competition: null,
+    best_of: 5,
+    game_number: n,
+    teams: { blue: team(...blue), red: team(...red) },
+    patch_version: null,
+    game_state: "finished",
+    availability: "finished",
+    availability_detail: null,
+    scheduled_start: null,
+    first_frame_ts: null,
+    freshness: FINAL,
+    ...over,
+  } as LiveGameSummary;
+}
+
+const blueWins = { blue: { inhibitors: 2, towers: 9 }, red: { inhibitors: 0, towers: 2 } } as never;
+const redWins = { blue: { inhibitors: 0, towers: 1 }, red: { inhibitors: 3, towers: 10 } } as never;
+const unclear = { blue: { inhibitors: 1, towers: 6 }, red: { inhibitors: 1, towers: 5 } } as never;
+
+// A real-shaped Bo5: LOS 3–0 KBM with LOS switching sides in game 2.
+const g1 = game("g1", "m", 1, ["LOS", 0], ["KBM", 0]);
+const g2 = game("g2", "m", 2, ["KBM", 0], ["LOS", 1]);
+const g3 = game("g3", "m", 3, ["LOS", 2], ["KBM", 0]);
+
+describe("groupSeries", () => {
+  it("groups by match_id, orders games and reads each winner from the next game's entering score", () => {
+    const [s] = groupSeries([], [g3, g2, g1], { g3: blueWins });
+    expect(s.games.map((g) => g.game.game_id)).toEqual(["g1", "g2", "g3"]);
+    expect(s.games.map((g) => g.winner)).toEqual(["id-LOS", "id-LOS", "id-LOS"]);
+    expect(s.score).toEqual({ a: 3, b: 0, known: true });
+    expect(s.decided).toBe(true);
+    expect(s.state).toBe("completed");
+    expect(s.focus.game_id).toBe("g3");
+  });
+
+  it("matches teams by identity across a side swap, never by side", () => {
+    const [s] = groupSeries([], [g1, g2], { g2: blueWins }); // KBM (blue) wins game 2
+    expect(s.a.team.code).toBe("KBM");
+    expect(s.score).toEqual({ a: 1, b: 1, known: true });
+  });
+
+  it("keeps the last result unknown when the winner rule abstains — never guesses", () => {
+    const [s] = groupSeries([], [g1, g2, g3], { g3: unclear });
+    expect(s.games[2].winner).toBeNull();
+    expect(s.score).toEqual({ a: 2, b: 0, known: false });
+    expect(s.decided).toBe(false);
+  });
+
+  it("without a final state the last game's result is unknown, and it is asked for", () => {
+    const series = groupSeries([], [g1, g2, g3]);
+    expect(series[0].score.known).toBe(false);
+    expect(gamesNeedingResult(series)).toEqual(["g3"]);
+  });
+
+  it("a live game makes the series live, focuses it, and leads the rail", () => {
+    const g4 = game("g4", "m", 4, ["KBM", 0], ["LOS", 3], { availability: "live" });
+    const other = game("x1", "other", 1, ["T1", 0], ["GEN", 0]);
+    const series = groupSeries([g4], [other, g3, g2, g1]);
+    expect(series.map((s) => s.key)).toEqual(["m", "other"]);
+    expect(series[0].state).toBe("live");
+    expect(series[0].focus.game_id).toBe("g4");
+    // Score entering the live game, which is not over.
+    expect(series[0].score).toEqual({ a: 0, b: 3, known: true });
+    expect(gamesNeedingResult(series)).toEqual(["x1"]);
+  });
+
+  it("drops store `scheduled` rows (never-played games); a series of only those is not drawn", () => {
+    const np = game("g5", "m", 5, ["LOS", 3], ["KBM", 0], { availability: "scheduled" });
+    const ghost = game("z1", "ghost", 3, ["BFX", 1], ["DNS", 1], { availability: "scheduled" });
+    const series = groupSeries([], [np, ghost, g3, g2, g1], { g3: blueWins });
+    expect(series.map((s) => s.key)).toEqual(["m"]);
+    expect(series[0].games.map((g) => g.game.game_id)).toEqual(["g1", "g2", "g3"]);
+  });
+
+  it("a Bo1 is one game, decided by its own result", () => {
+    const bo1 = game("b1", "bo1", 1, ["ONT", 0], ["EXE", 0], { best_of: 1 });
+    const [s] = groupSeries([], [bo1], { b1: redWins });
+    expect(s.score).toEqual({ a: 0, b: 1, known: true });
+    expect(s.decided).toBe(true);
+  });
+
+  it("a stale (not finished) last game has no result", () => {
+    const stale = game("s1", "st", 1, ["KT", 0], ["NS", 0], {
+      availability: "live",
+      freshness: { ...FINAL, label: "stale" },
+    });
+    const [s] = groupSeries([], [stale], { s1: blueWins });
+    expect(s.score.known).toBe(false);
+    expect(gamesNeedingResult([s])).toEqual([]);
+  });
+
+  it("finds the series a game belongs to", () => {
+    const series = groupSeries([], [g1, g2, g3]);
+    expect(seriesOf(series, "g2")?.key).toBe("m");
+    expect(seriesOf(series, "nope")).toBeNull();
+  });
+});
+
+describe("gameState", () => {
+  it("LIVE / COMPLETED, and null for a stale game so its honest pill stays", () => {
+    expect(gameState(g1, true)).toBe("live");
+    expect(gameState(g1, false)).toBe("completed");
+    expect(gameState(game("s", "s", 1, ["A", 0], ["B", 0], { availability: "live", freshness: { ...FINAL, label: "stale" } }), false)).toBeNull();
+  });
+});
+
+describe("countdown", () => {
+  const now = Date.parse("2026-10-01T17:00:00Z");
+  it("formats days, hours and minutes, and never a negative time", () => {
+    expect(countdown("2026-10-03T19:30:00Z", now)).toBe("in 2d 2h");
+    expect(countdown("2026-10-01T20:05:00Z", now)).toBe("in 3h 05m");
+    expect(countdown("2026-10-01T17:12:00Z", now)).toBe("in 12m");
+    expect(countdown("2026-10-01T16:00:00Z", now)).toBe("starting");
+    expect(countdown("not a date", now)).toBeNull();
+  });
+});
+
+describe("leagueMonogram", () => {
+  it("uses upstream's short name, else word initials", () => {
+    expect(leagueMonogram("LCK")).toBe("LCK");
+    expect(leagueMonogram("CBLOL")).toBe("CBLOL");
+    expect(leagueMonogram("EMEA Masters")).toBe("EM");
+    expect(leagueMonogram("Hitpoint Masters")).toBe("HM");
+    expect(leagueMonogram(null, "wsci")).toBe("WSCI");
+  });
+});
+
+describe("railUpcoming", () => {
+  const m = (id: string, a: boolean, b: boolean) => ({ id, teams: { a: { tbd: a }, b: { tbd: b } } });
+  it("keeps the soonest few and drops only TBD-vs-TBD slots", () => {
+    const list = [m("1", true, true), m("2", false, true), m("3", false, false), m("4", false, false), m("5", false, false), m("6", false, false)];
+    expect(railUpcoming(list).map((x) => x.id)).toEqual(["2", "3", "4", "5"]);
+  });
+});

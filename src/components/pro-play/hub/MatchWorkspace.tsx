@@ -28,6 +28,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarChart3, BookOpen, ChevronDown, FlaskConical, GraduationCap } from "lucide-react";
 
+import { PlayerPortrait } from "@/components/pro-play/media/EntityCrest";
+import { ItemStrip, useItemNames } from "@/components/pro-play/media/ItemIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { championMatchupHref, matchupPct } from "@/graph1/championMatchup";
 import { useGraph1ChampionMatchup } from "@/graph1/useGraph1ChampionMatchup";
@@ -46,6 +48,7 @@ import {
   lanePlayerKey,
   lanePlayerName,
   laneRowName,
+  laneRowShortName,
   signedKGold,
   type HubLane,
   type LaneMatchup,
@@ -68,42 +71,89 @@ const TEXT_LINK =
 
 /* ── one lane row ───────────────────────────────────────────────────────── */
 
-function RowSide({
+function ChampionWithLevel({
   player,
-  side,
-  teamCode,
   manifest,
 }: {
   player: LivePlayer;
-  side: Side;
-  teamCode: string | null | undefined;
   manifest: ChampionManifest | null | undefined;
 }) {
-  const red = side === "red";
-  const kda = `${num(player.kills)}/${num(player.deaths)}/${num(player.assists)}`;
   return (
-    <span
-      className={cn(
-        "flex min-w-0 items-center gap-1.5 sm:gap-3",
-        red && "flex-row-reverse text-right",
-      )}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-bold text-foreground sm:text-[15px]" title={lanePlayerName(player)}>
-          {laneRowName(player, teamCode)}
-        </span>
-        <span className="block text-sm font-bold tabular-nums text-foreground/90 sm:hidden">{kda}</span>
-        <span className="block truncate text-xs tabular-nums text-muted-foreground">
-          {num(player.creep_score)} CS · {kgold(player.total_gold)}
-        </span>
-      </span>
-      <span className="hidden shrink-0 text-base font-bold tabular-nums text-foreground/90 sm:block">{kda}</span>
+    <span className="relative shrink-0">
       <ChampionIcon
         championId={player.champion_id}
         championName={player.resolved_champion_name}
         manifest={manifest}
         className="h-10 w-10 rounded-md sm:h-11 sm:w-11"
       />
+      {player.level != null && (
+        <span
+          className="absolute -bottom-1 -right-1 min-w-[1.05rem] rounded-full border border-border bg-background px-0.5 text-center text-[9px] font-bold leading-[0.95rem] tabular-nums text-foreground/90"
+          title={`Level ${player.level}`}
+        >
+          {player.level}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * One side of a lane row: player → champion, mirrored on red so the two
+ * champions meet in the middle. On tablet and desktop the second line under
+ * the name is the player's inventory; on a phone it is CS · gold and the
+ * inventory moves into the lane's expansion, so the row keeps its height.
+ */
+function RowSide({
+  player,
+  side,
+  teamCode,
+  manifest,
+  itemNames,
+}: {
+  player: LivePlayer;
+  side: Side;
+  teamCode: string | null | undefined;
+  manifest: ChampionManifest | null | undefined;
+  itemNames: Map<number, string>;
+}) {
+  const red = side === "red";
+  const kda = `${num(player.kills)}/${num(player.deaths)}/${num(player.assists)}`;
+  const csGold = `${num(player.creep_score)} CS · ${kgold(player.total_gold)}`;
+  const name = laneRowShortName(player, teamCode);
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 items-center gap-1.5 sm:gap-2",
+        red && "flex-row-reverse text-right",
+      )}
+    >
+      <PlayerPortrait
+        playerKey={lanePlayerKey(player)}
+        name={name}
+        size="sm"
+        artOnly
+        className="hidden sm:inline-flex"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-bold text-foreground sm:text-[15px]" title={lanePlayerName(player)}>
+          {name}
+        </span>
+        <span className="block text-sm font-bold tabular-nums text-foreground/90 sm:hidden">{kda}</span>
+        <span className="block truncate text-xs tabular-nums text-muted-foreground sm:hidden">{csGold}</span>
+        <ItemStrip
+          items={player.items}
+          names={itemNames}
+          size="2xs"
+          mirrored={red}
+          className="mt-1 hidden sm:inline-flex"
+        />
+      </span>
+      <span className={cn("hidden shrink-0 sm:block", red ? "text-left" : "text-right")} title={csGold}>
+        <span className="block text-base font-bold leading-tight tabular-nums text-foreground/90">{kda}</span>
+        <span className="block whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">{kgold(player.total_gold)}</span>
+      </span>
+      <ChampionWithLevel player={player} manifest={manifest} />
     </span>
   );
 }
@@ -115,8 +165,10 @@ function LaneRow({
   manifest,
   panelId,
   codes,
+  itemNames,
 }: {
   codes: { blue: string | null | undefined; red: string | null | undefined };
+  itemNames: Map<number, string>;
   matchup: LaneMatchup;
   active: boolean;
   onPick: () => void;
@@ -143,7 +195,7 @@ function LaneRow({
           : "border-transparent hover:bg-muted/30",
       )}
     >
-      <RowSide player={matchup.blue} side="blue" teamCode={codes.blue} manifest={manifest} />
+      <RowSide player={matchup.blue} side="blue" teamCode={codes.blue} manifest={manifest} itemNames={itemNames} />
       <span className="flex flex-col items-center gap-0.5">
         <span
           className={cn(
@@ -170,7 +222,7 @@ function LaneRow({
           </span>
         )}
       </span>
-      <RowSide player={matchup.red} side="red" teamCode={codes.red} manifest={manifest} />
+      <RowSide player={matchup.red} side="red" teamCode={codes.red} manifest={manifest} itemNames={itemNames} />
     </button>
   );
 }
@@ -197,15 +249,37 @@ function CareerLine({ playerKey }: { playerKey: string }) {
   );
 }
 
-function LanePlayer({ player, side }: { player: LivePlayer; side: Side }) {
+function LanePlayer({
+  player,
+  side,
+  itemNames,
+}: {
+  player: LivePlayer;
+  side: Side;
+  itemNames: Map<number, string>;
+}) {
   const key = lanePlayerKey(player);
   const name = lanePlayerName(player);
   const red = side === "red";
   return (
     <div className={cn("min-w-0 space-y-0.5", red && "text-right")} data-testid={`lane-player-${side}`}>
-      <p className="truncate text-sm font-bold" title={key ? name : "Not matched to a Pro Play profile"}>
-        {name}
+      <p className={cn("flex items-center gap-2 text-sm font-bold", red && "flex-row-reverse")}>
+        {/* Phones only: the row itself has no room for the face or the items. */}
+        <PlayerPortrait playerKey={key} name={name} size="sm" artOnly className="sm:hidden" />
+        <span className="min-w-0 truncate" title={key ? name : "Not matched to a Pro Play profile"}>
+          {name}
+        </span>
+        <span className="hidden shrink-0 text-xs font-medium tabular-nums text-muted-foreground sm:inline">
+          {num(player.creep_score)} CS
+        </span>
       </p>
+      <ItemStrip
+        items={player.items}
+        names={itemNames}
+        size="sm"
+        mirrored={red}
+        className="flex-wrap sm:hidden"
+      />
       {key ? (
         <>
           <CareerLine playerKey={key} />
@@ -325,13 +399,21 @@ function StudyLinks({ blue, red }: { blue: string; red: string }) {
   );
 }
 
-function LaneDetail({ matchup, id }: { matchup: LaneMatchup; id: string }) {
+function LaneDetail({
+  matchup,
+  id,
+  itemNames,
+}: {
+  matchup: LaneMatchup;
+  id: string;
+  itemNames: Map<number, string>;
+}) {
   const blueChamp = matchup.blue.resolved_champion_name;
   const redChamp = matchup.red.resolved_champion_name;
   return (
     <div id={id} className="space-y-2 px-3 pb-3 pt-2 sm:px-4" data-testid="lane-matchup">
       <div className="grid grid-cols-2 items-start gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,13rem)_minmax(0,1fr)]">
-        <LanePlayer player={matchup.blue} side="blue" />
+        <LanePlayer player={matchup.blue} side="blue" itemNames={itemNames} />
         <div className="order-first col-span-2 sm:order-none sm:col-span-1">
           {blueChamp && redChamp ? (
             <ChampionPair blue={blueChamp} red={redChamp} />
@@ -341,7 +423,7 @@ function LaneDetail({ matchup, id }: { matchup: LaneMatchup; id: string }) {
             </p>
           )}
         </div>
-        <LanePlayer player={matchup.red} side="red" />
+        <LanePlayer player={matchup.red} side="red" itemNames={itemNames} />
       </div>
       {blueChamp && redChamp && (
         <>
@@ -373,6 +455,7 @@ export default function MatchWorkspace({
   manifest: ChampionManifest | null | undefined;
 }) {
   const lanes = useMemo(() => laneMatchups(players), [players]);
+  const itemNames = useItemNames();
   const [lane, setLane] = useState<HubLane | null>(null);
 
   // A new game starts on its first lane; a lane the new game cannot offer is
@@ -410,8 +493,9 @@ export default function MatchWorkspace({
                 manifest={manifest}
                 panelId={panelId}
                 codes={{ blue: game.teams.blue?.code, red: game.teams.red?.code }}
+                itemNames={itemNames}
               />
-              {active && <LaneDetail matchup={m} id={panelId} />}
+              {active && <LaneDetail matchup={m} id={panelId} itemNames={itemNames} />}
             </div>
           );
         })}
