@@ -362,12 +362,14 @@ export const appRouter = createBrowserRouter(
     <Route element={<AppRouterRoot />} errorElement={<RouteErrorRethrower />}>
                 {/* Root entrance. The Academy entry screen IS the homepage: it
                     renders outside <Layout /> so no navbar or footer appears, and
-                    its call to action navigates on to LEAGUE_HOME_ROUTE. LEGACY1
+                    it runs its entry transition automatically and navigates on to
+                    LEAGUE_HOME_ROUTE (no click required; /welcome is no longer
+                    part of this path but remains a direct route). LEGACY1
                     deleted the pre-Mogzy Mogsy landing that used to sit behind a
                     flag here, so there is one entrance and no second branch. */}
                 <Route
                   path="/"
-                  element={<Suspense fallback={<StartupSurface pathname="/" />}><MogzyEntryV2 seo="root" /></Suspense>}
+                  element={<Suspense fallback={<StartupSurface pathname="/" />}><MogzyEntryV2 seo="root" autoEnter /></Suspense>}
                 />
                 {/* HI1 Academy introduction. A real route, not modal state: it
                     survives refresh and direct navigation, and it stays reachable

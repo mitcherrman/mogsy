@@ -13,6 +13,8 @@ import SEOHead from "@/components/SEOHead";
 import { useSurfaceEvent } from "@/lib/analytics";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import { prefetchRoute } from "@/lib/route-prefetch";
+import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
 import { warmAcademyWelcomeScene } from "@/pages/welcome/sceneAssets";
 
@@ -48,6 +50,13 @@ import { useViewportTier } from "./useViewportTier";
  *
  * The façade is decorative throughout — never buttons or links. The single
  * interactive target is the central "Enter Mogzy" control.
+ *
+ * Two entry modes. The production root (`autoEnter`) is a brief branded boot
+ * sequence: the scene holds long enough to be seen, then the same door/zoom
+ * transition runs on its own and hands off to the Academy Hub. The control is
+ * still there as an optional skip. Without `autoEnter` (the /dev preview) the
+ * screen stays the interactive gate it always was, including the first-visit
+ * routing into the Academy introduction at /welcome.
  */
 
 /** Never let the wall swallow the frame entirely; keep a sliver of sky. */
@@ -73,11 +82,26 @@ export interface MogzyEntryV2Props {
    * Purely a metadata switch — the rendered screen is identical.
    */
   seo?: "dev" | "root";
+  /**
+   * Run the entry transition by itself after a short hold, and always hand off
+   * to the Academy Hub. Off by default, so the /dev preview remains the
+   * interactive gate and keeps resolving /welcome for first-time visitors.
+   */
+  autoEnter?: boolean;
 }
 
 /** Chime (~400ms) overlaps the transition; navigate as the veil peaks. */
 const ENTRY_DURATION_MS = 780;
 const ENTRY_DURATION_REDUCED_MS = 220;
+
+/**
+ * Auto-enter hold, before the transition starts. The façade takes 1.4s to fade
+ * up and the title 1.1s, so this lets the scene land and sit for a beat; the
+ * 780ms transition then brings the whole sequence to ~2.6s. Reduced motion has
+ * no fades to wait for, so it gets a short readable hold and the 220ms handoff.
+ */
+const AUTO_HOLD_MS = 1800;
+const AUTO_HOLD_REDUCED_MS = 450;
 
 const GOLD = "#c9a84c";
 const GOLD_BRIGHT = "#f0d78c";
@@ -111,7 +135,10 @@ function TitleOrnamentBottom({ width }: { width: number }) {
   );
 }
 
-export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
+export default function MogzyEntryV2({
+  seo = "dev",
+  autoEnter = false,
+}: MogzyEntryV2Props = {}) {
   /**
    * FUNNEL1B2 — the top of the funnel, which until now emitted nothing at all
    * (docs/FUNNEL1_HANDOFF.md §6: `/` had no telemetry, and `lol_landing_viewed`
@@ -204,23 +231,42 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
   /* Entry transition                                                       */
   /* ---------------------------------------------------------------------- */
 
+  const navigateTimerRef = useRef<number | null>(null);
+
+  // A pending hand-off must not outlive the screen: navigating away mid-boot
+  // (Back, a link) would otherwise be yanked on to the destination.
+  useEffect(
+    () => () => {
+      if (navigateTimerRef.current !== null) window.clearTimeout(navigateTimerRef.current);
+    },
+    [],
+  );
+
   const handleEnter = useCallback(() => {
     if (enteringRef.current) return;
     enteringRef.current = true;
 
-    // 1. chime first, so it leads the visual transition
-    playLaunchChime();
-    // 1b. this click is the gesture the autoplay policy wants, so it is also
-    //     where the entry music is allowed to start. Fire and forget: it never
+    // 1. chime first, so it leads the visual transition. An automatic entry has
+    //    no gesture behind it: a page that has never been interacted with is
+    //    not allowed to start audio, and trying only earns a console warning
+    //    (and a suspended context). Chime only when the browser has seen the
+    //    visitor act — e.g. they arrived by clicking a link.
+    if (!autoEnter || navigator.userActivation?.hasBeenActive) playLaunchChime();
+    // 1b. a click or key is the gesture the autoplay policy wants, so it is
+    //     where the entry music is allowed to start. On an automatic entry the
+    //     browser may refuse; the radio's first-interaction net (mounted above
+    //     the router, so it survives this screen) then starts it on the
+    //     visitor's first real action on the Hub. Fire and forget: it never
     //     throws or rejects, and nothing below is allowed to wait on it — a
     //     blocked or missing track must leave the entrance exactly as it was.
     void startEntryMusic();
     // 2-4. glow intensifies, emblems pull inward, veil closes (see variants)
     setEntering(true);
-    // 5. hand off — the Academy introduction on a first visit (HI1), otherwise
-    //    straight to the live League entry point exactly as before. Resolved
-    //    here rather than at render time so it reflects storage as of the click.
-    const destination = resolveEntryDestination();
+    // 5. hand off. The production root always goes to the Academy Hub. The
+    //    interactive preview keeps the HI1 routing — the Academy introduction on
+    //    a first visit, otherwise the hub — resolved here rather than at render
+    //    time so it reflects storage as of the click.
+    const destination = autoEnter ? LEAGUE_HOME_ROUTE : resolveEntryDestination();
     // 5b. the veil below runs for 780ms whatever happens, and a first-time
     //     visitor is about to land on a scene made of a ~530KB painting, a
     //     display face and a mascot (HI1-C4). Spending that window fetching
@@ -231,11 +277,30 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
       warmAcademyWelcomeScene();
       void import("@/pages/welcome/AcademyWelcomePage").catch(() => undefined);
     }
-    window.setTimeout(
+    navigateTimerRef.current = window.setTimeout(
       () => navigate(destination, { replace: true }),
       prefersReducedMotion ? ENTRY_DURATION_REDUCED_MS : ENTRY_DURATION_MS,
     );
-  }, [navigate, playLaunchChime, prefersReducedMotion]);
+  }, [autoEnter, navigate, playLaunchChime, prefersReducedMotion]);
+
+  // Automatic entry. The latest handler is read through a ref so a changed
+  // dependency never restarts the hold — the timer is keyed only on the mode and
+  // on reduced motion, and the effect is safe under StrictMode's
+  // mount/unmount/mount (the guard in handleEnter is only set when it fires).
+  const handleEnterRef = useRef(handleEnter);
+  handleEnterRef.current = handleEnter;
+
+  useEffect(() => {
+    if (!autoEnter) return;
+    // The hub chunk (and Quiz/CombatLab, which it links to) loads during the
+    // hold rather than after the navigation. Idle-scheduled and deduped.
+    prefetchRoute(LEAGUE_HOME_ROUTE);
+    const id = window.setTimeout(
+      () => handleEnterRef.current(),
+      prefersReducedMotion ? AUTO_HOLD_REDUCED_MS : AUTO_HOLD_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [autoEnter, prefersReducedMotion]);
 
   // Enter / Space activation, carried over from the legacy screen including its
   // guards against hijacking modifier chords and typing in fields.
@@ -403,6 +468,7 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
       className="relative h-[100dvh] w-full overflow-hidden bg-[#04070f]"
       data-testid="mogzy-entry-v2"
       data-entering={entering ? "true" : "false"}
+      data-auto-enter={autoEnter ? "true" : "false"}
       data-tier={tier}
       style={{
         // Respect device safe areas (notches, home indicator, punch-holes).
@@ -640,7 +706,7 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
             isLandscapePhone ? "mt-3" : isPhone ? "mt-5" : "mt-7",
           ].join(" ")}
         >
-          tap to enter
+          {autoEnter ? "opening the academy" : "tap to enter"}
         </motion.p>
       </div>
 

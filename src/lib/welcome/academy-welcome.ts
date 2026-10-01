@@ -148,6 +148,13 @@ export function clearAcademyWelcomeState(): void {
  * Resolved at click time rather than at render time so it always reflects
  * current storage — the entrance screen can be mounted for a long while, and a
  * decision cached at mount could be stale by the time it is used.
+ *
+ * MG-B: the production root ("/") no longer calls this — it runs automatically
+ * and always continues to the Hub. Only the interactive /dev/mogzy-entry-v2
+ * preview still resolves through it, which keeps the first-visit funnel into
+ * /welcome intact and testable if the owner wants it back. The Welcome state
+ * itself (storage key, read/mark/clear) is unchanged and still owned by
+ * AcademyWelcomePage.
  */
 export function resolveEntryDestination(): string {
   return hasHandledAcademyWelcome() ? LEAGUE_HOME_ROUTE : ACADEMY_WELCOME_ROUTE;
