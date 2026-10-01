@@ -9,6 +9,7 @@
  *   Step 3   [Ahri · Lv 2] → [24 · Armor]
  *   Step 4   [85 · Raw] → [24 · Ahri armor] → [100 / (100 + 24) ≈ 0.806] → [68 · Final]
  *   Haste    [12s · Base cooldown] → [10 · Ability haste] → [100 / (100 + 10)] → [90.9%] → [11s · Effective]
+ *   Compare  [12s · Leona E] < [22s · Pantheon E], over two paired bars (10s shorter)
  *
  * A chain is only ever a REAL derivation, from served structure: the server's
  * TYPED working (`combatWorking.ts` — raw damage, after armor, cooldown under
@@ -49,6 +50,7 @@ import type { JourneyAsks, JourneyPrerequisite } from "./adapter";
 import { chainNoun } from "./chain";
 import type { AbilitySlot } from "./contract";
 import type { CombatWorking, CooldownWorking, RawDamageWorking } from "./combatWorking";
+import type { ComparisonValues } from "@/features/mastery/contracts/comparisonValues";
 import { ratioStatLabel } from "./statWording";
 import { displayWhole, exactNumber, isRoundedForDisplay, isJourneyStatKey, JOURNEY_STAT_META, type JourneyStatKey } from "./stats";
 
@@ -57,7 +59,7 @@ export type ReasonIcon =
   | { kind: "champion"; championId: string; champion: string }
   | { kind: "stat"; stat: JourneyStatKey };
 
-export type ReasonOp = "+" | "−" | "=" | "→";
+export type ReasonOp = "+" | "−" | "=" | "→" | "<" | ">";
 
 export interface ReasonNode {
   key: string;
@@ -116,8 +118,19 @@ export interface ReasonComposition {
   totalLabel: string;
 }
 
+/**
+ * Two served values side by side: the bars under a comparison chain. `ratio`
+ * is a side's served value as a share of the larger one (proportion only, the
+ * Data Duel's own rule); `value` is the backend's display.
+ */
+export interface ReasonPair {
+  rows: { key: string; name: string; value: string; ratio: number; wins: boolean }[];
+  /** The served margin, on the winner's row ("10s shorter"); null for a tie or when none is served. */
+  delta: string | null;
+}
+
 export interface Reasoning {
-  kind: "raw" | "stat" | "combat" | "cooldown" | "live";
+  kind: "raw" | "stat" | "combat" | "cooldown" | "compare" | "live";
   /** The subject line above the chain ("Shadow Slash — Rank 1"). */
   subject: { icon: ReasonIcon | null; text: string } | null;
   /** A one-line formula the chain follows from (a Combat child that states it). */
@@ -129,6 +142,8 @@ export interface Reasoning {
   magnitude?: ReasonMagnitude | null;
   /** JP5 — the composition bar, when the chain is a served sum of terms. */
   composition?: ReasonComposition | null;
+  /** The paired bars, when the chain is a served comparison of two values. */
+  pair?: ReasonPair | null;
 }
 
 const pct = (ratio: number) => `${Number((ratio * 100).toFixed(4))}%`;
@@ -390,6 +405,52 @@ export function cooldownReasoning(w: CooldownWorking): Reasoning {
     magnitude: { ratio: m, from: seconds(exactNumber(w.baseCooldown)), to: seconds(w.answer),
       fromLabel: "base", toLabel: "effective", percent: reductionPercent(m), kept: "reduced",
       delta: `${approxTenths(w.baseCooldown - w.effectiveCooldown)}s shorter` },
+  };
+}
+
+/**
+ * COOLDOWN COMPARISON — two served cooldowns side by side, from DD1's
+ * `comparison_values.v1` (read fail-closed upstream): the two sides' displays
+ * verbatim, joined by the relation the SERVED winner (`correct_answer`) and
+ * direction (`operator`) state — checked against the two served values before
+ * it is drawn, never decided by them — and the paired bars, each value as a
+ * share of the larger (proportion only), with the served margin on the
+ * winner's row. Cooldowns only (the one comparison a Journey asks); anything
+ * else, or anything that does not agree with itself, draws no chain and the
+ * reveal keeps its served explanation.
+ */
+export function comparisonReasoning(cv: ComparisonValues, sides: {
+  championA: string; championB: string; slot: string; rank: number | null;
+}, winnerToken: string | null, tieToken: string): Reasoning | null {
+  const lesser = cv.operator === "lesser";
+  if (cv.unit !== "seconds" || (!lesser && cv.operator !== "greater") || winnerToken === null) return null;
+  const [a, b] = cv.sides;
+  const tie = winnerToken === tieToken;
+  if (!tie && winnerToken !== a.token && winnerToken !== b.token) return null;
+  const aWins = winnerToken === a.token;
+  const bWins = winnerToken === b.token;
+  const rel: ReasonOp = tie ? "=" : aWins === lesser ? "<" : ">";
+  const holds = rel === "=" ? a.display === b.display : rel === "<" ? a.value < b.value : a.value > b.value;
+  const max = Math.max(a.value, b.value);
+  if (!holds || !(max > 0)) return null;
+  const slot = slotOf(sides.slot);
+  const icon = (champion: string): ReasonIcon | null => (slot ? { kind: "ability", champion, slot } : null);
+  return {
+    kind: "compare",
+    subject: { icon: null, text: `${sides.slot} cooldown${sides.rank !== null ? ` — ${rankWords(sides.rank)}` : ""}` },
+    caption: null,
+    nodes: [
+      { key: "a", label: `${sides.championA} ${sides.slot}`, value: seconds(a.display), icon: icon(sides.championA), final: aWins },
+      { key: "b", label: `${sides.championB} ${sides.slot}`, value: seconds(b.display), icon: icon(sides.championB), final: bWins, op: rel },
+    ],
+    exact: null,
+    pair: {
+      rows: [
+        { key: "a", name: sides.championA, value: seconds(a.display), ratio: a.value / max, wins: aWins },
+        { key: "b", name: sides.championB, value: seconds(b.display), ratio: b.value / max, wins: bWins },
+      ],
+      delta: tie || !cv.deltaDisplay ? null : `${cv.deltaDisplay}s ${lesser ? "shorter" : "longer"}`,
+    },
   };
 }
 

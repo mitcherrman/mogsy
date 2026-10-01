@@ -44,13 +44,15 @@ import { ArrowRight, FoldHorizontal, Info, UnfoldHorizontal } from "lucide-react
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   unfoldCompressAtMs, type ReasonComposition, type ReasonIcon, type ReasonMagnitude, type ReasonNode,
-  type Reasoning,
+  type ReasonPair, type Reasoning,
 } from "@/lib/journey/reasoning";
 import { mnemonicForStat } from "@/lib/journey/statIcons";
 import { JOURNEY_STAT_META } from "@/lib/journey/stats";
 import { AbilityIcon, ChampionIcon, StatMnemonicIcon } from "./JourneyIcons";
 
-const OP_WORDS: Record<string, string> = { "+": "plus", "−": "minus", "=": "equals", "→": "gives" };
+const OP_WORDS: Record<string, string> = {
+  "+": "plus", "−": "minus", "=": "equals", "→": "gives", "<": "is less than", ">": "is greater than",
+};
 
 /** Which moment of the chain is drawn; null = a chain that does not fold. */
 export type ChainPhase = "live" | "expanded" | "compressed";
@@ -175,6 +177,7 @@ export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggl
   const magnitude = phase === "expanded" || phase === "compressed" ? reasoning.magnitude ?? null : null;
   // A composition has no fold: it is drawn whenever the chain is a reveal.
   const composition = phase === "live" ? null : reasoning.composition ?? null;
+  const pair = phase === "live" ? null : reasoning.pair ?? null;
   return (
     <Root data-testid={testId} data-reasoning={reasoning.kind} className="journey-reasoning" role="group"
       aria-label={phase === "live" ? "What this step builds on" : "How the answer follows"}>
@@ -206,6 +209,7 @@ export function JourneyReasoningChain({ reasoning, testId, phase = null, onToggl
       </List>
       {magnitude && <JourneyMagnitude magnitude={magnitude} testId={`${testId}-magnitude`} folded={folded} />}
       {composition && <JourneyComposition composition={composition} testId={`${testId}-composition`} />}
+      {pair && <JourneyPair pair={pair} testId={`${testId}-pair`} />}
     </Root>
   );
 }
@@ -268,6 +272,32 @@ export function JourneyComposition({ composition, testId }: { composition: Reaso
       <span aria-hidden className="journey-composition__end">
         <b>{composition.total}</b> {composition.totalLabel}
       </span>
+    </div>
+  );
+}
+
+/**
+ * THE PAIRED BARS: a comparison's two served values, one row each, each fill
+ * its value as a share of the larger (`--jp-ratio`, set from the served values
+ * only); the winner's row in the answer's gold, carrying the served margin.
+ */
+export function JourneyPair({ pair, testId }: { pair: ReasonPair; testId: string }) {
+  const spoken = pair.rows.map((r) => `${r.name} ${r.value}`).join(", ");
+  return (
+    <div className="journey-pair" data-testid={testId} role="img"
+      aria-label={pair.delta ? `${spoken}: ${pair.delta}` : spoken}>
+      {pair.rows.map((r) => (
+        <span key={r.key} aria-hidden className="journey-pair__row" data-testid={`${testId}-${r.key}`}
+          data-ratio={r.ratio} {...(r.wins ? { "data-wins": "true" } : {})}
+          style={{ "--jp-ratio": String(r.ratio) } as CSSProperties}>
+          <span className="journey-pair__name">{r.name}</span>
+          <span className="journey-pair__track"><span className="journey-pair__fill" /></span>
+          <b className="journey-pair__value">{r.value}</b>
+          {r.wins && pair.delta && (
+            <span className="journey-pair__delta" data-testid={`${testId}-delta`}>{pair.delta}</span>
+          )}
+        </span>
+      ))}
     </div>
   );
 }

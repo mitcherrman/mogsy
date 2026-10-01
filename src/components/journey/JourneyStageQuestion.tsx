@@ -71,6 +71,7 @@ import { readComparisonSemantics } from "@/features/mastery/contracts/comparison
 import { formatRecallPrompt } from "@/features/mastery/interactions/formatPromptSemantics";
 import { formatComparisonPrompt } from "@/features/mastery/interactions/formatComparisonSemantics";
 import { COMPARISON_TIE_TOKEN } from "@/features/mastery/interactions/ComparisonQuestionView";
+import type { ComparisonValues } from "@/features/mastery/contracts/comparisonValues";
 import {
   COOLDOWN_WORKING_CONTRACT, RAW_DAMAGE_WORKING_CONTRACT, type JourneyWorking,
 } from "@/lib/journey/combatWorking";
@@ -79,8 +80,8 @@ import { ratioStatLabel, explicitAdText } from "@/lib/journey/statWording";
 import { mnemonicForMetric } from "@/lib/journey/statIcons";
 import { isJourneyStatKey, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import {
-  combatReasoning, cooldownReasoning, liveReasoning, rawReasoning, rawWordsReasoning, statReasoning, unfolds,
-  type Reasoning,
+  combatReasoning, comparisonReasoning, cooldownReasoning, liveReasoning, rawReasoning, rawWordsReasoning,
+  statReasoning, unfolds, type Reasoning,
 } from "@/lib/journey/reasoning";
 import {
   combatPremiseOf, combatQuestionSentence, percent, premiseValue, type CombatPremise,
@@ -190,6 +191,25 @@ function statRecallOf(challenge: MasterySliceChallengeView) {
   };
 }
 
+/**
+ * A comparison child's sides as its served semantics name them (option order:
+ * A, then B), and the one rank both are compared at — null when the ranks
+ * differ or the answer holds at every rank (never stated then). Null when the
+ * semantics are absent or unreadable.
+ */
+function comparisonSidesOf(challenge: MasterySliceChallengeView) {
+  if (!challenge.comparisonSemantics) return null;
+  try {
+    const cs = readComparisonSemantics(challenge.comparisonSemantics);
+    const [ra, rb] = cs.sideContexts
+      ? cs.sideContexts.map((c) => c.abilityRank) : [cs.context.abilityRank, cs.context.abilityRank];
+    return { championA: cs.championADisplay, championB: cs.championBDisplay, slot: cs.subjectRef,
+      rank: !cs.rankIndependent && ra !== null && ra === rb ? ra : null };
+  } catch {
+    return null;
+  }
+}
+
 const ABILITY_SLOTS_SET = new Set(["Q", "W", "E", "R"]);
 
 /** The board's id for a champion named in the question (its portrait), or null. */
@@ -244,18 +264,19 @@ export function workingReasoning(working: JourneyWorking, rawRecalled: boolean):
 
 const CHAIN_TEST_IDS: Record<Reasoning["kind"], string> = {
   combat: "journey-combat-working", raw: "journey-raw-working", cooldown: "journey-cooldown-working",
-  stat: "journey-stat-working", live: "journey-live-chain",
+  compare: "journey-compare-working", stat: "journey-stat-working", live: "journey-live-chain",
 };
 
 /**
  * The reveal, in the prompt region's reserved box: the verdict and the answer,
  * then (JP4) the REASONING CHAIN when the child has a real derivation — the
- * server's typed working (JP5), a stat recall's own semantics — or, for a
+ * server's typed working (JP5), a stat recall's own semantics, a comparison's
+ * served values (DD1 `comparison_values.v1`, never the Data Duel) — or, for a
  * taught fact (a formula), the fact itself beside its subject. Anything else
  * keeps the served explanation, whole-number display.
  */
 function JourneyReveal({ challenge, journey, question, correct, timedOut, answer, explanation, working,
-  learnedFormula, rawRecalled, windowMs, endsAt }: {
+  comparison, winnerToken, learnedFormula, rawRecalled, windowMs, endsAt }: {
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
   question: JourneyQuestion;
@@ -266,6 +287,9 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   answer: string | null;
   explanation: string;
   working: JourneyWorking | null;
+  /** A comparison's served values, and the served winning option (`correct_answer`). */
+  comparison: ComparisonValues | null;
+  winnerToken: string | null;
   learnedFormula: JourneyFormula | null;
   /** The raw damage this Combat answer applies was established by an earlier step. */
   rawRecalled: boolean;
@@ -287,6 +311,9 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
     }
   } else if (statRecall && answer !== null) {
     reasoning = statReasoning({ ...statRecall, championId: championIdOf(journey, statRecall.champion) }, answer);
+  } else if (question.kind === "comparison" && comparison) {
+    const sides = comparisonSidesOf(challenge);
+    if (sides) reasoning = comparisonReasoning(comparison, sides, winnerToken, COMPARISON_TIE_TOKEN);
   }
   const fact = !reasoning && challenge.questionFamily === FORMULA_FAMILY
     ? promptSubjectsFor(challenge, journey, question).find((s) => s.kind === "ability") ?? null : null;
@@ -299,7 +326,8 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
     <div data-testid="journey-reveal" role="status" aria-live="polite" className="journey-reveal"
       data-working={kind ?? (shown.text ? "explanation" : "none")}
       {...(folds ? { "data-unfold": unfold.phase, "data-unfold-by": unfold.manual ? "learner" : "reveal" } : {})}
-      {...(reasoning?.composition ? { "data-compose": "true" } : {})}>
+      {...(reasoning?.composition ? { "data-compose": "true" } : {})}
+      {...(reasoning?.pair ? { "data-compare": "true" } : {})}>
       <div className="journey-reveal__top">
         <p data-testid="journey-reveal-verdict" data-correct={correct ? "true" : "false"}
           className={`journey-reveal__verdict ${correct ? "journey-reveal__verdict--correct" : "journey-reveal__verdict--wrong"}`}>
@@ -425,7 +453,8 @@ export function JourneyStageQuestion({
           correct={reveal.correct} timedOut={!reveal.correct && reveal.selectedValue === null}
           answer={labelOf(reveal.correctValue)}
           explanation={challenge.questionFamily === FORMULA_FAMILY ? explicitAdText(reveal.explanation) : reveal.explanation}
-          working={working} learnedFormula={journey.learnedFormula ?? null}
+          working={working} comparison={reveal.comparisonValues ?? null} winnerToken={reveal.correctValue}
+          learnedFormula={journey.learnedFormula ?? null}
           rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
           windowMs={revealWindowMs} endsAt={revealEndsAt} />
       )}

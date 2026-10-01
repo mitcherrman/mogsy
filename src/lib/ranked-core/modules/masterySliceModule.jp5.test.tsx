@@ -790,12 +790,13 @@ describe("every Journey host draws the same chain", () => {
       expect(reveal(), label).toHaveAttribute("data-unfold", "expanded");
       cleanup();
     }
-    // A cooldown comparison keeps its prose (no comparison chain until main's
-    // `comparison_values.v1` is integrated) and its fast window.
+    // A cooldown comparison keeps its fast window and never unfolds; with JP3–JP5
+    // on main its served `comparison_values.v1` draws the comparison chain.
     const cmp = snap(J5_VOLI, "child4-reveal");
     expect(segWire(cmp).own_reveal_window_ms).toBe(1750);
     show(cmp);
-    expect(reveal()).toHaveAttribute("data-working", "explanation");
+    expect(reveal()).toHaveAttribute("data-working", "compare");
+    expect(reveal()).not.toHaveAttribute("data-unfold");
   });
 });
 

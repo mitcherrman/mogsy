@@ -17918,9 +17918,11 @@ button.journey-portrait-popup__line:focus-visible { outline: 2px solid #f3dca0; 
 /* The chain and its bar share one column, as wide as the chain (the whole box
    where the chain wraps), so the bar runs from the first node to the last. */
 .journey-reveal[data-unfold],
-.journey-reveal[data-compose] { gap: 0.25rem; }
+.journey-reveal[data-compose],
+.journey-reveal[data-compare] { gap: 0.25rem; }
 .journey-reveal[data-unfold] .journey-reasoning,
-.journey-reveal[data-compose] .journey-reasoning {
+.journey-reveal[data-compose] .journey-reasoning,
+.journey-reveal[data-compare] .journey-reasoning {
   display: grid;
   grid-template-columns: fit-content(100%);
   align-content: center;
@@ -17943,18 +17945,22 @@ button.journey-portrait-popup__line:focus-visible { outline: 2px solid #f3dca0; 
 @container jreveal (min-width: 38.75rem) {
   .journey-reveal[data-unfold] .journey-reasoning__chain { --jn-w: 5.75rem; --jop-w: 1.25rem; --jop-fs: 1.375rem; }
 }
-.journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 2.75rem; row-gap: 3px; }
+.journey-reveal[data-compose] .journey-reasoning__chain,
+.journey-reveal[data-compare] .journey-reasoning__chain { --jn-h: 2.75rem; row-gap: 3px; }
 @media (min-width: 640px) {
   .journey-reveal[data-unfold] .journey-reasoning__chain,
-  .journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 3rem; }
+  .journey-reveal[data-compose] .journey-reasoning__chain,
+  .journey-reveal[data-compare] .journey-reasoning__chain { --jn-h: 3rem; }
 }
 @media (min-width: 1024px) {
   .journey-reveal[data-unfold] .journey-reasoning__chain,
-  .journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 3.75rem; }
+  .journey-reveal[data-compose] .journey-reasoning__chain,
+  .journey-reveal[data-compare] .journey-reasoning__chain { --jn-h: 3.75rem; }
 }
 @media (min-width: 1280px) {
   .journey-reveal[data-unfold] .journey-reasoning__chain,
-  .journey-reveal[data-compose] .journey-reasoning__chain { --jn-h: 3.25rem; }
+  .journey-reveal[data-compose] .journey-reasoning__chain,
+  .journey-reveal[data-compare] .journey-reasoning__chain { --jn-h: 3.25rem; }
 }
 .journey-reveal[data-unfold] .journey-node { padding: 2px 3px 3px; }
 .journey-reveal[data-unfold] .journey-node__value { font-size: 1.0625rem; }
@@ -18128,6 +18134,61 @@ button.journey-node {
   .journey-composition__label { display: none; }
 }
 
+/* ── 3c. THE PAIRED BARS (cooldown comparison) ──────────────────────────────
+   Two served values, one thin row each: the champion, a track whose fill is
+   that side's value as a share of the larger (`--jp-ratio`, from the served
+   values), and the backend's display. The winner's row is the answer's gold
+   and carries the served margin. Two rows of the composition bar's height
+   class, so the reveal box holds them under the two-node chain. */
+.journey-pair {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 2px;
+  color: #6b5426;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* A two-node chain is narrow: its column (the chain centred, the bars under
+   it) takes a fixed reading width instead, so the two bars can be compared. */
+.journey-reveal[data-compare] .journey-reasoning { grid-template-columns: min(100%, 22rem); }
+.journey-pair__row { display: contents; }
+.journey-pair__name { justify-self: end; }
+.journey-pair__value { color: #2a1f08; font-size: 0.6875rem; font-weight: 900; letter-spacing: 0; }
+.journey-pair__track {
+  position: relative;
+  height: 0.4375rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(122 98 54 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(122 98 54 / 0.4);
+}
+.journey-pair__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--jp-ratio) * 100%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #b9a37a, #d8c79f);
+}
+.journey-pair__row[data-wins] .journey-pair__fill {
+  background: linear-gradient(90deg, #a5790f, #e0b64a);
+  box-shadow: inset 0 1px 0 rgb(255 250 230 / 0.55);
+}
+.journey-pair__row[data-wins] .journey-pair__name { color: #5a3f0c; }
+/* The margin: on the winner's row, quieter than the value (as the magnitude bar's). */
+.journey-pair__delta {
+  padding-left: 2px;
+  border-left: 1px solid rgb(122 98 54 / 0.45);
+  color: #8a6d2c;
+}
+
 /* ── 4. MOTION ──────────────────────────────────────────────────────────────
    ALL AT ONCE: every step the reveal adds enters in the same 260ms — there is
    no per-step delay anywhere. Then the bar contracts from the whole to the
@@ -18141,6 +18202,9 @@ button.journey-node {
 @keyframes journey-magnitude-land {
   from { opacity: 0; }
 }
+@keyframes journey-pair-grow {
+  from { width: 0; }
+}
 @keyframes journey-composition-join {
   from { opacity: 0; transform: translateX(calc(-0.75rem - var(--jc-i, 0) * 0.5rem)); margin-right: 6px; }
 }
@@ -18152,6 +18216,9 @@ button.journey-node {
   .journey-reveal[data-unfold] .journey-reasoning__step:not([data-given]),
   .journey-reveal[data-unfold] .journey-magnitude,
   .journey-reveal[data-compose] .journey-reasoning__step:not([data-given]) { animation: journey-unfold-in 260ms ease-out; }
+  .journey-reveal[data-compare] .journey-reasoning__step { animation: journey-unfold-in 260ms ease-out; }
+  .journey-pair__fill { animation: journey-pair-grow 440ms cubic-bezier(0.4, 0, 0.2, 1) 120ms backwards; }
+  .journey-pair__delta { animation: journey-magnitude-land 160ms ease-out 440ms backwards; }
   .journey-magnitude__fill { animation: journey-magnitude-contract 440ms cubic-bezier(0.4, 0, 0.2, 1) 120ms backwards; }
   .journey-magnitude__end--to { animation: journey-magnitude-land 160ms ease-out 440ms backwards; }
   .journey-composition__part { animation: journey-composition-join 420ms cubic-bezier(0.4, 0, 0.2, 1) calc(80ms + var(--jc-i, 0) * 60ms) backwards; }
@@ -18174,3 +18241,5 @@ html.reduce-motion .journey-magnitude,
 html.reduce-motion .journey-magnitude *,
 html.reduce-motion .journey-composition,
 html.reduce-motion .journey-composition * { animation: none !important; transition: none !important; }
+html.reduce-motion .journey-reveal[data-compare] .journey-reasoning__step,
+html.reduce-motion .journey-pair * { animation: none !important; transition: none !important; }
