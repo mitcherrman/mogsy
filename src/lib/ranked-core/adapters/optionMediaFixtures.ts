@@ -63,6 +63,23 @@ export const CHAMPION_OPTION_QUESTION: BackendQuestionPayload = {
 };
 
 /**
+ * RCP1 runtime `champion_stat_compare`: a TWO-option champion duel. Option
+ * media only (both champions are the answer space, so there is no premise
+ * subject). Dumped from `ranked_public.runtime_casual.question_record(...)
+ * .public_view()`.
+ */
+export const TWO_CHAMPION_OPTION_QUESTION: BackendQuestionPayload = {
+  question_id: "champion_stat_compare:v1:compare:armor:Ahri:vs:Lux#r1",
+  prompt: "At level 1, which champion has more armor: Ahri or Lux?",
+  options: ["Ahri", "Lux"],
+  category: "Champion Base Stats",
+  option_media: [
+    { type: "champion", id: "Ahri", name: "Ahri", icon: "assets/champions/Ahri/icon.png" },
+    { type: "champion", id: "Lux", name: "Lux", icon: "assets/champions/Lux/icon.png" },
+  ],
+};
+
+/**
  * Ability options. Every icon is the SLOT-NEUTRAL backend route, never an
  * `assets/champions/**\/Q_*.png` path — the on-disk filename starts with the
  * slot, which for a "which of these is the ultimate?" question is the answer.
@@ -158,6 +175,7 @@ export const NUMERIC_QUESTION: BackendQuestionPayload = {
 export const OPTION_MEDIA_QUESTIONS = {
   item: ITEM_OPTION_QUESTION,
   champion: CHAMPION_OPTION_QUESTION,
+  two_champion: TWO_CHAMPION_OPTION_QUESTION,
   ability: ABILITY_OPTION_QUESTION,
   rune: RUNE_OPTION_QUESTION,
   summoner_spell: SUMMONER_SPELL_OPTION_QUESTION,

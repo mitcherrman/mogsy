@@ -29,6 +29,7 @@ import {
   NUMERIC_QUESTION,
   RUNE_OPTION_QUESTION,
   SUMMONER_SPELL_OPTION_QUESTION,
+  TWO_CHAMPION_OPTION_QUESTION,
 } from "@/lib/ranked-core/adapters/optionMediaFixtures";
 import {
   AnswerOptionView,
@@ -94,6 +95,22 @@ describe("option media rendering", () => {
       expect(screen.getByRole("button", { name: new RegExp(label, "i") }))
         .toHaveTextContent(label);
     }
+  });
+
+  it("a two-option champion duel stays stacked with two successful icons", () => {
+    const { container } = grid(TWO_CHAMPION_OPTION_QUESTION);
+    const fieldset = screen.getByTestId("answer-grid");
+    expect(fieldset).toHaveAttribute("data-answer-layout", "stacked");
+    expect(fieldset).toHaveAttribute("data-answer-count", "2");
+    const mounted = slots(container);
+    expect(mounted).toHaveLength(2);
+    mounted.forEach((slot, index) => {
+      expect(slot).toHaveAttribute("data-option-media-type", "champion");
+      expect(slot).toHaveAttribute("data-option-media-state", "ok");
+      const src = slot.querySelector("img")!.getAttribute("src")!;
+      expect(src.endsWith(`/${TWO_CHAMPION_OPTION_QUESTION.option_media![index].icon}`))
+        .toBe(true);
+    });
   });
 
   it("icon urls are resolved against the API origin, not left relative", () => {
