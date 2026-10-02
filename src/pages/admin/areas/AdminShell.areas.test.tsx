@@ -376,6 +376,18 @@ describe("7 · Ranked Admin home renders", () => {
     expect(button.textContent).toBe("Play Order Forge");
     expect(screen.getByTestId("reference-journey-launch-button")).toBeTruthy();
   });
+
+  it("offers the three Journey launches in Ranked > Playtests", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const panel = await screen.findByTestId("ranked-reference-journeys");
+    expect(
+      within(panel).getAllByRole("button").map((b) => b.textContent),
+    ).toEqual([
+      "Play Zed/Ahri Reference Journey",
+      "Play Pantheon/Leona Journey",
+      "Play Volibear/Lee Sin Journey",
+    ]);
+  });
 });
 
 describe("8 & 9 · normal Ranked and Ranked Bot access are untouched", () => {

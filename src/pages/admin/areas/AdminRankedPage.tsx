@@ -54,6 +54,10 @@ import { ADMIN_AREAS_BY_ID, toolsForSection } from "@/lib/admin/admin-registry";
 import { cn } from "@/lib/utils";
 import RankedFormatBuilder from "@/pages/admin/ranked/RankedFormatBuilder";
 import { ReferenceJourneyLaunch } from "@/pages/admin/ranked/ReferenceJourneyLaunch";
+import {
+  PantheonLeonaJourneyLaunch,
+  VolibearLeeSinJourneyLaunch,
+} from "@/pages/admin/ranked/DailyJourneyLaunch";
 import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
@@ -297,11 +301,15 @@ export default function AdminRankedPage() {
           {section.id === "playtests" && (
             <>
               <AdminPanel
-                title="Reference Journeys"
-                description="Owner-approved reference Journeys, played through the normal Ranked Bot shell."
+                title="Journeys"
+                description="Certified Journeys, played through the normal Ranked Bot shell."
                 testId="ranked-reference-journeys"
               >
-                <ReferenceJourneyLaunch />
+                <div className="space-y-3">
+                  <ReferenceJourneyLaunch />
+                  <PantheonLeonaJourneyLaunch />
+                  <VolibearLeeSinJourneyLaunch />
+                </div>
               </AdminPanel>
               <AdminPanel
                 title="Order Forge"
