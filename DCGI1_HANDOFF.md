@@ -1,8 +1,50 @@
 # DCGI1 — Demacia Cup Global Invitational 2026 tournament surface
 
-**Status: re-integrated onto the production-certified PPH3 base and certified
-locally (2026-10-01).** Not pushed, not merged, not deployed. No production DB
-or media row has been written. The event starts 2026-10-03 (Round 1 from 08:00 UTC).
+**Status: RELEASE READY, pending owner authorisation (2026-10-01).**
+- Certified on the PPH3 production bases.
+- Then replayed onto the current upstream tips and re-gated; see "Final integration gate" below.
+- Not pushed, not merged, not deployed. No production DB or media row has been written.
+- The event starts 2026-10-03 (Round 1 from 08:00 UTC).
+
+## Final integration gate (current upstream tips)
+
+**Upstream tips** (fetched and verified unchanged since the report):
+- frontend `origin/main` = `18fc90a957ccf5cfd862589633609278f6bfd7f9`
+- backend `origin/master` = `49b8b434938dcf9519fe646ceeadef0c17bb91a1`
+
+| Repo | Branch | Base (tip) | Final SHA | Certified pre-tip head (kept as branch) |
+|---|---|---|---|---|
+| Frontend | `dcgi1/tournament-surface` | `18fc90a9` | the commit carrying this section (`a54bbc19 → ff8d636b → 581628dd → 6b32cc1a → 3d7170ee →` this) | `dcgi1/tournament-surface-certified-424d` = `f38420be` |
+| Backend | `dcgi1/tournament-context` | `49b8b434` | `5d904438` | `dcgi1/tournament-context-certified-0524` = `d66fe096` |
+
+**Integration: clean.**
+- `git rebase --onto <tip> <old base>`, with no conflicts.
+- `git range-diff` reports every commit patch-identical (`=`).
+- `git diff <tip> HEAD` is **byte-identical** to the certified `git diff <old base> <certified head>` on both repos (`cmp`), so the production diff is exactly what was certified.
+
+**What upstream added since the bases** (JP3–JP5 Journey):
+- **Backend:** `mastery/*`, `ranked_modules/mastery_slice.py`, `ranked_public/*`, Journey tests and a handoff. No DCGI file is touched.
+- **Frontend:** 440 files. The only shared-layout candidate, `src/index.css`, changes Journey-scoped selectors (`.journey-*`, `--jb-*`) plus a `:root` block of `--jp3-*` variables. No Pro Play hub, header, media or route file changed upstream.
+- **Geometry:** for that reason it was not re-measured. The hub DOM and CSS that produced the 0 px result are unchanged.
+
+**Gates on the integrated branches**
+
+- **Backend**, run on `5d904438` with the stray `lol_calc.db` removed first; none was created this time. Suites: tournament context (registry/state/route), competition policy + Graph1 broad policy, media + league media (migration/entity), `/upcoming`, live-esports core / poller routes / phase4b1 competition / graph1, `graph1_scope`, DC1 policy reconciliation, comparison, bounded scopes, question context.
+  - **Result: 709 passed, 1 failed, 47 skipped.** The failure, `test_graph1_scope::test_the_scope_values_endpoint_answers`, fails identically on a clean `49b8b434` worktree (1 failed / 39 passed).
+  - **Newer upstream suites on the integrated branch** (`test_dcgr_content_products`, `test_jchain1_*`, `test_journey2/3/5_*`, `test_journey_k1_*`, `test_journey_motion_v1_*`, `test_jp5_structured_working`, `test_jref1_*`): **121 passed, 263 skipped, 0 failed.**
+  - **Event mark path:** the integrated resolver returns `art` for `demacia_cup` at `assets/esports/leagues/demacia-cup-a6034e3f/league_logo-5ca7601772a4.png`. The file is in the tree with sha256 `5ca7601772a48e94…`.
+- **Frontend**, run on the integrated branch. Suites: DCGI page/view/media, Pro Play libs/components, Pro Play hub (including the 2 placement tests), live-esports and esports/live (PPH3 Match Center), route prefetch, Mogzy Guide/Dock, `LolHub`, the Quiz guide/hub, the Leaguecraft guide.
+  - **Result: 1313 passed, 6 failed (37 files).** The 6 are the same `ArchivePage` ×5 timeouts and `Quiz.hub` "one h1". All 6 fail identically on a clean `18fc90a9` worktree (6 failed / 91 passed for those two files).
+  - **Typecheck:** 6 errors, the same set as before, in untouched files (`OnboardingProfile.tsx`, `identity/connections.ts`, `practiceLeaveContract.test.ts`).
+  - **Build:** green, with the item and champion prerender verify OK. The `public/sitemap.xml` rewrite was reverted.
+
+**Scope confirmations (against the tips)**
+- `/upcoming` is not duplicated or modified. `routes/live_esports.py` is +86/−0: the tournament route only reuses `_upcoming_source()` and the same cache and stale rules.
+- **Lineups are separate from rosters.** The only `INSERT` in DCGI code is the media-table rebuild. Lineups live in `pro_authority/tournament_context.py`, and nothing touches `esports_players`, `esports_teams`, roster wiki imports, `worlds_focus`, the LIVE1 poller or the Matchup Explorer.
+- **No unrelated work entered the diff:**
+  - frontend: 24 files, every one DCGI;
+  - backend: 16 files, every one DCGI;
+  - full file lists under "Files changed".
 
 ## Objective
 
@@ -13,7 +55,7 @@ league media) onto the PPH3 production bases without regressing PPH3. Then:
 - ingest the real DCGI event mark through the canonical media authority;
 - certify and stop before production.
 
-## Branches and SHAs
+## Branches and SHAs (first certification, on the PPH3 bases — superseded by the gate above)
 
 | Repo | Worktree | Branch | Certified base | Final SHA |
 |---|---|---|---|---|
@@ -293,17 +335,21 @@ Run on the production backend container, **after** the backend deploy.
 
 ## Deployment order
 
-1. **Owner approval**, then integrate both branches onto the current tips (`origin/master` 49b8b434, `origin/main` 18fc90a9; both merge without conflicts) and rerun the DCGI, policy and hub suites.
-2. **Backend** → `master` → Railway deploy: policy v3, tournament route, league media, committed mark.
-3. **Production migration, then ingest** (above), and verify.
-4. **Frontend** → `main` → Lovable publish.
+1. **Owner authorisation.** Re-fetch first. If either tip has moved past `49b8b434` / `18fc90a9`, repeat this gate before continuing.
+2. **Backend:** fast-forward `master` to `dcgi1/tournament-context` (`5d904438`, a direct descendant of `49b8b434`). Push, then wait for the Railway deploy.
+   - **Smoke:** `/api/live-esports/upcoming` behaves as before.
+   - `/api/live-esports/tournament/dcgi-2026` returns 200.
+3. **Production media:** snapshot, then migrate (dry run → `--apply`), then ingest `demacia_cup` (dry run, hash check → `--apply`), then verify. See "Production: media migration and ingest".
+4. **Frontend:** fast-forward `main` to `dcgi1/tournament-surface` (a direct descendant of `18fc90a9`). Push, then Lovable publish.
+   - **Production check:** at 1440×900 the hub header stays one row with the DCGI pill and the mark is art.
+   - `/lol/pro-play/tournament/dcgi-2026` renders 12 teams.
 5. **Observational check on 2026-10-03 Round 1** (08:00–13:00 UTC): LIVE state on a DCGI match, records still empty until a Swiss match completes, hub pill phase.
 
 An older backend is safe for the frontend: a 404 hides the pill, and the page says it could not be loaded. Deploy the backend first anyway.
 
 ## Rollback
 
-- **Frontend:** revert the DCGI commits (or just `c8dccc84` + `5730014a`'s hub lines to drop the entry). Nothing else depends on them.
+- **Frontend:** revert the DCGI commits (or just `6b32cc1a` + `a54bbc19`'s hub lines to drop the entry; pre-tip equivalents `c8dccc84` / `5730014a`). Nothing else depends on them.
 - **Backend:** revert the branch. The widened media table is a superset of the old one; old code reads team/player rows unchanged. A rollback does not need to re-narrow it.
 - **The mark:** `UPDATE esports_media_assets SET status='retired' WHERE entity_type='league' AND entity_key='demacia_cup'`, or delete that one row. The page falls back to the monogram.
 - **Policy:** reverting to `pro_default_v2` stops admitting DCGI games into default content. Rows imported meanwhile stay, under the v3 provenance.
@@ -311,14 +357,13 @@ An older backend is safe for the frontend: a 404 hides the pill, and the page sa
 ## Remaining blockers
 
 - **None technical.** Production deploy, migration and ingest are awaiting owner approval.
-- Certification ran on the briefed bases. The newer origin tips merge without conflicts but were not re-tested; see step 1.
 - **Worlds 2026 field:** still no verified source, so the relation block keeps dates and the region-level fact only.
 
 ## Exact next task
 
 **DCGI1-DEPLOY.** With owner approval:
-1. Merge `dcgi1/tournament-context` onto current `origin/master` and `dcgi1/tournament-surface` onto current `origin/main`.
-2. Rerun the DCGI, policy and hub suites.
-3. Deploy the backend, snapshot, migrate, ingest and verify (above).
-4. Publish the frontend.
+1. Re-fetch and confirm the tips are unchanged.
+2. Fast-forward and deploy the backend.
+3. Snapshot, migrate, ingest and verify.
+4. Fast-forward `main` and publish Lovable.
 5. Observe Round 1 on 2026-10-03.
