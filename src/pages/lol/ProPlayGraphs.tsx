@@ -54,6 +54,7 @@ import {
 import { useGraph1ChampionMatchup } from "@/graph1/useGraph1ChampionMatchup";
 import { resolveDisplayToggles, type Graph1DisplayToggles } from "@/graph1/contract";
 import { defaultCardFor, type Graph1FeaturedCard } from "@/graph1/featured";
+import { GRAPH_SELECTION_PARAM, selectionHref } from "@/graph1/featuredHref";
 import {
   initialControlState,
   parseControlState,
@@ -92,14 +93,9 @@ import { supportsWinsRace, winsRaceDataset } from "@/graph1/winsRace";
 
 export const PRO_PLAY_GRAPHS_ROUTE = "/lol/pro-play/graphs";
 
-/** URL parameter names this page owns. Public, concise and stable. */
-const PARAM = {
-  focus: "focus",
-  compare: "vs",
-  entity: "e",
-  mode: "mode",
-  metric: "metric",
-} as const;
+/** URL parameter names this page owns — defined beside `selectionHref` in
+ * `@/graph1/featuredHref`, so the page and its outbound links share one set. */
+const PARAM = GRAPH_SELECTION_PARAM;
 
 /** Board parameters, shared with the operator page so a link means the same
  * thing on both. Kept outside `controlState`'s set, which it re-serializes. */
@@ -169,22 +165,9 @@ export function parseSelection(params: URLSearchParams) {
   return { focus, combination, mode, entityId, metric };
 }
 
-/** A URL for one selection. Used by the featured cards and by every commit. */
-export function selectionHref(card: Graph1FeaturedCard): string {
-  const params = new URLSearchParams();
-  params.set(PARAM.focus, card.focus);
-  params.set(PARAM.compare, card.compare);
-  params.set(PARAM.entity, card.entityId);
-  if (card.mode === "bans") params.set(PARAM.mode, "bans");
-  const combination = findCombination(card.focus, card.compare);
-  // Only name the metric when it is not what the combination lands on, so a
-  // shared link stays as short as what the reader actually chose.
-  if (combination && card.metric !== defaultMetric(combination, card.mode)) {
-    params.set(PARAM.metric, card.metric);
-  }
-  writeScope(params, card.scope);
-  return `${PRO_PLAY_GRAPHS_ROUTE}?${params.toString()}`;
-}
+/** A URL for one selection. Moved to `@/graph1/featuredHref` so the hub can
+ * link here without importing this page; re-exported under its old name. */
+export { selectionHref };
 
 function Notice({
   tone = "muted",

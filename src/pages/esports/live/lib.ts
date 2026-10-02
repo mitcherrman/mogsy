@@ -352,3 +352,23 @@ export const TIMELINE_EVENT_TYPES = [
   "baron_killed",
   "team_kill",
 ];
+
+/** Highest kills wins is wrong; the store has no explicit winner field, so we
+ * only claim a winner when one side actually destroyed more inhibitors or
+ * clearly leads on towers at the final frame. When it is ambiguous we say
+ * nothing rather than guess. Shared by the match centre and the Pro Play hub
+ * so the two can never crown different teams. */
+export function isWinner(
+  state: { blue?: { towers: number | null; inhibitors: number | null } | null; red?: { towers: number | null; inhibitors: number | null } | null } | null | undefined,
+  side: "blue" | "red",
+): boolean {
+  const me = side === "blue" ? state?.blue : state?.red;
+  const them = side === "blue" ? state?.red : state?.blue;
+  if (!me || !them) return false;
+  const mi = me.inhibitors ?? 0;
+  const ti = them.inhibitors ?? 0;
+  if (mi !== ti) return mi > ti;
+  const mt = me.towers ?? 0;
+  const tt = them.towers ?? 0;
+  return mt > tt + 2;
+}

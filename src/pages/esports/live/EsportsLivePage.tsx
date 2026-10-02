@@ -6,15 +6,13 @@
  * typing the URL; that path now redirects here. The page itself is unchanged
  * apart from the shell, which places it inside the Pro Play area.
  *
- * Polling is deliberate rather than uniform. The bounded feed is cheap and
- * decides what is on, so it polls fastest; per-game reads follow the game's
- * own state and stop entirely once it is final, because a finished game's
- * numbers never change again.
+ * Polling is deliberate rather than uniform: see `@/lib/live-esports/hooks`,
+ * where the feed and per-game queries now live so the Pro Play hub's Match
+ * Center can run the same reads under the same cache keys.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, Library, Radio, RefreshCw, WifiOff } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
@@ -30,14 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChampionAssets } from "@/hooks/useChampionAssets";
-import {
-  fetchGameInsights,
-  fetchGoldSeries,
-  fetchLiveFeed,
-  fetchLiveGame,
-  fetchLivePlayers,
-  type LiveGameSummary,
-} from "@/lib/live-esports/api";
+import { useLiveFeed, useLiveMatch } from "@/lib/live-esports/hooks";
 
 import {
   EmptyNote,
@@ -52,16 +43,7 @@ import {
   StatusPill,
   TeamPanel,
 } from "./components";
-import { TIMELINE_EVENT_TYPES, matchTitle } from "./lib";
-
-const FEED_POLL_MS = 10_000;
-const LIVE_DETAIL_POLL_MS = 10_000;
-/** A finished game is immutable — poll it once, then stop. */
-const FINAL_POLL_MS = false as const;
-/** Gold history changes slowly and is the largest payload; poll it lazily. */
-const GOLD_POLL_MS = 30_000;
-/** Insights re-scan the same frames as the gold chart; share its cadence. */
-const INSIGHTS_POLL_MS = 30_000;
+import { TIMELINE_EVENT_TYPES, isWinner, matchTitle } from "./lib";
 
 /**
  * Where "Browse archive" should go.
@@ -113,19 +95,7 @@ export default function EsportsLivePage() {
     setParams(next, { replace: true });
   };
 
-  const feed = useQuery({
-    queryKey: ["live-esports", "feed"],
-    queryFn: fetchLiveFeed,
-    refetchInterval: FEED_POLL_MS,
-    refetchOnWindowFocus: true,
-  });
-
-  // Derive from `feed.data` directly: a `?? []` fallback allocates a fresh
-  // array every render, which would defeat the memo and re-run the selection
-  // effect on every poll tick.
-  const live = useMemo<LiveGameSummary[]>(() => feed.data?.live ?? [], [feed.data]);
-  const recent = useMemo<LiveGameSummary[]>(() => feed.data?.recent ?? [], [feed.data]);
-  const selectable = useMemo<LiveGameSummary[]>(() => [...live, ...recent], [live, recent]);
+  const { feed, live, recent, selectable, failing: feedFailing } = useLiveFeed();
 
   // Follow the action by default, but never yank a game out from under
   // someone who explicitly picked one — including one that is not in the feed
@@ -136,70 +106,19 @@ export default function EsportsLivePage() {
     setAutoId(selectable[0]?.game_id ?? null);
   }, [selectable, autoId, pinnedId]);
 
-  const detail = useQuery({
-    queryKey: ["live-esports", "game", selectedId],
-    queryFn: () => fetchLiveGame(selectedId as string),
-    enabled: !!selectedId,
-    // The cadence reads the response rather than the page's `selected`, which
-    // this query may itself be the source of when the game came from the
-    // archive. The rule is unchanged: a finished game is immutable, so it is
-    // fetched once and never polled again.
-    refetchInterval: (query) =>
-      query.state.data?.game?.availability === "finished"
-        ? FINAL_POLL_MS
-        : LIVE_DETAIL_POLL_MS,
-  });
-  const detailGame = detail.data?.game ?? null;
-
-  // An archived game is not in the feed, so its summary comes from its own
-  // detail read — the SAME `_game_summary` shape the feed serves, which is why
-  // no second fetch and no second renderer are needed for it.
-  const selected =
-    selectable.find((g) => g.game_id === selectedId) ??
-    (detailGame && detailGame.game_id === selectedId ? detailGame : null);
-  const isFinal = selected?.availability === "finished";
-  const detailInterval = selected
-    ? isFinal
-      ? FINAL_POLL_MS
-      : LIVE_DETAIL_POLL_MS
-    : (false as const);
-
-  const players = useQuery({
-    queryKey: ["live-esports", "players", selectedId],
-    queryFn: () => fetchLivePlayers(selectedId as string),
-    enabled: !!selectedId,
-    refetchInterval: detailInterval,
-  });
-
-  const gold = useQuery({
-    queryKey: ["live-esports", "gold", selectedId],
-    queryFn: () => fetchGoldSeries(selectedId as string),
-    enabled: !!selectedId,
-    refetchInterval: selected && !isFinal ? GOLD_POLL_MS : (false as const),
-  });
-
-  // Insights scan the same frames the gold chart does, so they poll on the
-  // chart's slower cadence rather than the scoreboard's: doubling the rate
-  // of that scan would buy a few seconds of freshness on numbers measured in
-  // thousands of gold.
-  const insights = useQuery({
-    queryKey: ["live-esports", "insights", selectedId],
-    queryFn: () => fetchGameInsights(selectedId as string),
-    enabled: !!selectedId,
-    refetchInterval: selected && !isFinal ? INSIGHTS_POLL_MS : (false as const),
-  });
+  // An archived game is not in the feed; the hook resolves its summary from
+  // its own detail read.
+  const { selected, isFinal, detail, players, gold, insights } = useLiveMatch(
+    selectedId,
+    selectable.find((g) => g.game_id === selectedId),
+  );
 
   const { data: manifest } = useChampionAssets();
 
   /* ── page-level states ─────────────────────────────────────────────────── */
 
-  // An unreachable backend must never read as "no matches", and must never
-  // sit on skeletons for ever either. `isError` alone is not enough: with a
-  // refetchInterval the query keeps restarting, so it can stay pending
-  // indefinitely against a dead service (observed). `failureCount` is set
-  // from the first failure, so "we have failed and have nothing to show" is
-  // the honest trigger.
-  const feedFailing = feed.isError || feed.failureCount > 0;
+  // Failed and nothing to show: say so rather than "no matches" or skeletons
+  // for ever (see `useLiveFeed` for why `failing` is not just `isError`).
   if (feedFailing && !feed.data) {
     return (
       <Shell>
@@ -502,25 +421,6 @@ export default function EsportsLivePage() {
       )}
     </Shell>
   );
-}
-
-/** Highest kills wins is wrong; the store has no explicit winner field, so we
- * only claim a winner when one side actually destroyed more inhibitors or
- * clearly leads on towers at the final frame. When it is ambiguous we say
- * nothing rather than guess. */
-function isWinner(
-  state: { blue?: { towers: number | null; inhibitors: number | null } | null; red?: { towers: number | null; inhibitors: number | null } | null } | null | undefined,
-  side: "blue" | "red",
-): boolean {
-  const me = side === "blue" ? state?.blue : state?.red;
-  const them = side === "blue" ? state?.red : state?.blue;
-  if (!me || !them) return false;
-  const mi = me.inhibitors ?? 0;
-  const ti = them.inhibitors ?? 0;
-  if (mi !== ti) return mi > ti;
-  const mt = me.towers ?? 0;
-  const tt = them.towers ?? 0;
-  return mt > tt + 2;
 }
 
 function IngestionPausedNote() {

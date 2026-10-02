@@ -7,6 +7,7 @@
  */
 import { useState } from "react";
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
+import { ItemIcon, ItemStrip, inventory, useItemNames } from "@/components/pro-play/media/ItemIcon";
 import {
   Area,
   AreaChart,
@@ -396,14 +397,18 @@ export function TeamPanel({
 
 /* ── player rows ─────────────────────────────────────────────────────────── */
 
-function ChampionIcon({
+export function ChampionIcon({
   championId,
   championName,
   manifest,
+  className,
 }: {
   championId: string | null;
   championName: string | null;
   manifest: ChampionManifest | null | undefined;
+  /** Size/shape override for callers outside the match centre; the match
+   *  centre itself always renders the default 32px square. */
+  className?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const key = championName || championId || "";
@@ -412,7 +417,7 @@ function ChampionIcon({
   if (!src || failed) {
     // Honest placeholder: the champion's initials, never a wrong portrait.
     return (
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground">
+      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground", className)}>
         {(key || "?").slice(0, 2).toUpperCase()}
       </div>
     );
@@ -423,7 +428,7 @@ function ChampionIcon({
       alt={key}
       loading="lazy"
       onError={() => setFailed(true)}
-      className="h-8 w-8 shrink-0 rounded object-cover"
+      className={cn("h-8 w-8 shrink-0 rounded object-cover", className)}
     />
   );
 }
@@ -448,9 +453,11 @@ export function PlayerRow({
 }) {
   const [open, setOpen] = useState(false);
   const p = player as unknown as Record<string, number | string | null>;
-  const items = Array.isArray((player as { items?: unknown }).items)
-    ? ((player as { items: unknown[] }).items as Array<Record<string, unknown>>)
-    : [];
+  // LIVE1 serves item IDs; the shared strip resolves them to the asset
+  // store's item icons and the item index's names.
+  const itemNames = useItemNames();
+  const inv = inventory(player.items);
+  const allItems = inv.trinket != null ? [...inv.items, inv.trinket] : inv.items;
   const unresolved = (player.resolution_method || "").startsWith("unresolved");
 
   return (
@@ -502,15 +509,7 @@ export function PlayerRow({
         >
           {kgold(player.total_gold)}
         </div>
-        <div className="hidden items-center gap-0.5 md:flex">
-          {items.slice(0, 6).map((it, i) => (
-            <span
-              key={i}
-              className="h-5 w-5 rounded-sm bg-muted"
-              title={String((it as { name?: string }).name ?? "")}
-            />
-          ))}
-        </div>
+        <ItemStrip items={player.items} names={itemNames} size="sm" className="hidden md:inline-flex" />
         <ChevronDown
           className={cn("h-4 w-4 shrink-0 text-muted-foreground transition", open && "rotate-180")}
         />
@@ -539,18 +538,19 @@ export function PlayerRow({
             <Detail label="Kill part." value={pct(p.kill_participation as number)} />
             <Detail label="Dmg share" value={pct(p.champion_damage_share as number)} />
           </div>
-          {items.length > 0 && (
+          {allItems.length > 0 && (
             <div className="mt-2">
               <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                Items
+                Items at the latest frame
               </div>
-              <div className="flex flex-wrap gap-1">
-                {items.map((it, i) => (
-                  <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">
-                    {String((it as { name?: string }).name ?? (it as { id?: unknown }).id ?? "?")}
-                  </span>
+              <ul className="flex flex-wrap gap-1">
+                {allItems.map((id, i) => (
+                  <li key={`${id}-${i}`} className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[11px]">
+                    <ItemIcon itemId={id} name={itemNames.get(id)} size="xs" decorative />
+                    {itemNames.get(id) ?? `Item ${id}`}
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
           {/* Runes and skill order are only rendered when the feed actually
