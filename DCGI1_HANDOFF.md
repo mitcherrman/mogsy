@@ -1,6 +1,41 @@
 # DCGI1 — Demacia Cup Global Invitational 2026 tournament surface
 
-**Status: RELEASE READY, pending owner authorisation (2026-10-01).**
+**Status: DCGI1 BACKEND/MEDIA PRODUCTION CERTIFIED — READY FOR LOVABLE PUBLISH
+(2026-10-02 UTC).**
+
+## Production release record (2026-10-02, authorised by the owner)
+
+| Step | Result |
+|---|---|
+| Ref check | Fetched immediately before release: `origin/main` = `18fc90a9`, `origin/master` = `49b8b434`, both unchanged. |
+| Backend `master` | Fast-forwarded `49b8b434..5d904438`. No force push. |
+| Railway `web` | Deployment **`5afdddbc-9345-4da9-93ff-82a553de2f22`** reported **SUCCESS** at commit `5d904438`. Previous: `cf5817e4` at `49b8b434`. Startup log is clean (no traceback); application startup completed. |
+| Post-deploy, before any DB write | `/upcoming` 200, `source_ok` true, 12 real fixtures, same set as the pre-release capture plus `demacia_cup` RED v NAVI. `/tournament/dcgi-2026` 200; it was 404 before. LIVE1 `/live` 200. League media answered `fallback/no_media`, as expected before ingest. |
+| DB path / pre-state | `/data/lol_calc.db` (WAL), 6,228,017,152 B, mtime 2026-10-02 02:53:54Z. `live_esports.db` was not touched. |
+| Backup | **`/data/backups/lol_calc_pre_dcgi1_20261002T025627Z.db`**, made with the SQLite online backup API from a `mode=ro` source. **6,228,017,152 B**, `quick_check ok`, 91 media rows, max id 100. Log is the matching `.log`. |
+| Migration | The dry run matched local certification ("would rebuild … (91 rows kept)"). `--apply` rebuilt the table. **Rows:** 91 rows, ids 1–100, row digest `95e0b6c757e4aa82` identical before and after. **Schema:** `entity_type` admits `league` and `media_type` admits `league_logo`; indexes recreated; no leftover temp table. **Checks:** `integrity_check(esports_media_assets)` ok, the rerun printed "nothing to do", and T1's crest still resolves `art`. |
+| Ingest | The dry run gave `content_sha256 == source_sha256 == 5ca7601772a48e94b30a65001183e37c184ee89265e6d6682b51aecb26774a7f` (1000×1000 PNG, 32,518 B), equal to the committed file in `/app`. `--apply` registered **`media_id` 101** (`league / demacia_cup / league_logo`). The rerun returned the same id 101; the table now holds 92 rows with one league row. |
+| Media smoke | `resolve?league=demacia_cup` returns `state: art`, `asset_path: assets/esports/leagues/demacia-cup-a6034e3f/league_logo-5ca7601772a4.png` (Mogzy's own path). The asset returns 200 `image/png` with an identical sha256. `/media/league/demacia_cup` returns 200. |
+| Tournament smoke | `tournament_context_v1`, `source_ok` true, `stale` false, phase `pre_event`. **Field and lineups:** 12 teams, 60 lineup players (GAM Kiaya/Tiphat/Gloryy/Artemis/Taki; RED zynts/Aegis/Fuuu/Morttheus/Manel; JDG Xiaoxu/Xiaofang/Angel/GALA/Vampire). **Schedule:** 27 matches (0 completed, 0 live), 6 named Round-1 fixtures, 21 TBD slots. Swiss records `[]`, knockout teams `[]`, warnings `[]`, next match RED–NAVI. |
+| Frontend `main` | Fast-forwarded `18fc90a9..66fc472e` (`66fc472e4b3509695ddb3219425da49ebf2b9f26`). No force push. Remote confirmed by `ls-remote`. |
+| Lovable | **Not published.** Lovable publishes from `main` only on the owner's Publish click, and this session has no Lovable access. mogzy.lol still serves `index-wzD3xlZQ.js`, which contains no DCGI code. |
+| Live hub on the new backend (old bundle) | At 1440×900: COMPLETED and UP NEXT present (RED vs NAVI listed), header 57 px, grid 129→903, no overflow, 0 broken images. |
+
+**Remaining step: owner presses Lovable Publish for `main` = `66fc472e`.** Then
+run the frontend production certification:
+- **Hub:** the pill sits in the header at 1440×900, the header stays one row with the grid still at 129, and the real mark shows. COMPLETED, UP NEXT, the jump pill and phone team names still work.
+- **DCGI page:** 12 teams, the event lineups, the real mark, the real schedule; a team link, a player link and a match link `?next=` each work.
+- **Viewports:** 1440, 834, 390 and 360, checking overflow, page errors and broken images.
+- **Confirm the bundle:** the new `index-*.js` contains `tournament-spotlight` / `dcgi-2026`.
+
+**Production rollback**
+- **Frontend:** in Lovable, re-publish the previous production build; the pre-DCGI `main` is `18fc90a9`. Or revert the DCGI commits on `main` and publish. An older bundle simply ignores the new backend routes.
+- **Backend:**
+  - **Code:** `git revert 49b8b434..5d904438` on `master`, push, and let Railway redeploy. Railway rollback to deployment `cf5817e4` is also available.
+  - **Data:** the widened media table is a superset and old code reads it fine, so no DB rollback is needed. To drop the mark only: `UPDATE esports_media_assets SET status='retired' WHERE media_id=101` (or delete that row).
+  - **Full DB restore**, last resort, with service writes paused: copy `/data/backups/lol_calc_pre_dcgi1_20261002T025627Z.db` over `/data/lol_calc.db`. This loses writes made after 02:56Z.
+
+**Earlier status:** RELEASE READY, pending owner authorisation (2026-10-01).
 - Certified on the PPH3 production bases.
 - Then replayed onto the current upstream tips and re-gated; see "Final integration gate" below.
 - Not pushed, not merged, not deployed. No production DB or media row has been written.
