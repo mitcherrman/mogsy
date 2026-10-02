@@ -25,6 +25,7 @@ import ProPlayHub, {
 } from "./ProPlayHub";
 import { PRO_PLAY_LIVE_ARCHIVE_ROUTE } from "@/lib/pro-play/routes";
 import { __resetProPlayMediaCache } from "@/components/pro-play/media/ProPlayMediaProvider";
+import DCGI_PRE_EVENT from "@/lib/pro-play/__fixtures__/tournamentDcgiPreEvent.json";
 
 const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
 
@@ -172,6 +173,8 @@ type Backend = {
   detail?: (id: string) => unknown;
   /** `/live-esports/upcoming` matches; undefined = an older backend (404). */
   upcoming?: unknown[];
+  /** `/live-esports/tournament/{id}` (DCGI1); undefined = an older backend (404). */
+  tournament?: unknown;
   itemIndex?: { id: number; name: string; slug: string }[];
   media?: unknown[];
   teamState?: (id: string) => unknown;
@@ -189,6 +192,9 @@ function installBackend(opts: Backend) {
       ({ ok: true, status: 200, json: async () => body }) as unknown as Response;
     const notFound = () =>
       ({ ok: false, status: 404, json: async () => ({}) }) as unknown as Response;
+    if (path.includes("/live-esports/tournament/")) {
+      return opts.tournament ? ok(opts.tournament) : notFound();
+    }
     if (path.includes("/live-esports/upcoming")) {
       if (!opts.upcoming) return notFound();
       return ok({
@@ -350,6 +356,25 @@ describe("ProPlayHub identity", () => {
     expect(screen.queryByText(/up next/i)).toBeNull();
     expect(screen.queryByTestId("upcoming-chip")).toBeNull();
     expect(screen.queryByText(/coming soon/i)).toBeNull();
+  });
+
+  it("carries the featured event in the header row, never as a band above the match (DCGI1)", async () => {
+    installBackend({ recent: [summary("g1", "GEN", "T1")], tournament: DCGI_PRE_EVENT });
+    renderHub();
+    const pill = await screen.findByTestId("tournament-spotlight");
+    expect(pill.getAttribute("href")).toBe("/lol/pro-play/tournament/dcgi-2026");
+    expect(pill.closest("header")).toBeTruthy();
+    const header = pill.closest("header")!;
+    // Nothing new between the header and the Match Center.
+    expect(header.nextElementSibling?.contains(document.getElementById("match-center"))).toBe(true);
+  });
+
+  it("draws no event entry when the backend has no tournament route", async () => {
+    installBackend({ recent: [summary("g1", "GEN", "T1")] });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    await waitFor(() => expect(requests.some((u) => u.includes("/live-esports/tournament/"))).toBe(true));
+    expect(screen.queryByTestId("tournament-spotlight")).toBeNull();
   });
 });
 

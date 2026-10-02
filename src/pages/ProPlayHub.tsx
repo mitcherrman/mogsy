@@ -202,7 +202,7 @@ export default function ProPlayHub() {
       <div className="relative mx-auto w-full max-w-[1400px] space-y-4 px-3 pb-8 sm:px-6 lg:px-0">
         {/* Minimal header: the way back, the area's name, and search — the
             match is the page's introduction. */}
-        <header className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border/60 py-2 sm:min-h-14">
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-5 border-b border-border/60 py-2 sm:min-h-14">
           <Link
             to="/lol"
             aria-label="Back to the Academy"
@@ -215,16 +215,19 @@ export default function ProPlayHub() {
             <Trophy className="h-4 w-4 text-[#c9a84c]" aria-hidden="true" />
             Pro Play
           </h1>
-          <SearchEntry className="order-last w-full sm:order-none sm:w-auto sm:min-w-[18rem] sm:max-w-xl sm:flex-1" />
-          <a
-            href={`#${PRO_STATS_ANCHOR}`}
-            className="ml-auto hidden text-sm font-medium text-muted-foreground hover:text-foreground hover:underline md:inline"
-          >
-            Player statistics
-          </a>
+          <SearchEntry className="order-last w-full sm:order-none sm:w-auto sm:min-w-[11rem] sm:max-w-xl sm:flex-1 xl:min-w-[18rem]" />
+          {/* The featured event (DCGI1) rides in this row rather than a band
+              of its own, so the match stays in the first screen. */}
+          <div className="ml-auto flex min-w-0 items-center gap-5">
+            <TournamentSpotlight contextId={PRO_PLAY_FEATURED_TOURNAMENT} />
+            <a
+              href={`#${PRO_STATS_ANCHOR}`}
+              className="hidden whitespace-nowrap text-sm font-medium text-muted-foreground hover:text-foreground hover:underline md:inline"
+            >
+              Player statistics
+            </a>
+          </div>
         </header>
-
-        <TournamentSpotlight contextId={PRO_PLAY_FEATURED_TOURNAMENT} />
 
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_288px]">
           <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
