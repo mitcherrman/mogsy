@@ -15,7 +15,7 @@
  *
  * `?q=` selects the question state to serve:
  *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
- *   stressA | stressB | metareflex | orderforge (OF1-B: an Order Forge segment; `?forge=locked|revealed`
+ *   stressA | stressB | metareflex | orderforge (OF1-B: an Order Forge segment; `?forge=locked|revealed|live`
  *   serves the viewer past their Lock In) | junglePet | junglePetBase | jungleRule |
  *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
  *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
@@ -215,11 +215,40 @@ function masterySegment(kind: "recall" | "compare" | "stat") {
   };
 }
 
-/** `?forge=locked|revealed` serves the viewer past their Lock In (OF1-B). */
+/**
+ * The probe's own reveal: the shared fixture's canonical order runs cheapest
+ * first under a "Most expensive" first rail, which is fine for contract tests
+ * and wrong on screen. Here it agrees with the rail (OF4); marks match it.
+ */
+const PROBE_FORGE_REVEAL = {
+  canonical_order: ["e1", "e4", "e3", "e0", "e2"],
+  position_correct: [false, false, false, false, true],
+  entries: [
+    { entry_id: "e0", label: "Kindlegem", value_display: "800 gold" },
+    { entry_id: "e1", label: "Infinity Edge", value_display: "3,450 gold" },
+    { entry_id: "e2", label: "Long Sword", value_display: "350 gold" },
+    { entry_id: "e3", label: "Sunfire Aegis", value_display: "2,700 gold" },
+    { entry_id: "e4", label: "Zhonya's Hourglass", value_display: "3,250 gold" },
+  ],
+};
+/** OF4 — `?forge=live`: locked, then the reveal lands this long after the first read. */
+const FORGE_LIVE_REVEAL_MS = 2500;
+let forgeLiveAnchor: number | null = null;
+
+/**
+ * `?forge=locked|revealed` serves the viewer past their Lock In (OF1-B);
+ * `?forge=live` serves the lock and then the reveal, so the reveal animation
+ * plays as it does in a match (OF4).
+ */
 function orderForgeProbeState() {
   const mode = new URLSearchParams(window.location.search).get("forge");
-  if (mode === "revealed") {
-    return orderForgeState({ own_challenge_reveals: [orderForgeChallengeReveal()] }, true);
+  if (mode === "live") {
+    if (forgeLiveAnchor === null) forgeLiveAnchor = Date.now();
+    if (Date.now() - forgeLiveAnchor < FORGE_LIVE_REVEAL_MS) return orderForgeState({}, true);
+  }
+  if (mode === "revealed" || mode === "live") {
+    return orderForgeState({
+      own_challenge_reveals: [orderForgeChallengeReveal(PROBE_FORGE_REVEAL)] }, true);
   }
   return orderForgeState({}, mode === "locked");
 }

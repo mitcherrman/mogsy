@@ -186,20 +186,17 @@ describe("server capture — live segment", () => {
       .toEqual(state.ownChallengeReveals);
   });
 
-  it("renders the served reveal: my order beside the correct one", () => {
+  it("renders the served reveal: the canonical order, every served value, and where I put each card", () => {
     viewport(readPrivatePlayer(capture.private_locked));
     expect(screen.getByTestId("order-forge-phase")).toHaveAttribute("data-phase", "revealed");
     expect(screen.queryByTestId("forge-lock")).toBeNull();
     const served = rawState(capture.private_locked).own_challenge_reveals[0].entries;
     const label = new Map(served.map((e) => [e.entry_id, e]));
-    const rows = (testId: string) =>
-      within(screen.getByTestId(testId)).getAllByRole("listitem");
-    rows("forge-reveal-mine").forEach((row, i) => {
-      expect(row).toHaveTextContent(label.get(SUBMITTED[i])!.label);
-      expect(row).toHaveTextContent(label.get(SUBMITTED[i])!.value_display);
-    });
-    rows("forge-reveal-correct").forEach((row, i) => {
+    const rows = within(screen.getByTestId("forge-reveal-list")).getAllByRole("listitem");
+    rows.forEach((row, i) => {
       expect(row).toHaveTextContent(label.get(CANONICAL[i])!.label);
+      expect(row).toHaveTextContent(label.get(CANONICAL[i])!.value_display);
+      expect(row).toHaveAttribute("data-yours", String(SUBMITTED.indexOf(CANONICAL[i]) + 1));
     });
     expect(screen.getByTestId("forge-verdict")).toHaveAttribute("data-correct", "false");
   });

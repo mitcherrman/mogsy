@@ -1,12 +1,61 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { useState } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { OrderForge, moveToken } from "./OrderForge";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { LIFT_DELAY_MS, LIFT_SLOP_PX, OrderForge, REVEAL_TIMING, moveToken } from "./OrderForge";
 import type {
   InteractionPhase, OrderForgePublic, OrderForgeResponse, OrderForgeReveal,
 } from "@/lib/interaction-grammar/types";
+
+/**
+ * OF4 — every drag start, recorded. The real `useDragControls` is kept (Reorder
+ * subscribes to it); only `start` is replaced, so a test can see WHEN a press
+ * becomes a drag without running framer's pan session in jsdom.
+ */
+const dragStarts = vi.hoisted(() => [] as { type: string; pointerType?: string }[]);
+vi.mock("framer-motion", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("framer-motion")>();
+  return {
+    ...actual,
+    useDragControls: () => {
+      const c = actual.useDragControls() as ReturnType<typeof actual.useDragControls> & { spied?: true };
+      if (!c.spied) {
+        c.spied = true;
+        c.start = ((e: { type: string; pointerType?: string }) => {
+          dragStarts.push({ type: e.type, pointerType: e.pointerType });
+        }) as typeof c.start;
+      }
+      return c;
+    },
+  };
+});
+
+beforeAll(() => {
+  // jsdom has no PointerEvent: a MouseEvent with the pointer fields is enough.
+  if (typeof window.PointerEvent === "undefined") {
+    class PointerEventPolyfill extends MouseEvent {
+      pointerType: string; pointerId: number;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerType = init.pointerType ?? "mouse";
+        this.pointerId = init.pointerId ?? 1;
+      }
+    }
+    (window as unknown as { PointerEvent: unknown }).PointerEvent = PointerEventPolyfill;
+  }
+});
+afterEach(() => {
+  dragStarts.length = 0;
+  document.documentElement.classList.remove("reduce-motion");
+  vi.useRealTimers();
+});
+
+const press = (el: Element, pointerType: "mouse" | "touch" | "pen", x = 10, y = 10) =>
+  el.dispatchEvent(new window.PointerEvent("pointerdown",
+    { bubbles: true, cancelable: true, button: 0, pointerType, pointerId: 7, clientX: x, clientY: y }));
+const windowPointer = (type: string, x = 10, y = 10) =>
+  window.dispatchEvent(new window.PointerEvent(type, { bubbles: true, pointerId: 7, clientX: x, clientY: y }));
 
 const CONTENT: OrderForgePublic = {
   prompt: "Order these items by gold cost",
@@ -107,13 +156,6 @@ describe("OrderForge — open", () => {
     expect(document.activeElement).toBe(screen.getByTestId("forge-grip-e0"));
   });
 
-  it("makes drag start only from the grip: it alone has touch-action:none", () => {
-    render(<Harness />);
-    expect(screen.getByTestId("forge-grip-e1").style.touchAction).toBe("none");
-    expect(screen.getByTestId("forge-card-e1").style.touchAction).not.toBe("none");
-    expect(screen.getByTestId("forge-up-e1").style.touchAction).not.toBe("none");
-  });
-
   it("gives every control an accessible name and a 44px target", () => {
     render(<Harness />);
     expect(screen.getByLabelText(/Move Long Sword up \(currently position 3 of 5\)/)).toBeInTheDocument();
@@ -146,6 +188,108 @@ describe("OrderForge — open", () => {
   });
 });
 
+describe("OrderForge — OF4 whole-card drag", () => {
+  const nameOf = (token: string) => within(screen.getByTestId(`forge-card-${token}`)).getByText(
+    CONTENT.entries.find((e) => e.token === token)!.label);
+
+  it("keeps page scroll: only the grip has touch-action:none, never the card or the list", () => {
+    render(<Harness />);
+    expect(screen.getByTestId("forge-grip-e1").style.touchAction).toBe("none");
+    expect(screen.getByTestId("forge-card-e1").style.touchAction).not.toBe("none");
+    expect(screen.getByTestId("forge-up-e1").style.touchAction).not.toBe("none");
+    expect(screen.getByTestId("forge-list").style.touchAction).not.toBe("none");
+  });
+
+  it("keeps the slot numbers fixed: a moved card takes the slot, the numeral stays", () => {
+    render(<Harness />);
+    const slots = () => screen.getAllByTestId(/^forge-slot-\d$/).map((e) => e.textContent);
+    expect(slots()).toEqual(["1", "2", "3", "4", "5"]);
+    fireEvent.click(screen.getByTestId("forge-down-e0"));
+    expect(slots()).toEqual(["1", "2", "3", "4", "5"]);
+    expect(screen.getByTestId("forge-card-e0")).toHaveAttribute("data-position", "2");
+  });
+
+  it("a mouse press ANYWHERE on the card starts the drag at once", () => {
+    render(<Harness />);
+    press(nameOf("e2"), "mouse");
+    expect(dragStarts).toHaveLength(1);
+    press(screen.getByTestId("forge-card-e3"), "mouse");
+    expect(dragStarts).toHaveLength(2);
+    expect(dragStarts[0].type).toBe("pointerdown");
+  });
+
+  it("the arrow buttons stay buttons: pressing them never starts a drag, and they still move", () => {
+    render(<Harness />);
+    press(screen.getByTestId("forge-down-e0"), "mouse");
+    press(screen.getByTestId("forge-up-e3"), "touch");
+    expect(dragStarts).toHaveLength(0);
+    fireEvent.click(screen.getByTestId("forge-down-e0"));
+    expect(positions()).toEqual(["e1", "e0", "e2", "e3", "e4"]);
+  });
+
+  it("touch: the card lifts only after a still hold, then drags", () => {
+    vi.useFakeTimers();
+    render(<Harness />);
+    press(nameOf("e2"), "touch");
+    expect(dragStarts).toHaveLength(0);
+    act(() => { vi.advanceTimersByTime(LIFT_DELAY_MS - 10); });
+    expect(dragStarts).toHaveLength(0);
+    act(() => { vi.advanceTimersByTime(20); });
+    expect(dragStarts).toHaveLength(1);
+    expect(screen.getByTestId("forge-card-e2")).toHaveAttribute("data-lifted", "true");
+    act(() => { windowPointer("pointerup"); });
+    expect(screen.getByTestId("forge-card-e2")).not.toHaveAttribute("data-lifted");
+  });
+
+  it("touch: moving before the hold is a page scroll and never becomes a drag", () => {
+    vi.useFakeTimers();
+    render(<Harness />);
+    press(nameOf("e2"), "touch", 10, 100);
+    act(() => { windowPointer("pointermove", 10, 100 - LIFT_SLOP_PX - 4); });
+    act(() => { vi.advanceTimersByTime(LIFT_DELAY_MS * 3); });
+    expect(dragStarts).toHaveLength(0);
+    expect(screen.getByTestId("forge-card-e2")).not.toHaveAttribute("data-lifted");
+  });
+
+  it("touch: a jitter inside the slop still lifts", () => {
+    vi.useFakeTimers();
+    render(<Harness />);
+    press(nameOf("e1"), "pen", 10, 100);
+    act(() => { windowPointer("pointermove", 12, 103); });
+    act(() => { vi.advanceTimersByTime(LIFT_DELAY_MS + 5); });
+    expect(dragStarts).toHaveLength(1);
+  });
+
+  it("touch on the grip lifts at once (the grip alone cannot scroll the page)", () => {
+    render(<Harness />);
+    press(screen.getByTestId("forge-grip-e4"), "touch");
+    expect(dragStarts).toHaveLength(1);
+  });
+
+  it("cancels the page scroll only while a card is lifted", () => {
+    vi.useFakeTimers();
+    render(<Harness />);
+    const list = screen.getByTestId("forge-list");
+    const swipe = () => {
+      const ev = new Event("touchmove", { bubbles: true, cancelable: true });
+      list.dispatchEvent(ev);
+      return ev.defaultPrevented;
+    };
+    expect(swipe()).toBe(false);
+    press(nameOf("e0"), "touch");
+    act(() => { vi.advanceTimersByTime(LIFT_DELAY_MS + 5); });
+    expect(swipe()).toBe(true);
+    act(() => { windowPointer("pointerup"); });
+    expect(swipe()).toBe(false);
+  });
+
+  it("starts nothing once locked (no draggable card is left)", () => {
+    render(<Harness phase="locked" />);
+    for (const row of screen.getAllByTestId(/^forge-locked-e\d$/)) press(row, "mouse");
+    expect(dragStarts).toHaveLength(0);
+  });
+});
+
 describe("OrderForge — locked", () => {
   it("shows the locked sequence, no controls, no lock button", () => {
     render(<Harness phase="locked" initial={["e3", "e0", "e4", "e1", "e2"]} />);
@@ -167,38 +311,64 @@ describe("OrderForge — locked", () => {
   });
 });
 
-describe("OrderForge — revealed", () => {
-  it("compares MY ORDER with CORRECT ORDER using only the supplied reveal", () => {
+const rowsOf = () => screen.getAllByTestId(/^forge-reveal-e\d$/);
+const tokensOf = () => rowsOf().map((r) => r.getAttribute("data-testid")!.slice(-2));
+
+/** Locked first, then the authority's reveal arrives: the reveal plays. */
+function LiveReveal({ reveal = REVEAL }: { reveal?: OrderForgeReveal }) {
+  const [phase, setPhase] = useState<InteractionPhase>("locked");
+  return (
+    <>
+      <button type="button" data-testid="go" onClick={() => setPhase("revealed")}>go</button>
+      <OrderForge content={CONTENT} phase={phase} value={reveal.order} onChange={() => {}}
+        onLock={() => {}} reveal={phase === "revealed" ? reveal : null} />
+    </>
+  );
+}
+
+describe("OrderForge — revealed (settled: mounted on an existing reveal)", () => {
+  it("shows the CANONICAL order with every authority value, verbatim", () => {
     render(<Harness phase="revealed" reveal={REVEAL} />);
-    const mine = screen.getByTestId("forge-reveal-mine");
-    const correct = screen.getByTestId("forge-reveal-correct");
-    expect(within(mine).getByRole("heading", { name: "My order" })).toBeInTheDocument();
-    expect(within(correct).getByRole("heading", { name: "Correct order" })).toBeInTheDocument();
-    const mineIds = within(mine).getAllByTestId(/^forge-mine-e\d$/)
-      .map((r) => r.getAttribute("data-testid")!.slice(-2));
-    const correctIds = within(correct).getAllByTestId(/^forge-correct-e\d$/)
-      .map((r) => r.getAttribute("data-testid")!.slice(-2));
-    expect(mineIds).toEqual(REVEAL.order);
-    expect(correctIds).toEqual(REVEAL.canonicalOrder);
-    // Values are the authority's strings, verbatim.
-    expect(screen.getByTestId("forge-correct-e2-value")).toHaveTextContent("350 g");
-    expect(screen.getByTestId("forge-mine-e3-value")).toHaveTextContent("2700 g");
+    const box = screen.getByTestId("forge-reveal");
+    expect(box).toHaveAttribute("data-step", "assembled");
+    expect(box).toHaveAttribute("data-motion", "settled");
+    expect(tokensOf()).toEqual(REVEAL.canonicalOrder);
+    for (const t of REVEAL.canonicalOrder) {
+      expect(screen.getByTestId(`forge-reveal-${t}-value`)).toHaveTextContent(REVEAL.valueDisplay[t]);
+    }
+    expect(screen.getByTestId("forge-reveal-step")).toHaveTextContent("Correct order");
   });
 
-  it("marks positions from positionCorrect and does not compute any itself", () => {
+  it("each card keeps the slot the player gave it and the mark the authority gave that slot", () => {
     render(<Harness phase="revealed" reveal={REVEAL} />);
-    expect(screen.getByTestId("forge-mine-e0")).toHaveAttribute("data-mark", "right");
-    expect(screen.getByTestId("forge-mine-e3")).toHaveAttribute("data-mark", "wrong");
-    // Deliberately inconsistent marks (they disagree with the two orders) are
-    // drawn as stated: the primitive never re-derives correctness.
+    // Player: e3,e0,e4,e1,e2 with marks F,T,F,F,F.
+    expect(screen.getByTestId("forge-reveal-e0")).toHaveAttribute("data-mark", "right");
+    expect(screen.getByTestId("forge-reveal-e0")).toHaveAttribute("data-yours", "2");
+    expect(screen.getByTestId("forge-reveal-e3")).toHaveAttribute("data-mark", "wrong");
+    expect(screen.getByTestId("forge-reveal-e3")).toHaveAttribute("data-yours", "1");
+    // The mistake and its fix side by side: e2 was 5th, belongs 1st, travelled up.
+    expect(screen.getByTestId("forge-reveal-e2")).toHaveAttribute("data-position", "1");
+    expect(screen.getByTestId("forge-reveal-e2")).toHaveAttribute("data-moved", "up");
+    expect(screen.getByTestId("forge-reveal-e2-from")).toHaveTextContent(/was 5/i);
+    expect(screen.getByTestId("forge-reveal-e1")).toHaveAttribute("data-moved", "down");
+    // A right card gets no "was" note.
+    expect(screen.queryByTestId("forge-reveal-e0-from")).toBeNull();
+    // ...and each says it in words for a screen reader.
+    expect(screen.getByTestId("forge-reveal-e3")).toHaveTextContent("You placed it at 1: wrong.");
+    expect(screen.getByTestId("forge-reveal-e0")).toHaveTextContent("You placed it here: right.");
+  });
+
+  it("marks come from positionCorrect and are never recomputed", () => {
     render(<Harness phase="revealed" reveal={{ ...REVEAL, positionCorrect: [true, true, true, true, true] }} />);
-    expect(screen.getAllByTestId("forge-mine-e3")[1]).toHaveAttribute("data-mark", "right");
+    // Inconsistent with the two orders, drawn as stated.
+    expect(screen.getByTestId("forge-reveal-e3")).toHaveAttribute("data-mark", "right");
   });
 
   it("draws no marks when the authority stated none, and no partial-credit text", () => {
     const { container } = render(
       <Harness phase="revealed" reveal={{ ...REVEAL, positionCorrect: [], isCorrect: null }} />);
-    expect(screen.getByTestId("forge-mine-e0")).toHaveAttribute("data-mark", "neutral");
+    expect(screen.getByTestId("forge-reveal-e0")).toHaveAttribute("data-mark", "neutral");
+    expect(screen.queryByTestId("forge-reveal-e0-mark")).toBeNull();
     expect(screen.queryByTestId("forge-verdict")).toBeNull();
     expect(container.textContent).not.toMatch(/partial|\d+\s*\/\s*\d+|points?\b/i);
   });
@@ -206,6 +376,90 @@ describe("OrderForge — revealed", () => {
   it("states the server verdict in words", () => {
     render(<Harness phase="revealed" reveal={{ ...REVEAL, isCorrect: true }} />);
     expect(screen.getByTestId("forge-verdict")).toHaveTextContent("Exactly right");
+  });
+
+  it("announces the canonical order with its values", () => {
+    render(<Harness phase="revealed" reveal={REVEAL} />);
+    expect(screen.getByTestId("forge-live")).toHaveTextContent(
+      "Revealed. Your order was not the correct order. Correct order: 1, Long Sword, 350 g; 2, Kindlegem, 800 g;");
+  });
+});
+
+describe("OrderForge — revealed live (OF4 teaching reveal)", () => {
+  it("first shows the player's own order with values and marks, then assembles the canonical order", () => {
+    vi.useFakeTimers();
+    render(<LiveReveal />);
+    fireEvent.click(screen.getByTestId("go"));
+    const box = screen.getByTestId("forge-reveal");
+    expect(box).toHaveAttribute("data-step", "mine");
+    expect(box).toHaveAttribute("data-motion", "full");
+    expect(screen.getByTestId("forge-reveal-step")).toHaveTextContent("Your order");
+    expect(tokensOf()).toEqual(REVEAL.order);
+    expect(screen.getByTestId("forge-reveal-e3-value")).toHaveTextContent("2700 g");
+    expect(screen.getByTestId("forge-reveal-e3-mark")).toBeInTheDocument();
+    expect(screen.queryByTestId("forge-reveal-e3-from")).toBeNull();
+    act(() => { vi.advanceTimersByTime(REVEAL_TIMING.assembleAtMs); });
+    expect(box).toHaveAttribute("data-step", "assembled");
+    expect(tokensOf()).toEqual(REVEAL.canonicalOrder);
+    expect(screen.getByTestId("forge-reveal-e3-from")).toHaveTextContent(/was 1/i);
+    expect(screen.getByTestId("forge-reveal-step")).toHaveTextContent("Correct order");
+  });
+
+  it("the locked rows ARE the reveal rows: same DOM nodes, no remount", () => {
+    render(<LiveReveal />);
+    const before = screen.getAllByTestId(/^forge-locked-e\d$/);
+    fireEvent.click(screen.getByTestId("go"));
+    const after = REVEAL.order.map((t) => screen.getByTestId(`forge-reveal-${t}`));
+    after.forEach((el, i) => expect(el).toBe(before[i]));
+  });
+
+  it("settles inside the shortest reveal hold the arena gives (1500ms)", () => {
+    expect(REVEAL_TIMING.settleAtMs + 300).toBeLessThanOrEqual(1500);
+    expect(REVEAL_TIMING.valueStaggerMs * 4 + 300).toBeLessThan(REVEAL_TIMING.assembleAtMs);
+  });
+
+  it("reduced motion (in-app setting): the settled canonical order at once", () => {
+    document.documentElement.classList.add("reduce-motion");
+    render(<LiveReveal />);
+    fireEvent.click(screen.getByTestId("go"));
+    const box = screen.getByTestId("forge-reveal");
+    expect(box).toHaveAttribute("data-step", "assembled");
+    expect(box).toHaveAttribute("data-motion", "reduced");
+    expect(tokensOf()).toEqual(REVEAL.canonicalOrder);
+    for (const t of REVEAL.canonicalOrder) {
+      expect(screen.getByTestId(`forge-reveal-${t}-value`)).toHaveTextContent(REVEAL.valueDisplay[t]);
+    }
+    expect(screen.getByTestId("forge-reveal-e2-from")).toHaveTextContent(/was 5/i);
+  });
+
+  it("nothing of the answer exists before the reveal boundary", () => {
+    const { container } = render(<LiveReveal />);
+    expect(screen.queryByTestId("forge-reveal")).toBeNull();
+    expect(container.textContent).not.toMatch(/\d+ g\b|Correct order|was \d/);
+    expect(container.querySelector("[data-yours], [data-moved]")).toBeNull();
+  });
+});
+
+describe("OrderForge — OF4 one footprint", () => {
+  const ROW = "h-14 md:h-[60px] lg:h-[52px] lg:[@media(min-height:860px)]:h-[76px]";
+  it("open, locked and revealed rows share the same fixed height classes", () => {
+    const r1 = render(<Harness />);
+    expect(screen.getByTestId("forge-card-e0").className).toContain(ROW);
+    r1.unmount();
+    const r2 = render(<Harness phase="locked" />);
+    expect(screen.getByTestId("forge-locked-e0").className).toContain(ROW);
+    r2.unmount();
+    render(<Harness phase="revealed" reveal={REVEAL} />);
+    expect(screen.getByTestId("forge-reveal-e0").className).toContain(ROW);
+  });
+
+  it("the hint line and the footer exist in every phase (no line appears or vanishes)", () => {
+    for (const phase of ["open", "locked", "revealed"] as const) {
+      const { unmount } = render(<Harness phase={phase} reveal={phase === "revealed" ? REVEAL : null} />);
+      expect(screen.getByTestId("forge-hint").textContent).not.toBe("");
+      expect(screen.getByTestId("forge-footer").className).toContain("min-h-[4.25rem]");
+      unmount();
+    }
   });
 });
 
@@ -215,17 +469,17 @@ describe("OrderForge — source contract", () => {
     expect(src).not.toMatch(/canonicalOrder\s*[!=]==/);
     expect(src).not.toMatch(/positionCorrect\.(every|some|filter)/);
   });
-  it("starts drag only from the handle", () => {
+  it("starts the drag itself (framer's own listener would set touch-action:none on the card)", () => {
     expect(src).toContain("dragListener={false}");
-    expect(src).toContain("controls.start(e)");
+    expect(src).toContain("controls.start(native)");
   });
 });
 
 describe("OrderForge F1 layout", () => {
   it("keeps the wider desktop stack and big-desktop tier as literal classes", () => {
     render(<OrderForge content={CONTENT} phase="open" value={[]} onChange={() => {}} onLock={() => {}} />);
-    expect(screen.getByTestId("forge-list").parentElement!.className).toContain("xl:max-w-[52rem]");
+    expect(screen.getByTestId("forge-list").closest("[data-state]")!.className).toContain("xl:max-w-[52rem]");
     expect(screen.getByTestId("forge-lock").className).toContain("lg:[@media(min-height:860px)]:min-h-[56px]");
-    expect(screen.getByTestId(`forge-rank-${CONTENT.entries[0].token}`).className).toContain("md:rounded-full");
+    expect(screen.getByTestId("forge-slot-1").className).toContain("rounded-full");
   });
 });

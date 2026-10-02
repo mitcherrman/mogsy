@@ -55,6 +55,7 @@ import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import { scenarioSourceFromPublicQuestion } from "../adapters/scenarioSource";
 import { renderPathFor, structuralBandSource } from "../modules/MasterySliceChallengeSurface";
+import { ORDER_FORGE_BACKDROP_URL } from "./orderForgeArt";
 
 export interface RoundMedia {
   /**
@@ -216,7 +217,9 @@ function decorativeUrls(
  *   * Meta Reflex (`meta_reflex` block) — both sides of ALL five cards;
  *   * legacy Item Cost Duel (`item_cost` block) — both sides of every challenge;
  *   * Mastery slice (`mastery_slice` block) — every challenge's band + motif;
- *   * Order Forge (`order_forge` block) — every card's art.
+ *   * Order Forge (`order_forge` block) — every card's art, and (OF4) the
+ *     module's scene backdrop, which is the same for every Order Forge round
+ *     and is critical so the scene is decoded before the round is shown.
  */
 export function rankedRoundMedia(
   round: PublicRoundView | null | undefined, opts: RoundMediaOptions = {},
@@ -244,6 +247,7 @@ export function rankedRoundMedia(
     }
   } else if (block?.contract === "order_forge") {
     for (const e of block.entries) critical.add(resolveQuizAssetUrl(e.media?.src));
+    critical.add(ORDER_FORGE_BACKDROP_URL);
   } else if (block?.contract === "mastery_slice") {
     for (const ch of block.challenges) {
       if (renderPathFor(ch) === "prose") {

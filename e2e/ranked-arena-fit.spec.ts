@@ -541,11 +541,12 @@ test.describe("RMOB2 compact phone HUD", () => {
  */
 const FORGE_STATES = [
   { q: "orderforge", anchor: "forge-lock", what: "open" },
+  { q: "orderforge&forge=locked", anchor: "forge-suspense", what: "locked" },
   { q: "orderforge&forge=revealed", anchor: "forge-verdict", what: "revealed" },
 ] as const;
 
 const forgeFit = () => {
-  const anchors = ["forge-lock", "forge-verdict"];
+  const anchors = ["forge-lock", "forge-suspense", "forge-verdict"];
   const el = anchors.map((id) => document.querySelector(`[data-testid="${id}"]`))
     .find((e): e is Element => !!e)!;
   let clip: Element | null = el.parentElement;
@@ -603,16 +604,20 @@ for (const size of [{ w: 360, h: 740 }, { w: 360, h: 800 }]) {
 }
 
 /**
- * OF3-F1 — the base-shop backdrop is decorative only: it captures no pointer,
- * nothing overflows sideways, and grip drag / up-down / keyboard still reorder.
+ * OF3-F1 / OF4 — the base-shop scene is decorative only: it captures no
+ * pointer, nothing overflows sideways, and every reorder path works: the
+ * up/down buttons, the grip's arrow keys, a grip drag and (OF4) a mouse drag
+ * from ANYWHERE on the card.
  */
 const forgeOrder = () => Array.from(document.querySelectorAll('[data-testid^="forge-card-"]'))
   .map((e) => e.getAttribute("data-testid")!.replace("forge-card-", ""));
 
-for (const vp of [{ w: 1600, h: 900 }, { w: 1280, h: 720 }, { w: 360, h: 800 }]) {
-  test.describe(`Order Forge F1 backdrop + input @ ${vp.w}x${vp.h}`, () => {
+const OF4_SIZES = [{ w: 1600, h: 900 }, { w: 1280, h: 720 }, { w: 360, h: 800 }];
+
+for (const vp of OF4_SIZES) {
+  test.describe(`Order Forge OF4 scene + input @ ${vp.w}x${vp.h}`, () => {
     test.use({ viewport: { width: vp.w, height: vp.h } });
-    test("backdrop is inert and every reorder path still works", async ({ page }) => {
+    test("scene is inert, tinted, static; every reorder path still works", async ({ page }) => {
       await page.goto(`/dev/ranked-shell-probe?q=orderforge&lead=1500${vp.w < 600 ? LIVE_PHONE : ""}`);
       await page.waitForSelector('[data-testid="forge-lock"]');
       // The probe opens the challenge a few seconds out; until then it is inert.
@@ -624,19 +629,29 @@ for (const vp of [{ w: 1600, h: 900 }, { w: 1280, h: 720 }, { w: 360, h: 800 }])
         const card = document.querySelector('[data-testid^="forge-card-"]')!.getBoundingClientRect();
         const hit = document.elementFromPoint(card.left + card.width / 2, card.top + card.height / 2);
         const br = bd.getBoundingClientRect();
+        const vr = document.querySelector('[data-testid="order-forge-viewport"]')!.getBoundingClientRect();
+        const cs = getComputedStyle(img);
         return {
-          ptr: getComputedStyle(bd).pointerEvents, imgPtr: getComputedStyle(img).pointerEvents,
-          anim: getComputedStyle(img).animationName, hidden: bd.getAttribute("aria-hidden"),
+          ptr: getComputedStyle(bd).pointerEvents, anim: cs.animationName, hidden: bd.getAttribute("aria-hidden"),
+          blend: cs.mixBlendMode, opacity: Number(cs.opacity), filter: cs.filter, loaded: img.complete && img.naturalWidth > 0,
           captured: !!hit && bd.contains(hit), hOverflow: document.documentElement.scrollWidth > innerWidth,
           backdropInsidePage: br.left >= -0.5 && br.right <= innerWidth + 0.5,
+          fillsModule: Math.abs(br.top - vr.top) < 0.5 && Math.abs(br.height - vr.height) < 0.5,
         };
       });
       expect(m.ptr).toBe("none");
       expect(m.anim).toBe("none");
       expect(m.hidden).toBe("true");
+      expect(m.loaded, "scene art is decoded by the time the cards can be played").toBe(true);
+      // OF4 treatment: multiplied colour, visible but subordinate, no heavy blur / desaturation.
+      expect(m.blend).toBe("multiply");
+      expect(m.opacity).toBeGreaterThanOrEqual(0.3);
+      expect(m.opacity).toBeLessThanOrEqual(0.6);
+      expect(m.filter).not.toMatch(/saturate\(0\.|blur\([2-9]/);
       expect(m.captured, "backdrop sits over a card").toBe(false);
       expect(m.hOverflow, "horizontal overflow").toBe(false);
       expect(m.backdropInsidePage).toBe(true);
+      expect(m.fillsModule).toBe(true);
 
       const before = await page.evaluate(forgeOrder);
       // up/down buttons
@@ -656,6 +671,155 @@ for (const vp of [{ w: 1600, h: 900 }, { w: 1280, h: 720 }, { w: 360, h: 800 }])
       await page.waitForTimeout(400);
       const after = await page.evaluate(forgeOrder);
       expect(after.indexOf(before[4]), "grip drag moved the card up").toBeLessThan(4);
+      // OF4 — a mouse drag from the card's NAME, nowhere near the grip.
+      const last = after[4];
+      const n = (await page.locator(`[data-testid="forge-card-${last}"] .line-clamp-2`).boundingBox())!;
+      await page.mouse.move(n.x + 8, n.y + n.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(n.x + 8, n.y - 70, { steps: 12 });
+      await page.mouse.move(n.x + 8, n.y - 150, { steps: 12 });
+      await page.mouse.up();
+      await page.waitForTimeout(400);
+      const body = await page.evaluate(forgeOrder);
+      expect(body.indexOf(last), "a press on the card body drags it").toBeLessThan(4);
+      expect(await page.evaluate(() => String(getSelection())), "the drag selected text").toBe("");
     });
   });
 }
+
+/**
+ * OF4 — TOUCH. The whole card drags after a press-and-hold, and a swipe over
+ * the cards still scrolls the page. 360x600 so the page has somewhere to
+ * scroll. Raw CDP touch events, because a synthetic scroll gesture never
+ * reaches the page's own touch handlers.
+ */
+test.describe("Order Forge OF4 touch @ 360x600", () => {
+  test.use({ viewport: { width: 360, height: 600 }, isMobile: true, hasTouch: true });
+  test("a swipe scrolls the page; a hold drags the card without scrolling", async ({ page }) => {
+    await page.goto(`/dev/ranked-shell-probe?q=orderforge&lead=1500${LIVE_PHONE}`);
+    await page.waitForSelector('[data-testid="order-forge-phase"]:not([data-not-open])', { timeout: 30_000 });
+    await page.waitForTimeout(300);
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: string, x = 0, y = 0) => cdp.send("Input.dispatchTouchEvent",
+      { type: type as "touchStart", touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+    const nameBox = async (t: string) =>
+      (await page.locator(`[data-testid="forge-card-${t}"] .line-clamp-2`).boundingBox())!;
+    const scrollY = () => page.evaluate(() => window.scrollY);
+
+    const pre = await page.evaluate(forgeOrder);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBe(true);
+    // 1. A swipe up across a card, no hold: the page scrolls, the order does not change.
+    const a = await nameBox(pre[2]);
+    const y0 = await scrollY();
+    await touch("touchStart", a.x + 8, a.y + a.height / 2);
+    for (let i = 1; i <= 10; i++) await touch("touchMove", a.x + 8, a.y + a.height / 2 - i * 20);
+    await touch("touchEnd");
+    await page.waitForTimeout(500);
+    expect(await scrollY(), "a swipe over a card must scroll the page").toBeGreaterThan(y0 + 40);
+    expect(await page.evaluate(forgeOrder)).toEqual(pre);
+
+    // 2. Press and hold, then drag up: the card moves, the page stays put.
+    const b = await nameBox(pre[4]);
+    await touch("touchStart", b.x + 8, b.y + b.height / 2);
+    await page.waitForTimeout(320);
+    await expect(page.locator(`[data-testid="forge-card-${pre[4]}"]`)).toHaveAttribute("data-lifted", "true");
+    const ys = await scrollY();
+    for (let i = 1; i <= 14; i++) {
+      await touch("touchMove", b.x + 8, b.y + b.height / 2 - i * 12);
+      await page.waitForTimeout(16);
+    }
+    expect(await scrollY(), "a lifted card must not scroll the page").toBe(ys);
+    await touch("touchEnd");
+    await page.waitForTimeout(500);
+    const post = await page.evaluate(forgeOrder);
+    expect(post.indexOf(pre[4]), "hold-drag moved the card up").toBeLessThan(4);
+    await expect(page.locator(`[data-testid="forge-card-${pre[4]}"]`)).not.toHaveAttribute("data-lifted", "true");
+  });
+});
+
+/**
+ * OF4 — THE REVEAL TEACHES, AND NOTHING MOVES BUT THE CARDS. `?forge=live`
+ * serves the lock, then the reveal. Measured per animation frame in the page:
+ * the module box, the scene and its image never move or resize from the lock
+ * to the settled reveal; the cards start in the player's order with values,
+ * then TRAVEL (intermediate positions observed) into the canonical order.
+ */
+const PROBE_CANON = ["e1", "e4", "e3", "e0", "e2"];
+const PROBE_MINE = ["e3", "e0", "e4", "e1", "e2"];
+
+const sampleReveal = () => new Promise<{
+  locked: number[]; frames: { t: number; step: string; motion: string; box: number[]; img: number[];
+    rows: Record<string, number>; values: number }[]; overflow: boolean;
+}>((done) => {
+  const rect = (sel: string) => { const r = document.querySelector(sel)!.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 10) / 10); };
+  let locked: number[] | null = null; let t0: number | null = null; let overflow = false;
+  const frames: { t: number; step: string; motion: string; box: number[]; img: number[]; rows: Record<string, number>; values: number }[] = [];
+  const tick = (now: number) => {
+    overflow ||= document.documentElement.scrollWidth > innerWidth;
+    const rev = document.querySelector<HTMLElement>('[data-testid="forge-reveal"]');
+    if (!rev) { locked = [...rect('[data-testid="order-forge-viewport"]'), ...rect('[data-testid="order-forge-backdrop"] img')]; requestAnimationFrame(tick); return; }
+    if (t0 === null) t0 = now;
+    const rows: Record<string, number> = {};
+    for (const e of document.querySelectorAll<HTMLElement>('[data-testid^="forge-reveal-e"]')) {
+      if (/^forge-reveal-e\d$/.test(e.dataset.testid!)) rows[e.dataset.testid!.slice(-2)] = Math.round(e.getBoundingClientRect().y);
+    }
+    frames.push({ t: now - t0, step: rev.dataset.step!, motion: rev.dataset.motion!,
+      box: rect('[data-testid="order-forge-viewport"]'), img: rect('[data-testid="order-forge-backdrop"] img'), rows,
+      values: document.querySelectorAll('[data-testid^="forge-reveal-e"][data-testid$="-value"]').length });
+    if (now - t0 < 2000) requestAnimationFrame(tick); else done({ locked: locked!, frames, overflow });
+  };
+  requestAnimationFrame(tick);
+});
+
+for (const vp of OF4_SIZES) {
+  test.describe(`Order Forge OF4 reveal @ ${vp.w}x${vp.h}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h } });
+    test("plays mine -> canonical with no jump of the scene or the module", async ({ page }) => {
+      await page.goto(`/dev/ranked-shell-probe?q=orderforge&forge=live${vp.w < 600 ? LIVE_PHONE : ""}`);
+      await page.waitForSelector('[data-testid="order-forge-phase"][data-phase="locked"]', { timeout: 60_000 });
+      const r = await page.evaluate(sampleReveal);
+      const first = r.frames[0];
+      const last = r.frames[r.frames.length - 1];
+      expect(r.overflow, "horizontal overflow").toBe(false);
+      // Nothing outside the cards moves: module box and scene image are fixed.
+      for (const f of r.frames) {
+        expect(f.box, `module box moved at ${Math.round(f.t)}ms`).toEqual(r.locked.slice(0, 4));
+        expect(f.img, `scene image moved / re-cropped at ${Math.round(f.t)}ms`).toEqual(r.locked.slice(4));
+      }
+      // Step 1: the player's own order, every value already present.
+      expect(first.step).toBe("mine");
+      expect(first.motion).toBe("full");
+      expect(Object.entries(first.rows).sort((x, y) => x[1] - y[1]).map(([k]) => k)).toEqual(PROBE_MINE);
+      expect(first.values).toBe(5);
+      // Step 2: the canonical order, reached by travelling (in-between positions seen).
+      expect(last.step).toBe("assembled");
+      expect(Object.entries(last.rows).sort((x, y) => x[1] - y[1]).map(([k]) => k)).toEqual(PROBE_CANON);
+      const from = first.rows.e1, to = last.rows.e1;
+      expect(r.frames.some((f) => f.rows.e1 < from - 8 && f.rows.e1 > to + 8), "Infinity Edge jumped instead of travelling").toBe(true);
+      // Settled well inside the shortest reveal hold.
+      const settledAt = r.frames.find((f) => f.step === "assembled"
+        && Object.keys(f.rows).every((k) => Math.abs(f.rows[k] - last.rows[k]) < 1))!.t;
+      expect(settledAt).toBeLessThan(1400);
+      // Final state: values, marks and "was N" for every wrong card.
+      for (const t of PROBE_CANON) await expect(page.getByTestId(`forge-reveal-${t}-value`)).toBeVisible();
+      await expect(page.getByTestId("forge-reveal-e1-from")).toContainText(/was 4/i);
+      await expect(page.getByTestId("forge-reveal-e2")).toHaveAttribute("data-mark", "right");
+      await expect(page.getByTestId("forge-reveal-step")).toHaveText(/correct order/i);
+    });
+  });
+}
+
+test.describe("Order Forge OF4 reveal, reduced motion @ 1280x720", () => {
+  test.use({ viewport: { width: 1280, height: 720 }, reducedMotion: "reduce" });
+  test("lands on the settled canonical order on its first frame", async ({ page }) => {
+    await page.goto("/dev/ranked-shell-probe?q=orderforge&forge=live");
+    await page.waitForSelector('[data-testid="order-forge-phase"][data-phase="locked"]', { timeout: 60_000 });
+    const r = await page.evaluate(sampleReveal);
+    for (const f of r.frames) {
+      expect(f.step).toBe("assembled");
+      expect(f.motion).toBe("reduced");
+      expect(Object.entries(f.rows).sort((x, y) => x[1] - y[1]).map(([k]) => k)).toEqual(PROBE_CANON);
+      expect(f.box).toEqual(r.locked.slice(0, 4));
+    }
+  });
+});

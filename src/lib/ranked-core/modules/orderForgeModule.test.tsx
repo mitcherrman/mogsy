@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -9,6 +11,7 @@ import {
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import { getModuleRenderer, rendererForSegment } from "./registry";
 import { orderForgeModule } from "./orderForgeModule";
+import { ORDER_FORGE_BACKDROP_URL } from "@/lib/ranked-core/media/orderForgeArt";
 import type { ModuleSegmentActions } from "./types";
 
 function parse(rawState: unknown) {
@@ -116,9 +119,12 @@ describe("order_forge module renderer — play", () => {
     }, true));
     render(view(parsed.segmentState, actions()));
     expect(screen.getByTestId("order-forge-phase")).toHaveAttribute("data-phase", "revealed");
-    expect(screen.getByRole("heading", { name: "My order" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Correct order" })).toBeInTheDocument();
-    expect(screen.getByTestId("forge-correct-e2-value")).toHaveTextContent("350 g");
+    // Mounted on an existing reveal (a refresh): the settled canonical order.
+    expect(screen.getByTestId("forge-reveal")).toHaveAttribute("data-step", "assembled");
+    expect(screen.getAllByTestId(/^forge-reveal-e\d$/).map((r) => r.getAttribute("data-testid")!.slice(-2)))
+      .toEqual(["e2", "e0", "e3", "e4", "e1"]);
+    expect(screen.getByTestId("forge-reveal-e2-value")).toHaveTextContent("350 g");
+    expect(screen.getByTestId("forge-reveal-e2")).toHaveAttribute("data-yours", "5");
     expect(screen.getByTestId("forge-verdict")).toHaveTextContent("Not quite");
   });
 
@@ -159,22 +165,53 @@ describe("order_forge module renderer — summary", () => {
   });
 });
 
-describe("order_forge module renderer — F1 backdrop", () => {
-  it("draws the base-shop backdrop as decorative, inert, static art behind the cards", () => {
+describe("order_forge module renderer — OF4 scene", () => {
+  const css = readFileSync(resolve(__dirname, "../../../index.css"), "utf8").replace(/\r\n/g, "\n");
+  const block = css.slice(css.indexOf("/* ---- OF4 Order Forge scene"));
+
+  it("draws the base-shop scene as decorative, inert, static art behind the cards", () => {
     const parsed = parse(orderForgeState());
     render(view(parsed.segmentState, actions()));
     const backdrop = screen.getByTestId("order-forge-backdrop");
     expect(backdrop).toHaveAttribute("aria-hidden", "true");
     expect(backdrop.className).toContain("pointer-events-none");
     expect(backdrop.className).toContain("-z-10");
+    expect(backdrop.className).toContain("order-forge-backdrop");
     const img = backdrop.querySelector("img")!;
     expect(img).toHaveAttribute("alt", "");
-    expect(img.getAttribute("src")).toContain("base-shop");
+    // The one URL the round-media preparer warms (`rankedRoundMedia`).
+    expect(img.getAttribute("src")).toBe(ORDER_FORGE_BACKDROP_URL);
     expect(img.className).not.toMatch(/animate|transition/);
-    expect(img.style.filter).toContain("blur(3px)");
-    expect(img.style.filter).toContain("saturate(0.8)");
     // Never a tab stop or an accessible name: the cards are still the only controls.
     expect(backdrop.querySelector("button, a, [tabindex]")).toBeNull();
     expect(screen.getByTestId("order-forge-viewport").className).toContain("isolate");
+  });
+
+  it("is tinted art on parchment, not a grey veil: multiplied, no F1 scrim, no blur-and-desaturate", () => {
+    expect(block).toMatch(/\.order-forge-backdrop__art \{[^}]*mix-blend-mode: multiply/);
+    expect(block).not.toMatch(/saturate\(0\.\d+\)/);
+    expect(block).not.toMatch(/blur\([2-9]px\)/);
+    // Static: nothing in the scene animates or transitions between phases.
+    expect(block).not.toMatch(/(animation|transition)[a-z-]*\s*:/);
+  });
+
+  it("stays mounted through a loading state, a lock and a reveal: the same <img> node", () => {
+    const locked = parse(orderForgeState({}, true));
+    const { rerender } = render(view(locked.segmentState, actions()));
+    const img = screen.getByTestId("order-forge-backdrop").querySelector("img");
+    rerender(view(null, actions()));
+    expect(screen.getByTestId("order-forge-loading")).toBeInTheDocument();
+    expect(screen.getByTestId("order-forge-backdrop").querySelector("img")).toBe(img);
+    const revealed = parse(orderForgeState({ own_challenge_reveals: [orderForgeChallengeReveal()] }, true));
+    rerender(view(revealed.segmentState, actions()));
+    expect(screen.getByTestId("order-forge-backdrop").querySelector("img")).toBe(img);
+  });
+
+  it("reserves the opponent line while open, so the lock adds no height", () => {
+    const parsed = parse(orderForgeState());
+    render(view(parsed.segmentState, actions()));
+    const line = screen.getByTestId("order-forge-opponent-progress");
+    expect(line.className).toContain("invisible");
+    expect(line.className).toContain("min-h-[1rem]");
   });
 });
