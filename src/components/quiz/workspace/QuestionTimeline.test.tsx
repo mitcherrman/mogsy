@@ -319,13 +319,13 @@ describe("MALT B1 — what an icon shows", () => {
 
   it("Meta Reflex stays distinct from every question kind", () => {
     const meta = resolveQuestionIcon({ kind: "meta_reflex", key: null, icon: null });
-    expect(meta.label).toBe("Meta Reflex");
+    expect(meta.label).toBe("Stat Check");
     const others = [
       resolveQuestionIcon({ kind: "category", key: "Item Costs", icon: null }),
       resolveQuestionIcon({ kind: "champion", key: "Malphite", icon: "assets/champions/Malphite/icon.png" }),
       resolveQuestionIcon({ kind: "item", key: "Doran's Shield", icon: "assets/items/1054.png" }),
     ];
-    for (const o of others) expect(o.label).not.toBe("Meta Reflex");
+    for (const o of others) expect(o.label).not.toBe("Stat Check");
     // Its aria label names the block, whatever art it borrows.
     expect(questionIconLabel(
       quizRound(1, {
@@ -336,7 +336,7 @@ describe("MALT B1 — what an icon shows", () => {
           correctCount: 5, answeredCount: 5, challengeCount: 5,
         },
       }), 1, 5,
-    )).toBe("Question 1 of 5, Meta Reflex, correct");
+    )).toBe("Question 1 of 5, Stat Check, correct");
   });
 
   it("tints by outcome, and a Meta Reflex block only on a clean sweep", () => {
@@ -676,7 +676,7 @@ describe("MALT B1 — the anchored review popover", () => {
     render(<QuestionTimeline matchId="m1" roundCount={1} review={block} />);
     open(1);
     const card = await screen.findByTestId("question-review-card");
-    expect(card.textContent).toContain("Meta Reflex");
+    expect(card.textContent).toContain("Stat Check");
     expect(card.textContent).toContain("Which champion has more base armor?");
     const cards = within(card).getByTestId("review-cards");
     expect(cards.querySelector('[data-side-state="correct"]')!.textContent).toContain("Gwen");

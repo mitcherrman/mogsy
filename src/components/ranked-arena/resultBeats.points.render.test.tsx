@@ -129,7 +129,7 @@ describe("a slice's plate", () => {
     renderBlock(feedback("5 / 5", 5));
     expect(verdict()).toHaveTextContent("5 / 5 +5");
     // RR1 — the quiet line names the module now, and still claims no bonus.
-    expect(consequence().textContent).toBe("Meta Reflex");
+    expect(consequence().textContent).toBe("Stat Check");
     expect(consequence().textContent).not.toMatch(/first|\+\d/i);
   });
 
@@ -143,7 +143,7 @@ describe("a slice's plate", () => {
     renderBlock(feedback("4 / 5", 4), { correct: 4, perfect: false, speedBonus: 0 });
     expect(verdict()).toHaveTextContent("4 / 5 +4");
     // RR1 — the module's name, and no speed claim of any kind.
-    expect(consequence().textContent).toBe("Meta Reflex");
+    expect(consequence().textContent).toBe("Stat Check");
     expect(consequence().textContent).not.toMatch(/first|\+\d/i);
   });
 

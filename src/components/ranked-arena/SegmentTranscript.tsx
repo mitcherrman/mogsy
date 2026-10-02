@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import { abilityName } from "@/lib/ranked-core/abilityDisplay";
-import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexModule";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 import type {
   SegmentResult,
   SegmentRevealChallenge,

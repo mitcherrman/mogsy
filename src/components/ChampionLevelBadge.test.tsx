@@ -65,4 +65,13 @@ describe("ChampionLevelBadge", () => {
     // one-digit levels render 5px narrower. Shrinking this re-opens that.
     expect(one.className).toMatch(/min-w-\[4rem\]/);
   });
+
+  it("uses the solid dark-panel pill with bright ranked gold (SC-RENAME3 contrast)", () => {
+    render(<ChampionLevelBadge level={11} />);
+    const cls = screen.getByTestId("champion-level-badge").className;
+    expect(cls).toContain("bg-[var(--ranked-bg-panel,#0b1727)]");
+    expect(cls).toContain("text-[var(--ranked-gold-bright,#d5b66f)]");
+    // The old translucent gold wash read poorly on the parchment folio.
+    expect(cls).not.toMatch(/bg-\[#b9934c\]\/15/);
+  });
 });

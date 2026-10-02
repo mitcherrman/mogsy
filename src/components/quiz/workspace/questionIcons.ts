@@ -48,6 +48,7 @@ import {
 } from "@/lib/quiz/publicCategory";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import type { ReviewIconHint, ReviewRound } from "@/lib/ranked-public/contracts";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 /**
  * How a question icon should be drawn.
@@ -91,7 +92,7 @@ export function resolveRoundIcon(round: ReviewRound): QuestionIconView {
   const topic = round.topic;
   if (!topic) return resolveQuestionIcon(round.iconHint);
   if (topic.category === "meta-reflex") {
-    return { glyph: "meta_reflex", label: "Meta Reflex", specific: true };
+    return { glyph: "meta_reflex", label: META_REFLEX_LABEL, specific: true };
   }
   const hint = topic.iconHint;
   if (hint?.icon) {
@@ -121,7 +122,7 @@ export function resolveQuestionIcon(hint: ReviewIconHint): QuestionIconView {
      * a speed drill ACROSS champions, items and stats; the honest icon for
      * "no one entity, on purpose" is a mark rather than a portrait.
      */
-    return { glyph: "meta_reflex", label: "Meta Reflex", specific: true };
+    return { glyph: "meta_reflex", label: META_REFLEX_LABEL, specific: true };
   }
   if (hint.icon) {
     return {
@@ -179,7 +180,7 @@ export function questionIconLabel(
 ): string {
   const subject =
     round.kind === "meta_reflex"
-      ? "Meta Reflex"
+      ? META_REFLEX_LABEL
       : round.kind === "mastery_slice"
         ? "Mastery"
         : round.kind === "order_forge"

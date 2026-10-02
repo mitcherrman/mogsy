@@ -48,6 +48,7 @@ import type {
   MatchDiscoveriesView, MatchReviewView, ReviewRound,
 } from "@/lib/ranked-public/contracts";
 import { reviewRoundRoles } from "@/lib/ranked-public/reviewRoles";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 /**
  * What this module was ABOUT, as a subject a player would recognise.
@@ -57,7 +58,7 @@ import { reviewRoundRoles } from "@/lib/ranked-public/reviewRoles";
  * knowledge to be strong or weak in — "Champion Abilities" is.
  */
 export function moduleSubject(round: ReviewRound): string {
-  if (round.kind === "meta_reflex") return "Meta Reflex";
+  if (round.kind === "meta_reflex") return META_REFLEX_LABEL;
   if (round.kind === "mastery_slice") return "Mastery";
   if (round.kind === "order_forge") return "Order Forge";
   if (round.topic?.category) return categoryLabel(round.topic.category as CategoryKey);

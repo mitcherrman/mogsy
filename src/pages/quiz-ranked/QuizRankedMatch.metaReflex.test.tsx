@@ -202,7 +202,7 @@ describe("Meta Reflex in the Ranked shell", () => {
         .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
       const beat = screen.getByTestId("ranked-last-result");
       expect(beat).toHaveAttribute("data-mode", "segment");
-      expect(beat).toHaveTextContent("Meta Reflex");
+      expect(beat).toHaveTextContent("Stat Check");
       expect(beat).not.toHaveTextContent("Item Cost Duel");
       // The scoreline no round beat could carry, straight off the reveal.
       expect(beat).toHaveTextContent("YOU 4/5");

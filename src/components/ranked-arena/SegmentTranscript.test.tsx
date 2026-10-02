@@ -100,6 +100,6 @@ describe("JOURNEY-UI3 — a settled mastery_slice block is named for what it is"
     const base = { challengeCount: 3, challenges: [], masteryChallenges: [], players: {}, items: {} };
     expect(segmentTitle({ ...base, moduleId: "mastery_slice", moduleVersion: 2 })).toBe("Mastery");
     expect(segmentTitle({ ...base, moduleId: "item_cost_duel", moduleVersion: 2 })).toBe("Item Cost Duel");
-    expect(segmentTitle({ ...base, moduleId: "item_cost_duel", moduleVersion: 4 })).toBe("Meta Reflex");
+    expect(segmentTitle({ ...base, moduleId: "item_cost_duel", moduleVersion: 4 })).toBe("Stat Check");
   });
 });

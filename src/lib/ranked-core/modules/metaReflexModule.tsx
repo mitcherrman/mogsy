@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // `item_cost_duel.v4` — the Meta Reflex block (QUIZ1 Phase 7).
 //
-// "Meta Reflex" is the product name; `item_cost_duel` is the shipped module id
+// "Meta Reflex" is the internal name; players see "Stat Check" (SC-RENAME3,
+// `META_REFLEX_LABEL`). `item_cost_duel` is the shipped module id
 // and stays as-is, because it is what every historical row, reveal and
 // analytics record already stores. Nothing a player sees says item_cost_duel.
 //
@@ -44,7 +45,8 @@ import type { ModuleRenderer, ModuleViewportProps } from "./types";
 
 export const META_REFLEX_MODULE_ID = "item_cost_duel";
 /** Public product name. Never the module id, which is an implementation fact. */
-export const META_REFLEX_LABEL = "Meta Reflex";
+export { META_REFLEX_LABEL } from "./metaReflexLabel";
+import { META_REFLEX_LABEL } from "./metaReflexLabel";
 
 /** 100ms tick: the per-card clock is ~6s, so a 1s tick loses a fifth of it. */
 function useFastTick(): number {
@@ -433,14 +435,23 @@ function SettledCard({ card, reveal }: {
  *    be the urgent one;
  *  - above rather than below, so it is read before the question it qualifies.
  *
- * `ChampionLevelBadge` renders nothing for a null level, so a level-independent
- * card and a pre-MRLVL1 segment produce exactly the markup they did before —
- * no empty element, no reserved row, no layout change.
+ * SC-RENAME3: the badge row is a PERMANENTLY RESERVED fixed-height slot.
+ * `ChampionLevelBadge` still renders nothing for a null level, but the slot
+ * stays, so a level-independent card (or a pre-MRLVL1 segment) puts its prompt
+ * and choice cards at exactly the same y as a level-aware one. Without it, a
+ * block mixing the two shifted the prompt and cards ~23px between consecutive
+ * cards. The slot is a fixed `h-5` (the pill is ~17px) so it never grows.
  */
 function CardPrompt({ card }: { card: MetaReflexCard }) {
+  const hasLevel = card.championLevel != null;
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <ChampionLevelBadge level={card.championLevel} />
+      <div data-testid="mr-level-slot"
+           data-has-level={hasLevel ? "true" : "false"}
+           aria-hidden={hasLevel ? undefined : true}
+           className="flex h-5 shrink-0 items-center justify-center">
+        <ChampionLevelBadge level={card.championLevel} />
+      </div>
       <p className="text-center text-base font-semibold sm:text-lg lg:text-xl"
          data-testid="mr-prompt">
         {card.prompt}

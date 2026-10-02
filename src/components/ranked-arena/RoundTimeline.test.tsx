@@ -426,8 +426,8 @@ describe("accessible labels", () => {
       observedKinds: new Map<number, TimelineSegmentKind>([
         [17, "meta-reflex"], [20, "meta-reflex"]]),
     });
-    expect(screen.getByText("Round 20, current round, Meta Reflex")).toBeInTheDocument();
-    expect(screen.getByText("Round 17, resolved, Meta Reflex")).toBeInTheDocument();
+    expect(screen.getByText("Round 20, current round, Stat Check")).toBeInTheDocument();
+    expect(screen.getByText("Round 17, resolved, Stat Check")).toBeInTheDocument();
     // Never told: the label says nothing about the kind rather than guessing.
     expect(screen.getByText("Round 18, resolved")).toBeInTheDocument();
     expect(screen.getByText("Round 22, upcoming")).toBeInTheDocument();
@@ -445,7 +445,7 @@ describe("accessible labels", () => {
     expect(nodeLabel({ ...base, outcome: "timed-out" }))
       .toBe("Round 3, resolved, you ran out of time");
     expect(nodeLabel({ ...base, segmentKind: "meta-reflex", outcome: "correct" }))
-      .toBe("Round 3, resolved, Meta Reflex, you answered correctly");
+      .toBe("Round 3, resolved, Stat Check, you answered correctly");
   });
 
   it("has a label for every node, and hides the drawings from the reader", () => {

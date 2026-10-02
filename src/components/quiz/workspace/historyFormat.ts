@@ -11,6 +11,7 @@ import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
 import type { DailyStageKind } from "@/lib/daily-challenge/run/contracts";
 import { formatQuestionFamily } from "@/features/mastery/formatQuestionFamily";
 import type { Sufficiency } from "@/lib/history/contracts";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 const KNOWN_KINDS: readonly string[] = ["standard", "time_trial", "survival", "weak_areas", "review"];
 
@@ -100,7 +101,7 @@ export function moduleFamily(unit: string | null | undefined): ModuleFamily | nu
 
 const MODULE_NAME: Readonly<Record<ModuleFamily, string>> = {
   splash: "Splash",
-  meta_reflex: "Meta Reflex",
+  meta_reflex: META_REFLEX_LABEL,
   journey: "Journey",
   review_replay: "Review replay",
 };

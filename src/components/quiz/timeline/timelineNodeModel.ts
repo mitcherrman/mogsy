@@ -56,6 +56,7 @@ import {
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { RANKED_ROLES, type RankedRole } from "@/lib/ranked-public/roles";
 import { readQuestionMotif, type QuestionMotif } from "@/lib/question-surface/questionMotif";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 /**
  * The backend's proven subject, verbatim (`ranked_public.review`).
@@ -190,7 +191,7 @@ export function resolveNodeArt(topic: TimelineTopic | null): ResolvedNodeArt {
 
   if (topic.category === "meta-reflex") {
     return { glyph: "meta-reflex", specific: true, badge: "none",
-      label: "Meta Reflex" };
+      label: META_REFLEX_LABEL };
   }
   if (hint?.icon) {
     return {

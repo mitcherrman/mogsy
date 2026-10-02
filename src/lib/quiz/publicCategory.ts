@@ -33,6 +33,7 @@ import {
   QUIZ_CATEGORY_ICONS,
   resolveCategoryIconUrl,
 } from "@/components/quiz/QuizCategoryStrip";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 /** Keys of the shared contract. These MUST match `quiz/public_category.py`. */
 export const PUBLIC_CATEGORY_KEYS = [
@@ -110,7 +111,7 @@ export const CATEGORY_ART: Record<CategoryKey, CategoryArt> = {
   scenarios: { label: "Scenarios", glyph: "scenario" },
   // DRAWN. The rules of the game rather than an entity in it.
   fundamentals: { label: "Fundamentals", glyph: "fundamental" },
-  "meta-reflex": { label: "Meta Reflex", glyph: "meta-reflex" },
+  "meta-reflex": { label: META_REFLEX_LABEL, glyph: "meta-reflex" },
   general: { label: "Question", glyph: "unknown" },
 };
 

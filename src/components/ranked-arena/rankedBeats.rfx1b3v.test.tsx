@@ -130,8 +130,8 @@ describe("RFX1 2B3 visual — the Meta Reflex warning", () => {
   it("keeps the existing wordmark and stays non-blocking", () => {
     render(<MetaReflexSting variant="beat" durationMs={1800} cardCount={5} />);
     const sting = screen.getByTestId("mr-sting");
-    expect(sting.querySelector(".mr-sting__word--left")).toHaveTextContent("Meta");
-    expect(sting.querySelector(".mr-sting__word--right")).toHaveTextContent("Reflex");
+    expect(sting.querySelector(".mr-sting__word--left")).toHaveTextContent("Stat");
+    expect(sting.querySelector(".mr-sting__word--right")).toHaveTextContent("Check");
     expect(sting.querySelector(".mr-sting__mark")).not.toBeNull();
     // The card underneath must stay clickable for the whole beat.
     expect(sting.className).toContain("pointer-events-none");
@@ -182,8 +182,8 @@ describe("RFX1 2B3 visual — the Meta Reflex warning", () => {
     expect(sting.querySelector(".mr-sting__band")).toBeNull();
     expect(screen.queryByTestId("mr-sting-subline")).toBeNull();
     // The wordmark is the same in both variants — only the staging differs.
-    expect(sting.querySelector(".mr-sting__word--left")).toHaveTextContent("Meta");
-    expect(sting.querySelector(".mr-sting__word--right")).toHaveTextContent("Reflex");
+    expect(sting.querySelector(".mr-sting__word--left")).toHaveTextContent("Stat");
+    expect(sting.querySelector(".mr-sting__word--right")).toHaveTextContent("Check");
   });
 
   it("stages the RANKED beat centred, scrimmed and captioned", () => {

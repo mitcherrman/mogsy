@@ -58,8 +58,8 @@ describe("MetaReflexSting", () => {
   it("sends META left and REFLEX right, meeting at the centre", () => {
     render(<MetaReflexSting />);
     const sting = screen.getByTestId("mr-sting");
-    expect(sting.querySelector(".mr-sting__word--left")).toHaveTextContent("Meta");
-    expect(sting.querySelector(".mr-sting__word--right")).toHaveTextContent("Reflex");
+    expect(sting.querySelector(".mr-sting__word--left")).toHaveTextContent("Stat");
+    expect(sting.querySelector(".mr-sting__word--right")).toHaveTextContent("Check");
   });
 
   it("is short enough not to overlap a six-second card meaningfully", () => {

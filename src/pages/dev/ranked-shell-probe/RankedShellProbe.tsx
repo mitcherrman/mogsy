@@ -59,7 +59,7 @@ import { MetaReflexSting } from "@/components/ranked-arena/MetaReflexSting";
 import { RankedFinalRoundWarning } from "@/components/ranked-arena/RankedFinalRoundWarning";
 import { RankedMatchOutro } from "@/components/ranked-arena/RankedMatchOutro";
 import {
-  matchResultPointsV1, metaReflexSegmentMeta, metaReflexState, modulePointsBlock,
+  matchResultPointsV1, metaReflexCards, metaReflexLevelAwareCard, metaReflexSegmentMeta, metaReflexState, modulePointsBlock,
   orderForgeChallengeReveal, orderForgeSegmentMeta, orderForgeState,
   privatePlayerV2, publicRoundV2, withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
@@ -434,7 +434,7 @@ function publicFor(state: ProbeState, role: string | null) {
   if (state === "metareflex") {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
-    payload.segment_state = metaReflexState(0);
+    payload.segment_state = probeMetaReflexState();
   } else if (state === "orderforge") {
     payload.question = null;
     payload.segment = orderForgeSegmentMeta();
@@ -469,6 +469,18 @@ function publicFor(state: ProbeState, role: string | null) {
   return applied;
 }
 
+/** SC-RENAME3: `?mrlvl=N` makes the active Meta Reflex card level-aware at N,
+ *  so the reserved badge slot can be compared against a level-independent card. */
+function probeMetaReflexState() {
+  const level = Number(new URLSearchParams(window.location.search).get("mrlvl") ?? "");
+  if (!level) return metaReflexState(0);
+  const cards = metaReflexCards();
+  cards[0] = metaReflexLevelAwareCard(level) as (typeof cards)[number];
+  return metaReflexState(0, {
+    challenges: { prompt: "Meta Reflex", challenge_count: 5, challenges: cards },
+  });
+}
+
 function privateFor(state: ProbeState) {
   const env = privatePlayerV2(VIEWER) as ReturnType<typeof privatePlayerV2>
     & { payload: Record<string, unknown> };
@@ -478,7 +490,7 @@ function privateFor(state: ProbeState) {
   if (state === "metareflex") {
     payload.question = null;
     payload.segment = metaReflexSegmentMeta();
-    payload.segment_state = metaReflexState(0);
+    payload.segment_state = probeMetaReflexState();
   } else if (state === "orderforge") {
     payload.question = null;
     payload.segment = orderForgeSegmentMeta();

@@ -114,12 +114,12 @@ describe("the record plate's content", () => {
     renderBlock(feedback("0 / 5", 0), { correct: 0, segmentResult: "loss", perfect: false, speedBonus: 0 });
     // Exactly the count and award — the module name no longer rides this line.
     expect(verdict().textContent).toBe("0 / 5 +0");
-    expect(consequence()).toHaveTextContent("Meta Reflex");
+    expect(consequence()).toHaveTextContent("Stat Check");
     expectBudgetedParts("R9");
     expect(screen.getByTestId("segment-details-toggle")).toBeInTheDocument();
     // The accessible sentence still names the module in full.
     expect(screen.getByTestId("ranked-last-result").getAttribute("aria-label"))
-      .toMatch(/^Meta Reflex/);
+      .toMatch(/^Stat Check/);
   });
 
   it("the longest block result: 5 / 5 +5 over FINISHED FIRST +1", () => {
@@ -131,7 +131,7 @@ describe("the record plate's content", () => {
 
   it("an hp block keeps its original inline title (not a points plate)", () => {
     renderBlock(null);
-    expect(verdict()).toHaveTextContent(/Meta Reflex/);
+    expect(verdict()).toHaveTextContent(/Stat Check/);
   });
 });
 

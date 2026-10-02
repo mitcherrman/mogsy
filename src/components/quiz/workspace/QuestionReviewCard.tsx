@@ -57,6 +57,7 @@ import { withUnitLabel } from "@/features/mastery/contracts/comparisonValues";
 import {
   masteryChallengeRolesDiffer, reviewRoundRoles,
 } from "@/lib/ranked-public/reviewRoles";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 /** The three marks, printed rather than lit — the row's own palette. */
 const TONE = {
@@ -622,7 +623,7 @@ export default function QuestionReviewCard({
   const outcome = questionOutcome(round);
   const subject =
     round.kind === "meta_reflex"
-      ? "Meta Reflex"
+      ? META_REFLEX_LABEL
       : round.kind === "mastery_slice"
         ? "Mastery"
         : round.kind === "order_forge"

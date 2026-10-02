@@ -1,3 +1,4 @@
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 // ---------------------------------------------------------------------------
 // RB3 — THE GUIDED PLAYTEST PRESET.
 //
@@ -92,7 +93,7 @@ export const PLAYTEST_INTERSTITIALS: readonly PlaytestInterstitial[] = [
     id: "meta-reflex",
     afterSegments: 3,
     eyebrow: "Next",
-    heading: "Meta Reflex",
+    heading: META_REFLEX_LABEL,
     body: [
       "A rapid-fire block: five cards, one clock each. Pick the higher value "
       + "before the card expires.",

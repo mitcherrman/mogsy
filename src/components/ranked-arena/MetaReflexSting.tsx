@@ -197,7 +197,7 @@ function Band({ wrapped }: { wrapped: boolean }) {
   const words = (
     <>
       <span className="mr-sting__word--left text-2xl font-black uppercase tracking-[0.18em] text-[#e8c97a] sm:text-3xl">
-        Meta
+        Stat
       </span>
       <span className="mr-sting__mark inline-flex h-6 w-6 items-center justify-center text-[#7fd6ef] sm:h-7 sm:w-7">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -206,7 +206,7 @@ function Band({ wrapped }: { wrapped: boolean }) {
         </svg>
       </span>
       <span className="mr-sting__word--right text-2xl font-black uppercase tracking-[0.18em] text-[#7fd6ef] sm:text-3xl">
-        Reflex
+        Check
       </span>
     </>
   );

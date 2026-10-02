@@ -47,6 +47,7 @@ import {
   storedCorrectOptionIndex,
   storedQuestionPreviewPayload,
 } from "@/lib/question-preview/storedQuestionPreviewSource";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 // ---------------------------------------------------------------------------
 // Admin key (shared with Knowledge Admin — backend uses one KNOWLEDGE_ADMIN_KEY
@@ -194,7 +195,7 @@ function AssetBadge({ status, compact = false }: { status?: AssetStatus | null; 
 const SOURCE_LABELS: Record<string, string> = {
   stored_question: "Stored questions", mastery_question: "Mastery", ranked_candidate: "Ranked candidates",
   ranked_fallback: "Ranked fallback", family_definition: "Family definitions",
-  meta_reflex_rule: "Meta Reflex rules", meta_reflex_specimen: "Meta Reflex specimens",
+  meta_reflex_rule: `${META_REFLEX_LABEL} rules`, meta_reflex_specimen: `${META_REFLEX_LABEL} specimens`,
   daily_card: "Daily frozen cards",
   pro_question: "Pro Play (current)",
 };

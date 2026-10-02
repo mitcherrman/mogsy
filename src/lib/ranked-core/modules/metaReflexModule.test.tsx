@@ -98,7 +98,7 @@ describe("Meta Reflex — rendering by card kind", () => {
 
   it("labels the block with the product name, never the module id", () => {
     renderBlock(parse(metaReflexState(0)));
-    expect(screen.getByTestId("mr-block").textContent).toContain("Meta Reflex");
+    expect(screen.getByTestId("mr-block").textContent).toContain("Stat Check");
     expect(screen.getByTestId("mr-block").textContent).not.toContain("item_cost_duel");
   });
 

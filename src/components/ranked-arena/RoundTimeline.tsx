@@ -79,6 +79,7 @@ import {
   type QuizTimelineNodeModel,
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { categoryLabel } from "@/lib/quiz/publicCategory";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 /**
  * Per-identity presentation. Literal hex, like the rest of the Ranked skin, so
@@ -92,7 +93,7 @@ import { categoryLabel } from "@/lib/quiz/publicCategory";
 const IDENTITY: Record<"meta-reflex" | "standard" | "unknown", {
   ink: string; label: string | null;
 }> = {
-  "meta-reflex": { ink: "#7fd6ef", label: "Meta Reflex" },
+  "meta-reflex": { ink: "#7fd6ef", label: META_REFLEX_LABEL },
   standard: { ink: "#c6b48f", label: null },
   unknown: { ink: "#8f9bab", label: null },
 };

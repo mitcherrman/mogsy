@@ -33,7 +33,11 @@ function parse(state: unknown): SegmentStateView {
 }
 
 function renderBlock(state: SegmentStateView) {
-  render(
+  return render(viewport(state));
+}
+
+function viewport(state: SegmentStateView) {
+  return (
     <metaReflexModule.Viewport
       publicRound={readPublicRound(publicRoundV2())}
       selection={null}
@@ -42,7 +46,7 @@ function renderBlock(state: SegmentStateView) {
       segmentState={state}
       actions={{ submitChallenge: vi.fn(), busy: false, error: null }}
       skewMs={0}
-    />,
+    />
   );
 }
 
@@ -80,7 +84,7 @@ describe("Ranked Meta Reflex — the level badge", () => {
     expect(screen.getByTestId("mr-choice-left")).not.toContainElement(badge);
     expect(screen.getByTestId("mr-choice-right")).not.toContainElement(badge);
     // Adjacent to the question it qualifies.
-    expect(badge.parentElement).toContainElement(screen.getByTestId("mr-prompt"));
+    expect(screen.getByTestId("mr-level-slot").parentElement).toContainElement(screen.getByTestId("mr-prompt"));
   });
 
   it("keeps the level out of the prompt sentence", () => {
@@ -175,5 +179,52 @@ describe("Ranked Meta Reflex — the level on the wire", () => {
     const bad = metaReflexLevelAwareCard(11) as Record<string, unknown>;
     bad.champion_level = "11";
     expect(() => parse(blockWith(bad))).toThrow(/champion_level/);
+  });
+});
+
+// SC-RENAME3 — the badge row is a permanently reserved slot, so a block that
+// mixes level-aware and level-independent cards never reflows its prompt or
+// choice cards between consecutive cards. jsdom has no layout, so this pins the
+// STRUCTURE that guarantees it: one fixed-height slot, always present, always
+// directly above the prompt, with identical classes in both states.
+describe("SC-RENAME3 — the level slot is reserved whether or not a level exists", () => {
+  function slotShape() {
+    const slot = screen.getByTestId("mr-level-slot");
+    return {
+      slot,
+      className: slot.className,
+      nextIsPrompt: slot.nextElementSibling === screen.getByTestId("mr-prompt"),
+      hasBadge: screen.queryByTestId("champion-level-badge") !== null,
+    };
+  }
+
+  it("reserves a fixed-height slot on a level-independent card", () => {
+    renderBlock(parse(metaReflexState(3)));
+    const { slot, nextIsPrompt, hasBadge } = slotShape();
+    expect(hasBadge).toBe(false);
+    expect(nextIsPrompt).toBe(true);
+    expect(slot.className).toMatch(/(^| )h-5( |$)/);
+    expect(slot).toHaveAttribute("data-has-level", "false");
+    // Empty and decorative — nothing for a screen reader to announce.
+    expect(slot).toHaveAttribute("aria-hidden", "true");
+    expect(slot).toBeEmptyDOMElement();
+  });
+
+  it("aware -> independent -> aware keeps one identical slot above the prompt", () => {
+    const aware = parse(blockWith(metaReflexLevelAwareCard(11)));
+    const independent = parse(metaReflexState(3));
+    const { rerender } = renderBlock(aware);
+    const a1 = slotShape();
+    rerender(viewport(independent));
+    const b = slotShape();
+    rerender(viewport(parse(blockWith(metaReflexLevelAwareCard(20)))));
+    const a2 = slotShape();
+
+    expect([a1.hasBadge, b.hasBadge, a2.hasBadge]).toEqual([true, false, true]);
+    for (const s of [a1, b, a2]) expect(s.nextIsPrompt).toBe(true);
+    // Same classes in every state: the slot's box never depends on its content.
+    expect(b.className).toBe(a1.className);
+    expect(a2.className).toBe(a1.className);
+    expect(a1.slot).not.toHaveAttribute("aria-hidden");
   });
 });

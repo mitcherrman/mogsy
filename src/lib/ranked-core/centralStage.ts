@@ -25,6 +25,7 @@ import {
 } from "@/lib/ranked-public/contracts";
 import type { PointsFeedbackView } from "./pointsFeedback";
 import type { ResolvedCombatantView } from "./viewTypes";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
 /**
  * How long the next module's name holds the centre before its clock replaces
@@ -126,7 +127,7 @@ export function liveModuleTitle(round: PublicRoundView | null): string | null {
   // `item_cost_duel` segment below the mixed version is not a Meta Reflex
   // block, and naming one by module id alone would mislabel every match frozen
   // before v4.
-  if (isMetaReflexSegment(segment?.moduleId, segment?.moduleVersion)) return "Meta Reflex";
+  if (isMetaReflexSegment(segment?.moduleId, segment?.moduleVersion)) return META_REFLEX_LABEL;
   if (segment?.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
   if (segment?.moduleId === ORDER_FORGE_MODULE_ID) return "Order Forge";
   const category = round.question?.topic?.category ?? null;

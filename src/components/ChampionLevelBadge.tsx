@@ -71,10 +71,12 @@ export function ChampionLevelBadge({ level, className }: ChampionLevelBadgeProps
         // clear that or a one-digit level renders narrower and the badge
         // breathes between cards. 3.5rem did exactly that.
         "min-w-[4rem] rounded-full border px-2 py-0.5 tabular-nums",
-        // The Ranked card gold, which the standalone surface also uses for its
-        // score and its selected-card border. Established tokens, not a new
-        // visual language.
-        "border-[#b9934c]/60 bg-[#b9934c]/15 text-[#e8c97a]",
+        // SC-RENAME3: a solid dark-panel pill with the bright ranked gold. The
+        // old translucent gold-on-gold (text #e8c97a over a 15% gold wash)
+        // all but vanished on the light parchment folio the prompt sits on.
+        // Same `.ranked-academy` tokens (fallbacks for hosts outside it), so
+        // it reads on parchment AND on the dark chamber (~9:1 text contrast).
+        "border-[var(--ranked-gold,#b9934c)] bg-[var(--ranked-bg-panel,#0b1727)] text-[var(--ranked-gold-bright,#d5b66f)]",
         // Smaller than the prompt (text-base/lg/xl) at every breakpoint, and
         // the same uppercase tracking the existing tier/eyebrow pills use, so
         // it reads as a label rather than as an answer or a timer.

@@ -79,7 +79,7 @@ describe("what the module is called", () => {
   it("names a Meta Reflex block by its module, not its category", () => {
     expect(liveModuleTitle(round({
       segment: { moduleId: "item_cost_duel", moduleVersion: 4, segmentNumber: 1 },
-    }))).toBe("Meta Reflex");
+    }))).toBe("Stat Check");
   });
 
   it("does NOT call a pre-v4 item_cost_duel a Meta Reflex block", () => {
@@ -87,7 +87,7 @@ describe("what the module is called", () => {
     // mislabel every match frozen before the mixed version.
     expect(liveModuleTitle(round({
       segment: { moduleId: "item_cost_duel", moduleVersion: 2, segmentNumber: 1 },
-    }))).not.toBe("Meta Reflex");
+    }))).not.toBe("Stat Check");
   });
 
   it("names a slice Mastery", () => {
