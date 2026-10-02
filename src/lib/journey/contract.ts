@@ -117,6 +117,12 @@ export interface JourneyShard {
   row: JourneyShardRow;
   shardId: string;
   name: string;
+  /**
+   * JPX — the shard's OWN canonical contribution (backend `stat_mods[].effects`, from
+   * `mastery.runes.stat_mods`): reference data, present from the first state; absent
+   * from an older backend. Never scaled to a champion, never Journey knowledge.
+   */
+  effects?: { key: string; label: string; value: number; unit: "flat" | "percent" | "per_level" }[];
 }
 
 /** Tracked vitals. Absent = the Journey does not track them and nothing is drawn. */

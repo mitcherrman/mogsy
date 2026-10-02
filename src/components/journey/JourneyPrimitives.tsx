@@ -24,6 +24,7 @@ import { exactValueNote, formatStatGain, formatStatValue, JOURNEY_STAT_META } fr
 import { getAbilityIconUrl } from "@/lib/combat-lab/abilityIcons";
 import { resolveAssetUrl } from "@/hooks/useChampionAssets";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
+import { JourneyItemReference } from "./JourneyReferencePopover";
 
 const GOLD_RIM = "border-[#d4b35a]/55";
 const COOL_RIM = "border-[#7fb2d4]/65";
@@ -198,11 +199,15 @@ export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: 
             data-quantity={qty > 1 ? qty : undefined}
             data-new={isNew ? "true" : undefined}
             data-focus={focused ? "true" : undefined}
+            data-inspect={it?.itemId ? "true" : undefined}
             className={`relative flex items-center justify-center overflow-hidden rounded-[5px] border ${
               it ? `bg-black/70 ${sideRim(side.side)}` : "border-dashed border-white/15 bg-black/25"} ${
               isNew ? "ring-1 ring-[#8fd0a0]/80 journey-changed" : ""} ${focused ? "journey-focus" : ""}`}
             style={{ width: "var(--jb-slot)", height: "var(--jb-slot)" }}>
             {it && <Art url={resolveAssetUrl(it.icon) ?? assets.itemIconUrl(it.itemId)} alt="" mono={it.name} />}
+            {/* JPX — an occupied item is inspectable: its canonical stats. Empty slots stay inert. */}
+            {it?.itemId ? <JourneyItemReference itemId={it.itemId} name={it.name}
+              testId={`journey-item-ref-${side.side}-${slot}`} /> : null}
             {qty > 1 && (
               <span aria-hidden data-testid={`journey-item-qty-${side.side}-${slot}`} className="journey-item-qty">
                 {qty}

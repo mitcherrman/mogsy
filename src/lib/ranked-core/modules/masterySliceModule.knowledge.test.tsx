@@ -237,10 +237,12 @@ describe("grouping, objects and sides", () => {
     expect(badges()).toHaveLength(0);
   });
 
-  it("no item ever carries a mark", () => {
+  it("no item ever carries a mark (JPX: an occupied item is an inspect button, never a `!`)", () => {
     show(snap("voli.standard", "finished"));
     for (const side of ["subject", "opponent"]) {
-      expect(within(screen.getByTestId(`journey-items-${side}`)).queryAllByRole("button")).toHaveLength(0);
+      const items = screen.getByTestId(`journey-items-${side}`);
+      expect(items.querySelectorAll(".journey-know")).toHaveLength(0);
+      for (const b of within(items).queryAllByRole("button")) expect(b).toHaveClass("journey-ref-btn");
     }
   });
 });

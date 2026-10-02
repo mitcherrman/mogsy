@@ -46,11 +46,13 @@ describe("the backend's stat_mods / stat_sources: read strictly, optional, never
     const j = readJourneyJ3(journeyWire(s));
     const zed = j.children[1].state.sides.player.statMods;
     const ahri = j.children[1].state.sides.opponent.statMods;
-    expect(zed).toEqual([
+    expect(zed?.map(({ effects: _e, ...m }) => m)).toEqual([
       { row: "offense", id: "5008", name: "Adaptive Force" },
       { row: "flex", id: "5008", name: "Adaptive Force" },
       { row: "defense", id: "5001", name: "Health Scaling" },
     ]);
+    // JPX: this capture predates `effects` (an older backend): read as absent, never invented.
+    expect(zed?.map((m) => m.effects)).toEqual([null, null, null]);
     expect(ahri?.map((m) => m.id)).toEqual(["5005", "5008", "5001"]);
   });
 
