@@ -16,7 +16,11 @@ import itemShopkeeper from "@/assets/ranked/item-shopkeeper.png";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import type { ChampionManifest } from "@/hooks/useChampionAssets";
 import { JUNGLE_GRASS_BACKGROUND } from "@/lib/question-surface/jungleAtmosphere";
-import { readPublicQuestion } from "@/lib/ranked-public/contracts";
+import { readPublicQuestion, readPublicRound } from "@/lib/ranked-public/contracts";
+import {
+  orderForgeChallengeReveal, orderForgeEntries, orderForgeSegmentMeta, orderForgeState, publicRoundV2,
+} from "@/lib/ranked-public/fixtures";
+import { ORDER_FORGE_BACKDROP_URL } from "./orderForgeArt";
 import type { MetaReflexCard, PublicRoundView } from "@/lib/ranked-public/contracts";
 import {
   CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION, NUMERIC_QUESTION,
@@ -216,3 +220,31 @@ function manifestFor(names: string[]): ChampionManifest {
     }])),
   } as unknown as ChampionManifest;
 }
+
+describe("rankedRoundMedia — Order Forge (OF4): the cards and the scene, before the round shows", () => {
+  function forgeRound(state: Record<string, unknown>): PublicRoundView {
+    const body = publicRoundV2();
+    (body.payload as Record<string, unknown>).segment = orderForgeSegmentMeta();
+    (body.payload as Record<string, unknown>).segment_state = state;
+    return readPublicRound(body);
+  }
+  const withArt = () => orderForgeEntries().map((e, i) => ({
+    ...e, media: { src: `assets/champions/C${i}/icon.png`, alt: `C${i}` } }));
+
+  it("prepares every card's art AND the scene backdrop as critical media", () => {
+    const state = orderForgeState();
+    (state.challenges as { challenges: { entries: unknown[] }[] }).challenges[0].entries = withArt();
+    const m = rankedRoundMedia(forgeRound(state));
+    for (let i = 0; i < 5; i++) expect(m.critical).toContain(url(`assets/champions/C${i}/icon.png`));
+    // The same bundled URL the backdrop <img> requests, so the warm is a cache hit.
+    expect(m.critical).toContain(ORDER_FORGE_BACKDROP_URL);
+    expect(ORDER_FORGE_BACKDROP_URL).toContain("base-shop");
+  });
+
+  it("the scene is prepared even for monogram-only cards, and nothing reveal-only is requested", () => {
+    const locked = forgeRound(orderForgeState({ own_challenge_reveals: [orderForgeChallengeReveal()] }, true));
+    const m = rankedRoundMedia(locked);
+    expect(m.critical).toEqual([ORDER_FORGE_BACKDROP_URL]);
+    expect(JSON.stringify(m)).not.toMatch(/canonical|value|\d+ g\b/);
+  });
+});

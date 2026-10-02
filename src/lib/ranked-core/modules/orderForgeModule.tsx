@@ -18,7 +18,7 @@ import { OrderForge } from "@/components/interaction-grammar/OrderForge";
 import type {
   OrderForgePublic, OrderForgeReveal,
 } from "@/lib/interaction-grammar/types";
-import baseShop from "@/assets/ranked/base-shop.jpg";
+import { ORDER_FORGE_BACKDROP_URL } from "@/lib/ranked-core/media/orderForgeArt";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 import type { QuestionView } from "@/lib/ranked-core/viewTypes";
@@ -132,39 +132,53 @@ function OrderForgePhase({ state, actions, skewMs, roundStartedAt }: {
       {...(phase === "open" && notOpen ? { inert: "" } : {})}>
       <OrderForge key={key} content={content} phase={phase} value={value}
         onChange={(order) => setDraft({ key, order })} onLock={onLock} reveal={reveal} />
-      {phase !== "open" && (
-        <p className="text-center text-xs text-muted-foreground" role="status"
-          data-testid="order-forge-opponent-progress">
-          {state.opponentFinished
-            ? "Both players have locked in."
-            : "Waiting for the opponent to lock in…"}
-        </p>
-      )}
+      {/* Reserved in every phase (OF4): appearing at the lock used to add a
+          line and shift the centred stage. Hidden, not absent, while open. */}
+      <p className={`min-h-[1rem] text-center text-xs text-muted-foreground ${phase === "open" ? "invisible" : ""}`}
+        role="status" aria-hidden={phase === "open" ? true : undefined}
+        data-testid="order-forge-opponent-progress">
+        {phase === "open" ? "" : state.opponentFinished
+          ? "Both players have locked in."
+          : "Waiting for the opponent to lock in…"}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * OF4 — the scene. Decorative base-shop art behind the cards: module-local,
+ * static, inert to every pointer, and mounted for the module's whole life
+ * (including its loading states), so lock, reveal and a late snapshot never
+ * remount or re-crop it. The module's height is constant across its phases
+ * (fixed rows, one footer footprint, a reserved status line), so the
+ * `inset-0` box, and with it the `object-cover` crop, does not move either.
+ *
+ * Treatment: the art is MULTIPLIED onto a parchment base inside its own
+ * layer, so it tints the parchment (colour, never a grey veil), then fades to
+ * the folio at every edge and stays quiet behind the prompt.
+ */
+export function OrderForgeBackdrop() {
+  return (
+    <div aria-hidden data-testid="order-forge-backdrop"
+      className="order-forge-backdrop pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-lg">
+      <img src={ORDER_FORGE_BACKDROP_URL} alt="" aria-hidden draggable={false}
+        className="order-forge-backdrop__art h-full w-full object-cover" />
     </div>
   );
 }
 
 function OrderForgeViewport({ segmentState, actions, skewMs, publicRound }: ModuleViewportProps) {
-  if (!segmentState) {
-    return (
-      <p className="text-sm text-muted-foreground" data-testid="order-forge-loading">
-        Loading the segment…
-      </p>
-    );
-  }
   return (
     <div className="relative isolate space-y-3" data-testid="order-forge-viewport">
-      {/* Decorative backdrop: a soft, darkened, desaturated texture behind the
-          cards. Module-local, static, and inert to every pointer. */}
-      <div aria-hidden data-testid="order-forge-backdrop"
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-lg">
-        <img src={baseShop} alt="" aria-hidden draggable={false}
-          className="h-full w-full object-cover opacity-[0.25]"
-          style={{ filter: "blur(3px) saturate(0.8)" }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f4e9cc]/55 via-[#f4e9cc]/20 to-[#f4e9cc]/60 dark:from-background/70 dark:via-background/40 dark:to-background/75" />
-      </div>
-      <OrderForgePhase state={segmentState} actions={actions} skewMs={skewMs}
-        roundStartedAt={publicRound?.activeRound?.startedAt ?? null} />
+      <OrderForgeBackdrop />
+      {segmentState ? (
+        <OrderForgePhase state={segmentState} actions={actions} skewMs={skewMs}
+          roundStartedAt={publicRound?.activeRound?.startedAt ?? null} />
+      ) : (
+        <p className="text-sm text-muted-foreground" data-testid="order-forge-loading">
+          Loading the segment…
+        </p>
+      )}
       {actions.error && (
         <p role="alert" data-testid="order-forge-error" className="text-sm text-destructive">
           {actions.error}

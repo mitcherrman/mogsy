@@ -18334,3 +18334,41 @@ html.reduce-motion .journey-composition,
 html.reduce-motion .journey-composition * { animation: none !important; transition: none !important; }
 html.reduce-motion .journey-reveal[data-compare] .journey-reasoning__step,
 html.reduce-motion .journey-pair * { animation: none !important; transition: none !important; }
+
+/* ---- OF4 Order Forge scene ---------------------------------------------------
+   The base-shop art behind the Order Forge cards (orderForgeModule.tsx,
+   `OrderForgeBackdrop`). F1 laid it at 25% opacity, blurred and desaturated,
+   under a cream scrim: a grey, milky veil. Here the art is MULTIPLIED onto a
+   parchment base inside its own isolated layer, so it can only tint the sheet
+   (colour, never a lighter wash), then the whole layer fades into the folio at
+   its edges and stays quiet behind the prompt. Static: no animation, no
+   transition, so nothing in the scene moves between phases. */
+.order-forge-backdrop {
+  isolation: isolate;
+  background: linear-gradient(178deg, #f4ead0 0%, #e8dab9 55%, #dccaa3 100%);
+  /* A soft border on all four sides (two linear fades, intersected), so the
+     scene melts into the folio instead of ending in a box. */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 7%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 7%, #000 88%, transparent 100%);
+  mask-composite: intersect;
+}
+.order-forge-backdrop__art {
+  mix-blend-mode: multiply;
+  opacity: 0.46;
+  filter: saturate(1.08) blur(0.5px);
+}
+/* The prompt sits on a quiet patch of parchment, not on the arches. */
+.order-forge-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(62% 26% at 50% 4%, rgba(246,238,216,0.88) 0%, rgba(246,238,216,0.55) 55%, transparent 100%);
+}
+/* No dark-theme variant on purpose: the arena folio is parchment in both
+   themes and the prompt is dark ink, so the scene keeps its own parchment
+   base everywhere. */
