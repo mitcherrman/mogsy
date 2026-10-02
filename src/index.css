@@ -17588,20 +17588,21 @@ button.journey-portrait-popup__line:focus-visible { outline: 2px solid #f3dca0; 
 
 /* ── 5. THE `!` COACH ───────────────────────────────────────────────────── */
 @keyframes journey-coach-in {
-  from { opacity: 0; transform: translate(-50%, 6px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 @keyframes journey-know-coach {
   0%, 100% { box-shadow: 0 1px 3px rgb(0 0 0 / 0.6); transform: none; }
   50% { box-shadow: 0 0 0 3px rgb(243 220 160 / 0.55), 0 0 14px rgb(243 220 160 / 0.8); transform: scale(1.25); }
 }
+/* JPX — portalled (JourneyStateBoard `CoachPill`): `right` / `bottom` are set
+   from the board's own rect, so it rests on the board's top edge, above the
+   STATE control, and never sits on the board's contents. */
 .journey-coach {
-  position: absolute;
-  z-index: 5;
-  left: 50%;
-  bottom: 8px;
+  position: fixed;
+  z-index: 60;
   display: flex;
-  max-width: calc(100% - 20px);
+  max-width: calc(100vw - 16px);
   align-items: center;
   gap: 7px;
   padding: 5px 12px 5px 6px;
@@ -17613,7 +17614,6 @@ button.journey-portrait-popup__line:focus-visible { outline: 2px solid #f3dca0; 
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.25;
-  transform: translateX(-50%);
   cursor: default;
 }
 .journey-coach__text { min-width: 0; }
@@ -17636,8 +17636,8 @@ button.journey-portrait-popup__line:focus-visible { outline: 2px solid #f3dca0; 
     animation: journey-know-coach 900ms ease-in-out 3;
   }
 }
-@container (max-width: 25.99rem) {
-  .journey-coach { font-size: 0.6875rem; bottom: 4px; padding: 4px 10px 4px 5px; }
+@media (max-width: 25.99rem) {
+  .journey-coach { font-size: 0.6875rem; padding: 4px 10px 4px 5px; }
 }
 
 /* ── 6. THE REASONING CHAIN ─────────────────────────────────────────────────
@@ -18334,3 +18334,107 @@ html.reduce-motion .journey-composition,
 html.reduce-motion .journey-composition * { animation: none !important; transition: none !important; }
 html.reduce-motion .journey-reveal[data-compare] .journey-reasoning__step,
 html.reduce-motion .journey-pair * { animation: none !important; transition: none !important; }
+
+
+/* ── JPX. PLAYTEST UX PASS ──────────────────────────────────────────────────
+   1. A Journey's reveal carries its verdict in the centred CORRECT / INCORRECT
+      / TIME'S UP stamp, the persistent verdict pill, the answer tablets and
+      the Reasoning Chain. The green / red edge ring and wash around the whole
+      question stage (RFX1) is Ranked's; a Journey draws none. */
+.ranked-question-stage:has(.journey-viewport) .ranked-result-edge { display: none; }
+
+/* 3. The whole ability tile opens the retained knowledge, not only the `!`: the
+   badge's invisible hit area is widened from its own corner to the tile's box
+   (the `!` stays the visible indicator, and the same button, so hover / tap /
+   keyboard are unchanged). The badge sits 3px (compact) / 4px (band) past the
+   tile's right edge and 3px above its top. */
+.journey-know--ability::before {
+  inset: auto;
+  top: 2px;
+  right: 2px;
+  width: var(--jb-ability);
+  height: var(--jb-ability);
+  border-radius: 6px;
+}
+@container (min-width: 26rem) {
+  .journey-know--ability::before { right: 3px; }
+}
+
+/* 5. THE BUTTON AFFORDANCE: every board object that can be inspected shares one
+   restrained response — a pointer, then on hover / keyboard focus / tap a 1px
+   lift, a touch of brightness and a thin gold ring (an outline, so it never
+   fights the question-focus shimmer's or a changed-state's box-shadow, and the
+   `!` keeps its own look). Empty slots carry no `data-inspect` and stay inert. */
+.journey-ref-btn {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.journey-ref-btn:focus-visible { outline: none; }
+.journey-side__shard { position: relative; }
+[data-inspect="true"],
+.journey-portrait-btn,
+.journey-know-host--ability:has(> .journey-know) .journey-ability > span:first-child {
+  cursor: pointer;
+  outline: 1.5px solid transparent;
+  outline-offset: 1px;
+}
+[data-inspect="true"]:is(:hover, :active, :has(> .journey-ref-btn:focus-visible, > .journey-ref-btn[data-state="open"])),
+.journey-portrait-btn:is(:hover, :active, :focus-visible, [data-state="open"]),
+.journey-know-host--ability:has(> .journey-know:is(:hover, :active, :focus-visible, [data-state="open"])) .journey-ability > span:first-child {
+  filter: brightness(1.18);
+  outline-color: rgb(243 220 160 / 0.8);
+}
+.journey-portrait-btn:focus-visible { outline-offset: 2px; }
+/* The lift and the easing exist only where motion is welcome. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-inspect="true"],
+  .journey-portrait-btn,
+  .journey-know-host--ability:has(> .journey-know) .journey-ability > span:first-child {
+    transition: transform 120ms ease-out, filter 120ms ease-out, outline-color 120ms ease-out;
+  }
+  [data-inspect="true"]:is(:hover, :active, :has(> .journey-ref-btn:focus-visible, > .journey-ref-btn[data-state="open"])),
+  .journey-portrait-btn:is(:hover, :active, :focus-visible, [data-state="open"]),
+  .journey-know-host--ability:has(> .journey-know:is(:hover, :active, :focus-visible, [data-state="open"])) .journey-ability > span:first-child {
+    transform: translateY(-1px);
+  }
+  [data-inspect="true"]:active,
+  .journey-portrait-btn:active,
+  .journey-know-host--ability:has(> .journey-know:active) .journey-ability > span:first-child {
+    transform: translateY(0) scale(0.97);
+  }
+}
+html.reduce-motion [data-inspect="true"],
+html.reduce-motion .journey-portrait-btn,
+html.reduce-motion .journey-know-host--ability .journey-ability > span:first-child { animation: none !important; transition: none !important; transform: none !important; }
+.journey-ref-pop__note { padding: 2px 0; font-size: 0.6875rem; color: rgb(255 255 255 / 0.65); }
+
+/* 6. THE ROLE SLOT. "Attacker" / "Target" appears and disappears from step to
+   step; the slot beside the level is reserved at the longest label's width
+   (`::before`, the sizer — not in the DOM text), so the chip arrives inside a
+   box that was already there and nothing around it moves. */
+.journey-role-slot {
+  display: inline-grid;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-items: start;
+}
+.journey-role-slot::before {
+  content: "Atk";
+  grid-area: 1 / 1;
+  visibility: hidden;
+  padding: 0 0.25rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.journey-role-slot > * { grid-area: 1 / 1; }
+@container (min-width: 26rem) {
+  .journey-role-slot::before { content: "Attacker"; }
+}

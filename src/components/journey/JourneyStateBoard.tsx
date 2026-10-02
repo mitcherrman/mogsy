@@ -66,7 +66,8 @@
  * gone (JP5 geometry pass): a phone's name line takes its column, and above a
  * phone its height went to the question region (`--jq-prompt-h`).
  */
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import type { RankedRole } from "@/lib/ranked-public/roles";
@@ -80,12 +81,13 @@ import {
 } from "@/lib/journey/knowledge";
 import type { JourneyChainNode } from "@/lib/journey/chain";
 import type { JourneyJ3 } from "@/lib/journey/j3";
-import { championPortraitPopup, statesInputsAt } from "@/lib/journey/portraitPopup";
+import { championPortraitPopup, statesInputsAt, type ChampionPortraitPopup } from "@/lib/journey/portraitPopup";
 import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
 import { AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge } from "./JourneyPrimitives";
 import { JourneyKnowledgeMark } from "./JourneyKnowledgeMark";
 import { JourneyChampionPortraitPopup } from "./JourneyChampionPortraitPopup";
 import { ShardIcon } from "./JourneyIcons";
+import { JourneyShardReference } from "./JourneyReferencePopover";
 import { useKnowledgeCoach } from "./useKnowledgeCoach";
 
 /**
@@ -201,7 +203,7 @@ function learnedKeysOf(knowledge: JourneyKnowledge): string[] {
  * When the OTHER side has a page and this one does not, the same column is
  * drawn empty, so the two halves keep one geometry.
  */
-function ShardPage({ side }: { side: JourneySide }) {
+function ShardPage({ side, popup }: { side: JourneySide; popup: ChampionPortraitPopup | null }) {
   const shards = side.shards ?? [];
   return (
     <span className="journey-side__shards" role={shards.length ? "list" : undefined}
@@ -210,9 +212,12 @@ function ShardPage({ side }: { side: JourneySide }) {
       data-testid={`journey-shards-${side.side}`} data-count={shards.length}>
       {shards.map((sh) => (
         <span key={sh.row} role="listitem" aria-label={`${sh.name}, ${sh.row} shard`} className="journey-side__shard"
-          data-row={sh.row}>
+          data-row={sh.row} data-inspect="true">
           <ShardIcon shardId={sh.shardId} name={`${sh.name} · ${sh.row} shard`} size="board"
             testId={`journey-shard-${side.side}-${sh.row}`} />
+          {/* JPX — a served shard is inspectable: what it contributes to this champion. */}
+          <JourneyShardReference side={side} popup={popup} shard={sh}
+            testId={`journey-shard-ref-${side.side}-${sh.row}`} />
         </span>
       ))}
     </span>
@@ -250,7 +255,7 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
       className="journey-side">
       <SideSplash side={side} />
       <header className="journey-side__id">
-        {shardColumn && <ShardPage side={side} />}
+        {shardColumn && <ShardPage side={side} popup={popup} />}
         <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}>
           {/* JP5 — the portrait opens the champion portrait popup. */}
           <JourneyChampionPortraitPopup side={side} popup={popup}
@@ -266,14 +271,17 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
           <span className="flex items-center gap-1">
             <LevelBadge level={side.level} from={level?.from ?? null} focused={focus.level}
               testId={`journey-level-${id}`} />
-            {role && (
-              <span data-testid={`journey-role-${id}`}
-                className={`journey-chip rounded-md px-1 font-bold uppercase tracking-[0.18em] ${
-                  role === "Attacker" ? "bg-[#d4b35a]/20 text-[#f3dca0]" : "bg-[#7fb2d4]/20 text-[#cfe6f5]"}`}>
-                <span className="journey-role-long">{role}</span>
-                <span aria-hidden className="journey-role-short">{role === "Attacker" ? "Atk" : "Tgt"}</span>
-              </span>
-            )}
+            {/* JPX — a reserved slot: the role chip arrives inside a box that is always there. */}
+            <span className="journey-role-slot journey-chip rounded-md font-bold uppercase tracking-[0.18em]">
+              {role && (
+                <span data-testid={`journey-role-${id}`}
+                  className={`journey-chip rounded-md px-1 font-bold uppercase tracking-[0.18em] ${
+                    role === "Attacker" ? "bg-[#d4b35a]/20 text-[#f3dca0]" : "bg-[#7fb2d4]/20 text-[#cfe6f5]"}`}>
+                  <span className="journey-role-long">{role}</span>
+                  <span aria-hidden className="journey-role-short">{role === "Attacker" ? "Atk" : "Tgt"}</span>
+                </span>
+              )}
+            </span>
           </span>
         </div>
       </header>
@@ -304,6 +312,44 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
           })) : undefined} />
       </div>
     </section>
+  );
+}
+
+/**
+ * JPX — the one-time STATE coach, anchored to the board's STATE control but
+ * hung OUTSIDE the board: a pill resting on the board's top edge, right-aligned
+ * to the header buttons. The board's box is `overflow: hidden` and every pixel
+ * of it is the state (identity, inputs, abilities, items, shards), so the coach
+ * is portalled to the page and positioned from the board's own rect — it covers
+ * the card's margin above the board, never the board. Presentation only; it
+ * lays out nothing and follows the board on scroll / resize.
+ */
+function CoachPill({ boardRef, onDismiss }: { boardRef: RefObject<HTMLDivElement>; onDismiss: () => void }) {
+  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const board = boardRef.current;
+      if (!board) return;
+      const b = board.getBoundingClientRect();
+      const btn = [...board.querySelectorAll<HTMLElement>(".journey-board__state-btn")].pop();
+      const edge = btn ? btn.getBoundingClientRect().right : b.right - 8;
+      setAt({ right: Math.max(8, window.innerWidth - edge), bottom: Math.max(0, window.innerHeight - b.top + 3) });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => { window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
+  }, [boardRef]);
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={onDismiss}
+      style={at ? { right: at.right, bottom: at.bottom } : { visibility: "hidden" }}>
+      <span aria-hidden className="journey-coach__mark">!</span>
+      <span className="journey-coach__text">
+        Tap champion portraits <span className="journey-coach__how">to review stats.</span>
+      </span>
+    </p>,
+    document.body,
   );
 }
 
@@ -407,8 +453,9 @@ export function JourneyStateBoard({
   const shardColumn = Boolean(subject.shards?.length || opponent.shards?.length);
   // JP5 — the first portrait to become reviewable (gain its `!`) teaches the mechanic once.
   const coach = useKnowledgeCoach(usePortraitBecameReviewable(journey, knowledge, state.step.index));
+  const boardRef = useRef<HTMLDivElement>(null);
   return (
-    <div data-testid="journey-board" data-journey-key={state.journeyKey}
+    <div ref={boardRef} data-testid="journey-board" data-journey-key={state.journeyKey}
       data-step={state.step.index} data-node={state.step.nodeId}
       data-beat={beatActive ? "active" : "idle"}
       data-shards={shardColumn ? "true" : undefined}
@@ -474,14 +521,7 @@ export function JourneyStateBoard({
         <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} fresh={fresh}
           shardColumn={shardColumn} journey={journey} />
       </div>
-      {coach.visible && (
-        <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={coach.dismiss}>
-          <span aria-hidden className="journey-coach__mark">!</span>
-          <span className="journey-coach__text">
-            Tap champion portraits <span className="journey-coach__how">to review stats.</span>
-          </span>
-        </p>
-      )}
+      {coach.visible && <CoachPill boardRef={boardRef} onDismiss={coach.dismiss} />}
       {children}
     </div>
   );
