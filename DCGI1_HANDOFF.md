@@ -1,7 +1,44 @@
 # DCGI1 — Demacia Cup Global Invitational 2026 tournament surface
 
-**Status: DCGI1 BACKEND/MEDIA PRODUCTION CERTIFIED — READY FOR LOVABLE PUBLISH
-(2026-10-02 UTC).**
+**Status: DCGI1 PRODUCTION CERTIFIED (2026-10-02).**
+- **Frontend:** `main` `66fc472e` (Lovable published).
+- **Backend:** `master` `5d904438` (Railway `5afdddbc`).
+- **Media row:** 101.
+
+## Frontend production certification (mogzy.lol, real data only)
+
+- **Bundle:** `/assets/index-BMlqWutG.js`; before Publish it was `index-wzD3xlZQ.js`. It contains the `tournament/:contextId` route, `dcgi-2026` and the `ProPlayTournament-Bp4CoHYk.js` chunk.
+- **Hub:**
+
+| Viewport | Header | Pill (in `<header>`) | Grid top → | Doc height | Overflow / broken img |
+|---|---|---|---|---|---|
+| 1440×900 | 1 row, 57 px | 346 px, "DCGI · KNOW THE FIELD · 3–17 OCT 2026", mark `art` (1000 px) | 129 → 903 | 3242 | none / 0 |
+| 834 | 1 row, 57 px | 110 px, mark `art` | 129 | 4153 | none / 0 |
+| 390 | 113 px (PPH3's 2-row phone header) | row 1, x 274, mark `art` | 177 | 4880 | none / 0 |
+| 360 | 113 px | row 1, x 244, mark `art` | 177 | 4986 | none / 0 |
+
+  - **Geometry:** every figure equals the pre-publish PPH3 measurements, so DCGI adds 0 px.
+  - **Behaviour:** COMPLETED and UP NEXT render.
+  - **Jump pill:** a real click scrolls the rail to 502 with the label in view. A synthetic `.click()` from a script does not trigger it; that is a harness artifact.
+  - **UPCOMING chip:** writes `?next=`, then shows identity and countdown.
+  - **Phone team names:** "Estral Esports" wraps to 2 lines (45 px) at 390 and 360, with no overflow or clipping.
+- **DCGI page:**
+  - **Every width (1440, 834, 390, 360):** loads with no error state or console errors, no horizontal overflow, no clipped field text, 0 broken images.
+  - **Content:**
+    - the mark is `art` from `/assets/esports/leagues/demacia-cup-a6034e3f/league_logo-5ca7601772a4.png`;
+    - 12 field teams, 12 team links, 60 player links;
+    - event lineups (Kiaya, Aegis, …) with the 4 owner-verified lineup notes;
+    - the real pre-event schedule, with 6 Round-1 `?next=` links;
+    - sections run next → field → Worlds → schedule.
+- **Links (at 1440):**
+  - RED Canids → `/lol/pro-play/team/RED%20Canids` ("RED Canids — Pro Play Research");
+  - Kiaya → `/lol/pro-play/player/Kiaya`;
+  - RED–NAVI → `/lol/pro-play?next=117133805552196841`, board "RED vs NAVI · DCGI · Swiss · Bo1 · UPCOMING".
+- **Not blocking:**
+  - LIVE on a DCGI match is an observational follow-up for Round 1 (2026-10-03 08:00 UTC).
+  - The release-record commit (this file) is local on `dcgi1/tournament-surface`, not on `main`.
+
+**Earlier status:** DCGI1 BACKEND/MEDIA PRODUCTION CERTIFIED — READY FOR LOVABLE PUBLISH (2026-10-02 UTC).
 
 ## Production release record (2026-10-02, authorised by the owner)
 
