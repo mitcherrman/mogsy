@@ -117,22 +117,30 @@ export function shardContributions(side: JourneySide, popup: ChampionPortraitPop
 }
 
 /** The transparent control over a shard: its row, name and served contribution. */
+/** "+9 Adaptive Force", "+10% Attack Speed", "+10 Health per level": the served effect, verbatim. */
+export const shardEffectLine = (e: NonNullable<JourneyShard["effects"]>[number]) =>
+  `${e.value < 0 ? "−" : "+"}${exactNumber(Math.abs(e.value))}${e.unit === "percent" ? "%" : ""} ${e.label}`;
+
 export function JourneyShardReference({ side, popup, shard, testId }: {
   side: JourneySide;
   popup: ChampionPortraitPopup | null;
   shard: JourneyShard;
   testId: string;
 }) {
-  const lines = shardContributions(side, popup, shard);
+  // The served canonical contribution first (every shard, from the first state);
+  // the stated-stat `stat_sources` only for a backend that does not serve it.
+  const effects = shard.effects ?? [];
+  const lines = effects.length > 0
+    ? effects.map((e) => ({ label: "", value: shardEffectLine(e), key: e.key }))
+    : shardContributions(side, popup, shard).map((l) => ({ ...l, key: l.label, value: `${l.value} ${l.label}` }));
   return (
     <ReferencePopover label={`${shard.name}, ${shard.row} shard: contribution to ${side.championName}`}
       testId={testId} title={`${shard.name} · ${shard.row} shard`}>
       {lines.length > 0 ? (
         <ul className="journey-know-pop__lines" data-testid={`${testId}-stats`}>
           {lines.map((l) => (
-            <li key={l.label} className="journey-know-pop__line">
-              <span className="font-black text-white">{l.value} {l.label}</span>
-              <span className="journey-know-pop__step">{side.championName}</span>
+            <li key={l.key} className="journey-know-pop__line">
+              <span className="font-black text-white">{l.value}</span>
             </li>
           ))}
         </ul>

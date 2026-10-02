@@ -264,7 +264,7 @@ function boardSide3(s: J3SideState, stats: JourneyStat[], readouts: JourneyAbili
     side: SIDE3[s.side], championId: s.championId, championName: s.champion, icon: null,
     level: s.level, abilities, items: itemsOf(s.inventory), stats, vitals: null,
     ...(readouts.length ? { readouts } : {}),
-    ...(s.statMods ? { shards: s.statMods.map((m) => ({ row: m.row, shardId: m.id, name: m.name })) } : {}),
+    ...(s.statMods ? { shards: s.statMods.map((m) => ({ row: m.row, shardId: m.id, name: m.name, ...(m.effects ? { effects: m.effects } : {}) })) } : {}),
   };
 }
 

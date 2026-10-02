@@ -71,7 +71,9 @@ export interface J3SideState {
 }
 
 export type J3ShardRow = "offense" | "flex" | "defense";
-export interface J3StatMod { row: J3ShardRow; id: string; name: string }
+/** JPX — one stat a shard grants, as the canonical stat-mod authority states it (never scaled). */
+export interface J3ShardEffect { key: string; label: string; value: number; unit: "flat" | "percent" | "per_level" }
+export interface J3StatMod { row: J3ShardRow; id: string; name: string; effects: J3ShardEffect[] | null }
 export type J3StatSource =
   | { kind: "item"; itemId: string; name: string; value: number }
   | { kind: "stat_mod"; row: J3ShardRow; id: string; name: string; value: number }
@@ -298,8 +300,15 @@ const shardRow = (v: unknown, l: string): J3ShardRow =>
 /** JP4 — `stat_mods`: exactly one shard per row, in page order. */
 function readStatMods(v: unknown, l: string): J3StatMod[] {
   const mods = arr(v, l).map((m, i) => {
-    const x = shape(m, `${l}[${i}]`, ["row", "id", "name"]);
-    return { row: shardRow(x.row, `${l}[${i}].row`), id: str(x.id, `${l}[${i}].id`), name: str(x.name, `${l}[${i}].name`) };
+    // JPX: `effects` is optional (a backend before it, or an unresolvable shard, omits it).
+    const x = shape(m, `${l}[${i}]`, ["row", "id", "name", "effects"], ["row", "id", "name"]);
+    const effects: J3ShardEffect[] | null = x.effects === undefined ? null : arr(x.effects, `${l}[${i}].effects`).map((e, j) => {
+      const el = `${l}[${i}].effects[${j}]`;
+      const y = shape(e, el, ["key", "label", "value", "unit"]);
+      const unit: J3ShardEffect["unit"] = y.unit === "flat" || y.unit === "percent" || y.unit === "per_level" ? y.unit : fail(`${el}.unit must be flat|percent|per_level`);
+      return { key: str(y.key, `${el}.key`), label: str(y.label, `${el}.label`), value: num(y.value, `${el}.value`), unit };
+    });
+    return { row: shardRow(x.row, `${l}[${i}].row`), id: str(x.id, `${l}[${i}].id`), name: str(x.name, `${l}[${i}].name`), effects };
   });
   if (mods.map((m) => m.row).join() !== J3_SHARD_ROWS.join()) fail(`${l} must be one shard per row, offense, flex, defense`);
   return mods;

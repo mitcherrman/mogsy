@@ -23,3 +23,9 @@ Branch `jpx/playtest-ux` from `origin/main` `66fc472e`. Fast pass: affected test
 ## Not done / next
 - Backend shard-contribution publishing (above) if the owner wants all shards inspectable from step 1.
 - Local only; not pushed or deployed.
+
+## Shard reference follow-up (every shard inspectable from step 1)
+- **Backend** (`League_Combat_Simulator` worktree `.worktrees/jpx-shard-reference`, branch `jpx/shard-reference`, `df526a57`, from `origin/master` `5d904438`): `sides.<side>.stat_mods[]` gains optional **`effects: [{key, label, value, unit}]`** (`unit` = `flat | percent | per_level`) from `mastery.runes.stat_mods.describe` — the shard's own canonical number (Adaptive Force 9, Attack Speed 10%, Health per level 10 …), never scaled to champion/level, no Journey knowledge gating. Omitted (fail closed) if a stat has no label; excluded from `state_key`.
+- **Frontend**: `j3.ts` reads `effects` optionally (strict reader otherwise unchanged); `JourneyShard.effects`; the shard popup shows served `effects` first, `stat_sources` only when a backend does not serve them. jp5 Zed/Ahri fixtures were patched with real backend output; jref fixtures stay old to prove the compatibility path.
+- **Deploy order: frontend FIRST, then backend.** The current production reader is a strict allowlist: an `effects` key on `stat_mods[]` would fail the read of every Journey with a shard page (the reference Journey). New frontend + old backend works (popups fall back to `stat_sources`/"not published"). Rollback: backend first.
+- Screenshots: `shard-{offense,flex,defense}-zed.png`, `shard-offense-ahri.png`.
