@@ -34,7 +34,8 @@
  * THE REVEAL (OF4) teaches the answer, in two steps:
  *   1. "Your order": the cards stay where the player locked them; each gets
  *      its value and the authority's right / wrong mark.
- *   2. "Correct order": the cards travel (shared layout animation) into the
+ *   2. "Correct order": the cards travel (shared layout animation, a bounded
+ *      tween, see `REVEAL_TIMING`) into the
  *      canonical order, so every wrong card is SEEN moving to where it
  *      belongs, and each keeps a note of the slot the player gave it.
  * It plays only when this mount watched the lock become a reveal. Mounting on
@@ -86,17 +87,48 @@ export const LIFT_DELAY_MS = 180;
 export const LIFT_SLOP_PX = 8;
 
 /**
- * The reveal's beats (ms from the moment the reveal arrives). The whole
- * teaching sequence settles inside `REVEAL_HOLD_MS` (1500), the shortest beat
- * the arena gives a settled segment, so it never depends on a longer hold.
+ * The reveal's beats (ms from the moment the reveal arrives).
+ *
+ * THE BUDGET IS 900ms, NOT 1500. The Ranked controller holds a settled round
+ * for `REVEAL_HOLD_MS` (1500) only when it learns of the settlement on time;
+ * `anchoredRevealHoldMs` may shorten an ordinary reveal to `REVEAL_HOLD_MIN_MS`
+ * (900) when the client discovers it late, so the next module keeps its title
+ * window. 900 is therefore the only duration this component may rely on, and
+ * the whole teaching sequence has to land, AND be readable, inside it. (OF4's
+ * first timings, 700 / 1200, assumed the nominal 1500 and never finished in
+ * production: see `ORDER_FORGE_OF4_HANDOFF.md`, OF4-FIX1.)
+ *
+ *   0 ........ values + marks fade in, card by card (done by ~300)
+ *   240 ...... the cards start travelling into the canonical order
+ *   480 ...... they have landed (a bounded tween, so this is a number and not
+ *              a spring's tail); the "was N" notes fade in
+ *   ~640 ..... notes done; the canonical order simply stays, up to the release
+ *
+ * That leaves `REVEAL_DWELL_MIN_MS` (420) on the finished, correct order inside
+ * the shortest legal beat, and ~1000ms inside the nominal one. The numbers are
+ * pinned against the real host constants in `orderForge.revealBudget.test.tsx`.
  */
 export const REVEAL_TIMING = {
   /** Values and marks appear on the locked order, one card after another. */
-  valueStaggerMs: 60,
+  valueStaggerMs: 30,
+  /** One value / mark fade. */
+  valueFadeMs: 160,
+  /** The marks trail their value by this much. */
+  markLagMs: 50,
   /** The cards start travelling into the canonical order. */
-  assembleAtMs: 700,
-  /** The "you had it at N" notes appear once the cards have landed. */
-  settleAtMs: 1200,
+  assembleAtMs: 240,
+  /** How long the travel takes (a tween: bounded, not a spring). */
+  moveMs: 240,
+  /** The cards have landed; the "was N" notes appear. */
+  settleAtMs: 480,
+} as const;
+
+/** What the finished, correct order is guaranteed to stay up inside the 900ms minimum. */
+export const REVEAL_DWELL_MIN_MS = 420;
+
+/** The reveal's reorder: bounded, so "landed" is a time, not a tail. */
+const REVEAL_MOVE_TRANSITION = {
+  type: "tween", duration: REVEAL_TIMING.moveMs / 1000, ease: [0.22, 1, 0.36, 1],
 } as const;
 
 /**
@@ -313,7 +345,7 @@ function StaticRow({
     : mark === "wrong" ? "ring-2 ring-red-600/75 border-red-700/40" : "";
   const fade = (delayMs: number) => (animate
     ? { initial: { opacity: 0, y: 4 }, animate: { opacity: 1, y: 0 },
-      transition: { duration: 0.22, delay: delayMs / 1000 } }
+      transition: { duration: REVEAL_TIMING.valueFadeMs / 1000, delay: delayMs / 1000 } }
     : { initial: false as const });
   const valueDelay = order * REVEAL_TIMING.valueStaggerMs;
   const showNote = step === "assembled" && yours !== null;
@@ -325,7 +357,7 @@ function StaticRow({
       // locked row that may yet animate mounts with it; reduced motion and a
       // settled reveal never get it, and simply re-render in place.
       layout={layoutOn ? "position" : false}
-      transition={animate ? { type: "spring", stiffness: 300, damping: 32 } : { duration: 0 }}
+      transition={animate ? REVEAL_MOVE_TRANSITION : { duration: 0 }}
       className={`relative flex ${ROW_H} list-none items-center gap-1.5 rounded-lg border px-1.5 py-1.5 shadow-sm sm:gap-2 sm:px-2 md:gap-4 md:px-3 lg:py-0.5 lg:[@media(min-height:860px)]:py-2 ${CARD_SURFACE} ${ring}`}>
       <SubjectArt media={entry.media} monogram={entry.label.slice(0, 1)} className={ART} />
       <span className="flex min-w-0 flex-1 items-center text-sm font-bold leading-tight sm:text-base md:text-lg lg:text-base xl:text-lg">
@@ -341,7 +373,7 @@ function StaticRow({
           )}
           <span className="flex w-9 shrink-0 flex-col items-center justify-center gap-0.5 md:w-12">
             {mark !== "neutral" && (
-              <motion.span data-testid={`${testId}-mark`} {...fade(valueDelay + 80)}
+              <motion.span data-testid={`${testId}-mark`} {...fade(valueDelay + REVEAL_TIMING.markLagMs)}
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-white md:h-7 md:w-7 ${
                   mark === "right" ? "bg-emerald-700" : "bg-red-700"}`}>
                 {mark === "right"
@@ -352,7 +384,7 @@ function StaticRow({
             {showNote && mark !== "right" && (
               <motion.span data-testid={`${testId}-from`} aria-hidden
                 {...(animate ? { initial: { opacity: 0 }, animate: { opacity: 1 },
-                  transition: { duration: 0.2,
+                  transition: { duration: 0.15,
                     delay: (REVEAL_TIMING.settleAtMs - REVEAL_TIMING.assembleAtMs) / 1000 } }
                   : { initial: false as const })}
                 className="inline-flex items-center whitespace-nowrap text-[10px] font-bold uppercase leading-none tracking-[0.06em] text-red-800 md:text-[11px] dark:text-red-300">

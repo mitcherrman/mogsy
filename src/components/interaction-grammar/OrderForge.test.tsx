@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 import { useState } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { LIFT_DELAY_MS, LIFT_SLOP_PX, OrderForge, REVEAL_TIMING, moveToken } from "./OrderForge";
+import {
+  LIFT_DELAY_MS, LIFT_SLOP_PX, OrderForge, REVEAL_DWELL_MIN_MS, REVEAL_TIMING, moveToken,
+} from "./OrderForge";
+import { REVEAL_HOLD_MIN_MS } from "@/lib/ranked-core/pacing";
 import type {
   InteractionPhase, OrderForgePublic, OrderForgeResponse, OrderForgeReveal,
 } from "@/lib/interaction-grammar/types";
@@ -413,9 +416,21 @@ describe("OrderForge — revealed live (OF4 teaching reveal)", () => {
     after.forEach((el, i) => expect(el).toBe(before[i]));
   });
 
-  it("settles inside the shortest reveal hold the arena gives (1500ms)", () => {
-    expect(REVEAL_TIMING.settleAtMs + 300).toBeLessThanOrEqual(1500);
-    expect(REVEAL_TIMING.valueStaggerMs * 4 + 300).toBeLessThan(REVEAL_TIMING.assembleAtMs);
+  it("OF4-FIX1: lands, and then dwells, inside the SHORTEST reveal the arena may give (900ms)", () => {
+    // `anchoredRevealHoldMs` may shorten an ordinary reveal to REVEAL_HOLD_MIN_MS
+    // when settlement is discovered late. 900, not the nominal 1500, is the budget.
+    expect(REVEAL_HOLD_MIN_MS).toBe(900);
+    const landed = REVEAL_TIMING.assembleAtMs + REVEAL_TIMING.moveMs;
+    expect(REVEAL_TIMING.settleAtMs).toBe(landed);
+    // The finished, correct order stays up for a readable beat before the release.
+    expect(REVEAL_HOLD_MIN_MS - landed).toBeGreaterThanOrEqual(REVEAL_DWELL_MIN_MS);
+    // The "was N" notes (150ms fade) are complete well before the release too.
+    expect(landed + 150).toBeLessThan(REVEAL_HOLD_MIN_MS - REVEAL_DWELL_MIN_MS / 2);
+    // Values and marks (last card's stagger + mark lag + fade) are in before the move starts.
+    expect(REVEAL_TIMING.valueStaggerMs * 4 + REVEAL_TIMING.markLagMs + REVEAL_TIMING.valueFadeMs)
+      .toBeLessThanOrEqual(REVEAL_TIMING.assembleAtMs + REVEAL_TIMING.moveMs / 2);
+    // The player has the locked order, with values, on screen before the cards move.
+    expect(REVEAL_TIMING.assembleAtMs).toBeGreaterThanOrEqual(200);
   });
 
   it("reduced motion (in-app setting): the settled canonical order at once", () => {

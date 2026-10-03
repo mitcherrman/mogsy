@@ -749,11 +749,11 @@ const PROBE_MINE = ["e3", "e0", "e4", "e1", "e2"];
 
 const sampleReveal = () => new Promise<{
   locked: number[]; frames: { t: number; step: string; motion: string; box: number[]; img: number[];
-    rows: Record<string, number>; values: number }[]; overflow: boolean;
+    rows: Record<string, number>; values: number; shown: number }[]; overflow: boolean;
 }>((done) => {
   const rect = (sel: string) => { const r = document.querySelector(sel)!.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 10) / 10); };
   let locked: number[] | null = null; let t0: number | null = null; let overflow = false;
-  const frames: { t: number; step: string; motion: string; box: number[]; img: number[]; rows: Record<string, number>; values: number }[] = [];
+  const frames: { t: number; step: string; motion: string; box: number[]; img: number[]; rows: Record<string, number>; values: number; shown: number }[] = [];
   const tick = (now: number) => {
     overflow ||= document.documentElement.scrollWidth > innerWidth;
     const rev = document.querySelector<HTMLElement>('[data-testid="forge-reveal"]');
@@ -765,7 +765,10 @@ const sampleReveal = () => new Promise<{
     }
     frames.push({ t: now - t0, step: rev.dataset.step!, motion: rev.dataset.motion!,
       box: rect('[data-testid="order-forge-viewport"]'), img: rect('[data-testid="order-forge-backdrop"] img'), rows,
-      values: document.querySelectorAll('[data-testid^="forge-reveal-e"][data-testid$="-value"]').length });
+      values: document.querySelectorAll('[data-testid^="forge-reveal-e"][data-testid$="-value"]').length,
+      // Values that are actually VISIBLE (their fade is done), not merely mounted.
+      shown: [...document.querySelectorAll<HTMLElement>('[data-testid^="forge-reveal-e"][data-testid$="-value"]')]
+        .filter((v) => Number(getComputedStyle(v).opacity) >= 0.95).length });
     if (now - t0 < 2000) requestAnimationFrame(tick); else done({ locked: locked!, frames, overflow });
   };
   requestAnimationFrame(tick);
@@ -796,10 +799,20 @@ for (const vp of OF4_SIZES) {
       expect(Object.entries(last.rows).sort((x, y) => x[1] - y[1]).map(([k]) => k)).toEqual(PROBE_CANON);
       const from = first.rows.e1, to = last.rows.e1;
       expect(r.frames.some((f) => f.rows.e1 < from - 8 && f.rows.e1 > to + 8), "Infinity Edge jumped instead of travelling").toBe(true);
-      // Settled well inside the shortest reveal hold.
+      // OF4-FIX1: landed, and then DWELLING, inside the SHORTEST legal reveal
+      // (REVEAL_HOLD_MIN_MS = 900, which the controller may shorten to).
       const settledAt = r.frames.find((f) => f.step === "assembled"
         && Object.keys(f.rows).every((k) => Math.abs(f.rows[k] - last.rows[k]) < 1))!.t;
-      expect(settledAt).toBeLessThan(1400);
+      expect(settledAt, "cards landed too late for the 900ms minimum reveal").toBeLessThan(600);
+      expect(900 - settledAt, "no readable dwell on the correct order before 900ms").toBeGreaterThanOrEqual(300);
+      // ...and from the landing to the end of the window it never leaves the canonical order.
+      for (const f of r.frames.filter((x) => x.t >= settledAt && x.t <= 900)) {
+        expect(Object.entries(f.rows).sort((x, y) => x[1] - y[1]).map(([k]) => k), `left canonical order at ${Math.round(f.t)}ms`).toEqual(PROBE_CANON);
+      }
+      // Values and marks were already in before the cards started to move.
+      const firstMove = r.frames.find((f) => Math.abs(f.rows.e1 - first.rows.e1) > 2)!;
+      expect(firstMove.shown, "cards moved before every value was visible").toBeGreaterThanOrEqual(4);
+      expect(r.frames.some((f) => f.shown === 5 && f.t < settledAt), "values never all visible before landing").toBe(true);
       // Final state: values, marks and "was N" for every wrong card.
       for (const t of PROBE_CANON) await expect(page.getByTestId(`forge-reveal-${t}-value`)).toBeVisible();
       await expect(page.getByTestId("forge-reveal-e1-from")).toContainText(/was 4/i);

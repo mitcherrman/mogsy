@@ -84,3 +84,41 @@ OF4 (`6fe20304` code, `ad3c742f` docs) was replayed by cherry-pick onto `origin/
 - **Validation on the integrated tree**: focused Vitest 11 files / 160 pass; `tsc` errors identical to a clean `origin/main` worktree (6, untouched files); eslint 0 errors on touched files; `npm run build` exit 0; arena Playwright 445/446 (see below).
 - **Baseline comparison** (clean worktree at `53159f2c`): the 12 other Vitest failures in the wider sweep (`AnswerGrid.elimination`, `DailyOnCanonicalArena.boundary`, `QuestionStageGeometry`, `champion-card-duel`, `statCategoryIcons`, `syntheticRankedHistory`) fail identically there; the arena Playwright test `RMOB2 compact phone HUD is 40px tall` (expected 40, got 44) fails identically there.
 - **Not solved (unchanged from above)**: continuity when Order Forge gives way to the next round / module / match. No new transition mechanism was added.
+
+## OF4-FIX1: the teaching reveal inside the real minimum reveal window
+Branch `of4/fix1-reveal-timing`, from `origin/main` `d35f56b5` (OF4 as published). Frontend only; no backend, pacing, grading, scene or boundary change. Not pushed, not published.
+
+### Production symptom
+Playing the real path (Admin > Leaguecraft > Ranked > Playtests > Play Order Forge) on two incorrect rounds: values and wrong marks appeared, but the cards never visibly moved into the server's correct order, and the correct order never stayed up long enough to study.
+
+### Root cause
+`REVEAL_TIMING` assumed the nominal reveal hold. It started the move at 700ms and finished at ~1200ms (a spring, so no hard bound). The real controller does not guarantee 1500ms: `useRankedMatch.beginRevealHold` asks `anchoredRevealHoldMs`, which may shorten an ordinary reveal to `REVEAL_HOLD_MIN_MS = 900` when settlement is discovered late (so the next module keeps its title window). `QuizRankedMatch` then releases the frozen surface, and the next module replaces it. 900 is therefore the only duration a reveal may rely on, and 700 + a spring cannot finish, let alone rest, inside it. Authority was never the bug: `order`, `canonicalOrder`, `positionCorrect` and `valueDisplay` were parsed and rendered correctly.
+
+How long the reveal is on screen before the hold starts (`g`) depends on poll timing and is 0..1500ms: a regular poll is already in flight when the player locks, the lock's poke re-runs the loop at once (`rerunRef`), the first response carries the viewer's reveal and the re-run discovers the settlement one round trip later. The window is then `g + hold`, and the design budget is the worst case, `hold` alone.
+
+### Why the probe coverage missed it
+`?forge=live` serves its own reveal 2.5s after the lock and then holds the screen as long as the test samples (2000ms); the e2e asserted "settled before 1400ms" against the nominal 1500. The unit test asserted `settleAtMs + 300 <= 1500`. Nothing ran the reveal through `useRankedMatch`'s hold and the arena's release. (The handoff above even recorded that the real next-round swap was "unchanged" and left it out of scope.)
+
+### New timing contract (`REVEAL_TIMING` in `OrderForge.tsx`)
+| ms | what |
+|---|---|
+| 0 | the player's locked order, with each card's server value and right/wrong mark fading in (30ms stagger, 160ms fade; all visible by ~200-300) |
+| 240 | the cards start travelling into `canonicalOrder` |
+| 480 | landed (a bounded 240ms tween with a fixed ease, not a spring); "was N" notes fade in |
+| 480..900 | the correct order stays: `REVEAL_DWELL_MIN_MS = 420` inside the shortest legal beat, ~1000ms inside the nominal one |
+
+Measured in Chromium on the probe: values all visible by 200ms, first movement ~250ms, every card landed by 450ms, so ~450ms of dwell before 900ms. Only the reveal reorder changed to a tween; drag / arrow reordering (`Reorder.Item`) is untouched. Reduced motion, refresh and resume are unchanged: the settled canonical order, values, marks and notes at once.
+
+No second pacing system and no global pacing change. Existing seams were inspected and not used: `ModuleViewportProps` carries no reveal duration; the server's `reveal_window_ms` (2500, on the Order Forge segment state) is only consumed by the Journey's poll scheduling and is not wired into the Ranked hold for non-Journey segments; `presentation_ms` is the module-title window. Using either to lengthen the Order Forge hold would be a shared pacing decision for the owner, not part of this fix.
+
+### Tests
+- `QuizRankedMatch.orderForgeReveal.test.tsx` (new, 4): the real `QuizRankedMatch` + `useRankedMatch` + `CanonicalArena` + `orderForgeModule` + `OrderForge` on a fake clock, only the network faked (a real captured Order Forge settlement for the hold). For the 5-card board locked `A B C D E`, server `E C A D B`: reveal and hold are back to back; the hold is `anchoredRevealHoldMs`'s floor (not 1500); first frame is `A B C D E` with the server's values and marks; the cards reach `E C A D B` at 240ms; the finished order has >= 400ms of dwell before the release and never leaves canonical; wrong cards keep "was N", the right one has none. Plus reduced motion and resume.
+- Negative control: against the shipped OF4 timings the same test fails with "landed 1200ms, released 980ms", i.e. the production symptom.
+- `OrderForge.test.tsx`: the old "inside 1500" test is replaced by one pinned to `REVEAL_HOLD_MIN_MS` (land, then dwell, then notes).
+- `e2e/ranked-arena-fit.spec.ts`: the probe reveal now asserts landing < 600ms, >= 300ms of dwell before 900ms, canonical for every frame in that window, and every value visible before the cards move.
+
+### Remaining limitations
+- If a settlement ever arrives with no earlier snapshot carrying the viewer's reveal (the server settles inside the lock request and the next poll is already the next round), the arena's frozen surface is the pre-lock snapshot and no reveal is shown at all during the hold. Not changed here; worth an owner look if it is seen in Playtests.
+- Cross-round / module / match boundary continuity is still unresolved.
+- Real-device iOS / Android certification is still outstanding.
+- The arena's result stamp overlap and the RMOB2 HUD height test are unchanged.
