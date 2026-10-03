@@ -76,3 +76,11 @@ Untouched: backend grading, scoring, persistence, analytics, Daily, role selecti
 
 ## Next task
 Owner review of `docs/of4`. Then a real-device pass (iOS Safari and Android Chrome: hold-to-drag, swipe scroll, reveal timing in a live match). Then integrate onto main with the F-series.
+
+## Integration onto current main (of4/integration-main)
+OF4 (`6fe20304` code, `ad3c742f` docs) was replayed by cherry-pick onto `origin/main`, first at `53159f2c` (9 commits past the OF4 base `66fc472e`), then re-based onto `6186953d` (two PERF1 hub/academy commits touching none of OF4's files; the effective patch is byte-identical, same `git patch-id`). Not pushed; `main` untouched.
+
+- **Overlap with main since the base**: only `src/index.css` and `RankedShellProbe.tsx`. `RankedShellProbe.tsx` auto-merged (main added `probeMetaReflexState`; OF4 touched the Order Forge branch). `src/index.css`: both sides appended a block at end of file; both kept, no deletions on either side (the diff against main is +38 lines).
+- **Validation on the integrated tree**: focused Vitest 11 files / 160 pass; `tsc` errors identical to a clean `origin/main` worktree (6, untouched files); eslint 0 errors on touched files; `npm run build` exit 0; arena Playwright 445/446 (see below).
+- **Baseline comparison** (clean worktree at `53159f2c`): the 12 other Vitest failures in the wider sweep (`AnswerGrid.elimination`, `DailyOnCanonicalArena.boundary`, `QuestionStageGeometry`, `champion-card-duel`, `statCategoryIcons`, `syntheticRankedHistory`) fail identically there; the arena Playwright test `RMOB2 compact phone HUD is 40px tall` (expected 40, got 44) fails identically there.
+- **Not solved (unchanged from above)**: continuity when Order Forge gives way to the next round / module / match. No new transition mechanism was added.
