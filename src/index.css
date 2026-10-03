@@ -9953,13 +9953,62 @@ html.high-contrast * { text-shadow: none !important; }
   }
 }
 /* The 1024 tier pays for its larger answer box out of its prompt box, so a
-   prompt over 150 characters tightens there: 16px / 1.35 seats the bank's 188
-   characters and the 192-character RA7 fixture inside 130px. From 1280 the
-   column is wide enough that the same prompts fit at full size. */
+   prompt over 144 characters tightens there: 16px / 1.35 seats the bank's 188
+   characters and the 192-character RA7 fixture inside 130px.
+
+   VISCONT1-SSM — THE PROMPT TIERS, RE-DERIVED IN THE PRODUCTION FACE. The real
+   Ranked and Daily routes wear `theme-lol`, which sets this h2 in Cinzel; the
+   first derivation was measured in Inter (the dev probe sat outside the League
+   section). In Cinzel the dense tier was not holding the bank's own 188/192 at
+   1280 (cap 180), 1500 (146) or 1600x780+ (170), and the Phase 1 release
+   certification found real 212-228-character `ssm.combined` prompts moving the
+   art 6-31px (B1). Each tier now steps the TYPE, never the box, measured as
+   the worst case over 72 sentence-shaped samples per length (`?lol=1`):
+
+     width        base        dense (145-192)    extended (193+, held to 228)
+     1024-1279    19px/1.45   16px/1.35  (224)   16px/1.15  (270)
+     1280-1499    19px/1.45   18px       (194)   17px/1.3   (262)
+     1500-1599*   21px/1.45   20px       (210)   18px       (236)
+     1600x780+    24px/1.35   21px       (202)   20px/1.3   (262)
+     (* and 1600+ under 780 tall, where the prompt is still 21px)
+
+   Normal and long prompts (<= 144) seat at full size at every desktop width
+   (1024: 148, 1500: 146). Font size steps first; line-height only where a
+   fifth or sixth line is the only way in. The floor stays 16px. */
 @media (min-width: 1024px) and (max-width: 1279.98px) {
   .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"] > header h2 {
     font-size: 1rem;
     line-height: 1.35;
+  }
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="extended"] > header h2 {
+    font-size: 1rem;
+    line-height: 1.15;
+  }
+}
+@media (min-width: 1280px) and (max-width: 1499.98px) {
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"] > header h2 {
+    font-size: 1.125rem;
+  }
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="extended"] > header h2 {
+    font-size: 1.0625rem;
+    line-height: 1.3;
+  }
+}
+@media (min-width: 1500px) {
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"] > header h2 {
+    font-size: 1.25rem;
+  }
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="extended"] > header h2 {
+    font-size: 1.125rem;
+  }
+}
+@media (min-width: 1600px) and (min-height: 780px) {
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"] > header h2 {
+    font-size: 1.3125rem;
+  }
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="extended"] > header h2 {
+    font-size: 1.25rem;
+    line-height: 1.3;
   }
 }
 
@@ -15647,10 +15696,21 @@ html.hub-commons-in-view .hextech-ambience-layer {
      long  (25–40)  13px / 1.3, 6px padding — two lines inside 48px;
      dense (41+)    12px / 1.25 (the floor), 6px padding — two lines inside
                     48px up to the bank's longest label (76) at 360 wide.
-   PROMPT — four 18px lines + the category line is the reserve (124px):
-     long  (111–150) 16px / 1.3 — five lines inside it;
-     dense (151+)    15px / 1.3 (the floor) — five lines inside it up to the
-                     bank's 188 characters and the 192-character RA7 fixture.
+   PROMPT — four 18px lines + the category line is the reserve (124px).
+   VISCONT1-SSM: re-derived in Cinzel, the face `theme-lol` gives this h2 on
+   the real routes (worst case over 72 samples, 360 wide / 375 wide):
+     normal   (<= 100)  18px / 1.45 — four lines (102 / 110);
+     long     (101–144) 16px / 1.3 — five lines (154 / 160);
+     dense    (145–192) 15px / 1.15 (the floor) — six lines up to the bank's
+                        188 and the 192-character RA7 fixture (194 / 206). Was
+                        15px / 1.3, five lines: 160 in Cinzel, so the bank's
+                        own maximum moved the card 12px;
+     extended (193+)    the READING face (Inter) at 15px / 1.15 — six lines up
+                        to 228, the longest old `ssm.combined` wording (230 /
+                        234). Cinzel cannot seat it at the 15px floor: six
+                        lines hold 194, and seven need 13px (268). A paragraph
+                        that long is set as reading text, not display caps;
+                        the type keeps its floor and the box does not move.
 
    This replaces VISCONT1's first-pass give-backs (dropping the reveal slot for
    a four-answer stack and on phones under 780px, and a three-line prompt box
@@ -15676,7 +15736,12 @@ html.hub-commons-in-view .hextech-ambience-layer {
   }
   .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"] > header h2 {
     font-size: 0.9375rem;
-    line-height: 1.3;
+    line-height: 1.15;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="extended"] > header h2 {
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    font-size: 0.9375rem;
+    line-height: 1.15;
   }
   /* REVEAL — the slot is two evidence lines; what is drawn in it adapts. A
      96-character statement (the longest the beat carries) wraps to THREE

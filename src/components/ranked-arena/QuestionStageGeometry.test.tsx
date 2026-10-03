@@ -1629,6 +1629,41 @@ describe("VISCONT1 — long text tightens inside its box", () => {
       /@media \(min-width: 1024px\) and \(max-width: 1279\.98px\)\s*\{\s*[^{]*\[data-prompt-density="dense"\] > header h2\s*\{\s*font-size:\s*1rem;/);
   });
 
+  // VISCONT1-SSM — Phase 1 release certification B1: real 212–228-character
+  // `ssm.combined` prompts moved the arena (−31px of art at 1880x900). The
+  // tiers were re-derived in Cinzel, the face `theme-lol` gives the prompt on
+  // the real routes; the browser half is the continuity spec's B1 block.
+  it("seats prompts past the bank in an extended tier at every width, above the floor", () => {
+    // The first block under that media query that styles the tier (the same
+    // query also opens unrelated blocks earlier in the file).
+    const rule = (mq: RegExp, tier: string) => {
+      const src = css().replace(/\r\n/g, "\n");
+      const blocks = [...src.matchAll(new RegExp(String.raw`${mq.source}\s*\{([\s\S]*?)\n\}`, "g"))];
+      const sel = new RegExp(String.raw`\[data-prompt-density="${tier}"\] > header h2\s*\{([^}]*)\}`);
+      return blocks.map((b) => sel.exec(b[1])?.[1]).find(Boolean) ?? "";
+    };
+    const px = (body: string) => remPx(/font-size:\s*([\d.]+(?:rem|px))/.exec(body)?.[1] ?? "0");
+    const lh = (body: string) => parseFloat(/line-height:\s*([\d.]+)/.exec(body)?.[1] ?? "NaN");
+    // Desktop: dense steps the type a size; extended a size or two more.
+    expect([px(rule(/@media \(min-width: 1024px\) and \(max-width: 1279\.98px\)/, "extended")),
+      lh(rule(/@media \(min-width: 1024px\) and \(max-width: 1279\.98px\)/, "extended"))]).toEqual([16, 1.15]);
+    expect(px(rule(/@media \(min-width: 1280px\) and \(max-width: 1499\.98px\)/, "dense"))).toBe(18);
+    expect(px(rule(/@media \(min-width: 1280px\) and \(max-width: 1499\.98px\)/, "extended"))).toBe(17);
+    expect(px(rule(/@media \(min-width: 1500px\)/, "dense"))).toBe(20);
+    expect(px(rule(/@media \(min-width: 1500px\)/, "extended"))).toBe(18);
+    expect(px(rule(/@media \(min-width: 1600px\) and \(min-height: 780px\)/, "dense"))).toBe(21);
+    expect(px(rule(/@media \(min-width: 1600px\) and \(min-height: 780px\)/, "extended"))).toBe(20);
+    // Phone: dense keeps the 15px floor with six lines; extended is set in the
+    // reading face at the same floor (Cinzel would need 13px).
+    const phone = /\.question-surface-stack\[data-prompt-density="extended"\] > header h2\s*\{([^}]*)\}/
+      .exec(css().slice(css().indexOf('[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"]')))?.[1] ?? "";
+    expect(phone).toMatch(/font-family:\s*Inter/);
+    expect(px(phone)).toBe(15);
+    expect(lh(phone)).toBe(1.15);
+    // The boxes did not move to make room: the reserves are what VISCONT1 set.
+    expect(tokenPx(1024, "--qs-prompt-h")).toBe(130);
+  });
+
   it("draws the reveal's tablet icon out of flow, so a label keeps its width", () => {
     const src = css();
     expect(src).toMatch(/\[data-answers-state\] \[data-quiz-choice\] > svg\s*\{\s*position:\s*absolute;/);

@@ -32,12 +32,24 @@
  *     >  40  dense: three lines at 12px up to the bank's longest real label
  *            (76 characters, id 171239).
  *
- *   PROMPT (characters)
- *     <= 110 four lines at 18px on the narrowest supported phone (360 wide),
- *            which is what the phone's prompt reserve holds.
- *     <= 150 five lines at the long tier's 16px/1.3 there.
- *     >  150 dense: five lines at 15px/1.3 up to the bank maximum (188) and the
- *            192-character RA7 Combat Calculation fixture.
+ *   PROMPT (characters) — measured in the PRODUCTION face. On the real
+ *   Ranked and Daily routes (`/quiz/*`) the root wears `theme-lol`, and
+ *   `.theme-lol h2` sets the prompt in Cinzel, which is far wider than the
+ *   body face. VISCONT1's first bounds were measured on the dev probe without
+ *   that class, i.e. in Inter, and the Phase 1 release certification found the
+ *   result (B1: real `ssm.combined` prompts moved the arena up to 31px). Every
+ *   bound below is the worst case over 72 sentence-shaped samples per length
+ *   (`?lol=1` on the probe), and each holds with >= 2 characters to spare:
+ *     <= 100 four 18px lines on the narrowest phone (360 wide: 102).
+ *     <= 144 five 16px lines there (154), and the 19-21px desktop type at
+ *            1024 (148) and 1500-1599 (146).
+ *     <= 192 dense: the bank maximum (188) and the 192-character RA7 Combat
+ *            Calculation fixture (360 phone 15px/1.15: 194; 1280: 194).
+ *     >  192 extended: generated Mastery prompts past the bank — the old
+ *            `ssm.combined` wording runs to 228 (Teleport + Ionian Boots of
+ *            Lucidity). Held to 228 at every viewport (360 phone: 230).
+ *   Content review (QWORD) keeps real prompts well inside these; this is the
+ *   safety net for when it does not.
  *
  * The tiers are CLASSIFICATION only. What each tier does at each viewport is
  * the stylesheet's business (index.css, "VISCONT1 — TEXT DENSITY"): where the
@@ -46,10 +58,12 @@
  */
 
 export type TextDensity = "normal" | "long" | "dense";
+/** A prompt can also be `extended`: past the bank, see the bounds above. */
+export type PromptDensity = TextDensity | "extended";
 
 /** Inclusive upper bounds, in characters, of the `normal` and `long` tiers. */
 export const ANSWER_DENSITY_BOUNDS = { normal: 24, long: 40 } as const;
-export const PROMPT_DENSITY_BOUNDS = { normal: 110, long: 150 } as const;
+export const PROMPT_DENSITY_BOUNDS = { normal: 100, long: 144, dense: 192 } as const;
 
 function tier(length: number, bounds: { normal: number; long: number }): TextDensity {
   if (length <= bounds.normal) return "normal";
@@ -63,6 +77,7 @@ export function answerDensity(labels: readonly string[]): TextDensity {
 }
 
 /** The prompt's tier, from its character count. */
-export function promptDensity(prompt: string): TextDensity {
-  return tier(prompt.trim().length, PROMPT_DENSITY_BOUNDS);
+export function promptDensity(prompt: string): PromptDensity {
+  const length = prompt.trim().length;
+  return length > PROMPT_DENSITY_BOUNDS.dense ? "extended" : tier(length, PROMPT_DENSITY_BOUNDS);
 }

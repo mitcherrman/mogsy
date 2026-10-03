@@ -34,6 +34,9 @@
  *   prompt, built from real League vocabulary, on a compact plate or (rich=1)
  *   the cinematic item card — so the harness can find where a typography tier
  *   stops fitting. Inside `?seq=` the same round is `shape.N.K.M.R`.
+ * `?lol=1` (VISCONT1-SSM) wears the League section's `theme-lol` root class,
+ * so the prompt is drawn in the production display face (Cinzel).
+ *
  * `?evlen=N` (VISCONT1) settles `?seq=` rounds with an N-character evidence
  *   statement (capped at 96, the longest the evidence beat carries).
  * `?ruleset=time_trial|survival|standard` (VISCONT1) serves the Daily stage
@@ -69,7 +72,7 @@
  *
  * Dev route only — excluded from navigation and the sitemap.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Frame } from "@/pages/quiz-ranked/QuizRankedPage";
 import { RankedRouteHeader } from "@/pages/quiz-ranked/RankedRouteHeader";
@@ -119,6 +122,7 @@ export const PROBE_STATES = [
   "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
   "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
   "spellCooldown", "matchup", "twoChamp", "shape",
+  "ssm212", "ssm218", "ssm224", "ssm228", "ssm248",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -339,6 +343,36 @@ function shapeQuestion(token: string) {
     : { question_id: `q-shape-${token}`, prompt, options, category: "champion_ability_cooldown" };
 }
 
+/** VISCONT1-SSM — `ssm.combined.<SPELL>.<rune>+<item>`, verbatim old wording. */
+const SSM_COMBINED: Record<string, [spell: string, cooldown: number, item: string, itemHaste: number]> = {
+  ssm212: ["Heal", 240, "Crimson Lucidity", 20],
+  ssm218: ["Exhaust", 240, "Crimson Lucidity", 20],
+  ssm224: ["Ignite", 180, "Ionian Boots of Lucidity", 10],
+  ssm228: ["Teleport", 360, "Ionian Boots of Lucidity", 10],
+  ssm248: ["Unleashed Teleport", 330, "Ionian Boots of Lucidity", 10],
+};
+
+function ssmCombinedQuestion(state: string) {
+  const [spell, cooldown, item, itemHaste] = SSM_COMBINED[state];
+  const total = 18 + itemHaste;
+  const after = (cooldown * 100 / (100 + total)).toFixed(1);
+  return { question_id: `q-${state}`,
+    prompt: `${spell} has a ${cooldown}-second base cooldown. You are running Cosmic Insight `
+      + `(18 summoner spell haste) and ${item} (${itemHaste} summoner spell haste). That is `
+      + `${total} summoner spell haste in total. What is ${spell}'s cooldown now?`,
+    options: [`${after}s`, `${(cooldown * 100 / (100 + 18)).toFixed(1)}s`, `${cooldown}s`,
+      `${(cooldown * 100 / (100 + itemHaste)).toFixed(1)}s`],
+    category: "summoners",
+    presentation: { assets: { subject: { type: "summoner_spell_haste", spell,
+      spell_icon: `assets/summoner_spells/${spell.replace(/ /g, "")}.png`,
+      sources: [
+        { name: "Cosmic Insight", icon: "assets/runes/Cosmic_Insight.png", kind: "rune" },
+        { name: item, icon: "assets/items/3158.png", kind: "item" },
+      ],
+      total_haste: total, badge: "Summoner Spell" } },
+      presentation: { role: "context", timing: "question", spoiler: false } } };
+}
+
 function questionFor(state: ProbeState) {
   const round = stateForRound(state);
   const served = (round.startsWith("shape") ? shapeQuestion(round)
@@ -467,6 +501,15 @@ function baseQuestionFor(state: ProbeState) {
         presentation: { assets: { subject: { type: "summoner_spell_subject", spell: "Ignite",
           spell_icon: "assets/summoner_spells/Ignite.png", badge: "Summoner Spell" } },
           presentation: { role: "context", timing: "question", spoiler: false } } };
+    // VISCONT1-SSM — the REAL `ssm.combined` (rune + item) Mastery prompt in
+    // its pre-QWORD wording, 212-224 characters: the shape the Phase 1 release
+    // certification found past the bank's 188 (B1). Real spells, real sources,
+    // real sentence shape, so it wraps the way the served prompt does. `ssm228`
+    // (Teleport + Ionian Boots of Lucidity) is the longest the old wording can
+    // produce and the certified safety bound; `ssm248` is PAST it, kept only to
+    // measure what lies beyond the bound.
+    case "ssm212": case "ssm218": case "ssm224": case "ssm228": case "ssm248":
+      return ssmCombinedQuestion(state);
     // VISCONT1 — a two-champion Matchup card (two 50/50 splashes, VS seam),
     // in the subject shape the backend emits for a champion comparison.
     case "matchup":
@@ -1075,6 +1118,19 @@ export default function RankedShellProbe() {
   probe.ruleset = ruleset && ["time_trial", "survival", "standard"].includes(ruleset) ? ruleset : null;
   const dailyHost = params.get("host") === "daily";
   probe.evlen = Math.min(96, Number(params.get("evlen") ?? 0) || 0);
+  // VISCONT1-SSM — `?lol=1`: the League section's root theme, as the real
+  // Ranked and Daily routes (`/quiz/*`) wear it. `Layout` puts `theme-lol` on
+  // <html> by PATH, and `.theme-lol h2` draws the prompt in Cinzel; this dev
+  // path is outside the section, so without it the prompt is measured in the
+  // body face (Inter), which is far narrower than what a player sees. A
+  // passive effect, so it lands after `Layout`'s layout-timed class write.
+  const lolTheme = params.get("lol") === "1";
+  useEffect(() => {
+    if (!lolTheme) return;
+    const root = document.documentElement;
+    root.classList.add("theme-lol");
+    return () => root.classList.remove("theme-lol");
+  }, [lolTheme]);
   probe.end = sfxQa && sfxStep >= 5 ? "victory"
     : end === "victory" || end === "defeat" || end === "draw" ? end : null;
   probe.gaps = (params.get("gap") ?? "").split(",").map(Number).filter((n) => n > 0);

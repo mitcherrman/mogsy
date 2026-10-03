@@ -31,6 +31,13 @@
  * way `DailyRunPage` hosts them, and — in ONE mount, through the live
  * controller — question -> reveal -> next question.
  *
+ * VISCONT1-SSM: every round is measured in the PRODUCTION face. The real
+ * Ranked and Daily routes (`/quiz/*`) wear `theme-lol`, which sets the prompt
+ * in Cinzel; this dev route does not, so the probe is opened with `?lol=1`
+ * (`probeUrl`). Measured in the body face instead, VISCONT1 certified bounds
+ * that real `ssm.combined` prompts broke in the Phase 1 release certification
+ * (B1) — and that the bank's own 188/192 broke too, unseen.
+ *
  *   npx playwright test -c playwright.arena.config.ts ranked-visual-continuity
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -38,6 +45,29 @@ import { expect, test, type Page } from "@playwright/test";
 // A matrix test loads up to 24 rounds and a live test samples every reveal
 // frame; the config's 60s is a single-page budget.
 test.describe.configure({ timeout: 300_000 });
+
+/** The probe, wearing the League section's root theme (see the header). */
+const probeUrl = (query: string) => `/dev/ranked-shell-probe?${query}&lol=1`;
+
+/** The prompt is in the production display face, not a fallback. */
+async function expectProductionFace(page: Page) {
+  // Whatever face the prompt is set in must be the one that drew it — not a
+  // fallback. `fonts.ready` can settle before the page has asked for the face
+  // at all, so wait (bounded) for it; the assertion below reports it. (On a
+  // phone the extended tier sets the prompt in Inter, and a page with no
+  // Cinzel text never requests Cinzel.)
+  const loaded = () => {
+    const h2 = document.querySelector('[data-surface-region="prompt"] h2');
+    const family = h2 ? getComputedStyle(h2).fontFamily.split(",")[0].replace(/"/g, "").trim() : "";
+    return { family, ok: !!family && document.fonts.check(`700 20px "${family}"`) };
+  };
+  await page.waitForFunction(loaded, null, { timeout: 15_000 }).catch(() => undefined);
+  const face = await page.evaluate(`(${loaded})()`) as { family: string; ok: boolean };
+  const themed = await page.evaluate(() => document.documentElement.classList.contains("theme-lol"));
+  expect(themed, "the probe is not wearing theme-lol").toBe(true);
+  expect(["Cinzel", "Inter"], `the prompt is set in ${face.family}`).toContain(face.family);
+  expect(face.ok, `${face.family} did not load; the prompt would be measured in a fallback face`).toBe(true);
+}
 
 /** Rounding noise only; a real reflow is whole pixels. */
 const TOL = 0.5;
@@ -112,8 +142,15 @@ const MEASURE = (): Anchors | null => {
     answerPx: Math.min(...tablets.map((t) => parseFloat(getComputedStyle(t).fontSize))),
     answerDensity: grid?.dataset.answerDensity ?? "-",
     promptDensity: surface?.dataset.promptDensity ?? "-",
-    textClipped: [h2, ...tablets].some((e) => e.scrollHeight > e.clientHeight + 1
-      || e.scrollWidth > e.clientWidth + 1),
+    // The prompt is `overflow: visible`, so it can only be cut off by a clip
+    // or a line clamp. At the dense/extended tiers' 1.15 leading Cinzel's
+    // glyph box reaches ~2px past the line boxes (scrollHeight +2) while every
+    // line is drawn in full — that is ink, not clipping.
+    textClipped: [...tablets].some((e) => e.scrollHeight > e.clientHeight + 1
+      || e.scrollWidth > e.clientWidth + 1)
+      || ((getComputedStyle(h2).overflowY !== "visible" || getComputedStyle(h2).webkitLineClamp !== "none")
+        && (h2.scrollHeight > h2.clientHeight + 1 || h2.scrollWidth > h2.clientWidth + 1))
+      || h2.scrollWidth > h2.clientWidth + 1,
     entering: [...answers.querySelectorAll("[data-quiz-choice-cell]")]
       .some((c) => c.getAnimations().some((a) => a.playState !== "finished")),
   };
@@ -178,8 +215,9 @@ function roundQuery(state: string): string {
 }
 
 async function load(page: Page, query: string): Promise<Anchors> {
-  await page.goto(`/dev/ranked-shell-probe?${query}`);
+  await page.goto(probeUrl(query));
   await page.waitForSelector('[data-testid="scenario-surface"]');
+  await expectProductionFace(page);
   await page.waitForTimeout(600);
   return settled(page);
 }
@@ -193,6 +231,7 @@ function profileOf(state: string): string {
     abilityCost: "cinematic", matchup: "cinematic", minionWave: "cinematic",
     spellCooldown: "cinematic", junglePet: "cinematic", stressA: "cinematic",
     family: "family", stressB: "family",
+    ssm212: "cinematic", ssm218: "cinematic", ssm224: "cinematic", ssm228: "cinematic",
   } as Record<string, string>)[state];
 }
 
@@ -202,14 +241,16 @@ function profileOf(state: string): string {
  * be exceptions — p90 labels (`shape.32…`), the servable p99 and maximum
  * labels (`realP99`, `realMax`), the bank's longest label (76 characters), a
  * long prompt, the bank's longest prompt (188) on rich art with long labels,
- * the RS2 compound worst cases (`stressA`, `stressB`) and the 192-character
- * RA7 family fixture.
+ * the RS2 compound worst cases (`stressA`, `stressB`), the 192-character
+ * RA7 family fixture, and (VISCONT1-SSM) the REAL `ssm.combined` Mastery
+ * prompts past the bank: 212, 218, 224 and the 228-character safety bound.
  */
 const ORDINARY = [
   "opts4", "opts2", "placeholder", "twoChamp", "jungleRule", "media", "abilityCost",
   "matchup", "minionWave", "spellCooldown", "junglePet", "family",
   "shape.32.4.60.0", "realP99", "realMax", "shape.76.4.60.0", "shape.76.3.60.0",
   "shape.24.2.150.1", "shape.48.4.188.1", "stressA", "stressB",
+  "ssm212", "ssm218", "ssm224", "ssm228",
 ];
 
 const VIEWPORTS = [
@@ -241,11 +282,14 @@ const SEQUENCES = [
     seq: ["family", "abilityCost", "minionWave", "jungleRule"] },
   { name: "normal -> p99 labels -> extreme labels + longest prompt -> normal",
     seq: ["opts4", "realP99", "shape.76.4.188.1", "opts2"] },
+  { name: "compact -> real SSM 224 -> rich -> SSM 228 (past the bank)",
+    seq: ["opts4", "ssm224", "abilityCost", "ssm228"] },
 ];
 
 async function playSequence(page: Page, query: string, expected: string[]) {
-  await page.goto(`/dev/ranked-shell-probe?${query}`);
+  await page.goto(probeUrl(query));
   await page.waitForSelector('[data-testid="scenario-surface"]');
+  await expectProductionFace(page);
   // Step 1 converts the canned hp match to the points match the rest of the
   // sequence plays (the opponent has answered); measure from there, because
   // hp -> points is a different MODE, not a transition a player can see.
@@ -317,7 +361,7 @@ for (const vp of VIEWPORTS) {
       const quiz = await load(page, `q=opts4${vp.frame}`);
       const slot: number[][] = [];
       for (const lvl of ["&mrlvl=11", "", "&mrlvl=20"]) {
-        await page.goto(`/dev/ranked-shell-probe?q=metareflex${lvl}${vp.frame}`);
+        await page.goto(probeUrl(`q=metareflex${lvl}${vp.frame}`));
         await page.waitForSelector('[data-testid="mr-level-slot"]', { state: "attached" });
         await page.waitForTimeout(900);
         const mr = await page.evaluate(() => {
@@ -367,8 +411,8 @@ for (const vp of [VIEWPORTS[0], VIEWPORTS[3], VIEWPORTS[7]]) {
       ...(vp.phone ? { isMobile: true, hasTouch: true } : {}),
     });
     for (const mode of DAILY_MODES) {
-      test(`${mode.name}: compact -> extreme labels -> rich -> family, through every reveal`, async ({ page }) => {
-        const seq = ["opts4", "shape.76.4.150.0", "abilityCost", "family"];
+      test(`${mode.name}: compact -> extreme labels -> real SSM 218 -> family, through every reveal`, async ({ page }) => {
+        const seq = ["opts4", "shape.76.4.150.0", "ssm218", "family"];
         await playSequence(page, `${mode.q}&sfx=1&evlen=96&seq=${seq.join(",")}`, seq);
       });
     }
@@ -442,6 +486,42 @@ test.describe("residual 3 — phone reveals where the first pass gave the slot b
       test("a four-long-answer round and a short phone reveal into the held slot", async ({ page }) => {
         const seq = ["realMax", "stressA", "shape.76.4.188.0", "opts2"];
         await playSequence(page, `sfx=1&evlen=96&seq=${seq.join(",")}&frame=0`, seq);
+      });
+    });
+  }
+});
+
+/**
+ * VISCONT1-SSM — PHASE 1 RELEASE CERTIFICATION B1, BY NAME. Real
+ * `ssm.combined.<SPELL>.<rune>+<item>` Mastery prompts in their old wording
+ * ("Exhaust has a 240-second base cooldown. You are running Cosmic Insight
+ * (18 summoner spell haste) and Crimson Lucidity …") are 212–228 characters,
+ * past the bank's 188. On the RC they moved the art and the answers 6–31px
+ * (1880x900: −31px of art). The backend is shortening this copy in parallel;
+ * this stays regardless — it is the frontend's half of defence in depth.
+ */
+test.describe("B1 — real ssm.combined prompts past the bank (was up to −31px)", () => {
+  for (const vp of VIEWPORTS) {
+    test.describe(`${vp.w}x${vp.h}`, () => {
+      test.use({
+        viewport: { width: vp.w, height: vp.h },
+        ...(vp.phone ? { isMobile: true, hasTouch: true } : {}),
+      });
+      test("212–228-character prompts tighten inside the prompt box; the arena holds", async ({ page }) => {
+        const ref = await load(page, `q=opts4${vp.frame}`);
+        for (const state of ["ssm212", "ssm218", "ssm224", "ssm228"]) {
+          const got = await load(page, `q=${state}${vp.frame}`);
+          expect(got.promptDensity, `${state} was not classified past the bank`).toBe("extended");
+          expectSeated(got, state);
+          expectSameAnchors(ref, got, state, [...STABLE, "firstTabletTop"]);
+          // The art keeps its whole allocation: it is the TEXT that paid.
+          if (ref.mediaTop !== null) {
+            expect(Math.abs((got.mediaBottom! - got.mediaTop!) - (ref.mediaBottom! - ref.mediaTop!)))
+              .toBeLessThanOrEqual(TOL);
+          }
+          // The readable floor: 15px on a phone, 16px on a desktop.
+          expect(got.promptPx).toBeGreaterThanOrEqual(vp.phone ? 15 : 16);
+        }
       });
     });
   }
