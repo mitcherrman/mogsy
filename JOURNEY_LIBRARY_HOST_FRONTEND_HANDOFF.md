@@ -4,7 +4,8 @@
 |---|---|
 | Repo / branch | `mogsy`, branch `jlib-fe-host-identity` (worktree `.worktrees/jlib-fe-host`) |
 | Starting SHA | `d4de016626b7842c421979d9e9560575130a40fc` (JLIB-FE, `jlib/journey-library-frontend`) |
-| Final SHA | the branch tip (`git log -1 jlib-fe-host-identity`); the implementation commit is recorded in §9 |
+| Implementation commit | `b14d088f` |
+| Final SHA | the branch tip: the SHA-note commit on top of `b14d088f` |
 | Backend | JLIB-HOST, `League_Combat_Simulator` branch `jlib-match-host-identity`, local SHA `1b62f1a3`. **Not pushed, not deployed.** Read `JOURNEY_LIBRARY_HOST_HANDOFF.md` there. |
 | State | Committed locally only. Not pushed, not deployed. |
 
@@ -137,7 +138,7 @@ Set `JLIB_SHOTS=<dir>` for the screenshots `h1-recovered-journey-result`, `h2-re
 
 **No failure is introduced by this change.**
 
-**Implementation commit:** `jlib-fe-host-identity`, "JLIB-HOST-FE: Journey Library identity from the persisted match host". The final SHA is the branch tip.
+**Implementation commit:** `b14d088f`. The final SHA is the branch tip: this SHA note, directly on top of `b14d088f`.
 
 ## 10. Remaining issues
 
