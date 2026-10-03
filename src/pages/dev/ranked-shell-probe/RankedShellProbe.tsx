@@ -70,6 +70,9 @@ import {
   PHYSICAL_DAMAGE_PRESENTATION, PHYSICAL_DAMAGE_Q,
 } from "@/lib/question-surface/familyLayoutFixtures";
 import { RANKED_API_BASE } from "@/lib/ranked-public/client";
+import {
+  FORGE_BOT_MATCH_ID, FORGE_BOT_VIEWER, forgeBotReplay, isForgeBotReplay,
+} from "./orderForgeBotReplay";
 
 const VIEWER = "userA";
 
@@ -797,6 +800,11 @@ function installInterceptor() {
       : input instanceof URL ? input.href : input.url;
     if (!url.startsWith(`${RANKED_API_BASE}/api/ranked/`)) return real(input as RequestInfo, init);
     const path = url.slice(`${RANKED_API_BASE}`.length);
+    // OF4-CONTINUITY — `?forge=bot` replays the real bot-lock lifecycle.
+    if (isForgeBotReplay()) {
+      const replayed = await forgeBotReplay(path, init);
+      if (replayed) return replayed;
+    }
     // RE1 — a finished match. Checked first: every read below has a terminal
     // answer that differs from the live one.
     const end = probe.end;
@@ -913,6 +921,7 @@ export default function RankedShellProbe() {
    * covered by `QuizRankedMatch.rfx1b3.test.tsx`, not by this.
    */
   const beatPreview = params.get("beat");
+  const forgeBot = state === "orderforge" && params.get("forge") === "bot";
   probe.sfxStep = sfxQa ? sfxStep : 0;
   probe.end = sfxQa && sfxStep >= 5 ? "victory"
     : end === "victory" || end === "defeat" || end === "draw" ? end : null;
@@ -997,13 +1006,13 @@ export default function RankedShellProbe() {
       )}
       {params.get("frame") === "0" ? (
         <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
-          matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}
+          matchId={forgeBot ? FORGE_BOT_MATCH_ID : "m1"} viewerUserId={forgeBot ? FORGE_BOT_VIEWER : VIEWER} viewerDisplayName={viewerName}
           entry={probe.entryFresh ? "fresh" : "recovered"}
           chrome={<RankedRouteHeader size="wide" />} />
       ) : (
         <Frame size="wide">
           <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
-            matchId="m1" viewerUserId={VIEWER} viewerDisplayName={viewerName}
+            matchId={forgeBot ? FORGE_BOT_MATCH_ID : "m1"} viewerUserId={forgeBot ? FORGE_BOT_VIEWER : VIEWER} viewerDisplayName={viewerName}
             entry={probe.entryFresh ? "fresh" : "recovered"} />
         </Frame>
       )}

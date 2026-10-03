@@ -156,6 +156,18 @@ export interface ModuleRenderer {
    * the shell: adding a third module changes only that module's value.
    */
   ownsSubmission: boolean;
+  /**
+   * OF4-CONTINUITY. True while the module's OWN result reveal is on the card
+   * for this (surface) segment state, so the arena must not lay its generic
+   * result overlay (stamp, edge ring, wash, opponent badge) over it.
+   *
+   * Order Forge teaches its answer on the board (values, marks, the cards
+   * moving into the canonical order, its own verdict). The generic overlay is
+   * started by a different event (the settlement discovery, a poll later),
+   * runs its own CSS clocks, and landed during the cards' move. Omitted means
+   * "never", which is every other module's behaviour, unchanged.
+   */
+  ownsResultReveal?: (segmentState: SegmentStateView | null) => boolean;
   /** The segment viewport rendered inside the arena's centre column. */
   Viewport: ComponentType<ModuleViewportProps>;
   /**

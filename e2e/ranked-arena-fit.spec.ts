@@ -836,3 +836,219 @@ test.describe("Order Forge OF4 reveal, reduced motion @ 1280x720", () => {
     }
   });
 });
+
+/**
+ * OF4-CONTINUITY — ONE PHYSICAL SCENE, MEASURED ON THE REAL BOT LIFECYCLE.
+ *
+ * `?q=orderforge&forge=bot` replays the bodies the real backend served for a
+ * wrong lock against the inline bot (the OF4-FIX2 capture): the lock POST
+ * settles the segment and carries the reveal inline, the next poll is already
+ * round 2 (another Order Forge segment, opening ~2.7s after the lock), and the
+ * settlement starts the arena's reveal hold a round trip after the board's
+ * reveal began. Every animation frame, in the page, from just before Lock In
+ * to round 2 being usable:
+ *   * open -> lock -> "Your order": nothing moves at all, and every row, art
+ *     box and image is the SAME node;
+ *   * -> "Correct order": only the cards whose canonical slot differs move,
+ *     only vertically; the label and trailing boxes never change width (no
+ *     rewrap); no generic result overlay is laid over the board;
+ *   * -> round 2: the stage, the module box and the scene image never move or
+ *     re-crop, no frame is empty or "Loading", the new rows occupy exactly the
+ *     old rows' slots, and the board opens on the server's schedule.
+ */
+const BOT_MINE = ["e0", "e1", "e4", "e3", "e2"];
+const BOT_CANON = ["e2", "e1", "e4", "e3", "e0"];
+
+interface CFrame {
+  t: number; phase: string | null; step: string | null; prompt: string | null; hold: string | null;
+  overlay: boolean; loading: boolean; scrollY: number; forge: number | null;
+  stage: number[] | null; body: number[] | null; vp: number[] | null; bd: number[] | null; bdImg: number | null;
+  footer: number[] | null; railLast: number[] | null; lockInert: boolean | null;
+  rows: Record<string, { id: number; r: number[]; art: number[]; img: number | null; label: number[]; clamp: number[]; trail: number[] }>;
+}
+
+async function playBotLifecycle(page: import("@playwright/test").Page, ms = 4200) {
+  await page.goto("/dev/ranked-shell-probe?q=orderforge&forge=bot&lat=120");
+  await page.waitForFunction(() => {
+    const ph = document.querySelector('[data-testid="order-forge-phase"]');
+    const imgs = [...document.querySelectorAll<HTMLImageElement>('[data-testid="order-forge-viewport"] img')];
+    return ph?.getAttribute("data-phase") === "open" && !ph.getAttribute("data-not-open")
+      && imgs.length >= 6 && imgs.every((i) => i.complete && i.naturalWidth > 0);
+  }, null, { timeout: 60_000 });
+  // The captured player's submitted order.
+  for (const id of ["forge-up-e4", "forge-up-e4", "forge-down-e2"]) {
+    await page.getByTestId(id).click();
+    await page.waitForTimeout(350);
+  }
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(600);
+  return page.evaluate((duration) => new Promise<{ lockAt: number; frames: CFrame[] }>((done) => {
+    const ids = new WeakMap<Element, number>(); let n = 1;
+    const idOf = (el: Element | null | undefined) => {
+      if (!el) return null;
+      if (!ids.has(el)) ids.set(el, n++);
+      return ids.get(el)!;
+    };
+    const r = (el: Element | null | undefined) => {
+      if (!el) return null;
+      const b = el.getBoundingClientRect();
+      return [b.x, b.y, b.width, b.height].map((v) => Math.round(v * 10) / 10);
+    };
+    const q = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+    const frames: CFrame[] = [];
+    const t0 = performance.now();
+    let lockAt = -1;
+    const tick = () => {
+      const list = q("forge-reveal-list") ?? q("forge-list-locked") ?? q("forge-list");
+      const rows: CFrame["rows"] = {};
+      for (const row of list ? [...list.children] : []) {
+        const tok = (row as HTMLElement).dataset.testid!.replace(/^forge-(reveal|locked|card)-/, "");
+        const [art, label, trail] = [...row.children];
+        rows[tok] = { id: idOf(row)!, r: r(row)!, art: r(art)!, img: idOf(art.querySelector("img")),
+          label: r(label)!, clamp: r(label.firstElementChild)!, trail: r(trail)! };
+      }
+      const phaseEl = q("order-forge-phase");
+      frames.push({
+        t: performance.now() - t0,
+        phase: phaseEl?.getAttribute("data-phase") ?? null,
+        step: q("forge-reveal")?.getAttribute("data-step") ?? null,
+        prompt: q("forge-prompt")?.textContent ?? null,
+        hold: q("ranked-match")?.getAttribute("data-reveal-hold") ?? null,
+        overlay: !!q("question-result-overlay"), loading: !!q("order-forge-loading"),
+        scrollY: Math.round(scrollY), forge: idOf(q("mig-order-forge")),
+        stage: r(q("ranked-question")), body: r(q("ranked-question-body")), vp: r(q("order-forge-viewport")),
+        bd: r(q("order-forge-backdrop")?.querySelector("img")), bdImg: idOf(q("order-forge-backdrop")?.querySelector("img")),
+        footer: r(q("forge-footer")), railLast: r(q("forge-rail-last")),
+        lockInert: q("forge-lock") ? !!phaseEl?.hasAttribute("inert") : null,
+        rows,
+      });
+      if (performance.now() - t0 < duration) requestAnimationFrame(tick);
+      else done({ lockAt, frames });
+    };
+    requestAnimationFrame(tick);
+    // Lock In a few frames into the sampling, from inside the page.
+    setTimeout(() => { lockAt = performance.now() - t0; (q("forge-lock") as HTMLElement).click(); }, 120);
+  }), ms);
+}
+
+const botOrder = (f: CFrame) => Object.entries(f.rows).sort((a, b) => a[1].r[1] - b[1].r[1]).map(([k]) => k);
+
+for (const vp of OF4_SIZES) {
+  test.describe(`Order Forge OF4-CONTINUITY bot lifecycle @ ${vp.w}x${vp.h}`, () => {
+    test.use({ viewport: { width: vp.w, height: vp.h } });
+    test("open -> lock -> reveal -> canonical -> next round: only the teaching move moves anything", async ({ page }) => {
+      test.setTimeout(120_000);
+      const { lockAt, frames } = await playBotLifecycle(page);
+      const pre = frames.filter((f) => f.t < lockAt);
+      const open = pre[pre.length - 1];
+      expect(open.phase).toBe("open");
+      expect(botOrder(open)).toEqual(BOT_MINE);
+      const swapIdx = frames.findIndex((f) => f.t > lockAt && f.forge !== open.forge);
+      expect(swapIdx, "round 2 never replaced the reveal").toBeGreaterThan(0);
+      const round1 = frames.slice(pre.length, swapIdx);
+      const round2 = frames.slice(swapIdx);
+      const at = (f: CFrame) => `${Math.round(f.t - lockAt)}ms (${f.phase}/${f.step ?? "-"})`;
+
+      // THE SCENE: stage, question body, module box and scene image never move,
+      // resize or remount, from the open board to round 2; the page does not scroll.
+      for (const f of [...round1, ...round2]) {
+        expect(f.stage, `stage moved at ${at(f)}`).toEqual(open.stage);
+        expect(f.body, `question body moved at ${at(f)}`).toEqual(open.body);
+        expect(f.vp, `module box moved at ${at(f)}`).toEqual(open.vp);
+        expect(f.bd, `scene re-cropped at ${at(f)}`).toEqual(open.bd);
+        expect(f.bdImg, `scene image remounted at ${at(f)}`).toBe(open.bdImg);
+        expect(f.footer, `footer resized at ${at(f)}`).toEqual(open.footer);
+        expect(f.railLast, `end rail moved at ${at(f)}`).toEqual(open.railLast);
+        expect(f.scrollY, `page scrolled at ${at(f)}`).toBe(open.scrollY);
+        expect(f.loading, `loading frame at ${at(f)}`).toBe(false);
+        expect(Object.keys(f.rows), `empty board at ${at(f)}`).toHaveLength(5);
+      }
+
+      // OPEN -> LOCK -> "YOUR ORDER": nothing moves, nothing remounts.
+      const still = round1.filter((f) => f.phase === "locked" || f.step === "mine");
+      expect(still.length).toBeGreaterThan(3);
+      for (const f of still) {
+        for (const t of BOT_MINE) {
+          const a = open.rows[t], b = f.rows[t];
+          expect(b.id, `${t} row remounted at ${at(f)}`).toBe(a.id);
+          expect(b.img, `${t} art image remounted at ${at(f)}`).toBe(a.img);
+          for (const k of ["r", "art", "label", "clamp", "trail"] as const) {
+            expect(b[k], `${t}.${k} moved at ${at(f)}`).toEqual(a[k]);
+          }
+        }
+      }
+
+      // "CORRECT ORDER": only the cards the canonical order moves, and only vertically.
+      const moving = round1.filter((f) => f.step === "assembled");
+      expect(moving.length).toBeGreaterThan(10);
+      const movers = BOT_MINE.filter((t, i) => BOT_CANON.indexOf(t) !== i);
+      expect(movers).toEqual(["e0", "e2"]);
+      for (const f of moving) {
+        for (const t of BOT_MINE) {
+          const a = open.rows[t], b = f.rows[t];
+          expect(b.id, `${t} row remounted at ${at(f)}`).toBe(a.id);
+          expect(b.img).toBe(a.img);
+          if (!movers.includes(t)) { expect(b.r, `${t} should not move (${at(f)})`).toEqual(a.r); continue; }
+          // Moving cards keep their x, width and height, and their inner boxes' widths.
+          expect([b.r[0], b.r[2], b.r[3]]).toEqual([a.r[0], a.r[2], a.r[3]]);
+          expect([b.label[0], b.label[2]], `${t} label width changed at ${at(f)}`).toEqual([a.label[0], a.label[2]]);
+          expect([b.clamp[2], b.clamp[3]], `${t} label rewrapped at ${at(f)}`).toEqual([a.clamp[2], a.clamp[3]]);
+          expect([b.trail[0], b.trail[2]], `${t} trailing slot changed at ${at(f)}`).toEqual([a.trail[0], a.trail[2]]);
+        }
+      }
+      const last = round1[round1.length - 1];
+      expect(botOrder(last)).toEqual(BOT_CANON);
+      expect(moving.some((f) => f.rows.e2.r[1] < open.rows.e2.r[1] - 8 && f.rows.e2.r[1] > last.rows.e2.r[1] + 8),
+        "the wrong card jumped instead of travelling").toBe(true);
+      // The board is the result: the generic stamp / edge / wash is never laid over
+      // it, although the arena's reveal hold (settlement discovered) overlaps it.
+      expect(round1.some((f) => f.phase === "revealed" && f.hold === "true")).toBe(true);
+      for (const f of round1) expect(f.overlay, `generic result overlay at ${at(f)}`).toBe(false);
+
+      // NEXT ROUND: a single-frame content swap into the SAME slots.
+      const first2 = round2[0];
+      expect(first2.phase).toBe("open");
+      expect(first2.prompt).not.toBe(open.prompt);
+      const slots = (f: CFrame) => Object.values(f.rows).map((x) => x.r).sort((a, b) => a[1] - b[1]);
+      const inner = (f: CFrame) => Object.values(f.rows).map((x) => [x.art, x.label, x.trail])
+        .sort((a, b) => a[0][1] - b[0][1]);
+      expect(slots(first2)).toEqual(slots(open));
+      expect(inner(first2)).toEqual(inner(open));
+      for (const f of round2) expect(f.step, `reveal leftovers at ${at(f)}`).toBeNull();
+      // Usable on the server's schedule (round 2 opens ~2.7s after the lock), and
+      // nothing moves on the way to usable.
+      const usable = round2.find((f) => f.lockInert === false);
+      expect(usable, "round 2 never became usable").toBeTruthy();
+      expect(usable!.t - lockAt).toBeLessThan(3400);
+      for (const f of round2) expect(slots(f)).toEqual(slots(first2));
+    });
+  });
+}
+
+test.describe("Order Forge OF4-CONTINUITY bot lifecycle, reduced motion @ 1280x720", () => {
+  test.use({ viewport: { width: 1280, height: 720 }, reducedMotion: "reduce" });
+  test("same nodes, no travel: the settled canonical order replaces the locked order in one frame", async ({ page }) => {
+    test.setTimeout(120_000);
+    const { lockAt, frames } = await playBotLifecycle(page, 2000);
+    const pre = frames.filter((f) => f.t < lockAt);
+    const open = pre[pre.length - 1];
+    const after = frames.filter((f) => f.t > lockAt && f.forge === open.forge);
+    const revealed = after.filter((f) => f.phase === "revealed");
+    expect(revealed.length).toBeGreaterThan(5);
+    const slotY = BOT_MINE.map((t) => open.rows[t].r[1]);
+    for (const f of after) {
+      expect(f.stage).toEqual(open.stage);
+      expect(f.vp).toEqual(open.vp);
+      expect(f.overlay).toBe(false);
+      for (const t of BOT_MINE) {
+        expect(f.rows[t].id).toBe(open.rows[t].id);
+        // Every card is always exactly in a slot, never between two.
+        expect(slotY).toContain(f.rows[t].r[1]);
+      }
+    }
+    for (const f of revealed) {
+      expect(f.step).toBe("assembled");
+      expect(botOrder(f)).toEqual(BOT_CANON);
+    }
+  });
+});

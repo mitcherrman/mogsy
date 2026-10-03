@@ -31,6 +31,11 @@
  * and every row, open, locked or revealed, has the same fixed height, so lock
  * and reveal change what is IN the rows and never where they are.
  *
+ * ONE ROW (OF4-CONTINUITY). Each card is one element from the open board to
+ * the settled reveal (`ForgeRow`), and its trailing slot keeps one width
+ * (`TRAIL_W`), so the art, the label and its line breaks never move unless the
+ * reveal is deliberately moving the whole card.
+ *
  * THE REVEAL (OF4) teaches the answer, in two steps:
  *   1. "Your order": the cards stay where the player locked them; each gets
  *      its value and the authority's right / wrong mark.
@@ -149,6 +154,16 @@ const ROW_H = "h-14 md:h-[60px] lg:h-[52px] lg:[@media(min-height:860px)]:h-[76p
 const LIST_GAP = "gap-2 md:gap-2.5 lg:gap-1.5 lg:[@media(min-height:860px)]:gap-2.5";
 const ART = "h-8 w-8 shrink-0 self-center rounded-md sm:h-11 sm:w-11 md:h-12 md:w-12 lg:h-10 lg:w-10 lg:[@media(min-height:860px)]:h-14 lg:[@media(min-height:860px)]:w-14";
 const STACK_W = "max-w-[34rem] md:max-w-[44rem] xl:max-w-[52rem]";
+/**
+ * OF4-CONTINUITY - the row's trailing slot has ONE width in every phase: the
+ * three 44px controls while open, nothing once locked, the value and the mark
+ * once revealed. Before, the slot came and went with its content, so the label
+ * gained ~160px at the lock and lost it again at the reveal; a two-line name
+ * on a phone rewrapped to one line and back within 150ms. Sized to the wider
+ * of the controls (136px / 144px) and a ten-character value ("3,450 gold")
+ * with its mark.
+ */
+const TRAIL_W = "w-[8.5rem] sm:w-[9.5rem] md:w-[11.5rem]";
 
 function Rail({ text, edge, aside }: { text: string; edge: "first" | "last"; aside?: React.ReactNode }) {
   return (
@@ -240,223 +255,196 @@ function useRowDrag(controls: DragControls, disabled: boolean,
   };
 }
 
-function CardRow({
-  entry, index, total, disabled, onMove, buttonRef, reduced, liftRef,
+type Mark = "right" | "wrong" | "neutral";
+type RevealStep = "mine" | "assembled";
+type RowMode = "open" | "locked" | "revealed";
+
+/** What a revealed row shows. Display only: every field is the server's, or an index into its orders. */
+interface RowReveal {
+  mark: Mark;
+  /** The authority's value string, or null. */
+  value: string | null;
+  /** Where the player put this card (1-based). */
+  yours: number | null;
+  /** Which way the card travelled to its canonical slot, if it did. */
+  moved: Dir | null;
+  step: RevealStep;
+  animate: boolean;
+  /** Stagger index for the value beat (the card's slot in the LOCKED order). */
+  order: number;
+}
+
+/**
+ * ONE ROW, OPEN TO REVEAL (OF4-CONTINUITY). The open card, the locked card and
+ * the revealed card are the SAME element: one `Reorder.Item` per token for the
+ * whole round. The lock and the reveal change what is inside the row (the
+ * controls give way to nothing, then to the value and the mark) and never
+ * remount the row, its art or its label. Before this, the lock swapped the
+ * `Reorder.Item` for a separate static row, replacing every row, art box and
+ * image node at the exact moment the player pressed Lock In.
+ *
+ * Drag exists only while open (`drag={false}` afterwards: framer's
+ * `Reorder.Item` spreads its props over its own `drag`). The row mounts as a
+ * layout element (framer only projects elements that MOUNTED with `layout`),
+ * so the reveal's reorder into the canonical order animates with the same
+ * node the player dragged.
+ */
+function ForgeRow({
+  entry, mode, index, total, onMove, buttonRef, reduced, liftRef, reveal,
 }: {
   entry: OrderEntry;
+  mode: RowMode;
   index: number;
   total: number;
-  disabled: boolean;
   /** `via` is the control that asked, so focus can stay on it after the move. */
   onMove: (dir: Dir, via: Dir | "grip") => void;
   buttonRef: (key: string, el: HTMLButtonElement | null) => void;
   reduced: boolean;
   liftRef: MutableRefObject<boolean>;
+  reveal: RowReveal | null;
 }) {
+  const open = mode === "open";
   const controls = useDragControls();
   const [lifted, setLifted] = useState(false);
-  const onPointerDown = useRowDrag(controls, disabled, liftRef, setLifted);
+  const onPointerDown = useRowDrag(controls, !open, liftRef, setLifted);
   const key = (d: Dir | "grip") => `${entry.token}:${d}`;
   const onGripKey = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === "ArrowUp") { e.preventDefault(); onMove("up", "grip"); }
     else if (e.key === "ArrowDown") { e.preventDefault(); onMove("down", "grip"); }
   };
   const where = `position ${index + 1} of ${total}`;
-  return (
-    <Reorder.Item as="li" value={entry.token} dragListener={false} dragControls={controls}
-      data-testid={`forge-card-${entry.token}`} data-position={index + 1}
-      data-lifted={lifted ? "true" : undefined}
-      onPointerDown={onPointerDown}
-      // A long press must not open the touch callout / context menu.
-      onContextMenu={(e) => { if (!disabled) e.preventDefault(); }}
-      layout={reduced ? undefined : "position"}
-      transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }}
-      whileDrag={reduced ? undefined : { scale: 1.02, zIndex: 20 }}
-      style={{ WebkitTouchCallout: "none" }}
-      className={`relative flex ${ROW_H} cursor-grab list-none select-none items-stretch gap-1.5 rounded-lg border px-1.5 py-1.5 shadow-sm active:cursor-grabbing sm:gap-2 sm:px-2 md:gap-4 md:px-3 lg:py-0.5 lg:[@media(min-height:860px)]:py-2 ${CARD_SURFACE} ${
-        lifted ? "z-20 shadow-lg ring-2 ring-[#c9a84c]" : ""}`}>
-      <SubjectArt media={entry.media} monogram={entry.label.slice(0, 1)} className={ART} />
-      {/* Wraps to two lines rather than truncating: on a 375px phone the three
-          44px controls leave room for about 80px of name, and an ordering
-          game whose card names are cut off is not playable. */}
-      <span className="flex min-w-0 flex-1 items-center text-sm font-bold leading-tight sm:text-base md:text-lg lg:text-base xl:text-lg">
-        <span className="line-clamp-2 break-words">{entry.label}</span>
-      </span>
-      <span className="flex shrink-0 items-center gap-0.5 md:gap-1.5">
-        <button type="button" data-testid={`forge-up-${entry.token}`} data-forge-nudge=""
-          ref={(el) => buttonRef(key("up"), el)}
-          aria-label={`Move ${entry.label} up (currently ${where})`}
-          disabled={disabled || index === 0} onClick={() => onMove("up", "up")}
-          className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-transparent hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:opacity-30">
-          <ArrowUp aria-hidden className="!size-5" />
-        </button>
-        <button type="button" data-testid={`forge-down-${entry.token}`} data-forge-nudge=""
-          ref={(el) => buttonRef(key("down"), el)}
-          aria-label={`Move ${entry.label} down (currently ${where})`}
-          disabled={disabled || index === total - 1} onClick={() => onMove("down", "down")}
-          className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-transparent hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:opacity-30">
-          <ArrowDown aria-hidden className="!size-5" />
-        </button>
-        {/* THE GRIP. Lifts at once on touch (it alone has touch-action:none)
-            and is the keyboard handle; the rest of the card lifts on a hold. */}
-        <button type="button" data-testid={`forge-grip-${entry.token}`} data-forge-grip=""
-          ref={(el) => buttonRef(key("grip"), el)}
-          aria-label={`Drag ${entry.label}, ${where}. Arrow keys also move it.`}
-          disabled={disabled}
-          onKeyDown={onGripKey}
-          style={{ touchAction: "none" }}
-          className="flex h-11 w-11 cursor-grab items-center justify-center rounded-md border border-[#7a6236]/40 bg-black/5 active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default">
-          <GripVertical aria-hidden className="!size-5" />
-        </button>
-      </span>
-    </Reorder.Item>
-  );
-}
-
-type Mark = "right" | "wrong" | "neutral";
-type RevealStep = "mine" | "assembled";
-
-/**
- * One locked or revealed card. Same height and padding as the open card, so
- * the lock and the reveal only change what is inside it.
- */
-function StaticRow({
-  entry, testId, mark, value, yours, moved, step, animate, layoutOn, order, slot,
-}: {
-  entry: OrderEntry;
-  testId: string;
-  mark: Mark;
-  /** The authority's value string, or null before the reveal. */
-  value: string | null;
-  /** Where the player put this card (1-based), revealed rows only. */
-  yours: number | null;
-  /** Which way the card travelled to its canonical slot, if it did. */
-  moved: Dir | null;
-  step: RevealStep | null;
-  animate: boolean;
-  /** Mount as a framer layout element (see the `layout` note). */
-  layoutOn: boolean;
-  /** Stagger index for the value beat (the card's slot in the LOCKED order). */
-  order: number;
-  slot: number;
-}) {
-  const revealed = value !== null || step !== null;
+  const testId = open ? `forge-card-${entry.token}`
+    : mode === "revealed" ? `forge-reveal-${entry.token}` : `forge-locked-${entry.token}`;
+  const mark: Mark = reveal?.mark ?? "neutral";
+  const animate = reveal?.animate === true;
   const ring = mark === "right" ? "ring-2 ring-emerald-600/80 border-emerald-700/40"
     : mark === "wrong" ? "ring-2 ring-red-600/75 border-red-700/40" : "";
   const fade = (delayMs: number) => (animate
     ? { initial: { opacity: 0, y: 4 }, animate: { opacity: 1, y: 0 },
       transition: { duration: REVEAL_TIMING.valueFadeMs / 1000, delay: delayMs / 1000 } }
     : { initial: false as const });
-  const valueDelay = order * REVEAL_TIMING.valueStaggerMs;
-  const showNote = step === "assembled" && yours !== null;
+  const valueDelay = (reveal?.order ?? 0) * REVEAL_TIMING.valueStaggerMs;
+  const yours = reveal?.yours ?? null;
+  const showNote = reveal?.step === "assembled" && yours !== null;
   return (
-    <motion.li data-testid={testId} data-position={slot} data-mark={mark}
-      data-yours={yours ?? undefined} data-moved={moved ?? undefined}
-      // The row must ALREADY be a layout element when the move is rendered
-      // (framer only projects elements that mounted with `layout`), so a
-      // locked row that may yet animate mounts with it; reduced motion and a
-      // settled reveal never get it, and simply re-render in place.
-      layout={layoutOn ? "position" : false}
-      transition={animate ? REVEAL_MOVE_TRANSITION : { duration: 0 }}
-      className={`relative flex ${ROW_H} list-none items-center gap-1.5 rounded-lg border px-1.5 py-1.5 shadow-sm sm:gap-2 sm:px-2 md:gap-4 md:px-3 lg:py-0.5 lg:[@media(min-height:860px)]:py-2 ${CARD_SURFACE} ${ring}`}>
+    <Reorder.Item as="li" value={entry.token} drag={open ? "y" : false}
+      dragListener={false} dragControls={controls}
+      data-testid={testId} data-position={index + 1}
+      data-lifted={lifted ? "true" : undefined}
+      {...(open ? {} : { "data-mark": mark })}
+      data-yours={yours ?? undefined} data-moved={reveal?.moved ?? undefined}
+      onPointerDown={onPointerDown}
+      // A long press must not open the touch callout / context menu.
+      onContextMenu={(e) => { if (open) e.preventDefault(); }}
+      // Reduced motion: never a layout element, so a reorder (a nudge, or the
+      // reveal's jump to the canonical order) is one frame with no projected
+      // in-between. Framer still measures a draggable row (its `drag` sets
+      // `alwaysMeasureLayout`), which is all `Reorder` needs.
+      layout={reduced ? false : "position"}
+      // The reveal's reorder is FIX1's bounded tween; a drag or a nudge keeps
+      // the spring; reduced motion never moves anything.
+      transition={reduced ? { duration: 0 } : animate ? REVEAL_MOVE_TRANSITION
+        : mode === "revealed" ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }}
+      whileDrag={reduced || !open ? undefined : { scale: 1.02, zIndex: 20 }}
+      style={{ WebkitTouchCallout: "none" }}
+      className={`relative flex ${ROW_H} list-none select-none items-stretch gap-1.5 rounded-lg border px-1.5 py-1.5 shadow-sm sm:gap-2 sm:px-2 md:gap-4 md:px-3 lg:py-0.5 lg:[@media(min-height:860px)]:py-2 ${CARD_SURFACE} ${
+        open ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${ring} ${
+        lifted ? "z-20 shadow-lg ring-2 ring-[#c9a84c]" : ""}`}>
       <SubjectArt media={entry.media} monogram={entry.label.slice(0, 1)} className={ART} />
+      {/* Wraps to two lines rather than truncating: on a 375px phone the three
+          44px controls leave room for about 80px of name, and an ordering
+          game whose card names are cut off is not playable. The label's width
+          never changes with the phase (see `TRAIL_W`), so it never rewraps. */}
       <span className="flex min-w-0 flex-1 items-center text-sm font-bold leading-tight sm:text-base md:text-lg lg:text-base xl:text-lg">
         <span className="line-clamp-2 break-words">{entry.label}</span>
       </span>
-      {revealed && (
-        <span className="flex shrink-0 items-center gap-1.5 md:gap-3">
-          {value !== null && (
-            <motion.span data-testid={`${testId}-value`} {...fade(valueDelay)}
-              className="rounded-md bg-[#2c2417]/[0.07] px-1.5 py-0.5 font-serif text-[15px] font-black tabular-nums leading-none text-[#2c2417] sm:text-base md:px-2 md:py-1 md:text-lg lg:text-base xl:text-lg dark:text-foreground">
-              {value}
-            </motion.span>
-          )}
-          <span className="flex w-9 shrink-0 flex-col items-center justify-center gap-0.5 md:w-12">
-            {mark !== "neutral" && (
-              <motion.span data-testid={`${testId}-mark`} {...fade(valueDelay + REVEAL_TIMING.markLagMs)}
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-white md:h-7 md:w-7 ${
-                  mark === "right" ? "bg-emerald-700" : "bg-red-700"}`}>
-                {mark === "right"
-                  ? <Check aria-hidden className="!size-4" strokeWidth={3} />
-                  : <X aria-hidden className="!size-4" strokeWidth={3} />}
-              </motion.span>
-            )}
-            {showNote && mark !== "right" && (
-              <motion.span data-testid={`${testId}-from`} aria-hidden
-                {...(animate ? { initial: { opacity: 0 }, animate: { opacity: 1 },
-                  transition: { duration: 0.15,
-                    delay: (REVEAL_TIMING.settleAtMs - REVEAL_TIMING.assembleAtMs) / 1000 } }
-                  : { initial: false as const })}
-                className="inline-flex items-center whitespace-nowrap text-[10px] font-bold uppercase leading-none tracking-[0.06em] text-red-800 md:text-[11px] dark:text-red-300">
-                {moved === "up" ? <ArrowUp aria-hidden className="!size-3" strokeWidth={3} />
-                  : moved === "down" ? <ArrowDown aria-hidden className="!size-3" strokeWidth={3} /> : null}
-                was {yours}
-              </motion.span>
-            )}
+      <span data-testid={`forge-trail-${entry.token}`}
+        className={`flex ${TRAIL_W} shrink-0 items-center justify-end`}>
+        {open && (
+          <span className="flex items-center gap-0.5 md:gap-1.5">
+            <button type="button" data-testid={`forge-up-${entry.token}`} data-forge-nudge=""
+              ref={(el) => buttonRef(key("up"), el)}
+              aria-label={`Move ${entry.label} up (currently ${where})`}
+              disabled={index === 0} onClick={() => onMove("up", "up")}
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-transparent hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:opacity-30">
+              <ArrowUp aria-hidden className="!size-5" />
+            </button>
+            <button type="button" data-testid={`forge-down-${entry.token}`} data-forge-nudge=""
+              ref={(el) => buttonRef(key("down"), el)}
+              aria-label={`Move ${entry.label} down (currently ${where})`}
+              disabled={index === total - 1} onClick={() => onMove("down", "down")}
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-transparent hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:opacity-30">
+              <ArrowDown aria-hidden className="!size-5" />
+            </button>
+            {/* THE GRIP. Lifts at once on touch (it alone has touch-action:none)
+                and is the keyboard handle; the rest of the card lifts on a hold. */}
+            <button type="button" data-testid={`forge-grip-${entry.token}`} data-forge-grip=""
+              ref={(el) => buttonRef(key("grip"), el)}
+              aria-label={`Drag ${entry.label}, ${where}. Arrow keys also move it.`}
+              onKeyDown={onGripKey}
+              style={{ touchAction: "none" }}
+              className="flex h-11 w-11 cursor-grab items-center justify-center rounded-md border border-[#7a6236]/40 bg-black/5 active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default">
+              <GripVertical aria-hidden className="!size-5" />
+            </button>
           </span>
-        </span>
-      )}
+        )}
+        {reveal && (
+          <span className="flex items-center gap-1 md:gap-2">
+            {reveal.value !== null && (
+              <motion.span data-testid={`${testId}-value`} {...fade(valueDelay)}
+                className="whitespace-nowrap rounded-md bg-[#2c2417]/[0.07] px-1 py-0.5 font-serif text-[14px] font-black tabular-nums leading-none text-[#2c2417] sm:text-base md:px-1.5 md:py-1 md:text-lg lg:text-base xl:text-lg dark:text-foreground">
+                {reveal.value}
+              </motion.span>
+            )}
+            <span className="flex w-9 shrink-0 flex-col items-center justify-center gap-0.5 md:w-12">
+              {mark !== "neutral" && (
+                <motion.span data-testid={`${testId}-mark`} {...fade(valueDelay + REVEAL_TIMING.markLagMs)}
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-white md:h-7 md:w-7 ${
+                    mark === "right" ? "bg-emerald-700" : "bg-red-700"}`}>
+                  {mark === "right"
+                    ? <Check aria-hidden className="!size-4" strokeWidth={3} />
+                    : <X aria-hidden className="!size-4" strokeWidth={3} />}
+                </motion.span>
+              )}
+              {showNote && mark !== "right" && (
+                <motion.span data-testid={`${testId}-from`} aria-hidden
+                  {...(animate ? { initial: { opacity: 0 }, animate: { opacity: 1 },
+                    transition: { duration: 0.15,
+                      delay: (REVEAL_TIMING.settleAtMs - REVEAL_TIMING.assembleAtMs) / 1000 } }
+                    : { initial: false as const })}
+                  className="inline-flex items-center whitespace-nowrap text-[10px] font-bold uppercase leading-none tracking-[0.06em] text-red-800 md:text-[11px] dark:text-red-300">
+                  {reveal.moved === "up" ? <ArrowUp aria-hidden className="!size-3" strokeWidth={3} />
+                    : reveal.moved === "down" ? <ArrowDown aria-hidden className="!size-3" strokeWidth={3} /> : null}
+                  was {yours}
+                </motion.span>
+              )}
+            </span>
+          </span>
+        )}
+      </span>
       {yours !== null && (
         <span className="sr-only">
-          {value !== null ? `, ${value}` : ""}
+          {reveal?.value != null ? `, ${reveal.value}` : ""}
           {mark === "right" ? ". You placed it here: right."
             : mark === "wrong" ? `. You placed it at ${yours}: wrong.` : `. You placed it at ${yours}.`}
         </span>
       )}
-    </motion.li>
+    </Reorder.Item>
   );
 }
 
-/**
- * The locked list and the reveal are ONE list: the same `ol`, the same keyed
- * rows. A lock that becomes a reveal keeps every DOM node; values and marks
- * appear inside them, then the rows travel into the canonical order.
- */
-function StaticList({
-  byToken, locked, reveal, step, animate, reduced, promptId,
-}: {
-  byToken: Map<string, OrderEntry>;
-  locked: readonly string[];
-  reveal: OrderForgeReveal | null;
-  step: RevealStep | null;
-  animate: boolean;
-  reduced: boolean;
-  promptId: string;
-}) {
-  const mine = reveal ? reveal.order.filter((t) => byToken.has(t)) : locked;
-  const shown = reveal && step === "assembled"
-    ? reveal.canonicalOrder.filter((t) => byToken.has(t)) : mine;
-  const total = shown.length;
-  return (
-    <div className="flex gap-1.5 sm:gap-2 md:gap-3">
-      <SlotRail count={total} prefix={reveal ? "forge-reveal" : "forge-locked"} />
-      <ol aria-labelledby={reveal ? `${promptId}-step` : promptId}
-        data-testid={reveal ? "forge-reveal-list" : "forge-list-locked"}
-        className={`flex min-w-0 flex-1 flex-col p-0 ${LIST_GAP}`}>
-        {shown.map((token, i) => {
-          const entry = byToken.get(token)!;
-          if (!reveal) {
-            return (
-              <StaticRow key={token} entry={entry} testId={`forge-locked-${token}`}
-                mark="neutral" value={null} yours={null} moved={null} step={null}
-                animate={false} layoutOn={!reduced} order={i} slot={i + 1} />
-            );
-          }
-          const p = reveal.order.indexOf(token);
-          const c = reveal.canonicalOrder.indexOf(token);
-          const stated = p >= 0 ? reveal.positionCorrect[p] : undefined;
-          const mark: Mark = stated === true ? "right" : stated === false ? "wrong" : "neutral";
-          return (
-            <StaticRow key={token} entry={entry} testId={`forge-reveal-${token}`}
-              mark={mark} value={reveal.valueDisplay[token] ?? null}
-              yours={p >= 0 ? p + 1 : null}
-              moved={p < 0 || c < 0 || p === c ? null : c < p ? "up" : "down"}
-              step={step} animate={animate} layoutOn={animate} order={Math.max(p, 0)} slot={i + 1} />
-          );
-        })}
-      </ol>
-    </div>
-  );
+/** A revealed row's display fields, read off the server's reveal. Never graded here. */
+function rowReveal(reveal: OrderForgeReveal, token: string, step: RevealStep, animate: boolean): RowReveal {
+  const p = reveal.order.indexOf(token);
+  const c = reveal.canonicalOrder.indexOf(token);
+  const stated = p >= 0 ? reveal.positionCorrect[p] : undefined;
+  return {
+    mark: stated === true ? "right" : stated === false ? "wrong" : "neutral",
+    value: reveal.valueDisplay[token] ?? null,
+    yours: p >= 0 ? p + 1 : null,
+    moved: p < 0 || c < 0 || p === c ? null : c < p ? "up" : "down",
+    step, animate, order: Math.max(p, 0),
+  };
 }
 
 /**
@@ -495,6 +483,11 @@ export function OrderForge({
     .filter((t) => byToken.has(t) && !seen.has(t) && !!seen.add(t));
   const total = order.length;
   const { step, animate } = useRevealStep(revealed, reduced);
+  // What the list shows: the player's order until the reveal, then the order
+  // the server says they locked ("Your order"), then the canonical order.
+  const mine = revealed ? reveal!.order.filter((t) => byToken.has(t)) : order;
+  const shown = revealed && step === "assembled"
+    ? reveal!.canonicalOrder.filter((t) => byToken.has(t)) : mine;
 
   const buttons = useRef<Map<string, HTMLButtonElement>>(new Map());
   const focusNext = useRef<{ token: string; dir: Dir | "grip" } | null>(null);
@@ -561,7 +554,10 @@ export function OrderForge({
       <header className="flex flex-col items-center gap-1.5 text-center">
         <MetricChip>{content.metricLabel}</MetricChip>
         <h2 id={promptId} ref={promptRef} tabIndex={-1} data-testid="forge-prompt"
-          className="max-w-[40rem] md:max-w-[52rem] outline-none font-serif text-[1.05rem] font-bold leading-snug text-[var(--ranked-ink,#2c2417)] sm:text-xl lg:text-lg xl:text-xl">
+          // Two lines are reserved below `lg` (the stage there is content
+          // height), so the next Order Forge round's prompt, one line or two,
+          // does not resize the module and shift the page at the swap.
+          className="flex min-h-[2.75em] max-w-[40rem] items-center justify-center md:max-w-[52rem] outline-none font-serif text-[1.05rem] font-bold leading-snug text-[var(--ranked-ink,#2c2417)] sm:text-xl lg:min-h-0 lg:text-lg xl:text-xl">
           {content.prompt}
         </h2>
         <p id={hintId} data-testid="forge-hint"
@@ -582,24 +578,27 @@ export function OrderForge({
               {step === "assembled" ? "Correct order" : "Your order"}
             </span>
           ) : undefined} />
-        {open ? (
-          <div className="flex gap-1.5 sm:gap-2 md:gap-3">
-            <SlotRail count={total} prefix="forge" />
-            <Reorder.Group as="ol" axis="y" values={order} ref={listRef}
-              onReorder={(next: string[]) => onChange(next)}
-              aria-labelledby={promptId} aria-describedby={hintId}
-              data-testid="forge-list" className={`flex min-w-0 flex-1 flex-col p-0 ${LIST_GAP}`}>
-              {order.map((token, i) => (
-                <CardRow key={token} entry={byToken.get(token)!} index={i} total={total}
-                  disabled={!open} reduced={reduced} buttonRef={setButton} liftRef={liftRef}
-                  onMove={(dir, via) => move(token, dir, via)} />
-              ))}
-            </Reorder.Group>
-          </div>
-        ) : (
-          <StaticList byToken={byToken} locked={order} reveal={revealed ? reveal : null}
-            step={step} animate={animate} reduced={reduced} promptId={promptId} />
-        )}
+        {/* ONE list for the whole round (OF4-CONTINUITY): the same `ol`, slot
+            rail and keyed rows from the open board through the lock to the
+            settled reveal. Only the testids, the drag and the contents change. */}
+        <div className="flex gap-1.5 sm:gap-2 md:gap-3">
+          <SlotRail count={shown.length}
+            prefix={open ? "forge" : revealed ? "forge-reveal" : "forge-locked"} />
+          <Reorder.Group as="ol" axis="y" values={shown} ref={listRef}
+            onReorder={(next: string[]) => { if (open) onChange(next); }}
+            aria-labelledby={revealed ? `${promptId}-step` : promptId}
+            aria-describedby={open ? hintId : undefined}
+            data-testid={open ? "forge-list" : revealed ? "forge-reveal-list" : "forge-list-locked"}
+            className={`flex min-w-0 flex-1 flex-col p-0 ${LIST_GAP}`}>
+            {shown.map((token, i) => (
+              <ForgeRow key={token} entry={byToken.get(token)!} index={i} total={shown.length}
+                mode={open ? "open" : revealed ? "revealed" : "locked"}
+                reduced={reduced} buttonRef={setButton} liftRef={liftRef}
+                onMove={(dir, via) => move(token, dir, via)}
+                reveal={revealed ? rowReveal(reveal!, token, step!, animate) : null} />
+            ))}
+          </Reorder.Group>
+        </div>
         <Rail edge="last" text={content.directionLabels.last} />
       </div>
 
@@ -607,14 +606,16 @@ export function OrderForge({
           module's height (and the centred stage around it) never changes.
           The verdict sits on the folio, which is parchment in both themes. */}
       <footer data-testid="forge-footer"
-        className="flex min-h-[4.25rem] flex-col items-center justify-start gap-2 lg:min-h-[48px] lg:[@media(min-height:860px)]:min-h-[56px]">
+        className="flex min-h-[4.5rem] flex-col items-center justify-start gap-2 lg:min-h-[48px] lg:[@media(min-height:860px)]:min-h-[56px]">
         {open && (
           <>
             <Button type="button" data-testid="forge-lock" onClick={lock}
               className={`min-h-[48px] w-full ${STACK_W} border border-[#d5b66f]/80 bg-[#2a2110] uppercase tracking-[0.2em] text-[#f6e6bb] shadow-md hover:bg-[#3a2d14] md:text-base lg:[@media(min-height:860px)]:min-h-[56px]`}>
               <Lock aria-hidden /> Lock in this order
             </Button>
-            <p className="text-[11px] text-[var(--ranked-ink-muted,#5a4a2e)] lg:sr-only">
+            {/* `leading-4`: 48 + 8 + 16 = the footer's 4.5rem exactly, so the
+                lock does not shrink it (it used to, by 4.5px, on a phone). */}
+            <p className="text-[11px] leading-4 text-[var(--ranked-ink-muted,#5a4a2e)] lg:sr-only">
               Final once locked.
             </p>
           </>

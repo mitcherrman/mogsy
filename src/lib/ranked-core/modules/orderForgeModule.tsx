@@ -194,6 +194,11 @@ export const orderForgeModule: ModuleRenderer = {
   // The module owns its input and its single Lock In, so the shell must not
   // also render the quiz answer flow or ability tray.
   ownsSubmission: true,
+  // OF4-CONTINUITY: once the viewer's reveal is on the board, the board is
+  // the result (values, marks, canonical order, verdict); the arena's generic
+  // stamp would only repeat it, late and on its own clock.
+  ownsResultReveal: (state) => !!state?.ownChallengeReveals.some(
+    (r) => r.challengeIndex === CHALLENGE_INDEX && !!r.orderForge),
   Viewport: OrderForgeViewport,
   projectQuestion: (_pub: PublicRoundView): QuestionView | null => null,
   summaryLabel: (pub) => {

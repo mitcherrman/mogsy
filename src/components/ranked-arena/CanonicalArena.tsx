@@ -737,7 +737,10 @@ export function CanonicalArena({
               {/* RFX1 — the result, on the card. Absolute, pointer-events
                   none, inside this overflow-hidden panel: it adds no height
                   and moves nothing (see QuestionResultOverlay). */}
-              <QuestionResultOverlay feedback={view.resultFeedback ?? null} />
+              {/* OF4-CONTINUITY: not while the module's own reveal is the
+                  result (see `ModuleRenderer.ownsResultReveal`). */}
+              {surface.renderer?.ownsResultReveal?.(surface.segmentState ?? null) === true ? null
+                : <QuestionResultOverlay feedback={view.resultFeedback ?? null} />}
             </section>
           )}
           {!surface.renderer && (

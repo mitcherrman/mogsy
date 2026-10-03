@@ -183,3 +183,88 @@ Data flow after the fix: lock POST accepted -> ack `challengeReveal` -> parsed b
 - The real production flow has not been replayed on a device after this fix; it needs a Lovable publish and an owner playtest (wrong lock against the bot, both segments).
 - A refresh during the reveal hold loses the inline reveal (the server no longer projects it); the next round follows as before.
 - Cross-round / module / match continuity, the result-stamp overlap, RMOB2, real-device certification and the `playwright.arena.config.ts` webServer command on Windows are unchanged.
+
+## OF4-CONTINUITY: one physical scene from the open board to the next round
+Branch `of4/continuity-lock`, from `origin/main` `dab1eeb7` (OF4 + FIX1 + FIX2, live). Frontend only; no backend, grading, pacing, timing or content change. Not pushed, not published.
+
+### Owner symptom
+Order Forge is correct (including the final canonical reorder), but the presentation lacks continuity: during the moments between phases objects move or glitch slightly, some assets do not feel locked down, and there are brief bits of unwanted movement over a few seconds. Wanted: the scene stays physically still and only the teaching animation moves.
+
+### How it was measured
+- `?q=orderforge&forge=bot` (new, `src/pages/dev/ranked-shell-probe/orderForgeBotReplay.ts`) replays the OF4-FIX2 capture (the real backend bodies for a wrong lock against the inline bot) in a real browser: the pre-lock polls; the lock POST, which settles segment 1 and carries the reveal inline; then round 2, another Order Forge segment opening ~2.7s after the lock. Timestamps are shifted onto the browser clock, card art points at bundled images, round 1 uses champion names of realistic length, and each request gets 120ms latency (`&lat=`). The player arranges the captured submitted order before locking.
+- An in-page `requestAnimationFrame` sampler recorded every frame from just before Lock In to round 2 being usable (7s): the rects of `ranked-question`, `ranked-question-body`, `order-forge-viewport`, the backdrop and its image, prompt, footer, rail, list, and per row the row, art, label, line-clamped text (line count) and trailing region; the result overlay and stamp; node identity of rows, art and images (WeakMap ids); `data-phase`, the reveal step, the hold and the presentation phase; `scrollY`. At 1600x900, 1280x720 and 360x800, before and after the fix.
+
+### Findings against the hypotheses
+| | Hypothesis | Verdict | Measured |
+|---|---|---|---|
+| A | Open → locked swaps row implementations | **Confirmed** | All 5 rows, 5 art boxes and 5 `<img>` nodes were replaced in the lock frame (new ids at +11ms). On desktop the replacement boxes landed on the same pixels; images were `complete` in every sampled frame, so no blank frame was observed, but every image was a new node. |
+| B | Trailing geometry is not stable, so labels re-flow | **Confirmed** | Label box width: 1600x900 365.8 → 525.8 (lock) → 349.5 (reveal); 1280x720 281.1 → 441.1 → 264.8; 360x800 66 → 112 → 78. On the phone this rewraps: "Nunu & Willump" went 2 lines → 1 line at the lock (the text jumped 14px) → 2 lines at the reveal, 140ms later. The label box also changed height (58 → 28 desktop), harmless only because the text was vertically centred. |
+| C | FIX2 created a second reveal clock | **Confirmed** | The board's reveal began ~150ms after the lock (the lock POST's inline reveal); the arena hold and its result overlay began at 300-430ms (the next poll + the resolved round), 150-280ms later. |
+| D | Overlapping independent animations | **Confirmed** | In all three baseline runs the overlay mounted within one frame of the cards starting their canonical move (step "assembled" at 400-422ms, overlay at 406-422ms): the stamp scale (380ms), edge (420ms), wash (900ms) and opponent badge (+450ms) ran over the 240ms move. At 1600x900 the move also contained a 63ms frame. |
+| E | Two verdicts | **Confirmed** | The board's "Not quite" (+150ms, footer) and the arena's "0 / 1 CORRECT" stamp (+300-430ms, top of the card, over the metric chip). |
+| F | Segment handoff is a hard identity boundary | **Confirmed, but not the glitch on desktop** | `OrderForge` remounts at the swap (new primitive, rows, images); the viewport, stage and scene image do not. Desktop: zero movement of stage / module / scene across the swap, and no empty or loading frame (the content changes in one frame). The phone glitch at the swap is a different mechanism (below). |
+| G | Tests did not cover it | **Confirmed** | Nothing sampled geometry around the lock or the swap, or node identity across the lock. |
+| H | Not an image-loading problem | **Confirmed** | All art and the scene were loaded before the lock; no image was ever incomplete in a sampled frame. The remount (A) is the issue, not the preload. |
+
+Not in the hypotheses, found by measurement (phone only):
+- **The lock shrank the module on a phone.** The open footer was 72.5px (48px button + 8px gap + a 16.5px "Final once locked." line) against its 68px (`4.25rem`) floor, so the lock shrank the module by 4.5px. With the page scrolled to its end, the browser clamped the scroll by 5px: the whole stage, the module and the scene moved 5px down at +12ms, and the scene re-cropped (590.7 → 586.2px tall).
+- **The next round's prompt resized the module on a phone.** Round 1's prompt is 2 lines at 360px, round 2's is 1 line. At the swap the module lost 23px, the scroll clamped by 12px, and the stage, module and scene jumped 12px and re-cropped (586 → 567px).
+
+### What was already stable (unchanged)
+Desktop stage, question body, module box and scene image through the whole sequence, including the swap; the scene `<img>` is one node for the module's life and through same-module swaps; locked → reveal row identity (OF4); FIX1's timing (values ~150ms, move 240 → 480ms after the reveal, dwell); FIX2's inline-reveal path; no loading or empty frame at the swap.
+
+### Implementation
+| File | Change |
+|---|---|
+| `src/components/interaction-grammar/OrderForge.tsx` | `CardRow` + `StaticRow` + `StaticList` → one `ForgeRow` per token inside one `Reorder.Group` for open, locked and revealed. The row, its `SubjectArt` (and image), label and trailing slot are the same nodes for the whole round; only the testids (`forge-card-*` / `forge-locked-*` / `forge-reveal-*`, kept for every existing test), the drag (`drag={false}` once not open, which framer's `Reorder.Item` spreads over its own `drag`) and the slot's contents change. The trailing slot has one width in every phase, `TRAIL_W = w-[8.5rem] sm:w-[9.5rem] md:w-[11.5rem]` (the controls are 136/144px; the value and mark fit with ≥13px to spare for a ten-character value such as "3,450 gold" at every tested width), so the label's width and line breaks never change. Transitions: the drag spring while open, FIX1's tween for the reveal move, none otherwise. Reduced motion: never a layout element (`layout={false}`), so the jump to the canonical order is one frame with no projected in-between (Reorder still measures a draggable row). Footer floor `4.25rem → 4.5rem` with a 16px line under the Lock In button, so the lock no longer shrinks it. The prompt reserves two lines below `lg` (`min-h-[2.75em] lg:min-h-0`, centred), so a one-line and a two-line round have one module height. |
+| `src/lib/ranked-core/modules/types.ts` | `ModuleRenderer.ownsResultReveal?(segmentState)`: true while the module's own result reveal is on the card. Omitted = never (every other module). |
+| `src/lib/ranked-core/modules/orderForgeModule.tsx` | `ownsResultReveal`: true when the (surface) segment state carries the viewer's Order Forge reveal for challenge 0, i.e. exactly when the board is showing values, marks, the move and its verdict. |
+| `src/components/ranked-arena/CanonicalArena.tsx` | Skips `QuestionResultOverlay` when the surface's renderer owns the result for the surface's segment state. The stage dimming rule is untouched (the result feedback still exists, so the Order Forge stage is still not dimmed). The top-strip record, header and sounds are untouched. If the reveal is not on the board (a refresh during the hold loses the inline reveal), the generic overlay still shows. |
+| `src/pages/dev/ranked-shell-probe/orderForgeBotReplay.ts` (new) + `RankedShellProbe.tsx` | The `?forge=bot` replay above. |
+
+The segment boundary keeps its key: `OrderForge` still remounts per segment. Both rounds use entry ids `e0..e4`, so a persistent primitive would have let Motion fly round 1's cards into round 2's slots. The outer scene is what must persist, and it now does at every size.
+
+### Geometry invariants (now asserted every frame)
+1. From the last open frame to round 2 being usable: `ranked-question`, `ranked-question-body`, `order-forge-viewport`, the scene image's box, the footer and the end rail are pixel-identical; the scene `<img>` is one node; `scrollY` does not change; no frame is empty or "Loading".
+2. Open → locked → "Your order": every row, art box, image, label, text block and trailing slot is the same node at the same pixels.
+3. "Correct order": only the cards whose canonical slot differs from the locked slot move, only vertically; their label and trailing boxes keep their x and width, and their text keeps its size (no rewrap). The wrong card travels (in-between positions observed).
+4. No generic result overlay while the board shows its own reveal, although the arena hold overlaps it.
+5. Round 2's rows occupy exactly round 1's row, art, label and trailing boxes, and become usable on the server's schedule (< 3.4s after the lock for a round opening 2.7s after it).
+6. Reduced motion: same nodes; every card is always exactly in a slot; the revealed frames are already canonical.
+
+### Before / after (rAF-sampled, `?forge=bot`, lat 120ms)
+| | Before (`dab1eeb7`) | After |
+|---|---|---|
+| Row / art / image nodes replaced at the lock | 15 | 0 |
+| Label box width, open → lock → reveal | 1600: 366 → 526 → 350; 1280: 281 → 441 → 265; 360: 66 → 112 → 78 (2 → 1 → 2 lines) | 1600: 326; 1280: 241; 360: 66 (2 lines) throughout |
+| Stage / module / scene at the lock, 360x800 | +5px down, scene re-cropped (590.7 → 586.2), scroll −5 | 0 |
+| Stage / module / scene at the swap, 360x800 | +12px down, scene re-cropped (586 → 567), scroll −12 | 0 |
+| Stage / module / scene, 1600x900 and 1280x720 | 0 | 0 |
+| Generic overlay over the board's reveal | mounted at +300-430ms, often in the move's first frame | none |
+| Longest frame during the canonical move | 63ms (1600), 22, 26 | 37ms (1600), 24, 21 |
+
+### Tests
+- `OrderForge.test.tsx` (+4, 42 total): open → locked → revealed on one mount keeps the row, art, label, trailing slot, list and slot rail nodes; the trailing slot keeps `TRAIL_W` with controls / nothing / value + mark; the same row stops dragging once locked; the prompt reserves two lines below `lg`. The footer pin is now `min-h-[4.5rem]`.
+- `orderForgeModule.test.tsx` (+2): `ownsResultReveal` only with the viewer's Order Forge reveal; no other registered module declares it.
+- `QuizRankedMatch.orderForgeContinuity.test.tsx` (new, 3): the real host on the FIX2 capture (with a live `server_time`, since the capture's frozen one re-anchors the client clock on every poll and round 2 could never open): node identity from the open board through the whole teaching beat; no generic overlay while the board reveals, though the hold overlaps it; the swap to round 2 keeps the viewport, stage and scene image, never shows a loading frame, remounts only the primitive, and opens on time.
+- `e2e/ranked-arena-fit.spec.ts` › "OF4-CONTINUITY" (new, 4): the invariants above, every frame, on `?forge=bot` at 1600x900, 1280x720 and 360x800, plus reduced motion at 1280x720.
+- Negative controls: with the four implementation files reverted to `dab1eeb7`, the new host test fails 2/3 (row remounted at the lock; overlay over the reveal) and all 4 browser tests fail (rows remounted at the lock; 360x800 stage moved at +12ms). The third host test passes on both: jsdom cannot see the phone's geometry, which the browser tests cover.
+
+### Results
+| Check | Result |
+|---|---|
+| Focused Vitest (`OrderForge`, `orderForgeModule`, FIX1 `orderForgeReveal`, FIX2 `orderForgeBotLock`, `orderForgeLockReveal`, new continuity host test, probe) | all pass (`OrderForge` 42, module 20, continuity 3) |
+| Wider Vitest (`quiz-ranked`, `ranked-core`, `ranked-arena`, `interaction-grammar`, `ranked-public`, probe; `--maxWorkers=4`) | 2500/2510. The 9 source-scan / CRLF failures (`AnswerGrid.elimination` 2, `DailyOnCanonicalArena.boundary` 2, `QuestionStageGeometry` 3, `masterySliceModule.visualLanguage` 2) fail identically with the implementation reverted to `dab1eeb7`; `QuizRankedMatch.rfx1b3` 1 passes in isolation (load-flaky, as recorded before). Plus the known 6 `onTaskUpdate` worker timeouts. |
+| Playwright `-g "Order Forge\|OF4"` | 44/44 (40 existing + 4 new) |
+| Full arena Playwright (`playwright.arena.config.ts`, run in parts after a session restart stopped Vite) | all 450 run. Failures: 8 page-load timeouts (60s, plain quiz / Meta Reflex / media rounds) that all pass on rerun, and `RMOB2 compact phone HUD is 40px tall` (expected 40, got 44), the pre-existing failure recorded above on clean main. |
+| `tsc -p tsconfig.app.json` | 6 errors, the same baseline set, none in touched files |
+| eslint on touched files | 0 errors; 3 pre-existing fast-refresh warnings |
+| `npm run build` | success (`public/sitemap.xml` rewrite reverted) |
+
+### Known limits
+- The arena's own re-render when the hold starts can still cost one ~35ms frame during the 240ms move (it was 63ms with the overlay mounting in it). The move is a Motion (main-thread) tween; making it compositor-driven would be a separate change.
+- The segment swap is still a hard one-frame content cut inside a still scene (no crossfade, by design: no second transition system, and input readiness is not delayed). A module → different-module swap replaces the viewport, as before; not changed.
+- On a 360px phone the label is 66px wide in every phase (it was 66px while open before too). A single long word ("Kindlegem") breaks inside it; it now does so consistently instead of re-flowing at the lock and the reveal.
+- Reserving two prompt lines below `lg` adds one line of height to rounds with a one-line prompt on phones and tablets.
+- A value longer than ~10 characters would overflow the trailing slot to the left; current `value_display` formats (`format_card_value`: "3,450 gold", "2,654 HP", "550 range") fit.
+- The refresh-during-hold, real-device (iOS / Android), RMOB2 and Windows `webServer` limits from the sections above are unchanged.

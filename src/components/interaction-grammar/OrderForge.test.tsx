@@ -472,9 +472,92 @@ describe("OrderForge — OF4 one footprint", () => {
     for (const phase of ["open", "locked", "revealed"] as const) {
       const { unmount } = render(<Harness phase={phase} reveal={phase === "revealed" ? REVEAL : null} />);
       expect(screen.getByTestId("forge-hint").textContent).not.toBe("");
-      expect(screen.getByTestId("forge-footer").className).toContain("min-h-[4.25rem]");
+      // OF4-CONTINUITY: 4.5rem holds the open footer (48 + 8 + a 16px line), so
+      // the lock no longer shrinks it.
+      expect(screen.getByTestId("forge-footer").className).toContain("min-h-[4.5rem]");
       unmount();
     }
+  });
+});
+
+/** Open -> locked -> revealed on ONE mount, the way a match plays it. */
+function Lifecycle() {
+  const [phase, setPhase] = useState<InteractionPhase>("open");
+  const [value, setValue] = useState<string[]>(REVEAL.order);
+  return (
+    <>
+      <button type="button" data-testid="to-locked" onClick={() => setPhase("locked")}>lock</button>
+      <button type="button" data-testid="to-revealed" onClick={() => setPhase("revealed")}>reveal</button>
+      <OrderForge content={CONTENT} phase={phase} value={value} onChange={setValue}
+        onLock={() => {}} reveal={phase === "revealed" ? REVEAL : null} />
+    </>
+  );
+}
+
+describe("OrderForge — OF4-CONTINUITY one row", () => {
+  const TRAIL_W = "w-[8.5rem] sm:w-[9.5rem] md:w-[11.5rem]";
+  const rowFor = (t: string) => screen.getByTestId(new RegExp(`^forge-(card|locked|reveal)-${t}$`));
+  const parts = (t: string) => {
+    const row = rowFor(t);
+    const [art, label, trail] = [...row.children] as HTMLElement[];
+    return { row, art, label, trail, list: row.parentElement!, rail: row.parentElement!.previousElementSibling! };
+  };
+
+  it("open, locked and revealed are the SAME row, art, label and trailing slot (no remount at the lock)", () => {
+    vi.useFakeTimers();
+    render(<Lifecycle />);
+    const open = Object.fromEntries(REVEAL.order.map((t) => [t, parts(t)]));
+    fireEvent.click(screen.getByTestId("to-locked"));
+    for (const t of REVEAL.order) {
+      const now = parts(t);
+      expect(now.row).toHaveAttribute("data-testid", `forge-locked-${t}`);
+      for (const k of ["row", "art", "label", "trail", "list", "rail"] as const) expect(now[k]).toBe(open[t][k]);
+    }
+    fireEvent.click(screen.getByTestId("to-revealed"));
+    act(() => { vi.advanceTimersByTime(REVEAL_TIMING.settleAtMs + 50); });
+    expect(tokensOf()).toEqual(REVEAL.canonicalOrder);
+    for (const t of REVEAL.order) {
+      const now = parts(t);
+      expect(now.row).toHaveAttribute("data-testid", `forge-reveal-${t}`);
+      for (const k of ["row", "art", "label", "trail", "list", "rail"] as const) expect(now[k]).toBe(open[t][k]);
+    }
+  });
+
+  it("the trailing slot keeps one width in every phase: controls, then nothing, then value and mark", () => {
+    vi.useFakeTimers();
+    render(<Lifecycle />);
+    const trail = () => screen.getByTestId("forge-trail-e3");
+    expect(trail().className).toContain(TRAIL_W);
+    expect(within(trail()).getByTestId("forge-grip-e3")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("to-locked"));
+    expect(trail().className).toContain(TRAIL_W);
+    expect(trail().children).toHaveLength(0);
+    fireEvent.click(screen.getByTestId("to-revealed"));
+    expect(trail().className).toContain(TRAIL_W);
+    expect(within(trail()).getByTestId("forge-reveal-e3-value")).toHaveTextContent("2700 g");
+    expect(within(trail()).getByTestId("forge-reveal-e3-mark")).toBeInTheDocument();
+    // The label is the only flexible box, and nothing else in the row grows.
+    expect(parts("e3").label.className).toContain("flex-1");
+    expect(trail().className).toContain("shrink-0");
+  });
+
+  it("the same row stops dragging once locked", () => {
+    render(<Lifecycle />);
+    const row = rowFor("e0");
+    press(row, "mouse");
+    expect(dragStarts).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("to-locked"));
+    expect(rowFor("e0")).toBe(row);
+    press(row, "mouse");
+    expect(dragStarts).toHaveLength(1);
+    expect(screen.queryByTestId("forge-up-e0")).toBeNull();
+  });
+
+  it("reserves the prompt's two lines below lg, so a one- and a two-line round have one height", () => {
+    render(<Harness />);
+    const cls = screen.getByTestId("forge-prompt").className;
+    expect(cls).toContain("min-h-[2.75em]");
+    expect(cls).toContain("lg:min-h-0");
   });
 });
 

@@ -158,6 +158,25 @@ describe("order_forge module renderer — play", () => {
   });
 });
 
+describe("order_forge module renderer — OF4-CONTINUITY result ownership", () => {
+  it("owns the result only while the viewer's Order Forge reveal is on the board", () => {
+    const owns = orderForgeModule.ownsResultReveal!;
+    expect(owns(null)).toBe(false);
+    expect(owns(parse(orderForgeState()).segmentState)).toBe(false);
+    expect(owns(parse(orderForgeState({}, true)).segmentState)).toBe(false);
+    expect(owns(parse(orderForgeState({
+      own_challenge_reveals: [orderForgeChallengeReveal()] }, true)).segmentState)).toBe(true);
+  });
+
+  it("no other module declares it, so every other result overlay is unchanged", async () => {
+    const registry = await import("./registry");
+    const others = [registry.quizModule, registry.itemCostDuelModule, registry.metaReflexModule,
+      registry.masterySliceModule];
+    expect(others.length).toBeGreaterThan(0);
+    for (const r of others) expect(r.ownsResultReveal).toBeUndefined();
+  });
+});
+
 describe("order_forge module renderer — summary", () => {
   it("summarises before and after the lock", () => {
     expect(orderForgeModule.summaryLabel(parse(orderForgeState()), null)).toBe("Order the cards");
