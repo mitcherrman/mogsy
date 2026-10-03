@@ -483,7 +483,7 @@ describe("OrderForge — OF4 one footprint", () => {
 /** Open -> locked -> revealed on ONE mount, the way a match plays it. */
 function Lifecycle() {
   const [phase, setPhase] = useState<InteractionPhase>("open");
-  const [value, setValue] = useState<string[]>(REVEAL.order);
+  const [value, setValue] = useState<string[]>([...REVEAL.order]);
   return (
     <>
       <button type="button" data-testid="to-locked" onClick={() => setPhase("locked")}>lock</button>

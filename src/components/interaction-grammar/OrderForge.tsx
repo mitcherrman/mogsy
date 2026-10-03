@@ -339,8 +339,10 @@ function ForgeRow({
       // Reduced motion: never a layout element, so a reorder (a nudge, or the
       // reveal's jump to the canonical order) is one frame with no projected
       // in-between. Framer still measures a draggable row (its `drag` sets
-      // `alwaysMeasureLayout`), which is all `Reorder` needs.
-      layout={reduced ? false : "position"}
+      // `alwaysMeasureLayout`), which is all `Reorder` needs. `Reorder.Item`
+      // types `layout` as `true | "position"` but hands it to `motion`, which
+      // takes `false`; leaving it undefined would fall back to its default `true`.
+      layout={reduced ? (false as unknown as true) : "position"}
       // The reveal's reorder is FIX1's bounded tween; a drag or a nudge keeps
       // the spring; reduced motion never moves anything.
       transition={reduced ? { duration: 0 } : animate ? REVEAL_MOVE_TRANSITION

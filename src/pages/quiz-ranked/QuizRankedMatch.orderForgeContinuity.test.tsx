@@ -33,8 +33,11 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 let locked = false;
+/** When false, the lock is accepted WITHOUT its inline reveal (the board never reveals). */
+let inlineReveal = true;
 beforeEach(() => {
   locked = false;
+  inlineReveal = true;
   vi.useFakeTimers();
   vi.setSystemTime(new Date(C.public_before_lock.server_time));
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
@@ -51,7 +54,12 @@ beforeEach(() => {
     if (/\/rounds\/1\/resolved$/.test(u)) return locked ? json(C.resolved) : json({}, 404);
     if (u.endsWith("/private")) return json(locked ? C.private_after : C.private_before);
     if (u.includes("/presence")) return json({ status: "active", match_id: MID, active: true });
-    if (/\/segments\/1\/challenges\/0$/.test(u) && method === "POST") { locked = true; return json(C.submit); }
+    if (/\/segments\/1\/challenges\/0$/.test(u) && method === "POST") {
+      locked = true;
+      if (inlineReveal) return json(C.submit);
+      const { challenge_reveal: _omitted, ...ack } = C.submit;
+      return json(ack);
+    }
     if (u.endsWith(`/matches/${MID}`) && method === "GET") {
       // A live server clock (the fake clock starts at the capture's instant):
       // the captured bodies' frozen `server_time` would re-anchor the client's
@@ -157,6 +165,22 @@ describe("OF4-CONTINUITY — one scene through lock, reveal and the next Order F
     // ...and still no generic overlay: the board's values, marks and verdict are the result.
     for (const f of revealed) expect(f.overlay, `overlay over the reveal at ${f.t}ms`).toBe(false);
     expect(screen.queryByTestId("result-stamp-viewer")).toBeNull();
+  });
+
+  it("with no Order Forge reveal on the board, the generic result overlay still shows during the hold", async () => {
+    // The lock is accepted but carries no inline reveal (as before FIX2, or a
+    // backend that omits it): the board stays "locked", so the arena's own
+    // result treatment is the only result on screen and must not be suppressed.
+    inlineReveal = false;
+    await openAndArrange();
+    const t0 = Date.now();
+    fireEvent.click(screen.getByTestId("forge-lock"));
+    const frames: Frame[] = [];
+    for (let t = 0; t < 2000; t += 10) { await advance(10); frames.push(frame(t0)); }
+    const held = frames.filter((f) => f.hold === "true" && f.phase === "locked");
+    expect(held.length, "the hold never covered the locked board").toBeGreaterThan(5);
+    for (const f of frames) expect(f.step).toBeNull();
+    for (const f of held) expect(f.overlay, `no generic overlay at ${f.t}ms`).toBe(true);
   });
 
   it("settled reveal -> next Order Forge round: same viewport, stage and scene image; no loading frame; opens on time", async () => {
