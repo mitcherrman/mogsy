@@ -35,8 +35,12 @@
  */
 import { Link } from "react-router-dom";
 
-export function RankedRouteHeader({ size = "default", replace = false, active = false }:
-{ size?: "default" | "wide"; replace?: boolean; active?: boolean }) {
+export function RankedRouteHeader({ size = "default", replace = false, active = false, back }:
+{
+  size?: "default" | "wide"; replace?: boolean; active?: boolean;
+  /** JLIB-FE — a match started elsewhere (the Journey Library) goes back there. */
+  back?: { href: string; label: string } | null;
+}) {
   // Accepted and unused: the row no longer has a width-dependent geometry to
   // choose, because it no longer has a row.
   void size;
@@ -46,14 +50,14 @@ export function RankedRouteHeader({ size = "default", replace = false, active = 
     // itself is `fixed`, so it takes no part in layout at all.
     <div className="h-0 shrink-0">
       <Link
-        to="/quiz"
+        to={back?.href ?? "/quiz"}
         replace={replace}
         data-testid="ranked-back-to-quiz"
         className="fixed left-14 top-0 z-40 flex h-[var(--app-header-h)] items-center
           text-xs text-muted-foreground/70 underline underline-offset-2
           transition-colors hover:text-muted-foreground"
       >
-        {active ? "Leave Match" : "Back to Quiz"}
+        {active ? "Leave Match" : back?.label ?? "Back to Quiz"}
       </Link>
     </div>
   );

@@ -67,6 +67,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import { getActiveMatch } from "@/lib/ranked-public/client";
 import { QuizRankedMatch } from "./QuizRankedMatch";
+import { readMatchOrigin } from "./matchOrigin";
 import type { MatchPhase } from "./useRankedMatch";
 import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
 import {
@@ -173,6 +174,9 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
         ? "recovered" : "fresh",
     };
   });
+  // JLIB-FE — where the handoff came from (the Journey Library), read once
+  // with the id. Kept across the `rankedEntry` replace below and a reload.
+  const [origin] = useState(() => readMatchOrigin(location.state));
   const [discoveredMatchId, setDiscoveredMatchId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [discoveryDone, setDiscoveryDone] = useState(false);
@@ -229,6 +233,8 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   }, [handoffMatchId, navigate]);
 
   const liveMatchId = handoffMatchId ?? discoveredMatchId;
+  const backLink = handoffMatchId && origin
+    ? { href: origin.href, label: origin.navLabel } : null;
   const shouldBlockRankedLeave = useCallback(
     ({ nextLocation }: TransactionalLeaveCandidate) =>
       leavesStandaloneRankedOwner(nextLocation.pathname),
@@ -262,9 +268,10 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
           viewerDisplayName={viewerIdentity.displayName}
           entry={handoffMatchId ? handoffEntry : "recovered"}
           onPhaseChange={handlePhaseChange}
+          origin={handoffMatchId ? origin : null}
           onTerminalNavigate={(destination) => navigate(destination, { replace: true })}
-          terminalChrome={<RankedRouteHeader size="wide" replace />}
-          chrome={<RankedRouteHeader size="wide" active />} />
+          terminalChrome={<RankedRouteHeader size="wide" replace back={backLink} />}
+          chrome={<RankedRouteHeader size="wide" active back={backLink} />} />
         <TransactionalLeaveDialog
           open={leaveGuard.confirmationOpen}
           title={leaveGuard.copy.title}

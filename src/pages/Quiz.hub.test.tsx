@@ -584,6 +584,21 @@ describe("Leaguecraft hub — Mastery", () => {
   });
 });
 
+describe("Leaguecraft hub — Journey Library (JLIB-FE)", () => {
+  it("links the public Journey Library beside, not instead of, the legacy Mastery link", async () => {
+    const { container } = await renderHub();
+    const utility = container.querySelector('[data-testid="hub-utility-line"]')!;
+    const library = screen.getByTestId("hub-journey-library-link");
+    expect(library.getAttribute("href")).toBe("/quiz/journeys");
+    expect(library).toHaveTextContent("Journey Library");
+    expect(utility.contains(library)).toBe(true);
+    // The legacy Mastery system keeps its own entrance, unrenamed.
+    const mastery = screen.getByTestId("hub-mastery-link");
+    expect(mastery.getAttribute("href")).toBe("/quiz/mastery");
+    expect(mastery).toHaveTextContent("Mastery Journey");
+  });
+});
+
 describe("Leaguecraft hub — modes withheld from this page", () => {
   it("still withholds Champion Card Duel, Meta Reflex and Achievements", async () => {
     // PT1.7A surfaced the three FINISHED Free modules (Time Trial, Knowledge

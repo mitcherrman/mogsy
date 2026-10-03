@@ -248,6 +248,8 @@ const ContentStudioPage = lazy(() => import("./pages/dev/content-studio/ContentS
 // Public Mastery journeys (J4 launch) — catalog + parameterized player.
 // Authenticated; the backend catalog is the only source of listed sets.
 const MasteryJourneysPage = lazy(() => import("./pages/quiz-mastery/MasteryJourneysPage"));
+// JLIB-FE — the public Journey Library (NOT the legacy /quiz/mastery system).
+const JourneyLibraryPage = lazy(() => import("./pages/quiz-journeys/JourneyLibraryPage"));
 const MasteryJourneyPlayerPage = lazy(() => import("./pages/quiz-mastery/MasteryJourneyPlayerPage"));
 
 // Live Mastery (H1/G7) — gated dev player + admin reviewer. Not linked from
@@ -523,6 +525,10 @@ export const appRouter = createBrowserRouter(
                   <Route path="/quiz/playtest" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><QuizPlaytestPage /></Suspense></ProtectedRoute>} />
                   <Route path="/playtest/:slug" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><PlaytestParticipantPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/ranked" element={<Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense>} />
+                  {/* JLIB-FE — the public Journey Library. Browsing is public, so
+                      no ProtectedRoute: the page itself asks for an account at
+                      Start, and the backend re-decides on the launch. */}
+                  <Route path="/quiz/journeys" element={<Suspense fallback={<RouteFallback />}><JourneyLibraryPage /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   {/* Layout is already mounted here and already painting the

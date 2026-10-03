@@ -3,7 +3,7 @@ import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { track, useSurfaceEvent } from "@/lib/analytics";
 import { Link, UNSAFE_DataRouterContext, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Sparkles, Package, Swords, Target, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame } from "lucide-react";
+import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Sparkles, Package, Swords, Target, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Map as MapIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1702,6 +1702,17 @@ export default function Quiz() {
                   champion progressions are not a practice SELECTOR, so this
                   is not the replacement navigation the rail is going to
                   become. Same flag, same route, same words. */}
+              {/* JLIB-FE — the public Journey Library. A sibling of the legacy
+                  Mastery link, never a replacement for it: /quiz/mastery is a
+                  separate system and keeps its own entrance below. */}
+              <Link
+                to="/quiz/journeys"
+                data-testid="hub-journey-library-link"
+                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
+              >
+                <MapIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                Journey Library
+              </Link>
               {HUB_MODULES.masteryJourney && (
                 <Link
                   to="/quiz/mastery"

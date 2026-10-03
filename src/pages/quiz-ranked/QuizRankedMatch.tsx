@@ -58,6 +58,7 @@ import {
   duelEventOf, duelProgressSuffix, duelStandingLabel, projectDuelState, type DuelStanding,
 } from "@/lib/ranked-core/duelState";
 import { RankedScoreline } from "./RankedScoreline";
+import type { RankedMatchOrigin } from "./matchOrigin";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
 import { ResultContestants } from "@/components/game-results/ResultContestants";
 import { buildRankedResults } from "./rankedResultsModel";
@@ -242,6 +243,12 @@ export interface QuizRankedMatchProps {
    * Absent for every ordinary match, which renders exactly as before.
    */
   host?: MatchHost;
+  /**
+   * JLIB-FE — where this standalone match was started from, when that is not
+   * the lobby (see `matchOrigin`). Changes the result screen's primary action
+   * and the mode's eyebrow only; the match itself is unchanged.
+   */
+  origin?: RankedMatchOrigin | null;
 }
 
 /**
@@ -281,7 +288,7 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
 function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chrome, terminalChrome,
                             entry = "recovered",
                             paused = false, onSessionComplete,
-                            onProgress, onPhaseChange, host,
+                            onProgress, onPhaseChange, host, origin = null,
                             onTerminalNavigate = (destination) => window.location.assign(destination),
                           }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, {
@@ -1008,7 +1015,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     return (
       <CanonicalArena view={null} chrome={chrome}
         recovering={entry === "fresh" || entryPreparing
-          ? { eyebrow: host?.eyebrow ?? "Ranked Duel", message: "Entering the arena…",
+          ? { eyebrow: host?.eyebrow ?? origin?.label ?? "Ranked Duel", message: "Entering the arena…",
               phase: m.publicRound ? "preparing" : "match-unresolved",
               // RFX1 2B2 — the duel card, for a FRESH entry only. A recovery
               // keeps its own honest sentence: a player rejoining a match in
@@ -1049,7 +1056,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
                   matchLength={plannedRoundTotal(m.publicRound)}
                   reducedMotion={reducedMotion} />
               ) : undefined }
-          : { eyebrow: host?.eyebrow ?? "Ranked Duel", message: "Recovering match…",
+          : { eyebrow: host?.eyebrow ?? origin?.label ?? "Ranked Duel", message: "Recovering match…",
               phase: "match-unresolved" }} />
     );
   }
@@ -1156,10 +1163,14 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     results.actions = {
       primary: onSessionComplete
         ? { label: "Continue", onClick: onSessionComplete }
-        : {
-          label: "Play Again",
-          onClick: () => { onTerminalNavigate(AGAIN_HREF); },
-        },
+        // JLIB-FE — a Journey Library match returns to the Library; "Play
+        // Again" would open the Ranked queue, which is not what was played.
+        : origin
+          ? { label: origin.returnLabel, onClick: () => { onTerminalNavigate(origin.href); } }
+          : {
+            label: "Play Again",
+            onClick: () => { onTerminalNavigate(AGAIN_HREF); },
+          },
       // Into the Record's History pane, which is where this match's full
       // question-by-question timeline — answers included — already lives.
       secondary: {
@@ -1459,7 +1470,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       // the mode's name is no longer carrying a second fact on its back.
       // DCMOD — a HOSTED match is one step of its host's flow, not a Ranked
       // duel: it names no mode here (empty = the line is not drawn).
-      eyebrow: host ? "" : "Ranked Duel",
+      eyebrow: host ? "" : origin?.label ?? "Ranked Duel",
       // RP1 — a points match names its MODULE and its length, both read off
       // the backend's scoring block; an hp match keeps "Round N", because it
       // has no length and a "/ 10" here would be this client inventing one.

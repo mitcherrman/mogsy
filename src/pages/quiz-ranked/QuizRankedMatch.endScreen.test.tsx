@@ -14,7 +14,7 @@
  *   * the two role mascots, including a same-role bot and a role-less seat;
  *   * the opponent's name only where the backend states one.
  */
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/backend-auth", () => ({
@@ -22,6 +22,7 @@ vi.mock("@/lib/backend-auth", () => ({
 }));
 
 import { QuizRankedMatch } from "./QuizRankedMatch";
+import { RANKED_MATCH_ORIGINS } from "./matchOrigin";
 import {
   matchResultPointsV1, modulePointsBlock, privatePlayerV2, publicRoundV2, withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
@@ -356,5 +357,22 @@ describe("the secondary content is compact", () => {
     expect(screen.getByTestId("result-primary")).toHaveTextContent("Play Again");
     expect(screen.getByTestId("result-secondary")).toHaveTextContent("Review Match");
     expect(screen.getByTestId("result-tertiary")).toHaveTextContent("Back to Leaguecraft");
+  });
+});
+
+describe("JLIB-FE — a Journey Library match returns to the Library", () => {
+  it("offers Back to Journey Library as the primary action, never Play Again into the queue", async () => {
+    const onTerminalNavigate = vi.fn();
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA"
+      origin={RANKED_MATCH_ORIGINS.journey_library} onTerminalNavigate={onTerminalNavigate} />);
+    await screen.findByTestId("ranked-match-over");
+    const primary = await screen.findByTestId("result-primary");
+    expect(primary).toHaveTextContent("Back to Journey Library");
+    expect(screen.queryByText("Play Again")).toBeNull();
+    // The same result screen: Review and the way back to Leaguecraft stand.
+    expect(screen.getByTestId("result-secondary")).toHaveTextContent("Review Match");
+    expect(screen.getByTestId("result-tertiary")).toHaveTextContent("Back to Leaguecraft");
+    fireEvent.click(primary);
+    expect(onTerminalNavigate).toHaveBeenCalledWith("/quiz/journeys");
   });
 });

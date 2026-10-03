@@ -460,6 +460,12 @@ describe("USERS2.3C-Daily — canonical Ranked by host", () => {
     expect(bucket.daily_challenge.startedUsers).toBe(2);
   });
 
+  it("classifies a Journey Library launch under its own labelled bucket (JLIB-FE)", () => {
+    expect(rankedHostBucket({ metadata: { host: "journey_library", opponent_type: "bot" } }))
+      .toBe("journey_library");
+    expect(bucket.journey_library.bucket.label).toBe("Journey Library");
+  });
+
   it("puts missing or unrecognised host provenance in Legacy / unknown, never guessed", () => {
     // pre-provenance row, a direct row with no opponent_type, an unknown host.
     expect(bucket.legacy_unknown.started).toBe(3);

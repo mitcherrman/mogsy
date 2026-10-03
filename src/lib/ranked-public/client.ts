@@ -38,6 +38,7 @@ import {
   ResumeView,
 } from "./contracts";
 import type { RankedRole } from "./roles";
+import { readJourneyLibrary, type JourneyLibraryView } from "@/lib/journey-library/contracts";
 import { withBrowserCorrelation } from "@/lib/analytics/correlation";
 
 export const RANKED_API_BASE =
@@ -70,6 +71,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "RANKED_WRONG_CHALLENGE_INDEX", "RANKED_SEGMENT_COMPLETE",
   "RANKED_ABILITY_NOT_AVAILABLE_IN_MODULE", "RANKED_INVALID_CHOICE",
   "RANKED_INVALID_CHALLENGE_INDEX", "RANKED_MODULE_DATA_UNAVAILABLE",
+  // JLIB public Journey Library launch.
+  "JOURNEY_NOT_FOUND", "JOURNEY_VERSION_NOT_ACTIVE", "JOURNEY_UNAVAILABLE",
 ]);
 
 /** Server-authoritative acknowledgement of a segment action. */
@@ -321,6 +324,37 @@ export const joinQueue = (
 
 export const getQueueStatus = (signal?: AbortSignal): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, { signal });
+
+// ------------------------------------------------ Journey Library (JLIB)
+
+/**
+ * The public Journey Library: every Library Journey at its ACTIVE version,
+ * each marked available or not. No session is needed (a GET mints no
+ * identity). The list runs live readiness on the server, so callers cache it
+ * for the page session rather than polling.
+ */
+export const listJourneys = (signal?: AbortSignal): Promise<JourneyLibraryView> =>
+  request("/api/journeys", readJourneyLibrary, { signal });
+
+/**
+ * Start EXACTLY `recipeId` v`recipeVersion` as a bot match. The answer is the
+ * queue's own `matched` snapshot, so the caller hands `matchId` to
+ * `/quiz/ranked` exactly as the lobby does. Any signed-in, non-guest account
+ * may launch; there is no Premium gate. Refusals arrive as `RankedApiError`
+ * codes: `JOURNEY_VERSION_NOT_ACTIVE` (409, the Library changed — refetch),
+ * `JOURNEY_UNAVAILABLE` (503), `JOURNEY_NOT_FOUND` (404), and the existing
+ * auth, active-match and rate-limit codes.
+ */
+export const launchJourney = (
+  recipeId: string,
+  recipeVersion: number,
+  signal?: AbortSignal,
+): Promise<QueueStatusView> =>
+  request(
+    `/api/journeys/${encodeURIComponent(recipeId)}/${encodeURIComponent(String(recipeVersion))}/launch`,
+    readQueueStatus,
+    { method: "POST", signal },
+  );
 
 /** The caller's own active match, or null. Account-bound reconnect discovery so
  * a full page reload can recover an active match — including a bot match, which
