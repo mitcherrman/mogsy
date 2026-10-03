@@ -2589,12 +2589,20 @@ html.reduce-motion .ranked-award-pop--bonus {
        precisely in order NOT to spend it.
 
        Sized for five lines because four is the real maximum here. Same rule at
-       the two breakpoints below: real maximum + exactly one line. */
-    --qs-prompt-h: 9.5rem;
-    /* 136px — two rows of tablets with option media AND one wrapped label,
-       which is the tallest ordinary answer block at this width. */
-    --qs-answers-h: 8.5rem;
-    /*  = 2px + 38rem (610px) of stage. */
+       the two breakpoints below: real maximum + exactly one line.
+
+       VISCONT1 — 152 -> 158px. QV1 Step 3B then stepped the prompt to 19px from
+       `lg` without re-deriving this, and at 19px/1.45 the RA7 Combat
+       Calculation prompt (192 characters) is FIVE lines: 5 x 27.55 + 19 =
+       156.7px, 4.7px over the old reserve, which moved the answer grid on
+       every family round. 158px seats it. The safety line above was spent by
+       that type step; restoring it would cost every round's art at 1024x768. */
+    --qs-prompt-h: 9.875rem;
+    /* 138px — two rows of tablets with option media AND one wrapped label,
+       which is the tallest ordinary answer block at this width (VISCONT1
+       re-measured the RCP1 item card at 137px; it was 136 -> 1px of drift). */
+    --qs-answers-h: 8.625rem;
+    /*  = 2px + 38.625rem (620px) of stage. */
   }
 }
 @media (min-width: 1280px) {
@@ -2606,9 +2614,13 @@ html.reduce-motion .ranked-award-pop--bonus {
      QV1 Step 2C — re-derived, unchanged. The longest real prompt (188 chars)
      takes THREE lines here, not four: 3 x 26.1 + 19 = 97.3px of content inside
      a 124px reserve. The 26.7px above it is one wrapped line, to within 0.6px
-     — the same one-line safety margin as the breakpoint above. */
+     — the same one-line safety margin as the breakpoint above.
+
+     VISCONT1 — 124 -> 130px. That derivation was at 18px. At QV1's 19px the
+     same 188-character prompt is FOUR lines here (4 x 27.55 + 19 = 129.2px),
+     so it overflowed by 5.2px and pushed the answers. Stage: 2px + 35.625rem. */
   .ranked-question-stage {
-    --qs-prompt-h: 7.75rem;
+    --qs-prompt-h: 8.125rem;
     --qs-answers-h: 7.5rem;
   }
 }
@@ -2906,36 +2918,92 @@ html.reduce-motion .ranked-award-pop--bonus {
   }
 }
 
-/* ---- QV1 Step 3B: a taller region for the RICH bands, and only those -------
-   The reserve above is one number for every kind of round, which is exactly
-   right for a FOOTPRINT — it is what makes a media round and a text round the
-   same size, and none of that changes here. What it is not right for is asking
-   the art to be bigger, because the same number also sizes the box a sparse
-   compact plate grows into. Measured on a global `16rem -> 17.28rem`: the
-   sparse plate gained 20px at both 1920 and 1440, while the cinematic band at
-   1440 gained NOTHING (it is aspect-bound there, not cap-bound). A global token
-   is the one lever that reliably enlarges the empty cards and not the rich
-   ones.
+/* ---- VISCONT1 — THE RESERVE IS WHAT IS SEATED, NOT THE CONTENT -----------
+   ARENA1 locked the CARD; it did not lock what is inside it. CanonicalArena
+   centres the question with `my-auto`, i.e. on the content's own height, so
+   any round whose content was a different height — a taller media region, an
+   option-media grid, a four-line prompt, the reveal's evidence line — moved
+   the art, the prompt and the answers by HALF the difference while the folio
+   and the Module Rail stood perfectly still. Measured at 1880x900 before this
+   pass: −27.6px art top and +20.4px prompt/answers between a compact and a
+   cinematic round, and 14.3px of the whole stack on every reveal.
 
-   So the extra height is addressed to the band PROFILE instead. `data-band` is
-   already on the surface — `InteractiveScenarioSurface` sets it from
-   `resolveBandProfile`, the same decision that chooses which band renders — so
-   `cinematic` and `family` can be named directly and `compact` simply is not
-   in the selector. A sparse round keeps the 16rem region it has today, at
-   every viewport, and the negative control measures +0px.
+   THE CONTRACT
+   * One allocation per viewport. `--qs-media-h`, `--qs-prompt-h` and
+     `--qs-answers-h` are set on the stage by WIDTH and HEIGHT only — never by
+     band profile, question or mode — and `--qs-stack-h` is their sum with the
+     stack's gaps and the feedback slot below.
+   * The stack is seated by that RESERVE. A spacer of `(body − stack-h) / 2`
+     sits above it in place of the content-centring margin, so an ordinary
+     round lands on exactly the coordinates every other ordinary round does,
+     and a round that outgrows a region extends DOWNWARD into the room below
+     instead of re-centring the card. The spacer never shrinks: when content
+     genuinely cannot fit, the media region yields (the RM1 compression order)
+     and the art's top, the folio and the rail still do not move.
+   * The reveal has a slot. Ranked and the hosted Daily mount one post-answer
+     line on settlement — the concise evidence statement (text-xs, leading-
+     snug). Its box is held by `::after` while it is absent, the SC-RENAME3
+     level-badge pattern, so a round settling cannot move what is above it.
 
-   GATED ON HEIGHT, because that is the only place it can be spent. At 1366 and
-   below the region is already shrunk well under 16rem to make the question fit,
-   so a larger preference is inert there (measured: 0px change at 1366, 1280 and
-   1024 from any token value tried). `min-height: 861px` is the same seam the
-   answer padding uses, so the two steps arrive together or not at all.
+   Scoped to `body > * > .question-surface-stack`, the depth at which the quiz
+   Viewport renders its three-region stack. Meta Reflex, Order Forge and the
+   Mastery slice render no such stack, and Journey's stack is inside
+   `.journey-viewport`, so every one of them keeps its own placement — the
+   Journey board's top-anchored contract (JOURNEY-UI3) included. */
+.ranked-question-stage {
+  --qs-feedback-h: calc(0.75rem * 1.375);
+}
+.ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack:not(:has(> [data-surface-region="answers"] ~ :not(.question-motif-layer)))::after {
+  content: "";
+  flex: 0 0 var(--qs-feedback-h);
+}
+@media (min-width: 1024px) {
+  /* The gap the stack draws (0.5rem under the RG1 compaction, which sets this
+     token beside its own `gap`), counted three times: media | prompt | answers
+     | feedback slot. */
+  .ranked-question-stage {
+    --qs-stack-gap: 0.75rem;
+    --qs-stack-h: calc(
+        var(--qs-media-h, 0px) + var(--qs-stack-gap)
+      + var(--qs-prompt-h, 0px) + var(--qs-stack-gap)
+      + var(--qs-answers-h, 0px) + var(--qs-stack-gap)
+      + var(--qs-feedback-h));
+  }
+  .ranked-question-stage [data-testid="ranked-question-body"]:has(> * > .question-surface-stack)::before {
+    content: "";
+    flex: 0 0 max(0px, calc((100% - var(--qs-stack-h)) / 2));
+  }
+  .ranked-question-stage [data-testid="ranked-question-body"] > :has(> .question-surface-stack) {
+    margin-top: 0;
+  }
+}
+
+/* ---- QV1 Step 3B: a taller media allocation where the viewport can pay ----
+   Larger art on a tall desktop, spent where it can be spent: at 1366 and
+   below the region is already shrunk under 16rem to make the question fit, so
+   a larger preference is inert there (QV1 measured 0px change at 1366, 1280
+   and 1024). `min-height: 861px` is the same seam the answer padding uses, so
+   the two steps arrive together or not at all.
+
+   VISCONT1 — ONE ALLOCATION, NOT ONE PER PROFILE. QV1 addressed this height to
+   `data-band` (cinematic and family only) so that a compact plate would not
+   grow with it. The plate stayed +0px; the arena paid for it in continuity,
+   because a 17.25rem rich region and a 16rem compact region put the prompt
+   and the answers in two different places inside a card that did not move.
+   The height is now the stage's own `--qs-media-h` for every round at the
+   viewport. Rich art keeps all of it; the compact plate fills the same box (it
+   has grown into its region since RR1), and the context strip still seats
+   itself at the top at 7rem. No rule keyed on `data-band` may size anything —
+   QuestionStageGeometry.test.tsx guards that.
+
+   The answer reserve rises with the padding this tier spends (14px tablets,
+   15px labels): the RCP1 item card's option-media grid is 167.5px at 1024 and
+   126px from 1280, over the width ladder's 138/120px.
 
    THE FOOTPRINT DOES NOT MOVE. The stage is `min(reserve, 100%)` with
-   `max-height: 100%` under the lock, and on a tall desktop it is already at
-   100% — 781px against a 578px reserve at 1920. The extra region height is
-   taken from the free room the card was centring in, not from the card's outer
-   box: measured, stage height and Module Rail position are identical before and
-   after at every viewport. */
+   `max-height: 100%` under the lock, so a larger reserve changes what the card
+   seats, never the card: folio and Module Rail coordinates are identical
+   before and after at every viewport measured. */
 /* The competitive band's ratio, widened for the desktop stage only. 16/7.5
    instead of 16/7 is ~7% more height for the same track width, which is what
    takes the 1440 band from 248px to the 256px its region already reserved.
@@ -2951,17 +3019,15 @@ html.reduce-motion .ranked-award-pop--bonus {
 }
 
 @media (min-width: 1024px) and (min-height: 861px) {
-  .ranked-question-stage .question-surface-stack[data-band="cinematic"] > [data-surface-region="media"],
-  .ranked-question-stage .question-surface-stack[data-band="family"] > [data-surface-region="media"] {
-    height: var(--qs-media-rich, 17.25rem);
+  .ranked-question-stage {
+    --qs-media-h: 17.25rem;
+    --qs-media-max: min(17.25rem, 100%);
+    --qs-answers-h: 10.5rem;
   }
-  /* The band reads its own ceiling from the custom property, so the rich
-     profiles have to raise it too or the taller region would simply hold a
-     band still capped at 16rem. Declared on the SURFACE, which is where
-     `data-band` lives, and inherited down to the band inside it. */
-  .ranked-question-stage .question-surface-stack[data-band="cinematic"],
-  .ranked-question-stage .question-surface-stack[data-band="family"] {
-    --qs-media-max: min(var(--qs-media-rich, 17.25rem), 100%);
+}
+@media (min-width: 1280px) and (min-height: 861px) {
+  .ranked-question-stage {
+    --qs-answers-h: 8rem;
   }
 }
 
@@ -9647,6 +9713,11 @@ html.high-contrast * { text-shadow: none !important; }
   .ranked-academy [data-testid="scenario-surface"] {
     gap: 0.5rem;
   }
+  /* VISCONT1: the gap the seated reserve (`--qs-stack-h`) counts — always
+     the same value as the `gap` directly above. */
+  .ranked-academy .ranked-question-stage {
+    --qs-stack-gap: 0.5rem;
+  }
 
   /* 3. The COMPACT category band, on a text-only question. 4rem of plate to
         carry one category word is the most decorative height in the card when
@@ -9694,26 +9765,28 @@ html.high-contrast * { text-shadow: none !important; }
    with equal specificity and the same `!important`, this block wins both.
 
    Scope: the Ranked question stage and its parchment only. Mobile, narrower
-   desktops, sparse/compact cards (`data-band="compact"`), the arena shell,
-   rails, header/timer, Module Rail and lobby/results are untouched.
+   desktops, the arena shell, rails, header/timer, Module Rail and
+   lobby/results are untouched. (VISCONT1: the media allocation is no longer
+   withheld from compact cards — see the stage tokens below.)
    ─────────────────────────────────────────────────────────────────────────── */
 @media (min-width: 1600px) and (min-height: 780px) {
-  /* The parchment keeps the arena shell's viewport-managed flex sizing; only
-     the band aspect for rich media is widened at this viewport. */
+  /* The parchment keeps the arena shell's viewport-managed flex sizing.
+
+     VISCONT1 — THE TIER IS PAID FOR IN ITS RESERVES. QV1's 19rem of art used
+     to be a region height for cinematic/family only (16rem for compact), and
+     its 24px prompt and 18px tablet padding were spent without touching the
+     prompt/answer reserves. At 1880x900 that meant the prompt and the answers
+     moved on every rich/compact change, a four-line prompt (148.6px with its
+     category line, the bank's 188-character maximum and the RA7 fixture both)
+     pushed the answers 12.6px, and a 2x2 option-media grid (142px) overran a
+     120px reserve. Every QV1 number is kept; each is now a token on the stage,
+     the same for every round at this viewport. */
   .ranked-question-stage {
     --qs-band-aspect-band: 16 / 8;
-  }
-
-  /* Rich media only — cinematic and family bands, never the sparse compact
-     plate. The region grows and the band's own ceiling follows it; the ceiling
-     is what the band reads, so both must move together. */
-  .ranked-question-stage .question-surface-stack[data-band="cinematic"] > [data-surface-region="media"],
-  .ranked-question-stage .question-surface-stack[data-band="family"] > [data-surface-region="media"] {
-    height: var(--qs-media-rich, 19rem);
-  }
-  .ranked-question-stage .question-surface-stack[data-band="cinematic"],
-  .ranked-question-stage .question-surface-stack[data-band="family"] {
-    --qs-media-max: min(var(--qs-media-rich, 19rem), 100%);
+    --qs-media-h: 19rem;
+    --qs-media-max: min(19rem, 100%);
+    --qs-prompt-h: 9.375rem;
+    --qs-answers-h: 9rem;
   }
 
   /* The hero ceiling, re-asserted ABOVE the short-viewport rule: its
@@ -15364,6 +15437,29 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .ranked-shell[data-phone-arena="true"] .question-surface-stack {
     gap: 0.5rem;
   }
+  /* VISCONT1 — THE PHONE'S STABLE ALLOCATION. The phone centres the question
+     in a screen-tall folio (`margin-block: auto` above), on its CONTENT height,
+     and set no reserves — so a 64px plate vs a 121px cinematic band, two vs
+     four tablets and a one- vs four-line prompt each re-centred everything.
+     Measured at 375x812 before this: the answer grid ranged 361–466px across
+     ordinary rounds and every reveal moved the stack 12px. These make the
+     centred box a constant: the cinematic band's own height (16/5.75, capped
+     at 7.5rem — the compact plate grows into it, the context strip seats at
+     the top), a four-line prompt with its category line (the bank's p95),
+     and four single-line tablets. Set on the STACK, not the folio, so the
+     stage's own `min-height` arithmetic still reads no tokens below `lg`.
+
+     SIZED BY THE ONE-SCREEN CONTRACT as well as by continuity. A phone folio
+     is a viewport-tall FLOOR, so every pixel of empty reserve is a pixel a
+     long round can no longer use before the page scrolls; RMOB2 requires the
+     ordinary corpus to stay one screen on every supported phone, and the RS2
+     stress rounds from 812px up. Where that is tight the reserve steps down
+     (see "WHERE THE PHONE GIVES ROOM BACK" after this block). */
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
+    --qs-media-h: 7.75rem;
+    --qs-prompt-h: 7.75rem;
+    --qs-answers-h: 13.125rem;
+  }
   /* Answers: 9px of vertical padding instead of 12px, a 3rem floor so a
      one-line tablet is still a comfortable 48px target, and a tighter gutter.
      Height stays automatic, so a wrapped label is never clipped. */
@@ -15426,6 +15522,31 @@ html.hub-commons-in-view .hextech-ambience-layer {
      phone Ranked arena is exactly where the opponent's name is. It is a
      transient suggestion; during a timed match it waits. */
   body:has([data-phone-arena="true"]) [data-testid="academy-radio-hud-prompt"] {
+    display: none;
+  }
+}
+/* VISCONT1 — WHERE THE PHONE GIVES ROOM BACK. Measured with the full phone
+   allocation, the RS2 stress rounds sat 18px off one screen at 375x812 and
+   the p99/max-label rounds 39px at 360x740 — RMOB2 forbids both. Two cases,
+   both content SHAPE or viewport, never identity:
+   * a four-answer STACK — `AnswerGrid` stacks four answers only when a label
+     runs past 56 characters (the same signal RS2 keys its padding on). Such a
+     round is already past its answer reserve; it gives back the 24.5px reveal
+     slot, so its evidence line re-centres the card by half its height.
+   * a phone under 780px tall gives back the slot and steps the prompt reserve
+     to three lines + category (6.125rem), so a four-line prompt re-centres
+     there by half its overflow (3px bare, 13px with a category line).
+   Everywhere else the reveal lands in its slot and a four-line prompt fits. */
+@media (max-width: 1023.98px) {
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack:has(> [data-surface-region="answers"] [data-answer-layout="stacked"][data-answer-count="4"])::after {
+    display: none;
+  }
+}
+@media (max-width: 1023.98px) and (max-height: 779.98px) {
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
+    --qs-prompt-h: 6.125rem;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack::after {
     display: none;
   }
 }

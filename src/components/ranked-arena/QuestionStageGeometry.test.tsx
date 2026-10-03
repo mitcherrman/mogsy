@@ -61,17 +61,24 @@ const CSS = read("index.css");
 
 const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ");
 
-/** Every `.ranked-question-stage { … }` body, with the `min-width` that guards
- *  it (0 for the unguarded one), in source order. */
+/** Every `.ranked-question-stage { … }` body on the WIDTH LADDER — unguarded or
+ *  guarded by `(min-width: N)` alone — with that `min-width` (0 when
+ *  unguarded), in source order.
+ *
+ *  VISCONT1: this used to be one regex that only recognised a guard written
+ *  directly before the rule, so a rule inside `(min-width: 1600px) and
+ *  (min-height: 780px)` read as UNGUARDED and its tokens leaked into every
+ *  width, phones included. It now asks the block-aware parser below
+ *  (`stageTokenRules`), and the height-gated tiers are evaluated where they
+ *  belong — `tokensAtViewport`, in the VISCONT1 block at the end. */
 function stageRules(): { minWidth: number; body: string }[] {
-  const css = stripComments(CSS);
-  const out: { minWidth: number; body: string }[] = [];
-  const re = /(?:@media\s*\(min-width:\s*(\d+)px\)\s*\{\s*)?\.ranked-question-stage\s*\{([^}]*)\}/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(css)) !== null) {
-    out.push({ minWidth: m[1] ? Number(m[1]) : 0, body: m[2] });
-  }
-  return out;
+  return stageTokenRules()
+    .filter((r) => r.selector === ".ranked-question-stage"
+      && r.preludes.every((p) => /^\(min-width:\s*\d+px\)$/.test(p)))
+    .map((r) => ({
+      minWidth: Math.max(0, ...r.preludes.map((p) => Number(/(\d+)px/.exec(p)![1]))),
+      body: r.body,
+    }));
 }
 
 /** The tokens in force at `width`, applied in source order the way the cascade
@@ -208,11 +215,20 @@ const tokenPx = (width: number, name: string) => {
 // tablets with and without option media. These are the numbers the reserves
 // exist to cover, and they are what makes the reserve assertions below a real
 // check rather than a restatement of the CSS.
+//
+// VISCONT1 re-measured the two text regions after QV1 Step 3B stepped the
+// prompt to 19px from `lg`. The ARENA1 figures (149 / 124 at 1024 / 1280) were
+// taken at 18px, and the step made the RA7 Combat Calculation prompt (192
+// characters) five lines at 1024 — 156.7px, over the 152px reserve — and the
+// bank's 188-character maximum four lines from 1280 — 129.2px, over 124. A
+// prompt that overflows its region moves the answer grid, so both reserves
+// were raised to what the browser measures (prompt: category + lines; answers:
+// two rows with option media and one wrapped label, the RCP1 item card).
 // ───────────────────────────────────────────────────────────────────────────
 const MEASURED = {
-  1024: { band: 199, prompt: 149, answers: 136, stage: 610 },
-  1280: { band: 256, prompt: 124, answers: 118, stage: 566 },
-  1512: { band: 256, prompt: 135, answers: 118, stage: 578 },
+  1024: { band: 199, prompt: 157, answers: 137, stage: 618 },
+  1280: { band: 256, prompt: 130, answers: 102, stage: 572 },
+  1512: { band: 256, prompt: 111, answers: 102, stage: 578 },
 } as const;
 
 describe("the stage height IS the sum of its reserved regions", () => {
@@ -691,15 +707,19 @@ describe("nothing inside the card was made smaller to fit it", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// QV1 — WIDE-DESKTOP MEDIA EXCEPTION.
+// QV1 — WIDE-DESKTOP TIER, AS RE-CUT BY VISCONT1.
 //
-// An additive, media-only exception for very wide desktops: at
-// (min-width: 1600px) and (min-height: 780px) the rich media height and
-// ceiling (17.25rem, via --qs-media-rich) apply to the cinematic and family
-// bands — never compact — in a SEPARATE block from the existing 861px rule,
-// which must stay intact and untouched.
+// QV1 gave very wide, tall-enough desktops ((min-width: 1600px) and
+// (min-height: 780px)) bigger art, a bigger prompt and more answer air. The
+// art was addressed to the RICH band profiles only — a 19rem media region for
+// cinematic/family, 16rem for compact — and that is exactly what made two
+// consecutive rounds at 1880x900 put their prompt and answers in different
+// places inside an unmoving card (measured: −27.6px art top, +20.4px prompt
+// and answers, rich vs compact). VISCONT1 keeps every QV1 number and moves the
+// media one to where it belongs: the stage's own allocation, the same for
+// every round at this viewport.
 // ───────────────────────────────────────────────────────────────────────────
-describe("the wide-desktop media exception is additive, not a replacement", () => {
+describe("the wide-desktop tier is one allocation for every round", () => {
   const css = () => stripComments(CSS);
 
   const wideBlock = () => {
@@ -714,54 +734,54 @@ describe("the wide-desktop media exception is additive, not a replacement", () =
     expect(wideBlock().length).toBeGreaterThan(0);
   });
 
-  it("targets only the cinematic and family bands, never compact", () => {
-    const body = wideBlock();
-    expect(body).toContain('data-band="cinematic"');
-    expect(body).toContain('data-band="family"');
-    expect(body).not.toContain('data-band="compact"');
+  it("names no band profile — the allocation is the viewport's, not the round's", () => {
+    expect(wideBlock()).not.toMatch(/data-band=/);
   });
 
-  it("uses the approved wide rich media height, 19rem, via --qs-media-rich", () => {
-    // The owner-approved wide-desktop design raises the rich region AND the
-    // band's own ceiling to 19rem together (the ceiling is what the band reads).
+  it("keeps QV1's 19rem of art, as the stage's media allocation", () => {
+    // The owner-approved 19rem is unchanged; it is now the RESERVE every round
+    // gets, and the band's ceiling (what the band reads) moves with it.
     const body = wideBlock();
-    expect(body).toMatch(/height:\s*var\(--qs-media-rich,\s*19rem\)/);
-    expect(body).toMatch(/--qs-media-max:\s*min\(var\(--qs-media-rich,\s*19rem\),\s*100%\)/);
+    const stage = /(?:^|\})\s*\.ranked-question-stage\s*\{([^}]*)\}/.exec(body)?.[1] ?? "";
+    expect(stage).toMatch(/--qs-media-h:\s*19rem/);
+    expect(stage).toMatch(/--qs-media-max:\s*min\(19rem,\s*100%\)/);
     // And re-asserts the hero ceiling above the <=860px compaction cap.
     expect(body).toMatch(/\[data-testid="scenario-hero"\]\s*\{\s*max-height:\s*min\(19rem,\s*100%\)\s*!important/);
   });
 
-  it("leaves the existing 861px rich-media rule fully intact", () => {
+  it("gives the 861px tier its 17.25rem the same way", () => {
     const src = css();
-    // There are multiple `(min-width: 1024px) and (min-height: 861px)` blocks
-    // in the stylesheet; the one this test defends is specifically the one
-    // that carries `--qs-media-rich`, so it is matched by content rather than
-    // by taking the first occurrence of the media-query header.
     const re = /@media\s*\(min-width:\s*1024px\)\s*and\s*\(min-height:\s*861px\)\s*\{([\s\S]*?)\n\}/g;
     let body: string | null = null;
     let m: RegExpExecArray | null;
     while ((m = re.exec(src)) !== null) {
-      if (m[1].includes("--qs-media-rich")) { body = m[1]; break; }
+      if (m[1].includes("--qs-media-h")) { body = m[1]; break; }
     }
-    expect(body, "the (min-width: 1024px) and (min-height: 861px) rich-media rule is missing").not.toBeNull();
-    expect(body).toContain('data-band="cinematic"');
-    expect(body).toContain('data-band="family"');
-    expect(body).toMatch(/height:\s*var\(--qs-media-rich,\s*17\.25rem\)/);
-    expect(body).toMatch(/--qs-media-max:\s*min\(var\(--qs-media-rich,\s*17\.25rem\),\s*100%\)/);
+    expect(body, "the (min-width: 1024px) and (min-height: 861px) media allocation is missing").not.toBeNull();
+    expect(body).not.toMatch(/data-band=/);
+    expect(body).toMatch(/--qs-media-h:\s*17\.25rem/);
+    expect(body).toMatch(/--qs-media-max:\s*min\(17\.25rem,\s*100%\)/);
   });
 
-  it("tunes prompt type and answer air only, never the region reserves", () => {
-    // The approved wide-desktop design steps the prompt to 1.5rem/1.35 and
-    // restores 1.125rem of answer padding. It must still never touch the
-    // prompt/answer REGION reserves — those ladders keep the exact values
-    // pinned earlier in this file.
+  it("pays for its type and air in the reserves it spends them in", () => {
+    // QV1's wide design steps the prompt to 1.5rem/1.35 and gives the tablets
+    // 1.125rem of vertical padding. Both are kept. What changed is that they
+    // are now PAID FOR: four lines of 24px prompt (the bank's 188-character
+    // maximum and the RA7 fixture both take four here) are 148.6px with the
+    // category line, against an inherited 136px reserve, and a 2x2 grid of
+    // option-media tablets at 18px is 142px against 120px. A prompt or a grid
+    // that outgrows its region moves what is below it, so the tier sets its own.
     const body = wideBlock();
     expect(body).toMatch(/header h2\s*\{\s*font-size:\s*1\.5rem;\s*line-height:\s*1\.35;\s*\}/);
     expect(body.match(/font-size/g)).toHaveLength(1);
     expect(body).toMatch(/\[data-quiz-choice\]\s*\{\s*padding-top:\s*1\.125rem;\s*padding-bottom:\s*1\.125rem;\s*\}/);
+    const stage = /(?:^|\})\s*\.ranked-question-stage\s*\{([^}]*)\}/.exec(body)?.[1] ?? "";
+    const rem = (name: string) => Number(new RegExp(`${name}:\\s*([\\d.]+)rem`).exec(stage)?.[1]) * 16;
+    expect(rem("--qs-prompt-h"), "four 24px prompt lines + the category line").toBeGreaterThanOrEqual(148.6);
+    expect(rem("--qs-answers-h"), "a 2x2 option-media grid at 18px padding").toBeGreaterThanOrEqual(142);
+    // Still tokens, never region rules: the regions read the tokens.
     expect(body).not.toMatch(/data-surface-region="prompt"/);
     expect(body).not.toMatch(/data-surface-region="answers"/);
-    expect(body).not.toMatch(/--qs-prompt-h|--qs-answers-h/);
   });
 });
 
@@ -1153,11 +1173,18 @@ describe("the lock's constraint reaches the region that yields", () => {
 // Two properties make that safe rather than merely bigger, and neither is
 // visible in a screenshot, so both are pinned here.
 //
-//   1. IT CANNOT REACH A SPARSE CARD. The extra media height is addressed to
-//      `data-band` — cinematic and family — and never to the reserve, because
-//      the reserve is also the box a compact plate grows into. Measured on a
-//      global token instead: the sparse plate gained 20px at 1920 AND 1440
-//      while the cinematic band at 1440 gained nothing at all.
+//   1. IT IS ONE ALLOCATION PER VIEWPORT (VISCONT1). QV1 addressed the extra
+//      media height to `data-band` — cinematic and family — so that a compact
+//      plate would not grow with it. That bought a sparse card 0px and cost
+//      the arena its continuity: the rich region was 48px taller than the
+//      compact one at 1880x900, so the prompt and the answers sat in a
+//      different place on every rich/compact change (−27.6px art top, +20.4px
+//      prompt and answers) inside a card and a rail that never moved, which is
+//      all ARENA1's test could see. The extra height is now the stage's own
+//      `--qs-media-h` for every round at that viewport; the rich art keeps all
+//      of it, and the compact plate fills the same box (it always grew into
+//      its region — RR1). The guard below is the structural half: no rule
+//      keyed on a band profile may size anything.
 //   2. THE AIR IS GATED ON HEIGHT. Padding costs the media region directly, and
 //      on a short screen the region is already the thing paying for the fit.
 //      Measured at 1024x768 on the tallest real answer block, ungated padding
@@ -1193,19 +1220,34 @@ function typeStepPreludes(): string[] {
   return [...css.matchAll(re)].map((m) => m[1]);
 }
 
-describe("QV1 Step 3B — the enlargement reaches rich cards only", () => {
+describe("QV1 Step 3B — the enlargement, as one allocation per viewport", () => {
   const css = () => stripComments(CSS);
 
-  it("addresses the extra media height to the band profile, never the reserve", () => {
-    // The reserve stays exactly what it was — that is what keeps the footprint.
+  it("addresses the extra media height to the reserve, never to a band profile", () => {
+    // The width ladder is unchanged — 16rem from `lg` …
     for (const width of [1024, 1280, 1512]) {
       expect(tokensAt(width)["--qs-media-h"], `at ${width}px`).toBe("16rem");
     }
-    // And the rich allocation names the two profiles that draw real art.
-    const rich = /\.question-surface-stack\[data-band="cinematic"\] > \[data-surface-region="media"\],\s*\.ranked-question-stage \.question-surface-stack\[data-band="family"\] > \[data-surface-region="media"\]\s*\{([^}]*)\}/
-      .exec(css());
-    expect(rich, "the rich media allocation is gone").not.toBeNull();
-    expect(rich![1]).toMatch(/height:\s*var\(--qs-media-rich/);
+    // … and the height-gated steps raise the SAME token, on the stage.
+    expect(css()).toMatch(
+      /@media \(min-width: 1024px\) and \(min-height: 861px\)\s*\{\s*\.ranked-question-stage\s*\{[^}]*--qs-media-h:\s*17\.25rem/);
+    // The QV1 mechanism is gone: no token of its own, no per-profile height.
+    expect(css()).not.toContain("--qs-media-rich");
+  });
+
+  it("lets no rule keyed on a band profile size anything (VISCONT1 guard)", () => {
+    // THE STRUCTURAL HALF OF THE CONTINUITY CONTRACT. `data-band` says WHICH
+    // presentation a round drew; a rule that reads it to set a size is a rule
+    // that makes two consecutive rounds different heights inside the card —
+    // which is exactly the defect VISCONT1 removed. Anything a profile may
+    // legitimately change (the RS2 sliver suppression is a size CONTAINER, not
+    // a size) has to be expressed without a box property.
+    const BOX = /(?:^|[\s;{])(?:(?:min-|max-)?(?:height|width)|flex(?:-basis|-grow|-shrink)?|padding[\w-]*|margin[\w-]*|gap|--qs-[\w-]+|inset|top|bottom)\s*:/;
+    const rules = [...css().matchAll(/([^{}]*\[data-band=[^{}]*)\{([^}]*)\}/g)];
+    expect(rules.length, "the guard found nothing to check").toBeGreaterThan(0);
+    for (const [, selector, body] of rules) {
+      expect(body, `"${selector.trim()}" sizes a band profile`).not.toMatch(BOX);
+    }
   });
 
   it("never names the compact profile in a sizing rule", () => {
@@ -1222,9 +1264,9 @@ describe("QV1 Step 3B — the enlargement reaches rich cards only", () => {
     // Both steps are spent out of the same budget, so they arrive together or
     // not at all — and 861px is the far side of the RG1 compaction's own
     // `max-height: 860px`, so the two can never both apply.
-    const rich = /@media \(min-width: 1024px\) and \(min-height: 861px\)\s*\{[\s\S]*?--qs-media-rich/
+    const rich = /@media \(min-width: 1024px\) and \(min-height: 861px\)\s*\{[\s\S]*?--qs-media-h/
       .exec(css());
-    expect(rich, "the rich media step is not height-gated").not.toBeNull();
+    expect(rich, "the media step is not height-gated").not.toBeNull();
     const pad = /@media \(min-width: 1024px\) and \(min-height: 861px\)\s*\{\s*\.ranked-academy \[data-answers-state\] \[data-quiz-choice\]\s*\{([^}]*)\}/
       .exec(css());
     expect(pad, "the answer padding step is not height-gated").not.toBeNull();
@@ -1285,5 +1327,232 @@ describe("QV1 Step 3B — the enlargement reaches rich cards only", () => {
     expect(grid).toContain("text-sm leading-relaxed");
     // Nothing Ranked-shaped leaked into the shared component.
     expect(grid).not.toMatch(/ranked-academy|--qs-/);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// VISCONT1 — THE RESERVE IS WHAT IS SEATED, NOT THE CONTENT.
+//
+// Locking the outer card (ARENA1) did not lock what is inside it. The question
+// was centred in the card with `my-auto`, i.e. on its CONTENT height, so every
+// round whose content was a different height — a taller media region, an
+// option-media grid, a four-line prompt, the reveal's evidence line — moved
+// the art, the prompt and the answers by half the difference while the folio
+// and the Module Rail stood still. The contract this block pins:
+//
+//   * one media allocation per viewport (`--qs-media-h`), for every profile;
+//   * the stack is seated by its RESERVE: a spacer of
+//     `(body − --qs-stack-h) / 2` above it, so content that outgrows a region
+//     extends downward into the room below instead of re-centring the card;
+//   * the reveal's evidence line has a reserved slot (the SC-RENAME3 pattern);
+//   * the phone, which centres the question in a screen-tall folio (RMOB2),
+//     gets the smallest allocation that makes that centring constant.
+//
+// The browser half is `e2e/ranked-visual-continuity.spec.ts`.
+// ───────────────────────────────────────────────────────────────────────────
+
+/** Every `.ranked-question-stage` token rule with the @media preludes around it. */
+function stageTokenRules(): { preludes: string[]; selector: string; body: string }[] {
+  const css = stripComments(CSS);
+  const out: { preludes: string[]; selector: string; body: string }[] = [];
+  const stack: string[] = [];
+  let head = 0;
+  for (let i = 0; i < css.length; i++) {
+    const c = css[i];
+    if (c === "{") {
+      const prelude = css.slice(head, i).trim();
+      if (prelude.startsWith("@media")) {
+        stack.push(prelude.slice(6).trim());
+      } else if (prelude.startsWith("@")) {
+        stack.push("(min-width: 0px)"); // @supports/@keyframes/@container: transparent here
+      } else {
+        const close = css.indexOf("}", i);
+        if (/^(?:\.ranked-academy\s+)?\.ranked-question-stage$/.test(prelude)) {
+          out.push({ preludes: [...stack], selector: prelude, body: css.slice(i + 1, close) });
+        }
+        i = close;
+      }
+      head = i + 1;
+    } else if (c === "}") {
+      stack.pop();
+      head = i + 1;
+    } else if (c === ";" && stack.length === 0) {
+      head = i + 1;
+    }
+  }
+  return out;
+}
+
+/** `mediaListMatches`, plus the two `max-` features the compaction uses. */
+function mediaMatches(prelude: string, width: number, height: number): boolean {
+  return prelude.split(",").some((arm) => {
+    const features = [...arm.matchAll(/\(\s*(min-width|min-height|max-width|max-height)\s*:\s*([\d.]+)px\s*\)/g)];
+    if (features.length === 0) return false;
+    return features.every(([, f, v]) => {
+      const n = Number(v);
+      return f === "min-width" ? width >= n : f === "min-height" ? height >= n
+        : f === "max-width" ? width <= n : height <= n;
+    });
+  });
+}
+
+/** The cascade's answer for the Ranked stage at a viewport (source order). */
+function tokensAtViewport(width: number, height: number): Record<string, string> {
+  const tokens: Record<string, string> = {};
+  for (const rule of stageTokenRules()) {
+    if (!rule.preludes.every((p) => mediaMatches(p, width, height))) continue;
+    for (const decl of rule.body.split(";")) {
+      const colon = decl.indexOf(":");
+      const prop = decl.slice(0, colon).trim();
+      if (prop.startsWith("--qs-")) tokens[prop] = decl.slice(colon + 1).trim();
+    }
+  }
+  return tokens;
+}
+
+/**
+ * Ordinary content, measured in Chromium through `/dev/ranked-shell-probe` at
+ * each tier (VISCONT1). `prompt` is the tallest ordinary prompt block (the RA7
+ * Combat Calculation fixture, 192 characters, or the bank's 188-character
+ * maximum — whichever wraps further); `answers` is the tallest ordinary grid
+ * (option-media tablets, two or four, at that tier's padding). Long-label
+ * extremes (`realP99`, `realMax`) are deliberately NOT here: they are the
+ * documented exception, and reserving for them would shrink every round's art.
+ */
+const TIER_MEASURED = [
+  { vp: [1024, 768], prompt: 156.7, answers: 137 },
+  { vp: [1024, 900], prompt: 156.7, answers: 167.5 },
+  { vp: [1280, 800], prompt: 129.2, answers: 102 },
+  { vp: [1366, 768], prompt: 129.2, answers: 102 },
+  { vp: [1440, 900], prompt: 129.2, answers: 126 },
+  { vp: [1520, 800], prompt: 110.3, answers: 102 },
+  { vp: [1520, 900], prompt: 110.3, answers: 126 },
+  { vp: [1600, 780], prompt: 148.6, answers: 142 },
+  { vp: [1880, 900], prompt: 148.6, answers: 142 },
+] as const;
+
+describe("VISCONT1 — one allocation per viewport, seated by its reserve", () => {
+  const css = () => stripComments(CSS);
+  const at = (w: number, h: number, name: string) => {
+    const t = tokensAtViewport(w, h);
+    return t[name] === undefined ? null : px(t[name], t);
+  };
+
+  it.each(TIER_MEASURED.map((r) => [`${r.vp[0]}x${r.vp[1]}`, r] as const))(
+    "at %s the prompt and answer reserves cover the ordinary corpus",
+    (_name, r) => {
+      const [w, h] = r.vp;
+      expect(at(w, h, "--qs-prompt-h")!, "a prompt that outgrows its region moves the answers")
+        .toBeGreaterThanOrEqual(r.prompt);
+      expect(at(w, h, "--qs-answers-h")!, "ordinary answers outgrow their reserve")
+        .toBeGreaterThanOrEqual(r.answers);
+    },
+  );
+
+  it("gives every round the same media allocation at a viewport", () => {
+    expect(at(1280, 800, "--qs-media-h")).toBe(256);
+    expect(at(1440, 900, "--qs-media-h")).toBe(276);   // the 861px tier
+    expect(at(1600, 779, "--qs-media-h")).toBe(256);   // one pixel short of the wide tier
+    expect(at(1600, 780, "--qs-media-h")).toBe(304);   // QV1's 19rem, now for everyone
+    expect(at(1880, 900, "--qs-media-h")).toBe(304);
+    // The ceiling the band reads always says the allocation, never more.
+    for (const [w, h] of [[1280, 800], [1440, 900], [1880, 900]] as const) {
+      const t = tokensAtViewport(w, h);
+      expect(t["--qs-media-max"], `at ${w}x${h}`).toBe(`min(${t["--qs-media-h"]}, 100%)`);
+    }
+    // And the region rule reads that token, unconditionally on profile.
+    const region = /\.ranked-question-stage \.question-surface-stack > \[data-surface-region="media"\]\s*\{([^}]*)\}/
+      .exec(css())?.[1] ?? "";
+    expect(region).toMatch(/height:\s*var\(--qs-media-h, 0px\)/);
+  });
+
+  it("declares the stack reserve as exactly the regions, their gaps and the feedback slot", () => {
+    for (const [w, h] of [[1280, 800], [1880, 900], [1024, 768]] as const) {
+      const t = tokensAtViewport(w, h);
+      const sum = at(w, h, "--qs-media-h")! + at(w, h, "--qs-prompt-h")!
+        + at(w, h, "--qs-answers-h")! + 3 * px(t["--qs-stack-gap"], t)
+        + px(t["--qs-feedback-h"], t);
+      expect(at(w, h, "--qs-stack-h"), `at ${w}x${h}`).toBeCloseTo(sum, 5);
+    }
+    // The gap the reserve counts is the gap the stack draws, at every height.
+    expect(at(1880, 900, "--qs-stack-gap")).toBe(12);
+    expect(at(1280, 800, "--qs-stack-gap")).toBe(8);
+    const short = /@media \(min-width: 1024px\) and \(max-height: 860px\)\s*\{[\s\S]*?\n\}/.exec(css())?.[0] ?? "";
+    expect(short).toMatch(/\[data-testid="scenario-surface"\]\s*\{\s*gap:\s*0\.5rem;/);
+    expect(short).toMatch(/\.ranked-academy \.ranked-question-stage\s*\{\s*--qs-stack-gap:\s*0\.5rem;/);
+  });
+
+  it("seats the RESERVE, so a taller round extends downward instead of re-centring", () => {
+    const src = css();
+    // The spacer: half of what the body has left over the reserve, never less
+    // than nothing, and never shrinkable — the art yields first, the top stays.
+    expect(src).toMatch(
+      /\[data-testid="ranked-question-body"\]:has\(> \* > \.question-surface-stack\)::before\s*\{\s*content:\s*"";\s*flex:\s*0 0 max\(0px, calc\(\(100% - var\(--qs-stack-h\)\) \/ 2\)\);/);
+    // The content-centring margin is switched off for the canonical stack only.
+    expect(src).toMatch(
+      /\[data-testid="ranked-question-body"\] > :has\(> \.question-surface-stack\)\s*\{\s*margin-top:\s*0;/);
+    // `my-auto` itself is untouched in the arena: every OTHER viewport (Meta
+    // Reflex, Order Forge, Mastery, Journey) still centres exactly as before.
+    expect(read("components/ranked-arena/CanonicalArena.tsx"))
+      .toContain('className="lg:my-auto lg:w-full lg:flex lg:min-h-0 lg:flex-col"');
+  });
+
+  it("holds the reveal's evidence slot while nothing fills it", () => {
+    // The SC-RENAME3 pattern: a conditional line gets a fixed slot, so the
+    // round settling cannot move what is above it. One `text-xs leading-snug`
+    // line — the only post-answer content Ranked and the hosted Daily mount is
+    // the concise evidence statement.
+    const src = css();
+    expect(src).toMatch(/\.ranked-question-stage\s*\{\s*--qs-feedback-h:\s*calc\(0\.75rem \* 1\.375\);/);
+    expect(src).toMatch(
+      /> \* > \.question-surface-stack:not\(:has\(> \[data-surface-region="answers"\] ~ :not\(\.question-motif-layer\)\)\)::after\s*\{\s*content:\s*"";\s*flex:\s*0 0 var\(--qs-feedback-h\);/);
+    expect(read("components/question-feedback/EvidenceLine.tsx"))
+      .toContain("text-xs font-semibold leading-snug");
+  });
+
+  it("reaches the canonical quiz stack only — never Journey, Meta Reflex or Mastery", () => {
+    // Every VISCONT1 selector goes through `body > * > stack`, the depth at
+    // which the quiz Viewport renders its surface. Journey's stack is inside
+    // `.journey-viewport`, and Meta Reflex/Mastery render no three-region
+    // stack, so none of them is matched; the Journey board keeps its own
+    // top-anchored contract (JOURNEY-UI3).
+    const selectors = [...css().matchAll(/([^{}]*ranked-question-body"\][^{}]*)\{/g)]
+      .map((m) => m[1].trim())
+      .filter((s) => s.includes("question-surface-stack"));
+    // spacer, margin, slot, phone tokens, and the phone give-backs (stack
+    // slot, short-phone prompt, short-phone slot)
+    expect(selectors.length).toBe(7);
+    for (const s of selectors) {
+      expect(s).toMatch(/> \* > \.question-surface-stack|> :has\(> \.question-surface-stack\)/);
+      expect(s).not.toMatch(/journey/);
+    }
+  });
+
+  it("gives the phone the smallest allocation that makes its centring constant", () => {
+    // RMOB2 centres the question in a screen-tall phone folio, on its content
+    // height — so a 64px plate vs a 121px cinematic band, two vs four tablets,
+    // or a one-line vs a four-line prompt each re-centred everything (measured
+    // at 375x812: the answer grid ranged 361–466px). The fix is to make the
+    // thing being centred a constant: the cinematic band's own height (16/5.75
+    // capped at 7.5rem), a four-line prompt with its category line (the
+    // bank's p95), and four single-line tablets. Set on the STACK, not the
+    // folio, so the stage's `min-height` arithmetic below `lg` still sees no
+    // tokens. Sized by RMOB2's one-screen contract as well: under 780px tall
+    // the prompt reserve steps to three lines + category.
+    const phone = /@media \(max-width: 1023\.98px\)\s*\{[\s\S]*?\.ranked-shell\[data-phone-arena="true"\] \[data-testid="ranked-question-body"\] > \* > \.question-surface-stack\s*\{([^}]*)\}/
+      .exec(css())?.[1] ?? "";
+    expect(phone).toMatch(/--qs-media-h:\s*7\.75rem/);
+    expect(phone).toMatch(/--qs-prompt-h:\s*7\.75rem/);
+    expect(phone).toMatch(/--qs-answers-h:\s*13\.125rem/);
+    // 124 + 8 + 124 + 8 + 210 + 8 + 16.5 = 498.5px: inside the 375x812 folio
+    // (~600px of content box), so an ordinary round still never scrolls.
+    expect(tokenPx(500, "--qs-media-h")).toBeNull();
+    // And the slot is given back exactly where the one-screen contract needs
+    // the room — a four-answer stack, or a phone under 780px — by shape and
+    // viewport, never by identity.
+    expect(css()).toMatch(
+      /:has\(> \[data-surface-region="answers"\] \[data-answer-layout="stacked"\]\[data-answer-count="4"\]\)::after\s*\{\s*display:\s*none;/);
+    expect(css()).toMatch(
+      /@media \(max-width: 1023\.98px\) and \(max-height: 779\.98px\)\s*\{\s*\.ranked-shell\[data-phone-arena="true"\][^{]*\{\s*--qs-prompt-h:\s*6\.125rem;\s*\}\s*\.ranked-shell\[data-phone-arena="true"\][^{]*::after\s*\{\s*display:\s*none;/);
   });
 });

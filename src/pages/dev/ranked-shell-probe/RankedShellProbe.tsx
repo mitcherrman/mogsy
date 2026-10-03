@@ -20,7 +20,15 @@
  *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
  *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
  *   base-stat recall) | abilityCost (QF1.2A: a real `ability_cost_rank`
- *   presentation blob)
+ *   presentation blob) | matchup (VISCONT1: a two-champion Matchup card) |
+ *   twoChamp (VISCONT1: the RCP1 two-option champion duel, option media only)
+ * `?seq=a,b,c,d` (VISCONT1) — with `?sfx=1`, serves probe state `a` for round
+ *   1, `b` for round 2 and so on, and settles each round with a correct option
+ *   and an evidence note. Advancing the SFX fixture therefore plays a real
+ *   question → reveal → next question sequence inside ONE mount of the arena,
+ *   which is what the visual-continuity certification measures.
+ * `?broken=1` (VISCONT1) points every served asset path at a file that does
+ *   not exist, so a failed load can be measured against a loaded one.
  * `?motif=` (QF1) serves `topic.motif` on the question/segment and `motif` on
  *   every Mastery challenge, e.g. `?motif=champion_studies`.
  * `?role=` freezes a League role onto the viewer's participant.
@@ -64,7 +72,7 @@ import {
   privatePlayerV2, publicRoundV2, withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
 import {
-  CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION,
+  CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION, TWO_CHAMPION_OPTION_QUESTION,
 } from "@/lib/ranked-core/adapters/optionMediaFixtures";
 import {
   PHYSICAL_DAMAGE_PRESENTATION, PHYSICAL_DAMAGE_Q,
@@ -99,7 +107,7 @@ export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex", "orderforge",
   "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
   "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
-  "spellCooldown",
+  "spellCooldown", "matchup", "twoChamp",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -256,8 +264,29 @@ function orderForgeProbeState() {
   return orderForgeState({}, mode === "locked");
 }
 
+/** VISCONT1 — the probe state the CURRENT round serves: `?seq=` by round. */
+function stateForRound(state: ProbeState): ProbeState {
+  if (probe.seq.length === 0) return state;
+  const round = probe.sfxStep > 0 && probe.sfxStep < 5 ? Math.max(1, probe.sfxStep) : 1;
+  return probe.seq[Math.min(round, probe.seq.length) - 1];
+}
+
+/** VISCONT1 — `?broken=1`: every served asset path, pointed at nothing. */
+function breakAssets<T>(value: T): T {
+  if (typeof value === "string") {
+    return (/^(assets|api\/ranked\/media)\//.test(value)
+      ? value.replace(/^[^/]+(?:\/[^/]+)*\//, "assets/__viscont_missing__/") : value) as T;
+  }
+  if (Array.isArray(value)) return value.map(breakAssets) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, breakAssets(v)])) as T;
+  }
+  return value;
+}
+
 function questionFor(state: ProbeState) {
-  const question = baseQuestionFor(state) as Record<string, unknown>;
+  const served = baseQuestionFor(stateForRound(state)) as Record<string, unknown>;
+  const question = probe.broken ? breakAssets(served) : served;
   if (probe.questionRoles.length === 0 && !probe.motif) return question;
   return { ...question, topic: {
     category: "abilities", tier: "hard",
@@ -381,6 +410,24 @@ function baseQuestionFor(state: ProbeState) {
         presentation: { assets: { subject: { type: "summoner_spell_subject", spell: "Ignite",
           spell_icon: "assets/summoner_spells/Ignite.png", badge: "Summoner Spell" } },
           presentation: { role: "context", timing: "question", spoiler: false } } };
+    // VISCONT1 — a two-champion Matchup card (two 50/50 splashes, VS seam),
+    // in the subject shape the backend emits for a champion comparison.
+    case "matchup":
+      return { question_id: "q-matchup",
+        prompt: "At rank 1, whose W has the longer cooldown: Ahri or Syndra?",
+        options: ["Ahri", "Syndra"], category: "Champion Ability Cooldowns",
+        presentation: { assets: { subject: {
+          type: "matchup", champion_a: "Ahri", champion_b: "Syndra", badge: "Matchup",
+          champion_a_splash: "assets/champions/Ahri/splash/0_default.jpg",
+          champion_a_icon: "assets/champions/Ahri/icon.png",
+          champion_b_splash: "assets/champions/Syndra/splash/0_default.jpg",
+          champion_b_icon: "assets/champions/Syndra/icon.png",
+          ability_slot: "W", ability_name: "Ability W", metric_label: "Cooldown",
+          ability_rank: 1 } },
+          presentation: { role: "context", timing: "question", spoiler: false } } };
+    // VISCONT1 — RCP1's two-option champion duel: option media, no premise.
+    case "twoChamp":
+      return TWO_CHAMPION_OPTION_QUESTION;
     case "jungleRule":
       return { question_id: "q-jungle-rule",
         prompt: "How long does it take a spent Smite charge to recharge?",
@@ -568,6 +615,15 @@ function resolvedFor(round: number) {
       [VIEWER]: { base: youScored ? 2 : 0, speed: youScored && round % 2 === 0 ? 1 : 0 },
       userB: { base: themScored ? 2 : 0 },
     }),
+    // VISCONT1 — a `?seq=` round is DISCLOSED on settlement: the correct
+    // tablet lights and the evidence line mounts under the grid, which is the
+    // reveal state the continuity certification has to hold still through.
+    ...(probe.seq.length > 0 ? {
+      correct_option_index: 0,
+      question_explanation: {
+        scenario_note: "The first option is correct for this probe round.",
+      },
+    } : {}),
   };
 }
 
@@ -607,9 +663,13 @@ const probe: {
   leadAnchorMs: number | null;
   /** SFX1.5 browser-only live transition step; zero outside `?sfx=1`. */
   sfxStep: number;
+  /** VISCONT1 — `?seq=` per-round probe states, and `?broken=1`. */
+  seq: ProbeState[];
+  broken: boolean;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
-  discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null, sfxStep: 0 };
+  discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null, sfxStep: 0,
+  seq: [], broken: false };
 
 /** Stamp a live clock and a future round-1 start onto a canned envelope. */
 function applyEntryLead<T extends { payload: Record<string, unknown>; server_time?: string }>(
@@ -923,6 +983,9 @@ export default function RankedShellProbe() {
   const beatPreview = params.get("beat");
   const forgeBot = state === "orderforge" && params.get("forge") === "bot";
   probe.sfxStep = sfxQa ? sfxStep : 0;
+  probe.seq = (params.get("seq") ?? "").split(",")
+    .filter((s): s is ProbeState => (PROBE_STATES as readonly string[]).includes(s));
+  probe.broken = params.get("broken") === "1";
   probe.end = sfxQa && sfxStep >= 5 ? "victory"
     : end === "victory" || end === "defeat" || end === "draw" ? end : null;
   probe.gaps = (params.get("gap") ?? "").split(",").map(Number).filter((n) => n > 0);
