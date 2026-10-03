@@ -1,4 +1,11 @@
 import type { ViewportTier } from "./useViewportTier";
+// WebP re-encode (q90, alpha bit-exact) of academy-skyline.png: 60 KB vs 2.0 MB,
+// so the skyline no longer competes with Mogzy for the Landing's bandwidth.
+import academySkyline from "@/academy/academy-skyline.webp";
+
+/** The distant castle skyline behind the façade. Named here so the Landing can
+ *  wait for its own art before it starts warming the Hub. */
+export const ACADEMY_SKYLINE_SRC = academySkyline;
 
 /**
  * Every per-viewport dial for the Academy entrance, in one place.

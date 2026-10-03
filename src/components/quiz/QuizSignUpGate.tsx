@@ -48,6 +48,8 @@ function GateGuide({ line }: { line: string }) {
         surface={LEAGUECRAFT_SIGNUP_GUIDE_SURFACE}
         message={controller.message}
         placement={SIGNUP_GUIDE_PLACEMENT}
+        // Drawn at <=64 CSS px: the 192px plate covers a 3x display.
+        scale="compact"
         onDismiss={controller.dismiss}
         className="w-full"
       />

@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import type { MogzyArtScale } from "@/components/mascot/mascot-assets";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 
 import {
@@ -66,6 +67,14 @@ export interface MogzyGuideProps {
   layout?: GuideLayout;
   /** Rest pose. Default `"base"`. A message's `pose` overrides it while active. */
   pose?: MogzyMascotPose;
+  /**
+   * PERF1 — which ENCODE of the art to request, for every pose this guide
+   * shows. Same drawing; only the pixel budget differs (see `MogzyArtScale`).
+   * Pick it from the placement's largest `size` x display density: `compact`
+   * (192-240px plates) up to ~64 CSS px, `medium` (512px) up to ~170 CSS px.
+   * A pose without that derivative falls back to the source. Default `"full"`.
+   */
+  scale?: MogzyArtScale;
   /** Render the mascot as a labelled button (tap → hop + `onActivate`). Default false. */
   interactive?: boolean;
   /** Accessible name for the interactive button. Default "Mogzy, guide". */
@@ -93,6 +102,7 @@ export function MogzyGuide({
   placement: placements,
   layout: layoutProp,
   pose = "base",
+  scale = "full",
   interactive = false,
   triggerLabel = "Mogzy, guide",
   onActivate,
@@ -326,6 +336,7 @@ export function MogzyGuide({
                 >
                   <MogzyMascot
                     pose={activePose}
+                    scale={scale}
                     decorative
                     loading="eager"
                     className="w-full drop-shadow-[0_8px_16px_rgba(0,0,0,0.55)]"
@@ -334,6 +345,7 @@ export function MogzyGuide({
               ) : (
                 <MogzyMascot
                   pose={activePose}
+                  scale={scale}
                   decorative
                   loading="eager"
                   className="w-full drop-shadow-[0_8px_16px_rgba(0,0,0,0.55)]"

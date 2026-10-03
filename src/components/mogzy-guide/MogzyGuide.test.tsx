@@ -335,6 +335,32 @@ describe("MogzyGuide", () => {
     spy.mockRestore();
   });
 
+  it("PERF1: requests the encode named by `scale` for every pose, falling back to the source", () => {
+    const { container, rerender } = render(
+      <MogzyGuide surface="t" message={null} placement={placements} layout="desktop" />,
+    );
+    const src = () => container.querySelector("img")!.getAttribute("src");
+    // Default is unchanged: the source art.
+    expect(src()).toBe("/mascot/mogzy-mascot-base-v1.png");
+    rerender(<MogzyGuide surface="t" message={null} placement={placements} layout="desktop" scale="medium" />);
+    expect(src()).toBe("/mascot/mogzy-mascot-base-v1-512.webp");
+    // A message's pose rides the same scale.
+    rerender(
+      <MogzyGuide surface="t" message={ctx({ pose: "explaining" })} placement={placements} layout="desktop" scale="compact" />,
+    );
+    expect(src()).toBe("/mascot/mogzy-explaining-transparent-192.webp");
+    // No derivative for this pose at this scale: the source, never a broken image.
+    rerender(
+      <MogzyGuide surface="t" message={ctx({ pose: "cheering" })} placement={placements} layout="desktop" scale="compact" />,
+    );
+    expect(src()).toBe("/mascot/mogzy-cheering-transparent.png");
+    // The interactive button renders the same encode.
+    rerender(
+      <MogzyGuide surface="t" message={null} placement={placements} layout="mobile" interactive scale="medium" />,
+    );
+    expect(src()).toBe("/mascot/mogzy-mascot-base-v1-512.webp");
+  });
+
   it("is never a pointer target except its optional button", () => {
     render(<MogzyGuide surface="t" message={ctx()} placement={placements} layout="desktop" />);
     expect(screen.getByTestId("mogzy-guide-t").className).toContain("pointer-events-none");

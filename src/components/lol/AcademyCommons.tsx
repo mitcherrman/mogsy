@@ -70,7 +70,9 @@ import HubCommunitySection from "@/components/lol/HubCommunitySection";
 import HubUtilitySection from "@/components/lol/HubUtilitySection";
 import { SITE_NAME } from "@/lib/site-config";
 import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
-import commonsArt from "@/academy/hub/academy-commons-desktop.png";
+// PERF1: WebP re-encode (q90, same 1672×941): 209 KB vs 2.0 MB. Screen two,
+// but a CSS background is fetched on the Hall's first paint all the same.
+import commonsArt from "@/academy/hub/academy-commons-desktop.webp";
 
 /**
  * The trust/compliance set. These three are the destinations no other surface

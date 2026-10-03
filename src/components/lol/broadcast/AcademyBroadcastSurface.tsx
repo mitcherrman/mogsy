@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 
+import { ACADEMY_BROADCAST_BOOK } from "@/academy/hub/hub-art";
 import { cn } from "@/lib/utils";
 import type {
   PatchBrief,
@@ -42,7 +43,10 @@ import type { BroadcastFeed, BroadcastTransmission } from "./broadcast-content";
 
 type Variant = "desktop" | "mobile";
 
-const BOOK_SRC = "/images/lol-hub/academy-broadcast-book.png";
+// PERF1: WebP re-encode of academy-broadcast-book.png (q90, same 1536×1024,
+// alpha bit-exact): 329 KB vs 2.6 MB. Named in hub-art so the Hub warm fetches
+// exactly this file on desktop, where it is above the fold.
+const BOOK_SRC = ACADEMY_BROADCAST_BOOK;
 
 /**
  * The painting's intrinsic pixels, declared so the browser can RESERVE the

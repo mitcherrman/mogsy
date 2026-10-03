@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -7,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { QueryClientContext } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 
 import SEOHead from "@/components/SEOHead";
@@ -14,12 +16,15 @@ import { useSurfaceEvent } from "@/lib/analytics";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { HUB_MOGZY_SRC, warmAcademyHub } from "@/lib/hub/academy-hub-warm";
+import { prepareImages } from "@/lib/ranked-core/media/prepareImage";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
 import { warmAcademyWelcomeScene } from "@/pages/welcome/sceneAssets";
 
 import AcademyFacade from "./AcademyFacade";
 import {
+  ACADEMY_SKYLINE_SRC,
   DOOR_ASPECT,
   DOOR_BOARD,
   DOOR_RISE,
@@ -95,12 +100,14 @@ const ENTRY_DURATION_MS = 780;
 const ENTRY_DURATION_REDUCED_MS = 220;
 
 /**
- * Auto-enter hold, before the transition starts. The façade takes 1.4s to fade
- * up and the title 1.1s, so this lets the scene land and sit for a beat; the
- * 780ms transition then brings the whole sequence to ~2.6s. Reduced motion has
- * no fades to wait for, so it gets a short readable hold and the 220ms handoff.
+ * Auto-enter hold, before the transition starts. The title's 1.1s fade has
+ * landed when it ends (the façade's 1.4s fade finishes under the opening veil,
+ * which is going to cover it anyway); the 780ms transition then brings the
+ * whole sequence to ~1.9s. PERF1: 1.8s read as the screen waiting for a click.
+ * Reduced motion has no fades to wait for, so it gets a short readable hold and
+ * the 220ms handoff. A click / Enter / Space still enters at once.
  */
-const AUTO_HOLD_MS = 1800;
+const AUTO_HOLD_MS = 1100;
 const AUTO_HOLD_REDUCED_MS = 450;
 
 const GOLD = "#c9a84c";
@@ -158,6 +165,9 @@ export default function MogzyEntryV2({
   useSurfaceEvent("landing_viewed", { enabled: seo === "root" });
 
   const navigate = useNavigate();
+  // The app's query client, when there is one (the dev route and tests may
+  // render without a provider; the Hub then fetches its manifest itself).
+  const queryClient = useContext(QueryClientContext);
   const playLaunchChime = useLaunchChime();
   const prefersReducedMotion = useReducedMotion();
   const tier = useViewportTier();
@@ -276,12 +286,16 @@ export default function MogzyEntryV2({
     if (destination === ACADEMY_WELCOME_ROUTE) {
       warmAcademyWelcomeScene();
       void import("@/pages/welcome/AcademyWelcomePage").catch(() => undefined);
+    } else {
+      // Committed to the Hub: nothing on this screen is worth yielding to any
+      // more. A no-op when the hold below already started it.
+      void warmAcademyHub(queryClient);
     }
     navigateTimerRef.current = window.setTimeout(
       () => navigate(destination, { replace: true }),
       prefersReducedMotion ? ENTRY_DURATION_REDUCED_MS : ENTRY_DURATION_MS,
     );
-  }, [autoEnter, navigate, playLaunchChime, prefersReducedMotion]);
+  }, [autoEnter, navigate, playLaunchChime, prefersReducedMotion, queryClient]);
 
   // Automatic entry. The latest handler is read through a ref so a changed
   // dependency never restarts the hold — the timer is keyed only on the mode and
@@ -289,17 +303,27 @@ export default function MogzyEntryV2({
   // mount/unmount/mount (the guard in handleEnter is only set when it fires).
   const handleEnterRef = useRef(handleEnter);
   handleEnterRef.current = handleEnter;
+  const queryClientRef = useRef(queryClient);
+  queryClientRef.current = queryClient;
 
   useEffect(() => {
     if (!autoEnter) return;
     // The hub chunk (and Quiz/CombatLab, which it links to) loads during the
     // hold rather than after the navigation. Idle-scheduled and deduped.
     prefetchRoute(LEAGUE_HOME_ROUTE);
-    const id = window.setTimeout(
-      () => handleEnterRef.current(),
-      prefersReducedMotion ? AUTO_HOLD_REDUCED_MS : AUTO_HOLD_MS,
-    );
-    return () => window.clearTimeout(id);
+    const hold = prefersReducedMotion ? AUTO_HOLD_REDUCED_MS : AUTO_HOLD_MS;
+    // PERF1 — then the Hub's own art, but only once THIS screen's art is in
+    // (or the hold is over and the visitor is about to leave anyway), so the
+    // warm never takes bandwidth from the Mogzy and skyline being looked at.
+    let alive = true;
+    void prepareImages([HUB_MOGZY_SRC, ACADEMY_SKYLINE_SRC], { priority: "high", timeoutMs: hold }).then(() => {
+      if (alive) void warmAcademyHub(queryClientRef.current);
+    });
+    const id = window.setTimeout(() => handleEnterRef.current(), hold);
+    return () => {
+      alive = false;
+      window.clearTimeout(id);
+    };
   }, [autoEnter, prefersReducedMotion]);
 
   // Enter / Space activation, carried over from the legacy screen including its
@@ -650,6 +674,9 @@ export default function MogzyEntryV2({
                   silhouette, giving the glow its actual shape. */}
               <MogzyMascot
                 pose="base"
+                // <=117 CSS px wide (176 tall), zoomed 1.18x on entry: the 512px
+                // plate keeps 2x+ headroom, and the Hub guide reuses the file.
+                scale="medium"
                 decorative
                 loading="eager"
                 className={
@@ -696,11 +723,17 @@ export default function MogzyEntryV2({
           </div>
         </motion.button>
 
-        {/* Interaction hint — the legacy line, kept verbatim */}
+        {/* Interaction hint — the legacy line, kept verbatim. On the automatic
+            root it has to be READ inside the 1.1s hold, so it rises with the
+            title rather than after it; the interactive preview keeps its slow
+            reveal. */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: entering ? 0 : 1 }}
-          transition={{ delay: entering ? 0 : 1.1, duration: entering ? 0.3 : 0.9 }}
+          transition={{
+            delay: entering ? 0 : autoEnter ? 0.3 : 1.1,
+            duration: entering ? 0.3 : autoEnter ? 0.6 : 0.9,
+          }}
           className={[
             "relative z-10 text-[11px] uppercase tracking-[0.4em] text-[#7fd6ef]/55",
             isLandscapePhone ? "mt-3" : isPhone ? "mt-5" : "mt-7",

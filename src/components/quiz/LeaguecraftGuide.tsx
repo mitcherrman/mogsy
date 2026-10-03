@@ -112,6 +112,8 @@ export default function LeaguecraftGuide({
       message={controller.message}
       placement={LEAGUECRAFT_GUIDE_PLACEMENT}
       layout={layout}
+      // Drawn at 40-64 CSS px: the 192px plates cover a 3x display.
+      scale="compact"
       onDismiss={controller.dismiss}
       className="z-20 animate-in fade-in duration-300 motion-reduce:animate-none"
     />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import closedBookFrame from "@/assets/academy-book-frame.png";
+import { ACADEMY_BOOK_FRAME as closedBookFrame } from "@/academy/hub/hub-art";
 import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
 
 /**
@@ -19,7 +19,7 @@ import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
  * whole assembly is transformed as ONE object:
  *
  *   1. champion splash        (fills the frame's transparent art window)
- *   2. transparent book shell (`academy-book-frame.png`, 1024×1536 RGBA)
+ *   2. transparent book shell (`academy-book-frame.webp`, 1024×1536 RGBA)
  *   3. HTML title             (real text on the lower leather panel)
  *   4. interaction / focus layer
  *
@@ -142,6 +142,11 @@ export default function AcademyHubBook({
               alt=""
               aria-hidden
               draggable={false}
+              // PERF1: the desktop volumes are `hidden md:grid` on a phone, and
+              // an eager <img> downloads even when display:none (~600 KB of
+              // splash a phone never drew). Lazy + no layout box = no fetch; on
+              // desktop they are on screen at once and usually already warmed.
+              loading="lazy"
               onError={() => setImgFailed(true)}
               className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transform-none"
               style={{ objectPosition: splashPosition }}

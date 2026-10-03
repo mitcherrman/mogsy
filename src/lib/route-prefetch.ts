@@ -159,28 +159,59 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/feedback", keys: ["Feedback"] },
 ];
 
-const warmed = new Set<string>();
+/**
+ * One entry per path ever asked for. `run` is idempotent, so the idle callback
+ * and an intent signal can both call it and the chunks are requested once.
+ */
+const warmed = new Map<string, { run: () => void }>();
 
-export function prefetchRoute(path: string) {
+export interface PrefetchRouteOptions {
+  /**
+   * The visitor is pointing at / focusing a link to this path. Request its
+   * chunks NOW instead of at idle — and if an idle warm is already queued for
+   * it, run that one early. Never delays or gates the navigation itself.
+   */
+  intent?: boolean;
+}
+
+export function prefetchRoute(path: string, opts: PrefetchRouteOptions = {}) {
   if (typeof window === "undefined") return;
-  if (warmed.has(path)) return;
-  warmed.add(path);
+  const existing = warmed.get(path);
+  if (existing) {
+    if (opts.intent) existing.run();
+    return;
+  }
   const match = PATH_TO_KEYS.find((m) => m.test(path));
-  if (!match) return;
-  // Schedule via idle so we never compete with the current navigation paint
-  const run = () => {
-    for (const k of match.keys) {
-      Routes[k].prefetch().catch(() => {});
-    }
+  let started = !match;
+  const entry = {
+    run: () => {
+      if (started || !match) return;
+      started = true;
+      for (const k of match.keys) {
+        Routes[k].prefetch().catch(() => {});
+      }
+    },
   };
+  warmed.set(path, entry);
+  if (!match) return;
+  if (opts.intent) {
+    entry.run();
+    return;
+  }
+  // Schedule via idle so we never compete with the current navigation paint
   const ric = (window as IdleWindow).requestIdleCallback;
-  if (ric) ric(run, { timeout: 1500 });
-  else setTimeout(run, 200);
+  if (ric) ric(entry.run, { timeout: 1500 });
+  else setTimeout(entry.run, 200);
+}
+
+/** Test seam: forget every warmed path. */
+export function __resetRoutePrefetchForTests() {
+  warmed.clear();
 }
 
 /** Warm a batch of likely-next routes (called once after first paint). */
 export function prefetchLikelyRoutes(paths: string[]) {
-  paths.forEach(prefetchRoute);
+  paths.forEach((p) => prefetchRoute(p));
 }
 
 /** Warm image URLs into the browser cache off the critical path. */

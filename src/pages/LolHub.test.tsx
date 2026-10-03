@@ -29,7 +29,17 @@ const mocks = vi.hoisted(() => ({
   academyUpdatesEnabled: false,
   sfxPlay: vi.fn(),
   canonicalSfxPlay: vi.fn(),
+  warmAcademyHub: vi.fn(() => Promise.resolve()),
+  prefetchRoute: vi.fn(),
 }));
+
+// PERF1 — the Hub warms its own art and destinations on mount; here the warm
+// and the route prefetcher are observed, never run (no network, no chunks).
+vi.mock("@/lib/hub/academy-hub-warm", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/hub/academy-hub-warm")>()),
+  warmAcademyHub: mocks.warmAcademyHub,
+}));
+vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: mocks.prefetchRoute }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: mocks.authUser, loading: false }),
@@ -104,8 +114,10 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 
+let lastQueryClient: QueryClient | null = null;
 function renderHub() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  lastQueryClient = qc;
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={["/lol"]}>
@@ -1094,7 +1106,7 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
     }
 
     for (const image of screen.getAllByTestId("mobile-academy-book-image")) {
-      expect(image.getAttribute("src")).toContain("book-spine-flat-v2.png");
+      expect(image.getAttribute("src")).toContain("book-spine-flat-v2.webp");
     }
     for (const title of within(stack).getAllByText(
       /Leaguecraft|Combat Simulation|Mogzy Archives|Pro Play/,
@@ -1538,7 +1550,7 @@ describe("LolHub — the painted Academy Commons", () => {
     // module path. What matters is that a url() reaches CSS from a real
     // bundled asset rather than a hand-written /assets/ string.
     expect(commons.style.getPropertyValue("--commons-art")).toMatch(
-      /^url\(.*academy-commons-desktop\.png.*\)$/,
+      /^url\(.*academy-commons-desktop\.webp.*\)$/,
     );
     // The painting is a background on a pointer-inert layer. An <img> here
     // would contribute height and break the one-viewport room.
@@ -1694,3 +1706,46 @@ describe("Academy Updates — on, with a published notice", () => {
     expect(screen.getAllByTestId("academy-updates-mark")[0].closest("[aria-hidden='true']")).toBeNull();
   });
 });
+
+describe("PERF1 — Hub warm and destination intent", () => {
+  it("warms itself on mount through the app's query client (direct /lol visits)", () => {
+    renderHub();
+    expect(mocks.warmAcademyHub).toHaveBeenCalledTimes(1);
+    expect(mocks.warmAcademyHub).toHaveBeenCalledWith(lastQueryClient);
+  });
+
+  it("hover, focus and press on a desktop volume raise its route chunk to 'now'", () => {
+    const { container } = renderHub();
+    const book = container.querySelector<HTMLElement>('[data-guide-mode="archives"]')!;
+    fireEvent.pointerEnter(book, { pointerType: "mouse" });
+    expect(mocks.prefetchRoute).toHaveBeenLastCalledWith("/lol/docs", { intent: true });
+    mocks.prefetchRoute.mockClear();
+    fireEvent.focus(book.querySelector("a")!);
+    expect(mocks.prefetchRoute).toHaveBeenCalledWith("/lol/docs", { intent: true });
+    mocks.prefetchRoute.mockClear();
+    fireEvent.pointerDown(container.querySelector<HTMLElement>('[data-guide-mode="pro-play"]')!);
+    expect(mocks.prefetchRoute).toHaveBeenCalledWith("/lol/pro-play", { intent: true });
+  });
+
+  it("a press on a phone book raises its route chunk too, and navigation is not held for it", () => {
+    renderHub();
+    const stack = screen.getByTestId("mobile-academy-book-stack");
+    const link = within(stack).getByRole("link", { name: "Combat Simulation" });
+    fireEvent.pointerDown(link);
+    expect(mocks.prefetchRoute).toHaveBeenCalledWith("/combat-lab", { intent: true });
+    expect(link).toHaveAttribute("href", "/combat-lab");
+  });
+
+  it("covers keep their champions, and hidden-breakpoint art is lazy", () => {
+    const { container } = renderHub();
+    // Phone spines are lazy: no layout box on desktop, so never fetched there.
+    for (const img of screen.getAllByTestId("mobile-academy-book-image")) {
+      expect(img).toHaveAttribute("loading", "lazy");
+      expect(img.getAttribute("src")).toContain("book-spine-flat-v2.webp");
+    }
+    // The desktop shell is the WebP encode.
+    const shell = container.querySelector(".academy-hub-book-body > img")!;
+    expect(shell.getAttribute("src")).toContain("academy-book-frame.webp");
+  });
+});
+

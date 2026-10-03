@@ -1,9 +1,9 @@
 import { memo } from "react";
 
-import academySkyline from "@/academy/academy-skyline.png";
+
 
 import AcademyDoorway from "./AcademyDoorway";
-import { STRUCTURE_PRESENCE } from "./AcademyScene";
+import { ACADEMY_SKYLINE_SRC as academySkyline, STRUCTURE_PRESENCE } from "./AcademyScene";
 import type { ViewportTier } from "./useViewportTier";
 
 /**

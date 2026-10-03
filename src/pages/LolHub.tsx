@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Swords, Flame, BrainCircuit, FileText, Trophy, ChevronDown } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -34,8 +35,14 @@ import { setHubFloatingControlsCollapsed } from "@/lib/hub/fold-chrome";
 import AcademyCommons from "@/components/lol/AcademyCommons";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
-import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
-import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
+import { HUB_BOOK_COVER_CHAMPION, warmAcademyHub } from "@/lib/hub/academy-hub-warm";
+import { prefetchRoute } from "@/lib/route-prefetch";
+import {
+  ACADEMY_LIBRARY_DESKTOP as academyLibraryDesktop,
+  ACADEMY_LIBRARY_MOBILE as academyLibraryMobile,
+  HUB_DESKTOP_MEDIA,
+  HUB_MOBILE_MEDIA_QUERY,
+} from "@/academy/hub/hub-art";
 import {
   CENTERPIECE_WIDTH_CSS,
   CLOSED_BOOK_MAX_WIDTH_CSS,
@@ -94,7 +101,7 @@ const HUB_DESTINATIONS: HubDestination[] = [
     guideId: "leaguecraft",
     subtitle: "Study. Practice. Ascend.",
     Icon: BrainCircuit,
-    championName: "Ryze",
+    championName: HUB_BOOK_COVER_CHAMPION["/quiz"],
     coverTitle: "Leaguecraft\nStudies",
     splashPosition: "78% center",
   },
@@ -106,7 +113,7 @@ const HUB_DESTINATIONS: HubDestination[] = [
     guideId: "combat-lab",
     subtitle: "Practice. Analyze. Dominate.",
     Icon: Swords,
-    championName: "Akali",
+    championName: HUB_BOOK_COVER_CHAMPION["/combat-lab"],
     coverTitle: "Combat\nSimulation",
     splashPosition: "36% center",
   },
@@ -116,7 +123,7 @@ const HUB_DESTINATIONS: HubDestination[] = [
     guideId: "archives",
     subtitle: "Explore League knowledge.",
     Icon: FileText,
-    championName: "Viktor",
+    championName: HUB_BOOK_COVER_CHAMPION["/lol/docs"],
     coverTitle: "Mogzy\nArchives",
     splashPosition: "34% center",
   },
@@ -127,7 +134,7 @@ const HUB_DESTINATIONS: HubDestination[] = [
     guideId: "pro-play",
     subtitle: "Quiz yourself on the pro scene.",
     Icon: Trophy,
-    championName: "Ahri",
+    championName: HUB_BOOK_COVER_CHAMPION["/lol/pro-play"],
     coverTitle: "Pro Play",
     splashPosition: "56% center",
   },
@@ -434,6 +441,14 @@ export default function LolHub() {
   useEffect(() => {
     markHubVisited();
   }, []);
+
+  // PERF1 — the Hub's own art first, then its covers and the four destination
+  // chunks. Usually already done by the Landing; this makes a direct /lol
+  // visit get the same ordering. Idempotent, never awaited.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    void warmAcademyHub(queryClient);
+  }, [queryClient]);
 
   // Arm the desktop two-screen snap for as long as the hub is mounted, and
   // disarm it on the way out so no other route inherits it. Mobile uses the
@@ -876,11 +891,14 @@ export default function LolHub() {
       data-guide-mode={d.guideId}
       onMouseEnter={() => activateGuide(d.guideId)}
       onPointerEnter={(event) => {
+        prefetchRoute(d.to, { intent: true });
         if (event.pointerType === "touch") return;
         previewDestination(d.guideId, "pointer");
       }}
+      onPointerDown={() => prefetchRoute(d.to, { intent: true })}
       onMouseLeave={deactivateGuide}
       onFocus={() => {
+        prefetchRoute(d.to, { intent: true });
         activateGuide(d.guideId);
         previewDestination(d.guideId, "keyboard");
       }}
@@ -995,8 +1013,8 @@ export default function LolHub() {
             the double-download this change is meant to remove. The two media
             queries are exhaustive, so a real painting always wins selection. */}
         <picture>
-          <source media="(min-width: 768px)" srcSet={academyLibraryDesktop} />
-          <source media="(max-width: 767px)" srcSet={academyLibraryMobile} />
+          <source media={HUB_DESKTOP_MEDIA} srcSet={academyLibraryDesktop} />
+          <source media={HUB_MOBILE_MEDIA_QUERY} srcSet={academyLibraryMobile} />
           <img
             src={TRANSPARENT_PIXEL}
             alt=""
@@ -1083,6 +1101,7 @@ export default function LolHub() {
                 message={guideMessage}
                 placement={HUB_GUIDE_PLACEMENT}
                 layout="mobile"
+                scale="medium"
                 interactive
                 triggerLabel="Mogzy, Academy guide"
                 onDismiss={dismissGuide}
@@ -1163,6 +1182,9 @@ export default function LolHub() {
                     message={guideMessage}
                     placement={desktopGuidePlacement}
                     layout="desktop"
+                    // <=167 CSS px wide; the 512px plate is 3x headroom and is
+                    // the same file the Landing already loaded.
+                    scale="medium"
                     onDismiss={dismissGuide}
                   />
                 )}
@@ -1198,7 +1220,11 @@ export default function LolHub() {
 
           {/* Mobile: four copies of the physical book asset, with live titles
               and the same route registry as desktop. */}
-          <MobileAcademyBookStack books={ALL_DESTINATIONS} onBookClick={onDestinationClick} />
+          <MobileAcademyBookStack
+            books={ALL_DESTINATIONS}
+            onBookClick={onDestinationClick}
+            onBookIntent={(to) => prefetchRoute(to, { intent: true })}
+          />
 
           {/* Mobile Patch Report follows the book stack directly. The large
               local radio dock is suppressed by the mobile centerpiece variant;

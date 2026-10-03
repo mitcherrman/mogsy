@@ -35,6 +35,10 @@ vi.mock("@/components/lol/broadcast/usePatchBriefFeed", async () => {
   return { usePatchBriefFeed: () => INITIAL_BROADCAST_FEED };
 });
 vi.mock("@/components/ads/AdSlot", () => ({ default: () => null }));
+vi.mock("@/lib/hub/academy-hub-warm", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/hub/academy-hub-warm")>()),
+  warmAcademyHub: () => Promise.resolve(),
+}));
 vi.mock("@/components/lol/LolPopoutStyleToggle", () => ({ default: () => null }));
 // Built from the real defaults rather than hand-listed: a partial policy mock
 // here throws the moment the page reads a field the mock forgot.

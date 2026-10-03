@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import bookSpine from "@/assets/book-spine-flat-v2.png";
+import { ACADEMY_BOOK_SPINE as bookSpine } from "@/academy/hub/hub-art";
 
 type MobileAcademyBook = {
   to: string;
@@ -22,9 +22,12 @@ type MobileAcademyBook = {
 export default function MobileAcademyBookStack({
   books,
   onBookClick,
+  onBookIntent,
 }: {
   books: readonly MobileAcademyBook[];
   onBookClick?: (to: string) => void;
+  /** A finger/pointer is down or focus arrived: the click is likely next. */
+  onBookIntent?: (to: string) => void;
 }) {
   const offsets = ["-1.25%", "1.4%", "-0.7%", "1%"];
 
@@ -41,6 +44,8 @@ export default function MobileAcademyBookStack({
           aria-label={book.title}
           data-testid="mobile-academy-book"
           onClick={() => onBookClick?.(book.to)}
+          onPointerDown={() => onBookIntent?.(book.to)}
+          onFocus={() => onBookIntent?.(book.to)}
           className="group relative block min-h-12 w-[calc(100%-0.75rem)] max-w-[22rem] overflow-hidden rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7ad6ff]"
           style={{
             aspectRatio: "2071 / 336",
@@ -54,6 +59,11 @@ export default function MobileAcademyBookStack({
             alt=""
             aria-hidden="true"
             draggable={false}
+            // PERF1: the stack is `md:hidden`, and an eager <img> downloads even
+            // when display:none — every desktop paid 1.2 MB for spines it never
+            // drew. A lazy image with no layout box is never fetched; on a phone
+            // it is on screen at once (and usually already warmed).
+            loading="lazy"
             data-testid="mobile-academy-book-image"
             className="pointer-events-none absolute left-[-2.41%] top-[-61.9%] h-auto w-[104.88%] max-w-none select-none drop-shadow-[0_6px_6px_rgba(0,0,0,0.42)]"
           />

@@ -53,14 +53,28 @@ export type MogzyMascotPose = keyof typeof MOGZY_MASCOT_ASSETS;
  * Every lookup FALLS BACK to the source, so adding a `compact` request to a
  * surface is always safe and a missing derivative is never a broken image.
  */
-export type MogzyArtScale = "full" | "compact";
+export type MogzyArtScale = "full" | "medium" | "compact";
 
-/** 192x288 WebP panel portraits: the three poses a small surface draws. */
+/** 192x288 WebP panel portraits: the poses a small surface draws. */
 export const MOGZY_MASCOT_ASSETS_COMPACT: Partial<Record<MogzyMascotPose, string>> = {
   base: "/mascot/mogzy-mascot-base-v1-240.webp",
   explaining: "/mascot/mogzy-explaining-transparent-192.webp",
+  // 192x256: the source is 1086x1448, so the same 3:4 crop at compact width.
+  // Drawn at <=64 CSS px by the Leaguecraft signup prompt.
+  holdingBook: "/mascot/mogzy-holding-book-transparent-192.webp",
   peeking: "/mascot/mogzy-peeking-transparent-192.webp",
   raisingHand: "/mascot/mogzy-raising-hand-transparent-192.webp",
+};
+
+/**
+ * PERF1 — 512x768 WebP for a surface that draws the base pose at roughly
+ * 100-170 CSS px: the Landing doorway (<=117px wide) and the Hub guide
+ * (<=167px wide). That is 3x headroom on the Hub's largest size, where the
+ * 240px compact plate would be soft on a 2x display. The Landing and the Hub
+ * ask for the SAME file, so the Hub's Mogzy is already in cache on arrival.
+ */
+export const MOGZY_MASCOT_ASSETS_MEDIUM: Partial<Record<MogzyMascotPose, string>> = {
+  base: "/mascot/mogzy-mascot-base-v1-512.webp",
 };
 
 /**
@@ -381,9 +395,13 @@ export function getMogzyArtAssetPath(
 ): string {
   switch (asset.category) {
     case "mascot":
-      return scale === "compact"
-        ? MOGZY_MASCOT_ASSETS_COMPACT[asset.name] ?? MOGZY_MASCOT_ASSETS[asset.name]
-        : MOGZY_MASCOT_ASSETS[asset.name];
+      if (scale === "compact") {
+        return MOGZY_MASCOT_ASSETS_COMPACT[asset.name] ?? MOGZY_MASCOT_ASSETS[asset.name];
+      }
+      if (scale === "medium") {
+        return MOGZY_MASCOT_ASSETS_MEDIUM[asset.name] ?? MOGZY_MASCOT_ASSETS[asset.name];
+      }
+      return MOGZY_MASCOT_ASSETS[asset.name];
 
     case "family":
       return MOGZY_FAMILY_ASSETS[asset.name];

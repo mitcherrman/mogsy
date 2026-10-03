@@ -136,7 +136,7 @@ describe("Academy Broadcast centerpiece — composition", () => {
     const surface = screen.getByTestId("academy-broadcast-surface");
     const book = screen.getByTestId("academy-broadcast-book") as HTMLImageElement;
     // The painting is the owner-selected asset…
-    expect(book.getAttribute("src")).toBe("/images/lol-hub/academy-broadcast-book.png");
+    expect(book.getAttribute("src")).toBe("/images/lol-hub/academy-broadcast-book.webp");
     // …and is purely decorative: silent for screen readers, with every word
     // of broadcast content remaining live HTML inside the surface.
     expect(book).toHaveAttribute("alt", "");

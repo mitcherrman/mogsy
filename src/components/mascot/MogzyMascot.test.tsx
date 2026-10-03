@@ -8,6 +8,8 @@ import {
   MOGZY_COMPANION_ASSETS,
   MOGZY_FAMILY_ASSETS,
   MOGZY_MASCOT_ASSETS,
+  MOGZY_MASCOT_ASSETS_COMPACT,
+  MOGZY_MASCOT_ASSETS_MEDIUM,
   MOGZY_ROLE_ASSETS,
   getMogzyArtAssetPath,
   isMogzyClassCharacter,
@@ -73,6 +75,33 @@ describe("mascot-assets registry", () => {
     expect(isMogzyClassCharacter("familiar")).toBe(false);
     expect(isMogzyCompanion("familiar")).toBe(true);
     expect(isMogzyCompanion("base")).toBe(false);
+  });
+
+  it("PERF1: every compact and medium derivative is a real file, distinct from its source", () => {
+    const derivatives = [
+      ...Object.entries(MOGZY_MASCOT_ASSETS_COMPACT),
+      ...Object.entries(MOGZY_MASCOT_ASSETS_MEDIUM),
+    ];
+    for (const [pose, p] of derivatives) {
+      const fullPath = path.join(process.cwd(), "public", p!);
+      expect(fs.existsSync(fullPath), p).toBe(true);
+      expect(fs.readdirSync(path.dirname(fullPath)), p).toContain(path.basename(fullPath));
+      expect(p).not.toBe(MOGZY_MASCOT_ASSETS[pose as keyof typeof MOGZY_MASCOT_ASSETS]);
+      expect(p).toMatch(/\.webp$/);
+    }
+  });
+
+  it("PERF1: resolves a requested scale, and falls back to the source without one", () => {
+    const base = { category: "mascot", name: "base" } as const;
+    expect(getMogzyArtAssetPath(base, "medium")).toBe("/mascot/mogzy-mascot-base-v1-512.webp");
+    expect(getMogzyArtAssetPath(base, "compact")).toBe("/mascot/mogzy-mascot-base-v1-240.webp");
+    expect(getMogzyArtAssetPath({ category: "mascot", name: "holdingBook" }, "compact")).toBe(
+      "/mascot/mogzy-holding-book-transparent-192.webp",
+    );
+    // No medium derivative for this pose: the source.
+    expect(getMogzyArtAssetPath({ category: "mascot", name: "explaining" }, "medium")).toBe(
+      MOGZY_MASCOT_ASSETS.explaining,
+    );
   });
 
   it("resolves paths through the generic API", () => {

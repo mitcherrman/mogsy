@@ -14,7 +14,7 @@ import {
 } from "@/lib/welcome/academy-registration";
 import { adoptAcademyIdentity } from "@/lib/welcome/provisional-identity";
 import { useViewportTier } from "@/pages/dev/mogzy-entry-v2/useViewportTier";
-import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
+import { ACADEMY_LIBRARY_DESKTOP as academyLibraryDesktop } from "@/academy/hub/hub-art";
 
 import AcademyTome from "./AcademyTome";
 import ChapterPlate, { type RegisterMirror } from "./ChapterPlate";
