@@ -4,8 +4,8 @@
 |---|---|
 | Repo / branch | `mogsy`, branch `jlib/journey-library-frontend` (worktree `.worktrees/jlib-frontend`) |
 | Starting SHA | `origin/main` = `dab1eeb73a2e7f24598b73dc76dad78f3d9708dc` (verified before branching) |
-| Implementation commit | the commit titled "JLIB-FE: public Journey Library at /quiz/journeys" |
-| Final SHA | recorded by the follow-up commit that fills in this line |
+| Implementation commit | `569fe1a2` "JLIB-FE: public Journey Library at /quiz/journeys" |
+| Final SHA | the branch tip: this handoff SHA note, the commit directly on top of `569fe1a2` (`git log -1 jlib/journey-library-frontend`) |
 | Backend | JLIB-API, `League_Combat_Simulator` branch `jlib-public-api`, local SHA `1256ff7c`. **Not pushed, not deployed.** Read `JOURNEY_LIBRARY_API_HANDOFF.md` there. |
 | State | Committed locally only. Not pushed, not deployed. |
 
