@@ -652,3 +652,13 @@ radio dock, the four books, the mark, viewport edges; Mogzy vs radio and books.
    sits over the mark (44×44), which stays on top and usable. Books are too large there for a left bubble; fixing it needs a mark/bubble
    change outside Hub-authored lean data.
 2. 768–~850px wide with height >930px (portrait tablets): the top bubble's corner reaches ~9px into the book column. Not in the matrix.
+
+---
+
+## PERF1 — contract note: `MogzyGuide` `scale` (additive)
+
+`<MogzyGuide scale?: "full" | "medium" | "compact">` (default `"full"`, so every existing caller renders exactly as
+before) chooses which ENCODE of the art the guide requests, for whichever pose is active. A pose without that derivative
+falls back to the source. Pick it from the placement's largest `size` × display density: `compact` (192–240 px plates)
+up to ~64 CSS px, `medium` (512 px; base pose only today) up to ~170 CSS px. Hub = `medium`; Leaguecraft lobby and signup
+= `compact`. No other part of the frozen API changed. See `docs/PERF1_ACADEMY_FIRST_VISIT.md`.
