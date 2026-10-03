@@ -182,7 +182,7 @@ const RANKED: MatchHistoryEntryView[] = [{
   matchId: "ordinary-1", viewerOutcome: "win", terminalReason: "combat", completionReason: "segments_complete",
   finalRoundNumber: 5, completedAt: "2026-09-11 11:00:00", isBotMatch: false, viewerClass: "mage",
   opponentClass: "marksman", viewerRole: "mid", opponentRole: null, opponentDisplayName: "Nocturnaut",
-  opponentIsBot: false, ratingDelta: 12, ratingAfter: 1300,
+  opponentIsBot: false, ratingDelta: 12, ratingAfter: 1300, host: null,
 }];
 const INERT_ANALYTICS = {
   capability: () => new Promise(() => {}),

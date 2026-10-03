@@ -38,6 +38,7 @@ import {
   ResumeView,
 } from "./contracts";
 import type { RankedRole } from "./roles";
+import { MATCH_HOST, readMatchHost, type RankedMatchHost } from "./matchHost";
 import { readJourneyLibrary, type JourneyLibraryView } from "@/lib/journey-library/contracts";
 import { withBrowserCorrelation } from "@/lib/analytics/correlation";
 
@@ -384,12 +385,15 @@ export interface ActiveMatchInfo {
    * DCMOD — who HOSTS this match. `"daily_challenge"` marks a Daily parent
    * run's child stage: it is resumed by the Daily page (which owns its entry
    * and close), never entered as an ordinary Ranked match.
+   *
+   * JLIB-HOST — widened to the persisted host (`matchHost`), kept verbatim:
+   * `"journey_library"` marks a Journey Library match. `null` is ordinary.
    */
-  host: "daily_challenge" | null;
+  host: RankedMatchHost | null;
 }
 
 export const isDailyHosted = (found: ActiveMatchInfo | null): boolean =>
-  found?.host === "daily_challenge";
+  found?.host === MATCH_HOST.dailyChallenge;
 
 export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | null> =>
   request("/api/ranked/active-match", (json) => {
@@ -403,7 +407,7 @@ export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | 
       reconnectDeadline: typeof m.reconnect_deadline === "string"
         ? m.reconnect_deadline : null,
       withinReconnectWindow: m.within_reconnect_window !== false,
-      host: m.host === "daily_challenge" ? "daily_challenge" : null,
+      host: readMatchHost(m.host),
     };
   }, { signal });
 

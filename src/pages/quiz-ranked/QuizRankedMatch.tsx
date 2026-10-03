@@ -58,7 +58,8 @@ import {
   duelEventOf, duelProgressSuffix, duelStandingLabel, projectDuelState, type DuelStanding,
 } from "@/lib/ranked-core/duelState";
 import { RankedScoreline } from "./RankedScoreline";
-import type { RankedMatchOrigin } from "./matchOrigin";
+import { resolveMatchOrigin, type RankedMatchOrigin } from "./matchOrigin";
+import type { RankedMatchHost } from "@/lib/ranked-public/matchHost";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
 import { ResultContestants } from "@/components/game-results/ResultContestants";
 import { buildRankedResults } from "./rankedResultsModel";
@@ -247,8 +248,15 @@ export interface QuizRankedMatchProps {
    * JLIB-FE — where this standalone match was started from, when that is not
    * the lobby (see `matchOrigin`). Changes the result screen's primary action
    * and the mode's eyebrow only; the match itself is unchanged.
+   *
+   * JLIB-HOST — a HINT (router state, or the host discovery reported). The
+   * match's own persisted `host` overrules it as soon as a snapshot reports
+   * one (`resolveMatchOrigin`).
    */
   origin?: RankedMatchOrigin | null;
+  /** JLIB-HOST — the resolved origin, whenever it changes, so the route's
+   *  own chrome (its back link) agrees with the arena. */
+  onOriginChange?: (origin: RankedMatchOrigin | null) => void;
 }
 
 /**
@@ -288,7 +296,8 @@ export function QuizRankedMatch(props: QuizRankedMatchProps) {
 function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chrome, terminalChrome,
                             entry = "recovered",
                             paused = false, onSessionComplete,
-                            onProgress, onPhaseChange, host, origin = null,
+                            onProgress, onPhaseChange, host, origin: originHint = null,
+                            onOriginChange,
                             onTerminalNavigate = (destination) => window.location.assign(destination),
                           }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, {
@@ -299,6 +308,24 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   useEffect(() => {
     onPhaseChange?.(m.phase);
   }, [m.phase, onPhaseChange]);
+  // JLIB-HOST — the persisted host, once the match reports it, decides; the
+  // hint stands only until then (or against a backend that never reports it).
+  // The backend writes a match's host once, at creation, so the first value
+  // any read reports (resume or match state) is LATCHED for this match: a
+  // later snapshot that omits the key cannot hand the decision back to a hint.
+  const [reportedHost, setReportedHost] = useState<{
+    matchId: string; host: RankedMatchHost | null;
+  } | null>(null);
+  const liveHost = m.publicRound?.host;
+  if (liveHost !== undefined
+    && (reportedHost?.matchId !== matchId || reportedHost.host !== liveHost)) {
+    setReportedHost({ matchId, host: liveHost });
+  }
+  const origin = resolveMatchOrigin(
+    reportedHost?.matchId === matchId ? reportedHost.host : undefined, originHint);
+  useEffect(() => {
+    onOriginChange?.(origin);
+  }, [origin, onOriginChange]);
   /** RMOB2 — what the viewer is called everywhere in the match. */
   const viewerLabel = viewerDisplayName?.trim() || "You";
   // RB3 — the reporting seam. An effect rather than a render-time call so a

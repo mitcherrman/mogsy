@@ -36,7 +36,7 @@
  * From `MatchHistoryEntryView` (`ranked_duel.match_history.v1`):
  * `viewerOutcome`, `opponentDisplayName`, `opponentIsBot`, `viewerRole`,
  * `completedAt`, `finalRoundNumber`, `terminalReason`, `ratingDelta`,
- * `ratingAfter`. The rating a match STARTED from is the one derived value,
+ * `ratingAfter`, `host`. The rating a match STARTED from is the one derived value,
  * and only when both `ratingAfter` and `ratingDelta` are present — otherwise
  * it is withheld rather than guessed.
  */
@@ -45,6 +45,7 @@ import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionTimeline from "@/components/quiz/workspace/QuestionTimeline";
 import { useCoarsePointer } from "@/components/quiz/workspace/QuestionReviewHost";
 import { RANKED_ROLE_LABELS } from "@/lib/ranked-public/roles";
+import { matchHostLabel } from "@/lib/ranked-public/matchHost";
 import type { MatchHistoryEntryView, MatchReviewView } from "@/lib/ranked-public/contracts";
 
 /**
@@ -165,6 +166,9 @@ export default function RankedMatchRow({
   const Icon = terminal.icon;
   const opponent = entry.opponentIsBot ? "Bot" : entry.opponentDisplayName ?? "Opponent";
   const role = entry.viewerRole !== null ? RANKED_ROLE_LABELS[entry.viewerRole] : null;
+  // JLIB-HOST — where the match was played from, when that is a named host
+  // (the Journey Library). Null for an ordinary or legacy match: unchanged.
+  const hostLabel = matchHostLabel(entry.host);
 
   // The one derived figure, and it is only derivable when BOTH halves are on
   // the row. A pre-rating result carries neither and gets no ladder line at
@@ -261,6 +265,9 @@ export default function RankedMatchRow({
         <span data-testid="ranked-match-age" className="shrink-0">
           {relativeMatchAge(entry.completedAt)}
         </span>
+        {hostLabel && (
+          <span data-testid="ranked-match-host" className="shrink-0">· {hostLabel}</span>
+        )}
         {terminal.note && <span className="shrink-0">· {terminal.note}</span>}
         <span className="min-w-0 flex-1" />
         {hasRating && (

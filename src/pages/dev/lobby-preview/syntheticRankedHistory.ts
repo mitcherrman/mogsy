@@ -728,6 +728,7 @@ export const SYNTHETIC_RANKED_HISTORY: readonly MatchHistoryEntryView[] = Object
     opponentIsBot: m.bot,
     ratingDelta: m.delta,
     ratingAfter: m.ratingAfter,
+    host: null,
   })) satisfies MatchHistoryEntryView[],
 );
 

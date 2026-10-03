@@ -77,6 +77,7 @@ const ENTRY: MatchHistoryEntryView = {
   opponentIsBot: false,
   ratingDelta: -18,
   ratingAfter: 1266,
+  host: null,
 };
 
 // ------------------------------------------------------------- environment

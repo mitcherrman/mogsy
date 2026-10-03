@@ -22,6 +22,7 @@ import type {
 } from "@/lib/ranked-core/adapters/adaptToViews";
 import type { OptionMediaView } from "@/lib/ranked-core/viewTypes";
 import { isRankedRole, type RankedRole } from "./roles";
+import { readMatchHost, type RankedMatchHost } from "./matchHost";
 import {
   readQuestionRoles, readTimelineTopic, type TimelineTopic,
 } from "@/components/quiz/timeline/timelineNodeModel";
@@ -815,6 +816,15 @@ export interface PublicRoundView {
    * run snapshot, so nothing but the id is lifted here.
    */
   ruleset?: StageRulesetView | null;
+  /**
+   * JLIB-HOST — the match's PERSISTED host (`matchHost`). Also what the
+   * resume's embedded public projection carries.
+   *
+   * `undefined` means the backend did not report one (a deployment predating
+   * the field), which is different from `null`: a reported ordinary or legacy
+   * match. Only a reported value may overrule a router-state hint.
+   */
+  host?: RankedMatchHost | null;
 }
 
 /** The governing ruleset's identity. See `PublicRoundView.ruleset`. */
@@ -1113,6 +1123,10 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     presence: readPresence(payload.presence),
     playtest: readPlaytest(payload.playtest),
     ruleset: readStageRuleset(payload.ruleset),
+    // JLIB-HOST — only when the backend reports it, so "not reported" (an
+    // older deployment, the private projection) stays distinguishable from
+    // a reported ordinary match (`null`). See `PublicRoundView.host`.
+    ...("host" in payload ? { host: readMatchHost(payload.host) } : {}),
   };
 }
 
@@ -2209,6 +2223,9 @@ export interface MatchHistoryEntryView {
    * skipped/pending or predates rating application. */
   ratingDelta: number | null;
   ratingAfter: number | null;
+  /** JLIB-HOST — the match's persisted host (`matchHost`). `null` for an
+   * ordinary or legacy match, and on a backend that predates the field. */
+  host: RankedMatchHost | null;
 }
 
 export interface MatchHistoryView {
@@ -2251,6 +2268,7 @@ export function readMatchHistory(body: unknown): MatchHistoryView {
       // Absent on pre-F2.2 backends — tolerate missing as null.
       ratingDelta: nnum(e.rating_delta, `entries[${i}].rating_delta`),
       ratingAfter: nnum(e.rating_after, `entries[${i}].rating_after`),
+      host: readMatchHost(e.host),
     } satisfies MatchHistoryEntryView;
   });
   return {

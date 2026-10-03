@@ -129,6 +129,7 @@ function entry(matchId: string, rounds: number): MatchHistoryEntryView {
     opponentIsBot: false,
     ratingDelta: 22,
     ratingAfter: 1284,
+    host: null,
   };
 }
 

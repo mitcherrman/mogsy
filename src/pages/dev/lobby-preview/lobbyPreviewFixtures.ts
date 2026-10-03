@@ -211,6 +211,7 @@ const TIMMY_OLDER_ROWS: readonly MatchHistoryEntryView[] = Object.freeze(
     opponentIsBot: row.bot,
     ratingDelta: row.delta,
     ratingAfter: TIMMY_OLDER_RATING_AFTER[idx],
+    host: null,
   })) satisfies MatchHistoryEntryView[],
 );
 

@@ -47,7 +47,16 @@ let cfg: {
   /** Modules whose settlement the backend will not serve (a partial backfill). */
   gaps: number[];
   opponentName: string | null;
+  /** JLIB-HOST — `payload.host` on the resume's public projection and on the
+   *  match state. `undefined` omits the key (a backend predating it). */
+  resumeHost?: string | null;
+  stateHost?: string | null;
 };
+
+function withHost<E extends { payload: Record<string, unknown> }>(env: E, host: string | null | undefined): E {
+  if (host !== undefined) env.payload.host = host;
+  return env;
+}
 
 function shape<E extends { payload: Record<string, unknown> }>(env: E): E {
   const p = env.payload;
@@ -142,7 +151,8 @@ beforeEach(() => {
         match_id: "m1", round_number: 10, server_time: T,
         payload: {
           match_status: "complete", match_over: true,
-          public: shape(publicRoundV2()), private: shape(privatePlayerV2("userA")),
+          public: withHost(shape(publicRoundV2()), cfg.resumeHost),
+          private: shape(privatePlayerV2("userA")),
           latest_resolved_round: null,
           result: resultRow(),
         },
@@ -176,7 +186,7 @@ beforeEach(() => {
     }
     if (u.includes("/presence")) return json({ status: "complete", match_id: "m1", active: false });
     if (u.endsWith("/private")) return json(shape(privatePlayerV2("userA")));
-    if (/\/matches\/m1$/.test(u)) return json(shape(publicRoundV2()));
+    if (/\/matches\/m1$/.test(u)) return json(withHost(shape(publicRoundV2()), cfg.stateHost));
     return json({});
   }) as unknown as typeof fetch);
 });
@@ -375,4 +385,55 @@ describe("JLIB-FE — a Journey Library match returns to the Library", () => {
     fireEvent.click(primary);
     expect(onTerminalNavigate).toHaveBeenCalledWith("/quiz/journeys");
   });
+});
+
+describe("JLIB-HOST — the persisted host decides the result screen", () => {
+  it("returns a recovered journey_library match to the Library with no router origin", async () => {
+    cfg.resumeHost = "journey_library";
+    cfg.stateHost = "journey_library";
+    const onTerminalNavigate = vi.fn();
+    const onOriginChange = vi.fn();
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA"
+      onOriginChange={onOriginChange} onTerminalNavigate={onTerminalNavigate} />);
+    await screen.findByTestId("ranked-match-over");
+    const primary = await screen.findByTestId("result-primary");
+    expect(primary).toHaveTextContent("Back to Journey Library");
+    expect(screen.queryByText("Play Again")).toBeNull();
+    expect(screen.getByTestId("result-secondary")).toHaveTextContent("Review Match");
+    expect(screen.getByTestId("result-tertiary")).toHaveTextContent("Back to Leaguecraft");
+    expect(onOriginChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: "journey_library", href: "/quiz/journeys" }));
+    expect(document.body.textContent).not.toContain("journey_library");
+    fireEvent.click(primary);
+    expect(onTerminalNavigate).toHaveBeenCalledWith("/quiz/journeys");
+  });
+
+  it("reads the host off the resume payload alone", async () => {
+    cfg.resumeHost = "journey_library";
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" onTerminalNavigate={vi.fn()} />);
+    await screen.findByTestId("ranked-match-over");
+    expect(await screen.findByTestId("result-primary")).toHaveTextContent("Back to Journey Library");
+  });
+
+  it("lets a persisted null host overrule a stale Journey origin: ordinary Play Again", async () => {
+    cfg.resumeHost = null;
+    cfg.stateHost = null;
+    const onTerminalNavigate = vi.fn();
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA"
+      origin={RANKED_MATCH_ORIGINS.journey_library} onTerminalNavigate={onTerminalNavigate} />);
+    await screen.findByTestId("ranked-match-over");
+    const primary = await screen.findByTestId("result-primary");
+    await waitFor(() => expect(primary).toHaveTextContent("Play Again"));
+    expect(screen.queryByText("Back to Journey Library")).toBeNull();
+  });
+
+  it.each([null, "study_hall", "playtest", "direct", "daily_challenge"])(
+    "keeps the ordinary actions for host %s", async (host) => {
+      cfg.resumeHost = host;
+      cfg.stateHost = host;
+      render(<QuizRankedMatch matchId="m1" viewerUserId="userA" onTerminalNavigate={vi.fn()} />);
+      await screen.findByTestId("ranked-match-over");
+      expect(await screen.findByTestId("result-primary")).toHaveTextContent("Play Again");
+      expect(screen.getByTestId("result-tertiary")).toHaveTextContent("Back to Leaguecraft");
+    });
 });

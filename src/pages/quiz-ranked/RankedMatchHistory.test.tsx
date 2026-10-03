@@ -25,6 +25,7 @@ const entry = (over: Partial<MatchHistoryEntryView> = {}): MatchHistoryEntryView
   opponentIsBot: false,
   ratingDelta: null,
   ratingAfter: null,
+  host: null,
   ...over,
 });
 

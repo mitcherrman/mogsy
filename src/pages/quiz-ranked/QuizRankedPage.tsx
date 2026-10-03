@@ -66,8 +66,9 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import { getActiveMatch } from "@/lib/ranked-public/client";
+import { MATCH_HOST } from "@/lib/ranked-public/matchHost";
 import { QuizRankedMatch } from "./QuizRankedMatch";
-import { readMatchOrigin } from "./matchOrigin";
+import { originForHost, readMatchOrigin, type RankedMatchOrigin } from "./matchOrigin";
 import type { MatchPhase } from "./useRankedMatch";
 import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
 import {
@@ -176,8 +177,16 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   });
   // JLIB-FE — where the handoff came from (the Journey Library), read once
   // with the id. Kept across the `rankedEntry` replace below and a reload.
-  const [origin] = useState(() => readMatchOrigin(location.state));
+  // JLIB-HOST — only a hint for the first frames: the match's persisted host
+  // overrules it (see `matchOrigin`).
+  const [routerOrigin] = useState(() => readMatchOrigin(location.state));
   const [discoveredMatchId, setDiscoveredMatchId] = useState<string | null>(null);
+  // JLIB-HOST — the origin discovery's persisted host implies, for a match
+  // recovered without router state (new tab, cleared history).
+  const [discoveredOrigin, setDiscoveredOrigin] = useState<RankedMatchOrigin | null>(null);
+  // What the arena resolved (persisted host over hint); drives the back link.
+  // `undefined` until the arena has said, when the hint stands.
+  const [resolvedOrigin, setResolvedOrigin] = useState<RankedMatchOrigin | null>();
   const navigate = useNavigate();
   const [discoveryDone, setDiscoveryDone] = useState(false);
   const [authority, setAuthority] = useState<{
@@ -221,10 +230,11 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
       .then((found) => {
         if (!found) return;
         // DCMOD: a Daily stage resumes inside its parent run, not as Ranked.
-        if (found.host === "daily_challenge") {
+        if (found.host === MATCH_HOST.dailyChallenge) {
           navigate("/quiz/daily-challenge", { replace: true });
           return;
         }
+        setDiscoveredOrigin(originForHost(found.host));
         setDiscoveredMatchId(found.matchId);
       })
       .catch(() => { /* not recoverable — fall through to the lobby */ })
@@ -233,8 +243,9 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   }, [handoffMatchId, navigate]);
 
   const liveMatchId = handoffMatchId ?? discoveredMatchId;
-  const backLink = handoffMatchId && origin
-    ? { href: origin.href, label: origin.navLabel } : null;
+  const originHint = handoffMatchId ? routerOrigin : discoveredOrigin;
+  const origin = resolvedOrigin === undefined ? originHint : resolvedOrigin;
+  const backLink = origin ? { href: origin.href, label: origin.navLabel } : null;
   const shouldBlockRankedLeave = useCallback(
     ({ nextLocation }: TransactionalLeaveCandidate) =>
       leavesStandaloneRankedOwner(nextLocation.pathname),
@@ -268,7 +279,8 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
           viewerDisplayName={viewerIdentity.displayName}
           entry={handoffMatchId ? handoffEntry : "recovered"}
           onPhaseChange={handlePhaseChange}
-          origin={handoffMatchId ? origin : null}
+          origin={originHint}
+          onOriginChange={setResolvedOrigin}
           onTerminalNavigate={(destination) => navigate(destination, { replace: true })}
           terminalChrome={<RankedRouteHeader size="wide" replace back={backLink} />}
           chrome={<RankedRouteHeader size="wide" active back={backLink} />} />
