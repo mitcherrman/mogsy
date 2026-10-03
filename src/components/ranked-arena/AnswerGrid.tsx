@@ -17,6 +17,7 @@
  *   question, so it carries no correctness and needs no gating here.
  */
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
+import { answerDensity } from "@/lib/question-surface/textDensity";
 import {
   AnswerOptionView,
   InteractionPermissions,
@@ -92,6 +93,10 @@ export function AnswerGrid({
       // picks the grid, so CSS can size tablets by layout without re-deriving it.
       data-answer-layout={wideTwoColumn ? "grid" : "stacked"}
       data-answer-count={options.length}
+      // VISCONT1: the type tier the arena seats this grid at (from the longest
+      // label, before layout) — see `textDensity`. Classification only; the
+      // canonical stage's stylesheet decides what a tier does there.
+      data-answer-density={answerDensity(options.map((o) => o.label))}
       data-eliminated-count={eliminatedIndexes.length}
       className="m-0 border-0 p-0"
     >

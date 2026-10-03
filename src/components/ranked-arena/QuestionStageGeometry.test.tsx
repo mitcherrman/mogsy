@@ -225,10 +225,19 @@ const tokenPx = (width: number, name: string) => {
 // were raised to what the browser measures (prompt: category + lines; answers:
 // two rows with option media and one wrapped label, the RCP1 item card).
 // ───────────────────────────────────────────────────────────────────────────
+//
+// VISCONT1's second pass ("content adapts to the arena") changed what the
+// two text regions have to hold: long text now TIGHTENS into its box
+// (`textDensity`) instead of the box being sized for the longest text at full
+// size. So `prompt` is the tallest prompt any tier draws (four 19px lines +
+// category; over 150 characters takes 16px at 1024) and `answers` the tallest
+// grid any tier draws (the dense tier's four 12px lines in the 1024 column,
+// three from 1280). The 1024 tier moved 28px from its prompt box to its
+// answer box; its stage is unchanged.
 const MEASURED = {
-  1024: { band: 199, prompt: 157, answers: 137, stage: 618 },
-  1280: { band: 256, prompt: 130, answers: 102, stage: 572 },
-  1512: { band: 256, prompt: 111, answers: 102, stage: 578 },
+  1024: { band: 199, prompt: 130, answers: 156, stage: 618 },
+  1280: { band: 256, prompt: 130, answers: 124, stage: 580 },
+  1512: { band: 256, prompt: 111, answers: 124, stage: 586 },
 } as const;
 
 describe("the stage height IS the sum of its reserved regions", () => {
@@ -1411,21 +1420,22 @@ function tokensAtViewport(width: number, height: number): Record<string, string>
 }
 
 /**
- * Ordinary content, measured in Chromium through `/dev/ranked-shell-probe` at
- * each tier (VISCONT1). `prompt` is the tallest ordinary prompt block (the RA7
- * Combat Calculation fixture, 192 characters, or the bank's 188-character
- * maximum — whichever wraps further); `answers` is the tallest ordinary grid
- * (option-media tablets, two or four, at that tier's padding). Long-label
- * extremes (`realP99`, `realMax`) are deliberately NOT here: they are the
- * documented exception, and reserving for them would shrink every round's art.
+ * The tallest text each tier DRAWS, measured in Chromium through
+ * `/dev/ranked-shell-probe?q=shape` and the shipped fixtures (VISCONT1, second
+ * pass). Long text no longer outgrows these boxes — it tightens into them
+ * (`textDensity`) — so `prompt` is the tallest prompt block any tier draws at
+ * that viewport (four 19px lines + category at the long tier; the dense tier
+ * is shorter), and `answers` is the tallest grid any tier draws: normal
+ * option-media tablets, the long tier's two-or-three-line 2x2, or the dense
+ * tier's three-or-four-line 2x2 for the bank's 76-character labels.
  */
 const TIER_MEASURED = [
-  { vp: [1024, 768], prompt: 156.7, answers: 137 },
-  { vp: [1024, 900], prompt: 156.7, answers: 167.5 },
-  { vp: [1280, 800], prompt: 129.2, answers: 102 },
-  { vp: [1366, 768], prompt: 129.2, answers: 102 },
+  { vp: [1024, 768], prompt: 129.2, answers: 155.3 },
+  { vp: [1024, 900], prompt: 129.2, answers: 167.5 },
+  { vp: [1280, 800], prompt: 129.2, answers: 124 },
+  { vp: [1366, 768], prompt: 129.2, answers: 124 },
   { vp: [1440, 900], prompt: 129.2, answers: 126 },
-  { vp: [1520, 800], prompt: 110.3, answers: 102 },
+  { vp: [1520, 800], prompt: 110.3, answers: 124 },
   { vp: [1520, 900], prompt: 110.3, answers: 126 },
   { vp: [1600, 780], prompt: 148.6, answers: 142 },
   { vp: [1880, 900], prompt: 148.6, answers: 142 },
@@ -1439,7 +1449,7 @@ describe("VISCONT1 — one allocation per viewport, seated by its reserve", () =
   };
 
   it.each(TIER_MEASURED.map((r) => [`${r.vp[0]}x${r.vp[1]}`, r] as const))(
-    "at %s the prompt and answer reserves cover the ordinary corpus",
+    "at %s the prompt and answer reserves hold the tallest text any tier draws",
     (_name, r) => {
       const [w, h] = r.vp;
       expect(at(w, h, "--qs-prompt-h")!, "a prompt that outgrows its region moves the answers")
@@ -1499,11 +1509,19 @@ describe("VISCONT1 — one allocation per viewport, seated by its reserve", () =
 
   it("holds the reveal's evidence slot while nothing fills it", () => {
     // The SC-RENAME3 pattern: a conditional line gets a fixed slot, so the
-    // round settling cannot move what is above it. One `text-xs leading-snug`
-    // line — the only post-answer content Ranked and the hosted Daily mount is
-    // the concise evidence statement.
+    // round settling cannot move what is above it — sized for the LONGEST
+    // statement the beat carries (96 characters): two `text-xs leading-snug`
+    // lines under 1500px wide, where 96 characters wrap, one from 1500.
     const src = css();
-    expect(src).toMatch(/\.ranked-question-stage\s*\{\s*--qs-feedback-h:\s*calc\(0\.75rem \* 1\.375\);/);
+    expect(src).toMatch(/\.ranked-question-stage\s*\{\s*--qs-feedback-h:\s*calc\(0\.75rem \* 1\.375 \* 2\);/);
+    expect(at(1280, 800, "--qs-feedback-h")).toBeCloseTo(33, 5);
+    expect(at(1520, 800, "--qs-feedback-h")).toBeCloseTo(16.5, 5);
+    // The line that replaces it takes exactly the slot, however many lines it
+    // draws — a short statement must not shorten a centred phone card.
+    expect(src).toMatch(
+      /> \* > \.question-surface-stack > \[data-testid="answer-evidence"\]\s*\{\s*min-height:\s*var\(--qs-feedback-h\);/);
+    // And it is never given back: the first pass's phone give-backs are gone.
+    expect(src).not.toMatch(/question-surface-stack[^{]*::after\s*\{\s*display:\s*none/);
     expect(src).toMatch(
       /> \* > \.question-surface-stack:not\(:has\(> \[data-surface-region="answers"\] ~ :not\(\.question-motif-layer\)\)\)::after\s*\{\s*content:\s*"";\s*flex:\s*0 0 var\(--qs-feedback-h\);/);
     expect(read("components/question-feedback/EvidenceLine.tsx"))
@@ -1519,9 +1537,10 @@ describe("VISCONT1 — one allocation per viewport, seated by its reserve", () =
     const selectors = [...css().matchAll(/([^{}]*ranked-question-body"\][^{}]*)\{/g)]
       .map((m) => m[1].trim())
       .filter((s) => s.includes("question-surface-stack"));
-    // spacer, margin, slot, phone tokens, and the phone give-backs (stack
-    // slot, short-phone prompt, short-phone slot)
-    expect(selectors.length).toBe(7);
+    // The seating, the slot and its evidence line, the reveal-icon edge, the
+    // text-density tiers (desktop, the 1024 prompt step, phone) and the phone
+    // allocation — every one through the canonical stack.
+    expect(selectors.length).toBeGreaterThanOrEqual(15);
     for (const s of selectors) {
       expect(s).toMatch(/> \* > \.question-surface-stack|> :has\(> \.question-surface-stack\)/);
       expect(s).not.toMatch(/journey/);
@@ -1537,22 +1556,83 @@ describe("VISCONT1 — one allocation per viewport, seated by its reserve", () =
     // capped at 7.5rem), a four-line prompt with its category line (the
     // bank's p95), and four single-line tablets. Set on the STACK, not the
     // folio, so the stage's `min-height` arithmetic below `lg` still sees no
-    // tokens. Sized by RMOB2's one-screen contract as well: under 780px tall
-    // the prompt reserve steps to three lines + category.
+    // tokens. FIXED on every phone: long text tightens inside these boxes
+    // (see the text-density block below) instead of the boxes giving room back.
     const phone = /@media \(max-width: 1023\.98px\)\s*\{[\s\S]*?\.ranked-shell\[data-phone-arena="true"\] \[data-testid="ranked-question-body"\] > \* > \.question-surface-stack\s*\{([^}]*)\}/
       .exec(css())?.[1] ?? "";
     expect(phone).toMatch(/--qs-media-h:\s*7\.75rem/);
     expect(phone).toMatch(/--qs-prompt-h:\s*7\.75rem/);
     expect(phone).toMatch(/--qs-answers-h:\s*13\.125rem/);
-    // 124 + 8 + 124 + 8 + 210 + 8 + 16.5 = 498.5px: inside the 375x812 folio
-    // (~600px of content box), so an ordinary round still never scrolls.
+    // 124 + 8 + 124 + 8 + 210 + 8 + 33 = 515px: inside the 360x740 folio
+    // (~528px of content box), so a round still never scrolls the phone.
     expect(tokenPx(500, "--qs-media-h")).toBeNull();
-    // And the slot is given back exactly where the one-screen contract needs
-    // the room — a four-answer stack, or a phone under 780px — by shape and
-    // viewport, never by identity.
+    // No phone prompt step-down any more: one box on every phone.
+    expect(css()).not.toMatch(/--qs-prompt-h:\s*6\.125rem/);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// VISCONT1 — TEXT DENSITY: CONTENT ADAPTS TO THE ARENA.
+//
+// The first pass left long text outgrowing fixed boxes (desktop p99/extreme
+// labels −38px, phone prompts past four lines 25.7px, phone reveals ~12px).
+// The second pass makes that text tighten INSIDE its box: `textDensity`
+// classifies the prompt and the longest label before layout, from public text,
+// and the canonical stage's stylesheet gives each tier its type. The browser
+// half — every tier holding every anchor at zero — is the continuity spec.
+// ───────────────────────────────────────────────────────────────────────────
+describe("VISCONT1 — long text tightens inside its box", () => {
+  const css = () => stripComments(CSS);
+  const rulesFor = (attr: string) => [...css().matchAll(/([^{}]*)\{([^{}]*)\}/g)]
+    .filter((m) => m[1].includes(attr));
+  const remPx = (v: string) => (v.endsWith("rem") ? parseFloat(v) * 16 : parseFloat(v));
+
+  it("publishes both tiers from public text, before layout", () => {
+    expect(read("components/ranked-arena/AnswerGrid.tsx"))
+      .toContain("data-answer-density={answerDensity(options.map((o) => o.label))}");
+    expect(read("components/question-surface/InteractiveScenarioSurface.tsx"))
+      .toContain("data-prompt-density={promptDensity(question.prompt)}");
+    // Content shape only: no measurement, no identity.
+    const density = codeOnly(read("lib/question-surface/textDensity.ts"));
+    expect(density).not.toMatch(/ResizeObserver|getBoundingClientRect|questionId|category|family/);
+  });
+
+  it("never draws a tier below its readable floor", () => {
+    const answerRules = rulesFor('data-answer-density="');
+    const promptRules = rulesFor('data-prompt-density="');
+    expect(answerRules.length).toBeGreaterThanOrEqual(4);
+    expect(promptRules.length).toBeGreaterThanOrEqual(3);
+    for (const [, sel, body] of answerRules) {
+      const fs = /font-size:\s*([\d.]+(?:rem|px))/.exec(body)?.[1];
+      if (fs) expect(remPx(fs), `answer floor in "${sel.trim()}"`).toBeGreaterThanOrEqual(12);
+    }
+    for (const [, sel, body] of promptRules) {
+      const fs = /font-size:\s*([\d.]+(?:rem|px))/.exec(body)?.[1];
+      if (fs) expect(remPx(fs), `prompt floor in "${sel.trim()}"`).toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  it("scopes every tier to the canonical quiz stack — Journey keeps its tablets", () => {
+    for (const [, sel] of [...rulesFor('data-answer-density="'), ...rulesFor('data-prompt-density="')]) {
+      expect(sel).toMatch(/\[data-testid="ranked-question-body"\] > \* > \.question-surface-stack/);
+      expect(sel).not.toMatch(/journey/);
+    }
+  });
+
+  it("pays the 1024 tier's larger answer box out of its prompt box, not the art", () => {
+    // Dense labels draw four lines in the 1024 column (154px), so the answer
+    // box there is 166px; prompts over 150 characters tighten to 16px there,
+    // which is what lets the prompt box come down from 158px to 130px. The
+    // stage asks for exactly what the first pass asked for.
+    expect(tokenPx(1024, "--qs-prompt-h")! + tokenPx(1024, "--qs-answers-h")!).toBe(158 + 138);
     expect(css()).toMatch(
-      /:has\(> \[data-surface-region="answers"\] \[data-answer-layout="stacked"\]\[data-answer-count="4"\]\)::after\s*\{\s*display:\s*none;/);
-    expect(css()).toMatch(
-      /@media \(max-width: 1023\.98px\) and \(max-height: 779\.98px\)\s*\{\s*\.ranked-shell\[data-phone-arena="true"\][^{]*\{\s*--qs-prompt-h:\s*6\.125rem;\s*\}\s*\.ranked-shell\[data-phone-arena="true"\][^{]*::after\s*\{\s*display:\s*none;/);
+      /@media \(min-width: 1024px\) and \(max-width: 1279\.98px\)\s*\{\s*[^{]*\[data-prompt-density="dense"\] > header h2\s*\{\s*font-size:\s*1rem;/);
+  });
+
+  it("draws the reveal's tablet icon out of flow, so a label keeps its width", () => {
+    const src = css();
+    expect(src).toMatch(/\[data-answers-state\] \[data-quiz-choice\] > svg\s*\{\s*position:\s*absolute;/);
+    expect(src).toMatch(
+      /> \* > \.question-surface-stack \[data-answers-state\] \[data-quiz-choice\]\s*\{\s*position:\s*relative;\s*padding-right:\s*1\.5rem;/);
   });
 });

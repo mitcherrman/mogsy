@@ -29,6 +29,17 @@
  *   which is what the visual-continuity certification measures.
  * `?broken=1` (VISCONT1) points every served asset path at a file that does
  *   not exist, so a failed load can be measured against a loaded one.
+ * `?q=shape&alen=N&acount=K&plen=M&rich=1` (VISCONT1) serves a round of an
+ *   exact CONTENT SHAPE — K option labels of N characters and an M-character
+ *   prompt, built from real League vocabulary, on a compact plate or (rich=1)
+ *   the cinematic item card — so the harness can find where a typography tier
+ *   stops fitting. Inside `?seq=` the same round is `shape.N.K.M.R`.
+ * `?evlen=N` (VISCONT1) settles `?seq=` rounds with an N-character evidence
+ *   statement (capped at 96, the longest the evidence beat carries).
+ * `?ruleset=time_trial|survival|standard` (VISCONT1) serves the Daily stage
+ *   ruleset block on the public round; `?host=daily` mounts the match the way
+ *   `DailyRunPage` does (hosted, bare), so Daily stages are measured through
+ *   the hosted code path rather than inferred.
  * `?motif=` (QF1) serves `topic.motif` on the question/segment and `motif` on
  *   every Mastery challenge, e.g. `?motif=champion_studies`.
  * `?role=` freezes a League role onto the viewer's participant.
@@ -107,7 +118,7 @@ export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex", "orderforge",
   "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
   "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
-  "spellCooldown", "matchup", "twoChamp",
+  "spellCooldown", "matchup", "twoChamp", "shape",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -264,8 +275,11 @@ function orderForgeProbeState() {
   return orderForgeState({}, mode === "locked");
 }
 
+/** VISCONT1 — a `?seq=` entry: a probe state, or `shape.N.K.M.R`. */
+const SEQ_ENTRY = /^shape(?:\.\d+){0,4}$/;
+
 /** VISCONT1 — the probe state the CURRENT round serves: `?seq=` by round. */
-function stateForRound(state: ProbeState): ProbeState {
+function stateForRound(state: ProbeState): string {
   if (probe.seq.length === 0) return state;
   const round = probe.sfxStep > 0 && probe.sfxStep < 5 ? Math.max(1, probe.sfxStep) : 1;
   return probe.seq[Math.min(round, probe.seq.length) - 1];
@@ -284,8 +298,51 @@ function breakAssets<T>(value: T): T {
   return value;
 }
 
+/**
+ * VISCONT1 — real League vocabulary, cut to an exact length at a word
+ * boundary, so a label of N characters wraps the way a real label of N
+ * characters does (no synthetic long tokens, no repeated filler).
+ */
+const SHAPE_WORDS = ("Ability Haste, Ability Power, Heal and Shield Power, Mana Regeneration, "
+  + "Move Speed, Health, Armor Penetration, Magic Resist, Lethality, Omnivamp, Tenacity, "
+  + "Attack Speed, Critical Strike Chance, Base Health Regeneration, Life Steal").split(" ");
+const PROMPT_WORDS = ("Your jungler has taken the first dragon and your top laner holds the "
+  + "Rift Herald while the enemy support rotates toward the river with vision on the "
+  + "mid lane, and your team has two completed items and a lead in tower plates, so "
+  + "which objective or item choice gives the team the strongest advantage next").split(" ");
+
+function exactText(words: string[], length: number, offset: number, end = ""): string {
+  let out = "";
+  for (let i = 0; out.length < length + 12; i++) {
+    out += (out ? " " : "") + words[(offset + i) % words.length];
+  }
+  const cut = out.slice(0, Math.max(1, length - end.length));
+  const at = cut.lastIndexOf(" ");
+  const trimmed = (at > cut.length * 0.6 ? cut.slice(0, at) : cut).replace(/[ ,]+$/, "");
+  return trimmed + end;
+}
+
+function shapeQuestion(token: string) {
+  const parts = token.split(".").slice(1).map(Number);
+  const q = new URLSearchParams(window.location.search);
+  const num = (i: number, key: string, dflt: number) =>
+    Number.isFinite(parts[i]) ? parts[i] : Number(q.get(key) ?? dflt) || dflt;
+  const alen = num(0, "alen", 20);
+  const acount = Math.max(2, Math.min(4, num(1, "acount", 4)));
+  const plen = num(2, "plen", 60);
+  const rich = (Number.isFinite(parts[3]) ? parts[3] : Number(q.get("rich") ?? 0)) === 1;
+  const options = Array.from({ length: acount }, (_, i) => exactText(SHAPE_WORDS, alen, i * 5));
+  const prompt = exactText(PROMPT_WORDS, plen, 0, "?");
+  return rich
+    ? { ...ITEM_OPTION_QUESTION, question_id: `q-shape-${token}`, prompt, options,
+      option_media: undefined }
+    : { question_id: `q-shape-${token}`, prompt, options, category: "champion_ability_cooldown" };
+}
+
 function questionFor(state: ProbeState) {
-  const served = baseQuestionFor(stateForRound(state)) as Record<string, unknown>;
+  const round = stateForRound(state);
+  const served = (round.startsWith("shape") ? shapeQuestion(round)
+    : baseQuestionFor(round as ProbeState)) as Record<string, unknown>;
   const question = probe.broken ? breakAssets(served) : served;
   if (probe.questionRoles.length === 0 && !probe.motif) return question;
   return { ...question, topic: {
@@ -527,6 +584,13 @@ function publicFor(state: ProbeState, role: string | null) {
   } else {
     payload.question = questionFor(state);
   }
+  // VISCONT1 — `?ruleset=`: the Daily stage ruleset block, as the backend
+  // publishes it on the round (a fresh stage: nothing settled, no strikes).
+  if (probe.ruleset) {
+    payload.ruleset = { ruleset_id: probe.ruleset,
+      max_strikes: probe.ruleset === "survival" ? 3 : null, strikes: 0,
+      questions_settled: 0, stage_ended: false, live_strikes: 0 };
+  }
   const applied = applyPoints(env);
   if (probe.sfxStep > 0 && probe.sfxStep < 5) {
     const round = Math.max(1, probe.sfxStep);
@@ -583,6 +647,13 @@ function privateFor(state: ProbeState) {
   } else {
     payload.question = questionFor(state);
   }
+  // VISCONT1 — `?ruleset=`: the Daily stage ruleset block, as the backend
+  // publishes it on the round (a fresh stage: nothing settled, no strikes).
+  if (probe.ruleset) {
+    payload.ruleset = { ruleset_id: probe.ruleset,
+      max_strikes: probe.ruleset === "survival" ? 3 : null, strikes: 0,
+      questions_settled: 0, stage_ended: false, live_strikes: 0 };
+  }
   return applyPoints(env);
 }
 
@@ -621,7 +692,11 @@ function resolvedFor(round: number) {
     ...(probe.seq.length > 0 ? {
       correct_option_index: 0,
       question_explanation: {
-        scenario_note: "The first option is correct for this probe round.",
+        // `?evlen=N` (VISCONT1): an evidence statement of N characters — 96 is
+        // the longest the concise-evidence beat will carry.
+        scenario_note: probe.evlen > 0
+          ? exactText(PROMPT_WORDS, probe.evlen, 3, ".")
+          : "The first option is correct for this probe round.",
       },
     } : {}),
   };
@@ -664,12 +739,15 @@ const probe: {
   /** SFX1.5 browser-only live transition step; zero outside `?sfx=1`. */
   sfxStep: number;
   /** VISCONT1 — `?seq=` per-round probe states, and `?broken=1`. */
-  seq: ProbeState[];
+  seq: string[];
   broken: boolean;
+  /** VISCONT1 — `?ruleset=` Daily stage ruleset, `?host=daily`. */
+  ruleset: string | null;
+  evlen: number;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
   discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null, sfxStep: 0,
-  seq: [], broken: false };
+  seq: [], broken: false, ruleset: null, evlen: 0 };
 
 /** Stamp a live clock and a future round-1 start onto a canned envelope. */
 function applyEntryLead<T extends { payload: Record<string, unknown>; server_time?: string }>(
@@ -848,6 +926,13 @@ function endDiscoveries() {
   };
 }
 
+/** VISCONT1 — the host `?host=daily` mounts the match under. */
+const DAILY_PROBE_HOST = {
+  eyebrow: "Daily Challenge",
+  settlingMessage: "Stage complete…",
+  onMatchSettled: () => {},
+};
+
 let installed = false;
 function installInterceptor() {
   if (installed) return;
@@ -984,8 +1069,12 @@ export default function RankedShellProbe() {
   const forgeBot = state === "orderforge" && params.get("forge") === "bot";
   probe.sfxStep = sfxQa ? sfxStep : 0;
   probe.seq = (params.get("seq") ?? "").split(",")
-    .filter((s): s is ProbeState => (PROBE_STATES as readonly string[]).includes(s));
+    .filter((s) => (PROBE_STATES as readonly string[]).includes(s) || SEQ_ENTRY.test(s));
   probe.broken = params.get("broken") === "1";
+  const ruleset = params.get("ruleset");
+  probe.ruleset = ruleset && ["time_trial", "survival", "standard"].includes(ruleset) ? ruleset : null;
+  const dailyHost = params.get("host") === "daily";
+  probe.evlen = Math.min(96, Number(params.get("evlen") ?? 0) || 0);
   probe.end = sfxQa && sfxStep >= 5 ? "victory"
     : end === "victory" || end === "defeat" || end === "draw" ? end : null;
   probe.gaps = (params.get("gap") ?? "").split(",").map(Number).filter((n) => n > 0);
@@ -1067,10 +1156,14 @@ export default function RankedShellProbe() {
           }} />
         </div>
       )}
-      {params.get("frame") === "0" ? (
+      {params.get("frame") === "0" || dailyHost ? (
         <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
           matchId={forgeBot ? FORGE_BOT_MATCH_ID : "m1"} viewerUserId={forgeBot ? FORGE_BOT_VIEWER : VIEWER} viewerDisplayName={viewerName}
           entry={probe.entryFresh ? "fresh" : "recovered"}
+          // VISCONT1 — `?host=daily`: hosted exactly as `DailyRunPage` hosts
+          // a stage (its own eyebrow and settling copy, no settlement action
+          // here because this route has no run to hand back to).
+          host={dailyHost ? DAILY_PROBE_HOST : undefined}
           chrome={<RankedRouteHeader size="wide" />} />
       ) : (
         <Frame size="wide">

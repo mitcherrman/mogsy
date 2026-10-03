@@ -39,6 +39,7 @@ import {
   resolveBandProfile,
   type ScenarioBandProfile,
 } from "@/lib/question-surface/bandProfile";
+import { promptDensity } from "@/lib/question-surface/textDensity";
 import {
   AnswerOptionView,
   InteractionPermissions,
@@ -257,6 +258,10 @@ export function InteractiveScenarioSurface({
       data-variant={variant}
       data-media={settings.mediaScale}
       data-band={bandProfile}
+      // VISCONT1: the prompt's type tier (from its length, before layout) —
+      // see `textDensity`. The stage seats a long prompt by tightening its type
+      // inside the fixed prompt box, never by growing the box.
+      data-prompt-density={promptDensity(question.prompt)}
       /**
        * THE THREE REGIONS OF THE QUESTION CARD (ARENA1 Phase 1).
        *

@@ -267,10 +267,16 @@ test.describe("360x740 — below `lg` the arena is a FLOOR, never a lock", () =>
   test.use({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
   test("a round taller than the phone scrolls the page whole instead of clipping", async ({ page }) => {
     // RMOB2 made the phone arena one screen tall — as a `min-height`, not a
-    // height. The longest synthetic stress round genuinely cannot fit the
-    // shortest supported phone, and when it does not, the page scrolls and
-    // nothing is cut off.
-    await page.goto(`/dev/ranked-shell-probe?q=stressB${LIVE_PHONE}`);
+    // height. A round that genuinely cannot fit the shortest supported phone
+    // scrolls the page, and nothing is cut off.
+    //
+    // VISCONT1: this used `stressB` (the RS2 compound worst case at REAL corpus
+    // bounds). Long text now tightens inside the arena's fixed boxes, so that
+    // round fits one screen at 360x740 and is held there by the one-screen
+    // matrix below. The property this test defends needs a round that really
+    // is taller than the phone, which only the synthetic `stress` torture
+    // probe (480-character prompt, 130-character options) still is.
+    await page.goto(`/dev/ranked-shell-probe?q=stress${LIVE_PHONE}`);
     await page.waitForSelector('[data-testid="ranked-question"]');
     await page.waitForTimeout(900);
     const fit = await page.evaluate(MEASURE) as Fit;

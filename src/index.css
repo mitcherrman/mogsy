@@ -2596,13 +2596,22 @@ html.reduce-motion .ranked-award-pop--bonus {
        Calculation prompt (192 characters) is FIVE lines: 5 x 27.55 + 19 =
        156.7px, 4.7px over the old reserve, which moved the answer grid on
        every family round. 158px seats it. The safety line above was spent by
-       that type step; restoring it would cost every round's art at 1024x768. */
-    --qs-prompt-h: 9.875rem;
-    /* 138px — two rows of tablets with option media AND one wrapped label,
-       which is the tallest ordinary answer block at this width (VISCONT1
-       re-measured the RCP1 item card at 137px; it was 136 -> 1px of drift). */
-    --qs-answers-h: 8.625rem;
-    /*  = 2px + 38.625rem (620px) of stage. */
+       that type step; restoring it would cost every round's art at 1024x768.
+
+       VISCONT1 (text density) — 158 -> 130px, and the 28px handed to the
+       answers below. CONTENT ADAPTS TO THE ARENA: a prompt over 150
+       characters takes the dense tier at this width (16px/1.35, see "TEXT
+       DENSITY"), which seats the 192-character fixture in 130px, so the box
+       no longer has to be sized for the longest prompt at full size. Every
+       prompt up to 150 characters keeps 19px and fits (4 lines + category =
+       129.2px). The total reserve is unchanged, so no art moves. */
+    --qs-prompt-h: 8.125rem;
+    /* 166px — VISCONT1: the dense answer tier at this width is four 12px
+       lines in a 2x2 for the bank's longest labels (72–76 characters wrap to
+       four in the 153px column), 154px. Was 138px: two rows of option-media
+       tablets with one wrapped label, the tallest ordinary block. */
+    --qs-answers-h: 10.375rem;
+    /*  = 2px + 38.625rem (620px) of stage, unchanged. */
   }
 }
 @media (min-width: 1280px) {
@@ -2621,7 +2630,12 @@ html.reduce-motion .ranked-award-pop--bonus {
      so it overflowed by 5.2px and pushed the answers. Stage: 2px + 35.625rem. */
   .ranked-question-stage {
     --qs-prompt-h: 8.125rem;
-    --qs-answers-h: 7.5rem;
+    /* VISCONT1 — 120 -> 128px: the dense answer tier (three 12px lines in a
+       2x2, see "TEXT DENSITY") is 124px. Free for the art on every measured
+       viewport in this tier: the cinematic band here is capped at 26vh by the
+       RG1 compaction (<= 223px) inside a 256px region, so the region gives up
+       slack the band was never drawing into. */
+    --qs-answers-h: 8rem;
   }
 }
 @media (min-width: 1500px) {
@@ -2950,12 +2964,55 @@ html.reduce-motion .ranked-award-pop--bonus {
    Mastery slice render no such stack, and Journey's stack is inside
    `.journey-viewport`, so every one of them keeps its own placement — the
    Journey board's top-anchored contract (JOURNEY-UI3) included. */
+/* The slot is sized for the LONGEST statement the evidence beat can carry
+   (96 characters, `MAX_STATEMENT_CHARS`) at the line's own type (text-xs,
+   leading-snug): two lines wherever the stack is narrower than the RA11 wide
+   frame — every phone, and every desktop under 1500px, where 96 characters
+   wrap — and one line from 1500px, where they do not. A slot sized for the
+   ordinary statement would let a long one move the answers on settlement. */
 .ranked-question-stage {
-  --qs-feedback-h: calc(0.75rem * 1.375);
+  --qs-feedback-h: calc(0.75rem * 1.375 * 2);
+}
+@media (min-width: 1500px) {
+  .ranked-question-stage { --qs-feedback-h: calc(0.75rem * 1.375); }
 }
 .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack:not(:has(> [data-surface-region="answers"] ~ :not(.question-motif-layer)))::after {
   content: "";
   flex: 0 0 var(--qs-feedback-h);
+}
+/* …and the line that replaces it takes EXACTLY the slot, however many lines
+   it draws: a one-line statement in a two-line slot would otherwise shorten
+   the stack, which the phone's centred card turns into a re-centre. */
+.ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack > [data-testid="answer-evidence"] {
+  min-height: var(--qs-feedback-h);
+}
+/* THE REVEAL'S TABLET ICON TAKES NO LABEL WIDTH. On settlement the correct
+   (and a wrong, picked) tablet gains a 16px check/cross as an in-flow flex
+   child — 16px plus the button's 8px gap plus its own 8px margin — so its
+   label lost 32px of width at the exact moment the round resolved, and a
+   two-line label wrapped to three: measured, the answer box grew 210 -> 221px
+   at 360x740 and re-centred the phone card. Here the icon is drawn in the
+   tablet's right edge, out of flow, and that edge is held on every tablet
+   before and after, so a label's width is the same in every state. */
+.ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state] [data-quiz-choice] {
+  position: relative;
+  padding-right: 1.5rem;
+}
+.ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state] [data-quiz-choice] > svg {
+  position: absolute;
+  top: 50%;
+  right: 0.375rem;
+  margin: 0;
+  translate: 0 -50%;
+}
+/* A dense tablet gives the label the room the icon edge took back: a tighter
+   left inset (10px) and letter-plate gap (6px), so the bank's longest labels
+   still draw in two lines in a 360-wide phone's column. */
+.ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state][data-answer-density="dense"] [data-quiz-choice] {
+  padding-left: 0.625rem;
+}
+.ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state][data-answer-density="dense"] [data-quiz-choice] [data-choice-letter] {
+  margin-right: 0.375rem;
 }
 @media (min-width: 1024px) {
   /* The gap the stack draws (0.5rem under the RG1 compaction, which sets this
@@ -9849,6 +9906,63 @@ html.high-contrast * { text-shadow: none !important; }
   }
 }
 
+/* ---- VISCONT1 — TEXT DENSITY: long text tightens INSIDE its box -----------
+   CONTENT ADAPTS TO THE ARENA; THE ARENA DOES NOT ADAPT TO CONTENT. The stage
+   holds one answer box per viewport and the answer grid's top never moves; a
+   round with long labels does not get a taller box (which would yield the
+   art and move the prompt — the residual 38px VISCONT1's first pass left), it
+   gets a tighter type tier. `AnswerGrid` publishes the tier from the longest
+   label (`textDensity`, decided before layout from public text):
+
+     normal  <= 24 chars  the arena's own type — unchanged.
+     long    25–40        14px / 1.35, 7px of tablet padding: two lines in the
+                          narrowest column (1024), 117.6px for a 2x2.
+     dense   41+          12px / 1.25 (the floor), 5px of padding, and a 2-up
+                          grid even past the 56-character stack rule: three
+                          lines up to the bank's longest label (76) from 1280
+                          (124px for a 2x2), four in the 1024 column (154px,
+                          which is why that tier's answer box is 166px). At
+                          this type a stack of four is the TALLER layout (four
+                          rows), which is why the RS2/QV1 "stack the long
+                          ones" rule no longer applies here.
+
+   Scoped to the canonical quiz stack (`body > * > stack`), so Journey and
+   every other caller of `AnswerGrid` keep their tablets exactly as they are.
+   Measured in Chromium at 1024x768, 1280x800, 1366x768, 1440x900, 1520x800,
+   1600x780, 1880x900 and 1920x1080 through `?q=shape`. */
+@media (min-width: 1024px) {
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state][data-answer-density="long"] [data-quiz-choice] {
+    font-size: 0.875rem;
+    line-height: 1.35;
+    padding-top: 0.4375rem;
+    padding-bottom: 0.4375rem;
+  }
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state][data-answer-density="dense"] [data-quiz-choice] {
+    font-size: 0.75rem;
+    line-height: 1.25;
+    padding-top: 0.3125rem;
+    padding-bottom: 0.3125rem;
+  }
+  /* Two rows, never three or four: three answers at any tier, and four dense
+     answers past the component's 56-character stack rule, sit 2-up. Three
+     stacked tablets overran every desktop answer box even at normal type
+     (142–207px measured); four stacked dense ones are four rows. */
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state]:is([data-answer-count="3"], [data-answer-density="dense"]:not([data-answer-count="2"])) [data-quiz-answer-options] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+  }
+}
+/* The 1024 tier pays for its larger answer box out of its prompt box, so a
+   prompt over 150 characters tightens there: 16px / 1.35 seats the bank's 188
+   characters and the 192-character RA7 fixture inside 130px. From 1280 the
+   column is wide enough that the same prompts fit at full size. */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  .ranked-question-stage [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"] > header h2 {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Closed Academy volume — the /lol hub destination book (AcademyHubBook).
 
@@ -15445,16 +15559,15 @@ html.hub-commons-in-view .hextech-ambience-layer {
      ordinary rounds and every reveal moved the stack 12px. These make the
      centred box a constant: the cinematic band's own height (16/5.75, capped
      at 7.5rem — the compact plate grows into it, the context strip seats at
-     the top), a four-line prompt with its category line (the bank's p95),
-     and four single-line tablets. Set on the STACK, not the folio, so the
-     stage's own `min-height` arithmetic still reads no tokens below `lg`.
+     the top), four 18px prompt lines with the category line, and four
+     single-line tablets. Set on the STACK, not the folio, so the stage's own
+     `min-height` arithmetic still reads no tokens below `lg`.
 
-     SIZED BY THE ONE-SCREEN CONTRACT as well as by continuity. A phone folio
-     is a viewport-tall FLOOR, so every pixel of empty reserve is a pixel a
-     long round can no longer use before the page scrolls; RMOB2 requires the
-     ordinary corpus to stay one screen on every supported phone, and the RS2
-     stress rounds from 812px up. Where that is tight the reserve steps down
-     (see "WHERE THE PHONE GIVES ROOM BACK" after this block). */
+     FIXED ON EVERY PHONE. A phone folio is a viewport-tall FLOOR, so the
+     RMOB2 one-screen contract caps what these may add up to (498.5px with the
+     gaps and the two-line reveal slot — inside the 360x740 folio). Text that
+     is longer than the boxes tightens inside them: see "TEXT DENSITY ON THE
+     PHONE" after this block. */
   .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
     --qs-media-h: 7.75rem;
     --qs-prompt-h: 7.75rem;
@@ -15525,29 +15638,53 @@ html.hub-commons-in-view .hextech-ambience-layer {
     display: none;
   }
 }
-/* VISCONT1 — WHERE THE PHONE GIVES ROOM BACK. Measured with the full phone
-   allocation, the RS2 stress rounds sat 18px off one screen at 375x812 and
-   the p99/max-label rounds 39px at 360x740 — RMOB2 forbids both. Two cases,
-   both content SHAPE or viewport, never identity:
-   * a four-answer STACK — `AnswerGrid` stacks four answers only when a label
-     runs past 56 characters (the same signal RS2 keys its padding on). Such a
-     round is already past its answer reserve; it gives back the 24.5px reveal
-     slot, so its evidence line re-centres the card by half its height.
-   * a phone under 780px tall gives back the slot and steps the prompt reserve
-     to three lines + category (6.125rem), so a four-line prompt re-centres
-     there by half its overflow (3px bare, 13px with a category line).
-   Everywhere else the reveal lands in its slot and a four-line prompt fits. */
+/* VISCONT1 — TEXT DENSITY ON THE PHONE. The phone allocation (media 7.75rem,
+   prompt 7.75rem, answers 13.125rem, the two-line reveal slot) is FIXED on
+   every phone; long text tightens inside it instead of re-centring the card:
+
+   ANSWERS — one column of four 3rem tablets is the reserve. A label that
+   would wrap past a tablet's 48px floor at 14px steps down:
+     long  (25–40)  13px / 1.3, 6px padding — two lines inside 48px;
+     dense (41+)    12px / 1.25 (the floor), 6px padding — two lines inside
+                    48px up to the bank's longest label (76) at 360 wide.
+   PROMPT — four 18px lines + the category line is the reserve (124px):
+     long  (111–150) 16px / 1.3 — five lines inside it;
+     dense (151+)    15px / 1.3 (the floor) — five lines inside it up to the
+                     bank's 188 characters and the 192-character RA7 fixture.
+
+   This replaces VISCONT1's first-pass give-backs (dropping the reveal slot for
+   a four-answer stack and on phones under 780px, and a three-line prompt box
+   there): under the owner rule the arena's boxes stay put and the TEXT pays.
+   Measured at 375x812 and 360x740 through `?q=shape` and the RA7 fixture; the
+   RMOB2 one-screen contract still holds (ranked-arena-fit). */
 @media (max-width: 1023.98px) {
-  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack:has(> [data-surface-region="answers"] [data-answer-layout="stacked"][data-answer-count="4"])::after {
-    display: none;
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state][data-answer-density="long"] [data-quiz-choice] {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
   }
-}
-@media (max-width: 1023.98px) and (max-height: 779.98px) {
-  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack {
-    --qs-prompt-h: 6.125rem;
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack [data-answers-state][data-answer-density="dense"] [data-quiz-choice] {
+    font-size: 0.75rem;
+    line-height: 1.25;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
   }
-  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack::after {
-    display: none;
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="long"] > header h2 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack[data-prompt-density="dense"] > header h2 {
+    font-size: 0.9375rem;
+    line-height: 1.3;
+  }
+  /* REVEAL — the slot is two evidence lines; what is drawn in it adapts. A
+     96-character statement (the longest the beat carries) wraps to THREE
+     12px lines in the 322px column of a 360-wide phone, so on a phone the
+     line is drawn at 11px, which holds it to two. The slot's box is
+     unchanged; the round settling still moves nothing. */
+  .ranked-shell[data-phone-arena="true"] [data-testid="ranked-question-body"] > * > .question-surface-stack > [data-testid="answer-evidence"] {
+    font-size: 0.6875rem;
   }
 }
 

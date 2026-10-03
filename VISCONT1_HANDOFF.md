@@ -1,204 +1,279 @@
 # VISCONT1 — Arena visual continuity (geometry certification)
 
-Worktree `.worktrees/viscont1`, branch `viscont1/visual-continuity`. Committed locally; **not merged, not pushed, not published to Lovable**.
-Baseline for every comparison: `.worktrees/viscont1-baseline`, detached at the same base, with the extended probe copied in uncommitted so both trees were measured through the same instrument.
+Worktree `.worktrees/viscont1`, branch `viscont1/visual-continuity`. Committed locally; **not merged, not pushed, not published to Lovable, not rebased**.
+- **Base:** `origin/main` @ `53159f2c`.
+- **First pass:** `889dbd77`. The second pass, described here, is the commit on top of it.
+- **Current `origin/main`:** `d35f56b5` (OF4 landed). OF4 overlaps `index.css`, the arena probe and the fit spec. The replay onto current main is a separate integration task; see "Integration".
 
-## Objective
-Within one arena mode and one viewport, changing the question must not move what a player's eyes and cursor track.
-The anchors are the folio top and bottom, the media region top and bottom, the prompt top, the answer-grid top, the first tablet and the Module Rail.
-The only allowed exception is content that genuinely cannot fit.
-This is an Arena-wide invariant, fixed at the narrowest shared geometry authority (`index.css`, Question Stage). There are no per-family, per-question or Daily-specific offsets.
+Comparison trees. Each was measured with this branch's probe copied in uncommitted, so every tree goes through the same instrument:
+- `.worktrees/viscont1-baseline` — detached at `53159f2c`, untouched CSS. It is kept, and its probe is restored to the committed file.
+- A temporary detached worktree at `889dbd77` (the first pass). It was removed after measuring.
 
-## Base
-`origin/main` @ `53159f2c` ("docs(journey): JPX + JL1 integration handoff and screenshots"), fetched 2026-10-02 and verified as the tip.
+## Objective and final invariant
+**CONTENT ADAPTS TO THE ARENA. THE ARENA DOES NOT ADAPT TO CONTENT.**
 
-## Verified root causes (all measured in Chromium through `/dev/ranked-shell-probe`)
-1. **The media region was allocated per band profile.** QV1 gave `data-band="cinematic"`/`"family"` a 17.25rem region at ≥1024×861 and a 19rem region at ≥1600×780.
-   `compact` kept 16rem. At 1880×900 a rich round's region was 48px taller than a compact round's.
-2. **The question was centred on its content height.** `CanonicalArena` wraps the surface in `lg:my-auto`.
-   Any content-height difference therefore moved every anchor by half of it, while the folio and Module Rail (all ARENA1's test measured) stayed still.
-   At 1880×900, rich vs compact moved the art top −27.6px and the prompt and answers +20.4px.
-   Option-media grids, long prompts and the reveal's evidence line each re-centred the card too. The reveal moved the whole stack 14.3px on every settlement.
-3. **QV1 raised type and padding without paying for them in the reserves.**
-   - The 19px prompt from `lg` makes the 192-character RA7 family prompt 5 lines at 1024 (156.7px against a 152px reserve).
-   - It makes the bank's 188-character maximum 4 lines from 1280 (129.2px against 124).
-   - The 24px wide-tier prompt makes the same prompts 148.6px against 136.
-   - 18px wide-tier padding makes a 2×2 option-media grid 142px against 120.
-   - 14px padding at the 861 tier makes the RCP1 item grid 167.5px at 1024 against 138.
-   A region that overflows its reserve moves everything below it.
-4. **Phone (RMOB2).** The phone folio is screen-tall and centres the question with `margin-block: auto`, on its content height, with no reserves.
-   The plate (64px) vs the cinematic band (121px), 2 vs 4 stacked tablets, and prompt length each re-centred everything. At 375×812 the answer grid ranged 361–466px across ordinary rounds, and reveals moved it 12px.
+Within one arena mode at one viewport, changing the question or revealing it moves none of:
+- the folio (top and bottom);
+- the media region (top and bottom);
+- the prompt top;
+- the answer-grid top and the first tablet's top;
+- the Module Rail.
 
-Audited and proven **not** to move anchors once the above is fixed:
-- **Asset load and failure (`?broken=1`).** Box identical; the band's box is declared.
-- **The `--qs-media-max`/`scenario-hero` caps.** These size the band *inside* a fixed region.
-- **The RS2 4-stacked padding exception.** Below the answer top.
-- **RS2 sliver suppression.** A size container; no geometry.
-- **QuestionResultOverlay.** Absolute.
-- **The Stat Check level slot.** SC-RENAME3, re-certified below.
+This holds for every round the question bank can serve. That covers prompts up to its 188-character maximum (and the 192-character RA7 fixture) and option labels up to its 76-character maximum, in 2, 3 and 4-answer rounds. It also holds through settlement, the reveal hold and the next round's entrance, in one mount.
 
-## Chosen geometry contract (`src/index.css`)
-- **One allocation per viewport.** `--qs-media-h`, `--qs-prompt-h` and `--qs-answers-h` are set on `.ranked-question-stage` by width and height only.
-  - 16rem from `lg`, 17.25rem at ≥1024×861 and 19rem at ≥1600×780, for every profile.
-  - No rule keyed on `data-band` may size anything (structural test guard).
-  - Rich art keeps all of QV1's allocation. The compact plate fills the same box (it has grown into its region since RR1), and the context strip still seats at 7rem.
-- **Reserves re-derived to the ordinary corpus:**
+Long text never grows its box, re-centres the card or yields the art. It tightens inside its fixed box via deterministic type tiers, down to hard readable floors:
+- answers 12px;
+- prompt 15px on phones and 16px on desktop;
+- the phone evidence line 11px.
 
-  | tier | prompt | answers |
-  |---|---|---|
-  | ≥1024 | 9.875rem (158) | 8.625rem (138) |
-  | ≥1280 | 8.125rem (130) | 7.5rem |
-  | ≥1500 | 8.5rem (unchanged) | — |
-  | ≥1024×861 | — | 10.5rem |
-  | ≥1280×861 | — | 8rem |
-  | ≥1600×780 | 9.375rem | 9rem |
+The certification target was 0px movement; measured movement is ≤0.5px (rounding) at every fixture and viewport below.
 
-- **The reserve is seated, not the content.**
-  - `--qs-stack-h` = media + prompt + answers + 3 gaps + feedback slot.
-  - A `::before` spacer of `max(0, (body − stack-h) / 2)` replaces the content-centring top margin for the canonical quiz stack only (`body > * > .question-surface-stack`).
-  - Content that outgrows a region extends downward. When it genuinely cannot fit, the media region yields (the RM1 order) and the art's top, the folio and the rail still do not move.
-  - Meta Reflex, Order Forge, Mastery and Journey are not matched and keep their own placement.
-- **Reveal slot.** The one post-answer line Ranked and the hosted Daily mount (the evidence statement, `text-xs leading-snug`) has a held `::after` slot while it is absent. This is the SC-RENAME3 pattern.
-- **Phone.** Media 7.75rem, prompt 7.75rem and answers 13.125rem on the phone stack.
-  - The total is 498.5px including gaps and the slot, inside the ~600px folio at 375×812, so an ordinary round still never scrolls.
-  - RMOB2's centring is kept; it now centres a constant box.
-  - Room is given back where the one-screen contract needs it: a four-answer stack drops the reveal slot, and phones under 780px tall drop the slot and use a 6.125rem prompt (see Mobile findings).
-- **The compaction tier** sets `--qs-stack-gap: 0.5rem` beside its own `gap: 0.5rem`, so the reserve counts the gap the stack draws.
+This is an Arena-wide invariant, fixed at the shared geometry authority (`index.css` Question Stage, plus two classification attributes). There are no per-family, per-question, per-category or Daily-specific offsets, no measurement loops, and no ResizeObserver.
 
-## Changed files
-- `src/index.css` — the contract above, with the comments rewritten.
-- `src/components/ranked-arena/QuestionStageGeometry.test.tsx`:
-  - The width-ladder parser is fixed: a height-gated rule used to read as unguarded.
-  - MEASURED is re-derived, and the QV1 tests are re-cut to one allocation per viewport.
-  - New `data-band` box-property guard.
-  - New VISCONT1 block: a cascade evaluator per (w, h), reserves ≥ measured ordinary content at 9 tiers, the stack-h identity, seating, reveal slot, scoping and the phone allocation.
-- `e2e/ranked-visual-continuity.spec.ts` (new) — the browser certification below.
-- `playwright.arena.config.ts` — `testMatch` includes the new spec.
-- `src/pages/dev/ranked-shell-probe/RankedShellProbe.tsx` (dev probe only):
-  - `?seq=a,b,c,d` with `?sfx=1` serves one probe state per live round and settles each with a correct option and an evidence note. This gives a real question → reveal → next question in one mount.
-  - `?broken=1` points every served asset path at nothing.
-  - New states: `matchup` (two-champion Matchup card) and `twoChamp` (RCP1 two-option champion duel).
-- No production component was changed. CSS alone establishes the invariant.
+## Root causes
+### First pass (`889dbd77`)
+1. **Per-profile media regions.** QV1 gave cinematic and family cards a 17.25rem / 19rem media region, while compact cards kept 16rem.
+2. **Content-centred stack.** The question was centred on its content height (`lg:my-auto`), so any content-height difference moved every anchor by half of it. At 1880×900 rich vs compact moved the art top −27.6px and the prompt and answers +20.4px; a reveal moved the stack 14.3px.
+3. **Reserves not re-derived.** QV1's type and padding steps were never paid for in the prompt and answer reserves.
+4. **Phone re-centring.** The phone (RMOB2) centred the question in a screen-tall card with no reserves. At 375×812 the answer grid ranged 361–466px.
 
-## Before / after (top coordinates in px; folio t/b and Module Rail top identical before and after at every viewport)
-`tl` = Module Rail top. Rows are probe states; the band profile is in brackets.
+### Second pass (this commit): the three residuals, plus two more found while fixing them
+5. **Desktop long labels overflowed a fixed answer box.**
+   - Two-line labels at 15px with QV1's 14–18px padding exceed every desktop answer box from about 26–36 characters.
+   - Four stacked tablets (labels over 56 characters) are four rows.
+   - The art yielded, and the prompt and answers moved up. Measured on the first pass, same probe:
 
-**1880×900** (QV1 wide + tall, the known hole) — folio 52/747.7, tl 778.2
+     | viewport | realP99 | realMax | 76-character labels |
+     |---|---|---|---|
+     | 1880×900 | −37.9 | −53.9 | — |
+     | 1280×800 | −56.6 | — | −161.4 |
+     | 1024×768 | −44.5 | −146 | −146 |
 
-| state | media t/b before | prompt before | answers before | media t/b after | prompt after | answers after |
-|---|---|---|---|---|---|---|
-| opts4 [compact] | 124.5/380.5 | 392.5 | 540.5 | 74.6/378.6 | 390.6 | 552.6 |
-| twoChamp [compact, icons, 2] | 120.9/376.9 | 388.9 | 536.9 | 74.6/378.6 | 390.6 | 552.6 |
-| media [cinematic, premise+icons] | 96.9/400.9 | 412.9 | 560.9 | 74.6/378.6 | 390.6 | 552.6 |
-| abilityCost [cinematic champion] | 100.5/404.5 | 416.5 | 564.5 | 74.6/378.6 | 390.6 | 552.6 |
-| matchup [cinematic, 2 champions] | 100.5/404.5 | 416.5 | 564.5 | 74.6/378.6 | 390.6 | 552.6 |
-| family [family] | 94.2/398.2 | 410.2 | 570.8 | 74.6/378.6 | 390.6 | 552.6 |
-| jungleRule [compact jungle] | 124.5/380.5 | 392.5 | 540.5 | 74.6/378.6 | 390.6 | 552.6 |
-| realP99 (exception) | 100.1/356.1 | 368.1 | 516.1 | 74.6/340.7 | 352.7 | 514.7 |
+6. **Phone prompts over four lines.** Prompts past four 18px lines overflowed the phone prompt box; the RA7 family fixture re-centred the card 25.7px.
+7. **Phone reveal give-backs.** To stay one screen, the first pass gave back the reveal slot and a prompt line (on long-label rounds and phones under 780px tall), so those reveals re-centred about 12px. Even then, the 76-character-label and stressA rounds scrolled the 360×740 page 60–73px on the first pass.
+8. **(New) The one-line evidence slot was too small.** It held only a one-line statement. The concise-evidence beat carries up to 96 characters (`MAX_STATEMENT_CHARS`), which wrap to two lines below 1500px wide and to three at 12px on a 360px phone.
+9. **(New) The reveal icon stole label width.** On settlement the correct (or picked-wrong) tablet gains a check/cross icon as an in-flow flex child: 16px icon + 8px gap + 8px margin. That is 32px less label width at the instant the round resolves, so a two-line label wrapped to three. Measured: the answer box went 210 → 221px at 360×740 and the phone card re-centred.
 
-Anchor spread across ordinary rows: before media-top 30.3px, prompt 27.7px, answers 30.3px; **after 0**. Rich art is still 304px (QV1's 19rem).
+## Final geometry contract
+### Unchanged from the first pass
+- **One media allocation per viewport for every profile:** 16rem, 17.25rem at ≥1024×861, 19rem at ≥1600×780.
+- **No rule keyed on `data-band` may size anything** (test guard).
+- **The reserve is seated, not the content.** `--qs-stack-h` = media + prompt + answers + 3 gaps + feedback slot, and a `::before` spacer of `max(0, (body − stack-h) / 2)` replaces the content-centring margin. This applies to the canonical quiz stack only (`body > * > .question-surface-stack`). Meta Reflex, Order Forge, Mastery and Journey are not matched.
 
-**1600×780** (wide tier, lock regime) — folio 52/627.7, tl 658.2. Before, media top ranged 67–68.5 and prompt 321.4–334 (12.6px spread). After, every ordinary row is media 67/278.2, prompt 286.2, answers 444.2.
+### Text density (new)
+- **`src/lib/question-surface/textDensity.ts`** classifies by character count only, from public text, before layout:
+  - `answerDensity(labels)`, from the longest label;
+  - `promptDensity(prompt)`.
+- **`AnswerGrid`** publishes `data-answer-density`, and **`InteractiveScenarioSurface`** publishes `data-prompt-density`. Both are attributes only; every style is in `index.css`, scoped to the canonical stack.
 
-**1440×900** — folio 40/747.7, tl 778.2. Before: media top 118.9–131.9, prompt 396.9–409.9, answers 532.9–548.5 (15.6px). After: every ordinary row is 100.6/376.6, 388.6, 530.6.
+**Answer tiers (longest label):**
 
-**1280×800** — folio 40/647.7, tl 678.2. Before: family moved 2.6px (prompt overflow). After: every ordinary row is 70.6/326.6, 334.6, 472.6.
+| tier | chars | desktop (≥1024) | phone | why this bound |
+|---|---|---|---|---|
+| normal | ≤24 | unchanged (14/15px, QV1 padding) | unchanged (14px, 48px floor) | 24 is one line in every desktop column; 26 is where the 1280 and 1440 columns first wrap. Past servable p95 (17). |
+| long | 25–40 | 14px / 1.35, 7px padding | 13px / 1.3, 6px padding | 40 is the last length that is two lines at 14px in the narrowest (1024) column; 44 goes to three. |
+| dense | 41+ | **12px** / 1.25, 5px padding, 10px left inset; 3–4 answers 2-up | **12px** / 1.25, 6px padding, 10px left inset | Bank max 76: 3 lines from 1280, 4 at 1024, 2 on a 360px phone. At this type a stack of four is the taller layout. |
 
-**1024×768** — folio 40/615.7, tl 646.2. Before: media/family moved up to 4.7px. After: every ordinary row is 55/264.2, 272.2, 438.2.
+**Prompt tiers (characters):**
 
-**375×812 phone** (`frame=0`) — folio 104.3/722.1.
+| tier | chars | phone | desktop | why this bound |
+|---|---|---|---|---|
+| normal | ≤110 | unchanged 18px / 1.45 | unchanged | Four 18px lines at 360 wide (the phone prompt box). |
+| long | 111–150 | 16px / 1.3 | unchanged | Five lines in the phone box. |
+| dense | 151+ | **15px** / 1.3 | **16px** / 1.35 at 1024–1279 only; unchanged from 1280 | Five lines at 15px up to the bank's 188 and the 192 fixture (measured 116.5 / 124px). |
 
-| state | media top before | prompt before | answers before | media top after | prompt after | answers after |
-|---|---|---|---|---|---|---|
-| opts4 | 255.1 | 327.1 | 361.2 | 163.9 | 295.9 | 427.9 |
-| opts2 | 309.1 | 381.1 | 415.2 | 163.9 | 295.9 | 427.9 |
-| twoChamp | 296.1 | 368.1 | 428.3 | 163.9 | 295.9 | 427.9 |
-| media / abilityCost | 204 | 333.1 | 412.3 | 163.9 | 295.9 | 427.9 |
-| matchup | 258 | 387.1 | 466.3 | 163.9 | 295.9 | 427.9 |
-| jungleRule | 242.1 | 314.1 | 374.3 | 163.9 | 295.9 | 427.9 |
-| family (exception, 6-line prompt) | 150.7 | 282.2 | 465.7 | 138.2 | 270.2 | 453.7 |
+Desktop prompt boxes seat the bank maximum at full size from 1280 up, so desktop prompt tiers are identity there.
 
-Ordinary answer-grid spread on the phone: **105px before, 0 after**.
+### Reserve changes in this pass
+- **1024 tier:** the prompt box goes 158 → 130px and the answer box 138 → 166px. Dense labels draw four lines (154px) in the 153px-wide 1024 column. The total is unchanged (296), so no art moves.
+- **≥1280 (≤860 tall):** answers 120 → 128px (the dense 2×2 is 124px). The cinematic band there is capped at 26vh inside a 256px region, so this costs no art on any measured viewport.
+- **Evidence slot** (`--qs-feedback-h`): two `text-xs leading-snug` lines (33px) below 1500px wide and on phones; one line (16.5px) from 1500px.
+  - The evidence line takes exactly the slot (`min-height`), so a one-line statement cannot shorten a centred phone card.
+  - On phones the line is drawn at 11px, so 96 characters stay within two lines.
+- **Reveal icon:** in the canonical stage the tablet's check/cross is absolutely positioned in a 1.5rem right edge held on every tablet, so a label's width is identical before and after settlement.
+- **Phone:** one fixed allocation on every phone (media 7.75rem, prompt 7.75rem, answers 13.125rem, 2-line slot; 515px). The first pass's give-backs (slot dropped for stacked-4 and <780px phones, 3-line prompt box under 780px) are **removed**.
 
-**Live sequence in one mount** (`?sfx=1&seq=opts4,media,family,opts2`):
-- 1880×900 before: every reveal moved the stack −14.3px, and round changes moved it up to 34px.
-- 1880×900 after: media 74.6, prompt 390.6, answers 552.6 on **every sampled frame**, including the reveal frames (correct tablet lit, evidence line mounted).
-- 375×812 after: constant across reveals and rounds (the family round is the documented exception).
+### Minimum font sizes (hard floors, asserted in unit and browser tests)
+- **Answer labels:** 12px (dense, desktop and phone).
+- **Prompt:** 15px on phones (dense), 16px on desktop (dense, 1024–1279).
+- **Evidence line:** 11px on phones; 12px elsewhere, as before.
 
-## Tests / baseline differential (Windows, vitest 3.2.7)
-- **Focused suites:** AnswerGrid ×3, CanonicalArena ×3, DailyOnCanonicalArena.boundary, QuestionStageGeometry, CompactScenarioBand.env1, InteractiveScenarioSurface ×3, QuizRankedMatch.{bottomInvariant, geometry, metaReflex, metaReflexHeader}, metaReflexModule.level, RankedShellProbe, ItemAnalysisScenarioCard.scale.
-  - Feature: 19 files, **327 passed / 7 failed**. Baseline: 318 tests, 311 passed / 7 failed. The failing sets are **identical**:
-    - CRLF source scans: QuestionStageGeometry ×3, DailyOnCanonicalArena.boundary ×2, AnswerGrid.elimination ×2.
-    - All are already listed as environmental in PHASE1_FRONTEND_INTEGRATION_HANDOFF.
-  - QuestionStageGeometry alone: 79 passed, plus the 3 baseline CRLF failures.
-- **Typecheck:** `tsc --noEmit -p tsconfig.app.json` gives 6 errors on both trees, an **identical** set, all in untouched files (`OnboardingProfile.tsx`, `identity/connections.ts`, `practiceLeaveContract.test.ts`).
-- `pnpm build` was not run (it includes the prerender scripts). Nothing was deployed.
+## Art (what the second pass cost)
+Cinematic band height (`abilityCost`), first pass → final:
 
-### Browser runs (Chromium, Playwright; `npx playwright test -c playwright.arena.config.ts …`)
-Port 8123, the arena config's default, was occupied by another worktree's Vite (`of4-integration`), which I left alone. The runs used a throwaway config pointing `baseURL` at this tree's Vite (:5311) or the baseline's (:5312). Nothing about the specs differs.
+| viewport | first pass | final | change |
+|---|---|---|---|
+| 1024×768 | 199.7 | 192.7 | −7.0 (two-line reveal slot) |
+| 1280×720 | 187.2 | 182.7 | −4.5 |
+| 1280×800, 1366×768, 1440×800, 1440×900 | — | — | unchanged |
+| 1600×780 | 211.2 | 211.2 | unchanged (accepted QV1 trade-off) |
+| 1920×800 | 231.2 | 231.2 | unchanged (accepted QV1 trade-off) |
+| 1880×900, 1920×1080 | 304 | 304 | unchanged (full QV1 19rem) |
 
-| spec | VISCONT1 tree | untouched baseline |
+The accepted wide-but-short QV1 trade-off was not reopened.
+
+## Before / after — the formerly failing long-text fixtures
+Through the same probe. Each cell is media top/bottom · prompt top · answer-grid top (= first tablet top) · Module Rail top. Phones have no desktop rail.
+
+The folio was identical in every case except two first-pass phone rows, which scrolled the page:
+- 360×740: shape.76 (+73px) and stressA (+60px);
+- 375×812: shape.76 (+4px).
+
+**First pass (`889dbd77`)** — anchors moved:
+- **1880×900:**
+  - opts4 74.6/378.6 · 390.6 · 552.6 · 778.2.
+  - realP99 74.6/340.7 · 352.7 · 514.7 (**−37.9**).
+  - realMax, 76-character labels and stressA: 74.6/324.7 · 336.7 · 498.7 (**−53.9**).
+- **1280×800:**
+  - opts4 70.6/326.6 · 334.6 · 472.6.
+  - realP99 278 / 416 (**−56.6**).
+  - realMax and stressA 270.7 / 408.7 (**−63.9**).
+  - 76-character labels 173.2 / 311.2 (**−161.4**).
+- **1024×768:**
+  - opts4 55/264.2 · 272.2 · 438.2.
+  - realP99 227.7 / 393.7 (**−44.5**).
+  - realMax, 76-character labels and stressA 126.2 / 292.2 (**−146**).
+- **375×812:**
+  - opts4 media top 163.9 · prompt 295.9 · answers 427.9.
+  - realP99 128.9 / 260.9 / 392.9 (**−35**).
+  - realMax 141.2 / 273.2 / 405.2.
+  - 76-character labels 113.3 (scrolls).
+  - stressA 115.4 / 247.4 / 431.
+  - family 138.2 / 270.2 / 453.7 (**−25.7** at the top).
+- **360×740:**
+  - opts4 153.2 / 285.2 / 391.2.
+  - realP99 115 / 247 / 359.4 (**−38**).
+  - realMax 118.2 / 250.2 / 356.2.
+  - 76-character labels and stressA scroll the page 60–73px.
+
+**Final:** every fixture on identical anchors (spread 0.0px). Each row lists media top/bottom · prompt top · answers top · rail top:
+
+| viewport | opts4, realP99, realMax, 76-char labels, stressA, family |
+|---|---|
+| 1880×900 | 74.6/378.6 · 390.6 · 552.6 · 778.2 |
+| 1280×800 | 58.4/314.4 · 322.4 · 460.4 · 678.2 |
+| 1024×768 | 55/247.7 · 255.7 · 393.7 · 646.2 |
+| 375×812 | 155.7/279.7 · 287.7 · 419.7 · — (folio 104.3/722.1, no scroll) |
+| 360×740 | 119.7/243.7 · 251.7 · 383.7 · — (folio 104.3/650.1, no scroll) |
+
+Tiers drawn in those rows, from the probe:
+- realP99 is dense answers with a long prompt.
+- realMax and the 76-character labels are dense answers.
+- stressA is dense answers with a dense prompt.
+- family is a dense prompt.
+- Type reached: 12px answers; 24 / 19 / 16 / 15px prompts by viewport.
+
+## Residual movement at every hostile fixture
+**0 (≤0.5px rounding) everywhere.** No pathological real-corpus string remains.
+
+Certified by the browser spec at nine viewports: 375×812, 360×740, 1024×768, 1280×800, 1440×900, 1600×780, 1920×800, 1880×900 and 1920×1080.
+
+**21 ordinary rounds:**
+- compact / cinematic / family / Matchup / environment / jungle;
+- 2 vs 4 options, icons vs none, premise vs option-media only;
+- p90 labels (32 characters), realP99, realMax, the 76-character bank-max labels in 4 and 3-answer rounds;
+- a long prompt (150) and the bank-max prompt (188) with long labels on rich art;
+- stressA, stressB and family.
+
+**Live in one mount, with the 96-character evidence line:**
+- compact ↔ cinematic, single ↔ Matchup;
+- premise ↔ option-media-only, 4 ↔ 2 options, icons ↔ none;
+- family → champion → environment;
+- normal → p99 → extreme labels + longest prompt.
+
+**Elsewhere in the spec:**
+- broken vs loaded assets;
+- Stat Check (quiz ↔ Stat Check shell, and LVL 11 → none → LVL 20);
+- Daily Standard / Review, Time Trial and Survival, hosted as `DailyRunPage` hosts them, live at 375×812, 1280×800 and 1880×900;
+- the named 1880×900 rich → compact → rich hole;
+- the three residual-defect regressions by name.
+
+**Content bound:** the zero-movement guarantee is certified up to the bank's real maxima — 188-character prompts (the 192-character fixture tested) and 76-character labels. The synthetic `stress` probe (480-character prompt, 130-character options) is far beyond any real row. Like before, it still yields art and then scrolls the phone page (the RMOB2 "floor, never a lock" behaviour), and it is the fixture the fit spec now uses for that property.
+
+## Tests
+Run on Windows (vitest 3.2.7, Playwright Chromium) against this tree's Vite.
+
+Port 8123, the arena config's default, belongs to another worktree's dev server (`of4-integration`), which I left alone. A throwaway config pointed `baseURL` at :5311 (this tree), :5312 (baseline) or :5313 (first pass).
+
+| suite | this branch | comparison |
 |---|---|---|
-| `ranked-visual-continuity` (new, 33 tests) | **33 passed** | 10 passed / **23 failed** — every ordinary-matrix and live-sequence test at all five viewports, the named QV1-hole test and both exception bounds; broken-asset and Stat Check pass on both |
-| `ranked-arena-fit` (existing, 391 tests: fit / no scroll / no clipping, desktop matrix + seams + phones) | **390 passed**, 1 failed | the failing test fails identically on baseline: `RMOB2 compact phone HUD › is 40px tall` (44px received) |
+| `ranked-visual-continuity` (80 tests) | **80 passed** | untouched baseline `53159f2c`: see "Baseline differential" |
+| residual tests vs first pass (`889dbd77`) | — | **7/7 fail** (answers overflow 39.5–72.3px, phone prompt 51.6–77.6px, phone answers 70px) |
+| mutation: density tiers disabled, nothing else | — | **7/7 residual fail** |
+| mutation: reveal slot sizing + icon edge + phone evidence type disabled | — | live reveal sequence **fails at 1024×768 / 1600×780 / 1920×800** (media edge moves 3.8–7.2px in the reveal beat); the phone residual-3 cases still pass under this mutation (their failure mode is covered by the density mutation) |
+| `ranked-arena-fit` (391 tests) | **390 passed**, 1 failed | the failure, `RMOB2 compact phone HUD › is 40px tall`, fails identically on baseline (44px) |
+| QuestionStageGeometry + textDensity | 90 passed, 3 failed | the 3 fail identically on baseline (CRLF source scans) |
+| focused vitest set, 31 files* | **473 passed / 7 failed** | baseline 446 / 7; **identical failing set** (CRLF scans: QuestionStageGeometry ×3, DailyOnCanonicalArena.boundary ×2, AnswerGrid.elimination ×2) |
+| `tsc --noEmit -p tsconfig.app.json` | 6 errors | **identical** to baseline, all in untouched files |
 
-The continuity spec covers:
-- **Viewports:** 375×812 (production frame), 1024×768, 1280×800, 1600×780 and 1880×900.
-- **Ordinary rounds (12 states):** compact/cinematic/family/Matchup/environment/jungle, 2 vs 4 options, icons vs none, premise vs option-media only. Every anchor must equal the first round's to within 0.5px. The profile drawn is asserted, and the Matchup card's VS seam must render.
-- **Broken vs loaded assets** for 4 states.
-- **Three live sequences in one mount**, sampled every 80ms through each settlement, reveal hold (asserting at least one disclosed reveal frame was observed) and next-round entrance.
-- **Stat Check:** quiz ↔ Stat Check shell plus SC-RENAME3's LVL 11 → none → LVL 20.
-- **The named 1880×900 rich → compact → rich hole**, including the 304px art assertion.
-- **Two bounded exceptions.**
+\* The focused set: AnswerGrid*, CanonicalArena*, DailyOnCanonicalArena*, QuestionStageGeometry, CompactScenarioBand*, InteractiveScenarioSurface*, ScenarioMediaBand*, QuizRankedMatch.{bottomInvariant, geometry, metaReflex*}, metaReflexModule.level, the shell probe, ItemAnalysisScenarioCard.scale, `lib/question-surface`, QuizAnswerOptions* and `pages/quiz-daily-challenge`.
 
-## Mobile findings
-- **Avoidable reflow:** yes, and large (see root cause 4). Fixed with the smallest allocation that makes RMOB2's centring constant. It reuses the cinematic band's own height for media, the bank p95 (4 lines + category) for the prompt, and four single-line tablets for the answers.
-- **No page growth** for ordinary rounds at 375×812: the total is 498.5px against a ~600px folio.
-- **Visible cost:** a one-line prompt now sits above ~100px of parchment before the tablets. The compact plate is 124px tall instead of 64px, the same height as the cinematic art.
-- **Sized against RMOB2's one-screen contract too.** The first cut (the same allocation on every phone) put the RS2 stress rounds 18px off one screen at 375×812 and realP99/realMax/family 20–39px off at 360×740. The existing `ranked-arena-fit` spec caught it. Room is now given back by shape or viewport, never identity:
-  - A **four-answer stack** (`AnswerGrid` stacks four only when a label runs past 56 characters, the RS2 signal) gives back the reveal slot. Its evidence line re-centres by half its 24.5px.
-  - **Phones under 780px tall** give back the slot and step the prompt reserve to 3 lines + category (6.125rem). A 4-line prompt there re-centres by 3px (bare) or 13px (with a category line), and the reveal by about 12px.
-  - With these, every RMOB2 one-screen case passes again (157/158 phone fit tests; the one failure is the HUD-height test, which fails identically on baseline).
-- **Remaining phone exceptions:**
-  - Prompts over 4 lines (5–6 lines at 375, the bank's p95–max) re-centre by half their overflow. The RA7 family fixture (192 characters, 6 lines) moves 25.7px.
-  - Long-label four-answer stacks and short phones (<780px) as above.
-- **Probe artifact (not a defect):** the phone folio top differs by 6px between the probe's hp-match and points-match fixtures. A points combatant cell is taller. Mode does not change within a live match, and within one points match the folio held still through submit, reveal and next round.
+A fit-spec edit was needed by this change, and it is not a weakening. `360x740 — below lg the arena is a FLOOR` asserted that `stressB` scrolls the phone. With density tiers stressB now **fits** one screen; it is held there by the one-screen matrix and the continuity spec. The floor property is now asserted on the synthetic `stress` probe, the only round still taller than the phone.
 
-## Journey boundary finding (read-only)
-- **Unchanged.** `/dev/journey-arena?capture=zed&step=1..8` measures byte-identically before and after at 1880×900, 1280×800 and 375×812 (folio, board, question box, prompt, answers, rail).
-- **No Journey file or `.journey-*` selector was edited.** Every VISCONT1 selector requires `body > * > .question-surface-stack`, and Journey's stack is inside `.journey-viewport`.
-- **Shell vs board.** Across a Journey ↔ quiz module boundary the shared shell (folio box, Module Rail) is the same `CanonicalArena` box. Journey's board is deliberately top-anchored and full-height (JOURNEY-UI3), so its internal anchors intrinsically differ from a quiz round's. That difference is by design and is not addressed here.
+`pnpm build` was not run (it includes prerender). Nothing was deployed.
 
-## Stat Check / Daily
-- **Stat Check:** LVL 11 → none → LVL 20 has zero drift at 375×812 (slot 345.7 / prompt 371.7 / cards 407.7) and 1280×800 (220.4 / 246.4 / 286.4). These are the exact SC-RENAME3 figures, and 1880×900 is identical to baseline.
-- **Quiz ↔ Stat Check:** the folio and Module Rail are the same box.
-- **Daily:** `DailyRunPage` mounts `ArenaShell` (`.ranked-academy`) + `QuizRankedMatch` → `CanonicalArena`, so it gets the identical stage. No Daily geometry exists; QuestionStageGeometry's "no mode sets a height" guard and DailyOnCanonicalArena enforce that.
+### Known baseline failures (not chased)
+- HUD height (44 vs 40) at 360×800.
+- 7 CRLF source-scan tests (Windows checkout).
+- Port 8123 occupied by another worktree.
 
-## Remaining exceptions (measured, not hidden)
-1. **Long-label 4-option rounds at desktop** (`realP99`, 48-character labels; `realMax`, 63) genuinely exceed the stage at full art.
-   - The art yields; the art top, folio and rail stay.
-   - Prompt and answers move up by the overflow only: realP99 −38px at 1880×900 (−56.6px at 1280×800, −44.5 at 1024×768).
-   - Reserving for them would shrink every round's art.
-2. **Phone prompts over 4 lines** re-centre by half the overflow (family fixture 25.7px).
-3. **Art cost in the wide-tier lock band.** On ≥1600-wide desktops roughly 780–890px tall, ordinary rich art is smaller than before. That is the price of paying QV1's 24px prompt (4-line reserve), its 18px tablets (142px grid) and the reveal slot for every round:
+## Baseline differential
+- **`ranked-visual-continuity` against untouched `53159f2c`** (same probe): **18 passed / 62 failed**. The failures:
+  - every ordinary-matrix test and every live sequence at all nine viewports;
+  - all nine Daily-ruleset tests;
+  - the named QV1-hole test;
+  - all seven residual tests.
 
-   | viewport | rich art before | after |
-   |---|---|---|
-   | 1600×780 | 259 | 211 |
-   | 1600×800 | 279 | 231 |
-   | 1878×797 | 276 | 228 |
-   | 1920×800 | 279 | 231 |
+  The 18 that pass are the broken-asset and Stat Check tests at each viewport, which were already stable on the base. The original defect is still caught.
+- **Against the first pass `889dbd77`:** the seven residual tests fail (see Tests), so the second pass's fixtures reproduce exactly what it fixes.
+- **Unit and type checks:** identical failing sets to baseline (see Tests).
 
-   Taller desktops (1880×900, 1920×1080) keep the full 304px, and 1024–1440 bands are unchanged (aspect-bound).
-   **This is the owner call carried forward.** If it is unacceptable, the cheapest levers are, in order:
-   1. Keep the 21px prompt in this band (gate the 1.5rem step on ≥890px tall).
-   2. Drop the 18px tablet padding there.
-   Each recovers about 14–24px. Not done here, because both re-tune approved QV1 design.
+## Changed files (second pass)
+- `src/index.css` — text-density tiers (desktop, the 1024 prompt step, phone), the 1024 and ≥1280 reserve changes, the two-line evidence slot and its exact-height line, the reveal-icon edge, the phone evidence type, removal of the phone give-backs, and comments.
+- `src/lib/question-surface/textDensity.ts` (new) + `textDensity.test.ts` (new) — the classifier and its bounds.
+- `src/components/ranked-arena/AnswerGrid.tsx` — publishes `data-answer-density` (one attribute).
+- `src/components/question-surface/InteractiveScenarioSurface.tsx` — publishes `data-prompt-density` (one attribute).
+- `src/components/ranked-arena/QuestionStageGeometry.test.tsx`:
+  - MEASURED and per-tier tables re-derived;
+  - slot, scoping and phone tests updated;
+  - a new "long text tightens inside its box" block (attributes, floors, scoping, the 1024 rebalance, the out-of-flow reveal icon).
+- `e2e/ranked-visual-continuity.spec.ts`:
+  - long text in the ordinary set, four new viewports, live sequences with 96-character evidence, the Daily rulesets;
+  - the three residual regressions by name;
+  - fit/floor/clipping assertions per round.
+- `e2e/ranked-arena-fit.spec.ts` — the floor test now uses `stress` (see Tests).
+- `src/pages/dev/ranked-shell-probe/RankedShellProbe.tsx` (dev only):
+  - `q=shape&alen&acount&plen&rich`, also usable in `?seq=` as `shape.N.K.M.R`;
+  - `?evlen=N`;
+  - `?ruleset=time_trial|survival|standard`;
+  - `?host=daily`.
+- `VISCONT1_HANDOFF.md`.
+
+No production component's layout was refactored. `QuizAnswerOptions` and the 56-character `wideTwoColumn` rule are unchanged; the dense 2-up is stylesheet-side and scoped to the canonical stage.
+
+## Journey (read-only)
+**Untouched.** No Journey component, selector or contract is in the diff; `index.css` mentions Journey only in comments.
+
+`/dev/journey-arena?capture=zed&step=1..8` measures **byte-identically** on baseline and this branch at 1880×900, 1280×800 and 375×812. That covers the folio, board, question box, prompt, answers, tablet font/padding/width and the rail.
+
+Every VISCONT1 rule requires `body > * > .question-surface-stack`; Journey's stack sits inside `.journey-viewport`. `AnswerGrid` now also publishes `data-answer-density` inside Journey; it is an unstyled attribute there.
+
+## Stat Check / Daily / modes
+- **Stat Check:** LVL 11 → none → LVL 20 is still 0px at every viewport in the spec (the SC-RENAME3 figures), and quiz ↔ Stat Check share the shell.
+- **Daily and rulesets:** Daily is `ArenaShell` + `QuizRankedMatch` → `CanonicalArena`. Time Trial, Survival and Standard / Review were each certified as their own mode through the hosted path (`?host=daily&ruleset=…`) with a hostile live sequence. Review plays the Standard ruleset in the same arena.
+
+## Cleanup
+- The two dev-server entries this work had added to the **main checkout's untracked** `.claude/launch.json` (`viscont1` and `viscont1-base`) were removed. Only those: 11 → 9 configurations, nothing else touched.
+- Scratch scripts were deleted; no other main-checkout change.
+
+## Integration (what still blocks it)
+1. **OF4 overlap.** `origin/main` is at `d35f56b5` (OF4), which overlaps `src/index.css`, the arena probe (`RankedShellProbe.tsx`) and the fit spec. This branch was **not** rebased (as instructed). Replay it on a dedicated integration branch, then re-run:
+   - `ranked-visual-continuity`;
+   - `ranked-arena-fit`;
+   - QuestionStageGeometry;
+   - the Journey harness comparison.
+2. **Port 8123.** It is occupied locally by another worktree's Vite, so `playwright.arena.config.ts`'s `reuseExistingServer` would test the wrong tree. Free it before running the arena specs with the stock config.
+3. **Live QA on real Ranked and Daily matches** (desktop and phone, several reveals) is still worth doing. The probe serves backend-shaped envelopes through the production controller, but not live content.
 
 ## Commit
-See `git log -1 viscont1/visual-continuity`. This handoff is part of the commit.
-
-## Next task
-1. **Owner decision on exception 3** (wide-tier lock-band art size).
-2. **Live QA on a real Ranked and Daily match** at 1880×900 and on a phone, through several reveals. The probe certifies the canonical arena; the live backend serves the same envelopes.
-3. **Content follow-up.** If more than ~5% of served rounds carry 2-line option labels, consider a per-tier answers reserve for them, with its art cost measured first.
+See `git log -1 viscont1/visual-continuity`.
