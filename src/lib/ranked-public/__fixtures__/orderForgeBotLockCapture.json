@@ -1,0 +1,1183 @@
+{
+ "_note": "OF4-FIX2: real backend bodies (League_Combat_Simulator origin/master d2d34b98, admin.order_forge v2 format, bot driven inline as deployed), segment 1, in production request order: GET match (pre-lock poll) -> POST challenge -> GET match -> GET rounds/1/resolved -> GET private.",
+ "public_before_lock": {
+  "schema_version": "ranked_duel.public_round.v2",
+  "projection_type": "public_round",
+  "match_id": "rkb_871a2355fda603f69da8e80c",
+  "round_number": 1,
+  "server_time": "2026-09-09T12:00:11+00:00",
+  "payload": {
+   "match_id": "rkb_871a2355fda603f69da8e80c",
+   "match_status": "active",
+   "completed_rounds": 0,
+   "players": [
+    {
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 0,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    },
+    {
+     "player_id": "p_ba3baec1f013e6bd",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 0,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    }
+   ],
+   "active_round": {
+    "round_number": 1,
+    "started_at": "2026-09-09T12:00:04.400000+00:00",
+    "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false
+   },
+   "next_round_duration_seconds": 30.0,
+   "match_over": false,
+   "winner_id": null,
+   "completion_reason": null,
+   "question": {
+    "question_id": "order_forge:rkb_871a2355fda603f69da8e80c:1",
+    "prompt": "",
+    "options": [],
+    "category": null,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment": {
+    "module_id": "order_forge",
+    "module_version": 2,
+    "challenge_count": 1,
+    "challenge_index": 0,
+    "segment_number": 1,
+    "phase": "challenges",
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "pressure_applied": false,
+    "card_timer_ms": null,
+    "card_started_at": null,
+    "card_deadline": null,
+    "timed_out_challenges": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "resolved": false,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment_state": {
+    "active": true,
+    "segment_number": 1,
+    "module_id": "order_forge",
+    "module_version": 2,
+    "phase": "challenges",
+    "challenge_count": 1,
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "pressure_applied": false,
+    "own_ability": {
+     "selected_ability_id": null,
+     "confirmed": false,
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "unavailable_ability_ids": {}
+    },
+    "opponent_ability_confirmed": false,
+    "own_next_challenge_index": 0,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_challenges_completed": 0,
+    "opponent_challenges_completed": 1,
+    "opponent_finished": true,
+    "own_finished": false,
+    "card_timer_ms": null,
+    "own_card_index": null,
+    "own_card_started_at": null,
+    "own_card_deadline": null,
+    "own_timed_out_challenges": null,
+    "own_revealing_card_index": null,
+    "own_reveal_until": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "challenges": {
+     "family": "champion_stat:hp@lvl18",
+     "prompt": "Order these champions by Health at level 18",
+     "metric_label": "Health (lvl 18)",
+     "direction_labels": {
+      "first": "Highest",
+      "last": "Lowest"
+     },
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "entries": [
+        {
+         "entry_id": "e0",
+         "label": "Extra00",
+         "media": {
+          "src": "assets/champions/Extra00/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e1",
+         "label": "Extra31",
+         "media": {
+          "src": "assets/champions/Extra31/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e2",
+         "label": "Extra26",
+         "media": {
+          "src": "assets/champions/Extra26/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e3",
+         "label": "Extra18",
+         "media": {
+          "src": "assets/champions/Extra18/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e4",
+         "label": "Extra36",
+         "media": {
+          "src": "assets/champions/Extra36/icon.png",
+          "alt": ""
+         }
+        }
+       ]
+      }
+     ],
+     "reveal_window_ms": 2500
+    },
+    "own_card_reveals": [],
+    "reveal_window_ms": 2500,
+    "own_challenge_reveals": []
+   },
+   "scoring": {
+    "model": "points",
+    "match_length": 3,
+    "modules_completed": 0,
+    "module_number": 1
+   },
+   "playtest": {
+    "question_bank_mode": "production",
+    "is_placeholder": false,
+    "is_bot_match": true,
+    "session_preset": "admin.order_forge"
+   },
+   "ruleset": null,
+   "presence": {
+    "participant_status": "connected",
+    "opponent_connection_state": "connected",
+    "reconnect_grace_deadline": null,
+    "own_reconnect_grace_deadline": null
+   }
+  }
+ },
+ "private_before": {
+  "schema_version": "ranked_duel.private_player.v2",
+  "projection_type": "private_player",
+  "match_id": "rkb_871a2355fda603f69da8e80c",
+  "round_number": 1,
+  "server_time": "2026-09-09T12:00:11+00:00",
+  "payload": {
+   "match_id": "rkb_871a2355fda603f69da8e80c",
+   "match_status": "active",
+   "completed_rounds": 0,
+   "players": [
+    {
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 0,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    },
+    {
+     "player_id": "p_ba3baec1f013e6bd",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 0,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    }
+   ],
+   "active_round": {
+    "round_number": 1,
+    "started_at": "2026-09-09T12:00:04.400000+00:00",
+    "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false
+   },
+   "next_round_duration_seconds": 30.0,
+   "match_over": false,
+   "winner_id": null,
+   "completion_reason": null,
+   "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+   "own_selection": {
+    "phase": "open",
+    "selected_ability_id": null
+   },
+   "own_abilities": {
+    "unlocked_ability_ids": [
+     "tank.fortify"
+    ],
+    "locked_ability_ids": [
+     "tank.brace",
+     "tank.barrier"
+    ],
+    "remaining_charges": {
+     "tank.fortify": 3
+    }
+   },
+   "own_carryover": {
+    "pending_fortify": false,
+    "pending_arcane_charge": false,
+    "pending_focus": false,
+    "pending_insight": false,
+    "pending_tempo": false,
+    "consecutive_correct": 0
+   },
+   "own_combat_lab_unlock_delta_seconds": 0.0,
+   "question": {
+    "question_id": "order_forge:rkb_871a2355fda603f69da8e80c:1",
+    "prompt": "",
+    "options": [],
+    "category": null,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment": {
+    "module_id": "order_forge",
+    "module_version": 2,
+    "challenge_count": 1,
+    "challenge_index": 0,
+    "segment_number": 1,
+    "phase": "challenges",
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "pressure_applied": false,
+    "card_timer_ms": null,
+    "card_started_at": null,
+    "card_deadline": null,
+    "timed_out_challenges": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "resolved": false,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment_state": {
+    "active": true,
+    "segment_number": 1,
+    "module_id": "order_forge",
+    "module_version": 2,
+    "phase": "challenges",
+    "challenge_count": 1,
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "pressure_applied": false,
+    "own_ability": {
+     "selected_ability_id": null,
+     "confirmed": false,
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "unavailable_ability_ids": {}
+    },
+    "opponent_ability_confirmed": false,
+    "own_next_challenge_index": 0,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_challenges_completed": 0,
+    "opponent_challenges_completed": 1,
+    "opponent_finished": true,
+    "own_finished": false,
+    "card_timer_ms": null,
+    "own_card_index": null,
+    "own_card_started_at": null,
+    "own_card_deadline": null,
+    "own_timed_out_challenges": null,
+    "own_revealing_card_index": null,
+    "own_reveal_until": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "challenges": {
+     "family": "champion_stat:hp@lvl18",
+     "prompt": "Order these champions by Health at level 18",
+     "metric_label": "Health (lvl 18)",
+     "direction_labels": {
+      "first": "Highest",
+      "last": "Lowest"
+     },
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "entries": [
+        {
+         "entry_id": "e0",
+         "label": "Extra00",
+         "media": {
+          "src": "assets/champions/Extra00/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e1",
+         "label": "Extra31",
+         "media": {
+          "src": "assets/champions/Extra31/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e2",
+         "label": "Extra26",
+         "media": {
+          "src": "assets/champions/Extra26/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e3",
+         "label": "Extra18",
+         "media": {
+          "src": "assets/champions/Extra18/icon.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e4",
+         "label": "Extra36",
+         "media": {
+          "src": "assets/champions/Extra36/icon.png",
+          "alt": ""
+         }
+        }
+       ]
+      }
+     ],
+     "reveal_window_ms": 2500
+    },
+    "own_card_reveals": [],
+    "reveal_window_ms": 2500,
+    "own_challenge_reveals": []
+   },
+   "ruleset": null,
+   "presence": {
+    "participant_status": "connected",
+    "opponent_connection_state": "connected",
+    "reconnect_grace_deadline": null,
+    "own_reconnect_grace_deadline": null
+   }
+  }
+ },
+ "submit": {
+  "status": "accepted",
+  "match_id": "rkb_871a2355fda603f69da8e80c",
+  "segment_number": 1,
+  "challenge_index": 0,
+  "idempotent": false,
+  "conflicting": false,
+  "segment_resolved": true,
+  "next_challenge_index": 1,
+  "reveal_window_ms": 2500,
+  "challenge_reveal": {
+   "challenge_index": 0,
+   "order": [
+    "e0",
+    "e1",
+    "e4",
+    "e3",
+    "e2"
+   ],
+   "is_correct": false,
+   "position_correct": [
+    false,
+    true,
+    true,
+    true,
+    false
+   ],
+   "canonical_order": [
+    "e2",
+    "e1",
+    "e4",
+    "e3",
+    "e0"
+   ],
+   "entries": [
+    {
+     "entry_id": "e2",
+     "label": "Extra26",
+     "value_display": "2,654 HP"
+    },
+    {
+     "entry_id": "e1",
+     "label": "Extra31",
+     "value_display": "2,494 HP"
+    },
+    {
+     "entry_id": "e4",
+     "label": "Extra36",
+     "value_display": "2,334 HP"
+    },
+    {
+     "entry_id": "e3",
+     "label": "Extra18",
+     "value_display": "2,142 HP"
+    },
+    {
+     "entry_id": "e0",
+     "label": "Extra00",
+     "value_display": "1,690 HP"
+    }
+   ]
+  }
+ },
+ "public_after_lock": {
+  "schema_version": "ranked_duel.public_round.v2",
+  "projection_type": "public_round",
+  "match_id": "rkb_871a2355fda603f69da8e80c",
+  "round_number": 2,
+  "server_time": "2026-09-09T12:00:11.400000+00:00",
+  "payload": {
+   "match_id": "rkb_871a2355fda603f69da8e80c",
+   "match_status": "active",
+   "completed_rounds": 1,
+   "players": [
+    {
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 9,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    },
+    {
+     "player_id": "p_ba3baec1f013e6bd",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 9,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    }
+   ],
+   "active_round": {
+    "round_number": 2,
+    "started_at": "2026-09-09T12:00:14.100000+00:00",
+    "active_deadline": "2026-09-09T12:00:44.100000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false
+   },
+   "next_round_duration_seconds": 30.0,
+   "match_over": false,
+   "winner_id": null,
+   "completion_reason": null,
+   "question": {
+    "question_id": "order_forge:rkb_871a2355fda603f69da8e80c:2",
+    "prompt": "",
+    "options": [],
+    "category": null,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment": {
+    "module_id": "order_forge",
+    "module_version": 2,
+    "challenge_count": 1,
+    "challenge_index": 0,
+    "segment_number": 2,
+    "phase": "challenges",
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:14.100000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:44.100000+00:00",
+    "pressure_applied": false,
+    "card_timer_ms": null,
+    "card_started_at": null,
+    "card_deadline": null,
+    "timed_out_challenges": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "resolved": false,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment_state": {
+    "active": true,
+    "segment_number": 2,
+    "module_id": "order_forge",
+    "module_version": 2,
+    "phase": "challenges",
+    "challenge_count": 1,
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:14.100000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:44.100000+00:00",
+    "pressure_applied": false,
+    "own_ability": {
+     "selected_ability_id": null,
+     "confirmed": false,
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "unavailable_ability_ids": {}
+    },
+    "opponent_ability_confirmed": false,
+    "own_next_challenge_index": 0,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_challenges_completed": 0,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_finished": false,
+    "card_timer_ms": null,
+    "own_card_index": null,
+    "own_card_started_at": null,
+    "own_card_deadline": null,
+    "own_timed_out_challenges": null,
+    "own_revealing_card_index": null,
+    "own_reveal_until": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "challenges": {
+     "family": "item_cost",
+     "prompt": "Order these items by gold cost",
+     "metric_label": "Gold cost",
+     "direction_labels": {
+      "first": "Most expensive",
+      "last": "Cheapest"
+     },
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "entries": [
+        {
+         "entry_id": "e0",
+         "label": "Manamune",
+         "media": {
+          "src": "assets/items/3004.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e1",
+         "label": "Hexdrinker",
+         "media": {
+          "src": "assets/items/3155.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e2",
+         "label": "Pickaxe",
+         "media": {
+          "src": "assets/items/1037.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e3",
+         "label": "Rod of Ages",
+         "media": {
+          "src": "assets/items/6657.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e4",
+         "label": "Sterak's Gage",
+         "media": {
+          "src": "assets/items/3053.png",
+          "alt": ""
+         }
+        }
+       ]
+      }
+     ],
+     "reveal_window_ms": 2500
+    },
+    "own_card_reveals": [],
+    "reveal_window_ms": 2500,
+    "own_challenge_reveals": []
+   },
+   "scoring": {
+    "model": "points",
+    "match_length": 3,
+    "modules_completed": 1,
+    "module_number": 2
+   },
+   "playtest": {
+    "question_bank_mode": "production",
+    "is_placeholder": false,
+    "is_bot_match": true,
+    "session_preset": "admin.order_forge"
+   },
+   "ruleset": null,
+   "presence": {
+    "participant_status": "connected",
+    "opponent_connection_state": "connected",
+    "reconnect_grace_deadline": null,
+    "own_reconnect_grace_deadline": null
+   }
+  }
+ },
+ "resolved": {
+  "schema_version": "ranked_duel.resolved_round.v2",
+  "projection_type": "resolved_round",
+  "match_id": "rkb_871a2355fda603f69da8e80c",
+  "round_number": 1,
+  "server_time": "2026-09-09T12:00:11.400000+00:00",
+  "payload": {
+   "match_id": "rkb_871a2355fda603f69da8e80c",
+   "round_number": 1,
+   "question_id": "order_forge:rkb_871a2355fda603f69da8e80c:1",
+   "end_reason": "both_answered",
+   "started_at": "2026-09-09T12:00:04.400000+00:00",
+   "original_deadline": "2026-09-09T12:00:34.400000+00:00",
+   "final_deadline": "2026-09-09T12:00:34.400000+00:00",
+   "pressure_applied": true,
+   "players": [
+    {
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "class_id": "tank",
+     "outcome": "incorrect",
+     "submitted_at": "2026-09-09T12:00:11.200000+00:00",
+     "answered_first": true,
+     "timed_out": false,
+     "selected_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "outgoing_bonus": 0,
+      "final_damage_dealt": 0,
+      "shield_absorbed": 0,
+      "incoming_reduction": 0,
+      "final_damage_received": 0
+     },
+     "hp_before": 170,
+     "hp_after": 170,
+     "reached_zero_hp": false,
+     "points_awarded": 0,
+     "score_before": 0,
+     "score_after": 0,
+     "xp_gained": 9,
+     "total_xp_after": 9,
+     "level_before": 1,
+     "level_after": 1,
+     "level_up_events": [],
+     "charge_consumed": false,
+     "consumed_ability_id": null,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "carryover": {
+      "effects_gained": [],
+      "effects_consumed": [],
+      "consecutive_correct": 0
+     },
+     "combat_lab_unlock_delta_seconds": 0.0
+    },
+    {
+     "player_id": "p_ba3baec1f013e6bd",
+     "class_id": "tank",
+     "outcome": "incorrect",
+     "submitted_at": "2026-09-09T12:00:11.224737+00:00",
+     "answered_first": false,
+     "timed_out": false,
+     "selected_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "outgoing_bonus": 0,
+      "final_damage_dealt": 0,
+      "shield_absorbed": 0,
+      "incoming_reduction": 0,
+      "final_damage_received": 0
+     },
+     "hp_before": 170,
+     "hp_after": 170,
+     "reached_zero_hp": false,
+     "points_awarded": 0,
+     "score_before": 0,
+     "score_after": 0,
+     "xp_gained": 9,
+     "total_xp_after": 9,
+     "level_before": 1,
+     "level_after": 1,
+     "level_up_events": [],
+     "charge_consumed": false,
+     "consumed_ability_id": null,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "carryover": {
+      "effects_gained": [],
+      "effects_consumed": [],
+      "consecutive_correct": 0
+     },
+     "combat_lab_unlock_delta_seconds": 0.0
+    }
+   ],
+   "next_round_duration_seconds": 30.0,
+   "next_round_duration_delta": 0.0,
+   "match_over": false,
+   "winner_id": null,
+   "completion_reason": null,
+   "segment_reveal": {
+    "module_id": "order_forge",
+    "module_version": 2,
+    "challenge_count": 1,
+    "scoring": "points",
+    "correct_points": 2,
+    "speed_bonus_points": 1,
+    "canonical_order": [
+     "e2",
+     "e1",
+     "e4",
+     "e3",
+     "e0"
+    ],
+    "entries": [
+     {
+      "entry_id": "e2",
+      "label": "Extra26",
+      "value_display": "2,654 HP"
+     },
+     {
+      "entry_id": "e1",
+      "label": "Extra31",
+      "value_display": "2,494 HP"
+     },
+     {
+      "entry_id": "e4",
+      "label": "Extra36",
+      "value_display": "2,334 HP"
+     },
+     {
+      "entry_id": "e3",
+      "label": "Extra18",
+      "value_display": "2,142 HP"
+     },
+     {
+      "entry_id": "e0",
+      "label": "Extra00",
+      "value_display": "1,690 HP"
+     }
+    ],
+    "players": {
+     "0a11d111-0000-4000-8000-000000000001": {
+      "order": [
+       "e0",
+       "e1",
+       "e4",
+       "e3",
+       "e2"
+      ],
+      "position_correct": [
+       false,
+       true,
+       true,
+       true,
+       false
+      ],
+      "correct": 0,
+      "incorrect": 1,
+      "unanswered": 0,
+      "base_points": 0,
+      "speed_bonus_points": 0,
+      "points_awarded": 0,
+      "finished_first": true,
+      "duration_ms": 6800,
+      "segment_result": "draw"
+     },
+     "p_ba3baec1f013e6bd": {
+      "order": [
+       "e2",
+       "e1",
+       "e4",
+       "e0",
+       "e3"
+      ],
+      "position_correct": [
+       true,
+       true,
+       true,
+       false,
+       false
+      ],
+      "correct": 0,
+      "incorrect": 1,
+      "unanswered": 0,
+      "base_points": 0,
+      "speed_bonus_points": 0,
+      "points_awarded": 0,
+      "finished_first": false,
+      "duration_ms": 6825,
+      "segment_result": "draw"
+     }
+    }
+   },
+   "presentation_ms": 2900,
+   "max_hp": {
+    "0a11d111-0000-4000-8000-000000000001": 170,
+    "p_ba3baec1f013e6bd": 170
+   },
+   "module_points": {
+    "0a11d111-0000-4000-8000-000000000001": {
+     "base_points": 0,
+     "speed_bonus_points": 0,
+     "points_awarded": 0,
+     "score_before": 0,
+     "score_after": 0
+    },
+    "p_ba3baec1f013e6bd": {
+     "base_points": 0,
+     "speed_bonus_points": 0,
+     "points_awarded": 0,
+     "score_before": 0,
+     "score_after": 0
+    }
+   }
+  }
+ },
+ "private_after": {
+  "schema_version": "ranked_duel.private_player.v2",
+  "projection_type": "private_player",
+  "match_id": "rkb_871a2355fda603f69da8e80c",
+  "round_number": 2,
+  "server_time": "2026-09-09T12:00:11.400000+00:00",
+  "payload": {
+   "match_id": "rkb_871a2355fda603f69da8e80c",
+   "match_status": "active",
+   "completed_rounds": 1,
+   "players": [
+    {
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 9,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    },
+    {
+     "player_id": "p_ba3baec1f013e6bd",
+     "class_id": "tank",
+     "hp": 170,
+     "score": 0,
+     "total_xp": 9,
+     "level": 1,
+     "has_submitted": false,
+     "ability_selection_phase": "open",
+     "has_ability_selected": false,
+     "max_hp": 170,
+     "role": null
+    }
+   ],
+   "active_round": {
+    "round_number": 2,
+    "started_at": "2026-09-09T12:00:14.100000+00:00",
+    "active_deadline": "2026-09-09T12:00:44.100000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false
+   },
+   "next_round_duration_seconds": 30.0,
+   "match_over": false,
+   "winner_id": null,
+   "completion_reason": null,
+   "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+   "own_selection": {
+    "phase": "open",
+    "selected_ability_id": null
+   },
+   "own_abilities": {
+    "unlocked_ability_ids": [
+     "tank.fortify"
+    ],
+    "locked_ability_ids": [
+     "tank.brace",
+     "tank.barrier"
+    ],
+    "remaining_charges": {
+     "tank.fortify": 3
+    }
+   },
+   "own_carryover": {
+    "pending_fortify": false,
+    "pending_arcane_charge": false,
+    "pending_focus": false,
+    "pending_insight": false,
+    "pending_tempo": false,
+    "consecutive_correct": 0
+   },
+   "own_combat_lab_unlock_delta_seconds": 0.0,
+   "question": {
+    "question_id": "order_forge:rkb_871a2355fda603f69da8e80c:2",
+    "prompt": "",
+    "options": [],
+    "category": null,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment": {
+    "module_id": "order_forge",
+    "module_version": 2,
+    "challenge_count": 1,
+    "challenge_index": 0,
+    "segment_number": 2,
+    "phase": "challenges",
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:14.100000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:44.100000+00:00",
+    "pressure_applied": false,
+    "card_timer_ms": null,
+    "card_started_at": null,
+    "card_deadline": null,
+    "timed_out_challenges": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "resolved": false,
+    "topic": {
+     "category": "general",
+     "tier": null,
+     "icon_hint": {
+      "kind": "generic",
+      "key": null,
+      "icon": null
+     },
+     "roles": [],
+     "motif": null
+    }
+   },
+   "segment_state": {
+    "active": true,
+    "segment_number": 2,
+    "module_id": "order_forge",
+    "module_version": 2,
+    "phase": "challenges",
+    "challenge_count": 1,
+    "ability_deadline": null,
+    "challenge_started_at": "2026-09-09T12:00:14.100000+00:00",
+    "challenge_deadline": "2026-09-09T12:00:44.100000+00:00",
+    "pressure_applied": false,
+    "own_ability": {
+     "selected_ability_id": null,
+     "confirmed": false,
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "unavailable_ability_ids": {}
+    },
+    "opponent_ability_confirmed": false,
+    "own_next_challenge_index": 0,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_challenges_completed": 0,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_finished": false,
+    "card_timer_ms": null,
+    "own_card_index": null,
+    "own_card_started_at": null,
+    "own_card_deadline": null,
+    "own_timed_out_challenges": null,
+    "own_revealing_card_index": null,
+    "own_reveal_until": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "challenges": {
+     "family": "item_cost",
+     "prompt": "Order these items by gold cost",
+     "metric_label": "Gold cost",
+     "direction_labels": {
+      "first": "Most expensive",
+      "last": "Cheapest"
+     },
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "entries": [
+        {
+         "entry_id": "e0",
+         "label": "Manamune",
+         "media": {
+          "src": "assets/items/3004.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e1",
+         "label": "Hexdrinker",
+         "media": {
+          "src": "assets/items/3155.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e2",
+         "label": "Pickaxe",
+         "media": {
+          "src": "assets/items/1037.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e3",
+         "label": "Rod of Ages",
+         "media": {
+          "src": "assets/items/6657.png",
+          "alt": ""
+         }
+        },
+        {
+         "entry_id": "e4",
+         "label": "Sterak's Gage",
+         "media": {
+          "src": "assets/items/3053.png",
+          "alt": ""
+         }
+        }
+       ]
+      }
+     ],
+     "reveal_window_ms": 2500
+    },
+    "own_card_reveals": [],
+    "reveal_window_ms": 2500,
+    "own_challenge_reveals": []
+   },
+   "ruleset": null,
+   "presence": {
+    "participant_status": "connected",
+    "opponent_connection_state": "connected",
+    "reconnect_grace_deadline": null,
+    "own_reconnect_grace_deadline": null
+   }
+  }
+ }
+}

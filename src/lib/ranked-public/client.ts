@@ -90,6 +90,12 @@ export interface SegmentChallengeAck {
   segmentResolved: boolean;
   /** The SERVER's next index. The client never increments its own. */
   nextChallengeIndex: number;
+  /**
+   * OF4-FIX2 — the server's inline reveal of the challenge just locked, kept
+   * RAW (null when absent): which reader applies depends on the segment's
+   * module, which only the caller knows (`contracts.readOwnChallengeReveal`).
+   */
+  challengeReveal: unknown;
 }
 
 /** A 429 throttle is transient — back off and retry, never fatal. */
@@ -479,6 +485,7 @@ const readChallengeAck = (json: unknown): SegmentChallengeAck => {
     conflicting: o.conflicting === true,
     segmentResolved: o.segment_resolved === true,
     nextChallengeIndex: o.next_challenge_index,
+    challengeReveal: o.challenge_reveal ?? null,
   };
 };
 

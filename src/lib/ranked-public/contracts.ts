@@ -1628,6 +1628,17 @@ function readChallengeReveals(
   });
 }
 
+/**
+ * OF4-FIX2 — the lock response's inline `challenge_reveal`: ONE entry of
+ * `own_challenge_reveals`, read by the same reader, disclosure guard included
+ * (`activeIndex` is the server's `next_challenge_index` from the same ack).
+ */
+export function readOwnChallengeReveal(
+  v: unknown, activeIndex: number, moduleId: string,
+): MasteryChallengeReveal {
+  return readChallengeReveals([v], activeIndex, moduleId)[0];
+}
+
 function readSegmentState(v: unknown): SegmentStateView | null {
   if (v === null || v === undefined) return null;
   const o = rec(v, "segment_state");

@@ -20,6 +20,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { withInlineOrderForgeReveal } from "@/lib/ranked-core/orderForgeLockReveal";
 import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import {
@@ -934,6 +935,13 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
   // itself; the shell must not also show the quiz confirm strip or ability
   // tray. This is a capability the module declares — not a mode branch here.
   const moduleOwnsSubmission = renderer?.ownsSubmission === true;
+  // OF4-FIX2 — the Order Forge lock's inline reveal, on the segment the
+  // surface is presenting (frozen through the reveal hold). Exact match and
+  // segment only; a snapshot that carries its own reveal wins.
+  const surfaceSegmentState = useMemo(
+    () => withInlineOrderForgeReveal(surfaceRound?.segmentState ?? null,
+      m.orderForgeLockReveal, matchId),
+    [surfaceRound, m.orderForgeLockReveal, matchId]);
   const segmentActions = useMemo(() => ({
     submitChallenge: m.submitSegmentChallenge,
     busy: m.submitting,
@@ -1554,7 +1562,7 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     surface: {
       renderer,
       publicRound: surfaceRound!,
-      segmentState: surfaceRound!.segmentState,
+      segmentState: surfaceSegmentState,
       selection: surfaceSelection,
       permissions,
       actions: segmentActions,

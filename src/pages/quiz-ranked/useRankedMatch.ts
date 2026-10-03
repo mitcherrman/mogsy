@@ -31,8 +31,9 @@ import type {
   SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import {
-  META_REFLEX_MIXED_VERSION, ORDER_FORGE_MODULE_ID, readSegmentSettlement,
+  META_REFLEX_MIXED_VERSION, ORDER_FORGE_MODULE_ID, readOwnChallengeReveal, readSegmentSettlement,
 } from "@/lib/ranked-public/contracts";
+import type { OrderForgeLockRevealRef } from "@/lib/ranked-core/orderForgeLockReveal";
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
 import { reconciledSkewMs } from "@/lib/ranked-core/timerMath";
@@ -224,6 +225,15 @@ export interface MatchController {
   forfeit: () => void;
   /** Authoritative state of an active multi-challenge segment, or null. */
   segmentState: SegmentStateView | null;
+  /**
+   * OF4-FIX2 — the server's inline reveal from the viewer's last ACCEPTED Order
+   * Forge lock, tagged with its match and segment, or null. Against a bot (or
+   * an opponent who locked first) that lock settles the segment, so no polled
+   * snapshot ever carries the viewer's own reveal; this is the only copy.
+   * The host attaches it to the matching frozen segment only
+   * (`withInlineOrderForgeReveal`).
+   */
+  orderForgeLockReveal: OrderForgeLockRevealRef | null;
   /** Transcript of the last resolved multi-challenge segment, or null. */
   lastSegmentSettlement: SegmentSettlementView | null;
   /**
@@ -344,6 +354,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const [damageLog, setDamageLog] = useState<ResolvedRoundView[]>([]);
   const [lastSegmentSettlement, setLastSegmentSettlement] =
     useState<SegmentSettlementView | null>(null);
+  const [orderForgeLockReveal, setOrderForgeLockReveal] =
+    useState<OrderForgeLockRevealRef | null>(null);
   const [lastSegmentRoundNumber, setLastSegmentRoundNumber] =
     useState<number | null>(null);
   const [result, setResult] = useState<MatchResultView | null>(null);
@@ -985,6 +997,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     setLastResolved(null);
     setLastSegmentSettlement(null);
     setLastSegmentRoundNumber(null);
+    setOrderForgeLockReveal(null);
     setAnsweredSelection(null);
     (async () => {
       // RB3.2 — RECOVERY IS EXCEPTIONAL, and a fresh entry is not it.
@@ -1189,14 +1202,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
    */
   const runSegmentAction = useCallback(
     (action: (segment: number) => Promise<unknown>,
-     onAccepted?: (segment: number) => void): Promise<boolean> => {
+     onAccepted?: (segment: number, response: unknown) => void): Promise<boolean> => {
       if (!matchId || submitting || segmentNumber === null) return Promise.resolve(false);
       setSubmitting(true);
       setActionError(null);
       return (async () => {
         try {
-          await action(segmentNumber);
-          onAccepted?.(segmentNumber);
+          const response = await action(segmentNumber);
+          onAccepted?.(segmentNumber, response);
           return true;
         } catch (e) {
           // A stale phase/index means the server already moved on — re-poll
@@ -1238,10 +1251,27 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     (challengeIndex: number, choice: api.SegmentChoice): Promise<boolean> => {
       return runSegmentAction((segment) =>
         api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice),
-      (segment) => {
+      (segment, response) => {
         // OF3-F2 - Order Forge's one card locks with the light Ranked lock,
         // only now that the server has accepted it. The module plays nothing.
         if (segmentState?.moduleId === ORDER_FORGE_MODULE_ID) {
+          // OF4-FIX2 - keep the server's inline reveal of THIS lock. Only an
+          // accepted ack reaches here (a refusal or a failure throws first),
+          // and only for the segment and match the ack names.
+          const ack = response as api.SegmentChallengeAck;
+          if (ack.challengeReveal !== null && ack.segmentNumber === segment) {
+            try {
+              setOrderForgeLockReveal({
+                matchId: matchId!, segmentNumber: segment,
+                reveal: readOwnChallengeReveal(
+                  ack.challengeReveal, ack.nextChallengeIndex, ORDER_FORGE_MODULE_ID),
+              });
+            } catch (e) {
+              // Terminal display data: an unreadable reveal costs the player
+              // the teaching beat, never the match.
+              console.error("[ranked] order forge lock reveal failed to parse", e);
+            }
+          }
           playSfx("ranked.answer.lock", {
             eventId: `ranked:${matchId}:segment:${segment}:card:0:lock`,
           });
@@ -1298,7 +1328,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     error, contractError, retry, roundLive, answer, selectAbility,
     forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
-    submitSegmentChallenge, revealHold,
+    submitSegmentChallenge, revealHold, orderForgeLockReveal,
     // READY, not merely claimed. The phase holds the end screen off from the
     // instant the completion is observed; the PRESENTATION only begins once
     // there is something to present, so the beat cannot announce the end of

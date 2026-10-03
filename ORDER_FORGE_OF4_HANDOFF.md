@@ -122,3 +122,64 @@ No second pacing system and no global pacing change. Existing seams were inspect
 - Cross-round / module / match boundary continuity is still unresolved.
 - Real-device iOS / Android certification is still outstanding.
 - The arena's result stamp overlap and the RMOB2 HUD height test are unchanged.
+
+## OF4-FIX2: the reveal never reached the cards in a bot playtest
+Branch `of4/fix2-reveal-lifecycle`, from `origin/main` `2a434c2b` (FIX1 as published). Frontend only; no backend, pacing, grading, timing or content change. Not pushed, not published.
+
+### Production symptom
+After FIX1 was published, a wrong lock in Admin > Leaguecraft > Ranked > Playtests > Play Order Forge (match `rkb_50f40a7c63c0222ee7eab3ea`) still left the cards in the submitted order: they never animated and never snapped into the correct order.
+
+### Root cause: the reveal only exists inline in the lock response
+- The bot is driven inline on every request (`routes/ranked_public._drive_bot`). It locks on the first poll after the segment opens, and the lock route drives it again right after the player's submit. So in a bot match the player's lock POST itself settles the segment and opens the next round in one transaction.
+- `own_challenge_reveals` is projected only on the ACTIVE segment's state. After the lock the active segment is the next one, so no polled snapshot ever carries the viewer's Order Forge reveal. The backend's own `test_order_forge_wire_contract` has to switch the inline bot off to capture that state ("in a bot match a lock settles the segment at once and the locked-but-unsettled state is never projected").
+- The lock response carries the authoritative reveal inline as `challenge_reveal` (with `segment_resolved: true`). The client's `readChallengeAck` dropped it.
+- The poll that sees the next round starts the reveal hold before the surface adopts that snapshot, so the arena stays frozen on the pre-lock snapshot: Order Forge `locked`, `reveal = null`, rows in the submitted order, until the next round replaces it.
+- The same happens in a human match whenever the opponent locked first.
+- The backend payload is correct. Replaying the production request order through the real backend HTTP surface (origin/master `d2d34b98`, bot driven as deployed): pre-lock poll `opponent_finished: true`, no reveal; lock POST `segment_resolved: true`, inline reveal with `canonical_order` != `order` and `position_correct` consistent with both; next GET already round 2, no reveal; resolved GET has the same canonical order. `is_correct`, `position_correct` and `canonical_order` derive from one private canonical list keyed by the same entry ids as the cards.
+- The production database was not inspected (no read-only production access from this session).
+
+### Why the FIX1 test missed it
+`QuizRankedMatch.orderForgeReveal.test.tsx` hand-built a backend whose first poll after the lock is still segment N with the viewer's `own_challenge_reveals`, and its lock POST returned `{}`. A bot match never projects that poll, and `{}` hid both `segment_resolved` and the inline reveal. It tested the slower-opponent lifecycle; FIX1's timing work was unreachable in playtests.
+
+### Implementation
+| File | Change |
+|---|---|
+| `src/lib/ranked-public/contracts.ts` | `readOwnChallengeReveal(v, activeIndex, moduleId)`: one entry read by the existing `readChallengeReveals`, disclosure guard included. No second schema. |
+| `src/lib/ranked-public/client.ts` | `SegmentChallengeAck.challengeReveal`: the ack's `challenge_reveal`, kept raw (null when absent), because the reader depends on the module. |
+| `src/pages/quiz-ranked/useRankedMatch.ts` | `runSegmentAction` hands the accepted response to `onAccepted`. For an Order Forge lock only, the ack's reveal is read with `readOwnChallengeReveal(raw, ack.nextChallengeIndex, "order_forge")` and kept as `orderForgeLockReveal = {matchId, segmentNumber, reveal}`. Cleared when the match changes; replaced by the next lock. An unreadable reveal is logged and ignored. |
+| `src/lib/ranked-core/orderForgeLockReveal.ts` (new) | `withInlineOrderForgeReveal(state, lock, matchId)`: a pure attach. Returns the same object unless the state is Order Forge, the match and segment number match exactly, and the snapshot has no reveal of its own for that challenge; then a shallow copy with the one entry appended. |
+| `src/pages/quiz-ranked/QuizRankedMatch.tsx` | The arena surface's `segmentState` is `withInlineOrderForgeReveal(surfaceRound.segmentState, m.orderForgeLockReveal, matchId)` (memoised). Only the surface: the live controller state, card beat and every other reader are unchanged. |
+
+Data flow after the fix: lock POST accepted -> ack `challengeReveal` -> parsed by the `own_challenge_reveals` reader -> `orderForgeLockReveal` tagged with match and segment -> attached to the frozen surface's segment N -> `orderForgeModule` sees `ownChallengeReveals[0]` -> the SAME mounted `OrderForge` goes `locked -> revealed` and plays FIX1's beat unchanged (values and marks on the submitted order, cards move at 240ms, land at 480ms). The next poll's round N+1 starts the hold; the surface stays frozen on N with the reveal through the hold, then adopts N+1, where the reveal never matches.
+
+### Authority and security invariants
+- `canonical_order`, `position_correct`, `value_display` and `is_correct` are the server's, passed verbatim. Nothing compares the orders, grades or reconstructs a value.
+- The inline reveal is installed only from an ACCEPTED ack (a refusal or a network failure throws before `onAccepted`), only for an Order Forge segment, only for the ack's own segment, and it passes the same disclosure guard as a polled reveal.
+- Server snapshots are never mutated. A polled snapshot that carries its own reveal wins and is never doubled.
+- Untouched: `REVEAL_TIMING`, `REVEAL_HOLD_*`, `anchoredRevealHoldMs`, `reveal_window_ms`, `presentation_ms`, Journey and Mastery reveal paths (the attach is Order Forge only), the backend.
+
+### Regression coverage
+- `QuizRankedMatch.orderForgeBotLock.test.tsx` (new, 6): the real `QuizRankedMatch` + `useRankedMatch` + `CanonicalArena` + `orderForgeModule` + `OrderForge` on a fake clock, fed `__fixtures__/orderForgeBotLockCapture.json`, the bodies the REAL backend served for a wrong lock against the bot, in production order:
+  - the payload is consistent, and no polled body of the segment carries the reveal (nor any value or `canonical_order` before the lock);
+  - nothing reveal-only is on screen before the lock;
+  - the first reveal frame is the submitted order with the server's values and marks; it becomes the canonical order on FIX1's beat; it stays canonical with values while the settlement and the NEXT round are polled, until the hold releases it (>= 400ms of dwell); "was N" on exactly the moved cards; after the release the reveal does not follow into the next segment;
+  - with the lock POST delayed 400ms, nothing is revealed before it is accepted;
+  - a refused (422) lock and a network failure install nothing (the refused one reopens the input);
+  - a polled snapshot that already carries the same reveal (the slower-opponent lifecycle) is not doubled or contradicted.
+- `orderForgeLockReveal.test.ts` (new, 8): the ack keeps `challenge_reveal` raw (null when absent); it reads verbatim through the `own_challenge_reveals` reader; the disclosure guard still refuses; attach without mutation; stale segment, stale match, missing match, another module and an existing reveal all return the same object.
+- Negative control: with the four implementation files reverted to `2a434c2b` and the helper removed, the bot-lock suite fails 2/6 for the expected reason ("the reveal never reached the screen": hold on, phase `locked`, then the next round). Restored: 6/6.
+
+### Results
+| Check | Result |
+|---|---|
+| Focused Vitest (bot-lock, FIX1, `OrderForge`, `orderForgeModule`, `orderForgeLockReveal`, all `ranked-public`, `useRankedMatch*`, `QuizRankedMatch.segment/revealBeat/rfx1*/metaReflex*`, ranked media) | 47 files, 605/605 |
+| Wider Vitest (`quiz-ranked`, `ranked-core`, `ranked-arena`, `interaction-grammar`; `--maxWorkers=4`) | 2181/2190. The 9 failures (`AnswerGrid.elimination` 2, `DailyOnCanonicalArena.boundary` 2, `QuestionStageGeometry` 3, `masterySliceModule.visualLanguage` 2) fail identically on clean `2a434c2b`. Plus the known 6 `onTaskUpdate` worker timeouts. |
+| Playwright `-g "Order Forge\|OF4"` (`playwright.arena.config.ts`, Vite started from the worktree) | 40/40 |
+| `tsc -p tsconfig.app.json` | 6 errors, identical to baseline, all in untouched files |
+| eslint on touched files | 0 errors; the warnings are pre-existing |
+| `npm run build` | success (`public/sitemap.xml` rewrite reverted) |
+
+### Remaining limitations (unchanged, out of scope)
+- The real production flow has not been replayed on a device after this fix; it needs a Lovable publish and an owner playtest (wrong lock against the bot, both segments).
+- A refresh during the reveal hold loses the inline reveal (the server no longer projects it); the next round follows as before.
+- Cross-round / module / match continuity, the result-stamp overlap, RMOB2, real-device certification and the `playwright.arena.config.ts` webServer command on Windows are unchanged.
