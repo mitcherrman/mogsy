@@ -437,34 +437,65 @@ describe("provenance", () => {
     expect(text(footer)).toContain("uses Mogzy's current champion data for the value this patch did not change");
   });
 
-  it("a companion taken from a later Riot line names that patch", () => {
-    const analysis = handBuilt(
+  const mixed = (
+    baseProvenance: StatValue["provenance"],
+    growthProvenance: StatValue["provenance"],
+    usesMogzyData: boolean,
+  ) =>
+    handBuilt(
       {
-        baseBefore: sv(30, "riot_later_before", "26.14"),
-        baseAfter: sv(30, "riot_later_before", "26.14"),
-        growthBefore: sv(4.5, "riot_line"),
-        growthAfter: sv(4.1, "riot_line"),
+        baseBefore: sv(30, baseProvenance, baseProvenance === "riot_later_before" ? "26.14" : undefined),
+        baseAfter: sv(30, baseProvenance, baseProvenance === "riot_later_before" ? "26.14" : undefined),
+        growthBefore: sv(4.5, growthProvenance),
+        growthAfter: sv(4.1, growthProvenance),
       },
-      true,
+      usesMogzyData,
     );
-    render(<PatchImpact analysis={analysis} />);
+
+  it("riot_later_before without canonical_current is a Riot-only projection, and names that patch", () => {
+    // The domain flags trust.usesMogzyData for this shape; provenance must not follow it.
+    render(<PatchImpact analysis={mixed("riot_later_before", "riot_line", true)} />);
+    expect(screen.getByTestId("patch-impact")).toHaveAttribute("data-impact-provenance", "riot_projection");
     open();
-    expect(screen.getByTestId("patch-impact")).toHaveAttribute("data-impact-provenance", "mogzy_companion_projection");
-    expect(text(screen.getByTestId("patch-impact-source-base"))).toContain("patch 26.14");
+    const footer = screen.getByTestId("patch-impact-provenance");
+    expect(footer).toHaveAttribute("data-provenance", "riot_projection");
+    expect(text(footer)).toContain("Projection built entirely from Riot's patch notes.");
+    expect(text(footer)).not.toMatch(/Mogzy/);
+    const base = screen.getByTestId("patch-impact-source-base");
+    expect(base).toHaveAttribute("data-mogzy-data", "false");
+    expect(text(base)).toContain("patch 26.14");
+    expect(text(base)).not.toMatch(/Mogzy|held the same/);
   });
 
-  it("does not trust the usesMogzyData flag alone: a canonical input still reads as Mogzy data", () => {
-    const analysis = handBuilt(
-      {
-        baseBefore: sv(30, "canonical_current"),
-        baseAfter: sv(30, "canonical_current"),
-        growthBefore: sv(4.5, "riot_line"),
-        growthAfter: sv(4.1, "riot_line"),
-      },
-      false,
-    );
-    render(<PatchImpact analysis={analysis} />);
+  it("riot_later_before on both halves is still Riot-only", () => {
+    render(<PatchImpact analysis={mixed("riot_later_before", "riot_later_before", true)} />);
+    expect(screen.getByTestId("patch-impact")).toHaveAttribute("data-impact-provenance", "riot_projection");
+  });
+
+  it("canonical_current is a Mogzy-companion projection", () => {
+    // Decided by the inputs, not by the domain flag.
+    render(<PatchImpact analysis={mixed("canonical_current", "riot_line", false)} />);
     expect(screen.getByTestId("patch-impact")).toHaveAttribute("data-impact-provenance", "mogzy_companion_projection");
+    open();
+    expect(screen.getByTestId("patch-impact-source-base")).toHaveAttribute("data-mogzy-data", "true");
+    expect(text(screen.getByTestId("patch-impact-source-base"))).toContain("Mogzy's current champion data");
+  });
+
+  it("mixed inputs including canonical_current are a Mogzy-companion projection", () => {
+    for (const other of ["riot_later_before", "riot_same_card", "riot_line"] as const) {
+      const { unmount } = render(<PatchImpact analysis={mixed("canonical_current", other, true)} />);
+      expect(screen.getByTestId("patch-impact")).toHaveAttribute(
+        "data-impact-provenance",
+        "mogzy_companion_projection",
+      );
+      unmount();
+    }
+    // And with the canonical value on the growth half instead.
+    render(<PatchImpact analysis={mixed("riot_later_before", "canonical_current", false)} />);
+    expect(screen.getByTestId("patch-impact")).toHaveAttribute("data-impact-provenance", "mogzy_companion_projection");
+    open();
+    expect(screen.getByTestId("patch-impact-source-base")).toHaveAttribute("data-mogzy-data", "false");
+    expect(screen.getByTestId("patch-impact-source-growth")).toHaveAttribute("data-mogzy-data", "true");
   });
 });
 

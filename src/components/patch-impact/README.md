@@ -44,10 +44,13 @@ per-line status or promote-time "current raw" snapshot.
 ## Provenance (quiet, in the Explore footer and as `data-impact-provenance`)
 
 - `riot_parameter`: parameter facts, Riot only.
-- `riot_projection`: all four inputs are Riot numbers.
-- `mogzy_companion_projection`: a held companion value comes from Mogzy's
-  canonical data (`canonical_current` / `riot_later_before`). Either
-  `trust.usesMogzyData` or any input's provenance is enough to say so.
+- `riot_projection`: every numeric input is Riot-authored: `riot_line`,
+  `riot_same_card` (including compound Riot values) and `riot_later_before`
+  (a later Riot patch's before-value used to reconstruct the companion).
+- `mogzy_companion_projection`: at least one input's actual value is
+  `canonical_current`. Nothing else counts: the domain's `trust.usesMogzyData`
+  flag is not consulted, so continuity validation never makes a projection
+  read as Mogzy-backed.
 
 ## Copy rules
 

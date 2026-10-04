@@ -21,14 +21,19 @@ export type PatchImpactProvenanceKind =
   /** A projection that holds a companion value from Mogzy's canonical data. */
   | "mogzy_companion_projection";
 
-const MOGZY_PROVENANCE = new Set<StatValue["provenance"]>(["canonical_current", "riot_later_before"]);
+/**
+ * Provenance describes the NUMBERS behind the displayed projection. Only a value
+ * read from Mogzy's canonical data is Mogzy-backed. `riot_later_before` is
+ * Riot-authored (a later Riot patch's structured before-value reconstructing the
+ * historical companion), so it stays Riot provenance. Having run continuity
+ * checks against Mogzy infrastructure does not make a number Mogzy's.
+ */
+const MOGZY_PROVENANCE = new Set<StatValue["provenance"]>(["canonical_current"]);
 
 function projectionUsesMogzy(projection: StatProjection): boolean {
-  // Either signal is enough. Under-claiming "Riot only" is the unsafe direction.
-  return (
-    projection.trust.usesMogzyData ||
-    Object.values(projection.inputs).some((input) => MOGZY_PROVENANCE.has(input.provenance))
-  );
+  // Decided by the inputs alone. The domain's `trust.usesMogzyData` flag also
+  // covers `riot_later_before`, which is Riot-authored, so it is not consulted.
+  return Object.values(projection.inputs).some((input) => MOGZY_PROVENANCE.has(input.provenance));
 }
 
 /** `null` when the analysis is unavailable (nothing is rendered). */
