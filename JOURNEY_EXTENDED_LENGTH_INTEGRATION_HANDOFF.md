@@ -3,35 +3,46 @@
 Local integration candidates for the first variable-length Mastery Journey playtest.
 **Not pushed. Not deployed to Railway. Not published in Lovable.**
 
-## Bases (verified before branching)
+## Bases (verified again at the rebuild)
 
 | Repo | Remote | SHA |
 |---|---|---|
-| Backend `League_Combat_Simulator` | `origin/master` | `1b62f1a3ae2b7b0be2e6db4027067c6b8efb2a8b` |
-| Frontend `mogsy` | `origin/main` | `30b1266f85e57d0e4f6847c99030c8b00a5af929` |
+| Backend `League_Combat_Simulator` | `origin/master` | `1b62f1a3ae2b7b0be2e6db4027067c6b8efb2a8b` (unchanged) |
+| Frontend `mogsy` | `origin/main` | `7c699a9ae649a97bdbb58106421761414356303e` |
+
+The frontend base moved during the first pass. It went from `30b1266f` to `7c699a9a`: four PATCHHUB-PH1 commits that touch 22 Patch Hub/report files, none shared with this integration. The candidate was then rebuilt on `7c699a9a`.
 
 ## Candidates
 
 **Backend.** Branch `jlong-int/backend` (worktree `League_Combat_Simulator/.worktrees/jlong-int-backend`).
 
 - Fast-forwarded to H `7c203aeb` (JLONG1), whose parent is the base.
-- No integration commit was needed. The candidate is `7c203aebb297252b8a57b06237d703be0e5d6d7d`.
+- No integration commit was needed. The candidate is `7c203aebb297252b8a57b06237d703be0e5d6d7d`, unchanged by the rebuild.
 
-**Frontend.** Branch `jlong-int/frontend` (worktree `Desktop/mogsy-jlong-int`).
+**Frontend.** Branch `jlong-int/frontend-v2` (worktree `Desktop/mogsy-jlong-int`).
 
 ```
-* <this commit>  JLONG-INT: >12-child guard test + integration handoff
-*   ec338c14     merge K 923b94ae (Ranked-result Accuracy)
-|\
-| * 923b94ae     K: Accuracy is question accuracy
-* | a47b0506     L: admin launch for the 11-child Extended Journey
-* | a2f9bd01     I: Journey Library moved to Admin → Ranked → Playtests
+* <this commit>  JLONG-INT: handoff for the 7c699a9a rebuild
+*   df857386     merge the integration onto origin/main 7c699a9a
+|| * f1149504     JLONG-INT: >12-child guard test + first handoff
+| *   ec338c14   merge K 923b94ae (Ranked-result Accuracy)
+| || | * 923b94ae   K: Accuracy is question accuracy
+| * | a47b0506   L: admin launch for the 11-child Extended Journey
+| * | a2f9bd01   I: Journey Library moved to Admin → Ranked → Playtests
+| |/
+* | 7c699a9a     origin/main: PATCHHUB-PH1 (fd504e86, 59a5932f, bdae352f, 7c699a9a)
 |/
-* 30b1266f       origin/main (Order Forge OF4-CONTINUITY kept)
+* 30b1266f       Order Forge OF4-CONTINUITY
 ```
 
-- I and L fast-forwarded; K was merged with `--no-ff`. There were **no conflicts**.
-- I/L and K touch disjoint files. All of `30b1266f` (Order Forge) is an ancestor.
+**How it was rebuilt.** It is a merge, not a rebase, so I, L, K and the guard-test commit keep their original SHAs. There were **no conflicts**.
+
+**Checks on the rebuild.**
+
+- `git diff 7c699a9a HEAD` is the same patch as the first pass's `git diff 30b1266f f1149504`.
+- All 22 PATCHHUB files are byte-identical to `7c699a9a`.
+
+**Superseded branch.** The first-pass branch `jlong-int/frontend` (`f1149504`, on `30b1266f`) is kept for reference only.
 
 ## The `1–12` step cap in `src/lib/journey/contract.ts`
 
@@ -127,37 +138,48 @@ The real 11-child review gives 100% and 73%, as above. Daily's result model was 
 
 ## Tests
 
+### Rebuild on `7c699a9a` (focused set, compared with `7c699a9a`)
+
+| Check | Candidate | `7c699a9a` |
+|---|---|---|
+| Focused frontend set (see list below) | 40 files; 718 passed, 1 failed | 38 files; 696 passed, 1 failed |
+| `tsc -p tsconfig.app.json` | 6 errors | the same 6 errors |
+| Cross-system scratch certification (backend capture unchanged) | 20 / 20 | — |
+
+**What the focused set covers:**
+
+- admin Ranked and areas;
+- the Quiz hub;
+- the Ranked result model, end screen and journey origin;
+- `src/lib/journey` and `src/components/journey`;
+- the extended, journey, journey5, journeyPresentation, jp4, jp5, motion and reveal mastery-slice tests;
+- the Daily `stageResultModel` and `dailyRun.boundary`.
+
+**The one failure** is Quiz.hub "keeps exactly one h1". It fails identically on `7c699a9a`.
+
+**The extra 22 passing tests** on the candidate are the extended-Journey, admin-launch and Accuracy tests, including the 13- and 16-child guard.
+
+**Patch Hub tests were not re-run.** The merge left every Patch Hub file byte-identical to `7c699a9a`, and no Journey/admin/result file is shared with them.
+
+**Backend was not re-run.** It is unchanged since the first pass.
+
+### First pass (on `30b1266f`)
+
 | Suite | Candidate | Untouched base |
 |---|---|---|
 | Backend Journey set (H's list + `test_jlong1`) | 566 passed, 40 failed | 542 passed, 40 failed (identical failures) |
 | Backend `test_dcmod_*` and `test_dcsurv_*` | 281 passed, 3 failed | identical |
-| Frontend focused set (admin, hub, journey, ranked-core modules, results, Daily) | 72 files; 6 files with failures | see below |
-| `tsc -p tsconfig.app.json` | 6 errors | the same 6 errors |
-| Cross-system scratch certification | 20 / 20 | — |
+| Frontend focused set (wider) | 6 files with failures | the same 6 fail on `30b1266f`, plus 3 load timeouts that pass alone |
 
 **Backend failures.**
 
 - `test_jchain1` (31) and `test_journey_k1` (1) fail on frozen bundle digests against this machine's DB.
 - `test_sh11a` (8) fails with `FEATURE_DISABLED`.
 
-**Frontend failures.**
-
-- **Six reproduce on `30b1266f`:**
-  - Quiz.hub (one h1);
-  - Quiz.rankedRole (Practice commit);
-  - DailyOnCanonicalArena.boundary ×2;
-  - visualLanguage JP5 ×2.
-- **Three more failed only in the large parallel run:**
-  - dailyChallengeEntry "no client for retired Daily endpoint";
-  - portraitPopup "no anchor chip";
-  - visualLanguage "no recall pill".
-
-  All three are whole-repo/all-snapshot scans that ran past 5.7 s. They **pass when rerun alone**, and none of them reads the jext fixture. They are timeouts under load, not regressions.
-
 ## Next release / playtest steps
 
 1. Push backend `jlong-int/backend` (= `7c203aeb`) to `master` (fast-forward), then deploy to Railway.
-2. Once the backend is live, push frontend `jlong-int/frontend` to `main` and publish in Lovable. The order matters: the frontend launch button sends a preset the old backend refuses.
+2. Once the backend is live, push frontend `jlong-int/frontend-v2` to `main` (it fast-forwards from `7c699a9a`) and publish in Lovable. The order matters: the frontend launch button sends a preset the old backend refuses.
 3. In production, as an admin: go to Admin → Leaguecraft → Ranked → Playtests and choose **Play Ashe vs Jinx — Extended Journey**. Play through and confirm:
    - Step N of 11;
    - the Pickaxe beat before Step 5 and the level-6 beat before Step 7;
