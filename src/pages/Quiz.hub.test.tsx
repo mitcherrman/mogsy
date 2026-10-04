@@ -584,15 +584,11 @@ describe("Leaguecraft hub — Mastery", () => {
   });
 });
 
-describe("Leaguecraft hub — Journey Library (JLIB-FE)", () => {
-  it("links the public Journey Library beside, not instead of, the legacy Mastery link", async () => {
+describe("Leaguecraft hub — Journey Library placement", () => {
+  it("no longer advertises the Journey Library; Mastery stays untouched", async () => {
     const { container } = await renderHub();
-    const utility = container.querySelector('[data-testid="hub-utility-line"]')!;
-    const library = screen.getByTestId("hub-journey-library-link");
-    expect(library.getAttribute("href")).toBe("/quiz/journeys");
-    expect(library).toHaveTextContent("Journey Library");
-    expect(utility.contains(library)).toBe(true);
-    // The legacy Mastery system keeps its own entrance, unrenamed.
+    expect(screen.queryByTestId("hub-journey-library-link")).toBeNull();
+    expect(container.querySelector('a[href="/quiz/journeys"]')).toBeNull();
     const mastery = screen.getByTestId("hub-mastery-link");
     expect(mastery.getAttribute("href")).toBe("/quiz/mastery");
     expect(mastery).toHaveTextContent("Mastery Journey");

@@ -309,6 +309,16 @@ export default function AdminRankedPage() {
                   <ReferenceJourneyLaunch />
                   <PantheonLeonaJourneyLaunch />
                   <VolibearLeeSinJourneyLaunch />
+                  {/* Journey Library is not advertised on the public Leaguecraft
+                      hub (undecided as a permanent public product); /quiz/journeys
+                      stays routable and is reached from here for playtesting. */}
+                  <div data-testid="admin-journey-library-link">
+                    <AdminCrossLink
+                      to="/quiz/journeys"
+                      label="Open Journey Library"
+                      note="the Journey Library page, for playtesting"
+                    />
+                  </div>
                 </div>
               </AdminPanel>
               <AdminPanel

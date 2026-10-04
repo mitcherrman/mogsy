@@ -388,6 +388,13 @@ describe("7 · Ranked Admin home renders", () => {
       "Play Volibear/Lee Sin Journey",
     ]);
   });
+
+  it("links Journey Library from Ranked > Playtests to /quiz/journeys", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const wrap = await screen.findByTestId("admin-journey-library-link");
+    const link = within(wrap).getByRole("link", { name: /open journey library/i });
+    expect(link.getAttribute("href")).toBe("/quiz/journeys");
+  });
 });
 
 describe("8 & 9 · normal Ranked and Ranked Bot access are untouched", () => {
