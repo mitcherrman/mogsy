@@ -377,7 +377,7 @@ describe("7 · Ranked Admin home renders", () => {
     expect(screen.getByTestId("reference-journey-launch-button")).toBeTruthy();
   });
 
-  it("offers the three Journey launches in Ranked > Playtests", async () => {
+  it("offers the Journey launches in Ranked > Playtests, extended one last", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
     const panel = await screen.findByTestId("ranked-reference-journeys");
     expect(
@@ -386,7 +386,15 @@ describe("7 · Ranked Admin home renders", () => {
       "Play Zed/Ahri Reference Journey",
       "Play Pantheon/Leona Journey",
       "Play Volibear/Lee Sin Journey",
+      "Play Ashe vs Jinx — Extended Journey",
     ]);
+  });
+
+  it("links Journey Library from Ranked > Playtests to /quiz/journeys", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const wrap = await screen.findByTestId("admin-journey-library-link");
+    const link = within(wrap).getByRole("link", { name: /open journey library/i });
+    expect(link.getAttribute("href")).toBe("/quiz/journeys");
   });
 });
 

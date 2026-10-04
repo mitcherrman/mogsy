@@ -58,6 +58,7 @@ import {
   PantheonLeonaJourneyLaunch,
   VolibearLeeSinJourneyLaunch,
 } from "@/pages/admin/ranked/DailyJourneyLaunch";
+import { AsheJinxExtendedJourneyLaunch } from "@/pages/admin/ranked/ExtendedJourneyLaunch";
 import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
@@ -309,6 +310,17 @@ export default function AdminRankedPage() {
                   <ReferenceJourneyLaunch />
                   <PantheonLeonaJourneyLaunch />
                   <VolibearLeeSinJourneyLaunch />
+                  <AsheJinxExtendedJourneyLaunch />
+                  {/* Journey Library is not advertised on the public Leaguecraft
+                      hub (undecided as a permanent public product); /quiz/journeys
+                      stays routable and is reached from here for playtesting. */}
+                  <div data-testid="admin-journey-library-link">
+                    <AdminCrossLink
+                      to="/quiz/journeys"
+                      label="Open Journey Library"
+                      note="the Journey Library page, for playtesting"
+                    />
+                  </div>
                 </div>
               </AdminPanel>
               <AdminPanel

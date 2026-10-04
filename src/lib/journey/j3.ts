@@ -243,7 +243,8 @@ export interface JourneyJ3 {
   title: string | null;
   role: string | null;
   arcType: string | null;
-  plan: "standard" | "survival";
+  /** `extended` is the admin-only long/depth playtest plan (JLONG1): standard rules, N children. */
+  plan: "standard" | "survival" | "extended";
   childCount: number;
   /** K1 — `knowledge_object_contract`; null when the block predates K1. */
   knowledgeContract: string | null;
@@ -678,7 +679,8 @@ export function readJourneyJ3(json: unknown): JourneyJ3 {
       "title", "role", "arc_type", "plan", "child_count", "children", "transitions", "open_delays_ms"]);
   if (o.journey_version !== JOURNEY_J3_VERSION) fail(`unsupported journey_version ${JSON.stringify(o.journey_version)}`);
   if (o.public_state_contract !== JOURNEY_J3_STATE_CONTRACT) fail(`unsupported public_state_contract ${JSON.stringify(o.public_state_contract)}`);
-  const plan = o.plan === "standard" || o.plan === "survival" ? o.plan : fail("plan must be standard|survival");
+  const plan = o.plan === "standard" || o.plan === "survival" || o.plan === "extended"
+    ? o.plan : fail("plan must be standard|survival|extended");
   const childCount = int(o.child_count, "child_count", 1);
   const children = arr(o.children, "journey.children").map((c, i) => readChild(c, `journey.children[${i}]`));
   children.forEach((c, i) => { if (c.index !== i) fail("journey.children must be the contiguous reached prefix"); });

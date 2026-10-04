@@ -60,7 +60,7 @@ export type HarnessHost = "ranked" | "daily";
 
 /** The host a capture was recorded under: the admin reference is Ranked; the rest are Daily stages. */
 export const hostOfCapture = (capture: string): HarnessHost =>
-  (capture.startsWith("jref") || capture.startsWith("jp5-ref") ? "ranked" : "daily");
+  (capture.startsWith("jref") || capture.startsWith("jp5-ref") || capture.startsWith("jext") ? "ranked" : "daily");
 
 export function journeyArenaView(round: PublicRoundView, at: string, skewMs: number, host: HarnessHost = "ranked"): ArenaViewModel {
   const seg = round.segmentState!;

@@ -429,7 +429,7 @@ export function adaptJourneyJ3(j: JourneyJ3, cursor: JourneyCursor,
     contract: latest.state.contract,
     // A Review re-ask names no recipe: its own public state key identifies it.
     journeyKey: j.reask ? `reask:${latest.state.stateKey}` : `${j.recipeId}@${j.recipeVersion}:${j.plan}`,
-    plan: j.plan,
+    plan: j.plan === "survival" ? "survival" : "standard",
     title: j.reask ? "Review" : j.title,
     step: {
       index: Math.min(onScreenIndex, j.childCount - 1), count: j.childCount,
