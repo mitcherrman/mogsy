@@ -64,7 +64,7 @@ type StatRowDef = {
   label: string;
   base: (s: DocChampionStats) => number | null;
   growth?: (s: DocChampionStats) => number | null;
-  atLevel?: (s: DocChampionStats, level: number) => number | null;
+  atLevel?: (s: DocChampionStats, level: number, championName?: string) => number | null;
   growthSuffix?: string;
   decimals?: number;
   /** Hide the row entirely (e.g. mana rows for manaless champions). */
@@ -109,10 +109,10 @@ const STAT_ROWS: StatRowDef[] = [
     base: (s) => s.attack_speed,
     growth: (s) => s.attack_speed_per_level,
     growthSuffix: "%",
-    atLevel: (s, l) =>
+    atLevel: (s, l, name) =>
       s.attack_speed === null || s.attack_speed_per_level === null
         ? s.attack_speed
-        : attackSpeedAtLevel(s.attack_speed, s.attack_speed_per_level, l, s.attack_speed_ratio),
+        : attackSpeedAtLevel(s.attack_speed, s.attack_speed_per_level, l, s.attack_speed_ratio, name),
     decimals: 3,
   },
   {
@@ -491,7 +491,7 @@ function ChampionDocContent({
                             : "fixed"}
                         </TableCell>
                         <TableCell className="text-sm text-right font-semibold" style={{ color: GOLD }}>
-                          {row.atLevel ? fmt(row.atLevel(stats, level), decimals) : fmt(row.base(stats), decimals)}
+                          {row.atLevel ? fmt(row.atLevel(stats, level, champion.name), decimals) : fmt(row.base(stats), decimals)}
                         </TableCell>
                       </TableRow>
                     );
@@ -504,8 +504,8 @@ function ChampionDocContent({
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
                 Base-stat projection only, using League's stat-growth curve — the same one Mogzy's
-                combat engine uses. Attack-speed growth is a percent bonus applied to the champion's
-                attack-speed ratio. Items, runes, buffs, and champion-specific passives are not
+                combat engine uses. Attack-speed growth normally scales from the champion's
+                attack-speed ratio; champion-specific growth rules such as Jhin's are preserved. Items, runes, buffs, and champion-specific passives are not
                 included.
               </span>
             </p>

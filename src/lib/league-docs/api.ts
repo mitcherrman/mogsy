@@ -538,18 +538,31 @@ export function statAtLevel(base: number, perLevel: number, level: number): numb
 }
 
 /**
+ * Champions whose level growth scales from base attack speed instead of the
+ * attack-speed ratio. Mirrors backend `ATTACK_SPEED_GROWTH_FROM_BASE`
+ * (champion_stat_profile.py): Jhin's ratio is a real 0.0 (items/runes/buffs
+ * cannot raise his cadence) but "Jhin's attack speed cannot increase except by
+ * leveling up". Keep in sync with the backend; do not special-case on ratio.
+ */
+export const ATTACK_SPEED_GROWTH_FROM_BASE: ReadonlySet<string> = new Set(["Jhin"]);
+
+/**
  * Attack speed grows by a PERCENT bonus applied to the champion's attack-speed
  * RATIO, added on top of base attack speed (standard League formula):
- * AS(level) = base + ratio × (growth% × multiplier) / 100.
- * When the ratio is unavailable it falls back to base attack speed — the
- * pre-ratio approximation, exact for champions whose ratio equals their base.
+ * AS(level) = base + coefficient × (growth% × multiplier) / 100, where the
+ * coefficient is the ratio — except champions in ATTACK_SPEED_GROWTH_FROM_BASE
+ * (Jhin), whose coefficient is base attack speed. A missing ratio falls back to
+ * base attack speed; a present 0.0 ratio stays zero. Mirrors backend
+ * `calculate_champion_attack_speed_at_level`.
  */
 export function attackSpeedAtLevel(
   baseAs: number,
   asPerLevelPercent: number,
   level: number,
   ratio?: number | null,
+  championName?: string | null,
 ): number {
-  const scaleBase = ratio ?? baseAs;
+  const scaleBase =
+    championName != null && ATTACK_SPEED_GROWTH_FROM_BASE.has(championName) ? baseAs : (ratio ?? baseAs);
   return baseAs + (scaleBase * (asPerLevelPercent * riotLevelMultiplier(level))) / 100;
 }
