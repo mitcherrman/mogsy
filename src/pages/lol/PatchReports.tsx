@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -6,13 +6,18 @@ import {
   fetchPatchReports,
   type MogzyStatus,
   type PatchEntityType,
-  type PatchReportCard,
 } from "@/lib/patch-reports/api";
-import { PatchReportEntityCard } from "@/components/patch-reports/PatchReportEntityCard";
+import { PatchHubMasthead } from "@/components/patch-reports/PatchHubMasthead";
+import { PatchHubSection } from "@/components/patch-reports/PatchHubSection";
+import { PatchHubSectionNav } from "@/components/patch-reports/PatchHubSectionNav";
 import { PatchDataStatusNotice } from "@/components/patch-reports/PatchDataStatusNotice";
 import { STATUS_LABELS, filterCards } from "@/lib/patch-reports/filter";
+import {
+  buildPatchReportStructure,
+  filterReportStructure,
+} from "@/lib/patch-reports/report-structure";
 
-const GOLD = "#c9a84c";
+const RECON_ANCHOR = "patch-data-status";
 
 const TYPE_LABELS: Record<PatchEntityType, string> = {
   champion: "Champions",
@@ -44,27 +49,48 @@ const PatchReports = () => {
     () => filterCards(detail?.cards ?? [], search, typeFilter, statusFilter),
     [detail, search, typeFilter, statusFilter],
   );
-  const byType = useMemo(() => {
-    const groups = new Map<PatchEntityType, PatchReportCard[]>();
-    for (const t of TYPE_ORDER) groups.set(t, []);
-    for (const card of filtered) groups.get(card.entity_type)?.push(card);
-    return groups;
-  }, [filtered]);
+  // One semantic authority: structure (sections, anchors, section intros,
+  // direction buckets) is built from the whole report, then narrowed to the
+  // filtered cards, so a search never changes an anchor or re-promotes a
+  // hoisted section intro onto the one entry left.
+  const structure = useMemo(
+    () => (detail ? buildPatchReportStructure(detail) : null),
+    [detail],
+  );
+  const sections = useMemo(
+    () => (structure ? filterReportStructure(structure, new Set(filtered)).sections : []),
+    [structure, filtered],
+  );
+  const changeCount = useMemo(
+    () => filtered.reduce((n, c) => n + c.changes.length, 0),
+    [filtered],
+  );
+  const filtering = search.trim() !== "" || typeFilter !== "all" || statusFilter !== "all";
 
-  const selectedSummary = patches.find((p) => p.patch_version === selectedVersion);
+  // A deep link like ?patch=26.18#s-patch-champions__e-champion-ahri targets content that
+  // only exists after the detail query resolves, so scroll once it has.
+  useEffect(() => {
+    if (!detail || !window.location.hash) return;
+    document.getElementById(decodeURIComponent(window.location.hash.slice(1)))?.scrollIntoView();
+  }, [detail]);
+
+  const notice = detail && <PatchDataStatusNotice reconciliation={detail.reconciliation} />;
+  // Riot's account leads. The reconciliation notice sits above the report only
+  // when Mogzy's data is NOT known-current; a clean RECONCILED notice moves to
+  // the footer. Never hidden: absent status renders as not-reconciled.
+  const noticeFirst = detail?.reconciliation?.status !== "RECONCILED";
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 text-foreground">
-      <header className="mb-6">
-        <p className="text-xs uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-          Mogzy Knowledge
-        </p>
-        <h1 className="mt-1 text-3xl font-bold">Patch Reports</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Every gameplay change from the latest official League of Legends patches —
-          what changed, why Riot changed it, and whether Mogzy&apos;s data matches.
-        </p>
-      </header>
+      <PatchHubMasthead
+        patchVersion={selectedVersion}
+        detail={detail}
+        entityCount={filtered.length}
+        changeCount={changeCount}
+        sectionCount={sections.length}
+        reconciliation={detail?.reconciliation}
+        reconciliationAnchor={RECON_ANCHOR}
+      />
 
       {listQuery.isLoading && (
         <p className="text-sm text-muted-foreground">Loading patches…</p>
@@ -76,16 +102,19 @@ const PatchReports = () => {
         <p className="text-sm text-muted-foreground">No patch reports have been built yet.</p>
       )}
 
-      {/* Patch selector timeline */}
       {patches.length > 0 && (
-        <nav aria-label="Patch selector" className="mb-6 flex flex-wrap gap-2">
+        <nav
+          aria-label="Patch selector"
+          className="mb-5 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible"
+        >
           {patches.map((p) => {
             const active = p.patch_version === selectedVersion;
             return (
               <button
                 key={p.patch_version}
                 onClick={() => setSearchParams({ patch: p.patch_version })}
-                className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors ${
+                aria-current={active ? "true" : undefined}
+                className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors ${
                   active
                     ? "border-[#c9a84c] bg-[#c9a84c]/15 text-[#c9a84c]"
                     : "border-border bg-card text-muted-foreground hover:border-[#c9a84c]/50"
@@ -98,27 +127,8 @@ const PatchReports = () => {
         </nav>
       )}
 
-      {/* Summary strip */}
-      {selectedSummary && (
-        <section
-          aria-label="Patch summary"
-          className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
-        >
-          <SummaryTile label="Entities changed" value={selectedSummary.card_count} />
-          <SummaryTile label="Total changes" value={selectedSummary.change_count} />
-          {TYPE_ORDER.map((t) => (
-            <SummaryTile
-              key={t}
-              label={TYPE_LABELS[t]}
-              value={selectedSummary.cards_by_type[t] ?? 0}
-            />
-          ))}
-        </section>
-      )}
-
-      {/* Search + filters */}
       {detail && (
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
             type="search"
             value={search}
@@ -131,7 +141,7 @@ const PatchReports = () => {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as PatchEntityType | "all")}
             aria-label="Filter by entity type"
-            className="rounded-md border border-border bg-card px-3 py-2 text-sm"
+            className="min-w-0 rounded-md border border-border bg-card px-3 py-2 text-sm"
           >
             <option value="all">All types</option>
             {TYPE_ORDER.map((t) => (
@@ -144,9 +154,9 @@ const PatchReports = () => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as MogzyStatus | "all")}
             aria-label="Filter by Mogzy status"
-            className="rounded-md border border-border bg-card px-3 py-2 text-sm"
+            className="min-w-0 rounded-md border border-border bg-card px-3 py-2 text-sm"
           >
-            <option value="all">All statuses</option>
+            <option value="all">All Mogzy statuses</option>
             {(Object.keys(STATUS_LABELS) as MogzyStatus[]).map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABELS[s]}
@@ -163,61 +173,23 @@ const PatchReports = () => {
         <p className="text-sm text-destructive">Could not load patch {selectedVersion}.</p>
       )}
 
-      {/* Above the cards on purpose. The cards are what Riot changed; this is
-          whether Mogzy absorbed it, and a reader must meet the second claim
-          before spending trust on the first. */}
-      {detail && <PatchDataStatusNotice reconciliation={detail.reconciliation} />}
+      {detail && <PatchHubSectionNav sections={sections} />}
 
-      {detail &&
-        TYPE_ORDER.map((t) => {
-          const cards = byType.get(t) ?? [];
-          if (cards.length === 0) return null;
-          return (
-            <section key={t} aria-label={TYPE_LABELS[t]} className="mb-10">
-              <h2
-                className="mb-4 border-b pb-2 text-xl font-bold"
-                style={{ borderColor: `${GOLD}40` }}
-              >
-                {TYPE_LABELS[t]}
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  {cards.length}
-                </span>
-              </h2>
-              {t === "system" ? (
-                // Mode/system cards read best grouped by their official section
-                // (Systems, ARAM: Mayhem, Arena, …) instead of one flat list.
-                groupBySection(cards).map(([sectionTitle, sectionCards]) => (
-                  <div key={sectionTitle} className="mb-6">
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      {sectionTitle}
-                      <span className="ml-2 font-normal normal-case">
-                        {sectionCards.length}
-                      </span>
-                    </h3>
-                    <div className="flex flex-col gap-4">
-                      {sectionCards.map((card) => (
-                        <PatchReportEntityCard key={card.id} card={card} hideSectionBadge />
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {cards.map((card) => (
-                    <PatchReportEntityCard key={card.id} card={card} />
-                  ))}
-                </div>
-              )}
-            </section>
-          );
-        })}
+      {noticeFirst && <div id={RECON_ANCHOR}>{notice}</div>}
+
+      {sections.map((section) => (
+        <PatchHubSection key={section.anchor} section={section} />
+      ))}
 
       {detail && filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground">No changes match the current filters.</p>
+        <p className="text-sm text-muted-foreground">
+          {filtering ? "No changes match the current filters." : "This report has no entries."}
+        </p>
       )}
 
       {detail && (
         <footer className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
+          {!noticeFirst && <div id={RECON_ANCHOR} className="mb-4">{notice}</div>}
           Official source:{" "}
           <a
             href={detail.source_url}
@@ -233,23 +205,5 @@ const PatchReports = () => {
     </div>
   );
 };
-
-function groupBySection(cards: PatchReportCard[]): Array<[string, PatchReportCard[]]> {
-  const groups = new Map<string, PatchReportCard[]>();
-  for (const card of cards) {
-    if (!groups.has(card.section_title)) groups.set(card.section_title, []);
-    groups.get(card.section_title)!.push(card);
-  }
-  return [...groups.entries()];
-}
-
-const SummaryTile = ({ label, value }: { label: string; value: number }) => (
-  <div className="rounded-lg border border-border bg-card px-3 py-2">
-    <p className="text-lg font-bold" style={{ color: GOLD }}>
-      {value}
-    </p>
-    <p className="text-xs text-muted-foreground">{label}</p>
-  </div>
-);
 
 export default PatchReports;

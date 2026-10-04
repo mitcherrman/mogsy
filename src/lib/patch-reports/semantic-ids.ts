@@ -17,10 +17,12 @@ import type { PatchReportCard, PatchReportChange } from "./api";
  *   change  : <group>__c-<property_name>
  * Every id is a valid HTML id and a valid URL fragment as-is.
  *
- * The backend has no per-change id (see PATCH_HUB_ID_FINDINGS in the tests):
+ * The backend has no per-change id (see the payload characterization tests):
  * two changes that share group + property in one card are told apart by their
  * 1-based occurrence order, `-2`, `-3`… (the first keeps the bare id so adding a
- * later duplicate never renames earlier anchors).
+ * later duplicate never renames earlier anchors). Two distinct Riot groups that
+ * share a slot (26.15 Riven: "R - Blade of the Exile" and "R - Wind Slash") are
+ * told apart the same way: `g-r`, `g-r-2`.
  */
 
 const SEGMENT_SEPARATOR = "__";
@@ -97,23 +99,36 @@ export type CardAnchors = {
   changes: Array<{ group: string; change: string }>;
 };
 
+/** The Riot group a change is published under; the grouping key for a card. */
+export const groupKey = (change: Pick<PatchReportChange, "group_title">): string =>
+  (change.group_title ?? "").trim();
+
 /**
  * Anchors for one card's whole change list with collisions resolved by
- * occurrence order. Pure: depends only on the card's structured fields, plus
- * an optional `entity` anchor when the report had to disambiguate it
- * (see {@link reportEntityAnchors}) so child ids stay prefixed by their parent.
+ * occurrence order. Changes belong to the group of their Riot `group_title`;
+ * each distinct group gets one anchor. Pure: depends only on the card's
+ * structured fields, plus an optional `entity` anchor when the report had to
+ * disambiguate it (see {@link reportEntityAnchors}) so child ids stay prefixed
+ * by their parent.
  */
 export function cardAnchors(
   card: PatchReportCard,
   entity: string = entityAnchor(card),
 ): CardAnchors {
-  const issued = new Map<string, number>();
+  const issuedGroups = new Map<string, number>();
+  const issuedChanges = new Map<string, number>();
+  const groupByKey = new Map<string, string>();
   return {
     entity,
     changes: (card.changes ?? []).map((change) => {
-      const group = `${entity}${SEGMENT_SEPARATOR}g-${groupSegment(change)}`;
+      const key = groupKey(change);
+      let group = groupByKey.get(key);
+      if (!group) {
+        group = uniquify(`${entity}${SEGMENT_SEPARATOR}g-${groupSegment(change)}`, issuedGroups);
+        groupByKey.set(key, group);
+      }
       const base = `${group}${SEGMENT_SEPARATOR}c-${slugOr(change.property_name, "change")}`;
-      return { group, change: uniquify(base, issued) };
+      return { group, change: uniquify(base, issuedChanges) };
     }),
   };
 }

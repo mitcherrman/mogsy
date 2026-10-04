@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -125,8 +125,7 @@ describe("Patch Reports historical-context API integration", () => {
 
   it("renders independently projected Step 2G results through the full page", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Qiyana Pending 2 changes" }));
-
+    // Entries are open by default: no card expansion is needed to read changes.
     const context = await screen.findByTestId("historical-context");
     expect(within(context).getByText("Would be an Exact Revert")).toBeInTheDocument();
     expect(context).toHaveTextContent("20%→10%→20%");

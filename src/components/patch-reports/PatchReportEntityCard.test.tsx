@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { PatchReportEntityCard } from "./PatchReportEntityCard";
 import { filterCards } from "@/lib/patch-reports/filter";
 import type { PatchReportCard } from "@/lib/patch-reports/api";
+import { buildReportEntityNode } from "@/lib/patch-reports/report-structure";
+
+const node = (card: PatchReportCard) => buildReportEntityNode(card);
 
 const jayceCard: PatchReportCard = {
   id: 1,
@@ -83,38 +86,203 @@ const systemCard: PatchReportCard = {
 };
 
 describe("PatchReportEntityCard", () => {
-  it("renders header collapsed with name, status, context, and change count", () => {
-    render(<PatchReportEntityCard card={jayceCard} />);
-    expect(screen.getByText("Jayce")).toBeInTheDocument();
+  it("shows identity, rationale and every exact change without any interaction", () => {
+    render(<PatchReportEntityCard entity={node(jayceCard)} />);
+    expect(screen.getByRole("heading", { name: "Jayce" })).toBeInTheDocument();
     expect(screen.getByText("Jayce climbed the ranks quickly.")).toBeInTheDocument();
     expect(screen.getByText("3 changes")).toBeInTheDocument();
-    expect(screen.getAllByText("Mismatch").length).toBeGreaterThan(0);
-    // Collapsed: change rows not visible yet.
-    expect(screen.queryByText("Bonus Move Speed")).not.toBeInTheDocument();
+    // No expand button gates the patch note.
+    expect(screen.queryByRole("button", { expanded: false })).not.toBeInTheDocument();
+
+    const passive = screen.getByRole("group", { name: /Hextech Capacitor/ });
+    expect(within(passive).getByText("Bonus Move Speed")).toBeVisible();
+    expect(within(passive).getByTestId("patch-report-values")).toHaveTextContent("From 40→ to 30");
+
+    const ult = screen.getByRole("group", { name: /Mercury Hammer/ });
+    expect(within(ult).getByText("5 / 12 / 19 / 26")).toBeVisible();
+    expect(
+      within(ult).getByText("5 / 15 / 25 / 35", { selector: "span.line-through" }),
+    ).toBeVisible();
   });
 
-  it("expands to show grouped before → after → current-Mogzy rows", () => {
-    render(<PatchReportEntityCard card={jayceCard} />);
-    fireEvent.click(screen.getByRole("button", { expanded: false }));
-    expect(screen.getByText("Passive - Hextech Capacitor")).toBeInTheDocument();
-    expect(screen.getByText("R - Mercury Hammer")).toBeInTheDocument();
-    expect(screen.getByText("40")).toBeInTheDocument();
-    expect(screen.getByText("30")).toBeInTheDocument();
-    expect(screen.getByText("5 / 12 / 19 / 26")).toBeInTheDocument();
-    // Current-Mogzy value shown distinctly; missing value stated honestly.
-    expect(screen.getAllByText("5 / 15 / 25 / 35").length).toBeGreaterThan(0);
+  it("gives abilities a slot heading and icon, with a slot glyph when no icon exists", () => {
+    render(<PatchReportEntityCard entity={node(jayceCard)} />);
+    const passive = screen.getByRole("group", { name: /Hextech Capacitor/ });
+    expect(passive).toHaveAttribute("data-ability-slot", "P");
+    // The prefix is a kicker, not repeated inside the ability name.
+    expect(within(passive).getByText("Passive")).toBeInTheDocument();
+    expect(within(passive).getByText("Hextech Capacitor")).toBeInTheDocument();
+    expect(within(passive).getByTestId("patch-report-ability-icon")).toHaveTextContent("P");
+    expect(passive.querySelector("img")).toBeNull();
+
+    const ult = screen.getByRole("group", { name: /Mercury Hammer/ });
+    expect(ult.querySelector("img")).toHaveAttribute("src", "https://icons/JayceR.png");
+  });
+
+  it("renders mechanical changes as prose, not as an invented before → after", () => {
+    render(<PatchReportEntityCard entity={node(jayceCard)} />);
+    const hammer = screen
+      .getAllByTestId("patch-report-change")
+      .find((li) => li.getAttribute("data-change-kind") === "mechanical")!;
+    expect(within(hammer).getByText("Now bonks jungle monsters")).toBeVisible();
+    expect(within(hammer).queryByTestId("patch-report-values")).not.toBeInTheDocument();
+    expect(within(hammer).getByText("New")).toBeInTheDocument();
+  });
+
+  it("never turns numeric-looking mechanical text into a value change", () => {
+    const card: PatchReportCard = {
+      ...jayceCard,
+      changes: [
+        {
+          ...jayceCard.changes[2],
+          group_title: "W - Ultrashock Laser",
+          ability_slot: "W",
+          property_name: "",
+          detail_text: "150% (+15% IE)",
+          is_new: false,
+        },
+      ],
+    };
+    render(<PatchReportEntityCard entity={node(card)} />);
+    expect(screen.getByText(/150% \(\+15% IE\)/)).toBeVisible();
+    expect(screen.queryByTestId("patch-report-values")).not.toBeInTheDocument();
+  });
+
+  it("keeps Mogzy evidence behind a compact disclosure while its status stays visible", () => {
+    render(<PatchReportEntityCard entity={node(jayceCard)} />);
+    // Quiet entity-level status is visible (not a loud header badge).
+    expect(screen.getAllByText(/Mogzy: Mismatch/).length).toBeGreaterThan(0);
+    const evidence = screen.getAllByTestId("patch-report-evidence");
+    expect(evidence).toHaveLength(3);
+    expect(evidence.every((d) => !(d as HTMLDetailsElement).open)).toBe(true);
+    // Honest details live inside the disclosure.
     expect(screen.getByText("value not available in Mogzy")).toBeInTheDocument();
-    // Mechanical change renders its description and NEW badge.
-    expect(screen.getByText("Now bonks jungle monsters")).toBeInTheDocument();
-    expect(screen.getByText("New")).toBeInTheDocument();
-    // Review linkage surfaced.
     expect(screen.getByText("review: pending")).toBeInTheDocument();
+    expect(screen.getAllByText("5 / 15 / 25 / 35").length).toBeGreaterThan(1);
   });
 
-  it("degrades safely without images", () => {
-    render(<PatchReportEntityCard card={systemCard} />);
-    expect(screen.getByText("Blue Buff")).toBeInTheDocument();
+  it("does not repeat an entry's Mogzy status on every prose-only note, but keeps differing evidence", () => {
+    const note = (text: string, status: PatchReportCard["changes"][number]["mogzy_status"]) => ({
+      ...jayceCard.changes[2],
+      group_title: "",
+      ability_slot: null,
+      property_name: "",
+      is_new: false,
+      detail_text: text,
+      mogzy_status: status,
+    });
+    const card: PatchReportCard = {
+      ...systemCard,
+      aggregate_status: "needs_interpretation",
+      changes: [
+        note("Same as header A", "needs_interpretation"),
+        note("Same as header B", "needs_interpretation"),
+        note("Differs from header", "unresolved"),
+        { ...note("Has a review", "needs_interpretation"), proposal_status: "PENDING" },
+      ],
+    };
+    render(<PatchReportEntityCard entity={node(card)} />);
+    // Header still states the truth once; only the two non-redundant rows disclose.
+    expect(screen.getAllByText(/Mogzy: Needs interpretation/).length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("patch-report-evidence")).toHaveLength(2);
+  });
+
+  it("renders a backend editorial direction with its provenance, and omits it when absent", () => {
+    const { rerender } = render(<PatchReportEntityCard entity={node(jayceCard)} />);
+    expect(screen.queryByTestId("patch-report-direction")).not.toBeInTheDocument();
+
+    rerender(
+      <PatchReportEntityCard
+        entity={node({ ...jayceCard, editorial_direction: "nerf", editorial_direction_source: "riot_section" })}
+      />,
+    );
+    const chip = screen.getByTestId("patch-report-direction");
+    expect(chip).toHaveTextContent("Nerf");
+    expect(chip).toHaveAttribute("title", "Nerf — Riot's own section");
+
+    rerender(
+      <PatchReportEntityCard
+        entity={node({
+          ...jayceCard,
+          editorial_direction: "adjustment",
+          editorial_direction_source: "mogzy_inferred",
+        })}
+      />,
+    );
+    expect(screen.getByTestId("patch-report-direction")).toHaveTextContent("Adjustment(inferred)");
+
+    rerender(
+      <PatchReportEntityCard
+        entity={node({ ...jayceCard, editorial_direction: "buff" })}
+        showDirection={false}
+      />,
+    );
+    expect(screen.queryByTestId("patch-report-direction")).not.toBeInTheDocument();
+  });
+
+  it("renders only the rationale the report structure left on the entity", () => {
+    const { rerender } = render(
+      <PatchReportEntityCard entity={buildReportEntityNode(jayceCard, { context: null })} />,
+    );
+    expect(screen.queryByTestId("patch-report-rationale")).not.toBeInTheDocument();
+    rerender(<PatchReportEntityCard entity={node(jayceCard)} />);
+    expect(screen.getByTestId("patch-report-rationale")).toHaveTextContent(
+      "Jayce climbed the ranks quickly.",
+    );
+  });
+
+  it("names the twin entities when Riot's rationale covers an 'A / B' pair", () => {
+    render(
+      <PatchReportEntityCard
+        entity={buildReportEntityNode(jayceCard, { pairedWith: ["Jayce Mk II"] })}
+      />,
+    );
+    expect(screen.getByTestId("patch-report-rationale")).toHaveTextContent(
+      "Riot wrote this for Jayce / Jayce Mk II.",
+    );
+  });
+
+  it("exposes stable anchors for the entity, ability group and each change", () => {
+    const { container } = render(<PatchReportEntityCard entity={node(jayceCard)} />);
+    expect(container.querySelector("#s-patch-champions__e-champion-jayce")).toBe(
+      screen.getByTestId("patch-report-card"),
+    );
+    expect(container.querySelector("#s-patch-champions__e-champion-jayce__g-r")).not.toBeNull();
+    expect(
+      container.querySelector("#s-patch-champions__e-champion-jayce__g-r__c-hammer-time"),
+    ).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Link to Jayce changes" })).toHaveAttribute(
+      "href",
+      "#s-patch-champions__e-champion-jayce",
+    );
+  });
+
+  it("lets later systems attach analysis and actions without changing the Riot text", () => {
+    render(
+      <PatchReportEntityCard
+        entity={node(jayceCard)}
+        slots={{
+          entityActions: ({ entity }) => <button>Quiz {entity.card.entity_name}</button>,
+          groupActions: ({ group }) => <button>History {group.slot}</button>,
+          changeAnalysis: ({ change }) => <p>analysis:{change.property_name}</p>,
+          changeActions: ({ node: change }) => <button>Graph {change.index}</button>,
+        }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Quiz Jayce" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "History P" })).toBeInTheDocument();
+    expect(screen.getByText("analysis:Bonus Move Speed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Graph 2" })).toBeInTheDocument();
+    expect(screen.getByText("Bonus Move Speed")).toBeVisible();
+  });
+
+  it("degrades safely without images, ability groups or editorial fields", () => {
+    render(<PatchReportEntityCard entity={node(systemCard)} />);
+    expect(screen.getByRole("heading", { name: "Blue Buff" })).toBeInTheDocument();
     expect(screen.getByText("BL")).toBeInTheDocument(); // initials placeholder
+    expect(
+      screen.getByText("Riot published no itemised changes for this entry."),
+    ).toBeInTheDocument();
   });
 });
 

@@ -10,6 +10,7 @@ import type {
 import { formatHistoricalValue } from "@/lib/patch-reports/history";
 import { HistoricalContext } from "./HistoricalContext";
 import { PatchReportEntityCard } from "./PatchReportEntityCard";
+import { buildReportEntityNode } from "@/lib/patch-reports/report-structure";
 
 const ratio = (value: string): HistoricalNormalizedValue => ({
   kind: "ratio",
@@ -201,8 +202,8 @@ describe("per-parameter integration", () => {
       ],
     };
 
-    render(<PatchReportEntityCard card={card} />);
-    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    // Entries are open by default: history renders without a disclosure.
+    render(<PatchReportEntityCard entity={buildReportEntityNode(card)} />);
     const contexts = screen.getAllByTestId("historical-context");
     expect(contexts).toHaveLength(2);
     expect(within(contexts[0]).getByText("Partial Revert")).toBeInTheDocument();
