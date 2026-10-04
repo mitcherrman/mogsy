@@ -1588,8 +1588,14 @@ describe("VISCONT1 — long text tightens inside its box", () => {
   const remPx = (v: string) => (v.endsWith("rem") ? parseFloat(v) * 16 : parseFloat(v));
 
   it("publishes both tiers from public text, before layout", () => {
-    expect(read("components/ranked-arena/AnswerGrid.tsx"))
-      .toContain("data-answer-density={answerDensity(options.map((o) => o.label))}");
+    // VISCONT1-F1: the tier also knows whether the tablets carry the inline
+    // option-media slot — from the SAME predicate that renders it, so the
+    // classification and the render cannot disagree.
+    const grid = read("components/ranked-arena/AnswerGrid.tsx");
+    expect(grid).toContain("const hasOptionMedia = options.some((o) => o.media);");
+    expect(grid).toContain(
+      "data-answer-density={answerDensity(options.map((o) => o.label), { optionMedia: hasOptionMedia })}");
+    expect(grid).toContain("hasOptionMedia ? options.map((o) => o.media ?? null) : undefined");
     expect(read("components/question-surface/InteractiveScenarioSurface.tsx"))
       .toContain("data-prompt-density={promptDensity(question.prompt)}");
     // Content shape only: no measurement, no identity.

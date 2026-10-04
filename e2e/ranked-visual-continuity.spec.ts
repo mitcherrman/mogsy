@@ -61,7 +61,9 @@ async function expectProductionFace(page: Page) {
     const family = h2 ? getComputedStyle(h2).fontFamily.split(",")[0].replace(/"/g, "").trim() : "";
     return { family, ok: !!family && document.fonts.check(`700 20px "${family}"`) };
   };
-  await page.waitForFunction(loaded, null, { timeout: 15_000 }).catch(() => undefined);
+  // The predicate must return the BOOLEAN: `loaded` returns an object, which
+  // is always truthy, so waiting on it directly never waited (VISCONT1-F1).
+  await page.waitForFunction(`(${loaded})().ok`, null, { timeout: 15_000 }).catch(() => undefined);
   const face = await page.evaluate(`(${loaded})()`) as { family: string; ok: boolean };
   const themed = await page.evaluate(() => document.documentElement.classList.contains("theme-lol"));
   expect(themed, "the probe is not wearing theme-lol").toBe(true);
@@ -210,8 +212,8 @@ async function settled(page: Page): Promise<Anchors> {
  */
 function roundQuery(state: string): string {
   if (!state.startsWith("shape.")) return `q=${state}`;
-  const [alen, acount, plen, rich] = state.split(".").slice(1);
-  return `q=shape&alen=${alen}&acount=${acount}&plen=${plen}&rich=${rich}`;
+  const [alen, acount, plen, rich, om = "0"] = state.split(".").slice(1);
+  return `q=shape&alen=${alen}&acount=${acount}&plen=${plen}&rich=${rich}&om=${om}`;
 }
 
 async function load(page: Page, query: string): Promise<Anchors> {
@@ -224,7 +226,8 @@ async function load(page: Page, query: string): Promise<Anchors> {
 
 /** The profile each round must actually draw. */
 function profileOf(state: string): string {
-  if (state.startsWith("shape.")) return state.endsWith(".1") ? "cinematic" : "compact";
+  // `shape.N.K.M.R[.O]`: R (rich) picks the cinematic item card; O is option media.
+  if (state.startsWith("shape.")) return state.split(".")[4] === "1" ? "cinematic" : "compact";
   return ({
     opts4: "compact", opts2: "compact", placeholder: "compact", twoChamp: "compact",
     jungleRule: "compact", realP99: "compact", realMax: "compact", media: "cinematic",
@@ -232,6 +235,8 @@ function profileOf(state: string): string {
     spellCooldown: "cinematic", junglePet: "cinematic", stressA: "cinematic",
     family: "family", stressB: "family",
     ssm212: "cinematic", ssm218: "cinematic", ssm224: "cinematic", ssm228: "cinematic",
+    f1Ionian: "cinematic", f1IonianText: "cinematic", f1Chempunk: "cinematic",
+    f1ChempunkText: "cinematic", f1Locket: "cinematic",
   } as Record<string, string>)[state];
 }
 
@@ -251,6 +256,7 @@ const ORDINARY = [
   "shape.32.4.60.0", "realP99", "realMax", "shape.76.4.60.0", "shape.76.3.60.0",
   "shape.24.2.150.1", "shape.48.4.188.1", "stressA", "stressB",
   "ssm212", "ssm218", "ssm224", "ssm228",
+  "f1Ionian", "f1Chempunk", "f1Locket",
 ];
 
 const VIEWPORTS = [
@@ -284,6 +290,8 @@ const SEQUENCES = [
     seq: ["opts4", "realP99", "shape.76.4.188.1", "opts2"] },
   { name: "compact -> real SSM 224 -> rich -> SSM 228 (past the bank)",
     seq: ["opts4", "ssm224", "abilityCost", "ssm228"] },
+  { name: "compact -> item-icon labels (F1) -> their text-only twin -> 19-char icon label",
+    seq: ["opts4", "f1Ionian", "f1ChempunkText", "f1Chempunk"] },
 ];
 
 async function playSequence(page: Page, query: string, expected: string[]) {
@@ -521,6 +529,57 @@ test.describe("B1 — real ssm.combined prompts past the bank (was up to −31px
           }
           // The readable floor: 15px on a phone, 16px on a desktop.
           expect(got.promptPx).toBeGreaterThanOrEqual(vp.phone ? 15 : 16);
+        }
+      });
+    });
+  }
+});
+
+/**
+ * VISCONT1-F1 — PHASE 1 FINAL CERTIFICATION F1, BY NAME. Real item-graph
+ * rounds whose option labels sit beside the canonical inline item icon: "Which
+ * item is a component of Dead Man's Plate?" (24-character "Ionian Boots of
+ * Lucidity") and "What can Giant's Belt build into?" (19-character "Chempunk
+ * Chainsword"). The tier read characters only, the fixed icon slot took 36px
+ * of label width, the label wrapped, the tablets grew 42.4 -> 66.8px and the
+ * arena moved 14.2px at 1280x800 (10.2px at 1440x900). Each real round runs
+ * beside its TEXT-ONLY twin (same characters, no icon), and the media tier's
+ * boundary is pinned from both sides (15 | 16 and 27 | 28 characters with
+ * the icon), plus a 3-answer set and a longer (34) icon label.
+ */
+test.describe("F1 — option labels beside inline option media (was −14.2px at 1280)", () => {
+  const F1 = [
+    { state: "f1ChempunkText", density: "normal" },
+    { state: "f1Chempunk", density: "long" },
+    { state: "f1IonianText", density: "long" },
+    { state: "f1Ionian", density: "long" },
+    { state: "f1Locket", density: "long" },
+    { state: "shape.15.4.60.1.1", density: "normal" },
+    { state: "shape.16.4.60.1.1", density: "long" },
+    { state: "shape.27.4.60.1.1", density: "long" },
+    { state: "shape.28.4.60.1.1", density: null },
+    { state: "shape.34.4.60.1.1", density: "dense" },
+    { state: "shape.24.3.60.1.1", density: "long" },
+  ];
+  for (const vp of VIEWPORTS) {
+    test.describe(`${vp.w}x${vp.h}`, () => {
+      test.use({
+        viewport: { width: vp.w, height: vp.h },
+        ...(vp.phone ? { isMobile: true, hasTouch: true } : {}),
+      });
+      test("icon-bearing labels tighten inside the answer box; the arena holds", async ({ page }) => {
+        const ref = await load(page, `q=opts4${vp.frame}`);
+        for (const { state, density } of F1) {
+          const got = await load(page, `${roundQuery(state)}${vp.frame}`);
+          expect(got.band, `${state} drew the wrong profile`).toBe(profileOf(state));
+          const icons = await page.locator('[data-surface-region="answers"] [data-option-media]').count();
+          expect(icons, `${state}: option media presence`).toBe(state.endsWith("Text") ? 0 : got.tablets);
+          // Geometry first, so a regression reports the movement it causes.
+          expectSeated(got, state);
+          expectSameAnchors(ref, got, state, [...STABLE, "firstTabletTop"]);
+          expect(Math.abs((got.mediaBottom! - got.mediaTop!) - (ref.mediaBottom! - ref.mediaTop!)),
+            `${state}: the art gave up height`).toBeLessThanOrEqual(TOL);
+          if (density) expect(got.answerDensity, `${state} tier`).toBe(density);
         }
       });
     });

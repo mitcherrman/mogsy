@@ -69,6 +69,10 @@ export function AnswerGrid({
   const canPick =
     selectedOptionId === null ? permissions.canSelectAnswer : permissions.canChangeAnswer;
   const interactive = canPick && revealed === null;
+  // RA6 option media is all-or-nothing per question: once any option has it,
+  // every tablet draws the inline slot. One predicate for both the render and
+  // the density tier (VISCONT1-F1), so they cannot disagree.
+  const hasOptionMedia = options.some((o) => o.media);
 
   const handleSelect = (label: string, index: number) => {
     if (!interactive) return;
@@ -94,9 +98,10 @@ export function AnswerGrid({
       data-answer-layout={wideTwoColumn ? "grid" : "stacked"}
       data-answer-count={options.length}
       // VISCONT1: the type tier the arena seats this grid at (from the longest
-      // label, before layout) — see `textDensity`. Classification only; the
-      // canonical stage's stylesheet decides what a tier does there.
-      data-answer-density={answerDensity(options.map((o) => o.label))}
+      // label and whether the tablets carry option media, before layout) —
+      // see `textDensity`. Classification only; the canonical stage's
+      // stylesheet decides what a tier does there.
+      data-answer-density={answerDensity(options.map((o) => o.label), { optionMedia: hasOptionMedia })}
       data-eliminated-count={eliminatedIndexes.length}
       className="m-0 border-0 p-0"
     >
@@ -107,7 +112,7 @@ export function AnswerGrid({
         onSelect={handleSelect}
         columns={wideTwoColumn ? "wide-2" : "auto"}
         optionMedia={
-          options.some((o) => o.media) ? options.map((o) => o.media ?? null) : undefined
+          hasOptionMedia ? options.map((o) => o.media ?? null) : undefined
         }
         eliminatedIndexes={eliminatedIndexes}
         markSelectionOnReveal

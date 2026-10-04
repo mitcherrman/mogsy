@@ -23,14 +23,33 @@
  * Measured in Chromium through `/dev/ranked-shell-probe?q=shape`, which builds
  * prompts and labels of an exact length from real League vocabulary:
  *
- *   ANSWERS (longest option label)
- *     <= 24  one line in every desktop answer column at the arena's own type
- *            (14-15px); 26 is where the 1280 and 1440 columns first wrap.
- *            Covers the servable corpus past p95 (17 characters).
- *     <= 40  two lines in the NARROWEST column (1024) at the long tier's 14px;
- *            44 is where that column first goes to three lines.
- *     >  40  dense: three lines at 12px up to the bank's longest real label
- *            (76 characters, id 171239).
+ *   ANSWERS (longest option label, and whether the grid carries inline
+ *   option media) — VISCONT1-F1. A tablet with option media draws a FIXED
+ *   36px slot before its label (the 28px icon + 8px gap, `OptionMediaIcon`),
+ *   at every width: 22% of the label line at 1280-1599, 30% at 1024, 15% from
+ *   1600. Character count alone gave a 24-character item name with its icon
+ *   the same tier as 24 characters of text, so it wrapped, the tablets grew
+ *   42.4 -> 66.8px and the arena moved 14.2px at 1280 (Phase 1 final
+ *   certification F1). Media is STRUCTURED state the grid already holds before
+ *   layout, and it is all-or-nothing per question (every tablet holds the slot
+ *   once any option has media), so it selects the bound table here.
+ *
+ *   Bound = the longest label that fits the answer reserve for EVERY sample of
+ *   that length (item names, stat lists, champion/rune names; 14 offsets x 4
+ *   tablets each), at the binding viewport, minus one character of margin:
+ *
+ *              text only                   with option media
+ *     normal   <= 22 (1280-1499 hold 23)   <= 15 (1280-1499 hold 16)
+ *     long     <= 36 (1024 holds 37)       <= 27 (1280-1499 hold 28)
+ *     dense    beyond: 12px, 2-up — up to the bank's longest real label (76,
+ *              id 171239) without media; with media 1024 holds 46, past any
+ *              entity name that carries an icon (the longest is ~25).
+ *
+ *   No single per-icon "penalty" works: the slot costs ~7 characters on one
+ *   line and ~15 once a second line compounds it, so the bounds are measured
+ *   per table rather than derived from one constant. (The text-only bounds
+ *   were 24 / 40; the same measurement showed both one to three characters
+ *   generous, so they were corrected with it.)
  *
  *   PROMPT (characters) — measured in the PRODUCTION face. On the real
  *   Ranked and Daily routes (`/quiz/*`) the root wears `theme-lol`, and
@@ -62,7 +81,9 @@ export type TextDensity = "normal" | "long" | "dense";
 export type PromptDensity = TextDensity | "extended";
 
 /** Inclusive upper bounds, in characters, of the `normal` and `long` tiers. */
-export const ANSWER_DENSITY_BOUNDS = { normal: 24, long: 40 } as const;
+export const ANSWER_DENSITY_BOUNDS = { normal: 22, long: 36 } as const;
+/** The same, for a grid whose tablets carry inline option media (VISCONT1-F1). */
+export const MEDIA_ANSWER_DENSITY_BOUNDS = { normal: 15, long: 27 } as const;
 export const PROMPT_DENSITY_BOUNDS = { normal: 100, long: 144, dense: 192 } as const;
 
 function tier(length: number, bounds: { normal: number; long: number }): TextDensity {
@@ -70,10 +91,20 @@ function tier(length: number, bounds: { normal: number; long: number }): TextDen
   return length <= bounds.long ? "long" : "dense";
 }
 
+/** What the answer grid knows about its options' shape before layout. */
+export interface AnswerShape {
+  /**
+   * The grid draws the inline option-media slot on every tablet — true exactly
+   * when any option carries `media` (it is all-or-nothing per question). A
+   * structured input, never recovered from the DOM.
+   */
+  optionMedia?: boolean;
+}
+
 /** The answer grid's tier, from its LONGEST label (every tablet shares it). */
-export function answerDensity(labels: readonly string[]): TextDensity {
+export function answerDensity(labels: readonly string[], shape: AnswerShape = {}): TextDensity {
   const longest = labels.reduce((n, l) => Math.max(n, l.trim().length), 0);
-  return tier(longest, ANSWER_DENSITY_BOUNDS);
+  return tier(longest, shape.optionMedia ? MEDIA_ANSWER_DENSITY_BOUNDS : ANSWER_DENSITY_BOUNDS);
 }
 
 /** The prompt's tier, from its character count. */

@@ -123,6 +123,7 @@ export const PROBE_STATES = [
   "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
   "spellCooldown", "matchup", "twoChamp", "shape",
   "ssm212", "ssm218", "ssm224", "ssm228", "ssm248",
+  "f1Ionian", "f1IonianText", "f1Chempunk", "f1ChempunkText", "f1Locket",
 ] as const;
 export type ProbeState = (typeof PROBE_STATES)[number];
 
@@ -280,7 +281,7 @@ function orderForgeProbeState() {
 }
 
 /** VISCONT1 — a `?seq=` entry: a probe state, or `shape.N.K.M.R`. */
-const SEQ_ENTRY = /^shape(?:\.\d+){0,4}$/;
+const SEQ_ENTRY = /^shape(?:\.\d+){0,5}$/;
 
 /** VISCONT1 — the probe state the CURRENT round serves: `?seq=` by round. */
 function stateForRound(state: ProbeState): string {
@@ -335,12 +336,52 @@ function shapeQuestion(token: string) {
   const acount = Math.max(2, Math.min(4, num(1, "acount", 4)));
   const plen = num(2, "plen", 60);
   const rich = (Number.isFinite(parts[3]) ? parts[3] : Number(q.get("rich") ?? 0)) === 1;
-  const options = Array.from({ length: acount }, (_, i) => exactText(SHAPE_WORDS, alen, i * 5));
+  // VISCONT1-F1 — `om=1`: every option carries the canonical inline item icon
+  // (the same `option_media` shape the backend serves), and the labels are
+  // cut from real item names so they wrap the way item options do.
+  const om = (Number.isFinite(parts[4]) ? parts[4] : Number(q.get("om") ?? 0)) === 1;
+  const options = Array.from({ length: acount },
+    (_, i) => om ? exactText(ITEM_NAME_WORDS, alen, i * 3) : exactText(SHAPE_WORDS, alen, i * 5));
   const prompt = exactText(PROMPT_WORDS, plen, 0, "?");
+  const option_media = om ? options.map((name, i) => itemOptionMedia(name, F1_ICON_IDS[i % F1_ICON_IDS.length])) : undefined;
   return rich
-    ? { ...ITEM_OPTION_QUESTION, question_id: `q-shape-${token}`, prompt, options,
-      option_media: undefined }
-    : { question_id: `q-shape-${token}`, prompt, options, category: "champion_ability_cooldown" };
+    ? { ...ITEM_OPTION_QUESTION, question_id: `q-shape-${token}`, prompt, options, option_media }
+    : { question_id: `q-shape-${token}`, prompt, options, category: "champion_ability_cooldown",
+      ...(option_media ? { option_media } : {}) };
+}
+
+/**
+ * VISCONT1-F1 — REAL item-graph rounds whose labels wrap beside their inline
+ * option icon (Phase 1 final certification F1). Served verbatim in Ranked and
+ * Daily: `quiz:item_component_v2:Dead Man's Plate:Chain Vest` (24-character
+ * "Ionian Boots of Lucidity") and "What can Giant's Belt build into?"
+ * (19-character "Chempunk Chainsword"). Each has a TEXT-ONLY twin — the same
+ * labels with no option media — as the control: same characters, no icon.
+ * `f1Locket` is a longer (25-character) media-bearing set.
+ */
+const ITEM_NAME_WORDS = ("Ionian Boots of Lucidity Chempunk Chainsword Locket of the Iron "
+  + "Solari Plated Steelcaps Runic Compass Shurelya's Battlesong Mercury's Scimitar "
+  + "Youmuu's Ghostblade Rabadon's Deathcap Zeke's Convergence Bandleglass Mirror").split(" ");
+const F1_ICON_IDS = [3158, 3047, 3866, 1031, 6609, 3068, 3084, 3075];
+const itemOptionMedia = (name: string, id: number) =>
+  ({ type: "item", id, name, icon: `assets/items/${id}.png` });
+const F1_ROUNDS: Record<string, { subject: [string, number]; prompt: string; options: [string, number][] }> = {
+  f1Ionian: { subject: ["Dead Man's Plate", 3742], prompt: "Which item is a component of Dead Man's Plate?",
+    options: [["Ionian Boots of Lucidity", 3158], ["Plated Steelcaps", 3047], ["Runic Compass", 3866], ["Chain Vest", 1031]] },
+  f1Chempunk: { subject: ["Giant's Belt", 1011], prompt: "What can Giant's Belt build into?",
+    options: [["Chempunk Chainsword", 6609], ["Sunfire Aegis", 3068], ["Heartsteel", 3084], ["Thornmail", 3075]] },
+  f1Locket: { subject: ["Aegis of the Legion", 3105], prompt: "What can Aegis of the Legion build into?",
+    options: [["Locket of the Iron Solari", 3190], ["Zeke's Convergence", 3050], ["Knight's Vow", 3109], ["Bandleglass Mirror", 4642]] },
+};
+function f1Question(state: string) {
+  const textOnly = state.endsWith("Text");
+  const round = F1_ROUNDS[textOnly ? state.slice(0, -4) : state];
+  const [name, id] = round.subject;
+  return { question_id: `q-${state}`, prompt: round.prompt, category: "item_component",
+    options: round.options.map(([label]) => label),
+    presentation: { assets: { subject: { type: "item", name, icon: `assets/items/${id}.png` } },
+      presentation: { scenario_type: "item", timing: "question", role: "context", spoiler: false } },
+    ...(textOnly ? {} : { option_media: round.options.map(([label, oid]) => itemOptionMedia(label, oid)) }) };
 }
 
 /** VISCONT1-SSM — `ssm.combined.<SPELL>.<rune>+<item>`, verbatim old wording. */
@@ -508,6 +549,8 @@ function baseQuestionFor(state: ProbeState) {
     // (Teleport + Ionian Boots of Lucidity) is the longest the old wording can
     // produce and the certified safety bound; `ssm248` is PAST it, kept only to
     // measure what lies beyond the bound.
+    case "f1Ionian": case "f1IonianText": case "f1Chempunk": case "f1ChempunkText": case "f1Locket":
+      return f1Question(state);
     case "ssm212": case "ssm218": case "ssm224": case "ssm228": case "ssm248":
       return ssmCombinedQuestion(state);
     // VISCONT1 — a two-champion Matchup card (two 50/50 splashes, VS seam),

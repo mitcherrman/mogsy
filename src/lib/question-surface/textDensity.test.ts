@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ANSWER_DENSITY_BOUNDS, PROMPT_DENSITY_BOUNDS, answerDensity, promptDensity,
+  ANSWER_DENSITY_BOUNDS, MEDIA_ANSWER_DENSITY_BOUNDS, PROMPT_DENSITY_BOUNDS, answerDensity, promptDensity,
 } from "./textDensity";
 
 const of = (n: number) => "x".repeat(n);
@@ -25,8 +25,51 @@ describe("answerDensity — the grid's tier, from its longest label", () => {
   });
 
   it("ignores surrounding whitespace, and an empty grid is normal", () => {
-    expect(answerDensity([`  ${of(24)}  `])).toBe("normal");
+    expect(answerDensity([`  ${of(ANSWER_DENSITY_BOUNDS.normal)}  `])).toBe("normal");
     expect(answerDensity([])).toBe("normal");
+  });
+});
+
+// VISCONT1-F1 — Phase 1 final certification F1: a 19-24-character item name
+// beside its inline option icon wrapped at 1280-1599 and moved the arena
+// 14.2px, because the tier ignored the fixed 36px icon slot.
+describe("answerDensity — inline option media (VISCONT1-F1)", () => {
+  const media = { optionMedia: true };
+  const ionian = ["Ionian Boots of Lucidity", "Plated Steelcaps", "Runic Compass", "Chain Vest"];
+  const chempunk = ["Chempunk Chainsword", "Sunfire Aegis", "Heartsteel", "Thornmail"];
+
+  it("holds the bounds measured in the arena, for both tables", () => {
+    expect(ANSWER_DENSITY_BOUNDS).toEqual({ normal: 22, long: 36 });
+    expect(MEDIA_ANSWER_DENSITY_BOUNDS).toEqual({ normal: 15, long: 27 });
+  });
+
+  it("gives the same characters a tighter tier once the tablets carry the icon slot", () => {
+    expect(answerDensity(chempunk)).toBe("normal"); // 19 characters of text: one line
+    expect(answerDensity(chempunk, media)).toBe("long"); // + the 36px slot: it wrapped
+    expect(answerDensity(ionian, media)).toBe("long");
+    // 24 characters of text alone are past the corrected text-only bound too.
+    expect(answerDensity(ionian)).toBe("long");
+  });
+
+  it("steps at the media bounds", () => {
+    expect(answerDensity([of(MEDIA_ANSWER_DENSITY_BOUNDS.normal)], media)).toBe("normal");
+    expect(answerDensity([of(MEDIA_ANSWER_DENSITY_BOUNDS.normal + 1)], media)).toBe("long");
+    expect(answerDensity([of(MEDIA_ANSWER_DENSITY_BOUNDS.long)], media)).toBe("long");
+    expect(answerDensity([of(MEDIA_ANSWER_DENSITY_BOUNDS.long + 1)], media)).toBe("dense");
+    expect(answerDensity(["Locket of the Iron Solari", "Knight's Vow"], media)).toBe("long");
+  });
+
+  it("is the text-only table when the grid has no media (explicitly or by default)", () => {
+    expect(answerDensity(chempunk, { optionMedia: false })).toBe(answerDensity(chempunk));
+    expect(answerDensity([of(ANSWER_DENSITY_BOUNDS.normal + 1)])).toBe("long");
+    expect(answerDensity([of(ANSWER_DENSITY_BOUNDS.long + 1)])).toBe("dense");
+  });
+
+  it("never loosens a tier because of media", () => {
+    for (let n = 0; n <= 80; n++) {
+      const rank = { normal: 0, long: 1, dense: 2 } as const;
+      expect(rank[answerDensity([of(n)], media)]).toBeGreaterThanOrEqual(rank[answerDensity([of(n)])]);
+    }
   });
 });
 
