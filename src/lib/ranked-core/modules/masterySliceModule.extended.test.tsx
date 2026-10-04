@@ -104,3 +104,26 @@ describe("progression reads the count from the payload", () => {
     expect(screen.getByTestId("journey-board")).toBeTruthy();
   });
 });
+
+describe("no child-count ceiling on the live path (JLONG-INT)", () => {
+  // `contract.ts` `readJourneyPublicState` still caps `journey.public.v0` at
+  // 1–12 steps, but nothing on the wire speaks v0: a live Journey is read by
+  // `readJourneyJ3` (no maximum) and adapted into the board directly. This pins
+  // that a Journey longer than twelve children reaches the board unclamped.
+  const widen = (s: CaptureSnapshot, n: number): CaptureSnapshot => {
+    const copy = JSON.parse(JSON.stringify(s)) as CaptureSnapshot;
+    const ss = seg(copy);
+    ss.challenge_count = n;
+    (ss.challenges as { journey: Wire }).journey.child_count = n;
+    return copy;
+  };
+
+  it.each([13, 16])("a %i-child Journey parses and draws `Step 11 of %i` with every path node", (n) => {
+    const s = widen(snap("child10-live"), n);
+    const round = readPublicRound(s.envelope);
+    expect(round.segmentState?.journey?.childCount).toBe(n);
+    show(s);
+    expect(screen.getByTestId("journey-step")).toHaveTextContent(`Step 11 of ${n}`);
+    expect(screen.getByTestId("journey-path").querySelectorAll("li")).toHaveLength(n);
+  });
+});
