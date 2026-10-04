@@ -113,6 +113,29 @@ export function buildRankedTimeline(
   }));
 }
 
+/**
+ * Question-level tally of one module, for the Accuracy figure ONLY.
+ *
+ * `questionOutcome` is strict by design (a counted module is won only when
+ * every child is right) and keeps driving "Modules won" and the timeline. A
+ * counted module (Meta Reflex, Mastery Journey) contributes its children; any
+ * other module is one question, right or wrong, unanswered counting as wrong.
+ */
+export function reviewRoundQuestionTally(
+  round: ReviewRound,
+): { correct: number; total: number } {
+  const sub = round.viewerSubmission;
+  if (
+    !round.orderForge && sub.isCorrect === null
+    && sub.challengeCount !== null && sub.challengeCount > 0
+  ) {
+    const total = sub.challengeCount;
+    const correct = round.revealed ? Math.min(sub.correctCount ?? 0, total) : 0;
+    return { correct, total };
+  }
+  return { correct: questionOutcome(round) === "correct" ? 1 : 0, total: 1 };
+}
+
 export function buildRankedResults(input: RankedResultsInput): GameResultsModel {
   const {
     player, opponent, result, finalScores, modulesPlayed, subheading, isBotMatch,
@@ -133,10 +156,16 @@ export function buildRankedResults(input: RankedResultsInput): GameResultsModel 
       value: `${won} / ${timeline.length}`,
       tone: won * 2 >= timeline.length ? "good" : "bad",
     });
+    // Question accuracy, NOT the module-win rate above: a 2-of-5 Journey is a
+    // lost module but a 40% answerer. `review` is non-null whenever the
+    // timeline is non-empty, and every round tallies at least one question.
+    const tallies = (review?.rounds ?? []).map(reviewRoundQuestionTally);
+    const questions = tallies.reduce((n, t) => n + t.total, 0);
+    const answeredRight = tallies.reduce((n, t) => n + t.correct, 0);
     snapshot.push({
       key: "accuracy",
       label: "Accuracy",
-      value: `${Math.round((won / timeline.length) * 100)}%`,
+      value: `${Math.round((answeredRight / questions) * 100)}%`,
     });
     // Strongest / weakest come from the SAME fold the report uses, so the two
     // sections can never disagree about which subject went best.
