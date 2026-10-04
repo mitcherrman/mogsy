@@ -127,6 +127,69 @@ describe("the Ranked result model", () => {
     expect(model.timeline?.entries).toHaveLength(4);
   });
 
+  describe("Accuracy is question accuracy, not module-win rate", () => {
+    const counted = (
+      roundNumber: number, kind: string, correct: number, total: number,
+    ): ReviewRound => ({
+      ...round(roundNumber, "mastery", null),
+      kind,
+      viewerSubmission: {
+        answerIndex: null, isCorrect: null, correctCount: correct,
+        answeredCount: total, challengeCount: total,
+      },
+    } as unknown as ReviewRound);
+    const stat = (m: ReturnType<typeof buildRankedResults>, key: string) =>
+      m.snapshot?.find((s) => s.key === key)?.value;
+
+    it("a one-module Journey at 2/5 is 40% accurate while Modules won stays 0 / 1", () => {
+      const model = buildRankedResults({
+        ...base, review: review([counted(1, "mastery_slice", 2, 5)]),
+      });
+      expect(stat(model, "accuracy")).toBe("40%");
+      expect(stat(model, "modules-won")).toBe("0 / 1");
+      expect(model.timeline?.entries[0].outcome).toBe("incorrect");
+    });
+
+    it("a perfect 5/5 is 100% and a won module", () => {
+      const model = buildRankedResults({
+        ...base, review: review([counted(1, "mastery_slice", 5, 5)]),
+      });
+      expect(stat(model, "accuracy")).toBe("100%");
+      expect(stat(model, "modules-won")).toBe("1 / 1");
+      expect(model.timeline?.entries[0].outcome).toBe("correct");
+    });
+
+    it("ordinary single-question rounds count as one question each", () => {
+      const model = buildRankedResults({
+        ...base,
+        review: review([
+          round(1, "runes", true), round(2, "runes", true), round(3, "items", false),
+          round(4, "items", null),
+        ]),
+      });
+      expect(stat(model, "accuracy")).toBe("50%");
+      expect(stat(model, "modules-won")).toBe("2 / 4");
+    });
+
+    it("a mixed match is total correct over total questions", () => {
+      // 1 single right + 1 single wrong + Meta Reflex 3/5 + Journey 2/5
+      // = 1 + 0 + 3 + 2 = 6 right of 12 questions.
+      const model = buildRankedResults({
+        ...base,
+        review: review([
+          round(1, "runes", true), round(2, "items", false),
+          counted(3, "meta_reflex", 3, 5), counted(4, "mastery_slice", 2, 5),
+        ]),
+      });
+      expect(stat(model, "accuracy")).toBe("50%");
+      // Module outcomes are untouched: only the first single is a win.
+      expect(stat(model, "modules-won")).toBe("1 / 4");
+      expect(model.timeline?.entries.map((e) => e.outcome)).toEqual([
+        "correct", "incorrect", "incorrect", "incorrect",
+      ]);
+    });
+  });
+
   it("agrees with Mogzy's report about the weakest subject, ties included", () => {
     // The defect this locks: two subjects both at 0-for-something is a TIE on
     // accuracy, and the tile and the sentence broke it differently — the tile
