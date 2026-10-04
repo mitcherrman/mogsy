@@ -61,7 +61,7 @@ export const PatchHubSection = ({ section, slots }: Props) => {
       aria-labelledby={`${section.anchor}-heading`}
       data-testid="patch-hub-section"
       data-section-key={section.key}
-      className="mb-10 scroll-mt-4"
+      className="mb-10 scroll-mt-24"
     >
       <h3
         id={`${section.anchor}-heading`}
@@ -84,7 +84,7 @@ export const PatchHubSection = ({ section, slots }: Props) => {
             key={bucket.direction}
             id={bucket.anchor}
             data-direction={bucket.direction}
-            className="mb-6 scroll-mt-4"
+            className="mb-6 scroll-mt-24"
           >
             <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               {bucket.label}
