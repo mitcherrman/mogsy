@@ -6,6 +6,14 @@ export { buildCatchUpReport } from "./build";
 export { VERIFIED_ALIASES } from "./aliases";
 export { classifyChainValues } from "./classify";
 export { continuityKey, continuityKeyString, scopeOfCard } from "./keys";
-export { adjacency, analyzeCoverage, comparePatchVersions, parsePatchVersion } from "./patch-range";
+export {
+  adjacency,
+  analyzeCoverage,
+  comparePatchVersions,
+  isInRange,
+  orderVersions,
+  parsePatchVersion,
+  validateRange,
+} from "./patch-range";
 export { canonicalLabel, canonicalValue, valueFact, valueTemplate } from "./value";
 export type * from "./types";
