@@ -11,6 +11,8 @@ import { PatchHubMasthead } from "@/components/patch-reports/PatchHubMasthead";
 import { PatchHubSection } from "@/components/patch-reports/PatchHubSection";
 import { PatchHubSectionNav } from "@/components/patch-reports/PatchHubSectionNav";
 import { PatchDataStatusNotice } from "@/components/patch-reports/PatchDataStatusNotice";
+import type { PatchReportEntrySlots } from "@/components/patch-reports/PatchReportEntrySlots";
+import { PatchImpactChangeAnalysis } from "@/components/patch-impact/PatchImpactChangeAnalysis";
 import { STATUS_LABELS, filterCards } from "@/lib/patch-reports/filter";
 import {
   buildPatchReportStructure,
@@ -64,6 +66,17 @@ const PatchReports = () => {
   const changeCount = useMemo(
     () => filtered.reduce((n, c) => n + c.changes.length, 0),
     [filtered],
+  );
+  // PH2 Patch Impact attaches through the PH1 changeAnalysis seam (under Riot's
+  // exact line, before Mogzy evidence). The slot returns a component so the
+  // loader hook lives in a real component body.
+  const reportVersion = detail?.patch_version ?? null;
+  const slots = useMemo<PatchReportEntrySlots | undefined>(
+    () =>
+      reportVersion
+        ? { changeAnalysis: (ctx) => <PatchImpactChangeAnalysis ctx={ctx} patchVersion={reportVersion} /> }
+        : undefined,
+    [reportVersion],
   );
   const filtering = search.trim() !== "" || typeFilter !== "all" || statusFilter !== "all";
 
@@ -178,7 +191,7 @@ const PatchReports = () => {
       {noticeFirst && <div id={RECON_ANCHOR}>{notice}</div>}
 
       {sections.map((section) => (
-        <PatchHubSection key={section.anchor} section={section} />
+        <PatchHubSection key={section.anchor} section={section} slots={slots} />
       ))}
 
       {detail && filtered.length === 0 && (
