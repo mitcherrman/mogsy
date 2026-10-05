@@ -1,0 +1,4939 @@
+{
+ "schema": "mogzy.patch-hub.ph3a.continuity-fixture/1",
+ "captured": "2026-10-04 (production /api/patch-reports/<v>, read-only)",
+ "frontend_base": "a1958ff32de9e8c621124992d2340466f56fe89e",
+ "backend_base": "7c203aebb297252b8a57b06237d703be0e5d6d7d",
+ "report_sha256": {
+  "26.10": "583d2886c924bb4ec6e2f76b732959b3cda409af2fcbf7c5a3bca3e334e68c8f",
+  "26.11": "c3a3ac8f808e2f012474699de70d04ebde28525409b7028c0087c1cace5e0fff",
+  "26.12": "94136e25858fe555af069f7883bb5505b7693bfed8cf5ac0c56dee6bad1adc06",
+  "26.13": "1c85985c619ca1892200a9c37c3eb3434ccb2b2b8f1bc75ad062b4c6933ec8cc",
+  "26.14": "e2b2840f4752b15470964e5a9f46f60e369e6513387d9a2da6ed05dfc4dd37b9",
+  "26.15": "508dd22dbfbb7900e9b904767e31a8bd6aaa095094decd4e3fa05a664b57bd28",
+  "26.16": "98bd95a154fdb9210729a54f95ab3db57a6a908e0964b3cdf9b90c83d778dd5b",
+  "26.17": "df95219df8df3fc730f96b2645430a35654c7df3f13af7d46f9f8b2ec3dcf875",
+  "26.18": "a303125c4d2370688524b3f135395ad422c5abfef4cfb088c09bde4d817565c8",
+  "26.19": "c3b6e6174503bcefc4d3428820797c8bda556bd1f167ac4d6ba4b71218bd03cb"
+ },
+ "rule": "PH3-A proposed matcher (Tier A exact key + Tier B verified alias rows); see PATCH_HUB_PH3_CONTINUITY_AUDIT.md",
+ "expected_links": [
+  {
+   "tier": "A",
+   "reason": "exact_key+value_continuity",
+   "entity": "Doran's Helm",
+   "scope": "sr.items",
+   "a": {
+    "patch": "26.10",
+    "group": "",
+    "slot": null,
+    "property": "Health",
+    "before": "110",
+    "after": "140"
+   },
+   "b": {
+    "patch": "26.13",
+    "group": "",
+    "slot": null,
+    "property": "Health",
+    "before": "140",
+    "after": "150"
+   }
+  },
+  {
+   "tier": "A",
+   "reason": "exact_key+value_continuity",
+   "entity": "Bel'Veth",
+   "scope": "sr.champions",
+   "a": {
+    "patch": "26.15",
+    "group": "Base Stats",
+    "slot": null,
+    "property": "Health Growth",
+    "before": "105",
+    "after": "110"
+   },
+   "b": {
+    "patch": "26.16",
+    "group": "Base Stats",
+    "slot": null,
+    "property": "Health Growth",
+    "before": "110",
+    "after": "105"
+   }
+  },
+  {
+   "tier": "A",
+   "reason": "exact_key+value_continuity",
+   "entity": "Sundered Sky",
+   "scope": "sr.items",
+   "a": {
+    "patch": "26.16",
+    "group": "",
+    "slot": null,
+    "property": "Health",
+    "before": "400",
+    "after": "450"
+   },
+   "b": {
+    "patch": "26.17",
+    "group": "",
+    "slot": null,
+    "property": "Health",
+    "before": "450",
+    "after": "400"
+   }
+  },
+  {
+   "tier": "B",
+   "reason": "verified_alias:sylas-q-26.12-26.15",
+   "entity": "Sylas",
+   "scope": "sr.champions",
+   "a": {
+    "patch": "26.12",
+    "group": "Q - Chain Lash",
+    "slot": "Q",
+    "property": "Initial Damage",
+    "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+    "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+   },
+   "b": {
+    "patch": "26.15",
+    "group": "Q - Chain Lash",
+    "slot": "Q",
+    "property": "First Lash Damage",
+    "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+    "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+   }
+  },
+  {
+   "tier": "B",
+   "reason": "verified_alias:mordekaiser-r-26.14-26.15",
+   "entity": "Mordekaiser",
+   "scope": "sr.champions",
+   "a": {
+    "patch": "26.14",
+    "group": "R - Realm of Death",
+    "slot": "R",
+    "property": "Stat Steal",
+    "before": "10%",
+    "after": "13%"
+   },
+   "b": {
+    "patch": "26.15",
+    "group": "R - Realm of Death",
+    "slot": "R",
+    "property": "Stolen Stats",
+    "before": "13%",
+    "after": "10%"
+   }
+  }
+ ],
+ "candidate_table": [
+  {
+   "scope": "sr.champions",
+   "entity": "Aphelios",
+   "a_patch": "26.13",
+   "b_patch": "26.19",
+   "a_group": "Calibrum",
+   "a_slot": null,
+   "b_group": "Calibrum",
+   "b_slot": null,
+   "a_prop": "Passive Mark Damage",
+   "b_prop": "Moonshot Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "15 (10% bonus AD)",
+   "a_after": "15 (15% bonus AD)",
+   "b_before": "70 - 160 (+42 - 60% bonus AD) (+100% AP)",
+   "b_after": "80 - 170 (+42 - 60% bonus AD) (+100% AP)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Aphelios",
+   "a_patch": "26.13",
+   "b_patch": "26.19",
+   "a_group": "Severum",
+   "a_slot": null,
+   "b_group": "Severum",
+   "b_slot": null,
+   "a_prop": "Q - Onslaught Damage",
+   "b_prop": "Healing",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "19 / 24.25 / 29.5 / 34.75 / 40% Total AD Dmg per attack",
+   "a_after": "20 / 25.25 / 30.5 / 35.75 / 41% Total AD Dmg per attack",
+   "b_before": "2 - 7.1%, increased to 5 - 17.75%",
+   "b_after": "2 - 8%, increased to 5 - 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Aphelios",
+   "a_patch": "26.13",
+   "b_patch": "26.19",
+   "a_group": "Infernum",
+   "a_slot": null,
+   "b_group": "Infernum",
+   "b_slot": null,
+   "a_prop": "Q - Duskwave Damage",
+   "b_prop": "Duskwave Cooldown",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "20 - 110 (Level 1 - 18) (10 - 16% bonus AD)",
+   "a_after": "20 - 110 (Level 1 - 18) (15 - 21% bonus AD)",
+   "b_before": "9 / 8.25 / 7.5 / 6.75 / 6 seconds",
+   "b_after": "8 / 7.25 / 6.5 / 5.75 / 5 seconds",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Aphelios",
+   "a_patch": "26.13",
+   "b_patch": "26.19",
+   "a_group": "Crescendum",
+   "a_slot": null,
+   "b_group": "Crescendum",
+   "b_slot": null,
+   "a_prop": "Q - Sentry Damage",
+   "b_prop": "Mini-Crescendum Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "35 - 125 (Level 1 - 18) (30 - 48% bonus AD)",
+   "a_after": "35 - 125 (Level 1 - 18) (34 - 52% bonus AD)",
+   "b_before": "15% AD, decreasing by 1.5% AD to a minimum of 5% AD for the 8th+ chakram",
+   "b_after": "16% AD, decreasing by 1.5% AD to a minimum of 5% AD for the 9th+ chakram",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Attack Speed",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "0.85",
+   "a_after": "0.67",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Attack Speed Ratio",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "0.85",
+   "a_after": "0.67",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Attack Damage",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "60",
+   "a_after": "55",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": "base_ad",
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Basic Attack Damage Modifier",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "75%",
+   "a_after": "100%",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Attack Cast Time",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "0.25",
+   "a_after": "0.22",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Total Attack Animation",
+   "b_prop": "Health Growth",
+   "a_kind": "mechanical",
+   "b_kind": "numeric",
+   "a_before": null,
+   "a_after": null,
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Armor",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "32",
+   "a_after": "28",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": "base_armor",
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Armor Growth",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "4.7",
+   "a_after": "5",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": "armor_growth",
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Health",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "610",
+   "a_after": "580",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": "base_health",
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Health Growth",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "105",
+   "a_after": "110",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": "health_growth",
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": true,
+   "value_continuity": true,
+   "verdict": "proven",
+   "tier": "A",
+   "reason": "Exact key (Base Stats / Health Growth), continuity 110, unique in both cards, mogzy_property health_growth on both.",
+   "matcher_links": true
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Model Size",
+   "b_prop": "Health Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "100%",
+   "a_after": "95%",
+   "b_before": "110",
+   "b_after": "105",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "health_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Passive On-Hit Application",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "Every other attack",
+   "a_after": "Every attack",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Passive On-Hit Application",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "Every other attack",
+   "a_after": "Every attack",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Passive True Damage",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "6 / 10 / 14 (+12% Bonus Attack Damage)",
+   "a_after": "2 / 4 / 6 (+3% Bonus Attack Damage)",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Passive True Damage",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "6 / 10 / 14 (+12% Bonus Attack Damage)",
+   "a_after": "2 / 4 / 6 (+3% Bonus Attack Damage)",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Target Swapping",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "Passive removed when swapping targets",
+   "a_after": "Passive no longer removed when swapping targets",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Target Swapping",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "Passive removed when swapping targets",
+   "a_after": "Passive no longer removed when swapping targets",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Maximum Epic Monster Stacks",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "10",
+   "a_after": "8",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Maximum Epic Monster Stacks",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "10",
+   "a_after": "8",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Passive Application Requirement",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "E and Q required Bel’Veth to have attacked the target first",
+   "a_after": "E and Q no longer require Bel’Veth to have attacked the target first",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Passive Application Requirement",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "E and Q required Bel’Veth to have attacked the target first",
+   "a_after": "E and Q no longer require Bel’Veth to have attacked the target first",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Explosion Damage",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "150 / 200 / 250 (+100% Ability Power) (+25% missing Health)",
+   "a_after": "150 / 200 / 250 (+150% Ability Power) (+20% missing Health)",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Explosion Damage",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "150 / 200 / 250 (+100% Ability Power) (+25% missing Health)",
+   "a_after": "150 / 200 / 250 (+150% Ability Power) (+20% missing Health)",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Heal per Bonus Health",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "100 / 150 / 200 (+120% Bonus Attack Damage) (+90% Ability Power)",
+   "a_after": "100 / 250 / 400 (+150% Bonus Attack Damage) (+150% Ability Power)",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Heal per Bonus Health",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "100 / 150 / 200 (+120% Bonus Attack Damage) (+90% Ability Power)",
+   "a_after": "100 / 250 / 400 (+150% Bonus Attack Damage) (+150% Ability Power)",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Basic Attack Range Bonus",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "75",
+   "a_after": "25 / 75 / 125",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Basic Attack Range Bonus",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "75",
+   "a_after": "25 / 75 / 125",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Total Attack Speed",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "10 / 15 / 20%",
+   "a_after": "5 / 15 / 25%",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": true,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "Rename adds a 'True Form' qualifier. Value continuity only proves the 26.16 parameter was 5/15/25% before 26.16; an UNCHANGED R parameter with the same value is invisible in the reports. No second authority. Needs owner verification (wiki/game data) before an alias row.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Total Attack Speed",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "10 / 15 / 20%",
+   "a_after": "5 / 15 / 25%",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Size",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "10%",
+   "a_after": "10 / 15 / 20%",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Size",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "10%",
+   "a_after": "10 / 15 / 20%",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Unempowered Buff Duration",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "60",
+   "a_after": "45 / 90 / infinite at 0 / 40 / 80 stacks",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Unempowered Buff Duration",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "60",
+   "a_after": "45 / 90 / infinite at 0 / 40 / 80 stacks",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Empowered Buff Duration",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "180",
+   "a_after": "45 / 90 / infinite at 0 / 40 / 80 stacks",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Empowered Buff Duration",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "180",
+   "a_after": "45 / 90 / infinite at 0 / 40 / 80 stacks",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Post-Cast Lockout",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "0.5 seconds",
+   "a_after": "0.25 seconds",
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Post-Cast Lockout",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "0.5 seconds",
+   "a_after": "0.25 seconds",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Out of Combat Move Speed",
+   "b_prop": "True Form Total Attack Speed",
+   "a_kind": "mechanical",
+   "b_kind": "numeric",
+   "a_before": null,
+   "a_after": null,
+   "b_before": "5 / 15 / 25%",
+   "b_after": "6 / 13 / 20%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Bel'Veth",
+   "a_patch": "26.15",
+   "b_patch": "26.16",
+   "a_group": "R - Endless Banquet",
+   "a_slot": "R",
+   "b_group": "R - Endless Banquet",
+   "b_slot": "R",
+   "a_prop": "Out of Combat Move Speed",
+   "b_prop": "True Form Remora Indicator",
+   "a_kind": "mechanical",
+   "b_kind": "mechanical",
+   "a_before": null,
+   "a_after": null,
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Brand",
+   "a_patch": "26.11",
+   "b_patch": "26.13",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Base Armor",
+   "b_prop": "Base Mana Regeneration",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "27",
+   "a_after": "24",
+   "b_before": "9",
+   "b_after": "11",
+   "a_mogzy_property": "base_armor",
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Kassadin",
+   "a_patch": "26.11",
+   "b_patch": "26.18",
+   "a_group": "Q - Null Sphere",
+   "a_slot": "Q",
+   "b_group": "Q - Null Sphere",
+   "b_slot": "Q",
+   "a_prop": "Cooldown",
+   "b_prop": "Ability Power Ratio",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "10 / 9.5 / 9 / 8.5 / 8",
+   "a_after": "9 / 8.5 / 8 / 7.5 / 7",
+   "b_before": "70% AP",
+   "b_after": "80% AP",
+   "a_mogzy_property": "cooldown",
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "LeBlanc",
+   "a_patch": "26.13",
+   "b_patch": "26.17",
+   "a_group": "R - Mimic",
+   "a_slot": "R",
+   "b_group": "RW - Mimic: Distortion",
+   "b_slot": null,
+   "a_prop": "RW Damage",
+   "b_prop": "Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "150 / 300 / 450",
+   "a_after": "150 / 315 / 480",
+   "b_before": "150 / 315 / 480 (+80% AP)",
+   "b_after": "150 / 315 / 480 (+90% AP)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": false,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "Cross-group (R slot group vs slotless 'RW - Mimic: Distortion' group), rename, ratio omitted in 26.13.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "Q - Ritual Nails",
+   "a_slot": "Q",
+   "b_group": "Q - Ritual Nails",
+   "b_slot": "Q",
+   "a_prop": "Nail Recast Hold Time",
+   "b_prop": "Base Damage - Nail",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "5 seconds",
+   "a_after": "4 seconds",
+   "b_before": "50 / 58 / 66 / 74 / 82 (+20% Ability Power)",
+   "b_after": "40 / 48 / 56 / 64 / 72 (+20% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "Q - Ritual Nails",
+   "a_slot": "Q",
+   "b_group": "Q - Ritual Nails",
+   "b_slot": "Q",
+   "a_prop": "Nail Recast Hold Time",
+   "b_prop": "Three Nails Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "5 seconds",
+   "a_after": "4 seconds",
+   "b_before": "150 / 174 / 198 / 222 / 246 (+60% Ability Power)",
+   "b_after": "120 / 144 / 168 / 192 / 216 (+60% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "Q - Ritual Nails",
+   "a_slot": "Q",
+   "b_group": "Q - Ritual Nails",
+   "b_slot": "Q",
+   "a_prop": "Nail Damage",
+   "b_prop": "Base Damage - Nail",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "50 / 60 / 70 / 80 / 90",
+   "a_after": "50 / 58 / 66 / 74 / 82",
+   "b_before": "50 / 58 / 66 / 74 / 82 (+20% Ability Power)",
+   "b_after": "40 / 48 / 56 / 64 / 72 (+20% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "Rename; 26.14 after omits the '(+20% Ability Power)' ratio that 26.15 before states. The strings differ.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "Q - Ritual Nails",
+   "a_slot": "Q",
+   "b_group": "Q - Ritual Nails",
+   "b_slot": "Q",
+   "a_prop": "Nail Damage",
+   "b_prop": "Three Nails Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "50 / 60 / 70 / 80 / 90",
+   "a_after": "50 / 58 / 66 / 74 / 82",
+   "b_before": "150 / 174 / 198 / 222 / 246 (+60% Ability Power)",
+   "b_after": "120 / 144 / 168 / 192 / 216 (+60% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "Q - Ritual Nails",
+   "a_slot": "Q",
+   "b_group": "Q - Ritual Nails",
+   "b_slot": "Q",
+   "a_prop": "Mark Base Bonus Damage",
+   "b_prop": "Base Damage - Nail",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "20 / 30 / 40 / 50 / 60",
+   "a_after": "18 / 26 / 34 / 42 / 50",
+   "b_before": "50 / 58 / 66 / 74 / 82 (+20% Ability Power)",
+   "b_after": "40 / 48 / 56 / 64 / 72 (+20% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "Q - Ritual Nails",
+   "a_slot": "Q",
+   "b_group": "Q - Ritual Nails",
+   "b_slot": "Q",
+   "a_prop": "Mark Base Bonus Damage",
+   "b_prop": "Three Nails Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "20 / 30 / 40 / 50 / 60",
+   "a_after": "18 / 26 / 34 / 42 / 50",
+   "b_before": "150 / 174 / 198 / 222 / 246 (+60% Ability Power)",
+   "b_after": "120 / 144 / 168 / 192 / 216 (+60% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "W - Soul Ignition",
+   "a_slot": "W",
+   "b_group": "W - Soul Ignition",
+   "b_slot": "W",
+   "a_prop": "Damage Taken Grey Health Cap",
+   "b_prop": "Move Speed",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "40 / 80 / 120 / 160 / 200",
+   "a_after": "40 / 70 / 100 / 130 / 160",
+   "b_before": "40 / 45 / 50 / 55 / 60% (+2% per 100 Ability Power)",
+   "b_after": "40% (+2% per 100 Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Locke",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "W - Soul Ignition",
+   "a_slot": "W",
+   "b_group": "W - Soul Ignition",
+   "b_slot": "W",
+   "a_prop": "Damage Taken Grey Health Cap",
+   "b_prop": "Grey Health Base Value",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "40 / 80 / 120 / 160 / 200",
+   "a_after": "40 / 70 / 100 / 130 / 160",
+   "b_before": "40 / 70 / 100 / 130 / 160 (+120% Ability Power)",
+   "b_after": "40 / 60 / 80 / 100 / 120 (+100% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "'Cap' vs 'Base Value' may be different quantities; the ratio is also omitted in 26.14. Its rank array also equals ARENA Locke 'Base Health Restored' 26.15 before (a cross-mode collision).",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Mordekaiser",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "E - Death's Grasp",
+   "a_slot": "E",
+   "b_group": "E - Death's Grasp",
+   "b_slot": "E",
+   "a_prop": "Damage",
+   "b_prop": "Cooldown",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "60 / 75 / 90 / 105 / 120 (+40% Ability Power)",
+   "a_after": "60 / 80 / 100 / 120 / 140 (+45% Ability Power)",
+   "b_before": "18 / 16 / 14 / 12 / 10",
+   "b_after": "16 / 14 / 12 / 10 / 8",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "cooldown",
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Mordekaiser",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "R - Realm of Death",
+   "a_slot": "R",
+   "b_group": "R - Realm of Death",
+   "b_slot": "R",
+   "a_prop": "Stat Steal",
+   "b_prop": "Stolen Stats",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "10%",
+   "a_after": "13%",
+   "b_before": "13%",
+   "b_after": "10%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": true,
+   "verdict": "proven",
+   "tier": "B",
+   "reason": "Verified alias row: same slot+title, rename only; continuity 13%; Riot 26.15 context: 'revert the R buff entirely'.",
+   "matcher_links": true
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Mordekaiser",
+   "a_patch": "26.14",
+   "b_patch": "26.15",
+   "a_group": "R - Realm of Death",
+   "a_slot": "R",
+   "b_group": "R - Realm of Death",
+   "b_slot": "R",
+   "a_prop": "Stat Steal",
+   "b_prop": "Bugfix",
+   "a_kind": "numeric",
+   "b_kind": "mechanical",
+   "a_before": "10%",
+   "a_after": "13%",
+   "b_before": null,
+   "b_after": null,
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Mechanical line; mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Naafiri",
+   "a_patch": "26.10",
+   "b_patch": "26.15",
+   "a_group": "R - Hounds’ Pursuit",
+   "a_slot": "R",
+   "b_group": "R - The Call of the Pack",
+   "b_slot": "R",
+   "a_prop": "Physical Damage",
+   "b_prop": "Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "150 / 250 / 350 (120% bonus AD ) + 15 / 25 / 35 (+12% bonus AD) per packmate",
+   "a_after": "150 / 225 / 300 (120% bonus AD) + 15 / 22.5 / 30 ( +12% bonus AD) per packmate",
+   "b_before": "150 / 225 / 300 (+120% Attack Damage)",
+   "b_after": "125 / 200 / 275 (+100% Bonus Attack Damage)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": false,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "unclassifiable",
+   "tier": null,
+   "reason": "Ability renamed (Hounds' Pursuit → The Call of the Pack), one 26.10 line split into two 26.15 lines, and the 26.15 before says '+120% Attack Damage' where 26.10 after says '120% bonus AD' (the ratio basis is contradicted). Never link.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Naafiri",
+   "a_patch": "26.10",
+   "b_patch": "26.15",
+   "a_group": "R - Hounds’ Pursuit",
+   "a_slot": "R",
+   "b_group": "R - The Call of the Pack",
+   "b_slot": "R",
+   "a_prop": "Physical Damage",
+   "b_prop": "Damage per Packmate",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "150 / 250 / 350 (120% bonus AD ) + 15 / 25 / 35 (+12% bonus AD) per packmate",
+   "a_after": "150 / 225 / 300 (120% bonus AD) + 15 / 22.5 / 30 ( +12% bonus AD) per packmate",
+   "b_before": "15 / 22.5 / 30 (+12% Attack Damage)",
+   "b_after": "12.5 / 20 / 27.5 (+10% Bonus Attack Damage)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": false,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "unclassifiable",
+   "tier": null,
+   "reason": "Same split as above; the per-packmate term is half of the 26.10 line.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Nasus",
+   "a_patch": "26.16",
+   "b_patch": "26.19",
+   "a_group": "Q - Siphoning Strike",
+   "a_slot": "Q",
+   "b_group": "Q - Siphoning Strike",
+   "b_slot": "Q",
+   "a_prop": "Stacks",
+   "b_prop": "Bonus Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "3, increased to 12 on champions / large minions / monsters",
+   "a_after": "4, increased to 10 on champions / large minions / monsters",
+   "b_before": "40 / 60 / 80 / 100 / 120",
+   "b_after": "30 / 50 / 70 / 90 / 110",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "ability_damage_formula",
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Poppy",
+   "a_patch": "26.13",
+   "b_patch": "26.16",
+   "a_group": "Q - Hammer Shock",
+   "a_slot": "Q",
+   "b_group": "Q - Hammer Shock",
+   "b_slot": "Q",
+   "a_prop": "Monster Damage Cap",
+   "b_prop": "Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "50 / 80 / 110 / 140 / 170",
+   "a_after": "75 / 105 / 135 / 165 / 195",
+   "b_before": "30 / 55 / 80 / 105 / 130 (+100% bonus Attack Damage) (+9% Target Maximum Health), twice",
+   "b_after": "30 / 55 / 80 / 105 / 130 (+75% bonus Attack Damage) (+7 / 7.5 / 8 / 8.5 / 9% Target Maximum Health), twice",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Poppy",
+   "a_patch": "26.13",
+   "b_patch": "26.16",
+   "a_group": "Q - Hammer Shock",
+   "a_slot": "Q",
+   "b_group": "Q - Hammer Shock",
+   "b_slot": "Q",
+   "a_prop": "Monster Damage Cap",
+   "b_prop": "Target Maximum Health Monster Cap",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "50 / 80 / 110 / 140 / 170",
+   "a_after": "75 / 105 / 135 / 165 / 195",
+   "b_before": "75 / 105 / 135 / 165 / 195",
+   "b_after": "85 / 120 / 155 / 190 / 225",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": true,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "Rename adds 'Target Maximum Health'. Continuity holds, no second authority in 26.16 text.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Poppy",
+   "a_patch": "26.13",
+   "b_patch": "26.16",
+   "a_group": "Q - Hammer Shock",
+   "a_slot": "Q",
+   "b_group": "Q - Hammer Shock",
+   "b_slot": "Q",
+   "a_prop": "Monster Damage Cap",
+   "b_prop": "Slow Amount",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "50 / 80 / 110 / 140 / 170",
+   "a_after": "75 / 105 / 135 / 165 / 195",
+   "b_before": "20 / 25 / 30 / 35 / 40%",
+   "b_after": "20 / 23 / 26 / 29 / 32% (+8% per 1000 bonus Health)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Poppy",
+   "a_patch": "26.13",
+   "b_patch": "26.19",
+   "a_group": "Q - Hammer Shock",
+   "a_slot": "Q",
+   "b_group": "Q - Hammer Shock",
+   "b_slot": "Q",
+   "a_prop": "Monster Damage Cap",
+   "b_prop": "Minion/Monster Maximum Health Cap",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "50 / 80 / 110 / 140 / 170",
+   "a_after": "75 / 105 / 135 / 165 / 195",
+   "b_before": "85 / 120 / 155 / 190 / 225",
+   "b_after": "70 / 105 / 140 / 175 / 210",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Poppy",
+   "a_patch": "26.16",
+   "b_patch": "26.19",
+   "a_group": "Q - Hammer Shock",
+   "a_slot": "Q",
+   "b_group": "Q - Hammer Shock",
+   "b_slot": "Q",
+   "a_prop": "Damage",
+   "b_prop": "Minion/Monster Maximum Health Cap",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "30 / 55 / 80 / 105 / 130 (+100% bonus Attack Damage) (+9% Target Maximum Health), twice",
+   "a_after": "30 / 55 / 80 / 105 / 130 (+75% bonus Attack Damage) (+7 / 7.5 / 8 / 8.5 / 9% Target Maximum Health), twice",
+   "b_before": "85 / 120 / 155 / 190 / 225",
+   "b_after": "70 / 105 / 140 / 175 / 210",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Poppy",
+   "a_patch": "26.16",
+   "b_patch": "26.19",
+   "a_group": "Q - Hammer Shock",
+   "a_slot": "Q",
+   "b_group": "Q - Hammer Shock",
+   "b_slot": "Q",
+   "a_prop": "Target Maximum Health Monster Cap",
+   "b_prop": "Minion/Monster Maximum Health Cap",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "75 / 105 / 135 / 165 / 195",
+   "a_after": "85 / 120 / 155 / 190 / 225",
+   "b_before": "85 / 120 / 155 / 190 / 225",
+   "b_after": "70 / 105 / 140 / 175 / 210",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": true,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "Rename widens wording from 'Monster' to 'Minion/Monster' (possible scope change). Riot 26.19 context says it reverts 'a previous buff to jungle clear' but the values revert nothing exactly.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Poppy",
+   "a_patch": "26.16",
+   "b_patch": "26.19",
+   "a_group": "Q - Hammer Shock",
+   "a_slot": "Q",
+   "b_group": "Q - Hammer Shock",
+   "b_slot": "Q",
+   "a_prop": "Slow Amount",
+   "b_prop": "Minion/Monster Maximum Health Cap",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "20 / 25 / 30 / 35 / 40%",
+   "a_after": "20 / 23 / 26 / 29 / 32% (+8% per 1000 bonus Health)",
+   "b_before": "85 / 120 / 155 / 190 / 225",
+   "b_after": "70 / 105 / 140 / 175 / 210",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Qiyana",
+   "a_patch": "26.13",
+   "b_patch": "26.17",
+   "a_group": "Q - Edge of Ixtal",
+   "a_slot": "Q",
+   "b_group": "Q - Elemental Wrath",
+   "b_slot": "Q",
+   "a_prop": "Monster Damage",
+   "b_prop": "Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "155%",
+   "a_after": "175%",
+   "b_before": "70 / 100 / 130 / 160 / 190 (+85% bonus AD)",
+   "b_after": "80 / 110 / 140 / 170 / 200 (+90% bonus AD)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": false,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Qiyana",
+   "a_patch": "26.13",
+   "b_patch": "26.17",
+   "a_group": "Q - Edge of Ixtal",
+   "a_slot": "Q",
+   "b_group": "Q - Elemental Wrath",
+   "b_slot": "Q",
+   "a_prop": "Monster Damage",
+   "b_prop": "Monster Damage Modifier",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "155%",
+   "a_after": "175%",
+   "b_before": "175% against Monsters",
+   "b_after": "160% against Monsters",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": false,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "Group title changed (Edge of Ixtal → Elemental Wrath, same slot Q), property renamed, and the value gained text ('175%' vs '175% against Monsters'). Fails the exact-value gate.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Quinn",
+   "a_patch": "26.10",
+   "b_patch": "26.11",
+   "a_group": "P - Harrier",
+   "a_slot": null,
+   "b_group": "Passive - Harrier",
+   "b_slot": "P",
+   "a_prop": "Bonus Monster Damage",
+   "b_prop": "Monster Damage",
+   "a_kind": "mechanical",
+   "b_kind": "numeric",
+   "a_before": null,
+   "a_after": null,
+   "b_before": "50",
+   "b_after": "75",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": false,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "unclassifiable",
+   "tier": null,
+   "reason": "26.10 line is mechanical (is_new, detail '50' / '50% increased'); groups differ ('P - Harrier' slotless vs 'Passive - Harrier' slot P). Mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Quinn",
+   "a_patch": "26.10",
+   "b_patch": "26.11",
+   "a_group": "Q - Blinding Assault",
+   "a_slot": "Q",
+   "b_group": "Q - Blinding Assault",
+   "b_slot": "Q",
+   "a_prop": "Bonus Monster Damage",
+   "b_prop": "Monster Damage",
+   "a_kind": "mechanical",
+   "b_kind": "numeric",
+   "a_before": null,
+   "a_after": null,
+   "b_before": "150%",
+   "b_after": "200%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "unclassifiable",
+   "tier": null,
+   "reason": "26.10 line is mechanical (is_new, detail '50' / '50% increased'); groups differ ('P - Harrier' slotless vs 'Passive - Harrier' slot P). Mechanical lines never chain.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Ryze",
+   "a_patch": "26.12",
+   "b_patch": "26.19",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Base Health",
+   "b_prop": "Armor Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "645",
+   "a_after": "620",
+   "b_before": "4.2",
+   "b_after": "4.7",
+   "a_mogzy_property": "base_health",
+   "b_mogzy_property": "armor_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Ryze",
+   "a_patch": "26.12",
+   "b_patch": "26.19",
+   "a_group": "Base Stats",
+   "a_slot": null,
+   "b_group": "Base Stats",
+   "b_slot": null,
+   "a_prop": "Base AD",
+   "b_prop": "Armor Growth",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "58",
+   "a_after": "55",
+   "b_before": "4.2",
+   "b_after": "4.7",
+   "a_mogzy_property": "base_ad",
+   "b_mogzy_property": "armor_growth",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Senna",
+   "a_patch": "26.13",
+   "b_patch": "26.14",
+   "a_group": "Passive - Absolution",
+   "a_slot": "P",
+   "b_group": "Passive - Absolution",
+   "b_slot": "P",
+   "a_prop": "Soul Drop Chance (Senna Kill)",
+   "b_prop": "Critical Strike Damage Modifier",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "10%",
+   "a_after": "5%",
+   "b_before": "85%",
+   "b_after": "80%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Senna",
+   "a_patch": "26.13",
+   "b_patch": "26.14",
+   "a_group": "Passive - Absolution",
+   "a_slot": "P",
+   "b_group": "Passive - Absolution",
+   "b_slot": "P",
+   "a_prop": "Soul Drop Chance (Ally Kill)",
+   "b_prop": "Critical Strike Damage Modifier",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "28%",
+   "a_after": "32%",
+   "b_before": "85%",
+   "b_after": "80%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Senna",
+   "a_patch": "26.13",
+   "b_patch": "26.14",
+   "a_group": "Passive - Absolution",
+   "a_slot": "P",
+   "b_group": "Passive - Absolution",
+   "b_slot": "P",
+   "a_prop": "Crit Damage",
+   "b_prop": "Critical Strike Damage Modifier",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "-10% (180% / 27% with IE)",
+   "a_after": "-15% (170% / 25.5% with IE)",
+   "b_before": "85%",
+   "b_after": "80%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "unclassifiable",
+   "tier": null,
+   "reason": "Representation change: '-15% (170% …)' vs '85%' describe the same quantity in different units. No string or template equality.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Senna",
+   "a_patch": "26.13",
+   "b_patch": "26.14",
+   "a_group": "Q - Piercing Darkness",
+   "a_slot": "Q",
+   "b_group": "Q - Piercing Darkness",
+   "b_slot": "Q",
+   "a_prop": "Cooldown Refund",
+   "b_prop": "Ability Power Slow Ratio",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "On Hit",
+   "a_after": "On Attack",
+   "b_before": "10% per 100 Ability Power",
+   "b_after": "7% per 100 Ability Power",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Senna",
+   "a_patch": "26.13",
+   "b_patch": "26.14",
+   "a_group": "Q - Piercing Darkness",
+   "a_slot": "Q",
+   "b_group": "Q - Piercing Darkness",
+   "b_slot": "Q",
+   "a_prop": "Cooldown Refund",
+   "b_prop": "Ability Power Healing Ratio",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "On Hit",
+   "a_after": "On Attack",
+   "b_before": "50% Ability Power",
+   "b_after": "35% Ability Power",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Sylas",
+   "a_patch": "26.12",
+   "b_patch": "26.15",
+   "a_group": "Q - Chain Lash",
+   "a_slot": "Q",
+   "b_group": "Q - Chain Lash",
+   "b_slot": "Q",
+   "a_prop": "Initial Damage",
+   "b_prop": "First Lash Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+   "a_after": "40 / 65 / 90 / 115 / 140 (+45% AP)",
+   "b_before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+   "b_after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": true,
+   "verdict": "proven",
+   "tier": "B",
+   "reason": "Verified alias row: same slot+title, rename only; 6-number continuity (5 ranks + ratio) under the AP≡Ability Power token rule; one line per card in Q; Riot 26.15 context names the 26.12 buff and pulls it back.",
+   "matcher_links": true
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Xin Zhao",
+   "a_patch": "26.11",
+   "b_patch": "26.12",
+   "a_group": "Passive - Determination",
+   "a_slot": "P",
+   "b_group": "Passive - Determination",
+   "b_slot": "P",
+   "a_prop": "Bonus Damage",
+   "b_prop": "Healing",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "15 / 30 / 45 / 60% Bonus AD (Levels 1 / 6 / 11 / 16)",
+   "a_after": "15 / 30 / 45 / 60% Bonus AD (+5 / 10 / 15 / 20% AP) (Levels 1 / 6 / 11 / 16)",
+   "b_before": "3 / 4 / 5% Max HP (+45 / 55 / 80% AP)",
+   "b_after": "2 / 3.5 / 5% Max HP (+40 / 50 / 70% AP)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.champions",
+   "entity": "Xin Zhao",
+   "a_patch": "26.11",
+   "b_patch": "26.12",
+   "a_group": "Passive - Determination",
+   "a_slot": "P",
+   "b_group": "Passive - Determination",
+   "b_slot": "P",
+   "a_prop": "Heal Amount",
+   "b_prop": "Healing",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "3 / 4 / 5% Max HP (+50 / 65 / 90% AP) (Levels 1 / 6 / 11)",
+   "a_after": "3 / 4 / 5% Max HP (+45 / 55 / 80% AP) (Levels 1 / 6 / 11)",
+   "b_before": "3 / 4 / 5% Max HP (+45 / 55 / 80% AP)",
+   "b_after": "2 / 3.5 / 5% Max HP (+40 / 50 / 70% AP)",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": true,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "plausible_unsafe",
+   "tier": null,
+   "reason": "Rename plus format drift: 26.12 before drops '(Levels 1 / 6 / 11)'. Accepting it means dropping a parenthetical, which the normaliser never does.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Doran's Helm",
+   "a_patch": "26.10",
+   "b_patch": "26.13",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Health",
+   "b_prop": "Armor and Magic Resistance",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "110",
+   "a_after": "140",
+   "b_before": "10",
+   "b_after": "8",
+   "a_mogzy_property": "stat_hp",
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Doran's Helm",
+   "a_patch": "26.10",
+   "b_patch": "26.13",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Health",
+   "b_prop": "Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "110",
+   "a_after": "140",
+   "b_before": "140",
+   "b_after": "150",
+   "a_mogzy_property": "stat_hp",
+   "b_mogzy_property": "stat_hp",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": true,
+   "value_continuity": true,
+   "verdict": "proven",
+   "tier": "A",
+   "reason": "Exact key (item / Health), continuity 140, unique, stat_hp on both; 26.11–26.12 reports and Riot 26.11 notes carry no Doran's Helm line.",
+   "matcher_links": true
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Immortal Path",
+   "a_patch": "26.10",
+   "b_patch": "26.14",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Total Cost",
+   "b_prop": "Damage Increase While Above 50% Maximum Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "950g",
+   "a_after": "1000g",
+   "b_before": "5%",
+   "b_after": "4%",
+   "a_mogzy_property": "total_cost",
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Immortal Path",
+   "a_patch": "26.10",
+   "b_patch": "26.14",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Total Cost",
+   "b_prop": "Healing, Shielding, and Regeneration Increase While Below 50% Maximum Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "950g",
+   "a_after": "1000g",
+   "b_before": "15%",
+   "b_after": "12%",
+   "a_mogzy_property": "total_cost",
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Immortal Path",
+   "a_patch": "26.10",
+   "b_patch": "26.14",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Slay - Omnivamp Per Stack",
+   "b_prop": "Damage Increase While Above 50% Maximum Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "1% per takedown, up to 6 stacks max",
+   "a_after": ".6% per takedown, up to 10 stacks max",
+   "b_before": "5%",
+   "b_after": "4%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Immortal Path",
+   "a_patch": "26.10",
+   "b_patch": "26.14",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Slay - Omnivamp Per Stack",
+   "b_prop": "Healing, Shielding, and Regeneration Increase While Below 50% Maximum Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "1% per takedown, up to 6 stacks max",
+   "a_after": ".6% per takedown, up to 10 stacks max",
+   "b_before": "15%",
+   "b_after": "12%",
+   "a_mogzy_property": null,
+   "b_mogzy_property": null,
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Sundered Sky",
+   "a_patch": "26.16",
+   "b_patch": "26.17",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Recipe",
+   "b_prop": "Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "Tunneler (1150g) + Caulfield's (1050g) + Ruby Crystal (400g) + 500g",
+   "a_after": "Tunneler (1150g) + Caulfield's (1050g) + 900g",
+   "b_before": "450",
+   "b_after": "400",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "stat_hp",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Sundered Sky",
+   "a_patch": "26.16",
+   "b_patch": "26.17",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Recipe",
+   "b_prop": "Attack Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "Tunneler (1150g) + Caulfield's (1050g) + Ruby Crystal (400g) + 500g",
+   "a_after": "Tunneler (1150g) + Caulfield's (1050g) + 900g",
+   "b_before": "45",
+   "b_after": "40",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "stat_ad",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Sundered Sky",
+   "a_patch": "26.16",
+   "b_patch": "26.17",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Healing",
+   "b_prop": "Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "[100% Melee || 50% Ranged] Base Attack Damage + 6% Missing Health",
+   "a_after": "[90% Melee || 45% Ranged] Base Attack Damage + 4% Missing Health",
+   "b_before": "450",
+   "b_after": "400",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "stat_hp",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Sundered Sky",
+   "a_patch": "26.16",
+   "b_patch": "26.17",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Healing",
+   "b_prop": "Attack Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "[100% Melee || 50% Ranged] Base Attack Damage + 6% Missing Health",
+   "a_after": "[90% Melee || 45% Ranged] Base Attack Damage + 4% Missing Health",
+   "b_before": "45",
+   "b_after": "40",
+   "a_mogzy_property": null,
+   "b_mogzy_property": "stat_ad",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Sundered Sky",
+   "a_patch": "26.16",
+   "b_patch": "26.17",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Health",
+   "b_prop": "Health",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "400",
+   "a_after": "450",
+   "b_before": "450",
+   "b_after": "400",
+   "a_mogzy_property": "stat_hp",
+   "b_mogzy_property": "stat_hp",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": true,
+   "value_continuity": true,
+   "verdict": "proven",
+   "tier": "A",
+   "reason": "Exact key (item / Health), continuity 450, unique, stat_hp on both.",
+   "matcher_links": true
+  },
+  {
+   "scope": "sr.items",
+   "entity": "Sundered Sky",
+   "a_patch": "26.16",
+   "b_patch": "26.17",
+   "a_group": "",
+   "a_slot": null,
+   "b_group": "",
+   "b_slot": null,
+   "a_prop": "Health",
+   "b_prop": "Attack Damage",
+   "a_kind": "numeric",
+   "b_kind": "numeric",
+   "a_before": "400",
+   "a_after": "450",
+   "b_before": "45",
+   "b_after": "40",
+   "a_mogzy_property": "stat_hp",
+   "b_mogzy_property": "stat_ad",
+   "same_group": true,
+   "same_slot": false,
+   "same_prop": false,
+   "value_continuity": false,
+   "verdict": "rejected",
+   "tier": null,
+   "reason": "Different property, no value continuity.",
+   "matcher_links": false
+  }
+ ],
+ "prior_rule_ablation": {
+  "R0_champions": [
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Sylas",
+    "a_patch": "26.12",
+    "b_patch": "26.15",
+    "a_prop": "Initial Damage",
+    "b_prop": "First Lash Damage",
+    "a_after": "40 / 65 / 90 / 115 / 140 (+45% AP)",
+    "b_before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Poppy",
+    "a_patch": "26.13",
+    "b_patch": "26.16",
+    "a_prop": "Monster Damage Cap",
+    "b_prop": "Target Maximum Health Monster Cap",
+    "a_after": "75 / 105 / 135 / 165 / 195",
+    "b_before": "75 / 105 / 135 / 165 / 195"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Poppy",
+    "a_patch": "26.16",
+    "b_patch": "26.19",
+    "a_prop": "Target Maximum Health Monster Cap",
+    "b_prop": "Minion/Monster Maximum Health Cap",
+    "a_after": "85 / 120 / 155 / 190 / 225",
+    "b_before": "85 / 120 / 155 / 190 / 225"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Mordekaiser",
+    "a_patch": "26.14",
+    "b_patch": "26.15",
+    "a_prop": "Stat Steal",
+    "b_prop": "Stolen Stats",
+    "a_after": "13%",
+    "b_before": "13%"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Bel'Veth",
+    "a_patch": "26.15",
+    "b_patch": "26.16",
+    "a_prop": "Health Growth",
+    "b_prop": "Health Growth",
+    "a_after": "110",
+    "b_before": "110"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Bel'Veth",
+    "a_patch": "26.15",
+    "b_patch": "26.16",
+    "a_prop": "Total Attack Speed",
+    "b_prop": "True Form Total Attack Speed",
+    "a_after": "5 / 15 / 25%",
+    "b_before": "5 / 15 / 25%"
+   }
+  ],
+  "R0_all": [
+   {
+    "mode": "sr",
+    "entity_type": "item",
+    "entity": "Doran's Helm",
+    "a_patch": "26.10",
+    "b_patch": "26.13",
+    "a_prop": "Health",
+    "b_prop": "Health",
+    "a_after": "140",
+    "b_before": "140"
+   },
+   {
+    "mode": "arena",
+    "entity_type": "system",
+    "entity": "Protein Shake",
+    "a_patch": "26.11",
+    "b_patch": "26.19",
+    "a_prop": "Heal Shield Power:",
+    "b_prop": "Base Health Scaling",
+    "a_after": "15",
+    "b_before": "15"
+   },
+   {
+    "mode": "arena",
+    "entity_type": "system",
+    "entity": "Redemption",
+    "a_patch": "26.11",
+    "b_patch": "26.17",
+    "a_prop": "Heal & Shield Power:",
+    "b_prop": "Heal and Shield Power",
+    "a_after": "12%",
+    "b_before": "12%"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Sylas",
+    "a_patch": "26.12",
+    "b_patch": "26.15",
+    "a_prop": "Initial Damage",
+    "b_prop": "First Lash Damage",
+    "a_after": "40 / 65 / 90 / 115 / 140 (+45% AP)",
+    "b_before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)"
+   },
+   {
+    "mode": "arena",
+    "entity_type": "system",
+    "entity": "Serylda's Grudge",
+    "a_patch": "26.12",
+    "b_patch": "26.17",
+    "a_prop": "Slow Amount:",
+    "b_prop": "Slow Threshold",
+    "a_after": "50%",
+    "b_before": "50%"
+   },
+   {
+    "mode": "arena",
+    "entity_type": "system",
+    "entity": "Now You See Me",
+    "a_patch": "26.12",
+    "b_patch": "26.16",
+    "a_prop": "Movespeed After Blink:",
+    "b_prop": "Move Speed Boost",
+    "a_after": "50%/75%",
+    "b_before": "50% / 75%"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Poppy",
+    "a_patch": "26.13",
+    "b_patch": "26.16",
+    "a_prop": "Monster Damage Cap",
+    "b_prop": "Target Maximum Health Monster Cap",
+    "a_after": "75 / 105 / 135 / 165 / 195",
+    "b_before": "75 / 105 / 135 / 165 / 195"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Poppy",
+    "a_patch": "26.16",
+    "b_patch": "26.19",
+    "a_prop": "Target Maximum Health Monster Cap",
+    "b_prop": "Minion/Monster Maximum Health Cap",
+    "a_after": "85 / 120 / 155 / 190 / 225",
+    "b_before": "85 / 120 / 155 / 190 / 225"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Mordekaiser",
+    "a_patch": "26.14",
+    "b_patch": "26.15",
+    "a_prop": "Stat Steal",
+    "b_prop": "Stolen Stats",
+    "a_after": "13%",
+    "b_before": "13%"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Bel'Veth",
+    "a_patch": "26.15",
+    "b_patch": "26.16",
+    "a_prop": "Health Growth",
+    "b_prop": "Health Growth",
+    "a_after": "110",
+    "b_before": "110"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Bel'Veth",
+    "a_patch": "26.15",
+    "b_patch": "26.16",
+    "a_prop": "Total Attack Speed",
+    "b_prop": "True Form Total Attack Speed",
+    "a_after": "5 / 15 / 25%",
+    "b_before": "5 / 15 / 25%"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "item",
+    "entity": "Sundered Sky",
+    "a_patch": "26.16",
+    "b_patch": "26.17",
+    "a_prop": "Health",
+    "b_prop": "Health",
+    "a_after": "450",
+    "b_before": "450"
+   },
+   {
+    "mode": "classic",
+    "entity_type": "system",
+    "entity": "Classic — General",
+    "a_patch": "26.17",
+    "b_patch": "26.19",
+    "a_prop": "Cast Range",
+    "b_prop": "Missile Range",
+    "a_after": "1100",
+    "b_before": "1100"
+   },
+   {
+    "mode": "classic",
+    "entity_type": "system",
+    "entity": "Classic — General",
+    "a_patch": "26.17",
+    "b_patch": "26.19",
+    "a_prop": "Attack Damage",
+    "b_prop": "Missile Width",
+    "a_after": "60",
+    "b_before": "60"
+   }
+  ],
+  "R2": [
+   {
+    "mode": "sr",
+    "entity_type": "item",
+    "entity": "Doran's Helm",
+    "a_patch": "26.10",
+    "b_patch": "26.13",
+    "a_prop": "Health",
+    "b_prop": "Health",
+    "a_after": "140",
+    "b_before": "140"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Sylas",
+    "a_patch": "26.12",
+    "b_patch": "26.15",
+    "a_prop": "Initial Damage",
+    "b_prop": "First Lash Damage",
+    "a_after": "40 / 65 / 90 / 115 / 140 (+45% AP)",
+    "b_before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Poppy",
+    "a_patch": "26.13",
+    "b_patch": "26.16",
+    "a_prop": "Monster Damage Cap",
+    "b_prop": "Target Maximum Health Monster Cap",
+    "a_after": "75 / 105 / 135 / 165 / 195",
+    "b_before": "75 / 105 / 135 / 165 / 195"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Poppy",
+    "a_patch": "26.16",
+    "b_patch": "26.19",
+    "a_prop": "Target Maximum Health Monster Cap",
+    "b_prop": "Minion/Monster Maximum Health Cap",
+    "a_after": "85 / 120 / 155 / 190 / 225",
+    "b_before": "85 / 120 / 155 / 190 / 225"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Mordekaiser",
+    "a_patch": "26.14",
+    "b_patch": "26.15",
+    "a_prop": "Stat Steal",
+    "b_prop": "Stolen Stats",
+    "a_after": "13%",
+    "b_before": "13%"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Bel'Veth",
+    "a_patch": "26.15",
+    "b_patch": "26.16",
+    "a_prop": "Health Growth",
+    "b_prop": "Health Growth",
+    "a_after": "110",
+    "b_before": "110"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "champion",
+    "entity": "Bel'Veth",
+    "a_patch": "26.15",
+    "b_patch": "26.16",
+    "a_prop": "Total Attack Speed",
+    "b_prop": "True Form Total Attack Speed",
+    "a_after": "5 / 15 / 25%",
+    "b_before": "5 / 15 / 25%"
+   },
+   {
+    "mode": "sr",
+    "entity_type": "item",
+    "entity": "Sundered Sky",
+    "a_patch": "26.16",
+    "b_patch": "26.17",
+    "a_prop": "Health",
+    "b_prop": "Health",
+    "a_after": "450",
+    "b_before": "450"
+   }
+  ]
+ },
+ "expected_chains_by_range": [
+  {
+   "since": "26.10",
+   "end": "26.11",
+   "chains": []
+  },
+  {
+   "since": "26.10",
+   "end": "26.12",
+   "chains": []
+  },
+  {
+   "since": "26.10",
+   "end": "26.13",
+   "chains": []
+  },
+  {
+   "since": "26.10",
+   "end": "26.14",
+   "chains": []
+  },
+  {
+   "since": "26.10",
+   "end": "26.15",
+   "chains": [
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.10",
+   "end": "26.16",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.10",
+   "end": "26.17",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.10",
+   "end": "26.18",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.10",
+   "end": "26.19",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.11",
+   "end": "26.12",
+   "chains": []
+  },
+  {
+   "since": "26.11",
+   "end": "26.13",
+   "chains": []
+  },
+  {
+   "since": "26.11",
+   "end": "26.14",
+   "chains": []
+  },
+  {
+   "since": "26.11",
+   "end": "26.15",
+   "chains": [
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.11",
+   "end": "26.16",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.11",
+   "end": "26.17",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.11",
+   "end": "26.18",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.11",
+   "end": "26.19",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sylas",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.12",
+       "group": "Q - Chain Lash",
+       "property": "Initial Damage",
+       "before": "40 / 60 / 80 / 100 / 120 (+40% AP)",
+       "after": "40 / 65 / 90 / 115 / 140 (+45% AP)"
+      },
+      {
+       "patch": "26.15",
+       "group": "Q - Chain Lash",
+       "property": "First Lash Damage",
+       "before": "40 / 65 / 90 / 115 / 140 (+45% Ability Power)",
+       "after": "40 / 60 / 80 / 100 / 120 (+40% Ability Power)"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.12",
+   "end": "26.13",
+   "chains": []
+  },
+  {
+   "since": "26.12",
+   "end": "26.14",
+   "chains": []
+  },
+  {
+   "since": "26.12",
+   "end": "26.15",
+   "chains": [
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.12",
+   "end": "26.16",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.12",
+   "end": "26.17",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.12",
+   "end": "26.18",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.12",
+   "end": "26.19",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.13",
+   "end": "26.14",
+   "chains": []
+  },
+  {
+   "since": "26.13",
+   "end": "26.15",
+   "chains": [
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.13",
+   "end": "26.16",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.13",
+   "end": "26.17",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.13",
+   "end": "26.18",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.13",
+   "end": "26.19",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Mordekaiser",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.14",
+       "group": "R - Realm of Death",
+       "property": "Stat Steal",
+       "before": "10%",
+       "after": "13%"
+      },
+      {
+       "patch": "26.15",
+       "group": "R - Realm of Death",
+       "property": "Stolen Stats",
+       "before": "13%",
+       "after": "10%"
+      }
+     ],
+     "tiers": [
+      "B"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.14",
+   "end": "26.15",
+   "chains": []
+  },
+  {
+   "since": "26.14",
+   "end": "26.16",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.14",
+   "end": "26.17",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.14",
+   "end": "26.18",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.14",
+   "end": "26.19",
+   "chains": [
+    {
+     "entity": "Bel'Veth",
+     "scope": "sr.champions",
+     "steps": [
+      {
+       "patch": "26.15",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "105",
+       "after": "110"
+      },
+      {
+       "patch": "26.16",
+       "group": "Base Stats",
+       "property": "Health Growth",
+       "before": "110",
+       "after": "105"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    },
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.15",
+   "end": "26.16",
+   "chains": []
+  },
+  {
+   "since": "26.15",
+   "end": "26.17",
+   "chains": [
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.15",
+   "end": "26.18",
+   "chains": [
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.15",
+   "end": "26.19",
+   "chains": [
+    {
+     "entity": "Sundered Sky",
+     "scope": "sr.items",
+     "steps": [
+      {
+       "patch": "26.16",
+       "group": "",
+       "property": "Health",
+       "before": "400",
+       "after": "450"
+      },
+      {
+       "patch": "26.17",
+       "group": "",
+       "property": "Health",
+       "before": "450",
+       "after": "400"
+      }
+     ],
+     "tiers": [
+      "A"
+     ],
+     "classification": "exact_undo"
+    }
+   ]
+  },
+  {
+   "since": "26.16",
+   "end": "26.17",
+   "chains": []
+  },
+  {
+   "since": "26.16",
+   "end": "26.18",
+   "chains": []
+  },
+  {
+   "since": "26.16",
+   "end": "26.19",
+   "chains": []
+  },
+  {
+   "since": "26.17",
+   "end": "26.18",
+   "chains": []
+  },
+  {
+   "since": "26.17",
+   "end": "26.19",
+   "chains": []
+  },
+  {
+   "since": "26.18",
+   "end": "26.19",
+   "chains": []
+  }
+ ]
+}
