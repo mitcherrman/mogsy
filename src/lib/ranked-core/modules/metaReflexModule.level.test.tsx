@@ -193,7 +193,10 @@ describe("SC-RENAME3 — the level slot is reserved whether or not a level exist
     return {
       slot,
       className: slot.className,
-      nextIsPrompt: slot.nextElementSibling === screen.getByTestId("mr-prompt"),
+      // SCBS1 — the prompt now sits in its own two-line slot, which is what
+      // directly follows the level slot.
+      nextIsPrompt: slot.nextElementSibling === screen.getByTestId("mr-prompt-slot")
+        && screen.getByTestId("mr-prompt-slot").contains(screen.getByTestId("mr-prompt")),
       hasBadge: screen.queryByTestId("champion-level-badge") !== null,
     };
   }

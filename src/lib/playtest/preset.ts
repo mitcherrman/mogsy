@@ -148,7 +148,7 @@ export const PLAYTEST_OUTRO: PlaytestInterstitial = {
   eyebrow: "Mogzy Playtest",
   heading: "Thanks for playing",
   body: [
-    "That was Leaguecraft: ordinary Ranked questions, reflex blocks, Mastery, "
+    `That was Leaguecraft: ordinary Ranked questions, ${META_REFLEX_LABEL} blocks, Mastery, `
     + "matchups and combat maths, in one match.",
     "Tell us what you thought — what was clear, what was not, and what you "
     + "would want more of.",

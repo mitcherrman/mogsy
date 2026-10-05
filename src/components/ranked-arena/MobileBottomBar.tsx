@@ -26,6 +26,23 @@ import { RoundTimeline } from "./RoundTimeline";
 /** Slots on screen. Five reads as a window, not a squeezed rail (see RMOB2). */
 export const MOBILE_TIMELINE_WINDOW = 5;
 
+/**
+ * SCBS1 — THE TWO TAB SLOTS ARE FIXED BOXES.
+ *
+ * Each slot hosts one of the dock's tabs, and the Report tab is not always
+ * there: it exists only while a mode publishes a QUESTION (`useReportableQuestion`),
+ * so it is absent for the whole of a Stat Check / Mastery / Order Forge block
+ * and present again on the module after it. A slot sized by its tab therefore
+ * collapsed to nothing and handed its width to the timeline between them — the
+ * Module Rail stretched ~88px at the first card of a block and snapped back at
+ * the module after it, on every phone, while the cards in between held still.
+ *
+ * A slot is sized for the widest tab it hosts ("Report": 88.5px wide, 32px tall at the 10px
+ * hosted label, plus a few px of slack), so the rail has ONE width whichever
+ * tabs are mounted. Both sides carry it, so the strip also stays centred.
+ */
+const TAB_SLOT = "h-8 w-[5.75rem] shrink-0 items-center";
+
 /** The arena's phone regime: everything below Tailwind's `lg`. */
 const PHONE_QUERY = "(max-width: 1023.98px)";
 
@@ -61,11 +78,11 @@ export function MobileBottomBar({ timeline, className = "" }: {
     <section data-testid="ranked-mobile-bottombar" aria-label="Match controls"
       className={`ranked-mobile-bottombar flex items-center gap-1 ${className}`}>
       <div ref={setLeft} data-testid="ranked-mobile-bottombar-left"
-        className="flex min-w-0 shrink-0 items-center justify-start" />
+        className={`flex justify-start ${TAB_SLOT}`} />
       <RoundTimeline timeline={windowTimelineView(timeline, MOBILE_TIMELINE_WINDOW)}
         testIdPrefix="mobile-" className="min-w-0 flex-1" />
       <div ref={setRight} data-testid="ranked-mobile-bottombar-right"
-        className="flex min-w-0 shrink-0 items-center justify-end" />
+        className={`flex justify-end ${TAB_SLOT}`} />
     </section>
   );
 }

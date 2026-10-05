@@ -210,7 +210,7 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
       // cannot reflow the row: a reveal changes what the rectangle says and
       // never how large it is.
       data-picked={picked || undefined}
-      className={`relative flex min-h-[7.5rem] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center lg:min-h-[12rem] lg:gap-3 lg:p-5
+      className={`relative flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center lg:gap-3 lg:p-5
         transition-[border-color,background-color,transform] duration-150 motion-reduce:transition-none
         disabled:cursor-not-allowed
         enabled:hover:border-[#e8c97a]/70 enabled:active:scale-[0.99]
@@ -264,11 +264,77 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null, pic
 // place, the server's correct side marked green, and "Next card...".
 // ---------------------------------------------------------------------------
 
-function BlockPhase({ state, cards, actions, skewMs }: {
+/**
+ * THE BLOCK'S ONE FRAME (SCBS1).
+ *
+ * Every phase of a block is drawn into the SAME four slots, each of a declared
+ * height:
+ *
+ *   header        the product name and "n / 5", with the card clock beside it
+ *   prompt block  the level slot, then a two-line prompt slot
+ *   card row      the two choices (or, with no card yet, a one-line message)
+ *   status line   one line: the opponent's progress, "Locked in", an error
+ *
+ * Before this each phase was exactly as tall as it happened to be — "Loading"
+ * a line, "Starting…" two, a live card ~330px, the wait (which dropped the
+ * header and the prompt) ~295px — and the whole box was centred in the folio.
+ * So the arena's content jumped when a block opened (onto the first card) and
+ * again when its last card settled (into the wait), by half the height
+ * difference or all of it, while the cards between, being one height, held
+ * still. The old reserve was an 18.5rem min-height: 37px short of the live card,
+ * and absent below `lg` — so it reserved nothing at either end.
+ *
+ * CONTENT ADAPTS TO THE FRAME. A recognition card (large art) and a named card
+ * (small art and a label) are drawn into the same card row, the prompt into the
+ * same two-line slot, and a phase with less to say leaves its slots empty
+ * rather than giving the height back. The card row is sized for the tallest
+ * card at each breakpoint — recognition art (96/112/144/160px) plus the card's
+ * padding and border, or named art plus a two-line label — so nothing is
+ * clipped and nothing is measured.
+ */
+const CARD_ROW_H = "h-[9rem] lg:h-[13rem]";
+
+function BlockFrame({ testId, phase, progress, clock, card, row, status }: {
+  testId: string;
+  phase?: string;
+  progress: string;
+  clock?: React.ReactNode;
+  /** The card whose level and prompt the prompt block shows, or null. */
+  card: MetaReflexCard | null;
+  row: React.ReactNode;
+  status: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-3" data-testid={testId} data-phase={phase}>
+      <MetaReflexHeader progress={progress} clock={clock} />
+      <CardPrompt card={card} />
+      <div data-testid="mr-card-row" className={`flex gap-2 sm:gap-3 ${CARD_ROW_H}`}>
+        {row}
+      </div>
+      <div data-testid="mr-status-slot" className="h-5">{status}</div>
+    </div>
+  );
+}
+
+/** A one-line message that stands where the cards will be. */
+function RowMessage({ testId, children }: { testId: string; children: React.ReactNode }) {
+  return (
+    <p className="m-auto text-center text-sm text-muted-foreground" role="status"
+       data-testid={testId}>
+      {children}
+    </p>
+  );
+}
+
+const STATUS_CLASS = "text-center text-xs text-muted-foreground";
+
+function BlockPhase({ state, cards, actions, skewMs, errorLine }: {
   state: SegmentStateView;
   cards: MetaReflexCard[];
   actions: ModuleViewportProps["actions"];
   skewMs: number;
+  /** `actions.error`, drawn in the status slot in place of the status. */
+  errorLine: React.ReactNode;
 }) {
   const index = state.ownNextChallengeIndex;
   const current = cards[index];
@@ -289,21 +355,23 @@ function BlockPhase({ state, cards, actions, skewMs }: {
   if (state.ownFinished || !current) {
     const finalCard = lastSettled ? cards[lastSettled.challengeIndex] : null;
     return (
-      <div className="space-y-3" data-testid="mr-waiting">
-        <MetaReflexHeader progress={`${state.challengeCount} / ${state.challengeCount}`} />
-        {/* THE LAST CARD'S REVEAL, on the card, with the surface to itself.
-            Card five has no successor waiting on a clock, so it is held until
-            the module summary replaces it — the block's own result is what
-            ends this, not a timer. */}
-        {lastSettled && finalCard && (
-          <SettledCard card={finalCard} reveal={lastSettled} />
-        )}
-        <p className="text-sm text-muted-foreground" role="status">
-          {state.opponentFinished
-            ? "Both players are done — scoring the block…"
-            : `Waiting for the opponent (${state.opponentChallengesCompleted} of ${state.challengeCount} done)…`}
-        </p>
-      </div>
+      // THE LAST CARD'S REVEAL, on the card, with the surface to itself.
+      // Card five has no successor waiting on a clock, so it is held until the
+      // module summary replaces it — the block's own result is what ends this,
+      // not a timer. It is drawn in the SAME frame as the live card (header,
+      // prompt, card row, status), so the wait does not move it.
+      <BlockFrame testId="mr-waiting"
+        progress={`${state.challengeCount} / ${state.challengeCount}`}
+        card={finalCard}
+        row={lastSettled && finalCard
+          ? <SettledCard card={finalCard} reveal={lastSettled} /> : null}
+        status={errorLine ?? (
+          <p className={STATUS_CLASS} role="status">
+            {state.opponentFinished
+              ? "Both players are done — scoring the block…"
+              : `Waiting for the opponent (${state.opponentChallengesCompleted} of ${state.challengeCount} done)…`}
+          </p>
+        )} />
     );
   }
 
@@ -343,46 +411,41 @@ function BlockPhase({ state, cards, actions, skewMs }: {
 
   if (revealing && revealedCard) {
     return (
-      <div className="space-y-3" data-testid="mr-block" data-phase="reveal">
-        <MetaReflexHeader
-          progress={`${revealing.challengeIndex + 1} / ${state.challengeCount}`}
-        />
-        <CardPrompt card={revealedCard} />
-        <SettledCard card={revealedCard} reveal={revealing} />
-        <p className="min-h-[1.25rem] text-center text-xs text-muted-foreground"
-           role="status" data-testid="mr-status">
-          Next card…
-        </p>
-      </div>
+      <BlockFrame testId="mr-block" phase="reveal"
+        progress={`${revealing.challengeIndex + 1} / ${state.challengeCount}`}
+        card={revealedCard}
+        row={<SettledCard card={revealedCard} reveal={revealing} />}
+        status={errorLine ?? (
+          <p className={STATUS_CLASS} role="status" data-testid="mr-status">
+            Next card…
+          </p>
+        )} />
     );
   }
 
   return (
-    <div className="space-y-3" data-testid="mr-block" data-phase="answer">
-      <MetaReflexHeader
-        progress={`${index + 1} / ${state.challengeCount}`}
-        clock={<Countdown deadline={state.ownCardDeadline} skewMs={skewMs}
-                          timerMs={state.cardTimerMs} />}
-      />
-
-      <CardPrompt card={current} />
-
-      <div className="flex gap-2 sm:gap-3">
-        <ChoiceCard card={current} side="left" disabled={locked}
-                    selected={pending?.cardId === current.leftCardId}
-                    onPick={() => pick(current.leftCardId)} />
-        <ChoiceCard card={current} side="right" disabled={locked}
-                    selected={pending?.cardId === current.rightCardId}
-                    onPick={() => pick(current.rightCardId)} />
-      </div>
-
-      <p className="min-h-[1.25rem] text-center text-xs text-muted-foreground"
-         role="status" data-testid="mr-status">
-        {answered ? "Locked in — next card…"
-          : expired ? "Time's up — next card…"
-            : `Opponent: ${state.opponentChallengesCompleted} of ${state.challengeCount} done`}
-      </p>
-    </div>
+    <BlockFrame testId="mr-block" phase="answer"
+      progress={`${index + 1} / ${state.challengeCount}`}
+      clock={<Countdown deadline={state.ownCardDeadline} skewMs={skewMs}
+                        timerMs={state.cardTimerMs} />}
+      card={current}
+      row={(
+        <>
+          <ChoiceCard card={current} side="left" disabled={locked}
+                      selected={pending?.cardId === current.leftCardId}
+                      onPick={() => pick(current.leftCardId)} />
+          <ChoiceCard card={current} side="right" disabled={locked}
+                      selected={pending?.cardId === current.rightCardId}
+                      onPick={() => pick(current.rightCardId)} />
+        </>
+      )}
+      status={errorLine ?? (
+        <p className={STATUS_CLASS} role="status" data-testid="mr-status">
+          {answered ? "Locked in — next card…"
+            : expired ? "Time's up — next card…"
+              : `Opponent: ${state.opponentChallengesCompleted} of ${state.challengeCount} done`}
+        </p>
+      )} />
   );
 }
 
@@ -408,7 +471,7 @@ function SettledCard({ card, reveal }: {
     return null;
   };
   return (
-    <div className="flex gap-2 sm:gap-3" data-testid="mr-settled-card">
+    <div className="flex h-full w-full gap-2 sm:gap-3" data-testid="mr-settled-card">
       {(["left", "right"] as Side[]).map((side) => (
         <ChoiceCard key={side} card={card} side={side} selected={false}
           disabled onPick={() => {}} reveal={stateFor(side)}
@@ -442,20 +505,29 @@ function SettledCard({ card, reveal }: {
  * block mixing the two shifted the prompt and cards ~23px between consecutive
  * cards. The slot is a fixed `h-5` (the pill is ~17px) so it never grows.
  */
-function CardPrompt({ card }: { card: MetaReflexCard }) {
-  const hasLevel = card.championLevel != null;
+function CardPrompt({ card }: { card: MetaReflexCard | null }) {
+  const hasLevel = card?.championLevel != null;
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div data-testid="mr-level-slot"
            data-has-level={hasLevel ? "true" : "false"}
            aria-hidden={hasLevel ? undefined : true}
            className="flex h-5 shrink-0 items-center justify-center">
-        <ChampionLevelBadge level={card.championLevel} />
+        <ChampionLevelBadge level={card?.championLevel ?? null} />
       </div>
-      <p className="text-center text-base font-semibold sm:text-lg lg:text-xl"
-         data-testid="mr-prompt">
-        {card.prompt}
-      </p>
+      {/* SCBS1 — TWO LINES, ALWAYS. The prompt is centred in a slot sized for
+          two lines of its own leading (24px below `sm`, 28px from it), so a
+          prompt that wraps on a phone does not push the cards down, and a phase
+          with no card (loading, starting) keeps the slot empty. */}
+      <div data-testid="mr-prompt-slot"
+           className="flex min-h-[3rem] w-full items-center justify-center sm:min-h-[3.5rem]">
+        {card && (
+          <p className="w-full text-center text-base font-semibold sm:text-lg lg:text-xl"
+             data-testid="mr-prompt">
+            {card.prompt}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -499,43 +571,67 @@ function MetaReflexViewport({
   const stingMs = entryPresentationMs && entryPresentationMs > 0
     ? entryPresentationMs : STING_MS;
   const stinging = useEntrySting(blockKey, entryPresentationMs ?? STING_MS);
+  const block = segmentState?.block;
+  // `actions.error`, drawn in the status slot in place of the status: a line
+  // that APPENDED to the surface would grow it, and move the card with it.
+  const errorLine = actions.error ? (
+    <p role="alert" data-testid="mr-error" className="text-center text-sm text-destructive">
+      {actions.error}
+    </p>
+  ) : null;
+  // Every case — loading, unavailable, starting, and each phase of the block —
+  // is drawn into the block's ONE frame (see `BlockFrame`), so the surface is
+  // the same box whichever of them is on screen.
+  let content: React.ReactNode;
   if (!segmentState) {
-    return (
-      <p className="text-sm text-muted-foreground" data-testid="mr-loading">
-        Loading the block…
-      </p>
+    // The public round names the segment before the viewer's own state has
+    // been read, so this is a real, brief state at the start of every block.
+    content = (
+      <BlockFrame testId="mr-loading-frame" progress={" "} card={null}
+        row={<RowMessage testId="mr-loading">Loading the block…</RowMessage>}
+        status={errorLine} />
     );
-  }
-  const block = segmentState.block;
-  // Fail closed rather than render an empty two-card frame: a v4 segment whose
-  // block did not arrive as Meta Reflex cards is a contract problem, and
-  // guessing at it would put a clickable card on screen with nothing behind it.
-  if (segmentState.phase === "challenges" && block?.contract !== "meta_reflex") {
-    return (
-      <p className="text-sm text-muted-foreground" role="status" data-testid="mr-unavailable">
-        This {META_REFLEX_LABEL} block could not be loaded. Please refresh.
-      </p>
+  } else if (segmentState.phase === "challenges" && block?.contract !== "meta_reflex") {
+    // Fail closed rather than render an empty two-card frame: a v4 segment
+    // whose block did not arrive as Meta Reflex cards is a contract problem,
+    // and guessing at it would put a clickable card on screen with nothing
+    // behind it.
+    content = (
+      <BlockFrame testId="mr-unavailable-frame" progress={" "} card={null}
+        row={(
+          <RowMessage testId="mr-unavailable">
+            This {META_REFLEX_LABEL} block could not be loaded. Please refresh.
+          </RowMessage>
+        )}
+        status={errorLine} />
+    );
+  } else if (block?.contract === "meta_reflex") {
+    content = (
+      <BlockPhase state={segmentState} cards={block.cards} actions={actions} skewMs={skewMs}
+        errorLine={errorLine} />
+    );
+  } else {
+    // A pre-challenge phase (a legacy ability window). The server expires it
+    // on its own; there is nothing to offer and nothing to decide.
+    content = (
+      <BlockFrame testId="mr-starting" progress={`0 / ${segmentState.challengeCount}`}
+        card={null}
+        row={<RowMessage testId="mr-starting-note">Starting…</RowMessage>}
+        status={errorLine} />
     );
   }
   return (
-    // ONE RESERVED PRESENTATION BOX FOR THE WHOLE BLOCK.
-    // Every phase below is a different amount of content — "Starting…" is two
-    // lines, a live card is a header, a prompt, a 12rem card row and a note,
-    // the waiting state is a settled card and a sentence — and each one used
-    // to be exactly as tall as it happened to be. So the intro snapped into
-    // the first card, and the last card snapped into the wait.
-    //
-    // The box is reserved once, here, at the height of the tallest phase (the
-    // live card), and every phase centres inside it. Nothing below changed
-    // shape; what changed is that they now all render into the same one. The
-    // reserve is `lg` only, because the stacked narrow layout is a scrolling
-    // column where a desktop-derived reserve would just be a large empty box.
-    <div className="relative flex flex-col justify-center space-y-3 lg:min-h-[18.5rem]"
-      data-testid="mr-surface">
+    // ONE PRESENTATION BOX FOR THE WHOLE BLOCK. Its height is not reserved by a
+    // `min-h` that every phase then happens to fit: it is the sum of the
+    // frame's four slots, each declared (see `BlockFrame`), so it is the same
+    // box in every phase and at every width. The sting is absolute, so — unlike
+    // when this was a `space-y-3` stack whose first child it was — it adds no
+    // margin to the block while it is up and takes none away when it goes.
+    <div className="relative" data-testid="mr-surface">
       {/* Laid OVER a live, clickable card — never in front of it. See
           MetaReflexSting for why a blocking curtain would spend the player's
           own answer window. */}
-      {stinging && (
+      {stinging && segmentState && (
         /* RFX1 2B3 visual implementation — the sting is told how long it is
            being HELD for, so its animation lasts as long as the element does.
            Before this it ran a fixed 720 ms in-and-out cycle and came to rest
@@ -544,21 +640,7 @@ function MetaReflexViewport({
         <MetaReflexSting variant="beat" durationMs={stingMs}
           cardCount={segmentState.challengeCount} />
       )}
-      {block?.contract === "meta_reflex" ? (
-        <BlockPhase state={segmentState} cards={block.cards} actions={actions} skewMs={skewMs} />
-      ) : (
-        // A pre-challenge phase (a legacy ability window). The server expires it
-        // on its own; there is nothing to offer and nothing to decide.
-        <div className="space-y-2" data-testid="mr-starting">
-          <MetaReflexHeader progress={`0 / ${segmentState.challengeCount}`} />
-          <p className="text-sm text-muted-foreground" role="status">Starting…</p>
-        </div>
-      )}
-      {actions.error && (
-        <p role="alert" data-testid="mr-error" className="text-sm text-destructive">
-          {actions.error}
-        </p>
-      )}
+      {content}
     </div>
   );
 }

@@ -583,15 +583,44 @@ describe("transient state cannot change Match Shell geometry", () => {
     expect(arena).toContain("header.playtestNote");
   });
 
-  it("gives Meta Reflex ONE reserved box for every phase of a block", () => {
+  it("gives Meta Reflex ONE frame, of declared slot heights, for every phase of a block", () => {
     const mr = read("lib/ranked-core/modules/metaReflexModule.tsx");
-    // "Starting…" is two lines, a live card is a header + prompt + a 12rem
-    // card row + a note, the wait is a settled card and a sentence. Each used
-    // to be exactly as tall as it happened to be, so the intro snapped into
-    // the first card and the last card snapped into the wait. One reserve,
-    // sized to the tallest phase, and every phase centres inside it.
+    // SCBS1. "Loading" is a line, "Starting…" two, a live card ~330px and the
+    // wait (header and prompt dropped) ~295px, and the box was centred in the
+    // folio — so the content jumped when a block opened and again when its
+    // last card settled. The old `lg:min-h-[18.5rem]` reserve was 37px short of
+    // the live card and absent below `lg`, so it reserved nothing at either end.
+    // Now every phase is drawn into one frame whose four slots each have a
+    // declared height, at every width: the surface is the sum of them.
     expect(mr).toContain('data-testid="mr-surface"');
-    expect(mr).toContain("flex flex-col justify-center space-y-3 lg:min-h-[18.5rem]");
+    expect(mr).not.toContain("lg:min-h-[18.5rem]");
+    expect(mr).toContain('const CARD_ROW_H = "h-[9rem] lg:h-[13rem]";');
+    expect(mr).toContain('data-testid="mr-card-row"');
+    expect(mr).toContain('data-testid="mr-status-slot" className="h-5"');
+    expect(mr).toContain('className="flex min-h-[3rem] w-full items-center justify-center sm:min-h-[3.5rem]"');
+    // Every phase goes through the frame: the waiting state, a reveal, a live
+    // card, and the three that have no card (loading, unavailable, starting).
+    expect(mr.match(/<BlockFrame /g)?.length).toBeGreaterThanOrEqual(6);
+    // The choices FILL the row they are given; none sizes itself.
+    expect(mr).toContain("relative flex h-full min-h-0 flex-1 flex-col");
+    expect(mr).not.toContain("min-h-[7.5rem]");
+    expect(mr).not.toContain("lg:min-h-[12rem]");
+    // The surface is not a `space-y` stack: the absolute entry sting used to be
+    // its first child, so the block carried a 12px margin for exactly as long
+    // as the sting was up.
+    expect(mr).toContain('<div className="relative" data-testid="mr-surface">');
+  });
+
+  it("holds the phone bottom bar's two tab slots at one width, tab or no tab", () => {
+    // SCBS1. The Report tab exists only while a mode publishes a QUESTION, so
+    // it is absent for a whole block; a slot sized by its tab collapsed and
+    // handed its width to the Module Rail, which stretched at the first card of
+    // a block and snapped back at the module after it.
+    const bar = read("components/ranked-arena/MobileBottomBar.tsx");
+    expect(bar).toContain('const TAB_SLOT = "h-8 w-[5.75rem] shrink-0 items-center";');
+    expect(bar).toContain("className={`flex justify-start ${TAB_SLOT}`}");
+    expect(bar).toContain("className={`flex justify-end ${TAB_SLOT}`}");
+    expect(bar).not.toContain("flex min-w-0 shrink-0 items-center justify-start");
   });
 
   it("sizes Meta Reflex card art by its slot, never by the asset", () => {

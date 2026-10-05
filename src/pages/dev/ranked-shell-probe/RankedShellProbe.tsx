@@ -37,6 +37,11 @@
  * `?lol=1` (VISCONT1-SSM) wears the League section's `theme-lol` root class,
  * so the prompt is drawn in the production display face (Cinzel).
  *
+ * `?mrlive=1` (SCBS1) walks a Stat Check block through the live controller, one
+ *   server snapshot per Advance click (`probe-mr-advance`): an ordinary quiz
+ *   round, the first card, its reveal, a middle card, the final card, its
+ *   reveal, the wait, and the settled block with the next quiz round. See
+ *   `statCheckLiveScript.ts`.
  * `?evlen=N` (VISCONT1) settles `?seq=` rounds with an N-character evidence
  *   statement (capped at 96, the longest the evidence beat carries).
  * `?ruleset=time_trial|survival|standard` (VISCONT1) serves the Daily stage
@@ -92,6 +97,9 @@ import {
   PHYSICAL_DAMAGE_PRESENTATION, PHYSICAL_DAMAGE_Q,
 } from "@/lib/question-surface/familyLayoutFixtures";
 import { RANKED_API_BASE } from "@/lib/ranked-public/client";
+import {
+  STAT_CHECK_LIVE_LAST_STEP, applyStatCheckLive, statCheckLiveSettled,
+} from "./statCheckLiveScript";
 import {
   FORGE_BOT_MATCH_ID, FORGE_BOT_VIEWER, forgeBotReplay, isForgeBotReplay,
 } from "./orderForgeBotReplay";
@@ -677,6 +685,7 @@ function publicFor(state: ProbeState, role: string | null) {
       max_strikes: probe.ruleset === "survival" ? 3 : null, strikes: 0,
       questions_settled: 0, stage_ended: false, live_strikes: 0 };
   }
+  if (probe.mrStep !== null) return applyStatCheckLive(env, probe.mrStep);
   const applied = applyPoints(env);
   if (probe.sfxStep > 0 && probe.sfxStep < 5) {
     const round = Math.max(1, probe.sfxStep);
@@ -740,6 +749,7 @@ function privateFor(state: ProbeState) {
       max_strikes: probe.ruleset === "survival" ? 3 : null, strikes: 0,
       questions_settled: 0, stage_ended: false, live_strikes: 0 };
   }
+  if (probe.mrStep !== null) return applyStatCheckLive(env, probe.mrStep);
   return applyPoints(env);
 }
 
@@ -830,10 +840,12 @@ const probe: {
   /** VISCONT1 — `?ruleset=` Daily stage ruleset, `?host=daily`. */
   ruleset: string | null;
   evlen: number;
+  /** SCBS1 — `?mrlive=1`: the Stat Check script step, or null outside it. */
+  mrStep: number | null;
 } = { state: "opts4", role: "top", legacy: false, points: null, questionRoles: [], motif: null, pet: null,
   opponentRole: null, progressionOff: false, end: null, gaps: [], bot: false, rated: true,
   discoveries: true, entryFresh: false, leadMs: 0, leadAnchorMs: null, sfxStep: 0,
-  seq: [], broken: false, ruleset: null, evlen: 0 };
+  seq: [], broken: false, ruleset: null, evlen: 0, mrStep: null };
 
 /** Stamp a live clock and a future round-1 start onto a canned envelope. */
 function applyEntryLead<T extends { payload: Record<string, unknown>; server_time?: string }>(
@@ -1108,6 +1120,17 @@ function installInterceptor() {
     // real controller path) fills the recent-result history. Deterministic:
     // the viewer takes every module but each third, the opponent every other.
     const resolved = /\/rounds\/(\d+)\/resolved$/.exec(path);
+    // SCBS1 — the Stat Check script: the block (round 4) has settled once the
+    // script is on its last step; every earlier round is an ordinary quiz.
+    if (resolved && probe.mrStep !== null) {
+      const round = Number(resolved[1]);
+      const settledThrough = probe.mrStep >= STAT_CHECK_LIVE_LAST_STEP ? 4 : 2;
+      if (round > settledThrough) return new Response("{}", { status: 409 });
+      return json({ schema_version: "ranked_duel.resolved_round.v2",
+        projection_type: "resolved_round", match_id: "m1", round_number: round,
+        server_time: "2026-07-18T12:00:00+00:00",
+        payload: round === 4 ? statCheckLiveSettled() : resolvedFor(round) });
+    }
     if (resolved && ((probe.points && Number(resolved[1]) < probe.points.module)
       || (probe.sfxStep >= 2 && Number(resolved[1]) < probe.sfxStep))) {
       const round = Number(resolved[1]);
@@ -1127,6 +1150,7 @@ installInterceptor();
 export default function RankedShellProbe() {
   const [params, setParams] = useSearchParams();
   const [sfxStep, setSfxStep] = useState(0);
+  const [mrStep, setMrStep] = useState(0);
   const state = (PROBE_STATES as readonly string[]).includes(params.get("q") ?? "")
     ? (params.get("q") as ProbeState) : "opts4";
   const role = params.get("role");
@@ -1154,6 +1178,7 @@ export default function RankedShellProbe() {
   const beatPreview = params.get("beat");
   const forgeBot = state === "orderforge" && params.get("forge") === "bot";
   probe.sfxStep = sfxQa ? sfxStep : 0;
+  probe.mrStep = params.get("mrlive") === "1" ? mrStep : null;
   probe.seq = (params.get("seq") ?? "").split(",")
     .filter((s) => (PROBE_STATES as readonly string[]).includes(s) || SEQ_ENTRY.test(s));
   probe.broken = params.get("broken") === "1";
@@ -1217,6 +1242,13 @@ export default function RankedShellProbe() {
           className="pointer-events-auto fixed right-2 top-24 z-[61] rounded bg-cyan-700 px-3 py-2 text-xs text-white"
           onClick={() => setSfxStep((step) => Math.min(5, step + 1))}>
           Advance SFX fixture ({sfxStep}/5)
+        </button>
+      ) : null}
+      {probe.mrStep !== null && probe.mrStep < STAT_CHECK_LIVE_LAST_STEP ? (
+        <button type="button" data-testid="probe-mr-advance"
+          className="pointer-events-auto fixed right-2 top-24 z-[61] rounded bg-cyan-700 px-3 py-2 text-xs text-white"
+          onClick={() => setMrStep((step) => Math.min(STAT_CHECK_LIVE_LAST_STEP, step + 1))}>
+          Advance Stat Check ({mrStep}/{STAT_CHECK_LIVE_LAST_STEP})
         </button>
       ) : null}
       {beatPreview === "meta" && (
