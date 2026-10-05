@@ -25,7 +25,7 @@ import type {
  * invented, and everything the helpers treat as optional stays absent rather
  * than being filled in with a plausible value. In particular there is no
  * `freshness` and no `first_frame_ts`: an archive row genuinely does not carry
- * them, so `gameClock` returns null and no elapsed time is claimed.
+ * them (and since PP-IA2 no surface claims an elapsed time from frames).
  */
 export function asSummary(row: ArchiveGame): LiveGameSummary {
   return {
@@ -229,19 +229,36 @@ export type SeriesResult = {
   bestOf: number;
 };
 
+/**
+ * The side that won ONE archived game, or null.
+ *
+ * PP-IA2: Riot's series record (`result`) is the only source of a result. An
+ * unconfirmed game has no winner, and a game whose schedule and telemetry
+ * disagree about sides has an official winner but no side to mark. Only a
+ * row from a backend that predates `result` falls back to its legacy
+ * structure-inferred `winner`.
+ */
+export function archiveWinner(g: ArchiveGame): "blue" | "red" | null {
+  if (g.result !== undefined) {
+    return g.result?.status === "official" ? g.result.winner_side : null;
+  }
+  return g.final ? g.winner : null;
+}
+
 export function seriesResult(group: SeriesGroup): SeriesResult | null {
   const g = group.lead;
-  // A game still in progress, or one whose winner the store will not claim,
-  // says nothing about the series.
-  if (!g.final || !g.winner) return null;
+  const winner = archiveWinner(g);
+  // A game still in progress, or one whose winner the record does not
+  // confirm, says nothing about the series.
+  if (!g.final || !winner) return null;
   const bestOf = g.best_of;
   if (!bestOf || bestOf < 1) return null;
   const blueWins = g.teams.blue?.series_wins;
   const redWins = g.teams.red?.series_wins;
   if (blueWins == null || redWins == null) return null;
 
-  const blue = blueWins + (g.winner === "blue" ? 1 : 0);
-  const red = redWins + (g.winner === "red" ? 1 : 0);
+  const blue = blueWins + (winner === "blue" ? 1 : 0);
+  const red = redWins + (winner === "red" ? 1 : 0);
   const needed = Math.floor(bestOf / 2) + 1;
   if (blue < needed && red < needed) return null;
   return { blue, red, winner: blue > red ? "blue" : "red", bestOf };

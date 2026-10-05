@@ -23,6 +23,7 @@ import {
   isUnplayed,
   quickFilters,
   recentFrom,
+  archiveWinner,
   seriesResult,
   sharedPatch,
   toggleQuickFilter,
@@ -61,15 +62,15 @@ describe("asSummary", () => {
   it("feeds the viewer's own display helpers without a second code path", () => {
     const s = asSummary(ROW);
     expect(competitionLine(s)).toEqual(["LEC", "Summer 2026", "Playoffs · Finals"]);
-    expect(seriesContext(s)).toBe("Bo5 · Game 3 · Series 1–1");
+    // PP-IA2: no unlabelled entering score in the shared helper.
+    expect(seriesContext(s)).toBe("Bo5 · Game 3");
     expect(patchLabel(s.patch_version)).toBe("16.17");
     expect(matchDate(s)).toBeTruthy();
   });
 
   it("invents no elapsed time for a row that carries no frame clock", () => {
-    // An archive row has no `first_frame_ts`, so the viewer's `gameClock`
-    // returns null and the row shows no duration — rather than "0:00", the
-    // exact false claim the match centre already had to fix.
+    // An archive row has no `first_frame_ts`. (PP-IA2 removed the frame-span
+    // "duration" everywhere; this pins that the row never carries one.)
     expect(asSummary(ROW).first_frame_ts).toBeNull();
     expect(asSummary(ROW).freshness.source_frame_ts).toBeNull();
   });
@@ -565,3 +566,35 @@ describe("isUnfinished", () => {
     expect(isUnfinished(seriesGame())).toBe(false);
   });
 });
+
+/* ── PP-IA2: results come from Riot's series record only ─────────────────── */
+
+describe("archiveWinner", () => {
+  const official = (side: "blue" | "red" | null) => ({
+    status: "official" as const,
+    winner_team_id: "t",
+    winner_side: side,
+    basis: "series_progression" as const,
+  });
+  const unconfirmed = { status: "unconfirmed" as const, winner_team_id: null, winner_side: null, basis: null };
+
+  it("marks the side the series record names", () => {
+    expect(archiveWinner({ ...ROW, winner: "red", result: official("blue") })).toBe("blue");
+  });
+
+  it("marks nobody for an unconfirmed result, whatever the structure rule inferred", () => {
+    // The legacy `winner` is the inhibitor/tower inference; it never decides.
+    expect(archiveWinner({ ...ROW, winner: "blue", result: unconfirmed })).toBeNull();
+    expect(archiveWinner({ ...ROW, winner: "blue", result: null })).toBeNull();
+  });
+
+  it("marks no side when schedule and telemetry disagree on sides", () => {
+    expect(archiveWinner({ ...ROW, winner: "blue", result: official(null) })).toBeNull();
+  });
+
+  it("falls back to the legacy field only for a backend that sends no result", () => {
+    const { result: _drop, ...legacy } = { ...ROW, winner: "blue" as const, result: undefined };
+    expect(archiveWinner(legacy as ArchiveGame)).toBe(ROW.final ? "blue" : null);
+  });
+});
+

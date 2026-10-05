@@ -6,15 +6,20 @@
  * `match_id`, and without grouping a Bo5 reads as five unrelated fixtures. The
  * hub groups them here and draws ONE rail entry per series.
  *
- * WHO WON EACH GAME — ONLY FROM WHAT THE FEED ALREADY SAYS:
+ * WHO WON EACH GAME — ONLY WHAT RIOT'S SERIES RECORD SAYS (PP-IA2):
  *
- * - `series_wins` on a game is the score ENTERING that game (LIVE1 freezes it
- *   when the game stops being current). So for any game followed by another
- *   one in the feed, its winner is the team whose count went up by one.
- * - The last game of a series has no successor. Its winner comes from its own
- *   final team state through `isWinner` — the live page's rule and the
- *   archive's `winning_side`, the same rule — and stays unknown when that rule
- *   abstains. An unknown result is never guessed from kills.
+ * - The backend's `series` record (`/games/{id}`, PP-IA2) names every game's
+ *   result from Riot's own `gameWins` readings, validated and fail-closed,
+ *   and carries the completed series' FINAL score. When the hub holds it, it
+ *   is the only source.
+ * - Without it (an older backend, or a game whose detail is not loaded),
+ *   `series_wins` on a game is the score ENTERING that game, so a game
+ *   followed by the next one in the feed is won by the team whose count rose
+ *   by one — the same record, checked the same way (each reading must total
+ *   `game_number - 1`).
+ * - Nothing else decides a result. The inhibitor/tower rule this file used
+ *   for a series' last game is gone: a structure lead is not a result, and an
+ *   unconfirmed game stays unconfirmed.
  *
  * Teams are matched across games by identity, never by side: blue and red
  * swap between games of a series.
@@ -24,11 +29,17 @@
  * played game and never an upcoming match; it is dropped here, and a series
  * made only of such rows is not drawn at all.
  */
-import type { LiveGameSummary, LiveTeamState, LiveTeamSummary } from "@/lib/live-esports/api";
-import { isWinner, statusTone } from "@/pages/esports/live/lib";
+import type {
+  LiveGameDetailResponse,
+  LiveGameSummary,
+  LiveSeriesRecord,
+  LiveTeamSummary,
+} from "@/lib/live-esports/api";
+import { statusTone } from "@/pages/esports/live/lib";
 
-type Side = "blue" | "red";
-export type TeamStates = Partial<Record<Side, LiveTeamState>> | null | undefined;
+/** What the hub knows of a game beyond the feed: its `/games/{id}` detail's
+ *  PP-IA2 fields. Either may be absent (older backend, not loaded yet). */
+export type GameRecord = Pick<LiveGameDetailResponse, "result" | "series"> | null | undefined;
 
 /** The three states a reader is shown. Anything else (a stale or failing
  *  feed) keeps the live page's own honest pill. */
@@ -57,32 +68,57 @@ export type HubSeries = {
   /** Ordered as the focus game draws them: a = blue, b = red. */
   a: { team: LiveTeamSummary; id: string | null };
   b: { team: LiveTeamSummary; id: string | null };
-  /** Series score. `known` is false when the last finished game's winner
-   *  could not be established, so the score may be one game short. */
-  score: { a: number; b: number; known: boolean };
+  /** Series score. `final` is Riot's completed series score, as published.
+   *  `known` is false when a finished game's result is unconfirmed, so the
+   *  score may be short. */
+  score: { a: number; b: number; known: boolean; final: boolean };
   decided: boolean;
   state: Extract<MatchState, "live" | "completed">;
 };
 
 const played = (g: LiveGameSummary) => g.availability !== "scheduled";
 
-/** Wins entering a game, keyed by team identity. Null when not published. */
+/** Wins entering a game, keyed by team identity. Null when not published,
+ *  or when the reading cannot be the score ENTERING this game (its total must
+ *  be `game_number - 1`; a later reading already includes the game). */
 function entering(g: LiveGameSummary): Map<string, number> | null {
   const bw = g.teams.blue?.series_wins;
   const rw = g.teams.red?.series_wins;
   const bid = teamIdentity(g.teams.blue);
   const rid = teamIdentity(g.teams.red);
-  if (bw == null || rw == null || !bid || !rid) return null;
+  if (bw == null || rw == null || !bid || !rid || bid === rid) return null;
+  if (g.game_number != null && bw + rw !== g.game_number - 1) return null;
   return new Map([
     [bid, bw],
     [rid, rw],
   ]);
 }
 
-function winnerFromStates(g: LiveGameSummary, states: TeamStates): string | null {
-  if (g.availability !== "finished" || !states) return null;
-  if (isWinner(states, "blue")) return teamIdentity(g.teams.blue);
-  if (isWinner(states, "red")) return teamIdentity(g.teams.red);
+/** The backend's series record for this match, from any of its games. */
+function seriesRecord(
+  key: string,
+  games: readonly LiveGameSummary[],
+  records: Record<string, GameRecord>,
+): LiveSeriesRecord | null {
+  for (const g of [...games].reverse()) {
+    const s = records[g.game_id]?.series;
+    if (s && (!s.match_id || s.match_id === key)) return s;
+  }
+  return null;
+}
+
+/** The official winner's identity for one game, or null. */
+function officialWinner(
+  g: LiveGameSummary,
+  record: LiveSeriesRecord | null,
+  own: GameRecord,
+): string | null {
+  const entry = record?.games.find((x) => x.game_id === g.game_id)?.result ?? own?.result ?? null;
+  if (!entry || entry.status !== "official" || !entry.winner_team_id) return null;
+  // Name the winner by the feed's own team identity for this game.
+  for (const t of [g.teams.blue, g.teams.red]) {
+    if (t?.esports_team_id && t.esports_team_id === entry.winner_team_id) return teamIdentity(t);
+  }
   return null;
 }
 
@@ -90,14 +126,14 @@ function winnerFromStates(g: LiveGameSummary, states: TeamStates): string | null
  * Group feed games into series, in rail order: series with a live game first
  * (in the feed's live order), then the rest by their most recent game.
  *
- * `finalStates` maps game id → its final team state, for the games whose
- * winner cannot be read from a successor (in practice, each series' last
- * game). Missing entries simply leave that result unknown.
+ * `records` maps game id → that game's `/games/{id}` result and series record
+ * (in practice each series' last game, which the hub loads anyway). Missing
+ * entries leave the results the feed alone cannot confirm unknown.
  */
 export function groupSeries(
   live: readonly LiveGameSummary[],
   recent: readonly LiveGameSummary[],
-  finalStates: Record<string, TeamStates> = {},
+  records: Record<string, GameRecord> = {},
 ): HubSeries[] {
   const liveIds = new Set(live.map((g) => g.game_id));
   const order: string[] = [];
@@ -126,49 +162,66 @@ export function groupSeries(
     const aId = teamIdentity(aTeam);
     const bId = teamIdentity(bTeam);
 
+    const record = seriesRecord(key, games, records);
     const seriesGames: SeriesGame[] = games.map((g, i) => {
-      const next = games[i + 1];
-      let winner: string | null = null;
-      const before = entering(g);
-      const after = next && next.game_number === (g.game_number ?? 0) + 1 ? entering(next) : null;
-      if (before && after) {
-        for (const [id, w] of before) {
-          if ((after.get(id) ?? w) === w + 1) winner = id;
+      let winner = officialWinner(g, record, records[g.game_id]);
+      if (!winner && !record && g.availability === "finished") {
+        // No backend record: the feed's own entering scores, checked.
+        const next = games[i + 1];
+        const before = entering(g);
+        const after = next && next.game_number === (g.game_number ?? 0) + 1 ? entering(next) : null;
+        if (before && after && [...before.keys()].every((id) => after.has(id))) {
+          const risers = [...before].filter(([id, w]) => after.get(id) === w + 1);
+          const still = [...before].filter(([id, w]) => after.get(id) === w);
+          if (risers.length === 1 && still.length === 1) winner = risers[0][0];
         }
       }
-      if (!winner && !next) winner = winnerFromStates(g, finalStates[g.game_id]);
       return { game: g, live: liveIds.has(g.game_id), winner };
     });
 
-    // Score: wins entering the last played game, plus that game's result when
-    // it is finished and known. Falls back to counting known winners when the
-    // feed published no running score.
-    const lastEntry = entering(last);
     const lastResult = seriesGames[seriesGames.length - 1];
+    const aKey = aTeam?.esports_team_id ?? null;
+    const bKey = bTeam?.esports_team_id ?? null;
+    const finalWins =
+      record?.score.basis === "upstream_final" && record.state === "completed"
+        ? new Map(record.teams.map((t) => [t.esports_team_id, t.wins]))
+        : null;
     let a: number;
     let b: number;
     let known = true;
-    if (lastEntry && aId && bId) {
-      a = lastEntry.get(aId) ?? 0;
-      b = lastEntry.get(bId) ?? 0;
+    let final = false;
+    if (finalWins && aKey && bKey && finalWins.get(aKey) != null && finalWins.get(bKey) != null) {
+      // Riot's completed series score, as published.
+      a = finalWins.get(aKey)!;
+      b = finalWins.get(bKey)!;
+      final = true;
     } else {
-      const earlier = seriesGames.slice(0, -1);
-      a = earlier.filter((s) => s.winner === aId).length;
-      b = earlier.filter((s) => s.winner === bId).length;
-      if (earlier.some((s) => !s.winner)) known = false;
-    }
-    if (!lastResult.live && last.availability === "finished") {
-      if (lastResult.winner === aId) a += 1;
-      else if (lastResult.winner === bId) b += 1;
-      else known = false;
-    } else if (!lastResult.live) {
-      // Not live, not finished: a stale game. Its result is not a result.
-      known = false;
+      // Wins entering the last played game, plus that game's confirmed
+      // result. Falls back to counting confirmed winners when the feed
+      // published no running score.
+      const lastEntry = entering(last);
+      if (lastEntry && aId && bId) {
+        a = lastEntry.get(aId) ?? 0;
+        b = lastEntry.get(bId) ?? 0;
+      } else {
+        const earlier = seriesGames.slice(0, -1);
+        a = earlier.filter((s) => s.winner === aId).length;
+        b = earlier.filter((s) => s.winner === bId).length;
+        if (earlier.some((s) => !s.winner)) known = false;
+      }
+      if (!lastResult.live && last.availability === "finished") {
+        if (lastResult.winner === aId) a += 1;
+        else if (lastResult.winner === bId) b += 1;
+        else known = false;
+      } else if (!lastResult.live) {
+        // Not live, not finished: a stale game. Its result is not a result.
+        known = false;
+      }
     }
 
     const bestOf = focus.best_of ?? null;
     const needed = bestOf ? Math.floor(bestOf / 2) + 1 : 1;
-    const decided = known && Math.max(a, b) >= needed;
+    const decided = final || (known && Math.max(a, b) >= needed);
     out.push({
       key,
       games: seriesGames,
@@ -176,7 +229,7 @@ export function groupSeries(
       bestOf,
       a: { team: aTeam, id: aId },
       b: { team: bTeam, id: bId },
-      score: { a, b, known },
+      score: { a, b, known, final },
       decided,
       state: liveGame ? "live" : "completed",
     });

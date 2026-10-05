@@ -394,9 +394,9 @@ describe("outbound actions", () => {
     expect(link.closest("a")).toHaveAttribute("href", statsExplorerUrl("players", KEY));
   });
 
-  it("builds the stats URL on the explorer's own query contract", () => {
+  it("builds the stats URL on the explorer's own query contract, on the Pro Stats route (PP-IA2)", () => {
     const url = statsExplorerUrl("players", KEY);
-    expect(url.startsWith("/lol/pro-play?")).toBe(true);
+    expect(url.startsWith("/lol/pro-play/stats?")).toBe(true);
     const params = new URLSearchParams(url.split("?")[1]);
     expect(params.get("view")).toBe("players");
     expect(params.get("player")).toBe(KEY);

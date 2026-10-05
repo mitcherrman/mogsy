@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Trophy } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
-import ProStatsExplorer from "@/components/pro-play/ProStatsExplorer";
-import { HubKicker } from "@/components/pro-play/hub/HubSection";
 import MatchCenter from "@/components/pro-play/hub/MatchCenter";
 import MatchWorkspace from "@/components/pro-play/hub/MatchWorkspace";
 import ProPlayDiscovery, { SearchEntry } from "@/components/pro-play/hub/ProPlayDiscovery";
@@ -14,9 +12,15 @@ import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaPr
 import { useChampionAssets } from "@/hooks/useChampionAssets";
 import { fetchLiveGame } from "@/lib/live-esports/api";
 import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useUpcoming } from "@/lib/live-esports/hooks";
-import { gamesNeedingResult, groupSeries, railUpcoming, type TeamStates } from "@/lib/pro-play/hubSeries";
+import { gamesNeedingResult, groupSeries, railUpcoming, type GameRecord } from "@/lib/pro-play/hubSeries";
 import { lanePlayerKey, nextHubAutoGame } from "@/lib/pro-play/hubSelection";
-import { PRO_PLAY_FEATURED_TOURNAMENT, PRO_PLAY_LIVE_GAME_PARAM, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
+import {
+  PRO_PLAY_FEATURED_TOURNAMENT,
+  PRO_PLAY_LIVE_GAME_PARAM,
+  PRO_PLAY_ROUTE,
+  PRO_PLAY_STATS_ROUTE,
+  proStatsRedirect,
+} from "@/lib/pro-play/routes";
 
 /**
  * Pro Play hub — the landing page behind the academy hub's Pro Play book.
@@ -26,14 +30,20 @@ import { PRO_PLAY_FEATURED_TOURNAMENT, PRO_PLAY_LIVE_GAME_PARAM, PRO_PLAY_ROUTE 
  *
  * 1. **Match Center** — one board: the live game if one is on, otherwise the
  *    latest finished one; a rail to switch; the score; objectives and gold.
- * 2. **Match Workspace** — inside that board: the ten players as five
- *    mirrored lane rows. A row opens in place with the players' careers, the
- *    champion pair across pro play and the study destinations.
- * 3. **Discovery** — beside it, match-independent: featured graphs, a glimpse
- *    of the statistics table, the full tools.
- * 4. **Pro Stats** — the statistics table, unchanged. Its URL contract
- *    (`/lol/pro-play?view=…&player=…`, built by `statsExplorerUrl`) is how
- *    every profile's "View in Pro Stats" lands here, so it stays on this page.
+ * 2. **Match Workspace** — inside that board: the ten players as five mirrored
+ *    lane rows. A row opens in place with THIS GAME's facts for both players
+ *    and a labelled "Go deeper" way out to wider scopes.
+ * 3. **Explore** — BELOW the board, under its own heading, match-independent:
+ *    featured graphs, the Pro Stats table's entry and the full tools.
+ *
+ * PP-IA2 — THE SELECTED GAME OWNS THE FIRST SCREEN. Discovery used to sit in
+ * a column beside the board, where all-time prompts (Faker, T1) and a
+ * calendar-year "Most games" leaderboard read as context for the LCS final
+ * on screen. It now sits below, labelled as not about this match, and the
+ * leaderboard glimpse is gone (the table lives at `/lol/pro-play/stats`).
+ * The Pro Stats table itself moved to that route: a hub URL carrying its
+ * query keys (`?view=…&player=…`, every older "View in Pro Stats" link and
+ * shared table URL) is redirected there with those keys intact.
  *
  * PPH3: the rail is per SERIES in three labelled groups — LIVE NOW,
  * PREVIOUS MATCH, UP NEXT — and every match carries an unmistakable LIVE /
@@ -62,29 +72,19 @@ export {
   PRO_PLAY_SEARCH_ROUTE,
 } from "@/lib/pro-play/routes";
 
-/** The Stats Explorer's own query keys. A hub URL carrying any of them came
- *  from a "View in Pro Stats" link, and the reader wants the table. */
-const STATS_EXPLORER_PARAMS = [
-  "view",
-  "year",
-  "league",
-  "patch",
-  "role",
-  "champion",
-  "player",
-  "team",
-  "min_games",
-  "sort",
-  "dir",
-  "page",
-];
-
-export const PRO_STATS_ANCHOR = "pro-stats";
-
 /** Selects an upcoming match (its upstream `match_id`) instead of a game. */
 export const PRO_PLAY_NEXT_PARAM = "next";
 
 export default function ProPlayHub() {
+  const [params] = useSearchParams();
+  // A hub URL carrying the Stats Explorer's keys came from a "View in Pro
+  // Stats" link or a shared table: the table has its own route now.
+  const statsTarget = proStatsRedirect(params);
+  if (statsTarget) return <Navigate to={statsTarget} replace />;
+  return <ProPlayHubPage />;
+}
+
+function ProPlayHubPage() {
   const [params, setParams] = useSearchParams();
 
   /* Selection, the match centre's way: `?game=` is an EXPLICIT choice and is
@@ -110,10 +110,10 @@ export default function ProPlayHub() {
   const { matches: allUpcoming } = useUpcoming();
   const upcoming = useMemo(() => railUpcoming(allUpcoming), [allUpcoming]);
 
-  /* Series: the last game of each series has no successor to read its
-   * result from, so its own final team state is read — the SAME query key
-   * the board uses, so the selected game costs nothing extra, and a finished
-   * game is fetched once and never polled. */
+  /* Series: each series' last game's detail carries the series record
+   * (PP-IA2) — every game's official result and the completed final score —
+   * under the SAME query key the board uses, so the selected game costs
+   * nothing extra, and a finished game is fetched once and never polled. */
   const roughSeries = useMemo(() => groupSeries(live, recent), [live, recent]);
   const resultIds = useMemo(() => gamesNeedingResult(roughSeries), [roughSeries]);
   const results = useQueries({
@@ -125,12 +125,12 @@ export default function ProPlayHub() {
   });
   const resultKey = results.map((r) => (r.data ? r.dataUpdatedAt : 0)).join(",");
   const series = useMemo(() => {
-    const states: Record<string, TeamStates> = {};
+    const records: Record<string, GameRecord> = {};
     resultIds.forEach((id, i) => {
-      const state = results[i]?.data?.team_state;
-      if (state) states[id] = state;
+      const data = results[i]?.data;
+      if (data) records[id] = data;
     });
-    return groupSeries(live, recent, states);
+    return groupSeries(live, recent, records);
     // `results` is a new array every render; `resultKey` is what changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, recent, resultIds, resultKey]);
@@ -141,8 +141,7 @@ export default function ProPlayHub() {
   // A shared link may name a fixture outside the rail's short list.
   const upcomingMatch = nextId ? (allUpcoming.find((m) => m.match_id === nextId) ?? null) : null;
 
-  // Picking a match writes the URL — the copyable address is what is shown —
-  // and keeps every Stats Explorer parameter already there.
+  // Picking a match writes the URL — the copyable address is what is shown.
   const select = (gameId: string) => {
     const next = new URLSearchParams(params);
     next.set(PRO_PLAY_LIVE_GAME_PARAM, gameId);
@@ -159,16 +158,6 @@ export default function ProPlayHub() {
     next.delete(PRO_PLAY_LIVE_GAME_PARAM);
     setParams(next, { replace: true });
   };
-
-  // Arriving with Stats Explorer filters means arriving for the table, which
-  // now sits below the match area: take the reader to it once, on entry.
-  useEffect(() => {
-    if (!STATS_EXPLORER_PARAMS.some((k) => params.has(k))) return;
-    const el = document.getElementById(PRO_STATS_ANCHOR);
-    if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "start" });
-    // Entry only: later filter changes happen while the reader is already there.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const selected = match.selected;
 
@@ -217,56 +206,49 @@ export default function ProPlayHub() {
           </h1>
           <SearchEntry className="order-last w-full sm:order-none sm:w-auto sm:min-w-[11rem] sm:max-w-xl sm:flex-1 xl:min-w-[18rem]" />
           {/* The featured event (DCGI1) rides in this row rather than a band
-              of its own, so the match stays in the first screen. */}
+              of its own, so the match stays in the first screen. It is page
+              chrome, labelled "Featured" — never the selected game's event,
+              which the board's own event band names. */}
           <div className="ml-auto flex min-w-0 items-center gap-5">
-            <TournamentSpotlight contextId={PRO_PLAY_FEATURED_TOURNAMENT} />
-            <a
-              href={`#${PRO_STATS_ANCHOR}`}
+            <TournamentSpotlight contextId={PRO_PLAY_FEATURED_TOURNAMENT} label="Featured" />
+            <Link
+              to={PRO_PLAY_STATS_ROUTE}
               className="hidden whitespace-nowrap text-sm font-medium text-muted-foreground hover:text-foreground hover:underline md:inline"
             >
-              Player statistics
-            </a>
+              Pro Stats
+            </Link>
           </div>
         </header>
 
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_288px]">
-          <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
-            <MatchCenter
-              feed={feed}
-              match={match}
-              series={series}
-              upcoming={upcoming}
-              upcomingMatch={upcomingMatch}
-              selectedId={selectedId}
-              pinnedId={pinnedId}
-              onSelect={select}
-              onSelectUpcoming={selectUpcoming}
-              onClearPin={clearPin}
-              lanes={
-                selected && (
-                  <MatchWorkspace
-                    game={selected}
-                    players={match.players.data?.players}
-                    loading={match.players.isLoading}
-                    failed={match.players.isError}
-                    manifest={manifest}
-                  />
-                )
-              }
-            />
-          </ProPlayMediaProvider>
+        {/* The selected game is the page's one primary object: the board takes
+            the full width, and nothing match-independent sits beside it. */}
+        <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
+          <MatchCenter
+            feed={feed}
+            match={match}
+            series={series}
+            upcoming={upcoming}
+            upcomingMatch={upcomingMatch}
+            selectedId={selectedId}
+            pinnedId={pinnedId}
+            onSelect={select}
+            onSelectUpcoming={selectUpcoming}
+            onClearPin={clearPin}
+            lanes={
+              selected && (
+                <MatchWorkspace
+                  game={selected}
+                  players={match.players.data?.players}
+                  loading={match.players.isLoading}
+                  failed={match.players.isError}
+                  manifest={manifest}
+                />
+              )
+            }
+          />
+        </ProPlayMediaProvider>
 
-          <ProPlayDiscovery manifest={manifest} />
-        </div>
-
-        {/* The statistics table keeps its own wide layout and its URL
-            contract; it is content on this page, not a tool tile. */}
-        <section id={PRO_STATS_ANCHOR} aria-label="Pro Stats" className="scroll-mt-4 pt-4">
-          <div className="mb-3">
-            <HubKicker>Pro Stats</HubKicker>
-          </div>
-          <ProStatsExplorer />
-        </section>
+        <ProPlayDiscovery manifest={manifest} />
       </div>
     </div>
   );

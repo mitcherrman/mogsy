@@ -33,17 +33,17 @@ import type {
   LiveTeamState,
   MatchInsightsResponse,
 } from "@/lib/live-esports/api";
+import { runeLine, runeSummary, type RuneSummary } from "@/lib/live-esports/gameTruth";
 import { buildStory, emptyInsightReason, insightRows } from "./insights";
 import {
   DRAGON_LABEL,
   EVENT_LABEL,
+  FEED_TIME_NOTE,
   SCOPE_TITLE,
-  SERIES_SCORE_TITLE,
   agoLabel,
   clock,
   competitionLine,
   dragonCounts,
-  gameClock,
   kgold,
   matchDateShort,
   matchDateTitle,
@@ -111,7 +111,6 @@ export function MatchCard({
   onSelect: () => void;
 }) {
   const ctx = seriesContext(game, true);
-  const cl = gameClock(game);
   const date = matchDateShort(game);
   // The stage sits on the card because it is what distinguishes two
   // otherwise identical-looking fixtures; the tournament name and
@@ -142,12 +141,7 @@ export function MatchCard({
             {date}
           </span>
         )}
-        {ctx && (
-          <span className="truncate" title={SERIES_SCORE_TITLE}>
-            {ctx}
-          </span>
-        )}
-        {cl && <span className="tabular-nums">{cl}</span>}
+        {ctx && <span className="truncate">{ctx}</span>}
       </div>
     </button>
   );
@@ -197,9 +191,7 @@ export function MatchContext({ game }: { game: LiveGameSummary }) {
         {match.map((part, i) => (
           <span key={part.kind} title={part.title}>
             {i > 0 && <span className="mr-1.5">·</span>}
-            <span className={part.kind === "clock" ? "tabular-nums" : undefined}>
-              {part.text}
-            </span>
+            <span>{part.text}</span>
           </span>
         ))}
       </div>
@@ -555,8 +547,58 @@ export function PlayerRow({
           )}
           {/* Runes and skill order are only rendered when the feed actually
               supplied them; an empty section would imply "none taken". */}
-          <RuneOrSkillBlock label="Runes" raw={(player as { runes?: unknown }).runes} />
-          <RuneOrSkillBlock label="Skill order" raw={(player as { abilities?: unknown }).abilities} />
+          <RunePage runes={runeSummary(player.runes)} />
+          <RuneOrSkillBlock label="Skill order" raw={player.abilities} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One rune icon from the asset host, or nothing — never a wrong picture. */
+export function RuneIcon({ icon, name, className }: { icon: string | null; name: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = resolveAssetUrl(icon);
+  if (!src || failed) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      title={name}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className={cn("h-5 w-5 shrink-0 rounded-full bg-black/30", className)}
+    />
+  );
+}
+
+/**
+ * The rune page as the feed published it (PP-IA1 found it delivered and
+ * never drawn: this block expected an array and the feed sends an object).
+ * Keystone and trees first, then the rest of the page, then the shards.
+ */
+export function RunePage({ runes }: { runes: RuneSummary | null }) {
+  if (!runes) return null;
+  return (
+    <div className="mt-2" data-testid="rune-page">
+      <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Runes</div>
+      <p className="flex items-center gap-1.5 text-xs font-medium">
+        {runes.keystone && <RuneIcon icon={runes.keystone.icon} name={runes.keystone.name} />}
+        <span>{runeLine(runes)}</span>
+      </p>
+      {(runes.minors.length > 0 || runes.shards.length > 0) && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {runes.minors.map((r) => (
+            <span key={r.id} className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[11px]">
+              <RuneIcon icon={r.icon} name={r.name} className="h-4 w-4" />
+              {r.name}
+            </span>
+          ))}
+          {runes.shards.map((name, i) => (
+            <span key={`${name}-${i}`} className="rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+              {name}
+            </span>
+          ))}
         </div>
       )}
     </div>
@@ -624,7 +666,7 @@ export function GoldChart({
             />
             <Tooltip
               contentStyle={{ fontSize: 12 }}
-              labelFormatter={(v) => `Game time ${clock(Number(v))}`}
+              labelFormatter={(v) => `Feed time ${clock(Number(v))}`}
               formatter={(v: number) => [
                 `${v >= 0 ? "Blue" : "Red"} +${Math.abs(v).toLocaleString()}`,
                 "Gold lead",
@@ -643,8 +685,9 @@ export function GoldChart({
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        Gold lead — above zero favours blue side.
+      <p className="mt-1 text-[11px] text-muted-foreground" data-testid="gold-axis-note">
+        Gold lead — above zero favours blue side. The time axis is feed time
+        (since the first captured frame, pauses included), not the game clock.
         {downsampled && " Sampled from the full timeline."}
       </p>
     </div>
@@ -665,36 +708,39 @@ export function EventTimeline({
   }
   const t0 = firstFrameTs ? Date.parse(firstFrameTs) : NaN;
   return (
-    <ol className="space-y-1.5">
-      {events.map((e, i) => {
-        const at = Date.parse(e.frame_ts);
-        const rel =
-          Number.isFinite(t0) && Number.isFinite(at) && at >= t0
-            ? clock(Math.floor((at - t0) / 1000))
-            : null;
-        return (
-          <li key={`${e.frame_ts}-${e.event_type}-${i}`} className="flex items-center gap-2 text-sm">
-            <span
-              className={cn(
-                "h-1.5 w-1.5 shrink-0 rounded-full",
-                e.side === "blue" ? "bg-sky-500" : e.side === "red" ? "bg-rose-500" : "bg-muted-foreground",
-              )}
-            />
-            {/* "~" because these are derived by diffing consecutive frames,
-                not read from Riot-native events — the ordering is real, the
-                second-precision is not. */}
-            <span className="w-12 shrink-0 text-xs tabular-nums text-muted-foreground">
-              {rel ? `~${rel}` : "—"}
-            </span>
-            <span className="truncate">
-              {EVENT_LABEL[e.event_type] || e.event_type}
-              {e.count && e.count > 1 ? ` ×${e.count}` : ""}
-              {e.detail ? ` · ${e.detail}` : ""}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+    <>
+      <p className="mb-1.5 text-[11px] text-muted-foreground">{FEED_TIME_NOTE}</p>
+      <ol className="space-y-1.5">
+        {events.map((e, i) => {
+          const at = Date.parse(e.frame_ts);
+          const rel =
+            Number.isFinite(t0) && Number.isFinite(at) && at >= t0
+              ? clock(Math.floor((at - t0) / 1000))
+              : null;
+          return (
+            <li key={`${e.frame_ts}-${e.event_type}-${i}`} className="flex items-center gap-2 text-sm">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 shrink-0 rounded-full",
+                  e.side === "blue" ? "bg-sky-500" : e.side === "red" ? "bg-rose-500" : "bg-muted-foreground",
+                )}
+              />
+              {/* "~" because these are derived by diffing consecutive frames,
+                  not read from Riot-native events — the ordering is real, the
+                  second-precision is not. */}
+              <span className="w-12 shrink-0 text-xs tabular-nums text-muted-foreground">
+                {rel ? `~${rel}` : "—"}
+              </span>
+              <span className="truncate">
+                {EVENT_LABEL[e.event_type] || e.event_type}
+                {e.count && e.count > 1 ? ` ×${e.count}` : ""}
+                {e.detail ? ` · ${e.detail}` : ""}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </>
   );
 }
 

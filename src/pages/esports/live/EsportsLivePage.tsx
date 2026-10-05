@@ -43,7 +43,13 @@ import {
   StatusPill,
   TeamPanel,
 } from "./components";
-import { TIMELINE_EVENT_TYPES, isWinner, matchTitle } from "./lib";
+import {
+  gameResultView,
+  isOfficialWinner,
+  seriesScoreText,
+  seriesScoreView,
+} from "@/lib/live-esports/gameTruth";
+import { TIMELINE_EVENT_TYPES, matchTitle } from "./lib";
 
 /**
  * Where "Browse archive" should go.
@@ -204,6 +210,8 @@ export default function EsportsLivePage() {
 
   const staleSelected =
     selected && !isFinal && ["stale", "stale_source_failing"].includes(selected.freshness?.label ?? "");
+  const result = gameResultView(detail.data);
+  const seriesScore = seriesScoreView(detail.data?.series, selected);
 
   return (
     <Shell>
@@ -282,6 +290,25 @@ export default function EsportsLivePage() {
               <StatusPill freshness={selected.freshness} />
             </div>
             <MatchContext game={selected} />
+            {/* The series score is the series record's (PP-IA2): the FINAL
+                once Riot published it — never this game's entering score. */}
+            {seriesScore && (
+              <p
+                className="mt-0.5 text-xs font-semibold tabular-nums text-foreground/90"
+                data-testid="live-series-score"
+                title={seriesScore.final ? "Final series score (Riot's series record)" : "Series score so far (Riot's series record)"}
+              >
+                {seriesScoreText(seriesScore)}
+                {!seriesScore.complete && (
+                  <span className="font-normal text-muted-foreground"> · a finished game's result is not confirmed yet</span>
+                )}
+              </p>
+            )}
+            {isFinal && detail.data && (result.kind === "unconfirmed" || result.kind === "unknown") && (
+              <p className="mt-0.5 text-xs text-muted-foreground" data-testid="live-result-note">
+                Result not confirmed — the feed publishes no winner, and Riot's series record does not confirm one yet.
+              </p>
+            )}
           </header>
 
           {staleSelected && (
@@ -329,13 +356,13 @@ export default function EsportsLivePage() {
                     side="blue"
                     team={selected.teams.blue}
                     state={detail.data?.team_state?.blue}
-                    winner={isFinal && isWinner(detail.data?.team_state, "blue")}
+                    winner={isOfficialWinner(result, "blue")}
                   />
                   <TeamPanel
                     side="red"
                     team={selected.teams.red}
                     state={detail.data?.team_state?.red}
-                    winner={isFinal && isWinner(detail.data?.team_state, "red")}
+                    winner={isOfficialWinner(result, "red")}
                   />
                 </div>
               </ProPlayMediaProvider>

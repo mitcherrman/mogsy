@@ -5,14 +5,20 @@
  * (live first, then a FINISHED game, `?game=` never overridden), the
  * workspace's lanes and the existing destinations it joins to (and the gated
  * ones it must not), the match-independent discovery, and the Stats Explorer
- * keeping its place and URL contract on this page.
+ * URL contract (PP-IA2: now on its own route, reached by redirect).
+ *
+ * PP-IA2 also pins STATISTICAL SCOPE: the board's core region carries only
+ * this game's numbers — no career lines, no all-time champion pair, no
+ * leaderboard — and only what the feed or Riot's series record states: kills
+ * labelled as kills, no duration, no structure-inferred winner, the FINAL
+ * series score.
  *
  * Live fixtures follow the real `/api/live-esports/*` shapes the match centre
  * tests use (captured 2026-09-04).
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ProPlayHub, {
@@ -23,7 +29,7 @@ import ProPlayHub, {
   PRO_PLAY_ROUTE,
   PRO_PLAY_SEARCH_ROUTE,
 } from "./ProPlayHub";
-import { PRO_PLAY_LIVE_ARCHIVE_ROUTE } from "@/lib/pro-play/routes";
+import { PRO_PLAY_LIVE_ARCHIVE_ROUTE, PRO_PLAY_STATS_ROUTE } from "@/lib/pro-play/routes";
 import { __resetProPlayMediaCache } from "@/components/pro-play/media/ProPlayMediaProvider";
 import DCGI_PRE_EVENT from "@/lib/pro-play/__fixtures__/tournamentDcgiPreEvent.json";
 
@@ -178,6 +184,8 @@ type Backend = {
   itemIndex?: { id: number; name: string; slug: string }[];
   media?: unknown[];
   teamState?: (id: string) => unknown;
+  /** PP-IA2 `result` / `series` fields of `/games/{id}`; absent = none sent. */
+  record?: (id: string) => Record<string, unknown> | undefined;
 };
 
 let requests: string[] = [];
@@ -255,6 +263,7 @@ function installBackend(opts: Backend) {
           red: { kills: 8, total_gold: 50000, towers: 2, inhibitors: 0, barons: 0, dragons: [], frame_ts: null },
         },
         recent_events: [],
+        ...(opts.record?.(id) ?? {}),
       });
     }
     if (path.includes("/api/graph1/champion-matchup")) {
@@ -277,6 +286,57 @@ function LocationProbe() {
   const l = useLocation();
   location = { pathname: l.pathname, search: l.search };
   return null;
+}
+
+/** The hub inside real routes, for the Pro Stats redirect. */
+function renderRoutes(entry: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route path={PRO_PLAY_ROUTE} element={<ProPlayHub />} />
+          <Route path={PRO_PLAY_STATS_ROUTE} element={<div data-testid="stats-route" />} />
+        </Routes>
+        <LocationProbe />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+/** A `/games/{id}` PP-IA2 record: one official winner by team id, or none. */
+function officialRecord(matchId: string, games: [string, number, string | null, "blue" | "red" | null][], final?: [string, string, number][]) {
+  return {
+    result: null as unknown,
+    series: {
+      contract_version: 1,
+      match_id: matchId,
+      best_of: 3,
+      state: final ? "completed" : "unknown",
+      teams: (final ?? [["b", "GEN", 0], ["r", "T1", 0]]).map(([id, code, wins]) => ({
+        esports_team_id: id,
+        code,
+        name: code,
+        wins: final ? wins : null,
+      })),
+      score: { basis: final ? "upstream_final" : "confirmed_games", complete: !!final },
+      games: games.map(([gameId, n, winner, side]) => ({
+        game_id: gameId,
+        game_number: n,
+        availability: "finished",
+        result: winner
+          ? { status: "official", winner_team_id: winner, winner_side: side, basis: "series_progression" }
+          : { status: "unconfirmed", winner_team_id: null, winner_side: null, basis: null },
+        sides: { consistent: true, swapped: false },
+      })),
+    },
+  };
+}
+
+/** The selected game's own result entry, alongside its series record. */
+function withResult(rec: ReturnType<typeof officialRecord>, gameId: string) {
+  const entry = rec.series.games.find((g) => g.game_id === gameId)!;
+  return { ...rec, result: { ...entry.result, sides: entry.sides } };
 }
 
 function renderHub(entry = PRO_PLAY_ROUTE) {
@@ -336,17 +396,22 @@ describe("ProPlayHub identity", () => {
     }
   });
 
-  it("orders the page Match Center → Workspace → Discover → Pro Stats", async () => {
+  it("orders the page Match Center → Workspace → Explore, with nothing beside the board (PP-IA2)", async () => {
     installBackend({ recent: [summary("g1", "GEN", "T1")] });
     renderHub();
     await screen.findByTestId("match-summary");
-    const ids = ["match-center", "match-workspace", "discover", "pro-stats"].map((id) =>
-      document.getElementById(id),
-    );
+    const ids = ["match-center", "match-workspace", "discover"].map((id) => document.getElementById(id));
     ids.forEach((el) => expect(el).toBeTruthy());
     for (let i = 1; i < ids.length; i++) {
       expect(ids[i - 1]!.compareDocumentPosition(ids[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
+    // Discovery is not inside the board and not a column beside it: the
+    // board and the Explore band are siblings, board first.
+    expect(matchCenter().contains(document.getElementById("discover"))).toBe(false);
+    expect(matchCenter().parentElement).toBe(document.getElementById("discover")!.parentElement);
+    // The Pro Stats table is not on the hub any more.
+    expect(document.getElementById("pro-stats")).toBeNull();
+    expect(screen.queryByTestId("pro-stats-explorer")).toBeNull();
   });
 
   it("shows no UP NEXT at all when the backend has no schedule route", async () => {
@@ -364,6 +429,9 @@ describe("ProPlayHub identity", () => {
     const pill = await screen.findByTestId("tournament-spotlight");
     expect(pill.getAttribute("href")).toBe("/lol/pro-play/tournament/dcgi-2026");
     expect(pill.closest("header")).toBeTruthy();
+    // Page chrome, labelled as such — never read as the selected game's event.
+    expect(within(pill).getByTestId("spotlight-label").textContent).toBe("Featured");
+    expect(matchCenter().contains(pill)).toBe(false);
     const header = pill.closest("header")!;
     // Nothing new between the header and the Match Center.
     expect(header.nextElementSibling?.contains(document.getElementById("match-center"))).toBe(true);
@@ -425,16 +493,13 @@ describe("Match Center selection", () => {
     expect(location.search).toBe("");
   });
 
-  it("writes a rail pick to ?game= and keeps the Stats Explorer's parameters", async () => {
+  it("writes a rail pick to ?game=", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1"), summary("R2", "KT", "NS")] });
-    renderHub(`${PRO_PLAY_ROUTE}?view=teams&year=2026`);
+    renderHub();
     await screen.findByTestId("match-summary");
     const rail = within(matchCenter()).getByRole("group", { name: /Choose a match/i });
     fireEvent.click(within(rail).getByText(/KT/));
     await waitFor(() => expect(new URLSearchParams(location.search).get("game")).toBe("R2"));
-    const params = new URLSearchParams(location.search);
-    expect(params.get("view")).toBe("teams");
-    expect(params.get("year")).toBe("2026");
     expect(await summaryTitle()).toMatch(/KT/);
   });
 
@@ -451,14 +516,71 @@ describe("Match Center selection", () => {
     );
   });
 
-  it("shows the scoreboard and crowns a winner only by the match centre's rule", async () => {
-    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+  it("crowns a winner only when Riot's series record names one (PP-IA2)", async () => {
+    const rec = officialRecord("m-R1", [["R1", 1, "b", "blue"]]);
+    installBackend({ recent: [summary("R1", "GEN", "T1")], record: () => withResult(rec, "R1") });
     renderHub();
     await screen.findByTestId("match-summary");
     await waitFor(() => expect(screen.getByTestId("team-blue").textContent).toMatch(/Winner/));
     expect(screen.getByTestId("team-red").textContent).not.toMatch(/Winner/);
-    // The score is the two teams' kills, in one place.
+    expect(screen.queryByTestId("result-note")).toBeNull();
+  });
+
+  it("never crowns a team from a structure lead: an unconfirmed result says so", async () => {
+    // The default team state is a 2–0 inhibitor, 9–2 tower lead for blue —
+    // exactly what the removed heuristic crowned.
+    const rec = officialRecord("m-R1", [["R1", 1, null, null]]);
+    installBackend({ recent: [summary("R1", "GEN", "T1")], record: () => withResult(rec, "R1") });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    expect(await screen.findByTestId("result-note")).toBeTruthy();
+    expect(screen.getByTestId("result-note").textContent).toMatch(/Result not confirmed/);
+    expect(screen.getByTestId("team-blue").textContent).not.toMatch(/Winner/);
+    expect(screen.getByTestId("team-red").textContent).not.toMatch(/Winner/);
+  });
+
+  it("claims no result at all from a backend that sends none", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    await waitFor(() => expect(screen.getByTestId("result-note").textContent).toMatch(/Result not confirmed/));
+    expect(screen.getByTestId("team-blue").textContent).not.toMatch(/Winner/);
+  });
+
+  it("labels the big number as KILLS — never a bare score — and shows no duration", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    const kills = await within(matchCenter()).findByTestId("kills-score");
+    expect(kills.textContent).toMatch(/^Kills\s*20\s*–\s*8$/);
     expect(within(matchCenter()).getByLabelText("Kills 20 to 8")).toBeTruthy();
+    // No m:ss anywhere in the score header (the frame span is not a game clock).
+    const header = kills.parentElement!.parentElement!;
+    expect(header.textContent).not.toMatch(/\d+:\d\d/);
+    expect(within(matchCenter()).queryByTitle(/Elapsed game time/i)).toBeNull();
+  });
+
+  it("shows the completed series' FINAL score in the event band, not the score entering the game", async () => {
+    // LCS 2026 final shape: G4 entered at TLAW 2–1, the series ended 3–1.
+    const g4 = summary("G4", "TLAW", "LYON", {
+      match_id: "final",
+      best_of: 5,
+      game_number: 4,
+      teams: {
+        blue: { name: "Team Liquid", code: "TLAW", esports_team_id: "tl", resolved_page: null, series_wins: 2 },
+        red: { name: "LYON", code: "LYON", esports_team_id: "ly", resolved_page: null, series_wins: 1 },
+      },
+    });
+    const rec = officialRecord(
+      "final",
+      [["G1", 1, "tl", "blue"], ["G2", 2, "tl", "blue"], ["G3", 3, "ly", "red"], ["G4", 4, "tl", "blue"]],
+      [["tl", "TLAW", 3], ["ly", "LYON", 1]],
+    );
+    installBackend({ recent: [g4], record: () => withResult(rec, "G4") });
+    renderHub();
+    const score = await screen.findByTestId("series-final-score");
+    expect(score.textContent).toBe("Final · TLAW 3–1 LYON");
+    expect(within(screen.getByTestId("event-band")).queryByText(/2–1/)).toBeNull();
+    await waitFor(() => expect(within(screen.getByTestId("match-rail")).getByTestId("series-score").textContent).toBe("3–1"));
   });
 
   it("splits the event (competition) from the match facts, with no 'nothing live' chrome", async () => {
@@ -470,6 +592,8 @@ describe("Match Center selection", () => {
     expect(facts.textContent).toMatch(/Bo3 · .*2026 · Patch 16\.17/);
     // The series score lives on the rail's series chip, not in the facts line.
     expect(facts.textContent).not.toMatch(/Series/);
+    // No duration (PP-IA2).
+    expect(facts.textContent).not.toMatch(/\d+:\d\d/);
     expect(screen.queryByText(/Nothing is live/i)).toBeNull();
   });
 
@@ -519,7 +643,7 @@ describe("Match Center selection", () => {
     renderHub();
     expect(await within(matchCenter()).findByText(/Can't reach the live feed/i)).toBeTruthy();
     expect(screen.getByRole("search", { name: /Search Pro Play/i })).toBeTruthy();
-    expect(screen.getByTestId("pro-stats-explorer")).toBeTruthy();
+    expect(screen.getByTestId("explore-band")).toBeTruthy();
   });
 });
 
@@ -561,51 +685,83 @@ describe("Match Workspace", () => {
     expect(screen.getByTestId("lane-row-mid").textContent).not.toMatch(/[+−±]\d/);
   });
 
-  it("links resolved players to their profiles and shows their career line with its scope", async () => {
+  it("keeps the lane expansion to THIS GAME: no career line, no all-time champion pair (PP-IA2)", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    const lane = await screen.findByTestId("lane-matchup");
+    await screen.findByTestId("go-deeper");
+    expect(within(lane).queryByTestId("career-line")).toBeNull();
+    expect(within(lane).queryByTestId("champion-matchup")).toBeNull();
+    // Neither population is even requested by the board.
+    expect(requests.some((r) => r.includes("/api/pro-play/stats/players"))).toBe(false);
+    expect(requests.some((r) => r.includes("/api/graph1/champion-matchup"))).toBe(false);
+    // Outside the labelled Go deeper block, the expansion prints no record,
+    // no career and no historical game counts.
+    const core = [screen.getByTestId("lane-player-blue"), screen.getByTestId("lane-player-red")]
+      .map((el) => el.textContent ?? "")
+      .join(" ");
+    expect(core).not.toMatch(/career|games|win rate|all-time|\d+–\d+/i);
+  });
+
+  it("shows this game's runes, kill participation and damage share for both players", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      players: [
+        lanePlayer(1, "blue", "top", "Morgan", "Jax", {
+          kill_participation: 0.667,
+          champion_damage_share: 0.25,
+          wards_placed: 11,
+          // LCS 2026 final G4, Morgan: Grasp / Resolve + Sorcery.
+          runes: { style_id: 8400, sub_style_id: 8200, perks: [8437, 8446, 8444, 8242, 8226, 8237, 5005, 5008, 5011] },
+        }),
+        lanePlayer(6, "red", "top", "Dhokla", "Gnar", {
+          runes: { style_id: 8000, sub_style_id: 8400, perks: [8021, 9101, 9104, 8299, 8473, 8242, 5005, 5008, 5011] },
+        }),
+      ],
+    });
+    renderHub();
+    const blue = within(await screen.findByTestId("lane-player-blue"));
+    expect(blue.getByTestId("lane-runes").textContent).toBe("Grasp of the Undying · Resolve / Sorcery");
+    expect(blue.getByTestId("lane-game-stats").textContent).toMatch(/KP 67% · Dmg 25% · Wards 11/);
+    const red = within(screen.getByTestId("lane-player-red"));
+    expect(red.getByTestId("lane-runes").textContent).toBe("Fleet Footwork · Precision / Resolve");
+  });
+
+  it("draws no rune line when the feed sent no rune page", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
     const blue = within(await screen.findByTestId("lane-player-blue"));
-    expect(blue.getByRole("link", { name: "Profile" }).getAttribute("href")).toBe("/lol/pro-play/player/Kiin");
-    await waitFor(() => expect(blue.getByTestId("career-line").textContent).toMatch(/KDA 4\.52/));
-    expect(blue.getByTestId("career-line").getAttribute("title")).toBe("Career · All seasons · all competitions");
-    expect(blue.getByRole("link", { name: /Stats row/i }).getAttribute("href")).toBe(
-      "/lol/pro-play?view=players&player=Kiin",
-    );
-    expect(blue.getByRole("link", { name: /Champion graph/i }).getAttribute("href")).toMatch(
-      /^\/lol\/pro-play\/graphs\?focus=player&vs=champions&e=Kiin/,
-    );
+    expect(blue.queryByTestId("lane-runes")).toBeNull();
   });
 
-  it("draws the lane's champion pair from GRAPH1, blue champion as subject", async () => {
+  it("reaches the historical champion pair in one click, under a labelled scope change", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
-    expect(await screen.findByTestId("champion-matchup")).toBeTruthy();
-    expect(requests.some((r) => r.includes("/api/graph1/champion-matchup") && r.includes("a=ambessa") && r.includes("b=camille"))).toBe(true);
-    expect(screen.getByText(/not a specific pair of players/i)).toBeTruthy();
+    const deeper = within(await screen.findByTestId("go-deeper"));
+    expect(deeper.getByText(/Go deeper/i)).toBeTruthy();
+    expect(deeper.getByText(/beyond this game/i)).toBeTruthy();
+    const pair = deeper.getByRole("link", { name: /Ambessa vs Camille in pro play/i });
+    expect(pair.getAttribute("href")).toBe("/lol/pro-play/graphs?focus=matchup&a=ambessa&b=camille");
+    expect(within(pair).getByTestId("scope-chip").textContent).toBe("Historical · any role");
+    // Every way out names the population it opens.
+    for (const link of deeper.getAllByRole("link")) {
+      expect(within(link).getByTestId("scope-chip").textContent).toBeTruthy();
+    }
   });
 
-  it("links the lane to Combat Lab, the matchup study, Pro Data and the Archives", async () => {
+  it("links the lane to profiles, Combat Lab, the matchup study and champion references, all under Go deeper", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
-    await screen.findByTestId("lane-matchup");
-    const lane = within(await findWorkspace());
-    expect(lane.getByRole("link", { name: /Combat Lab/i }).getAttribute("href")).toBe(
-      "/combat-lab?attacker=ambessa&defender=camille",
-    );
-    expect(lane.getByRole("link", { name: /Matchup study/i }).getAttribute("href")).toBe(
-      "/quiz/matchup?a=ambessa&b=camille",
-    );
-    expect(lane.getByRole("link", { name: /Pro Data/i }).getAttribute("href")).toBe(
-      "/lol/pro-play/graphs?focus=matchup&a=ambessa&b=camille",
-    );
-    const hrefs = (name: string) => lane.getAllByRole("link", { name }).map((a) => a.getAttribute("href"));
-    // Each champion: its pro play profile and its Archives page.
-    expect(hrefs("Ambessa")).toEqual(["/lol/pro-play/champion/Ambessa", "/lol/docs/champions/ambessa"]);
-    expect(hrefs("Camille")).toEqual(["/lol/pro-play/champion/Camille", "/lol/docs/champions/camille"]);
-    // The pair record, compact, with its sample said in words.
-    const pair = lane.getByTestId("champion-matchup");
-    expect(pair.textContent).toMatch(/7–5/);
-    expect(pair.textContent).toMatch(/12 games · Ambessa 58\.3%/);
+    const deeper = within(await screen.findByTestId("go-deeper"));
+    const href = (name: RegExp) => deeper.getByRole("link", { name }).getAttribute("href");
+    expect(href(/Kiin profile/)).toBe("/lol/pro-play/player/Kiin");
+    expect(href(/Doran profile/)).toBe("/lol/pro-play/player/Doran");
+    expect(href(/Combat Lab/)).toBe("/combat-lab?attacker=ambessa&defender=camille");
+    expect(href(/Matchup study/)).toBe("/quiz/matchup?a=ambessa&b=camille");
+    expect(href(/^Ambessa in pro play/)).toBe("/lol/pro-play/champion/Ambessa");
+    expect(href(/^Camille in pro play/)).toBe("/lol/pro-play/champion/Camille");
+    expect(href(/Ambessa reference/)).toBe("/lol/docs/champions/ambessa");
+    expect(href(/Camille reference/)).toBe("/lol/docs/champions/camille");
   });
 
   it("switches lanes, and keeps an unresolved player as plain text with no profile", async () => {
@@ -616,11 +772,12 @@ describe("Match Workspace", () => {
     expect(within(picker).getByRole("button", { name: /Mid/ }).getAttribute("aria-expanded")).toBe("true");
     const red = within(await screen.findByTestId("lane-player-red"));
     await red.findByText("T1 Mystery");
-    expect(red.queryByRole("link", { name: "T1 Mystery" })).toBeNull();
-    expect(red.queryByRole("link", { name: /Profile/i })).toBeNull();
-    expect(red.getByText(/Not matched to a Pro Play profile/i)).toBeTruthy();
-    await waitFor(() =>
-      expect(requests.some((r) => r.includes("a=azir") && r.includes("b=orianna"))).toBe(true),
+    expect(red.getByText("T1 Mystery").getAttribute("title")).toMatch(/Not matched to a Pro Play profile/);
+    const deeper = within(await screen.findByTestId("go-deeper"));
+    expect(deeper.getByRole("link", { name: /Chovy profile/ })).toBeTruthy();
+    expect(deeper.queryByRole("link", { name: /T1 Mystery/ })).toBeNull();
+    expect(deeper.getByRole("link", { name: /Azir vs Orianna/ }).getAttribute("href")).toBe(
+      "/lol/pro-play/graphs?focus=matchup&a=azir&b=orianna",
     );
   });
 
@@ -636,7 +793,7 @@ describe("Match Workspace", () => {
   it("never links the gated Matchup Explorer and invents no match quiz", async () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")] });
     renderHub();
-    await screen.findByTestId("champion-matchup");
+    await screen.findByTestId("go-deeper");
     const hrefs = within(workspace()).getAllByRole("link").map((a) => a.getAttribute("href") ?? "");
     expect(hrefs.some((h) => h.startsWith(PRO_PLAY_MATCHUP_ROUTE))).toBe(false);
     expect(hrefs.some((h) => h.startsWith(PRO_PLAY_QUIZ_ROUTE))).toBe(false);
@@ -710,42 +867,54 @@ describe("Discovery", () => {
   });
 });
 
-/* ── Pro Stats stays ────────────────────────────────────────────────────── */
+/* ── PP-IA2: discovery is labelled, global numbers leave the board ──────── */
 
-describe("Stats glimpse", () => {
-  it("previews the explorer's own default request and leads down to it", async () => {
+describe("Explore band", () => {
+  it("says it is not about the match, and carries no leaderboard", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    const band = screen.getByTestId("explore-band");
+    expect(within(band).getByRole("heading", { level: 2, name: /Explore pro history/i })).toBeTruthy();
+    expect(within(band).getByTestId("explore-scope").textContent).toMatch(/Not about the match above/);
+    // The calendar-year "Most games" leaderboard is not on the hub at all.
+    expect(screen.queryByTestId("stats-glimpse")).toBeNull();
+    expect(screen.queryByText(/Most games/i)).toBeNull();
+    expect(requests.some((r) => r.includes("/api/pro-play/stats/"))).toBe(false);
+    // Global prompts never sit inside the selected-game board.
+    for (const card of screen.getAllByTestId(/^featured-/)) expect(matchCenter().contains(card)).toBe(false);
+  });
+
+  it("leads to Pro Stats on its own route", () => {
     installBackend({ recent: [] });
     renderHub();
-    const glimpse = await screen.findByTestId("stats-glimpse");
-    await waitFor(() =>
-      expect(requests.some((r) => r.includes("/api/pro-play/stats/players?sort=games&dir=desc&page_size=25"))).toBe(true),
-    );
-    expect(within(glimpse).getByRole("link", { name: /Full player statistics/i }).getAttribute("href")).toBe("#pro-stats");
+    expect(screen.getByTestId("pro-stats-entry").getAttribute("href")).toBe(PRO_PLAY_STATS_ROUTE);
+    expect(screen.getByRole("link", { name: "Pro Stats" }).getAttribute("href")).toBe(PRO_PLAY_STATS_ROUTE);
   });
 });
 
-describe("Pro Stats Explorer", () => {
-  it("stays on the hub", () => {
+describe("Pro Stats route (PP-IA2)", () => {
+  it("redirects a 'View in Pro Stats' hub URL to the stats route with its filters intact", async () => {
     installBackend({ recent: [] });
-    renderHub();
-    expect(screen.getByTestId("pro-stats-explorer")).toBeTruthy();
+    renderRoutes(`${PRO_PLAY_ROUTE}?view=players&player=Faker&year=2026&sort=kda&dir=asc&page=2`);
+    await screen.findByTestId("stats-route");
+    expect(location.pathname).toBe(PRO_PLAY_STATS_ROUTE);
+    expect(location.search).toBe("?view=players&player=Faker&year=2026&sort=kda&dir=asc&page=2");
   });
 
-  it("brings a 'View in Pro Stats' arrival straight to the table", () => {
+  it("carries only the table's own keys", async () => {
     installBackend({ recent: [] });
-    const spy = vi.fn();
-    Element.prototype.scrollIntoView = spy;
-    renderHub(`${PRO_PLAY_ROUTE}?view=players&player=Faker`);
-    expect(spy).toHaveBeenCalledOnce();
-    expect(spy.mock.instances[0]).toBe(document.getElementById("pro-stats"));
+    renderRoutes(`${PRO_PLAY_ROUTE}?league=LCK&utm_source=x&min_games=5`);
+    await screen.findByTestId("stats-route");
+    expect(location.search).toBe("?league=LCK&min_games=5");
   });
 
-  it("does not jump a plain hub visit down to the table", () => {
-    installBackend({ recent: [] });
-    const spy = vi.fn();
-    Element.prototype.scrollIntoView = spy;
-    renderHub();
-    expect(spy).not.toHaveBeenCalled();
+  it("leaves a plain hub visit, and a hub URL that selects a match, on the hub", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderRoutes(`${PRO_PLAY_ROUTE}?game=R1&view=teams`);
+    await screen.findByTestId("match-summary");
+    expect(location.pathname).toBe(PRO_PLAY_ROUTE);
+    expect(screen.queryByTestId("stats-route")).toBeNull();
   });
 });
 
@@ -782,21 +951,39 @@ function bo3Series() {
   return [g2, g1];
 }
 
+/** Riot's record for `bo3Series`: GEN ("b") took game 1, T1 ("r") game 2. */
+const bo3Record = (id: string) =>
+  withResult(
+    officialRecord("m-series", [
+      ["S-G1", 1, "b", "blue"],
+      ["S-G2", 2, "r", "blue"],
+    ]),
+    id,
+  );
+
 describe("PPH3 · series and state", () => {
   it("groups a series' games into ONE rail chip with its series score", async () => {
-    installBackend({ recent: [...bo3Series(), summary("X1", "DK", "KT")] });
+    installBackend({ recent: [...bo3Series(), summary("X1", "DK", "KT")], record: bo3Record });
     renderHub();
     await screen.findByTestId("match-summary");
     const chips = within(matchCenter()).getAllByTestId("series-chip");
     expect(chips.length).toBe(2);
-    // Game 1 is read from game 2's entering score (GEN 1–0), and game 2 from
-    // its own final state (blue T1 took more inhibitors): 1–1.
+    // Both results from Riot's series record: GEN took game 1, T1 game 2.
     await waitFor(() => expect(chips[0].textContent).toMatch(/T1\s*1–1\s*GEN/));
     expect(within(chips[0]).getByTestId("match-state").textContent).toMatch(/Completed/i);
   });
 
-  it("puts a tab per played game right after the selected series chip, and switches games", async () => {
+  it("marks the series score as possibly short while the last result is unconfirmed", async () => {
+    // No record: game 2's 2–0 inhibitor lead for blue T1 decides nothing.
     installBackend({ recent: bo3Series() });
+    renderHub();
+    await screen.findByTestId("match-summary");
+    const chip = within(matchCenter()).getAllByTestId("series-chip")[0];
+    await waitFor(() => expect(chip.textContent).toMatch(/T1\s*0–1\*\s*GEN/));
+  });
+
+  it("puts a tab per played game right after the selected series chip, and switches games", async () => {
+    installBackend({ recent: bo3Series(), record: bo3Record });
     renderHub();
     const bar = await screen.findByTestId("series-bar");
     const rail = screen.getByTestId("match-rail");
