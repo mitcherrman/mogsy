@@ -86,6 +86,21 @@ export type LiveGameSummary = {
   scheduled_start: string | null;
   first_frame_ts: string | null;
   freshness: LiveFreshness;
+  /** PP-IA2: whose identity labels the sides. Optional (older backends). */
+  sides?: LiveSides | null;
+};
+
+/**
+ * Which team played which side (PP-IA2, backend `results.reconcile_sides`).
+ * The schedule's per-game side was wrong on seven production games (LES, all
+ * MKF); the backend now labels each side with the team the GAME says played
+ * it. `verified: false` means the game named a different pair than the
+ * schedule and nothing was swapped: the labels may not match the numbers.
+ */
+export type LiveSides = {
+  source: "schedule" | "telemetry";
+  verified: boolean | null;
+  corrected: boolean;
 };
 
 export type LiveTeamState = {
@@ -139,6 +154,68 @@ export type LivePlayer = {
   champion_damage_share: number | null;
   items: number[] | null;
   abilities: string[] | null;
+  /** The feed's rune page (`perkMetadata`), from 2026-08-13 on. Absent on
+   *  games whose details frames carried none. */
+  runes?: LiveRunes | null;
+};
+
+/** Riot perk ids, exactly as the livestats details frame publishes them. */
+export type LiveRunes = {
+  style_id: number | null;
+  sub_style_id: number | null;
+  /** Keystone first, then the primary tree's three, the secondary tree's
+   *  two, then the stat shards. */
+  perks: number[];
+};
+
+/**
+ * One game's result as Riot's own series record states it (PP-IA2; backend
+ * `live_esports/results.py`). Upstream publishes no per-game winner, so this
+ * is the one-win step between two validated `gameWins` readings — never the
+ * old structure heuristic. Anything the record cannot confirm is
+ * `unconfirmed`, and a client must not crown a team for it.
+ */
+export type LiveGameResult = {
+  status: "official" | "unconfirmed" | "in_progress";
+  winner_team_id: string | null;
+  /** Null when the game's sides could not be verified. */
+  winner_side: "blue" | "red" | null;
+  basis: "series_progression" | "series_final" | null;
+  sides?: LiveSides;
+};
+
+export type LiveSeriesTeam = {
+  esports_team_id: string;
+  code: string | null;
+  name: string | null;
+  wins: number | null;
+};
+
+export type LiveSeriesRecord = {
+  contract_version: number;
+  match_id: string | null;
+  best_of: number | null;
+  /** `completed` only when upstream says so AND its final score checks out. */
+  state: "completed" | "in_progress" | "unknown";
+  teams: LiveSeriesTeam[];
+  score: {
+    /** `upstream_final`: Riot's completed series score. `confirmed_games`:
+     *  a count of the games the record confirms. */
+    basis: "upstream_final" | "confirmed_games";
+    /** False when some finished game's result is unconfirmed, so the count
+     *  may be short. */
+    complete: boolean;
+    /** Where a final came from: the daily-synced store row, or a cached
+     *  request-time read of the same getEventDetails record. */
+    final_source?: "live_series" | "upstream_read" | null;
+  };
+  games: {
+    game_id: string;
+    game_number: number;
+    availability: string | null;
+    result: Omit<LiveGameResult, "sides">;
+    sides: LiveSides;
+  }[];
 };
 
 export type LiveGamesResponse = {
@@ -153,6 +230,10 @@ export type LiveGameDetailResponse = {
   game: LiveGameSummary;
   team_state: Partial<Record<"blue" | "red", LiveTeamState>>;
   recent_events: LiveEvent[];
+  /** PP-IA2. Optional: a backend older than PP-IA2 does not send them, and a
+   *  client must then claim no result at all. */
+  result?: LiveGameResult | null;
+  series?: LiveSeriesRecord | null;
 };
 
 export type LivePlayersResponse = {
@@ -424,9 +505,13 @@ export type ArchiveGame = {
   patch_version: string | null;
   availability: string;
   final: boolean;
-  /** Never claimed for a game that is not final, and never inferred from
-   *  kills — the backend returns null rather than guess. */
+  /** LEGACY, inferred: the structure rule (more inhibitors, else a tower
+   *  lead above two). Read only when `result` is absent (a pre-PP-IA2
+   *  backend) — see `archive.archiveWinner`. */
   winner: "blue" | "red" | null;
+  /** PP-IA2: the result Riot's series record confirms. */
+  result?: LiveGameResult | null;
+  sides?: LiveSides | null;
   telemetry: ArchiveTelemetry;
 };
 
