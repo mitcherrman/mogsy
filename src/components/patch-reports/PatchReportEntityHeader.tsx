@@ -120,9 +120,10 @@ export const PatchReportEntityHeader = ({
   const showType = card.entity_type !== "system";
   const count = card.changes.length;
   const share = slots?.entityShare?.(ctx) ?? null;
+  const actions = slots?.entityActions?.(ctx) ?? null;
 
   return (
-    <header className="flex items-start gap-3 px-4 pt-4 sm:gap-4 sm:px-5">
+    <header className="flex flex-wrap items-start gap-3 px-4 pt-4 sm:flex-nowrap sm:gap-4 sm:px-5">
       <EntityImage card={card} />
       <div className="min-w-0 flex-1">
         {(showType || showSection) && (
@@ -170,7 +171,8 @@ export const PatchReportEntityHeader = ({
           )}
         </p>
       </div>
-      {slots?.entityActions && <div className="shrink-0">{slots.entityActions(ctx)}</div>}
+      {/* Wraps under the identity on a phone; an empty slot renders nothing at all. */}
+      {actions && <div className="w-full shrink-0 sm:w-auto">{actions}</div>}
     </header>
   );
 };

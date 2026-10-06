@@ -13,6 +13,7 @@ import { PatchHubSectionNav } from "@/components/patch-reports/PatchHubSectionNa
 import { PatchDataStatusNotice } from "@/components/patch-reports/PatchDataStatusNotice";
 import type { PatchReportEntrySlots } from "@/components/patch-reports/PatchReportEntrySlots";
 import { PatchImpactChangeAnalysis } from "@/components/patch-impact/PatchImpactChangeAnalysis";
+import { CombatLabHandoffLink } from "@/components/patch-hub-combat-lab/CombatLabHandoffLink";
 import { PatchHubViewSwitch, type PatchHubView } from "@/components/patch-reports/PatchHubViewSwitch";
 import { PatchCatchUpView } from "@/components/patch-catchup/PatchCatchUpView";
 import {
@@ -28,6 +29,7 @@ import {
   readRememberedBaseline,
   writeRememberedBaseline,
 } from "@/components/patch-catchup/remembered-baseline";
+import { combatLabHandoffFor } from "@/lib/patch-hub-combat-lab/handoff";
 import { usePatchHubShare } from "@/hooks/usePatchHubShare";
 import { resolveLandingTarget } from "@/lib/patch-hub-share/anchors";
 import { reportAnchorUrl } from "@/lib/patch-hub-share/urls";
@@ -110,6 +112,12 @@ const PatchReports = () => {
       reportVersion
         ? {
             changeAnalysis: (ctx) => <PatchImpactChangeAnalysis ctx={ctx} patchVersion={reportVersion} />,
+            // PH4-C: champion-only handoff; one per entity, never per change, and no patch data.
+            // The slot returns null for ineligible cards so the header adds no empty wrapper.
+            entityActions: ({ entity }) => {
+              const handoff = combatLabHandoffFor(entity.card);
+              return handoff ? <CombatLabHandoffLink handoff={handoff} /> : null;
+            },
             // PH4-A: the entity permalink always names its patch, so a copy never
             // drifts to whatever later becomes "latest".
             entityShare: ({ entity }) => ({
