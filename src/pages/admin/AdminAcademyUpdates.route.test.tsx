@@ -2,7 +2,8 @@
  * /admin/academy-updates — who may reach it.
  *
  * The page sits under the `/admin` layout route, whose `AdminRoute` gate
- * resolves membership through the server-side `has_role` RPC. This suite pins
+ * resolves access through the server-side `owner_auth_state` RPC (OWN1:
+ * one owner; legacy admin/master_admin rows grant nothing). This suite pins
  * the three things that matter about that:
  *
  *   1. a signed-out or ordinary user is refused;
@@ -34,9 +35,15 @@ vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 vi.mock("@/lib/e2e/identity", () => ({ getE2EIdentity: () => null }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: vi.fn(async (_name: string, args: { _role: string }) => {
+    // The server answers ownership; a legacy role name never reaches it.
+    rpc: vi.fn(async (name: string) => {
       if (holdGate) await new Promise(() => {});
-      return { data: grantedRoles.has(args._role), error: null };
+      if (name !== "owner_auth_state") return { data: null, error: { message: "unexpected rpc" } };
+      const owner = grantedRoles.has("owner");
+      return {
+        data: owner ? { is_owner: true, authorized: true, aal: "aal2" } : { is_owner: false, authorized: false },
+        error: null,
+      };
     }),
   },
 }));
@@ -81,19 +88,18 @@ describe("the route gate", () => {
     await waitFor(() => expect(screen.queryByTestId("academy-updates-page")).toBeNull());
   });
 
-  it("admits an admin", async () => {
-    grantedRoles = new Set(["admin"]);
-    renderGuarded();
-    await waitFor(() =>
-      expect(screen.getByTestId("academy-updates-page")).toBeInTheDocument(),
-    );
+  it("refuses a legacy admin / master_admin / moderator (OWN1: roles grant nothing)", async () => {
+    for (const role of ["admin", "master_admin", "moderator"]) {
+      grantedRoles = new Set([role]);
+      renderGuarded();
+      await waitFor(() => expect(screen.getByTestId("home")).toBeInTheDocument());
+      expect(screen.queryByTestId("academy-updates-page")).toBeNull();
+      cleanup();
+    }
   });
 
-  it("admits a master_admin", async () => {
-    // Matching the RLS predicate, where has_role(…, 'admin') is already true
-    // for master_admin — the owner cannot be locked out by holding the higher
-    // role and not the lower one.
-    grantedRoles = new Set(["master_admin"]);
+  it("admits the owner on a trusted session", async () => {
+    grantedRoles = new Set(["owner"]);
     renderGuarded();
     await waitFor(() =>
       expect(screen.getByTestId("academy-updates-page")).toBeInTheDocument(),
