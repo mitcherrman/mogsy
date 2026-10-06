@@ -1,137 +1,53 @@
+// OWN1 — owner-only account actions. Sensitive actions need FRESH aal2.
+// Recovery / verification are DELIVERED TO THE USER by email; no raw action
+// URL is ever returned to the admin UI. Every action writes admin_audit_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.97.0";
+import { requireOwner, auditOwnerAction } from "../_shared/owner.ts";
+import { ADMIN_USER_ACTION_LEVEL, sanitizeAdminActionBody } from "../_shared/owner-decision.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function json(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(sanitizeAdminActionBody(body)), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    const body = await req.json().catch(() => null) as { action?: unknown; target_user_id?: unknown } | null;
+    const action = typeof body?.action === "string" ? body.action : "";
+    const target = typeof body?.target_user_id === "string" ? body.target_user_id : "";
+    const level = ADMIN_USER_ACTION_LEVEL[action];
+    if (!level) return json({ error: "Unknown action" }, 400);
+    if (!UUID.test(target)) return json({ error: "Invalid user ID" }, 400);
+
+    const { decision, ctx } = await requireOwner(req, level);
+    if (!decision.ok || !ctx) return json({ error: decision.ok ? "unauthorized" : decision.code }, decision.ok ? 401 : decision.status);
+
+    const { data: t, error: getErr } = await ctx.service.auth.admin.getUserById(target);
+    if (getErr || !t?.user) {
+      await auditOwnerAction(ctx, `account_${action}`, "not_found", { target_user_id: target });
+      return json({ error: "User not found" }, 404);
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify caller is admin
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
+    const u = t.user;
+    const delivery = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
-
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", user.id).in("role", ["admin", "master_admin"]);
-    if (!roleData || roleData.length === 0) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
-    }
-
-    const { action, target_user_id } = await req.json();
-    if (!action || !target_user_id) {
-      return new Response(JSON.stringify({ error: "action and target_user_id required" }), { status: 400, headers: corsHeaders });
-    }
-
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(target_user_id)) {
-      return new Response(JSON.stringify({ error: "Invalid user ID" }), { status: 400, headers: corsHeaders });
-    }
-
-    console.log(`[AUDIT] admin-user-actions: admin=${user.id} action=${action} target=${target_user_id}`);
-
-    // Get target user info
-    const { data: targetUser, error: getUserError } = await adminClient.auth.admin.getUserById(target_user_id);
-    if (getUserError || !targetUser?.user) {
-      return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: corsHeaders });
-    }
+    const done = async (result: string, extra: Record<string, unknown> = {}, status = 200) => {
+      await auditOwnerAction(ctx, `account_${action}`, result, { target_user_id: target, ...extra });
+      return json({ success: status < 400, result, ...extra }, status);
+    };
 
     switch (action) {
-      case "send_password_reset": {
-        const email = targetUser.user.email;
-        if (!email) {
-          return new Response(JSON.stringify({ error: "User has no email" }), { status: 400, headers: corsHeaders });
-        }
-        // Generate a password reset link via admin API
-        const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-          type: "recovery",
-          email,
-        });
-        if (linkError) {
-          return new Response(JSON.stringify({ error: linkError.message }), { status: 500, headers: corsHeaders });
-        }
-        return new Response(JSON.stringify({ success: true, message: `Password reset link generated for ${email}`, link: linkData?.properties?.action_link }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "resend_verification": {
-        const email = targetUser.user.email;
-        if (!email) {
-          return new Response(JSON.stringify({ error: "User has no email" }), { status: 400, headers: corsHeaders });
-        }
-        if (targetUser.user.email_confirmed_at) {
-          return new Response(JSON.stringify({ error: "Email already confirmed" }), { status: 400, headers: corsHeaders });
-        }
-        const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-          type: "signup",
-          email,
-          password: crypto.randomUUID(), // Required but won't change existing password
-        });
-        if (linkError) {
-          return new Response(JSON.stringify({ error: linkError.message }), { status: 500, headers: corsHeaders });
-        }
-        return new Response(JSON.stringify({ success: true, message: `Verification link generated for ${email}`, link: linkData?.properties?.action_link }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "confirm_email": {
-        // Admin manually confirms user's email
-        const { data: updateData, error: updateError } = await adminClient.auth.admin.updateUserById(target_user_id, {
-          email_confirm: true,
-        });
-        if (updateError) {
-          return new Response(JSON.stringify({ error: updateError.message }), { status: 500, headers: corsHeaders });
-        }
-        return new Response(JSON.stringify({ success: true, message: "Email confirmed manually" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "ban_user": {
-        const { data: banData, error: banError } = await adminClient.auth.admin.updateUserById(target_user_id, {
-          ban_duration: "876000h", // ~100 years
-        });
-        if (banError) {
-          return new Response(JSON.stringify({ error: banError.message }), { status: 500, headers: corsHeaders });
-        }
-        return new Response(JSON.stringify({ success: true, message: "User banned" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "unban_user": {
-        const { data: unbanData, error: unbanError } = await adminClient.auth.admin.updateUserById(target_user_id, {
-          ban_duration: "none",
-        });
-        if (unbanError) {
-          return new Response(JSON.stringify({ error: unbanError.message }), { status: 500, headers: corsHeaders });
-        }
-        return new Response(JSON.stringify({ success: true, message: "User unbanned" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "get_auth_info": {
-        const u = targetUser.user;
-        return new Response(JSON.stringify({
+      case "get_auth_info":
+        await auditOwnerAction(ctx, "account_get_auth_info", "ok", { target_user_id: target });
+        return json({
           success: true,
           auth_info: {
             email: u.email || null,
@@ -143,16 +59,35 @@ Deno.serve(async (req) => {
             banned_until: u.banned_until || null,
             provider: u.app_metadata?.provider || "email",
           },
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      case "send_password_reset": {
+        if (!u.email) return done("no_email", {}, 400);
+        const { error } = await delivery.auth.resetPasswordForEmail(u.email);
+        return error ? done("delivery_failed", {}, 502) : done("email_sent", { sent: true });
       }
-
-      default:
-        return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: corsHeaders });
+      case "resend_verification": {
+        if (!u.email) return done("no_email", {}, 400);
+        if (u.email_confirmed_at) return done("already_confirmed", {}, 400);
+        const { error } = await delivery.auth.resend({ type: "signup", email: u.email });
+        return error ? done("delivery_failed", {}, 502) : done("email_sent", { sent: true });
+      }
+      case "confirm_email": {
+        const { error } = await ctx.service.auth.admin.updateUserById(target, { email_confirm: true });
+        return error ? done("failed", {}, 500) : done("confirmed");
+      }
+      case "ban_user": {
+        if (target === ctx.userId) return done("refused_self", {}, 400);
+        const { error } = await ctx.service.auth.admin.updateUserById(target, { ban_duration: "876000h" });
+        return error ? done("failed", {}, 500) : done("banned");
+      }
+      case "unban_user": {
+        const { error } = await ctx.service.auth.admin.updateUserById(target, { ban_duration: "none" });
+        return error ? done("failed", {}, 500) : done("unbanned");
+      }
     }
+    return json({ error: "Unknown action" }, 400);
   } catch (e) {
-    console.error("admin-user-actions error:", e);
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    console.error("admin-user-actions error", e instanceof Error ? e.message : "unknown");
+    return json({ error: "Internal error" }, 500);
   }
 });

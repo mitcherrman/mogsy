@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.97.0";
+import { requireOwner, auditOwnerAction } from "../_shared/owner.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,29 +28,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify caller is admin
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    // OWN1: owner-only (trusted session). No role lookup.
+    const { decision, ctx } = await requireOwner(req, "trusted");
+    if (!decision.ok || !ctx) {
+      return new Response(JSON.stringify({ error: decision.ok ? "unauthorized" : decision.code }), { status: decision.ok ? 401 : decision.status, headers: corsHeaders });
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify the user is admin using their JWT
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
-
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", user.id).in("role", ["admin", "master_admin"]);
-    if (!roleData || roleData.length === 0) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
-    }
+    const user = { id: ctx.userId };
+    const adminClient = ctx.service;
 
     // Rate limit per admin user
     if (!checkRateLimit(user.id)) {
@@ -76,8 +60,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid user_id format" }), { status: 400, headers: corsHeaders });
     }
 
-    // Audit log: record this access
-    console.log(`[AUDIT] admin-get-emails called by admin=${user.id} for ${user_ids.length} users at ${new Date().toISOString()}`);
+    // Durable audit: this is privileged access to account email addresses.
+    await auditOwnerAction(ctx, "admin_get_emails", "ok", { user_count: user_ids.length });
 
     // Fetch emails from auth.users using service role
     const emailMap: Record<string, string> = {};
