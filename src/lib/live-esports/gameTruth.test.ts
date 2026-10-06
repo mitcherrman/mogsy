@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import type { LiveGameDetailResponse, LivePlayersResponse } from "@/lib/live-esports/api";
 import { proStatsRedirect } from "@/lib/pro-play/routes";
 import G4 from "./__fixtures__/ppia2LcsFinalG4.json";
+import LES_G1 from "./__fixtures__/ppia2LesSwappedG1.json";
 import {
   gameResultView,
   isOfficialWinner,
@@ -15,6 +16,7 @@ import {
   runeSummary,
   seriesScoreText,
   seriesScoreView,
+  sidesUnverified,
 } from "./gameTruth";
 import { RUNE_PERKS, RUNE_TREES } from "./runeData";
 
@@ -151,5 +153,42 @@ describe("proStatsRedirect (Pro Stats URL contract)", () => {
     expect(go("utm_source=x")).toBeNull();
     expect(go("game=1&view=teams")).toBeNull();
     expect(go("next=2&view=teams")).toBeNull();
+  });
+});
+
+/* ── PP-IA2 P0: sides by the game's own identity (LES UCAM vs MKF, G1) ───── */
+
+describe("swapped schedule sides, corrected by the backend", () => {
+  const fixed = LES_G1.detail as unknown as LiveGameDetailResponse;
+  const before = LES_G1.schedule_game as unknown as LiveGameDetailResponse["game"];
+  const lesPlayers = LES_G1.players as unknown as LivePlayersResponse["players"];
+
+  it("documents the bug: the schedule put UCAM on the side whose numbers are MKF's", () => {
+    expect(before.teams.blue.code).toBe("UCAM");
+    expect(fixed.team_state.blue?.esports_team_id).toBe("111692802629324367");
+  });
+
+  it("labels each side with the team whose stats and players it holds", () => {
+    expect(fixed.game.teams.blue.code).toBe("MKF");
+    expect(fixed.game.teams.blue.esports_team_id).toBe(fixed.team_state.blue?.esports_team_id);
+    expect(fixed.game.teams.red.esports_team_id).toBe(fixed.team_state.red?.esports_team_id);
+    for (const p of lesPlayers) {
+      const code = p.side === "blue" ? fixed.game.teams.blue.code : fixed.game.teams.red.code;
+      const prefix = (p.summoner_name ?? "").split(" ")[0];
+      expect(code === "MKF" ? ["MKF", "MKOI"] : ["UCAM"]).toContain(prefix);
+    }
+    expect(fixed.game.sides).toEqual({ source: "telemetry", verified: true, corrected: true });
+    expect(sidesUnverified(fixed.game)).toBe(false);
+  });
+
+  it("keeps the winner's identity and marks the side it actually played", () => {
+    // Series record: MKF went 1-0 up after G1.
+    expect(gameResultView(fixed)).toEqual({ kind: "official", side: "blue", teamId: "111692802629324367" });
+  });
+
+  it("flags a game whose sides could not be verified", () => {
+    expect(sidesUnverified({ sides: { source: "schedule", verified: false, corrected: false } })).toBe(true);
+    expect(sidesUnverified({ sides: { source: "schedule", verified: null, corrected: false } })).toBe(false);
+    expect(sidesUnverified({})).toBe(false);
   });
 });

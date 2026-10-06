@@ -32,6 +32,7 @@ import ProPlayHub, {
 import { PRO_PLAY_LIVE_ARCHIVE_ROUTE, PRO_PLAY_STATS_ROUTE } from "@/lib/pro-play/routes";
 import { __resetProPlayMediaCache } from "@/components/pro-play/media/ProPlayMediaProvider";
 import DCGI_PRE_EVENT from "@/lib/pro-play/__fixtures__/tournamentDcgiPreEvent.json";
+import LES_G1 from "@/lib/live-esports/__fixtures__/ppia2LesSwappedG1.json";
 
 const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
 
@@ -327,7 +328,7 @@ function officialRecord(matchId: string, games: [string, number, string | null, 
         result: winner
           ? { status: "official", winner_team_id: winner, winner_side: side, basis: "series_progression" }
           : { status: "unconfirmed", winner_team_id: null, winner_side: null, basis: null },
-        sides: { consistent: true, swapped: false },
+        sides: { source: "schedule" as const, verified: true, corrected: false },
       })),
     },
   };
@@ -1154,5 +1155,49 @@ describe("PPH3 · entity media", () => {
     renderHub();
     const row = await screen.findByTestId("lane-row-top");
     expect(within(row).getAllByTitle("Level 18").length).toBe(2);
+  });
+});
+
+/* ── PP-IA2 P0: sides follow the game's own team identity ───────────────── */
+
+describe("PP-IA2 · swapped schedule sides (real LES UCAM vs MKF G1)", () => {
+  const d = LES_G1.detail;
+  function install(gameOver: Record<string, unknown> = {}, record: Record<string, unknown> = {}) {
+    const game = { ...d.game, ...gameOver };
+    installBackend({
+      recent: [game],
+      players: LES_G1.players,
+      teamState: () => d.team_state,
+      record: () => ({ result: d.result, series: d.series, ...record }),
+    });
+  }
+
+  it("puts MKF's name over MKF's numbers and players, and marks MKF the winner", async () => {
+    install();
+    renderHub();
+    await screen.findByTestId("match-summary");
+    await waitFor(() => expect(screen.getByTestId("team-blue").textContent).toMatch(/Winner/));
+    expect(screen.getByTestId("team-blue").textContent).toMatch(/MKF/);
+    expect(screen.getByTestId("team-red").textContent).toMatch(/UCAM/);
+    const blueKills = d.team_state.blue.kills;
+    const redKills = d.team_state.red.kills;
+    expect(within(matchCenter()).getByLabelText(`Kills ${blueKills} to ${redKills}`)).toBeTruthy();
+    // The blue lane side is an MKF player.
+    const top = await screen.findByTestId("lane-row-top");
+    const blueTop = LES_G1.players.find((p) => p.side === "blue" && p.role === "top")!;
+    expect(top.textContent).toContain(blueTop.resolved_player_name ?? blueTop.summoner_name);
+    expect(screen.queryByTestId("sides-unverified")).toBeNull();
+  });
+
+  it("says so, and marks no winning side, when the sides could not be verified", async () => {
+    install(
+      { sides: { source: "schedule", verified: false, corrected: false } },
+      { result: { ...d.result, winner_side: null } },
+    );
+    renderHub();
+    expect(await screen.findByTestId("sides-unverified")).toBeTruthy();
+    await screen.findByTestId("result-note");
+    expect(screen.getByTestId("team-blue").textContent).not.toMatch(/Winner/);
+    expect(screen.getByTestId("team-red").textContent).not.toMatch(/Winner/);
   });
 });

@@ -48,6 +48,7 @@ import {
   isOfficialWinner,
   seriesScoreText,
   seriesScoreView,
+  sidesUnverified,
 } from "@/lib/live-esports/gameTruth";
 import { TIMELINE_EVENT_TYPES, matchTitle } from "./lib";
 
@@ -302,6 +303,12 @@ export default function EsportsLivePage() {
                 {!seriesScore.complete && (
                   <span className="font-normal text-muted-foreground"> · a finished game's result is not confirmed yet</span>
                 )}
+              </p>
+            )}
+            {sidesUnverified(selected) && (
+              <p className="mt-0.5 text-xs text-orange-300" data-testid="live-sides-unverified">
+                Which team played which side could not be verified for this game; the team labels may not match the
+                numbers below.
               </p>
             )}
             {isFinal && detail.data && (result.kind === "unconfirmed" || result.kind === "unknown") && (

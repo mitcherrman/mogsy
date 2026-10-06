@@ -73,7 +73,7 @@ function record(
         result: winner
           ? { status: "official" as const, winner_team_id: winner, winner_side: null, basis: "series_progression" as const }
           : { status: "unconfirmed" as const, winner_team_id: null, winner_side: null, basis: null },
-        sides: { consistent: true, swapped: false },
+        sides: { source: "schedule" as const, verified: true, corrected: false },
       })),
     },
   };

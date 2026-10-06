@@ -51,6 +51,7 @@ import {
   seriesScoreText,
   seriesScoreView,
   seriesTeamCode,
+  sidesUnverified,
 } from "@/lib/live-esports/gameTruth";
 import type { useLiveFeed, useLiveMatch } from "@/lib/live-esports/hooks";
 import {
@@ -926,8 +927,8 @@ export default function MatchCenter({
               </div>
               {isFinal && result.kind === "official_unsided" && (
                 <p className="max-w-[12rem] text-xs text-muted-foreground" data-testid="result-note">
-                  {seriesTeamCode(detail.data?.series, result.teamId) ?? "One team"} won (Riot's series record). The
-                  schedule and the game feed disagree on sides, so no side is marked.
+                  {seriesTeamCode(detail.data?.series, result.teamId) ?? "One team"} won (Riot's series record). Which
+                  team played which side could not be verified, so no side is marked.
                 </p>
               )}
               {isFinal && detail.data && (result.kind === "unconfirmed" || result.kind === "unknown") && (
@@ -946,6 +947,17 @@ export default function MatchCenter({
               winner={isOfficialWinner(result, "red")}
             />
           </div>
+
+          {sidesUnverified(selected) && (
+            <p
+              className="mx-4 mb-3 flex items-start gap-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-300"
+              data-testid="sides-unverified"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              The schedule and the game feed name different teams for this game, so which team played which side
+              could not be verified. The team labels may not match the numbers below.
+            </p>
+          )}
 
           {staleSelected && (
             <p className="mx-4 mb-3 flex items-start gap-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-300">

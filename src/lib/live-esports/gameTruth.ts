@@ -33,8 +33,9 @@ type Side = "blue" | "red";
 export type GameResultView =
   /** Riot's record names the winner, on a side the board can mark. */
   | { kind: "official"; side: Side; teamId: string }
-  /** Riot's record names the winner, but the schedule's and telemetry's sides
-   *  disagree, so no side is marked — the team is named instead. */
+  /** Riot's record names the winner, but the game's sides could not be
+   *  verified (the game named a different pair than the schedule), so no side
+   *  is marked — the team is named instead. */
   | { kind: "official_unsided"; side: null; teamId: string }
   /** Finished, but nothing confirms who won. */
   | { kind: "unconfirmed" }
@@ -55,6 +56,15 @@ export function gameResultView(
   }
   if (r.status === "in_progress") return { kind: "in_progress" };
   return { kind: "unconfirmed" };
+}
+
+/**
+ * True when the backend could not verify which team played which side: the
+ * game named a different pair of teams than the schedule, and nothing was
+ * swapped. The board then says so instead of implying its labels are right.
+ */
+export function sidesUnverified(game: Pick<LiveGameSummary, "sides"> | null | undefined): boolean {
+  return game?.sides?.verified === false;
 }
 
 /** True only for a side Riot's record names as the winner. */

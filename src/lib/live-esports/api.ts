@@ -86,6 +86,21 @@ export type LiveGameSummary = {
   scheduled_start: string | null;
   first_frame_ts: string | null;
   freshness: LiveFreshness;
+  /** PP-IA2: whose identity labels the sides. Optional (older backends). */
+  sides?: LiveSides | null;
+};
+
+/**
+ * Which team played which side (PP-IA2, backend `results.reconcile_sides`).
+ * The schedule's per-game side was wrong on seven production games (LES, all
+ * MKF); the backend now labels each side with the team the GAME says played
+ * it. `verified: false` means the game named a different pair than the
+ * schedule and nothing was swapped: the labels may not match the numbers.
+ */
+export type LiveSides = {
+  source: "schedule" | "telemetry";
+  verified: boolean | null;
+  corrected: boolean;
 };
 
 export type LiveTeamState = {
@@ -163,10 +178,10 @@ export type LiveRunes = {
 export type LiveGameResult = {
   status: "official" | "unconfirmed" | "in_progress";
   winner_team_id: string | null;
-  /** Null when the schedule's and the telemetry's sides disagree. */
+  /** Null when the game's sides could not be verified. */
   winner_side: "blue" | "red" | null;
   basis: "series_progression" | "series_final" | null;
-  sides?: { consistent: boolean | null; swapped: boolean };
+  sides?: LiveSides;
 };
 
 export type LiveSeriesTeam = {
@@ -199,7 +214,7 @@ export type LiveSeriesRecord = {
     game_number: number;
     availability: string | null;
     result: Omit<LiveGameResult, "sides">;
-    sides: { consistent: boolean | null; swapped: boolean };
+    sides: LiveSides;
   }[];
 };
 
@@ -496,6 +511,7 @@ export type ArchiveGame = {
   winner: "blue" | "red" | null;
   /** PP-IA2: the result Riot's series record confirms. */
   result?: LiveGameResult | null;
+  sides?: LiveSides | null;
   telemetry: ArchiveTelemetry;
 };
 

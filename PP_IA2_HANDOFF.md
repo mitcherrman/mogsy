@@ -1,10 +1,10 @@
 # PP-IA2: Match Center truth and scope cleanup (handoff)
 
-**Status: implemented and tested on local branches. Not merged, pushed or deployed.** It needs control-center review before integration.
+**Status: direction approved by control center (2026-10-05) with two requirements, both done:** keep the request-time series-final read (`743e5ea8`) within its limits, and fix the swapped-side P0 (§3a). Only the two feature branches are pushed. Nothing is merged or deployed.
 
 | | Branch | Worktree | Base | Head |
 |---|---|---|---|---|
-| Frontend | `ppia2/match-center-truth` | `C:\Users\mlmit\mogzy-wt\ppia2-frontend` | `a1958ff3` (origin/main at start) | see `git log` |
+| Frontend | `ppia2/match-center-truth` | `C:\Users\mlmit\mogzy-wt\ppia2-frontend` | **`d84c0ddd`** (replayed from `a1958ff3`; range-diff `=`) | see `git log` |
 | Backend | `ppia2/live1-result-truth` | `C:\Users\mlmit\mogzy-wt\ppia2-backend` | `62774dfd` (origin/master) | see `git log` |
 
 **Repo heads.** Both repos matched the expected heads when the pass began. During the pass, frontend `origin/main` moved to `d84c0ddd` with two commits, `SCBS1` (Stat Check Arena, `src/pages/dev/ranked-shell-probe/*` and similar). They touch no Pro Play, esports, route or `App.tsx` file. Backend `origin/master` did not move.
@@ -30,7 +30,7 @@ Each claim was checked against current code and real production data: anonymous 
 | Ask Pro Play and "Most games" beside the selected game | **Yes** | They formed the right column at 1440 (`before-prod-1440.jpg`). |
 | "Clear all" on Pro Stats drops `?game=` | **Yes** | `ProStatsExplorer.clearAll` → `setSearchParams({view})` on the shared hub URL. |
 
-**New finding, not in PP-IA1: some games have their sides swapped.** In **7 of 1,257** finished games, all LES (e.g. UCAM–MKF, HRTS–MKF), the schedule's blue/red team ids (`live_games`, from getEventDetails) are the reverse of the telemetry's (`live_team_state`, from the game feed's own metadata). On those boards every number sits under the other team's name. This pass makes results fail closed on those games (§3) but does not relabel the boards. See §9.
+**New finding, not in PP-IA1: some games have their sides swapped.** In **7 of 1,257** finished games, all LES (e.g. UCAM–MKF, HRTS–MKF), the schedule's blue/red team ids (`live_games`, from getEventDetails) are the reverse of the telemetry's (`live_team_state`, from the game feed's own metadata). On those boards every number sat under the other team's name. **Fixed in §3a.**
 
 ---
 
@@ -64,7 +64,7 @@ When the record rises by exactly one win for exactly one team between two consec
 - The final score is used only when the series is `completed` and its total equals the last played game's number.
 - Both readings must name the same two team ids, and the step must be exactly `[0, +1]`.
 - Teams are matched by esports team id, never by side.
-- On a game whose sides are swapped, `winner_side` is `null`: the board marks no side and names the team instead.
+- Sides come from the game's own team identity (§3a). Only when that identity cannot be verified is `winner_side` `null`: the board then marks no side and names the team instead.
 
 **Corpus check (production, 2026-10-05):**
 
@@ -83,12 +83,42 @@ When the record rises by exactly one win for exactly one team between two consec
 - A series' **last** game needs the completed final. In production only some leagues' dailies write `live_series`: the PRODATA1 audit found the hot-store cap refusing dailies and only LCK being synced. Without a fallback, the LCS final's G4 would read "Result not confirmed".
 - `/games/{id}` therefore reads that match's **getEventDetails** at request time, but only when every played game is finished and the store has no usable completed final.
 - The row passes the same `_final` validation as a stored one. `series.score.final_source` is `live_series` or `upstream_read`.
-- **Caching:** a completed read is cached for the life of the process (a final never changes); a failure or an unfinished series retries after 120 s. `/history` never reads upstream, so the archive's last games can still be unconfirmed.
+- **Caching:** a completed read is cached for the life of the process (a final never changes); a failure or an unfinished series retries after 120 s.
+- **Timeout:** the read uses its own source with a **4 s** timeout (`SERIES_FINAL_TIMEOUT_SECONDS`), not the poller's 10 s; a slow upstream means "Result not confirmed".
+- **Limits (as approved):** finished series only, cache-backed, short timeout, fails closed, never fabricates a winner, never writes. `/history` never reads upstream, so the archive's last games can still be unconfirmed.
 - **Switch:** `LIVE_ESPORTS_SERIES_FINAL_READ` (default on). `conftest.py` turns it off so no route test reaches the network.
 - **Verified end to end against real upstream:** with **0** `live_series` rows, G4 returns `official`, TLAW, `final_source: upstream_read`, 3–1. Upstream getEventDetails says G1–G4 `completed`, G5 `unneeded`, TLAW 3 – LYON 1.
 - **Independent ground truth** (Leaguepedia, per PRODATA1): TL / TL / LYON / TL. It matches all four derived results.
 
 ---
+
+## 3a. Swapped sides (P0): root cause and fix
+
+**Root cause.**
+
+- `live_games.{blue,red}_team_*` come from getEventDetails' per-game `teams[].side`, which is a **schedule** field. The poller and the batch sync both copy it.
+- The game server's own `gameMetadata.blueTeamMetadata.esportsTeamId` is stored per side in `live_team_state`. It arrives in the same structure as that side's five participants.
+- In 7 production games (all LES, all involving MKF) the two disagree:
+  - In UCAM–MKF G1, the schedule says UCAM blue. The game says MKF blue, with "MKF XnS", "MKF Fresskowy" and the rest as participants 1–5 (`ppia2_les_swapped_sides_2026.json`, captured from upstream).
+  - In all seven, MKF was on blue by the game's identity, and the schedule had MKF on red.
+- Every stored number (team state, players, frames, gold, events) is keyed by the **game's** side. `_game_summary` labelled the sides from the schedule, so each team's name sat over the other team's stats.
+
+**Fix** (backend `results.reconcile_sides`; no side-position heuristic):
+
+- **The game names the same two teams on opposite sides:** every per-side team field is swapped together: id, name, code, canonical page and entering series wins, which are keyed by team. The result is `sides: {source: telemetry, verified: true, corrected: true}`.
+- **The game names the same teams on the same sides:** the row is returned untouched (`verified: true`).
+- **The game carries no team ids:** the row is unchanged (`verified: null`).
+- **The game names a different pair:** nothing is swapped and no side is claimed (`verified: false`). The frontend shows "which team played which side could not be verified; the team labels may not match the numbers" and marks no winning side.
+
+**Where it applies:** `/games/{id}`, `/live`, `/games`, `/history` and the series derivation. Summaries and browse rows carry `sides`.
+
+**Production replay:** of 1,257 games, **7 corrected, 1,250 verified unchanged, 0 ambiguous**. Every game is consistent afterwards.
+
+**Not changed (ingestion and tools, out of scope; recorded):**
+
+- The backfill and poller pass schedule-side team context to player identity resolution. In the UCAM–MKF games every player resolved by `alias`, so team context was unused, but a `team_disambiguated` resolution on a swapped game could pick the wrong team.
+- `graph1_export` titles its races from schedule names.
+- Both should read the reconciled sides when ingestion is next touched.
 
 ## 4. Series score correction
 
@@ -213,6 +243,16 @@ No ingestion, schema or canonical change. The only new upstream call is the cach
 
 **Backend.**
 
+- `test_live_esports_ppia2_sides.py` (P0, real LES data): **11/11**. Covers:
+  - the root cause on the captured payloads;
+  - all 7 production games relabelled by the game's identity;
+  - names, codes, pages and series wins moving together;
+  - each side's players being that team's;
+  - winners keeping their identity (MKF, UCAM, MKF, MKF; MKF 3–1) and gaining their true side;
+  - consistent games and the LCS final unchanged;
+  - an unrecognised pair never swapped and claiming no side;
+  - no telemetry meaning nothing to verify;
+  - `/games/{id}`, `/live`, `/games` and `/history` all labelled the same way.
 - `test_live_esports_ppia2_results.py`: **16/16**. Covers:
   - the real final with and without the series row;
   - the G4 entering-vs-final score;
@@ -222,7 +262,7 @@ No ingestion, schema or canonical change. The only new upstream call is the cach
   - unplayed and in-progress games;
   - both routes;
   - the upstream final read: the real getEventDetails payload, a read once then cached, the store winning when it has a final, failure and unfinished series staying unconfirmed, a live series never triggering a read, and `/history` never reading upstream.
-- The full LIVE1 suite (`test_live_esports_*.py`): **438 passed, 1 failed**. The failure is `test_archive_dir_unwritable_fails_cleanly`, which also fails on a clean `62774dfd` checkout (Windows permissions). It is pre-existing.
+- The full LIVE1 suite (`test_live_esports_*.py`): **449 passed, 1 failed**. The failure is `test_archive_dir_unwritable_fails_cleanly`, which also fails on a clean `62774dfd` checkout (Windows permissions). It is pre-existing.
 
 **Frontend.**
 
@@ -262,7 +302,7 @@ The extra passing tests on the branch are the new PP-IA2 tests. Every failure is
 - **The archive's last games** (`/history`) stay unconfirmed wherever no daily synced `live_series`. Only `/games/{id}` reads upstream, so as not to fan out one upstream call per browse row (§3).
 - **The hot-store cap** refusing non-LCK dailies is a PRODATA1 / ops item. Fixing it would make the stored final the normal path again.
 - **Heralds and voidgrubs, first-X, draft, bans, summoner spells:** not in LIVE1, so none were invented.
-- **Swapped-side games (7, all LES):** results fail closed, but the boards still put each team's name over the other team's telemetry. The fix is to reconcile `_game_summary` sides against the telemetry team ids at read time. That is a small backend read-model change, flagged rather than done because it changes every summary payload's sides.
+- **Swapped-side games (7, all LES):** fixed (§3a). The ingestion-side identity context noted there is still schedule-sided.
 - **Pre-existing, untouched:**
   - At 390 the red team name breaks mid-word beside its crest ("LYO/N"), the same on production today.
   - The hub rail shows no score for a pinned game outside the 6-game feed tail; the event band now carries it.
@@ -275,9 +315,10 @@ The extra passing tests on the branch are the new PP-IA2 tests. Every failure is
 
 **Deploy order (when approved): backend first** (both commits; no migration). The frontend tolerates a backend without `result` / `series`, but it then claims no winners and shows no series score. The archive falls back to its legacy field only while `result` is absent.
 
-**Exact next step:** a control-center review of this handoff and the screenshots. Then decide:
+**Exact next step:** control center inspects the pushed feature branches. If approved, merge backend `ppia2/live1-result-truth` into `master` and deploy it, then merge frontend `ppia2/match-center-truth` (already on `d84c0ddd`) into `main`. After that, Phase 1 (Game P0) per PP-IA1, with PP-DATA1 in parallel.
 
-1. Approve or reject the request-time getEventDetails read on `/games/{id}` (`743e5ea8`). It is what makes the anchor game's result official in production today. It can be dropped independently of `f122a784`, in which case last games stay unconfirmed where no daily ran.
-2. Approve the swapped-side read-model fix (§9) as a small follow-up.
+**Replay onto `d84c0ddd`:**
 
-After that, integrate backend `ppia2/live1-result-truth` and then frontend `ppia2/match-center-truth` onto current mains (the frontend rebases cleanly over `SCBS1`; no overlap). Then begin Phase 1 (Game P0) per PP-IA1, with PP-DATA1 running in parallel.
+- `git range-diff a1958ff3..c8e608eb d84c0ddd..811e7e0b` shows both commits `=` (identical).
+- `git diff a1958ff3 c8e608eb` and `git diff d84c0ddd 811e7e0b` are byte-identical.
+- The only frontend change on top is the swapped-side commit.
