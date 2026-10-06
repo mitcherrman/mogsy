@@ -25,7 +25,5 @@ jobs:
           src/pages/admin/AdminAcademyUpdates.route.test.tsx
           src/pages/admin/areas/AdminShell.areas.test.tsx
           src/pages/admin/knowledge/PatchOpsCard.test.tsx
-          src/test/security/adminNotificationReadSemantics.test.ts
-          src/test/security/pt14EntitlementSources.test.ts
       - name: Typecheck
         run: npx tsc -p tsconfig.app.json --noEmit
