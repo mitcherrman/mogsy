@@ -36,7 +36,6 @@ const ok = (body: unknown) => ({
 });
 
 beforeEach(() => {
-  adminKey.value = null;
   fetchMock = vi.fn(async () => ok({ capability: CAPABILITY, current: {} }));
   vi.stubGlobal("fetch", fetchMock);
 });
