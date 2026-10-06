@@ -145,6 +145,20 @@ describe("staged Edge Functions", () => {
   });
 });
 
+describe("promoted Edge Functions", () => {
+  const pairs: Array<[string, string]> = [
+    ["_shared/owner.ts", "_shared/owner.ts"],
+    ["_shared/owner-decision.ts", "_shared/owner-decision.ts"],
+    ["admin-user-actions/index.ts", "admin-user-actions/index.ts"],
+    ["admin-get-emails/index.ts", "admin-get-emails/index.ts"],
+    ["purge-anonymous-users/index.ts", "purge-anonymous-users/index.ts"],
+  ];
+  it("live function sources exactly match the reviewed OWN1 staged sources", () => {
+    for (const [live, staged] of pairs) {
+      expect(read(`supabase/functions/${live}`)).toBe(read(`${STAGE}/functions/${staged}`));
+    }
+  });
+});
 describe("production frontend", () => {
   const files = walk("src");
   it("has no X-Admin-Key sender outside the DEV-guarded staff duel prototype", () => {
