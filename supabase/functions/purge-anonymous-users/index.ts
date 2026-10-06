@@ -1,3 +1,4 @@
+import { requireOwner } from "../_shared/owner.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BATCH_SIZE = 400;
@@ -360,26 +361,10 @@ Deno.serve(async (req) => {
         errors: Array.isArray(body.errors) ? body.errors.slice(0, 200) : [],
       };
     } else {
-      // Only the exact service-role secret may bypass the owner-facing admin
-      // gate, and only to carry the automatic continuation state.
-      const anonClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: claimsData, error: claimsError } =
-        await anonClient.auth.getClaims(token);
-      if (claimsError || !claimsData?.claims) return json({ error: "Unauthorized" }, 401);
-
-      const userId = claimsData.claims.sub as string;
-      const { data: roleData, error: roleError } = await anonClient
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-      if (roleError) return json({ error: "Unable to verify admin access" }, 500);
-
-      const roles = (roleData ?? []).map((row: { role: string }) => row.role);
-      if (!roles.includes("admin") && !roles.includes("master_admin")) {
-        return json({ error: "Admin access required" }, 403);
-      }
+      // OWN1: the destructive purge requires owner + FRESH aal2. Only the exact
+      // service-role secret (above) may carry the automatic continuation.
+      const { decision } = await requireOwner(req, "fresh_aal2");
+      if (!decision.ok) return json({ error: decision.code }, decision.status);
 
       state = {
         job_id: crypto.randomUUID(),
