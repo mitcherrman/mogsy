@@ -636,14 +636,25 @@ describe("deep links and the cached-report scroll fix", () => {
 
   it("a new hash on the same cached report follows the new target", async () => {
     const lines = domain("26.18").lines;
+    // Each landing scrolls once and may re-apply once on the next frame (PH4-A), and
+    // whether that frame lands before the next navigation is timing. So assert per
+    // navigation: it scrolls at least once, and only to its own target.
+    const landedSince = async (from: number, target: string) => {
+      await waitFor(() => expect(scrolled.length).toBeGreaterThan(from));
+      // Let the pending re-apply frame run, so it cannot count toward the next landing.
+      await act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+      expect(new Set(scrolled.slice(from))).toEqual(new Set([target]));
+    };
     const { router } = renderHub(`/lol/patch-reports?patch=26.19#${lines[0].target.change}`);
-    await waitFor(() => expect(scrolled).toEqual([lines[0].target.change]));
+    await landedSince(0, lines[0].target.change);
     const before = backend.log.length;
+    let mark = scrolled.length;
     await act(() => router.navigate(`/lol/patch-reports?patch=26.19#${lines[5].target.change}`));
-    await waitFor(() => expect(scrolled).toEqual([lines[0].target.change, lines[5].target.change]));
+    await landedSince(mark, lines[5].target.change);
     // The same hash again (a new navigation) scrolls again.
+    mark = scrolled.length;
     await act(() => router.navigate(`/lol/patch-reports?patch=26.19#${lines[5].target.change}`));
-    await waitFor(() => expect(scrolled).toHaveLength(3));
+    await landedSince(mark, lines[5].target.change);
     expect(backend.log.length).toBe(before);
   });
 

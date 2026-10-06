@@ -150,3 +150,79 @@ Rollback: revert the merge; no data or schema involved. Do not run the whole sui
 ## 14. Should PH4 stop here?
 
 Yes. PH4-A (share), PH4-B (graph) and PH4-C (champion handoff) complete the "graph it, share it, try the champion" loop the audit set out, with no backend work. The remaining audit candidates all need new subsystems or would mislead: champion+level (touches Combat Lab's URL contract), item preload, before/after patch comparison (needs versioned data), quiz, Studio. Do those only on their own briefs. A PH4-D integration pass is optional: this slice touches the same two files PH4-A already integrated, and the combined regression set above already covers A, B and C together.
+
+## Final integration gate (2026-10-06)
+
+### 1. PH3 cached-hash test: root cause
+
+`PatchReports.catchup.test.tsx › a new hash on the same cached report follows the new target`.
+
+**Verdict: the test has a wrong timing assumption (category 4), which PH4-C exposed by adding a little render cost (category 2). It is not a behavioral regression.**
+
+Instrumented (temporary `performance.now()` + `scrolled` dump at each `waitFor`), isolated single-test runs:
+
+| Checkout | Runs | Result | Failing step |
+|---|---|---|---|
+| origin/main `cce36fce` | 10 + 3 | 13/13 pass | none |
+| PH4-C `19aab636` | 3 + 6 | 7/9 pass; **2 failed in isolation** | W3 (same hash again), never W1/W2 |
+
+So it is not load-dependent. It is a race inside one test. Initial landing took ~200–260ms on both checkouts. PH4-C renders 79 `<a>` / 6,240 nodes vs 62 / 6,138 on base.
+
+Mechanism: since PH4-A, each landing calls `scrollIntoView` once immediately and **re-applies once on the next animation frame** (`PatchReports.tsx` landing effect; the frame is cancelled if a newer landing starts first). The test asserted exact call arrays/counts (`[a]`, `[a,b]`, then `toHaveLength(3)`), so it only passed when no re-apply frame fired between `waitFor` resolving and the next `navigate`. Failing runs recorded `W2 scrolled=[a,b,b]` and then `W3 scrolled=[a,b,b,b,b]` (5 ≠ 3, forever). Every recorded scroll hit the **correct** element. PH4-C's slightly heavier re-render widens the gap enough for jsdom's ~16ms frame to land; base just usually wins the race. Nothing in PH4-C touches landing, the hash effect, the query cache, requests or timers.
+
+### 2. Fix (test only)
+
+`src/pages/lol/PatchReports.catchup.test.tsx`: the test now asserts **per navigation** that a new scroll happened (`scrolled.length > mark`) and that every scroll since the mark targets that navigation's anchor. After each landing it flushes one animation frame so a pending re-apply can't be counted as the next landing. The no-new-request assertion is unchanged. No product code changed and no timeout was raised.
+
+### 3. Mutation proof (product mutated temporarily, then restored)
+
+| Mutation in `PatchReports.tsx` | Result |
+|---|---|
+| Landing token ignores `location.key` (same hash re-navigation no longer scrolls) | fails 3/3 (`expected 4 to be greater than 4` at the 3rd landing; the frame flush prevents a false pass) |
+| Landing effect deps reduced to `[catchUp, detail]` (cached report never re-lands on a hash change) | fails 2/2 |
+| Landing scrolls a different element than the hash target | fails 2/2 |
+
+### 4. Repeated runs after the fix (PH4-C worktree)
+
+- Failing test isolated: **10/10** pass (also 10/10 before the frame flush was added).
+- `src/pages/lol/PatchReports*` (PH3/PH4-A/PH4-C page tests): 6 files, **78/78**.
+- PH4-C tests: 2 files, **28/28**.
+- Focused PH1–PH4 regression set (same 46 files as above): **6 runs, 872/872 each** (`--maxWorkers=2` ×3, `4` ×3).
+- ESLint on the changed test: clean.
+
+### 5. Production anonymous users (read-only findings)
+
+Identified exactly from the captured network log of the first certification run (session transcript; Playwright request capture). They were created at about 2026-10-06 18:54Z (11:54 PDT) against project `kewgjwrzpzpeltwidvuc`:
+
+| Viewport | auth user id | Writes observed |
+|---|---|---|
+| Desktop | `b84f3057-271b-46a9-bfa5-4c434a60eb25` | `POST /auth/v1/signup`, `PATCH /rest/v1/profiles?user_id=eq.b84f3057-…` |
+| Mobile | `6c79bcbc-ea19-4ef5-b061-370060cdd427` | `POST /auth/v1/signup`, `PATCH /rest/v1/profiles?user_id=eq.6c79bcbc-…` |
+
+Other requests: `rpc/owner_auth_state` and `rpc/my_pro_entitlement` (reads) and Combat Lab `build-preview` (stateless). Nothing else was written. One request returned 403, which one wasn't recorded. Identification is by exact UUID, not by name, time window or the `PATCH` display name, so there is no ambiguity with real users.
+
+**Not verified:** I could not query production. This machine has no Supabase CLI and no DB credentials, and I didn't use any. The current state of these rows (still existing, any extra data) is unconfirmed. The owner should run this read-only check in the SQL editor first:
+
+```sql
+select id, is_anonymous, email, created_at, last_sign_in_at from auth.users
+ where id in ('b84f3057-271b-46a9-bfa5-4c434a60eb25','6c79bcbc-ea19-4ef5-b061-370060cdd427');
+select * from public.profiles
+ where user_id in ('b84f3057-271b-46a9-bfa5-4c434a60eb25','6c79bcbc-ea19-4ef5-b061-370060cdd427');
+-- any other rows keyed to them:
+select c.table_schema, c.table_name, c.column_name from information_schema.columns c
+ where c.table_schema = 'public' and c.column_name in ('user_id','owner_id','profile_id','created_by');
+-- then count rows per listed table/column for the two ids
+```
+
+Expected: `is_anonymous = true`, null email, `created_at` ≈ 18:54Z on 2026-10-06, one profile each, no other rows.
+
+### 6. Cleanup recommendation (not executed)
+
+- **Do not** use `supabase/functions/purge-anonymous-users`. It deletes every anonymous user (all pages of `listUsers` with `is_anonymous`), which would remove legitimate anonymous visitors.
+- If the check above matches expectations: delete exactly these two ids through the Supabase Dashboard (Authentication → Users → delete) or `auth.admin.deleteUser(id)` with the service role. First delete their `public.profiles` rows with `.eq('user_id', id).eq('is_anonymous', true)`, the same per-user step the purge function uses. Delete by id only, never by name or time range.
+- If any row doesn't match (not anonymous, an email, later sign-ins, other owned data), leave them alone.
+- No legitimate user is touched by an id-scoped delete.
+
+### 7. Merge recommendation
+
+**GO.** The only open test failure was a test defect, now fixed and mutation-proven. The regression set is green 6/6. The production users are a cleanup chore for the owner and don't block the merge.
