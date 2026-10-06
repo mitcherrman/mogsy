@@ -33,7 +33,7 @@ import {
 } from "@/hooks/useChampionAssets";
 import { upsertPlaylist } from "@/lib/quiz-broadcast/storage";
 import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
-import { getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import { QuestionPreviewPanel } from "@/components/question-preview/QuestionPreviewPanel";
 import { describeAssetStatus, type AssetStatus } from "@/lib/quiz/assetStatus";
 import { evaluateContentReadiness } from "@/lib/quiz-screenshot/readiness";
@@ -49,54 +49,10 @@ import {
 } from "@/lib/question-preview/storedQuestionPreviewSource";
 import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
-// ---------------------------------------------------------------------------
-// Admin key (shared with Knowledge Admin — backend uses one KNOWLEDGE_ADMIN_KEY
-// secret for both admin surfaces). Session-scoped; never placed in query keys.
-// ---------------------------------------------------------------------------
-
-function useAdminKey(): string | null {
-  const [key, setKey] = useState<string | null>(getAdminKey);
-  useEffect(() => subscribeAdminKey(() => setKey(getAdminKey())), []);
-  return key;
-}
-
+// OWN1: standalone access is decided by the server-side owner check — there
+// is no browser admin key.
 function isAuthError(err: unknown): boolean {
   return err instanceof QuizAdminAuthError;
-}
-
-function AdminKeyPanel({ invalid }: { invalid: boolean }) {
-  const [value, setValue] = useState("");
-  const save = () => {
-    const v = value.trim();
-    if (v) setAdminKey(v);
-  };
-  return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-3 rounded-lg border border-border bg-muted/20 p-5">
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-amber-400" />
-          <h2 className="text-sm font-semibold">{invalid ? "Admin key invalid" : "Admin key required"}</h2>
-        </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {invalid
-            ? "The saved admin key was rejected. Enter the current X-Admin-Key to continue."
-            : "Enter the X-Admin-Key (KNOWLEDGE_ADMIN_KEY) to load the review console. Stored for this browser session only, and shared with Knowledge Admin."}
-        </p>
-        <Input
-          type="password"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); }}
-          placeholder="X-Admin-Key value"
-          className="h-8 text-xs"
-          autoFocus
-        />
-        <Button size="sm" className="h-7 w-full text-xs" disabled={!value.trim()} onClick={save}>
-          Save key
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1523,12 +1479,10 @@ export default function AdminQuizReview({
   >(null);
 
   const queryClient = useQueryClient();
-  const adminKey = useAdminKey();
-  const hasAdminKey = !!adminKey;
-  // Embedded in the account-bound workspace: authorized by the shared gate via
-  // the Supabase session, so no local admin key is required. Standalone keeps
-  // the key gate.
-  const authorized = embedded || hasAdminKey;
+  const owner = useAdminAuthority();
+  // Embedded: authorized by the shared workspace gate. Standalone: the owner
+  // check (server-side owner_auth_state) — never a browser-held key.
+  const authorized = embedded || owner.isAdmin;
 
   // When authorization changes, refetch the review queries. The raw key is
   // never a query key — invalidation is what ties cache freshness to auth.
@@ -1537,7 +1491,7 @@ export default function AdminQuizReview({
     void queryClient.invalidateQueries({ queryKey: ["review-filter-options"] });
     void queryClient.invalidateQueries({ queryKey: ["review-questions"] });
     void queryClient.invalidateQueries({ queryKey: ["review-question"] });
-  }, [adminKey, authorized, queryClient]);
+  }, [authorized, queryClient]);
 
   const { data: filterOptions } = useQuery({
     queryKey: ["review-filter-options"],
@@ -1772,7 +1726,9 @@ export default function AdminQuizReview({
             Admin authorization is required. Reload the workspace to re-check your session.
           </div>
         ) : (
-          <AdminKeyPanel invalid={hasAdminKey} />
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground" data-testid="review-owner-required">
+            {owner.loading ? "Checking owner access…" : "Owner access is required. Sign in with the owner account and complete verification."}
+          </div>
         )}
       </div>
     );

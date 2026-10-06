@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import SEOHead from "@/components/SEOHead";
 import { quizApi } from "@/lib/quiz/api";
-import { getAdminKey } from "@/lib/knowledge-admin/key";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import {
   DEFAULT_VIDEO_EXPORT_CONFIG,
   SEGMENT_REFERENCE,
@@ -77,7 +77,7 @@ export default function AdminVideoExport() {
   // Populate suggestion lists ONLY when an admin key already exists in this
   // browser session (shared with Quiz Review / Knowledge Admin). Never prompts
   // for a key — inputs degrade to free text when options aren't available.
-  const hasSessionKey = Boolean(getAdminKey());
+  const hasSessionKey = useAdminAuthority().isAdmin; // OWN1: owner check, no key
   const { data: filterOptions } = useQuery({
     queryKey: ["video-export", "filter-options"],
     queryFn: () => quizApi.getReviewFilterOptions(),
