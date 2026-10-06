@@ -51,7 +51,13 @@ export function buildDailyStageResult(run: DailyRun, stage: DailyStage): GameRes
   const mode = `Daily Challenge · ${stagePositionLabel(run, stage)}`;
   const content = stageContentLine(stage);
   if (!r) {
-    return { state: "complete", mode, headline: "Stage over", subheading: content };
+    // A Review has one headline whatever its result, so the pending hero states
+    // it now: on a phone it wraps to two lines, and a one-line "Stage over" that
+    // became two lines when the score landed moved everything under it (DRS1).
+    // Every other kind's headline depends on how the stage ended, which a
+    // pending stage has not been told, so it stays the neutral one-liner.
+    return { state: "complete", mode, headline: stage.kind === "review" ? "Review complete" : "Stage over",
+      subheading: content };
   }
 
   // Survival has no length a player is meant to reach: no denominator.

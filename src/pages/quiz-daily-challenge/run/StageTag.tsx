@@ -40,9 +40,19 @@ export function StageTag({ stage, size = "sm" }: {
  * The day's stages, in order, with where the player is. Pure: status comes
  * off the snapshot. `highlight` marks the stage a beat is about.
  */
-export function StageLadder({ run, highlight = null }: {
+export function StageLadder({ run, highlight = null, reserveMarks = false }: {
   run: DailyRun;
   highlight?: string | null;
+  /**
+   * DRS1 — hold the HIGHLIGHTED item's "complete" mark's width, drawn invisible
+   * until the stage IS complete (every other stage's status is the same before
+   * and after, so only the stage being scored can change width). The ladder
+   * wraps (a five-stage day on a phone), and a stage settling into "✓" grew its
+   * item by the mark's width and could push it onto a new line, moving
+   * everything under the ladder. Off by default: the other beats that draw this
+   * ladder are unchanged.
+   */
+  reserveMarks?: boolean;
 }) {
   return (
     <ol data-testid="daily-stage-ladder" aria-label="Today's stages"
@@ -64,7 +74,9 @@ export function StageLadder({ run, highlight = null }: {
               skipped ? "line-through opacity-60" : ""}`}>
             <span aria-hidden className="tabular-nums opacity-70">{s.index + 1}</span>
             <span>{id.label}</span>
-            {done && <span aria-label="complete">✓</span>}
+            {done ? <span aria-label="complete">✓</span>
+              : reserveMarks && highlight === s.id
+                && <span aria-hidden className="invisible">✓</span>}
           </li>
         );
       })}

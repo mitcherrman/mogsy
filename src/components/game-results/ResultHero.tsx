@@ -40,7 +40,18 @@ const STATE_POSE: Record<ResultState, MogzyMascotPose> = {
   complete: "cheering",
 };
 
-export function ResultHero({ model }: { model: GameResultsModel }) {
+export function ResultHero({ model, reserveScore = false }: {
+  model: GameResultsModel;
+  /**
+   * DRS1 — a surface whose score arrives AFTER the hero is first drawn (the
+   * Daily's pending stage result) asks for the score's slot to be held while
+   * `model.score` is absent: an invisible, aria-hidden row in the same type as
+   * the real score and its label, so the hero is the same height before and
+   * after the number lands. It prints no digit and no word. Off by default, so
+   * every other result is exactly what it was.
+   */
+  reserveScore?: boolean;
+}) {
   const style = STATE_STYLE[model.state];
   const score = model.score ?? null;
   const contestants = model.contestants ?? null;
@@ -107,6 +118,17 @@ export function ResultHero({ model }: { model: GameResultsModel }) {
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           {score.label}
         </p>
+      )}
+      {reserveScore && !score && (
+        <>
+          <div aria-hidden data-testid="result-score-reserve"
+            className="invisible flex items-end justify-center gap-3">
+            <span className="text-5xl font-black leading-none sm:text-6xl">{" "}</span>
+          </div>
+          <p aria-hidden className="invisible text-[10px] font-semibold uppercase tracking-[0.18em]">
+            {" "}
+          </p>
+        </>
       )}
 
       {contestants && (

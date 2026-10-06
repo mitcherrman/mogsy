@@ -22,7 +22,54 @@
  * up at once with "Scoring stage…", and Continue is shown disabled so the
  * layout does not jump when the numbers land. Continue exists only once the
  * parent has advanced past this stage, so it can never run ahead of the server.
+ *
+ * DRS1 — THE FRAME THAT PROMISE NEEDS. "Does not jump" was true of Continue
+ * alone: the pending hero had no score, the pending body was one line, and the
+ * settled body mounted the snapshot grid and the "Up next" row, so the card
+ * grew 150-290px and — `DailyRunPage` centres it — moved up to ~150px the
+ * moment the server stated the result. Every part that arrives later now has a
+ * SLOT whose height is declared, so the settled result fills a slot instead of
+ * creating height:
+ *
+ *   hero score + label   `ResultHero reserveScore` — an invisible row in the
+ *                        score's own type (no digit, no word is printed)
+ *   hero headline        a Review states its one headline while pending
+ *                        (`buildDailyStageResult`), so a phone's two-line wrap
+ *                        is already there
+ *   snapshot             `SNAPSHOT_FLOOR[kind]`, below
+ *   up next / closing    a one-row slot
+ *   ladder               `StageLadder reserveMarks` — the "complete" mark's width,
+ *                        so a stage settling into "✓" cannot re-wrap the ladder
+ *
+ * Nothing is measured at runtime and nothing is invented: a pending stage
+ * prints no figure.
  */
+
+/**
+ * The snapshot slot's floor, by stage kind and breakpoint (the grid goes from
+ * two columns to four at `sm`).
+ *
+ * A kind's optional tiles bound its cell count, and the count sets the rows:
+ * a Review states Answered, Accuracy and Points (3 cells — it has no "For
+ * Review" tile and cannot be ended early); a Standard (and Weak Areas) adds "For Review" (4);
+ * a Time Trial and a Survival can also state how they Finish (5). Rows are
+ * 2 / 2 / 3 below `sm` and 1 / 1 / 2 from it. The floors are the measured
+ * height of the section with EVERY optional tile present, rounded up to the
+ * next quarter-rem: the Finish tile wraps to two lines in a quarter-width tile
+ * ("The bank ran out") and the "For Review" tile carries a hint line, so a
+ * tile is 53-72px and the section is the "Performance" label, the rows and
+ * 8px gaps. The settled grid fills the slot; when it has fewer tiles than its
+ * kind's maximum the slot is simply not full.
+ */
+const SNAPSHOT_FLOOR: Record<DailyStage["kind"], string> = {
+  review: "min-h-[8.75rem] sm:min-h-[4.75rem]",
+  standard: "min-h-[10rem] sm:min-h-[6rem]",
+  weak_areas: "min-h-[10rem] sm:min-h-[6rem]",
+  time_trial: "min-h-[15rem] sm:min-h-[11rem]",
+  survival: "min-h-[15rem] sm:min-h-[11rem]",
+};
+/** One `text-xs` row holding the "Up next" tag (22px). */
+const NEXT_ROW_FLOOR = "min-h-[1.375rem]";
 import type { ReactNode } from "react";
 import { ResultActions } from "@/components/game-results/ResultActions";
 import { ResultHero } from "@/components/game-results/ResultHero";
@@ -80,26 +127,30 @@ export function DailyStageResult({
       <div className="flex justify-center">
         <StageTag stage={stage} size="lg" />
       </div>
-      <ResultHero model={model} />
+      <ResultHero model={model} reserveScore />
 
-      {settled ? (
-        <div data-testid="daily-stage-result-summary">
-          <ResultStatGrid stats={model.snapshot ?? []} />
-        </div>
-      ) : (
-        <p className="ranked-beat__meta text-center" data-testid="daily-stage-result-scoring">
-          Scoring stage…
-        </p>
-      )}
+      <div data-testid="daily-stage-result-snapshot-slot" className={SNAPSHOT_FLOOR[stage.kind]}>
+        {settled ? (
+          <div data-testid="daily-stage-result-summary">
+            <ResultStatGrid stats={model.snapshot ?? []} />
+          </div>
+        ) : (
+          <p className="ranked-beat__meta text-center" data-testid="daily-stage-result-scoring">
+            Scoring stage…
+          </p>
+        )}
+      </div>
 
-      {settled && (next ? (
-        <p className="flex items-center justify-center gap-2 text-xs" data-testid="daily-stage-result-next">
-          <span className="ranked-eyebrow">Up next</span> <StageTag stage={next} />
-        </p>
-      ) : perfectClose ? (
-        <p className="text-center text-xs" data-testid="daily-stage-result-perfect">Nothing to review</p>
-      ) : null)}
-      <StageLadder run={run} highlight={stage.id} />
+      <div data-testid="daily-stage-result-next-slot" className={NEXT_ROW_FLOOR}>
+        {settled && (next ? (
+          <p className="flex items-center justify-center gap-2 text-xs" data-testid="daily-stage-result-next">
+            <span className="ranked-eyebrow">Up next</span> <StageTag stage={next} />
+          </p>
+        ) : perfectClose ? (
+          <p className="text-center text-xs" data-testid="daily-stage-result-perfect">Nothing to review</p>
+        ) : null)}
+      </div>
+      <StageLadder run={run} highlight={stage.id} reserveMarks />
 
       {placed && (
         <div data-testid="daily-stage-result-placement">{placed}</div>
