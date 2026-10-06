@@ -310,9 +310,16 @@ export type Database = {
       }
       analytics_sessions: {
         Row: {
+          active_ms: number
           classification_reason: string | null
+          frontend_release: string | null
           landing_path: string | null
+          last_active_at: string | null
+          last_browser_boundary: string | null
+          last_browser_boundary_observed_at: string | null
           referrer: string | null
+          session_end_observed_at: string | null
+          session_end_reason: string | null
           session_id: string
           started_at: string
           traffic_class: string
@@ -325,9 +332,16 @@ export type Database = {
           visitor_id: string
         }
         Insert: {
+          active_ms?: number
           classification_reason?: string | null
+          frontend_release?: string | null
           landing_path?: string | null
+          last_active_at?: string | null
+          last_browser_boundary?: string | null
+          last_browser_boundary_observed_at?: string | null
           referrer?: string | null
+          session_end_observed_at?: string | null
+          session_end_reason?: string | null
           session_id: string
           started_at?: string
           traffic_class?: string
@@ -340,9 +354,16 @@ export type Database = {
           visitor_id: string
         }
         Update: {
+          active_ms?: number
           classification_reason?: string | null
+          frontend_release?: string | null
           landing_path?: string | null
+          last_active_at?: string | null
+          last_browser_boundary?: string | null
+          last_browser_boundary_observed_at?: string | null
           referrer?: string | null
+          session_end_observed_at?: string | null
+          session_end_reason?: string | null
           session_id?: string
           started_at?: string
           traffic_class?: string
@@ -379,6 +400,30 @@ export type Database = {
           set_by?: string | null
           traffic_class?: string
           traffic_source?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
+      analytics_visitor_user_links: {
+        Row: {
+          first_observed_at: string
+          last_observed_at: string
+          observation_count: number
+          user_id: string
+          visitor_id: string
+        }
+        Insert: {
+          first_observed_at?: string
+          last_observed_at?: string
+          observation_count?: number
+          user_id: string
+          visitor_id: string
+        }
+        Update: {
+          first_observed_at?: string
+          last_observed_at?: string
+          observation_count?: number
+          user_id?: string
           visitor_id?: string
         }
         Relationships: []
@@ -2701,6 +2746,187 @@ export type Database = {
         }
         Relationships: []
       }
+      playtest_cohorts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_slug: string
+          manifest_id: string
+          manifest_version: number
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_slug: string
+          manifest_id: string
+          manifest_version: number
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_slug?: string
+          manifest_id?: string
+          manifest_version?: number
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      playtest_director_state: {
+        Row: {
+          build_step: number
+          cohort_id: string
+          revision: number
+          scene_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          build_step?: number
+          cohort_id: string
+          revision?: number
+          scene_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          build_step?: number
+          cohort_id?: string
+          revision?: number
+          scene_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playtest_director_state_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: true
+            referencedRelation: "playtest_cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playtest_enrollments: {
+        Row: {
+          cohort_id: string
+          daily_plan_date: string | null
+          daily_run_id: string | null
+          daily_run_status: string | null
+          daily_stage_index: number | null
+          daily_stage_status: string | null
+          id: string
+          joined_at: string
+          progress_scene_id: string | null
+          progress_updated_at: string | null
+          session_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          visitor_id: string | null
+        }
+        Insert: {
+          cohort_id: string
+          daily_plan_date?: string | null
+          daily_run_id?: string | null
+          daily_run_status?: string | null
+          daily_stage_index?: number | null
+          daily_stage_status?: string | null
+          id?: string
+          joined_at?: string
+          progress_scene_id?: string | null
+          progress_updated_at?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          visitor_id?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          daily_plan_date?: string | null
+          daily_run_id?: string | null
+          daily_run_status?: string | null
+          daily_stage_index?: number | null
+          daily_stage_status?: string | null
+          id?: string
+          joined_at?: string
+          progress_scene_id?: string | null
+          progress_updated_at?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playtest_enrollments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "playtest_cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playtest_feedback: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          enrollment_id: string
+          id: string
+          prompt_key: string
+          response: Json
+          scene_id: string
+          user_id: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          prompt_key: string
+          response: Json
+          scene_id: string
+          user_id: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          prompt_key?: string
+          response?: Json
+          scene_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playtest_feedback_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "playtest_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playtest_feedback_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "playtest_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       preset_item_images: {
         Row: {
           created_at: string
@@ -3891,8 +4117,23 @@ export type Database = {
         }
         Returns: Json
       }
+      analytics_link_visitor_user: {
+        Args: { p_visitor_id: string }
+        Returns: boolean
+      }
       analytics_promote_session_human: {
         Args: { p_reason?: string; p_session_id: string }
+        Returns: boolean
+      }
+      analytics_record_session_activity: {
+        Args: {
+          p_active_ms: number
+          p_browser_boundary?: string
+          p_end_reason?: string
+          p_last_active_at?: string
+          p_session_id: string
+          p_visitor_id: string
+        }
         Returns: boolean
       }
       apply_pro_grant: {
@@ -4124,6 +4365,115 @@ export type Database = {
       }
       normalize_display_name: { Args: { _name: string }; Returns: string }
       pair_lock_key: { Args: { _a: string; _b: string }; Returns: number }
+      playtest_admin_roster: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          daily_plan_date: string
+          daily_run_id: string
+          daily_run_status: string
+          daily_stage_index: number
+          daily_stage_status: string
+          display_name: string
+          enrollment_id: string
+          feedback: Json
+          joined_at: string
+          progress_scene_id: string
+          progress_updated_at: string
+          status: string
+          user_id: string
+        }[]
+      }
+      playtest_create_cohort: {
+        Args: {
+          p_initial_scene_id: string
+          p_manifest_id: string
+          p_manifest_version: number
+          p_name: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_slug: string
+          manifest_id: string
+          manifest_version: number
+          name: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "playtest_cohorts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      playtest_director_advance: {
+        Args: {
+          p_build_step: number
+          p_cohort_id: string
+          p_expected_revision: number
+          p_scene_id: string
+        }
+        Returns: {
+          applied: boolean
+          build_step: number
+          revision: number
+          scene_id: string
+          updated_at: string
+        }[]
+      }
+      playtest_join: {
+        Args: {
+          p_invite_slug: string
+          p_session_id?: string
+          p_visitor_id?: string
+        }
+        Returns: Json
+      }
+      playtest_report_progress: {
+        Args: {
+          p_daily_plan_date?: string
+          p_daily_run_id?: string
+          p_daily_run_status?: string
+          p_daily_stage_index?: number
+          p_daily_stage_status?: string
+          p_enrollment_id: string
+          p_scene_id?: string
+          p_status: string
+        }
+        Returns: string
+      }
+      playtest_set_cohort_status: {
+        Args: { p_cohort_id: string; p_status: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_slug: string
+          manifest_id: string
+          manifest_version: number
+          name: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "playtest_cohorts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      playtest_status_rank: { Args: { p_status: string }; Returns: number }
+      playtest_submit_feedback: {
+        Args: {
+          p_enrollment_id: string
+          p_prompt_key: string
+          p_response: Json
+          p_scene_id: string
+        }
+        Returns: Json
+      }
       pro_entitlement_is_effective: {
         Args: {
           _grant_expires_at: string
