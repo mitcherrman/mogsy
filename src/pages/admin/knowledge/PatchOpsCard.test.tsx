@@ -7,8 +7,6 @@ import PatchOpsDetail from "./PatchOpsDetail";
 // OWN1: the browser admin key is gone; standalone admin pages are authorized
 // by the server-side owner check, mocked here as an authorized owner.
 vi.mock("@/hooks/useAdminAuthority", () => ({ useAdminAuthority: () => ({ loading: false, isAdmin: true }) }));
-const setAdminKey = (_key: string): void => {};
-const clearAdminKey = (): void => {};
 import type {
   PatchOpsOperation,
   PatchOpsOperationDetail,
@@ -31,10 +29,10 @@ vi.mock("@/hooks/useAuth", () => ({
 
 /* The Supabase singleton reaches for a browser auth store this jsdom setup does
    not provide, and its failure surfaces as an unhandled rejection that Vitest
-   warns can cause false positives. Stubbing the bearer path leaves the explicit
-   X-Admin-Key fallback — the credential these tests assert on — untouched. */
+   warns can cause false positives. OWN1: the stubbed bearer is the ONLY admin
+   credential — there is no X-Admin-Key fallback. */
 vi.mock("@/lib/backend-auth", () => ({
-  getBackendAuthHeaders: async () => ({}),
+  getBackendAuthHeaders: async () => ({ Authorization: "Bearer owner-session" }),
   ensureBackendAuthToken: async () => null,
   getExistingBackendAuthToken: async () => null,
 }));
@@ -119,14 +117,12 @@ function renderDetail(operationId = "26.17#1") {
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  setAdminKey("test-key");
   fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
 });
 
 afterEach(() => {
   cleanup();
-  clearAdminKey();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -354,14 +350,16 @@ describe("PatchOpsCard — backend failure", () => {
 });
 
 describe("PatchOpsCard — request shape", () => {
-  it("calls the admin patch-ops endpoint with the admin credential", async () => {
+  it("calls the admin patch-ops endpoint with the owner bearer and no admin key (OWN1)", async () => {
     fetchMock.mockResolvedValue(json({ operation: operation() }));
     renderCard();
 
     await screen.findByText("26.17");
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toContain("/api/admin/knowledge/patch-ops/latest");
-    expect(new Headers(init.headers).get("X-Admin-Key")).toBe("test-key");
+    const headers = new Headers(init.headers);
+    expect(headers.get("Authorization")).toBe("Bearer owner-session");
+    expect(headers.get("X-Admin-Key")).toBeNull();
     // Read-only surface: never a write verb.
     expect(init.method ?? "GET").toBe("GET");
   });
