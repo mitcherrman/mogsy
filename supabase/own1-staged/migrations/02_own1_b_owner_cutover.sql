@@ -68,6 +68,46 @@ CREATE POLICY "Owner can read all roles" ON public.user_roles
 COMMENT ON TABLE public.user_roles IS
   'OWN1: admin/master_admin/moderator rows are DEPRECATED and grant nothing. Authority = private.owner_config.';
 
+-- --- retire legacy privileged role rows ------------------------------------
+-- The currently deployed legacy admin Edge Functions read user_roles with the
+-- service role, bypassing RLS and has_role(). Merely deprecating these rows
+-- would leave that old path authoritative until those functions are redeployed.
+-- Archive them privately for rollback, then delete them and block recreation.
+CREATE TABLE IF NOT EXISTS private.legacy_privileged_role_backup (
+  user_id uuid NOT NULL,
+  role public.app_role NOT NULL,
+  archived_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, role)
+);
+REVOKE ALL ON private.legacy_privileged_role_backup FROM PUBLIC, anon, authenticated;
+
+INSERT INTO private.legacy_privileged_role_backup (user_id, role)
+SELECT ur.user_id, ur.role
+FROM public.user_roles ur
+WHERE ur.role::text IN ('admin', 'master_admin', 'moderator')
+ON CONFLICT (user_id, role) DO NOTHING;
+
+DELETE FROM public.user_roles
+WHERE role::text IN ('admin', 'master_admin', 'moderator');
+
+CREATE OR REPLACE FUNCTION public.block_legacy_privileged_role_write()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $
+BEGIN
+  IF NEW.role::text IN ('admin', 'master_admin', 'moderator') THEN
+    RAISE EXCEPTION 'legacy_privileged_roles_retired'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$;
+REVOKE ALL ON FUNCTION public.block_legacy_privileged_role_write()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS block_legacy_privileged_role_write ON public.user_roles;
+CREATE TRIGGER block_legacy_privileged_role_write
+  BEFORE INSERT OR UPDATE OF role ON public.user_roles
+  FOR EACH ROW EXECUTE FUNCTION public.block_legacy_privileged_role_write();
+
 -- --- sensitive RPCs: fresh aal2 + owner-write marker -----------------------
 -- Prepends an explicit step-up guard to the existing bodies; the current body
 -- is otherwise preserved byte-for-byte. Idempotent (skips if already guarded).
