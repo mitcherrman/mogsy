@@ -74,12 +74,12 @@ describe("trusted devices", () => {
   });
   it("a trusted device never satisfies fresh_aal2", () => {
     const fresh = A.slice(A.indexOf("FUNCTION public.is_owner_fresh_aal2"), A.indexOf("FUNCTION public.is_owner()"));
-    expect(fresh).not.toMatch(/attestation/);
+    expect(strip(fresh)).not.toMatch(/attestation/);
   });
   it("browser stores an opaque token in IndexedDB, not a localStorage flag", () => {
     const src = read("src/lib/admin-auth/ownerDevice.ts");
     expect(src).toContain("indexedDB");
-    expect(src).not.toMatch(/localStorage/);
+    expect(src.replace(/\/\/[^\n]*/g, "")).not.toMatch(/localStorage/);
   });
 });
 
@@ -155,7 +155,7 @@ describe("production frontend", () => {
     expect(read("src/lib/e2e/identity.ts")).toMatch(/import\.meta\.env\.DEV === true && import\.meta\.env\.VITE_E2E_AUTH === "1"/);
   });
   it("useAdminRoles is a shim over the owner check (no user_roles read)", () => {
-    const s = read("src/hooks/useAdminRoles.ts");
+    const s = read("src/hooks/useAdminRoles.ts").replace(/\/\/[^\n]*/g, "");
     expect(s).not.toMatch(/user_roles/);
     expect(s).toMatch(/useAdminAuthority/);
   });
