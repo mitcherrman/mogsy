@@ -1131,7 +1131,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     requiredRole: "master_admin",
     status: "Production",
     authorization:
-      "AdminRoute (OWN1 owner-only) + AdminAuthGate; backend require_admin — unchanged. The React route is master-only and the Python endpoints are admin-flat, exactly as before.",
+      "AdminRoute (OWN1 owner-only) + AdminAuthGate; backend require_admin. The React route is owner-only; the Python endpoints accept only the owner's Supabase bearer once Railway adopts owner_auth_state.",
   },
   {
     id: "knowledge-queue",
