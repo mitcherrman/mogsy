@@ -91,7 +91,7 @@ DELETE FROM public.user_roles
 WHERE role::text IN ('admin', 'master_admin', 'moderator');
 
 CREATE OR REPLACE FUNCTION public.block_legacy_privileged_role_write()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $owner_role_guard$
 BEGIN
   IF NEW.role::text IN ('admin', 'master_admin', 'moderator') THEN
     RAISE EXCEPTION 'legacy_privileged_roles_retired'
@@ -99,7 +99,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$owner_role_guard$;
 REVOKE ALL ON FUNCTION public.block_legacy_privileged_role_write()
   FROM PUBLIC, anon, authenticated;
 
