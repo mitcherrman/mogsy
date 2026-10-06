@@ -96,3 +96,44 @@ Replace the admin / master_admin / moderator hierarchy with exactly one owner. T
 
 ## Next task
 OWN2: move the staged Edge Functions live, add the Railway JWT + `owner_auth_state` change, add a devices/audit owner page, and replace `has_role` call sites with `is_owner()`.
+
+## Production rollout status — 2026-10-06
+
+### LIVE + VERIFIED
+- Owner MFA enrolled: production has one verified MFA factor on the sole privileged account.
+- OWN1-A owner core applied to production; canonical owner configured.
+- Live owner session verified at AAL2 with MFA AMR claim.
+- owner_auth_state() verified under owner AAL2: is_owner=true, authorized=true, fresh_aal2=true, session_bound=true.
+- OWN1-B cutover applied to production.
+- Legacy privileged user_roles rows archived privately and removed from public.user_roles (2 archived; 0 live).
+- Re-creation of admin/master_admin/moderator rows blocked by trigger.
+- has_role()/is_master_admin() privileged compatibility shims verified: owner AAL2 succeeds; null-auth fails closed.
+- Sensitive RPCs admin_set_pro_grant/admin_create_bot_profile/admin_update_bot_profile/admin_link_friendship verified fresh-AAL2 guarded.
+- OWN1-C reserved-display-name enforcement applied; trigger present.
+- OWN1-D client privilege hardening applied; residual anon/authenticated TRUNCATE/REFERENCES/TRIGGER grants in public = 0.
+- Railway owner-only auth merged and deployed successfully at backend commit 8322e84a822cb6cfbdc4182a31c86de4b2997381; prior deployment removed.
+- Frontend/security reconciliation merged to main.
+- Reviewed owner-only Edge Function sources promoted to live supabase/functions paths and merged at commit 1d660dc549fc46f962698523a9b69ee6cf56486e.
+- Focused OWN1 security suite passed after Edge source promotion.
+
+### PENDING / BLOCKED
+- Supabase Edge Function DEPLOYMENT remains pending for admin-user-actions, admin-get-emails, purge-anonymous-users.
+- The staged owner gate expects OWNER_USER_ID to match private.owner_config. Lovable connector exposes no direct secret/deploy-function action.
+- Lovable AI agent is out of credits, so it cannot currently set OWNER_USER_ID or deploy those three functions.
+- Legacy deployed admin-user-actions/admin-get-emails now fail closed because privileged user_roles rows were removed. This is intentionally safer than leaving the old authority path active, but those admin features may be unavailable until redeployed.
+- purge-anonymous-users service-role continuation remains in its staged reviewed replacement; do not alter production invocation until the replacement is deployed.
+- Frontend production publish was initiated via direct Lovable deploy_project after the database/Railway cutover. Deployment id: 2a135c82-de07-4ece-aa87-5f203eaaba97. Direct connector does not expose deployment-status lookup; public runtime verification from this environment is DNS-blocked.
+
+### NEXT TASK
+1. Once Lovable credits are available, use the existing Match & Rank project agent ONLY to:
+   - read public.owner_configured_id() internally;
+   - set OWNER_USER_ID Edge secret to that UUID without exposing it;
+   - deploy only admin-user-actions, admin-get-emails, purge-anonymous-users from current main;
+   - preserve existing verify_jwt modes.
+2. Verify each deployed function is owner-only and that raw recovery/action URLs are never returned.
+3. Verify owner admin UI on the current trusted/AAL2 device.
+4. Enroll this computer as a trusted device; confirm subsequent normal admin use does not require MFA while sensitive actions still require fresh AAL2.
+5. Verify a non-owner account cannot access /admin, Railway admin routes, owner RPCs, or admin Edge Functions.
+6. Verify a new/untrusted browser requires MFA before admin access.
+7. Remove retired Railway KNOWLEDGE_ADMIN_KEY / MOGSY_ADMIN_USER_IDS / MOGSY_ADMIN_EMAILS variables only after the production owner flow is fully verified.
+
