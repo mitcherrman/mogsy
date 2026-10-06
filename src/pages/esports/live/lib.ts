@@ -66,26 +66,16 @@ export function agoLabel(seconds: number | null | undefined): string | null {
 }
 
 /**
- * Elapsed game time from the stored frame clock, never wall-clock.
- *
- * A zero span is SILENCE, not "0:00". Most finished games in the store hold a
- * single telemetry frame — the live poller's last successful capture — because
- * only the leagues the daily backfill covers get a walked timeline. For those,
- * `first_frame_ts` and the latest frame are the same instant, and a literal
- * "0:00" would tell the reader a 30-minute game lasted no time at all. We know
- * the game's final state; we do not know its duration, so we say nothing.
+ * THERE IS NO GAME CLOCK (PP-IA2). The livestats feed publishes a wall-clock
+ * timestamp and a state per frame, never the in-game time, and no other
+ * upstream call carries a game length. The span from the first to the last
+ * stored frame is NOT a duration: it counts pre-game frames and pauses and
+ * misses whatever was not captured (LCS 2026 final: G4 spans 35:20 for a
+ * 27:02 game, G1 26:20 for a 35:10 one). So no duration is shown anywhere,
+ * and a time axis built on frames says what it is: feed time.
  */
-export function gameClock(game: LiveGameSummary | null | undefined): string | null {
-  const start = game?.first_frame_ts;
-  const latest = game?.freshness?.source_frame_ts;
-  if (!start || !latest) return null;
-  const a = Date.parse(start);
-  const b = Date.parse(latest);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null;
-  const seconds = Math.floor((b - a) / 1000);
-  if (seconds <= 0) return null;
-  return clock(seconds);
-}
+export const FEED_TIME_NOTE =
+  "Feed time: time since the first captured frame. It includes pre-game frames and pauses, so it is not the game clock.";
 
 export function clock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -117,21 +107,19 @@ export function matchTitle(g: LiveGameSummary): string {
 }
 
 /**
- * "Bo3 · Game 2 · Series 1–0" — only the parts we actually know.
+ * "Bo3 · Game 2" — only the parts we actually know.
  *
- * The score is the one entering this game: LIVE1 freezes a game's series
- * wins when it stops being the current game of the match, so game 3 of a
- * 1-1 series reads "Series 1–1" and not the eventual result. `compact`
- * drops the words for the selector cards, which have ~220px to work with.
+ * No score (PP-IA2). A game's `series_wins` is the score ENTERING it, and an
+ * unlabelled "Series 2–1" on the final's Game 4 read as the result of a
+ * series TLAW won 3–1. The series score comes from the series record
+ * (`gameTruth.seriesScoreView`); a surface that wants the entering score
+ * prints it under its own label (`SERIES_SCORE_TITLE`). `compact` drops the
+ * words for the selector cards, which have ~220px to work with.
  */
 export function seriesContext(g: LiveGameSummary, compact = false): string | null {
   const parts: string[] = [];
   if (g.best_of) parts.push(`Bo${g.best_of}`);
   if (g.game_number) parts.push(compact ? `G${g.game_number}` : `Game ${g.game_number}`);
-  const bw = g.teams.blue?.series_wins;
-  const rw = g.teams.red?.series_wins;
-  const score = `${bw}–${rw}`;
-  if (bw != null && rw != null) parts.push(compact ? score : `Series ${score}`);
   return parts.length ? parts.join(" · ") : null;
 }
 
@@ -283,15 +271,16 @@ export function patchLabel(raw: string | null | undefined): string | null {
 }
 
 export type MatchLinePart = {
-  kind: "date" | "series" | "clock" | "patch";
+  kind: "date" | "series" | "patch";
   text: string;
   title?: string;
 };
 
 /**
- * "Aug 16, 2026 · Bo3 · Game 3 · Series 1–1 · 38:28 · Patch 16.15" — the
- * match line, as tagged parts so the renderer never has to guess which
- * segment is the date (a locale-dependent string) to attach its tooltip.
+ * "Aug 16, 2026 · Bo3 · Game 3 · Patch 16.15" — the match line, as tagged
+ * parts so the renderer never has to guess which segment is the date (a
+ * locale-dependent string) to attach its tooltip. No duration (there is no
+ * game clock) and no entering score (see `seriesContext`).
  */
 export function matchLine(g: LiveGameSummary | null | undefined): MatchLinePart[] {
   if (!g) return [];
@@ -299,9 +288,7 @@ export function matchLine(g: LiveGameSummary | null | undefined): MatchLinePart[
   const date = matchDate(g);
   if (date) parts.push({ kind: "date", text: date, title: matchDateTitle(g) });
   const series = seriesContext(g);
-  if (series) parts.push({ kind: "series", text: series, title: SERIES_SCORE_TITLE });
-  const cl = gameClock(g);
-  if (cl) parts.push({ kind: "clock", text: cl, title: "Elapsed game time" });
+  if (series) parts.push({ kind: "series", text: series });
   const patch = patchLabel(g.patch_version);
   if (patch) parts.push({ kind: "patch", text: `Patch ${patch}`, title: g.patch_version ?? undefined });
   return parts;
@@ -353,22 +340,9 @@ export const TIMELINE_EVENT_TYPES = [
   "team_kill",
 ];
 
-/** Highest kills wins is wrong; the store has no explicit winner field, so we
- * only claim a winner when one side actually destroyed more inhibitors or
- * clearly leads on towers at the final frame. When it is ambiguous we say
- * nothing rather than guess. Shared by the match centre and the Pro Play hub
- * so the two can never crown different teams. */
-export function isWinner(
-  state: { blue?: { towers: number | null; inhibitors: number | null } | null; red?: { towers: number | null; inhibitors: number | null } | null } | null | undefined,
-  side: "blue" | "red",
-): boolean {
-  const me = side === "blue" ? state?.blue : state?.red;
-  const them = side === "blue" ? state?.red : state?.blue;
-  if (!me || !them) return false;
-  const mi = me.inhibitors ?? 0;
-  const ti = them.inhibitors ?? 0;
-  if (mi !== ti) return mi > ti;
-  const mt = me.towers ?? 0;
-  const tt = them.towers ?? 0;
-  return mt > tt + 2;
-}
+/* The structure rule that lived here (`isWinner`: more inhibitors, else a
+ * tower lead above two) is gone (PP-IA2). Over the 1,257 finished games in
+ * production on 2026-10-05 it crowned the team the series record says lost
+ * in 6 (base races, comebacks) and abstained on 28 the record decides.
+ * Results come from Riot's series record only:
+ * `gameTruth.gameResultView`. */

@@ -14,6 +14,49 @@
 
 /** The Pro Play hub — the landing page for the area. */
 export const PRO_PLAY_ROUTE = "/lol/pro-play";
+
+/**
+ * The Pro Stats table (PP-IA2). It shared the hub's page — and its URL: its
+ * "Clear all" rewrote the query string and dropped the selected game — so it
+ * has its own route now. Its query contract is unchanged (`view`, `player`,
+ * `team`, `champion`, `year`, `league`, `patch`, `role`, `min_games`,
+ * `sort`, `dir`, `page`), and a hub URL carrying those keys is redirected
+ * here with them intact, so every earlier "View in Pro Stats" link and shared
+ * table URL still lands on the same table.
+ */
+export const PRO_PLAY_STATS_ROUTE = "/lol/pro-play/stats";
+
+/** The Stats Explorer's own query keys, in the order its URLs build them. */
+export const PRO_STATS_QUERY_KEYS = [
+  "view",
+  "year",
+  "league",
+  "patch",
+  "role",
+  "champion",
+  "player",
+  "team",
+  "min_games",
+  "sort",
+  "dir",
+  "page",
+] as const;
+
+/**
+ * Where a hub URL that carries Stats Explorer keys belongs: the stats route
+ * with exactly those keys, or null when it carries none. A hub URL that ALSO
+ * selects a match (`game` / `next`) stays on the hub — that reader chose a
+ * match, and the stats keys are harmless there.
+ */
+export function proStatsRedirect(search: URLSearchParams): string | null {
+  if (search.has("game") || search.has("next")) return null;
+  const out = new URLSearchParams();
+  for (const [k, v] of search) {
+    if ((PRO_STATS_QUERY_KEYS as readonly string[]).includes(k)) out.append(k, v);
+  }
+  const qs = out.toString();
+  return qs ? `${PRO_PLAY_STATS_ROUTE}?${qs}` : null;
+}
 export const PRO_PLAY_QUIZ_ROUTE = "/lol/pro-play/quiz";
 export const PRO_PLAY_GRAPHS_ROUTE = "/lol/pro-play/graphs";
 

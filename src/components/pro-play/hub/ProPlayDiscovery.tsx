@@ -1,16 +1,18 @@
 /**
- * Discovery — the part of the hub that does not depend on any match.
+ * Explore — the part of the hub that does not depend on any match.
  *
- * Kept deliberately small beside the match (PPH2.1): a handful of curated
- * featured graphs (questions, never conclusions — see `graph1/featured.ts`),
- * a three-row glimpse of the Stats Explorer's own default table leading down
- * to it, and the full tools. Search lives in the hub header so it is usable
- * before anything else loads.
+ * PP-IA2: it sits BELOW the Match Center under its own heading ("Explore pro
+ * history — not about the match above"), never beside it. Beside the board,
+ * all-time prompts and a calendar-year leaderboard read as context for the
+ * selected game. It holds a handful of curated featured graphs (questions,
+ * never conclusions — see `graph1/featured.ts`), the way into the Pro Stats
+ * table (its own route now) and the full tools. The "Most games" leaderboard
+ * glimpse is gone from the hub: that table is Pro Stats itself. Search lives
+ * in the hub header so it is usable before anything else loads.
  */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowRight, BarChart3, Brain, Library, Radio, Search, Swords, Users } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, Library, Radio, Search, Swords, Table2, Users } from "lucide-react";
 
 import { FEATURED_GRAPHS, type Graph1FeaturedCard } from "@/graph1/featured";
 import { selectionHref } from "@/graph1/featuredHref";
@@ -23,8 +25,8 @@ import {
   PRO_PLAY_MATCHUP_ROUTE,
   PRO_PLAY_QUIZ_ROUTE,
   PRO_PLAY_SEARCH_ROUTE,
+  PRO_PLAY_STATS_ROUTE,
 } from "@/lib/pro-play/routes";
-import { getProStats, type ProStatsPlayerRow } from "@/lib/pro-play/statsApi";
 import { cn } from "@/lib/utils";
 import { ChampionIcon } from "@/pages/esports/live/components";
 
@@ -34,9 +36,6 @@ export const MIN_SEARCH_CHARS = 2;
 /** Four of the curated cards — enough to show the range; the graphs page
  *  carries the full set. */
 export const HUB_FEATURED_COUNT = 4;
-
-/** Rows of the Stats Explorer's default table previewed beside the match. */
-export const HUB_STATS_PREVIEW_ROWS = 3;
 
 type ProPlayTool = {
   to: string;
@@ -195,129 +194,78 @@ function CardMark({ card, manifest }: { card: Graph1FeaturedCard; manifest: Cham
   );
 }
 
-/* ── the Stats Explorer glimpse ─────────────────────────────────────────── */
-
-/**
- * The Stats Explorer's DEFAULT request, exactly as it builds it with no URL
- * filters — so the explorer below reads this from the same cache entry rather
- * than fetching twice. If the explorer's defaults change, this only becomes a
- * second request; it never shows different numbers than the table's page 1.
- */
-const DEFAULT_PLAYERS_QUERY = {
-  year: null,
-  league: null,
-  patch: null,
-  role: null,
-  champion: null,
-  minGames: null,
-  player: null,
-  team: null,
-  sort: "games",
-  dir: "desc" as const,
-  page: 1,
-  pageSize: 25,
-};
-
-/** "Bin (Chen Ze-Bin)" → "Bin": the disambiguator belongs in the table. */
-const shortName = (player: string) => player.replace(/\s*\(.*\)\s*$/, "");
-
-function StatsGlimpse() {
-  const { data, isError } = useQuery({
-    queryKey: ["pro-play-stats", "players", DEFAULT_PLAYERS_QUERY],
-    queryFn: ({ signal }) => getProStats("players", DEFAULT_PLAYERS_QUERY, signal),
-    staleTime: 5 * 60 * 1000,
-  });
-  const rows = ((data?.rows ?? []) as ProStatsPlayerRow[]).slice(0, HUB_STATS_PREVIEW_ROWS);
-  if (isError || (data && !rows.length)) return null;
-  return (
-    <div className="hidden xl:block" data-testid="stats-glimpse">
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        Most games · Player statistics
-      </p>
-      <div className="relative">
-        <table className="w-full table-fixed text-sm">
-          <thead className="sr-only">
-            <tr>
-              <th>Player</th>
-              <th className="w-10">Games</th>
-              <th className="w-14">Win rate</th>
-              <th className="w-12">KDA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(rows.length ? rows : Array.from({ length: HUB_STATS_PREVIEW_ROWS }, () => null)).map((r, i) => (
-              <tr key={r?.player ?? i} className="border-b border-border/40 last:border-0">
-                <td className="truncate py-1.5 pr-2 font-semibold" title={r?.player}>
-                  {r ? shortName(r.player) : " "}
-                </td>
-                <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r?.games ?? ""}</td>
-                <td className="py-1.5 text-right tabular-nums text-muted-foreground">
-                  {r?.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : ""}
-                </td>
-                <td className="py-1.5 pl-2 text-right tabular-nums text-muted-foreground">
-                  {r?.kda != null ? r.kda.toFixed(2) : ""}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {/* The table visibly continues — it is the top of the one below. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-transparent to-background" />
-      </div>
-      <a
-        href="#pro-stats"
-        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
-      >
-        Full player statistics below
-        <ArrowDown className="h-3 w-3" aria-hidden="true" />
-      </a>
-    </div>
-  );
-}
-
 /* ── the section ────────────────────────────────────────────────────────── */
 
 export default function ProPlayDiscovery({ manifest }: { manifest?: ChampionManifest | null }) {
   const cards = FEATURED_GRAPHS.slice(0, HUB_FEATURED_COUNT);
   return (
-    <section id="discover" aria-labelledby="discover-title" className="space-y-5">
+    <section
+      id="discover"
+      aria-labelledby="discover-title"
+      className="space-y-4 border-t border-border/60 pt-5"
+      data-testid="explore-band"
+    >
       <div>
-        <div className="mb-1 flex items-baseline justify-between">
-          <h2 id="discover-title" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c9a84c]">
-            Ask pro play
-          </h2>
-          <Link to={PRO_PLAY_GRAPHS_ROUTE} className="inline-flex min-h-11 items-center gap-1 text-xs sm:min-h-0 font-medium text-muted-foreground hover:text-foreground hover:underline">
-            All graphs
-            <ArrowRight className="h-3 w-3" aria-hidden="true" />
-          </Link>
-        </div>
-        <ul>
-          {cards.map((card) => (
-            <li key={card.id} className="border-b border-border/40 last:border-0">
-              <Link
-                to={selectionHref(card)}
-                data-testid={`featured-${card.id}`}
-                title={card.hook}
-                className="flex min-h-12 items-center gap-3 py-1.5 text-sm font-semibold text-foreground/90 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <CardMark card={card} manifest={manifest} />
-                <span className="min-w-0 flex-1">{card.title}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <h2 id="discover-title" className="text-sm font-bold uppercase tracking-[0.12em] text-[#c9a84c]">
+          Explore pro history
+        </h2>
+        <p className="mt-0.5 text-xs text-muted-foreground" data-testid="explore-scope">
+          Not about the match above — all-time and season questions, tables and tools across pro play.
+        </p>
       </div>
 
-      <StatsGlimpse />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div>
+          <div className="mb-1 flex items-baseline justify-between">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Ask pro play</h3>
+            <Link to={PRO_PLAY_GRAPHS_ROUTE} className="inline-flex min-h-11 items-center gap-1 text-xs sm:min-h-0 font-medium text-muted-foreground hover:text-foreground hover:underline">
+              All graphs
+              <ArrowRight className="h-3 w-3" aria-hidden="true" />
+            </Link>
+          </div>
+          <ul className="grid sm:grid-cols-2 sm:gap-x-5">
+            {cards.map((card) => (
+              <li key={card.id} className="border-b border-border/40">
+                <Link
+                  to={selectionHref(card)}
+                  data-testid={`featured-${card.id}`}
+                  title={card.hook}
+                  className="flex min-h-12 items-center gap-3 py-1.5 text-sm font-semibold text-foreground/90 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <CardMark card={card} manifest={manifest} />
+                  <span className="min-w-0 flex-1">{card.title}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-      {/* Full tools: one quiet line beside the match on desktop, a tap grid
-          on phones. One nav either way, so nothing is listed twice. */}
-      <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Full tools</p>
-        <ProPlayToolsNav
-          className="grid grid-cols-3 gap-1.5 sm:gap-2 xl:flex xl:flex-wrap xl:gap-x-4 xl:gap-y-1"
-          linkClassName="flex min-h-11 items-center justify-center rounded-lg border border-border/70 px-1.5 text-center text-xs font-medium sm:text-sm text-foreground/90 hover:border-border hover:text-foreground xl:min-h-0 xl:justify-start xl:rounded-none xl:border-0 xl:px-0 xl:hover:underline"
-        />
+        <div className="space-y-4">
+          <Link
+            to={PRO_PLAY_STATS_ROUTE}
+            data-testid="pro-stats-entry"
+            className="flex min-h-12 items-center gap-3 rounded-lg border border-border/70 px-3 py-2 text-sm font-semibold text-foreground/90 hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Table2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              Pro Stats
+              <span className="block text-xs font-normal text-muted-foreground">
+                Players, teams and champions by season, league, patch and role
+              </span>
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </Link>
+
+          {/* Full tools: a quiet wrapping line on desktop, a tap grid on
+              phones. One nav either way, so nothing is listed twice. */}
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Full tools</p>
+            <ProPlayToolsNav
+              className="grid grid-cols-3 gap-1.5 sm:gap-2 lg:flex lg:flex-wrap lg:gap-x-4 lg:gap-y-1"
+              linkClassName="flex min-h-11 items-center justify-center rounded-lg border border-border/70 px-1.5 text-center text-xs font-medium sm:text-sm text-foreground/90 hover:border-border hover:text-foreground lg:min-h-0 lg:justify-start lg:rounded-none lg:border-0 lg:px-0 lg:hover:underline"
+            />
+          </div>
+        </div>
       </div>
     </section>
   );

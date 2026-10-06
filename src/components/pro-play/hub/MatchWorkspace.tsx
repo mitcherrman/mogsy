@@ -1,45 +1,46 @@
 /**
  * The Match Workspace — the selected game's ten players as five mirrored lane
- * rows inside the Match Center board. Picking a row opens that lane in place:
- * both players' careers, the champion pair across pro play, and the study
- * destinations.
+ * rows inside the Match Center board. Picking a row opens that lane in place.
  *
- * WHAT IT IS ALLOWED TO SAY. Every surface here is an existing public system
- * keyed by identities the live feed already resolved:
+ * THIS GAME ONLY (PP-IA2). The board answers "what happened in this game?",
+ * so every number in a row or its expansion is this game's, from this game's
+ * own feed: player, champion, role, K/D/A, CS, gold, level, items, runes,
+ * kill participation, damage share, wards, and the lane's gold difference.
  *
- * - the lane pair comes from the game's own `role` + `side`;
- * - the per-lane gold difference is the two players' own `total_gold`;
- * - each player's career line is `useEntityStats` — the Stats Explorer's own
- *   request, career across all competitions, with its scope on the line;
- * - the champion pair is GRAPH1's `/champion-matchup`, and the line under it
- *   says on screen that it is the broad professional sample and NOT these two
- *   players;
- * - the study links are the existing Combat Lab, Leaguecraft matchup study,
- *   Pro Data pair graph and Archives contracts.
+ * What used to sit in the expansion and does NOT any more — each a different
+ * population that read as part of the game:
  *
- * WHAT IT DELIBERATELY DOES NOT DO. No Matchup Explorer link: it is
- * admin-gated front and back, and a public reader would land on an auth wall.
- * No quiz: the Pro Play quiz API cannot filter by match. No head-to-head
- * record for the two PLAYERS: that is the Explorer's exact study, gated.
+ * - the players' CAREER lines (every competition, every year, frozen at the
+ *   canonical corpus's last refresh, excluding this game);
+ * - the all-time CHAMPION-PAIR record ("Jax vs Gnar 122–125": any role, any
+ *   player, 2014 → July 2026, excluding this game) — the expansion's most
+ *   prominent number, and not about this game at all.
+ *
+ * Those systems are unchanged and one click away under GO DEEPER, a labelled
+ * scope change: each destination says which population it opens (player
+ * profile, champion profile, the historical pair graph, Combat Lab, matchup
+ * study, champion reference). No historical number is drawn on the board.
+ *
+ * No Matchup Explorer link: it is admin-gated front and back, and a public
+ * reader would land on an auth wall. No quiz: the Pro Play quiz API cannot
+ * filter by match.
  *
  * Props-driven: the hub passes the game and its players.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BarChart3, BookOpen, ChevronDown, FlaskConical, GraduationCap } from "lucide-react";
+import { BarChart3, BookOpen, ChevronDown, FlaskConical, GraduationCap, User } from "lucide-react";
 
 import { PlayerPortrait } from "@/components/pro-play/media/EntityCrest";
 import { ItemStrip, useItemNames } from "@/components/pro-play/media/ItemIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { championMatchupHref, matchupPct } from "@/graph1/championMatchup";
-import { useGraph1ChampionMatchup } from "@/graph1/useGraph1ChampionMatchup";
+import { championMatchupHref } from "@/graph1/championMatchup";
 import type { ChampionManifest } from "@/hooks/useChampionAssets";
 import { buildCombatLabMatchupUrl } from "@/lib/combat-lab/matchup-link";
 import { championSlug } from "@/lib/league-docs/api";
 import { championDocPath } from "@/lib/league-docs/seo";
 import type { LiveGameSummary, LivePlayer } from "@/lib/live-esports/api";
-import { statsExplorerUrl, statsScopeLabel, useEntityStats } from "@/lib/pro-play/entityStats";
-import { graphEntityId, graphUrl } from "@/lib/pro-play/graphHandoff";
+import { runeLine, runeSummary } from "@/lib/live-esports/gameTruth";
 import {
   HUB_LANE_LABEL,
   HUB_LANE_SHORT,
@@ -54,16 +55,12 @@ import {
   type LaneMatchup,
 } from "@/lib/pro-play/hubSelection";
 import { proPlayProfileUrl } from "@/lib/pro-play/routes";
-import type { ProStatsPlayerRow } from "@/lib/pro-play/statsApi";
 import { matchupStudyHref } from "@/lib/quiz/matchupApi";
 import { cn } from "@/lib/utils";
-import { ChampionIcon } from "@/pages/esports/live/components";
-import { kgold, num } from "@/pages/esports/live/lib";
+import { ChampionIcon, RuneIcon } from "@/pages/esports/live/components";
+import { kgold, num, pct } from "@/pages/esports/live/lib";
 
 type Side = "blue" | "red";
-
-const PCT = (v: number | null | undefined) =>
-  v == null ? "—" : `${(v * 100).toFixed(1)}%`;
 
 /** Text links in the expansion. Full 44px tap height on touch layouts. */
 const TEXT_LINK =
@@ -151,7 +148,9 @@ function RowSide({
       </span>
       <span className={cn("hidden shrink-0 sm:block", red ? "text-left" : "text-right")} title={csGold}>
         <span className="block text-base font-bold leading-tight tabular-nums text-foreground/90">{kda}</span>
-        <span className="block whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">{kgold(player.total_gold)}</span>
+        <span className="block whitespace-nowrap text-[11px] tabular-nums text-muted-foreground" data-testid="row-cs-gold">
+          {num(player.creep_score)} CS · {kgold(player.total_gold)}
+        </span>
       </span>
       <ChampionWithLevel player={player} manifest={manifest} />
     </span>
@@ -229,22 +228,18 @@ function LaneRow({
 
 /* ── the expansion ──────────────────────────────────────────────────────── */
 
-function CareerLine({ playerKey }: { playerKey: string }) {
-  const stats = useEntityStats("players", playerKey);
-  if (stats.status === "loading") return <Skeleton className="h-4 w-40" />;
-  if (stats.status === "error")
-    return <p className="text-xs text-muted-foreground">Career statistics are unavailable right now.</p>;
-  if (stats.status === "absent")
-    return <p className="text-xs text-muted-foreground">No games in the Pro Play statistics yet.</p>;
-  const row = stats.row as ProStatsPlayerRow;
-  const scope = statsScopeLabel(stats.response);
+/** This game's rune page, keystone first — or nothing when the feed sent none. */
+function PlayerRunes({ player, red }: { player: LivePlayer; red: boolean }) {
+  const runes = runeSummary(player.runes);
+  if (!runes) return null;
   return (
-    <p className="text-xs text-muted-foreground" data-testid="career-line" title={`Career · ${scope}`}>
-      <span data-testid="career-scope">Career</span>{" "}
-      <span className="font-semibold tabular-nums text-foreground/90">
-        {num(row.games)} games · {num(row.wins)}–{num(row.losses)} · {PCT(row.win_rate)} · KDA{" "}
-        {row.kda == null ? "—" : row.kda.toFixed(2)}
-      </span>
+    <p
+      className={cn("flex items-center gap-1.5 text-xs text-foreground/85", red && "flex-row-reverse")}
+      data-testid="lane-runes"
+      title={[runeLine(runes), ...runes.minors.map((r) => r.name)].join(" · ")}
+    >
+      {runes.keystone && <RuneIcon icon={runes.keystone.icon} name={runes.keystone.name} className="h-4 w-4" />}
+      <span className="min-w-0 truncate">{runeLine(runes)}</span>
     </p>
   );
 }
@@ -280,121 +275,116 @@ function LanePlayer({
         mirrored={red}
         className="flex-wrap sm:hidden"
       />
-      {key ? (
-        <>
-          <CareerLine playerKey={key} />
-          <p className={cn("flex flex-wrap gap-x-3 text-xs", red && "justify-end")}>
-            <Link to={proPlayProfileUrl("player", key)} className={TEXT_LINK}>
-              Profile
-            </Link>
-            <Link
-              to={graphUrl("player", "champions", graphEntityId("player", key))}
-              className={TEXT_LINK}
-              title="Race this player's champions in Pro Data"
-            >
-              Champion graph
-            </Link>
-            <Link to={statsExplorerUrl("players", key)} className={TEXT_LINK} title="This player as a row in the Pro Stats table">
-              Stats row
-            </Link>
-          </p>
-        </>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Not matched to a Pro Play profile — no career record.
-        </p>
-      )}
+      <PlayerRunes player={player} red={red} />
+      {/* This game's share of the team's kills and champion damage, and its
+          wards — all from this game's own details frame. */}
+      <p className="text-xs tabular-nums text-muted-foreground" data-testid="lane-game-stats">
+        KP {pct(player.kill_participation)} · Dmg {pct(player.champion_damage_share)} · Wards{" "}
+        {num(player.wards_placed)}
+      </p>
     </div>
   );
 }
 
-function ChampionPair({ blue, red }: { blue: string; red: string }) {
-  const subject = championSlug(blue);
-  const opponent = championSlug(red);
-  const same = subject === opponent;
-  const pair = useGraph1ChampionMatchup(subject, opponent, undefined, { enabled: !same });
+/* ── go deeper: a labelled change of scope ──────────────────────────────── */
 
-  const names = (
-    <p className="flex items-center justify-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-      <Link to={proPlayProfileUrl("champion", blue)} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline sm:min-h-0" title={`${blue} in pro play`}>
-        {blue}
-      </Link>{" "}
-      vs{" "}
-      <Link to={proPlayProfileUrl("champion", red)} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline sm:min-h-0" title={`${red} in pro play`}>
-        {red}
-      </Link>
-    </p>
+/** The population a destination opens, printed beside it. */
+function ScopeChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="rounded border border-border/60 px-1 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+      data-testid="scope-chip"
+    >
+      {children}
+    </span>
   );
+}
 
-  let body: React.ReactNode;
-  if (same) {
-    body = <p className="text-xs text-muted-foreground">Both sides played {blue}: no champion matchup to compare.</p>;
-  } else if (pair.isLoading) {
-    body = <Skeleton className="mx-auto h-10 w-40" data-testid="pair-loading" />;
-  } else if (pair.isError || !pair.data) {
-    body = <p className="text-xs text-muted-foreground">The professional record couldn't be loaded right now.</p>;
-  } else if (pair.data.games === 0) {
-    body = <p className="text-xs text-muted-foreground">No professional games between these champions yet.</p>;
-  } else {
-    const d = pair.data;
-    const rate = d.record.winRate ?? 0;
-    body = (
-      <>
-        <p className="text-2xl font-bold leading-none tabular-nums">
-          <span className="text-sky-300">{d.record.wins}</span>
-          <span className="px-1 text-muted-foreground/50">–</span>
-          <span className="text-rose-300">{d.record.losses}</span>
-        </p>
-        <div className="mx-auto mt-1.5 flex h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-rose-400/70" aria-hidden="true">
-          <span className="bg-sky-400" style={{ width: `${Math.round(rate * 1000) / 10}%` }} />
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {num(d.games)} games · {blue} {matchupPct(d.record.winRate)}
-          {d.byYear.length > 0 && (
-            <span className="hidden sm:inline">
-              {" · "}
-              {d.byYear.slice(-2).map((y) => `${y.year}: ${y.games}`).join(", ")}
-            </span>
-          )}
-        </p>
-      </>
+type DeeperLink = { to: string; label: string; scope: string; title: string; Icon: React.ElementType };
+
+/**
+ * Every way out of this game into a WIDER population, under a heading that
+ * says so. Each link names what it opens; none draws a historical number here.
+ */
+function GoDeeper({ matchup }: { matchup: LaneMatchup }) {
+  const blueChamp = matchup.blue.resolved_champion_name;
+  const redChamp = matchup.red.resolved_champion_name;
+  const links: DeeperLink[] = [];
+  for (const p of [matchup.blue, matchup.red]) {
+    const key = lanePlayerKey(p);
+    if (key) {
+      links.push({
+        to: proPlayProfileUrl("player", key),
+        label: `${lanePlayerName(p)} profile`,
+        scope: "Career",
+        title: `${lanePlayerName(p)} across pro play — not only this game`,
+        Icon: User,
+      });
+    }
+  }
+  if (blueChamp && redChamp && championSlug(blueChamp) !== championSlug(redChamp)) {
+    const a = championSlug(blueChamp);
+    const b = championSlug(redChamp);
+    links.push(
+      {
+        to: championMatchupHref(a, b),
+        label: `${blueChamp} vs ${redChamp} in pro play`,
+        scope: "Historical · any role",
+        title: "Every pro game with these champions on opposing teams, all years — not these players, not this game",
+        Icon: BarChart3,
+      },
+      {
+        to: buildCombatLabMatchupUrl({ attacker: blueChamp, defender: redChamp }),
+        label: "Combat Lab",
+        scope: "Simulation",
+        title: `Simulate ${blueChamp} against ${redChamp}`,
+        Icon: FlaskConical,
+      },
+      {
+        to: matchupStudyHref(a, b),
+        label: "Matchup study",
+        scope: "Study",
+        title: "Leaguecraft questions on this champion pair",
+        Icon: GraduationCap,
+      },
     );
   }
+  for (const name of [blueChamp, redChamp]) {
+    if (!name) continue;
+    links.push(
+      {
+        to: proPlayProfileUrl("champion", name),
+        label: `${name} in pro play`,
+        scope: "All pro games",
+        title: `${name}'s pro record — every game, not this one`,
+        Icon: BarChart3,
+      },
+      {
+        to: championDocPath(championSlug(name)),
+        label: `${name} reference`,
+        scope: "Game data",
+        title: `${name}'s abilities and stats`,
+        Icon: BookOpen,
+      },
+    );
+  }
+  if (!links.length) return null;
   return (
-    <div className="min-w-0 text-center" data-testid="champion-matchup">
-      {names}
-      <div className="sm:mt-1">{body}</div>
-    </div>
-  );
-}
-
-function StudyLinks({ blue, red }: { blue: string; red: string }) {
-  const a = championSlug(blue);
-  const b = championSlug(red);
-  const items = [
-    { to: buildCombatLabMatchupUrl({ attacker: blue, defender: red }), label: "Combat Lab", title: `Simulate ${blue} against ${red}`, Icon: FlaskConical },
-    { to: matchupStudyHref(a, b), label: "Matchup study", title: "Leaguecraft questions on this champion pair", Icon: GraduationCap },
-    { to: championMatchupHref(a, b), label: "Pro Data pair graph", title: "The full pair graph", Icon: BarChart3 },
-  ];
-  return (
-    <nav aria-label="Study this lane" className="flex flex-wrap items-center justify-center gap-x-3 text-xs sm:gap-x-4">
-      {items.map(({ to, label, title, Icon }) => (
-        <Link key={label} to={to} title={title} className={TEXT_LINK}>
-          <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-          {label}
-        </Link>
-      ))}
-      <span className="inline-flex items-center gap-x-2 whitespace-nowrap">
-        <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-          Archives:
-        </span>
-        {[blue, red].map((name) => (
-          <Link key={name} to={championDocPath(championSlug(name))} className={TEXT_LINK}>
-            {name}
-          </Link>
+    <nav aria-labelledby="lane-go-deeper" className="border-t border-border/50 pt-2" data-testid="go-deeper">
+      <p id="lane-go-deeper" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c9a84c]">
+        Go deeper <span className="normal-case tracking-normal text-muted-foreground">— beyond this game</span>
+      </p>
+      <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+        {links.map(({ to, label, scope, title, Icon }) => (
+          <li key={`${label}-${to}`}>
+            <Link to={to} title={title} className={TEXT_LINK}>
+              <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+              {label}
+              <ScopeChip>{scope}</ScopeChip>
+            </Link>
+          </li>
         ))}
-      </span>
+      </ul>
     </nav>
   );
 }
@@ -408,36 +398,18 @@ function LaneDetail({
   id: string;
   itemNames: Map<number, string>;
 }) {
-  const blueChamp = matchup.blue.resolved_champion_name;
-  const redChamp = matchup.red.resolved_champion_name;
   return (
     <div id={id} className="space-y-2 px-3 pb-3 pt-2 sm:px-4" data-testid="lane-matchup">
-      <div className="grid grid-cols-2 items-start gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,13rem)_minmax(0,1fr)]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">This game</p>
+      <div className="grid grid-cols-2 items-start gap-x-3 gap-y-2">
         <LanePlayer player={matchup.blue} side="blue" itemNames={itemNames} />
-        <div className="order-first col-span-2 sm:order-none sm:col-span-1">
-          {blueChamp && redChamp ? (
-            <ChampionPair blue={blueChamp} red={redChamp} />
-          ) : (
-            <p className="text-center text-xs text-muted-foreground">
-              A champion in this lane wasn&apos;t identified, so there is no champion matchup to look up.
-            </p>
-          )}
-        </div>
         <LanePlayer player={matchup.red} side="red" itemNames={itemNames} />
       </div>
-      {blueChamp && redChamp && (
-        <>
-          <p className="text-center text-[11px] text-muted-foreground">
-            Record: every pro game with these champions on opposing teams — not a specific pair of players.
-          </p>
-          <div className="flex justify-center border-t border-border/50 pt-1">
-            <StudyLinks blue={blueChamp} red={redChamp} />
-          </div>
-        </>
-      )}
+      <GoDeeper matchup={matchup} />
     </div>
   );
 }
+
 
 /* ── the board ──────────────────────────────────────────────────────────── */
 

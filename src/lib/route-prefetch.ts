@@ -83,6 +83,7 @@ export const Routes = {
   ProPlayChampionProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayChampionProfile")),
   ProPlayMatchup: lazyWithRetry(() => import("@/pages/pro-play/ProPlayMatchup")),
   ProPlayTournament: lazyWithRetry(() => import("@/pages/pro-play/ProPlayTournament")),
+  ProPlayStats: lazyWithRetry(() => import("@/pages/pro-play/ProPlayStats")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
   AdminQuizBroadcast: lazyWithRetry(() => import("@/pages/admin/AdminQuizBroadcast")),
   QuizBroadcastView: lazyWithRetry(() => import("@/pages/admin/QuizBroadcastView")),
@@ -136,6 +137,7 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   },
   { test: (p) => p === "/lol/pro-play/quiz", keys: ["ProPlayQuiz"] },
   { test: (p) => p === "/lol/pro-play/graphs", keys: ["ProPlayGraphs"] },
+  { test: (p) => p === "/lol/pro-play/stats", keys: ["ProPlayStats"] },
   // Research. Deliberately NOT prefetched from the hub above: the hub has no
   // search tile (the surface is admin-gated), so every public visitor would
   // pay for a bundle they cannot open. Search pulls the profiles instead,

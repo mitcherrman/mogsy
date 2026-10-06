@@ -31,6 +31,7 @@ import {
   PRO_PLAY_MATCHUP_ROUTE,
   PRO_PLAY_PLAYER_ROUTE,
   PRO_PLAY_SEARCH_ROUTE,
+  PRO_PLAY_STATS_ROUTE,
   PRO_PLAY_TEAM_ROUTE,
   PRO_PLAY_TOURNAMENT_ROUTE,
 } from "@/lib/pro-play/routes";
@@ -100,6 +101,7 @@ const ProPlayTeamProfile = R.ProPlayTeamProfile.Component;
 const ProPlayChampionProfile = R.ProPlayChampionProfile.Component;
 const ProPlayMatchup = R.ProPlayMatchup.Component;
 const ProPlayTournament = R.ProPlayTournament.Component;
+const ProPlayStats = R.ProPlayStats.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
 const QuizBroadcastView = R.QuizBroadcastView.Component;
@@ -582,6 +584,9 @@ export const appRouter = createBrowserRouter(
                       /lol/premium above, which is the subscription page. */}
                   <Route path="/lol/pro-play" element={<Suspense fallback={<RouteFallback />}><ProPlayHub /></Suspense>} />
                   <Route path="/lol/pro-play/quiz" element={<Suspense fallback={<RouteFallback />}><ProPlayQuiz /></Suspense>} />
+                  {/* PP-IA2: the Pro Stats table, off the hub. Old hub URLs
+                      carrying its query keys redirect here (ProPlayHub). */}
+                  <Route path={PRO_PLAY_STATS_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayStats /></Suspense>} />
                   {/* GRAPH1 as a product surface. /dev/graph1 stays as the
                       operator route: fixed races, stat families, ?api=. */}
                   <Route path="/lol/pro-play/graphs" element={<Suspense fallback={<RouteFallback />}><ProPlayGraphs /></Suspense>} />

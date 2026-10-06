@@ -36,6 +36,7 @@
  */
 import { useEffect, useState } from "react";
 
+import { PRO_PLAY_STATS_ROUTE } from "@/lib/pro-play/routes";
 import {
   getProStats,
   type ProStatsChampionRow,
@@ -81,8 +82,9 @@ export function statsScopeLabel(response: ProStatsResponse): string {
   return parts.join(" · ");
 }
 
-/** The Stats Explorer URL showing exactly this slice as a table row. Uses the
- *  Explorer's own query contract on the hub route; no new path. */
+/** The Stats Explorer URL showing exactly this slice as a table row, on the
+ *  Pro Stats route with the Explorer's own query contract (PP-IA2 moved the
+ *  table off the hub; the hub redirects these keys here). */
 export function statsExplorerUrl(
   view: ProStatsView,
   key: string,
@@ -92,7 +94,7 @@ export function statsExplorerUrl(
   // Carry the panel's own bound, so the table the reader lands on shows the
   // same slice the numbers beside the link were computed over.
   if (year != null) params.set("year", String(year));
-  return `/lol/pro-play?${params.toString()}`;
+  return `${PRO_PLAY_STATS_ROUTE}?${params.toString()}`;
 }
 
 /**

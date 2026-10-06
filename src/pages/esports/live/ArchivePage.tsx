@@ -92,6 +92,7 @@ import {
   isUnfinished,
   isUnplayed,
   quickFilters,
+  archiveWinner,
   seriesResult,
   sharedPatch,
   toggleQuickFilter,
@@ -887,11 +888,11 @@ function GameRow({
             </span>
           )}
           <span className="text-sm">
-            {/* The winning side is emphasised, never invented: the backend
-                returns null unless the stored final state proves it. */}
-            <Side name={blue} won={game.winner === "blue"} />
+            {/* The winning side is emphasised only when Riot's series record
+                confirms it (PP-IA2) — never from a structure lead. */}
+            <Side name={blue} won={archiveWinner(game) === "blue"} />
             <span className="mx-1.5 text-xs text-muted-foreground">vs</span>
-            <Side name={red} won={game.winner === "red"} />
+            <Side name={red} won={archiveWinner(game) === "red"} />
           </span>
           {(game.teams.blue.kills != null || game.teams.red.kills != null) && (
             <span className="text-xs tabular-nums text-muted-foreground">

@@ -235,7 +235,8 @@ export function insightRows(
     // is still a fact; only its timestamp is unknowable, so the timing drops
     // and the size stays.
     const timed = (data.coverage?.elapsed_seconds ?? 0) > 0;
-    const at = (t: number) => `at ${clock(t)}`;
+    // Feed time, not the game clock (PP-IA2): frames carry no in-game time.
+    const at = (t: number) => `at feed ${clock(t)}`;
     rows.push({
       key: "largest",
       label: "Largest lead",
@@ -251,7 +252,7 @@ export function insightRows(
           ? at(topPeak.peak.t)
           : undefined,
       title: timed
-        ? "The largest team gold difference reached at any stored frame, timed from the first frame of the game."
+        ? "The largest team gold difference reached at any stored frame. The time is feed time — since the first captured frame, pauses included — not the game clock."
         : "The largest team gold difference reached at any stored frame. This game has a single stored frame, so the moment it happened is not known.",
     });
   }
@@ -264,7 +265,7 @@ export function insightRows(
       label: "Biggest swing",
       value: goldFor(game, swing.side, swing.gold),
       side: swing.side,
-      detail: `over ${durationLabel(swing.duration_seconds)} · ${clock(swing.from_t)}–${clock(swing.to_t)}`,
+      detail: `over ${durationLabel(swing.duration_seconds)} · feed ${clock(swing.from_t)}–${clock(swing.to_t)}`,
       title: `The largest movement of the gold difference across any interval of ${Math.round(
         data.definitions.swing_window_seconds / 60,
       )} minutes or less, reported only above ${data.definitions.min_swing_gold} gold.`,
@@ -384,8 +385,7 @@ export function roleGapText(gap: RoleGap | null | undefined): string | null {
  *
  * The rules, in the order the sentences appear:
  *
- *  1. PEAKS — the biggest lead each side held, and when, in CHRONOLOGICAL
- *     order. Ordering by time rather than by size is not cosmetic: joining two
+ *  1. PEAKS — the biggest lead each side held, in CHRONOLOGICAL order. Ordering by time rather than by size is not cosmetic: joining two
  *     peaks with a word like "after" while sorting them by gold asserts an
  *     order the data may contradict, which is exactly the kind of claim this
  *     phase must never make. (Observed in production on LCS LYON vs SEN G3,
@@ -400,8 +400,12 @@ export function roleGapText(gap: RoleGap | null | undefined): string | null {
  *     the backend's hysteresis rule. "Changed hands" is the strongest word
  *     used; "comeback" is deliberately absent (Phase 4B2 has no threshold
  *     for it).
- *  3. SWING — the largest bounded move of the gold difference, with the
- *     interval that produced it.
+ *  3. SWING — the largest bounded move of the gold difference.
+ *
+ * NO TIMESTAMPS (PP-IA2). Frame offsets are feed time — pre-game frames and
+ * pauses included — and a sentence like "led by 5.2k at 18:20" reads as the
+ * game clock. The ORDER is still real and is what the sentences keep; the
+ * minute marks stay on the cards, labelled as feed time.
  *  4. CLOSE — where the game finished, or stands right now.
  *
  * Fewer than two sentences means the game has nothing to tell yet, and the
@@ -429,12 +433,11 @@ export function buildStory(
     .sort((a, b) => a.peak.t - b.peak.t);
   if (told.length) {
     const [first, second] = told;
-    const phrase = (c: typeof first) =>
-      `${sideTeam(game, c.side)} by ${kgold(c.peak.gold)} at ${clock(c.peak.t)}`;
+    const phrase = (c: typeof first) => `${sideTeam(game, c.side)} by ${kgold(c.peak.gold)}`;
     sentences.push(
       second
-        ? `${sideTeam(game, first.side)} led by ${kgold(first.peak.gold)} at ${clock(first.peak.t)}, then ${phrase(second)}.`
-        : `${sideTeam(game, first.side)} led by ${kgold(first.peak.gold)} at ${clock(first.peak.t)}.`,
+        ? `${sideTeam(game, first.side)} led by ${kgold(first.peak.gold)}, then ${phrase(second)}.`
+        : `${sideTeam(game, first.side)} led by ${kgold(first.peak.gold)}.`,
     );
   }
 
@@ -446,11 +449,7 @@ export function buildStory(
 
   /* 3 — swing */
   if (swing) {
-    sentences.push(
-      `${sideTeam(game, swing.side)} swung ${kgold(swing.gold)} their way between ${clock(
-        swing.from_t,
-      )} and ${clock(swing.to_t)}.`,
-    );
+    sentences.push(`The biggest gold swing was ${kgold(swing.gold)} to ${sideTeam(game, swing.side)}.`);
   }
 
   /* 4 — close */

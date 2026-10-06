@@ -253,7 +253,7 @@ describe("insightRows", () => {
   it("reports both peak leads when both sides held one", () => {
     expect(rowFor(payload(), "largest")).toMatchObject({
       value: "KT +6.8k",
-      detail: "at 18:42 · HLE +2.1k at 6:40",
+      detail: "at feed 18:42 · HLE +2.1k at feed 6:40",
     });
   });
 
@@ -267,7 +267,7 @@ describe("insightRows", () => {
         },
       },
     });
-    expect(rowFor(data, "largest")?.detail).toBe("at 18:42");
+    expect(rowFor(data, "largest")?.detail).toBe("at feed 18:42");
   });
 
   it("omits the peak row entirely when no lead was ever meaningful", () => {
@@ -283,7 +283,7 @@ describe("insightRows", () => {
   it("shows the swing with its interval", () => {
     expect(rowFor(payload(), "swing")).toMatchObject({
       value: "HLE +5.1k",
-      detail: "over 6m 20s · 18:42–25:02",
+      detail: "over 6m 20s · feed 18:42–25:02",
       side: "red",
     });
   });
@@ -410,9 +410,9 @@ describe("roleGapText", () => {
 describe("buildStory", () => {
   it("assembles peaks, lead changes, swing and close, in that order", () => {
     expect(buildStory(payload(), GAME)).toEqual([
-      "HLE led by 2.1k at 6:40, then KT by 6.8k at 18:42.",
+      "HLE led by 2.1k, then KT by 6.8k.",
       "The lead changed hands once.",
-      "HLE swung 5.1k their way between 18:42 and 25:02.",
+      "The biggest gold swing was 5.1k to HLE.",
       "KT finished 3.2k ahead.",
     ]);
   });
@@ -439,7 +439,7 @@ describe("buildStory", () => {
       },
     });
     const story = buildStory(data, GAME);
-    expect(story[0]).toBe("HLE led by 5.1k at 30:12, then KT by 3.2k at 39:52.");
+    expect(story[0]).toBe("HLE led by 5.1k, then KT by 3.2k.");
     expect(story.join(" ")).not.toContain("after");
   });
 
@@ -457,7 +457,7 @@ describe("buildStory", () => {
       },
     });
     expect(buildStory(data, GAME)).toEqual([
-      "HLE led by 2.7k at 14:40.",
+      "HLE led by 2.7k.",
       "KT finished 3.2k ahead.",
     ]);
   });
@@ -490,7 +490,7 @@ describe("buildStory", () => {
     });
     expect(buildStory(data, GAME)).toEqual([
       "The lead changed hands once.",
-      "KT swung 5.1k their way between 12:22 and 18:42.",
+      "The biggest gold swing was 5.1k to KT.",
       "KT finished 3.2k ahead.",
     ]);
   });
@@ -592,10 +592,16 @@ describe("single-frame games", () => {
     expect(row?.title).toMatch(/single stored frame/i);
   });
 
-  it("keeps the timing when the game does have a span", () => {
-    // The guard must not silence real timings on backfilled games.
+  it("keeps the timing when the game does have a span, labelled as feed time", () => {
+    // The guard must not silence real timings on backfilled games — but a
+    // frame offset is feed time, never the game clock (PP-IA2).
     const row = insightRows(payload(), GAME).find((r) => r.key === "largest");
-    expect(row?.detail).toMatch(/at \d+:\d\d/);
+    expect(row?.detail).toMatch(/at feed \d+:\d\d/);
+    expect(row?.title).toMatch(/not the game clock/);
+  });
+
+  it("tells the story without clock times: frame offsets are not game time (PP-IA2)", () => {
+    expect(buildStory(payload(), GAME).join(" ")).not.toMatch(/\d+:\d\d/);
   });
 
   it("tells no story it cannot time", () => {

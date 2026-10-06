@@ -12,11 +12,12 @@
  * `/api/live-esports/*` on 2026-09-04, not invented.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import EsportsLivePage from "./EsportsLivePage";
+import LCS_FINAL_G4 from "@/lib/live-esports/__fixtures__/ppia2LcsFinalG4.json";
 import {
   LEGACY_ESPORTS_LIVE_ROUTE,
   PRO_PLAY_LIVE_ARCHIVE_ROUTE,
@@ -563,3 +564,65 @@ describe("opening an archived game in this viewer", () => {
     expect(asked.some((u) => u.includes("the-live-one"))).toBe(true);
   });
 });
+
+/* ── PP-IA2: the real LCS 2026 final, game 4 ─────────────────────────────── */
+
+describe("PP-IA2 · the full match centre on the real LCS final G4", () => {
+  function installFinal(result: unknown = LCS_FINAL_G4.detail.result) {
+    const detail = { ...LCS_FINAL_G4.detail, result };
+    const fetchMock = vi.fn(async (url: string) => {
+      const path = String(url);
+      const ok = (b: unknown) => ({ ok: true, status: 200, json: async () => b }) as unknown as Response;
+      if (path.includes("/live-esports/live")) {
+        return ok({ enabled: true, generated_at: "x", live: [], recent: [detail.game], limits: { live: 12, recent: 6 } });
+      }
+      if (path.includes("/players")) return ok(LCS_FINAL_G4.players);
+      if (path.includes("/gold")) return ok({ ...GOLD, series: [] });
+      if (path.includes("/insights")) return ok({ coverage: {}, gold: {}, objectives: [], players: {} });
+      if (path.includes("/live-esports/games/")) return ok(detail);
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+  }
+
+  it("shows the FINAL series score, never 'Series 2–1', and no duration", async () => {
+    installFinal();
+    renderPage();
+    const score = await screen.findByTestId("live-series-score");
+    expect(score.textContent).toBe("Final · TLAW 3–1 LYON");
+    expect(document.body.textContent).not.toMatch(/Series 2–1/);
+    // The frame span (35:20 for a 27:02 game) is never printed as a duration:
+    // the match header carries no m:ss at all…
+    const header = screen.getByRole("heading", { level: 2, name: /TLAW vs LYON/ }).closest("header")!;
+    expect(header.textContent).not.toMatch(/\d+:\d\d/);
+    // …and the objective timeline's offsets say they are feed time.
+    expect(screen.getByText(/Feed time: time since the first captured frame/)).toBeTruthy();
+  });
+
+  it("marks TLAW the winner from the series record", async () => {
+    installFinal();
+    renderPage();
+    await screen.findByTestId("live-series-score");
+    await waitFor(() => expect(screen.getAllByText("WINNER")).toHaveLength(1));
+    expect(screen.queryByTestId("live-result-note")).toBeNull();
+  });
+
+  it("crowns nobody while the record cannot confirm the result", async () => {
+    installFinal({ status: "unconfirmed", winner_team_id: null, winner_side: null, basis: null });
+    renderPage();
+    expect(await screen.findByTestId("live-result-note")).toBeTruthy();
+    expect(screen.queryByText("WINNER")).toBeNull();
+  });
+
+  it("renders the rune page the feed published (it never rendered before)", async () => {
+    installFinal();
+    renderPage();
+    const row = (await screen.findByText("Morgan")).closest("button")!;
+    fireEvent.click(row);
+    const page = await screen.findByTestId("rune-page");
+    expect(page.textContent).toMatch(/Grasp of the Undying · Resolve \/ Sorcery/);
+    expect(within(page).getByText("Demolish")).toBeTruthy();
+    expect(within(page).getByText("Adaptive force")).toBeTruthy();
+  });
+});
+

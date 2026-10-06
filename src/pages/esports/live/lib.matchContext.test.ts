@@ -12,7 +12,6 @@ import { describe, expect, it } from "vitest";
 import type { LiveCompetition, LiveGameSummary } from "@/lib/live-esports/api";
 import {
   competitionLine,
-  gameClock,
   matchDate,
   matchDateShort,
   matchDateTitle,
@@ -161,12 +160,15 @@ describe("match date", () => {
 });
 
 describe("series context", () => {
-  it("spells out best-of, game number and the score entering the game", () => {
-    expect(seriesContext(game())).toBe("Bo3 · Game 3 · Series 1–1");
+  // PP-IA2: the score ENTERING a game ("Series 2–1" on the LCS final's G4,
+  // which TLAW won 3–1) is never printed unlabelled. The series score comes
+  // from the series record (gameTruth.seriesScoreView).
+  it("spells out best-of and game number, and never the score entering the game", () => {
+    expect(seriesContext(game())).toBe("Bo3 · Game 3");
   });
 
   it("has a compact form for the selector cards", () => {
-    expect(seriesContext(game(), true)).toBe("Bo3 · G3 · 1–1");
+    expect(seriesContext(game(), true)).toBe("Bo3 · G3");
   });
 
   it("formats Bo1 and Bo5 the same way", () => {
@@ -175,12 +177,6 @@ describe("series context", () => {
     expect(seriesContext(game({ best_of: 5, game_number: 4 }))).toContain("Game 4");
   });
 
-  it("omits a score it does not have rather than showing 0–0", () => {
-    const g = game();
-    g.teams.blue.series_wins = null;
-    g.teams.red.series_wins = null;
-    expect(seriesContext(g)).toBe("Bo3 · Game 3");
-  });
 
   it("is null when nothing about the series is known", () => {
     const g = game({ best_of: null, game_number: null });
@@ -313,15 +309,19 @@ describe("competition line", () => {
 describe("match line", () => {
   it("carries tagged parts so the date's tooltip never depends on locale", () => {
     const parts = matchLine(game());
-    expect(parts.map((p) => p.kind)).toEqual(["date", "series", "clock", "patch"]);
+    expect(parts.map((p) => p.kind)).toEqual(["date", "series", "patch"]);
     expect(parts[0].title).toContain("your local time");
-    expect(parts[1].text).toBe("Bo3 · Game 3 · Series 1–1");
-    expect(parts[3].text).toBe("Patch 16.15");
+    expect(parts[1].text).toBe("Bo3 · Game 3");
+    expect(parts[2].text).toBe("Patch 16.15");
   });
 
-  it("drops the clock when the game produced no frames", () => {
-    const parts = matchLine(game({ first_frame_ts: null }));
-    expect(parts.map((p) => p.kind)).not.toContain("clock");
+  it("carries no duration: the feed publishes no game clock (PP-IA2)", () => {
+    // A 38-minute frame span is not a 38-minute game.
+    const g = game({ first_frame_ts: "2026-09-04T17:00:00Z" });
+    g.freshness = { ...g.freshness, source_frame_ts: "2026-09-04T17:38:28Z" };
+    const text = matchLine(g).map((p) => p.text).join(" · ");
+    expect(text).not.toMatch(/\b38:28\b/);
+    expect(text).not.toMatch(/\d+:\d\d/);
   });
 
   it("is empty for an absent game", () => {
@@ -332,28 +332,7 @@ describe("match line", () => {
 
 /* ── what we do NOT know ─────────────────────────────────────────────────── */
 
-describe("gameClock", () => {
-  const span = (first: string | null, latest: string | null) =>
-    ({
-      first_frame_ts: first,
-      freshness: { source_frame_ts: latest },
-    }) as unknown as LiveGameSummary;
-
-  it("reports the elapsed span between the first and latest stored frame", () => {
-    expect(gameClock(span("2026-09-04T17:00:00Z", "2026-09-04T17:38:28Z"))).toBe("38:28");
-  });
-
-  it("says nothing when the store holds a single frame", () => {
-    // The common production shape: a finished game whose only telemetry is
-    // the poller's last capture. "0:00" would claim the game lasted no time.
-    expect(gameClock(span("2026-09-04T17:45:50.080Z", "2026-09-04T17:45:50.080Z"))).toBeNull();
-  });
-
-  it("says nothing when either end of the span is missing", () => {
-    expect(gameClock(span(null, "2026-09-04T17:38:28Z"))).toBeNull();
-    expect(gameClock(span("2026-09-04T17:00:00Z", null))).toBeNull();
-  });
-
+describe("no game clock", () => {
   it("keeps a completed match line usable without a clock", () => {
     const g = game({
       first_frame_ts: "2026-09-04T17:45:50.080Z",
