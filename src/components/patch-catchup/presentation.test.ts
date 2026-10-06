@@ -207,7 +207,7 @@ describe("search (§12)", () => {
 /* Wording                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function chainOf(over: Partial<CatchUpParameterChain> & { steps: Array<[string, string, string]>; property?: string; group?: string }): CatchUpParameterChain {
+function chainOf(over: Omit<Partial<CatchUpParameterChain>, "steps"> & { steps: Array<[string, string, string]>; property?: string; group?: string }): CatchUpParameterChain {
   const property = over.property ?? "Health";
   const group = over.group ?? "Base Stats";
   const steps = over.steps.map(([patch, before, after], i) => ({

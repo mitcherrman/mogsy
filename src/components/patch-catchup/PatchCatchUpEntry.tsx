@@ -91,7 +91,7 @@ const CatchUpLine = ({ line, entryId }: { line: CatchUpRiotLine; entryId: string
         <Link
           to={patchReportHref(line.patch, line.target.change)}
           onClick={(e) => onLeaveToReport(entryId, e)}
-          aria-label={`View Patch ${line.patch} change: ${property || line.entityName}`}
+          aria-label={`View Patch ${line.patch} change: ${line.entityName}${property ? ` ${property}` : ""}`}
           data-testid="catchup-line-link"
           className={cn(
             "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-[#c9a84c]",

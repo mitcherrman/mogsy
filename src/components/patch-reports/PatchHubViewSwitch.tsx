@@ -16,7 +16,7 @@ type Props = {
 };
 
 const ITEM =
-  "inline-flex min-h-9 items-center justify-center px-3 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70";
+  "inline-flex min-h-11 items-center sm:min-h-9 justify-center px-3 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]/70";
 
 /**
  * Patch Hub views: "Patch Report | Catch Up" (owner decision 4). Two real
