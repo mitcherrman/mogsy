@@ -585,6 +585,31 @@ describe("deep links and the cached-report scroll fix", () => {
     expect(backend.log.length).toBe(before);
   });
 
+  it("Back re-applies the entry scroll on the next frame, after the browser's own scroll restoration", async () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => frames.push(cb));
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => {
+      frames[id - 1] = () => {};
+    });
+    const { router } = renderHub("/lol/patch-reports?since=26.14");
+    await ready();
+    const row = document.querySelector<HTMLElement>(`[data-line-id="${CSS.escape(sunderedSky17().id)}"]`)!;
+    fireEvent.click(within(row).getByTestId("catchup-line-link"), { button: 0 });
+    await screen.findAllByTestId("patch-hub-section");
+    // A same-document fragment navigation on the report (its section nav), then Back twice.
+    await act(() => router.navigate({ search: "?patch=26.17", hash: "#s-patch-champions" }));
+    await act(() => router.navigate(-1));
+    scrolled.length = 0;
+    frames.length = 0;
+    await act(() => router.navigate(-1));
+    expect(loc(router).search).toBe("?since=26.14");
+    await waitFor(() => expect(scrolled).toEqual(["cu-sr-items-sundered-sky"]));
+    // The browser restores a stale position after popstate; the queued frame wins.
+    expect(frames.length).toBeGreaterThan(0);
+    act(() => [...frames].forEach((cb) => cb(0)));
+    expect(scrolled).toEqual(["cu-sr-items-sundered-sky", "cu-sr-items-sundered-sky"]);
+  });
+
   it("Back to an entry inside a collapsed section opens that section", async () => {
     const { router } = renderHub("/lol/patch-reports?since=26.14");
     await ready();

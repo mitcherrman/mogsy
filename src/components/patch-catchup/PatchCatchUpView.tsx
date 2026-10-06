@@ -138,7 +138,12 @@ export const PatchCatchUpView = ({
   );
 
   // Scroll to a `#cu-` target once the content holding it is rendered.
+  // Back is a history traversal, and the browser may apply its own scroll
+  // restoration after popstate (seen after a same-document fragment
+  // navigation on the report, e.g. its section nav), landing on a stale
+  // position. Re-apply once on the next frame so the entry wins.
   const scrolledFor = useRef<string | null>(null);
+  const reapplyFrame = useRef<number | null>(null);
   useEffect(() => {
     if (!model || !hashId) return;
     const token = `${location.key}${location.hash}`;
@@ -147,7 +152,19 @@ export const PatchCatchUpView = ({
     if (!el) return;
     scrolledFor.current = token;
     el.scrollIntoView?.();
+    if (typeof window.requestAnimationFrame !== "function") return;
+    if (reapplyFrame.current !== null) window.cancelAnimationFrame(reapplyFrame.current);
+    reapplyFrame.current = window.requestAnimationFrame(() => {
+      reapplyFrame.current = null;
+      if (el.isConnected) el.scrollIntoView?.();
+    });
   }, [model, hashId, hashSectionKey, location.key, location.hash]);
+  useEffect(
+    () => () => {
+      if (reapplyFrame.current !== null) window.cancelAnimationFrame?.(reapplyFrame.current);
+    },
+    [],
+  );
 
   // Focus after the reader switched INTO Catch Up (not on refresh or Back).
   const headingRef = useRef<HTMLHeadingElement>(null);
