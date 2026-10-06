@@ -148,7 +148,9 @@ const request = async ({
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (playerToken) headers[PLAYER_TOKEN_HEADER] = playerToken;
-  if (adminKey) headers[ADMIN_KEY_HEADER] = adminKey;
+  // OWN1: the staff admin key is a local-dev convenience only. A production
+  // build never sends it (import.meta.env.DEV is statically false there).
+  if (adminKey && import.meta.env.DEV) headers[ADMIN_KEY_HEADER] = adminKey;
 
   let res: Response;
   try {
