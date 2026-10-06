@@ -20,6 +20,18 @@
  * rows. An upcoming match has no scoreboard, so its board draws identity and
  * time only — no empty tables.
  *
+ * PP-IA2 — WHAT THIS BOARD MAY CLAIM ABOUT THE GAME (`gameTruth.ts`):
+ *
+ * - the big number is labelled KILLS — it is never a match score;
+ * - a winner is marked only when Riot's series record names one
+ *   (`result.status === "official"`); a finished game it cannot confirm says
+ *   "Result not confirmed" and crowns nobody;
+ * - no duration: the feed has no game clock, and the frame span is not one;
+ * - the series score in the event band is the record's — the completed
+ *   FINAL when Riot published it ("Final · TLAW 3–1 LYON"), never the score
+ *   entering the selected game;
+ * - dragons are listed by type, in the order taken.
+ *
  * Props-driven: the hub owns selection (it also drives the lanes).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -33,6 +45,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LiveCompetition, LiveTeamState, UpcomingMatch } from "@/lib/live-esports/api";
+import {
+  gameResultView,
+  isOfficialWinner,
+  seriesScoreText,
+  seriesScoreView,
+  seriesTeamCode,
+  sidesUnverified,
+} from "@/lib/live-esports/gameTruth";
 import type { useLiveFeed, useLiveMatch } from "@/lib/live-esports/hooks";
 import {
   countdown,
@@ -50,11 +70,9 @@ import { cn } from "@/lib/utils";
 import { GoldChart, StatusPill } from "@/pages/esports/live/components";
 import { buildStory } from "@/pages/esports/live/insights";
 import {
+  DRAGON_LABEL,
   SCOPE_TITLE,
   competitionLine,
-  dragonCounts,
-  gameClock,
-  isWinner,
   kgold,
   matchLine,
   matchTitle,
@@ -127,7 +145,17 @@ function SeriesChip({
     >
       <MatchStateBadge state={series.state} size="sm" />
       <ChipTeam team={a.team} />
-      <span className="tabular-nums" data-testid="series-score" title={score.known ? "Series score" : "Series score — a result is not recorded"}>
+      <span
+        className="tabular-nums"
+        data-testid="series-score"
+        title={
+          score.final
+            ? "Final series score (Riot's series record)"
+            : score.known
+              ? "Series score (Riot's series record)"
+              : "Series score — a finished game's result is not confirmed, so this may be short"
+        }
+      >
         {score.a}
         <span className="px-0.5 opacity-50">–</span>
         {score.b}
@@ -455,7 +483,7 @@ function SeriesTabs({
               onClick={() => onSelect(game.game_id)}
               aria-pressed={selected}
               data-testid="game-tab"
-              title={live ? "In progress" : w ? `${w} won` : "Result not recorded"}
+              title={live ? "In progress" : w ? `${w} won (Riot's series record)` : "Result not confirmed"}
               className={cn(
                 "inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-semibold tabular-nums transition-colors sm:min-h-7",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -477,15 +505,48 @@ function SeriesTabs({
 
 /* ── objectives ─────────────────────────────────────────────────────────── */
 
+const DRAGON_DOT: Record<string, string> = {
+  infernal: "bg-orange-500",
+  mountain: "bg-amber-700",
+  ocean: "bg-teal-400",
+  cloud: "bg-slate-300",
+  hextech: "bg-cyan-300",
+  chemtech: "bg-lime-400",
+  elder: "bg-violet-400",
+};
+
+const dragonList = (s?: LiveTeamState): string[] =>
+  Array.isArray(s?.dragons) ? s!.dragons.filter((d): d is string => typeof d === "string") : [];
+
+/** One side's dragons by type, in the order taken (the feed's own order). */
+function DragonTypes({ side, state }: { side: "blue" | "red"; state?: LiveTeamState }) {
+  const list = dragonList(state);
+  return (
+    <ul
+      className={cn("flex min-w-0 flex-wrap gap-1", side === "red" && "justify-end")}
+      aria-label={`${side === "blue" ? "Blue" : "Red"} side dragons`}
+      data-testid={`dragon-types-${side}`}
+    >
+      {list.length === 0 && <li className="text-[11px] text-muted-foreground">None</li>}
+      {list.map((type, i) => (
+        <li
+          key={`${type}-${i}`}
+          className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-px text-[10px] font-medium text-foreground/85"
+        >
+          <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", DRAGON_DOT[type] ?? "bg-muted-foreground")} />
+          {DRAGON_LABEL[type] ?? type}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Objectives({ blue, red }: { blue?: LiveTeamState; red?: LiveTeamState }) {
-  const drakes = (s?: LiveTeamState) => {
-    if (!s) return "—";
-    return String(Object.values(dragonCounts((s as { dragons?: unknown }).dragons)).reduce((a, b) => a + b, 0));
-  };
+  const drakes = (s?: LiveTeamState) => (s ? String(dragonList(s).length) : "—");
   const rows: [string, string, string][] = [
     ["Gold", kgold(blue?.total_gold), kgold(red?.total_gold)],
     ["Towers", num(blue?.towers), num(red?.towers)],
-    ["Drakes", drakes(blue), drakes(red)],
+    ["Dragons", drakes(blue), drakes(red)],
     ["Inhibitors", num(blue?.inhibitors), num(red?.inhibitors)],
     ["Barons", num(blue?.barons), num(red?.barons)],
   ];
@@ -514,6 +575,12 @@ function Objectives({ blue, red }: { blue?: LiveTeamState; red?: LiveTeamState }
           </div>
         ))}
       </div>
+      {(blue || red) && (
+        <div className="grid grid-cols-2 gap-2" data-testid="hub-dragons">
+          <DragonTypes side="blue" state={blue} />
+          <DragonTypes side="red" state={red} />
+        </div>
+      )}
     </>
   );
 }
@@ -756,15 +823,16 @@ export default function MatchCenter({
   const state = detail.data?.team_state;
 
   const competition = selected ? competitionLine(selected) : [];
-  // The clock sits under the score and the series score in the band's right
+  // "Game N" sits under the kills and the series score in the band's right
   // half, so neither is repeated in the facts line.
   const facts: { key: string; text: string; title?: string }[] = selected
     ? matchLine(selected)
-        .filter((p) => p.kind !== "clock" && p.kind !== "series")
+        .filter((p) => p.kind !== "series")
         .map((p) => ({ key: p.kind as string, text: p.text, title: p.title }))
     : [];
   if (selected?.best_of) facts.unshift({ key: "bo", text: `Bo${selected.best_of}`, title: undefined });
-  const clockText = selected ? gameClock(selected) : null;
+  const result = gameResultView(detail.data);
+  const seriesScore = seriesScoreView(detail.data?.series, selected);
   const badge = selected ? gameState(selected, selectedIsLive) : null;
   const delayed = selectedIsLive && statusTone(selected?.freshness) === "delayed";
 
@@ -798,6 +866,24 @@ export default function MatchCenter({
             competition={competition}
             scope={scopeLabel(selected.competition)}
             facts={facts}
+            right={
+              seriesScore && (
+                <p
+                  className="whitespace-nowrap text-sm font-bold tabular-nums text-foreground"
+                  data-testid="series-final-score"
+                  title={
+                    seriesScore.final
+                      ? "Final series score, as Riot's series record publishes it"
+                      : seriesScore.complete
+                        ? "Series score so far, from Riot's series record"
+                        : "Series score so far — a finished game's result is not confirmed, so this may be short"
+                  }
+                >
+                  {seriesScoreText(seriesScore)}
+                  {!seriesScore.complete && <span className="opacity-60">*</span>}
+                </p>
+              )
+            }
           />
 
           {/* score */}
@@ -805,7 +891,7 @@ export default function MatchCenter({
             <TeamIdentity
               team={selected.teams.blue}
               side="blue"
-              winner={isFinal && isWinner(state, "blue")}
+              winner={isOfficialWinner(result, "blue")}
             />
             <div className="flex flex-col items-center gap-1.5 text-center">
               {detail.isError ? (
@@ -813,13 +899,19 @@ export default function MatchCenter({
                   Couldn't load this game's scoreboard.
                 </p>
               ) : (
-                <div
-                  className="text-4xl font-bold leading-none tabular-nums sm:text-5xl"
-                  aria-label={`Kills ${num(state?.blue?.kills)} to ${num(state?.red?.kills)}`}
-                >
-                  <span className="text-foreground">{num(state?.blue?.kills)}</span>
-                  <span className="px-2 text-muted-foreground/40">:</span>
-                  <span className="text-foreground/70">{num(state?.red?.kills)}</span>
+                <div className="flex flex-col items-center" data-testid="kills-score">
+                  {/* Kills, labelled: an unlabelled "15 : 1" read as a match score. */}
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Kills
+                  </span>
+                  <span
+                    className="text-4xl font-bold leading-none tabular-nums sm:text-5xl"
+                    aria-label={`Kills ${num(state?.blue?.kills)} to ${num(state?.red?.kills)}`}
+                  >
+                    <span className="text-foreground">{num(state?.blue?.kills)}</span>
+                    <span className="px-2 text-muted-foreground/40">–</span>
+                    <span className="text-foreground/70">{num(state?.red?.kills)}</span>
+                  </span>
                 </div>
               )}
               <div className="flex flex-col items-center justify-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground tabular-nums sm:flex-row sm:flex-wrap">
@@ -830,23 +922,42 @@ export default function MatchCenter({
                 ) : (
                   <StatusPill freshness={selected.freshness} />
                 )}
-                <span className="whitespace-nowrap">
-                  {selected.game_number && <span>Game {selected.game_number}</span>}
-                  {clockText && (
-                    <span title="Elapsed game time">
-                      {selected.game_number && <span aria-hidden="true"> · </span>}
-                      {clockText}
-                    </span>
-                  )}
-                </span>
+                {/* No duration: the feed publishes no game clock (PP-IA2). */}
+                {selected.game_number && <span className="whitespace-nowrap">Game {selected.game_number}</span>}
               </div>
+              {isFinal && result.kind === "official_unsided" && (
+                <p className="max-w-[12rem] text-xs text-muted-foreground" data-testid="result-note">
+                  {seriesTeamCode(detail.data?.series, result.teamId) ?? "One team"} won (Riot's series record). Which
+                  team played which side could not be verified, so no side is marked.
+                </p>
+              )}
+              {isFinal && detail.data && (result.kind === "unconfirmed" || result.kind === "unknown") && (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid="result-note"
+                  title="The live feed publishes no winner. A result is shown once Riot's series record confirms it — never from a kill, gold or structure lead."
+                >
+                  Result not confirmed
+                </p>
+              )}
             </div>
             <TeamIdentity
               team={selected.teams.red}
               side="red"
-              winner={isFinal && isWinner(state, "red")}
+              winner={isOfficialWinner(result, "red")}
             />
           </div>
+
+          {sidesUnverified(selected) && (
+            <p
+              className="mx-4 mb-3 flex items-start gap-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-300"
+              data-testid="sides-unverified"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              The schedule and the game feed name different teams for this game, so which team played which side
+              could not be verified. The team labels may not match the numbers below.
+            </p>
+          )}
 
           {staleSelected && (
             <p className="mx-4 mb-3 flex items-start gap-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-300">
