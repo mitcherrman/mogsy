@@ -17,7 +17,6 @@ vi.mock("@/lib/backend-auth", () => ({
   getExistingBackendAuthToken: (...args: unknown[]) => ensureBackendAuthToken(...args),
   getBackendAuthHeaders: (...args: unknown[]) => getBackendAuthHeaders(...args),
 }));
-vi.mock("@/lib/knowledge-admin/key", () => ({ getAdminKey: () => "test-admin-key" }));
 
 import { quizApi, QuizAuthRequiredError } from "./api";
 

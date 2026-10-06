@@ -15,7 +15,6 @@ const fetchMock = vi.fn<() => Promise<AdminSessionOutcome>>();
 vi.mock("./adminSessionClient", () => ({ fetchAdminSession: () => fetchMock() }));
 
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuthProvider";
-import { activateFallbackKey, clearFallbackKey } from "./adminCredentials";
 
 function Probe() {
   const a = useAdminAuth();
@@ -34,13 +33,11 @@ const authorized = (): AdminSessionOutcome => ({
 });
 
 beforeEach(() => {
-  clearFallbackKey();
   fetchMock.mockReset();
   authValue = { user: { id: "u1", is_anonymous: false }, session: { access_token: "tok" }, loading: false };
 });
 afterEach(() => {
   cleanup();
-  clearFallbackKey();
 });
 
 const renderProvider = () =>
@@ -74,27 +71,10 @@ describe("AdminAuthProvider state machine", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("marks fallback authorization distinctly (admin_key)", async () => {
-    fetchMock.mockResolvedValue({
-      kind: "authorized",
-      principal: { authMethod: "admin_key", userId: null, email: null },
-    });
-    renderProvider();
-    await waitFor(() => expect(status()).toBe("authorized_via_fallback"));
-  });
-
   it("shows signed_in_non_admin on 403 for a real account (not a key prompt)", async () => {
     fetchMock.mockResolvedValue({ kind: "forbidden" });
     renderProvider();
     await waitFor(() => expect(status()).toBe("signed_in_non_admin"));
-  });
-
-  it("shows fallback_rejected when a fallback key is present but 403", async () => {
-    authValue = { user: null, session: null, loading: false };
-    activateFallbackKey("bad-key");
-    fetchMock.mockResolvedValue({ kind: "forbidden" });
-    renderProvider();
-    await waitFor(() => expect(status()).toBe("fallback_rejected"));
   });
 
   it("distinguishes backend_unavailable from non-admin", async () => {

@@ -5,7 +5,7 @@ vi.mock("@/lib/backend-auth", () => ({
 }));
 
 import { fetchAdminSession } from "./adminSessionClient";
-import { ADMIN_API_BASE_URL, clearFallbackKey, activateFallbackKey } from "./adminCredentials";
+import { ADMIN_API_BASE_URL } from "./adminCredentials";
 
 const res = (status: number, body: unknown) =>
   new Response(body === undefined ? "" : JSON.stringify(body), {
@@ -18,9 +18,8 @@ const stub = (impl: (url: string, init: RequestInit) => Promise<Response>) => {
   return spy;
 };
 
-beforeEach(() => clearFallbackKey());
+beforeEach(() => {});
 afterEach(() => {
-  clearFallbackKey();
   vi.unstubAllGlobals();
 });
 
@@ -40,14 +39,9 @@ describe("fetchAdminSession", () => {
     });
   });
 
-  it("reports admin_key auth method (fallback path)", async () => {
-    activateFallbackKey("k");
+  it("OWN1: an admin_key session is not accepted (fails closed as malformed)", async () => {
     stub(async () => res(200, { authorized: true, auth_method: "admin_key", user_id: null, email: null }));
-    const outcome = await fetchAdminSession();
-    expect(outcome).toEqual({
-      kind: "authorized",
-      principal: { authMethod: "admin_key", userId: null, email: null },
-    });
+    expect(await fetchAdminSession()).toEqual({ kind: "malformed" });
   });
 
   it("maps 403 to forbidden (never authorized)", async () => {
