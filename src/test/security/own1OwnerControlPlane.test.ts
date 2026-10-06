@@ -126,8 +126,9 @@ describe("staged Edge Functions", () => {
     expect(purge).toMatch(/requireOwner\(req, "fresh_aal2"\)/);
     expect(purge).toMatch(/isInternalContinuation = token === serviceRoleKey/);
   });
-  it("admin-get-emails is owner-only", () => {
+  it("admin-get-emails is owner-only and durably audited", () => {
     expect(emails).toMatch(/requireOwner\(req, "trusted"\)/);
+    expect(emails).toMatch(/auditOwnerAction\(ctx, "admin_get_emails"/);
   });
   it("owner gate trusts only Authorization", () => {
     const g = read(`${F}/_shared/owner.ts`);
