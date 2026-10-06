@@ -26,7 +26,6 @@
  * the product.
  */
 import { getBackendAuthHeaders } from "@/lib/backend-auth";
-import { getAdminKey } from "@/lib/knowledge-admin/key";
 
 /** Same origin resolution `quizApi` uses. Declared here rather than exported
  *  from there so this admin-only module adds no export to the consumer API. */
@@ -88,13 +87,11 @@ export class DemoPreviewError extends Error {}
 /**
  * Admin-credentialed fetch, same shape as `quizApi`'s own admin path: the
  * Supabase bearer token is the normal browser route for an allowlisted owner,
- * and an explicit fallback key is attached as `X-Admin-Key` when one is set.
+ * with no browser admin-key fallback (OWN1).
  * Nothing here holds a credential of its own.
  */
 async function adminGet<T>(path: string): Promise<T> {
   const headers: Record<string, string> = { ...(await getBackendAuthHeaders()) };
-  const key = getAdminKey();
-  if (key) headers["X-Admin-Key"] = key;
   const response = await fetch(`${API_BASE_URL}${path}`, { headers });
   if (!response.ok) {
     const detail = await response.text();

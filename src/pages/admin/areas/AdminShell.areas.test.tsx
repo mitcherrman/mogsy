@@ -91,10 +91,7 @@ const authorized: AdminAuthContextValue = {
   status: "authorized",
   principal: { authMethod: "supabase_user", userId: "u1", email: "owner@mogzy.lol" },
   isAuthorized: true,
-  fallbackActive: false,
   recheck: vi.fn(),
-  applyFallbackKey: vi.fn(),
-  clearFallback: vi.fn(),
   invalidate: vi.fn(),
 };
 

@@ -42,7 +42,7 @@ describe("Patch Ops admin route", () => {
   it("lives INSIDE the /admin/knowledge block, which is master_admin gated", () => {
     const block = knowledgeBlock();
     expect(block).toContain('path="patch-ops/:operationId"');
-    expect(block).toContain('roles={["master_admin"]}');
+    expect(block).toContain("<AdminRoute>"); // OWN1: owner-only gate
     expect(block).toContain("AdminRoute");
   });
 

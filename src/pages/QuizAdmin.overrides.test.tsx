@@ -24,7 +24,6 @@ vi.mock("@/lib/backend-auth", () => ({
   getExistingBackendAuthToken: async () => "test-token",
   getBackendAuthHeaders: async () => ({}),
 }));
-vi.mock("@/lib/knowledge-admin/key", () => ({ getAdminKey: () => "test-key" }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: () => ({

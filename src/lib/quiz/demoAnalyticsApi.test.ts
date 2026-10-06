@@ -12,10 +12,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: vi.fn(async () => ({ Authorization: "Bearer token" })),
 }));
-const adminKey = vi.hoisted(() => ({ value: null as string | null }));
-vi.mock("@/lib/knowledge-admin/key", () => ({
-  getAdminKey: () => adminKey.value,
-}));
 
 import {
   DemoPreviewError,
@@ -40,7 +36,6 @@ const ok = (body: unknown) => ({
 });
 
 beforeEach(() => {
-  adminKey.value = null;
   fetchMock = vi.fn(async () => ok({ capability: CAPABILITY, current: {} }));
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -59,14 +54,10 @@ describe("PT1.9 — the demo client", () => {
     expect(urlOf(0)).toContain("/api/admin/demo-analytics/targets");
   });
 
-  it("carries the admin bearer, and the fallback key only when one is set", async () => {
+  it("OWN1: carries the admin bearer and never an X-Admin-Key", async () => {
     await demoAnalyticsApi.targets();
     expect(headersOf(0).Authorization).toBe("Bearer token");
     expect(headersOf(0)["X-Admin-Key"]).toBeUndefined();
-
-    adminKey.value = "explicit-key";
-    await demoAnalyticsApi.targets();
-    expect(headersOf(1)["X-Admin-Key"]).toBe("explicit-key");
   });
 
   it("sends the target and the presentation, url-encoded", async () => {

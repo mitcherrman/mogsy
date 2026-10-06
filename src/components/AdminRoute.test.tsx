@@ -13,9 +13,9 @@ let authState: { user: { id: string } | null; loading: boolean } = {
 };
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 vi.mock("@/lib/e2e/identity", () => ({ getE2EIdentity: () => null }));
-// has_role RPC always authorizes.
+// OWN1: owner_auth_state always reports an authorized owner here.
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { rpc: vi.fn(async () => ({ data: true, error: null })) },
+  supabase: { rpc: vi.fn(async () => ({ data: { is_owner: true, authorized: true, aal: "aal2" }, error: null })) },
 }));
 
 // A child that counts how many times it MOUNTS. If AdminRoute unmounts/remounts

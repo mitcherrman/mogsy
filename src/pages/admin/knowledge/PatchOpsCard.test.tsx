@@ -4,7 +4,11 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import PatchOpsCard from "./PatchOpsCard";
 import PatchOpsDetail from "./PatchOpsDetail";
-import { setAdminKey, clearAdminKey } from "@/lib/knowledge-admin/key";
+// OWN1: the browser admin key is gone; standalone admin pages are authorized
+// by the server-side owner check, mocked here as an authorized owner.
+vi.mock("@/hooks/useAdminAuthority", () => ({ useAdminAuthority: () => ({ loading: false, isAdmin: true }) }));
+const setAdminKey = (_key: string): void => {};
+const clearAdminKey = (): void => {};
 import type {
   PatchOpsOperation,
   PatchOpsOperationDetail,

@@ -2,7 +2,7 @@
 //
 // Reuses the established backend conventions:
 //   - public calls: Bearer via getBackendAuthHeaders() (optional identity).
-//   - admin calls:  buildAdminHeaders() (Bearer + optional X-Admin-Key).
+//   - admin calls:  buildAdminHeaders() (Supabase Bearer only — OWN1).
 //   - VITE_COMBAT_API_URL base (fallback 127.0.0.1:8000).
 //
 // Errors surface as a structured BattlesApiError carrying the HTTP status and

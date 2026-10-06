@@ -1,7 +1,7 @@
 /**
  * Thin fetch wrapper for the Mogsy Knowledge Admin API.
  * Base = VITE_COMBAT_API_URL + /api/admin/knowledge
- * Every request carries the X-Admin-Key header from sessionStorage.
+ * Every request carries the Supabase bearer only (OWN1: no admin key).
  *
  * We only speak endpoints defined in docs/admin_ui_api_contract.md.
  * If a page needs data not covered by the contract, it must render an
@@ -56,8 +56,7 @@ async function request<T>(
     }
   }
 
-  // Account-bound: current Supabase bearer by default; explicit fallback key
-  // added only when active. Origin-guarded to the backend.
+  // Account-bound: current Supabase bearer only. Origin-guarded to the backend.
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(await buildAdminHeaders(url.toString()))) {
     headers.set(k, v);

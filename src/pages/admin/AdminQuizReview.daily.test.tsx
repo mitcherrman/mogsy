@@ -17,7 +17,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import AdminQuizReview from "./AdminQuizReview";
-import { setAdminKey, clearAdminKey } from "@/lib/knowledge-admin/key";
+// OWN1: the browser admin key is gone; standalone admin pages are authorized
+// by the server-side owner check, mocked here as an authorized owner.
+vi.mock("@/hooks/useAdminAuthority", () => ({ useAdminAuthority: () => ({ loading: false, isAdmin: true }) }));
+const setAdminKey = (_key: string): void => {};
+const clearAdminKey = (): void => {};
 import type { ReviewUniverseItem, ReviewUniverseRow } from "@/lib/quiz/api";
 import { NEVER_EMITTED_FLAGS } from "@/lib/quiz-screenshot/command";
 

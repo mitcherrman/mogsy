@@ -429,12 +429,12 @@ export const appRouter = createBrowserRouter(
                         master_admin only, exactly as the user directory is.
                         FUNNEL1C renamed it off "demo-analytics", which read as a
                         second analytics destination; the old path redirects. */}
-                    <Route path="premium-preview" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminDemoAnalytics /></Suspense></AdminRoute>} />
+                    <Route path="premium-preview" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDemoAnalytics /></Suspense></AdminRoute>} />
                     <Route path="demo-analytics" element={<Navigate to="/admin/premium-preview" replace />} />
                     {/* Pro Play data coverage — read-only reconciliation of the
                         historical pro corpus. master_admin, as the other
                         backend-authority admin reads are. */}
-                    <Route path="pro-play-coverage" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
+                    <Route path="pro-play-coverage" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
                     <Route path="playtest-director" element={<Suspense fallback={<RouteFallback />}><PlaytestDirectorPage /></Suspense>} />
                     {/* USERS1 — Ranked is a section of Leaguecraft now, not an
@@ -443,7 +443,7 @@ export const appRouter = createBrowserRouter(
                     <Route path="ranked" element={<Navigate to="/admin/leaguecraft?section=ranked" replace />} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
                     <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
-                    <Route path="content-atlas" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
+                    <Route path="content-atlas" element={<AdminRoute><Suspense fallback={<RouteFallback />}><ContentAtlasPage /></Suspense></AdminRoute>} />
                     <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
                     <Route path="operations" element={<Suspense fallback={<RouteFallback />}><AdminOperationsPage /></Suspense>} />
                     <Route path="developer" element={<Suspense fallback={<RouteFallback />}><AdminDeveloperPage /></Suspense>} />
@@ -482,7 +482,7 @@ export const appRouter = createBrowserRouter(
                   <Route
                     path="/admin/knowledge"
                     element={
-                      <AdminRoute roles={["master_admin"]}>
+                      <AdminRoute>
                         <Suspense fallback={<RouteFallback />}>
                           <KnowledgeAdminLayout />
                         </Suspense>

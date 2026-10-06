@@ -1,7 +1,8 @@
 // Shared admin-auth types (account-bound Supabase admin authorization).
 
 /** Backend auth methods reported by GET /api/admin/session. */
-export type AdminAuthMethod = "supabase_user" | "admin_key";
+/** OWN1: the browser admin-key path is gone; only the account bearer remains. */
+export type AdminAuthMethod = "supabase_user";
 
 /** Safe principal context from an authorized session response. */
 export interface AdminPrincipal {
@@ -23,29 +24,21 @@ export type AdminSessionOutcome =
  */
 export type AdminAuthStatus =
   | "loading" // Supabase auth still initializing
-  | "signed_out" // no real Supabase user and no fallback key
+  | "signed_out" // no real Supabase user
   | "checking" // GET /api/admin/session in flight
   | "authorized" // authorized via the account bearer
-  | "authorized_via_fallback" // authorized via the explicit admin key
   | "signed_in_non_admin" // real account, but not allowlisted (403)
   | "expired_session" // session token gone/expired; re-sign-in required
   | "backend_unavailable" // could not reach the admin backend
-  | "malformed_response" // backend returned an unusable response
-  | "fallback_rejected"; // an explicit fallback key was rejected
+  | "malformed_response"; // backend returned an unusable response
 
 export interface AdminAuthContextValue {
   status: AdminAuthStatus;
   principal: AdminPrincipal | null;
-  /** True only for authorized/authorized_via_fallback. */
+  /** True only for authorized. */
   isAuthorized: boolean;
-  /** True while fallback key access is active. */
-  fallbackActive: boolean;
   /** Force one controlled recheck (e.g. user pressed Retry). */
   recheck: () => void;
-  /** Activate explicit admin-key fallback, then recheck. */
-  applyFallbackKey: (key: string) => void;
-  /** Clear the fallback key and return to account-bound auth. */
-  clearFallback: () => void;
   /**
    * Invalidate authorization after a relevant admin API failure (e.g. a read
    * got 403). Triggers a controlled recheck; never auto-retries mutations.
