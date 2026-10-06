@@ -18,7 +18,7 @@ Replace the admin / master_admin / moderator hierarchy with exactly one owner. T
   - The browser keeps the opaque token in IndexedDB (never a boolean, never localStorage).
 - **Why not HttpOnly cookies:** the SPA calls Supabase and Railway cross-origin with Bearer tokens. Lovable hosting can't set cookies on those origins, and Postgres can't read cookies.
 - **Compatibility shims:**
-  - `has_role(uid, admin|master_admin|moderator)` and `is_master_admin` now resolve only for the configured owner, and only on a trusted session. Existing user_roles rows grant nothing.
+  - `has_role(uid, admin|master_admin|moderator)` and `is_master_admin` now resolve only for the configured owner, only for that owner's authenticated session, and only when the session is trusted. Null-auth/service contexts fail closed. Existing user_roles rows grant nothing.
   - The other roles (`user`, `demo_access`) still read `user_roles`.
   - `useAdminRoles` is a deprecated shim over the owner check.
 - **Browser key:** the X-Admin-Key fallback is removed from every production path. The staff-duel prototype sends a key only when `import.meta.env.DEV` is true, which is statically false in production builds. The E2E identity is honoured only behind `import.meta.env.DEV` plus `VITE_E2E_AUTH=1`, in the frontend only, and the backend never accepts it.
@@ -69,6 +69,7 @@ Replace the admin / master_admin / moderator hierarchy with exactly one owner. T
 
 ## Production verification checklist
 - A non-owner holding an old `master_admin` row gets `has_role = false` and is redirected from /admin.
+- A backend/service context with no authenticated user gets `has_role(owner, admin) = false` and `is_master_admin(owner) = false`.
 - Owner at aal1 on a new device sees the MFA prompt. After verifying with "trust" checked, a reload at aal1 is attested.
 - Revoking a device means the next visit asks for MFA.
 - Ban, password reset, and Pro grant return `step_up_required` when MFA is more than 10 minutes old.
