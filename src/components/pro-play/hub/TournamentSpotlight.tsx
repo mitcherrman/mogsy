@@ -25,7 +25,15 @@ import { PHASE_LABEL, dateRange } from "@/lib/pro-play/tournamentView";
 
 const teamText = (t: TournamentMatchTeam) => (t.tbd || !t.code ? "TBD" : t.code);
 
-export default function TournamentSpotlight({ contextId }: { contextId: string }) {
+export default function TournamentSpotlight({
+  contextId,
+  label,
+}: {
+  contextId: string;
+  /** A visible kicker ("Featured") saying this is page chrome — an event the
+   *  hub points at — and not the selected match's own event (PP-IA2). */
+  label?: string;
+}) {
   const { data } = useTournament(contextId);
   if (!data) return null;
   const { context: ctx, state } = data;
@@ -39,6 +47,14 @@ export default function TournamentSpotlight({ contextId }: { contextId: string }
         title={`${ctx.name} · ${dateRange(ctx.starts, ctx.ends)}`}
         className="group inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/[0.06] py-1 pl-1 pr-2.5 sm:gap-2 sm:pr-3 text-xs transition-colors hover:border-[#c9a84c]/70 sm:min-h-0"
       >
+        {label && (
+          <span
+            className="pl-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+            data-testid="spotlight-label"
+          >
+            {label}
+          </span>
+        )}
         <EventMark name={ctx.short_name} slug={ctx.league.slug} className="rounded-full" />
         <span className="font-semibold text-foreground">{ctx.short_name}</span>
         <span className="hidden whitespace-nowrap uppercase tracking-[0.08em] text-[#c9a84c] xl:inline">
