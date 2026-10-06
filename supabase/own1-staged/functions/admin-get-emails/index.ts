@@ -1,4 +1,4 @@
-import { requireOwner } from "../_shared/owner.ts";
+import { requireOwner, auditOwnerAction } from "../_shared/owner.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid user_id format" }), { status: 400, headers: corsHeaders });
     }
 
-    // Audit log: record this access
-    console.log(`[AUDIT] admin-get-emails called by admin=${user.id} for ${user_ids.length} users at ${new Date().toISOString()}`);
+    // Durable audit: this is privileged access to account email addresses.
+    await auditOwnerAction(ctx, "admin_get_emails", "ok", { user_count: user_ids.length });
 
     // Fetch emails from auth.users using service role
     const emailMap: Record<string, string> = {};
