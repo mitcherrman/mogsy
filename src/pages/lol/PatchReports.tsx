@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   fetchPatchReport,
   fetchPatchReports,
@@ -13,6 +13,20 @@ import { PatchHubSectionNav } from "@/components/patch-reports/PatchHubSectionNa
 import { PatchDataStatusNotice } from "@/components/patch-reports/PatchDataStatusNotice";
 import type { PatchReportEntrySlots } from "@/components/patch-reports/PatchReportEntrySlots";
 import { PatchImpactChangeAnalysis } from "@/components/patch-impact/PatchImpactChangeAnalysis";
+import { PatchHubViewSwitch, type PatchHubView } from "@/components/patch-reports/PatchHubViewSwitch";
+import { PatchCatchUpView } from "@/components/patch-catchup/PatchCatchUpView";
+import {
+  catchUpSearch,
+  readLocationState,
+  readPatchHubRoute,
+  reportSearch,
+  type PatchHubLocationState,
+} from "@/components/patch-catchup/route";
+import {
+  forgetRememberedBaseline,
+  readRememberedBaseline,
+  writeRememberedBaseline,
+} from "@/components/patch-catchup/remembered-baseline";
 import { STATUS_LABELS, filterCards } from "@/lib/patch-reports/filter";
 import {
   buildPatchReportStructure,
@@ -30,8 +44,22 @@ const TYPE_LABELS: Record<PatchEntityType, string> = {
 
 const TYPE_ORDER: PatchEntityType[] = ["champion", "item", "rune", "system"];
 
+function decodeHash(hash: string): string {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return hash.slice(1);
+  }
+}
+
 const PatchReports = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  // `?since=` (or `?view=catchup`) is Catch Up; anything else is the Patch Report.
+  const route = readPatchHubRoute(searchParams);
+  const catchUp = route.mode === "catchup";
+  const locationState = useMemo(() => readLocationState(location.state), [location.state]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<PatchEntityType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<MogzyStatus | "all">("all");
@@ -40,13 +68,14 @@ const PatchReports = () => {
   const patches = listQuery.data?.patches ?? [];
   const selectedVersion = searchParams.get("patch") ?? patches[0]?.patch_version ?? null;
 
+  // Catch Up never fetches the single-patch report in the background.
   const detailQuery = useQuery({
     queryKey: ["patch-report", selectedVersion],
     queryFn: () => fetchPatchReport(selectedVersion as string),
-    enabled: Boolean(selectedVersion),
+    enabled: Boolean(selectedVersion) && !catchUp,
   });
 
-  const detail = detailQuery.data;
+  const detail = catchUp ? undefined : detailQuery.data;
   const filtered = useMemo(
     () => filterCards(detail?.cards ?? [], search, typeFilter, statusFilter),
     [detail, search, typeFilter, statusFilter],
@@ -81,11 +110,126 @@ const PatchReports = () => {
   const filtering = search.trim() !== "" || typeFilter !== "all" || statusFilter !== "all";
 
   // A deep link like ?patch=26.18#s-patch-champions__e-champion-ahri targets content that
-  // only exists after the detail query resolves, so scroll once it has.
+  // only exists after the detail query resolves, so scroll once it has. Keyed by
+  // the router location too: arriving from Catch Up at a report that is already
+  // cached renders the same `detail` object, and a new hash on the same report
+  // changes no data at all; both must still scroll. Once per navigation.
+  const scrolledFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!detail || !window.location.hash) return;
-    document.getElementById(decodeURIComponent(window.location.hash.slice(1)))?.scrollIntoView();
-  }, [detail]);
+    if (catchUp || !detail || !location.hash) return;
+    const token = `${location.key}${location.hash}`;
+    if (scrolledFor.current === token) return;
+    scrolledFor.current = token;
+    document.getElementById(decodeHash(location.hash))?.scrollIntoView?.();
+  }, [catchUp, detail, location.key, location.hash]);
+
+  /* ---------------------------- Catch Up wiring ---------------------------- */
+
+  const listData = listQuery.data;
+  const listedVersions = useMemo(() => (listData?.patches ?? []).map((p) => p.patch_version), [listData]);
+  const sourceUrls = useMemo(
+    () => new Map((listData?.patches ?? []).map((p) => [p.patch_version, p.source_url])),
+    [listData],
+  );
+  // Bumped after a write/forget so the remembered value is re-read.
+  const [memoryEpoch, setMemoryEpoch] = useState(0);
+  const remembered = useMemo(
+    () => readRememberedBaseline(listedVersions),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [listedVersions, memoryEpoch],
+  );
+
+  // URL hygiene: in Catch Up, `patch` and `through` are dropped and `view` is
+  // implied by `since` (replace, so no history entry).
+  const cleanSearch = route.mode === "catchup" ? route.cleanSearch : null;
+  useEffect(() => {
+    if (cleanSearch === null) return;
+    navigate({ search: cleanSearch, hash: location.hash }, { replace: true, state: location.state });
+  }, [cleanSearch, navigate, location.hash, location.state]);
+
+  // Catch Up without a baseline uses the remembered one, once it is known to be
+  // listed. Normal Patch Report mode never reads it.
+  const since = route.mode === "catchup" ? route.since : null;
+  useEffect(() => {
+    if (!catchUp || since !== null || cleanSearch !== null || !remembered) return;
+    const state: PatchHubLocationState = { ...locationState, fromMemory: true };
+    navigate({ search: catchUpSearch(remembered) }, { replace: true, state });
+  }, [catchUp, since, cleanSearch, remembered, navigate, locationState]);
+
+  const onBaselineChange = useCallback(
+    (version: string) => {
+      writeRememberedBaseline(version);
+      setMemoryEpoch((n) => n + 1);
+      // Tweaking the baseline must not stack history entries.
+      const state: PatchHubLocationState = { ...locationState, fromMemory: false };
+      navigate({ search: catchUpSearch(version) }, { replace: true, state });
+    },
+    [navigate, locationState],
+  );
+
+  const onForget = useCallback(() => {
+    forgetRememberedBaseline();
+    setMemoryEpoch((n) => n + 1);
+    const state: PatchHubLocationState = { ...locationState, fromMemory: false };
+    navigate({ search: location.search, hash: location.hash }, { replace: true, state });
+  }, [navigate, location.search, location.hash, locationState]);
+
+  // Focus follows an explicit view switch (not a refresh or Back).
+  const [catchUpFocusRequest, setCatchUpFocusRequest] = useState(0);
+  const focusReportHeading = useRef(false);
+  const onSwitch = useCallback((view: PatchHubView) => {
+    if (view === "catchup") setCatchUpFocusRequest((n) => n + 1);
+    else focusReportHeading.current = true;
+  }, []);
+  useEffect(() => {
+    if (catchUp || !focusReportHeading.current) return;
+    const heading = document.getElementById("patch-report-heading");
+    if (!heading) return;
+    focusReportHeading.current = false;
+    heading.focus();
+  }, [catchUp, selectedVersion]);
+
+  const returnPatch = catchUp ? (locationState.returnPatch ?? null) : searchParams.get("patch");
+  const catchUpState: PatchHubLocationState = { returnPatch, fromMemory: remembered !== null };
+  const viewSwitch = (
+    <PatchHubViewSwitch
+      current={catchUp ? "catchup" : "report"}
+      reportTo={{ pathname: "/lol/patch-reports", search: reportSearch(returnPatch) }}
+      catchUpTo={{ pathname: "/lol/patch-reports", search: catchUpSearch(remembered) }}
+      catchUpState={catchUpState}
+      onSwitch={onSwitch}
+    />
+  );
+
+  if (catchUp) {
+    return (
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 text-foreground">
+        <PatchHubMasthead
+          patchVersion={null}
+          detail={undefined}
+          entityCount={0}
+          changeCount={0}
+          sectionCount={0}
+          reconciliationAnchor={RECON_ANCHOR}
+          viewSwitch={viewSwitch}
+        />
+        {listQuery.isLoading && <p className="text-sm text-muted-foreground">Loading patches…</p>}
+        {!listQuery.isLoading && !listQuery.isError && patches.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No patch reports have been built yet.</p>
+        ) : (
+          <PatchCatchUpView
+            since={since}
+            listedVersions={listedVersions}
+            sourceUrls={sourceUrls}
+            fromMemory={locationState.fromMemory === true}
+            onBaselineChange={onBaselineChange}
+            onForget={onForget}
+            focusRequest={catchUpFocusRequest}
+          />
+        )}
+      </div>
+    );
+  }
 
   const notice = detail && <PatchDataStatusNotice reconciliation={detail.reconciliation} />;
   // Riot's account leads. The reconciliation notice sits above the report only
@@ -103,6 +247,7 @@ const PatchReports = () => {
         sectionCount={sections.length}
         reconciliation={detail?.reconciliation}
         reconciliationAnchor={RECON_ANCHOR}
+        viewSwitch={viewSwitch}
       />
 
       {listQuery.isLoading && (

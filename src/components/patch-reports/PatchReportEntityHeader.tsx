@@ -34,7 +34,16 @@ const SOURCE_TEXT: Record<PatchEditorialSource, string> = {
   mogzy_inferred: "inferred by Mogzy",
 };
 
-const EntityImage = ({ card }: { card: PatchReportCard }) => {
+/** Size classes of the report's entity image; Catch-Up passes a smaller set. */
+const ENTITY_IMAGE_SIZE = "h-16 w-16 sm:h-20 sm:w-20";
+
+export const EntityImage = ({
+  card,
+  sizeClassName = ENTITY_IMAGE_SIZE,
+}: {
+  card: PatchReportCard;
+  sizeClassName?: string;
+}) => {
   const [errored, setErrored] = useState(false);
   // Prefer Mogzy-served assets; fall back to the official image; degrade to initials.
   const src =
@@ -45,7 +54,10 @@ const EntityImage = ({ card }: { card: PatchReportCard }) => {
     return (
       <div
         aria-hidden
-        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-lg font-bold text-muted-foreground sm:h-20 sm:w-20 sm:text-xl"
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-lg font-bold text-muted-foreground sm:text-xl",
+          sizeClassName,
+        )}
       >
         {card.entity_name.slice(0, 2).toUpperCase()}
       </div>
@@ -57,7 +69,7 @@ const EntityImage = ({ card }: { card: PatchReportCard }) => {
       alt={card.entity_name}
       loading="lazy"
       onError={() => setErrored(true)}
-      className="h-16 w-16 shrink-0 rounded-lg border border-[#c9a84c]/40 object-cover shadow-sm sm:h-20 sm:w-20"
+      className={cn("shrink-0 rounded-lg border border-[#c9a84c]/40 object-cover shadow-sm", sizeClassName)}
     />
   );
 };
@@ -67,7 +79,7 @@ const EntityImage = ({ card }: { card: PatchReportCard }) => {
  * stated. A Mogzy-inferred direction is labelled as such rather than worn as
  * though it were Riot's claim.
  */
-const DirectionChip = ({ editorial }: { editorial: EditorialResolution }) => {
+export const DirectionChip = ({ editorial }: { editorial: EditorialResolution }) => {
   const { direction, source, inferred } = editorial;
   if (!direction || !DIRECTION[direction]) return null;
   const { label, glyph, tone } = DIRECTION[direction];

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { PatchReconciliation, PatchReportDetail } from "@/lib/patch-reports/api";
 
 const GOLD = "#c9a84c";
@@ -27,6 +28,8 @@ type Props = {
   reconciliation?: PatchReconciliation;
   /** Anchor of the full reconciliation notice, so the pill can jump to it. */
   reconciliationAnchor: string;
+  /** The "Patch Report | Catch Up" view switch, under the title. */
+  viewSwitch?: ReactNode;
 };
 
 /**
@@ -42,6 +45,7 @@ export const PatchHubMasthead = ({
   sectionCount,
   reconciliation,
   reconciliationAnchor,
+  viewSwitch,
 }: Props) => {
   const recon =
     RECON_PILL[reconciliation?.status ?? "PUBLISHED_NOT_RECONCILED"] ??
@@ -52,9 +56,14 @@ export const PatchHubMasthead = ({
         Mogzy Knowledge
       </p>
       <h1 className="mt-1 text-3xl font-bold">Patch Hub</h1>
+      {viewSwitch}
       {patchVersion && (
         <div className="mt-3 border-l-2 pl-3" style={{ borderColor: GOLD }}>
-          <h2 className="text-xl font-semibold">
+          <h2
+            id="patch-report-heading"
+            tabIndex={-1}
+            className="text-xl font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60"
+          >
             Patch Report <span className="text-muted-foreground">·</span> {patchVersion}
           </h2>
           {detail && (
