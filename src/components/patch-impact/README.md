@@ -66,3 +66,34 @@ Home/End jump; 1 / 6 / 11 / 18 markers (plus the domain's crossover level) are
 real buttons. There is no JS animation. The only transitions (chevron, marker
 colour) carry `motion-reduce:transition-none` and are also zeroed by the app's
 `html.reduce-motion`.
+
+## Level graph (PH4-B)
+
+Inside Explore, between the level control and the readout, a projected change
+shows a Before / After line chart for levels 1–18 (`graph/`).
+
+- **PH2 is the only authority.** The graph is fed `projection.levels`,
+  `projection.crossoverLevel` and `projection.checkpoints` and nothing else. It
+  never imports the stat curve, the analyzer or the family registry, never
+  derives a value, and never decides crossover semantics (a source-scan test
+  enforces the imports; a mutation test feeds it values that follow no curve).
+- **Eligibility** (`impactGraphEligibility`): only a `projected` analysis with
+  exactly 18 ordered, finite rows. Parameter-only (attack speed, history gaps),
+  unavailable, mechanics and text changes get no graph and no placeholder.
+- **Structure:** `chart-model.ts` (pure: rows, eligibility, y-axis policy),
+  `PatchImpactGraph.tsx` (eager shell: caption, key, text table, lazy loading),
+  `PatchImpactLevelChart.tsx` (the only file that imports `recharts`; lazy).
+- **Level sync:** the scrubber's `level` is the single source of truth. The chart
+  draws it (a vertical marker and enlarged points); a click or tap on the plot
+  calls `onLevelChange`. Moving the level never rebuilds the data.
+- **Y axis:** cropped to the curve with 8% headroom (floored at 0), but anchored at
+  0 when the plotted values are near-flat (spread < 25% of the top value), so a
+  small change is never stretched across the plot. A cropped axis is disclosed in
+  text ("The vertical axis starts at 40, not 0.").
+- **Not colour alone:** Before is a dashed grey line with hollow points, After a
+  solid gold line with filled points; the key is text. The picture is
+  `aria-hidden`; a visually hidden table lists all 18 levels (marking the
+  crossover row) and the scrubber and readout carry the same numbers.
+- **No animation**, no extra tab stops, no network: opening the graph or moving
+  the level makes no request. The recharts chunk is a static asset loaded when
+  Explore first opens a projected row.

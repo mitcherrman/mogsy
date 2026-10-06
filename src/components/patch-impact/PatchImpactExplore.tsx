@@ -4,6 +4,7 @@ import type { StatProjection } from "@/lib/patch-impact/types";
 import { cn } from "@/lib/utils";
 import { ShareLinkButton } from "@/components/patch-hub-share/ShareLinkButton";
 import { formatDelta, formatRelative, formatStatValue, projectedStatLabel } from "./format";
+import { PatchImpactGraph } from "./graph/PatchImpactGraph";
 import { PROVENANCE_COPY, describeProjectionInputs, impactProvenanceKind } from "./provenance";
 
 const WRAP = "[overflow-wrap:anywhere]";
@@ -159,6 +160,8 @@ export const PatchImpactExplore = ({
           ))}
         </ul>
       </div>
+
+      <PatchImpactGraph projection={projection} level={level} onLevelChange={onLevelChange} />
 
       <dl
         data-testid="patch-impact-readout"
