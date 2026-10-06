@@ -2,26 +2,16 @@
 // AdminAuthGate — the shared account-bound authorization gate for backend
 // admin workspaces. Renders children ONLY when the centralized AdminAuth state
 // is authorized; otherwise it shows the correct, distinct affordance
-// (sign-in / non-admin / expired / backend-unavailable / malformed / fallback)
+// (sign-in / non-admin / expired / backend-unavailable / malformed)
 // instead of a raw admin-key prompt. Protected children never mount before
 // authorization.
 // ---------------------------------------------------------------------------
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { authHref } from "@/lib/auth/auth-destination";
 import { Link, useLocation } from "react-router-dom";
-import { KeyRound, Loader2, AlertTriangle, LogIn, ShieldAlert, ServerCrash } from "lucide-react";
+import { Loader2, AlertTriangle, LogIn, ShieldAlert, ServerCrash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -35,103 +25,18 @@ function Centered({ children }: { children: ReactNode }) {
   );
 }
 
-function FallbackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="w-full gap-1 text-xs"
-      data-testid="admin-auth-open-fallback"
-      onClick={onClick}
-    >
-      <KeyRound className="h-3.5 w-3.5" aria-hidden /> Use admin key fallback
-    </Button>
-  );
-}
-
 export function AdminAuthGate({ children }: { children: ReactNode }) {
-  const { status, fallbackActive, recheck, applyFallbackKey, clearFallback } = useAdminAuth();
+  const { status, recheck } = useAdminAuth();
   const { signOut } = useAuth();
   const location = useLocation();
   // AUTH1: every "sign in" out of this gate returns to the admin page that was
   // blocked, rather than dropping the operator on the public hub.
   const signInHref = authHref(`${location.pathname}${location.search}`);
-  const [fallbackOpen, setFallbackOpen] = useState(false);
-  const [keyValue, setKeyValue] = useState("");
 
-  const submitFallback = () => {
-    const v = keyValue.trim();
-    if (!v) return;
-    applyFallbackKey(v);
-    setKeyValue("");
-    setFallbackOpen(false);
-  };
-
-  const fallbackDialog = (
-    <Dialog open={fallbackOpen} onOpenChange={(o) => !o && setFallbackOpen(false)}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Use admin key fallback</DialogTitle>
-          <DialogDescription className="text-xs">
-            For bootstrap, emergency, or development access. The account sign-in above is the normal
-            path — this key is session-scoped and never stored in localStorage.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-1.5">
-          <Label htmlFor="admin-fallback-key" className="text-xs">
-            X-Admin-Key
-          </Label>
-          <Input
-            id="admin-fallback-key"
-            data-testid="admin-auth-fallback-input"
-            type="password"
-            autoComplete="off"
-            value={keyValue}
-            onChange={(e) => setKeyValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitFallback()}
-            placeholder="admin key"
-          />
-        </div>
-        <DialogFooter>
-          <Button size="sm" variant="ghost" className="text-xs" onClick={() => setFallbackOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs"
-            data-testid="admin-auth-fallback-submit"
-            disabled={!keyValue.trim()}
-            onClick={submitFallback}
-          >
-            Use key
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-
-  // Authorized: render the workspace. A fallback banner appears only when the
-  // active authorization is the explicit key (never shows the key itself).
-  if (status === "authorized" || status === "authorized_via_fallback") {
+  // OWN1: authorized only via the account bearer. There is no admin-key path.
+  if (status === "authorized") {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        {fallbackActive && (
-          <div
-            className="flex shrink-0 items-center justify-between gap-2 border-b border-amber-400/30 bg-amber-400/5 px-4 py-1.5 text-[11px] text-amber-300"
-            data-testid="admin-auth-fallback-banner"
-          >
-            <span>Admin-key fallback access is active.</span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 text-[11px]"
-              data-testid="admin-auth-clear-fallback"
-              onClick={clearFallback}
-            >
-              Clear fallback
-            </Button>
-          </div>
-        )}
         <div className="min-h-0 flex-1">{children}</div>
       </div>
     );
@@ -163,9 +68,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
           <Button asChild size="sm" className="w-full">
             <Link to={signInHref}>Sign in</Link>
           </Button>
-          <FallbackButton onClick={() => setFallbackOpen(true)} />
         </Centered>
-        {fallbackDialog}
       </>
     );
   }
@@ -190,9 +93,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
               Sign out
             </Button>
           </div>
-          <FallbackButton onClick={() => setFallbackOpen(true)} />
         </Centered>
-        {fallbackDialog}
       </>
     );
   }
@@ -253,34 +154,11 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  // fallback_rejected
+  // Unknown status: fail closed.
   return (
-    <>
-      <Centered>
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-destructive" aria-hidden />
-          <h2 className="text-sm font-semibold">Admin key rejected</h2>
-        </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          The admin key you entered wasn&apos;t accepted. Enter a different key, or clear it and sign
-          in with an authorized account.
-        </p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => setFallbackOpen(true)}>
-            Re-enter key
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            data-testid="admin-auth-clear-fallback"
-            onClick={clearFallback}
-          >
-            Clear key
-          </Button>
-        </div>
-      </Centered>
-      {fallbackDialog}
-    </>
+    <Centered>
+      <p className="text-xs text-muted-foreground">Admin access unavailable.</p>
+      <Button size="sm" className="w-full" onClick={recheck}>Retry</Button>
+    </Centered>
   );
 }

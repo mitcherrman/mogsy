@@ -12,7 +12,7 @@ import { ADMIN_API_BASE_URL, buildAdminHeaders } from "./adminCredentials";
 import type { AdminAuthMethod, AdminSessionOutcome } from "./types";
 
 const SESSION_PATH = "/api/admin/session";
-const VALID_METHODS: readonly AdminAuthMethod[] = ["supabase_user", "admin_key"];
+const VALID_METHODS: readonly AdminAuthMethod[] = ["supabase_user"] // OWN1: an admin_key session is rejected (fail closed);
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
