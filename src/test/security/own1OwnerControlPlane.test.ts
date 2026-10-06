@@ -47,7 +47,14 @@ describe("authorization consolidation", () => {
     // the privileged branch must not consult user_roles
     const privBranch = hasRole.slice(hasRole.indexOf("WHEN"), hasRole.indexOf("ELSE"));
     expect(privBranch).not.toMatch(/user_roles/);
-    expect(B).toMatch(/FUNCTION public\.is_master_admin[\s\S]*?is_owner_user\(_user_id\)/);
+    expect(privBranch).toMatch(/auth\.uid\(\) IS NOT NULL/);
+    expect(privBranch).toMatch(/_user_id = auth\.uid\(\)/);
+    expect(privBranch).not.toMatch(/IS DISTINCT FROM auth\.uid/);
+    const master = B.slice(B.indexOf("FUNCTION public.is_master_admin"), B.indexOf("-- --- remove role mutation authority"));
+    expect(master).toMatch(/is_owner_user\(_user_id\)/);
+    expect(master).toMatch(/auth\.uid\(\) IS NOT NULL/);
+    expect(master).toMatch(/_user_id = auth\.uid\(\)/);
+    expect(master).not.toMatch(/IS DISTINCT FROM auth\.uid/);
   });
   it("removes role mutation authority from clients", () => {
     expect(B).toMatch(/REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public\.user_roles FROM anon, authenticated/);
