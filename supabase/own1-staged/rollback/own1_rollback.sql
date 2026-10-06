@@ -1,6 +1,15 @@
 -- OWN1 rollback (B + C). OWN1-A is additive and may stay. OWN1-D need not be
 -- rolled back (no client path uses TRUNCATE/REFERENCES/TRIGGER).
 
+-- Restore archived legacy privileged rows before restoring role semantics.
+DROP TRIGGER IF EXISTS block_legacy_privileged_role_write ON public.user_roles;
+DROP FUNCTION IF EXISTS public.block_legacy_privileged_role_write();
+
+INSERT INTO public.user_roles (user_id, role)
+SELECT b.user_id, b.role
+FROM private.legacy_privileged_role_backup b
+ON CONFLICT (user_id, role) DO NOTHING;
+
 -- Restore pre-OWN1 role semantics (verbatim prior bodies).
 CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
