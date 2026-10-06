@@ -57,8 +57,17 @@ The same spec run against `d84c0ddd`'s four source files (swapped in place, then
 - Phone cards are ~4px taller than the old settled card (quarter-rem slack) and a Review is ~40px taller (it now holds the closing row it rarely fills). The result card on a 375×812 phone is taller than the viewport for Standard and up (page scroll 66–160px) — it already was once settled; the **pending** card now scrolls identically instead of jumping to it.
 - "Scoring stage…" sits at the top of its reserved snapshot area, with empty space below until the numbers land.
 - Font slack: floors were measured with the CI fallback font; a wider production face could exceed a floor by a few px (the slot then grows, the previous behaviour). Quarter-rem slack mitigates, it does not remove.
-- **Not fixed (separate, DailyStageChrome):** on a phone a Survival stage's chrome prints "N answered ·" while the hidden child settles and drops it at the result, so the chrome un-wraps a row (−20px). The spec compares the Survival-phone card within the chrome and does not assert that chrome.
+- **(Closed in DRS1-INTEGRATION — see below.)** Originally:  on a phone a Survival stage's chrome prints "N answered ·" while the hidden child settles and drops it at the result, so the chrome un-wraps a row (−20px). The spec compares the Survival-phone card within the chrome and does not assert that chrome.
 - Historical I1 untouched, as instructed.
 
 ## 12–13. Result SHA / readiness
 See `git log -1` on the branch. Ready for command-center review.
+
+## DRS1-INTEGRATION addendum
+Replayed onto `62080755` (clean cherry-pick, same 7-file set; upstream Pro Play commits untouched).
+
+**Survival chrome root cause.** While the stage settles, `DailyStageChrome → RulesetReadout → StrikesMeter` printed "N answered ·" from `survival?.answered` (the hidden child's report). When the completed stage's result arrived, `useDailyRun.adopt()` called `setSurvival(null)`, the text disappeared, and on a phone the chrome lost a wrapped row (−20px).
+
+**Repair.** `DailyStageChrome.tsx`: `answered = survival?.answered ?? stage.result?.answered ?? null` — the live report while it exists, then this stage's own server-stated result. Nothing computed client-side, nothing carried across stages. The spec no longer exempts Survival-phone chrome. Unit tests pin the live value, the fallback and the no-count case.
+
+**Production font.** The spec awaits `document.fonts.ready` and records the active body face: Inter (web font) and Cinzel, Space Mono loaded in all 10 runs (`REQUIRE_PROD_FONT=1` asserts it). No reserved slot was exceeded.

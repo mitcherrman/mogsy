@@ -118,6 +118,8 @@ const INSTALL = () => {
   requestAnimationFrame(tick);
 };
 
+let fontReport: { body: string; loaded: string[]; bodyFaceLoaded: boolean } | null = null;
+
 async function playStage(page: Page, kind: Kind): Promise<Frame[]> {
   let over = false;
   let done = false;
@@ -192,6 +194,14 @@ async function playStage(page: Page, kind: Kind): Promise<Frame[]> {
   await page.getByTestId("play-mode-daily").click();
   await page.getByTestId("ranked-match").waitFor({ timeout: 15_000 });
   await page.waitForTimeout(1500);
+  // The reserves are measured against the production faces: wait for them, so a
+  // late web-font swap cannot move a frame, and record which face is active.
+  await page.evaluate(() => document.fonts.ready);
+  fontReport = await page.evaluate(() => {
+    const loaded = [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family.replace(/"/g, ""));
+    const body = getComputedStyle(document.body).fontFamily.split(",")[0].replace(/"/g, "").trim();
+    return { body, loaded: [...new Set(loaded)], bodyFaceLoaded: document.fonts.check(`400 16px ${body}`) && loaded.includes(body) };
+  });
   over = true; // the live child match goes terminal; the host hands it back
   // Hold the PENDING state long enough to be its own settled frame, then let
   // the server state the result.
@@ -221,6 +231,8 @@ for (const vp of VIEWPORTS) {
       test(`${kind}: the result card does not move when the score lands`, async ({ page }) => {
         test.setTimeout(90_000);
         const frames = await playStage(page, kind);
+        console.log(`FONT ${vp.w}x${vp.h} ${kind}: body=${fontReport?.body} bodyFaceLoaded=${fontReport?.bodyFaceLoaded} loaded=${fontReport?.loaded.join("|")}`);
+        if (process.env.REQUIRE_PROD_FONT) expect(fontReport?.bodyFaceLoaded, "the production body face is not active").toBe(true);
         const card = frames.filter((f) => f.pending !== null);
         const pending = card.filter((f) => f.pending === true);
         const settled = card.filter((f) => f.pending === false);
@@ -250,23 +262,14 @@ for (const vp of VIEWPORTS) {
 
         // The card's regions, every painted frame from first paint to settled.
         for (const [i, f] of card.entries()) {
-          // A phone's Survival chrome prints "N answered ·" while the hidden
-          // child settles and drops it at the result, which un-wraps a row of
-          // DailyStageChrome — its own readout, not the result card. For that one
-          // combination the card is compared WITHIN the chrome (shifted by the
-          // chrome's own growth) and the chrome itself is not asserted.
-          const chromeOnly = vp.phone && kind === "survival";
-          const dy = chromeOnly && f.regions.chrome && ref.regions.chrome ? ref.regions.chrome[3] - f.regions.chrome[3] : 0;
-          const shifted = (r: Rect): Rect => (r && dy ? [r[0], r[1] + dy, r[2], r[3] + dy] : r);
           for (const k of STABLE) {
-            if (chromeOnly && (k === "chrome" || k === "shell")) continue;
-            const d = diff(ref.regions[k], chromeOnly ? shifted(f.regions[k]) : f.regions[k]);
+            const d = diff(ref.regions[k], f.regions[k]);
             expect(d, `${kind} frame ${i} (${f.pending ? "pending" : "settled"}): "${k}" moved — ${d.join("; ")}`).toEqual([]);
           }
           // The card is taller than a phone's viewport for the wider kinds, so
           // the page scrolls on a phone in BOTH states; what must not happen is
           // the scroll extent changing when the score lands.
-          expect(Math.abs(f.pageScroll + dy - ref.pageScroll), `${kind} frame ${i}: the scroll extent changed`).toBeLessThanOrEqual(TOL);
+          expect(Math.abs(f.pageScroll - ref.pageScroll), `${kind} frame ${i}: the scroll extent changed`).toBeLessThanOrEqual(TOL);
           if (!vp.phone) expect(f.pageScroll, `${kind} frame ${i}: the page scrolls vertically`).toBeLessThanOrEqual(0);
           // (a phone frame carries a few px of existing sideways overflow — the
           // shell's glow bleed — which must simply not change)

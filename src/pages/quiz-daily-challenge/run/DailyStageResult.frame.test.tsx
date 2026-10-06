@@ -13,6 +13,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { buildDailyStageResult } from "@/lib/daily-challenge/run/stageResultModel";
 import { FOUR_STAGE_DAY, fixtureRun, wireResult } from "@/lib/daily-challenge/run/fixtures";
+import { DailyStageChrome } from "./DailyStageChrome";
 import { DailyStageResult } from "./DailyStageResult";
 
 const SLOTS = [
@@ -85,5 +86,27 @@ describe("DailyStageResult — one frame", () => {
     expect(hero).toContain("reserveScore = false");
     const tag = readFileSync(resolve(process.cwd(), "src/pages/quiz-daily-challenge/run/StageTag.tsx"), "utf-8");
     expect(tag).toContain("reserveMarks = false");
+  });
+
+  it("Survival's chrome keeps its answered count when the live status is dropped at the result", () => {
+    const live = { answered: 4, strikesUsed: 1, maxStrikes: 3 } as never;
+    const running = fixtureRun(FOUR_STAGE_DAY, { current_stage_index: 2 },
+      { 2: { status: "in_progress", child_match_id: "m1" } });
+    // while settling: the child's own report
+    render(<MemoryRouter><DailyStageChrome run={running} stage={running.stages[2]} survival={live} /></MemoryRouter>);
+    expect(screen.getByTestId("daily-survival-answered")).toHaveTextContent("4 answered");
+  });
+
+  it("…falls back to THIS stage's own stated result, and prints nothing it was not told", () => {
+    const done = fixtureRun(FOUR_STAGE_DAY, { current_stage_index: 3 },
+      { 2: { status: "completed", child_match_id: "m1", result: wireResult({ answered: 9 }) } });
+    const view = render(<MemoryRouter><DailyStageChrome run={done} stage={done.stages[2]} survival={null} /></MemoryRouter>);
+    expect(screen.getByTestId("daily-survival-answered")).toHaveTextContent("9 answered");
+    view.unmount();
+    // a stage with no result and no live status states no count (never carried over)
+    const fresh = fixtureRun(FOUR_STAGE_DAY, { current_stage_index: 2 },
+      { 2: { status: "in_progress", child_match_id: "m1" } });
+    render(<MemoryRouter><DailyStageChrome run={fresh} stage={fresh.stages[2]} survival={null} /></MemoryRouter>);
+    expect(screen.queryByTestId("daily-survival-answered")).toBeNull();
   });
 });

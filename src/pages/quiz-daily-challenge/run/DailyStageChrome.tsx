@@ -116,7 +116,14 @@ function RulesetReadout({ stage, skewMs, childPhase, survival, strikesFloor }: {
     // B7 — and the stage's last server-reported count, so the terminal 3/3
     // survives the parent advancing (a completed stage has no `live`).
     const used = Math.max(daily, survival?.strikesUsed ?? 0, strikesFloor ?? 0);
-    return max ? <StrikesMeter strikes={{ used, max }} answered={survival?.answered ?? null} /> : null;
+    // DRS1 — the live count while the child reports it; once the stage has
+    // completed the parent drops that status (`useDailyRun.adopt`), and the
+    // completed stage's own authoritative result carries the same fact. Without
+    // the fallback "N answered ·" vanished at the result and a phone's chrome
+    // lost a wrapped row (-20px). Never computed client-side, never carried
+    // across stages: this reads only THIS stage's server-stated result.
+    const answered = survival?.answered ?? stage.result?.answered ?? null;
+    return max ? <StrikesMeter strikes={{ used, max }} answered={answered} /> : null;
   }
   return null;
 }
