@@ -11,6 +11,8 @@ import { PatchCatchUpContinuityChip, PatchCatchUpContinuityNote } from "./PatchC
 import type { CatchUpEntryModel, CatchUpStepModel } from "./presentation";
 import { CatchUpRenderContextProvider, type CatchUpRenderContext } from "./render-context";
 import { patchReportHref } from "./route";
+import { ShareLinkButton } from "@/components/patch-hub-share/ShareLinkButton";
+import { catchUpEntryUrl } from "@/lib/patch-hub-share/urls";
 
 function useRenderContext(): CatchUpRenderContext {
   const ctx = useContext(CatchUpRenderContextProvider);
@@ -178,8 +180,9 @@ const CatchUpStep = ({ step, entry }: { step: CatchUpStepModel; entry: CatchUpEn
  * no per-line Mogzy evidence, no reconciliation marks, no Patch Impact.
  */
 export const PatchCatchUpEntry = ({ entry }: { entry: CatchUpEntryModel }) => {
-  const { chainByLine, wording } = useRenderContext();
+  const { chainByLine, wording, shareSince } = useRenderContext();
   const system = entry.entityType === "system";
+  const shareUrl = catchUpEntryUrl(shareSince, entry.id);
   const noteIdOf = (chain: CatchUpEntryModel["chains"][number]) =>
     chainByLine.get(chain.steps[chain.steps.length - 1].line.id)?.noteId ?? null;
   return (
@@ -207,6 +210,15 @@ export const PatchCatchUpEntry = ({ entry }: { entry: CatchUpEntryModel }) => {
               {entry.name}
             </h4>
             <PatchCatchUpContinuityChip chains={entry.chains} noteIdOf={noteIdOf} context={wording} />
+            {shareUrl && (
+              <ShareLinkButton
+                testId="catchup-entry-share"
+                url={shareUrl}
+                title={`${entry.name}: changes since Patch ${shareSince}`}
+                label={`Copy link to ${entry.name} changes since Patch ${shareSince}`}
+                className="min-w-10 justify-center"
+              />
+            )}
           </div>
           <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
             {!system && <span>{TYPE_LABEL[entry.entityType]} ·</span>}

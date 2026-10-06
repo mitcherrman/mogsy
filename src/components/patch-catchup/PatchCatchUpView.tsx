@@ -192,6 +192,7 @@ export const PatchCatchUpView = ({
       report
         ? {
             chainByLine: model?.chainByLine ?? new Map(),
+            shareSince: since,
             wording: {
               sincePatch: report.sincePatch,
               clampedToCoverageFloor: report.range.clampedToCoverageFloor,
@@ -199,7 +200,7 @@ export const PatchCatchUpView = ({
             onLeaveToReport,
           }
         : null,
-    [report, model, onLeaveToReport],
+    [report, model, onLeaveToReport, since],
   );
 
   const failed = state.status === "failed";

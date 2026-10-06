@@ -2,6 +2,7 @@ import { useId, type ChangeEvent, type KeyboardEvent, type ReactNode } from "rea
 import { IMPACT_CHECKPOINTS, IMPACT_MAX_LEVEL, IMPACT_MIN_LEVEL, clampImpactLevel } from "@/lib/patch-impact/math";
 import type { StatProjection } from "@/lib/patch-impact/types";
 import { cn } from "@/lib/utils";
+import { ShareLinkButton } from "@/components/patch-hub-share/ShareLinkButton";
 import { formatDelta, formatRelative, formatStatValue, projectedStatLabel } from "./format";
 import { PROVENANCE_COPY, describeProjectionInputs, impactProvenanceKind } from "./provenance";
 
@@ -47,10 +48,12 @@ export const PatchImpactExplore = ({
   projection,
   level,
   onLevelChange,
+  shareChange,
 }: {
   projection: StatProjection;
   level: number;
   onLevelChange: (level: number) => void;
+  shareChange?: { url: string; title: string; label: string };
 }) => {
   const labelId = useId();
   const hintId = useId();
@@ -216,6 +219,17 @@ export const PatchImpactExplore = ({
         )}
         {provenanceKind && <p className={WRAP}>{PROVENANCE_COPY[provenanceKind].long}</p>}
       </div>
+
+      {shareChange && (
+        <ShareLinkButton
+          testId="patch-impact-share"
+          url={shareChange.url}
+          title={shareChange.title}
+          label={shareChange.label}
+          text="Copy link to this change"
+          className="-ml-2"
+        />
+      )}
     </div>
   );
 };

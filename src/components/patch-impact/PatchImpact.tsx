@@ -47,6 +47,11 @@ export type PatchImpactProps = {
   defaultLevel?: number;
   /** The reader moved the scrubber. The level itself survives re-renders and analysis upgrades. */
   onLevelChange?: (level: number) => void;
+  /**
+   * A stable, canonical link to this change (PH4-A), offered inside Explore.
+   * Absent when the line has no stable anchor.
+   */
+  shareChange?: { url: string; title: string; label: string };
   className?: string;
 };
 
@@ -127,6 +132,7 @@ export const PatchImpact = ({
   defaultOpen = false,
   defaultLevel = IMPACT_MAX_LEVEL,
   onLevelChange,
+  shareChange,
   className,
 }: PatchImpactProps) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -218,7 +224,12 @@ export const PatchImpact = ({
           {open &&
             (analysis.status === "projected" ? (
               <div aria-busy={projectionStatus === "loading" ? true : undefined}>
-                <PatchImpactExplore projection={analysis.projection} level={level} onLevelChange={changeLevel} />
+                <PatchImpactExplore
+                  projection={analysis.projection}
+                  level={level}
+                  onLevelChange={changeLevel}
+                  shareChange={shareChange}
+                />
               </div>
             ) : (
               <ProjectionState

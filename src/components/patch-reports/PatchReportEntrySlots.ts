@@ -29,7 +29,17 @@ export type PatchReportChangeContext = PatchReportGroupContext & {
   change: PatchReportChange;
 };
 
+/** Canonical share target for an entity's permalink icon (PH4-A). */
+export type PatchReportEntityShare = {
+  /** Site-relative canonical URL, `?patch=<version>#<anchor>`; the link's `href`. */
+  href: string;
+  /** Called on a plain click: copies / shares the absolute URL. */
+  onShare: () => void;
+};
+
 export type PatchReportEntrySlots = {
+  /** Replaces the entity permalink's bare `#anchor` with a canonical, shareable URL. */
+  entityShare?: (ctx: PatchReportEntityContext) => PatchReportEntityShare | null;
   /** Header row, beside the entity identity (e.g. "Quiz this champion"). */
   entityActions?: (ctx: PatchReportEntityContext) => ReactNode;
   /** Ability/system heading row (e.g. "Ability history"). */

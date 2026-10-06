@@ -119,6 +119,7 @@ export const PatchReportEntityHeader = ({
   // useful label to a reader; the official section name says it better.
   const showType = card.entity_type !== "system";
   const count = card.changes.length;
+  const share = slots?.entityShare?.(ctx) ?? null;
 
   return (
     <header className="flex items-start gap-3 px-4 pt-4 sm:gap-4 sm:px-5">
@@ -140,9 +141,20 @@ export const PatchReportEntityHeader = ({
             {card.entity_name}
           </Heading>
           <a
-            href={`#${anchorId}`}
-            aria-label={`Link to ${card.entity_name} changes`}
-            className="rounded p-1 text-muted-foreground opacity-60 transition-opacity hover:text-[#c9a84c] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60 motion-reduce:transition-none"
+            href={share?.href ?? `#${anchorId}`}
+            aria-label={share ? `Copy link to ${card.entity_name} changes` : `Link to ${card.entity_name} changes`}
+            data-testid={share ? "patch-report-entity-share" : undefined}
+            onClick={
+              share
+                ? (event) => {
+                    // Keep modified clicks (new tab / window) native.
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+                    event.preventDefault();
+                    share.onShare();
+                  }
+                : undefined
+            }
+            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1 text-muted-foreground opacity-60 transition-opacity hover:text-[#c9a84c] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60 motion-reduce:transition-none"
           >
             <Link2 aria-hidden className="h-4 w-4" />
           </a>

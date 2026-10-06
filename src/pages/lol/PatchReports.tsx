@@ -18,6 +18,7 @@ import { PatchCatchUpView } from "@/components/patch-catchup/PatchCatchUpView";
 import {
   catchUpSearch,
   readLocationState,
+  patchReportHref,
   readPatchHubRoute,
   reportSearch,
   type PatchHubLocationState,
@@ -27,6 +28,9 @@ import {
   readRememberedBaseline,
   writeRememberedBaseline,
 } from "@/components/patch-catchup/remembered-baseline";
+import { usePatchHubShare } from "@/hooks/usePatchHubShare";
+import { resolveLandingTarget } from "@/lib/patch-hub-share/anchors";
+import { reportAnchorUrl } from "@/lib/patch-hub-share/urls";
 import { STATUS_LABELS, filterCards } from "@/lib/patch-reports/filter";
 import {
   buildPatchReportStructure,
@@ -100,12 +104,27 @@ const PatchReports = () => {
   // exact line, before Mogzy evidence). The slot returns a component so the
   // loader hook lives in a real component body.
   const reportVersion = detail?.patch_version ?? null;
+  const share = usePatchHubShare();
   const slots = useMemo<PatchReportEntrySlots | undefined>(
     () =>
       reportVersion
-        ? { changeAnalysis: (ctx) => <PatchImpactChangeAnalysis ctx={ctx} patchVersion={reportVersion} /> }
+        ? {
+            changeAnalysis: (ctx) => <PatchImpactChangeAnalysis ctx={ctx} patchVersion={reportVersion} />,
+            // PH4-A: the entity permalink always names its patch, so a copy never
+            // drifts to whatever later becomes "latest".
+            entityShare: ({ entity }) => ({
+              href: patchReportHref(reportVersion, entity.anchor),
+              onShare: () => {
+                void share({
+                  url: reportAnchorUrl(reportVersion, entity.anchor),
+                  title: `${entity.card.entity_name} · Patch ${reportVersion} changes`,
+                });
+                navigate({ search: reportSearch(reportVersion), hash: `#${entity.anchor}` }, { replace: true });
+              },
+            }),
+          }
         : undefined,
-    [reportVersion],
+    [reportVersion, share, navigate],
   );
   const filtering = search.trim() !== "" || typeFilter !== "all" || statusFilter !== "all";
 
@@ -114,14 +133,34 @@ const PatchReports = () => {
   // the router location too: arriving from Catch Up at a report that is already
   // cached renders the same `detail` object, and a new hash on the same report
   // changes no data at all; both must still scroll. Once per navigation.
+  //
+  // PH4-A: a browser's own scroll restoration can land after our scroll (as it
+  // did for Catch-Up Back), so the scroll is re-applied once on the next frame.
+  // If the exact id is gone (a re-ingest renamed a line), landing falls back
+  // exact → group → entity, and never to an unrelated line.
   const scrolledFor = useRef<string | null>(null);
+  const reapplyFrame = useRef<number | null>(null);
   useEffect(() => {
     if (catchUp || !detail || !location.hash) return;
     const token = `${location.key}${location.hash}`;
     if (scrolledFor.current === token) return;
     scrolledFor.current = token;
-    document.getElementById(decodeHash(location.hash))?.scrollIntoView?.();
+    const el = resolveLandingTarget(decodeHash(location.hash), (id) => document.getElementById(id));
+    if (!el) return;
+    el.scrollIntoView?.();
+    if (typeof window.requestAnimationFrame !== "function") return;
+    if (reapplyFrame.current !== null) window.cancelAnimationFrame(reapplyFrame.current);
+    reapplyFrame.current = window.requestAnimationFrame(() => {
+      reapplyFrame.current = null;
+      if (el.isConnected) el.scrollIntoView?.();
+    });
   }, [catchUp, detail, location.key, location.hash]);
+  useEffect(
+    () => () => {
+      if (reapplyFrame.current !== null) window.cancelAnimationFrame?.(reapplyFrame.current);
+    },
+    [],
+  );
 
   /* ---------------------------- Catch Up wiring ---------------------------- */
 
