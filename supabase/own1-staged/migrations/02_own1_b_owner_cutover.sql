@@ -40,7 +40,9 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT CASE
     WHEN _role::text IN ('admin', 'master_admin', 'moderator') THEN
       public.is_owner_user(_user_id)
-      AND (_user_id IS DISTINCT FROM auth.uid() OR public.is_owner())
+      AND auth.uid() IS NOT NULL
+      AND _user_id = auth.uid()
+      AND public.is_owner()
     ELSE
       EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = _user_id AND ur.role = _role)
       OR (public.is_owner_user(_user_id) AND (_user_id IS DISTINCT FROM auth.uid() OR public.is_owner()))
@@ -50,7 +52,9 @@ $$;
 CREATE OR REPLACE FUNCTION public.is_master_admin(_user_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT public.is_owner_user(_user_id)
-     AND (_user_id IS DISTINCT FROM auth.uid() OR public.is_owner())
+     AND auth.uid() IS NOT NULL
+     AND _user_id = auth.uid()
+     AND public.is_owner()
 $$;
 
 -- --- remove role mutation authority from clients ---------------------------
