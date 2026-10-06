@@ -60,6 +60,15 @@ Replace the admin / master_admin / moderator hierarchy with exactly one owner. T
 - B refuses to apply without a verified MFA factor for the owner.
 - Break-glass is operator SQL on `private.owner_config` or `auth.mfa_factors`. No RPC can change the owner.
 
+## Verification status (2026-10-06)
+- Reconciled the stranded Lovable OWN1 follow-up onto current main without overwriting DRS1.
+- Found and fixed one real OWN1 bug: privileged compatibility checks could treat the configured owner as admin when auth.uid() was NULL. Privileged shims now require a non-null authenticated owner session and fail closed in backend/service contexts.
+- Added durable admin_get_emails audit logging.
+- GitHub Actions branch-only verification: focused OWN1/admin suite 158/158 passed.
+- Two older security inventory tests were already failing before OWN1: adminNotificationReadSemantics expects deleted src/pages/Admin.tsx; pt14EntitlementSources expects several files deleted before OWN1. They were not modified.
+- Typecheck reports six errors only in three files whose blobs are identical to the pre-OWN1 base: OnboardingProfile.tsx, identity/connections.ts, and practiceLeaveContract.test.ts. No OWN1 file has a type error in that run.
+- Frontend/Supabase OWN1 source is READY FOR ROLLOUT REVIEW, but production rollout remains blocked on the Railway owner-auth source change and owner MFA enrollment.
+
 ## Tests
 - `src/test/security/own1OwnerControlPlane.test.ts`: static contracts (no seeded owner, shims, revokes, hashing, fresh aal2, trigger, privileges, staged functions, no X-Admin-Key, DEV-only E2E).
 - `src/test/security/own1OwnerDecision.test.ts`: owner/non-owner, aal1/aal2/fresh, trusted device ≠ fresh, misconfiguration, link sanitizer.
