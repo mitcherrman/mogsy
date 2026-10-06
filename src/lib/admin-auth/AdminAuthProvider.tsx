@@ -22,12 +22,6 @@ import {
 } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAdminSession } from "./adminSessionClient";
-import {
-  activateFallbackKey,
-  clearFallbackKey,
-  isFallbackActive,
-  subscribeAdminCredential,
-} from "./adminCredentials";
 import type {
   AdminAuthContextValue,
   AdminAuthStatus,
@@ -43,12 +37,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   // Bump to force a controlled recheck (retry / invalidate).
   const [retry, setRetry] = useState(0);
-  // Bump when the explicit fallback key is set or cleared (any tab).
-  const [fallbackVersion, setFallbackVersion] = useState(0);
-  useEffect(
-    () => subscribeAdminCredential(() => setFallbackVersion((v) => v + 1)),
-    [],
-  );
 
   const gen = useRef(0);
   const realUserId = user && !user.is_anonymous ? user.id : null;
@@ -56,22 +44,21 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const myGen = ++gen.current;
-    const fallback = isFallbackActive();
 
     const run = async () => {
       if (authLoading) {
         setStatus("loading");
         return;
       }
-      if (!realUserId && !fallback) {
+      if (!realUserId) {
         setPrincipal(null);
         setStatus("signed_out");
         return;
       }
-      // A real account with no live token (and no fallback) means the Supabase
+      // A real account with no live token means the Supabase
       // session expired. Supabase already auto-refreshes; a missing token here
       // is a genuine expiry — one recheck cycle, no loop.
-      if (realUserId && !accessToken && !fallback) {
+      if (realUserId && !accessToken) {
         setPrincipal(null);
         setStatus("expired_session");
         return;
@@ -84,17 +71,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       switch (outcome.kind) {
         case "authorized":
           setPrincipal(outcome.principal);
-          setStatus(
-            outcome.principal.authMethod === "admin_key"
-              ? "authorized_via_fallback"
-              : "authorized",
-          );
+          setStatus("authorized");
           break;
         case "forbidden":
           setPrincipal(null);
-          // A fallback key that was rejected is a distinct state; otherwise a
-          // real signed-in account simply isn't allowlisted.
-          setStatus(fallback ? "fallback_rejected" : "signed_in_non_admin");
+          setStatus("signed_in_non_admin");
           break;
         case "unavailable":
           setStatus("backend_unavailable");
@@ -107,18 +88,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
     void run();
     // realUserId / accessToken change on sign-in/out, account switch, refresh.
-  }, [authLoading, realUserId, accessToken, fallbackVersion, retry]);
+  }, [authLoading, realUserId, accessToken, retry]);
 
   const recheck = useCallback(() => setRetry((r) => r + 1), []);
   const invalidate = useCallback(() => setRetry((r) => r + 1), []);
-  const applyFallbackKey = useCallback((key: string) => {
-    activateFallbackKey(key); // fires the credential event → fallbackVersion bump
-  }, []);
-  const clearFallback = useCallback(() => {
-    clearFallbackKey();
-  }, []);
-
-  const isAuthorized = status === "authorized" || status === "authorized_via_fallback";
+  const isAuthorized = status === "authorized";
 
   return (
     <AdminAuthContext.Provider
@@ -126,10 +100,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         status,
         principal,
         isAuthorized,
-        fallbackActive: status === "authorized_via_fallback",
         recheck,
-        applyFallbackKey,
-        clearFallback,
         invalidate,
       }}
     >

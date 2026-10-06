@@ -644,7 +644,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     requiredRole: "master_admin",
     authorization:
-      "AdminRoute roles={[\"master_admin\"]} + backend require_admin on /api/admin/demo-analytics/*. The route accepts ONLY the demo subjects in services/demo_identity.py, whose ids are in a namespace a Supabase auth uuid cannot occupy, so no real account is nameable.",
+      "AdminRoute (OWN1 owner-only) + backend require_admin on /api/admin/demo-analytics/*. The route accepts ONLY the demo subjects in services/demo_identity.py, whose ids are in a namespace a Supabase auth uuid cannot occupy, so no real account is nameable.",
     notes:
       "FUNNEL1C renamed it: \"Analytics\" in its name was ambiguous next to the real Analytics area. The backend API keeps its /api/admin/demo-analytics/* path. Read-only. Switching Free/Premium selects between FREE_CAPABILITY and PREMIUM_CAPABILITY and changes nothing that is stored — no entitlement is resolved, written or implied. The record is seeded out of band by scripts/seed_demo_analytics.py and is excluded from every cross-user aggregate.",
   },
@@ -847,7 +847,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     legacyRoutes: ["/dev/ranked-duel"],
     dangerLevel: "mutates-production",
     warning:
-      "Creates real matches against the live Ranked lifecycle. The page's X-Admin-Key field is the only gate on that route.",
+      "Creates real matches against the live Ranked lifecycle. OWN1: production builds send Supabase bearer only; the dev-only key field is compiled out of production requests.",
     status: "Production",
     authorization:
       "UNCHANGED — the route carries no gate today and this reorganization adds none. Gating it is an access change and an owner decision (Atlas §N).",
@@ -1131,7 +1131,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     requiredRole: "master_admin",
     status: "Production",
     authorization:
-      "AdminRoute roles=['master_admin'] + AdminAuthGate; backend require_admin — unchanged. The React route is master-only and the Python endpoints are admin-flat, exactly as before.",
+      "AdminRoute (OWN1 owner-only) + AdminAuthGate; backend require_admin — unchanged. The React route is master-only and the Python endpoints are admin-flat, exactly as before.",
   },
   {
     id: "knowledge-queue",
@@ -1255,7 +1255,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     requiredRole: "master_admin",
     authorization:
-      "AdminRoute roles={[\"master_admin\"]} + backend require_admin on /api/admin/pro-coverage/*. Read-only; the endpoints perform no writes.",
+      "AdminRoute (OWN1 owner-only) + backend require_admin on /api/admin/pro-coverage/*. Read-only; the endpoints perform no writes.",
     notes:
       "The league table reads /by-league?limit=500, not summary.by_league, which the server caps at the 60 leagues with the most missing games. Leaguepedia stays canonical for game and result identity; Oracle's Elixir is statistical enrichment and its result disagreements are reported as diagnostics only.",
   },
