@@ -593,9 +593,13 @@ describe("17 · navigation advertises nothing the viewer cannot use", () => {
     expect(screen.queryByTestId("operations-csv-export")).toBeNull();
   });
 
-  it("labels every master-gated registry entry so the rail never over-promises", () => {
-    for (const tool of ADMIN_TOOLS.filter((t) => t.requiredRole === "master_admin")) {
-      expect(tool.authorization, tool.id).toMatch(/master|unchanged/i);
+  it("labels every formerly master-gated registry entry as owner-only (OWN1)", () => {
+    const gated = ADMIN_TOOLS.filter((t) => t.requiredRole === "master_admin");
+    expect(gated.length).toBeGreaterThan(0);
+    for (const tool of gated) {
+      expect(tool.authorization, tool.id).toMatch(/owner-only/i);
+      // No entry may still advertise a separate master tier as its live gate.
+      expect(tool.authorization, tool.id).not.toMatch(/AdminRoute master_admin|exactly as before/i);
     }
   });
 });
