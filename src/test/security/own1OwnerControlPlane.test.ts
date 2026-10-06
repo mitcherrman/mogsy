@@ -11,6 +11,7 @@ const A = read(`${STAGE}/migrations/01_own1_a_owner_core.sql`);
 const B = read(`${STAGE}/migrations/02_own1_b_owner_cutover.sql`);
 const C = read(`${STAGE}/migrations/03_own1_c_display_name_enforcement.sql`);
 const D = read(`${STAGE}/migrations/04_own1_d_client_privilege_hardening.sql`);
+const ROLLBACK = read(`${STAGE}/rollback/own1_rollback.sql`);
 const ALL_SQL = [A, B, C, D].join("\n");
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const strip = (s: string) => s.replace(/--[^\n]*/g, "");
@@ -47,7 +48,22 @@ describe("authorization consolidation", () => {
     // the privileged branch must not consult user_roles
     const privBranch = hasRole.slice(hasRole.indexOf("WHEN"), hasRole.indexOf("ELSE"));
     expect(privBranch).not.toMatch(/user_roles/);
-    expect(B).toMatch(/FUNCTION public\.is_master_admin[\s\S]*?is_owner_user\(_user_id\)/);
+    expect(privBranch).toMatch(/auth\.uid\(\) IS NOT NULL/);
+    expect(privBranch).toMatch(/_user_id = auth\.uid\(\)/);
+    expect(privBranch).not.toMatch(/IS DISTINCT FROM auth\.uid/);
+    const master = B.slice(B.indexOf("FUNCTION public.is_master_admin"), B.indexOf("-- --- remove role mutation authority"));
+    expect(master).toMatch(/is_owner_user\(_user_id\)/);
+    expect(master).toMatch(/auth\.uid\(\) IS NOT NULL/);
+    expect(master).toMatch(/_user_id = auth\.uid\(\)/);
+    expect(master).not.toMatch(/IS DISTINCT FROM auth\.uid/);
+  });
+  it("retires legacy privileged role rows so service-role readers cannot bypass OWN1", () => {
+    expect(B).toContain("private.legacy_privileged_role_backup");
+    expect(B).toContain("DELETE FROM public.user_roles");
+    expect(B).toContain("block_legacy_privileged_role_write");
+    expect(B).toContain("BEFORE INSERT OR UPDATE OF role ON public.user_roles");
+    expect(ROLLBACK).toContain("INSERT INTO public.user_roles (user_id, role)");
+    expect(ROLLBACK).toContain("private.legacy_privileged_role_backup");
   });
   it("removes role mutation authority from clients", () => {
     expect(B).toMatch(/REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public\.user_roles FROM anon, authenticated/);
@@ -119,8 +135,9 @@ describe("staged Edge Functions", () => {
     expect(purge).toMatch(/requireOwner\(req, "fresh_aal2"\)/);
     expect(purge).toMatch(/isInternalContinuation = token === serviceRoleKey/);
   });
-  it("admin-get-emails is owner-only", () => {
+  it("admin-get-emails is owner-only and durably audited", () => {
     expect(emails).toMatch(/requireOwner\(req, "trusted"\)/);
+    expect(emails).toMatch(/auditOwnerAction\(ctx, "admin_get_emails"/);
   });
   it("owner gate trusts only Authorization", () => {
     const g = read(`${F}/_shared/owner.ts`);

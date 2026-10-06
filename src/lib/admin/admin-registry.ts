@@ -1112,7 +1112,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     dangerLevel: "none",
     requiredRole: "master_admin",
     status: "Internal",
-    authorization: "AdminRoute master_admin plus backend require_admin. Read-only endpoints only.",
+    authorization: "AdminRoute (OWN1 owner-only) plus backend require_admin. Read-only endpoints only.",
   },
   {
     id: "knowledge-admin",
@@ -1131,7 +1131,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     requiredRole: "master_admin",
     status: "Production",
     authorization:
-      "AdminRoute (OWN1 owner-only) + AdminAuthGate; backend require_admin — unchanged. The React route is master-only and the Python endpoints are admin-flat, exactly as before.",
+      "AdminRoute (OWN1 owner-only) + AdminAuthGate; backend require_admin. The React route is owner-only; the Python endpoints accept only the owner's Supabase bearer once Railway adopts owner_auth_state.",
   },
   {
     id: "knowledge-queue",
@@ -1146,7 +1146,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     dangerLevel: "none",
     requiredRole: "master_admin",
     status: "Production",
-    authorization: "Inherits the Knowledge shell gate — unchanged.",
+    authorization: "Inherits the owner-only Knowledge shell gate (OWN1).",
   },
   {
     id: "knowledge-health",
@@ -1161,7 +1161,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     dangerLevel: "none",
     requiredRole: "master_admin",
     status: "Production",
-    authorization: "Inherits the Knowledge shell gate — unchanged.",
+    authorization: "Inherits the owner-only Knowledge shell gate (OWN1).",
   },
   {
     id: "knowledge-rundown",
@@ -1176,7 +1176,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     dangerLevel: "none",
     requiredRole: "master_admin",
     status: "Production",
-    authorization: "Inherits the Knowledge shell gate — unchanged.",
+    authorization: "Inherits the owner-only Knowledge shell gate (OWN1).",
   },
   {
     id: "knowledge-history",
@@ -1192,7 +1192,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     warning: "Undo reverses a change that has already been applied to published data.",
     requiredRole: "master_admin",
     status: "Production",
-    authorization: "Inherits the Knowledge shell gate — unchanged.",
+    authorization: "Inherits the owner-only Knowledge shell gate (OWN1).",
     notes: "Now listed in All Tools; it was absent from the old directory.",
   },
   {
@@ -1577,7 +1577,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     requiredRole: "master_admin",
     status: "Production",
     authorization:
-      "Master-only in the UI exactly as before. app_settings RLS admits any admin — that pre-existing mismatch is preserved, not fixed here.",
+      "Owner-only in the UI (OWN1; formerly master-only). app_settings RLS admits any admin — that pre-existing mismatch is preserved, not fixed here.",
   },
   {
     id: "onboarding-config",
@@ -1593,7 +1593,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     warning: "Changes what a new user sees on first run.",
     requiredRole: "master_admin",
     status: "Legacy",
-    authorization: "Master-only in the UI exactly as before.",
+    authorization: "Owner-only in the UI (OWN1; formerly master-only).",
     notes:
       "One of three onboarding stores. Configuration lists all three side by side with their authority labelled; none is migrated and none is declared authoritative — that is an owner decision.",
   },
@@ -1730,7 +1730,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     warning: "Downloads production user data to your machine.",
     requiredRole: "master_admin",
     status: "Production",
-    authorization: "Master-only exactly as before — the same isMasterAdmin gate on the same action.",
+    authorization: "Owner-only (OWN1; formerly master-only) — the same isMasterAdmin gate on the same action.",
   },
   {
     id: "db-restore",
@@ -1766,7 +1766,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     requiredRole: "master_admin",
     status: "Production",
     authorization:
-      "Master-only button exactly as before; the purge-anonymous-users edge function performs its own role check. Unchanged.",
+      "Owner-only button (OWN1; formerly master-only); the purge-anonymous-users edge function performs its own role check. Unchanged.",
     notes:
       "Left inside the Users panel where it lives today rather than duplicated as a second trigger. Danger Zone documents and links it.",
   },

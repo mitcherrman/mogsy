@@ -18,7 +18,7 @@ Replace the admin / master_admin / moderator hierarchy with exactly one owner. T
   - The browser keeps the opaque token in IndexedDB (never a boolean, never localStorage).
 - **Why not HttpOnly cookies:** the SPA calls Supabase and Railway cross-origin with Bearer tokens. Lovable hosting can't set cookies on those origins, and Postgres can't read cookies.
 - **Compatibility shims:**
-  - `has_role(uid, admin|master_admin|moderator)` and `is_master_admin` now resolve only for the configured owner, and only on a trusted session. Existing user_roles rows grant nothing.
+  - `has_role(uid, admin|master_admin|moderator)` and `is_master_admin` now resolve only for the configured owner, only for that owner's authenticated session, and only when the session is trusted. Null-auth/service contexts fail closed. Existing user_roles rows grant nothing.
   - The other roles (`user`, `demo_access`) still read `user_roles`.
   - `useAdminRoles` is a deprecated shim over the owner check.
 - **Browser key:** the X-Admin-Key fallback is removed from every production path. The staff-duel prototype sends a key only when `import.meta.env.DEV` is true, which is statically false in production builds. The E2E identity is honoured only behind `import.meta.env.DEV` plus `VITE_E2E_AUTH=1`, in the frontend only, and the backend never accepts it.
@@ -60,6 +60,15 @@ Replace the admin / master_admin / moderator hierarchy with exactly one owner. T
 - B refuses to apply without a verified MFA factor for the owner.
 - Break-glass is operator SQL on `private.owner_config` or `auth.mfa_factors`. No RPC can change the owner.
 
+## Verification status (2026-10-06)
+- Reconciled the stranded Lovable OWN1 follow-up onto current main without overwriting DRS1.
+- Found and fixed one real OWN1 bug: privileged compatibility checks could treat the configured owner as admin when auth.uid() was NULL. Privileged shims now require a non-null authenticated owner session and fail closed in backend/service contexts.
+- Added durable admin_get_emails audit logging.
+- GitHub Actions branch-only verification: focused OWN1/admin suite 158/158 passed.
+- Two older security inventory tests were already failing before OWN1: adminNotificationReadSemantics expects deleted src/pages/Admin.tsx; pt14EntitlementSources expects several files deleted before OWN1. They were not modified.
+- Typecheck reports six errors only in three files whose blobs are identical to the pre-OWN1 base: OnboardingProfile.tsx, identity/connections.ts, and practiceLeaveContract.test.ts. No OWN1 file has a type error in that run.
+- Frontend/Supabase OWN1 source is READY FOR ROLLOUT REVIEW, but production rollout remains blocked on the Railway owner-auth source change and owner MFA enrollment.
+
 ## Tests
 - `src/test/security/own1OwnerControlPlane.test.ts`: static contracts (no seeded owner, shims, revokes, hashing, fresh aal2, trigger, privileges, staged functions, no X-Admin-Key, DEV-only E2E).
 - `src/test/security/own1OwnerDecision.test.ts`: owner/non-owner, aal1/aal2/fresh, trusted device ≠ fresh, misconfiguration, link sanitizer.
@@ -69,6 +78,7 @@ Replace the admin / master_admin / moderator hierarchy with exactly one owner. T
 
 ## Production verification checklist
 - A non-owner holding an old `master_admin` row gets `has_role = false` and is redirected from /admin.
+- A backend/service context with no authenticated user gets `has_role(owner, admin) = false` and `is_master_admin(owner) = false`.
 - Owner at aal1 on a new device sees the MFA prompt. After verifying with "trust" checked, a reload at aal1 is attested.
 - Revoking a device means the next visit asks for MFA.
 - Ban, password reset, and Pro grant return `step_up_required` when MFA is more than 10 minutes old.
