@@ -1,7 +1,7 @@
 /**
  * The master-admin route gate, and where the user directory went.
  *
- * `AdminRoute roles={["master_admin"]}` still guards /admin/premium-preview and
+ * OWN1: owner-only `AdminRoute` guards /admin/premium-preview and
  * /admin/knowledge, and this suite pins its behaviour: a plain `admin` is
  * refused (master_admin is NOT satisfied by has_role being permissive about the
  * admin role) and nothing renders while the check is in flight.
@@ -26,14 +26,18 @@ let authState: { user: { id: string } | null; loading: boolean } = {
 /** Roles the mocked has_role RPC will answer true for. */
 let grantedRoles = new Set<string>();
 let resolveGate: (() => void) | null = null;
+// OWN1: the gate asks owner_auth_state(); "master_admin" here stands for the
+// configured owner. Any other legacy role is NOT the owner.
+const ownerState = (isOwner: boolean) =>
+  isOwner ? { is_owner: true, authorized: true, aal: "aal2" } : { is_owner: false, authorized: false };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 vi.mock("@/lib/e2e/identity", () => ({ getE2EIdentity: () => null }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: vi.fn(async (_name: string, args: { _role: string }) => {
+    rpc: vi.fn(async (name: string) => {
       if (resolveGate) await new Promise<void>((r) => (resolveGate = r));
-      return { data: grantedRoles.has(args._role), error: null };
+      return { data: name === "owner_auth_state" ? ownerState(grantedRoles.has("master_admin")) : null, error: null };
     }),
   },
 }));
@@ -45,7 +49,7 @@ function renderGuarded() {
         <Route
           path="/admin/premium-preview"
           element={
-            <AdminRoute roles={["master_admin"]}>
+            <AdminRoute>
               <div data-testid="users-page">USER DIRECTORY CONTENT</div>
             </AdminRoute>
           }

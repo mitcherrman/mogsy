@@ -20,13 +20,17 @@ let authState: { user: { id: string } | null; loading: boolean } = {
   loading: false,
 };
 let grantedRoles = new Set<string>();
+// OWN1: the gate asks owner_auth_state(); "master_admin" here stands for the
+// configured owner. Any other legacy role is NOT the owner.
+const ownerState = (isOwner: boolean) =>
+  isOwner ? { is_owner: true, authorized: true, aal: "aal2" } : { is_owner: false, authorized: false };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 vi.mock("@/lib/e2e/identity", () => ({ getE2EIdentity: () => null }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: vi.fn(async (_name: string, args: { _role: string }) => ({
-      data: grantedRoles.has(args._role),
+    rpc: vi.fn(async (name: string) => ({
+      data: name === "owner_auth_state" ? ownerState(grantedRoles.has("master_admin")) : null,
       error: null,
     })),
   },
@@ -39,7 +43,7 @@ function renderGuarded() {
         <Route
           path={PATH}
           element={
-            <AdminRoute roles={["master_admin"]}>
+            <AdminRoute>
               <div data-testid="coverage-page">PRO COVERAGE CONTENT</div>
             </AdminRoute>
           }
@@ -88,7 +92,7 @@ describe("/admin/pro-play-coverage authorization", () => {
       .split("\n")
       .find((l) => l.includes('path="pro-play-coverage"'));
     expect(line).toBeTruthy();
-    expect(line!).toContain('roles={["master_admin"]}');
+    expect(line!).toContain("<AdminRoute>"); // OWN1: owner-only, no roles prop
   });
 
   it("is advertised in the admin registry under Game Data › Pro Data", () => {
