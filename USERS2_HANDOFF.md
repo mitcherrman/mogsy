@@ -123,11 +123,58 @@ Standing rules this slice established:
 USERS2.3D (Daily lifecycle events) is NOT implemented; this slice is its
 correlation/provenance foundation.
 
-### USERS2.3D — Daily lifecycle — next
+### USERS2.3D — Daily lifecycle — implementation branch, not merged
 
-Canonical `daily_challenge_*` lifecycle events at the parent `run_id` grain,
-reusing the run's frozen creation correlation. Never infer abandonment from a
-missing completion or browser close.
+Branches (both repos): `users2/3d-daily-lifecycle`, based on current
+`mogsy/main 849e6198` and `League_Combat_Simulator/master 31546a4a`.
+Neither shared branch has moved from that base during this slice. Nothing is
+merged or deployed.
+
+Implemented:
+- Railway emits `daily_challenge_started` exactly when the parent `daily_run`
+  is first inserted, and `daily_challenge_completed` only when the guarded
+  `active -> completed` transition wins. Both use entity
+  `daily_run/<run_id>`; a resume/retry cannot create another lifecycle row.
+- Start/completion reuse the run's frozen creation
+  `visitor_id/session_id/interaction_id`. The start route passes the already
+  verified Supabase identity's anonymous bit for correct guest attribution;
+  authorization and Daily product behavior are unchanged.
+- Completion metadata preserves the authoritative current outcome
+  (`reviewed` or `perfect`) plus frozen plan/policy context. No abandonment,
+  expiry, failure or cancellation is inferred.
+- Frontend canonical vocabulary and the descriptive 3A lifecycle registry now
+  include the two Daily parent events.
+- The closed Railway Edge ingest contract now admits exactly those two new
+  names and the new `daily_run` entity type, with a contract test proving the
+  parent grain.
+
+Important defect found during 3D review:
+- `analytics.outbox.ensure_schema()` used Python sqlite3 `executescript()`
+  inside the caller's gameplay transaction. `executescript()` commits a
+  pending transaction before running, contradicting the outbox's atomicity
+  guarantee for ALL existing authoritative emitters.
+- The 3D backend branch replaces that with individual idempotent
+  `CREATE TABLE` / `CREATE INDEX` executions, which remain inside the
+  caller's transaction, and adds a rollback regression test proving gameplay
+  truth and the outbox row cannot be split by schema ensure.
+
+Tests added/extended:
+- Daily start: authoritative grain, correlation, account/guest attribution,
+  resume idempotency.
+- Daily completion: correlation, reviewed/perfect outcome, replay idempotency.
+- Edge ingest: closed ten-event/five-entity vocabulary and `daily_run` grain.
+- Shared outbox: schema ensure preserves the caller transaction and rollback.
+
+Still required before integration:
+1. Run the focused backend and frontend test suites on the branch; this mobile
+   connector can edit/inspect GitHub but does not execute repository tests.
+2. Reconcile any test failures without changing Daily gameplay semantics.
+3. Deploy the updated `railway-analytics-ingest` Edge Function BEFORE (or
+   atomically with) Railway 3D, otherwise new Daily rows receive permanent 422
+   and dead-letter.
+4. Merge/deploy backend and frontend only after those gates, then production
+   spot-check one Daily start and one completion in `analytics_events`.
+
 
 ### Later integration phase
 
