@@ -37,7 +37,7 @@ describe("sitemap builders", () => {
     ]) {
       expect(paths).not.toContain(excluded);
     }
-    for (const included of ["/lol", "/quiz", "/combat-lab", "/lol/docs", "/lol/docs/pro", "/lol/tier-list", "/blog", "/about", "/privacy", "/terms", "/security", "/contact"]) {
+    for (const included of ["/lol", "/quiz", "/combat-lab", "/lol/docs", "/lol/docs/items", "/lol/docs/pro", "/lol/tier-list", "/blog", "/about", "/privacy", "/terms", "/security", "/contact"]) {
       expect(paths).toContain(included);
     }
   });
