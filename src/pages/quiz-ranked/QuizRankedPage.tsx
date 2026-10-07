@@ -57,6 +57,7 @@
  * be told the same thing is a longer way round to the same sentence.
  */
 import { useCallback, useEffect, useState } from "react";
+import SEOHead from "@/components/SEOHead";
 import { useSurfaceEvent } from "@/lib/analytics";
 import { authHref } from "@/lib/auth/auth-destination";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -132,7 +133,14 @@ export default function QuizRankedPage() {
 
   if (!account) {
     return (
-      <Frame>
+      <>
+        <SEOHead
+          title="Ranked Match — Mogzy Leaguecraft"
+          description="Mogzy Leaguecraft Ranked match host."
+          path="/quiz/ranked"
+          noindex
+        />
+        <Frame>
         <section data-testid="ranked-account-required" className="ranked-panel p-5">
           <div className="ranked-eyebrow ranked-eyebrow--cyan">Account required</div>
           <h2 className="mt-1 font-semibold">Sign in to play Ranked</h2>
@@ -150,10 +158,21 @@ export default function QuizRankedPage() {
             </Button>
           </div>
         </section>
-      </Frame>
+        </Frame>
+      </>
     );
   }
-  return <RankedMatchHost viewerUserId={account.id} />;
+  return (
+    <>
+      <SEOHead
+        title="Ranked Match — Mogzy Leaguecraft"
+        description="Mogzy Leaguecraft Ranked match host."
+        path="/quiz/ranked"
+        noindex
+      />
+      <RankedMatchHost viewerUserId={account.id} />
+    </>
+  );
 }
 
 function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
