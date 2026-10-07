@@ -17,6 +17,17 @@ vi.mock("@/hooks/useChampionAssets", () => ({
 }));
 
 describe("League Docs landing — Mechanics tiles", () => {
+  it("links the Items category to the canonical item directory", () => {
+    render(
+      <MemoryRouter>
+        <LeagueDocsLanding />
+      </MemoryRouter>,
+    );
+    const tile = screen.getByRole("link", { name: /Items/ });
+    expect(tile).toHaveAttribute("href", "/lol/docs/items");
+    expect(tile).not.toHaveTextContent(/Soon/);
+  });
+
   it("links the Mechanics Explorer category to /lol/mechanics", () => {
     render(
       <MemoryRouter>
