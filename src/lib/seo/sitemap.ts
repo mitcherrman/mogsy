@@ -28,6 +28,7 @@ export function buildStaticEntries(): SitemapEntry[] {
     { path: "/lol/tier-list", changefreq: "weekly", priority: "0.8" },
     { path: "/lol/docs", changefreq: "weekly", priority: "0.8" },
     { path: "/lol/docs/champions", changefreq: "weekly", priority: "0.7" },
+    { path: "/lol/docs/items", changefreq: "weekly", priority: "0.7" },
     // Mechanics Reference shelf. The per-category and per-table routes are
     // deliberately NOT enumerated — they are served from one backend index
     // that this generator does not read, and the shelf links to all of them.
