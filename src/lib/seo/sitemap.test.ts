@@ -34,10 +34,11 @@ describe("sitemap builders", () => {
       "/broadcast/live-view",
       "/shop",
       "/reset-password",
+      "/lol/tier-list",
     ]) {
       expect(paths).not.toContain(excluded);
     }
-    for (const included of ["/lol", "/quiz", "/combat-lab", "/lol/docs", "/lol/docs/items", "/lol/docs/pro", "/lol/tier-list", "/blog", "/about", "/privacy", "/terms", "/security", "/contact"]) {
+    for (const included of ["/lol", "/quiz", "/combat-lab", "/lol/docs", "/lol/docs/items", "/lol/glossary", "/lol/docs/pro", "/blog", "/about", "/privacy", "/terms", "/security", "/contact"]) {
       expect(paths).toContain(included);
     }
   });
