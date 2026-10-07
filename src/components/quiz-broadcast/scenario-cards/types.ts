@@ -274,12 +274,28 @@ export type ScenarioSectionData = {
 };
 
 /** Discriminated union produced by selectScenario — one variant per card. */
+/**
+ * CSP1 — a roster-wide stat comparison premise (`assets.subject.type ===
+ * "stat"`). The answer is a champion, so there is deliberately no champion
+ * and no value here: only the stat, its stated level and the art to draw it.
+ */
+export interface StatComparisonSubject {
+  metric: string;
+  /** The stat as the player reads it ("Armor"). */
+  statName: string;
+  level: number;
+  badge: string;
+  /** Owner-locked mnemonic art, or null for the neutral comparison glyph. */
+  icon: string | null;
+}
+
 export type ScenarioSelection =
   | { card: "combat_calculation"; key: string; combat: CombatCooldownSubject }
   | { card: "matchup"; key: string; matchup: MatchupSubject }
   | { card: "summoner_spell"; key: string; spell: SummonerSpellSubject }
   | { card: "environment"; key: string; environment: EnvironmentSubject }
   | { card: "environment_scene"; key: string; scene: EnvironmentScene }
+  | { card: "stat_comparison"; key: string; stat: StatComparisonSubject }
   | { card: "item_analysis"; key: string; item: ItemAnalysisSubject }
   | { card: "champion_profile"; key: string; champion: string }
   | { card: "collectible"; key: string; iconUrl: string; label?: string; kind: SubjectKind }

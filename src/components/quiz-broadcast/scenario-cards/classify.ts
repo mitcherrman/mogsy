@@ -16,6 +16,7 @@ import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
 import { getQuestionMediaEntities } from "./questionMediaEntities";
+import { statComparisonIconUrl, statMnemonicForMetric } from "./statComparisonArt";
 import type {
   ClassifiedSubject,
   CombatCooldownSubject,
@@ -23,6 +24,7 @@ import type {
   EnvironmentSubject,
   ItemAnalysisSubject,
   MatchupSubject,
+  StatComparisonSubject,
   SummonerSpellSubject,
   ScenarioSelection,
   SubjectKind,
@@ -411,6 +413,34 @@ export function getMatchupSubject(question: QuizQuestion): MatchupSubject | null
 }
 
 /**
+ * CSP1 — parse a roster-wide STAT comparison subject, or null.
+ *
+ * Chosen by the declared subject TYPE only. The stat is the backend's metric
+ * NAME and the level is its stated number; neither is read from the prompt,
+ * and nothing here can name a champion. A level outside 1-18 or a missing
+ * label is refused (fail closed to the compact band).
+ */
+export function getStatComparisonSubject(question: QuizQuestion): StatComparisonSubject | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
+    | Record<string, unknown>
+    | undefined;
+  if (!subject || subject.type !== "stat") return null;
+  const metric = typeof subject.metric === "string" ? subject.metric : "";
+  const label = typeof subject.metric_label === "string" ? subject.metric_label : "";
+  const level = subject.level;
+  if (!metric || !label) return null;
+  if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > 18) return null;
+  return {
+    metric,
+    statName: statMnemonicForMetric(metric)?.stat ?? label,
+    level,
+    badge: typeof subject.badge === "string" && subject.badge ? subject.badge : "Stat Comparison",
+    icon: statComparisonIconUrl(metric),
+  };
+}
+
+/**
  * Parse a summoner-spell subject, or null.
  *
  * TWO BACKEND TYPES, ONE CARD
@@ -682,6 +712,7 @@ export function selectScenario(
 
   const combat = getCombatCooldownSubject(question);
   const matchup = getMatchupSubject(question);
+  const stat = getStatComparisonSubject(question);
   const spell = getSummonerSpellSubject(question);
   const item = getItemAnalysisSubject(question);
   const environment = getEnvironmentSubject(question);
@@ -710,6 +741,9 @@ export function selectScenario(
   }
   if (matchup && !shouldHide) {
     return { card: "matchup", key: `matchup-${question.id}`, matchup };
+  }
+  if (stat && !shouldHide) {
+    return { card: "stat_comparison", key: `stat-${question.id}`, stat };
   }
   if (spell && !shouldHide) {
     return { card: "summoner_spell", key: `spell-${question.id}`, spell };

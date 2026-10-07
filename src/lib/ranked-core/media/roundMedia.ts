@@ -135,6 +135,10 @@ function cinematicUrls(
       out.add(m.abilityIcon);
       return;
     }
+    case "stat_comparison":
+      out.add(academyHall);
+      out.add(sel.stat.icon);
+      return;
     case "summoner_spell": {
       out.add(spellcaster);
       out.add(sel.spell.spellIcon);

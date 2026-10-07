@@ -8,6 +8,7 @@ import { MatchupScenarioCard } from "./MatchupScenarioCard";
 import { SummonerSpellScenarioCard } from "./SummonerSpellScenarioCard";
 import { ItemAnalysisScenarioCard } from "./ItemAnalysisScenarioCard";
 import { EnvironmentScenarioCard } from "./EnvironmentScenarioCard";
+import { StatComparisonScenarioCard } from "./StatComparisonScenarioCard";
 import { CollectibleCard, SubjectPlaceholder, SubjectPlaceholderCard } from "./DefaultScenarioCard";
 
 /**
@@ -62,6 +63,8 @@ function renderCard(selection: ScenarioSelection, revealed: boolean) {
     // and a turret round are the same panel with a different picture in it.
     case "environment_scene":
       return <EnvironmentScenarioCard scene={selection.scene} />;
+    case "stat_comparison":
+      return <StatComparisonScenarioCard subject={selection.stat} />;
     case "item_analysis":
       return <ItemAnalysisScenarioCard item={selection.item} revealed={revealed} />;
     case "champion_profile":

@@ -295,7 +295,15 @@ export function SubjectMediaBackdrop({
  * because an `w-auto` image has no width until it loads, which is the class of
  * bug that collapses a band on first paint.
  */
-function FocalIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
+function FocalIcon({
+  iconUrl,
+  alt,
+  fallback,
+}: {
+  iconUrl?: string | null;
+  alt: string;
+  fallback?: ReactNode;
+}) {
   const [errored, setErrored] = useState(false);
   const box = "h-[var(--subject-hero-icon)] w-[var(--subject-hero-icon)]";
   if (!iconUrl || errored) {
@@ -304,7 +312,7 @@ function FocalIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
         data-subject-hero-icon
         className={`flex ${box} items-center justify-center rounded-[18%] border border-[#d4b35a]/40 bg-black/40 text-[calc(0.22*var(--subject-hero-icon))] text-white/30`}
       >
-        ?
+        {fallback ?? "?"}
       </div>
     );
   }
@@ -332,9 +340,12 @@ export function SubjectFocalZone({
   iconUrl,
   alt,
   beside = false,
+  fallback,
 }: {
   iconUrl?: string | null;
   alt: string;
+  /** CSP1 — drawn in place of the "?" when there is no icon or it fails. */
+  fallback?: ReactNode;
   /**
    * Set when the card's caption is a STACK rather than a footer — the SSM
    * slice's spell carries a haste chip, a divider and its source rows.
@@ -440,7 +451,7 @@ export function SubjectFocalZone({
           animate={{ y: [0, -6, 0] }}
           transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
         >
-          <FocalIcon iconUrl={iconUrl} alt={alt} />
+          <FocalIcon iconUrl={iconUrl} alt={alt} fallback={fallback} />
         </motion.div>
 
         {/* pedestal shadow */}
