@@ -25,6 +25,7 @@ export function buildStaticEntries(): SitemapEntry[] {
     { path: "/", changefreq: "daily", priority: "1.0" },
     { path: "/lol", changefreq: "daily", priority: "1.0" },
     { path: "/quiz", changefreq: "daily", priority: "0.9" },
+    { path: "/quiz/journeys", changefreq: "weekly", priority: "0.8" },
     { path: "/lol/docs", changefreq: "weekly", priority: "0.8" },
     { path: "/lol/glossary", changefreq: "weekly", priority: "0.7" },
     { path: "/lol/docs/champions", changefreq: "weekly", priority: "0.7" },
