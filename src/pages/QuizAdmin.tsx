@@ -200,6 +200,7 @@ export default function QuizAdmin() {
         title="Quiz Admin — Mogsy"
         description="Review and resolve user-submitted League Quiz reports."
         path="/quiz/admin"
+        noindex
       />
 
       {/* Header */}
