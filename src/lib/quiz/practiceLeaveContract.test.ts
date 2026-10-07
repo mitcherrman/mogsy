@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Location } from "react-router-dom";
+import { NavigationType, type Location } from "react-router-dom";
 import {
   isUnfinishedPracticePhase,
   PRACTICE_LEAVE_COPY,
@@ -31,7 +31,7 @@ describe("Practice leave contract", () => {
     const candidate = (nextLocation: Location) => ({
       currentLocation,
       nextLocation,
-      historyAction: "PUSH" as const,
+      historyAction: NavigationType.Push,
     });
 
     expect(shouldBlockPracticeDeparture(candidate(location("/lol")))).toBe(true);
