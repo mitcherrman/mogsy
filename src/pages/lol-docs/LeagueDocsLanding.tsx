@@ -48,6 +48,7 @@ const CATEGORIES: Category[] = [
     title: "Items",
     description: "Costs, stats, build paths, and gold efficiency.",
     Icon: Swords,
+    to: "/lol/docs/items",
   },
   {
     // Two mechanics entrances on purpose: the Explorer answers a question for
