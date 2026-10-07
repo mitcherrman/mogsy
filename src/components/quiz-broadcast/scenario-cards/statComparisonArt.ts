@@ -7,11 +7,13 @@
  * (`lib/journey/statIcons.ts` — Armor is Cloth Armor, Health is Ruby
  * Crystal), so the premise reuses art the player already reads as the stat.
  *
- * A metric with no owner-mapped mnemonic (Attack Range today) gets `null`,
- * and the card draws its intentional neutral comparison glyph instead of
- * inventing an icon for it.
+ * A metric with no owner-mapped mnemonic uses the existing neutral stat art
+ * (`assets/champion-card-duel/stats`): Attack Range is `range.png`. A failed
+ * image load falls back to that set's neutral `scale.png`. No new art.
  */
 import { itemIconUrl } from "@/components/pro-play/media/ItemIcon";
+import rangeArt from "@/assets/champion-card-duel/stats/range.png";
+import scaleArt from "@/assets/champion-card-duel/stats/scale.png";
 import { STAT_MNEMONICS, type MnemonicStat, type StatMnemonic } from "@/lib/journey/statIcons";
 
 const METRIC_MNEMONIC: Readonly<Record<string, MnemonicStat>> = {
@@ -30,8 +32,18 @@ export function statMnemonicForMetric(metric: string | null | undefined): StatMn
   return key ? STAT_MNEMONICS[key] : null;
 }
 
-/** The mnemonic's art URL, or null when the stat draws the neutral glyph. */
+/** Existing neutral stat art for metrics with no owner-mapped mnemonic. */
+const METRIC_STAT_ART: Readonly<Record<string, string>> = {
+  attack_range: rangeArt,
+  base_attack_range: rangeArt,
+};
+
+/** Existing neutral comparison art, drawn only if the stat's image fails. */
+export const STAT_COMPARISON_FALLBACK_ART = scaleArt;
+
+/** The stat's art URL: owner mnemonic, else existing neutral stat art, else null. */
 export function statComparisonIconUrl(metric: string | null | undefined): string | null {
   const mnemonic = statMnemonicForMetric(metric);
-  return mnemonic ? itemIconUrl(mnemonic.itemId) : null;
+  if (mnemonic) return itemIconUrl(mnemonic.itemId);
+  return (metric && METRIC_STAT_ART[metric]) || null;
 }

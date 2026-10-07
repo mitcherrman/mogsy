@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveBandProfile } from "@/lib/question-surface/bandProfile";
 import { getStatComparisonSubject, selectScenario } from "./classify";
 import { ScenarioCard } from "./ScenarioCard";
-import { statComparisonIconUrl } from "./statComparisonArt";
+import rangeArt from "@/assets/champion-card-duel/stats/range.png";
+import { STAT_COMPARISON_FALLBACK_ART, statComparisonIconUrl } from "./statComparisonArt";
 
 /** The five stats current canon serves, as the backend renders them (CSP1). */
 const SERVED = [
@@ -40,7 +41,7 @@ describe("CSP1 stat comparison premise", () => {
   it.each(SERVED)("reads $metric as a neutral stat card at level 1", (s) => {
     const parsed = getStatComparisonSubject(question(stat(s)));
     expect(parsed).toMatchObject({ metric: s.metric, statName: s.name, level: 1 });
-    if (s.item === null) expect(parsed?.icon).toBeNull();
+    if (s.item === null) expect(parsed?.icon).toBe(rangeArt);
     else expect(parsed?.icon).toMatch(new RegExp(`/assets/items/${s.item}\\.png$`));
   });
 
@@ -77,11 +78,21 @@ describe("CSP1 stat comparison premise", () => {
     expect(container.textContent).not.toContain("?");
   });
 
-  it("draws the neutral glyph, never '?', for a stat with no mnemonic", () => {
+  it("draws Attack Range with the existing range stat art", () => {
     const { container } = render(
       <ScenarioCard question={question(stat(SERVED[5]))} revealActive={false} correctAnswer={null} />,
     );
-    expect(container.querySelector("[data-stat-comparison-glyph]")).not.toBeNull();
+    expect(container.querySelector("img[data-subject-hero-icon]")?.getAttribute("src")).toBe(rangeArt);
+    expect(container.querySelector("svg[data-stat-comparison-glyph]")).toBeNull();
+  });
+
+  it("falls back to the existing neutral scale art when the image fails", () => {
+    const { container } = render(
+      <ScenarioCard question={question(stat(SERVED[0]))} revealActive={false} correctAnswer={null} />,
+    );
+    fireEvent.error(container.querySelector("img[data-subject-hero-icon]")!);
+    expect(container.querySelector("img[data-stat-comparison-fallback]")?.getAttribute("src"))
+      .toBe(STAT_COMPARISON_FALLBACK_ART);
     expect(container.textContent).not.toContain("?");
   });
 });

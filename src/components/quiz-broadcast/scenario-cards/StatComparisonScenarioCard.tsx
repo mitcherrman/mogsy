@@ -10,6 +10,7 @@ import {
   SubjectMediaCaption,
 } from "./SubjectMediaComposition";
 import academyHall from "@/assets/ranked/academy-hall.jpg";
+import { STAT_COMPARISON_FALLBACK_ART } from "./statComparisonArt";
 
 /**
  * CSP1 — the premise of a roster-wide stat superlative ("At level 1, which
@@ -21,9 +22,9 @@ import academyHall from "@/assets/ranked/academy-hall.jpg";
  * champion icons stay on the answer options, symmetric.
  *
  * Same shared subject-media composition as the item/spell/environment cards,
- * by call. The focal art is the stat's owner-locked mnemonic; a stat without
- * one (or an image that fails to load) draws a neutral comparison glyph —
- * never the generic "?".
+ * by call. The focal art is the stat's owner-locked mnemonic, or the existing
+ * neutral stat art (Attack Range: `range.png`). If that image fails to load,
+ * the existing neutral `scale.png` is drawn — never the generic "?".
  */
 export function StatComparisonScenarioCard({ subject }: { subject: StatComparisonSubject }) {
   return (
@@ -44,7 +45,14 @@ export function StatComparisonScenarioCard({ subject }: { subject: StatCompariso
       <SubjectFocalZone
         iconUrl={subject.icon}
         alt={subject.statName}
-        fallback={<StatComparisonGlyph />}
+        fallback={
+          <img
+            data-stat-comparison-fallback
+            src={STAT_COMPARISON_FALLBACK_ART}
+            alt=""
+            className="h-full w-full object-contain p-[12%]"
+          />
+        }
       />
 
       <PanelFiligree />
@@ -59,31 +67,5 @@ export function StatComparisonScenarioCard({ subject }: { subject: StatCompariso
         </div>
       </SubjectMediaCaption>
     </ScenarioCardFrame>
-  );
-}
-
-/**
- * Neutral comparison mark: four bars of rising height, none highlighted, in
- * the medallion's gold. It says "compare a quantity" and nothing about which
- * entry wins.
- */
-export function StatComparisonGlyph() {
-  return (
-    <svg
-      data-stat-comparison-glyph
-      viewBox="0 0 64 64"
-      aria-hidden
-      className="h-[62%] w-[62%] text-[#e8c97a]"
-    >
-      {[
-        [10, 38],
-        [22, 28],
-        [34, 20],
-        [46, 12],
-      ].map(([x, y]) => (
-        <rect key={x} x={x} y={y} width="8" height={54 - y} rx="1.5" fill="currentColor" opacity="0.8" />
-      ))}
-      <rect x="6" y="54" width="52" height="2.5" rx="1.25" fill="currentColor" opacity="0.55" />
-    </svg>
   );
 }
