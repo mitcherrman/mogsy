@@ -50,6 +50,7 @@ import {
 import { useJourneyLibrary } from "@/lib/journey-library/useJourneyLibrary";
 import { JOURNEY_LIBRARY_ROUTE } from "@/pages/quiz-ranked/matchOrigin";
 import { cn } from "@/lib/utils";
+import SEOHead from "@/components/SEOHead";
 
 type Notice =
   | { kind: "account"; title: string }
@@ -136,7 +137,13 @@ export default function JourneyLibraryPage() {
   }, [hasAccount, library, navigate, refused]);
 
   return (
-    <div
+    <>
+      <SEOHead
+        title="Journey Library — League of Legends Matchup Training | Mogzy"
+        description="Browse guided League of Legends matchup Journeys on Mogzy. Pick a lane matchup and practice with short, unrated question sets against a bot."
+        path="/quiz/journeys"
+      />
+      <div
       className="ranked-academy relative mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-12 pt-3"
       data-testid="journey-library"
     >
@@ -421,6 +428,6 @@ function LibrarySkeleton() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-56 rounded-xl" />)}
       </div>
-    </div>
-  );
+      </div>
+    </>  );
 }
