@@ -144,7 +144,7 @@ export default function JourneyLibraryPage() {
         path="/quiz/journeys"
       />
       <div
-      className="ranked-academy relative mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-12 pt-3"
+        className="ranked-academy relative mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-12 pt-3"
       data-testid="journey-library"
     >
       <header className="flex flex-col gap-2">
@@ -260,7 +260,8 @@ export default function JourneyLibraryPage() {
           )}
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -428,6 +429,6 @@ function LibrarySkeleton() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-56 rounded-xl" />)}
       </div>
-      </div>
-    </>  );
+    </div>
+  );
 }
