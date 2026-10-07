@@ -72,6 +72,8 @@ export const MACRO_EVENTS = [
   "practice_quiz_completed",
   "ranked_started",
   "ranked_completed",
+  "daily_challenge_started",
+  "daily_challenge_completed",
   "meta_reflex_started",
   "meta_reflex_completed",
   "mastery_started",
