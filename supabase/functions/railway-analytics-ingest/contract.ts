@@ -76,7 +76,7 @@ export type ValidationResult =
   | { ok: false; code: IngestRejection; message: string };
 
 /**
- * The approved vocabulary. Railway may emit these eight names and nothing else
+ * The approved vocabulary. Railway may emit these ten names and nothing else
  * — an unknown lower_snake_case string is rejected rather than stored, so the
  * warehouse's vocabulary cannot drift by accident from the other side of an
  * HTTP boundary.
@@ -94,6 +94,8 @@ export const ALLOWED_EVENTS = new Set([
   "practice_quiz_completed",
   "ranked_started",
   "ranked_completed",
+  "daily_challenge_started",
+  "daily_challenge_completed",
   "dsa_started",
   "dsa_completed",
   "mastery_started",
@@ -101,7 +103,7 @@ export const ALLOWED_EVENTS = new Set([
 ]);
 
 /**
- * Entity types, pinned to the four Railway owns. `ranked_participant` — not
+ * Entity types, pinned to the five Railway owns. `ranked_participant` — not
  * `ranked_match` — is load-bearing: the unique index is
  * (source_system, event_name, source_entity_type, source_entity_id), so a
  * match-level key would silently collapse both duellists into one row.
@@ -109,6 +111,7 @@ export const ALLOWED_EVENTS = new Set([
 export const ALLOWED_ENTITY_TYPES = new Set([
   "quiz_session",
   "ranked_participant",
+  "daily_run",
   "dsa_run",
   "mastery_session",
 ]);
