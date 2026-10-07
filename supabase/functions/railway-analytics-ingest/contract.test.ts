@@ -52,8 +52,10 @@ function rejected(input: unknown) {
 // ---------------------------------------------------------------- vocabulary
 
 describe("the approved vocabulary", () => {
-  it("accepts each of the eight authoritative events and nothing else", () => {
+  it("accepts each of the ten authoritative events and nothing else", () => {
     expect([...ALLOWED_EVENTS].sort()).toEqual([
+      "daily_challenge_completed",
+      "daily_challenge_started",
       "dsa_completed",
       "dsa_started",
       "mastery_completed",
@@ -119,10 +121,20 @@ describe("fields the caller does not get to choose", () => {
 // ---------------------------------------------------------------- entities
 
 describe("the entity model", () => {
-  it("accepts exactly the four Railway owns", () => {
+  it("accepts exactly the five Railway owns", () => {
     expect([...ALLOWED_ENTITY_TYPES].sort()).toEqual([
-      "dsa_run", "mastery_session", "quiz_session", "ranked_participant",
+      "daily_run", "dsa_run", "mastery_session", "quiz_session", "ranked_participant",
     ]);
+  });
+
+  it("accepts Daily only at the parent run grain", () => {
+    const row = ok(good({
+      event_name: "daily_challenge_started",
+      source_entity_type: "daily_run",
+      source_entity_id: "dr_0123456789abcdef01234567",
+    }));
+    expect(row.source_entity_type).toBe("daily_run");
+    expect(row.source_entity_id).toBe("dr_0123456789abcdef01234567");
   });
 
   it("accepts ranked_participant — the per-player key", () => {
