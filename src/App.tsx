@@ -78,6 +78,7 @@ const LolHub = R.LolHub.Component;
 const LolTierList = R.LolTierList.Component;
 const LolDevChangelog = R.LolDevChangelog.Component;
 const ItemDetail = R.ItemDetail.Component;
+const LeagueDocsItemIndex = R.LeagueDocsItemIndex.Component;
 const LeagueDocsLanding = R.LeagueDocsLanding.Component;
 const LeagueDocsChampionIndex = R.LeagueDocsChampionIndex.Component;
 const LeagueDocsChampionDetail = R.LeagueDocsChampionDetail.Component;
@@ -562,6 +563,7 @@ export const appRouter = createBrowserRouter(
                   <Route path="/lol/docs/mechanics" element={<Suspense fallback={<RouteFallback />}><MechanicsReferencePage /></Suspense>} />
                   <Route path="/lol/docs/mechanics/:categorySlug" element={<Suspense fallback={<RouteFallback />}><MechanicsReferencePage /></Suspense>} />
                   <Route path="/lol/docs/mechanics/:categorySlug/:tableSlug" element={<Suspense fallback={<RouteFallback />}><MechanicsReferencePage /></Suspense>} />
+                  <Route path="/lol/docs/items" element={<Suspense fallback={<RouteFallback />}><LeagueDocsItemIndex /></Suspense>} />
                   <Route path="/lol/docs/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionIndex /></Suspense>} />
                   <Route path="/lol/docs/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionDetail /></Suspense>} />
                   <Route path="/items/:slug" element={<Suspense fallback={<RouteFallback />}><ItemDetail /></Suspense>} />
