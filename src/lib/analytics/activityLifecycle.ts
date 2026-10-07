@@ -52,8 +52,8 @@ export const ACTIVITY_LIFECYCLE_REGISTRY = [
     entityGrain: "one account's dated Daily Challenge parent run; its stages are children, each launching one canonical Ranked child match",
     entityId: "daily run_id (with plan_date as the natural uniqueness context)",
     validTerminalOutcomes: ["completed", "abandoned", "expired", "failed"],
-    currentEvents: [],
-    migrationNotes: "Add a daily_challenge lifecycle (USERS2.3D); never reuse retired DSA names or count child Ranked milestones as Daily completion. USERS2.3C-Daily froze browser correlation on the run (creation request only; resume never rewrites) and on each stage (first launch request; retries never rewrite), and the stage's Ranked child inherits it. The Daily parent and its Ranked children are separate grains.",
+    currentEvents: ["daily_challenge_started", "daily_challenge_completed"],
+    migrationNotes: "USERS2.3D adds authoritative Daily parent start/completion at the run_id grain; never reuse retired DSA names or count child Ranked milestones as Daily completion. USERS2.3C-Daily froze browser correlation on the run (creation request only; resume never rewrites) and on each stage (first launch request; retries never rewrite), and the stage's Ranked child inherits it. The Daily parent and its Ranked children are separate grains.",
   }),
   activity({
     activityId: "practice_quiz",
