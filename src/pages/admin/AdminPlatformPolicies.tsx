@@ -118,7 +118,7 @@ const CONTROLS: {
       "Offer today's Daily Challenge on the Leaguecraft lobby's PLAY scroll.",
     warnWhen: "off",
     warning:
-      "The PLAY scroll stops offering the Daily Challenge. The challenge itself still runs, still counts, and still keeps streaks — only this entry to it is withheld.",
+      "The PLAY scroll stops offering the Daily Challenge. The challenge itself still runs and still counts — only this entry to it is withheld.",
   },
   {
     field: "playModeInvite",

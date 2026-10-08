@@ -77,7 +77,7 @@ describe("DailyStageResult — one frame", () => {
   it("holds the snapshot floor for every stage kind, and reserves nothing anywhere else", () => {
     const src = readFileSync(resolve(process.cwd(),
       "src/pages/quiz-daily-challenge/run/DailyStageResult.tsx"), "utf-8");
-    for (const kind of ["review", "standard", "weak_areas", "time_trial", "survival"]) {
+    for (const kind of ["review", "standard", "weak_areas", "order_forge", "time_trial", "survival"]) {
       expect(src).toMatch(new RegExp(`${kind}: "min-h-\\[[\\d.]+rem\\] sm:min-h-\\[[\\d.]+rem\\]"`));
     }
     expect(src).not.toMatch(/ResizeObserver|getBoundingClientRect|offsetHeight/);

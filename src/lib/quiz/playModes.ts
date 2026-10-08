@@ -57,7 +57,7 @@ export const PLAY_MODES: readonly PlayModeDescriptor[] = [
     id: "daily",
     kicker: "Today's Study",
     title: "Daily Challenge",
-    note: "Complete today's Leaguecraft set and keep your streak alive.",
+    note: "Complete today's Leaguecraft set. A fresh one arrives every day.",
   },
   {
     id: "invite",

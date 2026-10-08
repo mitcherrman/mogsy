@@ -26,7 +26,7 @@ export function StageTag({ stage, size = "sm" }: {
     ? "px-3.5 py-1 text-sm tracking-[0.22em]" : "px-2 py-0.5 text-[0.6875rem] tracking-[0.18em]";
   return (
     <span data-testid="daily-stage-tag" data-stage-kind={stage.kind}
-      data-stage-family={id.family} data-closing={closing ? "true" : undefined}
+      data-stage-family={id.family} data-stage-category={id.category} data-closing={closing ? "true" : undefined}
       className={`inline-flex items-center gap-1.5 rounded-sm border font-semibold uppercase ${tone} ${scale}`}>
       {id.label}
       {extra && (

@@ -44,7 +44,7 @@ import {
 import { OUTCOME_INK, stageTone, type StageTone } from "@/components/quiz/workspace/stageTheme";
 import { categoryLabel, endedByNote, stageKindLabel } from "@/components/quiz/workspace/historyFormat";
 import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
-import type { DailyStageKind } from "@/lib/daily-challenge/run/contracts";
+import { DAILY_STAGE_KINDS, type DailyStageKind } from "@/lib/daily-challenge/run/contracts";
 import { staggered, useReveal } from "@/lib/motion/useReveal";
 import type { DailyHistoryRecord, HistoryQuestion, HistoryRound, HistoryStage } from "@/lib/history/contracts";
 import TimeTrialRoom from "@/components/quiz/workspace/analytics/TimeTrialRoom";
@@ -53,12 +53,15 @@ import SurvivalRoom from "@/components/quiz/workspace/analytics/SurvivalRoom";
 import { ReviewRoom, WeakAreasRoom } from "@/components/quiz/workspace/analytics/ReviewRoom";
 import type { MatchReviewView, ReviewRound } from "@/lib/ranked-public/contracts";
 
-const KNOWN: readonly string[] = ["standard", "time_trial", "survival", "weak_areas", "review"];
+const KNOWN: readonly string[] = DAILY_STAGE_KINDS;
 
 /** The stage's own one-sentence rule, from the Daily's stage identity — the
- *  same sentence its stage intro showed, with its frozen numbers. */
+ *  sentence its stage intro showed, with its frozen numbers. Review is the one
+ *  exception: its live sentence says "from today", which a past run's stage
+ *  must not (DV2-P0). */
 export function ruleSentence(stage: HistoryStage): string | null {
   if (!KNOWN.includes(stage.kind)) return null;
+  if (stage.kind === "review") return "From that day — a retry of the knowledge missed in that Daily.";
   const rulesetId = stage.ruleset.id && KNOWN.includes(stage.ruleset.id) ? stage.ruleset.id : stage.kind;
   return stageIdentity({
     kind: stage.kind as DailyStageKind,

@@ -77,9 +77,12 @@ export function buildDailyStageResult(run: DailyRun, stage: DailyStage): GameRes
     snapshot.push({ key: "ended", label: "Finish", value: ended, tone: "bad",
       testId: "daily-stage-result-ended" });
   }
+  // DV2-P0: the stage's own miss count, said as a fact about THIS stage. It is
+  // not "saved for Review": Today's Review asks a share of the day's misses
+  // (deduped across stages), not every one of them.
   if (stage.kind !== "review" && r.misses > 0) {
-    snapshot.push({ key: "misses", label: "For Review", value: String(r.misses),
-      hint: r.misses === 1 ? "question saved" : "questions saved",
+    snapshot.push({ key: "misses", label: "Missed", value: String(r.misses),
+      hint: r.misses === 1 ? "question" : "questions",
       testId: "daily-stage-result-misses" });
   }
 

@@ -40,11 +40,30 @@ export const FIVE_STAGE_DAY: FixtureStageSpec[] = [
   FOUR_STAGE_DAY[3],
 ];
 
+/**
+ * DV2-P0 — a SYNTHETIC future day: the approved plan-v5 order, with Order
+ * Forge. The backend does not serve this shape yet; it exists so the frontend
+ * is proven safe BEFORE it does. Order Forge carries no ruleset (it is not a
+ * reusable one) and its content line is only what a stage may state.
+ */
+export const FUTURE_V5_DAY: FixtureStageSpec[] = [
+  { kind: "standard", ruleset: { ruleset_id: "standard" },
+    content: { title: "Standard", focus: null } },
+  { kind: "survival", ruleset: { ruleset_id: "survival", max_strikes: 3 },
+    content: { title: "Matchups", focus: "Mid Lane" } },
+  { kind: "time_trial", ruleset: { ruleset_id: "time_trial", time_bank_ms: 90_000 },
+    content: { title: "Champion Mastery", focus: "Ahri" } },
+  { kind: "order_forge", ruleset: null, content: { title: "Order Forge", focus: "Item cost" } },
+  FIVE_STAGE_DAY[3],
+  FIVE_STAGE_DAY[4],
+];
+
 /** Real DCMOD-C ids, as B freezes them (Review is not a content set). */
 const FIXTURE_CONTENT_SET: Record<DailyStageKind, string | null> = {
   time_trial: "champion_fundamentals",
   standard: "champion_mastery",
   survival: "item_fundamentals",
+  order_forge: "order_forge",
   weak_areas: "weak_areas",
   review: null,
 };
@@ -181,6 +200,7 @@ export function createFixtureTransport(
         state!.review_items = Array.from({ length: misses }, (_, k) => ({ ordinal: k }));
         if (misses === 0) {
           all[next].status = "skipped";
+          all[next].skip_reason = "perfect"; // as the server states it
           state!.status = "completed";
           state!.outcome = "perfect";
           state!.current_stage_index = null;

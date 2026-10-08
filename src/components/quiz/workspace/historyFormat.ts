@@ -8,16 +8,21 @@
  * while it was being played.
  */
 import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
-import type { DailyStageKind } from "@/lib/daily-challenge/run/contracts";
+import { DAILY_STAGE_KINDS, type DailyStageKind } from "@/lib/daily-challenge/run/contracts";
 import { formatQuestionFamily } from "@/features/mastery/formatQuestionFamily";
 import type { Sufficiency } from "@/lib/history/contracts";
 import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
-const KNOWN_KINDS: readonly string[] = ["standard", "time_trial", "survival", "weak_areas", "review"];
+const KNOWN_KINDS: readonly string[] = DAILY_STAGE_KINDS;
+
+/** History looks BACK at a finished Daily: "Today's Review" (the live Daily's
+ *  tag) would read as today's in a past run, so it keeps its plain name here. */
+const HISTORY_LABEL: Readonly<Record<string, string>> = { review: "Review" };
 
 /** "Time Trial". A kind this client does not know yet is humanized rather
  *  than dropped — the stage still happened. */
 export function stageKindLabel(kind: string): string {
+  if (HISTORY_LABEL[kind]) return HISTORY_LABEL[kind];
   if (KNOWN_KINDS.includes(kind)) {
     return stageIdentity({ kind: kind as DailyStageKind, ruleset: null }).label;
   }

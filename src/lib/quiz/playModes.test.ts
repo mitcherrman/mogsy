@@ -34,7 +34,7 @@ describe("the three play modes", () => {
     );
     expect(byId.daily.kicker).toBe("Today's Study");
     expect(byId.daily.note).toBe(
-      "Complete today's Leaguecraft set and keep your streak alive.",
+      "Complete today's Leaguecraft set. A fresh one arrives every day.",
     );
     expect(byId.invite.kicker).toBe("Your Roster");
     expect(byId.invite.note).toBe(

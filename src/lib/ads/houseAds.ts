@@ -39,7 +39,7 @@ const COMBAT_LAB: HouseAdCreative = {
 const DAILY_CHALLENGE: HouseAdCreative = {
   id: "daily-challenge",
   title: "Today's Daily Challenge",
-  body: "One fresh set of questions every day. Keep your streak alive.",
+  body: "One fresh set of questions every day. Come back tomorrow for the next.",
   ctaText: "Play the Daily",
   to: "/quiz",
   showToPro: true,

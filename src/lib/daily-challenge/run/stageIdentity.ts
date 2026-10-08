@@ -11,6 +11,7 @@
  * the stage's frozen ruleset and never restated here.
  */
 import type { DailyRuleset, DailyStage, DailyStageKind } from "./contracts";
+import { stageCategory, type DailyStageCategory } from "./stageCategory";
 
 export interface StageIdentity {
   kind: DailyStageKind;
@@ -18,11 +19,13 @@ export interface StageIdentity {
   label: string;
   /** Reusable ruleset stages vs the Daily's own special stages. */
   family: "ruleset" | "special";
+  /** The product grouping (`stageCategory`). Nothing draws it yet. */
+  category: DailyStageCategory;
   /** One sentence of rules, for the stage intro. */
   rule: string;
 }
 
-const IDENTITY: Record<DailyStageKind, Omit<StageIdentity, "rule"> & { rule: (r: DailyRuleset | null) => string }> = {
+const IDENTITY: Record<DailyStageKind, Omit<StageIdentity, "rule" | "category"> & { rule: (r: DailyRuleset | null) => string }> = {
   standard: {
     kind: "standard", label: "Standard", family: "ruleset",
     rule: () => "Every answer scores. Play the whole stage.",
@@ -42,19 +45,49 @@ const IDENTITY: Record<DailyStageKind, Omit<StageIdentity, "rule"> & { rule: (r:
       ? `${r.maxStrikes} mistakes end the stage.`
       : "Too many mistakes end the stage."),
   },
+  // DV2-P0: the one rule every card stage shares. It says nothing about which
+  // stat or how many cards: those are on the stage's own content line.
+  order_forge: {
+    kind: "order_forge", label: "Order Forge", family: "special",
+    rule: () => "Order the cards from highest to lowest by the shown stat.",
+  },
+  // DV2-P0: the two training stages are told apart by WHERE their questions
+  // come from. Weak Areas reads your history; Today's Review reads this Daily.
   weak_areas: {
     kind: "weak_areas", label: "Weak Areas", family: "special",
-    rule: () => "Built from what you've missed before.",
+    rule: () => "From your history — fresh questions from areas you've struggled with before.",
   },
   review: {
-    kind: "review", label: "Review", family: "special",
-    rule: () => "Today's mistakes, one more time.",
+    kind: "review", label: "Today's Review", family: "special",
+    rule: () => "From today — retry the knowledge you missed in this Daily.",
   },
 };
 
 export function stageIdentity(stage: Pick<DailyStage, "kind" | "ruleset">): StageIdentity {
   const row = IDENTITY[stage.kind];
-  return { kind: row.kind, label: row.label, family: row.family, rule: row.rule(stage.ruleset) };
+  return {
+    kind: row.kind, label: row.label, family: row.family,
+    category: stageCategory(row.kind), rule: row.rule(stage.ruleset),
+  };
+}
+
+/**
+ * What a SKIPPED stage's recap row says. Only the reasons the server states
+ * are worded; a reason this client does not recognise, or none at all, reads
+ * as the neutral "Not played" — never a claim that the stage was unneeded, which is
+ * true of a perfect Review and false of a Weak Areas that could not be built.
+ */
+export function skippedStageNote(stage: Pick<DailyStage, "kind" | "skipReason">): string {
+  switch (stage.skipReason) {
+    case "perfect":
+      return stage.kind === "review" ? "Nothing missed" : "Not played";
+    case "weak_areas_unavailable":
+      return stage.kind === "weak_areas" ? "Not enough past misses" : "Not played";
+    case "review_items_unavailable":
+      return stage.kind === "review" ? "Couldn't be replayed" : "Not played";
+    default:
+      return "Not played";
+  }
 }
 
 /**

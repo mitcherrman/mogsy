@@ -15,7 +15,7 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
 import { isPerfect, reviewStage } from "@/lib/daily-challenge/run/contracts";
-import { stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
+import { skippedStageNote, stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
 import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import { StageTag } from "./StageTag";
 
@@ -76,7 +76,7 @@ export function DailyCompletion({ run, saveRequired = false }: {
                   )}
                 </span>
                 <span className="shrink-0 text-right text-sm tabular-nums" data-testid={`daily-recap-${s.index}-result`}>
-                  {skipped ? "Not needed"
+                  {skipped ? skippedStageNote(s)
                     : r ? (
                       <>
                         {r.correct} / {r.answered}
@@ -107,7 +107,7 @@ export function DailyCompletion({ run, saveRequired = false }: {
             description="Create a free account to keep this run and your Daily progress."
             benefits={[
               "Keep today's Daily results",
-              "Weak Areas built from your history from tomorrow",
+              "Weak Areas questions drawn from your saved history",
               "Your Ranked standing and history",
             ]}
           />

@@ -222,7 +222,7 @@ describe("one Daily Challenge, stage by stage", () => {
     expect(phase()).toBe("complete");
     expect(screen.getByTestId("daily-run-complete")).toHaveAttribute("data-perfect", "true");
     expect(screen.getByTestId("daily-run-perfect")).toBeInTheDocument();
-    expect(screen.getByTestId("daily-recap-3-result")).toHaveTextContent("Not needed");
+    expect(screen.getByTestId("daily-recap-3-result")).toHaveTextContent("Nothing missed");
     // Review was never launched.
     expect(t.calls).not.toContain("launch:3");
   });
