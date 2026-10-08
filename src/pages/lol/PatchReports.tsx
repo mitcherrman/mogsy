@@ -10,6 +10,7 @@ import {
 import { PatchHubMasthead } from "@/components/patch-reports/PatchHubMasthead";
 import { PatchHubSection } from "@/components/patch-reports/PatchHubSection";
 import { PatchHubSectionNav } from "@/components/patch-reports/PatchHubSectionNav";
+import { PatchHubStickyNav } from "@/components/patch-reports/PatchHubStickyNav";
 import { PatchDataStatusNotice } from "@/components/patch-reports/PatchDataStatusNotice";
 import type { PatchReportEntrySlots } from "@/components/patch-reports/PatchReportEntrySlots";
 import { PatchImpactChangeAnalysis } from "@/components/patch-impact/PatchImpactChangeAnalysis";
@@ -379,8 +380,10 @@ const PatchReports = () => {
       )}
 
       {detail && <PatchHubSectionNav sections={sections} />}
+      {/* PHSR3: takes over from the full navigator once it scrolls away. */}
+      {detail && <PatchHubStickyNav patchVersion={detail.patch_version} sections={sections} />}
 
-      {noticeFirst && <div id={RECON_ANCHOR}>{notice}</div>}
+      {noticeFirst && <div id={RECON_ANCHOR} className="scroll-mt-24">{notice}</div>}
 
       {sections.map((section) => (
         <PatchHubSection key={section.anchor} section={section} slots={slots} />
@@ -394,7 +397,7 @@ const PatchReports = () => {
 
       {detail && (
         <footer className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
-          {!noticeFirst && <div id={RECON_ANCHOR} className="mb-4">{notice}</div>}
+          {!noticeFirst && <div id={RECON_ANCHOR} className="mb-4 scroll-mt-24">{notice}</div>}
           Official source:{" "}
           <a
             href={detail.source_url}

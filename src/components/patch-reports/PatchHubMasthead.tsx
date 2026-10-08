@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { PatchReconciliation, PatchReportDetail } from "@/lib/patch-reports/api";
+import { PATCH_HUB_TOP_ANCHOR } from "@/lib/patch-reports/sr-navigation";
 
 const GOLD = "#c9a84c";
 
@@ -51,7 +52,7 @@ export const PatchHubMasthead = ({
     RECON_PILL[reconciliation?.status ?? "PUBLISHED_NOT_RECONCILED"] ??
     RECON_PILL.PUBLISHED_NOT_RECONCILED;
   return (
-    <header className="mb-5" data-testid="patch-hub-masthead">
+    <header id={PATCH_HUB_TOP_ANCHOR} className="mb-5 scroll-mt-24" data-testid="patch-hub-masthead">
       <p className="text-xs uppercase tracking-[0.3em]" style={{ color: GOLD }}>
         Mogzy Knowledge
       </p>
