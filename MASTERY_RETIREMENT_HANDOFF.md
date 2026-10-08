@@ -867,3 +867,30 @@ phases. The unresolved compatibility decisions remain:
 this handoff update, then open/review it for mainline integration. Separately,
 continue the backend compatibility-contract design and obtain the longer
 route-template log export before any endpoint or legacy-player retirement.
+
+## 2026-10-08 mainline integration
+
+- Final fetch confirmed `origin/main` remained
+  `d528bf9fe87e22371ff3dacf4eeb2f58fe383a33` and the approved feature ref
+  remained `9bb6034495f2dba5c5639c12c3e42a19b780d154`.
+- The primary `main` worktree had no tracked changes but did contain unrelated
+  untracked workstream files. It was left untouched. Integration was prepared
+  in a new clean worktree from the exact remote main tip.
+- The approved feature diff still contained only the six reviewed files listed
+  above, and `git diff --check` passed.
+- History was preserved with the explicit merge commit
+  `2f0b4566a9863213ea716cb34fe428109ecaceeb`, whose parents are the verified
+  main tip `d528bf9f` and approved feature tip `9bb60344`. The merge completed
+  automatically with no conflict or manual resolution.
+- Verification on the proposed integration result reproduced the approved
+  evidence: focused Journey/Mastery Vitest passed 47/47; focused legacy SEO
+  assertions passed 2/2; navigation passed 29/30 with only the unchanged
+  baseline H1 assertion at `Quiz.hub.test.tsx:189`; Vite production build
+  passed with 4,757 modules; item prerender verification passed 213/213; and
+  champion prerender verification passed 173/173.
+- No backend, production data, deployment configuration, legacy endpoint, or
+  later retirement-phase change was included.
+
+Phase 1 is approved for mainline integration. The compatibility decisions and
+next action documented above remain unchanged; mainline integration does not
+authorize legacy API retirement, session migration, or deployment.
