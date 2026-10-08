@@ -149,15 +149,50 @@ describe("DV2-P2B open parent — rows, optional activities, analysis", () => {
     expect(row.textContent).not.toMatch(/Survival|Weak Areas|Recently Missed|pending|Stage \d of/i);
   });
 
-  it("says the optional challenges are still open today, and not played on a later day", () => {
+  it("says the optional challenges are still open today", () => {
     mount(b2.open_partial);
     const note = within(v5Row()).getByTestId("daily-optional-activities");
     expect(note.textContent).toBe("Optional challenges still open");
+    expect(note.dataset.optional).toBe("open");
     expect(v5Row().textContent).not.toMatch(/incomplete|unfinished/i);
-    cleanup();
-    vi.setSystemTime(NEXT_DAY);
-    mount(b2.open_partial);
-    expect(within(v5Row()).getByTestId("daily-optional-activities").textContent).toBe("Optional challenges not played");
+  });
+
+  it.each(["open_standard", "open_partial"] as const)(
+    "on a later day, %s reads 'were left open' — never 'not played', even with Time Trial settled",
+    (name) => {
+      vi.setSystemTime(NEXT_DAY);
+      mount(b2[name]);
+      const row = v5Row();
+      const note = within(row).getByTestId("daily-optional-activities");
+      expect(note.textContent).toBe("Optional challenges were left open");
+      expect(note.dataset.optional).toBe("left_open");
+      expect(row.textContent).not.toMatch(/not played|unplayed|still open|incomplete|unfinished/i);
+      if (name === "open_partial") expect(stageKinds(row)).toEqual(["standard", "time_trial"]);
+    },
+  );
+
+  it("a different not_applicable reason on an open parent keeps the existing Run analysis toggle", () => {
+    const wire = clone(b2.open_partial);
+    (wire.items.find((i) => i.run_id === V5) as Json).analytics_capability = {
+      state: "not_applicable", reason_code: "some_future_reason" };
+    mount(wire);
+    const row = v5Row();
+    const toggle = within(row).getByTestId("daily-analysis-toggle");
+    expect(toggle.dataset.state).toBe("not_applicable");
+    // Existing behaviour for a not_applicable run: the toggle expands, no analysis.
+    fireEvent.click(toggle);
+    expect(within(v5Row()).queryByTestId("daily-analysis")).toBeNull();
+    // The open-parent note is about the parent, not the analysis: still said.
+    expect(within(v5Row()).getByTestId("daily-optional-activities")).toBeTruthy();
+  });
+
+  it("an outage on an open parent keeps the existing restrained retry", () => {
+    const wire = clone(b2.open_partial);
+    (wire.items.find((i) => i.run_id === V5) as Json).analytics_capability = {
+      state: "temporarily_unavailable", reason_code: "analytics_dependency_unavailable" };
+    mount(wire);
+    fireEvent.click(within(v5Row()).getByTestId("daily-analysis-toggle"));
+    expect(within(v5Row()).getByTestId("daily-analysis-unavailable")).toBeTruthy();
   });
 
   it("offers no Run analysis, so no empty Daily Overview can open", () => {

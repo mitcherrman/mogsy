@@ -52,34 +52,43 @@ export function dailyHeadline(record: DailyHistoryRecord): DailyHeadline {
 /**
  * The optional activities of a main Daily whose parent is still active:
  *
- *   `open`      today's Daily — they can still be played
- *   `unplayed`  an earlier day's — the live Daily resumes only today's run,
- *               so they were simply not played
+ *   `open`       today's Daily — they can still be played
+ *   `left_open`  an earlier day's — the live Daily resumes only today's run,
+ *                so the day ended with them open. Says nothing about how
+ *                many were played: some may have settled before it ended.
  *
  * Null for everything else: a resolved parent, a legacy record, or a payload
  * without a `parent` block (older backend — never read as "active").
  */
-export type OptionalActivities = "open" | "unplayed";
+export type OptionalActivities = "open" | "left_open";
 
 /** The UTC calendar day — the Daily's own day boundary. */
 const utcDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export function optionalActivities(record: DailyHistoryRecord, now: Date = new Date()): OptionalActivities | null {
   if (record.main === null || record.parent?.status !== "active") return null;
-  return record.planDate >= utcDay(now) ? "open" : "unplayed";
+  return record.planDate >= utcDay(now) ? "open" : "left_open";
 }
 
 export const OPTIONAL_ACTIVITIES_COPY: Readonly<Record<OptionalActivities, string>> = {
   open: "Optional challenges still open",
-  unplayed: "Optional challenges not played",
+  left_open: "Optional challenges were left open",
 };
 
 /**
  * Whether the run's own "Run analysis" (the Daily Overview) is withheld: the
  * server said there is no run-level analysis BECAUSE the parent's optional
- * activities are open (B2 `not_applicable`). Its settled stages keep their own
- * analysis. Any other `not_applicable` run keeps the existing behaviour.
+ * activities are open — exactly B2's `not_applicable` /
+ * `parent_activities_incomplete` on an active parent. Its settled stages keep
+ * their own analysis. Any other `not_applicable` reason, present or future,
+ * keeps the existing behaviour: nothing is inferred from the state alone.
  */
+export const PARENT_ACTIVITIES_INCOMPLETE = "parent_activities_incomplete";
+
 export function runOverviewWithheld(record: DailyHistoryRecord): boolean {
-  return record.capability.state === "not_applicable" && record.parent?.status === "active";
+  return (
+    record.capability.state === "not_applicable" &&
+    record.capability.reasonCode === PARENT_ACTIVITIES_INCOMPLETE &&
+    record.parent?.status === "active"
+  );
 }

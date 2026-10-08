@@ -620,7 +620,8 @@ function DailyRunEntry({
           />
         )}
         {/* DV2-P2B: the main Daily is complete; this only says the optional
-            activities were left open (today) or not played (an earlier day). */}
+            activities are still open (today) or were left open (an earlier
+            day) — never how many of them were played. */}
         {optional && (
           <span
             className="text-[11px] italic"

@@ -169,15 +169,27 @@ describe("DV2-P2B headline — main.daily_score and Standard, never the aggregat
 });
 
 describe("DV2-P2B parent — optional activities and the withheld Overview", () => {
-  it("an open parent today: 'still open'; an earlier day's: 'not played'", () => {
+  it("an open parent today: 'still open'; an earlier day's: 'were left open'", () => {
     const record = v5Of(b2.open_standard);
     expect(optionalActivities(record, DAY)).toBe("open");
-    expect(optionalActivities(record, LATER)).toBe("unplayed");
+    expect(optionalActivities(record, LATER)).toBe("left_open");
     expect(OPTIONAL_ACTIVITIES_COPY.open).toBe("Optional challenges still open");
-    expect(OPTIONAL_ACTIVITIES_COPY.unplayed).toBe("Optional challenges not played");
+    expect(OPTIONAL_ACTIVITIES_COPY.left_open).toBe("Optional challenges were left open");
+  });
+
+  it("an earlier day's partly played bundle reads the same — never 'not played'", () => {
+    const record = v5Of(b2.open_partial);
+    // Time Trial settled before the day ended; the bundle was still open.
+    expect(record.stages.find((s) => s.kind === "time_trial")?.status).toBe("completed");
+    expect(optionalActivities(record, LATER)).toBe("left_open");
+    expect(OPTIONAL_ACTIVITIES_COPY[optionalActivities(record, LATER)!]).toBe("Optional challenges were left open");
+  });
+
+  it("no copy implies an incomplete Daily, nothing played, or a resumable bundle", () => {
     for (const copy of Object.values(OPTIONAL_ACTIVITIES_COPY)) {
-      expect(copy).not.toMatch(/incomplete|unfinished|stage \d+ of/i);
+      expect(copy).not.toMatch(/incomplete|unfinished|not played|unplayed|skipped|stage \d+ of|daily/i);
     }
+    expect(OPTIONAL_ACTIVITIES_COPY.left_open).not.toMatch(/still|available|resume|continue/i);
   });
 
   it("a completed parent says nothing and keeps its Run analysis", () => {
@@ -194,6 +206,28 @@ describe("DV2-P2B parent — optional activities and the withheld Overview", () 
     expect(free.capability.state).toBe("upgrade_required");
     expect(runOverviewWithheld(free)).toBe(false);
     expect(optionalActivities(free, DAY)).toBe("open");
+  });
+
+  it("only the exact B2 reason withholds it: not_applicable + parent_activities_incomplete + active", () => {
+    const withCapability = (page: unknown, capability: Json) => {
+      const wire = clone(page) as { items: Json[] };
+      (wire.items.find((i) => i.run_id === V5) as Json).analytics_capability = capability;
+      return read(wire).items.find((r) => r.runId === V5)!;
+    };
+    const open = v5Of(b2.open_partial);
+    expect(open.capability).toEqual({ state: "not_applicable", reasonCode: "parent_activities_incomplete" });
+    expect(runOverviewWithheld(open)).toBe(true);
+    // Any other not_applicable reason on the same open parent: no inference.
+    for (const reason of ["some_future_reason", "missing_question_or_ruleset_provenance", null]) {
+      expect(runOverviewWithheld(withCapability(b2.open_partial, { state: "not_applicable", reason_code: reason }))).toBe(false);
+    }
+    // An outage on an open parent keeps the existing retry.
+    const outage = withCapability(b2.open_partial, {
+      state: "temporarily_unavailable", reason_code: "analytics_dependency_unavailable" });
+    expect(runOverviewWithheld(outage)).toBe(false);
+    // The exact reason on a completed parent is not the open-parent case.
+    expect(runOverviewWithheld(withCapability(b2.completed, {
+      state: "not_applicable", reason_code: "parent_activities_incomplete" }))).toBe(false);
   });
 });
 

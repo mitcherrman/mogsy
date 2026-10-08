@@ -58,13 +58,15 @@ added only on a main record, so legacy markup is byte-identical (see §8).
 
 ## 5. Parent-active presentation
 
-`optionalActivities(record, now)` → `"open" | "unplayed" | null`:
+`optionalActivities(record, now)` → `"open" | "left_open" | null` (P2B.1: `unplayed` renamed):
 
 - `main` present and `parent.status === "active"`:
   - plan date ≥ today (UTC, the Daily's own boundary) → **"Optional challenges still open"**
-  - an earlier plan date → **"Optional challenges not played"**. Reason: the backend resumes only
-    *today's* run (`service.current_run` filters `plan_date = utc_date(now)`), so an earlier day's
-    optional activities can no longer be played and "available" would be false.
+  - an earlier plan date → **"Optional challenges were left open"** (P2B.1). The backend resumes only
+    *today's* run (`service.current_run` filters `plan_date = utc_date(now)`), so "still open" would
+    be false. P2B's earlier "Optional challenges not played" was also false: a bundle can be partly
+    played (the real `open_partial` fixture has Time Trial completed). "Were left open" is true
+    however many were played, does not say the Daily was incomplete, and does not offer a resume.
 - otherwise null (resolved parent, legacy record, absent parent).
 
 Shown as one faint italic line in the run's footer (the slot "Run analysis" normally occupies; same
@@ -81,7 +83,9 @@ an empty "Daily Overview" (confirmed in the base DOM dump: `data-focused="true"`
 `daily-analytics-region`). B2 sends exactly that for an open parent.
 
 Change (smallest coherent): `runOverviewWithheld(record)` = run capability `not_applicable` **and**
-`parent.status === "active"` (B2's `parent_activities_incomplete`). When withheld:
+reason `parent_activities_incomplete` (exported as `PARENT_ACTIVITIES_INCOMPLETE`) **and**
+`parent.status === "active"` — B2's exact contract (P2B.1 added the reason; any other or future
+`not_applicable` reason, even on an open parent, keeps the existing toggle behaviour). When withheld:
 
 - no "Run analysis" toggle (the note takes the footer);
 - each settled stage's name still selects it and opens its own analysis region (Standard's room is
@@ -91,6 +95,8 @@ Change (smallest coherent): `runOverviewWithheld(record)` = run capability `not_
 
 Not withheld (unchanged):
 - legacy `not_applicable` runs (no parent): existing toggle behaviour, untouched;
+- an open parent with `not_applicable` and any other reason: existing toggle behaviour (the note
+  still shows — it describes the parent, not the analysis);
 - an open parent whose run capability is `upgrade_required` / `temporarily_unavailable` (the backend's
   paywall/outage wins over the open parent): the existing invitation / retry, plus the note;
 - a completed v5 parent: the server's Overview as for any completed run.
@@ -174,7 +180,7 @@ above against any later backend commit.
 - For a free reader with an open parent, the Free facts under the invitation are the aggregate of the
   settled stages (backend `basic`), as for any run.
 - A past day's open parent stays `active` forever (no skip-extras in B1/B2), so its run analysis never
-  opens and it never becomes a "previous Daily" on the backend. Frontend says "not played"; the
+  opens and it never becomes a "previous Daily" on the backend. Frontend says "were left open"; the
   lifecycle itself is a backend/owner decision.
 - "Today" is the client's UTC date; around UTC midnight a skewed client clock can show one wording for
   a few minutes.
@@ -193,12 +199,38 @@ on legacy markup, `main`/`parent` dropped by the reader, and each of the six rea
 
 Dev lobby preview (`/dev/lobby-preview`, Timmy Premium) with a throwaway, uncommitted source serving
 the real `open_partial` B2 page, Vite on the branch worktree: the Oct 3 row reads SCORE 17 · 67 % · 2/3
-over Standard (17 · 2/3) and Time Trial (1/2) only; footer "Optional challenges not played" (client
-date Oct 8); no Run analysis. Selecting Standard opens its own stage room (current facts, previous
+over Standard (17 · 2/3) and Time Trial (1/2) only; footer then read "Optional challenges not played"
+(client date Oct 8; P2B.1 changed that wording to "were left open" — a copy-only change in the same
+slot, covered by the DOM tests, not re-captured); no Run analysis. Selecting Standard opens its own stage room (current facts, previous
 attempt, cohort bar) with Close in the footer; Close collapses the row. No console errors. The
 throwaway source and launch entry were reverted.
 
-## 13. Result
+## 13. DV2-P2B.1 (on top of `2f655c20`, additive)
+
+Command-center review approved P2B except two points, both fixed without redesign:
+
+1. **Truthful earlier-day copy.** `unplayed` → `left_open`, "Optional challenges not played" →
+   **"Optional challenges were left open"** (§5). Today's copy is unchanged.
+2. **Exact withheld reason.** `runOverviewWithheld` now also requires
+   `reasonCode === "parent_activities_incomplete"` (§6).
+
+Tests added/adjusted (`contracts.dv2p2b.test.ts` 24 → 27, `DailyHistory.dv2p2b.test.tsx` 12 → 16):
+today → "still open"; a later day for `open_standard` and for `open_partial` (Time Trial completed) →
+"were left open", never "not played"; no copy implies an incomplete Daily, nothing played, or a
+resumable bundle; the exact triple withholds; `not_applicable` with another reason (synthetic
+`some_future_reason`, `missing_question_or_ruleset_provenance`, null) on the same open parent does
+not, and renders the existing toggle; an outage on an open parent keeps the retry; the exact reason
+on a completed parent does not withhold. The legacy DOM-identity, today's-production, completed-v5
+and free-paywall tests are unchanged and pass.
+
+Gate vs `2f655c20` (same focused suites, `--maxWorkers=4`): 677 passed / 15 failed (was 670 / 15);
+the 15 failures are the identical inherited node IDs. Unhandled errors: only the inherited
+`useAuth` one (`LobbyPreviewPage.test.tsx`); the earlier `OwnedQuestionsPane` teardown flake did not
+recur. Mutation: 5/5 killed (reason check dropped / widened, parent check dropped, earlier-day copy
+reverted to "not played", earlier day read as "still open"). `tsc`: the 2 inherited errors only.
+ESLint on touched files: clean. `git diff --check`: clean.
+
+## 14. Result
 
 **READY** for command-center review. Integrate with P2A (no file overlap), then publish the frontend
 before releasing backend B1+B2+B1.1.
