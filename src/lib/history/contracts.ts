@@ -304,14 +304,43 @@ export interface HistoryStage {
   population: PopulationSubjectBlock | null;
 }
 
+/**
+ * DV2-B2 — the MAIN Daily (plan v5+): Standard settled, its score frozen by
+ * the server. The only primary Daily score authority for such a record.
+ */
+export interface DailyMain {
+  completedAt: string;
+  dailyScore: number;
+}
+
+/**
+ * DV2-B2 — the run's real lifecycle. `active` means the main Daily is done
+ * and optional activities are still open; it never means "incomplete Daily".
+ */
+export interface DailyParent {
+  status: "active" | "completed";
+  completedAt: string | null;
+}
+
 export interface DailyHistoryRecord {
   recordType: "daily";
   /** Opaque. */
   runId: string;
   planDate: string;
+  /** The effective completion time: for a v5+ record, the main Daily's. */
   completedAt: string;
   status: string;
+  /** The planned parent stage count. While a v5+ parent is active it may
+   *  exceed `stages.length`: only settled stages are sent. */
   stageCount: number;
+  /** DV2-B2: null for a v1–v4 record AND for a payload from a backend that
+   *  predates B2 (field absent). Never synthesised. */
+  main: DailyMain | null;
+  /** DV2-B2: null when the field is absent (older backend) — which means
+   *  "unknown, legacy completed", never "active". */
+  parent: DailyParent | null;
+  /** The aggregate of the stages sent. For a record with `main`, NOT the
+   *  primary score: it grows as optional stages settle. */
   basic: {
     score: number;
     correct: number;
@@ -660,7 +689,36 @@ function readSpan(v: unknown): StreakSpan | null {
   return { length, startQuestionResultId: id(r.start_question_result_id), endQuestionResultId: id(r.end_question_result_id) };
 }
 
+/**
+ * DV2-B2 `main`. Absent or null (older backend, v1–v4) is null. Present, it
+ * is a pair — a text timestamp and an integer score — or the record is a
+ * contract violation: half a pair is never completed with a guess.
+ */
+function readMain(v: unknown, l: string): DailyMain | null {
+  if (v === null || v === undefined) return null;
+  const r = rec(v, l);
+  const score = r.daily_score;
+  if (typeof score !== "number" || !Number.isInteger(score)) fail(`${l}.daily_score must be an integer`);
+  return { completedAt: str(r.completed_at, `${l}.completed_at`), dailyScore: score as number };
+}
+
+/** DV2-B2 `parent`. Absent or null is null (older backend). */
+function readParent(v: unknown, l: string): DailyParent | null {
+  if (v === null || v === undefined) return null;
+  const r = rec(v, l);
+  const status = str(r.status, `${l}.status`);
+  if (status !== "active" && status !== "completed") fail(`${l}.status is unknown: ${status}`);
+  const completedAt = nstr(r.completed_at, `${l}.completed_at`);
+  if (status === "completed" && completedAt === null) fail(`${l}.completed_at is required when completed`);
+  if (status === "active" && completedAt !== null) fail(`${l}.completed_at must be null while active`);
+  return { status: status as DailyParent["status"], completedAt };
+}
+
 function readDailyRecord(r: Rec, l: string): DailyHistoryRecord {
+  const main = readMain(r.main, `${l}.main`);
+  const parent = readParent(r.parent, `${l}.parent`);
+  // History admits an active parent only once its main Daily froze (B2).
+  if (parent?.status === "active" && main === null) fail(`${l}.parent is active without a main Daily`);
   const basic = rec(r.basic, `${l}.basic`);
   const stages = arr(r.stages, `${l}.stages`).map((s, i) => readStage(s, `${l}.stages[${i}]`));
   // Persisted order is the stage's own `order`. The server already sends them
@@ -679,6 +737,8 @@ function readDailyRecord(r: Rec, l: string): DailyHistoryRecord {
     completedAt: str(r.completed_at, `${l}.completed_at`),
     status: str(r.status, `${l}.status`),
     stageCount: int(r.stage_count, `${l}.stage_count`),
+    main,
+    parent,
     basic: {
       score: num(basic.score, `${l}.basic.score`),
       correct: int(basic.correct, `${l}.basic.correct`),

@@ -35,13 +35,22 @@
  * without collapsing anything. Which run is expanded, and at which view, is
  * the History section's to decide: only one at a time.
  *
+ * DV2-P2B — THE MAIN DAILY
+ * ───────────────────────
+ * A v5+ record leads with its main Daily (`dailyHeadline`: the frozen main
+ * score, Standard's C/A and accuracy); a legacy record with `basic`, as
+ * before. While its optional activities are open, the rows are exactly the
+ * settled stages the server sent (`stageCount` may be larger: nothing stands
+ * in for the rest), the footer says so in one line, and there is no "Run
+ * analysis" — the server has no run analysis yet; each stage keeps its own.
+ *
  * The run and each stage are inline-size containers (HUB3's row pattern).
  * Wide, a stage is one ruled line (node, name, result, questions). Narrow, it
  * wraps: the name first, then the result and the question rail indented past
  * the spine. Nothing has a width that can push the page sideways.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, X } from "lucide-react";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionTimeline from "@/components/quiz/workspace/QuestionTimeline";
 import { buildStageViewModel } from "@/components/quiz/workspace/historyViewModel";
@@ -61,6 +70,12 @@ import { relativeMatchAge } from "@/components/quiz/workspace/RankedMatchRow";
 import { DailyRunAnalysis, hasExpansion } from "@/components/quiz/workspace/HistoryAnalysis";
 import { StageAnalyticsView, StageLocalFacts } from "@/components/quiz/workspace/StageAnalytics";
 import { AccuracyRing } from "@/components/quiz/workspace/historyVisuals";
+import {
+  OPTIONAL_ACTIVITIES_COPY,
+  dailyHeadline,
+  optionalActivities,
+  runOverviewWithheld,
+} from "@/components/quiz/workspace/dailyHeadline";
 import { DAILY_TONE, stageTone } from "@/components/quiz/workspace/stageTheme";
 import {
   endedByNote,
@@ -386,7 +401,14 @@ function DailyRunEntry({
 }) {
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const rowRef = useRef<HTMLLIElement | null>(null);
-  const accuracy = percent(record.basic.accuracy);
+  // DV2-P2B: the headline is the main Daily for a v5+ record, `basic` before.
+  const headline = dailyHeadline(record);
+  const accuracy = percent(headline.accuracy);
+  // DV2-P2B: an open parent has no Daily Overview (the server withholds the
+  // run analysis until its optional activities settle), so nothing here
+  // opens one; its settled stages keep their own analysis.
+  const withheld = runOverviewWithheld(record);
+  const optional = optionalActivities(record);
   const expanded = focus !== null;
   const selected = expanded && focus !== "overview" ? record.stages.find((s) => s.stageId === focus) ?? null : null;
   // The ring draws its share the first time the run is seen.
@@ -448,7 +470,7 @@ function DailyRunEntry({
   }, [focus]);
 
   const select = (stage: HistoryStage) =>
-    onFocus?.(selected?.stageId === stage.stageId ? "overview" : stage.stageId);
+    onFocus?.(selected?.stageId === stage.stageId ? (withheld ? null : "overview") : stage.stageId);
   // The Daily Overview has nothing to draw for a run without analytics at
   // all; a selected stage always has its own content.
   const regionHasContent = selected !== null || hasExpansion(record.capability);
@@ -515,7 +537,11 @@ function DailyRunEntry({
         <span className="min-w-0 flex-1" />
 
         {/* Wraps rather than overhanging at 320px with 200% text. */}
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 tabular-nums" data-testid="daily-run-basic">
+        <div
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 tabular-nums"
+          data-testid="daily-run-basic"
+          data-headline={headline.source === "main" ? "main" : undefined}
+        >
           <div className="text-right leading-none">
             <div className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ color: LEAGUECRAFT_INK.faint }}>
               Score
@@ -525,12 +551,12 @@ function DailyRunEntry({
               style={{ color: LEAGUECRAFT_INK.strong, textShadow: LEAGUECRAFT_INK.press }}
               data-testid="daily-run-score"
             >
-              {record.basic.score}
+              {headline.score}
             </div>
           </div>
           <span aria-hidden="true" className="hidden h-8 w-px [@container(min-width:22rem)]:block" style={{ background: "rgba(96,68,28,0.25)" }} />
           <span ref={ring.ref} className="flex min-w-0 items-center gap-2">
-            <AccuracyRing accuracy={record.basic.accuracy} progress={ring.progress} size={46} stroke={4}>
+            <AccuracyRing accuracy={headline.accuracy} progress={ring.progress} size={46} stroke={4}>
               {accuracy ? (
                 <span className="text-[11.5px] font-extrabold" style={{ color: LEAGUECRAFT_INK.strong }} data-testid="daily-run-accuracy">
                   {accuracy}
@@ -541,13 +567,19 @@ function DailyRunEntry({
                 </span>
               )}
             </AccuracyRing>
-            <span
-              className="text-[13px] font-semibold"
-              style={{ color: LEAGUECRAFT_INK.body }}
-              aria-label={`${record.basic.correct} of ${record.basic.answered} correct`}
-            >
-              {record.basic.correct}/{record.basic.answered}
-            </span>
+            {headline.correct !== null && headline.answered !== null ? (
+              <span
+                className="text-[13px] font-semibold"
+                style={{ color: LEAGUECRAFT_INK.body }}
+                aria-label={`${headline.correct} of ${headline.answered} correct`}
+              >
+                {headline.correct}/{headline.answered}
+              </span>
+            ) : (
+              <span className="text-[13px]" style={{ color: LEAGUECRAFT_INK.faint }} aria-hidden="true" data-testid="daily-run-correct-neutral">
+                —
+              </span>
+            )}
           </span>
         </div>
       </div>
@@ -579,13 +611,40 @@ function DailyRunEntry({
         className="flex flex-wrap items-center gap-2 border-t pb-2 pl-4 pr-3 pt-1.5"
         style={{ borderColor: "rgba(96,68,28,0.22)" }}
       >
-        <FocusToggle
-          open={expanded}
-          state={record.capability.state}
-          buttonRef={toggleRef}
-          onToggle={() => onFocus?.(expanded ? null : "overview")}
-        />
-        {selected && (
+        {!withheld && (
+          <FocusToggle
+            open={expanded}
+            state={record.capability.state}
+            buttonRef={toggleRef}
+            onToggle={() => onFocus?.(expanded ? null : "overview")}
+          />
+        )}
+        {/* DV2-P2B: the main Daily is complete; this only says the optional
+            activities are still open (today) or were left open (an earlier
+            day) — never how many of them were played. */}
+        {optional && (
+          <span
+            className="text-[11px] italic"
+            style={{ color: LEAGUECRAFT_INK.faint }}
+            data-testid="daily-optional-activities"
+            data-optional={optional}
+          >
+            {OPTIONAL_ACTIVITIES_COPY[optional]}
+          </span>
+        )}
+        {selected && withheld && (
+          <button
+            type="button"
+            onClick={() => onFocus?.(null)}
+            data-testid="daily-stage-close"
+            className="history-facts-in ml-auto inline-flex min-h-[32px] items-center gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors hover:bg-[rgba(96,68,28,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-[44px]"
+            style={{ color: LEAGUECRAFT_INK.brass }}
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+            Close
+          </button>
+        )}
+        {selected && !withheld && (
           <button
             type="button"
             onClick={() => onFocus?.("overview")}
