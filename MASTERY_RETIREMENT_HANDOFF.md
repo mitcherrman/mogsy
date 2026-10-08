@@ -539,3 +539,259 @@ define the compatibility window. Do not redirect legacy player/session URLs or
 disable session creation until that evidence is reviewed. In parallel, product
 still needs to select the canonical modern home for Summoner Spell Mastery
 before Phase 3/4 removal work.
+
+---
+
+## 2026-10-08 production compatibility audit
+
+This section is a read-only observation of the deployed system. It does not
+infer production state from the frontend checkout.
+
+### Audit starting point and safeguards
+
+- The worktree was clean at `c68604d93427452b7e1aad410a87c72698e464f6`.
+  Git ancestry checks confirm that both required commits are present:
+  `58822892feb2e44681fa72aef4cc780d9647b08d` and
+  `c68604d93427452b7e1aad410a87c72698e464f6`.
+- No branch was merged, rebased, cherry-picked, pushed, or overwritten. No
+  production configuration, session, database row, route, or deployment was
+  changed. No credentials, owner ids, session ids, IPs, or request ids were
+  printed or copied into this handoff.
+- Database aggregates were run against SQLite URI
+  `file:/data/lol_calc.db?mode=ro`. The deployed resolver was separately
+  exercised over incomplete rows only to classify whether the production code
+  can still resolve them; that code path performs reads and deterministic
+  artifact construction only.
+
+### Actual deployed backend identity and available access
+
+- The frontend's configured production host is
+  `web-production-83e53.up.railway.app`.
+- Railway's domain ownership identifies the production service as **`web`** in
+  project `sweet-analysis`, not the similarly named
+  `League_Combat_Simulator` service. The latter currently has no public domain,
+  so using its deployment metadata as the public backend identity would have
+  been wrong.
+- `web` is deployed from `mitcherrman/League_Combat_Simulator`, branch
+  `master`, commit `f3a164f15ef440530000cd50db68eb9f986974b1`
+  (successful deployment created 2026-10-07 23:51:31Z).
+- Authorized access available for this audit: read-only Railway project,
+  service/deployment metadata, HTTP and deployment logs, production-container
+  shell reads, deployed source reads, and direct SQLite reads. There is no
+  local `psql`/Supabase production database session and no separate external
+  log sink visible from this worktree.
+- An anonymous `GET /api/mastery/sets` reached that host and returned 401
+  `AUTH_REQUIRED`, consistent with the deployed route's
+  `require_verified_identity`. That response is an authorization result, not
+  evidence of an empty catalog. No production user token was used.
+
+### Deployed Mastery catalog
+
+The catalog was instantiated inside the running production container from the
+deployed registry at the deployed commit. It has exactly three public sets:
+
+| Public set | Set id prefix | Steps | Display revision |
+| --- | --- | ---: | --- |
+| Ahri E vs Syndra E — Cooldowns, Haste & Burst | `mset_ebd7533f…` | 6 | `disprev_ahri-syndra-e.v2` |
+| Olaf — cooldowns and mana, from level 1 to 11 | `mset_d7c1ccd7…` | 16 | `disprev_olaf-cooldown-mana-progression.v1` |
+| Summoner spells — cooldowns, haste, and the sources that give it | `mset_bbb59f3c…` | 56 | `disprev_summoner-spell-mastery.v1` |
+
+**Summoner Spell Mastery is therefore still deployed, public in the legacy
+catalog, pinned by set/artifact identity, and resolver-valid.** Its authoritative
+curriculum remains `mastery/chains/summoner_spell_mastery.py`; the registry
+builds that source directly and does not contain a second question copy.
+
+### Production session and answer aggregates
+
+Snapshot time: 2026-10-08. The two source tables are `mastery_sessions` and
+`mastery_session_answers` in `/data/lol_calc.db`.
+
+- 41 sessions, 14 distinct owners.
+- 12 completed; 29 incomplete (`24 question`, `5 reveal`).
+- First creation: 2026-07-19 16:59:57Z.
+- Last creation and last recorded activity: 2026-09-14 06:22:14Z.
+- 148 recorded answers across 20 sessions: 125 correct, 0 marked hint-used.
+  All 12 completed sessions account for 122 answers; eight incomplete sessions
+  contain the remaining 26 answers.
+- There are 15 stored curriculum identities. Four still resolve through the
+  deployed registry; eleven are retired/unregistered identities.
+
+Per-curriculum aggregate (hash prefixes are content identities, not user or
+session identifiers):
+
+| Curriculum / identity | Catalog state | Sessions | Users | Complete / incomplete | Answers | Last activity (UTC) |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| `mset_aaf6c055…` | unregistered | 3 | 2 | 1 / 2 | 6 | 2026-07-20 16:01:46 |
+| `mset_f4853f2b…` | unregistered | 8 | 4 | 4 / 4 | 28 | 2026-07-24 18:35:51 |
+| `mset_25a343e4…` | unregistered | 3 | 2 | 1 / 2 | 14 | 2026-07-20 16:01:46 |
+| `mset_2bb607c2…` | unregistered | 2 | 1 | 1 / 1 | 15 | 2026-07-20 16:01:46 |
+| `mset_7ce81bc5…` | unregistered | 3 | 1 | 2 / 1 | 26 | 2026-07-20 18:03:59 |
+| Lux — Final Spark (`mset_fe141742…`) | registered, non-public prototype | 3 | 1 | 2 / 1 | 29 | 2026-07-20 19:23:40 |
+| Jarvan IV — Cataclysm (`mset_435999de…`) | registered, non-public prototype | 4 | 4 | 0 / 4 | 0 | 2026-07-21 22:01:39 |
+| `mset_d7456fd4…` | unregistered | 4 | 4 | 0 / 4 | 0 | 2026-07-23 13:09:23 |
+| `mset_8e377948…` | unregistered | 1 | 1 | 0 / 1 | 0 | 2026-07-23 13:33:50 |
+| `mset_2f02e445…` | unregistered | 2 | 2 | 0 / 2 | 0 | 2026-07-23 19:01:00 |
+| `mset_033c4c85…` | unregistered | 1 | 1 | 0 / 1 | 0 | 2026-07-23 19:21:55 |
+| `mset_5216fd2f…` | unregistered | 4 | 3 | 1 / 3 | 24 | 2026-07-24 18:36:56 |
+| Summoner Spell Mastery (`mset_bbb59f3c…`) | public | 1 | 1 | 0 / 1 | 6 | 2026-08-24 22:33:41 |
+| `mset_4c10742e…` | unregistered | 1 | 1 | 0 / 1 | 0 | 2026-08-24 22:35:50 |
+| Ahri vs Syndra v2 (`mset_ebd7533f…`) | public | 1 | 1 | 0 / 1 | 0 | 2026-09-14 06:22:14 |
+
+Creation-date aggregate:
+
+| UTC date | Sessions | Distinct users | Incomplete |
+| --- | ---: | ---: | ---: |
+| 2026-07-19 | 9 | 3 | 3 |
+| 2026-07-20 | 13 | 2 | 8 |
+| 2026-07-21 | 5 | 5 | 5 |
+| 2026-07-23 | 6 | 2 | 6 |
+| 2026-07-24 | 5 | 2 | 4 |
+| 2026-08-24 | 2 | 1 | 2 |
+| 2026-09-14 | 1 | 1 | 1 |
+
+`completed = 0` is **not** equivalent to resumable. Running the deployed
+`_published_for_session` resolver against every incomplete row produced:
+
+- 7 resolver-valid sessions: four Jarvan prototype, one Lux prototype, one
+  Summoner Spell Mastery, and one public Ahri-vs-Syndra v2 session;
+- 22 sessions across eleven retired identities that fail with
+  `MASTERY_SET_NOT_FOUND` because their pinned artifact is no longer in the
+  deployed registry and has no resolvable generated recipe.
+
+No identities or answer payloads were inspected. The 22 failures already exist
+in production; this retirement branch did not cause them.
+
+### Endpoint-log evidence and its boundary
+
+- Railway HTTP logging is available: a capped unfiltered query returned 1,000
+  production requests covering 2026-10-08 16:48:01Z–17:20:41Z. It is therefore
+  incorrect to describe logging as unavailable.
+- Exact 30-day queries returned no `/api/mastery/progress` or
+  `/api/mastery/sessions` records. The only `/api/mastery/sets` record was this
+  audit's anonymous GET, status 401 at 2026-10-08 17:18:29Z.
+- Deployment-log search returned 72 records containing the word `mastery`, but
+  sanitized request parsing found only that same audit GET; the others are
+  startup/application messages, not request evidence.
+- The accessible `web` service has only one successful deployment in its
+  retained deployment list, beginning 2026-10-07 23:51:31Z. Railway's dynamic
+  request paths are indexed by literal session URL, and the accessible query
+  interface did not produce a wildcard/template aggregate. The unfiltered
+  feed is capped and covered only about 32 minutes at current traffic volume.
+
+Therefore the log result is **not “zero historical traffic.”** It establishes
+no observed legacy request traffic in the accessible current-deployment
+window beyond the audit probe. Earlier endpoint traffic and dynamic session
+GETs are unobserved. Independently, database timestamps establish that no
+successful Mastery answer/advance/create write has updated these tables after
+2026-09-14 06:22:14Z.
+
+### Deployed resume and expiry semantics, including the frontend
+
+Backend at production commit `f3a164f1…`:
+
+- `POST /api/mastery/sessions` calls `start_or_resume`. It returns the newest
+  row for the authenticated owner and set where `completed = 0`; otherwise it
+  creates a session. Resume and creation are therefore coupled behind one
+  endpoint.
+- There is no age predicate, expiry column, TTL, cleanup check, or last-activity
+  cutoff in `find_active_session`. A resolver-valid incomplete session does not
+  expire merely because it is old.
+- Ownership is the verified JWT subject. Existing-session routes return the
+  same 404 for missing and wrong-owner sessions.
+- Current/answer/advance resolve the session's pinned artifact. A missing old
+  artifact fails `MASTERY_SET_NOT_FOUND`; generated content can fail
+  `MASTERY_GENERATED_SET_STALE` when canonical truth moved.
+- Answers are immutable per step: the same answer is idempotent; a different
+  second answer is 409. A reveal survives reload. Advance moves the
+  server-owned cursor or completes the session.
+
+Frontend at this branch:
+
+- Opening an allowed legacy set always calls `startSession(setId)`. The browser
+  does not select a session id from local storage; the backend chooses resume
+  versus create.
+- The parameterized public player first requires membership in the current
+  `/api/mastery/sets` catalog. Consequently registered non-public prototypes
+  are not reachable through `/quiz/mastery/:masterySetId`, even though their
+  sessions remain resolver-valid; retained dev wrappers are their only current
+  frontend seam.
+- A restored reveal is rendered from the server and auto-advances on the modern
+  interaction path. Conflicting submissions resync with `GET .../current`.
+- Completed “Try again” invokes the same start call; because no incomplete row
+  exists, the backend creates a fresh attempt.
+
+### Can the modern Journey curriculum accommodate Summoner Spell Mastery?
+
+Not with the deployed `JourneyRecipe` contract as it exists today.
+
+- Every recipe requires `player` and `opponent` starts with **two different
+  champions**.
+- Its objective engines are the champion/matchup grammar over champion ability,
+  stat, damage, and comparison families. It has no non-champion subject kind or
+  summoner-spell curriculum reference.
+- The Journey Library intentionally adds no content authority; it lists and
+  launches approved `JourneyRecipe` versions as `mastery_slice` configs.
+- The existing Ranked SSM decorator is also not a modern Journey recipe. It is
+  a separate, flag-gated provider that reads the same
+  `mastery/chains/summoner_spell_mastery.py` source.
+
+Copying 56 SSM questions into Journey recipe JSON would create the duplicate
+content authority this retirement plan forbids. The safe modern-home design is
+to extend the Journey grammar/composer with a non-champion curriculum/reference
+kind that consumes the existing pinned SSM artifact/provider (or an extracted
+single canonical SSM content module). The existing chain remains the sole
+question authority until that adapter and its identity/version rules are
+designed and tested.
+
+### Evidence-supported compatibility policy
+
+1. **Now:** keep the completed Phase 1 discovery/noindex change. Preserve both
+   legacy routes, all session/answer rows, all Mastery endpoints, and the SSM
+   registry entry. Do not claim `completed = 0` means resumable.
+2. **Before stopping new legacy attempts:** add an explicit backend
+   compatibility mode that separates “resume an existing resolver-valid row”
+   from “create a new standalone session.” The current combined
+   `start_or_resume` endpoint cannot safely be disabled without also breaking
+   resume.
+3. **Grandfather resolver-valid sessions:** keep current/answer/advance/summary
+   and artifact resolution for the seven verified sessions through the agreed
+   window. Preserve historical rows indefinitely unless a separate retention
+   decision and export exists.
+4. **Decide the 22 broken rows explicitly:** choose whether to restore their
+   pinned artifacts for true compatibility or document them as non-resumable
+   historical attempts. A redirect cannot repair them, and silently counting
+   them as resumable would be false.
+5. **Do not retire SSM runtime/content:** first ship a modern, non-duplicating
+   SSM home backed by the canonical source, verify migration/launch behavior,
+   and preserve the existing incomplete SSM attempt.
+6. **Observe before endpoint removal:** enable or obtain a route-template log
+   query with enough retention to cover an agreed compatibility window. The
+   current accessible logs begin with the October 7 deployment and cannot prove
+   September or earlier read traffic. A reasonable initial gate is at least 90
+   days after the last successful legacy write **and** 30 days of complete
+   route-template logging with no non-audit use, but the clock cannot start from
+   the currently incomplete log observation.
+
+### Remaining decisions, unknowns, and next exact action
+
+Required decisions:
+
+- Restore the eleven retired artifact identities needed by the 22 incomplete
+  rows, or formally classify those rows as preserved history but non-resumable.
+- Approve the compatibility-window gate (the proposed minimum is 90 days after
+  last write plus 30 days of complete endpoint logging).
+- Choose the modern SSM adapter shape while keeping one content authority.
+
+Still unknown:
+
+- Authenticated legacy read traffic before the current deployment/log window.
+- Dynamic current/summary GET traffic that does not update SQLite.
+- Whether a separate Railway/observability export with longer HTTP retention
+  exists outside the access available here.
+
+**Next exact action:** in the backend workstream, design (without deploying)
+an explicit retirement compatibility contract: resume-only start behavior,
+resolver treatment for the eleven missing identities, and a Journey
+non-champion SSM reference to the canonical curriculum. In parallel, obtain a
+30-day-or-longer route-template log export. Do not alter production or redirect
+legacy player URLs until those decisions are reviewed.
