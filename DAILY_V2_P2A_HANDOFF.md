@@ -193,6 +193,8 @@ Visual check: a throwaway dev route (removed, not committed) rendered the v5 int
 
 ## 16. Next integration step
 
+Note: while this slice was in progress, `origin/main` advanced to `c08882f6` (8 Mastery-retirement commits, 6 files under `quiz-mastery`/docs, no Daily, play-scroll or result files). `git merge-tree origin/main <branch>` is clean. Re-run the focused Daily suites after the merge.
+
 1. Command-center review of `dv2/p2a-live-hierarchy`.
 2. Merge to frontend `main` and **publish (Lovable)**. Against the v4 backend the change is inert: every v4 path is unchanged and tested.
 3. Verify the published bundle against production v4 (`/api/daily-run/today` parses; hub and Daily unchanged).
