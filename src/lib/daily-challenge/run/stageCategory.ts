@@ -6,7 +6,7 @@
  *
  *   MAIN      Standard
  *   BONUS     Survival · Time Trial · Order Forge
- *   TRAINING  Weak Areas · Today's Review
+ *   REVIEW    Weak Areas · Recently Missed (the user-facing name of kind `review`)
  *
  * PREPARATION ONLY. Nothing renders these groups yet: today's backend still
  * shuffles the stages and Standard is not guaranteed first, so a "Today's
@@ -17,15 +17,15 @@
 import type { DailyStageKind } from "./contracts";
 import { DAILY_STAGE_KINDS } from "./contracts";
 
-export type DailyStageCategory = "main" | "bonus" | "training";
+export type DailyStageCategory = "main" | "bonus" | "review";
 
 export const DAILY_STAGE_CATEGORY: Readonly<Record<DailyStageKind, DailyStageCategory>> = {
   standard: "main",
   survival: "bonus",
   time_trial: "bonus",
   order_forge: "bonus",
-  weak_areas: "training",
-  review: "training",
+  weak_areas: "review",
+  review: "review",
 };
 
 /** The category a stage kind belongs to. */

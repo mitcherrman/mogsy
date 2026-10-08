@@ -86,7 +86,7 @@ describe("stage identity — the modes are always named the same way", () => {
   it("tags the reusable rulesets and the special stages", () => {
     const run = fixtureRun(FIVE_STAGE_DAY);
     expect(run.stages.map((s) => stageIdentity(s).label))
-      .toEqual(["Time Trial", "Standard", "Survival", "Weak Areas", "Today's Review"]);
+      .toEqual(["Time Trial", "Standard", "Survival", "Weak Areas", "Recently Missed"]);
     expect(run.stages.map((s) => stageIdentity(s).family))
       .toEqual(["ruleset", "ruleset", "ruleset", "special", "special"]);
   });

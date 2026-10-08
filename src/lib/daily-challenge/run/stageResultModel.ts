@@ -78,7 +78,7 @@ export function buildDailyStageResult(run: DailyRun, stage: DailyStage): GameRes
       testId: "daily-stage-result-ended" });
   }
   // DV2-P0: the stage's own miss count, said as a fact about THIS stage. It is
-  // not "saved for Review": Today's Review asks a share of the day's misses
+  // not "saved for Review": Recently Missed asks a share of the day's misses
   // (deduped across stages), not every one of them.
   if (stage.kind !== "review" && r.misses > 0) {
     snapshot.push({ key: "misses", label: "Missed", value: String(r.misses),

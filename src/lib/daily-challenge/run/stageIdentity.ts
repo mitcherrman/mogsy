@@ -51,14 +51,14 @@ const IDENTITY: Record<DailyStageKind, Omit<StageIdentity, "rule" | "category"> 
     kind: "order_forge", label: "Order Forge", family: "special",
     rule: () => "Order the cards from highest to lowest by the shown stat.",
   },
-  // DV2-P0: the two training stages are told apart by WHERE their questions
-  // come from. Weak Areas reads your history; Today's Review reads this Daily.
+  // DV2-P0: the two Review-section stages are told apart by WHERE their questions
+  // come from. Weak Areas reads your history; Recently Missed reads this Daily.
   weak_areas: {
     kind: "weak_areas", label: "Weak Areas", family: "special",
     rule: () => "From your history — fresh questions from areas you've struggled with before.",
   },
   review: {
-    kind: "review", label: "Today's Review", family: "special",
+    kind: "review", label: "Recently Missed", family: "special",
     rule: () => "From today — retry the knowledge you missed in this Daily.",
   },
 };

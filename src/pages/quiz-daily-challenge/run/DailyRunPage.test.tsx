@@ -543,7 +543,7 @@ describe("DC-SURV-UX — Survival ends for the player at strike 3", () => {
     expect(phase()).toBe("stage-result");
     expect(q("daily-settling-child")).toBeNull();
     expect(screen.getByTestId("daily-stage-result-ended")).toHaveTextContent("Out of mistakes");
-    expect(screen.getByTestId("daily-stage-result-next")).toHaveTextContent(/review/i);
+    expect(screen.getByTestId("daily-stage-result-next")).toHaveTextContent(/recently missed/i);
     await continueOn();
     expect(phase()).toBe("stage-intro");
     expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-stage-kind", "review");

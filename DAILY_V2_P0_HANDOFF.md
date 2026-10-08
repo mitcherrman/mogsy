@@ -45,7 +45,7 @@ Branch `dv2/p0-frontend-compat`, worktree `C:\Users\mlmit\mogzy-wt\dv2-p0` (`nod
 ```
 standard -> main
 survival, time_trial, order_forge -> bonus
-weak_areas, review -> training
+weak_areas, review -> review   (the user-facing REVIEW umbrella; `review` is the stage named "Recently Missed")
 ```
 
 `stageCategory(kind)`, `stageCategoryOf(string)` (null for an unknown kind, never guessed), `DAILY_STAGE_CATEGORY`. `stageIdentity().category` reads it. Nothing renders it except a `data-stage-category` attribute on the stage tag. No reordering, no grouped UI.
@@ -56,15 +56,14 @@ weak_areas, review -> training
 |---|---|---|
 | Weak Areas rule (stage intro, History rule sentence) | "Built from what you've missed before." | "From your history — fresh questions from areas you've struggled with before." |
 | Review rule (stage intro) | "Today's mistakes, one more time." | "From today — retry the knowledge you missed in this Daily." |
-| Review label (live Daily: tag, ladder, recap) | Review | **Today's Review** (internal kind `review` unchanged) |
-| Review in History | Review | **Review** kept (`HISTORY_LABEL`): "Today's" is wrong for a past run |
-| Review rule in History (`ruleSentence`) | same as live | "From that day — a retry of the knowledge missed in that Daily." |
+| Stage `review` label (tag, ladder, recap, History) | Review | **Recently Missed** everywhere (internal kind `review` unchanged). "Review" is the umbrella *section* the P2 screen will head; it is not a stage name. |
+| Review rule in History (`ruleSentence`) | same as live | "From that day — a retry of the knowledge missed in that Daily." (kept: "From today" would be false for a past run) |
 | Daily intro | "N stages · Review closes the day" | "N stages today" |
-| Stage result tile | "For Review: N questions saved" | "Missed: N question(s)" — a fact about the stage. Review asks a deduped share of the day's misses, not all of them. |
+| Stage result tile | "For Review: N questions saved" | "Missed: N question(s)" — a fact about the stage. Recently Missed asks a deduped share of the day's misses, not all of them. |
 | Recap, skipped stage | "Not needed" for everything | from the server's `skip_reason`: Review+`perfect` → "Nothing missed"; Review+`review_items_unavailable` → "Couldn't be replayed"; Weak Areas+`weak_areas_unavailable` → "Not enough past misses"; any other or absent reason → "Not played". No reason is invented. |
 | Guest save gate | "Weak Areas built from your history from tomorrow" | "Weak Areas questions drawn from your saved history" |
 
-Deliberately NOT changed: "Stage X of N" (still true of today's linear run; the N may include a Review that is skipped as perfect — the grouped presentation in P2 replaces it), "Perfect day — nothing to review" and "Nothing to review" (true: perfect = zero replayable misses), and the **backend-owned** Review content title "Today's Mistakes" shown as the stage-intro heading (it comes from the server's `_TITLES`; a BE/P1 follow-up if the owner wants it to match "Today's Review").
+Deliberately NOT changed: "Stage X of N" (still true of today's linear run; the N may include a Review that is skipped as perfect — the grouped presentation in P2 replaces it), "Perfect day — nothing to review" and "Nothing to review" (true: perfect = zero replayable misses), and the **backend-owned** Review content title "Today's Mistakes" shown as the stage-intro heading (it comes from the server's `_TITLES`; a BE/P1 follow-up if the owner wants it to match "Recently Missed").
 
 ## 7. Fake-streak findings
 
@@ -104,6 +103,12 @@ Tests: `dailyV2P0.compat.test.tsx` (new), `run.test.ts`, `DailyRunPage.test.tsx`
 - A run with `order_forge` must keep Review as the single final stage and ruleset id in `standard | time_trial | survival | null`.
 - `main_completed_at` / `main_complete` / stage `section` are not read yet (P2). They are ignored harmlessly (tested).
 
-## 11. Result
+## 11. DV2-P0-CORRECTION (owner decision, after 1db8da41)
 
-See the commit on `dv2/p0-frontend-compat`. **READY for command-center review.**
+- Categories are now `main | bonus | review` (`weak_areas` and `review` -> `review`).
+- Stage `review` is named **Recently Missed**; Weak Areas unchanged. The History-only "Review" label override was removed.
+- Still preparation only: no sections rendered, nothing reordered. Daily *attendance* streak claims stay removed; the future global Answer Streak is a separate workstream.
+
+## 12. Result
+
+See the head of `dv2/p0-frontend-compat`. **READY for command-center review.**

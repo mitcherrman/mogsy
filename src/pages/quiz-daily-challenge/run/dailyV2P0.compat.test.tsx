@@ -144,9 +144,10 @@ describe("B — a future snapshot with order_forge parses and renders", () => {
       .toHaveTextContent(/order forge/i);
   });
 
-  it("History words it too (it humanises any kind) and the retrospective Review keeps its name", () => {
+  it("History names the stages the same way as the live Daily", () => {
     expect(stageKindLabel("order_forge")).toBe("Order Forge");
-    expect(stageKindLabel("review")).toBe("Review");
+    expect(stageKindLabel("review")).toBe("Recently Missed");
+    expect(stageKindLabel("weak_areas")).toBe("Weak Areas");
   });
 });
 
@@ -186,7 +187,7 @@ describe("the presentation category authority", () => {
   it("is the approved grouping, for every known kind", () => {
     expect(DAILY_STAGE_CATEGORY).toEqual({
       standard: "main", survival: "bonus", time_trial: "bonus", order_forge: "bonus",
-      weak_areas: "training", review: "training",
+      weak_areas: "review", review: "review",
     });
     for (const kind of DAILY_STAGE_KINDS) {
       expect(stageCategory(kind)).toBe(DAILY_STAGE_CATEGORY[kind]);
@@ -207,13 +208,13 @@ describe("the presentation category authority", () => {
   });
 });
 
-describe("D — Weak Areas and Today's Review are told apart", () => {
+describe("D — Weak Areas and Recently Missed are told apart", () => {
   it("uses the approved sentences", () => {
     expect(stageIdentity({ kind: "weak_areas", ruleset: null }).rule)
       .toBe("From your history — fresh questions from areas you've struggled with before.");
     expect(stageIdentity({ kind: "review", ruleset: null }).rule)
       .toBe("From today — retry the knowledge you missed in this Daily.");
-    expect(stageIdentity({ kind: "review", ruleset: null }).label).toBe("Today's Review");
+    expect(stageIdentity({ kind: "review", ruleset: null }).label).toBe("Recently Missed");
     expect(stageIdentity({ kind: "weak_areas", ruleset: null }).label).toBe("Weak Areas");
   });
 
@@ -223,7 +224,7 @@ describe("D — Weak Areas and Today's Review are told apart", () => {
     expect(screen.getByTestId("daily-stage-intro-rule")).toHaveTextContent(/^From your history/);
     unmount();
     render(<MemoryRouter><StageIntroBeat run={run} stage={run.stages[4]} /></MemoryRouter>);
-    expect(screen.getByTestId("daily-stage-tag")).toHaveTextContent(/today's review/i);
+    expect(screen.getByTestId("daily-stage-tag")).toHaveTextContent(/recently missed/i);
     expect(screen.getByTestId("daily-stage-intro-rule")).toHaveTextContent(/^From today/);
   });
 
@@ -341,7 +342,7 @@ describe("F — no backend-dependent main-complete behaviour is invented", () =>
   it("nothing draws the grouped hierarchy yet", () => {
     const run = fixtureRun(FIVE_STAGE_DAY);
     render(<MemoryRouter><DailyIntroBeat run={run} /></MemoryRouter>);
-    expect(document.body.textContent).not.toMatch(/today's challenge|more challenges|bonus|training/i);
+    expect(document.body.textContent).not.toMatch(/today's challenge|more challenges|bonus|today's review/i);
     const dir = "src/pages/quiz-daily-challenge/run";
     for (const f of readdirSync(here(dir)).filter((n) => /\.tsx?$/.test(n) && !/\.test\./.test(n))) {
       expect(source(`${dir}/${f}`), f).not.toMatch(/More Challenges|Today's Challenge|main_completed|mainComplete/);
