@@ -39,6 +39,7 @@ import { useRankedAvailability } from "@/pages/quiz-ranked/useRankedAvailability
 import { playModeVisibility } from "@/lib/quiz/playModes";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory";
+import { JOURNEY_LIBRARY_ROUTE } from "@/pages/quiz-ranked/matchOrigin";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import AdSlot from "@/components/ads/AdSlot";
 import { GameResultsShell } from "@/components/game-results/GameResultsShell";
@@ -98,9 +99,8 @@ type HubModuleFlags = {
   achievements: boolean;
   /** Pre-redesign five-card practice grid, replaced by the compact tiles. */
   legacyPracticeGrid: boolean;
-  /** Mastery Journey link (kept: it is one quiet line, and this page holds
-   *  the ONLY entrance to /quiz/mastery in the product). */
-  masteryJourney: boolean;
+  /** Public Journey Library discovery link. */
+  journeyLibrary: boolean;
 };
 
 /**
@@ -129,7 +129,7 @@ const HUB_MODULES: HubModuleFlags = {
   knowledgeBreakdown: true,
   achievements: false,
   legacyPracticeGrid: false,
-  masteryJourney: true,
+  journeyLibrary: true,
 };
 
 /**
@@ -1690,26 +1690,19 @@ export default function Quiz() {
               data-testid="hub-utility-line"
               className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 border-t border-[#c9a84c]/12 pt-2"
             >
-              {/* MASTERY JOURNEY — RELOCATED, not restored and not new.
-                  It was one quiet line inside the "Practice for Ranked"
-                  panel, and that panel is withheld this phase. This page
-                  holds the ONLY entrance to /quiz/mastery in the product —
-                  every other link to it lives inside the mastery pages
-                  themselves — so hiding the panel around it would have
-                  stranded a whole live route. It moves to the row that
-                  already exists for exactly this: one quiet link at the foot
-                  of the lobby, rather than a panel of its own. Guided
-                  champion progressions are not a practice SELECTOR, so this
-                  is not the replacement navigation the rail is going to
-                  become. Same flag, same route, same words. */}
-              {HUB_MODULES.masteryJourney && (
+              {/* October 7 Mastery retirement decision: Journey Library is
+                  the public Journey destination. Keep the existing quiet
+                  utility-row treatment; only its destination and product
+                  identity change. The legacy /quiz/mastery routes remain
+                  operational for session compatibility. */}
+              {HUB_MODULES.journeyLibrary && (
                 <Link
-                  to="/quiz/mastery"
-                  data-testid="hub-mastery-link"
+                  to={JOURNEY_LIBRARY_ROUTE}
+                  data-testid="hub-journey-library-link"
                   className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
                 >
                   <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-                  Mastery Journey
+                  Journey Library
                 </Link>
               )}
               {LOBBY_SHOWS_DIAGNOSTICS && (

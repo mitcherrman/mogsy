@@ -270,7 +270,12 @@ would break the modern Journey architecture.
   unique curriculum that must be preserved. No curriculum or serving flag was
   changed here.
 
-### Journey Library placement conflict — decision required
+### Journey Library placement history and superseding decision
+
+**Status: resolved by the later October 7 product decision.** The October 3
+context and the October 8 audit finding are preserved below because they
+explain why the first Phase 1 commit intentionally stopped before changing
+public discovery.
 
 Current `main` contains commit
 `a2f9bd01906458bc2cada139f16fa34f3b1cf9d0` (2026-10-03), **Move Journey
@@ -288,7 +293,8 @@ of current `origin/main`**. Therefore this handoff's statement that Journey
 Library is the public discovery destination conflicts with the current
 mainline admin-only discovery decision.
 
-No public navigation or route was changed. Product must choose one:
+At that audit point, no public navigation or route was changed and the two
+available choices were:
 
 1. approve Journey Library as the public successor, restore a public
    `/quiz/journeys` discovery entry, and then remove the `/quiz/mastery` hub
@@ -296,6 +302,12 @@ No public navigation or route was changed. Product must choose one:
 2. keep Journey Library admin-discovered for now, in which case removing the
    only `/quiz/mastery` public entry would leave no approved public Journey
    discovery destination and that portion of Phase 1 must remain paused.
+
+The user's newer explicit October 7 retirement decision selects option 1 and
+supersedes the October 3 deferral: standalone Mastery is retired as a public
+product and `/quiz/journeys` is the public Journey destination. The October 3
+admin placement remains useful historical context, not the controlling product
+decision for this workstream.
 
 ### Production-only verification (do not infer from source)
 
@@ -355,11 +367,11 @@ Modified files:
   zero. In the same file, **Mastery** navigation and **Journey Library
   placement** tests passed. No changed file contributes to the failed render.
 - ESLint on the three modified TypeScript/TSX files — **PASS**, no output.
-- `tsc --noEmit -p tsconfig.app.json` — **FAIL** on five existing unrelated
-  errors: one in `src/components/onboarding/OnboardingProfile.tsx`, one in
-  `src/lib/identity/connections.ts`, and three assertions reported across four
-  lines in `src/lib/quiz/practiceLeaveContract.test.ts`. No error names a
-  modified file.
+- `tsc --noEmit -p tsconfig.app.json` — **FAIL** on six existing unrelated
+  diagnostics: one in `src/components/onboarding/OnboardingProfile.tsx`, one
+  in `src/lib/identity/connections.ts`, and four assertions in
+  `src/lib/quiz/practiceLeaveContract.test.ts`. No error names a modified
+  file.
 - The first sandboxed focused-test attempt executed zero tests because Windows
   returned `EPERM` while resolving the shared pnpm store. Re-running with read
   access produced the passing 21/21 result above.
@@ -386,3 +398,144 @@ redirecting or disabling either legacy route), then run the focused hub,
 Journey Library, Mastery, lint, and typecheck gates. Separately, arrange
 read-only production backend/database inspection before proposing Phase 2-4
 dates or endpoint changes.
+
+The placement-decision portion of this paragraph was completed by the
+superseding October 7 decision and the continuation update below. The
+production-inspection requirement remains open.
+
+---
+
+## 2026-10-08 continuation — public Journey discovery
+
+### Starting state and drift
+
+- Fetched and pruned `origin` before making this continuation's changes.
+- The existing unpushed Phase 1 commit was preserved at
+  `58822892feb2e44681fa72aef4cc780d9647b08d`; the worktree was clean and the
+  local branch was one commit ahead of its remote before this continuation.
+- `origin/journeys/mastery-retirement-plan` remains
+  `c40aa9162a661f29146a30285dcfc98df7750d20`.
+- `origin/main` remains
+  `d528bf9fe87e22371ff3dacf4eeb2f58fe383a33`; it has not moved since the
+  previous audit. Current history comparison reports two branch-only and six
+  main-only commits from the merge base. No main commit was merged, rebased,
+  cherry-picked, or overwritten.
+
+### Journey Library functional verification
+
+The public route was verified beyond route existence:
+
+- `GET /api/journeys` is an identity-free read in the shared Ranked client;
+  mutating launch calls use the established `ranked_write` authentication
+  boundary.
+- Signed-out and anonymous-guest UI tests prove the catalog remains browsable,
+  Start displays the account gate, auth links return to `/quiz/journeys`, and
+  no launch request is sent.
+- Signed-in Free-account tests prove there is no Premium client gate and the
+  exact `(recipe_id, recipe_version)` is sent to the server.
+- Server refusal tests cover 401/403 account requirements, stale/inactive
+  versions, unavailable content, an existing active match, and rate/feature
+  failures. Stale or unavailable content fails closed; the client does not
+  silently substitute or retry a different version.
+- Browser certification covers desktop/mobile browsing, filtering, unavailable
+  cards, signed-out gating with zero launches, exact-version launch into the
+  existing Ranked arena, persisted `journey_library` host recovery, return to
+  the Library, and History labelling.
+- A read-only request to the repository-configured production backend
+  (`web-production-83e53.up.railway.app`) returned HTTP 200,
+  `journey_library_list.v1`, 14 active Journeys, and 14/14 currently available.
+  The list matched the captured approved recipe ids and versions.
+- A production POST to the launch endpoint **without credentials** returned
+  HTTP 401 `AUTH_REQUIRED` (`a verified session is required`). It created no
+  authenticated match and confirms the deployed authorization boundary rejects
+  signed-out launch attempts. No authenticated production launch was performed.
+
+Conclusion: signed-out browsing, account-gated launch, deployed authorization,
+approved-content availability, exact-version handling, and the canonical arena
+handoff are sufficiently verified for a navigation-only discovery change.
+
+### Active-workstream conflict check
+
+- `origin/seo/journey-library-discovery` remains at `49a6c396`. Relative to
+  current `origin/main`, its effective diff touches only
+  `src/lib/seo/sitemap.ts` and `src/lib/seo/sitemap.test.ts`.
+- This continuation does not touch those sitemap files, metadata, `App.tsx`,
+  or any SEO/discovery commit. Nothing was cherry-picked or integrated.
+- The older `journey-lib-admin-placement` worktree/branch still exists and
+  explains the October 3 state. The October 7 decision supersedes its product
+  placement; its files were not overwritten through branch integration.
+- No Daily Challenge, Ranked gameplay, Creator Studio, Graph1, Pro Play, or
+  other workstream files were changed.
+
+### Navigation implementation
+
+The existing quiet Leaguecraft utility-row link was reused without adding a
+new panel or changing layout:
+
+- destination: `/quiz/mastery` -> canonical `JOURNEY_LIBRARY_ROUTE`
+  (`/quiz/journeys`);
+- label: **Mastery Journey** -> **Journey Library**;
+- test id/feature flag naming now describes Journey Library rather than the
+  retired product;
+- focused tests require exactly one Journey Library discovery link and no
+  `/quiz/mastery` discovery link on the hub.
+
+Preserved unchanged:
+
+- `/quiz/mastery` and `/quiz/mastery/:masterySetId` route declarations;
+- legacy catalog/player internal compatibility links and resume behavior;
+- every legacy Mastery session API;
+- `mastery_sessions`, `mastery_session_answers`, and all historical records;
+- Summoner Spell Mastery;
+- Daily Challenge and Journey/Ranked gameplay.
+
+Changed files in this continuation:
+
+- `src/pages/Quiz.tsx`
+- `src/pages/Quiz.hub.test.tsx`
+- `MASTERY_RETIREMENT_HANDOFF.md`
+
+### Verification results
+
+- Pre-change focused Journey Library contracts/page/route suite: **PASS**,
+  4 files and 26/26 tests.
+- Journey Library Chromium browser certification: **PASS**, 7/7 tests.
+- Post-change focused hub discovery test: **PASS**, 1/1 selected test
+  (29 unrelated tests skipped).
+- Post-change Journey Library plus preserved legacy Mastery suite: **PASS**,
+  5 files and 47/47 tests.
+- Full `src/pages/Quiz.hub.test.tsx`: **baseline failure only**, 29/30 passed.
+  The sole failure remains line 189's pre-existing expectation that the hub
+  render contains one `LEAGUECRAFT` `h1`; it observes zero. The new Journey
+  Library discovery test and updated hierarchy assertion pass.
+- ESLint on `Quiz.hub.test.tsx` and the prior modified Mastery files: **PASS**.
+- ESLint on `Quiz.tsx`: **baseline failure only**, 12 pre-existing
+  `@typescript-eslint/no-explicit-any` errors and one pre-existing hooks warning.
+  Linting committed pre-change `HEAD:src/pages/Quiz.tsx` through stdin produces
+  the same 12 errors and one warning; only later line numbers shift because the
+  navigation comment is shorter.
+- `tsc --noEmit -p tsconfig.app.json`: **baseline failure only**, the same six
+  diagnostics as the previous run: two unrelated generated-table typing errors
+  (`OnboardingProfile.tsx`, `identity/connections.ts`) and four
+  `historyAction: "PUSH"` errors in `practiceLeaveContract.test.ts`. No changed
+  file is named.
+- `git diff --check`: **PASS** apart from Windows LF-to-CRLF notices.
+
+### Remaining production inspection and next exact step
+
+The live Journey Library list/auth boundary is verified, but the legacy
+retirement gates remain unchanged. Before redirecting existing Mastery URLs or
+disabling legacy writes, production inspection must still establish:
+
+- active/incomplete legacy session counts and recent activity;
+- answer/reveal coverage and resume compatibility;
+- endpoint traffic by status over an agreed compatibility window;
+- the deployed legacy publication registry, including Summoner Spell Mastery;
+- session expiry/resume semantics from the real backend schema.
+
+**Next exact action:** perform the approved read-only production
+`mastery_sessions` / `mastery_session_answers` and request-log inspection, then
+define the compatibility window. Do not redirect legacy player/session URLs or
+disable session creation until that evidence is reviewed. In parallel, product
+still needs to select the canonical modern home for Summoner Spell Mastery
+before Phase 3/4 removal work.
