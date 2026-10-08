@@ -8,14 +8,16 @@ import { isProjectionLoadable } from "./state";
  * projection's own `crossoverLevel`, the loadable flag) and never computes,
  * projects or infers a crossover itself.
  *
- * - `crossover`: a projection whose domain reports a sign change.
- * - `levels`: a projection without one, or a projection that opening will load.
- *   It never promises a crossover the domain has not reported.
- * - `details`: a parameter-only change opened after its projection settled to
- *   "not available" (never offered closed: such a change has no Explore).
+ * Certainty is part of the label ("View" only promises what PH2 already knows):
+ * - `crossover`: CONFIRMED projection whose domain reports a sign change.
+ * - `levels`: CONFIRMED projection without one.
+ * - `check`: a CANDIDATE. The evidence is not loaded, so whether a projection
+ *   exists is only settled by opening. Never promises a result or a crossover.
+ * - `details`: CONFIRMED unavailable / parameter-only (a change whose projection
+ *   settled to "not available" after loading; never offered closed otherwise).
  */
 export type ImpactExploreCta = {
-  kind: "crossover" | "levels" | "details";
+  kind: "crossover" | "levels" | "check" | "details";
   /** Visible label. */
   text: string;
   /** Screen-reader continuation: what the disclosure reveals. */
@@ -25,7 +27,9 @@ export type ImpactExploreCta = {
 /**
  * `null` when there is no analysis to explore. PatchImpact decides whether the
  * disclosure is offered at all; this only names it. A loading or failed load
- * keeps the `levels` label: the disclosure still opens onto that projection.
+ * keeps the `check` label: nothing is confirmed until the evidence arrives.
+ * The label follows the analysis, so a resolved load moves it to `levels` /
+ * `crossover` (projected) or `details` (settled unavailable).
  */
 export function impactExploreCta(analysis: PatchImpactAnalysis | null | undefined): ImpactExploreCta | null {
   if (!analysis || analysis.status === "unavailable") return null;
@@ -51,9 +55,9 @@ export function impactExploreCta(analysis: PatchImpactAnalysis | null | undefine
     // Loadable never covers the deferred attack-speed family (see state.ts).
     const stat = analysis.family === "attack_speed" ? "the base stat" : projectedStatLabel(analysis.family);
     return {
-      kind: "levels",
-      text: "View level 1–18 impact",
-      opens: `: loads ${stat} before and after the patch at every level from 1 to 18`,
+      kind: "check",
+      text: "Check level 1–18 impact",
+      opens: `: loads the evidence first, then shows ${stat} before and after the patch at every level from 1 to 18 if a projection is available`,
     };
   }
 

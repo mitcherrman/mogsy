@@ -13,12 +13,37 @@ chosen from PH2 state only (`src/components/patch-impact/cta.ts`, pure):
 |---|---|---|
 | `projected`, `projection.crossoverLevel = N` | **View crossover at level N** | base X before/after at every level 1–18, and where the difference changes sign |
 | `projected`, no crossover | **View level 1–18 impact** | base X before/after at every level 1–18 |
-| `parameter_only` + `history_incomplete` (loadable; opening loads it) | **View level 1–18 impact** | *loads* base X before/after at every level 1–18 |
+| `parameter_only` + `history_incomplete` (loadable candidate; opening loads the evidence) | **Check level 1–18 impact** | loads the evidence first, then shows base X before/after at every level 1–18 *if a projection is available* |
 | `parameter_only`, settled (only shown once already open) | **View impact details** | what Mogzy can and cannot project |
 | `unavailable` / no analysis / deferred family | no disclosure (unchanged) | — |
 
 - Label text is visible; the continuation is `sr-only` inside the native `<summary>`
-  (its accessible name). `data-cta` = `crossover | levels | details` for tests/captures.
+  (its accessible name). `data-cta` = `crossover | levels | check | details` for tests/captures.
+
+### Final CTA state machine (certainty correction, on top of `1ccb51d2`)
+
+Rule: **"View" only promises what PH2 already knows. "Check" is used when opening is what
+decides availability.** The label is a pure function of the analysis the component holds;
+it never fetches and never infers.
+
+```
+                         closed, nothing loaded
+ projected + crossoverLevel N ─────────────► View crossover at level N      (confirmed)
+ projected, no crossover      ─────────────► View level 1–18 impact         (confirmed)
+ parameter_only/history_incomplete ────────► Check level 1–18 impact        (candidate)
+ parameter_only, other reason / unavailable ► no CTA (no Explore)
+
+                         user opens → loader resolves the same row
+ candidate → projected, crossover N  ──────► View crossover at level N
+ candidate → projected, no crossover ──────► View level 1–18 impact
+ candidate → settled unavailable ──────────► View impact details            (confirmed unavailable)
+ candidate → loading / failed ─────────────► Check level 1–18 impact        (still unconfirmed; retry shown)
+```
+
+Before the correction a candidate said "View level 1–18 impact", so Bel'Veth 26.15 promised a
+projection that settled to "not available" once opened. The candidate wording never says
+"View", "crossover" or "sign" and the accessible name adds "if a projection is available".
+No fetch was added: the closed label still costs zero requests.
 - CTA styled as a gold, medium-weight text link (hover underline), still a 40px target,
   chevron kept for disclosure affordance. No card, no fill.
 - Compact summary: "MOGZY IMPACT" title at full gold (was /80), left rail /45 (was /30).
@@ -36,9 +61,10 @@ chosen from PH2 state only (`src/components/patch-impact/cta.ts`, pure):
   If the loaded projection had a crossover, the label would switch to the crossover form
   after opening (no 26.10–26.19 corpus line does this).
 - One corpus line, Bel'Veth 26.15 Attack Damage, is loadable when closed but settles to
-  `unclassified_base_stat_change` after loading: it shows "View level 1–18 impact" closed,
-  then "View impact details" plus the existing "not available" line once open. The closed
-  label is a promise PH2 cannot settle without the fetch; accepted as honest-by-default.
+  `unclassified_base_stat_change` after loading. **Corrected**: it now shows "Check level
+  1–18 impact" closed (no promise), then "View impact details" plus the existing "not
+  available" line once open. (An earlier revision of this note accepted the "View" label as
+  honest-by-default; the owner rejected that for launch.)
 - Projected-without-crossover uses one label ("View level 1–18 impact") rather than
   splitting "level-by-level" vs "1–18": both open the same view.
 
@@ -47,14 +73,32 @@ chosen from PH2 state only (`src/components/patch-impact/cta.ts`, pure):
 | Line | PH2 closed | CTA | After open |
 |---|---|---|---|
 | Vi Attack Damage `63 + 3.5/Level → 61 + 3.9/Level` | projected, crossover 8 | View crossover at level 8 | graph, "Crosses at 8" tick; no fetch |
-| Draven Attack Damage 62 → 64 | loadable | View level 1–18 impact | projected, no crossover |
-| Fiora Health Growth 99 → 105 | loadable | View level 1–18 impact | projected |
-| Lillia Armor 22 → 24 | loadable | View level 1–18 impact | projected |
-| Ryze Armor Growth 4.2 → 4.7 | loadable | View level 1–18 impact | projected |
+| Draven Attack Damage 62 → 64 | loadable (candidate) | Check level 1–18 impact | projected, no crossover → View level 1–18 impact |
+| Fiora Health Growth 99 → 105 | loadable (candidate) | Check level 1–18 impact | projected → View level 1–18 impact |
+| Lillia Armor 22 → 24 | loadable (candidate) | Check level 1–18 impact | projected → View level 1–18 impact |
+| Ryze Armor Growth 4.2 → 4.7 | loadable (candidate) | Check level 1–18 impact | projected → View level 1–18 impact |
+| Bel'Veth 26.15 Attack Damage | loadable (candidate) | Check level 1–18 impact | settled unavailable → View impact details |
+| (parameter-only, settled) | parameter-only | View impact details | — |
 | LeBlanc 26.17 Attack Speed Growth | parameter-only (deferred) | none | — |
 | Vi Passive Shield 12% → 10% | out of scope | none (no Impact) | — |
 
-## Tests
+## Tests (certainty correction)
+
+`PatchImpact.discovery.test.tsx` now 24 tests (was 20; none weakened, Draven/Fiora/Lillia/Ryze
+closed expectations changed from View to Check by design). Covers: confirmed crossover →
+"View crossover at level N"; confirmed projection → "View level 1–18 impact"; unresolved
+candidate → "Check…" (pure and through the real wiring); Bel'Veth 26.15 non-promissory closed,
+zero requests, then "View impact details" after open; Draven/Fiora/Lillia/Ryze → View after
+evidence confirms; accessible names for candidate / confirmed / settled-unavailable; no Impact
+→ no CTA; vocabulary rule across all CTA states. Results: `src/components/patch-impact` 8 files /
+147 tests; wider PH2/PH4 regression (patch-impact, patch-reports, patch-impact-loader,
+patch-hub-share, hooks) 36 files / 587 tests pass; ESLint `src/components/patch-impact` clean.
+`tsc -p tsconfig.app.json` rerun: the same 2 pre-existing errors (`OnboardingProfile.tsx`,
+`identity/connections.ts`), 0 new.
+`docs/phsr2-captures/` predate the correction and still show "View level 1–18 impact" for
+Draven/Fiora closed; recapture before using them as evidence.
+
+## Tests (original PHSR2 pass; counts and labels superseded where noted above)
 
 - New `PatchImpact.discovery.test.tsx` (20 tests): pure CTA choice for crossover / no
   crossover / parameter-only / unavailable; CTA reads `crossoverLevel` verbatim (mutated
