@@ -28,6 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import SEOHead from "@/components/SEOHead";
 
 function formatWhen(iso: string | null): string | null {
   if (!iso) return null;
@@ -138,8 +139,15 @@ export default function MasteryJourneysPage() {
   const rec = sets && progress ? recommend(sets, progress) : null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6">
-      <header className="mb-4">
+    <>
+      <SEOHead
+        title="Mastery Journeys · Mogzy"
+        description="Legacy Mastery Journey catalog."
+        path="/quiz/mastery"
+        noindex
+      />
+      <div className="mx-auto w-full max-w-3xl px-4 py-6">
+        <header className="mb-4">
         <h1 className="text-lg font-semibold uppercase tracking-[0.18em] text-primary/80">
           Mastery Journeys
         </h1>
@@ -147,7 +155,7 @@ export default function MasteryJourneysPage() {
           Step-by-step champion progressions with fully visible state — every
           answer is derivable from what you see on screen.
         </p>
-      </header>
+        </header>
 
       {error ? (
         <div className="rounded-lg border border-destructive/40 p-4 text-sm"
@@ -241,7 +249,8 @@ export default function MasteryJourneysPage() {
             })}
           </div>
         </>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }

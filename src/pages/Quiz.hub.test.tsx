@@ -239,12 +239,12 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(follows(ranked, rail)).toBeTruthy();
     expect(follows(rail, record)).toBeTruthy();
     expect(ranked.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
-    // Mastery has never had a band of its own and still does not: it is one
-    // quiet link, now in the lobby's utility line rather than inside the
-    // withheld Practice panel — /quiz is the only entrance to the route.
+    // Journey discovery has no band of its own: the public Library is one
+    // quiet link in the existing utility line. The retired Mastery product
+    // gains no replacement band.
     expect(container.querySelector('[data-testid="hub-mastery-section"]')).toBeNull();
     const utility = container.querySelector('[data-testid="hub-utility-line"]')!;
-    expect(utility.querySelector('[data-testid="hub-mastery-link"]')).not.toBeNull();
+    expect(utility.querySelector('[data-testid="hub-journey-library-link"]')).not.toBeNull();
   });
 
   it("no longer renders a standalone Recent Studies module", async () => {
@@ -569,29 +569,20 @@ describe("Leaguecraft hub — the Leaguecraft Record", () => {
   });
 });
 
-describe("Leaguecraft hub — Mastery", () => {
-  // /quiz is the ONLY entrance to /quiz/mastery in the product, so hiding the
-  // Practice panel that used to contain this link had to relocate it, not
-  // withhold it with the panel. It is still one quiet line — in the lobby's
-  // utility row now.
-  it("keeps Mastery as one quiet link that still reaches the journeys", async () => {
+describe("Leaguecraft hub — Journey Library discovery", () => {
+  // The October 7 retirement decision supersedes the earlier admin-only
+  // placement: the quiet utility-row entry now discovers the public Journey
+  // Library, while the legacy Mastery routes remain directly compatible.
+  it("uses the existing quiet link for the public Journey Library", async () => {
     const { container } = await renderHub();
-    const link = screen.getByTestId("hub-mastery-link");
-    expect(link.getAttribute("href")).toBe("/quiz/mastery");
+    const link = screen.getByTestId("hub-journey-library-link");
+    expect(link.getAttribute("href")).toBe("/quiz/journeys");
+    expect(link).toHaveTextContent("Journey Library");
     expect(container.querySelector('[data-testid="hub-utility-line"]')!.contains(link)).toBe(true);
     // One entrance, not two.
-    expect(container.querySelectorAll('[data-testid="hub-mastery-link"]').length).toBe(1);
-  });
-});
-
-describe("Leaguecraft hub — Journey Library placement", () => {
-  it("no longer advertises the Journey Library; Mastery stays untouched", async () => {
-    const { container } = await renderHub();
-    expect(screen.queryByTestId("hub-journey-library-link")).toBeNull();
-    expect(container.querySelector('a[href="/quiz/journeys"]')).toBeNull();
-    const mastery = screen.getByTestId("hub-mastery-link");
-    expect(mastery.getAttribute("href")).toBe("/quiz/mastery");
-    expect(mastery).toHaveTextContent("Mastery Journey");
+    expect(container.querySelectorAll('[data-testid="hub-journey-library-link"]').length).toBe(1);
+    expect(container.querySelector('a[href="/quiz/mastery"]')).toBeNull();
+    expect(screen.queryByTestId("hub-mastery-link")).toBeNull();
   });
 });
 

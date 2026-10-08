@@ -22,10 +22,21 @@ import { Link, useParams } from "react-router-dom";
 import { listSets, MasteryPlayerLive } from "@/features/mastery/live";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import SEOHead from "@/components/SEOHead";
 
 const SET_ID_SHAPE = /^mset_[0-9a-f]{64}$/;
 
 type Membership = "loading" | "member" | "not_public" | "error";
+
+function LegacyMasteryPlayerSEO() {
+  return (
+    <SEOHead
+      title="Mastery Journey · Mogzy"
+      description="Legacy Mastery Journey player."
+      noindex
+    />
+  );
+}
 
 export default function MasteryJourneyPlayerPage() {
   const { masterySetId } = useParams<{ masterySetId: string }>();
@@ -53,66 +64,81 @@ export default function MasteryJourneyPlayerPage() {
 
   if (!wellFormed) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-10 text-sm"
-           data-testid="mastery-player-bad-id">
-        <p className="mb-3">That mastery journey link is not valid.</p>
-        <Link to="/quiz/mastery" className="text-primary underline-offset-4 hover:underline">
-          Browse mastery journeys
-        </Link>
-      </div>
+      <>
+        <LegacyMasteryPlayerSEO />
+        <div className="mx-auto w-full max-w-3xl px-4 py-10 text-sm"
+             data-testid="mastery-player-bad-id">
+          <p className="mb-3">That mastery journey link is not valid.</p>
+          <Link to="/quiz/mastery" className="text-primary underline-offset-4 hover:underline">
+            Browse mastery journeys
+          </Link>
+        </div>
+      </>
     );
   }
 
   if (membership === "loading") {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-10"
-           data-testid="mastery-player-membership-loading">
-        <Skeleton className="h-40 w-full rounded-lg" />
-      </div>
+      <>
+        <LegacyMasteryPlayerSEO />
+        <div className="mx-auto w-full max-w-3xl px-4 py-10"
+             data-testid="mastery-player-membership-loading">
+          <Skeleton className="h-40 w-full rounded-lg" />
+        </div>
+      </>
     );
   }
 
   if (membership === "error") {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-10 text-sm"
-           data-testid="mastery-player-membership-error">
-        <p className="mb-3">Could not confirm this mastery journey is available.</p>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
-            Retry
-          </Button>
-          <Link to="/quiz/mastery" className="text-primary underline-offset-4 hover:underline">
-            Browse mastery journeys
-          </Link>
+      <>
+        <LegacyMasteryPlayerSEO />
+        <div className="mx-auto w-full max-w-3xl px-4 py-10 text-sm"
+             data-testid="mastery-player-membership-error">
+          <p className="mb-3">Could not confirm this mastery journey is available.</p>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
+              Retry
+            </Button>
+            <Link to="/quiz/mastery" className="text-primary underline-offset-4 hover:underline">
+              Browse mastery journeys
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (membership === "not_public") {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-10 text-sm"
-           data-testid="mastery-player-not-public">
-        <p className="mb-3">This mastery journey is not publicly available.</p>
-        <Link to="/quiz/mastery" className="text-primary underline-offset-4 hover:underline">
-          Browse mastery journeys
-        </Link>
-      </div>
+      <>
+        <LegacyMasteryPlayerSEO />
+        <div className="mx-auto w-full max-w-3xl px-4 py-10 text-sm"
+             data-testid="mastery-player-not-public">
+          <p className="mb-3">This mastery journey is not publicly available.</p>
+          <Link to="/quiz/mastery" className="text-primary underline-offset-4 hover:underline">
+            Browse mastery journeys
+          </Link>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-[60vh]">
-      <div className="mx-auto w-full max-w-3xl px-4 pt-4">
-        <Link
-          to="/quiz/mastery"
-          className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-          data-testid="mastery-player-back-link"
-        >
-          ← All mastery journeys
-        </Link>
+    <>
+      <LegacyMasteryPlayerSEO />
+      <div className="min-h-[60vh]">
+        <div className="mx-auto w-full max-w-3xl px-4 pt-4">
+          <Link
+            to="/quiz/mastery"
+            className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+            data-testid="mastery-player-back-link"
+          >
+            ← All mastery journeys
+          </Link>
+        </div>
+        <MasteryPlayerLive masterySetId={masterySetId} />
       </div>
-      <MasteryPlayerLive masterySetId={masterySetId} />
-    </div>
+    </>
   );
 }
