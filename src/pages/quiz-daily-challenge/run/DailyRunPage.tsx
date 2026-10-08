@@ -13,6 +13,17 @@
  * The child match is keyed on its id, so each stage is a clean mount of the
  * same arena; between stages the Daily's own beats hold the same shell, so
  * the page never drops to a blank frame.
+ *
+ * DV2-P2A — a plan v5+ day (`hasMainDaily`) is the same linear run, drawn as
+ * its hierarchy:
+ *
+ *   Daily intro (Today's Challenge) ─► Standard ─► MAIN RESULT
+ *         ─(Play More Challenges)─► Time Trial / Survival ─► Review stages
+ *         ─► "All Done for Today"          or ─(Done for now)─► hub
+ *
+ * "Done for now" is a plain navigation (no server call); the run stays open.
+ * Once the main Daily is complete, leaving is guarded only while an optional
+ * child is live (`shouldGuardDailyLeave`).
  */
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
@@ -26,12 +37,14 @@ import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
 import type { MatchHost } from "@/lib/ranked-core/flow/matchHost";
 import { httpDailyRunTransport, type DailyRunTransport } from "@/lib/daily-challenge/run/client";
 import { DailyStageChrome } from "./DailyStageChrome";
-import { DailyIntroBeat, StageIntroBeat } from "./DailyRunBeats";
+import { DailyIntroBeat, OptionalEntryBeat, StageIntroBeat } from "./DailyRunBeats";
 import { DailyStageResult, type StageResultPlacement } from "./DailyStageResult";
+import { DailyMainResult } from "./DailyMainResult";
 import { DailyCompletion } from "./DailyCompletion";
 import { useDailyRun } from "./useDailyRun";
 import { hasDailyStartIntent } from "@/lib/daily-challenge/run/entry";
-import { dailyLeaveCopy, isActiveDailyRun, shouldBlockDailyNavigation } from "./dailyLeaveContract";
+import { dailyLeaveCopy, shouldBlockDailyNavigation, shouldGuardDailyLeave } from "./dailyLeaveContract";
+import { hasMainDaily } from "@/lib/daily-challenge/run/contracts";
 import { useTransactionalLeaveGuard } from "@/lib/navigation/useTransactionalLeaveGuard";
 
 export const DAILY_EYEBROW = "Daily Challenge";
@@ -96,11 +109,14 @@ export function DailyRunPage({
   const run = dc.run;
   const flow = dc.flow;
   const guard = useTransactionalLeaveGuard({
-    active: isActiveDailyRun(run),
+    active: shouldGuardDailyLeave(run, flow),
     kind: "daily_run",
     copy: dailyLeaveCopy(run, flow),
     shouldBlock: shouldBlockDailyNavigation,
   });
+  // DV2-P2A — "Done for now": leave for the hub. Presentation only; the run
+  // stays open on the server and resumes from the hub.
+  const doneForNow = () => navigate("/quiz");
   // B7 — the stage's last server-reported strike count (see `strikesSeen`).
   const strikesFloor = flow?.stage ? dc.strikesSeen[flow.stage.id] ?? null : null;
 
@@ -175,16 +191,26 @@ export function DailyRunPage({
   switch (flow.phase) {
     case "daily-intro":
       return shell(<DailyIntroBeat run={run} />);
+    case "optional-entry":
+      return shell(
+        <OptionalEntryBeat run={run} stage={flow.stage!} onPlayOptional={dc.enterOptional} onDone={doneForNow} />);
     case "stage-intro":
       return shell(
         <StageIntroBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
         <DailyStageChrome run={run} stage={flow.stage} />);
     case "stage-settling":
     case "stage-result": {
+      const onProceed = flow.phase === "stage-result" ? dc.continueFromResult : undefined;
+      const main = hasMainDaily(run) && flow.stage!.kind === "standard";
       const beat = shell(
-        <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
-          onProceed={flow.phase === "stage-result" ? dc.continueFromResult : undefined}
-          placement={stageResultPlacement} />,
+        main ? (
+          <DailyMainResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
+            onProceed={onProceed} onDone={doneForNow} placement={stageResultPlacement} />
+        ) : (
+          <DailyStageResult run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy}
+            onProceed={onProceed} onDone={hasMainDaily(run) ? doneForNow : undefined}
+            placement={stageResultPlacement} />
+        ),
         <DailyStageChrome run={run} stage={flow.stage} survival={dc.survival} strikesFloor={strikesFloor} />);
       // DC-SURV-UX — the player is out but the child is still settling: keep
       // it connected (its reads let the server finish the match) and hidden.

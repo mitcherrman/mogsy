@@ -204,6 +204,9 @@ describe("the Daily owns no game surface of its own", () => {
       .map((f) => f.split("/").pop());
     expect(components).toEqual([
       "DailyCompletion.tsx",       // DCMOD-E: the parent run's one close
+      // DV2-P2A: a v5 day's MAIN result (Standard settled), in the same shared
+      // result components as DailyStageResult — between stages, never a game surface.
+      "DailyMainResult.tsx",
       "DailyRunBeats.tsx",         // DCMOD-E: Daily intro, stage tag
       "DailyStageChrome.tsx",      // DCMOD-E: the header row over the arena
       // DC-LANE-C: a stage's result, in the SHARED result components (hero,
@@ -266,6 +269,7 @@ describe("the Daily owns no game surface of its own", () => {
       "lib/daily-challenge/status.ts",
       "lib/daily-challenge/useDailyChallengeStatus.ts",
       "pages/quiz-daily-challenge/run/DailyCompletion.tsx",
+      "pages/quiz-daily-challenge/run/DailyMainResult.tsx",
       "pages/quiz-daily-challenge/run/DailyRunBeats.tsx",
       "pages/quiz-daily-challenge/run/DailyRunPage.tsx",
       "pages/quiz-daily-challenge/run/DailyStageChrome.tsx",

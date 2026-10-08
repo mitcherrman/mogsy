@@ -25,10 +25,19 @@
  * queue. Continue only exists once the parent has advanced past the stage,
  * so it can never move the day ahead of the server. Only the parent
  * completion is a full closing state.
+ *
+ * DV2-P2A — on a plan v5+ run (`hasMainDaily`) Standard is the MAIN Daily.
+ * Its result is the main result (the Daily is complete there); More
+ * Challenges and Review follow as optional stages in the same linear run. One
+ * more presentation beat exists for that shape: `optional-entry`, the
+ * arrival screen of a page load onto a main-complete day whose next optional
+ * stage has not started. It replays nothing (it is not the main result), and
+ * it keeps a page load from launching an optional child the player did not
+ * ask for.
  */
 import { ENTRY_INTRO_MIN_MS } from "@/lib/ranked-core/pacing";
 import type { DailyRun, DailyStage } from "./contracts";
-import { currentStage } from "./contracts";
+import { currentStage, isMainDailyComplete } from "./contracts";
 
 /**
  * Pacing, borrowed from Ranked rather than invented, so the Daily and Ranked
@@ -44,6 +53,8 @@ export const STAGE_INTRO_MIN_MS = ENTRY_INTRO_MIN_MS;
 
 export type DailyFlowPhase =
   | "daily-intro"
+  /** DV2-P2A — arrived on a main-complete v5 day; optional content waits. */
+  | "optional-entry"
   | "stage-intro"
   | "stage-play"
   /** The child handed back; the parent is syncing. Drawn as a pending result. */
@@ -67,11 +78,16 @@ export interface DailyFlowLatches {
    * when the server says so.
    */
   finishedChild?: string | null;
+  /**
+   * DV2-P2A — this mount ARRIVED on a main-complete v5 day and the player has
+   * not chosen to continue yet. Presentation only; set once, on arrival.
+   */
+  optionalEntryUp?: boolean;
 }
 
 export const NO_LATCHES: DailyFlowLatches = {
   dailyIntroUp: false, stageIntroFor: null, settledChild: null, resultFor: null,
-  finishedChild: null,
+  finishedChild: null, optionalEntryUp: false,
 };
 
 export interface DailyFlowView {
@@ -102,6 +118,13 @@ export function projectDailyFlow(run: DailyRun, latches: DailyFlowLatches): Dail
 
   const stage = currentStage(run);
   if (!stage) return { phase: "complete", stage: null, childMatchId: null };
+
+  // DV2-P2A — only while the optional stage is still unstarted: a child that is
+  // already in progress is a recovery, and keeps the recovery path below.
+  if (latches.optionalEntryUp && isMainDailyComplete(run) && stage.status !== "in_progress"
+    && stage.childMatchId === null) {
+    return { phase: "optional-entry", stage, childMatchId: null };
+  }
 
   // The child has been handed back and the parent has not advanced past it yet.
   if (latches.settledChild && stage.childMatchId === latches.settledChild) {
@@ -142,4 +165,16 @@ export function stageCompletedBetween(prev: DailyRun | null, next: DailyRun): Da
   const after = next.stages[before.index];
   if (!after || (after.status !== "completed" && after.status !== "skipped")) return null;
   return after;
+}
+
+/**
+ * DV2-P2A — does a page load onto this run arrive at `optional-entry`? A v5
+ * day whose MAIN Daily is complete, still open, whose current (optional)
+ * stage has no child yet (none launched, none live). Decided from the
+ * snapshot alone.
+ */
+export function arrivesAtOptionalEntry(run: DailyRun): boolean {
+  const stage = currentStage(run);
+  return isMainDailyComplete(run) && run.status === "active" && stage !== null
+    && (stage.status === "pending" || stage.status === "launching") && stage.childMatchId === null;
 }

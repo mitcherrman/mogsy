@@ -123,7 +123,7 @@ const PROGRESSION = {
  * directly — so the fixture is the answer rather than the arithmetic.
  */
 const DAILY: DailyStatusView = {
-  known: true, completed: false, resumable: false,
+  known: true, completed: false, resumable: false, optionalOpen: false,
   resolved: 2, total: 12, streak: 4, theme: "Item Knowledge",
 };
 
@@ -134,7 +134,7 @@ const DAILY_DONE: DailyStatusView = {
 
 /** The service has not answered — an unknown day, which stays playable. */
 const DAILY_UNKNOWN: DailyStatusView = {
-  known: false, completed: false, resumable: false,
+  known: false, completed: false, resumable: false, optionalOpen: false,
   resolved: 0, total: 0, streak: null, theme: null,
 };
 
@@ -826,6 +826,32 @@ describe("a Daily Challenge that is already done for today", () => {
     renderScroll({ daily: { ...DAILY, completed: true, resolved: 12 } });
     expect(screen.getByTestId("play-mode-daily-complete")).toBeTruthy();
     expect(screen.queryByTestId("play-mode-daily")).toBeNull();
+  });
+
+  it("DV2-P2A: a main-complete Daily reads as done while its optional content stays resumable", () => {
+    // A plan-v5 day: the MAIN Daily (Standard) is complete, the parent run is
+    // still open for More Challenges / Review. Done, with the one action
+    // resuming the optional part. No all-stage X/Y count and no streak.
+    const { onPlayDailyChallenge, onClose } = renderScroll({ daily: {
+      ...DAILY, completed: true, resumable: true, optionalOpen: true,
+      resolved: null, total: null, streak: null,
+    } });
+    const panel = screen.getByTestId("play-mode-daily-complete");
+    expect(panel).toHaveTextContent("Today's Daily Complete");
+    expect(panel).toHaveTextContent("Optional More Challenges and Review are still open.");
+    expect(panel.textContent).not.toMatch(/\d+\s*\/\s*\d+|streak|come back tomorrow/i);
+    expect(screen.queryByTestId("play-mode-daily")).toBeNull();
+    fireEvent.click(screen.getByTestId("play-mode-daily-action"));
+    expect(onClose).toHaveBeenCalled();
+    expect(onPlayDailyChallenge).toHaveBeenCalledTimes(1);
+  });
+
+  it("DV2-P2A: a fully finished v5 day reads exactly like a finished legacy day", () => {
+    renderScroll({ daily: { ...DAILY, completed: true, resumable: false, optionalOpen: false,
+      resolved: null, total: null, streak: null } });
+    const panel = screen.getByTestId("play-mode-daily-complete");
+    expect(panel).toHaveTextContent("Today's Challenge Complete");
+    expect(panel).toHaveTextContent("Come back tomorrow.");
   });
 
   it("treats an UNANSWERED status as playable, never as finished", () => {

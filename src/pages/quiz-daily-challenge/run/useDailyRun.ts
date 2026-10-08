@@ -23,6 +23,11 @@
  * (no tag replay, no duel intro), a pending one plays its tag and launches,
  * a finished day shows the completion. No beat this mount did not watch
  * begin is ever replayed.
+ *
+ * DV2-P2A — a load onto a v5 day whose MAIN Daily is already complete and
+ * whose next optional stage has not started lands on `optional-entry`: no
+ * main result replay, and no optional child launched until the player asks
+ * (`enterOptional`). A live optional child still recovers as above.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RankedPresentationPhase } from "@/lib/ranked-core/flow/rankedFlow";
@@ -35,7 +40,7 @@ import {
 import { newInteractionId } from "@/lib/analytics/correlation";
 import {
   DAILY_INTRO_MS, STAGE_INTRO_MIN_MS,
-  projectDailyFlow, stageCompletedBetween, type DailyFlowView,
+  arrivesAtOptionalEntry, projectDailyFlow, stageCompletedBetween, type DailyFlowView,
 } from "@/lib/daily-challenge/run/flow";
 import { runSkewMs } from "@/lib/daily-challenge/run/timeBank";
 import { useSfx } from "@/lib/audio/useSfx";
@@ -80,6 +85,11 @@ export interface DailyRunState {
   strikesSeen: Readonly<Record<string, number>>;
   /** DC-LANE-C — the stage result's Continue. Presentation only. */
   continueFromResult: () => void;
+  /**
+   * DV2-P2A — leave `optional-entry` for the next optional stage's tag (and so
+   * its launch). Presentation only: the server already points at that stage.
+   */
+  enterOptional: () => void;
 }
 
 function messageFor(e: unknown): string {
@@ -121,6 +131,7 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   const [finishedChild, setFinishedChild] = useState<string | null>(null);
   const [survival, setSurvival] = useState<SurvivalStatus | null>(null);
   const [strikesSeen, setStrikesSeen] = useState<Readonly<Record<string, number>>>({});
+  const [optionalEntryUp, setOptionalEntryUp] = useState(false);
 
   const mounted = useRef(true);
   const runRef = useRef<DailyRun | null>(null);
@@ -232,6 +243,8 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
           setDailyIntroUp(true);
           after(DAILY_INTRO_MS, () => setDailyIntroUp(false));
         }
+        // DV2-P2A — the main Daily is done; optional content waits for a choice.
+        if (arrivesAtOptionalEntry(today)) setOptionalEntryUp(true);
         adopt(today);
       } catch (e) {
         if (cancelled || !mounted.current || isDailyRunAborted(e)) return;
@@ -257,14 +270,14 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   // ── the stage tag, and the launch it covers ───────────────────────────────
   const stage = run ? currentStage(run) : null;
   useEffect(() => {
-    if (!stage || dailyIntroUp || resultFor || settledChild) return;
+    if (!stage || dailyIntroUp || resultFor || settledChild || optionalEntryUp) return;
     if (introduced.current.has(stage.id)) return;
     introduced.current.add(stage.id);
     // A stage already in progress on arrival is a RECOVERY: no tag replay.
     if (stage.status === "in_progress" && !freshChildren.current.has(stage.childMatchId ?? "")) return;
     setStageIntroFor(stage.id);
     after(STAGE_INTRO_MIN_MS, () => setStageIntroFor((cur) => (cur === stage.id ? null : cur)));
-  }, [stage, dailyIntroUp, resultFor, settledChild, after]);
+  }, [stage, dailyIntroUp, resultFor, settledChild, optionalEntryUp, after]);
 
   const launch = useCallback(async () => {
     const r = runRef.current;
@@ -293,10 +306,10 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   // exactly as Ranked's duel card covers a bot match's. Never during the Daily
   // intro: a child's clock must not start behind a screen the player is reading.
   useEffect(() => {
-    if (!stage || dailyIntroUp || resultFor || busy || error) return;
+    if (!stage || dailyIntroUp || resultFor || optionalEntryUp || busy || error) return;
     if (stageIntroFor !== stage.id) return;
     void launch();
-  }, [stage, dailyIntroUp, resultFor, stageIntroFor, busy, error, launch]);
+  }, [stage, dailyIntroUp, resultFor, optionalEntryUp, stageIntroFor, busy, error, launch]);
 
   // ── the handback ──────────────────────────────────────────────────────────
   const sync = useCallback(async (childId: string) => {
@@ -354,6 +367,10 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     setResultFor(null);
   }, []);
 
+  const enterOptional = useCallback(() => {
+    setOptionalEntryUp(false);
+  }, []);
+
   const retry = useCallback(() => {
     setError(null);
     const r = runRef.current;
@@ -365,8 +382,8 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   }, [settledChild, sync, launch]);
 
   const flow = useMemo(() => (run ? projectDailyFlow(run, {
-    dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild,
-  }) : null), [run, dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild]);
+    dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild, optionalEntryUp,
+  }) : null), [run, dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild, optionalEntryUp]);
 
   const activeChild = flow?.childMatchId ?? flow?.settlingChildMatchId ?? null;
   const childEntry = activeChild && freshChildren.current.has(activeChild)
@@ -376,5 +393,6 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     load, run, flow, busy, error, skewMs, childPhase, childEntry,
     start, retry, onChildSettled, onChildPhase,
     onChildPlayerFinished, onChildSurvivalStatus, survival, strikesSeen, continueFromResult,
+    enterOptional,
   };
 }

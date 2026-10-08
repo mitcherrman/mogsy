@@ -64,7 +64,7 @@ const PROGRESSION = {
 } as unknown as RankedProgressionView;
 
 const DAILY: DailyStatusView = {
-  known: true, completed: false, resumable: false,
+  known: true, completed: false, resumable: false, optionalOpen: false,
   resolved: 2, total: 12, streak: 4, theme: "Item Knowledge",
 };
 
