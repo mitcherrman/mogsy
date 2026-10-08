@@ -37,7 +37,10 @@ import { CardResultBeat } from "./CardResultBeat";
 import { CentralStage } from "./CentralStage";
 import { RoundResultBeat } from "./RoundResultBeat";
 import { QuestionResultOverlay } from "./QuestionResultOverlay";
-import { arenaReportSnapshot } from "@/lib/ranked-core/reportSnapshot";
+import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import {
+  arenaReportSnapshot, questionSurfaceReportSnapshot,
+} from "@/lib/ranked-core/reportSnapshot";
 import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import type {
   ArenaRail, ArenaTerminalView, ArenaViewModel,
@@ -178,17 +181,29 @@ export function CanonicalArena({
    * naming itself in `view.report`. Publishing costs the arena no re-render —
    * the store the snapshot lands in is subscribed to only by the report
    * control (see reportable-question.tsx).
+   *
+   * PPQ2-A — a question surface is projected by its own builder, under the
+   * same answer rule; the arena stays the one publisher for both members.
    */
+  const reportSurface = view?.surface ?? null;
   const reportSnapshot = useMemo(() => {
-    if (terminal || !view?.report) return null;
+    if (terminal || !view?.report || !reportSurface) return null;
+    if (reportSurface.kind === "question") {
+      return questionSurfaceReportSnapshot({
+        identity: view.report,
+        question: reportSurface.question,
+        selectedOptionId: reportSurface.selectedOptionId,
+        reveal: reportSurface.reveal,
+        reportRef: reportSurface.reportRef ?? null,
+      });
+    }
     return arenaReportSnapshot({
       identity: view.report,
-      publicRound: view.surface.publicRound,
-      selection: view.surface.selection,
-      reveal: view.surface.reveal,
+      publicRound: reportSurface.publicRound,
+      selection: reportSurface.selection,
+      reveal: reportSurface.reveal,
     });
-  }, [terminal, view?.report, view?.surface.publicRound, view?.surface.selection,
-      view?.surface.reveal]);
+  }, [terminal, view?.report, reportSurface]);
   usePublishReportableQuestion(reportSnapshot);
 
   if (terminal) {
@@ -244,14 +259,30 @@ export function CanonicalArena({
   }
 
   const { header, surface, abilityHud, status, hudAction, timeline } = view;
+  // PPQ2-A — the two surface members, resolved ONCE. Everything below reads
+  // these locals, so the stage itself has no member-specific branch except
+  // the one child it mounts.
+  const questionSurface = surface.kind === "question" ? surface : null;
+  const moduleSurface = surface.kind === "question" ? null : surface;
   // Capitalised local: a JSX tag cannot carry a non-null assertion, and the
   // module's viewport is the one element here whose TYPE comes from the mode.
-  const Viewport = surface.renderer?.Viewport ?? null;
-  const hasSurface = Viewport !== null && surface.hasContent;
+  const Viewport = moduleSurface?.renderer?.Viewport ?? null;
+  const hasSurface = questionSurface !== null
+    || (Viewport !== null && moduleSurface !== null && moduleSurface.hasContent);
+  // A question surface's input is the answer grid itself (selecting IS
+  // answering), so the shell keeps its status row exactly as on a quiz round.
+  const ownsSubmission = moduleSurface?.ownsSubmission === true;
   // RMOB1 — the phone strip replaces the flanks only when BOTH are Ranked duel
   // banners; a card flank (Daily, staff duel) or a mode panel is left alone.
   const mobileDuel = [view.left, view.right].every((r) =>
     r.kind === "combatant" && r.presentation === "banner");
+  // PPQ2-A — a `panel` flank is a DESKTOP flank. Below `lg` the arena stacks,
+  // and a panel's row there would sit between the header and the question —
+  // the same reason the duel banners give way on a phone. So it is not
+  // mounted below `lg`; a mode carries anything a phone needs in its header
+  // or its question, never in a flank. Combatant flanks are untouched.
+  const flankClass = (rail: ArenaRail) =>
+    mobileDuel || rail.kind === "panel" ? "hidden lg:block " : "";
 
   /**
    * THE BOTTOM OF THE ARENA IS NOT A RESULT SURFACE — for ANY active state.
@@ -286,7 +317,10 @@ export function CanonicalArena({
    * banner had no other caller and is deleted outright.
    */
   return (
-    <ArenaShell size="wide" header={chrome} phoneArena={mobileDuel}>
+    <ArenaShell size="wide" header={chrome} phoneArena={mobileDuel}
+      // PPQ2-A — a live arena whose flanks are not both duel banners stacks
+      // on a phone; only the frame's bleed rule depends on knowing that.
+      phoneStacked={!mobileDuel && (view.left.kind === "panel" || view.right.kind === "panel")}>
     {/* RG1 — THE STABLE SHELL.
        The shell hands this element one region (see `ArenaShell`'s stage floor)
        and the four bands below divide it: the top strip, the arena grid, the
@@ -612,10 +646,10 @@ export function CanonicalArena({
             "tiny floating side cards beside a giant centre" reading §14 rules
             out. The panel's own sections keep their sizes; only the shared
             column extent changes. */}
-        <div className={`${mobileDuel ? "hidden lg:block " : ""}lg:col-start-1 lg:row-start-1 lg:h-full`}>
+        <div className={`${flankClass(view.left)}lg:col-start-1 lg:row-start-1 lg:h-full`}>
           <Rail rail={view.left} progressionEnabled={view.progressionEnabled} />
         </div>
-        <div className={`${mobileDuel ? "hidden lg:block " : ""}lg:col-start-3 lg:row-start-1 lg:h-full`}>
+        <div className={`${flankClass(view.right)}lg:col-start-3 lg:row-start-1 lg:h-full`}>
           <Rail rail={view.right} progressionEnabled={view.progressionEnabled} />
         </div>
 
@@ -698,18 +732,35 @@ export function CanonicalArena({
                   there is not — which is now the ONLY thing deciding placement,
                   because the flex basis stays `auto` and nothing here grows. */}
               <div className="lg:my-auto lg:w-full lg:flex lg:min-h-0 lg:flex-col">
+              {questionSurface ? (
+                // PPQ2-A — a question with no match around it. The SAME
+                // canonical surface the quiz module's viewport mounts, in the
+                // same variant, inside this same stage: only the source of the
+                // question differs. No scenario source, so the surface draws
+                // its own text fallback in the media region; no round, player
+                // or clock reaches it because the member has none to give.
+                <InteractiveScenarioSurface
+                  question={questionSurface.question}
+                  selectedOptionId={questionSurface.selectedOptionId}
+                  permissions={questionSurface.permissions}
+                  onSelectOption={questionSurface.onSelectOption}
+                  variant="competitive"
+                  scenarioSource={null}
+                  reveal={questionSurface.reveal}
+                />
+              ) : Viewport && moduleSurface ? (
               <Viewport
                 // The FROZEN snapshot: the surface keeps rendering the round the
                 // player was looking at until the next one is genuinely ready.
-                publicRound={surface.publicRound}
-                selection={surface.selection}
-                permissions={surface.permissions}
+                publicRound={moduleSurface.publicRound}
+                selection={moduleSurface.selection}
+                permissions={moduleSurface.permissions}
                 // RFX1 2B3 — the mode-entry beat, relayed verbatim. The arena
                 // never decides one; it only passes on what the mode said.
-                entryPresentationMs={surface.entryPresentationMs}
+                entryPresentationMs={moduleSurface.entryPresentationMs}
                 // R3: selecting an option IS answering. The mode's adapter maps
                 // the selection to a submission; the arena never guesses one.
-                onSelect={surface.onSelect}
+                onSelect={moduleSurface.onSelect}
                 // The state from the SAME snapshot the renderer was resolved
                 // from. Reading the live state here instead coupled a frozen
                 // renderer to a moving state: across a segment boundary the
@@ -721,17 +772,18 @@ export function CanonicalArena({
                 // same object; they differ only while the surface is
                 // deliberately lagging, which is exactly when they must not be
                 // mixed.
-                segmentState={surface.segmentState}
-                actions={surface.actions}
-                skewMs={surface.skewMs}
-                reveal={surface.reveal}
+                segmentState={moduleSurface.segmentState}
+                actions={moduleSurface.actions}
+                skewMs={moduleSurface.skewMs}
+                reveal={moduleSurface.reveal}
                 // ARENA1 Step 5 — the two mode-supplied surface seams. Both
                 // are `undefined` for Ranked and the Tutorial, so the viewport
                 // receives exactly the props it always did.
-                feedback={surface.feedback}
-                surfaceVerdict={surface.surfaceVerdict}
-                surfaceSettings={surface.surfaceSettings}
+                feedback={moduleSurface.feedback}
+                surfaceVerdict={moduleSurface.surfaceVerdict}
+                surfaceSettings={moduleSurface.surfaceSettings}
               />
+              ) : null}
               </div>
               </div>
               {/* RFX1 — the result, on the card. Absolute, pointer-events
@@ -739,11 +791,11 @@ export function CanonicalArena({
                   and moves nothing (see QuestionResultOverlay). */}
               {/* OF4-CONTINUITY: not while the module's own reveal is the
                   result (see `ModuleRenderer.ownsResultReveal`). */}
-              {surface.renderer?.ownsResultReveal?.(surface.segmentState ?? null) === true ? null
+              {moduleSurface?.renderer?.ownsResultReveal?.(moduleSurface.segmentState ?? null) === true ? null
                 : <QuestionResultOverlay feedback={view.resultFeedback ?? null} />}
             </section>
           )}
-          {!surface.renderer && (
+          {moduleSurface && !moduleSurface.renderer && (
             // Fail closed: never render a quiz input for an unrecognised
             // module — a mismatched input shape could submit a meaningless
             // answer into a rated match.
@@ -775,7 +827,7 @@ export function CanonicalArena({
           What survives is the one thing nothing else shows — the transient
           submission status / error — as a reserved-height line under the
           tray. */}
-      {!surface.ownsSubmission && (
+      {!ownsSubmission && (
           <div className="flex flex-col gap-1.5 lg:shrink-0">
             {abilityHud && (
               // RA11: no panel chrome around the tray any more — the tray IS
@@ -835,7 +887,7 @@ export function CanonicalArena({
           45-second absence path to reach it by. So it gets its own slim row
           for exactly those rounds: same node, and it appears only where the
           row that normally carries it does not. */}
-      {surface.ownsSubmission && hudAction && (
+      {ownsSubmission && hudAction && (
         <div className="flex justify-end px-1 lg:shrink-0">{hudAction}</div>
       )}
 

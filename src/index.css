@@ -15347,6 +15347,14 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .ranked-academy[data-phone-arena="true"]::before {
     inset: 0;
   }
+  /* PPQ2-A — the same bleed on a live arena that is NOT the duel composition
+     (panel flanks, e.g. a solo question surface): it stacks rather than
+     becoming the one-screen frame, but the frame is just as full-width, so the
+     same 4px would overflow it. Only the bleed changes; nothing else of the
+     phone composition applies to it. */
+  .ranked-academy[data-phone-stacked="true"]::before {
+    inset: 0;
+  }
   /* The arena grid holds two banner cells that are `display:none` here, so its
      one visible child is the focus column: a column that GROWS into the
      screen, and the card with it. */

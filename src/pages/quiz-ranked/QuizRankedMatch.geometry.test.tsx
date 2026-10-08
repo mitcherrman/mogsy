@@ -294,10 +294,13 @@ describe("the live arena's status slots", () => {
     // phase, tearing its whole height out of the middle of the page.
     // ARENA1 Step 3: same gate, same rule — the flag is `surface.ownsSubmission`
     // on the view model now, and the row it guards is in CanonicalArena.
+    // PPQ2-A: the surface is a union, so the arena resolves the module
+    // member's flag once into a local; a question surface never owns it.
     const source = readFileSync(
       resolve(process.cwd(), "src/components/ranked-arena/CanonicalArena.tsx"), "utf8");
-    expect(source).toContain("{!surface.ownsSubmission && (");
-    expect(source).not.toContain("!surface.ownsSubmission && !progression");
+    expect(source).toContain("const ownsSubmission = moduleSurface?.ownsSubmission === true;");
+    expect(source).toContain("{!ownsSubmission && (");
+    expect(source).not.toMatch(/!(surface\.)?ownsSubmission && !progression/);
   });
 });
 
@@ -321,7 +324,7 @@ describe("R1 geometry: a no-progression match reclaims the ability row", () => {
     // The row is gated on the module, not on progression: the status line is
     // the one thing nothing else on screen shows, and its reserved height is
     // what stops the HUD resizing between "Submitting…" and an error.
-    expect(arena()).toContain("{!surface.ownsSubmission && (");
-    expect(arena()).not.toContain("!surface.ownsSubmission && progressionEnabled && (");
+    expect(arena()).toContain("{!ownsSubmission && (");
+    expect(arena()).not.toMatch(/!(surface\.)?ownsSubmission && progressionEnabled && \(/);
   });
 });

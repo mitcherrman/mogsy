@@ -18,6 +18,7 @@
 
 import type { SurfaceReveal } from "@/lib/question-surface/contract";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
+import type { QuestionView } from "./viewTypes";
 import type {
   ReportableQuestionSnapshot,
 } from "@/lib/feedback/report-context";
@@ -84,5 +85,38 @@ export function arenaReportSnapshot(args: {
 
     matchId: publicRound.matchId,
     roundNumber: publicRound.activeRound?.roundNumber ?? null,
+  };
+}
+
+/**
+ * PPQ2-A — the same projection for an `ArenaQuestionSurface`: one question
+ * with no match around it, so there is no match id, round or module to name.
+ * The provenance is the server session instead (`reportRef`).
+ *
+ * THE ANSWER RULE IS THE SAME ONE. `canonicalAnswer` comes from
+ * `reveal.correctOptionId`, and only once `reveal.revealed`.
+ */
+export function questionSurfaceReportSnapshot(args: {
+  identity: ArenaReportIdentity;
+  question: QuestionView;
+  selectedOptionId: string | null;
+  reveal: SurfaceReveal | null;
+  reportRef: { sessionId: string | null; questionNumber: number | null } | null;
+}): ReportableQuestionSnapshot {
+  const { identity, question, selectedOptionId, reveal, reportRef } = args;
+  const labelOf = (optionId: string | null | undefined) =>
+    question.options.find((option) => option.id === optionId)?.label;
+  return {
+    category: identity.category,
+    mode: identity.mode,
+    runtimeQuestionId: question.questionId,
+    prompt: question.prompt,
+    choices: question.options.map((option) => option.label),
+    selectedAnswer: labelOf(selectedOptionId),
+    // Post-grading only. See the module header.
+    canonicalAnswer: reveal?.revealed ? labelOf(reveal.correctOptionId) : undefined,
+    questionType: question.category ?? undefined,
+    sessionId: reportRef?.sessionId ?? null,
+    roundNumber: reportRef?.questionNumber ?? null,
   };
 }

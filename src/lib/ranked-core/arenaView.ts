@@ -35,8 +35,8 @@ import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 export type { ArenaCardBeat };
 import type { PointsFeedbackView } from "./pointsFeedback";
 import type {
-  AbilityView, CombatantView, InteractionPermissions,
-  MascotReaction, PlayerSlot, ResolvedCombatantView, ResolvedRoundView,
+  AbilityView, AnswerOptionView, CombatantView, InteractionPermissions,
+  MascotReaction, PlayerSlot, QuestionView, ResolvedCombatantView, ResolvedRoundView,
   RoundHistoryEntry, RoundTimelineView, TimerView,
 } from "./viewTypes";
 
@@ -223,6 +223,29 @@ export interface ArenaSegmentBeat {
 }
 
 /**
+ * THE CENTRE SURFACE — what the one question stage is drawing, as a tagged
+ * union (PPQ2-A).
+ *
+ * The stage itself (the `ranked-question` section, its folio skin, its
+ * three-region footprint, the result overlay) belongs to the arena and is the
+ * same for every member. What differs is only the INPUT the stage is fed:
+ *
+ *   * `ArenaModuleSurface`   — a Ranked-transport segment: a public round, a
+ *     registry renderer and its viewport. Ranked, the Daily (hosted Ranked
+ *     matches) and the Journey (`mastery_slice`) all draw this, and it is the
+ *     member an absent `kind` means, so every existing producer is unchanged.
+ *   * `ArenaQuestionSurface` — one server-authoritative multiple-choice
+ *     question with no match around it. It carries the neutral question view
+ *     the canonical `InteractiveScenarioSurface` already renders, and nothing
+ *     about rounds, players or a match, so a mode that has none never has to
+ *     invent one to reach the stage.
+ *
+ * Neither member is a second renderer: the module path's quiz viewport and the
+ * question member both end in the same `InteractiveScenarioSurface`.
+ */
+export type ArenaSurfaceView = ArenaModuleSurface | ArenaQuestionSurface;
+
+/**
  * The centre column's segment viewport, and everything it is handed.
  *
  * `renderer` is resolved by the CANONICAL registry (`rendererForSegment`) in
@@ -230,7 +253,9 @@ export interface ArenaSegmentBeat {
  * introduce a second question path. A null renderer is the fail-closed state:
  * the arena shows a neutral "unsupported module" panel rather than guessing.
  */
-export interface ArenaSurfaceView {
+export interface ArenaModuleSurface {
+  /** Absent means this member: every producer that predates the union. */
+  kind?: "module";
   renderer: ModuleRenderer | null;
   /**
    * The snapshot the SURFACE renders from — deliberately allowed to lag the
@@ -292,6 +317,62 @@ export interface ArenaSurfaceView {
    * override is the alternative to a second question renderer that shows one.
    */
   surfaceSettings?: Partial<SurfaceSettings>;
+}
+
+/**
+ * PPQ2-A — ONE SERVER-AUTHORITATIVE QUESTION, with no match around it.
+ *
+ * For a mode whose server owns a question session rather than a Ranked match
+ * (the Pro Play quiz is the first). It is the narrowest input the canonical
+ * question surface needs and nothing more:
+ *
+ *   * DATA is typed: the neutral `QuestionView` (prompt, options, category)
+ *     the module path's quiz viewport also projects into, and the
+ *     backend-authoritative `SurfaceReveal`.
+ *   * INTERACTION is typed: the viewer's selection, the externally supplied
+ *     gating, and one callback. Selecting IS answering here exactly as on a
+ *     quiz round (R3); the mode maps the option to its own submission.
+ *
+ * WHAT IT DELIBERATELY HAS NO FIELD FOR: a match id, a player, a round, a
+ * segment, a winner, a score, a rating or a clock. The surface cannot be told
+ * any of them, so it cannot render any of them.
+ *
+ * ANSWER SAFETY. `reveal` is null until the server has graded the question —
+ * the same rule as the module member's. Nothing here carries a correct option
+ * before then; the options are drawn in the order given and never reordered.
+ */
+export interface ArenaQuestionSurface {
+  kind: "question";
+  /** The question the stage draws, in the server's option order. */
+  question: QuestionView;
+  /** The viewer's chosen option id (`AnswerOptionView.id`), or null. */
+  selectedOptionId: string | null;
+  /** Externally supplied gating; the surface never widens it. */
+  permissions: InteractionPermissions;
+  /** The viewer chose an option. The mode decides what that submits. */
+  onSelectOption: (option: AnswerOptionView) => void;
+  /** Backend-authoritative, post-grading only. Null pre-reveal, always. */
+  reveal: SurfaceReveal | null;
+  /**
+   * Is the viewer's selection window open? Surfaced as `data-input-open` on
+   * the question section, exactly as for the module member.
+   */
+  inputOpen: boolean;
+  /**
+   * What ties a report filed on this question back to the server's copy, or
+   * absent. Only read when the view names a `report` identity; the arena
+   * builds the snapshot itself, under the same answer rule as a Ranked round
+   * (the canonical answer only once `reveal.revealed`).
+   */
+  reportRef?: QuestionReportRef | null;
+}
+
+/** Server-side provenance for a reported `ArenaQuestionSurface` question. */
+export interface QuestionReportRef {
+  /** The server session the question was served and graded in. */
+  sessionId: string | null;
+  /** The question's 1-based position in that session. */
+  questionNumber: number | null;
 }
 
 /** The optional ability hotbar under the question. */

@@ -24,7 +24,7 @@ import { CanonicalArena } from "./CanonicalArena";
 import { MODULE_HISTORY_WINDOW } from "./CombatantPanel";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type {
-  ArenaRail, ArenaViewModel,
+  ArenaModuleSurface, ArenaRail, ArenaViewModel,
 } from "@/lib/ranked-core/arenaView";
 import type {
   CombatantView, RoundHistoryEntry, RoundTimelineView,
@@ -274,8 +274,8 @@ describe("the areas RM1 must not have redesigned", () => {
     const view = arena();
     render(<CanonicalArena view={{
       ...view,
-      surface: { ...view.surface, renderer: { Viewport: () => <div /> } as never,
-        hasContent: true },
+      surface: { ...(view.surface as ArenaModuleSurface),
+        renderer: { Viewport: () => <div /> } as never, hasContent: true },
     }} />);
     const stage = screen.getByTestId("ranked-question");
     expect(stage.className).toContain("ranked-panel");

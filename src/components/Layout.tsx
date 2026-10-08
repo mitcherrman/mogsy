@@ -98,7 +98,10 @@ export default function Layout() {
   const isFullBleed = isChampionCardDuelSurface || pathname === "/lol" || pathname === "/quiz"
     || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector"
     || pathname === "/dev/ranked-shell-probe" || pathname === "/admin/quiz-content"
-    || pathname === PRO_PLAY_MATCHUP_ROUTE;
+    || pathname === PRO_PLAY_MATCHUP_ROUTE
+    // PPQ2-A — the neutral question-surface probe measures the arena's own
+    // footprint, so it gets the same page frame as Ranked.
+    || pathname === "/dev/arena-question-probe";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

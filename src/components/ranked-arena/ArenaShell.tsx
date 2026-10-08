@@ -53,10 +53,19 @@ export interface ArenaShellProps {
    * `.ranked-academy[data-phone-arena]`); desktop is untouched.
    */
   phoneArena?: boolean;
+  /**
+   * PPQ2-A — the arena inside is LIVE but not the duel composition (its flanks
+   * are mode panels), so below `lg` it is the ordinary stacked column. The
+   * frame is still full-width there, so its glow bleed must not overhang the
+   * screen (see index.css `.ranked-academy[data-phone-stacked]`). Absent for
+   * every duel arena and every non-arena frame, which render as before.
+   */
+  phoneStacked?: boolean;
 }
 
 export function ArenaShell({
   children, header, size = "default", testId = "quiz-ranked", phoneArena = false,
+  phoneStacked = false,
 }: ArenaShellProps) {
   return (
     /* RG1 — THE RECLAIMED HUD BAND AND THE STAGE FLOOR.
@@ -93,7 +102,8 @@ export function ArenaShell({
       lg:h-[var(--ranked-stage-h)] ${
       size === "wide" ? "max-w-6xl xl:max-w-[76rem] min-[1500px]:max-w-[90rem]" : "max-w-3xl"}`}
       data-testid={testId}
-      data-phone-arena={phoneArena ? "true" : undefined}>
+      data-phone-arena={phoneArena ? "true" : undefined}
+      data-phone-stacked={phoneStacked ? "true" : undefined}>
       {header}
       {/* The one region the arena is given. `flex-1` grows it into everything
           the chrome row leaves; there is deliberately no `min-h-0`, because

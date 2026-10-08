@@ -242,6 +242,11 @@ const QuizRenderPage = lazy(() => import("./pages/dev/quiz-render/QuizRenderPage
 const LobbyPreviewPage = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/lobby-preview/LobbyPreviewPage"))
   : null;
+// PPQ2-A: the neutral question-surface probe. Same DEVELOPMENT-ONLY rule as
+// the lobby preview above: synthetic content, and the path 404s in production.
+const ArenaQuestionProbe = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/arena-question-probe/ArenaQuestionProbe"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -631,6 +636,9 @@ export const appRouter = createBrowserRouter(
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />
                   {LobbyPreviewPage ? (
                     <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />
+                  ) : null}
+                  {ArenaQuestionProbe ? (
+                    <Route path="/dev/arena-question-probe" element={<Suspense fallback={<RouteFallback />}><ArenaQuestionProbe /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
