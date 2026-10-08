@@ -69,6 +69,14 @@ afterEach(() => vi.clearAllMocks());
 describe("MasteryJourneysPage", () => {
   const renderCatalog = () => render(<MemoryRouter><MasteryJourneysPage /></MemoryRouter>);
 
+  it("marks the legacy catalog noindex", async () => {
+    listSets.mockResolvedValue([]);
+    getProgress.mockResolvedValue([]);
+    renderCatalog();
+    await waitFor(() => expect(document.head.querySelector('meta[name="robots"]'))
+      .toHaveAttribute("content", "noindex, nofollow"));
+  });
+
   it("renders every catalog set as a link to the shared player route", async () => {
     listSets.mockResolvedValue(SUMMARIES);
     getProgress.mockResolvedValue([notStarted(AHRI, 6), notStarted(OLAF, 16)]);
@@ -180,6 +188,14 @@ describe("MasteryJourneyPlayerPage — publication boundary", () => {
           <Route path="/quiz/mastery/:masterySetId" element={<MasteryJourneyPlayerPage />} />
         </Routes>
       </MemoryRouter>);
+
+  it("marks the legacy player noindex before catalog membership resolves", async () => {
+    listSets.mockReturnValue(new Promise(() => undefined));
+    renderAt(`/quiz/mastery/${OLAF}`);
+    await waitFor(() => expect(document.head.querySelector('meta[name="robots"]'))
+      .toHaveAttribute("content", "noindex, nofollow"));
+    expect(screen.getByTestId("mastery-player-membership-loading")).toBeInTheDocument();
+  });
 
   it.each([[OLAF, "promoted Olaf"], [AHRI, "default Ahri v2"]])(
     "mounts the player for public catalog member %s (%s)", async (id) => {
