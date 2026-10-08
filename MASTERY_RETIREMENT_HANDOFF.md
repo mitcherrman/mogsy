@@ -795,3 +795,75 @@ resolver treatment for the eleven missing identities, and a Journey
 non-champion SSM reference to the canonical curriculum. In parallel, obtain a
 30-day-or-longer route-template log export. Do not alter production or redirect
 legacy player URLs until those decisions are reviewed.
+
+## 2026-10-08 integration preparation
+
+### Branch and merge verification
+
+- After `git fetch --all --prune`, `origin/main` was
+  `d528bf9fe87e22371ff3dacf4eeb2f58fe383a33` and the remote feature branch was
+  still `c40aa9162a661f29146a30285dcfc98df7750d20`.
+- The isolated worktree was clean at the expected reviewed HEAD
+  `404017528f69cdb657061a6d36ff331e99f71cf2` before integration.
+- The three reviewed commits and their trees/parents were unchanged:
+  `58822892feb2e44681fa72aef4cc780d9647b08d`,
+  `c68604d9`, and `40401752`.
+- Current `origin/main` was merged with a normal, non-rewriting merge commit:
+  `9fe8db7d3ca48de504fbaedd14be3339bea53ec1`. Its parents are the reviewed
+  feature HEAD and `d528bf9f`. The merge completed automatically with no
+  conflicts and no manual resolutions.
+- The Daily V2 files shown in the merge output are inherited unchanged from
+  `origin/main`; they are absent from the feature diff and were not edited by
+  this workstream.
+- `git diff --check origin/main...HEAD` passed. Relative to current main, the
+  feature diff remains limited to the six intended files listed below.
+
+### Final changed-file scope relative to current main
+
+- `MASTERY_RETIREMENT_HANDOFF.md`
+- `src/pages/Quiz.tsx`
+- `src/pages/Quiz.hub.test.tsx`
+- `src/pages/quiz-mastery/MasteryJourneysPage.tsx`
+- `src/pages/quiz-mastery/MasteryJourneyPlayerPage.tsx`
+- `src/pages/quiz-mastery/MasteryJourneys.test.tsx`
+
+The fetched active SEO branches `origin/seo/journey-library-discovery`,
+`origin/seo/head-metadata-cleanup`, `origin/seo/public-product-route-metadata`,
+`origin/seo/public-route-truth`, and `origin/seo/robots-private-routes` have no
+changed-file overlap with this six-file diff. None was cherry-picked, merged,
+or modified.
+
+### Post-merge verification matrix
+
+| Check | Result | Baseline comparison / notes |
+| --- | --- | --- |
+| Focused Journey/Mastery Vitest | PASS — 5 files, 47/47 tests | Includes both legacy Mastery `noindex, nofollow` assertions. |
+| Journey Library Chromium | PASS — 7/7 tests | Signed-out browsing and account-gated launch coverage remains green. |
+| Leaguecraft navigation Vitest | BASELINE FAIL — 29/30 tests pass | The sole failure is the unchanged hub H1 assertion at `Quiz.hub.test.tsx:189`; the new Journey Library discovery assertion passes. The same H1 failure reproduces on the unchanged base. |
+| Relevant SEO assertions | PASS — 2/2 focused tests | Both legacy catalog and player render-state metadata assertions passed independently after also passing within the 47-test run. |
+| TypeScript (`tsc --noEmit -p tsconfig.app.json`) | BASELINE FAIL — 2 diagnostics | `OnboardingProfile.tsx:180:48` and `connections.ts:263:13`; both are unchanged from the established base diagnostics and neither file is in this branch diff. Current main removed the other four previously recorded baseline diagnostics. |
+| Production Vite build | PASS | 4,757 modules transformed; only existing Tailwind, mixed-import, and chunk-size warnings. |
+| Item prerender verification | PASS | 213/213 sitemap item URLs have exactly one generated page. |
+| Champion prerender verification | PASS | 173/173 sitemap champion URLs have exactly one generated page. |
+
+No changed-scope regression was introduced by merging current main. Legacy
+catalog/player deep links, session APIs, persisted records, and Summoner Spell
+Mastery remain preserved; this branch changes discovery and indexing only.
+
+### Remaining blockers and next exact action
+
+Mainline integration of this Phase 1 frontend change is supported by the
+changed-scope evidence above. It does **not** authorize later retirement
+phases. The unresolved compatibility decisions remain:
+
+- restore the eleven retired artifact identities needed by 22 incomplete rows,
+  or explicitly classify those rows as historical and non-resumable;
+- approve a compatibility observation window backed by complete route-template
+  logging;
+- design a modern Summoner Spell Mastery Journey adapter that keeps the
+  existing canonical curriculum as the sole content authority.
+
+**Next exact action:** push only the reviewed feature branch after committing
+this handoff update, then open/review it for mainline integration. Separately,
+continue the backend compatibility-contract design and obtain the longer
+route-template log export before any endpoint or legacy-player retirement.
