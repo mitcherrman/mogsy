@@ -1,0 +1,86 @@
+{
+  "desktop": {
+    "lines": {
+      "vi": {
+        "closed": {
+          "text": "View crossover at level 8: base AD before and after the patch at every level from 1 to 18, and where the difference changes sign",
+          "cta": "crossover",
+          "h": 40,
+          "color": "rgba(201, 168, 76, 0.9)"
+        },
+        "overflow": 0,
+        "lineOverflow": 0,
+        "share": 1
+      },
+      "draven": {
+        "closed": {
+          "text": "View level 1–18 impact: loads base AD before and after the patch at every level from 1 to 18",
+          "cta": "levels",
+          "h": 40,
+          "color": "rgba(201, 168, 76, 0.9)"
+        },
+        "overflow": 0,
+        "lineOverflow": 0,
+        "share": 1
+      },
+      "fiora": {
+        "closed": {
+          "text": "View level 1–18 impact: loads base health before and after the patch at every level from 1 to 18",
+          "cta": "levels",
+          "h": 40,
+          "color": "rgba(201, 168, 76, 0.9)"
+        },
+        "overflow": 0,
+        "lineOverflow": 0,
+        "share": 1
+      }
+    },
+    "chartChunkBeforeOpen": 0,
+    "statsBeforeOpen": 0,
+    "autoOpen": 0,
+    "chartChunkAfter": 1,
+    "statsAfter": 1
+  },
+  "m375": {
+    "lines": {
+      "vi": {
+        "closed": {
+          "text": "View crossover at level 8: base AD before and after the patch at every level from 1 to 18, and where the difference changes sign",
+          "cta": "crossover",
+          "h": 40,
+          "color": "rgba(201, 168, 76, 0.9)"
+        },
+        "overflow": 0,
+        "lineOverflow": 42,
+        "share": 1
+      },
+      "draven": {
+        "closed": {
+          "text": "View level 1–18 impact: loads base AD before and after the patch at every level from 1 to 18",
+          "cta": "levels",
+          "h": 40,
+          "color": "rgba(201, 168, 76, 0.9)"
+        },
+        "overflow": 0,
+        "lineOverflow": 42,
+        "share": 1
+      },
+      "fiora": {
+        "closed": {
+          "text": "View level 1–18 impact: loads base health before and after the patch at every level from 1 to 18",
+          "cta": "levels",
+          "h": 40,
+          "color": "rgba(201, 168, 76, 0.9)"
+        },
+        "overflow": 0,
+        "lineOverflow": 42,
+        "share": 1
+      }
+    },
+    "chartChunkBeforeOpen": 0,
+    "statsBeforeOpen": 0,
+    "autoOpen": 0,
+    "chartChunkAfter": 1,
+    "statsAfter": 1
+  }
+}
