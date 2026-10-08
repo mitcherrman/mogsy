@@ -314,7 +314,7 @@ describe("a finished Daily Challenge hands the player to Practice", () => {
    */
   it("offers the day when DC2 says it is unplayed", async () => {
     dcStatus = {
-      known: true, completed: false, resumable: false,
+      known: true, completed: false, resumable: false, optionalOpen: false,
       resolved: 0, total: 12, streak: 4, theme: "Item Knowledge",
     };
     await renderLobby();
@@ -328,7 +328,7 @@ describe("a finished Daily Challenge hands the player to Practice", () => {
   async function openRecordOnAFinishedDay() {
     // The clause's only authority.
     dcStatus = {
-      known: true, completed: true, resumable: false,
+      known: true, completed: true, resumable: false, optionalOpen: false,
       resolved: 12, total: 12, streak: 4, theme: "Item Knowledge",
     };
     const utils = await renderLobby();

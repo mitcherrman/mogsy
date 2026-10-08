@@ -10,11 +10,19 @@
  * Numbers are the server's per-stage results, listed, never added up into a
  * grade this client invented. A finished day offers no replay: the backend
  * holds one official run per player per day.
+ *
+ * DV2-P2A — on a plan v5+ day the Daily was complete when Standard settled
+ * (the main result said so), so this close is NOT "Daily Challenge Complete":
+ * it is the end of everything available today, optional sections included.
+ * The recap is grouped as Today's Challenge (with the frozen Daily score),
+ * More Challenges and Review, from the stages actually in the run. v1–v4 keep
+ * the one linear recap and the legacy title.
  */
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import type { DailyRun } from "@/lib/daily-challenge/run/contracts";
-import { isPerfect, reviewStage } from "@/lib/daily-challenge/run/contracts";
+import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
+import { hasMainDaily, isPerfect, reviewStage } from "@/lib/daily-challenge/run/contracts";
+import { dailySections } from "@/lib/daily-challenge/run/stageCategory";
 import { skippedStageNote, stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
 import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import { StageTag } from "./StageTag";
@@ -41,15 +49,30 @@ export function DailyCompletion({ run, saveRequired = false }: {
 }) {
   const perfect = isPerfect(run);
   const review = reviewStage(run);
+  const main = hasMainDaily(run);
   return (
     <section data-testid="daily-run-complete" data-perfect={perfect ? "true" : "false"}
+      data-hierarchy={main ? "main" : undefined}
       aria-live="polite"
       className="ranked-beat ranked-beat--major rounded-md py-10"
       style={{ minHeight: "min(70vh, 38rem)" }}>
       <span aria-hidden className="ranked-beat__scrim rounded-md" />
       <div className="ranked-beat__inner px-4">
         <p className="ranked-beat__meta">{run.planDate}</p>
-        <h2 className="ranked-title ranked-beat__title">Daily Challenge Complete</h2>
+        {main ? (
+          <>
+            <h2 className="ranked-title ranked-beat__title" data-testid="daily-run-complete-title">
+              All Done for Today
+            </h2>
+            <p className="text-sm text-[var(--ranked-vellum,#f1e6c8)]/85" data-testid="daily-run-complete-note">
+              More Challenges and Review finished. Today's Daily was already complete.
+            </p>
+          </>
+        ) : (
+          <h2 className="ranked-title ranked-beat__title" data-testid="daily-run-complete-title">
+            Daily Challenge Complete
+          </h2>
+        )}
         <span aria-hidden className="ranked-beat__rule" />
         {perfect && (
           <p data-testid="daily-run-perfect"
@@ -57,39 +80,31 @@ export function DailyCompletion({ run, saveRequired = false }: {
             Perfect day — nothing to review
           </p>
         )}
-        <ol className="flex w-full max-w-xl flex-col gap-2 pt-2" data-testid="daily-run-recap">
-          {run.stages.map((s) => {
-            const r = s.result;
-            const skipped = s.status === "skipped";
-            const closing = s.id === review.id;
-            return (
-              <li key={s.id} data-testid={`daily-recap-${s.index}`} data-stage-kind={s.kind}
-                data-closing={closing ? "true" : undefined}
-                className={`flex items-center justify-between gap-3 rounded-sm border px-3 py-2 text-left ${
-                  closing ? "border-amber-300/50 bg-amber-300/5" : "border-white/10 bg-black/20"}`}>
-                <span className="flex min-w-0 flex-col gap-1">
-                  <StageTag stage={s} />
-                  {stageContentLine(s) && (
-                    <span className="truncate text-xs text-[var(--ranked-muted,#a8a29e)]">
-                      {stageContentLine(s)}
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 text-right text-sm tabular-nums" data-testid={`daily-recap-${s.index}-result`}>
-                  {skipped ? skippedStageNote(s)
-                    : r ? (
-                      <>
-                        {r.correct} / {r.answered}
-                        {ENDED_BY[r.endedBy] && (
-                          <span className="block text-[0.6875rem] opacity-70">{ENDED_BY[r.endedBy]}</span>
-                        )}
-                      </>
-                    ) : "—"}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        {main ? (
+          <div className="flex w-full max-w-xl flex-col gap-3 pt-2" data-testid="daily-run-recap">
+            {dailySections(run).map((g) => (
+              <section key={g.id} data-testid={`daily-recap-section-${g.id}`} data-section={g.id}
+                aria-label={g.label} className="flex flex-col gap-1.5">
+                <h3 className={`text-left text-[0.625rem] font-semibold uppercase tracking-[0.2em] ${
+                  g.id === "today" ? "text-[#f0d78c]" : "text-[var(--ranked-muted,#a8a29e)]"}`}>
+                  {g.label}
+                </h3>
+                <ol className="flex flex-col gap-2">
+                  {g.stages.map((s) => (
+                    <RecapRow key={s.id} stage={s} closing={false} main={g.id === "today"}
+                      mainScore={g.id === "today" ? run.mainScore : null} />
+                  ))}
+                </ol>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <ol className="flex w-full max-w-xl flex-col gap-2 pt-2" data-testid="daily-run-recap">
+            {run.stages.map((s) => (
+              <RecapRow key={s.id} stage={s} closing={s.id === review.id} main={false} mainScore={null} />
+            ))}
+          </ol>
+        )}
         <Link to="/quiz" data-testid="daily-run-home"
           className="pt-3 text-sm text-muted-foreground underline">
           Back to Leaguecraft
@@ -115,5 +130,54 @@ export function DailyCompletion({ run, saveRequired = false }: {
         document.body,
       )}
     </section>
+  );
+}
+
+/**
+ * One recap row: the stage's tag and content, and the server's numbers. The
+ * MAIN row (v5 Standard) leads with the frozen Daily score; it is the only row
+ * that carries one, so no optional stage reads as part of the Daily's score.
+ */
+function RecapRow({ stage: s, closing, main, mainScore }: {
+  stage: DailyStage; closing: boolean; main: boolean; mainScore: number | null;
+}) {
+  const r = s.result;
+  const skipped = s.status === "skipped";
+  return (
+    <li data-testid={`daily-recap-${s.index}`} data-stage-kind={s.kind}
+      data-closing={closing ? "true" : undefined} data-main={main ? "true" : undefined}
+      className={`flex items-center justify-between gap-3 rounded-sm border px-3 py-2 text-left ${
+        closing ? "border-amber-300/50 bg-amber-300/5"
+          : main ? "border-[rgba(240,215,140,0.55)] bg-[rgba(240,215,140,0.06)]"
+            : "border-white/10 bg-black/20"}`}>
+      <span className="flex min-w-0 flex-col gap-1">
+        <StageTag stage={s} />
+        {stageContentLine(s) && (
+          <span className="truncate text-xs text-[var(--ranked-muted,#a8a29e)]">
+            {stageContentLine(s)}
+          </span>
+        )}
+      </span>
+      <span className="shrink-0 text-right text-sm tabular-nums" data-testid={`daily-recap-${s.index}-result`}>
+        {skipped ? skippedStageNote(s)
+          : r ? (
+            <>
+              {main && mainScore !== null && (
+                <span className="block text-lg font-black leading-tight text-[#f5e6b8]"
+                  data-testid="daily-recap-main-score">
+                  {mainScore.toLocaleString()}
+                  <span className="pl-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] opacity-70">
+                    Daily score
+                  </span>
+                </span>
+              )}
+              {r.correct} / {r.answered}
+              {ENDED_BY[r.endedBy] && (
+                <span className="block text-[0.6875rem] opacity-70">{ENDED_BY[r.endedBy]}</span>
+              )}
+            </>
+          ) : "—"}
+      </span>
+    </li>
   );
 }

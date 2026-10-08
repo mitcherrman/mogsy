@@ -63,7 +63,7 @@ function noop() {}
 
 /** Today's Daily, finished. Demo state only — nothing here is read or written. */
 const PREVIEW_DAILY_DONE: DailyStatusView = {
-  known: true, completed: true, resumable: false,
+  known: true, completed: true, resumable: false, optionalOpen: false,
   resolved: 12, total: 12, streak: 4, theme: "Item Knowledge",
 };
 

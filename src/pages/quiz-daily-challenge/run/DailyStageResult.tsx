@@ -43,6 +43,11 @@
  *
  * Nothing is measured at runtime and nothing is invented: a pending stage
  * prints no figure.
+ *
+ * DV2-P2A — on a plan v5+ day this draws the OPTIONAL stages only (Standard's
+ * settlement is `DailyMainResult`). Its eyebrow names the section, the ladder
+ * is the section ladder (no stage numbers), and a quiet "Done for now" sits
+ * under Continue — drawn while pending too (disabled), so it fills a slot.
  */
 
 /**
@@ -78,9 +83,9 @@ import { ResultActions } from "@/components/game-results/ResultActions";
 import { ResultHero } from "@/components/game-results/ResultHero";
 import { ResultStatGrid } from "@/components/game-results/ResultStatGrid";
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
-import { currentStage } from "@/lib/daily-challenge/run/contracts";
+import { currentStage, hasMainDaily } from "@/lib/daily-challenge/run/contracts";
 import { buildDailyStageResult } from "@/lib/daily-challenge/run/stageResultModel";
-import { StageLadder, StageTag } from "./StageTag";
+import { DailyLadder, StageTag } from "./StageTag";
 
 /** What a placement is told. Facts only — nothing it could advance the day with. */
 export interface StageResultPlacementContext {
@@ -97,7 +102,7 @@ export interface StageResultPlacementContext {
 export type StageResultPlacement = (ctx: StageResultPlacementContext) => ReactNode;
 
 export function DailyStageResult({
-  run, stage, error, onRetry, busy, onProceed, placement,
+  run, stage, error, onRetry, busy, onProceed, onDone, placement,
 }: {
   run: DailyRun;
   stage: DailyStage;
@@ -106,6 +111,8 @@ export function DailyStageResult({
   busy?: boolean;
   /** Leave the result. Absent while pending. */
   onProceed?: () => void;
+  /** DV2-P2A, v5+ only — leave the Daily page for the hub. Presentation only. */
+  onDone?: () => void;
   placement?: StageResultPlacement;
 }) {
   const model = buildDailyStageResult(run, stage);
@@ -115,8 +122,9 @@ export function DailyStageResult({
   const placed = settled && placement
     ? placement({ runId: run.runId, stageId: stage.id, stageKind: stage.kind, stageIndex: stage.index })
     : null;
+  const main = hasMainDaily(run);
   const continueLabel = !settled ? "Scoring…"
-    : run.status === "completed" ? "See today's results" : "Continue";
+    : run.status === "completed" ? (main ? "See today's recap" : "See today's results") : "Continue";
 
   return (
     <section
@@ -153,7 +161,7 @@ export function DailyStageResult({
           <p className="text-center text-xs" data-testid="daily-stage-result-perfect">Nothing to review</p>
         ) : null)}
       </div>
-      <StageLadder run={run} highlight={stage.id} reserveMarks />
+      <DailyLadder run={run} highlight={stage.id} reserveMarks />
 
       {placed && (
         <div data-testid="daily-stage-result-placement">{placed}</div>
@@ -178,6 +186,14 @@ export function DailyStageResult({
           disabled: !settled || !onProceed,
           testId: "daily-stage-result-continue",
         },
+        ...(main && onDone ? {
+          tertiary: {
+            label: run.status === "completed" ? "Back to Leaguecraft" : "Done for now",
+            onClick: onDone,
+            disabled: !settled,
+            testId: "daily-done-for-now",
+          },
+        } : {}),
       }} />
     </section>
   );

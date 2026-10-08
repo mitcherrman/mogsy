@@ -58,6 +58,27 @@ export const FUTURE_V5_DAY: FixtureStageSpec[] = [
   FIVE_STAGE_DAY[4],
 ];
 
+/**
+ * DV2-P2A — the REAL plan-v5 shapes (backend B1.1, `ec3500d0`): Standard,
+ * then Time Trial and Survival in day-seeded order, then Weak Areas (eligible
+ * only), then Review. Titles are the server's `_TITLES` for composed stages.
+ * Use with `wireV5Run` / `createFixtureTransport(…, { planVersion: 5 })`:
+ * the same stages at plan v1–v4 are a legacy run.
+ */
+export const V5_ELIGIBLE_DAY: FixtureStageSpec[] = [
+  { kind: "standard", ruleset: { ruleset_id: "standard" }, content: { title: "Standard", focus: null } },
+  { kind: "time_trial", ruleset: { ruleset_id: "time_trial", time_bank_ms: 90_000 },
+    content: { title: "Time Trial", focus: null } },
+  { kind: "survival", ruleset: { ruleset_id: "survival", max_strikes: 3 },
+    content: { title: "Survival", focus: null } },
+  { kind: "weak_areas", ruleset: { ruleset_id: "standard" },
+    content: { title: "Weak Areas", focus: "Jungle Timers" } },
+  { kind: "review", ruleset: { ruleset_id: "standard" }, content: { title: "Review", focus: null } },
+];
+
+/** The ineligible v5 shape: Weak Areas' slot closed, the bonus order kept. */
+export const V5_INELIGIBLE_DAY: FixtureStageSpec[] = V5_ELIGIBLE_DAY.filter((s) => s.kind !== "weak_areas");
+
 /** Real DCMOD-C ids, as B freezes them (Review is not a content set). */
 const FIXTURE_CONTENT_SET: Record<DailyStageKind, string | null> = {
   time_trial: "champion_fundamentals",
@@ -109,6 +130,17 @@ export const fixtureRun = (specs: FixtureStageSpec[], overrides: Wire = {},
                            stageOverrides: Record<number, Wire> = {}): DailyRun =>
   readDailyRun(wireRun(specs, overrides, stageOverrides));
 
+/** DV2-P2A — a plan-v5 wire snapshot: the main pair present, null until set. */
+export function wireV5Run(specs: FixtureStageSpec[], overrides: Wire = {},
+                          stageOverrides: Record<number, Wire> = {}): Wire {
+  return wireRun(specs, { plan_version: 5, main_completed_at: null, main_score: null, ...overrides },
+    stageOverrides);
+}
+
+export const fixtureV5Run = (specs: FixtureStageSpec[], overrides: Wire = {},
+                             stageOverrides: Record<number, Wire> = {}): DailyRun =>
+  readDailyRun(wireV5Run(specs, overrides, stageOverrides));
+
 /** A finished stage's result, in wire shape. */
 export const wireResult = (r: Partial<{
   correct: number; answered: number; score: number | null; ended_by: string; misses: number;
@@ -131,7 +163,7 @@ export interface FixtureTransport extends DailyRunTransport {
 }
 
 export function createFixtureTransport(
-  specs: FixtureStageSpec[], opts: { existing?: Wire | null } = {},
+  specs: FixtureStageSpec[], opts: { existing?: Wire | null; planVersion?: number } = {},
 ): FixtureTransport {
   let state: Wire | null = opts.existing === undefined ? null : opts.existing;
   const finished = new Map<string, Wire>();
@@ -152,7 +184,10 @@ export function createFixtureTransport(
     },
     async startToday() {
       calls.push("startToday");
-      if (!state) state = wireRun(specs);
+      if (!state) {
+        state = (opts.planVersion ?? 1) >= 5
+          ? wireV5Run(specs, { plan_version: opts.planVersion }) : wireRun(specs);
+      }
       return snap();
     },
     async readRun() {
@@ -186,6 +221,12 @@ export function createFixtureTransport(
       s.status = "completed";
       s.result = result;
       s.live = null;
+      // DV2-P2A — as B1: a v5+ Standard freezes the MAIN pair in the same
+      // write, from the child's own settled score.
+      if ((state!.plan_version as number) >= 5 && s.kind === "standard") {
+        state!.main_completed_at = new Date().toISOString();
+        state!.main_score = result.score;
+      }
       const next = i + 1;
       const all = stages();
       if (next >= all.length) {

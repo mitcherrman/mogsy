@@ -16,6 +16,8 @@ import { Link } from "react-router-dom";
 import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
 import type { RankedPresentationPhase } from "@/lib/ranked-core/flow/rankedFlow";
 import type { DailyRun, DailyStage, DailyStrikes, DailyTimeBank } from "@/lib/daily-challenge/run/contracts";
+import { hasMainDaily, isMainDailyComplete } from "@/lib/daily-challenge/run/contracts";
+import { stagePositionLabel } from "@/lib/daily-challenge/run/stageResultModel";
 import { stageContentLine } from "@/lib/daily-challenge/run/stageIdentity";
 import { formatBank, projectTimeBank } from "@/lib/daily-challenge/run/timeBank";
 import type { SurvivalStatus } from "@/lib/ranked-core/survivalFinish";
@@ -128,6 +130,16 @@ function RulesetReadout({ stage, skewMs, childPhase, survival, strikesFloor }: {
   return null;
 }
 
+/**
+ * The header's way out. DV2-P2A: once a v5 day's MAIN Daily is complete,
+ * leaving is not exiting an unfinished Daily (the leave guard agrees, unless
+ * an optional child is live), so it reads "Done for now".
+ */
+function exitLabel(run: DailyRun): string {
+  if (run.status !== "active") return "Back to Quiz";
+  return isMainDailyComplete(run) ? "Done for now" : "Exit Daily Challenge";
+}
+
 export function DailyStageChrome({
   run, stage, skewMs = 0, childPhase = null, survival = null, strikesFloor = null,
 }: {
@@ -149,7 +161,7 @@ export function DailyStageChrome({
           <>
             <span data-testid="daily-stage-position"
               className="text-xs tabular-nums text-[var(--ranked-muted,#a8a29e)]">
-              Stage {stage.index + 1} of {run.stages.length}
+              {hasMainDaily(run) ? stagePositionLabel(run, stage) : `Stage ${stage.index + 1} of ${run.stages.length}`}
             </span>
             <StageTag stage={stage} />
             {content && (
@@ -164,7 +176,7 @@ export function DailyStageChrome({
         {stage && <RulesetReadout stage={stage} skewMs={skewMs} childPhase={childPhase} survival={survival}
           strikesFloor={strikesFloor} />}
         <Link to={LEAGUECRAFT_HREF} className="text-sm text-muted-foreground underline">
-          {run.status === "active" ? "Exit Daily Challenge" : "Back to Quiz"}
+          {exitLabel(run)}
         </Link>
       </div>
     </header>

@@ -7,7 +7,8 @@
  * challenge, not the end of a match, so it:
  *
  *   * is always `state: "complete"` — never Victory, Defeat or Draw;
- *   * names the stage (`Stage 2 of 4`), never a queue, a rating or a lobby;
+ *   * names the stage's place (`Stage 2 of 4`, or a v5 section), never a queue,
+ *     a rating or a lobby;
  *   * has no actions here — Continue belongs to the page, which owns the flow.
  *
  * Numbers are the parent's settled stage result, never recomputed. A figure
@@ -15,6 +16,8 @@
  */
 import type { GameResultsModel, ResultStat } from "@/components/game-results/model";
 import type { DailyRun, DailyStage, DailyStageEnd } from "./contracts";
+import { hasMainDaily, isMainDailyComplete } from "./contracts";
+import { DAILY_SECTION_LABEL, dailySection } from "./stageCategory";
 import { stageContentLine } from "./stageIdentity";
 
 export const DAILY_STAGE_ENDED_BY: Record<DailyStageEnd, string | null> = {
@@ -23,8 +26,15 @@ export const DAILY_STAGE_ENDED_BY: Record<DailyStageEnd, string | null> = {
   strikes_exhausted: "Out of mistakes",
 };
 
-/** The stage's place in the day, for the hero's eyebrow. */
+/**
+ * The stage's place in the day, for the hero's eyebrow and the header.
+ *
+ * Legacy (v1–v4): its position in the one linear challenge. DV2-P2A, v5+:
+ * its SECTION — there is no whole-day count, because only Today's Challenge
+ * is required and More Challenges / Review are optional.
+ */
 export function stagePositionLabel(run: DailyRun, stage: DailyStage): string {
+  if (hasMainDaily(run)) return DAILY_SECTION_LABEL[dailySection(stage)];
   return stage.kind === "review" ? "Final stage" : `Stage ${stage.index + 1} of ${run.stages.length}`;
 }
 
@@ -97,6 +107,53 @@ export function buildDailyStageResult(run: DailyRun, stage: DailyStage): GameRes
       label: "correct",
       testId: "daily-stage-result-correct",
     },
+    snapshot,
+  };
+}
+
+/** DV2-P2A — the label of the way on from Today's Challenge into what follows. */
+export function optionalNextLabel(next: DailyStage | null): string {
+  if (!next) return "See today's recap";
+  return dailySection(next) === "review" ? "Start Review" : "Play More Challenges";
+}
+
+/**
+ * DV2-P2A — THE MAIN DAILY RESULT (plan v5+, Standard settled).
+ *
+ * The hero's number is `run.mainScore`: the MAIN Daily's frozen score, the
+ * one primary Daily score. It is not re-derived from the stage and nothing
+ * optional adds to it. The snapshot is Standard's own settled result: correct
+ * of answered, accuracy, and the stage's misses. No Points tile, because the
+ * hero already states that score, and no rank, tier or streak, because none
+ * of those exists yet.
+ *
+ * Pending (Standard handed back, main fact not yet stated): the same headline,
+ * "Scoring…" where "Complete" will go, and no figure at all. The headline does
+ * not change between the two states, so a phone's wrap cannot move (DRS1).
+ */
+export function buildDailyMainResult(run: DailyRun, stage: DailyStage): GameResultsModel {
+  const base = { state: "complete" as const, mode: "Daily Challenge", headline: "Today's Challenge" };
+  const r = stage.result;
+  if (!isMainDailyComplete(run) || run.mainScore === null) {
+    return { ...base, subheading: "Scoring…" };
+  }
+  const snapshot: ResultStat[] = [];
+  if (r) {
+    snapshot.push({ key: "correct", label: "Correct", value: `${r.correct} / ${r.answered}`,
+      testId: "daily-main-correct" });
+    if (r.answered > 0) {
+      snapshot.push({ key: "accuracy", label: "Accuracy",
+        value: `${Math.round((100 * r.correct) / r.answered)}%`, testId: "daily-main-accuracy" });
+    }
+    if (r.misses > 0) {
+      snapshot.push({ key: "misses", label: "Missed", value: String(r.misses),
+        hint: r.misses === 1 ? "question" : "questions", testId: "daily-main-misses" });
+    }
+  }
+  return {
+    ...base,
+    subheading: "Complete",
+    score: { you: run.mainScore, outOf: null, label: "Daily score", testId: "daily-main-score" },
     snapshot,
   };
 }
