@@ -187,7 +187,7 @@ describe("the presentation category authority", () => {
   it("is the approved grouping, for every known kind", () => {
     expect(DAILY_STAGE_CATEGORY).toEqual({
       standard: "main", survival: "bonus", time_trial: "bonus", order_forge: "bonus",
-      weak_areas: "review", review: "review",
+      weak_areas: "training", review: "training",
     });
     for (const kind of DAILY_STAGE_KINDS) {
       expect(stageCategory(kind)).toBe(DAILY_STAGE_CATEGORY[kind]);

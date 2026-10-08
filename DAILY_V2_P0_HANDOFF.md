@@ -45,7 +45,7 @@ Branch `dv2/p0-frontend-compat`, worktree `C:\Users\mlmit\mogzy-wt\dv2-p0` (`nod
 ```
 standard -> main
 survival, time_trial, order_forge -> bonus
-weak_areas, review -> review   (the user-facing REVIEW umbrella; `review` is the stage named "Recently Missed")
+weak_areas, review -> training   (internal category; the stage `review` is shown as "Recently Missed")
 ```
 
 `stageCategory(kind)`, `stageCategoryOf(string)` (null for an unknown kind, never guessed), `DAILY_STAGE_CATEGORY`. `stageIdentity().category` reads it. Nothing renders it except a `data-stage-category` attribute on the stage tag. No reordering, no grouped UI.
@@ -56,7 +56,7 @@ weak_areas, review -> review   (the user-facing REVIEW umbrella; `review` is the
 |---|---|---|
 | Weak Areas rule (stage intro, History rule sentence) | "Built from what you've missed before." | "From your history — fresh questions from areas you've struggled with before." |
 | Review rule (stage intro) | "Today's mistakes, one more time." | "From today — retry the knowledge you missed in this Daily." |
-| Stage `review` label (tag, ladder, recap, History) | Review | **Recently Missed** everywhere (internal kind `review` unchanged). "Review" is the umbrella *section* the P2 screen will head; it is not a stage name. |
+| Stage `review` label (tag, ladder, recap, History) | Review | **Recently Missed** everywhere (internal kind `review` unchanged). "Review" is the future umbrella section the P2 screen will head; it is not a stage name. |
 | Review rule in History (`ruleSentence`) | same as live | "From that day — a retry of the knowledge missed in that Daily." (kept: "From today" would be false for a past run) |
 | Daily intro | "N stages · Review closes the day" | "N stages today" |
 | Stage result tile | "For Review: N questions saved" | "Missed: N question(s)" — a fact about the stage. Recently Missed asks a deduped share of the day's misses, not all of them. |
@@ -105,7 +105,7 @@ Tests: `dailyV2P0.compat.test.tsx` (new), `run.test.ts`, `DailyRunPage.test.tsx`
 
 ## 11. DV2-P0-CORRECTION (owner decision, after 1db8da41)
 
-- Categories are now `main | bonus | review` (`weak_areas` and `review` -> `review`).
+- Category authority stays `main | bonus | training` (`weak_areas` and `review` -> `training`). The future user-facing REVIEW umbrella is P2 presentation, not encoded in P0.
 - Stage `review` is named **Recently Missed**; Weak Areas unchanged. The History-only "Review" label override was removed.
 - Still preparation only: no sections rendered, nothing reordered. Daily *attendance* streak claims stay removed; the future global Answer Streak is a separate workstream.
 
