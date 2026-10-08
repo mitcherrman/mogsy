@@ -18,8 +18,15 @@
  *   * an active run names a current stage that exists; a completed one names none.
  */
 
-export type DailyStageKind =
-  | "standard" | "time_trial" | "survival" | "weak_areas" | "review";
+/**
+ * Every stage kind this client knows. `order_forge` is the planned Daily V2
+ * bonus stage: the backend does not serve it yet, but the reader accepts it so
+ * the frontend is safe BEFORE it does. Any other string is still refused.
+ */
+export const DAILY_STAGE_KINDS = [
+  "standard", "time_trial", "survival", "order_forge", "weak_areas", "review",
+] as const;
+export type DailyStageKind = (typeof DAILY_STAGE_KINDS)[number];
 
 /** The reusable gameplay rulesets (DCMOD-A). Special stages carry one too. */
 export type DailyRulesetId = "standard" | "time_trial" | "survival";
@@ -116,6 +123,13 @@ export interface DailyStage {
   childMatchId: string | null;
   live: DailyStageLive | null;
   result: DailyStageResult | null;
+  /**
+   * Why a SKIPPED stage was skipped, exactly as the server stated it
+   * ("perfect", "weak_areas_unavailable", "review_items_unavailable").
+   * Null when the stage was not skipped or the server did not say. Never
+   * guessed; `skippedStageNote` words the codes it recognises.
+   */
+  skipReason: string | null;
 }
 
 export interface DailyRun {
@@ -178,7 +192,7 @@ const optInt = (v: unknown, l: string): number | null =>
 const oneOf = <T extends string>(v: unknown, allowed: readonly T[], l: string): T =>
   (allowed.includes(v as T) ? v as T : fail(`${l} must be one of ${allowed.join("|")}`));
 
-const KINDS = ["standard", "time_trial", "survival", "weak_areas", "review"] as const;
+const KINDS = DAILY_STAGE_KINDS;
 const RULESETS = ["standard", "time_trial", "survival"] as const;
 const STATUSES = ["pending", "launching", "in_progress", "completed", "skipped"] as const;
 const ENDS = ["completed", "time_bank_exhausted", "strikes_exhausted"] as const;
@@ -255,6 +269,7 @@ function readStage(v: unknown, i: number): DailyStage {
     childMatchId: optStr(r.child_match_id, `${l}.child_match_id`),
     live: readLive(r.live, `${l}.live`),
     result: readResult(r.result, `${l}.result`),
+    skipReason: optStr(r.skip_reason, `${l}.skip_reason`),
   };
 }
 

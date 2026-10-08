@@ -8,12 +8,12 @@
  * while it was being played.
  */
 import { stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
-import type { DailyStageKind } from "@/lib/daily-challenge/run/contracts";
+import { DAILY_STAGE_KINDS, type DailyStageKind } from "@/lib/daily-challenge/run/contracts";
 import { formatQuestionFamily } from "@/features/mastery/formatQuestionFamily";
 import type { Sufficiency } from "@/lib/history/contracts";
 import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
 
-const KNOWN_KINDS: readonly string[] = ["standard", "time_trial", "survival", "weak_areas", "review"];
+const KNOWN_KINDS: readonly string[] = DAILY_STAGE_KINDS;
 
 /** "Time Trial". A kind this client does not know yet is humanized rather
  *  than dropped — the stage still happened. */

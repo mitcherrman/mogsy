@@ -50,13 +50,13 @@
  * two columns to four at `sm`).
  *
  * A kind's optional tiles bound its cell count, and the count sets the rows:
- * a Review states Answered, Accuracy and Points (3 cells — it has no "For
- * Review" tile and cannot be ended early); a Standard (and Weak Areas) adds "For Review" (4);
+ * a Review states Answered, Accuracy and Points (3 cells — it has no "Missed"
+ * tile and cannot be ended early); a Standard (and Weak Areas, Order Forge) adds "Missed" (4);
  * a Time Trial and a Survival can also state how they Finish (5). Rows are
  * 2 / 2 / 3 below `sm` and 1 / 1 / 2 from it. The floors are the measured
  * height of the section with EVERY optional tile present, rounded up to the
  * next quarter-rem: the Finish tile wraps to two lines in a quarter-width tile
- * ("The bank ran out") and the "For Review" tile carries a hint line, so a
+ * ("The bank ran out") and the "Missed" tile carries a hint line, so a
  * tile is 53-72px and the section is the "Performance" label, the rows and
  * 8px gaps. The settled grid fills the slot; when it has fewer tiles than its
  * kind's maximum the slot is simply not full.
@@ -65,6 +65,9 @@ const SNAPSHOT_FLOOR: Record<DailyStage["kind"], string> = {
   review: "min-h-[8.75rem] sm:min-h-[4.75rem]",
   standard: "min-h-[10rem] sm:min-h-[6rem]",
   weak_areas: "min-h-[10rem] sm:min-h-[6rem]",
+  // DV2-P0: the same four tiles a Standard can show (Answered, Accuracy,
+  // Points, Missed). Re-measure when the backend actually serves the stage.
+  order_forge: "min-h-[10rem] sm:min-h-[6rem]",
   time_trial: "min-h-[15rem] sm:min-h-[11rem]",
   survival: "min-h-[15rem] sm:min-h-[11rem]",
 };

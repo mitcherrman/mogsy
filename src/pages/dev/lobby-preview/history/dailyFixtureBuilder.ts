@@ -54,7 +54,10 @@
  * Imported only by the Timmy preview's tests and the row-export script —
  * never by a production module (asserted in `hub5Isolation.test.ts`).
  */
-import type { DailyStageKind } from "@/lib/daily-challenge/run/contracts";
+import type { DailyStageKind as WireDailyStageKind } from "@/lib/daily-challenge/run/contracts";
+
+/** These fixtures model the PRODUCTION backend's recorded Dailies, which have no Order Forge yet (DV2-P0). */
+type DailyStageKind = Exclude<WireDailyStageKind, "order_forge">;
 import type { MatchReviewView, ReviewRound } from "@/lib/ranked-public/contracts";
 import { FIXTURE_ANCHOR, fixtureDate } from "./fixtureClock";
 import { identityOf, masteryContentOf, quizContentOf, reflexContentOf, refNamespace } from "./questionIdentity";

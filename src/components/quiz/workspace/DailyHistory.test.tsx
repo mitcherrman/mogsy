@@ -282,7 +282,7 @@ describe("HUB4 Daily — the persisted hierarchy", () => {
     await waitFor(() => expect(runs().length).toBe(1));
     expect(stagesOf(runs()[0]).map((s) => s.dataset.stageKind)).toEqual(FIVE);
     expect(stagesOf(runs()[0]).map((s) => within(s).getByTestId("daily-stage-kind").textContent)).toEqual([
-      "1Standard", "2Time Trial", "3Survival", "4Weak Areas", "5Review",
+      "1Standard", "2Time Trial", "3Survival", "4Weak Areas", "5Recently Missed",
     ]);
   });
 

@@ -222,7 +222,7 @@ describe("one Daily Challenge, stage by stage", () => {
     expect(phase()).toBe("complete");
     expect(screen.getByTestId("daily-run-complete")).toHaveAttribute("data-perfect", "true");
     expect(screen.getByTestId("daily-run-perfect")).toBeInTheDocument();
-    expect(screen.getByTestId("daily-recap-3-result")).toHaveTextContent("Not needed");
+    expect(screen.getByTestId("daily-recap-3-result")).toHaveTextContent("Nothing missed");
     // Review was never launched.
     expect(t.calls).not.toContain("launch:3");
   });
@@ -543,7 +543,7 @@ describe("DC-SURV-UX — Survival ends for the player at strike 3", () => {
     expect(phase()).toBe("stage-result");
     expect(q("daily-settling-child")).toBeNull();
     expect(screen.getByTestId("daily-stage-result-ended")).toHaveTextContent("Out of mistakes");
-    expect(screen.getByTestId("daily-stage-result-next")).toHaveTextContent(/review/i);
+    expect(screen.getByTestId("daily-stage-result-next")).toHaveTextContent(/recently missed/i);
     await continueOn();
     expect(phase()).toBe("stage-intro");
     expect(screen.getByTestId("daily-stage-intro")).toHaveAttribute("data-stage-kind", "review");

@@ -44,7 +44,7 @@ export function DailyIntroBeat({ run }: { run: DailyRun }) {
       <h2 className="ranked-title ranked-beat__title">Daily Challenge</h2>
       <span aria-hidden className="ranked-beat__rule" />
       <p className="ranked-beat__meta">
-        {run.stages.length} stages · Review closes the day
+        {run.stages.length} stages today
       </p>
       <StageLadder run={run} />
     </Beat>

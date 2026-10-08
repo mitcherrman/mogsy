@@ -135,6 +135,7 @@ export type Database = {
       }
       admin_audit_log: {
         Row: {
+          aal: string | null
           action: string
           actor_profile_id: string | null
           actor_user_id: string
@@ -142,9 +143,11 @@ export type Database = {
           detail: Json
           id: string
           result: string
+          session_id: string | null
           target_profile_id: string | null
         }
         Insert: {
+          aal?: string | null
           action: string
           actor_profile_id?: string | null
           actor_user_id: string
@@ -152,9 +155,11 @@ export type Database = {
           detail?: Json
           id?: string
           result: string
+          session_id?: string | null
           target_profile_id?: string | null
         }
         Update: {
+          aal?: string | null
           action?: string
           actor_profile_id?: string | null
           actor_user_id?: string
@@ -162,6 +167,7 @@ export type Database = {
           detail?: Json
           id?: string
           result?: string
+          session_id?: string | null
           target_profile_id?: string | null
         }
         Relationships: [
@@ -4145,6 +4151,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      assert_owner: { Args: { _level?: string }; Returns: undefined }
       attach_feedback_screenshot: {
         Args: { _feedback_id: string; _path: string }
         Returns: undefined
@@ -4295,6 +4302,13 @@ export type Database = {
       is_game_player: { Args: { _game_id: string }; Returns: boolean }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
       is_master_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_owner: { Args: never; Returns: boolean }
+      is_owner_aal2: { Args: never; Returns: boolean }
+      is_owner_fresh_aal2: {
+        Args: { _max_age_seconds?: number }
+        Returns: boolean
+      }
+      is_owner_user: { Args: { _user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
       is_reserved_display_name: { Args: { _name: string }; Returns: boolean }
       join_multiplayer_game: {
@@ -4335,6 +4349,15 @@ export type Database = {
           updated_at: string
         }[]
       }
+      log_owner_action: {
+        Args: {
+          _action: string
+          _detail?: Json
+          _result?: string
+          _target_profile_id?: string
+        }
+        Returns: string
+      }
       may_equip_profile_frame: {
         Args: {
           _frame: string
@@ -4364,6 +4387,15 @@ export type Database = {
         }[]
       }
       normalize_display_name: { Args: { _name: string }; Returns: string }
+      owner_auth_state: { Args: never; Returns: Json }
+      owner_configured_id: { Args: never; Returns: string }
+      owner_device_attest: { Args: { _token: string }; Returns: Json }
+      owner_device_enroll: {
+        Args: { _label?: string; _user_agent?: string }
+        Returns: Json
+      }
+      owner_device_list: { Args: never; Returns: Json }
+      owner_device_revoke: { Args: { _device_id: string }; Returns: Json }
       pair_lock_key: { Args: { _a: string; _b: string }; Returns: number }
       playtest_admin_roster: {
         Args: { p_cohort_id: string }
