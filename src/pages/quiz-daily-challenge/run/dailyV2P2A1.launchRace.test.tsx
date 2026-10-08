@@ -47,9 +47,9 @@ beforeAll(() => { globalThis.Request = RouterTestRequest as unknown as typeof Re
 afterAll(() => { globalThis.Request = NativeRequest; });
 
 let lastHost: MatchHost | null = null;
-function FakeStageMatch({ matchId, chrome, host }: StageMatchProps) {
+function FakeStageMatch({ matchId, entry, chrome, host }: StageMatchProps) {
   lastHost = host;
-  return <div data-testid="fake-stage-match" data-match-id={matchId}>{chrome}</div>;
+  return <div data-testid="fake-stage-match" data-match-id={matchId} data-entry={entry}>{chrome}</div>;
 }
 beforeEach(() => { lastHost = null; });
 
@@ -194,6 +194,11 @@ describe("DV2-P2A.1 — the optional-launch latch", () => {
     await gate.release("lost");
     await waitFor(() => expect(t.calls.at(-1)).toBe("readRun"));
     expect(t.wire().stages).toMatchObject({ 1: { status: "in_progress", child_match_id: "child-1" } });
+    // The launch did succeed: no failure is left on screen, and the child this
+    // press created plays as a FRESH entry once its tag has held.
+    await waitFor(() => expect(screen.queryByTestId("daily-run-error")).toBeNull());
+    await waitFor(() => expect(phase()).toBe("stage-play"), { timeout: 5000 });
+    expect(screen.getByTestId("fake-stage-match")).toHaveAttribute("data-entry", "fresh");
     leaveVia();
     expect(await screen.findByRole("alertdialog")).toHaveTextContent("about 45 seconds");
   });

@@ -88,7 +88,7 @@ No rank, percentile, tier, streak, Answer Streak or personal best. `mainComplete
 - `optional-entry`, the main result, a non-live stage tag, and a terminal handback awaiting sync are all unguarded after main completion.
 - Browser Back, the header link and HUD links all go through the same router blocker, so they follow the same rule. "Done for now" is `navigate("/quiz")` with **no server call**, unguarded because main is complete. The run stays `active` and resumable.
 
-Known gap: in the instant between pressing Continue into an optional stage and the launch response, no child id exists yet, so that window is unguarded. Leaving then can leave a freshly created child unattended (the existing ~45s rule applies).
+~~Known gap: the launch window before a child id exists was unguarded.~~ **Closed in DV2-P2A.1 (§17):** a mount-local launch latch keeps leaving guarded from the player's commit until the launch reaches a known outcome.
 
 ## 9. Hub-status semantics (`status.ts`, `PlayScrollRecord.tsx`)
 
@@ -186,7 +186,6 @@ Visual check: a throwaway dev route (removed, not committed) rendered the v5 int
 
 - Guest save prompt at main completion (§12): an owner decision.
 - History UI: still shows `basic.score` (B2 adds `main.daily_score` / `parent`; FE History P2 is separate).
-- The unguarded launch window (§8).
 - The backend Review content title is "Review" under the "RECENTLY MISSED" tag (a backend `_TITLES` concern if the owner wants it changed).
 - `DailyOnCanonicalArena.boundary.test.tsx` stale lists (inherited).
 - Order Forge, skip-extras, streaks, leaderboard, personal best: out of scope.
@@ -200,3 +199,91 @@ Note: while this slice was in progress, `origin/main` advanced to `c08882f6` (8 
 3. Verify the published bundle against production v4 (`/api/daily-run/today` parses; hub and Daily unchanged).
 4. Only then release backend B1 + B2 + B1.1 (`ec3500d0`) to master. Railway deploys master on push. Deploy order: FE P2A first.
 5. After the backend release: one live v5 run end to end (main result → Done for now → hub "Today's Daily Complete" → resume → optional-entry → finish → "All Done for Today").
+
+## 17. DV2-P2A.1 — optional-launch leave race (correction on `ba395e5b`)
+
+Command-center review approved P2A at `ba395e5b`, except for one defect. On a main-complete v5 day, once the player chose an optional activity, `useDailyRun` started `launchStage()` behind the stage tag. Until the response arrived, the snapshot still said "pending, no child", so `shouldGuardDailyLeave` (which needs `hasLiveDailyChild`, i.e. a child id) left departure unguarded. The request could then finish after navigation and create a live child nobody saw. P2A was not redesigned.
+
+Verified first: `origin/dv2/p2a-live-hierarchy = ba395e5b`, frontend `origin/main = c08882f6` (not merged, not rebased), backend stack `ec3500d0` (untouched).
+
+### The latch (state machine)
+
+Mount-local controller state in `useDailyRun`: `optionalLaunchFor: string | null` (stage id), mirrored in a ref. The pure predicates live in `lib/daily-challenge/run/flow.ts`:
+
+- `optionalLaunchTarget(run)`: the current stage id iff the run is v5, main complete, parent active, and the current stage is `pending`/`launching` with `childMatchId === null`. Otherwise null, so a v1–v4 run, a pre-main v5 run, a finished run, or a stage that already has a child can never latch.
+- `optionalLaunchInFlight(run, latched) = latched !== null && optionalLaunchTarget(run) === latched`.
+
+```
+            (page load / reload)                      never set: a load invents nothing
+ IDLE ─────────────────────────────────────────────── optional-entry & main result stay unguarded
+  │  commit = the player's action, synchronously, before any launch:
+  │    • enterOptional()       (Play More Challenges / Start Review on optional-entry)
+  │    • continueFromResult()  (Play More Challenges on the main result; Continue on an optional result)
+  │    • retry()               (Try again on a failed launch)
+  │  latch ← optionalLaunchTarget(run)   (null if nothing optional to launch → stays IDLE)
+  ▼
+ COMMITTED / IN FLIGHT   optionalLaunchPending = true → guarded, copy "<Stage> is starting…"
+  │
+  ├─ launch response binds a child ───────► derived false; hasLiveDailyChild → LIVE guard
+  │                                          (the existing ~45-second copy)
+  ├─ launch fails ─► re-read the run (quiet readRun):
+  │     ├─ server shows NO child ─────────► latch cleared → IDLE: leaving is free; error + Try again shown
+  │     ├─ server shows a child (lost resp.)► child marked fresh, error cleared → LIVE guard
+  │     └─ re-read fails too (unknown) ───► latch kept: still guarded as "starting"
+  └─ stage stops being current / run ends ─► derived false (the latch names a stage id)
+```
+
+- The re-read happens only when this mount latched that stage, so v1–v4 and pre-main v5 never make an extra call.
+- `optionalLaunchPending` is passed to `shouldGuardDailyLeave(run, flow, pending)` and `dailyLeaveCopy(run, flow, pending)`. After main completion the guard is `pending || hasLiveDailyChild`.
+- Copy while starting, which never claims a live child: "Leave Time Trial?" / "Time Trial is starting. Today's Daily is complete and saved, but leaving now may still start Time Trial." / Keep playing / Leave.
+- The live-child copy (about 45 seconds) is unchanged. `optional-entry`, the main result and between-activity screens stay unguarded. "Done for now" still makes no call. v1–v4 are untouched (the latch cannot form for them).
+
+### Tests: `run/dailyV2P2A1.launchRace.test.tsx` (13)
+
+These run the real `useDailyRun`, the real router blocker (`useTransactionalLeaveGuard`), a fixture backend and launches held open by the test:
+
+- main complete on `optional-entry` → HUD link leaves with no dialog and no launch;
+- Play More Challenges → guarded at once while the launch is held, with the snapshot still `pending` / no child. Back (POP) is blocked with the "starting" copy (no 45-second claim). Releasing the launch switches the open dialog to the live copy and keeps the destination; still guarded while live; confirmed Leave leaves;
+- a link pressed synchronously right after the commit is blocked: no free render tick;
+- refused launch → error shown, `readRun` confirms no child → leaving is free;
+- Try again re-latches → guarded again;
+- lost response with the child created → no error left, the child plays as a fresh entry, live guard;
+- refused launch and failed re-read → stays guarded (unknown);
+- Play More Challenges from the in-session MAIN result → guarded at once;
+- Done for now from the main result → zero transport calls, no dialog;
+- v4: legacy copy and guard unchanged, no "starting" copy, `optionalLaunchTarget(legacy) === null`;
+- pure seam: target/in-flight predicates, reload (no commit) never in flight, and the guard and copy combinations.
+
+Reload onto a pending optional stage staying `optional-entry` and unguarded is covered by the first test and by P2A's recovery tests.
+
+**Mutation (this seam): 13/13 killed.** The mutants:
+- the guard ignores the latch: this is the **original defect**, and 6 tests fail;
+- the page does not pass the latch;
+- no commit on entry, Continue or Try again;
+- a confirmed-childless failure keeps the latch;
+- any failure drops the latch without asking;
+- an unknown outcome drops the latch;
+- a lost-response child is not handled;
+- in-flight ignores the stage;
+- the target ignores main completion (legacy could latch);
+- the starting copy claims a live child;
+- a reload invents the latch.
+
+**Differential vs an exact `ba395e5b` checkout** (`C:\Users\mlmit\mogzy-wt\dv2-p2a-ba395`), on the same 14 suite paths as §14:
+- `ba395e5b`: 58 files, 20 failed / 1149 passed.
+- P2A.1: 59 files, 20 failed / 1162 passed.
+- The failing node IDs are **identical**. The `DailyOnCanonicalArena.boundary` failure detail is byte-identical.
+
+Static checks: `tsc` shows only the 2 inherited errors. ESLint on the touched files: 0 problems. `git diff --check` (cr-at-eol): clean.
+
+Files:
+- `lib/daily-challenge/run/flow.ts` (two predicates)
+- `pages/quiz-daily-challenge/run/useDailyRun.ts` (latch, commits, failure re-read, `optionalLaunchPending`)
+- `pages/quiz-daily-challenge/run/dailyLeaveContract.ts` (third parameter; "starting" copy)
+- `pages/quiz-daily-challenge/run/DailyRunPage.tsx` (passes the latch)
+- new test `run/dailyV2P2A1.launchRace.test.tsx`
+- this section
+
+Commits: `08542a47` carries the code fix and the race suite. A shell slip pushed it with a placeholder "WIP P2A.1" title; it was not force-rewritten. The follow-up commit adds this section and tightens the lost-response test (the one surviving mutant before that fix). Both sit on `ba395e5b`, which is unchanged.
+
+Status: **READY.** Integration still waits for P2B, as instructed. This branch is not merged or rebased onto `main` and not published.
