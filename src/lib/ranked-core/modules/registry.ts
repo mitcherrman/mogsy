@@ -23,6 +23,7 @@ import { MASTERY_SLICE_MODULE_ID, masterySliceModule } from "./masterySliceModul
 import { metaReflexModule } from "./metaReflexModule";
 import { ORDER_FORGE_MODULE_ID, orderForgeModule } from "./orderForgeModule";
 import { QUIZ_MODULE_ID, quizModule } from "./quizModule";
+import { RECONSTRUCT_MODULE_ID, reconstructModule } from "./reconstructModule";
 import type { ModuleRenderer } from "./types";
 
 /** Ordered candidates per module id; the first version match wins. */
@@ -33,6 +34,8 @@ const RENDERERS: Record<string, readonly ModuleRenderer[]> = {
   [MASTERY_SLICE_MODULE_ID]: [masterySliceModule],
   // OF1-B - the first structured-response module: the sequence is the answer.
   [ORDER_FORGE_MODULE_ID]: [orderForgeModule],
+  // GM1-R1 - admin-only unrated playtest: the recipe build is the answer.
+  [RECONSTRUCT_MODULE_ID]: [reconstructModule],
 };
 
 /** Registered module ids, sorted — used by tests and diagnostics. */
@@ -65,7 +68,10 @@ export function rendererForSegment(segment: SegmentMeta | null | undefined): Mod
   return getModuleRenderer(segment.moduleId, segment.moduleVersion);
 }
 
-export { itemCostDuelModule, masterySliceModule, metaReflexModule, orderForgeModule, quizModule };
+export {
+  itemCostDuelModule, masterySliceModule, metaReflexModule, orderForgeModule, quizModule,
+  reconstructModule,
+};
 export type {
   ModuleRenderer, ModuleSegmentActions, ModuleViewportProps,
 } from "./types";

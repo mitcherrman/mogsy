@@ -16,7 +16,9 @@
  * `?q=` selects the question state to serve:
  *   short | opts2 | opts4 | realP99 | realMax | stress | media | family |
  *   stressA | stressB | metareflex | orderforge (OF1-B: an Order Forge segment; `?forge=locked|revealed|live`
- *   serves the viewer past their Lock In) | junglePet | junglePetBase | jungleRule |
+ *   serves the viewer past their Lock In) | reconstruct (GM1-R1: a Reconstruct
+ *   segment; `?rc=witsEnd|stormrazor|fourSlot` picks the real round and
+ *   `?recon=locked|wrong|right|live` serves the viewer past their Lock In) | junglePet | junglePetBase | jungleRule |
  *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
  *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
  *   base-stat recall) | abilityCost (QF1.2A: a real `ability_cost_rank`
@@ -88,6 +90,8 @@ import { RankedMatchOutro } from "@/components/ranked-arena/RankedMatchOutro";
 import {
   matchResultPointsV1, metaReflexCards, metaReflexLevelAwareCard, metaReflexSegmentMeta, metaReflexState, modulePointsBlock,
   orderForgeChallengeReveal, orderForgeSegmentMeta, orderForgeState,
+  RECONSTRUCT_PROBE_ROUNDS, reconstructChallengeReveal, reconstructRound, reconstructSegmentMeta,
+  reconstructState, type ReconstructProbeRound,
   privatePlayerV2, publicRoundV2, withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
 import {
@@ -127,7 +131,7 @@ const VIEWER = "userA";
  */
 export const PROBE_STATES = [
   "short", "opts2", "opts4", "realP99", "realMax", "stress", "media", "family", "stressA", "stressB", "metareflex", "orderforge",
-  "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
+  "reconstruct", "masteryRecall", "masteryCompare", "masteryStat", "abilityCost",
   "junglePet", "junglePetBase", "jungleRule", "minionWave", "jungleLong",
   "spellCooldown", "matchup", "twoChamp", "shape",
   "ssm212", "ssm218", "ssm224", "ssm228", "ssm248",
@@ -286,6 +290,39 @@ function orderForgeProbeState() {
       own_challenge_reveals: [orderForgeChallengeReveal(PROBE_FORGE_REVEAL)] }, true);
   }
   return orderForgeState({}, mode === "locked");
+}
+
+/** GM1-R1 — `?recon=live`: locked, then the reveal lands this long after the first read. */
+const RECON_LIVE_REVEAL_MS = 2500;
+let reconLiveAnchor: number | null = null;
+
+/**
+ * `?rc=` picks one of the server-produced rounds; `?recon=locked|wrong|right`
+ * serves the viewer past their Lock In (locked: the wrong build, not yet
+ * revealed); `?recon=live` serves the lock, then the wrong reveal, so the
+ * reveal choreography plays as it does in a match.
+ */
+function reconstructProbeState() {
+  const params = new URLSearchParams(window.location.search);
+  const asked = params.get("rc") as ReconstructProbeRound | null;
+  const round: ReconstructProbeRound = asked && RECONSTRUCT_PROBE_ROUNDS.includes(asked) ? asked : "witsEnd";
+  const mode = params.get("recon");
+  const r = reconstructRound(round);
+  if (mode === "live") {
+    if (reconLiveAnchor === null) reconLiveAnchor = Date.now();
+    if (Date.now() - reconLiveAnchor < RECON_LIVE_REVEAL_MS) {
+      return reconstructState(round, {}, r.wrong_placement);
+    }
+  }
+  if (mode === "wrong" || mode === "live") {
+    return reconstructState(round, {
+      own_challenge_reveals: [reconstructChallengeReveal(round, "wrong")] }, r.wrong_placement);
+  }
+  if (mode === "right") {
+    return reconstructState(round, {
+      own_challenge_reveals: [reconstructChallengeReveal(round, "right")] }, r.right_placement);
+  }
+  return reconstructState(round, {}, mode === "locked" ? r.wrong_placement : null);
 }
 
 /** VISCONT1 — a `?seq=` entry: a probe state, or `shape.N.K.M.R`. */
@@ -669,6 +706,10 @@ function publicFor(state: ProbeState, role: string | null) {
     payload.question = null;
     payload.segment = orderForgeSegmentMeta();
     payload.segment_state = orderForgeProbeState();
+  } else if (state === "reconstruct") {
+    payload.question = null;
+    payload.segment = reconstructSegmentMeta();
+    payload.segment_state = reconstructProbeState();
   } else if (state === "masteryRecall" || state === "masteryCompare" || state === "masteryStat") {
     const seg = masterySegment(state === "masteryRecall" ? "recall"
       : state === "masteryStat" ? "stat" : "compare");
@@ -733,6 +774,10 @@ function privateFor(state: ProbeState) {
     payload.question = null;
     payload.segment = orderForgeSegmentMeta();
     payload.segment_state = orderForgeProbeState();
+  } else if (state === "reconstruct") {
+    payload.question = null;
+    payload.segment = reconstructSegmentMeta();
+    payload.segment_state = reconstructProbeState();
   } else if (state === "masteryRecall" || state === "masteryCompare" || state === "masteryStat") {
     const seg = masterySegment(state === "masteryRecall" ? "recall"
       : state === "masteryStat" ? "stat" : "compare");

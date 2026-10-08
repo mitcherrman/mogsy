@@ -7,7 +7,7 @@ import {
   itemCostDuelModule,
   masterySliceModule,
   metaReflexModule,
-  orderForgeModule,
+  orderForgeModule, reconstructModule,
   registeredModuleIds,
   rendererForSegment,
   quizModule,
@@ -18,7 +18,9 @@ describe("ranked module renderer registry", () => {
     // UPDATED IN PHASE 4F (was: item_cost_duel + quiz). mastery_slice.v1 is a
     // Ranked-Mastery-Module proof of concept, gated by its own fail-closed
     // flag + allowlist on the backend, exactly like Item Cost Duel.
-    expect(registeredModuleIds()).toEqual(["item_cost_duel", "mastery_slice", "order_forge", "quiz"]);
+    // GM1-R1 adds reconstruct (admin-only unrated playtest).
+    expect(registeredModuleIds()).toEqual(
+      ["item_cost_duel", "mastery_slice", "order_forge", "quiz", "reconstruct"]);
   });
 
   it("resolves each renderer by id", () => {
@@ -26,6 +28,12 @@ describe("ranked module renderer registry", () => {
     expect(getModuleRenderer("item_cost_duel")).toBe(itemCostDuelModule);
     expect(getModuleRenderer("mastery_slice")).toBe(masterySliceModule);
     expect(getModuleRenderer("order_forge")).toBe(orderForgeModule);
+    expect(getModuleRenderer("reconstruct")).toBe(reconstructModule);
+  });
+
+  it("serves reconstruct v1 only: a future contract fails closed to unsupported", () => {
+    expect(getModuleRenderer("reconstruct", 1)).toBe(reconstructModule);
+    expect(getModuleRenderer("reconstruct", 2)).toBeNull();
   });
 
   it("falls back to quiz when no segment discriminator is present", () => {

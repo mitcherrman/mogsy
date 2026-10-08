@@ -237,6 +237,87 @@ export interface SegmentChallengeView {
  */
 export const MASTERY_SLICE_MODULE_ID = "mastery_slice";
 export const ORDER_FORGE_MODULE_ID = "order_forge";
+/** GM1-R1 — rebuild a legendary item's direct recipe from a six-piece tray. */
+export const RECONSTRUCT_MODULE_ID = "reconstruct";
+
+/** Art as the server sends it: a raw path (resolved by the renderer), never a URL guess. */
+export type ReconstructMedia = { src: string | null; alt: string } | null;
+
+/** One tray piece of a `reconstruct` segment, in the server's dealt order. */
+export interface ReconstructPieceView {
+  /** Opaque positional token (`p0`...p5). Carries no name, role or quantity. */
+  pieceId: string;
+  label: string;
+  media: ReconstructMedia;
+}
+
+/**
+ * The pre-reveal public block of a `reconstruct` segment. It has NO field
+ * that could hold the recipe: `maxUses` is the SAME for every piece (the
+ * socket count), so not even the reuse limit hints at a doubled part.
+ */
+export interface ReconstructBlockView {
+  prompt: string;
+  target: { label: string; media: ReconstructMedia };
+  slotCount: number;
+  maxUses: number;
+  pieces: ReconstructPieceView[];
+}
+
+/** One canonical direct part, with the level beneath it (reveal-only). */
+export interface ReconstructPartView {
+  pieceId: string;
+  label: string;
+  quantity: number;
+  /** The authority's formatted gold value ("875 g"); never computed here. */
+  valueDisplay: string | null;
+  subParts: { label: string; media: ReconstructMedia; quantity: number }[];
+}
+
+/** The finished item's own figures, formatted by the server. */
+export interface ReconstructRecipeTarget {
+  label: string;
+  totalDisplay: string | null;
+  combineDisplay: string | null;
+}
+
+/** The viewer's own post-lock reveal: their build beside the canonical recipe. */
+export interface ReconstructChallengeReveal {
+  placement: string[];
+  isCorrect: boolean | null;
+  /** Per socket of `placement`, the SERVER's mark. */
+  slotCorrect: boolean[];
+  /** The sockets after the reveal (wrong picks replaced), the SERVER's. */
+  settledPlacement: string[];
+  canonicalParts: ReconstructPartView[];
+  target: ReconstructRecipeTarget | null;
+  pieces: ReconstructPieceView[];
+}
+
+/** A settled `reconstruct` segment, from `segment_reveal` (both players' builds). */
+export interface ReconstructSettlement {
+  canonicalParts: ReconstructPartView[];
+  target: ReconstructRecipeTarget | null;
+  pieces: ReconstructPieceView[];
+  labels: Record<string, string>;
+  /** player id -> that player's locked placement (null: never locked). */
+  placements: Record<string, string[] | null>;
+  slotCorrect: Record<string, boolean[]>;
+}
+
+/** One reviewed `reconstruct` round (`ranked_duel.match_review.v1`). */
+export interface ReviewReconstruct {
+  target: { label: string; media: string | null };
+  slotCount: number | null;
+  pieces: { pieceId: string; label: string; media: string | null }[];
+  viewerPlacement: string[] | null;
+  canonicalParts: ReconstructPartView[] | null;
+  recipeTarget: ReconstructRecipeTarget | null;
+  slotCorrect: boolean[];
+  settledPlacement: string[];
+  /** The backend's word: `correct`, `incorrect` or `timeout`. */
+  outcome: string | null;
+}
 
 /** One card of an `order_forge` segment, in the server's shuffled display order. */
 export interface OrderForgeEntryView {
@@ -558,6 +639,8 @@ export interface MasteryChallengeReveal {
   correctAnswerDisplay?: string | null;
   /** Present only on an `order_forge` reveal (that module reads it; the rest ignore it). */
   orderForge?: OrderForgeChallengeReveal | null;
+  /** Present only on a `reconstruct` reveal. */
+  reconstruct?: ReconstructChallengeReveal | null;
   explanation: string | null;
   answerOptions: string[];
   /**
@@ -585,7 +668,8 @@ export type SegmentBlockView =
   | { contract: "item_cost"; challenges: SegmentChallengeView[] }
   | { contract: "meta_reflex"; cards: MetaReflexCard[] }
   | { contract: "mastery_slice"; challenges: MasterySliceChallengeView[] }
-  | ({ contract: "order_forge" } & OrderForgeBlockView);
+  | ({ contract: "order_forge" } & OrderForgeBlockView)
+  | ({ contract: "reconstruct" } & ReconstructBlockView);
 
 /** The viewer's OWN ability state inside a multi-challenge segment. */
 export interface SegmentAbilityView {
@@ -619,7 +703,8 @@ export interface SegmentStateView {
   ownAbility: SegmentAbilityView;
   opponentAbilityConfirmed: boolean;
   ownNextChallengeIndex: number;
-  /** A scalar token per challenge; an `order_forge` challenge echoes its whole order. */
+  /** A scalar token per challenge; an `order_forge` challenge echoes its whole
+   * order, a `reconstruct` challenge its whole placement. */
   ownSubmittedChoices: (string | readonly string[] | null)[];
   ownChallengesCompleted: number;
   opponentChallengesCompleted: number;
@@ -1214,6 +1299,11 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   // OF1-B - an order_forge segment's canonical sequence and per-position marks
   // are reveal-only; they may arrive only inside `own_challenge_reveals`.
   "canonical_order", "position_correct", "value_display",
+  // GM1-R1 - a reconstruct segment's recipe, per-socket marks and settled
+  // sockets are reveal-only (backend `FORBIDDEN_PRE_REVEAL_KEYS`); so are the
+  // private payload's own names for the recipe tree and the gold breakdown.
+  "canonical_parts", "slot_correct", "settled_placement",
+  "sub_parts", "decoys", "total_display", "combine_display",
 ]);
 
 /**
@@ -1417,6 +1507,73 @@ function readOrderForgeBlock(
   };
 }
 
+/**
+ * The `reconstruct` public block. Reads ONLY the allow-listed public fields;
+ * the disclosure walk has already refused any reveal-only key beneath it.
+ */
+function readReconstructBlock(
+  block: Record<string, unknown>, list: unknown[],
+): ReconstructBlockView {
+  const first = rec(list[0], "challenges[0]");
+  const target = rec(first.target, "challenges[0].target");
+  const pieces = Array.isArray(first.pieces) ? first.pieces : [];
+  return {
+    prompt: str(block.prompt, "challenges.prompt"),
+    target: {
+      label: str(target.label, "challenges[0].target.label"),
+      media: readOrderForgeMedia(target.media, "challenges[0].target.media"),
+    },
+    slotCount: num(first.slot_count, "challenges[0].slot_count"),
+    maxUses: num(first.max_uses, "challenges[0].max_uses"),
+    pieces: pieces.map((e, i) => readReconstructPiece(e, `pieces[${i}]`)),
+  };
+}
+
+function readReconstructPiece(raw: unknown, label: string): ReconstructPieceView {
+  const o = rec(raw, label);
+  return {
+    pieceId: str(o.piece_id, `${label}.piece_id`),
+    label: str(o.label, `${label}.label`),
+    media: readOrderForgeMedia(o.media, `${label}.media`),
+  };
+}
+
+function readReconstructParts(v: unknown, label: string): ReconstructPartView[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  return v.map((raw, i) => {
+    const o = rec(raw, `${label}[${i}]`);
+    const subs = Array.isArray(o.sub_parts) ? o.sub_parts : [];
+    return {
+      pieceId: str(o.piece_id, `${label}[${i}].piece_id`),
+      label: str(o.label, `${label}[${i}].label`),
+      quantity: num(o.quantity, `${label}[${i}].quantity`),
+      valueDisplay: nstr(o.value_display, `${label}[${i}].value_display`),
+      subParts: subs.map((sraw, j) => {
+        const sub = rec(sraw, `${label}[${i}].sub_parts[${j}]`);
+        return {
+          label: str(sub.label, `${label}[${i}].sub_parts[${j}].label`),
+          media: readOrderForgeMedia(sub.media, `${label}[${i}].sub_parts[${j}].media`),
+          quantity: num(sub.quantity, `${label}[${i}].sub_parts[${j}].quantity`),
+        };
+      }),
+    };
+  });
+}
+
+function readReconstructTarget(v: unknown, label: string): ReconstructRecipeTarget | null {
+  if (v === null || v === undefined) return null;
+  const o = rec(v, label);
+  return {
+    label: str(o.label, `${label}.label`),
+    totalDisplay: nstr(o.total_display, `${label}.total_display`),
+    combineDisplay: nstr(o.combine_display, `${label}.combine_display`),
+  };
+}
+
+function readReconstructPieces(v: unknown, label: string): ReconstructPieceView[] {
+  return Array.isArray(v) ? v.map((e, i) => readReconstructPiece(e, `${label}[${i}]`)) : [];
+}
+
 /** A list of ids, refusing anything else (an order is ids and nothing more). */
 function idList(v: unknown, label: string): string[] {
   if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
@@ -1456,6 +1613,9 @@ function readSegmentBlock(
   // would otherwise be read as an item-cost block and throw on `left`.
   if (moduleId === ORDER_FORGE_MODULE_ID) {
     return { contract: "order_forge", ...readOrderForgeBlock(block, list) };
+  }
+  if (moduleId === RECONSTRUCT_MODULE_ID) {
+    return { contract: "reconstruct", ...readReconstructBlock(block, list) };
   }
   if (moduleId === MASTERY_SLICE_MODULE_ID) {
     return {
@@ -1497,6 +1657,13 @@ function readSubmittedChoices(
     return choices.map((c) => {
       if (c === null || c === undefined) return null;
       return idList(rec(c, "own_submitted_choices[]").order, "own_submitted_choices[].order");
+    });
+  }
+  if (moduleId === RECONSTRUCT_MODULE_ID) {
+    return choices.map((c) => {
+      if (c === null || c === undefined) return null;
+      return idList(rec(c, "own_submitted_choices[]").placement,
+        "own_submitted_choices[].placement");
     });
   }
   const key = moduleId === MASTERY_SLICE_MODULE_ID
@@ -1612,6 +1779,22 @@ function readChallengeReveals(
           valueDisplay: displayMap(o.value_display ?? o.entries, `${label}.entries`),
           positionCorrect: markList(o.position_correct, `${label}.position_correct`),
           isCorrect: nbool(o.is_correct, `${label}.is_correct`),
+        },
+      };
+    }
+    if (moduleId === RECONSTRUCT_MODULE_ID) {
+      return {
+        challengeIndex,
+        isCorrect: o.is_correct === true,
+        playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
+        reconstruct: {
+          placement: idList(o.placement, `${label}.placement`),
+          isCorrect: nbool(o.is_correct, `${label}.is_correct`),
+          slotCorrect: markList(o.slot_correct, `${label}.slot_correct`),
+          settledPlacement: idList(o.settled_placement, `${label}.settled_placement`),
+          canonicalParts: readReconstructParts(o.canonical_parts, `${label}.canonical_parts`),
+          target: readReconstructTarget(o.target, `${label}.target`),
+          pieces: readReconstructPieces(o.pieces, `${label}.pieces`),
         },
       };
     }
@@ -1911,6 +2094,8 @@ export interface SegmentRevealView {
   masteryChallenges: SegmentRevealMasteryChallenge[];
   /** Present only on an `order_forge` settlement; null on every other. */
   orderForge?: OrderForgeSettlement | null;
+  /** Present only on a `reconstruct` settlement; null on every other. */
+  reconstruct?: ReconstructSettlement | null;
   players: Record<string, SegmentRevealPlayer>;
   /** Already-public display metadata, keyed by item id. Empty for v4, whose
    * cards carry their own labels. */
@@ -1936,12 +2121,13 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   const challenges = Array.isArray(o.challenges) ? o.challenges : [];
   const moduleId = str(o.module_id, "segment_reveal.module_id");
   const isOrderForge = moduleId === ORDER_FORGE_MODULE_ID;
+  const isReconstruct = moduleId === RECONSTRUCT_MODULE_ID;
   const players: Record<string, SegmentRevealPlayer> = {};
   for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
     const p = rec(value, `players.${pid}`);
     const result = nstr(p.segment_result, `players.${pid}.segment_result`);
-    if (isOrderForge) {
-      // An order_forge player has no per-card tallies: one sequence, one
+    if (isOrderForge || isReconstruct) {
+      // An order_forge / reconstruct player has no per-card tallies: one sequence, one
       // verdict. Tolerant on purpose - every field here is display-only.
       players[pid] = {
         segmentResult: result && _SEGMENT_RESULTS.has(result) ? (result as SegmentResult) : null,
@@ -1995,10 +2181,11 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
     moduleId,
     moduleVersion,
     challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
-    challenges: isMastery || isOrderForge
+    challenges: isMastery || isOrderForge || isReconstruct
       ? []
       : challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
     orderForge: isOrderForge ? readOrderForgeSettlement(o) : null,
+    reconstruct: isReconstruct ? readReconstructSettlement(o) : null,
     masteryChallenges: isMastery
       ? challenges.map((c, i) => readRevealMasteryChallenge(c, i))
       : [],
@@ -2026,6 +2213,25 @@ function readOrderForgeSettlement(o: Record<string, unknown>): OrderForgeSettlem
     canonicalOrder: idList(o.canonical_order, "segment_reveal.canonical_order"),
     valueDisplay: displayMap(o.entries, "segment_reveal.entries"),
     labels, orders, positionCorrect,
+  };
+}
+
+function readReconstructSettlement(o: Record<string, unknown>): ReconstructSettlement {
+  const pieces = readReconstructPieces(o.pieces, "segment_reveal.pieces");
+  const labels: Record<string, string> = {};
+  for (const piece of pieces) labels[piece.pieceId] = piece.label;
+  const placements: Record<string, string[] | null> = {};
+  const slotCorrect: Record<string, boolean[]> = {};
+  for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
+    const p = rec(value, `players.${pid}`);
+    placements[pid] = p.placement === null || p.placement === undefined
+      ? null : idList(p.placement, `players.${pid}.placement`);
+    slotCorrect[pid] = markList(p.slot_correct, `players.${pid}.slot_correct`);
+  }
+  return {
+    canonicalParts: readReconstructParts(o.canonical_parts, "segment_reveal.canonical_parts"),
+    target: readReconstructTarget(o.target, "segment_reveal.target"),
+    pieces, labels, placements, slotCorrect,
   };
 }
 
@@ -2512,7 +2718,7 @@ export interface ReviewMasteryChallenge {
 
 export interface ReviewRound {
   roundNumber: number;
-  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge";
+  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge" | "reconstruct";
   moduleId: string;
   category: string | null;
   canonicalQuestionRef: string | null;
@@ -2538,6 +2744,8 @@ export interface ReviewRound {
   masteryChallenges: ReviewMasteryChallenge[] | null;
   /** Present only on an `order_forge` round; null on every other kind. */
   orderForge?: ReviewOrderForge | null;
+  /** Present only on a `reconstruct` round; null on every other kind. */
+  reconstruct?: ReviewReconstruct | null;
   viewerSubmission: ReviewSubmission;
 }
 
@@ -2699,6 +2907,51 @@ function reviewOrderForge(
 }
 
 /**
+ * One `reconstruct` review round, with the same inverse guard as Order Forge:
+ * an unrevealed round must carry no recipe, mark or settled socket.
+ */
+function reviewReconstruct(
+  r: Record<string, unknown>, label: string, revealed: boolean,
+): ReviewReconstruct {
+  const mediaSrc = (m: unknown, at: string): string | null =>
+    typeof m === "string" ? m
+      : m && typeof m === "object" ? nstr((m as Record<string, unknown>).src, `${at}.src`) : null;
+  const target = r.target && typeof r.target === "object" ? r.target as Record<string, unknown> : {};
+  const hasAnswer = (r.canonical_parts !== null && r.canonical_parts !== undefined)
+    || (r.recipe_target !== null && r.recipe_target !== undefined)
+    || (Array.isArray(r.slot_correct) && r.slot_correct.length > 0)
+    || (Array.isArray(r.settled_placement) && r.settled_placement.length > 0);
+  if (!revealed && hasAnswer) {
+    throw new RankedPublicParseError(`${label} is not revealed but carried the recipe`);
+  }
+  const pieces = Array.isArray(r.pieces) ? r.pieces : [];
+  return {
+    target: {
+      label: typeof target.label === "string" ? target.label : "",
+      media: mediaSrc(target.media, `${label}.target.media`),
+    },
+    slotCount: nnum(r.slot_count, `${label}.slot_count`),
+    pieces: pieces.map((e, i) => {
+      const x = rec(e, `${label}.pieces[${i}]`);
+      return {
+        pieceId: str(x.piece_id, `${label}.pieces[${i}].piece_id`),
+        label: str(x.label, `${label}.pieces[${i}].label`),
+        media: mediaSrc(x.media, `${label}.pieces[${i}].media`),
+      };
+    }),
+    viewerPlacement: r.viewer_placement === null || r.viewer_placement === undefined
+      ? null : idList(r.viewer_placement, `${label}.viewer_placement`),
+    canonicalParts: r.canonical_parts === null || r.canonical_parts === undefined
+      ? null : readReconstructParts(r.canonical_parts, `${label}.canonical_parts`),
+    recipeTarget: readReconstructTarget(r.recipe_target, `${label}.recipe_target`),
+    slotCorrect: markList(r.slot_correct, `${label}.slot_correct`),
+    settledPlacement: r.settled_placement === null || r.settled_placement === undefined
+      ? [] : idList(r.settled_placement, `${label}.settled_placement`),
+    outcome: nstr(r.outcome, `${label}.outcome`),
+  };
+}
+
+/**
  * Post-match review (`ranked_duel.match_review.v1`).
  *
  * This is the ONE reader that expects a correct answer, so the guard that
@@ -2718,7 +2971,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const r = rec(raw, label);
     const kind = str(r.kind, `${label}.kind`);
     if (kind !== "quiz" && kind !== "meta_reflex" && kind !== "mastery_slice"
-      && kind !== "order_forge") {
+      && kind !== "order_forge" && kind !== "reconstruct") {
       throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
     }
     const revealed = bool(r.revealed, `${label}.revealed`);
@@ -2754,7 +3007,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     // challenge would end up coerced into a card shape it has no sides for.
     let challenges: ReviewChallenge[] | null = null;
     let masteryChallenges: ReviewMasteryChallenge[] | null = null;
-    if (Array.isArray(r.challenges) && kind !== "order_forge") {
+    if (Array.isArray(r.challenges) && kind !== "order_forge" && kind !== "reconstruct") {
       if (kind === "mastery_slice") {
         masteryChallenges = r.challenges.map((c, j) =>
           reviewMasteryChallenge(c, `${label}.challenges[${j}]`, revealed));
@@ -2769,6 +3022,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     }
 
     const orderForge = kind === "order_forge" ? reviewOrderForge(r, label, revealed) : null;
+    const reconstruct = kind === "reconstruct" ? reviewReconstruct(r, label, revealed) : null;
     const sub = rec(r.viewer_submission, `${label}.viewer_submission`);
     return {
       roundNumber: num(r.round_number, `${label}.round_number`),
@@ -2784,6 +3038,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
       challenges,
       masteryChallenges,
       orderForge,
+      reconstruct,
       viewerSubmission: {
         answerIndex: nnum(sub.answer_index, `${label}.viewer_submission.answer_index`),
         isCorrect: nbool(sub.is_correct, `${label}.viewer_submission.is_correct`),

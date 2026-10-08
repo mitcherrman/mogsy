@@ -24,6 +24,7 @@ import type {
 import {
   MASTERY_SLICE_MODULE_ID,
   ORDER_FORGE_MODULE_ID,
+  RECONSTRUCT_MODULE_ID,
   META_REFLEX_MIXED_VERSION,
   revealChoiceEntityId,
 } from "@/lib/ranked-public/contracts";
@@ -47,6 +48,7 @@ const RESULT_LABEL: Record<SegmentResult, string> = {
 export function segmentTitle(reveal: SegmentRevealView): string {
   if (reveal.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
   if (reveal.moduleId === ORDER_FORGE_MODULE_ID) return "Order Forge";
+  if (reveal.moduleId === RECONSTRUCT_MODULE_ID) return "Reconstruct";
   return reveal.moduleVersion >= META_REFLEX_MIXED_VERSION
     ? META_REFLEX_LABEL : "Item Cost Duel";
 }
@@ -76,6 +78,13 @@ function pickedLabel(reveal: SegmentRevealView, c: SegmentRevealChallenge,
   if (id === null) return null;
   const frozen = id === c.leftId ? c.leftLabel : id === c.rightId ? c.rightLabel : null;
   return entityLabel(reveal, id, frozen);
+}
+
+/** `[id, count]` in order of first appearance. */
+function countedBuild(ids: readonly string[]): [string, number][] {
+  const counts = new Map<string, number>();
+  for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return [...counts];
 }
 
 function formatMs(ms: number | null): string {
@@ -145,6 +154,52 @@ export function SegmentTranscript({
         {yourPlaced && (
           <p className="text-xs text-muted-foreground" data-testid="of-transcript-placed">
             {yourPlaced}
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  // GM1-R1 - a reconstruct settlement is one build per player, shown against
+  // the canonical recipe. Socket order is meaningless, so a build is written as
+  // counted parts ("Recurve Bow ×2 + Cloak of Agility").
+  if (reveal.reconstruct) {
+    const rc = reveal.reconstruct;
+    const name = (id: string) => rc.labels[id] ?? id;
+    const build = (ids: string[] | null) => ids ? countedBuild(ids).map(([id, n]) =>
+      (n > 1 ? `${name(id)} ×${n}` : name(id))).join(" + ") : "No answer";
+    const recipe = rc.canonicalParts.map((p) => (p.quantity > 1 ? `${p.label} ×${p.quantity}` : p.label))
+      .join(" + ");
+    const row = (label: string, text: string, testId: string) => (
+      <div data-testid={testId}>
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd>{text}</dd>
+      </div>
+    );
+    const marks = rc.slotCorrect[viewerUserId] ?? [];
+    return (
+      <section className="ranked-panel space-y-3 p-3 sm:p-4"
+               data-testid="icd-transcript" aria-labelledby="icd-transcript-heading">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="icd-transcript-heading" className="font-semibold">
+            {segmentTitle(reveal)} — segment result
+          </h4>
+          <p className="text-sm font-semibold" data-testid="icd-transcript-result">
+            {result ? RESULT_LABEL[result] : "—"}
+            {damageDealt !== null && (
+              <span className="ml-2 font-normal text-muted-foreground"
+                    data-testid="icd-transcript-damage">{damageDealt} damage</span>
+            )}
+          </p>
+        </header>
+        <dl className="space-y-1 text-sm" data-testid="reconstruct-transcript">
+          {row(viewerLabel, build(rc.placements[viewerUserId] ?? null), "rc-transcript-you")}
+          {opponentUserId && row("Opponent", build(rc.placements[opponentUserId] ?? null), "rc-transcript-them")}
+          {row(rc.target ? `${rc.target.label} recipe` : "Recipe", recipe, "rc-transcript-correct")}
+        </dl>
+        {marks.length > 0 && (
+          <p className="text-xs text-muted-foreground" data-testid="rc-transcript-placed">
+            {`${marks.filter(Boolean).length}/${marks.length} parts right`}
           </p>
         )}
       </section>

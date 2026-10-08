@@ -539,6 +539,94 @@ function OrderForgeBody({ round }: { round: ReviewRound }) {
   );
 }
 
+/**
+ * One `reconstruct` round, reviewed: the viewer's build (one row per socket,
+ * with the server's mark) beside the canonical recipe, each part with what it
+ * is made of and the server's gold figures. Nothing is graded or summed here;
+ * an unrevealed round shows only what was asked.
+ */
+function ReconstructBody({ round }: { round: ReviewRound }) {
+  const rc = round.reconstruct;
+  if (!rc) return null;
+  const byId = new Map(rc.pieces.map((p) => [p.pieceId, p]));
+  const art = (src: string | null) => {
+    const url = resolveQuizAssetUrl(src);
+    return url
+      ? <img src={url} alt="" aria-hidden className="h-4 w-4 shrink-0 rounded-sm" loading="lazy" />
+      : <span aria-hidden className="h-4 w-4 shrink-0 rounded-sm bg-black/10" />;
+  };
+  return (
+    <div className="space-y-2" data-testid="review-reconstruct">
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }}
+        data-testid="review-reconstruct-target">
+        {art(rc.target.media)}
+        <span className="min-w-0 break-words">Rebuild {rc.target.label}</span>
+      </p>
+      {rc.viewerPlacement === null && (
+        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          {rc.outcome === "timeout" ? "You did not lock in a build." : "No build was locked in."}
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {rc.viewerPlacement !== null && (
+          <div className="space-y-1">
+            <SectionLabel>My build</SectionLabel>
+            <ul className="space-y-1" data-testid="review-reconstruct-mine">
+              {rc.viewerPlacement.map((id, i) => {
+                const mark = rc.slotCorrect[i];
+                const tone = mark === undefined ? TONE.idle : mark ? TONE.correct : TONE.incorrect;
+                return (
+                  <li key={`${i}:${id}`} data-mark={mark === undefined ? "none" : String(mark)}
+                    className="flex items-center gap-1.5 rounded border px-1.5 py-1 text-[11.5px]"
+                    style={{ color: tone.ink, borderColor: tone.edge, background: tone.fill }}>
+                    {art(byId.get(id)?.media ?? null)}
+                    <span className="min-w-0 flex-1 break-words font-semibold">{byId.get(id)?.label ?? id}</span>
+                    {mark !== undefined && (
+                      mark
+                        ? <Check className="h-3 w-3 shrink-0" aria-label="A right part" />
+                        : <X className="h-3 w-3 shrink-0" aria-label="Not in the recipe here" />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {round.revealed && rc.canonicalParts !== null && (
+          <div className="space-y-1">
+            <SectionLabel>Recipe</SectionLabel>
+            <ul className="space-y-1" data-testid="review-reconstruct-recipe">
+              {rc.canonicalParts.map((part) => (
+                <li key={part.pieceId} className="space-y-0.5 rounded border px-1.5 py-1 text-[11.5px]"
+                  style={{ color: TONE.idle.ink, borderColor: TONE.idle.edge, background: TONE.idle.fill }}>
+                  <span className="flex items-center gap-1.5">
+                    {art(byId.get(part.pieceId)?.media ?? null)}
+                    <span className="min-w-0 flex-1 break-words font-semibold">
+                      {part.label}{part.quantity > 1 ? ` ×${part.quantity}` : ""}
+                    </span>
+                    {part.valueDisplay && <span className="shrink-0 tabular-nums">{part.valueDisplay}</span>}
+                  </span>
+                  <span className="block pl-[22px] text-[10.5px] opacity-80" data-testid="review-reconstruct-subparts">
+                    {part.subParts.length === 0 ? "Basic part"
+                      : `= ${part.subParts.map((s) => (s.quantity > 1 ? `${s.label} ×${s.quantity}` : s.label)).join(" + ")}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {rc.recipeTarget?.totalDisplay && (
+              <p className="flex justify-between gap-2 text-[11px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }}
+                data-testid="review-reconstruct-total">
+                <span>{rc.recipeTarget.combineDisplay ? `Parts + ${rc.recipeTarget.combineDisplay} to combine` : "Total"}</span>
+                <span className="tabular-nums">{rc.recipeTarget.totalDisplay}</span>
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MetaReflexBody({ round }: { round: ReviewRound }) {
   const cards = round.challenges ?? [];
   const sub = round.viewerSubmission;
@@ -628,6 +716,8 @@ export default function QuestionReviewCard({
         ? "Mastery"
         : round.kind === "order_forge"
         ? "Order Forge"
+        : round.kind === "reconstruct"
+        ? "Reconstruct"
         : round.category
           ? prettyCategory(round.category)
           : icon.label;
@@ -665,6 +755,8 @@ export default function QuestionReviewCard({
         <MasterySliceBody round={round} />
       ) : round.kind === "order_forge" ? (
         <OrderForgeBody round={round} />
+      ) : round.kind === "reconstruct" ? (
+        <ReconstructBody round={round} />
       ) : (
         <QuizBody round={round} />
       )}

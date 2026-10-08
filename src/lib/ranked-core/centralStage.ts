@@ -21,7 +21,7 @@
 import { categoryLabel, type CategoryKey } from "@/lib/quiz/publicCategory";
 import { isMetaReflexSegment } from "./roundTimeline";
 import {
-  MASTERY_SLICE_MODULE_ID, ORDER_FORGE_MODULE_ID, type PublicRoundView,
+  MASTERY_SLICE_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, type PublicRoundView,
 } from "@/lib/ranked-public/contracts";
 import type { PointsFeedbackView } from "./pointsFeedback";
 import type { ResolvedCombatantView } from "./viewTypes";
@@ -130,6 +130,7 @@ export function liveModuleTitle(round: PublicRoundView | null): string | null {
   if (isMetaReflexSegment(segment?.moduleId, segment?.moduleVersion)) return META_REFLEX_LABEL;
   if (segment?.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
   if (segment?.moduleId === ORDER_FORGE_MODULE_ID) return "Order Forge";
+  if (segment?.moduleId === RECONSTRUCT_MODULE_ID) return "Reconstruct";
   const category = round.question?.topic?.category ?? null;
   return category ? categoryLabel(category as CategoryKey) : null;
 }

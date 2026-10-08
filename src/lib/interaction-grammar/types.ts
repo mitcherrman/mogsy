@@ -140,3 +140,95 @@ export interface OrderForgeReveal {
 export type OrderForgeResponse = { order: readonly string[] };
 
 export type _OrderForgeIsSegmentChoice = Assert<OrderForgeResponse extends SegmentChoice ? true : false>;
+
+// ---------------------------------------------------------------- Reconstruct
+
+/**
+ * One choice in the tray. The tray holds each choice ONCE; a choice that may
+ * fill several sockets says so with `maxUses`, and the primitive draws a usage
+ * count instead of cloning the choice.
+ */
+export interface AssemblyOption {
+  /** Opaque identity the response carries. Never displayed. */
+  token: string;
+  label: string;
+  media?: SubjectMedia | null;
+  /**
+   * How many sockets this choice may fill at once. Defaults to 1.
+   *
+   * It is a PUBLIC fact (it is drawn as "Used 0 / 2"), so the host decides what
+   * it discloses: a limit above 1 on one choice tells the player that choice is
+   * wanted more than once. A host that must not hint gives every choice the same
+   * limit. The primitive never derives it from the answer and never grades it.
+   */
+  maxUses?: number;
+}
+
+/** Everything a player may see before the reveal. It has no field that could hold the answer. */
+export interface ReconstructPublic {
+  prompt: string;
+  /** The whole being rebuilt. */
+  target: { label: string; media?: SubjectMedia | null };
+  /** 2–4. The primitive throws outside the range. */
+  slotCount: number;
+  /** Distinct tokens, in the host's dealt order. */
+  options: readonly AssemblyOption[];
+}
+
+/** `null` is an empty socket. Length is `slotCount`; socket position carries no meaning. */
+export type ReconstructValue = readonly (string | null)[];
+
+/** The locked placement: identity only, never correctness. */
+export type ReconstructResponse = { placement: readonly string[] };
+
+export type _ReconstructIsSegmentChoice = Assert<ReconstructResponse extends SegmentChoice ? true : false>;
+
+/**
+ * Host-supplied, after the reveal. Every figure is already formatted by the
+ * host; the primitive writes the strings verbatim and knows what none of them
+ * mean.
+ */
+export interface ReconstructEvidence {
+  /** A secondary figure per option token, drawn under the settled part. */
+  values?: Readonly<Record<string, string>>;
+  /** A short note per option token, e.g. a quantity bracket ("×2"). */
+  annotations?: Readonly<Record<string, string>>;
+  /** Further labelled terms that join the parts into the whole. */
+  extras?: readonly { label: string; valueDisplay: string }[];
+  /** The whole's own figure, drawn last. */
+  total?: { label: string; valueDisplay: string } | null;
+  /**
+   * The canonical parts in the host's order, each once with its required
+   * count as the host states it. When present, the evidence lists THESE rows
+   * (instead of the settled tokens) so a part needed twice reads "×2" once.
+   */
+  parts?: readonly { token: string; quantity: number }[];
+  /**
+   * One level further down, per option token: what that part is itself made
+   * of, as the host states it. Display only.
+   */
+  children?: Readonly<Record<string, readonly ReconstructChild[]>>;
+}
+
+/** One sub-part under a revealed part. */
+export interface ReconstructChild {
+  label: string;
+  media?: SubjectMedia | null;
+  quantity: number;
+}
+
+/** Authority-supplied, post-lock only. The primitive displays it and grades nothing. */
+export interface ReconstructReveal {
+  /** The placement the player locked, as the host recorded it (one token per socket). */
+  placement: readonly string[];
+  /** Per socket, for `placement`, straight from the host's grader; display only. */
+  slotCorrect: readonly boolean[];
+  /**
+   * The sockets after the reveal: a correct pick stays, a wrong one is replaced
+   * by a missing canonical part. One token per socket, never a recomputation.
+   */
+  settled: readonly string[];
+  /** The host's verdict on the whole build; null when it stated none. */
+  isCorrect: boolean | null;
+  evidence?: ReconstructEvidence | null;
+}

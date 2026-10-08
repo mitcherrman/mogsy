@@ -561,7 +561,12 @@ export type SegmentChoice =
    * `order_forge.v1`: the WHOLE sequence is the answer — the ids of the cards,
    * in the order the player arranged them. Never sent as `item_id`/`card_id`.
    */
-  | { order: readonly string[] };
+  | { order: readonly string[] }
+  /**
+   * `reconstruct.v1` (GM1-R1): one tray piece id per recipe socket. Socket
+   * order carries no meaning; a piece id may repeat.
+   */
+  | { placement: readonly string[] };
 
 const assertNever = (x: never): never => {
   throw new Error(`Unsupported segment choice: ${JSON.stringify(x)}`);
@@ -587,6 +592,7 @@ export const submitSegmentChallenge = (
       body: "cardId" in choice ? { card_id: choice.cardId }
         : "selected" in choice ? { selected: choice.selected }
         : "order" in choice ? { order: [...choice.order] }
+        : "placement" in choice ? { placement: [...choice.placement] }
         : "itemId" in choice ? { item_id: choice.itemId }
         : assertNever(choice),
       signal,

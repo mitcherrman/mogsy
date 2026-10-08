@@ -31,9 +31,11 @@ import type {
   SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import {
-  META_REFLEX_MIXED_VERSION, ORDER_FORGE_MODULE_ID, readOwnChallengeReveal, readSegmentSettlement,
+  META_REFLEX_MIXED_VERSION, readOwnChallengeReveal, readSegmentSettlement,
 } from "@/lib/ranked-public/contracts";
-import type { OrderForgeLockRevealRef } from "@/lib/ranked-core/orderForgeLockReveal";
+import {
+  INLINE_LOCK_REVEAL_MODULES, type OrderForgeLockRevealRef,
+} from "@/lib/ranked-core/orderForgeLockReveal";
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
 import { reconciledSkewMs } from "@/lib/ranked-core/timerMath";
@@ -1254,7 +1256,10 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       (segment, response) => {
         // OF3-F2 - Order Forge's one card locks with the light Ranked lock,
         // only now that the server has accepted it. The module plays nothing.
-        if (segmentState?.moduleId === ORDER_FORGE_MODULE_ID) {
+        // GM1-R1: Reconstruct shares this lifecycle (one structured lock that a
+        // bot settles in the same transaction), so it takes the same path.
+        const structuredModule = segmentState?.moduleId;
+        if (structuredModule && INLINE_LOCK_REVEAL_MODULES.has(structuredModule)) {
           // OF4-FIX2 - keep the server's inline reveal of THIS lock. Only an
           // accepted ack reaches here (a refusal or a failure throws first),
           // and only for the segment and match the ack names.
@@ -1264,12 +1269,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
               setOrderForgeLockReveal({
                 matchId: matchId!, segmentNumber: segment,
                 reveal: readOwnChallengeReveal(
-                  ack.challengeReveal, ack.nextChallengeIndex, ORDER_FORGE_MODULE_ID),
+                  ack.challengeReveal, ack.nextChallengeIndex, structuredModule),
               });
             } catch (e) {
               // Terminal display data: an unreadable reveal costs the player
               // the teaching beat, never the match.
-              console.error("[ranked] order forge lock reveal failed to parse", e);
+              console.error(`[ranked] ${structuredModule} lock reveal failed to parse`, e);
             }
           }
           playSfx("ranked.answer.lock", {

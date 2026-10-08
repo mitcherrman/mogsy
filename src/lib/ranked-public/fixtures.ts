@@ -5,6 +5,7 @@
  * against real contract structure. Not used in production code.
  */
 
+import reconstructRounds from "./__fixtures__/reconstructProbeRounds.json";
 const T = "2026-07-18T12:00:00+00:00";
 const DEADLINE = "2026-07-18T12:00:30+00:00";
 
@@ -590,4 +591,72 @@ export function orderForgeChallengeReveal(over: Partial<Record<string, unknown>>
     ],
     ...over,
   };
+}
+
+// ------------------------------------------------------------ Reconstruct
+
+/**
+ * GM1-R1 — `reconstruct.v1` segment fixtures. The rounds are NOT hand-written:
+ * `__fixtures__/reconstructProbeRounds.json` is the real backend module's
+ * public view and `challenge_reveals` output for three real targets (Wit's End
+ * needs Recurve Bow ×2; Stormrazor three distinct parts; Dusk and Dawn four
+ * sockets), generated from the certified wiki recipe graph. Only the segment
+ * envelope below is written here, mirroring `orderForgeState`.
+ */
+
+export type ReconstructProbeRound = keyof typeof reconstructRounds.targets;
+export const RECONSTRUCT_PROBE_ROUNDS = Object.keys(reconstructRounds.targets) as ReconstructProbeRound[];
+
+export function reconstructRound(round: ReconstructProbeRound) {
+  return reconstructRounds.targets[round];
+}
+
+export function reconstructSegmentMeta(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    module_id: "reconstruct", module_version: 1, challenge_count: 1,
+    challenge_index: 0, segment_number: 2, phase: "challenges",
+    ability_deadline: null, challenge_started_at: CARD_STARTED,
+    challenge_deadline: "2026-07-18T12:00:36+00:00", pressure_applied: false,
+    resolved: false, ...over,
+  };
+}
+
+/** Backend-shaped `segment_state`; a `locked` placement puts the viewer past their Lock In. */
+export function reconstructState(
+  round: ReconstructProbeRound, over: Partial<Record<string, unknown>> = {},
+  locked: string[] | null = null,
+) {
+  return {
+    active: true,
+    segment_number: 2,
+    module_id: "reconstruct",
+    module_version: 1,
+    phase: "challenges",
+    challenge_count: 1,
+    ability_deadline: null,
+    challenge_started_at: CARD_STARTED,
+    challenge_deadline: "2026-07-18T12:00:36+00:00",
+    pressure_applied: false,
+    own_ability: {
+      selected_ability_id: null, confirmed: false,
+      available_ability_ids: [], unavailable_ability_ids: {},
+    },
+    opponent_ability_confirmed: false,
+    own_next_challenge_index: locked ? 1 : 0,
+    own_submitted_choices: [locked ? { placement: locked } : null],
+    own_challenges_completed: locked ? 1 : 0,
+    opponent_challenges_completed: 0,
+    opponent_finished: false,
+    own_finished: locked !== null,
+    reveal_window_ms: 3000,
+    challenges: JSON.parse(JSON.stringify(reconstructRound(round).public)),
+    own_challenge_reveals: [],
+    ...over,
+  };
+}
+
+/** The viewer's own server reveal for a wrong or a right build of `round`. */
+export function reconstructChallengeReveal(round: ReconstructProbeRound, which: "wrong" | "right") {
+  const r = reconstructRound(round);
+  return JSON.parse(JSON.stringify(which === "wrong" ? r.reveal_wrong : r.reveal_right));
 }

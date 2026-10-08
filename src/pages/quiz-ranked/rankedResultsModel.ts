@@ -61,6 +61,7 @@ export function moduleSubject(round: ReviewRound): string {
   if (round.kind === "meta_reflex") return META_REFLEX_LABEL;
   if (round.kind === "mastery_slice") return "Mastery";
   if (round.kind === "order_forge") return "Order Forge";
+  if (round.kind === "reconstruct") return "Reconstruct";
   if (round.topic?.category) return categoryLabel(round.topic.category as CategoryKey);
   if (round.category) return prettyCategory(round.category);
   return "Question";
@@ -126,7 +127,7 @@ export function reviewRoundQuestionTally(
 ): { correct: number; total: number } {
   const sub = round.viewerSubmission;
   if (
-    !round.orderForge && sub.isCorrect === null
+    !round.orderForge && !round.reconstruct && sub.isCorrect === null
     && sub.challengeCount !== null && sub.challengeCount > 0
   ) {
     const total = sub.challengeCount;

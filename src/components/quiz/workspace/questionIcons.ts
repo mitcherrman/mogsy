@@ -185,7 +185,9 @@ export function questionIconLabel(
         ? "Mastery"
         : round.kind === "order_forge"
           ? "Order Forge"
-          : resolveQuestionIcon(round.iconHint).label;
+          : round.kind === "reconstruct"
+            ? "Reconstruct"
+            : resolveQuestionIcon(round.iconHint).label;
   const outcome = questionOutcome(round);
   const state =
     outcome === "correct" ? "correct"
@@ -217,6 +219,11 @@ export function questionOutcome(round: ReviewRound): QuestionOutcome {
   if (round.orderForge) {
     // The backend's own word for the sequence; nothing is graded here.
     const o = round.orderForge.outcome;
+    return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
+  }
+  if (round.reconstruct) {
+    // Likewise the backend's word for the build.
+    const o = round.reconstruct.outcome;
     return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
   }
   const sub = round.viewerSubmission;

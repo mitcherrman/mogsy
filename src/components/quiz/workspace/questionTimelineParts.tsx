@@ -37,6 +37,7 @@ export function IconFace({ round }: { round: ReviewRound | null }) {
     // not the "no picture" question mark.
     if (round.kind === "mastery_slice") return <ModuleSigil kind="mastery_slice" />;
     if (round.kind === "order_forge") return <ModuleSigil kind="order_forge" />;
+    if (round.kind === "reconstruct") return <ModuleSigil kind="reconstruct" />;
     return (
       <HelpCircle
         className="h-4 w-4"

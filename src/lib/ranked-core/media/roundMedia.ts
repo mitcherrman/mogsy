@@ -252,6 +252,11 @@ export function rankedRoundMedia(
   } else if (block?.contract === "order_forge") {
     for (const e of block.entries) critical.add(resolveQuizAssetUrl(e.media?.src));
     critical.add(ORDER_FORGE_BACKDROP_URL);
+  } else if (block?.contract === "reconstruct") {
+    // GM1-R1: the target and the six tray pieces, resolved exactly as the
+    // renderer resolves them, so the warmed URL is the one the page requests.
+    critical.add(resolveQuizAssetUrl(block.target.media?.src));
+    for (const p of block.pieces) critical.add(resolveQuizAssetUrl(p.media?.src));
   } else if (block?.contract === "mastery_slice") {
     for (const ch of block.challenges) {
       if (renderPathFor(ch) === "prose") {

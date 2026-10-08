@@ -1,0 +1,944 @@
+{
+ "source_revision": 4065930,
+ "targets": {
+  "fourSlot": {
+   "public": {
+    "challenges": [
+     {
+      "challenge_index": 0,
+      "max_uses": 4,
+      "pieces": [
+       {
+        "label": "Blasting Wand",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1026.png"
+        },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Kindlegem",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3067.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Pickaxe",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1037.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Dagger",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1042.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Sheen",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3057.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Giant's Belt",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1011.png"
+        },
+        "piece_id": "p5"
+       }
+      ],
+      "slot_count": 4,
+      "target": {
+       "label": "Dusk and Dawn",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2510.png"
+       }
+      }
+     }
+    ],
+    "family": "item_recipe",
+    "prompt": "Rebuild the recipe",
+    "reveal_window_ms": 3000
+   },
+   "reveal_right": {
+    "canonical_parts": [
+     {
+      "label": "Blasting Wand",
+      "piece_id": "p0",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "850 g"
+     },
+     {
+      "label": "Dagger",
+      "piece_id": "p3",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "250 g"
+     },
+     {
+      "label": "Kindlegem",
+      "piece_id": "p1",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "800 g"
+     },
+     {
+      "label": "Sheen",
+      "piece_id": "p4",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "900 g"
+     }
+    ],
+    "challenge_index": 0,
+    "is_correct": true,
+    "pieces": [
+     {
+      "label": "Blasting Wand",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1026.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Kindlegem",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3067.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Pickaxe",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1037.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Dagger",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1042.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Sheen",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3057.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "placement": [
+     "p4",
+     "p1",
+     "p3",
+     "p0"
+    ],
+    "settled_placement": [
+     "p4",
+     "p1",
+     "p3",
+     "p0"
+    ],
+    "slot_correct": [
+     true,
+     true,
+     true,
+     true
+    ],
+    "target": {
+     "combine_display": "300 g",
+     "label": "Dusk and Dawn",
+     "total_display": "3100 g"
+    }
+   },
+   "reveal_wrong": {
+    "canonical_parts": [
+     {
+      "label": "Blasting Wand",
+      "piece_id": "p0",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "850 g"
+     },
+     {
+      "label": "Dagger",
+      "piece_id": "p3",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "250 g"
+     },
+     {
+      "label": "Kindlegem",
+      "piece_id": "p1",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "800 g"
+     },
+     {
+      "label": "Sheen",
+      "piece_id": "p4",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "900 g"
+     }
+    ],
+    "challenge_index": 0,
+    "is_correct": false,
+    "pieces": [
+     {
+      "label": "Blasting Wand",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1026.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Kindlegem",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3067.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Pickaxe",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1037.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Dagger",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1042.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Sheen",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3057.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "placement": [
+     "p4",
+     "p1",
+     "p3",
+     "p5"
+    ],
+    "settled_placement": [
+     "p4",
+     "p1",
+     "p3",
+     "p0"
+    ],
+    "slot_correct": [
+     true,
+     true,
+     true,
+     false
+    ],
+    "target": {
+     "combine_display": "300 g",
+     "label": "Dusk and Dawn",
+     "total_display": "3100 g"
+    }
+   },
+   "right_placement": [
+    "p4",
+    "p1",
+    "p3",
+    "p0"
+   ],
+   "wrong_placement": [
+    "p4",
+    "p1",
+    "p3",
+    "p5"
+   ]
+  },
+  "stormrazor": {
+   "public": {
+    "challenges": [
+     {
+      "challenge_index": 0,
+      "max_uses": 3,
+      "pieces": [
+       {
+        "label": "Scout's Slingshot",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3144.png"
+        },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Cloak of Agility",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1018.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Needlessly Large Rod",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1058.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Forbidden Idol",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3114.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "B. F. Sword",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1038.png"
+        },
+        "piece_id": "p5"
+       }
+      ],
+      "slot_count": 3,
+      "target": {
+       "label": "Stormrazor",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3095.png"
+       }
+      }
+     }
+    ],
+    "family": "item_recipe",
+    "prompt": "Rebuild the recipe",
+    "reveal_window_ms": 3000
+   },
+   "reveal_right": {
+    "canonical_parts": [
+     {
+      "label": "B. F. Sword",
+      "piece_id": "p5",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "1300 g"
+     },
+     {
+      "label": "Cloak of Agility",
+      "piece_id": "p1",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "600 g"
+     },
+     {
+      "label": "Scout's Slingshot",
+      "piece_id": "p0",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Dagger",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1042.png"
+        },
+        "quantity": 2
+       }
+      ],
+      "value_display": "600 g"
+     }
+    ],
+    "challenge_index": 0,
+    "is_correct": true,
+    "pieces": [
+     {
+      "label": "Scout's Slingshot",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3144.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Cloak of Agility",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1018.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Needlessly Large Rod",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1058.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Forbidden Idol",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3114.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Ruby Crystal",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1028.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "B. F. Sword",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1038.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "placement": [
+     "p0",
+     "p1",
+     "p5"
+    ],
+    "settled_placement": [
+     "p0",
+     "p1",
+     "p5"
+    ],
+    "slot_correct": [
+     true,
+     true,
+     true
+    ],
+    "target": {
+     "combine_display": "700 g",
+     "label": "Stormrazor",
+     "total_display": "3200 g"
+    }
+   },
+   "reveal_wrong": {
+    "canonical_parts": [
+     {
+      "label": "B. F. Sword",
+      "piece_id": "p5",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "1300 g"
+     },
+     {
+      "label": "Cloak of Agility",
+      "piece_id": "p1",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "600 g"
+     },
+     {
+      "label": "Scout's Slingshot",
+      "piece_id": "p0",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Dagger",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1042.png"
+        },
+        "quantity": 2
+       }
+      ],
+      "value_display": "600 g"
+     }
+    ],
+    "challenge_index": 0,
+    "is_correct": false,
+    "pieces": [
+     {
+      "label": "Scout's Slingshot",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3144.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Cloak of Agility",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1018.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Needlessly Large Rod",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1058.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Forbidden Idol",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3114.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Ruby Crystal",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1028.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "B. F. Sword",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1038.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "placement": [
+     "p0",
+     "p1",
+     "p2"
+    ],
+    "settled_placement": [
+     "p0",
+     "p1",
+     "p5"
+    ],
+    "slot_correct": [
+     true,
+     true,
+     false
+    ],
+    "target": {
+     "combine_display": "700 g",
+     "label": "Stormrazor",
+     "total_display": "3200 g"
+    }
+   },
+   "right_placement": [
+    "p0",
+    "p1",
+    "p5"
+   ],
+   "wrong_placement": [
+    "p0",
+    "p1",
+    "p2"
+   ]
+  },
+  "witsEnd": {
+   "public": {
+    "challenges": [
+     {
+      "challenge_index": 0,
+      "max_uses": 3,
+      "pieces": [
+       {
+        "label": "Giant's Belt",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1011.png"
+        },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Fiendish Codex",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3108.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Rectrix",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/6690.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Recurve Bow",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1043.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Chain Vest",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1031.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Negatron Cloak",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1057.png"
+        },
+        "piece_id": "p5"
+       }
+      ],
+      "slot_count": 3,
+      "target": {
+       "label": "Wit's End",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3091.png"
+       }
+      }
+     }
+    ],
+    "family": "item_recipe",
+    "prompt": "Rebuild the recipe",
+    "reveal_window_ms": 3000
+   },
+   "reveal_right": {
+    "canonical_parts": [
+     {
+      "label": "Negatron Cloak",
+      "piece_id": "p5",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Null-Magic Mantle",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1033.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "850 g"
+     },
+     {
+      "label": "Recurve Bow",
+      "piece_id": "p3",
+      "quantity": 2,
+      "sub_parts": [
+       {
+        "label": "Dagger",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1042.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "700 g"
+     }
+    ],
+    "challenge_index": 0,
+    "is_correct": true,
+    "pieces": [
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Fiendish Codex",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3108.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Rectrix",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/6690.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Recurve Bow",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1043.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Chain Vest",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1031.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Negatron Cloak",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1057.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "placement": [
+     "p3",
+     "p3",
+     "p5"
+    ],
+    "settled_placement": [
+     "p3",
+     "p3",
+     "p5"
+    ],
+    "slot_correct": [
+     true,
+     true,
+     true
+    ],
+    "target": {
+     "combine_display": "550 g",
+     "label": "Wit's End",
+     "total_display": "2800 g"
+    }
+   },
+   "reveal_wrong": {
+    "canonical_parts": [
+     {
+      "label": "Negatron Cloak",
+      "piece_id": "p5",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Null-Magic Mantle",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1033.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "850 g"
+     },
+     {
+      "label": "Recurve Bow",
+      "piece_id": "p3",
+      "quantity": 2,
+      "sub_parts": [
+       {
+        "label": "Dagger",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1042.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "700 g"
+     }
+    ],
+    "challenge_index": 0,
+    "is_correct": false,
+    "pieces": [
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Fiendish Codex",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3108.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Rectrix",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/6690.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Recurve Bow",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1043.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Chain Vest",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1031.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Negatron Cloak",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1057.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "placement": [
+     "p3",
+     "p1",
+     "p5"
+    ],
+    "settled_placement": [
+     "p3",
+     "p3",
+     "p5"
+    ],
+    "slot_correct": [
+     true,
+     false,
+     true
+    ],
+    "target": {
+     "combine_display": "550 g",
+     "label": "Wit's End",
+     "total_display": "2800 g"
+    }
+   },
+   "right_placement": [
+    "p3",
+    "p3",
+    "p5"
+   ],
+   "wrong_placement": [
+    "p3",
+    "p1",
+    "p5"
+   ]
+  }
+ }
+}

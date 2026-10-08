@@ -60,6 +60,7 @@ import {
 } from "@/pages/admin/ranked/DailyJourneyLaunch";
 import { AsheJinxExtendedJourneyLaunch } from "@/pages/admin/ranked/ExtendedJourneyLaunch";
 import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
+import { ReconstructLaunch } from "@/pages/admin/ranked/ReconstructLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
 const rankedTools = (view: string) =>
@@ -329,6 +330,13 @@ export default function AdminRankedPage() {
                 testId="ranked-order-forge"
               >
                 <OrderForgeLaunch />
+              </AdminPanel>
+              <AdminPanel
+                title="Reconstruct"
+                description="Owner playtest of the Reconstruct module (rebuild a legendary item's recipe), played through the normal Ranked Bot shell. Unrated."
+                testId="ranked-reconstruct"
+              >
+                <ReconstructLaunch />
               </AdminPanel>
               <AdminPanel
                 title="Playtests"

@@ -1,0 +1,5626 @@
+{
+ "error_invalid_choice": {
+  "body": {
+   "detail": {
+    "code": "RANKED_INVALID_CHOICE",
+    "message": "placement must fill all 3 sockets with tray piece ids"
+   }
+  },
+  "status": 422
+ },
+ "error_schema_422": {
+  "body": {
+   "detail": [
+    {
+     "ctx": {
+      "actual_length": 1,
+      "field_type": "List",
+      "min_length": 2
+     },
+     "input": [
+      "p0"
+     ],
+     "loc": [
+      "body",
+      "placement"
+     ],
+     "msg": "List should have at least 2 items after validation, not 1",
+     "type": "too_short"
+    }
+   ]
+  },
+  "status": 422
+ },
+ "meta": {
+  "canonical_segment_1": [
+   [
+    "p2",
+    1
+   ],
+   [
+    "p5",
+    1
+   ],
+   [
+    "p4",
+    1
+   ]
+  ],
+  "preset": "admin.reconstruct",
+  "submitted_placement_segment_1": [
+   "p0",
+   "p5",
+   "p4"
+  ],
+  "submitted_placement_segment_2": [
+   "p2",
+   "p4"
+  ],
+  "viewer_user_id": "0a11d111-0000-4000-8000-000000000001"
+ },
+ "private_after_bot_settled": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:50.450000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 3,
+    "started_at": "2026-09-09T12:00:20.450000+00:00"
+   },
+   "completed_rounds": 2,
+   "completion_reason": null,
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "own_abilities": {
+    "locked_ability_ids": [
+     "tank.brace",
+     "tank.barrier"
+    ],
+    "remaining_charges": {
+     "tank.fortify": 3
+    },
+    "unlocked_ability_ids": [
+     "tank.fortify"
+    ]
+   },
+   "own_carryover": {
+    "consecutive_correct": 1,
+    "pending_arcane_charge": false,
+    "pending_focus": false,
+    "pending_fortify": false,
+    "pending_insight": false,
+    "pending_tempo": false
+   },
+   "own_combat_lab_unlock_delta_seconds": 0.0,
+   "own_selection": {
+    "phase": "open",
+    "selected_ability_id": null
+   },
+   "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 3,
+     "total_xp": 21
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 2,
+     "total_xp": 21
+    }
+   ],
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:3",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:50.450000+00:00",
+    "challenge_index": 0,
+    "challenge_started_at": "2026-09-09T12:00:20.450000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 3,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:50.450000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.450000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 2,
+       "pieces": [
+        {
+         "label": "Bandleglass Mirror",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/4642.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Kindlegem",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3067.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Vampiric Scepter",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1053.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Chain Vest",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1031.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Winged Moonplate",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3066.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 2,
+       "target": {
+        "label": "Moonstone Renewer",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/6617.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [],
+    "own_challenges_completed": 0,
+    "own_finished": false,
+    "own_next_challenge_index": 0,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 3
+   },
+   "winner_id": null
+  },
+  "projection_type": "private_player",
+  "round_number": 3,
+  "schema_version": "ranked_duel.private_player.v2",
+  "server_time": "2026-09-09T12:00:15+00:00"
+ },
+ "private_after_refusal": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 1,
+    "started_at": "2026-09-09T12:00:04.400000+00:00"
+   },
+   "completed_rounds": 0,
+   "completion_reason": null,
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "own_abilities": {
+    "locked_ability_ids": [
+     "tank.brace",
+     "tank.barrier"
+    ],
+    "remaining_charges": {
+     "tank.fortify": 3
+    },
+    "unlocked_ability_ids": [
+     "tank.fortify"
+    ]
+   },
+   "own_carryover": {
+    "consecutive_correct": 0,
+    "pending_arcane_charge": false,
+    "pending_focus": false,
+    "pending_fortify": false,
+    "pending_insight": false,
+    "pending_tempo": false
+   },
+   "own_combat_lab_unlock_delta_seconds": 0.0,
+   "own_selection": {
+    "phase": "open",
+    "selected_ability_id": null
+   },
+   "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    }
+   ],
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_index": 0,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 1,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 3,
+       "pieces": [
+        {
+         "label": "Steel Sigil",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2019.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Caulfield's Warhammer",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3133.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Sheen",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3057.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Cloak of Agility",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1018.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 3,
+       "target": {
+        "label": "Essence Reaver",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3508.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [],
+    "own_challenges_completed": 0,
+    "own_finished": false,
+    "own_next_challenge_index": 0,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 1
+   },
+   "winner_id": null
+  },
+  "projection_type": "private_player",
+  "round_number": 1,
+  "schema_version": "ranked_duel.private_player.v2",
+  "server_time": "2026-09-09T12:00:08+00:00"
+ },
+ "private_before_bot_lock": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:43.900000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 2,
+    "started_at": "2026-09-09T12:00:13.900000+00:00"
+   },
+   "completed_rounds": 1,
+   "completion_reason": null,
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "own_abilities": {
+    "locked_ability_ids": [
+     "tank.brace",
+     "tank.barrier"
+    ],
+    "remaining_charges": {
+     "tank.fortify": 3
+    },
+    "unlocked_ability_ids": [
+     "tank.fortify"
+    ]
+   },
+   "own_carryover": {
+    "consecutive_correct": 0,
+    "pending_arcane_charge": false,
+    "pending_focus": false,
+    "pending_fortify": false,
+    "pending_insight": false,
+    "pending_tempo": false
+   },
+   "own_combat_lab_unlock_delta_seconds": 0.0,
+   "own_selection": {
+    "phase": "open",
+    "selected_ability_id": null
+   },
+   "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 0,
+     "total_xp": 9
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 0,
+     "total_xp": 9
+    }
+   ],
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:2",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:43.900000+00:00",
+    "challenge_index": 0,
+    "challenge_started_at": "2026-09-09T12:00:13.900000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 2,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:43.900000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:13.900000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 2,
+       "pieces": [
+        {
+         "label": "Warden's Mail",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3082.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Hearthbound Axe",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3051.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Tunneler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2021.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Serrated Dirk",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3134.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Caulfield's Warhammer",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3133.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Steel Sigil",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2019.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 2,
+       "target": {
+        "label": "Sundered Sky",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/6610.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 1,
+    "opponent_finished": true,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [],
+    "own_challenges_completed": 0,
+    "own_finished": false,
+    "own_next_challenge_index": 0,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 2
+   },
+   "winner_id": null
+  },
+  "projection_type": "private_player",
+  "round_number": 2,
+  "schema_version": "ranked_duel.private_player.v2",
+  "server_time": "2026-09-09T12:00:15+00:00"
+ },
+ "private_locked": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 1,
+    "started_at": "2026-09-09T12:00:04.400000+00:00"
+   },
+   "completed_rounds": 0,
+   "completion_reason": null,
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "own_abilities": {
+    "locked_ability_ids": [
+     "tank.brace",
+     "tank.barrier"
+    ],
+    "remaining_charges": {
+     "tank.fortify": 3
+    },
+    "unlocked_ability_ids": [
+     "tank.fortify"
+    ]
+   },
+   "own_carryover": {
+    "consecutive_correct": 0,
+    "pending_arcane_charge": false,
+    "pending_focus": false,
+    "pending_fortify": false,
+    "pending_insight": false,
+    "pending_tempo": false
+   },
+   "own_combat_lab_unlock_delta_seconds": 0.0,
+   "own_selection": {
+    "phase": "open",
+    "selected_ability_id": null
+   },
+   "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    }
+   ],
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_index": 1,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 1,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 3,
+       "pieces": [
+        {
+         "label": "Steel Sigil",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2019.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Caulfield's Warhammer",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3133.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Sheen",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3057.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Cloak of Agility",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1018.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 3,
+       "target": {
+        "label": "Essence Reaver",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3508.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [
+     {
+      "canonical_parts": [
+       {
+        "label": "Caulfield's Warhammer",
+        "piece_id": "p2",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1
+         },
+         {
+          "label": "Long Sword",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1036.png"
+          },
+          "quantity": 2
+         }
+        ],
+        "value_display": "1050 g"
+       },
+       {
+        "label": "Cloak of Agility",
+        "piece_id": "p5",
+        "quantity": 1,
+        "sub_parts": [],
+        "value_display": "600 g"
+       },
+       {
+        "label": "Sheen",
+        "piece_id": "p4",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1
+         }
+        ],
+        "value_display": "900 g"
+       }
+      ],
+      "challenge_index": 0,
+      "is_correct": false,
+      "pieces": [
+       {
+        "label": "Steel Sigil",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2019.png"
+        },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Caulfield's Warhammer",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3133.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Giant's Belt",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1011.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Sheen",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3057.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Cloak of Agility",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1018.png"
+        },
+        "piece_id": "p5"
+       }
+      ],
+      "placement": [
+       "p0",
+       "p5",
+       "p4"
+      ],
+      "settled_placement": [
+       "p2",
+       "p5",
+       "p4"
+      ],
+      "slot_correct": [
+       false,
+       true,
+       true
+      ],
+      "target": {
+       "combine_display": "500 g",
+       "label": "Essence Reaver",
+       "total_display": "3050 g"
+      }
+     }
+    ],
+    "own_challenges_completed": 1,
+    "own_finished": true,
+    "own_next_challenge_index": 1,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     {
+      "placement": [
+       "p0",
+       "p5",
+       "p4"
+      ]
+     }
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 1
+   },
+   "winner_id": null
+  },
+  "projection_type": "private_player",
+  "round_number": 1,
+  "schema_version": "ranked_duel.private_player.v2",
+  "server_time": "2026-09-09T12:00:08+00:00"
+ },
+ "private_open": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 1,
+    "started_at": "2026-09-09T12:00:04.400000+00:00"
+   },
+   "completed_rounds": 0,
+   "completion_reason": null,
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "own_abilities": {
+    "locked_ability_ids": [
+     "tank.brace",
+     "tank.barrier"
+    ],
+    "remaining_charges": {
+     "tank.fortify": 3
+    },
+    "unlocked_ability_ids": [
+     "tank.fortify"
+    ]
+   },
+   "own_carryover": {
+    "consecutive_correct": 0,
+    "pending_arcane_charge": false,
+    "pending_focus": false,
+    "pending_fortify": false,
+    "pending_insight": false,
+    "pending_tempo": false
+   },
+   "own_combat_lab_unlock_delta_seconds": 0.0,
+   "own_selection": {
+    "phase": "open",
+    "selected_ability_id": null
+   },
+   "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    }
+   ],
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_index": 0,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 1,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 3,
+       "pieces": [
+        {
+         "label": "Steel Sigil",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2019.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Caulfield's Warhammer",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3133.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Sheen",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3057.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Cloak of Agility",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1018.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 3,
+       "target": {
+        "label": "Essence Reaver",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3508.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [],
+    "own_challenges_completed": 0,
+    "own_finished": false,
+    "own_next_challenge_index": 0,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 1
+   },
+   "winner_id": null
+  },
+  "projection_type": "private_player",
+  "round_number": 1,
+  "schema_version": "ranked_duel.private_player.v2",
+  "server_time": "2026-09-09T12:00:08+00:00"
+ },
+ "public_after_bot_lock": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:50.450000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 3,
+    "started_at": "2026-09-09T12:00:20.450000+00:00"
+   },
+   "completed_rounds": 2,
+   "completion_reason": null,
+   "host": "playtest",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 3,
+     "total_xp": 21
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 2,
+     "total_xp": 21
+    }
+   ],
+   "playtest": {
+    "is_bot_match": true,
+    "is_placeholder": false,
+    "question_bank_mode": "production",
+    "session_preset": "admin.reconstruct"
+   },
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:3",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "scoring": {
+    "match_length": 3,
+    "model": "points",
+    "module_number": 3,
+    "modules_completed": 2
+   },
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:50.450000+00:00",
+    "challenge_index": 0,
+    "challenge_started_at": "2026-09-09T12:00:20.450000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 3,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:50.450000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:20.450000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 2,
+       "pieces": [
+        {
+         "label": "Bandleglass Mirror",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/4642.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Kindlegem",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3067.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Vampiric Scepter",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1053.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Chain Vest",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1031.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Winged Moonplate",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3066.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 2,
+       "target": {
+        "label": "Moonstone Renewer",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/6617.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [],
+    "own_challenges_completed": 0,
+    "own_finished": false,
+    "own_next_challenge_index": 0,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 3
+   },
+   "winner_id": null
+  },
+  "projection_type": "public_round",
+  "round_number": 3,
+  "schema_version": "ranked_duel.public_round.v2",
+  "server_time": "2026-09-09T12:00:15+00:00"
+ },
+ "public_before_bot_lock": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:43.900000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 2,
+    "started_at": "2026-09-09T12:00:13.900000+00:00"
+   },
+   "completed_rounds": 1,
+   "completion_reason": null,
+   "host": "playtest",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 0,
+     "total_xp": 9
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 0,
+     "total_xp": 9
+    }
+   ],
+   "playtest": {
+    "is_bot_match": true,
+    "is_placeholder": false,
+    "question_bank_mode": "production",
+    "session_preset": "admin.reconstruct"
+   },
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:2",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "scoring": {
+    "match_length": 3,
+    "model": "points",
+    "module_number": 2,
+    "modules_completed": 1
+   },
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:43.900000+00:00",
+    "challenge_index": 0,
+    "challenge_started_at": "2026-09-09T12:00:13.900000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 2,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:43.900000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:13.900000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 2,
+       "pieces": [
+        {
+         "label": "Warden's Mail",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3082.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Hearthbound Axe",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3051.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Tunneler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2021.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Serrated Dirk",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3134.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Caulfield's Warhammer",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3133.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Steel Sigil",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2019.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 2,
+       "target": {
+        "label": "Sundered Sky",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/6610.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 1,
+    "opponent_finished": true,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [],
+    "own_challenges_completed": 0,
+    "own_finished": false,
+    "own_next_challenge_index": 0,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 2
+   },
+   "winner_id": null
+  },
+  "projection_type": "public_round",
+  "round_number": 2,
+  "schema_version": "ranked_duel.public_round.v2",
+  "server_time": "2026-09-09T12:00:15+00:00"
+ },
+ "public_locked": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 1,
+    "started_at": "2026-09-09T12:00:04.400000+00:00"
+   },
+   "completed_rounds": 0,
+   "completion_reason": null,
+   "host": "playtest",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    }
+   ],
+   "playtest": {
+    "is_bot_match": true,
+    "is_placeholder": false,
+    "question_bank_mode": "production",
+    "session_preset": "admin.reconstruct"
+   },
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "scoring": {
+    "match_length": 3,
+    "model": "points",
+    "module_number": 1,
+    "modules_completed": 0
+   },
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_index": 1,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 1,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 3,
+       "pieces": [
+        {
+         "label": "Steel Sigil",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2019.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Caulfield's Warhammer",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3133.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Sheen",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3057.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Cloak of Agility",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1018.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 3,
+       "target": {
+        "label": "Essence Reaver",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3508.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [
+     {
+      "canonical_parts": [
+       {
+        "label": "Caulfield's Warhammer",
+        "piece_id": "p2",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1
+         },
+         {
+          "label": "Long Sword",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1036.png"
+          },
+          "quantity": 2
+         }
+        ],
+        "value_display": "1050 g"
+       },
+       {
+        "label": "Cloak of Agility",
+        "piece_id": "p5",
+        "quantity": 1,
+        "sub_parts": [],
+        "value_display": "600 g"
+       },
+       {
+        "label": "Sheen",
+        "piece_id": "p4",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1
+         }
+        ],
+        "value_display": "900 g"
+       }
+      ],
+      "challenge_index": 0,
+      "is_correct": false,
+      "pieces": [
+       {
+        "label": "Steel Sigil",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2019.png"
+        },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Caulfield's Warhammer",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3133.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Giant's Belt",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1011.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Sheen",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3057.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Cloak of Agility",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1018.png"
+        },
+        "piece_id": "p5"
+       }
+      ],
+      "placement": [
+       "p0",
+       "p5",
+       "p4"
+      ],
+      "settled_placement": [
+       "p2",
+       "p5",
+       "p4"
+      ],
+      "slot_correct": [
+       false,
+       true,
+       true
+      ],
+      "target": {
+       "combine_display": "500 g",
+       "label": "Essence Reaver",
+       "total_display": "3050 g"
+      }
+     }
+    ],
+    "own_challenges_completed": 1,
+    "own_finished": true,
+    "own_next_challenge_index": 1,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     {
+      "placement": [
+       "p0",
+       "p5",
+       "p4"
+      ]
+     }
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 1
+   },
+   "winner_id": null
+  },
+  "projection_type": "public_round",
+  "round_number": 1,
+  "schema_version": "ranked_duel.public_round.v2",
+  "server_time": "2026-09-09T12:00:08+00:00"
+ },
+ "public_open": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "active_round": {
+    "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "duration_seconds": 30.0,
+    "pressure_applied": false,
+    "ready_to_resolve": false,
+    "round_number": 1,
+    "started_at": "2026-09-09T12:00:04.400000+00:00"
+   },
+   "completed_rounds": 0,
+   "completion_reason": null,
+   "host": "playtest",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "match_status": "active",
+   "next_round_duration_seconds": 30.0,
+   "players": [
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    },
+    {
+     "ability_selection_phase": "open",
+     "class_id": "tank",
+     "has_ability_selected": false,
+     "has_submitted": false,
+     "hp": 170,
+     "level": 1,
+     "max_hp": 170,
+     "player_id": "p_eff939c88e94c15b",
+     "role": null,
+     "score": 0,
+     "total_xp": 0
+    }
+   ],
+   "playtest": {
+    "is_bot_match": true,
+    "is_placeholder": false,
+    "question_bank_mode": "production",
+    "session_preset": "admin.reconstruct"
+   },
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "question": {
+    "category": null,
+    "options": [],
+    "prompt": "",
+    "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "ruleset": null,
+   "scoring": {
+    "match_length": 3,
+    "model": "points",
+    "module_number": 1,
+    "modules_completed": 0
+   },
+   "segment": {
+    "ability_deadline": null,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_deadline": null,
+    "card_started_at": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_index": 0,
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "resolved": false,
+    "segment_number": 1,
+    "timed_out_challenges": null,
+    "topic": {
+     "category": "general",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "motif": null,
+     "roles": [],
+     "tier": null
+    }
+   },
+   "segment_state": {
+    "ability_deadline": null,
+    "active": true,
+    "active_time_ms": null,
+    "active_time_remaining_ms": null,
+    "active_time_running": null,
+    "card_timer_ms": null,
+    "challenge_count": 1,
+    "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+    "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+    "challenges": {
+     "challenges": [
+      {
+       "challenge_index": 0,
+       "max_uses": 3,
+       "pieces": [
+        {
+         "label": "Steel Sigil",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2019.png"
+         },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Caulfield's Warhammer",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3133.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Sheen",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3057.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Cloak of Agility",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1018.png"
+         },
+         "piece_id": "p5"
+        }
+       ],
+       "slot_count": 3,
+       "target": {
+        "label": "Essence Reaver",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3508.png"
+        }
+       }
+      }
+     ],
+     "family": "item_recipe",
+     "prompt": "Rebuild the recipe",
+     "reveal_window_ms": 3000
+    },
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "opponent_ability_confirmed": false,
+    "opponent_challenges_completed": 0,
+    "opponent_finished": false,
+    "own_ability": {
+     "available_ability_ids": [
+      "tank.fortify"
+     ],
+     "confirmed": false,
+     "selected_ability_id": null,
+     "unavailable_ability_ids": {}
+    },
+    "own_card_deadline": null,
+    "own_card_index": null,
+    "own_card_reveals": [],
+    "own_card_started_at": null,
+    "own_challenge_reveals": [],
+    "own_challenges_completed": 0,
+    "own_finished": false,
+    "own_next_challenge_index": 0,
+    "own_reveal_until": null,
+    "own_revealing_card_index": null,
+    "own_submitted_choices": [
+     null
+    ],
+    "own_timed_out_challenges": null,
+    "phase": "challenges",
+    "pressure_applied": false,
+    "reveal_window_ms": 3000,
+    "segment_number": 1
+   },
+   "winner_id": null
+  },
+  "projection_type": "public_round",
+  "round_number": 1,
+  "schema_version": "ranked_duel.public_round.v2",
+  "server_time": "2026-09-09T12:00:08+00:00"
+ },
+ "queue_join": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "class_id": null,
+   "enqueued_at": "2026-09-09T12:00:00+00:00",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "queue_version": 1,
+   "role": null,
+   "status": "matched"
+  },
+  "projection_type": "queue_status",
+  "round_number": null,
+  "schema_version": "ranked_duel.queue_status.v1",
+  "server_time": "2026-09-09T12:00:00+00:00"
+ },
+ "resolved_correct": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "completion_reason": null,
+   "end_reason": "both_answered",
+   "final_deadline": "2026-09-09T12:00:43.900000+00:00",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "max_hp": {
+    "0a11d111-0000-4000-8000-000000000001": 170,
+    "p_eff939c88e94c15b": 170
+   },
+   "module_points": {
+    "0a11d111-0000-4000-8000-000000000001": {
+     "base_points": 2,
+     "points_awarded": 3,
+     "score_after": 3,
+     "score_before": 0,
+     "speed_bonus_points": 1
+    },
+    "p_eff939c88e94c15b": {
+     "base_points": 2,
+     "points_awarded": 2,
+     "score_after": 2,
+     "score_before": 0,
+     "speed_bonus_points": 0
+    }
+   },
+   "next_round_duration_delta": 0.0,
+   "next_round_duration_seconds": 30.0,
+   "original_deadline": "2026-09-09T12:00:43.900000+00:00",
+   "players": [
+    {
+     "answered_first": true,
+     "carryover": {
+      "consecutive_correct": 1,
+      "effects_consumed": [],
+      "effects_gained": []
+     },
+     "charge_consumed": false,
+     "class_id": "tank",
+     "combat_lab_unlock_delta_seconds": 0.0,
+     "consumed_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "final_damage_dealt": 0,
+      "final_damage_received": 0,
+      "incoming_reduction": 0,
+      "outgoing_bonus": 0,
+      "shield_absorbed": 0
+     },
+     "hp_after": 170,
+     "hp_before": 170,
+     "level_after": 1,
+     "level_before": 1,
+     "level_up_events": [],
+     "outcome": "correct",
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "points_awarded": 3,
+     "reached_zero_hp": false,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "score_after": 3,
+     "score_before": 0,
+     "selected_ability_id": null,
+     "submitted_at": "2026-09-09T12:00:15+00:00",
+     "timed_out": false,
+     "total_xp_after": 21,
+     "xp_gained": 12
+    },
+    {
+     "answered_first": false,
+     "carryover": {
+      "consecutive_correct": 1,
+      "effects_consumed": [],
+      "effects_gained": []
+     },
+     "charge_consumed": false,
+     "class_id": "tank",
+     "combat_lab_unlock_delta_seconds": 0.0,
+     "consumed_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "final_damage_dealt": 0,
+      "final_damage_received": 0,
+      "incoming_reduction": 0,
+      "outgoing_bonus": 0,
+      "shield_absorbed": 0
+     },
+     "hp_after": 170,
+     "hp_before": 170,
+     "level_after": 1,
+     "level_before": 1,
+     "level_up_events": [],
+     "outcome": "correct",
+     "player_id": "p_eff939c88e94c15b",
+     "points_awarded": 2,
+     "reached_zero_hp": false,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "score_after": 2,
+     "score_before": 0,
+     "selected_ability_id": null,
+     "submitted_at": "2026-09-09T12:00:24.636611+00:00",
+     "timed_out": false,
+     "total_xp_after": 21,
+     "xp_gained": 12
+    }
+   ],
+   "presentation_ms": 5450,
+   "pressure_applied": true,
+   "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:2",
+   "round_number": 2,
+   "segment_reveal": {
+    "canonical_parts": [
+     {
+      "label": "Caulfield's Warhammer",
+      "piece_id": "p4",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Long Sword",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1036.png"
+        },
+        "quantity": 2
+       }
+      ],
+      "value_display": "1050 g"
+     },
+     {
+      "label": "Tunneler",
+      "piece_id": "p2",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Long Sword",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1036.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "1150 g"
+     }
+    ],
+    "challenge_count": 1,
+    "correct_points": 2,
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "pieces": [
+     {
+      "label": "Warden's Mail",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3082.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Hearthbound Axe",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3051.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Tunneler",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/2021.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Serrated Dirk",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3134.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Caulfield's Warhammer",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3133.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Steel Sigil",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/2019.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "players": {
+     "0a11d111-0000-4000-8000-000000000001": {
+      "base_points": 2,
+      "correct": 1,
+      "duration_ms": 1100,
+      "finished_first": true,
+      "incorrect": 0,
+      "placement": [
+       "p2",
+       "p4"
+      ],
+      "points_awarded": 3,
+      "segment_result": "win",
+      "settled_placement": [
+       "p2",
+       "p4"
+      ],
+      "slot_correct": [
+       true,
+       true
+      ],
+      "speed_bonus_points": 1,
+      "unanswered": 0
+     },
+     "p_eff939c88e94c15b": {
+      "base_points": 2,
+      "correct": 1,
+      "duration_ms": 10737,
+      "finished_first": false,
+      "incorrect": 0,
+      "placement": [
+       "p4",
+       "p2"
+      ],
+      "points_awarded": 2,
+      "segment_result": "loss",
+      "settled_placement": [
+       "p4",
+       "p2"
+      ],
+      "slot_correct": [
+       true,
+       true
+      ],
+      "speed_bonus_points": 0,
+      "unanswered": 0
+     }
+    },
+    "scoring": "points",
+    "speed_bonus_points": 1,
+    "target": {
+     "combine_display": "900 g",
+     "label": "Sundered Sky",
+     "total_display": "3100 g"
+    }
+   },
+   "started_at": "2026-09-09T12:00:13.900000+00:00",
+   "winner_id": null
+  },
+  "projection_type": "resolved_round",
+  "round_number": 2,
+  "schema_version": "ranked_duel.resolved_round.v2",
+  "server_time": "2026-09-09T12:00:18+00:00"
+ },
+ "resolved_incorrect": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "completion_reason": null,
+   "end_reason": "both_answered",
+   "final_deadline": "2026-09-09T12:00:34.400000+00:00",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": false,
+   "max_hp": {
+    "0a11d111-0000-4000-8000-000000000001": 170,
+    "p_eff939c88e94c15b": 170
+   },
+   "module_points": {
+    "0a11d111-0000-4000-8000-000000000001": {
+     "base_points": 0,
+     "points_awarded": 0,
+     "score_after": 0,
+     "score_before": 0,
+     "speed_bonus_points": 0
+    },
+    "p_eff939c88e94c15b": {
+     "base_points": 0,
+     "points_awarded": 0,
+     "score_after": 0,
+     "score_before": 0,
+     "speed_bonus_points": 0
+    }
+   },
+   "next_round_duration_delta": 0.0,
+   "next_round_duration_seconds": 30.0,
+   "original_deadline": "2026-09-09T12:00:34.400000+00:00",
+   "players": [
+    {
+     "answered_first": true,
+     "carryover": {
+      "consecutive_correct": 0,
+      "effects_consumed": [],
+      "effects_gained": []
+     },
+     "charge_consumed": false,
+     "class_id": "tank",
+     "combat_lab_unlock_delta_seconds": 0.0,
+     "consumed_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "final_damage_dealt": 0,
+      "final_damage_received": 0,
+      "incoming_reduction": 0,
+      "outgoing_bonus": 0,
+      "shield_absorbed": 0
+     },
+     "hp_after": 170,
+     "hp_before": 170,
+     "level_after": 1,
+     "level_before": 1,
+     "level_up_events": [],
+     "outcome": "incorrect",
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "points_awarded": 0,
+     "reached_zero_hp": false,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "score_after": 0,
+     "score_before": 0,
+     "selected_ability_id": null,
+     "submitted_at": "2026-09-09T12:00:08+00:00",
+     "timed_out": false,
+     "total_xp_after": 9,
+     "xp_gained": 9
+    },
+    {
+     "answered_first": false,
+     "carryover": {
+      "consecutive_correct": 0,
+      "effects_consumed": [],
+      "effects_gained": []
+     },
+     "charge_consumed": false,
+     "class_id": "tank",
+     "combat_lab_unlock_delta_seconds": 0.0,
+     "consumed_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "final_damage_dealt": 0,
+      "final_damage_received": 0,
+      "incoming_reduction": 0,
+      "outgoing_bonus": 0,
+      "shield_absorbed": 0
+     },
+     "hp_after": 170,
+     "hp_before": 170,
+     "level_after": 1,
+     "level_before": 1,
+     "level_up_events": [],
+     "outcome": "incorrect",
+     "player_id": "p_eff939c88e94c15b",
+     "points_awarded": 0,
+     "reached_zero_hp": false,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "score_after": 0,
+     "score_before": 0,
+     "selected_ability_id": null,
+     "submitted_at": "2026-09-09T12:00:14.894745+00:00",
+     "timed_out": false,
+     "total_xp_after": 9,
+     "xp_gained": 9
+    }
+   ],
+   "presentation_ms": 2900,
+   "pressure_applied": true,
+   "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+   "round_number": 1,
+   "segment_reveal": {
+    "canonical_parts": [
+     {
+      "label": "Caulfield's Warhammer",
+      "piece_id": "p2",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Long Sword",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1036.png"
+        },
+        "quantity": 2
+       }
+      ],
+      "value_display": "1050 g"
+     },
+     {
+      "label": "Cloak of Agility",
+      "piece_id": "p5",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "600 g"
+     },
+     {
+      "label": "Sheen",
+      "piece_id": "p4",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "900 g"
+     }
+    ],
+    "challenge_count": 1,
+    "correct_points": 2,
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "pieces": [
+     {
+      "label": "Steel Sigil",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/2019.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Ruby Crystal",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1028.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Caulfield's Warhammer",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3133.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Sheen",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3057.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Cloak of Agility",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1018.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "players": {
+     "0a11d111-0000-4000-8000-000000000001": {
+      "base_points": 0,
+      "correct": 0,
+      "duration_ms": 3600,
+      "finished_first": true,
+      "incorrect": 1,
+      "placement": [
+       "p0",
+       "p5",
+       "p4"
+      ],
+      "points_awarded": 0,
+      "segment_result": "draw",
+      "settled_placement": [
+       "p2",
+       "p5",
+       "p4"
+      ],
+      "slot_correct": [
+       false,
+       true,
+       true
+      ],
+      "speed_bonus_points": 0,
+      "unanswered": 0
+     },
+     "p_eff939c88e94c15b": {
+      "base_points": 0,
+      "correct": 0,
+      "duration_ms": 10495,
+      "finished_first": false,
+      "incorrect": 1,
+      "placement": [
+       "p2",
+       "p1",
+       "p4"
+      ],
+      "points_awarded": 0,
+      "segment_result": "draw",
+      "settled_placement": [
+       "p2",
+       "p5",
+       "p4"
+      ],
+      "slot_correct": [
+       true,
+       false,
+       true
+      ],
+      "speed_bonus_points": 0,
+      "unanswered": 0
+     }
+    },
+    "scoring": "points",
+    "speed_bonus_points": 1,
+    "target": {
+     "combine_display": "500 g",
+     "label": "Essence Reaver",
+     "total_display": "3050 g"
+    }
+   },
+   "started_at": "2026-09-09T12:00:04.400000+00:00",
+   "winner_id": null
+  },
+  "projection_type": "resolved_round",
+  "round_number": 1,
+  "schema_version": "ranked_duel.resolved_round.v2",
+  "server_time": "2026-09-09T12:00:11+00:00"
+ },
+ "resolved_timeout": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "completion_reason": "segments_complete",
+   "end_reason": "deadline_expired",
+   "final_deadline": "2026-09-09T12:00:50.450000+00:00",
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "match_over": true,
+   "max_hp": {
+    "0a11d111-0000-4000-8000-000000000001": 170,
+    "p_eff939c88e94c15b": 170
+   },
+   "module_points": {
+    "0a11d111-0000-4000-8000-000000000001": {
+     "base_points": 0,
+     "points_awarded": 0,
+     "score_after": 3,
+     "score_before": 3,
+     "speed_bonus_points": 0
+    },
+    "p_eff939c88e94c15b": {
+     "base_points": 2,
+     "points_awarded": 3,
+     "score_after": 5,
+     "score_before": 2,
+     "speed_bonus_points": 1
+    }
+   },
+   "next_round_duration_delta": 0.0,
+   "next_round_duration_seconds": 30.0,
+   "original_deadline": "2026-09-09T12:00:50.450000+00:00",
+   "players": [
+    {
+     "answered_first": false,
+     "carryover": {
+      "consecutive_correct": 0,
+      "effects_consumed": [],
+      "effects_gained": []
+     },
+     "charge_consumed": false,
+     "class_id": "tank",
+     "combat_lab_unlock_delta_seconds": 0.0,
+     "consumed_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "final_damage_dealt": 0,
+      "final_damage_received": 0,
+      "incoming_reduction": 0,
+      "outgoing_bonus": 0,
+      "shield_absorbed": 0
+     },
+     "hp_after": 170,
+     "hp_before": 170,
+     "level_after": 1,
+     "level_before": 1,
+     "level_up_events": [],
+     "outcome": "timeout",
+     "player_id": "0a11d111-0000-4000-8000-000000000001",
+     "points_awarded": 0,
+     "reached_zero_hp": false,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "score_after": 3,
+     "score_before": 3,
+     "selected_ability_id": null,
+     "submitted_at": null,
+     "timed_out": true,
+     "total_xp_after": 29,
+     "xp_gained": 8
+    },
+    {
+     "answered_first": true,
+     "carryover": {
+      "consecutive_correct": 2,
+      "effects_consumed": [],
+      "effects_gained": []
+     },
+     "charge_consumed": false,
+     "class_id": "tank",
+     "combat_lab_unlock_delta_seconds": 0.0,
+     "consumed_ability_id": null,
+     "damage": {
+      "base_damage_dealt": 0,
+      "final_damage_dealt": 0,
+      "final_damage_received": 0,
+      "incoming_reduction": 0,
+      "outgoing_bonus": 0,
+      "shield_absorbed": 0
+     },
+     "hp_after": 170,
+     "hp_before": 170,
+     "level_after": 1,
+     "level_before": 1,
+     "level_up_events": [],
+     "outcome": "correct",
+     "player_id": "p_eff939c88e94c15b",
+     "points_awarded": 3,
+     "reached_zero_hp": false,
+     "remaining_charges": {
+      "tank.fortify": 3
+     },
+     "score_after": 5,
+     "score_before": 2,
+     "selected_ability_id": null,
+     "submitted_at": "2026-09-09T12:00:30.218926+00:00",
+     "timed_out": false,
+     "total_xp_after": 33,
+     "xp_gained": 12
+    }
+   ],
+   "presentation_ms": 2900,
+   "pressure_applied": true,
+   "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:3",
+   "round_number": 3,
+   "segment_reveal": {
+    "canonical_parts": [
+     {
+      "label": "Bandleglass Mirror",
+      "piece_id": "p0",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Amplifying Tome",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1052.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Faerie Charm",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1004.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "900 g"
+     },
+     {
+      "label": "Kindlegem",
+      "piece_id": "p1",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "quantity": 1
+       }
+      ],
+      "value_display": "800 g"
+     }
+    ],
+    "challenge_count": 1,
+    "correct_points": 2,
+    "module_id": "reconstruct",
+    "module_version": 1,
+    "pieces": [
+     {
+      "label": "Bandleglass Mirror",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/4642.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Kindlegem",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3067.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Vampiric Scepter",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1053.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Chain Vest",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1031.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Winged Moonplate",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3066.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
+      },
+      "piece_id": "p5"
+     }
+    ],
+    "players": {
+     "0a11d111-0000-4000-8000-000000000001": {
+      "base_points": 0,
+      "correct": 0,
+      "duration_ms": null,
+      "finished_first": false,
+      "incorrect": 0,
+      "placement": null,
+      "points_awarded": 0,
+      "segment_result": "timeout",
+      "settled_placement": [],
+      "slot_correct": [],
+      "speed_bonus_points": 0,
+      "unanswered": 1
+     },
+     "p_eff939c88e94c15b": {
+      "base_points": 2,
+      "correct": 1,
+      "duration_ms": 9769,
+      "finished_first": true,
+      "incorrect": 0,
+      "placement": [
+       "p0",
+       "p1"
+      ],
+      "points_awarded": 3,
+      "segment_result": "win",
+      "settled_placement": [
+       "p0",
+       "p1"
+      ],
+      "slot_correct": [
+       true,
+       true
+      ],
+      "speed_bonus_points": 1,
+      "unanswered": 0
+     }
+    },
+    "scoring": "points",
+    "speed_bonus_points": 1,
+    "target": {
+     "combine_display": "500 g",
+     "label": "Moonstone Renewer",
+     "total_display": "2200 g"
+    }
+   },
+   "started_at": "2026-09-09T12:00:20.450000+00:00",
+   "winner_id": "p_eff939c88e94c15b"
+  },
+  "projection_type": "resolved_round",
+  "round_number": 3,
+  "schema_version": "ranked_duel.resolved_round.v2",
+  "server_time": "2026-09-09T12:01:05+00:00"
+ },
+ "result": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "completion_reason": "segments_complete",
+   "final_round_number": 3,
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "outcome": "decisive",
+   "rating_application_status": "skipped",
+   "rating_policy_version": "elo.v1",
+   "rating_skip_reason": "format_not_rated",
+   "scoring": {
+    "final_scores": {
+     "0a11d111-0000-4000-8000-000000000001": 3,
+     "p_eff939c88e94c15b": 5
+    },
+    "match_length": 3,
+    "model": "points",
+    "modules_played": 3
+   },
+   "terminal_reason": "combat",
+   "winner_user_id": "p_eff939c88e94c15b"
+  },
+  "projection_type": "match_result",
+  "round_number": 3,
+  "schema_version": "ranked_duel.match_result.v1",
+  "server_time": "2026-09-09T12:01:35+00:00"
+ },
+ "resume_final": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "latest_resolved_round": {
+    "match_id": "rkb_9348430af5dc7adbac9c373b",
+    "payload": {
+     "completion_reason": "segments_complete",
+     "end_reason": "deadline_expired",
+     "final_deadline": "2026-09-09T12:00:50.450000+00:00",
+     "match_id": "rkb_9348430af5dc7adbac9c373b",
+     "match_over": true,
+     "max_hp": {
+      "0a11d111-0000-4000-8000-000000000001": 170,
+      "p_eff939c88e94c15b": 170
+     },
+     "module_points": {
+      "0a11d111-0000-4000-8000-000000000001": {
+       "base_points": 0,
+       "points_awarded": 0,
+       "score_after": 3,
+       "score_before": 3,
+       "speed_bonus_points": 0
+      },
+      "p_eff939c88e94c15b": {
+       "base_points": 2,
+       "points_awarded": 3,
+       "score_after": 5,
+       "score_before": 2,
+       "speed_bonus_points": 1
+      }
+     },
+     "next_round_duration_delta": 0.0,
+     "next_round_duration_seconds": 30.0,
+     "original_deadline": "2026-09-09T12:00:50.450000+00:00",
+     "players": [
+      {
+       "answered_first": false,
+       "carryover": {
+        "consecutive_correct": 0,
+        "effects_consumed": [],
+        "effects_gained": []
+       },
+       "charge_consumed": false,
+       "class_id": "tank",
+       "combat_lab_unlock_delta_seconds": 0.0,
+       "consumed_ability_id": null,
+       "damage": {
+        "base_damage_dealt": 0,
+        "final_damage_dealt": 0,
+        "final_damage_received": 0,
+        "incoming_reduction": 0,
+        "outgoing_bonus": 0,
+        "shield_absorbed": 0
+       },
+       "hp_after": 170,
+       "hp_before": 170,
+       "level_after": 1,
+       "level_before": 1,
+       "level_up_events": [],
+       "outcome": "timeout",
+       "player_id": "0a11d111-0000-4000-8000-000000000001",
+       "points_awarded": 0,
+       "reached_zero_hp": false,
+       "remaining_charges": {
+        "tank.fortify": 3
+       },
+       "score_after": 3,
+       "score_before": 3,
+       "selected_ability_id": null,
+       "submitted_at": null,
+       "timed_out": true,
+       "total_xp_after": 29,
+       "xp_gained": 8
+      },
+      {
+       "answered_first": true,
+       "carryover": {
+        "consecutive_correct": 2,
+        "effects_consumed": [],
+        "effects_gained": []
+       },
+       "charge_consumed": false,
+       "class_id": "tank",
+       "combat_lab_unlock_delta_seconds": 0.0,
+       "consumed_ability_id": null,
+       "damage": {
+        "base_damage_dealt": 0,
+        "final_damage_dealt": 0,
+        "final_damage_received": 0,
+        "incoming_reduction": 0,
+        "outgoing_bonus": 0,
+        "shield_absorbed": 0
+       },
+       "hp_after": 170,
+       "hp_before": 170,
+       "level_after": 1,
+       "level_before": 1,
+       "level_up_events": [],
+       "outcome": "correct",
+       "player_id": "p_eff939c88e94c15b",
+       "points_awarded": 3,
+       "reached_zero_hp": false,
+       "remaining_charges": {
+        "tank.fortify": 3
+       },
+       "score_after": 5,
+       "score_before": 2,
+       "selected_ability_id": null,
+       "submitted_at": "2026-09-09T12:00:30.218926+00:00",
+       "timed_out": false,
+       "total_xp_after": 33,
+       "xp_gained": 12
+      }
+     ],
+     "presentation_ms": 2900,
+     "pressure_applied": true,
+     "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:3",
+     "round_number": 3,
+     "segment_reveal": {
+      "canonical_parts": [
+       {
+        "label": "Bandleglass Mirror",
+        "piece_id": "p0",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Amplifying Tome",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1052.png"
+          },
+          "quantity": 1
+         },
+         {
+          "label": "Faerie Charm",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1004.png"
+          },
+          "quantity": 1
+         },
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1
+         }
+        ],
+        "value_display": "900 g"
+       },
+       {
+        "label": "Kindlegem",
+        "piece_id": "p1",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1
+         },
+         {
+          "label": "Ruby Crystal",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1028.png"
+          },
+          "quantity": 1
+         }
+        ],
+        "value_display": "800 g"
+       }
+      ],
+      "challenge_count": 1,
+      "correct_points": 2,
+      "module_id": "reconstruct",
+      "module_version": 1,
+      "pieces": [
+       {
+        "label": "Bandleglass Mirror",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/4642.png"
+        },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Kindlegem",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3067.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Vampiric Scepter",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1053.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Chain Vest",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1031.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Winged Moonplate",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3066.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Giant's Belt",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1011.png"
+        },
+        "piece_id": "p5"
+       }
+      ],
+      "players": {
+       "0a11d111-0000-4000-8000-000000000001": {
+        "base_points": 0,
+        "correct": 0,
+        "duration_ms": null,
+        "finished_first": false,
+        "incorrect": 0,
+        "placement": null,
+        "points_awarded": 0,
+        "segment_result": "timeout",
+        "settled_placement": [],
+        "slot_correct": [],
+        "speed_bonus_points": 0,
+        "unanswered": 1
+       },
+       "p_eff939c88e94c15b": {
+        "base_points": 2,
+        "correct": 1,
+        "duration_ms": 9769,
+        "finished_first": true,
+        "incorrect": 0,
+        "placement": [
+         "p0",
+         "p1"
+        ],
+        "points_awarded": 3,
+        "segment_result": "win",
+        "settled_placement": [
+         "p0",
+         "p1"
+        ],
+        "slot_correct": [
+         true,
+         true
+        ],
+        "speed_bonus_points": 1,
+        "unanswered": 0
+       }
+      },
+      "scoring": "points",
+      "speed_bonus_points": 1,
+      "target": {
+       "combine_display": "500 g",
+       "label": "Moonstone Renewer",
+       "total_display": "2200 g"
+      }
+     },
+     "started_at": "2026-09-09T12:00:20.450000+00:00",
+     "winner_id": "p_eff939c88e94c15b"
+    },
+    "projection_type": "resolved_round",
+    "round_number": 3,
+    "schema_version": "ranked_duel.resolved_round.v2",
+    "server_time": "2026-09-09T12:01:35+00:00"
+   },
+   "match_over": true,
+   "match_status": "complete",
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "private": {
+    "match_id": "rkb_9348430af5dc7adbac9c373b",
+    "payload": {
+     "active_round": null,
+     "completed_rounds": 3,
+     "completion_reason": "segments_complete",
+     "match_id": "rkb_9348430af5dc7adbac9c373b",
+     "match_over": true,
+     "match_status": "complete",
+     "next_round_duration_seconds": 30.0,
+     "own_abilities": {
+      "locked_ability_ids": [
+       "tank.brace",
+       "tank.barrier"
+      ],
+      "remaining_charges": {
+       "tank.fortify": 3
+      },
+      "unlocked_ability_ids": [
+       "tank.fortify"
+      ]
+     },
+     "own_carryover": {
+      "consecutive_correct": 0,
+      "pending_arcane_charge": false,
+      "pending_focus": false,
+      "pending_fortify": false,
+      "pending_insight": false,
+      "pending_tempo": false
+     },
+     "own_combat_lab_unlock_delta_seconds": 0.0,
+     "own_selection": {
+      "phase": null,
+      "selected_ability_id": null
+     },
+     "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+     "players": [
+      {
+       "ability_selection_phase": null,
+       "class_id": "tank",
+       "has_ability_selected": null,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "0a11d111-0000-4000-8000-000000000001",
+       "role": null,
+       "score": 3,
+       "total_xp": 29
+      },
+      {
+       "ability_selection_phase": null,
+       "class_id": "tank",
+       "has_ability_selected": null,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "p_eff939c88e94c15b",
+       "role": null,
+       "score": 5,
+       "total_xp": 33
+      }
+     ],
+     "presence": {
+      "opponent_connection_state": "connected",
+      "own_reconnect_grace_deadline": null,
+      "participant_status": "connected",
+      "reconnect_grace_deadline": null
+     },
+     "question": null,
+     "ruleset": null,
+     "segment": null,
+     "segment_state": null,
+     "winner_id": "p_eff939c88e94c15b"
+    },
+    "projection_type": "private_player",
+    "round_number": null,
+    "schema_version": "ranked_duel.private_player.v2",
+    "server_time": "2026-09-09T12:01:35+00:00"
+   },
+   "public": {
+    "match_id": "rkb_9348430af5dc7adbac9c373b",
+    "payload": {
+     "active_round": null,
+     "completed_rounds": 3,
+     "completion_reason": "segments_complete",
+     "host": "playtest",
+     "match_id": "rkb_9348430af5dc7adbac9c373b",
+     "match_over": true,
+     "match_status": "complete",
+     "next_round_duration_seconds": 30.0,
+     "players": [
+      {
+       "ability_selection_phase": null,
+       "class_id": "tank",
+       "has_ability_selected": null,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "0a11d111-0000-4000-8000-000000000001",
+       "role": null,
+       "score": 3,
+       "total_xp": 29
+      },
+      {
+       "ability_selection_phase": null,
+       "class_id": "tank",
+       "has_ability_selected": null,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "p_eff939c88e94c15b",
+       "role": null,
+       "score": 5,
+       "total_xp": 33
+      }
+     ],
+     "playtest": {
+      "is_bot_match": true,
+      "is_placeholder": false,
+      "question_bank_mode": "production",
+      "session_preset": "admin.reconstruct"
+     },
+     "presence": {
+      "opponent_connection_state": "connected",
+      "own_reconnect_grace_deadline": null,
+      "participant_status": "connected",
+      "reconnect_grace_deadline": null
+     },
+     "question": null,
+     "ruleset": null,
+     "scoring": {
+      "match_length": 3,
+      "model": "points",
+      "module_number": 3,
+      "modules_completed": 3
+     },
+     "segment": null,
+     "segment_state": null,
+     "winner_id": "p_eff939c88e94c15b"
+    },
+    "projection_type": "public_round",
+    "round_number": null,
+    "schema_version": "ranked_duel.public_round.v2",
+    "server_time": "2026-09-09T12:01:35+00:00"
+   },
+   "result": {
+    "match_id": "rkb_9348430af5dc7adbac9c373b",
+    "payload": {
+     "completion_reason": "segments_complete",
+     "final_round_number": 3,
+     "match_id": "rkb_9348430af5dc7adbac9c373b",
+     "outcome": "decisive",
+     "rating_application_status": "skipped",
+     "rating_policy_version": "elo.v1",
+     "rating_skip_reason": "format_not_rated",
+     "scoring": {
+      "final_scores": {
+       "0a11d111-0000-4000-8000-000000000001": 3,
+       "p_eff939c88e94c15b": 5
+      },
+      "match_length": 3,
+      "model": "points",
+      "modules_played": 3
+     },
+     "terminal_reason": "combat",
+     "winner_user_id": "p_eff939c88e94c15b"
+    },
+    "projection_type": "match_result",
+    "round_number": 3,
+    "schema_version": "ranked_duel.match_result.v1",
+    "server_time": "2026-09-09T12:01:35+00:00"
+   }
+  },
+  "projection_type": "resume",
+  "round_number": null,
+  "schema_version": "ranked_duel.resume.v1",
+  "server_time": "2026-09-09T12:01:35+00:00"
+ },
+ "resume_locked": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "latest_resolved_round": null,
+   "match_over": false,
+   "match_status": "active",
+   "presence": {
+    "opponent_connection_state": "connected",
+    "own_reconnect_grace_deadline": null,
+    "participant_status": "connected",
+    "reconnect_grace_deadline": null
+   },
+   "private": {
+    "match_id": "rkb_9348430af5dc7adbac9c373b",
+    "payload": {
+     "active_round": {
+      "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+      "duration_seconds": 30.0,
+      "pressure_applied": false,
+      "ready_to_resolve": false,
+      "round_number": 1,
+      "started_at": "2026-09-09T12:00:04.400000+00:00"
+     },
+     "completed_rounds": 0,
+     "completion_reason": null,
+     "match_id": "rkb_9348430af5dc7adbac9c373b",
+     "match_over": false,
+     "match_status": "active",
+     "next_round_duration_seconds": 30.0,
+     "own_abilities": {
+      "locked_ability_ids": [
+       "tank.brace",
+       "tank.barrier"
+      ],
+      "remaining_charges": {
+       "tank.fortify": 3
+      },
+      "unlocked_ability_ids": [
+       "tank.fortify"
+      ]
+     },
+     "own_carryover": {
+      "consecutive_correct": 0,
+      "pending_arcane_charge": false,
+      "pending_focus": false,
+      "pending_fortify": false,
+      "pending_insight": false,
+      "pending_tempo": false
+     },
+     "own_combat_lab_unlock_delta_seconds": 0.0,
+     "own_selection": {
+      "phase": "open",
+      "selected_ability_id": null
+     },
+     "owner_player_id": "0a11d111-0000-4000-8000-000000000001",
+     "players": [
+      {
+       "ability_selection_phase": "open",
+       "class_id": "tank",
+       "has_ability_selected": false,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "0a11d111-0000-4000-8000-000000000001",
+       "role": null,
+       "score": 0,
+       "total_xp": 0
+      },
+      {
+       "ability_selection_phase": "open",
+       "class_id": "tank",
+       "has_ability_selected": false,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "p_eff939c88e94c15b",
+       "role": null,
+       "score": 0,
+       "total_xp": 0
+      }
+     ],
+     "presence": {
+      "opponent_connection_state": "connected",
+      "own_reconnect_grace_deadline": null,
+      "participant_status": "connected",
+      "reconnect_grace_deadline": null
+     },
+     "question": {
+      "category": null,
+      "options": [],
+      "prompt": "",
+      "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+      "topic": {
+       "category": "general",
+       "icon_hint": {
+        "icon": null,
+        "key": null,
+        "kind": "generic"
+       },
+       "motif": null,
+       "roles": [],
+       "tier": null
+      }
+     },
+     "ruleset": null,
+     "segment": {
+      "ability_deadline": null,
+      "active_time_ms": null,
+      "active_time_remaining_ms": null,
+      "active_time_running": null,
+      "card_deadline": null,
+      "card_started_at": null,
+      "card_timer_ms": null,
+      "challenge_count": 1,
+      "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+      "challenge_index": 1,
+      "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+      "module_id": "reconstruct",
+      "module_version": 1,
+      "phase": "challenges",
+      "pressure_applied": false,
+      "resolved": false,
+      "segment_number": 1,
+      "timed_out_challenges": null,
+      "topic": {
+       "category": "general",
+       "icon_hint": {
+        "icon": null,
+        "key": null,
+        "kind": "generic"
+       },
+       "motif": null,
+       "roles": [],
+       "tier": null
+      }
+     },
+     "segment_state": {
+      "ability_deadline": null,
+      "active": true,
+      "active_time_ms": null,
+      "active_time_remaining_ms": null,
+      "active_time_running": null,
+      "card_timer_ms": null,
+      "challenge_count": 1,
+      "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+      "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+      "challenges": {
+       "challenges": [
+        {
+         "challenge_index": 0,
+         "max_uses": 3,
+         "pieces": [
+          {
+           "label": "Steel Sigil",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/2019.png"
+           },
+           "piece_id": "p0"
+          },
+          {
+           "label": "Ruby Crystal",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1028.png"
+           },
+           "piece_id": "p1"
+          },
+          {
+           "label": "Caulfield's Warhammer",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3133.png"
+           },
+           "piece_id": "p2"
+          },
+          {
+           "label": "Giant's Belt",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1011.png"
+           },
+           "piece_id": "p3"
+          },
+          {
+           "label": "Sheen",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3057.png"
+           },
+           "piece_id": "p4"
+          },
+          {
+           "label": "Cloak of Agility",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1018.png"
+           },
+           "piece_id": "p5"
+          }
+         ],
+         "slot_count": 3,
+         "target": {
+          "label": "Essence Reaver",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3508.png"
+          }
+         }
+        }
+       ],
+       "family": "item_recipe",
+       "prompt": "Rebuild the recipe",
+       "reveal_window_ms": 3000
+      },
+      "module_id": "reconstruct",
+      "module_version": 1,
+      "opponent_ability_confirmed": false,
+      "opponent_challenges_completed": 0,
+      "opponent_finished": false,
+      "own_ability": {
+       "available_ability_ids": [
+        "tank.fortify"
+       ],
+       "confirmed": false,
+       "selected_ability_id": null,
+       "unavailable_ability_ids": {}
+      },
+      "own_card_deadline": null,
+      "own_card_index": null,
+      "own_card_reveals": [],
+      "own_card_started_at": null,
+      "own_challenge_reveals": [
+       {
+        "canonical_parts": [
+         {
+          "label": "Caulfield's Warhammer",
+          "piece_id": "p2",
+          "quantity": 1,
+          "sub_parts": [
+           {
+            "label": "Glowing Mote",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/2022.png"
+            },
+            "quantity": 1
+           },
+           {
+            "label": "Long Sword",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/1036.png"
+            },
+            "quantity": 2
+           }
+          ],
+          "value_display": "1050 g"
+         },
+         {
+          "label": "Cloak of Agility",
+          "piece_id": "p5",
+          "quantity": 1,
+          "sub_parts": [],
+          "value_display": "600 g"
+         },
+         {
+          "label": "Sheen",
+          "piece_id": "p4",
+          "quantity": 1,
+          "sub_parts": [
+           {
+            "label": "Glowing Mote",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/2022.png"
+            },
+            "quantity": 1
+           }
+          ],
+          "value_display": "900 g"
+         }
+        ],
+        "challenge_index": 0,
+        "is_correct": false,
+        "pieces": [
+         {
+          "label": "Steel Sigil",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2019.png"
+          },
+          "piece_id": "p0"
+         },
+         {
+          "label": "Ruby Crystal",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1028.png"
+          },
+          "piece_id": "p1"
+         },
+         {
+          "label": "Caulfield's Warhammer",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3133.png"
+          },
+          "piece_id": "p2"
+         },
+         {
+          "label": "Giant's Belt",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1011.png"
+          },
+          "piece_id": "p3"
+         },
+         {
+          "label": "Sheen",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3057.png"
+          },
+          "piece_id": "p4"
+         },
+         {
+          "label": "Cloak of Agility",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1018.png"
+          },
+          "piece_id": "p5"
+         }
+        ],
+        "placement": [
+         "p0",
+         "p5",
+         "p4"
+        ],
+        "settled_placement": [
+         "p2",
+         "p5",
+         "p4"
+        ],
+        "slot_correct": [
+         false,
+         true,
+         true
+        ],
+        "target": {
+         "combine_display": "500 g",
+         "label": "Essence Reaver",
+         "total_display": "3050 g"
+        }
+       }
+      ],
+      "own_challenges_completed": 1,
+      "own_finished": true,
+      "own_next_challenge_index": 1,
+      "own_reveal_until": null,
+      "own_revealing_card_index": null,
+      "own_submitted_choices": [
+       {
+        "placement": [
+         "p0",
+         "p5",
+         "p4"
+        ]
+       }
+      ],
+      "own_timed_out_challenges": null,
+      "phase": "challenges",
+      "pressure_applied": false,
+      "reveal_window_ms": 3000,
+      "segment_number": 1
+     },
+     "winner_id": null
+    },
+    "projection_type": "private_player",
+    "round_number": 1,
+    "schema_version": "ranked_duel.private_player.v2",
+    "server_time": "2026-09-09T12:00:08+00:00"
+   },
+   "public": {
+    "match_id": "rkb_9348430af5dc7adbac9c373b",
+    "payload": {
+     "active_round": {
+      "active_deadline": "2026-09-09T12:00:34.400000+00:00",
+      "duration_seconds": 30.0,
+      "pressure_applied": false,
+      "ready_to_resolve": false,
+      "round_number": 1,
+      "started_at": "2026-09-09T12:00:04.400000+00:00"
+     },
+     "completed_rounds": 0,
+     "completion_reason": null,
+     "host": "playtest",
+     "match_id": "rkb_9348430af5dc7adbac9c373b",
+     "match_over": false,
+     "match_status": "active",
+     "next_round_duration_seconds": 30.0,
+     "players": [
+      {
+       "ability_selection_phase": "open",
+       "class_id": "tank",
+       "has_ability_selected": false,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "0a11d111-0000-4000-8000-000000000001",
+       "role": null,
+       "score": 0,
+       "total_xp": 0
+      },
+      {
+       "ability_selection_phase": "open",
+       "class_id": "tank",
+       "has_ability_selected": false,
+       "has_submitted": false,
+       "hp": 170,
+       "level": 1,
+       "max_hp": 170,
+       "player_id": "p_eff939c88e94c15b",
+       "role": null,
+       "score": 0,
+       "total_xp": 0
+      }
+     ],
+     "playtest": {
+      "is_bot_match": true,
+      "is_placeholder": false,
+      "question_bank_mode": "production",
+      "session_preset": "admin.reconstruct"
+     },
+     "presence": {
+      "opponent_connection_state": "connected",
+      "own_reconnect_grace_deadline": null,
+      "participant_status": "connected",
+      "reconnect_grace_deadline": null
+     },
+     "question": {
+      "category": null,
+      "options": [],
+      "prompt": "",
+      "question_id": "reconstruct:rkb_9348430af5dc7adbac9c373b:1",
+      "topic": {
+       "category": "general",
+       "icon_hint": {
+        "icon": null,
+        "key": null,
+        "kind": "generic"
+       },
+       "motif": null,
+       "roles": [],
+       "tier": null
+      }
+     },
+     "ruleset": null,
+     "scoring": {
+      "match_length": 3,
+      "model": "points",
+      "module_number": 1,
+      "modules_completed": 0
+     },
+     "segment": {
+      "ability_deadline": null,
+      "active_time_ms": null,
+      "active_time_remaining_ms": null,
+      "active_time_running": null,
+      "card_deadline": null,
+      "card_started_at": null,
+      "card_timer_ms": null,
+      "challenge_count": 1,
+      "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+      "challenge_index": 1,
+      "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+      "module_id": "reconstruct",
+      "module_version": 1,
+      "phase": "challenges",
+      "pressure_applied": false,
+      "resolved": false,
+      "segment_number": 1,
+      "timed_out_challenges": null,
+      "topic": {
+       "category": "general",
+       "icon_hint": {
+        "icon": null,
+        "key": null,
+        "kind": "generic"
+       },
+       "motif": null,
+       "roles": [],
+       "tier": null
+      }
+     },
+     "segment_state": {
+      "ability_deadline": null,
+      "active": true,
+      "active_time_ms": null,
+      "active_time_remaining_ms": null,
+      "active_time_running": null,
+      "card_timer_ms": null,
+      "challenge_count": 1,
+      "challenge_deadline": "2026-09-09T12:00:34.400000+00:00",
+      "challenge_started_at": "2026-09-09T12:00:04.400000+00:00",
+      "challenges": {
+       "challenges": [
+        {
+         "challenge_index": 0,
+         "max_uses": 3,
+         "pieces": [
+          {
+           "label": "Steel Sigil",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/2019.png"
+           },
+           "piece_id": "p0"
+          },
+          {
+           "label": "Ruby Crystal",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1028.png"
+           },
+           "piece_id": "p1"
+          },
+          {
+           "label": "Caulfield's Warhammer",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3133.png"
+           },
+           "piece_id": "p2"
+          },
+          {
+           "label": "Giant's Belt",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1011.png"
+           },
+           "piece_id": "p3"
+          },
+          {
+           "label": "Sheen",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3057.png"
+           },
+           "piece_id": "p4"
+          },
+          {
+           "label": "Cloak of Agility",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1018.png"
+           },
+           "piece_id": "p5"
+          }
+         ],
+         "slot_count": 3,
+         "target": {
+          "label": "Essence Reaver",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3508.png"
+          }
+         }
+        }
+       ],
+       "family": "item_recipe",
+       "prompt": "Rebuild the recipe",
+       "reveal_window_ms": 3000
+      },
+      "module_id": "reconstruct",
+      "module_version": 1,
+      "opponent_ability_confirmed": false,
+      "opponent_challenges_completed": 0,
+      "opponent_finished": false,
+      "own_ability": {
+       "available_ability_ids": [
+        "tank.fortify"
+       ],
+       "confirmed": false,
+       "selected_ability_id": null,
+       "unavailable_ability_ids": {}
+      },
+      "own_card_deadline": null,
+      "own_card_index": null,
+      "own_card_reveals": [],
+      "own_card_started_at": null,
+      "own_challenge_reveals": [
+       {
+        "canonical_parts": [
+         {
+          "label": "Caulfield's Warhammer",
+          "piece_id": "p2",
+          "quantity": 1,
+          "sub_parts": [
+           {
+            "label": "Glowing Mote",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/2022.png"
+            },
+            "quantity": 1
+           },
+           {
+            "label": "Long Sword",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/1036.png"
+            },
+            "quantity": 2
+           }
+          ],
+          "value_display": "1050 g"
+         },
+         {
+          "label": "Cloak of Agility",
+          "piece_id": "p5",
+          "quantity": 1,
+          "sub_parts": [],
+          "value_display": "600 g"
+         },
+         {
+          "label": "Sheen",
+          "piece_id": "p4",
+          "quantity": 1,
+          "sub_parts": [
+           {
+            "label": "Glowing Mote",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/2022.png"
+            },
+            "quantity": 1
+           }
+          ],
+          "value_display": "900 g"
+         }
+        ],
+        "challenge_index": 0,
+        "is_correct": false,
+        "pieces": [
+         {
+          "label": "Steel Sigil",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2019.png"
+          },
+          "piece_id": "p0"
+         },
+         {
+          "label": "Ruby Crystal",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1028.png"
+          },
+          "piece_id": "p1"
+         },
+         {
+          "label": "Caulfield's Warhammer",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3133.png"
+          },
+          "piece_id": "p2"
+         },
+         {
+          "label": "Giant's Belt",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1011.png"
+          },
+          "piece_id": "p3"
+         },
+         {
+          "label": "Sheen",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3057.png"
+          },
+          "piece_id": "p4"
+         },
+         {
+          "label": "Cloak of Agility",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1018.png"
+          },
+          "piece_id": "p5"
+         }
+        ],
+        "placement": [
+         "p0",
+         "p5",
+         "p4"
+        ],
+        "settled_placement": [
+         "p2",
+         "p5",
+         "p4"
+        ],
+        "slot_correct": [
+         false,
+         true,
+         true
+        ],
+        "target": {
+         "combine_display": "500 g",
+         "label": "Essence Reaver",
+         "total_display": "3050 g"
+        }
+       }
+      ],
+      "own_challenges_completed": 1,
+      "own_finished": true,
+      "own_next_challenge_index": 1,
+      "own_reveal_until": null,
+      "own_revealing_card_index": null,
+      "own_submitted_choices": [
+       {
+        "placement": [
+         "p0",
+         "p5",
+         "p4"
+        ]
+       }
+      ],
+      "own_timed_out_challenges": null,
+      "phase": "challenges",
+      "pressure_applied": false,
+      "reveal_window_ms": 3000,
+      "segment_number": 1
+     },
+     "winner_id": null
+    },
+    "projection_type": "public_round",
+    "round_number": 1,
+    "schema_version": "ranked_duel.public_round.v2",
+    "server_time": "2026-09-09T12:00:08+00:00"
+   },
+   "result": null
+  },
+  "projection_type": "resume",
+  "round_number": 1,
+  "schema_version": "ranked_duel.resume.v1",
+  "server_time": "2026-09-09T12:00:08+00:00"
+ },
+ "review": {
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "payload": {
+   "final_round_number": 3,
+   "match_id": "rkb_9348430af5dc7adbac9c373b",
+   "round_count": 3,
+   "rounds": [
+    {
+     "canonical_parts": [
+      {
+       "label": "Caulfield's Warhammer",
+       "piece_id": "p2",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1
+        },
+        {
+         "label": "Long Sword",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1036.png"
+         },
+         "quantity": 2
+        }
+       ],
+       "value_display": "1050 g"
+      },
+      {
+       "label": "Cloak of Agility",
+       "piece_id": "p5",
+       "quantity": 1,
+       "sub_parts": [],
+       "value_display": "600 g"
+      },
+      {
+       "label": "Sheen",
+       "piece_id": "p4",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1
+        }
+       ],
+       "value_display": "900 g"
+      }
+     ],
+     "canonical_question_ref": null,
+     "category": null,
+     "family": "item_recipe",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "is_correct": false,
+     "kind": "reconstruct",
+     "module_id": "reconstruct",
+     "outcome": "incorrect",
+     "pieces": [
+      {
+       "label": "Steel Sigil",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2019.png"
+       },
+       "piece_id": "p0"
+      },
+      {
+       "label": "Ruby Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1028.png"
+       },
+       "piece_id": "p1"
+      },
+      {
+       "label": "Caulfield's Warhammer",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3133.png"
+       },
+       "piece_id": "p2"
+      },
+      {
+       "label": "Giant's Belt",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1011.png"
+       },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Sheen",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3057.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Cloak of Agility",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1018.png"
+       },
+       "piece_id": "p5"
+      }
+     ],
+     "prompt": "Rebuild the recipe",
+     "question": null,
+     "recipe_target": {
+      "combine_display": "500 g",
+      "label": "Essence Reaver",
+      "total_display": "3050 g"
+     },
+     "revealed": true,
+     "round_number": 1,
+     "settled_placement": [
+      "p2",
+      "p5",
+      "p4"
+     ],
+     "slot_correct": [
+      false,
+      true,
+      true
+     ],
+     "slot_count": 3,
+     "target": {
+      "label": "Essence Reaver",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3508.png"
+      }
+     },
+     "topic": {
+      "category": "general",
+      "icon_hint": {
+       "icon": null,
+       "key": null,
+       "kind": "generic"
+      },
+      "motif": null,
+      "roles": [],
+      "tier": null
+     },
+     "viewer_placement": [
+      "p0",
+      "p5",
+      "p4"
+     ],
+     "viewer_submission": {
+      "answer_index": null,
+      "answered_count": 1,
+      "challenge_count": 1,
+      "correct_count": 0,
+      "is_correct": false
+     }
+    },
+    {
+     "canonical_parts": [
+      {
+       "label": "Caulfield's Warhammer",
+       "piece_id": "p4",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1
+        },
+        {
+         "label": "Long Sword",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1036.png"
+         },
+         "quantity": 2
+        }
+       ],
+       "value_display": "1050 g"
+      },
+      {
+       "label": "Tunneler",
+       "piece_id": "p2",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Long Sword",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1036.png"
+         },
+         "quantity": 1
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "quantity": 1
+        }
+       ],
+       "value_display": "1150 g"
+      }
+     ],
+     "canonical_question_ref": null,
+     "category": null,
+     "family": "item_recipe",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "is_correct": true,
+     "kind": "reconstruct",
+     "module_id": "reconstruct",
+     "outcome": "correct",
+     "pieces": [
+      {
+       "label": "Warden's Mail",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3082.png"
+       },
+       "piece_id": "p0"
+      },
+      {
+       "label": "Hearthbound Axe",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3051.png"
+       },
+       "piece_id": "p1"
+      },
+      {
+       "label": "Tunneler",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2021.png"
+       },
+       "piece_id": "p2"
+      },
+      {
+       "label": "Serrated Dirk",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3134.png"
+       },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Caulfield's Warhammer",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3133.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Steel Sigil",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2019.png"
+       },
+       "piece_id": "p5"
+      }
+     ],
+     "prompt": "Rebuild the recipe",
+     "question": null,
+     "recipe_target": {
+      "combine_display": "900 g",
+      "label": "Sundered Sky",
+      "total_display": "3100 g"
+     },
+     "revealed": true,
+     "round_number": 2,
+     "settled_placement": [
+      "p2",
+      "p4"
+     ],
+     "slot_correct": [
+      true,
+      true
+     ],
+     "slot_count": 2,
+     "target": {
+      "label": "Sundered Sky",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/6610.png"
+      }
+     },
+     "topic": {
+      "category": "general",
+      "icon_hint": {
+       "icon": null,
+       "key": null,
+       "kind": "generic"
+      },
+      "motif": null,
+      "roles": [],
+      "tier": null
+     },
+     "viewer_placement": [
+      "p2",
+      "p4"
+     ],
+     "viewer_submission": {
+      "answer_index": null,
+      "answered_count": 1,
+      "challenge_count": 1,
+      "correct_count": 1,
+      "is_correct": true
+     }
+    },
+    {
+     "canonical_parts": [
+      {
+       "label": "Bandleglass Mirror",
+       "piece_id": "p0",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Amplifying Tome",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1052.png"
+         },
+         "quantity": 1
+        },
+        {
+         "label": "Faerie Charm",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1004.png"
+         },
+         "quantity": 1
+        },
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1
+        }
+       ],
+       "value_display": "900 g"
+      },
+      {
+       "label": "Kindlegem",
+       "piece_id": "p1",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "quantity": 1
+        }
+       ],
+       "value_display": "800 g"
+      }
+     ],
+     "canonical_question_ref": null,
+     "category": null,
+     "family": "item_recipe",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "is_correct": null,
+     "kind": "reconstruct",
+     "module_id": "reconstruct",
+     "outcome": "timeout",
+     "pieces": [
+      {
+       "label": "Bandleglass Mirror",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/4642.png"
+       },
+       "piece_id": "p0"
+      },
+      {
+       "label": "Kindlegem",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3067.png"
+       },
+       "piece_id": "p1"
+      },
+      {
+       "label": "Vampiric Scepter",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1053.png"
+       },
+       "piece_id": "p2"
+      },
+      {
+       "label": "Chain Vest",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1031.png"
+       },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Winged Moonplate",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3066.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Giant's Belt",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1011.png"
+       },
+       "piece_id": "p5"
+      }
+     ],
+     "prompt": "Rebuild the recipe",
+     "question": null,
+     "recipe_target": {
+      "combine_display": "500 g",
+      "label": "Moonstone Renewer",
+      "total_display": "2200 g"
+     },
+     "revealed": true,
+     "round_number": 3,
+     "settled_placement": [],
+     "slot_correct": [],
+     "slot_count": 2,
+     "target": {
+      "label": "Moonstone Renewer",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/6617.png"
+      }
+     },
+     "topic": {
+      "category": "general",
+      "icon_hint": {
+       "icon": null,
+       "key": null,
+       "kind": "generic"
+      },
+      "motif": null,
+      "roles": [],
+      "tier": null
+     },
+     "viewer_placement": null,
+     "viewer_submission": {
+      "answer_index": null,
+      "answered_count": 0,
+      "challenge_count": 1,
+      "correct_count": 0,
+      "is_correct": null
+     }
+    }
+   ]
+  },
+  "projection_type": "match_review",
+  "round_number": null,
+  "schema_version": "ranked_duel.match_review.v1",
+  "server_time": "2026-09-09T12:01:35+00:00"
+ },
+ "submit_accepted": {
+  "challenge_index": 0,
+  "challenge_reveal": {
+   "canonical_parts": [
+    {
+     "label": "Caulfield's Warhammer",
+     "piece_id": "p2",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1
+      },
+      {
+       "label": "Long Sword",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1036.png"
+       },
+       "quantity": 2
+      }
+     ],
+     "value_display": "1050 g"
+    },
+    {
+     "label": "Cloak of Agility",
+     "piece_id": "p5",
+     "quantity": 1,
+     "sub_parts": [],
+     "value_display": "600 g"
+    },
+    {
+     "label": "Sheen",
+     "piece_id": "p4",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1
+      }
+     ],
+     "value_display": "900 g"
+    }
+   ],
+   "challenge_index": 0,
+   "is_correct": false,
+   "pieces": [
+    {
+     "label": "Steel Sigil",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/2019.png"
+     },
+     "piece_id": "p0"
+    },
+    {
+     "label": "Ruby Crystal",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1028.png"
+     },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Caulfield's Warhammer",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3133.png"
+     },
+     "piece_id": "p2"
+    },
+    {
+     "label": "Giant's Belt",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1011.png"
+     },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Sheen",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3057.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Cloak of Agility",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1018.png"
+     },
+     "piece_id": "p5"
+    }
+   ],
+   "placement": [
+    "p0",
+    "p5",
+    "p4"
+   ],
+   "settled_placement": [
+    "p2",
+    "p5",
+    "p4"
+   ],
+   "slot_correct": [
+    false,
+    true,
+    true
+   ],
+   "target": {
+    "combine_display": "500 g",
+    "label": "Essence Reaver",
+    "total_display": "3050 g"
+   }
+  },
+  "conflicting": false,
+  "idempotent": false,
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "next_challenge_index": 1,
+  "reveal_window_ms": 3000,
+  "segment_number": 1,
+  "segment_resolved": false,
+  "status": "accepted"
+ },
+ "submit_accepted_bot_settled": {
+  "challenge_index": 0,
+  "challenge_reveal": {
+   "canonical_parts": [
+    {
+     "label": "Caulfield's Warhammer",
+     "piece_id": "p4",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1
+      },
+      {
+       "label": "Long Sword",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1036.png"
+       },
+       "quantity": 2
+      }
+     ],
+     "value_display": "1050 g"
+    },
+    {
+     "label": "Tunneler",
+     "piece_id": "p2",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Long Sword",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1036.png"
+       },
+       "quantity": 1
+      },
+      {
+       "label": "Ruby Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1028.png"
+       },
+       "quantity": 1
+      }
+     ],
+     "value_display": "1150 g"
+    }
+   ],
+   "challenge_index": 0,
+   "is_correct": true,
+   "pieces": [
+    {
+     "label": "Warden's Mail",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3082.png"
+     },
+     "piece_id": "p0"
+    },
+    {
+     "label": "Hearthbound Axe",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3051.png"
+     },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Tunneler",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/2021.png"
+     },
+     "piece_id": "p2"
+    },
+    {
+     "label": "Serrated Dirk",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3134.png"
+     },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Caulfield's Warhammer",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3133.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Steel Sigil",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/2019.png"
+     },
+     "piece_id": "p5"
+    }
+   ],
+   "placement": [
+    "p2",
+    "p4"
+   ],
+   "settled_placement": [
+    "p2",
+    "p4"
+   ],
+   "slot_correct": [
+    true,
+    true
+   ],
+   "target": {
+    "combine_display": "900 g",
+    "label": "Sundered Sky",
+    "total_display": "3100 g"
+   }
+  },
+  "conflicting": false,
+  "idempotent": false,
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "next_challenge_index": 1,
+  "reveal_window_ms": 3000,
+  "segment_number": 2,
+  "segment_resolved": true,
+  "status": "accepted"
+ },
+ "submit_conflict": {
+  "challenge_index": 0,
+  "challenge_reveal": {
+   "canonical_parts": [
+    {
+     "label": "Caulfield's Warhammer",
+     "piece_id": "p2",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1
+      },
+      {
+       "label": "Long Sword",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1036.png"
+       },
+       "quantity": 2
+      }
+     ],
+     "value_display": "1050 g"
+    },
+    {
+     "label": "Cloak of Agility",
+     "piece_id": "p5",
+     "quantity": 1,
+     "sub_parts": [],
+     "value_display": "600 g"
+    },
+    {
+     "label": "Sheen",
+     "piece_id": "p4",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1
+      }
+     ],
+     "value_display": "900 g"
+    }
+   ],
+   "challenge_index": 0,
+   "is_correct": false,
+   "pieces": [
+    {
+     "label": "Steel Sigil",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/2019.png"
+     },
+     "piece_id": "p0"
+    },
+    {
+     "label": "Ruby Crystal",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1028.png"
+     },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Caulfield's Warhammer",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3133.png"
+     },
+     "piece_id": "p2"
+    },
+    {
+     "label": "Giant's Belt",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1011.png"
+     },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Sheen",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3057.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Cloak of Agility",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1018.png"
+     },
+     "piece_id": "p5"
+    }
+   ],
+   "placement": [
+    "p0",
+    "p5",
+    "p4"
+   ],
+   "settled_placement": [
+    "p2",
+    "p5",
+    "p4"
+   ],
+   "slot_correct": [
+    false,
+    true,
+    true
+   ],
+   "target": {
+    "combine_display": "500 g",
+    "label": "Essence Reaver",
+    "total_display": "3050 g"
+   }
+  },
+  "conflicting": true,
+  "idempotent": true,
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "next_challenge_index": 1,
+  "reveal_window_ms": 3000,
+  "segment_number": 1,
+  "segment_resolved": false,
+  "status": "accepted"
+ },
+ "submit_request_bytes": "{\"placement\":[\"p0\",\"p5\",\"p4\"]}",
+ "submit_retry": {
+  "challenge_index": 0,
+  "challenge_reveal": {
+   "canonical_parts": [
+    {
+     "label": "Caulfield's Warhammer",
+     "piece_id": "p2",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1
+      },
+      {
+       "label": "Long Sword",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1036.png"
+       },
+       "quantity": 2
+      }
+     ],
+     "value_display": "1050 g"
+    },
+    {
+     "label": "Cloak of Agility",
+     "piece_id": "p5",
+     "quantity": 1,
+     "sub_parts": [],
+     "value_display": "600 g"
+    },
+    {
+     "label": "Sheen",
+     "piece_id": "p4",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1
+      }
+     ],
+     "value_display": "900 g"
+    }
+   ],
+   "challenge_index": 0,
+   "is_correct": false,
+   "pieces": [
+    {
+     "label": "Steel Sigil",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/2019.png"
+     },
+     "piece_id": "p0"
+    },
+    {
+     "label": "Ruby Crystal",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1028.png"
+     },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Caulfield's Warhammer",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3133.png"
+     },
+     "piece_id": "p2"
+    },
+    {
+     "label": "Giant's Belt",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1011.png"
+     },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Sheen",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3057.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Cloak of Agility",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1018.png"
+     },
+     "piece_id": "p5"
+    }
+   ],
+   "placement": [
+    "p0",
+    "p5",
+    "p4"
+   ],
+   "settled_placement": [
+    "p2",
+    "p5",
+    "p4"
+   ],
+   "slot_correct": [
+    false,
+    true,
+    true
+   ],
+   "target": {
+    "combine_display": "500 g",
+    "label": "Essence Reaver",
+    "total_display": "3050 g"
+   }
+  },
+  "conflicting": false,
+  "idempotent": true,
+  "match_id": "rkb_9348430af5dc7adbac9c373b",
+  "next_challenge_index": 1,
+  "reveal_window_ms": 3000,
+  "segment_number": 1,
+  "segment_resolved": false,
+  "status": "accepted"
+ }
+}

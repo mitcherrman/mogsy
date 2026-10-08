@@ -374,6 +374,13 @@ describe("7 · Ranked Admin home renders", () => {
     expect(screen.getByTestId("reference-journey-launch-button")).toBeTruthy();
   });
 
+  it("offers Play Reconstruct in Ranked > Playtests, in its own panel", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const panel = await screen.findByTestId("ranked-reconstruct");
+    expect(within(panel).getByTestId("reconstruct-launch-button").textContent).toBe("Play Reconstruct");
+    expect(panel.textContent).toMatch(/unrated/i);
+  });
+
   it("offers the Journey launches in Ranked > Playtests, extended one last", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
     const panel = await screen.findByTestId("ranked-reference-journeys");

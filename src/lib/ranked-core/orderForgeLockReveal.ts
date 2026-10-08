@@ -13,8 +13,23 @@
 // returns the same state object, or a shallow copy with one more entry.
 // ---------------------------------------------------------------------------
 
-import { ORDER_FORGE_MODULE_ID, type MasteryChallengeReveal, type SegmentStateView }
-  from "@/lib/ranked-public/contracts";
+import {
+  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, type MasteryChallengeReveal, type SegmentStateView,
+} from "@/lib/ranked-public/contracts";
+
+/**
+ * GM1-R1 — the single-challenge structured modules whose lock settles against a
+ * bot in the same transaction, so their reveal arrives inline. Reconstruct
+ * shares Order Forge's lifecycle exactly; each reveal must carry its OWN
+ * module's block, so one module's reveal can never attach to the other.
+ */
+export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
+  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID]);
+
+function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
+  return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge
+    : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct : false;
+}
 
 export interface OrderForgeLockRevealRef {
   matchId: string;
@@ -24,7 +39,8 @@ export interface OrderForgeLockRevealRef {
 
 /**
  * `state` with the lock's inline reveal attached, when and only when:
- *   * it is an Order Forge segment state,
+ *   * it is an Order Forge or Reconstruct segment state, and the reveal
+ *     carries that same module's block,
  *   * the reveal belongs to THIS match and THIS segment number, and
  *   * the snapshot does not already carry its own reveal for that challenge
  *     (a polled snapshot that has one is the authority; it is never doubled).
@@ -36,7 +52,8 @@ export function withInlineOrderForgeReveal(
   matchId: string | null,
 ): SegmentStateView | null {
   if (!state || !lock || !matchId) return state;
-  if (state.moduleId !== ORDER_FORGE_MODULE_ID || !lock.reveal.orderForge) return state;
+  if (!INLINE_LOCK_REVEAL_MODULES.has(state.moduleId)
+    || !carriesOwnBlock(state.moduleId, lock.reveal)) return state;
   if (lock.matchId !== matchId || lock.segmentNumber !== state.segmentNumber) return state;
   const index = lock.reveal.challengeIndex;
   if (state.ownChallengeReveals.some((r) => r.challengeIndex === index)) return state;
