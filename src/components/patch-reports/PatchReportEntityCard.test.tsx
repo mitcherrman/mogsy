@@ -151,13 +151,13 @@ describe("PatchReportEntityCard", () => {
   it("keeps Mogzy evidence behind a compact disclosure while its status stays visible", () => {
     render(<PatchReportEntityCard entity={node(jayceCard)} />);
     // Quiet entity-level status is visible (not a loud header badge).
-    expect(screen.getAllByText(/Mogzy: Mismatch/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Mogzy data update flagged/).length).toBeGreaterThan(0);
     const evidence = screen.getAllByTestId("patch-report-evidence");
     expect(evidence).toHaveLength(3);
     expect(evidence.every((d) => !(d as HTMLDetailsElement).open)).toBe(true);
     // Honest details live inside the disclosure.
-    expect(screen.getByText("value not available in Mogzy")).toBeInTheDocument();
-    expect(screen.getByText("review: pending")).toBeInTheDocument();
+    expect(screen.getAllByText("none recorded").length).toBeGreaterThan(0);
+    expect(screen.getByText(/^pending/)).toBeInTheDocument();
     expect(screen.getAllByText("5 / 15 / 25 / 35").length).toBeGreaterThan(1);
   });
 
@@ -183,7 +183,7 @@ describe("PatchReportEntityCard", () => {
     };
     render(<PatchReportEntityCard entity={node(card)} />);
     // Header still states the truth once; only the two non-redundant rows disclose.
-    expect(screen.getAllByText(/Mogzy: Needs interpretation/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Not auto-checked by Mogzy/).length).toBeGreaterThan(0);
     expect(screen.getAllByTestId("patch-report-evidence")).toHaveLength(2);
   });
 
