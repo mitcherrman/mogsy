@@ -109,9 +109,9 @@ export function DailyRunPage({
   const run = dc.run;
   const flow = dc.flow;
   const guard = useTransactionalLeaveGuard({
-    active: shouldGuardDailyLeave(run, flow),
+    active: shouldGuardDailyLeave(run, flow, dc.optionalLaunchPending),
     kind: "daily_run",
-    copy: dailyLeaveCopy(run, flow),
+    copy: dailyLeaveCopy(run, flow, dc.optionalLaunchPending),
     shouldBlock: shouldBlockDailyNavigation,
   });
   // DV2-P2A — "Done for now": leave for the hub. Presentation only; the run

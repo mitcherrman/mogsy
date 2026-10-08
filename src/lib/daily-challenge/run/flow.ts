@@ -178,3 +178,30 @@ export function arrivesAtOptionalEntry(run: DailyRun): boolean {
   return isMainDailyComplete(run) && run.status === "active" && stage !== null
     && (stage.status === "pending" || stage.status === "launching") && stage.childMatchId === null;
 }
+
+/**
+ * DV2-P2A.1 — the optional stage a player can COMMIT to launching right now:
+ * a v5 day whose MAIN Daily is complete and still open, whose current stage
+ * has no child bound yet. Null otherwise (every v1–v4 run, a pre-main v5 run,
+ * a finished run, a stage that already has a child).
+ */
+export function optionalLaunchTarget(run: DailyRun): string | null {
+  const stage = currentStage(run);
+  return isMainDailyComplete(run) && run.status === "active" && stage !== null
+    && (stage.status === "pending" || stage.status === "launching") && stage.childMatchId === null
+    ? stage.id : null;
+}
+
+/**
+ * DV2-P2A.1 — is an optional launch the player committed to still IN FLIGHT?
+ *
+ * `committedStageId` is the controller's mount-local latch: set by the action
+ * that commits to the stage (leaving `optional-entry`, Continue on a result,
+ * Try again), never by a page load. In flight = that stage is still current
+ * and still has no child: the launch request may yet create or bind one. Once
+ * a child is bound this is false and the live-child guard takes over; it is
+ * never a claim that a child exists.
+ */
+export function optionalLaunchInFlight(run: DailyRun, committedStageId: string | null): boolean {
+  return committedStageId !== null && optionalLaunchTarget(run) === committedStageId;
+}

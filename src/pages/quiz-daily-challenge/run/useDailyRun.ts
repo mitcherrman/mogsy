@@ -28,6 +28,13 @@
  * whose next optional stage has not started lands on `optional-entry`: no
  * main result replay, and no optional child launched until the player asks
  * (`enterOptional`). A live optional child still recovers as above.
+ *
+ * DV2-P2A.1 — once the player COMMITS to an optional stage (leaves
+ * `optional-entry`, presses Continue into it, or Try again), the stage's id is
+ * latched (`optionalLaunchFor`) until the launch reaches a known outcome: a
+ * child is bound (the live-child guard takes over), or a failed launch is
+ * confirmed childless by a re-read. While it holds, `optionalLaunchPending`
+ * keeps leaving guarded. It is mount-local: a reload never invents it.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RankedPresentationPhase } from "@/lib/ranked-core/flow/rankedFlow";
@@ -40,7 +47,8 @@ import {
 import { newInteractionId } from "@/lib/analytics/correlation";
 import {
   DAILY_INTRO_MS, STAGE_INTRO_MIN_MS,
-  arrivesAtOptionalEntry, projectDailyFlow, stageCompletedBetween, type DailyFlowView,
+  arrivesAtOptionalEntry, optionalLaunchInFlight, optionalLaunchTarget,
+  projectDailyFlow, stageCompletedBetween, type DailyFlowView,
 } from "@/lib/daily-challenge/run/flow";
 import { runSkewMs } from "@/lib/daily-challenge/run/timeBank";
 import { useSfx } from "@/lib/audio/useSfx";
@@ -90,6 +98,12 @@ export interface DailyRunState {
    * its launch). Presentation only: the server already points at that stage.
    */
   enterOptional: () => void;
+  /**
+   * DV2-P2A.1 — the player committed to the current optional stage and its
+   * launch has not reached a known outcome (no child bound yet, no confirmed
+   * failure). Presentation fact for the leave guard; not a live child.
+   */
+  optionalLaunchPending: boolean;
 }
 
 function messageFor(e: unknown): string {
@@ -132,6 +146,8 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   const [survival, setSurvival] = useState<SurvivalStatus | null>(null);
   const [strikesSeen, setStrikesSeen] = useState<Readonly<Record<string, number>>>({});
   const [optionalEntryUp, setOptionalEntryUp] = useState(false);
+  const [optionalLaunchFor, setOptionalLaunchFor] = useState<string | null>(null);
+  const optionalLaunchRef = useRef<string | null>(null);
 
   const mounted = useRef(true);
   const runRef = useRef<DailyRun | null>(null);
@@ -279,6 +295,18 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     after(STAGE_INTRO_MIN_MS, () => setStageIntroFor((cur) => (cur === stage.id ? null : cur)));
   }, [stage, dailyIntroUp, resultFor, settledChild, optionalEntryUp, after]);
 
+  /** DV2-P2A.1 — latch (or clear) the optional stage this mount committed to. */
+  const latchOptionalLaunch = useCallback((stageId: string | null) => {
+    optionalLaunchRef.current = stageId;
+    setOptionalLaunchFor(stageId);
+  }, []);
+  /** The player's commit: latch the current optional stage, if there is one. */
+  const commitOptionalLaunch = useCallback(() => {
+    const r = runRef.current;
+    const target = r ? optionalLaunchTarget(r) : null;
+    if (target) latchOptionalLaunch(target);
+  }, [latchOptionalLaunch]);
+
   const launch = useCallback(async () => {
     const r = runRef.current;
     const s = r ? currentStage(r) : null;
@@ -297,10 +325,25 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
       const next = await ask(() => transport.launchStage(r.runId, s.index, undefined, interactionId));
       const child = next ? next.stages[s.index]?.childMatchId : null;
       if (child) freshChildren.current.add(child);
+      // DV2-P2A.1 — a failed launch the player committed to is not yet a SAFE
+      // outcome: the request may have reached the server. Ask what it holds.
+      // No child → the latch drops and leaving is free again; a child → it was
+      // ours, so it plays as a fresh entry and the live-child guard holds.
+      // Unknown (the read failed too) → the latch stays. v1–v4 never latch.
+      if (!next && mounted.current && optionalLaunchRef.current === s.id) {
+        const truth = await ask(() => transport.readRun(r.runId), true);
+        const bound = truth ? truth.stages[s.index]?.childMatchId ?? null : null;
+        if (bound) {
+          freshChildren.current.add(bound);
+          setError(null);
+        } else if (truth && optionalLaunchRef.current === s.id) {
+          latchOptionalLaunch(null);
+        }
+      }
     } finally {
       launching.current = false;
     }
-  }, [ask, transport]);
+  }, [ask, transport, latchOptionalLaunch]);
 
   // Launch while the tag is up — the tag is what covers the child's creation,
   // exactly as Ranked's duel card covers a bot match's. Never during the Daily
@@ -365,11 +408,13 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
   // next stage's tag, or the day's completion.
   const continueFromResult = useCallback(() => {
     setResultFor(null);
-  }, []);
+    commitOptionalLaunch();
+  }, [commitOptionalLaunch]);
 
   const enterOptional = useCallback(() => {
     setOptionalEntryUp(false);
-  }, []);
+    commitOptionalLaunch();
+  }, [commitOptionalLaunch]);
 
   const retry = useCallback(() => {
     setError(null);
@@ -378,12 +423,17 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     if (!s) return;
     launchAttempts.current.delete(s.id);
     if (settledChild) void sync(settledChild);
-    else void launch();
-  }, [settledChild, sync, launch]);
+    else {
+      commitOptionalLaunch();
+      void launch();
+    }
+  }, [settledChild, sync, launch, commitOptionalLaunch]);
 
   const flow = useMemo(() => (run ? projectDailyFlow(run, {
     dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild, optionalEntryUp,
   }) : null), [run, dailyIntroUp, stageIntroFor, settledChild, resultFor, finishedChild, optionalEntryUp]);
+
+  const optionalLaunchPending = run ? optionalLaunchInFlight(run, optionalLaunchFor) : false;
 
   const activeChild = flow?.childMatchId ?? flow?.settlingChildMatchId ?? null;
   const childEntry = activeChild && freshChildren.current.has(activeChild)
@@ -393,6 +443,6 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     load, run, flow, busy, error, skewMs, childPhase, childEntry,
     start, retry, onChildSettled, onChildPhase,
     onChildPlayerFinished, onChildSurvivalStatus, survival, strikesSeen, continueFromResult,
-    enterOptional,
+    enterOptional, optionalLaunchPending,
   };
 }

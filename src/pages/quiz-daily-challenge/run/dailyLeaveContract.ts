@@ -37,6 +37,11 @@ export function hasLiveDailyChild(run: DailyRun | null, flow: DailyFlowView | nu
 /**
  * DV2-P2A — whether leaving the Daily page needs the player's confirmation.
  *
+ * `optionalLaunchPending` (DV2-P2A.1) is the controller's mount-local fact
+ * that the player committed to the current optional stage and its launch has
+ * not reached a known outcome. It guards the window before a child id exists,
+ * so the request cannot create an unseen live child after the player left.
+ *
  *   * v1–v4, and a v5 day before its MAIN Daily is complete: while the parent
  *     is active (unchanged — the Daily itself is unfinished).
  *   * a v5 day whose MAIN Daily is complete: only while an optional child is
@@ -44,19 +49,33 @@ export function hasLiveDailyChild(run: DailyRun | null, flow: DailyFlowView | nu
  *     resume later, so stepping away between them is not an exit from an
  *     unfinished Daily. A live child still has the ~45-second consequence.
  */
-export function shouldGuardDailyLeave(run: DailyRun | null, flow: DailyFlowView | null): boolean {
+export function shouldGuardDailyLeave(
+  run: DailyRun | null, flow: DailyFlowView | null, optionalLaunchPending = false,
+): boolean {
   if (!isActiveDailyRun(run)) return false;
-  if (isMainDailyComplete(run!)) return hasLiveDailyChild(run, flow);
+  if (isMainDailyComplete(run!)) return optionalLaunchPending || hasLiveDailyChild(run, flow);
   return true;
 }
 
-export function dailyLeaveCopy(run: DailyRun | null, flow: DailyFlowView | null): TransactionalLeaveCopy {
+export function dailyLeaveCopy(
+  run: DailyRun | null, flow: DailyFlowView | null, optionalLaunchPending = false,
+): TransactionalLeaveCopy {
   const resultWarning = flow?.phase === "stage-result" ? ` ${RESULT_WARNING}` : "";
   const live = hasLiveDailyChild(run, flow);
   if (run && isMainDailyComplete(run)) {
-    // Only reachable with a live optional child (`shouldGuardDailyLeave`).
+    // Only reachable while an optional launch is in flight or its child is
+    // live (`shouldGuardDailyLeave`). A launch in flight is NOT a live child:
+    // it is said as starting, without the live child's 45-second consequence.
     const stage = currentStage(run);
     const label = stage ? stageIdentity(stage).label : "This activity";
+    if (!live && optionalLaunchPending) {
+      return {
+        title: `Leave ${label}?`,
+        body: `${label} is starting. Today's Daily is complete and saved, but leaving now may still start ${label}.`,
+        stayLabel: "Keep playing",
+        leaveLabel: "Leave",
+      };
+    }
     return {
       title: `Leave ${label}?`,
       body: `Today's Daily is complete and saved. ${label} is still live: leaving does not forfeit immediately, but return within about 45 seconds or it may end.`,
