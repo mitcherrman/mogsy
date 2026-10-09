@@ -106,7 +106,9 @@ describe("PatchReportEntityCard", () => {
   });
 
   it("gives abilities a slot heading and icon, with a slot glyph when no icon exists", () => {
-    render(<PatchReportEntityCard entity={node(jayceCard)} />);
+    // Jayce is in Mogzy's stored-art table, so his passive resolves real art (PHSR4).
+    // A champion with no catalog identity has none, which is the glyph path under test.
+    render(<PatchReportEntityCard entity={node({ ...jayceCard, mogzy_entity_ref: null })} />);
     const passive = screen.getByRole("group", { name: /Hextech Capacitor/ });
     expect(passive).toHaveAttribute("data-ability-slot", "P");
     // The prefix is a kicker, not repeated inside the ability name.
