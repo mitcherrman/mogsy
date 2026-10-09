@@ -55,13 +55,23 @@ export type ProPlayTurn = {
   question: ProPlayQuestion | null;
 };
 
-export type ProPlayAnswerTurn = ProPlayTurn & { result: ProPlayAnswerResult };
+export type ProPlayAnswerTurn = ProPlayTurn & {
+  result: ProPlayAnswerResult;
+  /** PPQ0A, additive. True when the server recognised this request as a repeat
+   *  of one it had already graded (a retry after a lost response): `result` is
+   *  the one recorded the first time and nothing was graded or scored again.
+   *  Absent on a backend that predates PPQ0A, so it is optional. */
+  replayed?: boolean;
+};
 
 export class ProPlayApiError extends Error {
   code: string;
-  constructor(code: string, message: string) {
+  /** HTTP status, or 0 when the request never got a response. */
+  status: number;
+  constructor(code: string, message: string, status = 0) {
     super(message);
     this.code = code;
+    this.status = status;
     this.name = "ProPlayApiError";
   }
 }
@@ -92,7 +102,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* keep the generic message */
     }
-    throw new ProPlayApiError(code, message);
+    throw new ProPlayApiError(code, message, res.status);
   }
   return (await res.json()) as T;
 }
@@ -101,14 +111,35 @@ export async function startProPlayQuiz(): Promise<ProPlayTurn> {
   return request<ProPlayTurn>("/api/pro-play/quiz/sessions", { method: "POST" });
 }
 
+/** The session's current question, or `question: null` with the final summary
+ *  once it is complete. Idempotent: it never draws past an unanswered question. */
+export async function getProPlaySession(sessionId: string): Promise<ProPlayTurn> {
+  return request<ProPlayTurn>(`/api/pro-play/quiz/sessions/${encodeURIComponent(sessionId)}`);
+}
+
+/**
+ * Answer the question the request NAMES (PPQ0A). `questionId` is the opaque
+ * `question.question_id` the question was served with, which makes the request
+ * idempotent: repeating it after a lost response replays the recorded result
+ * (`replayed: true`) instead of grading whatever question is current now.
+ */
 export async function answerProPlayQuestion(
   sessionId: string,
+  questionId: string,
   selectedAnswer: string,
 ): Promise<ProPlayAnswerTurn> {
   return request<ProPlayAnswerTurn>(
     `/api/pro-play/quiz/sessions/${encodeURIComponent(sessionId)}/answer`,
-    { method: "POST", body: JSON.stringify({ selected_answer: selectedAnswer }) },
+    {
+      method: "POST",
+      body: JSON.stringify({ question_id: questionId, selected_answer: selectedAnswer }),
+    },
   );
 }
 
-export const proPlayApi = { startProPlayQuiz, answerProPlayQuestion, baseUrl: API_BASE_URL };
+export const proPlayApi = {
+  startProPlayQuiz,
+  getProPlaySession,
+  answerProPlayQuestion,
+  baseUrl: API_BASE_URL,
+};
