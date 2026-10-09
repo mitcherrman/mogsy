@@ -321,7 +321,11 @@ describe("E — no Daily surface claims a streak exists", () => {
   });
 });
 
-describe("F — no backend-dependent main-complete behaviour is invented", () => {
+// DV2-P2A superseded P0's "nothing reads the main fields yet" pins: v5 runs
+// now read and draw them (dailyV2P2A.hierarchy.test.tsx). What P0 pinned still
+// holds for every LEGACY (v1–v4) run, whatever its stage kinds, and that is
+// what F now proves. These fixtures are plan_version 1.
+describe("F — a legacy run never gets main-complete behaviour", () => {
   it("a Standard that is complete does not make an active day 'done'", () => {
     const run = readDailyRun(wireRun(FUTURE_V5_DAY, { current_stage_index: 1 }, {
       0: { status: "completed", child_match_id: "m0", result: wireResult() } }));
@@ -329,24 +333,22 @@ describe("F — no backend-dependent main-complete behaviour is invented", () =>
     expect(dailyStatusFrom(run)).toMatchObject({ completed: false, resumable: true });
   });
 
-  it("the reader ignores a main_completed_at it was not asked to read", () => {
+  it("the reader ignores a legacy run's main fields, and never reads main_complete", () => {
     const wire = wireRun(FUTURE_V5_DAY, { current_stage_index: 1,
-      main_completed_at: "2026-10-07T00:00:00Z", main_complete: true }, {
+      main_completed_at: "2026-10-07T00:00:00Z", main_score: 16, main_complete: true }, {
       0: { status: "completed", child_match_id: "m0", result: wireResult() } });
-    const run = readDailyRun(wire) as unknown as Record<string, unknown>;
-    expect(run).not.toHaveProperty("mainCompletedAt");
+    const run = readDailyRun(wire);
+    expect(run.mainCompletedAt).toBeNull();
+    expect(run.mainScore).toBeNull();
     expect(run).not.toHaveProperty("mainComplete");
-    expect(dailyStatusFrom(run as never).completed).toBe(false);
+    expect(dailyStatusFrom(run).completed).toBe(false);
   });
 
-  it("nothing draws the grouped hierarchy yet", () => {
+  it("nothing draws the grouped hierarchy for a legacy run", () => {
     const run = fixtureRun(FIVE_STAGE_DAY);
     render(<MemoryRouter><DailyIntroBeat run={run} /></MemoryRouter>);
     expect(document.body.textContent).not.toMatch(/today's challenge|more challenges|bonus|today's review/i);
-    const dir = "src/pages/quiz-daily-challenge/run";
-    for (const f of readdirSync(here(dir)).filter((n) => /\.tsx?$/.test(n) && !/\.test\./.test(n))) {
-      expect(source(`${dir}/${f}`), f).not.toMatch(/More Challenges|Today's Challenge|main_completed|mainComplete/);
-    }
+    expect(screen.getByTestId("daily-stage-ladder")).toBeInTheDocument();
   });
 });
 

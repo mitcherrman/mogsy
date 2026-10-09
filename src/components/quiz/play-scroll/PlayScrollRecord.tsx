@@ -441,6 +441,12 @@ export default function PlayScrollRecord({
    * out: an unknown day is not a finished one, and stays playable.
    */
   const dailyComplete = daily?.known === true && daily.completed;
+  /**
+   * DV2-P2A — today's Daily is complete, and the same run still has optional
+   * More Challenges / Review open (plan v5+ only). The clause still reads as
+   * DONE; its one action resumes the optional content instead of Practice.
+   */
+  const dailyOptionalOpen = dailyComplete && daily?.optionalOpen === true;
 
   /**
    * Close the record, then let the host move the player to Practice.
@@ -458,6 +464,20 @@ export default function PlayScrollRecord({
     onClose();
     onPlayPractice();
   }, [onClose, onPlayPractice, sfx]);
+
+  /**
+   * DV2-P2A — resume the optional part of a main-complete Daily. The same
+   * host entry as the Daily clause (close first, then hand off); the Daily
+   * page resumes the run the server already holds and creates nothing new.
+   */
+  const resumeDailyOptional = useCallback(() => {
+    if (busyMode !== null) return;
+    sfx.play("modeConfirm");
+    handingOffRef.current = true;
+    setBusyMode("daily");
+    onClose();
+    onPlayDailyChallenge();
+  }, [busyMode, onClose, onPlayDailyChallenge, sfx]);
 
   const selectMode = useCallback(
     (id: PlayModeId) => {
@@ -601,7 +621,18 @@ export default function PlayScrollRecord({
    * fed is still on the card, and the one thing still worth doing is offered
    * as an ordinary action. Nothing here says "unavailable".
    */
-  const completed: Partial<Record<PlayModeId, PlayModeCompletion>> = dailyComplete
+  const completed: Partial<Record<PlayModeId, PlayModeCompletion>> = dailyOptionalOpen
+    ? {
+        daily: {
+          heading: "Today's Daily Complete",
+          note: "Optional More Challenges and Review are still open.",
+          action: {
+            label: "Continue optional challenges",
+            onSelect: resumeDailyOptional,
+          },
+        },
+      }
+    : dailyComplete
     ? {
         daily: {
           heading: "Today's Challenge Complete",

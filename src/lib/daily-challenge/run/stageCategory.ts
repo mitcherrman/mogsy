@@ -12,13 +12,15 @@
  * umbrella (Weak Areas + Recently Missed) is a P2 presentation concern and is
  * deliberately not encoded here.
  *
- * PREPARATION ONLY. Nothing renders these groups yet: today's backend still
- * shuffles the stages and Standard is not guaranteed first, so a "Today's
- * Challenge complete → More Challenges" presentation would be false. The
- * grouped presentation is P2, after the backend contract lands. A category is
- * a property of the KIND; it says nothing about stage status or completion.
+ * A category is a property of the KIND; it says nothing about stage status
+ * or completion.
+ *
+ * DV2-P2A — the player-facing SECTIONS are drawn from it, for plan v5+ runs
+ * only (`hasMainDaily`): main → TODAY'S CHALLENGE, bonus → MORE CHALLENGES,
+ * training → REVIEW. A v1–v4 run is one linear challenge and is never drawn
+ * in sections, whatever kinds it contains.
  */
-import type { DailyStageKind } from "./contracts";
+import type { DailyRun, DailyStage, DailyStageKind } from "./contracts";
 import { DAILY_STAGE_KINDS } from "./contracts";
 
 export type DailyStageCategory = "main" | "bonus" | "training";
@@ -46,4 +48,45 @@ export function stageCategoryOf(kind: string): DailyStageCategory | null {
   return (DAILY_STAGE_KINDS as readonly string[]).includes(kind)
     ? DAILY_STAGE_CATEGORY[kind as DailyStageKind]
     : null;
+}
+
+// ── DV2-P2A: the player-facing sections (plan v5+ only) ─────────────────────
+
+export type DailySectionId = "today" | "more" | "review";
+
+const SECTION_OF: Readonly<Record<DailyStageCategory, DailySectionId>> = {
+  main: "today",
+  bonus: "more",
+  training: "review",
+};
+
+/** The section headings, exactly as players read them. */
+export const DAILY_SECTION_LABEL: Readonly<Record<DailySectionId, string>> = {
+  today: "Today's Challenge",
+  more: "More Challenges",
+  review: "Review",
+};
+
+/** Which section a stage belongs to. Only meaningful for a v5+ run. */
+export function dailySection(stage: Pick<DailyStage, "kind">): DailySectionId {
+  return SECTION_OF[stageCategory(stage.kind)];
+}
+
+export interface DailySectionGroup {
+  id: DailySectionId;
+  label: string;
+  /** The section's stages that are in THIS run, in the server's order. */
+  stages: DailyStage[];
+}
+
+/**
+ * The run's stages grouped into its sections, in play order. A section with no
+ * stage in this run is left out (an ineligible player has no Weak Areas, but
+ * always has Recently Missed). The reader has already refused a v5 run whose
+ * sections step back, so grouping never reorders a stage.
+ */
+export function dailySections(run: Pick<DailyRun, "stages">): DailySectionGroup[] {
+  return (["today", "more", "review"] as const)
+    .map((id) => ({ id, label: DAILY_SECTION_LABEL[id], stages: run.stages.filter((s) => dailySection(s) === id) }))
+    .filter((g) => g.stages.length > 0);
 }

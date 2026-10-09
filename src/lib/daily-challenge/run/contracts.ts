@@ -15,7 +15,10 @@
  * INVARIANTS THE READER ENFORCES (a snapshot that breaks one is refused):
  *   * stages are in `stage_index` order, contiguous from 0;
  *   * there is exactly one Review stage and it is the LAST stage;
- *   * an active run names a current stage that exists; a completed one names none.
+ *   * an active run names a current stage that exists; a completed one names none;
+ *   * DV2-P2A, plan v5+ only: Standard is first and alone, the sections never
+ *     step back, and the MAIN pair is whole and present exactly when Standard
+ *     is completed (`readMain`).
  */
 
 /**
@@ -135,6 +138,11 @@ export interface DailyStage {
 export interface DailyRun {
   runId: string;
   planDate: string;
+  /**
+   * The plan version the server froze for this run (`plan_version`). Null
+   * when the payload does not state one, which reads as a legacy run.
+   */
+  planVersion: number | null;
   status: DailyRunStatus;
   outcome: DailyRunOutcome | null;
   currentStageIndex: number | null;
@@ -142,9 +150,53 @@ export interface DailyRun {
   serverNow: string | null;
   stages: DailyStage[];
   reviewItemCount: number;
+  /**
+   * DV2-P2A — the MAIN Daily's frozen completion (`main_completed_at`), plan
+   * v5+ only. Null before Standard settles, and always null for v1–v4 (the
+   * backend never sets it there; a value that arrives anyway is not read).
+   */
+  mainCompletedAt: string | null;
+  /**
+   * DV2-P2A — the MAIN Daily's score (`main_score`): Standard's own settled
+   * score, frozen with `mainCompletedAt`. The one primary Daily score. Never
+   * summed from stages and never defaulted; null exactly when
+   * `mainCompletedAt` is.
+   */
+  mainScore: number | null;
 }
 
 // ── derived views (never stored) ────────────────────────────────────────────
+
+/**
+ * DV2-P2A — the first plan version whose Standard is the MAIN Daily, with
+ * More Challenges and Review optional after it. Mirrors the backend's
+ * `plan.MAIN_DAILY_PLAN_VERSION` / `has_main_daily`.
+ */
+export const MAIN_DAILY_PLAN_VERSION = 5;
+
+/**
+ * Does this run have a MAIN Daily (plan v5+)? The one switch between the
+ * legacy linear Daily (v1–v4: every stage is part of one challenge) and the
+ * Daily V2 hierarchy. Read from the server's `plan_version` only, never from
+ * which stage kinds the day happens to contain or where they sit.
+ */
+export function hasMainDaily(run: Pick<DailyRun, "planVersion">): boolean {
+  return run.planVersion !== null && run.planVersion >= MAIN_DAILY_PLAN_VERSION;
+}
+
+/**
+ * Is the MAIN Daily complete? True only for a v5+ run whose server froze the
+ * main pair. A completed Standard stage on its own is not this fact, and a
+ * legacy run is never main-complete (its Daily is complete when the parent is).
+ */
+export function isMainDailyComplete(run: Pick<DailyRun, "planVersion" | "mainCompletedAt" | "mainScore">): boolean {
+  return hasMainDaily(run) && run.mainCompletedAt !== null && run.mainScore !== null;
+}
+
+/** The MAIN Daily's stage (v5+): Standard, always index 0. Null for a legacy run. */
+export function mainStage(run: DailyRun): DailyStage | null {
+  return hasMainDaily(run) ? run.stages[0] ?? null : null;
+}
 
 export function currentStage(run: DailyRun): DailyStage | null {
   if (run.status !== "active" || run.currentStageIndex === null) return null;
@@ -292,16 +344,65 @@ export function readDailyRun(json: unknown): DailyRun {
   }
   const outcome = r.outcome === null || r.outcome === undefined
     ? null : oneOf(r.outcome, ["reviewed", "perfect"] as const, "outcome");
+  const planVersion = optInt(r.plan_version, "plan_version");
+  const main = planVersion !== null && planVersion >= MAIN_DAILY_PLAN_VERSION
+    ? readMain(r, stages)
+    : { mainCompletedAt: null, mainScore: null };
   return {
     runId: str(r.run_id, "run_id"),
     planDate: str(r.plan_date, "plan_date"),
+    planVersion,
     status,
     outcome,
     currentStageIndex: status === "active" ? currentStageIndex : null,
     serverNow: optStr(r.server_now, "server_now"),
     stages,
     reviewItemCount: Array.isArray(r.review_items) ? r.review_items.length : 0,
+    ...main,
   };
+}
+
+/** The order the Daily V2 sections play in; a v5 day never steps backwards. */
+const SECTION_RANK: Record<DailyStageKind, number> = {
+  standard: 0,
+  time_trial: 1, survival: 1, order_forge: 1,
+  weak_areas: 2, review: 2,
+};
+
+/**
+ * DV2-P2A — a v5+ run's MAIN pair, and the invariants that make it readable.
+ *
+ * The backend writes `main_completed_at` + `main_score` in the same
+ * transaction that completes Standard, so a snapshot carries both or neither,
+ * and carries them exactly when Standard is completed. Anything else is a
+ * corrupt snapshot and is refused: half a pair is never completed with a
+ * guessed other half, a missing pair is never inferred from Standard's status,
+ * and the score is never taken from the stage totals.
+ *
+ * Structure: Standard is the one main stage, at index 0, and the sections run
+ * Today → More Challenges → Review without stepping back (backend
+ * `validate_stage_order`), so grouping the stages by section never reorders them.
+ */
+function readMain(r: Rec, stages: DailyStage[]): Pick<DailyRun, "mainCompletedAt" | "mainScore"> {
+  if (stages[0].kind !== "standard" || stages.filter((s) => s.kind === "standard").length !== 1) {
+    fail("a v5 run has one Standard, first");
+  }
+  stages.forEach((s, i) => {
+    if (i > 0 && SECTION_RANK[s.kind] < SECTION_RANK[stages[i - 1].kind]) {
+      fail("a v5 run plays Today, then More Challenges, then Review");
+    }
+  });
+  const at = r.main_completed_at === null || r.main_completed_at === undefined
+    ? null : str(r.main_completed_at, "main_completed_at");
+  if (at === "") fail("main_completed_at must not be empty");
+  const score = optInt(r.main_score, "main_score");
+  if ((at === null) !== (score === null)) {
+    fail("main_completed_at and main_score arrive together or not at all");
+  }
+  if ((at !== null) !== (stages[0].status === "completed")) {
+    fail("a v5 run's main pair exists exactly when Standard is completed");
+  }
+  return { mainCompletedAt: at, mainScore: score };
 }
 
 /** `GET /today` → `{ run: snapshot | null }`. */
