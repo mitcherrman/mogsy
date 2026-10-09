@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import AdminUsers from "./AdminUsers";
 
 /**
@@ -34,7 +35,8 @@ const { deleteProfile, invoke, supabase } = vi.hoisted(() => {
       select: () => value, eq: () => value, in: () => value, or: () => value,
       order: () => value, limit: () => value, single: () => Promise.resolve(result),
       insert: () => value, update: () => value, upsert: () => value,
-      delete: () => { deleteProfile(); return value; },
+      // A test can hand deleteProfile a result ({ data, error }) for the delete.
+      delete: () => { const r = deleteProfile(); return r ? query(r) : value; },
       then: (resolve: any) => Promise.resolve(result).then(resolve),
     };
     return value;
@@ -177,6 +179,60 @@ describe("AdminUsers Phase 1 safety", () => {
     fireEvent.click(screen.getByRole("button", { name: /delete user profile/i }));
     fireEvent.click(screen.getByRole("button", { name: "Delete User Profile" }));
     await waitFor(() => expect(deleteProfile).toHaveBeenCalledTimes(1));
+  });
+
+  describe("S1-FIX · profile delete is a fresh-MFA owner action", () => {
+    async function confirmDelete() {
+      await openUser();
+      fireEvent.click(screen.getByRole("button", { name: /^account$/i }));
+      fireEvent.click(await screen.findByRole("button", { name: /account actions/i }));
+      fireEvent.click(await screen.findByRole("button", { name: /delete user profile/i }));
+      fireEvent.click(screen.getByRole("button", { name: "Delete User Profile" }));
+    }
+    beforeEach(() => {
+      ownerGate.fresh = false;
+      ownerGate.stepUp.mockReset().mockResolvedValue(true);
+      vi.mocked(toast.success).mockClear();
+      vi.mocked(toast.error).mockClear();
+      vi.mocked(toast).mockClear();
+    });
+    afterEach(() => {
+      ownerGate.fresh = true;
+      deleteProfile.mockReset();
+    });
+
+    it("asks for MFA first; a cancelled prompt deletes nothing", async () => {
+      ownerGate.stepUp.mockResolvedValue(false);
+      await confirmDelete();
+      await waitFor(() => expect(ownerGate.stepUp).toHaveBeenCalledWith("Deleting this user profile"));
+      expect(deleteProfile).not.toHaveBeenCalled();
+      expect(toast).toHaveBeenCalledWith(expect.stringMatching(/nothing was changed/i));
+    });
+
+    it("after MFA, a 1-row delete reports success", async () => {
+      deleteProfile.mockReturnValue({ data: [{ id: profile.id }], error: null });
+      await confirmDelete();
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Deleted Mogzy Owner", expect.anything()));
+      expect(ownerGate.stepUp).toHaveBeenCalledTimes(1);
+      expect(deleteProfile).toHaveBeenCalledTimes(1);
+    });
+
+    it("a 0-row delete (RLS refused silently, or already gone) is NOT reported as success", async () => {
+      deleteProfile.mockReturnValue({ data: [], error: null });
+      await confirmDelete();
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Nothing was deleted", expect.anything()));
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(deleteProfile).toHaveBeenCalledTimes(1);
+    });
+
+    it("a server fresh-MFA refusal is not replayed (irreversible)", async () => {
+      ownerGate.fresh = true; // preflight passes; the server (SQL 06 trigger) still refuses
+      deleteProfile.mockReturnValue({ data: null, error: { message: "step_up_required", hint: "fresh_aal2" } });
+      await confirmDelete();
+      await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringMatching(/run the action again/i)));
+      expect(deleteProfile).toHaveBeenCalledTimes(1);
+      expect(toast.success).not.toHaveBeenCalled();
+    });
   });
 
   it("distinguishes a failed users query from an empty result", async () => {

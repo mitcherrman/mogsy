@@ -32,10 +32,15 @@ describe("stepUpNeedOf", () => {
   it("reads RPC refusals and their level", async () => {
     expect(await stepUpNeedOf(TRUSTED_REFUSAL)).toBe("trusted");
     expect(await stepUpNeedOf(FRESH_REFUSAL)).toBe("fresh");
-    expect(await stepUpNeedOf({ data: null, error: { message: "step_up_required" } })).toBe("fresh");
+    expect(await stepUpNeedOf({ data: null, error: { message: "step_up_required", hint: "aal2" } })).toBe("fresh");
   });
-  it("reads Edge Function refusals from the HTTP body", async () => {
-    expect(await stepUpNeedOf(edgeRefusal())).toBe("fresh");
+  it("a refusal that names no level is unknown, not fresh (S1-FIX F1)", async () => {
+    expect(await stepUpNeedOf({ data: null, error: { message: "step_up_required" } })).toBe("unknown");
+    expect(await stepUpNeedOf({ data: null, error: { message: "step_up_required", hint: "something_else" } })).toBe("unknown");
+    expect(await stepUpNeedOf({ data: { error: "step_up_required" }, error: null })).toBe("unknown");
+  });
+  it("reads Edge Function refusals from the HTTP body (no level hint → unknown)", async () => {
+    expect(await stepUpNeedOf(edgeRefusal())).toBe("unknown");
   });
   it("ignores ordinary results and errors", async () => {
     expect(await stepUpNeedOf(OK)).toBeNull();
@@ -74,6 +79,70 @@ describe("runOwnerAction — routine (trusted)", () => {
     const fn = vi.fn().mockResolvedValueOnce(TRUSTED_REFUSAL).mockResolvedValueOnce(OK);
     expect(await runOwnerAction({ level: "trusted", reason: "x", idempotent: true }, fn)).toEqual({ status: "done", result: OK });
     expect(fn).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("runOwnerAction — unknown-level refusals (S1-FIX F1)", () => {
+  it("trusted action + Edge refusal with no hint → re-attest, one retry, no MFA when trust restores", async () => {
+    const fn = vi.fn().mockResolvedValueOnce(edgeRefusal()).mockResolvedValueOnce(OK);
+    expect(await runOwnerAction({ level: "trusted", reason: "x" }, fn)).toEqual({ status: "done", result: OK });
+    expect(ensure).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(stepUp).not.toHaveBeenCalled();
+  });
+
+  it("trusted action + unknown refusal + failed trust restore → MFA path, not replayed", async () => {
+    ensure.mockResolvedValue(false);
+    const fn = vi.fn(async () => edgeRefusal());
+    expect(await runOwnerAction({ level: "trusted", reason: "Loading" }, fn)).toEqual({ status: "verify_then_retry" });
+    expect(ensure).toHaveBeenCalledTimes(1);
+    expect(stepUp).toHaveBeenCalledWith("Loading");
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("trusted idempotent action + failed trust restore → MFA, then exactly one re-send", async () => {
+    ensure.mockResolvedValue(false);
+    const fn = vi.fn().mockResolvedValueOnce(edgeRefusal()).mockResolvedValueOnce(OK);
+    expect(await runOwnerAction({ level: "trusted", reason: "x", idempotent: true }, fn)).toEqual({ status: "done", result: OK });
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(stepUp).toHaveBeenCalledTimes(1);
+  });
+
+  it("trust restored but the retry is still refused → MFA, and no second retry even if idempotent", async () => {
+    const fn = vi.fn(async () => edgeRefusal());
+    expect(await runOwnerAction({ level: "trusted", reason: "x", idempotent: true }, fn)).toEqual({ status: "verify_then_retry" });
+    expect(ensure).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledTimes(2); // original + the one retry
+    expect(stepUp).toHaveBeenCalledTimes(1);
+  });
+
+  it("a trusted-level action refused at the FRESH level goes straight to MFA (no re-attest)", async () => {
+    const fn = vi.fn(async () => FRESH_REFUSAL);
+    expect(await runOwnerAction({ level: "trusted", reason: "x" }, fn)).toEqual({ status: "verify_then_retry" });
+    expect(ensure).not.toHaveBeenCalled();
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(stepUp).toHaveBeenCalledTimes(1);
+  });
+
+  it("fresh action + unknown refusal → fresh MFA, never downgraded to the trusted device", async () => {
+    refresh.mockResolvedValue({ freshAal2: true }); // preflight passes, server still refuses
+    const fn = vi.fn(async () => edgeRefusal());
+    expect(await runOwnerAction({ level: "fresh", reason: "Ban" }, fn)).toEqual({ status: "verify_then_retry" });
+    expect(ensure).not.toHaveBeenCalled();
+    expect(stepUp).toHaveBeenCalledWith("Ban");
+    expect(fn).toHaveBeenCalledTimes(1); // irreversible: not re-sent
+  });
+
+  it("retries at most once across every path (trusted and fresh, idempotent, always refused)", async () => {
+    for (const level of ["trusted", "fresh"] as const) {
+      for (const ensureOk of [true, false]) {
+        ensure.mockReset().mockResolvedValue(ensureOk);
+        refresh.mockReset().mockResolvedValue({ freshAal2: true });
+        const fn = vi.fn(async () => edgeRefusal());
+        await runOwnerAction({ level, reason: "x", idempotent: true }, fn);
+        expect(fn.mock.calls.length).toBeLessThanOrEqual(2);
+      }
+    }
   });
 });
 

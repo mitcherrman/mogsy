@@ -50,13 +50,43 @@ export const ownerRpc: LooseRpc = (fn, args) =>
  */
 export type OwnerAuthStateResult = { ok: true; state: OwnerAuthState } | { ok: false };
 
+/**
+ * S1-FIX F3 — a hung owner_auth_state request must not leave Admin blank. After
+ * this long the check counts as "could not reach Supabase" ({ ok: false }); the
+ * request is aborted and a late reply is ignored (the promise has settled).
+ */
+export const OWNER_AUTH_STATE_TIMEOUT_MS = 8_000;
+
+type AbortableRpc = PromiseLike<{ data: unknown; error: unknown }> & {
+  abortSignal?: (signal: AbortSignal) => PromiseLike<{ data: unknown; error: unknown }>;
+};
+
 export async function fetchOwnerAuthStateResult(): Promise<OwnerAuthStateResult> {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<OwnerAuthStateResult>((resolve) => {
+    timer = setTimeout(() => {
+      controller?.abort();
+      resolve({ ok: false });
+    }, OWNER_AUTH_STATE_TIMEOUT_MS);
+  });
+  const request = (async (): Promise<OwnerAuthStateResult> => {
+    try {
+      const builder = ownerRpc("owner_auth_state") as unknown as AbortableRpc;
+      const pending = controller && typeof builder.abortSignal === "function"
+        ? builder.abortSignal(controller.signal)
+        : builder;
+      const { data, error } = await pending;
+      if (error) return { ok: false };
+      return { ok: true, state: parseOwnerAuthState(data) };
+    } catch {
+      return { ok: false };
+    }
+  })();
   try {
-    const { data, error } = await ownerRpc("owner_auth_state");
-    if (error) return { ok: false };
-    return { ok: true, state: parseOwnerAuthState(data) };
-  } catch {
-    return { ok: false };
+    return await Promise.race([request, timedOut]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -77,13 +107,20 @@ export function isStepUpRequired(err: unknown): boolean {
   return /step_up_required/.test(`${errorField(err, "message")} ${errorField(err, "error")}`);
 }
 
+export type StepUpKind = "trusted" | "fresh" | "unknown";
+
 /**
  * Which assurance the server asked for. `assert_owner` raises with HINT
  * `aal2_or_trusted_device` when only the trusted-session check failed (a lapsed
- * device attestation, recoverable without MFA); `fresh_aal2` / `aal2`, or no
- * hint at all (Edge Functions), means the action needs a recent MFA. Unknown
- * reads as "fresh", the stricter answer.
+ * device attestation, recoverable without MFA) and `fresh_aal2` / `aal2` when
+ * the action needs MFA. Edge Functions send no hint at all: that is
+ * "unknown", and the caller decides from the level the ACTION requires
+ * (runOwnerAction) — a routine action tries the trusted device first, a
+ * high-risk action still asks for fresh MFA.
  */
-export function stepUpKind(err: unknown): "trusted" | "fresh" {
-  return errorField(err, "hint") === "aal2_or_trusted_device" ? "trusted" : "fresh";
+export function stepUpKind(err: unknown): StepUpKind {
+  const hint = errorField(err, "hint");
+  if (hint === "aal2_or_trusted_device") return "trusted";
+  if (hint === "fresh_aal2" || hint === "aal2") return "fresh";
+  return "unknown";
 }

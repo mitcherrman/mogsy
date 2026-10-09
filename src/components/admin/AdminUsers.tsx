@@ -721,8 +721,22 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   };
 
   const deleteUser = async (profile: Profile) => {
-    const { error } = await supabase.from("profiles").delete().eq("id", profile.id);
+    // S1-FIX: deleting a profile cascades through many tables, so it needs a
+    // FRESH MFA (staged SQL 06 enforces this server-side) and is never re-sent
+    // automatically. `.select` returns the deleted rows: RLS refusing a row
+    // deletes nothing WITHOUT an error, so success is reported only for a row
+    // the server actually removed.
+    const outcome = await runOwnerAction(
+      { level: "fresh", reason: "Deleting this user profile" },
+      async () => await supabase.from("profiles").delete().eq("id", profile.id).select("id"),
+    );
+    if (showOwnerActionNotice(outcome)) return;
+    const { data, error } = outcome.result;
     if (error) { toast.error("Cannot delete: " + error.message); return; }
+    if (!data?.length) {
+      toast.error("Nothing was deleted", { description: "The profile may already be gone, or this session may not delete it. Refresh and check." });
+      return;
+    }
     setDeletedUsers((prev) => [{ profile, timestamp: Date.now() }, ...prev].slice(0, 20));
     setProfiles((prev) => prev.filter((p) => p.id !== profile.id));
     setSelectedUser(null);

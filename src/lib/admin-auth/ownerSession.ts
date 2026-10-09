@@ -71,13 +71,23 @@ export function getOwnerSessionSnapshot(): OwnerSessionSnapshot {
   return snapshot;
 }
 
+/**
+ * Present the stored device token. `lastAttestAt` is stamped only when the
+ * server accepted it (S1-FIX F2): a failed attempt leaves the keep-alive due,
+ * so the next regular tick tries again while the previous attestation is
+ * still live, instead of waiting a full interval past its expiry. The tick
+ * interval and ensureOwnerAuthorized's single-flight bound the retries.
+ */
 async function attest(): Promise<boolean> {
-  lastAttestAt = Date.now();
+  const gen = generation;
+  let ok = false;
   try {
-    return await attestStoredDevice();
+    ok = await attestStoredDevice();
   } catch {
-    return false;
+    ok = false;
   }
+  if (ok && gen === generation) lastAttestAt = Date.now();
+  return ok;
 }
 
 /**

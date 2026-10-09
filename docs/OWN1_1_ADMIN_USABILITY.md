@@ -75,7 +75,7 @@ The server stays the only authority. Railway (`require_admin` with `owner_auth_s
 | `purge-anonymous-users` (Edge) | fresh_aal2 | fresh_aal2 | Destructive and irreversible. |
 | `owner_device_enroll` / `owner_device_revoke` | fresh_aal2 | fresh_aal2 | Trust configuration. |
 | `owner_device_list` | aal2 | aal2 | Security configuration read. No UI yet. |
-| `profiles` DELETE (AdminUsers "Delete user", via RLS) | trusted | trusted (**gap**) | Destructive, yet only trusted. Making it fresh needs a DB trigger or RPC. Recommended follow-up, not done. |
+| `profiles` DELETE of another user's row (AdminUsers "Delete user", via RLS) | trusted | **fresh_aal2** (staged 06; UI asks for fresh MFA now) | Cascades through many foreign keys; more destructive than a ban. Self-delete and service-role paths unchanged. |
 | `user_roles` `demo_access` grant/revoke (AdminUsers) | broken | broken (**gap**) | OWN1-B revoked client writes on `user_roles`. It needs an owner-only RPC (fresh, since it grants access). Not done. |
 
 ## Files changed
@@ -149,7 +149,7 @@ The server stays the only authority. Railway (`require_admin` with `owner_auth_s
 - Railway calls `owner_auth_state` on every admin request (3 s timeout, no cache). A slow Supabase means slow admin, now shown as 503 rather than "not the owner".
 - Individual Railway admin API clients don't do the re-attest-and-retry-once themselves. The keep-alive makes a lapse unlikely; a lapse shows as that call's own 403 until the next keep-alive or focus.
 - `owner_device_list` and `owner_device_revoke` have no UI (OWN2).
-- The gaps from the table above: profile DELETE is trusted-only, demo_access grants are broken, and `resend_verification` could be trusted.
+- The gaps from the table above: demo_access grants are broken, and `resend_verification` could be trusted. (Profile DELETE: staged as SQL 06.)
 - The legacy `AdminModeratorConfig` page and the "Moderators" filter in Users still read moderator rows. They are display-only and empty since OWN1; delete them with OWN2.
 
 ## Rollback
@@ -160,4 +160,23 @@ The server stays the only authority. Railway (`require_admin` with `owner_auth_s
 ## Next task
 1. Owner: review, merge FE and Publish, merge BE, run the human checks above.
 2. Optionally apply SQL 05.
-3. OWN2: a devices and audit page; profile DELETE moved behind fresh MFA; an owner RPC for demo_access; retire the moderator UI; then the legacy Railway env vars.
+3. OWN2: a devices and audit page; an owner RPC for demo_access; retire the moderator UI; then the legacy Railway env vars.
+
+## S1-FIX (S1-QA findings)
+S1-QA approved the model (no privilege escalation, no fail-open) with one required fix and two recommended ones. All three are fixed, and the profile-delete hardening is staged as SQL 06.
+
+- **F1 (required): Edge refusals carry no level.** Edge Functions answer `{"error":"step_up_required"}` with no hint, and `stepUpKind` read that as `fresh`. A trusted-level Edge call (`get_auth_info`, `admin-get-emails`) after a lapsed attestation therefore asked for MFA instead of re-attesting.
+  - `stepUpKind` now returns `trusted` (HINT `aal2_or_trusted_device`), `fresh` (HINT `fresh_aal2` or `aal2`) or **`unknown`** (anything else, including no hint). `stepUpNeedOf` returns `unknown` for Edge bodies.
+  - `runOwnerAction` decides from the level the **action** requires. A trusted-level action refused as `trusted` or `unknown` re-attests once and retries once; MFA is asked only if that cannot restore access. A fresh-level action never downgrades `unknown` to the trusted device; it asks for fresh MFA as before.
+  - At most one automatic retry. An action already re-sent after re-attestation is not re-sent again after MFA, even when idempotent; the outcome is `verify_then_retry`. Step-up refusals are raised before any effect (RPC `assert_owner` first line; Edge `decideOwnerAccess` before the action), and non-idempotent actions are never re-sent after MFA.
+- **F2: `lastAttestAt` was stamped before the device check finished.** A failed attestation at minute 10 pushed the next try to minute 20, after the minute-15 server expiry. It is now stamped only on success. A failure is retried on the next 60 s keep-alive tick, while the previous attestation is still live. Single-flight is unchanged, and there is no self-retry: one attempt per tick or focus.
+- **F3: no timeout on `owner_auth_state`.** A hung request left Admin blank. `fetchOwnerAuthStateResult` now gives up after 8 s (`OWNER_AUTH_STATE_TIMEOUT_MS`), aborts the request (`abortSignal`), and reports `{ ok: false }`. The first check becomes `unavailable`; an established owner stays displayed with `stale: true`, while every server call still authorizes on its own. A reply after the timeout is dropped, because the promise has already settled.
+- **SQL 06, staged and NOT applied:** `migrations/06_own11_profile_delete_fresh_mfa.sql`, `rollback/own11_06_rollback.sql`, `verification/own11_06_verify.sql`.
+  - It adds a `BEFORE DELETE` row trigger on `public.profiles` that can only refuse. When the canonical owner deletes another user's or a bot's row, it runs `assert_owner('fresh_aal2')`, which raises `step_up_required` with HINT `fresh_aal2`.
+  - These paths are unchanged: no JWT or a non-client role (`service_role`, auth-server cascades, migrations, SQL editor), a user deleting their own row, and every non-owner (RLS still decides, and no policy is touched).
+  - Independent of 05.
+  - The verify script runs catalog checks plus six DELETE probes, each in a sub-transaction that is always rolled back.
+  - Exercised locally on PGlite against the real OWN1-A helpers. Before 06: the owner aal1 and stale-aal2 probes are `allowed`. After 06 (applied twice): all ok. After rollback: identical to before.
+- **AdminUsers delete:** `deleteUser` now goes through `runOwnerAction` at the `fresh` level ("Deleting this user profile") and is never replayed. It uses `.select("id")`, so a 0-row delete (RLS refused silently, or the row is already gone) reports "Nothing was deleted" instead of success. Before SQL 06 the prompt is client-side only; after it, the server enforces it.
+- **Cosmetic:** the stale `X-Admin-Key` wording is gone from the `routes/admin_session.py` docstring (BE). `isSelectedAdmin` and `isSelectedMod` were left in place: they are still read by the role badges in `AdminUsers.tsx`, so they are not unused. Removing them belongs with the OWN2 moderator-UI retirement.
+- **Apply order** (owner decision): 05 and 06 are independent. 06 can go with or before 05. Apply in a transaction, then run `own11_06_verify.sql`; every row should be ok.

@@ -131,6 +131,77 @@ describe("ownerSession", () => {
     expect(getOwnerSessionSnapshot().phase).toBe("authorized");
   });
 
+  describe("keep-alive after a failed attestation (S1-FIX F2)", () => {
+    const MIN = 60_000;
+    // Owner authorized through a trusted device at t=0 (attestation live until t=15).
+    async function authorizedAtZero() {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(0);
+      attest.mockResolvedValue(true);
+      ownerState
+        .mockResolvedValueOnce(ok({ isOwner: true, authorized: false, aal: "aal1" }))
+        .mockResolvedValue(ok({ isOwner: true, authorized: true, aal: "aal1", trustedDevice: true }));
+      bindOwnerSessionUser("owner");
+      await vi.waitFor(() => expect(getOwnerSessionSnapshot().phase).toBe("authorized"));
+      expect(attest).toHaveBeenCalledTimes(1);
+      t0 = Date.now(); // waitFor advances the fake clock a little; the success was stamped by now
+    }
+    let t0 = 0;
+    const tickAt = async (minutes: number) => {
+      vi.setSystemTime(t0 + minutes * MIN);
+      __ownerKeepAliveForTests();
+      for (let i = 0; i < 4; i++) await settle();
+    };
+
+    it("a failed attempt at minute 10 is retried on the next tick (minute 11), not at minute 20", async () => {
+      await authorizedAtZero();
+      attest.mockResolvedValueOnce(false); // the minute-10 attempt fails
+      await tickAt(10);
+      expect(attest).toHaveBeenCalledTimes(2);
+      expect(getOwnerSessionSnapshot().phase).toBe("authorized"); // the t=0 attestation is still live
+
+      await tickAt(11); // next regular tick: still due, because nothing was stamped
+      expect(attest).toHaveBeenCalledTimes(3);
+
+      // The minute-11 attempt succeeded: the next renewal is due at minute 21, not before.
+      await tickAt(12);
+      await tickAt(20);
+      expect(attest).toHaveBeenCalledTimes(3);
+      await tickAt(21);
+      expect(attest).toHaveBeenCalledTimes(4);
+    });
+
+    it("a successful attempt defers the next one a full interval", async () => {
+      await authorizedAtZero();
+      await tickAt(5); // too soon after the t=0 success
+      expect(attest).toHaveBeenCalledTimes(1);
+      await tickAt(10);
+      expect(attest).toHaveBeenCalledTimes(2);
+      await tickAt(11);
+      await tickAt(19);
+      expect(attest).toHaveBeenCalledTimes(2);
+    });
+
+    it("failed attempts never loop on their own: single-flight, one attempt per tick", async () => {
+      await authorizedAtZero();
+      let release!: (v: boolean) => void;
+      attest.mockImplementationOnce(() => new Promise<boolean>((r) => { release = r; }));
+      vi.setSystemTime(t0 + 10 * MIN);
+      __ownerKeepAliveForTests();
+      __ownerKeepAliveForTests(); // overlapping tick / focus while the first is in flight
+      __ownerKeepAliveForTests();
+      await settle();
+      expect(attest).toHaveBeenCalledTimes(2);
+      release(false);
+      for (let i = 0; i < 6; i++) await settle(); // no tick: nothing retries by itself
+      expect(attest).toHaveBeenCalledTimes(2);
+      attest.mockResolvedValue(false);
+      await tickAt(11);
+      await tickAt(12);
+      expect(attest).toHaveBeenCalledTimes(4); // exactly one per tick
+    });
+  });
+
   it("an aal2 owner needs no keep-alive attestation", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     ownerState.mockResolvedValue(ok({ isOwner: true, authorized: true, aal: "aal2" }));
