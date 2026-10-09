@@ -60,8 +60,17 @@ const authState = vi.hoisted(() => ({
 }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 
-const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean }));
-vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => adminCtx }));
+// OWN1.1: the HUD reads the canonical owner session (useOwnerAuth), not the
+// Railway admin gate and not user_roles. isAuthorized = owner on a trusted
+// session; needsMfa = the owner on a session that still needs MFA.
+const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean, needsMfa: false as boolean }));
+vi.mock("@/hooks/useOwnerAuth", () => ({
+  useOwnerAuth: () => ({
+    isOwner: adminCtx.isAuthorized || adminCtx.needsMfa,
+    authorized: adminCtx.isAuthorized,
+    loading: false,
+  }),
+}));
 
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
@@ -138,6 +147,7 @@ const follows = (a: Element, b: Element) =>
 beforeEach(() => {
   authState.user = { id: "auth-uid", is_anonymous: false };
   adminCtx.isAuthorized = false;
+  adminCtx.needsMfa = false;
   locationState.pathname = "/lol";
   db.notifications = [];
   db.reads = [];
@@ -400,16 +410,22 @@ describe("admin entry point (migrated from the account menu)", () => {
     expect(document.body.innerHTML).not.toContain("hud-admin-link");
   });
 
-  it("reaches an admin authorized without an account, via the guest panel", async () => {
-    // The explicit admin-key fallback authorizes with no real Supabase user, so
-    // the guest branch has to carry the footer too — otherwise a fallback-key
-    // operator loses the entry point entirely.
-    authState.user = null;
-    adminCtx.isAuthorized = true;
+  it("shows Admin to the owner even before MFA — /admin then asks for it", async () => {
+    // OWN1.1: hiding the entry until the session was trusted left the owner
+    // with no way in. The entry is a link; AdminRoute decides what renders.
+    adminCtx.needsMfa = true;
     render(<MogzyIdentityMenu />);
     fireEvent.click(chevron());
     const link = await screen.findByTestId("hud-admin-link");
     expect(link.getAttribute("href")).toBe(ADMIN_HOME_PATH);
+  });
+
+  it("never shows Admin to a guest (OWN1: no admin-key path exists)", async () => {
+    authState.user = null;
+    render(<MogzyIdentityMenu />);
+    fireEvent.click(chevron());
+    await screen.findByTestId("hud-guest-panel");
+    expect(screen.queryByTestId("hud-admin-link")).toBeNull();
   });
 });
 

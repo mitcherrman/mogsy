@@ -13,6 +13,10 @@ interface Props {
   /** Offer "trust this device" after verification. */
   offerTrust?: boolean;
   title?: string;
+  /** Why MFA is being asked for (e.g. the sensitive action). */
+  description?: string;
+  /** Render without the full-page centring wrapper (inside a dialog). */
+  embedded?: boolean;
 }
 
 export async function verifyTotp(code: string): Promise<{ ok: boolean; error?: string }> {
@@ -24,7 +28,13 @@ export async function verifyTotp(code: string): Promise<{ ok: boolean; error?: s
   return error ? { ok: false, error: "That code didn't work. Try the current one." } : { ok: true };
 }
 
-export function OwnerStepUp({ onVerified, offerTrust = true, title = "Verify it's you" }: Props) {
+export function OwnerStepUp({
+  onVerified,
+  offerTrust = true,
+  title = "Verify it's you",
+  description = "Enter the code from your authenticator app to continue.",
+  embedded = false,
+}: Props) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,37 +57,41 @@ export function OwnerStepUp({ onVerified, offerTrust = true, title = "Verify it'
     onVerified();
   };
 
+  const body = (
+    <div className="w-full max-w-sm space-y-3 rounded-lg border border-border bg-muted/20 p-5" data-testid="owner-step-up-card">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />
+        <h2 className="text-sm font-semibold">{title}</h2>
+      </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+      <Input
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => e.key === "Enter" && void submit()}
+        aria-label="Verification code"
+        data-testid="owner-step-up-code"
+      />
+      {offerTrust && (
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />
+          Trust this browser for 30 days
+        </label>
+      )}
+      {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+      <Button size="sm" className="w-full" disabled={busy || verified} onClick={() => void submit()}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Verify"}
+      </Button>
+    </div>
+  );
+  if (embedded) return <div data-testid="owner-step-up">{body}</div>;
   return (
     <div className="flex flex-1 items-center justify-center p-6" data-testid="owner-step-up">
-      <div className="w-full max-w-sm space-y-3 rounded-lg border border-border bg-muted/20 p-5">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />
-          <h2 className="text-sm font-semibold">{title}</h2>
-        </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Enter the code from your authenticator app to continue.
-        </p>
-        <Input
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-          onKeyDown={(e) => e.key === "Enter" && void submit()}
-          aria-label="Verification code"
-          data-testid="owner-step-up-code"
-        />
-        {offerTrust && (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />
-            Trust this browser for 30 days
-          </label>
-        )}
-        {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
-        <Button size="sm" className="w-full" disabled={busy || verified} onClick={() => void submit()}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Verify"}
-        </Button>
-      </div>
+      {body}
     </div>
   );
 }

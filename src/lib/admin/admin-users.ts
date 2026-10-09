@@ -22,6 +22,25 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isEffectivePro } from "@/lib/pro/entitlement";
 import { usernameMessage } from "@/lib/identity/username";
+import { runOwnerAction } from "@/lib/admin-auth/ownerAction";
+
+/**
+ * OWN1.1 — bot and friendship edits are routine owner work: a trusted owner
+ * session is enough. If the server refuses because a device attestation
+ * lapsed, runOwnerAction re-attests and retries once; if it still asks for MFA
+ * (the fresh-aal2 guard before OWN1.1 migration 05 is applied), the owner gets
+ * the per-action prompt. Link and update are idempotent (same target state
+ * on a re-send), so only they are re-sent after MFA; bot creation is not.
+ * A cancelled prompt reads as an ordinary failure ("error").
+ */
+async function asRoutineOwnerAction<T extends { error: unknown }>(
+  reason: string,
+  call: () => PromiseLike<T>,
+  idempotent = true,
+): Promise<T | { data: null; error: { message: string } }> {
+  const outcome = await runOwnerAction({ level: "trusted", reason, idempotent }, () => Promise.resolve(call()));
+  return outcome.status === "done" ? outcome.result : { data: null, error: { message: outcome.status } };
+}
 
 export const ADMIN_USERS_PATH = "/admin/users";
 
@@ -384,9 +403,11 @@ export async function fetchAdminDirectory(): Promise<AdminDirectoryProfile[]> {
 }
 
 export async function adminLinkFriendship(targetProfileId: string): Promise<LinkFriendshipResult> {
-  const { data, error } = await supabase.rpc("admin_link_friendship" as never, {
-    _target_profile_id: targetProfileId,
-  } as never);
+  const { data, error } = await asRoutineOwnerAction("Adding to your friends", () =>
+    supabase.rpc("admin_link_friendship" as never, {
+      _target_profile_id: targetProfileId,
+    } as never),
+  );
   if (error) return { ok: false, code: "error" };
   const body = readJson(data);
   if (!body || typeof body.code !== "string") return { ok: false, code: "error" };
@@ -444,13 +465,16 @@ export interface CreateBotResult {
 }
 
 export async function adminCreateBotProfile(input: CreateBotInput): Promise<CreateBotResult> {
-  const { data, error } = await supabase.rpc("admin_create_bot_profile" as never, {
-    _display_name: input.displayName,
-    _avatar_url: input.avatarUrl ?? null,
-    _profile_frame: input.profileFrame ?? null,
-    // Explicit, never implicit: auto-friend only when the box was ticked.
-    _add_to_my_friends: input.addToMyFriends === true,
-  } as never);
+  const { data, error } = await asRoutineOwnerAction("Creating a bot", () =>
+    supabase.rpc("admin_create_bot_profile" as never, {
+      _display_name: input.displayName,
+      _avatar_url: input.avatarUrl ?? null,
+      _profile_frame: input.profileFrame ?? null,
+      // Explicit, never implicit: auto-friend only when the box was ticked.
+      _add_to_my_friends: input.addToMyFriends === true,
+    } as never),
+    false, // a second create is a second bot: never re-sent automatically
+  );
   if (error) return { ok: false, code: "error" };
   const body = readJson(data);
   if (!body || typeof body.code !== "string") return { ok: false, code: "error" };
@@ -485,13 +509,15 @@ export interface UpdateBotResult {
 }
 
 export async function adminUpdateBotProfile(input: UpdateBotInput): Promise<UpdateBotResult> {
-  const { data, error } = await supabase.rpc("admin_update_bot_profile" as never, {
-    _profile_id: input.profileId,
-    _display_name: input.displayName ?? null,
-    _avatar_url: input.avatarUrl === undefined ? null : input.avatarUrl,
-    _profile_frame: input.profileFrame === undefined ? null : input.profileFrame,
-    _is_disabled: input.isDisabled === undefined ? null : input.isDisabled,
-  } as never);
+  const { data, error } = await asRoutineOwnerAction("Editing a bot", () =>
+    supabase.rpc("admin_update_bot_profile" as never, {
+      _profile_id: input.profileId,
+      _display_name: input.displayName ?? null,
+      _avatar_url: input.avatarUrl === undefined ? null : input.avatarUrl,
+      _profile_frame: input.profileFrame === undefined ? null : input.profileFrame,
+      _is_disabled: input.isDisabled === undefined ? null : input.isDisabled,
+    } as never),
+  );
   if (error) return { ok: false, code: "error" };
   const body = readJson(data);
   if (!body || typeof body.code !== "string") return { ok: false, code: "error" };

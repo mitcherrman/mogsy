@@ -11,6 +11,7 @@ import BlogShareButtons from "@/components/blog/BlogShareButtons";
 import SwipeComments from "@/components/SwipeComments";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import type { BlogContent, BlogTheme } from "@/lib/blog/types";
 import { SITE_URL } from "@/lib/site-config";
 
@@ -19,15 +20,8 @@ export default function BlogPost() {
   const { user } = useAuth();
   const { data: post, isLoading } = useBlogPost(slug);
   const { data: related = [] } = useBlogList({ limit: 4 });
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    if (!user) { setIsAdmin(false); return; }
-    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
-      const roles = (data ?? []).map((r) => r.role as string);
-      setIsAdmin(roles.includes("admin") || roles.includes("master_admin"));
-    });
-  }, [user]);
+  // OWN1.1: owner session, not the retired user_roles admin rows.
+  const { isAdmin } = useAdminAuthority();
 
   useEffect(() => {
     if (!post?.id) return;

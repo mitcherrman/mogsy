@@ -137,3 +137,6 @@ OWN2: move the staged Edge Functions live, add the Railway JWT + `owner_auth_sta
 6. Verify a new/untrusted browser requires MFA before admin access.
 7. Remove retired Railway KNOWLEDGE_ADMIN_KEY / MOGSY_ADMIN_USER_IDS / MOGSY_ADMIN_EMAILS variables only after the production owner flow is fully verified.
 
+
+## OWN1.1 follow-up (2026-10-08)
+Admin usability correction on top of this model (Railway `supabase_owner` contract fix, one shared owner session, trusted-device keep-alive, per-action fresh-MFA step-up, legacy-role remnants removed): see `docs/OWN1_1_ADMIN_USABILITY.md`.

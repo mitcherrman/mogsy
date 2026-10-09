@@ -55,9 +55,12 @@ describe("AdminRoute (OWN1 owner-only)", () => {
   });
 
   it("fails closed on an RPC error or malformed payload", async () => {
+    // OWN1.1: an unreachable owner check is neither admin nor "not the owner":
+    // nothing mounts, and the visitor gets a Retry instead of a redirect.
     rpcError = { message: "boom" };
     renderAt();
-    await waitFor(() => expect(screen.getByTestId("home")).toBeTruthy());
+    expect(await screen.findByTestId("owner-unavailable")).toBeTruthy();
+    expect(screen.queryByTestId("admin")).toBeNull();
     cleanup();
     rpcError = null;
     rpcAnswer = true; // the legacy has_role shape is NOT accepted
@@ -70,5 +73,31 @@ describe("AdminRoute (OWN1 owner-only)", () => {
     renderAt();
     await waitFor(() => expect(screen.getByTestId("home")).toBeTruthy());
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("AdminRoute (OWN1.1 stability)", () => {
+  it("nested AdminRoutes share one owner check", async () => {
+    rpcAnswer = { is_owner: true, authorized: true, aal: "aal2" };
+    render(
+      <MemoryRouter initialEntries={["/admin"]}>
+        <Routes>
+          <Route path="/admin" element={<AdminRoute><AdminRoute><AdminRoute><div data-testid="admin">ADMIN</div></AdminRoute></AdminRoute></AdminRoute>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId("admin")).toBeTruthy();
+    expect(rpc.mock.calls.filter(([n]) => n === "owner_auth_state")).toHaveLength(1);
+  });
+
+  it("after MFA in the step-up, the owner gets in without reloading", async () => {
+    rpcAnswer = { is_owner: true, authorized: false, aal: "aal1", trusted_device: false };
+    const view = renderAt();
+    expect(await screen.findByTestId("owner-step-up")).toBeTruthy();
+    // Simulate the verified session: the next owner_auth_state is aal2.
+    rpcAnswer = { is_owner: true, authorized: true, aal: "aal2", fresh_aal2: true };
+    const { refreshOwnerSession } = await import("@/lib/admin-auth/ownerSession");
+    await refreshOwnerSession();
+    expect(await view.findByTestId("admin")).toBeTruthy();
   });
 });

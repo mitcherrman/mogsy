@@ -20,6 +20,7 @@ import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import { useAcademyIdentitySync } from "./hooks/useAcademyIdentitySync";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import { OwnerStepUpHost } from "./components/admin/OwnerStepUpHost";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
 import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
 import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
@@ -688,6 +689,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <OwnerStepUpHost />
           <RouterProvider router={appRouter} />
         </TooltipProvider>
       </PremiumSessionProvider>

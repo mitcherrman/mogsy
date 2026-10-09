@@ -61,8 +61,17 @@ vi.mock("react-router-dom", () => ({
   ),
 }));
 
-const adminCtx = vi.hoisted(() => ({ isAuthorized: true as boolean }));
-vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => adminCtx }));
+// OWN1.1: the HUD reads the canonical owner session (useOwnerAuth), not the
+// Railway admin gate and not user_roles. isAuthorized = owner on a trusted
+// session; needsMfa = the owner on a session that still needs MFA.
+const adminCtx = vi.hoisted(() => ({ isAuthorized: true as boolean, needsMfa: false as boolean }));
+vi.mock("@/hooks/useOwnerAuth", () => ({
+  useOwnerAuth: () => ({
+    isOwner: adminCtx.isAuthorized || adminCtx.needsMfa,
+    authorized: adminCtx.isAuthorized,
+    loading: false,
+  }),
+}));
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
 }));
@@ -204,7 +213,11 @@ beforeEach(() => {
   signInAs(ADMIN_A);
   db.adminNotifs = [];
   db.adminReads = [];
-  db.roles = [{ role: "admin" }];
+  // OWN1.1: admin = the authorized owner session. Legacy role rows are
+  // deliberately present-but-irrelevant (see the legacy-role test below).
+  db.roles = [];
+  adminCtx.isAuthorized = true;
+  adminCtx.needsMfa = false;
   db.upsertCalls = [];
   db.updateCalls = [];
   db.adminUpsertError = null;
@@ -273,7 +286,7 @@ describe("HUD admin notifications — unread is derived per admin", () => {
   });
 
   it("shows no admin section at all to a non-admin", async () => {
-    db.roles = [{ role: "user" }];
+    adminCtx.isAuthorized = false;
     db.adminNotifs = [adminNotif()];
     const { bell } = await openBell();
     await screen.findByText("No notifications yet");
@@ -454,5 +467,32 @@ describe("HUD admin notifications — realtime", () => {
     await screen.findByText("Image reported");
     const sub = db.subscriptions.find(s => s.table === "admin_notification_reads");
     expect(sub).toMatchObject({ event: "INSERT", filter: `admin_user_id=eq.${ADMIN_A}` });
+  });
+});
+
+describe("OWN1.1 — the bell follows the canonical owner, never user_roles", () => {
+  it("loads the owner feed with no admin/master_admin role rows at all", async () => {
+    db.roles = [];
+    db.adminNotifs = [adminNotif()];
+    await openBell();
+    expect(await screen.findByText("Image reported")).toBeTruthy();
+  });
+
+  it("a legacy master_admin row grants a non-owner nothing", async () => {
+    adminCtx.isAuthorized = false;
+    db.roles = [{ role: "master_admin" }, { role: "admin" }, { role: "moderator" }];
+    db.adminNotifs = [adminNotif()];
+    await openBell();
+    await screen.findByText("No notifications yet");
+    expect(screen.queryByText("Image reported")).toBeNull();
+  });
+
+  it("the owner still needing MFA gets no owner feed (its RLS needs a trusted session)", async () => {
+    adminCtx.isAuthorized = false;
+    adminCtx.needsMfa = true;
+    db.adminNotifs = [adminNotif()];
+    await openBell();
+    await screen.findByText("No notifications yet");
+    expect(screen.queryByText("Image reported")).toBeNull();
   });
 });

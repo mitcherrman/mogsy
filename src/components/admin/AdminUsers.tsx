@@ -19,6 +19,7 @@ import {
   formatGrantExpiry,
 } from "@/lib/pro/entitlement";
 import { toast } from "sonner";
+import { ownerActionNotice, runOwnerAction, type OwnerActionOutcome } from "@/lib/admin-auth/ownerAction";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -147,6 +148,22 @@ function RowTag({ children, tone = "muted" }: { children: React.ReactNode; tone?
   return <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${toneClass}`}>{children}</span>;
 }
 
+/** OWN1.1 — what the per-action MFA prompt names for each account action. */
+const ACCOUNT_ACTION_REASONS: Record<string, string> = {
+  send_password_reset: "Sending a password reset",
+  resend_verification: "Resending a verification email",
+  confirm_email: "Confirming an email address",
+  ban_user: "Banning this account",
+  unban_user: "Unbanning this account",
+};
+
+/** Toast the outcome of an owner action that did not run; true when it didn't. */
+function showOwnerActionNotice<T>(outcome: OwnerActionOutcome<T>): outcome is Exclude<OwnerActionOutcome<T>, { status: "done" }> {
+  const notice = ownerActionNotice(outcome);
+  if (notice) toast(notice);
+  return notice !== null;
+}
+
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
@@ -266,9 +283,13 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       const allEmails: Record<string, string> = {};
       for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
         const batch = userIds.slice(i, i + BATCH_SIZE);
-        const { data: emailData, error: emailError } = await supabase.functions.invoke("admin-get-emails", {
-          body: { user_ids: batch },
-        });
+        // OWN1.1: routine owner read; recovers a lapsed device attestation once.
+        const emailOutcome = await runOwnerAction(
+          { level: "trusted", reason: "Loading account emails", idempotent: true },
+          () => supabase.functions.invoke("admin-get-emails", { body: { user_ids: batch } }),
+        );
+        if (emailOutcome.status !== "done") { setProfilesError(true); break; } // one prompt, not one per batch
+        const { data: emailData, error: emailError } = emailOutcome.result;
         if (emailError || emailData?.error) setProfilesError(true);
         if (emailData?.emails) {
           Object.assign(allEmails, emailData.emails);
@@ -511,9 +532,18 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setAuthInfo(null);
     setAuthError(false);
     setGeneratedLink(null);
-    const { data, error } = await supabase.functions.invoke("admin-user-actions", {
-      body: { action: "get_auth_info", target_user_id: userId },
-    });
+    // OWN1.1: routine owner read (trusted level at the Edge Function).
+    const outcome = await runOwnerAction(
+      { level: "trusted", reason: "Loading sign-in details", idempotent: true },
+      () => supabase.functions.invoke("admin-user-actions", {
+        body: { action: "get_auth_info", target_user_id: userId },
+      }),
+    );
+    if (outcome.status !== "done") {
+      setAuthError(true);
+      return;
+    }
+    const { data, error } = outcome.result;
     if (error || data?.error || !data?.auth_info) {
       setAuthError(true);
       return;
@@ -523,12 +553,21 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const executeAccountAction = async (action: string) => {
     if (!selectedUser) return;
+    const targetUserId = selectedUser.user_id;
     setAccountActionLoading(action);
     setGeneratedLink(null);
-    const { data, error } = await supabase.functions.invoke("admin-user-actions", {
-      body: { action, target_user_id: selectedUser.user_id },
-    });
+    // OWN1.1: every admin-user-actions write needs a FRESH MFA (Edge Function
+    // ADMIN_USER_ACTION_LEVEL). Ask for it for this action only, before the
+    // call; never re-send the action automatically afterwards.
+    const outcome = await runOwnerAction(
+      { level: "fresh", reason: ACCOUNT_ACTION_REASONS[action] ?? "This account action" },
+      () => supabase.functions.invoke("admin-user-actions", {
+        body: { action, target_user_id: targetUserId },
+      }),
+    );
     setAccountActionLoading(null);
+    if (showOwnerActionNotice(outcome)) return;
+    const { data, error } = outcome.result;
     if (error || data?.error) {
       toast.error(data?.error || error?.message || "Action failed");
       return;
@@ -579,12 +618,22 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     }
     setGrantSaving(true);
     setGrantError(null);
-    const { error } = await (supabase as any).rpc("admin_set_pro_grant", {
-      _user_id: selectedUser.user_id,
-      _kind: kind,
-      _expires_at: days === null ? null : new Date(Date.now() + days * 86400000).toISOString(),
-      _reason: kind === null ? null : (grantReason.trim() || null),
-    });
+    // OWN1.1: a Premium grant/revoke is a privilege change: fresh MFA, asked
+    // for this action only, and never re-sent automatically.
+    const grantOutcome = await runOwnerAction(
+      { level: "fresh", reason: kind === null ? "Revoking a Premium grant" : "Granting Premium" },
+      () => (supabase as any).rpc("admin_set_pro_grant", {
+        _user_id: selectedUser.user_id,
+        _kind: kind,
+        _expires_at: days === null ? null : new Date(Date.now() + days * 86400000).toISOString(),
+        _reason: kind === null ? null : (grantReason.trim() || null),
+      }) as Promise<{ error: { message?: string } | null }>,
+    );
+    if (showOwnerActionNotice(grantOutcome)) {
+      setGrantSaving(false);
+      return;
+    }
+    const { error } = grantOutcome.result;
     if (error) {
       setGrantSaving(false);
       const message = error.message || "Failed to update Premium grant";
@@ -672,8 +721,22 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   };
 
   const deleteUser = async (profile: Profile) => {
-    const { error } = await supabase.from("profiles").delete().eq("id", profile.id);
+    // S1-FIX: deleting a profile cascades through many tables, so it needs a
+    // FRESH MFA (staged SQL 06 enforces this server-side) and is never re-sent
+    // automatically. `.select` returns the deleted rows: RLS refusing a row
+    // deletes nothing WITHOUT an error, so success is reported only for a row
+    // the server actually removed.
+    const outcome = await runOwnerAction(
+      { level: "fresh", reason: "Deleting this user profile" },
+      async () => await supabase.from("profiles").delete().eq("id", profile.id).select("id"),
+    );
+    if (showOwnerActionNotice(outcome)) return;
+    const { data, error } = outcome.result;
     if (error) { toast.error("Cannot delete: " + error.message); return; }
+    if (!data?.length) {
+      toast.error("Nothing was deleted", { description: "The profile may already be gone, or this session may not delete it. Refresh and check." });
+      return;
+    }
     setDeletedUsers((prev) => [{ profile, timestamp: Date.now() }, ...prev].slice(0, 20));
     setProfiles((prev) => prev.filter((p) => p.id !== profile.id));
     setSelectedUser(null);
@@ -719,12 +782,19 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const handlePurgeAnonymous = async () => {
     setPurging(true);
     try {
-      const { data, error } = await supabase.functions.invoke("purge-anonymous-users");
-      if (error || data?.error) {
-        toast.error(data?.error || error?.message || "Purge failed");
-      } else {
-        toast.success(data?.message || "Anonymous users purged");
-        fetchProfiles();
+      // OWN1.1: destructive and irreversible: fresh MFA, never re-sent.
+      const outcome = await runOwnerAction(
+        { level: "fresh", reason: "Purging anonymous users" },
+        () => supabase.functions.invoke("purge-anonymous-users"),
+      );
+      if (!showOwnerActionNotice(outcome)) {
+        const { data, error } = outcome.result;
+        if (error || data?.error) {
+          toast.error(data?.error || error?.message || "Purge failed");
+        } else {
+          toast.success(data?.message || "Anonymous users purged");
+          fetchProfiles();
+        }
       }
     } catch {
       toast.error("Purge failed");
@@ -757,51 +827,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setNotifMessage("");
   };
 
-  const toggleAdminRole = async (userId: string) => {
-    const currentRoles = userRoles[userId] || [];
-    const isCurrentlyAdmin = currentRoles.includes("admin");
-
-    if (isCurrentlyAdmin) {
-      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin" as any);
-      if (error) { toast.error("Failed to remove admin role"); return; }
-      setUserRoles((prev) => ({
-        ...prev,
-        [userId]: (prev[userId] || []).filter((r) => r !== "admin"),
-      }));
-      toast.success("Admin role removed");
-    } else {
-      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" as any });
-      if (error) { toast.error("Failed to grant admin role: " + error.message); return; }
-      setUserRoles((prev) => ({
-        ...prev,
-        [userId]: [...(prev[userId] || []), "admin"],
-      }));
-      toast.success("Admin role granted");
-    }
-  };
-
-  const toggleModeratorRole = async (userId: string) => {
-    const currentRoles = userRoles[userId] || [];
-    const isCurrentlyMod = currentRoles.includes("moderator");
-
-    if (isCurrentlyMod) {
-      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "moderator" as any);
-      if (error) { toast.error("Failed to remove moderator role"); return; }
-      setUserRoles((prev) => ({
-        ...prev,
-        [userId]: (prev[userId] || []).filter((r) => r !== "moderator"),
-      }));
-      toast.success("Moderator role removed");
-    } else {
-      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "moderator" as any });
-      if (error) { toast.error("Failed to grant moderator role: " + error.message); return; }
-      setUserRoles((prev) => ({
-        ...prev,
-        [userId]: [...(prev[userId] || []), "moderator"],
-      }));
-      toast.success("Moderator role granted");
-    }
-  };
+  // OWN1.1: "Grant/Remove Admin" and "Grant/Remove Moderator" were removed.
+  // OWN1 retired those roles (one canonical owner); user_roles writes for them
+  // are revoked from clients and blocked by a trigger, so the buttons could
+  // only fail. Privilege is never granted from this screen.
 
   const toggleDemoAccess = async (userId: string) => {
     const currentRoles = userRoles[userId] || [];
@@ -1227,8 +1256,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   <div className="space-y-2 border-t border-border pt-3">
                     <h5 className="text-xs font-bold">Role and access changes</h5>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant={isSelectedAdmin ? "destructive" : "outline"} onClick={() => toggleAdminRole(selectedUser.user_id)}>{isSelectedAdmin ? "Remove Admin" : "Grant Admin"}</Button>
-                      <Button size="sm" variant={isSelectedMod ? "destructive" : "outline"} onClick={() => toggleModeratorRole(selectedUser.user_id)}>{isSelectedMod ? "Remove Moderator" : "Grant Moderator"}</Button>
                       <Button size="sm" variant={isSelectedDemo ? "destructive" : "outline"} onClick={() => toggleDemoAccess(selectedUser.user_id)}>{isSelectedDemo ? "Remove Demo Access" : "Grant Demo Access"}</Button>
                     </div>
                   </div>

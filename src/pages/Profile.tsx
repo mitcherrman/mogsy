@@ -9,6 +9,7 @@ import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchGlobalPremiumAccess, isEffectiveProForSelf } from "@/lib/pro/entitlement";
 import { useToast } from "@/hooks/use-toast";
@@ -69,7 +70,9 @@ export default function Profile() {
   const [socialErrors, setSocialErrors] = useState<Record<string, string>>({});
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [isModerator, setIsModerator] = useState(false);
+  // OWN1.1: the frame picker's old "moderator or admin" gate, now the canonical
+  // owner session (OWN1 retired moderator/admin/master_admin role rows).
+  const { isAdmin: isModerator } = useAdminAuthority();
   const cityRef = useRef<HTMLDivElement>(null);
   const { config, setOption, resetConfig } = useProfileConfig();
   // LEGACY1 deleted the "Legacy Mogsy Modules" escape hatch that used to live
@@ -138,11 +141,6 @@ export default function Profile() {
     }
     setLoading(true);
     loadProfile();
-    // Check if user is a moderator
-    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
-      const roles = data?.map(r => r.role as string) || [];
-      setIsModerator(roles.includes("moderator") || roles.includes("admin") || roles.includes("master_admin"));
-    });
   }, [user?.id]);
 
   const loadProfile = async () => {

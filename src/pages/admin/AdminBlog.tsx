@@ -3,6 +3,7 @@ import { authHref } from "@/lib/auth/auth-destination";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Plus, FileText, Eye, Pencil, Search, Trash2, EyeOff, Send, FileX } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAdminBlogList } from "@/hooks/blog/useBlogPosts";
@@ -21,8 +22,11 @@ export default function AdminBlog() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [allowed, setAllowed] = useState(false);
-  const [checking, setChecking] = useState(true);
+  // OWN1.1: the canonical owner session, not the retired user_roles
+  // admin/master_admin rows (which OWN1 deleted, so this page bounced the owner).
+  const authority = useAdminAuthority();
+  const checking = authority.loading;
+  const allowed = authority.isAdmin;
   const { data: posts = [], refetch } = useAdminBlogList();
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -34,14 +38,9 @@ export default function AdminBlog() {
 
   useEffect(() => {
     if (!user) { navigate(authHref(location.pathname + location.search)); return; }
-    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
-      const roles = (data ?? []).map((r) => r.role as string);
-      const ok = roles.includes("admin") || roles.includes("master_admin");
-      setAllowed(ok);
-      setChecking(false);
-      if (!ok) { toast.error("Access denied"); navigate("/"); }
-    });
-  }, [user, navigate]);
+    if (checking) return;
+    if (!allowed) { toast.error("Access denied"); navigate("/"); }
+  }, [user, navigate, checking, allowed]);
 
   async function createPost() {
     if (!user) return;

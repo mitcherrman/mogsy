@@ -41,8 +41,9 @@ vi.mock("react-router-dom", () => ({
   ),
 }));
 
-vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({
-  useAdminAuth: () => ({ isAuthorized: false }),
+// OWN1.1: the HUD reads the canonical owner session.
+vi.mock("@/hooks/useOwnerAuth", () => ({
+  useOwnerAuth: () => ({ isOwner: false, authorized: false, loading: false }),
 }));
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
