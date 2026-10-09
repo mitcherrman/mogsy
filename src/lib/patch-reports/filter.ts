@@ -1,14 +1,12 @@
 import type { MogzyStatus, PatchEntityType, PatchReportCard } from "./api";
+import { MOGZY_STATUS_LABEL } from "./mogzy-status";
 
-export const STATUS_LABELS: Record<MogzyStatus, string> = {
-  matches: "Matches",
-  applied: "Applied",
-  pending: "Pending",
-  mismatch: "Mismatch",
-  unresolved: "Unresolved",
-  needs_interpretation: "Needs interpretation",
-  not_represented: "Not represented",
-};
+/**
+ * The status filter's option labels. The filter matches each card's
+ * `aggregate_status`, which the card header shows with the consumer vocabulary,
+ * so the options use that same vocabulary (one map, `mogzy-status.ts`).
+ */
+export const STATUS_LABELS: Record<MogzyStatus, string> = MOGZY_STATUS_LABEL;
 
 export function filterCards(
   cards: PatchReportCard[],

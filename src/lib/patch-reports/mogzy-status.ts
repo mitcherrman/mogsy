@@ -197,6 +197,8 @@ export type ReconciliationSummary = {
   status: string;
   recorded: boolean;
   headline: string;
+  /** The same status in a few words, for the masthead pill that links to the notice. */
+  shortLabel: string;
   body: string;
   /** Applied (with or without a follow-up note). */
   updated: number;
@@ -218,21 +220,39 @@ export type ReconciliationSummary = {
   technical: Array<{ key: string; count: number; meaning: string | null }>;
 };
 
-const HEADLINE: Record<string, string> = {
-  RECONCILED: "Mogzy's gameplay data is up to date with this patch",
-  RECONCILED_WITH_HELDS: "Mogzy's gameplay data is partly updated for this patch",
-  RECONCILIATION_FAILED: "Mogzy's gameplay data update didn't finish",
-  PUBLISHED_NOT_RECONCILED: "No full Mogzy data update is recorded for this patch",
+/**
+ * The one wording map for a patch's data status: the notice's headline and the
+ * masthead pill's short form say the same thing, so they cannot drift apart.
+ */
+const STATUS_COPY: Record<string, { headline: string; short: string }> = {
+  RECONCILED: {
+    headline: "Mogzy's gameplay data is up to date with this patch",
+    short: "Mogzy data up to date",
+  },
+  RECONCILED_WITH_HELDS: {
+    headline: "Mogzy's gameplay data is partly updated for this patch",
+    short: "Mogzy data partly updated",
+  },
+  RECONCILIATION_FAILED: {
+    headline: "Mogzy's gameplay data update didn't finish",
+    short: "Mogzy data update didn't finish",
+  },
+  PUBLISHED_NOT_RECONCILED: {
+    headline: "No full Mogzy data update is recorded for this patch",
+    short: "No Mogzy data update recorded",
+  },
 };
+
+/** A status this build does not know: name the subject, claim nothing. */
+const UNKNOWN_STATUS_COPY = { headline: "Mogzy data status", short: "Mogzy data status" };
 
 const RIOT_LEADS = "Riot's patch notes below are complete.";
 
 function heldPhrase(notModeled: number, needsReview: number): string {
-  const parts = [
-    notModeled > 0 ? "some mechanics aren't modeled by Mogzy yet" : null,
-    needsReview > 0 ? "some need a Mogzy review first" : null,
-  ].filter(Boolean);
-  return parts.join(" and ");
+  if (notModeled > 0 && needsReview > 0) return "some mechanics are not yet modeled or need review";
+  if (notModeled > 0) return "some mechanics are not yet modeled";
+  if (needsReview > 0) return "some changes need review";
+  return "";
 }
 
 export function summarizeReconciliation(reconciliation?: PatchReconciliation): ReconciliationSummary {
@@ -256,9 +276,7 @@ export function summarizeReconciliation(reconciliation?: PatchReconciliation): R
       break;
     case "RECONCILED_WITH_HELDS": {
       const held = heldPhrase(notModeled, needsReview);
-      body =
-        `${RIOT_LEADS} Mogzy has updated the changes it can safely apply to its own data` +
-        (held ? `; ${held}, so Mogzy still uses the previous values for those.` : ".");
+      body = `${RIOT_LEADS} Mogzy has updated the changes it can safely incorporate` + (held ? `; ${held}.` : ".");
       break;
     }
     case "RECONCILIATION_FAILED":
@@ -285,10 +303,12 @@ export function summarizeReconciliation(reconciliation?: PatchReconciliation): R
       .map((key) => ({ key, count: n(key), meaning: null })),
   ];
 
+  const copy = STATUS_COPY[status] ?? UNKNOWN_STATUS_COPY;
   return {
     status,
     recorded,
-    headline: HEADLINE[status] ?? "Mogzy data status",
+    headline: copy.headline,
+    shortLabel: copy.short,
     body,
     updated,
     notModeled,

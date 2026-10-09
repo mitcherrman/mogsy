@@ -46,9 +46,9 @@ export function PatchDataStatusNotice({
   const summary = summarizeReconciliation(reconciliation);
   const tone = TONE[summary.status] ?? TONE.PUBLISHED_NOT_RECONCILED;
   const breakdown = [
-    `${summary.updated} now up to date in Mogzy`,
-    summary.notModeled > 0 && `${summary.notModeled} not modeled by Mogzy yet`,
-    summary.needsReview > 0 && `${summary.needsReview} need${summary.needsReview === 1 ? "s" : ""} a Mogzy review`,
+    `${summary.updated} now up to date`,
+    summary.notModeled > 0 && `${summary.notModeled} not modeled yet`,
+    summary.needsReview > 0 && `${summary.needsReview} need${summary.needsReview === 1 ? "s" : ""} review`,
     summary.failed > 0 && `${summary.failed} couldn't be processed`,
   ].filter(Boolean) as string[];
 
@@ -72,18 +72,22 @@ export function PatchDataStatusNotice({
 
       {summary.recorded && (
         <div className="mt-2 space-y-1 text-xs text-muted-foreground" data-testid="patch-data-status-counts">
+          {/* Checks are the update's own units, not report lines (one Riot line can
+              produce several), so no count here is set beside the report's line count
+              or summed with the notes that had nothing to update. */}
           {summary.checked > 0 ? (
             <p>
-              Of the {plural(summary.checked, "gameplay-number change", "gameplay-number changes")}{" "}
-              Mogzy&apos;s data update checked: {breakdown.join(" · ")}.
+              {plural(summary.checked, "gameplay-data check", "gameplay-data checks")}:{" "}
+              {breakdown.join(" · ")}.
             </p>
           ) : (
             <p>Mogzy&apos;s data update found no gameplay numbers it needed to change.</p>
           )}
           {summary.nothingToUpdate > 0 && (
             <p>
-              {plural(summary.nothingToUpdate, "other note", "other notes")} — wording-only changes,
-              bug fixes, announcements and mode-specific changes — had nothing for Mogzy to update.
+              {summary.checked > 0
+                ? "Most other Riot notes do not map directly to a Mogzy gameplay-data field."
+                : "Riot's notes for this patch do not map directly to a Mogzy gameplay-data field."}
             </p>
           )}
           <p>
@@ -129,9 +133,10 @@ export function PatchDataStatusNotice({
                 ))}
               </ul>
               <p>
-                The update counts {summary.total} items in its own units — a line with two numbers,
-                such as a base stat with per-level growth, counts twice — so its total can differ from
-                the number of changes listed in the report.
+                One Riot change line can produce more than one gameplay-data check — a base stat
+                with per-level growth is checked as two numbers — so the update counts{" "}
+                {summary.total} items in its own units, and its totals can differ from the number of
+                changes listed in the report.
               </p>
             </>
           ) : (

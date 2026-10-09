@@ -1,23 +1,16 @@
 import type { ReactNode } from "react";
 import type { PatchReconciliation, PatchReportDetail } from "@/lib/patch-reports/api";
+import { summarizeReconciliation } from "@/lib/patch-reports/mogzy-status";
 import { PATCH_HUB_TOP_ANCHOR } from "@/lib/patch-reports/sr-navigation";
 
 const GOLD = "#c9a84c";
 
-const RECON_PILL: Record<string, { label: string; tone: string }> = {
-  RECONCILED: { label: "Mogzy data current", tone: "text-emerald-500 border-emerald-600/40" },
-  RECONCILED_WITH_HELDS: {
-    label: "Mogzy data partly current",
-    tone: "text-amber-500 border-amber-600/40",
-  },
-  RECONCILIATION_FAILED: {
-    label: "Mogzy data not reconciled",
-    tone: "text-red-500 border-red-600/40",
-  },
-  PUBLISHED_NOT_RECONCILED: {
-    label: "Mogzy data not reconciled",
-    tone: "text-muted-foreground border-border",
-  },
+// Tone only: the pill's words come from the same summary as the notice it links to.
+const RECON_PILL_TONE: Record<string, string> = {
+  RECONCILED: "text-emerald-500 border-emerald-600/40",
+  RECONCILED_WITH_HELDS: "text-amber-500 border-amber-600/40",
+  RECONCILIATION_FAILED: "text-red-500 border-red-600/40",
+  PUBLISHED_NOT_RECONCILED: "text-muted-foreground border-border",
 };
 
 type Props = {
@@ -48,9 +41,11 @@ export const PatchHubMasthead = ({
   reconciliationAnchor,
   viewSwitch,
 }: Props) => {
-  const recon =
-    RECON_PILL[reconciliation?.status ?? "PUBLISHED_NOT_RECONCILED"] ??
-    RECON_PILL.PUBLISHED_NOT_RECONCILED;
+  const summary = summarizeReconciliation(reconciliation);
+  const recon = {
+    label: summary.shortLabel,
+    tone: RECON_PILL_TONE[summary.status] ?? RECON_PILL_TONE.PUBLISHED_NOT_RECONCILED,
+  };
   return (
     <header id={PATCH_HUB_TOP_ANCHOR} className="mb-5 scroll-mt-24" data-testid="patch-hub-masthead">
       <p className="text-xs uppercase tracking-[0.3em]" style={{ color: GOLD }}>

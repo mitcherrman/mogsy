@@ -49,7 +49,7 @@ describe("PatchDataStatusNotice", () => {
     expect(notice()).toHaveAttribute("data-status", "RECONCILED");
     expect(screen.getByText("Mogzy's gameplay data is up to date with this patch")).toBeInTheDocument();
     expect(screen.getByTestId("patch-data-status-counts")).toHaveTextContent(
-      "Of the 4 gameplay-number changes Mogzy's data update checked: 4 now up to date in Mogzy.",
+      "4 gameplay-data checks: 4 now up to date.",
     );
   });
 
@@ -58,9 +58,9 @@ describe("PatchDataStatusNotice", () => {
     expect(notice()).toHaveAttribute("data-status", "RECONCILED_WITH_HELDS");
     expect(screen.getByText("Mogzy's gameplay data is partly updated for this patch")).toBeInTheDocument();
     expect(screen.getByTestId("patch-data-status-body")).toHaveTextContent(
-      "Riot's patch notes below are complete. Mogzy has updated the changes it can safely apply to its own data; " +
-        "some mechanics aren't modeled by Mogzy yet and some need a Mogzy review first, so Mogzy still uses the " +
-        "previous values for those. This describes Mogzy's own data — it never changes or disputes Riot's notes.",
+      "Riot's patch notes below are complete. Mogzy has updated the changes it can safely incorporate; " +
+        "some mechanics are not yet modeled or need review. " +
+        "This describes Mogzy's own data — it never changes or disputes Riot's notes.",
     );
     const text = firstLayer();
     expect(text).not.toMatch(/canonical|held —|cannot model|needs a decision|HELD_|AUTO_APPLIED|reconcil/i);
@@ -69,17 +69,39 @@ describe("PatchDataStatusNotice", () => {
   it("26.19: counts stay exact and use the update's own denominator", () => {
     render(<PatchDataStatusNotice reconciliation={RECONCILIATION_26_19} />);
     const counts = screen.getByTestId("patch-data-status-counts");
-    expect(counts).toHaveTextContent(
-      "Of the 42 gameplay-number changes Mogzy's data update checked: 11 now up to date in Mogzy · " +
-        "24 not modeled by Mogzy yet · 7 need a Mogzy review.",
-    );
-    expect(counts).toHaveTextContent(
-      "173 other notes — wording-only changes, bug fixes, announcements and mode-specific changes — had nothing for Mogzy to update.",
-    );
+    expect(counts).toHaveTextContent("42 gameplay-data checks: 11 now up to date · 24 not modeled yet · 7 need review.");
+    expect(counts).toHaveTextContent("Most other Riot notes do not map directly to a Mogzy gameplay-data field.");
     // No claim that every report line was in the update's denominator.
     expect(firstLayer()).not.toContain(String(REPORT_26_19_LINE_COUNT));
     expect(firstLayer()).not.toContain("215");
     expect(counts).toHaveTextContent("recorded when this report was built, before this update ran");
+  });
+
+  it("26.19 (SR launch integration): the first layer never sets checks beside a count that sums past the report", () => {
+    // 42 checks + 173 no-consumer notes = 215, one more than the report's 214
+    // lines (Vi's base + growth line is two checks). Showing both numbers invites
+    // that sum, so the no-consumer count stays under Technical details.
+    render(<PatchDataStatusNotice reconciliation={RECONCILIATION_26_19} />);
+    expect(firstLayer()).not.toContain("173");
+    expect(firstLayer()).not.toMatch(/\d+ other notes?/);
+    // The counts speak in checks, never in "changes" (the report's line units).
+    expect(firstLayer()).not.toMatch(/gameplay-number changes|\d+ changes/);
+    const t = within(technical());
+    expect(t.getByText(/One Riot change line can produce more than one gameplay-data check/)).toBeInTheDocument();
+    expect(t.getByText(/counts 215 items in its own units/)).toBeInTheDocument();
+    expect(
+      t.getAllByTestId("patch-data-status-state").find((li) => li.getAttribute("data-state") === "NO_MOGZY_CONSUMER"),
+    ).toHaveTextContent("NO_MOGZY_CONSUMER 173");
+  });
+
+  it("no checks at all: says so, and the no-consumer line does not say 'other'", () => {
+    render(
+      <PatchDataStatusNotice reconciliation={reconciliation({ changes_by_terminal_state: { NO_MOGZY_CONSUMER: 12 } })} />,
+    );
+    const counts = screen.getByTestId("patch-data-status-counts");
+    expect(counts).toHaveTextContent("Mogzy's data update found no gameplay numbers it needed to change.");
+    expect(counts).toHaveTextContent("Riot's notes for this patch do not map directly to a Mogzy gameplay-data field.");
+    expect(counts).not.toHaveTextContent(/Most other/);
   });
 
   it("26.19: exact states, operation and backend wording live under Technical details", () => {
@@ -124,8 +146,7 @@ describe("PatchDataStatusNotice", () => {
     expect(notice()).toHaveAttribute("data-status", "RECONCILIATION_FAILED");
     expect(screen.getByText("Mogzy's gameplay data update didn't finish")).toBeInTheDocument();
     expect(screen.getByTestId("patch-data-status-counts")).toHaveTextContent(
-      "Of the 27 gameplay-number changes Mogzy's data update checked: 3 now up to date in Mogzy · " +
-        "20 not modeled by Mogzy yet · 3 need a Mogzy review · 1 couldn't be processed.",
+      "27 gameplay-data checks: 3 now up to date · 20 not modeled yet · 3 need review · 1 couldn't be processed.",
     );
   });
 

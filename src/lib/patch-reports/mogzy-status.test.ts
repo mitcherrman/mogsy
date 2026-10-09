@@ -140,7 +140,11 @@ describe("summarizeReconciliation", () => {
     expect(s.status).toBe("RECONCILED_WITH_HELDS");
     expect(s.headline).toBe("Mogzy's gameplay data is partly updated for this patch");
     expect(s.body).toMatch(/^Riot's patch notes below are complete\./);
-    expect(s.body).toContain("some mechanics aren't modeled by Mogzy yet and some need a Mogzy review first");
+    expect(s.body).toBe(
+      "Riot's patch notes below are complete. Mogzy has updated the changes it can safely incorporate; " +
+        "some mechanics are not yet modeled or need review.",
+    );
+    expect(s.shortLabel).toBe("Mogzy data partly updated");
     expect(s).toMatchObject({
       updated: 11,
       notModeled: 24,
@@ -188,7 +192,29 @@ describe("summarizeReconciliation", () => {
       ...RECONCILIATION_26_19,
       changes_by_terminal_state: { AUTO_APPLIED: 3, HELD_RUNTIME_WORK: 2, HELD_AUTHORITY: 0 },
     });
-    expect(only.body).toContain("some mechanics aren't modeled by Mogzy yet, so");
+    expect(only.body).toMatch(/some mechanics are not yet modeled\.$/);
     expect(only.body).not.toContain("review");
+    const reviewOnly = summarizeReconciliation({
+      ...RECONCILIATION_26_19,
+      changes_by_terminal_state: { AUTO_APPLIED: 3, HELD_RUNTIME_WORK: 0, HELD_AUTHORITY: 2 },
+    });
+    expect(reviewOnly.body).toMatch(/some changes need review\.$/);
+    expect(reviewOnly.body).not.toContain("modeled");
+  });
+
+  it("SR launch integration: one wording map gives the notice headline and the masthead's short label", () => {
+    const short = (status?: string) =>
+      summarizeReconciliation(status ? { ...RECONCILIATION_26_19, status: status as never } : undefined).shortLabel;
+    expect(short("RECONCILED")).toBe("Mogzy data up to date");
+    expect(short("RECONCILED_WITH_HELDS")).toBe("Mogzy data partly updated");
+    expect(short("RECONCILIATION_FAILED")).toBe("Mogzy data update didn't finish");
+    expect(short("PUBLISHED_NOT_RECONCILED")).toBe("No Mogzy data update recorded");
+    expect(short()).toBe("No Mogzy data update recorded");
+    // An unknown future status claims nothing, in both places.
+    const unknown = summarizeReconciliation({ ...RECONCILIATION_26_19, status: "SOMETHING_NEW" as never });
+    expect([unknown.headline, unknown.shortLabel]).toEqual(["Mogzy data status", "Mogzy data status"]);
+    for (const s of ["RECONCILED", "RECONCILED_WITH_HELDS", "RECONCILIATION_FAILED", "PUBLISHED_NOT_RECONCILED"]) {
+      expect(short(s)).not.toMatch(/current|reconcil|canonical|mismatch/i);
+    }
   });
 });
