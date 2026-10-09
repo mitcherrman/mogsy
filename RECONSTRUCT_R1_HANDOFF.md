@@ -5,11 +5,14 @@
 **State: READY FOR OWNER ADMIN PLAYTEST (local branches only).**
 - **Backend: CERTIFIED** on `reconstruct/r1-backend` (local commits; nothing pushed or deployed).
 - **Frontend: COMPLETE** on `reconstruct/r1-frontend` (`mogsy/.worktrees/reconstruct-r1`, local commit). It is browser-validated at 1600×900, 1280×720 and 390×844.
+- **Frontend INTEGRATED** onto current `origin/main` `c08882f6` as `reconstruct/r1-frontend-int` (`mogsy/.worktrees/reconstruct-r1-int`). This is the playtest candidate; see "Frontend integration" at the end.
 - Nothing has been pushed, merged, deployed to Railway or published to Lovable.
 
 ## Bases
 - Backend `reconstruct/r1-backend` (this worktree, `League_Combat_Simulator/.worktrees/reconstruct-r1-be`) is based on master `f3a164f1` (re-verified as `origin/master` on 2026-10-07).
 - Frontend `reconstruct/r1-frontend` (`mogsy/.worktrees/reconstruct-r1`, node_modules junction) is based on origin/main `d528bf9f` (re-verified).
+- Frontend integration `reconstruct/r1-frontend-int` (`mogsy/.worktrees/reconstruct-r1-int`, node_modules junction) is based on origin/main `c08882f6` (verified 2026-10-08).
+- A clean detached baseline frontend worktree exists at `mogsy/.worktrees/r1-fe-baseline`, now at `c08882f6`.
 - A clean detached baseline backend worktree exists at `League_Combat_Simulator/.worktrees/r1-baseline` (`f3a164f1`) for failure comparisons.
 
 ## Settled product decisions (do not reopen)
@@ -192,3 +195,73 @@ Deliberately NOT ported:
 ### Next steps (owner)
 1. Owner admin playtest: Admin → Leaguecraft → Ranked → Playtests → Play Reconstruct. This needs the backend branch deployed somewhere with the recipe graph.
 2. Then decide whether to push/merge both branches. Nothing has been pushed.
+
+## Frontend integration onto current origin/main (2026-10-08)
+
+**Playtest candidate pair:**
+- Backend `reconstruct/r1-backend`: `3400ed19` + `afcedd43` on `origin/master` `f3a164f1`. Unchanged in this step; `origin/master` has not moved.
+- Frontend `reconstruct/r1-frontend-int` (`mogsy/.worktrees/reconstruct-r1-int`): `3c99307a` replayed onto `origin/main` `c08882f6`.
+
+### Refs after fetch
+- Backend `origin/master` = `f3a164f15ef440530000cd50db68eb9f986974b1`.
+- Frontend `origin/main` = `c08882f6982c6eca80431e00051f3af466397f12`. It is 8 commits ahead of `d528bf9f`: Mastery retirement Phase 1 and docs.
+- Both Reconstruct worktrees were clean before the replay.
+
+### Replay
+- The cherry-pick of `3c99307a` was clean, with no conflicts.
+- The replayed patch is byte-identical to the original: `git diff d528bf9f 3c99307a` equals `git diff c08882f6 <replay>`.
+- No file is touched by both the replay and the 8 intervening commits.
+
+### Semantic review of the 8 intervening commits
+They change only:
+- `MASTERY_RETIREMENT_HANDOFF.md`;
+- `Quiz.tsx`: the hub utility link is retargeted from `/quiz/mastery` to the public Journey Library (`JOURNEY_LIBRARY_ROUTE`), and the `masteryJourney` flag is renamed to `journeyLibrary`;
+- the `quiz-mastery` Journey pages and their tests;
+- `Quiz.hub.test.tsx`.
+
+None of them touches:
+- the Ranked module registry;
+- `ranked-public` contracts or the client;
+- `QuizRankedMatch` or `useRankedMatch`;
+- review readers or cards;
+- `roundMedia`;
+- the admin area or `PresetLaunch`.
+
+The Play Reconstruct launcher is reachable only through Admin → Leaguecraft → Ranked → Playtests (`AdminRankedPage`), not through `Quiz.tsx`. No Mastery retirement file was modified.
+
+### Focused validation on the integrated tree
+- **Tests:** 259 of 260 pass. The set:
+  - all Reconstruct suites (primitive, lib, renderer, server-capture contract);
+  - the real-host lifecycle `QuizRankedMatch.reconstruct`;
+  - the module registry test;
+  - `ReconstructLaunch`;
+  - `AdminShell.areas`;
+  - `Quiz.hub`.
+- **The one failure:** `Quiz.hub.test.tsx` › "keeps exactly one h1". It fails identically on clean `c08882f6`, so it is pre-existing on main and not related to Reconstruct.
+- **Typecheck** (`tsc -p tsconfig.app.json`): only the 2 errors already present in untouched files (`OnboardingProfile.tsx`, `identity/connections.ts`).
+- **eslint** on touched files: 0 errors.
+- **`npm run build`:** passes, including the item and champion prerender verification. The build rewrote `public/sitemap.xml` (line endings); that change was reverted and is not committed.
+
+### Browser acceptance on the integrated build (real shell, real wiki art)
+- **Geometry:** every server phase (open / locked / wrong / right) was measured for Wit's End (×2) and Dusk and Dawn (4 sockets) at 1600×900, 1280×720 and 390×844.
+  - The numbers are identical to the pre-integration ones.
+  - Nothing moves between phases.
+  - The 4-part recipe panel exactly fills its 192px box.
+  - The module fits the question body: 655/727, 543/553 and 702/765.
+  - No module element overflows.
+  - No generic stamp is shown over the module's reveal.
+- **Interaction, with real pointer/tap clicks:**
+  - 1600×900, Stormrazor: posted `{"placement":["p5","p1","p0"]}`.
+  - 1280×720, Dusk and Dawn: posted `{"placement":["p4","p1","p3","p5"]}`.
+  - 390×844 mobile emulation, Wit's End with a duplicate: posted `{"placement":["p3","p3","p5"]}`.
+  - In all three, the board opened and Lock sent that body through the real client. The board went to locked with no movement.
+- **Shell overflow at 390×844:** the page is 4px wider than the viewport (scrollWidth 394 vs 390). This comes from the Ranked shell's mobile match timeline (`mobile-timeline-node-10`). The Order Forge probe shows the identical 4px, so it is pre-existing shell behaviour, not Reconstruct, and it was left alone.
+
+### Re-running the probe locally
+- Serve the item art: `python -m http.server 8797 --directory <backend worktree>`.
+- Point Vite at it: `VITE_COMBAT_API_URL=http://127.0.0.1:8797`, via the gitignored `.env.rcprobe.local` and `--mode rcprobe`.
+- Open `/dev/ranked-shell-probe?q=reconstruct&rc=witsEnd|stormrazor|fourSlot&entry=fresh&lead=300[&recon=locked|wrong|right|live]`.
+
+### Status
+- The integrated pair is ready for the owner admin playtest.
+- Nothing has been pushed, merged, deployed (Railway) or published (Lovable).
