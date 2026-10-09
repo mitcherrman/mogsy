@@ -5,14 +5,15 @@
 **State: READY FOR OWNER ADMIN PLAYTEST (local branches only).**
 - **Backend: CERTIFIED** on `reconstruct/r1-backend` (local commits; nothing pushed or deployed).
 - **Frontend: COMPLETE** on `reconstruct/r1-frontend` (`mogsy/.worktrees/reconstruct-r1`, local commit). It is browser-validated at 1600×900, 1280×720 and 390×844.
-- **Frontend INTEGRATED** onto current `origin/main` `c08882f6` as `reconstruct/r1-frontend-int` (`mogsy/.worktrees/reconstruct-r1-int`). This is the playtest candidate; see "Frontend integration" at the end.
+- **Backend PROMOTED:** GitHub `master` is `afcedd43`.
+- **Frontend production candidate:** `reconstruct/r1-frontend-latest-int` (`mogsy/.worktrees/reconstruct-r1-latest`) on `origin/main` `0d3fbcbb`. See "Frontend integration" at the end. The earlier `c08882f6` and `ef2a9907` integrations are superseded.
 - Nothing has been pushed, merged, deployed to Railway or published to Lovable.
 
 ## Bases
 - Backend `reconstruct/r1-backend` (this worktree, `League_Combat_Simulator/.worktrees/reconstruct-r1-be`) is based on master `f3a164f1` (re-verified as `origin/master` on 2026-10-07).
 - Frontend `reconstruct/r1-frontend` (`mogsy/.worktrees/reconstruct-r1`, node_modules junction) is based on origin/main `d528bf9f` (re-verified).
-- Frontend integration `reconstruct/r1-frontend-int` (`mogsy/.worktrees/reconstruct-r1-int`, node_modules junction) is based on origin/main `c08882f6` (verified 2026-10-08).
-- A clean detached baseline frontend worktree exists at `mogsy/.worktrees/r1-fe-baseline`, now at `c08882f6`.
+- Frontend production candidate `reconstruct/r1-frontend-latest-int` (`mogsy/.worktrees/reconstruct-r1-latest`, node_modules junction) is based on origin/main `0d3fbcbb` (verified 2026-10-09).
+- A clean detached baseline frontend worktree exists at `mogsy/.worktrees/r1-fe-baseline`, now at `0d3fbcbb`.
 - A clean detached baseline backend worktree exists at `League_Combat_Simulator/.worktrees/r1-baseline` (`f3a164f1`) for failure comparisons.
 
 ## Settled product decisions (do not reopen)
@@ -196,72 +197,59 @@ Deliberately NOT ported:
 1. Owner admin playtest: Admin → Leaguecraft → Ranked → Playtests → Play Reconstruct. This needs the backend branch deployed somewhere with the recipe graph.
 2. Then decide whether to push/merge both branches. Nothing has been pushed.
 
-## Frontend integration onto current origin/main (2026-10-08)
+## Frontend integration onto current origin/main 0d3fbcbb (2026-10-09) — PRODUCTION CANDIDATE
 
-**Playtest candidate pair:**
-- Backend `reconstruct/r1-backend`: `3400ed19` + `afcedd43` on `origin/master` `f3a164f1`. Unchanged in this step; `origin/master` has not moved.
-- Frontend `reconstruct/r1-frontend-int` (`mogsy/.worktrees/reconstruct-r1-int`): `3c99307a` replayed onto `origin/main` `c08882f6`.
-
-### Refs after fetch
-- Backend `origin/master` = `f3a164f15ef440530000cd50db68eb9f986974b1`.
-- Frontend `origin/main` = `c08882f6982c6eca80431e00051f3af466397f12`. It is 8 commits ahead of `d528bf9f`: Mastery retirement Phase 1 and docs.
-- Both Reconstruct worktrees were clean before the replay.
+**Candidate pair:**
+- Backend: already promoted. GitHub `master` is `afcedd43ce568ab600da6e73f82c695dd0333d17` (Reconstruct `3400ed19` + `afcedd43`).
+- Frontend: `reconstruct/r1-frontend-latest-int` (`mogsy/.worktrees/reconstruct-r1-latest`). The Reconstruct commits are replayed onto `origin/main` `0d3fbcbb7166f793f87acb968ed3b0d473cd8932`, and the branch is a direct fast-forward descendant of it.
+- Earlier integrations are superseded and must not be pushed:
+  - `reconstruct/r1-frontend-int` on `c08882f6` (`aeaed48b`);
+  - `reconstruct/r1-frontend-dv2-int` on `ef2a9907` (`be3409bc`).
 
 ### Replay
-- The cherry-pick of `3c99307a` was clean, with no conflicts.
-- The replayed patch is byte-identical to the original: `git diff d528bf9f 3c99307a` equals `git diff c08882f6 <replay>`.
-- No file is touched by both the replay and the 8 intervening commits.
+- `f53cfca6` (code) became `9be41b0b`.
+- `aeaed48b` (handoff) became `18e82dad`.
+- This commit replaces that handoff's stale `c08882f6` claims.
+- Both cherry-picks were clean, and the combined patch is byte-identical to the validated one.
 
-### Semantic review of the 8 intervening commits
-They change only:
-- `MASTERY_RETIREMENT_HANDOFF.md`;
-- `Quiz.tsx`: the hub utility link is retargeted from `/quiz/mastery` to the public Journey Library (`JOURNEY_LIBRARY_ROUTE`), and the `masteryJourney` flag is renamed to `journeyLibrary`;
-- the `quiz-mastery` Journey pages and their tests;
-- `Quiz.hub.test.tsx`.
+### Interaction review (c08882f6 → 0d3fbcbb: 27 commits)
+- **Daily V2 P2A/P2B (10 commits, up to `ef2a9907`).** No file is shared with Reconstruct.
+  - `src/lib/history/contracts.ts` only adds the Daily-record `main` / `parent` fields with their own readers.
+  - Ranked history keeps `moduleId` as a pass-through string; there is no module whitelist.
+  - Reconstruct review parsing is in `ranked-public/contracts.ts`, which DV2 does not touch.
+  - `stageCategory`, `DailyRunRow` and Play Scroll deal with Daily stage kinds, not Ranked modules.
+- **Patch Hub / Patch Reports (17 commits, up to `0d3fbcbb`).** These touch 50 files, all patch-report/impact/hub/Combat Lab handoff code, tests, docs and captures. None touches:
+  - ranked-public contracts or client;
+  - the module registry;
+  - `QuizRankedMatch`;
+  - review/history;
+  - transcript;
+  - round media;
+  - admin.
+- No Daily or Patch Hub file was modified.
 
-None of them touches:
-- the Ranked module registry;
-- `ranked-public` contracts or the client;
-- `QuizRankedMatch` or `useRankedMatch`;
-- review readers or cards;
-- `roundMedia`;
-- the admin area or `PresetLaunch`.
-
-The Play Reconstruct launcher is reachable only through Admin → Leaguecraft → Ranked → Playtests (`AdminRankedPage`), not through `Quiz.tsx`. No Mastery retirement file was modified.
-
-### Focused validation on the integrated tree
-- **Tests:** 259 of 260 pass. The set:
-  - all Reconstruct suites (primitive, lib, renderer, server-capture contract);
-  - the real-host lifecycle `QuizRankedMatch.reconstruct`;
-  - the module registry test;
+### Validation (SWC native cache: `SWC_NATIVE_BINDING_CACHE=C:\swc-native-cache`)
+- **Tests:** 974 tests, 972 pass. The set:
+  - all Reconstruct suites (primitive, lib, renderer, server-capture contract/disclosure);
+  - the real-host `QuizRankedMatch.reconstruct`;
+  - registry;
   - `ReconstructLaunch`;
   - `AdminShell.areas`;
-  - `Quiz.hub`.
-- **The one failure:** `Quiz.hub.test.tsx` › "keeps exactly one h1". It fails identically on clean `c08882f6`, so it is pre-existing on main and not related to Reconstruct.
-- **Typecheck** (`tsc -p tsconfig.app.json`): only the 2 errors already present in untouched files (`OnboardingProfile.tsx`, `identity/connections.ts`).
-- **eslint** on touched files: 0 errors.
-- **`npm run build`:** passes, including the item and champion prerender verification. The build rewrote `public/sitemap.xml` (line endings); that change was reverted and is not committed.
-
-### Browser acceptance on the integrated build (real shell, real wiki art)
-- **Geometry:** every server phase (open / locked / wrong / right) was measured for Wit's End (×2) and Dusk and Dawn (4 sockets) at 1600×900, 1280×720 and 390×844.
-  - The numbers are identical to the pre-integration ones.
-  - Nothing moves between phases.
-  - The 4-part recipe panel exactly fills its 192px box.
-  - The module fits the question body: 655/727, 543/553 and 702/765.
-  - No module element overflows.
-  - No generic stamp is shown over the module's reveal.
-- **Interaction, with real pointer/tap clicks:**
-  - 1600×900, Stormrazor: posted `{"placement":["p5","p1","p0"]}`.
-  - 1280×720, Dusk and Dawn: posted `{"placement":["p4","p1","p3","p5"]}`.
-  - 390×844 mobile emulation, Wit's End with a duplicate: posted `{"placement":["p3","p3","p5"]}`.
-  - In all three, the board opened and Lock sent that body through the real client. The board went to locked with no movement.
-- **Shell overflow at 390×844:** the page is 4px wider than the viewport (scrollWidth 394 vs 390). This comes from the Ranked shell's mobile match timeline (`mobile-timeline-node-10`). The Order Forge probe shows the identical 4px, so it is pre-existing shell behaviour, not Reconstruct, and it was left alone.
-
-### Re-running the probe locally
-- Serve the item art: `python -m http.server 8797 --directory <backend worktree>`.
-- Point Vite at it: `VITE_COMBAT_API_URL=http://127.0.0.1:8797`, via the gitignored `.env.rcprobe.local` and `--mode rcprobe`.
-- Open `/dev/ranked-shell-probe?q=reconstruct&rc=witsEnd|stormrazor|fourSlot&entry=fresh&lead=300[&recon=locked|wrong|right|live]`.
-
-### Status
-- The integrated pair is ready for the owner admin playtest.
-- Nothing has been pushed, merged, deployed (Railway) or published (Lovable).
+  - `SegmentTranscript`;
+  - `orderForgeLockReveal`;
+  - `roundMedia`;
+  - `src/lib/history/`, `src/components/quiz/workspace/`, `src/components/quiz/play-scroll/` and `src/pages/quiz-daily-challenge/run/`.
+- **The 2 failures:** `play-scroll/playModeCard.styles.test.ts` (the "streak glint" and "CHOOSE MODE one line" cases). Both fail identically on clean `0d3fbcbb`, so they are baseline-only.
+- **Typecheck:** only the 2 errors already present in untouched files.
+- **eslint** on touched files: clean.
+- **`npm run build`:** passes, including the item and champion prerender verification. The regenerated `public/sitemap.xml` was reverted.
+- **Browser (probe in the real shell)**, at 1600×900, 1280×720 and 390×844, over open, locked, wrong and right for Wit's End (×2) and Dusk and Dawn (4 sockets):
+  - Geometry is identical to every previous validation, with no phase movement.
+  - The depth-2 panel fills exactly 192px.
+  - The module fits the body: 655/727, 543/553 and 702/765.
+  - No module element overflows, and no generic stamp appears.
+- **Placement plus a repeated part plus Lock**, at all three sizes, with real taps on 390×844:
+  - The usage badge reads 2/3.
+  - Lock posts `{"placement":["p3","p3","p5"]}`.
+  - The board goes to locked with zero movement.
+- Nothing was pushed or published.
