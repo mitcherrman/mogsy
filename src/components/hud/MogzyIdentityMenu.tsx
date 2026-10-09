@@ -35,7 +35,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
+import { useOwnerAuth } from "@/hooks/useOwnerAuth";
 import { ADMIN_HOME_PATH } from "@/lib/admin/admin-registry";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { useSfx } from "@/lib/audio/useSfx";
@@ -198,7 +198,7 @@ const isLiveInvite = (invite: ChampionCardDuelInvite, nowMs: number) => {
  * The panel keeps every notification behaviour the bell had, and gains the
  * utility footer that the retired account menu used to own: Settings (which is
  * where sign-out, password/email and account deletion live), the Admin entry
- * point under the same backend-verified `useAdminAuth` gate, and the theme
+ * point under the server-verified owner session (`useOwnerAuth`), and the theme
  * picker where a picker is actually mounted. Nothing that menu owned was
  * dropped — see the guest branch below for the signup CTA it also carried.
  *
@@ -213,13 +213,15 @@ export default function MogzyIdentityMenu() {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const [signingOut, setSigningOut] = useState(false);
-  // Backend-verified admin authorization only; never inferred from the user
-  // object, roles, or storage. The item exists in the DOM only after
-  // authorization resolves positively — no placeholder, no reserved slot.
-  // Note this can be authorized via the explicit admin key with no real
-  // account at all, which is exactly why the footer has to render on the
-  // guest branch too: otherwise a fallback-key operator loses the entry point.
-  const { isAuthorized: isAdminAuthorized } = useAdminAuth();
+  // OWN1.1: the canonical owner session (server-side owner_auth_state), never
+  // the user object, user_roles or storage. The Admin entry shows for the
+  // owner whether or not this session still needs MFA — /admin then asks for
+  // it — and it stays put through token refreshes and background rechecks
+  // (the shared owner session keeps its last proven answer). The admin
+  // notification feed needs an authorized session (its RLS is is_owner()).
+  const owner = useOwnerAuth();
+  const showAdminEntry = owner.isOwner;
+  const isAdmin = owner.isOwner && owner.authorized;
 
   // Anonymous sessions are authenticated as far as Supabase is concerned, so
   // `user` alone is not enough of a gate — an anonymous visitor was being shown
@@ -235,10 +237,13 @@ export default function MogzyIdentityMenu() {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [adminNotifs, setAdminNotifs] = useState<AdminNotif[]>([]);
   const [readAdminIds, setReadAdminIds] = useState<Set<string>>(new Set());
-  const [isAdmin, setIsAdmin] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  // OWN1.1: the owner feed loads on its own effect, so its failure is kept
+  // apart from the inbox load — a later inbox success must not paper over it.
+  const [adminFeedFailed, setAdminFeedFailed] = useState(false);
+  const panelStatus = status === "ready" && adminFeedFailed ? "error" : status;
   const myProfileIdRef = useRef<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -348,14 +353,7 @@ export default function MogzyIdentityMenu() {
         if (cancelled) return;
         myProfileIdRef.current = profile?.id ?? null;
 
-        const { data: roles } = await supabase
-          .from("user_roles").select("role").eq("user_id", user.id);
-        if (cancelled) return;
-        const admin = (roles || []).some((r: any) => r.role === "admin" || r.role === "master_admin");
-        setIsAdmin(admin);
-
         await loadNotifications();
-        if (admin) await loadAdminNotifs();
         if (!cancelled) setStatus("ready");
       } catch {
         // Never leave the bell stuck in "loading" — that is what made a failed
@@ -414,7 +412,26 @@ export default function MogzyIdentityMenu() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [isAccount, user, loadNotifications, loadAdminNotifs]);
+  }, [isAccount, user, loadNotifications]);
+
+  // Owner feed: loaded when (and only when) the owner session is authorized.
+  // OWN1.1 replaced the legacy user_roles admin/master_admin read here — those
+  // rows were retired by OWN1, which silently emptied the owner's bell.
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminNotifs([]);
+      setAdminFeedFailed(false);
+      return;
+    }
+    let cancelled = false;
+    loadAdminNotifs().then(
+      () => { if (!cancelled) setAdminFeedFailed(false); },
+      () => { if (!cancelled) setAdminFeedFailed(true); },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, loadAdminNotifs]);
 
   // Admin-only realtime stream of admin_notifications.
   //
@@ -827,7 +844,7 @@ export default function MogzyIdentityMenu() {
         Settings
       </Link>
 
-      {isAdminAuthorized === true && (
+      {showAdminEntry && (
         <Link
           to={ADMIN_HOME_PATH}
           data-testid="hud-admin-link"
@@ -1033,19 +1050,20 @@ export default function MogzyIdentityMenu() {
           {/* Only the inbox scrolls. The footer below is a sibling, so Settings
               stays reachable no matter how long the list gets. */}
           <div className="min-h-0 flex-1 overflow-y-auto">
-          {status === "loading" && (
+          {panelStatus === "loading" && (
             <p data-testid="notification-loading" className="text-center text-muted-foreground text-xs py-6">
               Loading notifications…
             </p>
           )}
 
-          {status === "error" && (
+          {panelStatus === "error" && (
             <div data-testid="notification-error" className="px-3 py-4 text-center">
               <p className="text-xs text-muted-foreground">Couldn’t load your notifications.</p>
               <button
                 type="button"
                 onClick={() => {
                   setStatus("loading");
+                  setAdminFeedFailed(false);
                   // Admin rows and their receipts are part of what failed, so
                   // the retry has to reload them too — otherwise a receipts
                   // failure resolves to "ready" with every admin row unread.
@@ -1060,7 +1078,7 @@ export default function MogzyIdentityMenu() {
             </div>
           )}
 
-          {status === "ready" &&
+          {panelStatus === "ready" &&
           notifications.length === 0 && adminNotifs.length === 0 && liveInvites.length === 0 ? (
             <p className="text-center text-muted-foreground text-xs py-6">No notifications yet</p>
           ) : (

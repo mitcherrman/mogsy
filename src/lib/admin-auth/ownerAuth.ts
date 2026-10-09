@@ -42,18 +42,48 @@ type LooseRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: 
 export const ownerRpc: LooseRpc = (fn, args) =>
   (supabase.rpc as unknown as LooseRpc)(fn, args);
 
-export async function fetchOwnerAuthState(): Promise<OwnerAuthState> {
+/**
+ * OWN1.1 — one owner_auth_state() read that keeps "the server answered no"
+ * apart from "the server could not be reached". An established owner session
+ * must not be erased over a network blip; a first check that fails is still
+ * not authorized.
+ */
+export type OwnerAuthStateResult = { ok: true; state: OwnerAuthState } | { ok: false };
+
+export async function fetchOwnerAuthStateResult(): Promise<OwnerAuthStateResult> {
   try {
     const { data, error } = await ownerRpc("owner_auth_state");
-    if (error) return NOT_OWNER;
-    return parseOwnerAuthState(data);
+    if (error) return { ok: false };
+    return { ok: true, state: parseOwnerAuthState(data) };
   } catch {
-    return NOT_OWNER;
+    return { ok: false };
   }
+}
+
+export async function fetchOwnerAuthState(): Promise<OwnerAuthState> {
+  const r = await fetchOwnerAuthStateResult();
+  return r.ok ? r.state : NOT_OWNER;
+}
+
+function errorField(err: unknown, key: "message" | "hint" | "error"): string {
+  if (!err || typeof err !== "object" || !(key in err)) return "";
+  const v = (err as Record<string, unknown>)[key];
+  return typeof v === "string" ? v : "";
 }
 
 /** True when a backend error is the server asking for MFA step-up. */
 export function isStepUpRequired(err: unknown): boolean {
-  const msg = err && typeof err === "object" && "message" in err ? String((err as { message: unknown }).message) : String(err ?? "");
-  return /step_up_required/.test(msg);
+  if (typeof err === "string") return /step_up_required/.test(err);
+  return /step_up_required/.test(`${errorField(err, "message")} ${errorField(err, "error")}`);
+}
+
+/**
+ * Which assurance the server asked for. `assert_owner` raises with HINT
+ * `aal2_or_trusted_device` when only the trusted-session check failed (a lapsed
+ * device attestation, recoverable without MFA); `fresh_aal2` / `aal2`, or no
+ * hint at all (Edge Functions), means the action needs a recent MFA. Unknown
+ * reads as "fresh", the stricter answer.
+ */
+export function stepUpKind(err: unknown): "trusted" | "fresh" {
+  return errorField(err, "hint") === "aal2_or_trusted_device" ? "trusted" : "fresh";
 }

@@ -1,8 +1,14 @@
 // Shared admin-auth types (account-bound Supabase admin authorization).
 
-/** Backend auth methods reported by GET /api/admin/session. */
-/** OWN1: the browser admin-key path is gone; only the account bearer remains. */
-export type AdminAuthMethod = "supabase_user";
+/**
+ * Backend auth method reported by GET /api/admin/session.
+ *
+ * OWN1.1: Railway reports `supabase_owner` (routes/_auth.py
+ * AUTH_METHOD_SUPABASE_OWNER) — a verified Supabase bearer for the canonical
+ * owner whose session `owner_auth_state()` authorizes. It is the ONLY accepted
+ * value: `admin_key` and the pre-OWN1 `supabase_user` fail closed.
+ */
+export type AdminAuthMethod = "supabase_owner";
 
 /** Safe principal context from an authorized session response. */
 export interface AdminPrincipal {
@@ -19,17 +25,20 @@ export type AdminSessionOutcome =
   | { kind: "malformed" }; // 2xx but body failed validation — fail closed
 
 /**
- * Centralized admin-auth state. Distinct, non-collapsed states so the gate can
- * show the right affordance and never reduce every 403 to a key prompt.
+ * Centralized admin-auth state for Railway-backed admin workspaces. Derived
+ * from the shared owner session first; Railway is consulted only for the
+ * authorized owner. Distinct states so the gate shows the right affordance.
  */
 export type AdminAuthStatus =
-  | "loading" // Supabase auth still initializing
+  | "loading" // owner session still initializing
   | "signed_out" // no real Supabase user
-  | "checking" // GET /api/admin/session in flight
-  | "authorized" // authorized via the account bearer
-  | "signed_in_non_admin" // real account, but not allowlisted (403)
+  | "checking" // first GET /api/admin/session in flight
+  | "authorized" // owner session authorized AND Railway agreed
+  | "signed_in_non_admin" // real account, not the owner
+  | "needs_step_up" // the owner, on a session that needs MFA / device trust
+  | "owner_denied" // the authorized owner, yet Railway refused (after one re-attest)
   | "expired_session" // session token gone/expired; re-sign-in required
-  | "backend_unavailable" // could not reach the admin backend
+  | "backend_unavailable" // could not reach the admin backend (or Supabase)
   | "malformed_response"; // backend returned an unusable response
 
 export interface AdminAuthContextValue {

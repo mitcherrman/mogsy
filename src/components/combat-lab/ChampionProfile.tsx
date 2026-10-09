@@ -3,6 +3,7 @@ import { Upload, ImageOff, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import {
   useChampionAssets,
   getChampionSplash,
@@ -37,7 +38,6 @@ export default function ChampionProfile({
   skinKey,
   onSkinChange,
 }: Props) {
-  const [isAdmin, setIsAdmin] = useState(false);
   const [bucketImageUrl, setBucketImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -55,24 +55,9 @@ export default function ChampionProfile({
   const isIconArt = !manifestSplash && !manifestLoading && !!manifestIcon;
   const skins = getChampionSkins(manifest, championId);
 
-  // admin check
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin" as any)
-        .maybeSingle();
-      if (!cancelled) setIsAdmin(!!data);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // OWN1.1: admin = the canonical owner session (the user_roles admin rows
+  // this used to read were retired by OWN1). Storage RLS still decides.
+  const { isAdmin } = useAdminAuthority();
 
   // load bucket fallback image whenever champion changes
   useEffect(() => {

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import { toast } from "sonner";
 import type { HexPopoutStyle } from "./HexZipperCard";
 
@@ -16,34 +16,9 @@ type Props = {
  * with a toast if the write fails.
  */
 export default function LolPopoutStyleToggle({ value, onChange }: Props) {
-  const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  // OWN1.1: the canonical owner session instead of two has_role RPCs per mount.
+  const { isAdmin } = useAdminAuthority();
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!user) {
-      setIsAdmin(false);
-      return;
-    }
-    (async () => {
-      for (const role of ["admin", "master_admin"] as const) {
-        const { data, error } = await supabase.rpc("has_role", {
-          _user_id: user.id,
-          _role: role,
-        });
-        if (cancelled) return;
-        if (!error && data === true) {
-          setIsAdmin(true);
-          return;
-        }
-      }
-      if (!cancelled) setIsAdmin(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
 
   if (!isAdmin) return null;
 

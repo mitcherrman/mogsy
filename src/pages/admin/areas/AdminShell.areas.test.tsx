@@ -89,7 +89,7 @@ import { ADMIN_AREAS, ADMIN_TOOLS } from "@/lib/admin/admin-registry";
 
 const authorized: AdminAuthContextValue = {
   status: "authorized",
-  principal: { authMethod: "supabase_user", userId: "u1", email: "owner@mogzy.lol" },
+  principal: { authMethod: "supabase_owner", userId: "u1", email: "owner@mogzy.lol" },
   isAuthorized: true,
   recheck: vi.fn(),
   invalidate: vi.fn(),

@@ -63,8 +63,17 @@ vi.mock("@/hooks/useAuth", () => ({
 const qc = vi.hoisted(() => ({ clear: vi.fn() }));
 vi.mock("@/lib/query-client", () => ({ queryClient: qc }));
 
-const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean }));
-vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => adminCtx }));
+// OWN1.1: the HUD reads the canonical owner session (useOwnerAuth), not the
+// Railway admin gate and not user_roles. isAuthorized = owner on a trusted
+// session; needsMfa = the owner on a session that still needs MFA.
+const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean, needsMfa: false as boolean }));
+vi.mock("@/hooks/useOwnerAuth", () => ({
+  useOwnerAuth: () => ({
+    isOwner: adminCtx.isAuthorized || adminCtx.needsMfa,
+    authorized: adminCtx.isAuthorized,
+    loading: false,
+  }),
+}));
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
 }));
@@ -145,6 +154,7 @@ beforeEach(() => {
   authState.user = { id: "auth-uid", is_anonymous: false };
   authState.signOut = vi.fn().mockResolvedValue(undefined);
   adminCtx.isAuthorized = false;
+  adminCtx.needsMfa = false;
   locationState.pathname = "/lol";
   locationState.search = "";
   db.notifications = [];

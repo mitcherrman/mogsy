@@ -78,7 +78,18 @@ const { state, setGrant, toastError, toastSuccess, supabase } = vi.hoisted(() =>
 });
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase }));
-vi.mock("sonner", () => ({ toast: { success: toastSuccess, error: toastError } }));
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: toastSuccess, error: toastError }) }));
+
+// OWN1.1: sensitive actions go through the owner step-up gate. By default the
+// session already holds a fresh MFA; individual tests flip that.
+const ownerGate = vi.hoisted(() => ({ fresh: true, stepUp: vi.fn(async (_reason: string) => true) }));
+vi.mock("@/lib/admin-auth/ownerSession", () => ({
+  refreshOwnerSession: async () => ({ freshAal2: ownerGate.fresh }),
+  ensureOwnerAuthorized: async () => true,
+}));
+vi.mock("@/lib/admin-auth/ownerStepUpRequest", () => ({
+  requestOwnerStepUp: (reason: string) => ownerGate.stepUp(reason),
+}));
 
 const baseRow = (over: Record<string, unknown> = {}) => ({
   id: PROFILE_ID, user_id: USER_ID, display_name: "Mogzy Owner",
@@ -96,6 +107,8 @@ beforeEach(() => {
   state.writeTakesEffect = true;
   state.rpcError = null;
   setGrant.mockClear();
+  ownerGate.fresh = true;
+  ownerGate.stepUp.mockReset().mockResolvedValue(true);
   toastError.mockClear();
   toastSuccess.mockClear();
 });
@@ -256,5 +269,34 @@ describe("revoking", () => {
     fireEvent.click(await screen.findByTestId("premium-grant-revoke-confirm"));
     await waitFor(() => expect(screen.getByTestId("effective-premium").textContent).toBe("NO"));
     expect(sourceOf()).toBe("free");
+  });
+});
+
+describe("OWN1.1 — a Premium grant is a high-risk action (fresh MFA, this action only)", () => {
+  it("asks for MFA before writing when the session's MFA is not fresh", async () => {
+    ownerGate.fresh = false;
+    await openAccountTab();
+    fireEvent.click(screen.getByTestId("premium-grant-submit"));
+    await waitFor(() => expect(setGrant).toHaveBeenCalled());
+    expect(ownerGate.stepUp).toHaveBeenCalledWith("Granting Premium");
+    expect(ownerGate.stepUp.mock.invocationCallOrder[0]).toBeLessThan(setGrant.mock.invocationCallOrder[0]);
+  });
+
+  it("a cancelled MFA prompt writes nothing", async () => {
+    ownerGate.fresh = false;
+    ownerGate.stepUp.mockResolvedValue(false);
+    await openAccountTab();
+    fireEvent.click(screen.getByTestId("premium-grant-submit"));
+    await waitFor(() => expect(ownerGate.stepUp).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(setGrant).not.toHaveBeenCalled();
+    expect(screen.getByTestId("premium-entitlement-section")).toBeInTheDocument(); // admin stays mounted
+  });
+
+  it("a fresh session grants without any prompt", async () => {
+    await openAccountTab();
+    fireEvent.click(screen.getByTestId("premium-grant-submit"));
+    await waitFor(() => expect(setGrant).toHaveBeenCalled());
+    expect(ownerGate.stepUp).not.toHaveBeenCalled();
   });
 });

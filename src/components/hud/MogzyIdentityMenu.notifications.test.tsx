@@ -55,8 +55,17 @@ vi.mock("react-router-dom", () => ({
 // The identity menu's footer carries the admin entry point under the real
 // `useAdminAuth` contract. Default: not an admin — the admin case has its own
 // suite in MogzyIdentityMenu.identity.test.tsx.
-const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean }));
-vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => adminCtx }));
+// OWN1.1: the HUD reads the canonical owner session (useOwnerAuth), not the
+// Railway admin gate and not user_roles. isAuthorized = owner on a trusted
+// session; needsMfa = the owner on a session that still needs MFA.
+const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean, needsMfa: false as boolean }));
+vi.mock("@/hooks/useOwnerAuth", () => ({
+  useOwnerAuth: () => ({
+    isOwner: adminCtx.isAuthorized || adminCtx.needsMfa,
+    authorized: adminCtx.isAuthorized,
+    loading: false,
+  }),
+}));
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
 }));

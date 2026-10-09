@@ -69,7 +69,18 @@ const { deleteProfile, invoke, supabase } = vi.hoisted(() => {
 });
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
+
+// OWN1.1: sensitive actions go through the owner step-up gate. By default the
+// session already holds a fresh MFA; individual tests flip that.
+const ownerGate = vi.hoisted(() => ({ fresh: true, stepUp: vi.fn(async (_reason: string) => true) }));
+vi.mock("@/lib/admin-auth/ownerSession", () => ({
+  refreshOwnerSession: async () => ({ freshAal2: ownerGate.fresh }),
+  ensureOwnerAuthorized: async () => true,
+}));
+vi.mock("@/lib/admin-auth/ownerStepUpRequest", () => ({
+  requestOwnerStepUp: (reason: string) => ownerGate.stepUp(reason),
+}));
 
 describe("COM1-2 · the ?user deep link", () => {
   beforeEach(() => {

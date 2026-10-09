@@ -1,14 +1,22 @@
 // ---------------------------------------------------------------------------
-// AdminAuthProvider — the single source of account-bound admin authorization
-// state for the whole admin surface. One provider, one shared check; tabs and
-// pages read it instead of each prompting for a key.
+// AdminAuthProvider — admin authorization state for Railway-backed admin
+// workspaces (AdminAuthGate).
 //
-// It never infers admin status from frontend attributes (is_pro, metadata,
-// role flags, user id comparisons). The backend GET /api/admin/session is the
-// only authority. It rechecks on Supabase auth changes (sign-in/out, account
-// switch, token refresh), on explicit fallback set/clear, and on explicit
-// retry/invalidate — with a generation guard so stale results never win and no
-// uncontrolled loop can form.
+// OWN1.1: layered on the ONE shared owner session (useOwnerAuth) instead of
+// running a competing check of its own:
+//   - signed out / not the owner / owner needing MFA come straight from the
+//     owner session; Railway is not called for anyone but the authorized owner;
+//   - for the authorized owner, GET /api/admin/session confirms Railway agrees
+//     (and pins the response contract). It runs once per user, on retry /
+//     invalidate, and when the owner (re)becomes authorized — NOT on every
+//     access-token refresh;
+//   - an established authorization is never flipped to "checking" by a
+//     background recheck, and a temporary Railway failure keeps it (Railway
+//     still authorizes every real API call server-side);
+//   - a 403 for the authorized owner re-attests the trusted device and retries
+//     ONCE before reporting a denial — no loop;
+//   - a malformed success body always fails closed.
+// It never infers admin status from frontend attributes; the server decides.
 // ---------------------------------------------------------------------------
 
 import {
@@ -20,85 +28,98 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useOwnerAuth } from "@/hooks/useOwnerAuth";
 import { fetchAdminSession } from "./adminSessionClient";
 import type {
   AdminAuthContextValue,
   AdminAuthStatus,
   AdminPrincipal,
+  AdminSessionOutcome,
 } from "./types";
 
 const AdminAuthContext = createContext<AdminAuthContextValue | undefined>(undefined);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const { user, session, loading: authLoading } = useAuth();
-  const [status, setStatus] = useState<AdminAuthStatus>("loading");
-  const [principal, setPrincipal] = useState<AdminPrincipal | null>(null);
+  const owner = useOwnerAuth();
+  const [railway, setRailway] = useState<{ status: AdminAuthStatus; principal: AdminPrincipal | null }>({
+    status: "checking",
+    principal: null,
+  });
 
   // Bump to force a controlled recheck (retry / invalidate).
   const [retry, setRetry] = useState(0);
-
   const gen = useRef(0);
-  const realUserId = user && !user.is_anonymous ? user.id : null;
-  const accessToken = session?.access_token ?? null;
+  // The user Railway last authorized; keeps that answer through rechecks.
+  const establishedFor = useRef<string | null>(null);
+
+  const ownerReady = !owner.loading && owner.phase === "authorized";
+  const ownerKey = ownerReady ? owner.userId : null;
+  const { ensureAuthorized } = owner;
 
   useEffect(() => {
+    if (!ownerReady) {
+      gen.current += 1; // drop any in-flight Railway answer
+      establishedFor.current = null;
+      setRailway({ status: "checking", principal: null });
+      return;
+    }
     const myGen = ++gen.current;
+    const established = establishedFor.current === ownerKey;
+    if (!established) setRailway({ status: "checking", principal: null });
 
-    const run = async () => {
-      if (authLoading) {
-        setStatus("loading");
-        return;
-      }
-      if (!realUserId) {
-        setPrincipal(null);
-        setStatus("signed_out");
-        return;
-      }
-      // A real account with no live token means the Supabase
-      // session expired. Supabase already auto-refreshes; a missing token here
-      // is a genuine expiry — one recheck cycle, no loop.
-      if (realUserId && !accessToken) {
-        setPrincipal(null);
-        setStatus("expired_session");
-        return;
-      }
+    const ask = (): Promise<AdminSessionOutcome> =>
+      fetchAdminSession().catch(() => ({ kind: "unavailable" as const }));
 
-      setStatus("checking");
-      const outcome = await fetchAdminSession().catch(() => ({ kind: "unavailable" as const }));
+    void (async () => {
+      let outcome = await ask();
+      if (outcome.kind === "forbidden" && (await ensureAuthorized())) {
+        outcome = await ask(); // one retry after re-attesting; never a loop
+      }
       if (myGen !== gen.current) return; // superseded
 
       switch (outcome.kind) {
         case "authorized":
-          setPrincipal(outcome.principal);
-          setStatus("authorized");
+          establishedFor.current = ownerKey;
+          setRailway({ status: "authorized", principal: outcome.principal });
           break;
         case "forbidden":
-          setPrincipal(null);
-          setStatus("signed_in_non_admin");
+          establishedFor.current = null;
+          setRailway({ status: "owner_denied", principal: null });
           break;
         case "unavailable":
-          setStatus("backend_unavailable");
+          // A blip must not tear down an established owner workspace.
+          if (!established) setRailway({ status: "backend_unavailable", principal: null });
           break;
         case "malformed":
-          setStatus("malformed_response");
+          establishedFor.current = null;
+          setRailway({ status: "malformed_response", principal: null });
           break;
       }
-    };
+    })();
+  }, [ownerReady, ownerKey, retry, ensureAuthorized]);
 
-    void run();
-    // realUserId / accessToken change on sign-in/out, account switch, refresh.
-  }, [authLoading, realUserId, accessToken, retry]);
+  const { recheck: recheckOwner } = owner;
+  const recheck = useCallback(() => {
+    recheckOwner();
+    setRetry((r) => r + 1);
+  }, [recheckOwner]);
+  const invalidate = recheck;
 
-  const recheck = useCallback(() => setRetry((r) => r + 1), []);
-  const invalidate = useCallback(() => setRetry((r) => r + 1), []);
+  let status: AdminAuthStatus;
+  if (owner.loading) status = "loading";
+  else if (owner.phase === "signed_out") status = "signed_out";
+  else if (owner.phase === "non_owner") status = "signed_in_non_admin";
+  else if (owner.phase === "needs_mfa") status = "needs_step_up";
+  else if (owner.phase === "unavailable") status = "backend_unavailable";
+  else status = railway.status;
+
   const isAuthorized = status === "authorized";
 
   return (
     <AdminAuthContext.Provider
       value={{
         status,
-        principal,
+        principal: isAuthorized ? railway.principal : null,
         isAuthorized,
         recheck,
         invalidate,

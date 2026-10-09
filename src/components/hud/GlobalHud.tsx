@@ -44,11 +44,10 @@ import { useSfx } from "@/lib/audio/useSfx";
  *  - /settings (was Profile-page-only, then the account menu) → the footer of
  *    the notifications panel. That page is also where sign-out lives — the
  *    account menu never owned a sign-out of its own;
- *  - Admin link                 → the same notifications-panel footer, same
- *    backend-verified `useAdminAuth` gate: the item exists in the DOM only
- *    after authorization resolves positively — no placeholder, no reserved
- *    slot. The footer renders on the guest branch too, because the explicit
- *    admin-key fallback authorizes without a real account;
+ *  - Admin link                 → the same notifications-panel footer, gated on
+ *    the server-verified owner session (OWN1.1 `useOwnerAuth`): it exists in
+ *    the DOM only for the canonical owner — no placeholder, no reserved slot.
+ *    There is no admin-key fallback any more (OWN1);
  *  - Academy Radio              → the `hud` variant (one trigger, full panel);
  *  - notification bell          → the chevron of the identity compound;
  *  - Quiz tab                   → in-product: the hub's Leaguecraft book;

@@ -14,6 +14,7 @@ import { Loader2, AlertTriangle, LogIn, ShieldAlert, ServerCrash } from "lucide-
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
 import { useAuth } from "@/hooks/useAuth";
+import { OwnerStepUp } from "@/components/admin/OwnerStepUp";
 
 function Centered({ children }: { children: ReactNode }) {
   return (
@@ -83,7 +84,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
             You&apos;re signed in, but this account isn&apos;t authorized for the admin workspace.
-            Your password is fine — this account simply isn&apos;t on the admin allowlist.
+            Your password is fine — admin access belongs to the owner account only.
           </p>
           <div className="flex gap-2">
             <Button asChild size="sm" variant="outline" className="flex-1">
@@ -95,6 +96,31 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
           </div>
         </Centered>
       </>
+    );
+  }
+
+  // OWN1.1: the owner on a session that needs MFA or device trust gets the
+  // step-up right here instead of a dead end.
+  if (status === "needs_step_up") {
+    return <OwnerStepUp onVerified={recheck} />;
+  }
+
+  if (status === "owner_denied") {
+    return (
+      <Centered>
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4 text-amber-400" aria-hidden />
+          <h2 className="text-sm font-semibold">Admin backend refused this session</h2>
+        </div>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Your owner session is verified, but the admin backend did not accept it, even after
+          refreshing this device&apos;s trust. Retry; if it persists, the backend&apos;s owner
+          configuration needs checking.
+        </p>
+        <Button size="sm" className="w-full" data-testid="admin-auth-retry" onClick={recheck}>
+          Retry
+        </Button>
+      </Centered>
     );
   }
 

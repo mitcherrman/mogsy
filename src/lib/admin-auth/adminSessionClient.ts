@@ -12,7 +12,9 @@ import { ADMIN_API_BASE_URL, buildAdminHeaders } from "./adminCredentials";
 import type { AdminAuthMethod, AdminSessionOutcome } from "./types";
 
 const SESSION_PATH = "/api/admin/session";
-const VALID_METHODS: readonly AdminAuthMethod[] = ["supabase_user"] // OWN1: an admin_key session is rejected (fail closed);
+// OWN1.1: the live Railway contract (routes/_auth.py AUTH_METHOD_SUPABASE_OWNER).
+// Anything else — admin_key, the pre-OWN1 supabase_user — fails closed.
+export const VALID_METHODS: readonly AdminAuthMethod[] = ["supabase_owner"];
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
