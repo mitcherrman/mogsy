@@ -4,6 +4,7 @@ import { IMPACT_MAX_LEVEL, clampImpactLevel } from "@/lib/patch-impact/math";
 import type { ParameterFact, PatchImpactAnalysis, StatProjection } from "@/lib/patch-impact/types";
 import { cn } from "@/lib/utils";
 import { PatchImpactExplore } from "./PatchImpactExplore";
+import { impactExploreCta } from "./cta";
 import {
   formatDelta,
   formatParameterValue,
@@ -160,6 +161,8 @@ export const PatchImpact = ({
   const exploreOffered = projected || (loadable && (Boolean(onRequestProjection) || projectionStatus !== "idle"));
   // Once opened, Explore stays for the loaded outcome even if it resolves to "no projection".
   const showExplore = exploreOffered || (open && analysis.status === "parameter_only");
+  // Names what opens from PH2's own state (projection, crossoverLevel, loadable); never computes it.
+  const cta = impactExploreCta(analysis);
 
   const toggle = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
@@ -183,12 +186,14 @@ export const PatchImpact = ({
       data-impact-provenance={provenance ?? undefined}
       data-impact-reason={analysis.status === "parameter_only" ? analysis.projectionUnavailable : undefined}
       className={cn(
-        "mt-1.5 min-w-0 max-w-full space-y-1.5 border-l-2 border-[#c9a84c]/30 pl-3 text-xs leading-relaxed text-muted-foreground",
+        "mt-1.5 min-w-0 max-w-full space-y-1.5 border-l-2 border-[#c9a84c]/45 pl-3 text-xs leading-relaxed text-muted-foreground",
         WRAP,
         className,
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#c9a84c]/80">Mogzy Impact</p>
+      <p data-testid="patch-impact-title" className="text-[10px] font-semibold uppercase tracking-wider text-[#c9a84c]">
+        Mogzy Impact
+      </p>
 
       <Section label="Parameter change" testId="patch-impact-parameter">
         <ul className="space-y-0.5">
@@ -199,19 +204,21 @@ export const PatchImpact = ({
       </Section>
 
       {projected && (
-        <Section label="Projected stat impact" testId="patch-impact-projection">
+        <Section label="Resulting stat" testId="patch-impact-projection">
           <ProjectedSummary projection={analysis.projection} />
         </Section>
       )}
 
-      {showExplore && (
+      {showExplore && cta && (
         <details open={open} data-testid="patch-impact-explore" className="group text-xs text-muted-foreground">
           <summary
             data-testid="patch-impact-explore-toggle"
+            data-cta={cta.kind}
             onClick={toggle}
             className={cn(
               "inline-flex min-h-10 cursor-pointer select-none list-none items-center gap-1 rounded py-1 pr-2",
-              "hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60",
+              "font-medium text-[#c9a84c]/90 underline-offset-2 hover:text-[#c9a84c] hover:underline",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60",
               "[&::-webkit-details-marker]:hidden",
             )}
           >
@@ -219,7 +226,8 @@ export const PatchImpact = ({
               aria-hidden
               className="h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none [details[open]_&]:rotate-90"
             />
-            Explore impact
+            <span>{cta.text}</span>
+            <span className="sr-only">{cta.opens}</span>
           </summary>
           {open &&
             (analysis.status === "projected" ? (

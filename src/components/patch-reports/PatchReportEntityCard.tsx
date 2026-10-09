@@ -50,7 +50,9 @@ export const PatchReportEntityCard = ({
       id={entity.anchor}
       data-testid="patch-report-card"
       aria-labelledby={`${entity.anchor}-title`}
-      className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+      // One quiet edge per entry (PHSR4): the card boundary is kept for
+      // scanning, but at a lower contrast than the content it frames.
+      className="scroll-mt-24 overflow-hidden rounded-xl border border-border/45 bg-card"
     >
       <PatchReportEntityHeader
         ctx={ctx}
@@ -74,7 +76,7 @@ export const PatchReportEntityCard = ({
         </blockquote>
       )}
 
-      <div className="mt-3">
+      <div className="mt-3 pb-2">
         {entity.groups.map((group) => (
           <PatchReportAbilityGroup
             key={group.anchor}

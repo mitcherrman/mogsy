@@ -114,7 +114,7 @@ export const PatchImpactExplore = ({
       <div className="space-y-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
           <label id={labelId} htmlFor={`${labelId}-range`} className="text-[11px] font-medium text-muted-foreground">
-            Projected stat impact · champion level
+            Resulting {statLabel} · champion level
           </label>
           <span aria-hidden className="font-mono text-sm font-semibold tabular-nums text-foreground">
             Level {point.level}

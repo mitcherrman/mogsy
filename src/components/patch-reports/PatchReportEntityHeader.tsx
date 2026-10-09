@@ -122,10 +122,13 @@ export const PatchReportEntityHeader = ({
   const share = slots?.entityShare?.(ctx) ?? null;
   const actions = slots?.entityActions?.(ctx) ?? null;
 
+  // Identity always leads. Actions are a quiet cluster: top-right on desktop,
+  // and on a phone a compact row under the identity text (the portrait spans
+  // both rows), never a full-width row that pushes Riot's text down.
   return (
-    <header className="flex flex-wrap items-start gap-3 px-4 pt-4 sm:flex-nowrap sm:gap-4 sm:px-5">
-      <EntityImage card={card} />
-      <div className="min-w-0 flex-1">
+    <header className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 px-4 pt-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-4 sm:px-5">
+      <EntityImage card={card} sizeClassName={cn(ENTITY_IMAGE_SIZE, actions && "row-span-2 sm:row-span-1")} />
+      <div className="min-w-0">
         {(showType || showSection) && (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             {showType && <span>{TYPE_LABEL[card.entity_type]}</span>}
@@ -171,8 +174,16 @@ export const PatchReportEntityHeader = ({
           )}
         </p>
       </div>
-      {/* Wraps under the identity on a phone; an empty slot renders nothing at all. */}
-      {actions && <div className="w-full shrink-0 sm:w-auto">{actions}</div>}
+      {/* An empty slot renders nothing at all. On a phone -ml-2 lines the
+          action's icon up with the identity text above it. */}
+      {actions && (
+        <div
+          data-testid="patch-report-entity-actions"
+          className="col-start-2 -ml-2 mt-0.5 flex flex-wrap items-center gap-1 sm:col-start-3 sm:row-start-1 sm:ml-0 sm:mt-0 sm:justify-end"
+        >
+          {actions}
+        </div>
+      )}
     </header>
   );
 };
