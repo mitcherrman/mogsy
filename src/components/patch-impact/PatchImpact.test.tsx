@@ -153,7 +153,7 @@ describe("compact summary", () => {
     expect(projection).toContain("from 128.9 to 123.8");
     expect(projection).toContain("−5.1 · −4%");
     expect(screen.getByText("Parameter change")).toBeInTheDocument();
-    expect(screen.getByText("Projected stat impact")).toBeInTheDocument();
+    expect(screen.getByText("Resulting stat")).toBeInTheDocument();
     // Collapsed by default: the slider is not in the page until Explore opens.
     expect(screen.queryByRole("slider")).toBeNull();
     expect(screen.getByTestId("patch-impact-explore")).not.toHaveAttribute("open");
