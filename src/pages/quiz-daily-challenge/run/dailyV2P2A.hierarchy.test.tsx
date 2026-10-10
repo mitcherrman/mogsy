@@ -7,7 +7,7 @@
  *
  *   A  the reader: `plan_version`, the MAIN pair, and its fail-closed rules
  *   B  hub status: main-complete may still be resumable; no all-stage count
- *   C  the page, end to end on a v5 day: intro → Standard → MAIN result →
+ *   C  the page, end to end on a v5 day: opening (DV2-P2C) → Standard → MAIN result →
  *      More Challenges → Review → "All Done for Today"; "Done for now"
  *   D  recovery: a reload after main completion, and a live optional child
  *   E  the leave guard: main-complete with no live child is unguarded
@@ -288,19 +288,18 @@ describe("C — a v5 Daily, end to end", () => {
     mount(t);
     await flush();
 
-    // The intro is Today's Challenge: Standard alone, no lineup, no count.
-    expect(phase()).toBe("daily-intro");
-    const intro = screen.getByTestId("daily-intro");
-    expect(intro).toHaveAttribute("data-hierarchy", "main");
-    expect(within(intro).getByTestId("daily-intro-section")).toHaveTextContent("Today's Challenge");
-    expect(within(intro).getAllByTestId("daily-stage-tag")).toHaveLength(1);
-    expect(within(intro).getByTestId("daily-stage-tag")).toHaveTextContent(/standard/i);
-    expect(within(intro).getByTestId("daily-intro-optional")).toHaveTextContent(/optional/i);
-    expect(within(intro).queryByTestId("daily-stage-ladder")).toBeNull();
+    // DV2-P2C — one opening beat: Standard's tag, drawn as "Daily Challenge"
+    // alone (no separate Daily intro, no lineup, no count). See
+    // dailyV2P2C.opening.test.tsx for the full proof.
+    expect(phase()).toBe("stage-intro");
+    expect(q("daily-intro")).toBeNull();
+    const opening = screen.getByTestId("daily-stage-intro");
+    expect(opening).toHaveAttribute("data-opening", "main");
+    expect(opening.textContent).toBe("Daily Challenge");
     expect(document.body.textContent).not.toMatch(NO_GLOBAL_COUNT);
 
-    await flush(DAILY_INTRO_MS + 10);
-    expect(screen.getByTestId("daily-stage-intro-position")).toHaveTextContent("Today's Challenge");
+    // Gameplay: the header names Today's Challenge again.
+    await flush(STAGE_INTRO_MIN_MS + 50);
     expect(screen.getByTestId("daily-stage-position")).toHaveTextContent("Today's Challenge");
     expect(document.body.textContent).not.toMatch(NO_GLOBAL_COUNT);
 

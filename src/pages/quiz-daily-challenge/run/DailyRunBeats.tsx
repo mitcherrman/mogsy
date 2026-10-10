@@ -18,11 +18,16 @@
  * quietly; a stage tag says its SECTION, never "Stage X of N"; and
  * `OptionalEntryBeat` is the arrival screen of a main-complete day. v1–v4 are
  * drawn exactly as before.
+ *
+ * DV2-P2C — a v5+ day OPENS with one beat: Standard's tag, drawn as the
+ * Daily's opening — the "Daily Challenge" title and nothing else (no date,
+ * section, mode tag, content, rule or optional-content line). The controller
+ * plays no separate Daily intro on a v5+ day.
  */
 import type { ReactNode } from "react";
 import type { DailyRun, DailyStage } from "@/lib/daily-challenge/run/contracts";
-import { hasMainDaily, mainStage } from "@/lib/daily-challenge/run/contracts";
-import { DAILY_INTRO_MS, STAGE_INTRO_MIN_MS } from "@/lib/daily-challenge/run/flow";
+import { hasMainDaily } from "@/lib/daily-challenge/run/contracts";
+import { DAILY_INTRO_MS, STAGE_INTRO_MIN_MS, isDailyOpeningStage } from "@/lib/daily-challenge/run/flow";
 import { DAILY_SECTION_LABEL, dailySection } from "@/lib/daily-challenge/run/stageCategory";
 import { optionalNextLabel } from "@/lib/daily-challenge/run/stageResultModel";
 import { stageContentLine, stageIdentity } from "@/lib/daily-challenge/run/stageIdentity";
@@ -46,10 +51,19 @@ function Beat({ testId, intensity, ms, children, extra }: {
   );
 }
 
-/** MAJOR — one challenge, and what is in it. */
+/**
+ * MAJOR — one challenge, and what is in it. v1–v4 only in play: a v5+ day
+ * has no separate intro (DV2-P2C), and if one were ever drawn it would say
+ * no more than the opening does.
+ */
 export function DailyIntroBeat({ run }: { run: DailyRun }) {
-  const main = mainStage(run);
-  if (main) return <MainDailyIntro run={run} main={main} />;
+  if (hasMainDaily(run)) {
+    return (
+      <Beat testId="daily-intro" intensity="major" ms={DAILY_INTRO_MS} extra={{ "data-hierarchy": "main" }}>
+        <h2 className="ranked-title ranked-beat__title">Daily Challenge</h2>
+      </Beat>
+    );
+  }
   return (
     <Beat testId="daily-intro" intensity="major" ms={DAILY_INTRO_MS}>
       <p className="ranked-beat__meta">{run.planDate}</p>
@@ -59,37 +73,6 @@ export function DailyIntroBeat({ run }: { run: DailyRun }) {
         {run.stages.length} stages today
       </p>
       <StageLadder run={run} />
-    </Beat>
-  );
-}
-
-/**
- * DV2-P2A — MAJOR, v5+: Today's Challenge is the Daily. Standard is the one
- * thing on the beat; the optional sections are named once, quietly, and are
- * not listed as stages to get through.
- */
-function MainDailyIntro({ run, main }: { run: DailyRun; main: DailyStage }) {
-  const content = stageContentLine(main);
-  return (
-    <Beat testId="daily-intro" intensity="major" ms={DAILY_INTRO_MS} extra={{ "data-hierarchy": "main" }}>
-      <p className="ranked-beat__meta">{run.planDate}</p>
-      <h2 className="ranked-title ranked-beat__title">Daily Challenge</h2>
-      <span aria-hidden className="ranked-beat__rule" />
-      <p className="ranked-eyebrow text-[#f0d78c]" data-testid="daily-intro-section">
-        {DAILY_SECTION_LABEL.today}
-      </p>
-      <StageTag stage={main} size="lg" />
-      {content && (
-        <p className="text-sm font-semibold text-[var(--ranked-vellum,#f1e6c8)]" data-testid="daily-intro-content">
-          {content}
-        </p>
-      )}
-      <p className="max-w-md text-sm text-[var(--ranked-vellum,#f1e6c8)]/85" data-testid="daily-intro-rule">
-        {stageIdentity(main).rule}
-      </p>
-      <p className="ranked-beat__meta opacity-75" data-testid="daily-intro-optional">
-        More Challenges and Review open after — both optional
-      </p>
     </Beat>
   );
 }
@@ -106,6 +89,21 @@ function stageIntroPosition(run: DailyRun, stage: DailyStage): string {
   return stage.kind === "review" ? "Final stage" : `Stage ${stage.index + 1} of ${run.stages.length}`;
 }
 
+/** A failed launch, said plainly, with the re-ask. Not presentation copy. */
+function LaunchError({ error, onRetry, busy }: { error: string; onRetry?: () => void; busy?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-2 pt-2">
+      <p role="alert" className="text-xs text-rose-300" data-testid="daily-run-error">{error}</p>
+      {onRetry && (
+        <button type="button" onClick={onRetry} disabled={busy} data-testid="daily-run-retry"
+          className="rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em]">
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** MEDIUM — the stage's tag: its mode, what it is about, and its one rule. */
 export function StageIntroBeat({ run, stage, error, onRetry, busy }: {
   run: DailyRun;
@@ -114,6 +112,17 @@ export function StageIntroBeat({ run, stage, error, onRetry, busy }: {
   onRetry?: () => void;
   busy?: boolean;
 }) {
+  // DV2-P2C — the v5+ Daily's one opening beat. Still Standard's tag (it holds
+  // for the tag's time and covers the launch); it just says only the title.
+  if (isDailyOpeningStage(run, stage)) {
+    return (
+      <Beat testId="daily-stage-intro" intensity="major" ms={STAGE_INTRO_MIN_MS}
+        extra={{ "data-stage-kind": stage.kind, "data-section": "today", "data-opening": "main" }}>
+        <h2 className="ranked-title ranked-beat__title" data-testid="daily-opening-title">Daily Challenge</h2>
+        {error && <LaunchError error={error} onRetry={onRetry} busy={busy} />}
+      </Beat>
+    );
+  }
   const id = stageIdentity(stage);
   const content = stageContentLine(stage);
   const closing = stage.kind === "review";
@@ -134,17 +143,7 @@ export function StageIntroBeat({ run, stage, error, onRetry, busy }: {
       <p className="max-w-md text-sm text-[var(--ranked-vellum,#f1e6c8)]/85" data-testid="daily-stage-intro-rule">
         {id.rule}
       </p>
-      {error && (
-        <div className="flex flex-col items-center gap-2 pt-2">
-          <p role="alert" className="text-xs text-rose-300" data-testid="daily-run-error">{error}</p>
-          {onRetry && (
-            <button type="button" onClick={onRetry} disabled={busy} data-testid="daily-run-retry"
-              className="rounded border border-white/30 px-3 py-1 text-xs uppercase tracking-[0.16em]">
-              Try again
-            </button>
-          )}
-        </div>
-      )}
+      {error && <LaunchError error={error} onRetry={onRetry} busy={busy} />}
     </Beat>
   );
 }
