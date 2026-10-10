@@ -1,0 +1,3952 @@
+[
+ {
+  "key": "champion_player",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 49,
+    "bottom": 625,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 635,
+    "h": 49,
+    "bottom": 684,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1399,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 47,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 47,
+    "bottom": 680,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 813,
+    "h": 128,
+    "bottom": 941,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_player",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 49,
+    "bottom": 625,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 635,
+    "h": 49,
+    "bottom": 684,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1379,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 47,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 47,
+    "bottom": 680,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 813,
+    "h": 128,
+    "bottom": 941,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_player",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 49,
+    "bottom": 625,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 635,
+    "h": 49,
+    "bottom": 684,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1379,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 47,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 47,
+    "bottom": 680,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 813,
+    "h": 128,
+    "bottom": 941,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_player",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 49,
+    "bottom": 711,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 721,
+    "h": 49,
+    "bottom": 770,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1797,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 47,
+    "bottom": 709,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 719,
+    "h": 47,
+    "bottom": 766,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 919,
+    "h": 215,
+    "bottom": 1134,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_player",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 336,
+    "h": 50,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 49,
+    "bottom": 711,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 721,
+    "h": 49,
+    "bottom": 770,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1797,
+   "hOverflow": false,
+   "stem": {
+    "y": 336,
+    "h": 50,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 47,
+    "bottom": 709,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 719,
+    "h": 47,
+    "bottom": 766,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 919,
+    "h": 215,
+    "bottom": 1134,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_team",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 108,
+    "bottom": 558,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 574,
+    "h": 49,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 49,
+    "bottom": 682,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1398,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 108,
+    "bottom": 558,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 574,
+    "h": 47,
+    "bottom": 621,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 631,
+    "h": 49,
+    "bottom": 680,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 813,
+    "h": 128,
+    "bottom": 941,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_team",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 108,
+    "bottom": 558,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 574,
+    "h": 49,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 49,
+    "bottom": 682,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1378,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 108,
+    "bottom": 558,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 574,
+    "h": 47,
+    "bottom": 621,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 631,
+    "h": 49,
+    "bottom": 680,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 813,
+    "h": 128,
+    "bottom": 941,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_team",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 108,
+    "bottom": 558,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 574,
+    "h": 49,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 49,
+    "bottom": 682,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1378,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 108,
+    "bottom": 558,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 574,
+    "h": 47,
+    "bottom": 621,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 631,
+    "h": 49,
+    "bottom": 680,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 813,
+    "h": 128,
+    "bottom": 941,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_team",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 286,
+    "h": 99,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 49,
+    "bottom": 707,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 717,
+    "h": 49,
+    "bottom": 766,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1794,
+   "hOverflow": false,
+   "stem": {
+    "y": 286,
+    "h": 99,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 47,
+    "bottom": 705,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 715,
+    "h": 49,
+    "bottom": 764,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 916,
+    "h": 215,
+    "bottom": 1131,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "champion_team",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 49,
+    "bottom": 707,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 717,
+    "h": 49,
+    "bottom": 766,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1794,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 47,
+    "bottom": 705,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 715,
+    "h": 49,
+    "bottom": 764,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 916,
+    "h": 215,
+    "bottom": 1131,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "flex",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1321,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 229,
+    "bottom": 679,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 695,
+    "h": 49,
+    "bottom": 743,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 871,
+    "h": 49,
+    "bottom": 920,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1915,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 229,
+    "bottom": 679,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 695,
+    "h": 47,
+    "bottom": 741,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 867,
+    "h": 49,
+    "bottom": 916,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1069,
+    "h": 389,
+    "bottom": 1458,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "flex",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1301,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 229,
+    "bottom": 679,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 695,
+    "h": 49,
+    "bottom": 743,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 871,
+    "h": 49,
+    "bottom": 920,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1895,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 229,
+    "bottom": 679,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 695,
+    "h": 47,
+    "bottom": 741,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 867,
+    "h": 49,
+    "bottom": 916,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1069,
+    "h": 389,
+    "bottom": 1458,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "flex",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 229,
+    "bottom": 679,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 695,
+    "h": 49,
+    "bottom": 743,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 871,
+    "h": 49,
+    "bottom": 920,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1895,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 229,
+    "bottom": 679,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 695,
+    "h": 47,
+    "bottom": 741,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 867,
+    "h": 49,
+    "bottom": 916,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1069,
+    "h": 389,
+    "bottom": 1458,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "flex",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1529,
+   "hOverflow": false,
+   "stem": {
+    "y": 297,
+    "h": 99,
+    "bottom": 396,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 229,
+    "bottom": 413,
+    "w": 343
+   },
+   "cards": {
+    "y": 429,
+    "h": 252,
+    "bottom": 681,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 697,
+    "h": 49,
+    "bottom": 745,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 873,
+    "h": 49,
+    "bottom": 922,
+    "w": 343
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 2142,
+   "hOverflow": false,
+   "stem": {
+    "y": 297,
+    "h": 99,
+    "bottom": 396,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 229,
+    "bottom": 413,
+    "w": 343
+   },
+   "cards": {
+    "y": 429,
+    "h": 252,
+    "bottom": 681,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 697,
+    "h": 47,
+    "bottom": 743,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 869,
+    "h": 49,
+    "bottom": 918,
+    "w": 343
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1090,
+    "h": 389,
+    "bottom": 1479,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "flex",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1529,
+   "hOverflow": false,
+   "stem": {
+    "y": 297,
+    "h": 99,
+    "bottom": 396,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 229,
+    "bottom": 413,
+    "w": 358
+   },
+   "cards": {
+    "y": 429,
+    "h": 252,
+    "bottom": 681,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 697,
+    "h": 49,
+    "bottom": 745,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 873,
+    "h": 49,
+    "bottom": 922,
+    "w": 358
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 2142,
+   "hOverflow": false,
+   "stem": {
+    "y": 297,
+    "h": 99,
+    "bottom": 396,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 229,
+    "bottom": 413,
+    "w": 358
+   },
+   "cards": {
+    "y": 429,
+    "h": 252,
+    "bottom": 681,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 697,
+    "h": 47,
+    "bottom": 743,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 869,
+    "h": 49,
+    "bottom": 918,
+    "w": 358
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1090,
+    "h": 389,
+    "bottom": 1479,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "nuguri_clear",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 49,
+    "bottom": 625,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 635,
+    "h": 49,
+    "bottom": 684,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1381,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 47,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 49,
+    "bottom": 682,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 795,
+    "h": 128,
+    "bottom": 923,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "nuguri_clear",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 49,
+    "bottom": 625,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 635,
+    "h": 49,
+    "bottom": 684,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1361,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 47,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 49,
+    "bottom": 682,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 795,
+    "h": 128,
+    "bottom": 923,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "nuguri_clear",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 49,
+    "bottom": 625,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 635,
+    "h": 49,
+    "bottom": 684,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1361,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 110,
+    "bottom": 560,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 576,
+    "h": 47,
+    "bottom": 623,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 633,
+    "h": 49,
+    "bottom": 682,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 795,
+    "h": 128,
+    "bottom": 923,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "nuguri_clear",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 49,
+    "bottom": 711,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 721,
+    "h": 49,
+    "bottom": 770,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1779,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 47,
+    "bottom": 709,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 719,
+    "h": 49,
+    "bottom": 768,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 901,
+    "h": 215,
+    "bottom": 1116,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "nuguri_clear",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 49,
+    "bottom": 711,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 721,
+    "h": 49,
+    "bottom": 770,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1779,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 229,
+    "bottom": 647,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 663,
+    "h": 47,
+    "bottom": 709,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 719,
+    "h": 49,
+    "bottom": 768,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 901,
+    "h": 215,
+    "bottom": 1116,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "player_champion",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 352,
+    "h": 49,
+    "bottom": 401,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 350,
+    "h": 47,
+    "bottom": 397,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 531,
+    "h": 128,
+    "bottom": 659,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "player_champion",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 352,
+    "h": 49,
+    "bottom": 401,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 350,
+    "h": 47,
+    "bottom": 397,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 531,
+    "h": 128,
+    "bottom": 659,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "player_champion",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 352,
+    "h": 49,
+    "bottom": 401,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 350,
+    "h": 47,
+    "bottom": 397,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 531,
+    "h": 128,
+    "bottom": 659,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "player_champion",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 49,
+    "bottom": 389,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 399,
+    "h": 49,
+    "bottom": 448,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1475,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 47,
+    "bottom": 387,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 397,
+    "h": 47,
+    "bottom": 444,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 597,
+    "h": 215,
+    "bottom": 812,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "player_champion",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 49,
+    "bottom": 389,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 399,
+    "h": 49,
+    "bottom": 448,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1475,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 47,
+    "bottom": 387,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 397,
+    "h": 47,
+    "bottom": 444,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 597,
+    "h": 215,
+    "bottom": 812,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "pro_play",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1495,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 466,
+    "h": 49,
+    "bottom": 515,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 648,
+    "h": 389,
+    "bottom": 1037,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "pro_play",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1475,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 466,
+    "h": 49,
+    "bottom": 515,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 648,
+    "h": 389,
+    "bottom": 1037,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "pro_play",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1475,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 466,
+    "h": 49,
+    "bottom": 515,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 648,
+    "h": 389,
+    "bottom": 1037,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "pro_play",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 49,
+    "bottom": 389,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 517,
+    "h": 49,
+    "bottom": 565,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1767,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 47,
+    "bottom": 387,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 513,
+    "h": 49,
+    "bottom": 561,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 714,
+    "h": 389,
+    "bottom": 1103,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "pro_play",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 49,
+    "bottom": 389,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 517,
+    "h": 49,
+    "bottom": 565,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1767,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 47,
+    "bottom": 387,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 513,
+    "h": 49,
+    "bottom": 561,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 714,
+    "h": 389,
+    "bottom": 1103,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "recent",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 74,
+    "bottom": 302,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 318,
+    "h": 49,
+    "bottom": 367,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 377,
+    "h": 49,
+    "bottom": 426,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 74,
+    "bottom": 302,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 318,
+    "h": 47,
+    "bottom": 365,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 375,
+    "h": 47,
+    "bottom": 422,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 575,
+    "h": 128,
+    "bottom": 703,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "recent",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 74,
+    "bottom": 302,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 318,
+    "h": 49,
+    "bottom": 367,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 377,
+    "h": 49,
+    "bottom": 426,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 74,
+    "bottom": 302,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 318,
+    "h": 47,
+    "bottom": 365,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 375,
+    "h": 47,
+    "bottom": 422,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 575,
+    "h": 128,
+    "bottom": 703,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "recent",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 74,
+    "bottom": 302,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 318,
+    "h": 49,
+    "bottom": 367,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 377,
+    "h": 49,
+    "bottom": 426,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 74,
+    "bottom": 302,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 318,
+    "h": 47,
+    "bottom": 365,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 375,
+    "h": 47,
+    "bottom": 422,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 575,
+    "h": 128,
+    "bottom": 703,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "recent",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 124,
+    "bottom": 374,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 390,
+    "h": 49,
+    "bottom": 439,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 449,
+    "h": 49,
+    "bottom": 497,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1564,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 124,
+    "bottom": 374,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 390,
+    "h": 47,
+    "bottom": 437,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 447,
+    "h": 47,
+    "bottom": 493,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 685,
+    "h": 215,
+    "bottom": 900,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "recent",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 124,
+    "bottom": 374,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 390,
+    "h": 49,
+    "bottom": 439,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 449,
+    "h": 49,
+    "bottom": 497,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1544,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 124,
+    "bottom": 374,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 390,
+    "h": 47,
+    "bottom": 437,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 447,
+    "h": 47,
+    "bottom": 493,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 666,
+    "h": 215,
+    "bottom": 881,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "scope_champion",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1477,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 468,
+    "h": 49,
+    "bottom": 517,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 630,
+    "h": 389,
+    "bottom": 1019,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "scope_champion",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1457,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 468,
+    "h": 49,
+    "bottom": 517,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 630,
+    "h": 389,
+    "bottom": 1019,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "scope_champion",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1457,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 468,
+    "h": 49,
+    "bottom": 517,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 630,
+    "h": 389,
+    "bottom": 1019,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "scope_champion",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 49,
+    "bottom": 389,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 517,
+    "h": 49,
+    "bottom": 565,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1749,
+   "hOverflow": false,
+   "stem": {
+    "y": 250,
+    "h": 74,
+    "bottom": 324,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 340,
+    "h": 47,
+    "bottom": 387,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 515,
+    "h": 49,
+    "bottom": 563,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 696,
+    "h": 389,
+    "bottom": 1085,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "scope_champion",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 220,
+    "h": 74,
+    "bottom": 294,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 310,
+    "h": 49,
+    "bottom": 359,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 487,
+    "h": 49,
+    "bottom": 535,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1719,
+   "hOverflow": false,
+   "stem": {
+    "y": 220,
+    "h": 74,
+    "bottom": 294,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 310,
+    "h": 47,
+    "bottom": 357,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 485,
+    "h": 49,
+    "bottom": 533,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 666,
+    "h": 389,
+    "bottom": 1055,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "t1_lineage",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1317,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 224,
+    "bottom": 674,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 690,
+    "h": 49,
+    "bottom": 739,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 866,
+    "h": 49,
+    "bottom": 915,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1871,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 224,
+    "bottom": 674,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 690,
+    "h": 47,
+    "bottom": 737,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 862,
+    "h": 49,
+    "bottom": 911,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1025,
+    "h": 389,
+    "bottom": 1414,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "t1_lineage",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1297,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 224,
+    "bottom": 674,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 690,
+    "h": 49,
+    "bottom": 739,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 866,
+    "h": 49,
+    "bottom": 915,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1851,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 224,
+    "bottom": 674,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 690,
+    "h": 47,
+    "bottom": 737,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 862,
+    "h": 49,
+    "bottom": 911,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1025,
+    "h": 389,
+    "bottom": 1414,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "t1_lineage",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 224,
+    "bottom": 674,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 690,
+    "h": 49,
+    "bottom": 739,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 866,
+    "h": 49,
+    "bottom": 915,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1851,
+   "hOverflow": false,
+   "stem": {
+    "y": 364,
+    "h": 50,
+    "bottom": 413,
+    "w": 598
+   },
+   "anchor": {
+    "y": 192,
+    "h": 242,
+    "bottom": 434,
+    "w": 640
+   },
+   "cards": {
+    "y": 450,
+    "h": 224,
+    "bottom": 674,
+    "w": 640
+   },
+   "firstChoice": {
+    "y": 690,
+    "h": 47,
+    "bottom": 737,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 862,
+    "h": 49,
+    "bottom": 911,
+    "w": 640
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1025,
+    "h": 389,
+    "bottom": 1414,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "t1_lineage",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1490,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 49,
+    "bottom": 707,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 834,
+    "h": 49,
+    "bottom": 883,
+    "w": 343
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 2064,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 309
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 343
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 343
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 47,
+    "bottom": 705,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 830,
+    "h": 49,
+    "bottom": 879,
+    "w": 343
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1012,
+    "h": 389,
+    "bottom": 1401,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "t1_lineage",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1490,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 49,
+    "bottom": 707,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 834,
+    "h": 49,
+    "bottom": 883,
+    "w": 358
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 2064,
+   "hOverflow": false,
+   "stem": {
+    "y": 311,
+    "h": 74,
+    "bottom": 385,
+    "w": 324
+   },
+   "anchor": {
+    "y": 184,
+    "h": 218,
+    "bottom": 402,
+    "w": 358
+   },
+   "cards": {
+    "y": 418,
+    "h": 224,
+    "bottom": 642,
+    "w": 358
+   },
+   "firstChoice": {
+    "y": 658,
+    "h": 47,
+    "bottom": 705,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 830,
+    "h": 49,
+    "bottom": 879,
+    "w": 358
+   },
+   "lastChoiceBelowFold": true,
+   "evidence": {
+    "y": 1012,
+    "h": 389,
+    "bottom": 1401,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "team_champion",
+  "size": "1024x768",
+  "pre": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1194,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1024,
+   "vh": 768,
+   "docH": 1495,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 466,
+    "h": 49,
+    "bottom": 515,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 648,
+    "h": 389,
+    "bottom": 1037,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "team_champion",
+  "size": "1280x800",
+  "pre": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1206,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1280,
+   "vh": 800,
+   "docH": 1475,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 466,
+    "h": 49,
+    "bottom": 515,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 648,
+    "h": 389,
+    "bottom": 1037,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "team_champion",
+  "size": "1440x900",
+  "pre": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1306,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 49,
+    "bottom": 342,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 470,
+    "h": 49,
+    "bottom": 519,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 1440,
+   "vh": 900,
+   "docH": 1475,
+   "hOverflow": false,
+   "stem": {
+    "y": 228,
+    "h": 50,
+    "bottom": 278,
+    "w": 640
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 294,
+    "h": 47,
+    "bottom": 340,
+    "w": 640
+   },
+   "lastChoice": {
+    "y": 466,
+    "h": 49,
+    "bottom": 515,
+    "w": 640
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 648,
+    "h": 389,
+    "bottom": 1037,
+    "w": 640
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "team_champion",
+  "size": "375x812",
+  "pre": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1435,
+   "hOverflow": false,
+   "stem": {
+    "y": 220,
+    "h": 74,
+    "bottom": 294,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 310,
+    "h": 49,
+    "bottom": 359,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 487,
+    "h": 49,
+    "bottom": 535,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 375,
+   "vh": 812,
+   "docH": 1737,
+   "hOverflow": false,
+   "stem": {
+    "y": 220,
+    "h": 74,
+    "bottom": 294,
+    "w": 343
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 310,
+    "h": 47,
+    "bottom": 357,
+    "w": 343
+   },
+   "lastChoice": {
+    "y": 483,
+    "h": 49,
+    "bottom": 531,
+    "w": 343
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 684,
+    "h": 389,
+    "bottom": 1073,
+    "w": 343
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ },
+ {
+  "key": "team_champion",
+  "size": "390x844",
+  "pre": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1467,
+   "hOverflow": false,
+   "stem": {
+    "y": 220,
+    "h": 74,
+    "bottom": 294,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 310,
+    "h": 49,
+    "bottom": 359,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 487,
+    "h": 49,
+    "bottom": 535,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": null,
+   "imgsPending": 0,
+   "imgsBroken": 0
+  },
+  "post": {
+   "vw": 390,
+   "vh": 844,
+   "docH": 1737,
+   "hOverflow": false,
+   "stem": {
+    "y": 220,
+    "h": 74,
+    "bottom": 294,
+    "w": 358
+   },
+   "anchor": null,
+   "cards": null,
+   "firstChoice": {
+    "y": 310,
+    "h": 47,
+    "bottom": 357,
+    "w": 358
+   },
+   "lastChoice": {
+    "y": 483,
+    "h": 49,
+    "bottom": 531,
+    "w": 358
+   },
+   "lastChoiceBelowFold": false,
+   "evidence": {
+    "y": 684,
+    "h": 389,
+    "bottom": 1073,
+    "w": 358
+   },
+   "imgsPending": 0,
+   "imgsBroken": 0
+  }
+ }
+]
