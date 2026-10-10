@@ -521,6 +521,11 @@ describe("density", () => {
       for (const el of container.querySelectorAll("[data-pp-reveal-slot] *")) {
         expect(el.getAttribute("class") ?? "").not.toMatch(/(^|\s)(min-h|max-h|h)-/);
       }
+      // The value's own tight line-height must survive class merging (a
+      // dropped `leading-none` inherits the tablet's relaxed one: +10px).
+      for (const el of container.querySelectorAll("[data-pp-reveal-display]")) {
+        expect((el.getAttribute("class") ?? "").split(/\s+/)).toContain("leading-none");
+      }
       const scoped = "[data-pp-reveal-slot], [data-pp-reveal-slot] *, [data-pp-reveal-footer], [data-pp-reveal-footer] *";
       for (const el of container.querySelectorAll(scoped)) {
         expect(el.getAttribute("class") ?? "").not.toMatch(/overflow-(auto|scroll|y-auto|x-auto)/);

@@ -206,7 +206,7 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
       data-pp-evidence-state={model.evidenceState}
       data-pp-reveal-motion={reduced ? "static" : "staged"}
       className={cn(
-        "relative w-full min-w-0 overflow-hidden rounded-lg border border-[#c9a84c]/30 bg-[#07111f]/95 px-3 py-2.5 text-left text-[#efe8d6] sm:px-4",
+        "relative w-full min-w-0 overflow-hidden rounded-lg border border-[#c9a84c]/30 bg-[#07111f]/95 px-3 py-2.5 text-left text-[#efe8d6] sm:px-4 lg:py-1",
         "shadow-[inset_0_1px_0_rgba(240,215,140,0.14),0_10px_24px_-18px_rgba(0,0,0,0.9)]",
         !reduced && "animate-in fade-in-0 fill-mode-both ease-out",
         className,
@@ -217,9 +217,11 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
         style={{ background: "linear-gradient(90deg, transparent, rgba(212,179,90,0.6), transparent)" }} />
       <p role="status" data-pp-reveal-verdict className="sr-only">{verdictSentence(model)}</p>
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        <div className="min-w-0 flex-1">
+        {/* From lg the scope and the sentence share one line: the footer
+            costs the stage only what the action button already needs. */}
+        <div className="min-w-0 flex-1 lg:flex lg:items-baseline lg:gap-3">
           {model.metric || model.scopeLabel ? (
-            <p data-pp-reveal-scope className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <p data-pp-reveal-scope className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 lg:max-w-[40%] lg:shrink-0 lg:flex-nowrap">
               {model.metric ? (
                 <span className="inline-flex shrink-0 items-center rounded border border-sky-300/35 bg-sky-300/10 px-1.5 py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.12em] text-sky-100 sm:text-[10px]">
                   {model.metric.label}
@@ -233,12 +235,12 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
             </p>
           ) : null}
           {model.explanation ? (
-            <p data-pp-reveal-explanation className="mt-1 text-[13px] leading-snug text-[#efe8d6]/90 sm:text-sm">
+            <p data-pp-reveal-explanation className="mt-1 text-[13px] leading-snug text-[#efe8d6]/90 sm:text-sm lg:mt-0 lg:min-w-0 lg:flex-1">
               {model.explanation}
             </p>
           ) : null}
           {note ? (
-            <p data-pp-reveal-note className="mt-1 text-[11px] italic leading-snug text-white/55">{note}</p>
+            <p data-pp-reveal-note className="mt-1 text-[11px] italic leading-snug text-white/55 lg:mt-0 lg:shrink-0">{note}</p>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center justify-end gap-2">
