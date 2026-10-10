@@ -3,6 +3,10 @@
  * moment (the anchored tag, the `!` popping in) — ~1.6s, inside the reveal
  * hold.
  *
+ * Only facts behind a persistent `!` (`persistentBoardFacts` — the one Saved
+ * rule): a reveal that saves nothing the board keeps (damage after armor)
+ * has no Saved moment.
+ *
  * Semantic, then latched:
  *
  *   * a fact is "saved now" only when it ARRIVES in K2's knowledge while the
@@ -19,7 +23,7 @@
  * correctness.
  */
 import { useEffect, useRef, useState } from "react";
-import type { JourneyKnowledge } from "@/lib/journey/knowledge";
+import type { PersistentBoardFact } from "@/lib/journey/attention";
 
 export const SAVED_NOW_MS = 1600;
 
@@ -32,12 +36,11 @@ export interface SavedNow {
 
 const EMPTY: SavedNow = { facts: new Set(), objects: new Set() };
 
-export function useSavedNow(knowledge: JourneyKnowledge, revealingChild: number | null): SavedNow {
+export function useSavedNow(saved: readonly PersistentBoardFact[], revealingChild: number | null): SavedNow {
   const seen = useRef<Set<string> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState<SavedNow>(EMPTY);
-  const entries: { id: string; object: string; child: number }[] = [];
-  for (const m of knowledge.values()) for (const f of m.facts) entries.push({ id: `${m.key}#${f.fact}`, object: m.key, child: f.child });
+  const entries = saved.map((s) => ({ id: s.id, object: s.objectKey, child: s.fact.child }));
   const signature = entries.map((e) => e.id).join("|");
   useEffect(() => {
     if (seen.current === null) { seen.current = new Set(entries.map((e) => e.id)); return; }
@@ -51,6 +54,14 @@ export function useSavedNow(knowledge: JourneyKnowledge, revealingChild: number 
     // `signature` is `entries`, by value.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, revealingChild]);
+  // The moment belongs to the reveal hold: it never outlives it (a late
+  // arrival in a short window would otherwise run into the next child).
+  useEffect(() => {
+    if (revealingChild !== null) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    setNow((cur) => (cur.facts.size ? EMPTY : cur));
+  }, [revealingChild]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   return now;
 }

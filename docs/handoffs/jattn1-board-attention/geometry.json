@@ -38,6 +38,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W"
    ],
@@ -82,6 +91,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -122,6 +140,15 @@
    "relevant": [],
    "changed": 1,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -164,6 +191,15 @@
    ],
    "changed": 1,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -204,6 +240,15 @@
    "relevant": [],
    "changed": 4,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -246,6 +291,15 @@
    ],
    "changed": 4,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -289,6 +343,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -332,6 +395,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W",
     "journey-know-subject-R",
@@ -377,6 +449,27 @@
    ],
    "changed": 0,
    "coach": "The board saves facts as you go. Hover or click highlighted parts for context.",
+   "coachRect": [
+    391,
+    130,
+    889,
+    166
+   ],
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": {
+    "timer": false,
+    "question": false,
+    "answers": false,
+    "mobileBar": false,
+    "insideBoard": true,
+    "sides": false
+   },
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W"
    ],
@@ -420,6 +513,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    290,
+    127,
+    990,
+    401
+   ],
+   "overlaps": null,
+   "sidesTop": 188,
    "marks": [
     "journey-know-subject-W"
    ],
@@ -465,6 +567,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W"
    ],
@@ -509,6 +620,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -549,6 +669,15 @@
    "relevant": [],
    "changed": 1,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -591,6 +720,15 @@
    ],
    "changed": 1,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -631,6 +769,15 @@
    "relevant": [],
    "changed": 4,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -673,6 +820,15 @@
    ],
    "changed": 4,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -716,6 +872,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W",
     "journey-portrait-popup-opponent-mark"
@@ -759,6 +924,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W",
     "journey-know-subject-R",
@@ -804,6 +978,27 @@
    ],
    "changed": 0,
    "coach": "The board saves facts as you go. Tap highlighted parts for context.",
+   "coachRect": [
+    25,
+    142,
+    365,
+    175
+   ],
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": {
+    "timer": false,
+    "question": false,
+    "answers": false,
+    "mobileBar": false,
+    "insideBoard": true,
+    "sides": false
+   },
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W"
    ],
@@ -847,6 +1042,15 @@
    ],
    "changed": 0,
    "coach": null,
+   "coachRect": null,
+   "boardRect": [
+    19,
+    139,
+    371,
+    339
+   ],
+   "overlaps": null,
+   "sidesTop": 169,
    "marks": [
     "journey-know-subject-W"
    ],

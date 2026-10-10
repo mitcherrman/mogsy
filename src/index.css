@@ -18777,8 +18777,9 @@ html.reduce-motion .journey-know-host--ability .journey-ability > span:first-chi
                             object for the child after the transition.
      SAVED         gold   — the persistent `!`, and a brief anchored "Saved"
                             tag during the reveal hold (~1.6s). Never "correct".
-     RELEVANT NOW  ice    — outset corner ticks around what the question is
-                            about, drawn in once as the child opens, then still.
+     RELEVANT NOW  ice    — two opposing notched RAILS, just above and just
+                            below what the question is about (never corners,
+                            never a rim), drawn in once as the child opens.
 
    None of them lays anything out: rims are ::after overlays, the ticks and the
    tag are absolutely positioned. Reduced motion (OS or the app's
@@ -18806,31 +18807,39 @@ html.reduce-motion .journey-know-host--ability .journey-ability > span:first-chi
   pointer-events: none;
 }
 
-/* RELEVANT NOW — four corner ticks, outset from the object (2px on the band,
-   compact ticks on a phone). Ice, so it never reads as the gold `!` or the
-   green rim; under the `!` badge, never over it. */
+/* RELEVANT NOW — two opposing RAILS: a short ice bar just above the object and
+   one just below it, each with a small notch pointing AT the object, like a
+   sight's crosshair seen edge-on. Object-local (it hugs the one object), not a
+   rim (no sides, no corners — so never the stage motif's corner marks, never
+   Changed's green inner rim) and not a badge (never Saved's gold `!`). The
+   box is the object's, outset; the bars are its ::before / ::after. */
 .journey-reticle {
-  --jattn-tick: 4px;
-  --jattn-line: 1.5px;
-  --jattn-out: 1.5px;
-  --c: rgb(var(--jattn-ice) / 0.95);
+  --jattn-rail: 62%;
+  --jattn-line: 2px;
+  --jattn-notch: 3px;
+  --jattn-out: 2px;
+  --c: rgb(var(--jattn-ice) / 0.96);
   position: absolute;
   z-index: 1;
   pointer-events: none;
-  background:
-    linear-gradient(var(--c), var(--c)) left top / var(--jattn-tick) var(--jattn-line),
-    linear-gradient(var(--c), var(--c)) left top / var(--jattn-line) var(--jattn-tick),
-    linear-gradient(var(--c), var(--c)) right top / var(--jattn-tick) var(--jattn-line),
-    linear-gradient(var(--c), var(--c)) right top / var(--jattn-line) var(--jattn-tick),
-    linear-gradient(var(--c), var(--c)) left bottom / var(--jattn-tick) var(--jattn-line),
-    linear-gradient(var(--c), var(--c)) left bottom / var(--jattn-line) var(--jattn-tick),
-    linear-gradient(var(--c), var(--c)) right bottom / var(--jattn-tick) var(--jattn-line),
-    linear-gradient(var(--c), var(--c)) right bottom / var(--jattn-line) var(--jattn-tick);
-  background-repeat: no-repeat;
-  filter: drop-shadow(0 0 1.5px rgb(0 0 0 / 0.85)) drop-shadow(0 0 3px rgb(var(--jattn-ice) / 0.35));
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.9)) drop-shadow(0 0 3px rgb(var(--jattn-ice) / 0.45));
 }
+.journey-reticle::before,
+.journey-reticle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: var(--jattn-rail);
+  height: calc(var(--jattn-line) + var(--jattn-notch));
+  background: var(--c);
+  /* A bar with a centred notch hanging toward the object. */
+  clip-path: polygon(0 0, 100% 0, 100% var(--jattn-line), calc(50% + var(--jattn-notch)) var(--jattn-line),
+    50% 100%, calc(50% - var(--jattn-notch)) var(--jattn-line), 0 var(--jattn-line));
+}
+.journey-reticle::before { top: 0; transform: translateX(-50%); }
+.journey-reticle::after { bottom: 0; transform: translateX(-50%) scaleY(-1); }
 @container (min-width: 26rem) {
-  .journey-reticle { --jattn-tick: 6px; --jattn-out: 2px; }
+  .journey-reticle { --jattn-line: 2px; --jattn-notch: 3.5px; --jattn-out: 3px; }
 }
 /* The ability's TILE (the column's first box), not its pips. */
 .journey-ability > .journey-reticle {
@@ -18900,29 +18909,71 @@ html.reduce-motion .journey-know-host--ability .journey-ability > span:first-chi
   .journey-know { width: 1rem; height: 1rem; font-size: 0.6875rem; }
 }
 
-/* The board coach: Mogzy's face in the pill (the JPX placement and frame). */
-.journey-coach { gap: 8px; padding: 4px 12px 4px 4px; max-width: min(24rem, calc(100vw - 16px)); }
+/* The board coach, DOCKED INSIDE THE BOARD over its own header line
+   (`BoardCoach`): top-anchored at the board's top padding, so a second line
+   grows down into the board — never up over the match header or timer, never
+   down past the board onto the question. Same frame language as before
+   (navy glass, gold hairline); same type size; absolutely positioned, so it
+   lays out nothing. */
+.journey-board > .journey-coach {
+  position: absolute;
+  z-index: 6;
+  top: 3px;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 12px);
+  gap: 7px;
+  padding: 3px 12px 3px 3px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px -4px rgb(0 0 0 / 0.9);
+}
 .journey-coach__mogzy {
-  display: inline-flex;
+  position: relative;
+  display: block;
   flex-shrink: 0;
   width: 1.75rem;
   height: 1.75rem;
   overflow: hidden;
-  align-items: flex-start;
-  justify-content: center;
   border-radius: 9999px;
   border: 1px solid rgb(var(--jattn-gold, 232 201 122) / 0.7);
-  background: rgb(243 220 160 / 0.14);
+  background: radial-gradient(circle at 50% 60%, rgb(96 120 255 / 0.35), rgb(7 17 31 / 0.6));
 }
-.journey-coach__mogzy-img { width: 140%; max-width: none; margin-top: 2%; }
+/* The `explaining` art is 2:3, the face at ~35–45% of its height: framed on
+   the hat brim, the "m" and the eyes rather than the hat's crown. */
+.journey-coach__mogzy-img {
+  position: absolute;
+  max-width: none;
+  width: 160%;
+  left: -30%;
+  top: -25%;
+}
 .journey-coach__text { color: #fff3d6; font-weight: 600; }
-@media (max-width: 25.99rem) {
-  .journey-coach { padding: 3px 10px 3px 3px; }
-  .journey-coach__mogzy { width: 1.5rem; height: 1.5rem; }
+@container (max-width: 25.99rem) {
+  .journey-board > .journey-coach {
+    left: 6px;
+    right: 6px;
+    transform: none;
+    width: auto;
+    max-width: none;
+    border-radius: 14px;
+    padding: 2px 8px 2px 2px;
+    line-height: 1.2;
+  }
+  .journey-coach__mogzy { width: 1.625rem; height: 1.625rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .journey-board > .journey-coach { animation: journey-board-coach-in 240ms ease-out both; }
+}
+@keyframes journey-board-coach-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes journey-reticle-in {
-  from { opacity: 0; transform: scale(1.35); }
+  from { opacity: 0; transform: scaleY(1.7); }
   to { opacity: 1; transform: none; }
 }
 @keyframes journey-saved-in {

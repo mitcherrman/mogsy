@@ -79,6 +79,12 @@ export interface ChampionPortraitPopup {
   /** Any champion stat LEARNED by a reveal (the fact's own semantics; the glow). */
   learned: boolean;
   /**
+   * JATTN1 — exactly the K2 facts that make `learned` true (fact keys): the
+   * revealed champion stats this popup lists as a row. The portrait's `!`, its
+   * "Saved" moment and the reveal's saved line all read this one list.
+   */
+  learnedFacts: string[];
+  /**
    * The popup holds at least one champion stat, established or stated, in any
    * reached state — the portrait's `!` (owner rule, every champion alike).
    */
@@ -131,12 +137,14 @@ export function championPortraitPopup(journey: JourneyJ3 | null | undefined, kno
     for (const e of c.learner.established) if (typeof e.value === "number") exactOf.set(e.fact, e.value);
   }
   let learned = false;
+  const learnedFacts: string[] = [];
   for (const f of knowledge.get(key)?.facts ?? []) {
     const stat = f.context.stat;
     if (f.kind !== "champion_stat_at_level" || !stat || !isJourneyStatKey(stat) || !PORTRAIT_POPUP_STATS.includes(stat)) continue;
     const teacher = reached.find((c) => c.index === f.child);
     if (!teacher) continue;
     learned = true;
+    learnedFacts.push(f.fact);
     const level = f.context.level ?? teacher.state.sides[side].level;
     const cp = checkpoint(teacher.state.stateVersion, teacher.state.sides[side].level, f.child + 1);
     const stated = cp.entries[stat];
@@ -160,7 +168,7 @@ export function championPortraitPopup(journey: JourneyJ3 | null | undefined, kno
   });
   return {
     key, championName: onScreen.state.sides[side].champion, checkpoints,
-    current: onScreen.state.stateVersion, learned,
+    current: onScreen.state.stateVersion, learned, learnedFacts,
     known: checkpoints.some((cp) => Object.keys(cp.entries).length > 0),
   };
 }

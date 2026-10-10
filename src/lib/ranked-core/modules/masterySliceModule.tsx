@@ -41,7 +41,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { journeyViewFor } from "@/lib/journey/adapter";
-import { journeyKnowledge, savedAnnouncement } from "@/lib/journey/knowledge";
+import { journeyKnowledge } from "@/lib/journey/knowledge";
+import { persistentBoardFacts, savedBoardAnnouncement } from "@/lib/journey/attention";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 import { JourneyModuleStage, JourneyStageLeadIn } from "@/components/journey/JourneyModuleStage";
 import {
@@ -257,8 +258,10 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
     : !Number.isNaN(cardOpensMs) && cardOpensMs > Date.now() ? cardOpensMs : null;
   // JATTN1 — the reveal's one polite "Saved to the board" line: the facts the
   // held child's reveal saved, as the reveal already shows them.
-  const savedLine = holding && state.journey ? savedAnnouncement(knowledge, holding.challengeIndex, (side) =>
-    state.journey!.children.find((c) => c.index === holding.challengeIndex)?.state.sides[side].champion ?? side) : null;
+  // The ONE Saved rule (`persistentBoardFacts`): only a fact behind a persistent `!`.
+  const savedLine = holding && state.journey ? savedBoardAnnouncement(
+    persistentBoardFacts(state.journey, knowledge, holding.challengeIndex), holding.challengeIndex, (side) =>
+      state.journey!.children.find((c) => c.index === holding.challengeIndex)?.state.sides[side].champion ?? side) : null;
   // JOURNEY-PRES-V1 — `questionRoles`: the RQ1 roles of the challenge ON
   // SCREEN (its own frozen `roles`), passed only by the question branch; the
   // pending / waiting branches have no question and so no role badge.

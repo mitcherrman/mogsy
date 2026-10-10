@@ -74,8 +74,7 @@
  * gone (JP5 geometry pass): a phone's name line takes its column, and above a
  * phone its height went to the question region (`--jq-prompt-h`).
  */
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { createPortal } from "react-dom";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import type { RankedRole } from "@/lib/ranked-public/roles";
@@ -88,7 +87,7 @@ import {
 import type { JourneyChainNode } from "@/lib/journey/chain";
 import type { JourneyJ3 } from "@/lib/journey/j3";
 import { championPortraitPopup, type ChampionPortraitPopup } from "@/lib/journey/portraitPopup";
-import { boardAttention, type BoardAttention, type PortraitPopups } from "@/lib/journey/attention";
+import { boardAttention, persistentBoardFacts, type BoardAttention, type PortraitPopups } from "@/lib/journey/attention";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
@@ -203,7 +202,8 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, attention, pop
   const isFresh = (objectKey: string, f: KnowledgeFact) => saved.facts.has(`${objectKey}#${f.fact}`);
   const championFacts = knowledge.get(championKey)?.facts ?? [];
   const portrait = attention.of({ kind: "portrait", side: id });
-  const portraitFresh = championFacts.some((f) => f.kind === "champion_stat_at_level" && isFresh(championKey, f));
+  // Fresh = a fact `persistentBoardFacts` counts for this portrait (so its `!` is there).
+  const portraitFresh = championFacts.some((f) => isFresh(championKey, f));
   const levelState = attention.of({ kind: "level", side: id });
   const combat = state.focus.combat;
   const role = combat ? (combat.attacker === id ? "Attacker" : "Target") : null;
@@ -283,43 +283,26 @@ function SidePanel({ state, side, marks, knowledge, gains, saved, attention, pop
 
 /**
  * JATTN1 — the one-time BOARD coach (`useBoardCoach`): a compact Mogzy-faced
- * pill, non-modal, never focused, in the JPX state coach's placement:
+ * strip, non-modal, never focused, DOCKED INSIDE THE BOARD over its own header
+ * line (top-anchored, so a wrapped line grows down into the board, never up).
  *
- * JPX — the one-time STATE coach, anchored to the board's STATE control but
- * hung OUTSIDE the board: a pill resting on the board's top edge, right-aligned
- * to the header buttons. The board's box is `overflow: hidden` and every pixel
- * of it is the state (identity, inputs, abilities, items, shards), so the coach
- * is portalled to the page and positioned from the board's own rect — it covers
- * the card's margin above the board, never the board. Presentation only; it
- * lays out nothing and follows the board on scroll / resize.
+ * Why there: it is the one strip every density has that belongs to the board
+ * and to nothing that matters while the clock is stopped — the eyebrow, the
+ * micro-chain and the State / Calc controls. Outside the board it covered the
+ * match header and timer (desktop) or the phone's match bar; below the board
+ * the reveal and the answers start at once. Absolutely positioned inside the
+ * board's own box, so nothing lays out differently; gone with the clock-free
+ * window. A tap on it (or anywhere on the board) dismisses it.
  */
-function CoachPill({ boardRef, text, onDismiss }: { boardRef: RefObject<HTMLDivElement>; text: string; onDismiss: () => void }) {
-  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
-  useLayoutEffect(() => {
-    const place = () => {
-      const board = boardRef.current;
-      if (!board) return;
-      const b = board.getBoundingClientRect();
-      const btn = [...board.querySelectorAll<HTMLElement>(".journey-board__state-btn")].pop();
-      const edge = btn ? btn.getBoundingClientRect().right : b.right - 8;
-      setAt({ right: Math.max(8, window.innerWidth - edge), bottom: Math.max(0, window.innerHeight - b.top + 3) });
-    };
-    place();
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => { window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
-  }, [boardRef]);
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={onDismiss}
-      style={at ? { right: at.right, bottom: at.bottom } : { visibility: "hidden" }}>
-      {/* JATTN1 — Mogzy's face, compact (the guide's own art), decorative. */}
+function BoardCoach({ text, onDismiss }: { text: string; onDismiss: () => void }) {
+  return (
+    <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={onDismiss}>
+      {/* JATTN1 — Mogzy's face (the guide's own art), framed on the hat brim and eyes. */}
       <span aria-hidden className="journey-coach__mogzy">
         <MogzyMascot pose="explaining" scale="compact" decorative className="journey-coach__mogzy-img" />
       </span>
       <span className="journey-coach__text">{text}</span>
-    </p>,
-    document.body,
+    </p>
   );
 }
 
@@ -435,7 +418,8 @@ export function JourneyStateBoard({
   };
   const attention = boardAttention(state, knowledge, journey, popups);
   // JATTN1 — the facts this reveal saved just now (seeded silently on mount).
-  const saved = useSavedNow(knowledge, revealing ? state.step.index : null);
+  const saved = useSavedNow(persistentBoardFacts(journey, knowledge, state.step.index, popups),
+    revealing ? state.step.index : null);
   // JP4 — one shard column for both halves when either has a page.
   const shardColumn = Boolean(subject.shards?.length || opponent.shards?.length);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -509,7 +493,7 @@ export function JourneyStateBoard({
         <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} saved={saved}
           attention={attention} popup={popups.opponent ?? null} shardColumn={shardColumn} />
       </div>
-      {coach.visible && <CoachPill boardRef={boardRef} text={coach.text} onDismiss={coach.dismiss} />}
+      {coach.visible && <BoardCoach text={coach.text} onDismiss={coach.dismiss} />}
       {children}
     </div>
   );

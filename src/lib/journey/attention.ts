@@ -27,7 +27,8 @@
  */
 import type { AbilitySlot, JourneyPublicState, JourneySideId } from "./contract";
 import { markKey, transitionMarks } from "./beat";
-import { knowledgeKeyFor, type JourneyKnowledge } from "./knowledge";
+import { knowledgeKeyFor, savedFactPhrase, type JourneyKnowledge, type KnowledgeFact } from "./knowledge";
+import type { J3KnowledgeObject } from "./j3";
 import type { JourneyJ3 } from "./j3";
 import { championPortraitPopup, type ChampionPortraitPopup } from "./portraitPopup";
 
@@ -54,6 +55,72 @@ export interface BoardAttention {
   of(o: BoardObjectRef): ObjectAttention;
   /** Every object with any state, for tests and the inspector. */
   entries(): [string, ObjectAttention][];
+}
+
+/**
+ * JATTN1 — ONE SAVED RULE. A fact is "saved to the board" exactly when it is
+ * one of the facts behind a persistent gold `!` on the board on screen:
+ *
+ *   * an ability fact (K2's marked kinds: cooldown, cooldown under haste,
+ *     a revealed formula, raw damage) on an ability the board draws — its `!`
+ *     opens a card listing it;
+ *   * a champion stat the portrait popup lists as LEARNED
+ *     (`ChampionPortraitPopup.learnedFacts`) — the portrait's `!`.
+ *
+ * Nothing else. Damage after armor (state-bound, two objects) carries a
+ * structured object but is not a board mark, so its reveal says nothing about
+ * saving. The transient "Saved" tag, the board coach's trigger and the
+ * reveal's "Saved to the board" line all read THIS list, so each of them
+ * implies the `!` and none can claim a fact the board does not keep.
+ */
+export interface PersistentBoardFact {
+  /** `objectKey#fact`. */
+  id: string;
+  /** K1 object key (`player:ashe:W`, `opponent:jinx`). */
+  objectKey: string;
+  object: J3KnowledgeObject;
+  fact: KnowledgeFact;
+}
+
+export function persistentBoardFacts(journey: JourneyJ3 | null, knowledge: JourneyKnowledge, stepIndex: number,
+  popups?: PortraitPopups): PersistentBoardFact[] {
+  if (!journey || journey.reask) return [];
+  const reached = journey.children.filter((c) => c.index <= stepIndex);
+  const onScreen = reached.find((c) => c.index === stepIndex) ?? reached[reached.length - 1];
+  if (!onScreen) return [];
+  const out: PersistentBoardFact[] = [];
+  for (const j3side of ["player", "opponent"] as const) {
+    const side = j3side === "player" ? "subject" : "opponent";
+    const championId = onScreen.state.sides[j3side].championId;
+    // Ability `!`s: every fact K2 marks on an ability this board draws.
+    for (const mark of knowledge.values()) {
+      if (mark.object.type !== "ability" || mark.object.side !== j3side || mark.object.championId !== championId) continue;
+      for (const fact of mark.facts) out.push({ id: `${mark.key}#${fact.fact}`, objectKey: mark.key, object: mark.object, fact });
+    }
+    // The portrait `!`: the stats its popup lists as learned.
+    const popup = popups && side in popups ? popups[side]
+      : championPortraitPopup(journey, knowledge, j3side, stepIndex);
+    const champion = knowledge.get(knowledgeKeyFor({ side, championId }));
+    for (const fact of champion?.facts ?? []) {
+      if (popup?.learnedFacts.includes(fact.fact)) {
+        out.push({ id: `${champion!.key}#${fact.fact}`, objectKey: champion!.key, object: champion!.object, fact });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * JATTN1 — the reveal's one polite "Saved to the board: …" line for the facts
+ * child `child`'s reveal saved (`persistentBoardFacts`), or null when it saved
+ * none — e.g. a damage-after-armor reveal.
+ */
+export function savedBoardAnnouncement(saved: readonly PersistentBoardFact[], child: number,
+  championOf: (side: J3KnowledgeObject["side"]) => string): string | null {
+  const now = saved.filter((s) => s.fact.child === child);
+  if (now.length === 0) return null;
+  // No trailing period: the line ends on the value as the reveal shows it.
+  return `Saved to the board: ${now.map((s) => savedFactPhrase(s.object, s.fact, championOf(s.object.side))).join("; ")}`;
 }
 
 /** The accessible suffix an object carries while the RELEVANT cue is on it. */

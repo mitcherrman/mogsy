@@ -128,6 +128,37 @@ describe("SAVED — the `!` stays, the tag is a moment", () => {
   });
 });
 
+describe("ONE Saved rule in the DOM: a Saved tag always sits on an object wearing its `!`", () => {
+  it.each([[EXT], [EXT_WRONG], [REF], ["jattn1/zed_ahri.reference.timeout"], ["jattn1/voli.standard"], ["jattn1/voli.survival"]])(
+    "%s, played end to end", (n) => {
+      const all = load(n).filter((s) => seg(s) !== null);
+      let tags = 0;
+      play(n, all[0].label, all[all.length - 1].label, (s) => {
+        // The moment lives inside the reveal hold only.
+        if (savedTags().length) expect(q("journey-reveal"), `${n} ${s.label}`).not.toBeNull();
+        for (const id of savedTags()) {
+          tags++;
+          const portrait = /^journey-saved-tag-(subject|opponent)-portrait$/.exec(id!);
+          const ability = /^journey-saved-tag-(subject|opponent)-([QWER])$/.exec(id!);
+          const mark = portrait ? q(`journey-portrait-popup-${portrait[1]}-mark`) : q(`journey-know-${ability![1]}-${ability![2]}`);
+          expect(mark, `${n} ${s.label} ${id}`).not.toBeNull();
+          // …and the reveal's polite line says it, in the same region.
+          expect(q("journey-saved-line")?.textContent ?? "", `${n} ${s.label}`).toMatch(/^ ?Saved to the board: /);
+        }
+      });
+      expect(tags, n).toBeGreaterThan(0);
+    });
+
+  it("a damage-after-armor reveal (unmarked, state-bound) claims nothing: no tag, no saved line", () => {
+    play(EXT, "child3-live", "child3-reveal-late", (s) => {
+      if (!s.label.startsWith("child3-reveal")) return;
+      expect(q("journey-reveal"), s.label).not.toBeNull();             // its own reveal still runs
+      expect(savedTags(), s.label).toEqual([]);
+      expect(q("journey-saved-line"), s.label).toBeNull();
+    });
+  });
+});
+
 describe("RELEVANT NOW — ice brackets from the server's focus", () => {
   it("a Combat child after armor: the attacker's ability AND the target's portrait (`target_stat: armor`)", () => {
     show(snap(EXT, "child3-live"));
@@ -164,6 +195,10 @@ describe("RELEVANT NOW — ice brackets from the server's focus", () => {
     const rule = /\.journey-reticle \{[\s\S]*?\n\}/.exec(CSS)![0];
     expect(rule).toMatch(/--c: rgb\(var\(--jattn-ice\)/);
     expect(rule).not.toMatch(/232 201 122|#e8c97a|#d4b35a|#f3dca0/i);
+    // Its shape is two opposing notched rails (top / bottom) — no corner ticks.
+    expect(rule).not.toMatch(/left top|right bottom/);
+    expect(CSS).toMatch(/\.journey-reticle::before \{ top: 0; transform: translateX\(-50%\); \}/);
+    expect(CSS).toMatch(/\.journey-reticle::after \{ bottom: 0; transform: translateX\(-50%\) scaleY\(-1\); \}/);
     expect(CSS).not.toMatch(/\.journey-portrait-btn\[data-focus="true"\]/);
   });
 

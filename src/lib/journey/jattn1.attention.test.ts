@@ -16,10 +16,11 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readPublicRound, type SegmentStateView } from "@/lib/ranked-public/contracts";
 import { journeyViewFor } from "./adapter";
-import { boardAttention, boardObjectKey } from "./attention";
+import { boardAttention, boardObjectKey, persistentBoardFacts, savedBoardAnnouncement } from "./attention";
 import { itemGainTags } from "./beat";
 import { readJourneyJ3 } from "./j3";
-import { journeyKnowledge, savedAnnouncement } from "./knowledge";
+import { journeyKnowledge } from "./knowledge";
+import { championPortraitPopup } from "./portraitPopup";
 import type { CaptureSnapshot } from "./realFixtures";
 import type { JourneyTransition } from "./contract";
 
@@ -177,18 +178,79 @@ describe("SAVED", () => {
 
   it("the reveal's saved line names the object and the public value — never a verdict", () => {
     const state = seg(snap(EXT_WRONG, "child0-reveal"))!;
-    const { knowledge } = attentionOf(state);
     const shown = state.ownChallengeReveals[0].correctAnswerDisplay ?? state.ownChallengeReveals[0].correctAnswer;
-    const line = savedAnnouncement(knowledge, 0, (side) => state.journey!.children[0].state.sides[side].champion);
+    const line = lineAt(state, 0);
     expect(line).toBe(`Saved to the board: Ashe W cooldown, ${shown} seconds`);
     expect(line).not.toMatch(/correct|learned|wrong/i);
     // Before the reveal there is nothing to say.
-    const live = seg(snap(EXT_WRONG, "child0-live"))!;
-    expect(savedAnnouncement(attentionOf(live).knowledge, 0, () => "x")).toBeNull();
+    expect(lineAt(seg(snap(EXT_WRONG, "child0-live"))!, 0)).toBeNull();
     // A champion stat.
-    const armor = seg(snap(EXT, "child2-reveal"))!;
-    expect(savedAnnouncement(attentionOf(armor).knowledge, 2, (side) => armor.journey!.children[2].state.sides[side].champion))
-      .toMatch(/^Saved to the board: Jinx armor at level \d+, [\d.]+$/);
+    expect(lineAt(seg(snap(EXT, "child2-reveal"))!, 2)).toMatch(/^Saved to the board: Jinx armor at level \d+, [\d.]+$/);
+  });
+});
+
+/** The production saved line for child `i` (masterySliceModule's own call). */
+function lineAt(state: SegmentStateView, i: number) {
+  const knowledge = journeyKnowledge(state.journey, state.ownChallengeReveals, state.ownCardIndex);
+  return savedBoardAnnouncement(persistentBoardFacts(state.journey, knowledge, i), i,
+    (side) => state.journey!.children.find((c) => c.index === i)!.state.sides[side].champion);
+}
+
+describe("ONE Saved rule: saved ⇔ behind a persistent gold `!`", () => {
+  it("every persistent board fact, on every snapshot of every capture, is a fact its object's `!` lists", () => {
+    let n = 0;
+    for (const name of ALL) {
+      for (const s of load(name)) {
+        const state = seg(s);
+        if (!state?.journey) continue;
+        const step = state.ownRevealingCardIndex ?? state.ownCardIndex ?? state.challengeCount - 1;
+        const knowledge = journeyKnowledge(state.journey, state.ownChallengeReveals, state.ownCardIndex);
+        for (const f of persistentBoardFacts(state.journey, knowledge, step)) {
+          n++;
+          if (f.object.type === "ability") {
+            // The ability `!` opens a card of exactly these facts.
+            expect(knowledge.get(f.objectKey)!.facts.map((x) => x.fact), `${name} ${s.label}`).toContain(f.fact.fact);
+          } else {
+            const popup = championPortraitPopup(state.journey, knowledge, f.object.side, step)!;
+            expect(popup.learned, `${name} ${s.label}`).toBe(true);           // the portrait's `!`
+            expect(popup.learnedFacts).toContain(f.fact.fact);
+          }
+          expect(["ability_cooldown", "ability_cooldown_under_haste", "champion_stat_at_level",
+            "ability_damage_formula", "ability_raw_damage"]).toContain(f.fact.kind);
+        }
+      }
+    }
+    expect(n).toBeGreaterThan(200);
+  });
+
+  it("damage AFTER armor has a structured object but saves nothing: no persistent fact, no saved line", () => {
+    for (const [name, label, child] of [[EXT, "child3-reveal", 3], [EXT, "child5-reveal", 5], [REF, "child3-reveal", 3],
+      ["jattn1/zed_ahri.reference.timeout", "child3-timeout-reveal", 3], [DAILY, "child1-reveal", 1]] as const) {
+      const state = seg(snap(name, label))!;
+      expect(state.journey!.children[child].learner.asksFact?.kind, `${name} ${label}`).toBe("ability_damage");
+      const knowledge = journeyKnowledge(state.journey, state.ownChallengeReveals, state.ownCardIndex);
+      expect(persistentBoardFacts(state.journey, knowledge, child).filter((f) => f.fact.child === child), `${name} ${label}`).toEqual([]);
+      expect(lineAt(state, child), `${name} ${label}`).toBeNull();
+    }
+  });
+
+  it("a champion stat the portrait popup does not list is not Saved either (the `!` would not show it)", () => {
+    const state = structuredClone(seg(snap(EXT, "child2-reveal"))!);
+    const asks = state.journey!.children[2].learner.asksFact!;
+    asks.context = { ...asks.context, stat: "lethality" };                // not a portrait-popup row
+    const knowledge = journeyKnowledge(state.journey, state.ownChallengeReveals, state.ownCardIndex);
+    expect(knowledge.get("opponent:jinx")!.facts.map((f) => f.context.stat)).toContain("lethality");
+    expect(persistentBoardFacts(state.journey, knowledge, 2).filter((f) => f.fact.child === 2)).toEqual([]);
+    expect(lineAt(state, 2)).toBeNull();
+  });
+
+  it("wrong and timed-out reveals of a persistent fact are Saved exactly like right ones", () => {
+    expect(lineAt(seg(snap(EXT_WRONG, "child0-reveal"))!, 0)).toMatch(/^Saved to the board: Ashe W cooldown, /);
+    expect(lineAt(seg(snap(EXT_WRONG, "child1-reveal"))!, 1)).toMatch(/^Saved to the board: Ashe W raw damage, \d+$/);
+    // A timed-out cooldown (K1 capture: Volibear Q, the pool spent on Step 1).
+    const timeout = seg(snap("k1/voli.standard.timeout", "child0-timeout-reveal"))!;
+    expect(timeout.ownChallengeReveals[0].playerAnswer).toBeNull();
+    expect(lineAt(timeout, 0)).toMatch(/^Saved to the board: Volibear Q cooldown, \d+ seconds$/);
   });
 });
 

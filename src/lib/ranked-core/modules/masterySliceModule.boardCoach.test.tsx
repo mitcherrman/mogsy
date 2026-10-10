@@ -145,6 +145,30 @@ describe("never on the clock", () => {
   });
 });
 
+describe("armed only by a genuine Saved fact", () => {
+  it("a 6s damage-after-armor reveal saves nothing the board keeps: no coach, nothing stored; the next real Save brings it", () => {
+    // Mount after the earlier facts exist (seeded silently), then play Step 4's
+    // after-armor reveal: plenty of clock-free time, but nothing saved.
+    const seen: string[] = [];
+    play(EXT, "child3-live", "child3-reveal-end", (s) => { if (coach()) seen.push(s.label); });
+    expect(seen).toEqual([]);
+    expect(window.localStorage.getItem(BOARD_COACH_KEY)).toBeNull();
+    cleanup();
+    // Step 5's raw damage IS a board fact (Ashe W's `!`): that reveal arms and shows it.
+    play(EXT, "child4-live", "child4-reveal", (s) => { if (coach()) seen.push(s.label); });
+    expect(seen).toEqual(["child4-reveal"]);
+  });
+});
+
+describe("placement: docked inside the board, over its own header line", () => {
+  it("is a child of the board (no portal), so it can cover neither the match header nor the question", () => {
+    play(EXT, "child0-live", "child1-reveal");
+    const c = coach()!;
+    expect(c.parentElement).toBe(screen.getByTestId("journey-board"));
+    expect(screen.getByTestId("journey-question").contains(c)).toBe(false);
+  });
+});
+
 describe("frequency, copy, dismissal", () => {
   it("once per browser: a second Journey never shows it", () => {
     const r = play(EXT, "child0-live", "child1-reveal");

@@ -188,18 +188,6 @@ function anchoredObjects(journey: JourneyJ3): Map<number, { object: J3KnowledgeO
 }
 
 /**
- * JATTN1 — the facts the board SAVED from one child's reveal (`child`), by
- * board object. A fact is in `knowledge` only once its reveal is in the
- * payload, so this never names a value before it is public. Correctness is
- * never read: a wrong answer or a timeout saves exactly as a right one does.
- */
-export function savedFromChild(knowledge: JourneyKnowledge, child: number): { mark: KnowledgeObjectMark; fact: KnowledgeFact }[] {
-  const out: { mark: KnowledgeObjectMark; fact: KnowledgeFact }[] = [];
-  for (const mark of knowledge.values()) for (const fact of mark.facts) if (fact.child === child) out.push({ mark, fact });
-  return out;
-}
-
-/**
  * JATTN1 — one saved fact as the reveal's polite line speaks it, e.g.
  * "Ashe W cooldown, 18 seconds". `champion` is the board's name for the
  * object's side. The value is the reveal's own display (already public).
@@ -218,15 +206,6 @@ export function savedFactPhrase(object: J3KnowledgeObject, fact: KnowledgeFact, 
   }
   const level = fact.context.level !== undefined ? ` at level ${fact.context.level}` : "";
   return `${champion} ${statLong(fact.context.stat).toLowerCase()}${level}, ${value}`;
-}
-
-/** JATTN1 — the reveal's one polite "Saved to the board" line, or null when it saved nothing. */
-export function savedAnnouncement(knowledge: JourneyKnowledge, child: number,
-  championOf: (side: J3KnowledgeObject["side"]) => string): string | null {
-  const saved = savedFromChild(knowledge, child);
-  if (saved.length === 0) return null;
-  // No trailing period: the line ends on the value as the reveal shows it.
-  return `Saved to the board: ${saved.map(({ mark, fact }) => savedFactPhrase(mark.object, fact, championOf(mark.object.side))).join("; ")}`;
 }
 
 /** The K1 key of a board object (`subject` is K1's `player`). */
