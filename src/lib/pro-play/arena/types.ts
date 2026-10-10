@@ -1,16 +1,12 @@
 /**
  * PPQ2-B — the typed shapes the Pro Play Arena projection produces.
  *
- * WHY A LOCAL MIRROR OF THE QUESTION SURFACE
- * ──────────────────────────────────────────
- * The Arena's question member (`ArenaQuestionSurface`, PPQ2-A) is not on
- * `main` yet, and this stream may not edit `arenaView.ts`. So the one shape
- * PPQ2-B hands the Arena's centre stage is declared here, field-for-field
- * against the PPQ2-A contract (handoff §A2/§A9), out of types that ARE on
- * `main` (`QuestionView`, `AnswerOptionView`, `InteractionPermissions`,
- * `SurfaceReveal`). Once PPQ2-A lands, `ProPlayArenaQuestionSurface` is
- * assignable to `ArenaQuestionSurface` as it stands, and the integration pass
- * replaces the alias rather than the data. See `docs/handoffs/PPQ2-B.md`.
+ * THE ARENA'S OWN QUESTION SURFACE
+ * ────────────────────────────────
+ * The shape PPQ2-B hands the Arena's centre stage is PPQ2-A's authoritative
+ * `ArenaQuestionSurface` (`arenaView.ts`), imported rather than restated. The
+ * `ProPlayArena*` names below are aliases of it, kept so PPQ2-C has one import
+ * home for everything this projection produces.
  *
  * Everything else here is PRO PLAY DATA for the PPQ2-C presentation (the
  * dossier rail, the run rail, the reveal, the end summary). It is typed data,
@@ -25,15 +21,14 @@ import type {
   ProPlaySubject,
   ProPlayTag,
 } from "../contract";
-import type { ArenaHeaderView, ArenaStatusLine } from "@/lib/ranked-core/arenaView";
-import type { ArenaReportIdentity } from "@/lib/ranked-core/reportSnapshot";
 import type {
-  AnswerOptionView,
-  InteractionPermissions,
-  QuestionView,
-  RoundTimelineView,
-} from "@/lib/ranked-core/viewTypes";
-import type { SurfaceReveal } from "@/lib/question-surface/contract";
+  ArenaHeaderView,
+  ArenaQuestionSurface,
+  ArenaStatusLine,
+  QuestionReportRef,
+} from "@/lib/ranked-core/arenaView";
+import type { ArenaReportIdentity } from "@/lib/ranked-core/reportSnapshot";
+import type { RoundTimelineView } from "@/lib/ranked-core/viewTypes";
 import type { ReportableQuestionSnapshot } from "@/lib/feedback/report-context";
 
 // ───────────────────────────────────────────────────────── controller state
@@ -85,27 +80,11 @@ export interface ProPlayArenaState {
 
 // ───────────────────────────────────────────────────────── arena surface
 
-/** Server-side provenance for a reported question (mirrors PPQ2-A `QuestionReportRef`). */
-export interface ProPlayArenaReportRef {
-  sessionId: string | null;
-  questionNumber: number | null;
-}
+/** Server-side provenance for a reported question: PPQ2-A's `QuestionReportRef`. */
+export type ProPlayArenaReportRef = QuestionReportRef;
 
-/**
- * Mirror of PPQ2-A's `ArenaQuestionSurface` (handoff §A2). Same field names,
- * same types, same rules: options in server order, `reveal` null until the
- * server has graded, no match / player / round / score fields at all.
- */
-export interface ProPlayArenaQuestionSurface {
-  kind: "question";
-  question: QuestionView;
-  selectedOptionId: string | null;
-  permissions: InteractionPermissions;
-  onSelectOption: (option: AnswerOptionView) => void;
-  reveal: SurfaceReveal | null;
-  inputOpen: boolean;
-  reportRef?: ProPlayArenaReportRef | null;
-}
+/** The Arena's question member (PPQ2-A), exactly. */
+export type ProPlayArenaQuestionSurface = ArenaQuestionSurface;
 
 /** `ProPlayArenaQuestionSurface` before the controller binds its callback. */
 export type ProPlayArenaSurfaceData = Omit<ProPlayArenaQuestionSurface, "onSelectOption">;

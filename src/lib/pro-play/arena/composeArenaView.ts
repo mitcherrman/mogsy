@@ -7,28 +7,26 @@
  * fills every other `ArenaViewModel` member with the solo-mode answer — no
  * round, segment or card beat, no ability HUD, no reveal hold, no progression.
  *
- * `ProPlayArenaViewModel` is `ArenaViewModel` with the surface narrowed to the
- * local mirror of PPQ2-A's question member. Once PPQ2-A is on main it is
- * assignable to `ArenaViewModel` unchanged (verified against
- * `ppq2a/integration-main`; see `docs/handoffs/PPQ2-B.md`).
+ * `ProPlayArenaViewModel` IS an `ArenaViewModel`. The intersection only
+ * records which member of the surface union this mode always produces (the
+ * question member), so a caller can read `surface.onSelectOption` without a
+ * `kind` guard; it is passed to `CanonicalArena` as it stands.
  */
 import type { ReactNode } from "react";
-import type { ArenaRail, ArenaViewModel } from "@/lib/ranked-core/arenaView";
-import type { AnswerOptionView } from "@/lib/ranked-core/viewTypes";
 import type {
-  ProPlayArenaProjection,
-  ProPlayArenaQuestionSurface,
-  ProPlayArenaSurfaceData,
-} from "./types";
+  ArenaQuestionSurface,
+  ArenaRail,
+  ArenaViewModel,
+} from "@/lib/ranked-core/arenaView";
+import type { AnswerOptionView } from "@/lib/ranked-core/viewTypes";
+import type { ProPlayArenaProjection, ProPlayArenaSurfaceData } from "./types";
 
-export type ProPlayArenaViewModel = Omit<ArenaViewModel, "surface"> & {
-  surface: ProPlayArenaQuestionSurface;
-};
+export type ProPlayArenaViewModel = ArenaViewModel & { surface: ArenaQuestionSurface };
 
 export function bindProPlayArenaSurface(
   data: ProPlayArenaSurfaceData,
   onSelectOption: (option: AnswerOptionView) => void,
-): ProPlayArenaQuestionSurface {
+): ArenaQuestionSurface {
   return { ...data, onSelectOption };
 }
 

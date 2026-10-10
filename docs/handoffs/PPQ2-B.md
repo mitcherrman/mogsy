@@ -1,5 +1,45 @@
 # PPQ2-B — Pro Play Arena projection and controller
 
+## Integration onto PPQ2-A main (2026-10-10)
+
+| | |
+|---|---|
+| Main base | origin/main `924f019287ecabfe664c2dd9d8d493763d35f4dd` (`d6c67abc` + PPQ1 docs `84ddda8b` + PPQ2-A `75b50b66` / `924f0192`). Nothing on main since `d6c67abc` touches `src/lib/pro-play` |
+| Branch | `ppq2b/integration-main` (worktree `C:\Users\mlmit\mogzy-wt\ppq2b-int`): the reviewed `b891c56b` cherry-picked, plus one integration commit |
+| Route | Unchanged. `ProPlayQuiz.tsx` is not touched and nothing imports this layer yet |
+
+**Type adaptation (the only code change).**
+- `types.ts`: the mirrored `ProPlayArenaQuestionSurface` / `ProPlayArenaReportRef` interfaces are gone. They are now aliases of PPQ2-A's `ArenaQuestionSurface` / `QuestionReportRef`, imported from `@/lib/ranked-core/arenaView`. The now-unused `QuestionView` / `AnswerOptionView` / `InteractionPermissions` / `SurfaceReveal` imports are dropped.
+- `composeArenaView.ts`: `ProPlayArenaViewModel` is now `ArenaViewModel & { surface: ArenaQuestionSurface }`, replacing `Omit<ArenaViewModel, "surface"> & {surface: mirror}`. The `Omit` narrowing is removed. The intersection stays because the real `surface` is the union `ArenaModuleSurface | ArenaQuestionSurface`, and callers read `surface.onSelectOption` without a `kind` guard. The value is an `ArenaViewModel` as it stands.
+- No runtime change: reducer, controller, projection logic and the existing 195 tests are untouched.
+
+**New `arenaIntegration.test.ts` (44 tests).**
+- *Contract:* compile-time `Eq` checks that the aliases are the authoritative types, and every fixture composes into an `ArenaViewModel` on the question member.
+- *Reporting:* the Arena's own `questionSurfaceReportSnapshot(view)` equals `projection.reportable` field for field, pre- and post-grade, on every fixture. The canonical answer is absent pre-grade. A source check confirms the arena layer calls no `usePublishReportableQuestion`. The two are interchangeable sources for one publisher; the final integration picks the Arena's and deletes the page's.
+- *Reveal:* on every fixture, after the grade arrives with the next question, the stage, title and report ref stay on the answered question (the timeline already shows it resolved). Only `advance` (Next) mounts the next question, with a null reveal and no Next slot.
+
+**Gates (candidate vs clean main `924f0192`, same command, same toolchain).**
+
+| Gate | Candidate | Main | Notes |
+|---|---|---|---|
+| `vitest run src/lib/pro-play/arena` | 239 / 239 | n/a | 195 reviewed + 44 integration |
+| Pro Play + Arena + ranked-core + feedback suites (`src/lib/pro-play`, `ProPlayQuiz.test`, `components/pro-play`, `components/ranked-arena`, `lib/ranked-core`, `lib/feedback`, `QuizRankedMatch.geometry`) | 2300 / 2316 | 2061 / 2077 | Failure sets **identical** (16, pre-existing): `AnswerGrid.elimination` ×2, `CanonicalArena.boundary` ×1, `DailyOnCanonicalArena.boundary` ×2, `QuestionStageGeometry` ×4, `feedback/contract` ×5, `masterySliceModule.visualLanguage` ×2. The delta is exactly +239 passing |
+| `tsc -p tsconfig.app.json` | 2 errors | 2 errors | Same two (`OnboardingProfile.tsx`, `identity/connections.ts`) |
+| `eslint src/lib/pro-play/arena` | clean | n/a | |
+| `vite build` (temp outDir) | OK, 33.3 s | n/a | |
+
+**Diff scope.** Only `src/lib/pro-play/arena/**` and this handoff. There is no overlap with PPQ2-A files or with PPQ2-C's `components/pro-play/arena/**`.
+
+**Remaining for PPQ2-C / final integration.**
+1. Rail panels for `left` / `right` from `projection.dossier` / `.run`, the `hudAction` Next button (`projection.next` → `controller.next`), the error panel (`projection.error` → `controller.tryAgain`) and the summary (`projection.terminal` → `controller.restart`).
+2. Timeline timing during a reveal (assumption 4): the graded node is resolved, and the marker is on the next position while the answered question stays on stage. Keep it, or hold the marker, as a presentation call.
+3. The live route switch: `ProPlayQuiz.tsx` → `useProPlayArenaController()` + `<CanonicalArena view={composeProPlayArenaView(…)} />`. Remove the page's `usePublishReportableQuestion` in the same change, so the Arena is the single publisher. Add the route to Layout's full-bleed list. Its 21 PPQ0A tests are the regression bar.
+4. Owner Q3 (end-screen tone) is still open.
+
+---
+
+## Original implementation (reviewed at `b891c56b`)
+
 | | |
 |---|---|
 | Base | origin/main `d6c67abc1b4d85a4d1d5c77b36c0a14074ff7db3` (includes PPQ0C `00a006ac`) |
@@ -67,7 +107,7 @@ const { state, projection, selectOption, next, tryAgain, restart } =
 
 ## Contract assumptions (unresolved; flagged for integration)
 
-1. **PPQ2-A types are mirrored, not imported.** `ProPlayArenaQuestionSurface` and `ProPlayArenaReportRef` copy §A2 field for field.
+1. **(RESOLVED at integration; see above.) PPQ2-A types were mirrored, not imported.** `ProPlayArenaQuestionSurface` and `ProPlayArenaReportRef` copy §A2 field for field.
    - *Verified:* a throwaway worktree of `ppq2a/integration-main` (same base `d6c67abc`) was checked with this directory plus a compat file. Both directions of `ProPlayArenaQuestionSurface ⇄ ArenaQuestionSurface` assign, `ProPlayArenaReportRef ≡ QuestionReportRef`, and `ProPlayArenaViewModel → ArenaViewModel` assigns. tsc showed only the 2 pre-existing errors, and a negative control did fail. The scratch worktree was removed.
    - *At integration:* replace the two mirror types with re-exports of `ArenaQuestionSurface` / `QuestionReportRef`, and drop the `Omit<ArenaViewModel, "surface">` narrowing in `composeArenaView.ts`.
 2. **`SurfaceReveal.explanation` is null** (per §A9) because the server explanation still carries internal copy (PPQ1 Q4). The explanation travels in `projection.reveal.explanation` for PPQ2-C to decide.
