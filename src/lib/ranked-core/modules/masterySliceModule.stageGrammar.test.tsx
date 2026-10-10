@@ -192,10 +192,11 @@ describe("Step 2 — the question asks; the board states", () => {
     // No helper copy: no "Builds on", no internal scenario state.
     expect(child().textContent).not.toMatch(/builds on|item effects/i);
     expect(screen.queryByTestId("scenario-context")).toBeNull();
-    // JP5 — the state it is read at is ZED'S (his portrait is outlined: the
-    // question states his bonus AD); a derived stat reads whole (20.8 → 21),
-    // where it comes from and its exact value one tap away in his champion portrait popup.
-    expect(screen.getByTestId("journey-portrait-popup-subject")).toHaveAttribute("data-focus", "true");
+    // JP5 — the state it is read at is ZED'S (the question states his bonus AD);
+    // a derived stat reads whole (20.8 → 21), where it comes from and its exact
+    // value one tap away in his champion portrait popup. JATTN1: the RELEVANT cue
+    // is the question's object (Zed E), not the portrait holding its inputs.
+    expect(screen.getByTestId("journey-ability-subject-E")).toHaveAttribute("data-relevant", "true");
     const bonus = portraitPopupRow("subject", "bonus_attack_damage");
     expect(bonus.textContent).toMatch(/^Bonus AD21/);
     fireEvent.click(screen.getByTestId("journey-portrait-popup-subject-row-bonus_attack_damage-toggle"));
@@ -246,15 +247,15 @@ describe("Step 3 — Ahri's armor in the same grammar", () => {
     expect(heading()).toHaveTextContent("At level 2, what is Ahri's Armor?");
     // JP5 — no `?` bubble: the question asks in words; Ahri's portrait is outlined.
     expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
-    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-focus", "true");
+    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-relevant", "true");
     // JP4 — Zed E's raw damage, learned at Step 2, is NOT reprinted: it lives
     // on Zed E's `!`, one hover away.
     expect(screen.queryByTestId("journey-readout-subject-E")).toBeNull();
-    expect(marks()).toEqual(["subject-E:2", "subject-portrait"]);
+    expect(marks()).toEqual(["subject-E:2"]);
     cleanup();
     show(snap(REF, "child2-reveal"));
     // The reveal MOMENT: Ahri's portrait takes the `!`; her champion portrait popup knows 24.
-    expect(marks()).toEqual(["opponent-portrait", "subject-E:2", "subject-portrait"]);
+    expect(marks()).toEqual(["opponent-portrait", "subject-E:2"]);
     expect(portraitPopupRow("opponent", "armor").textContent).toBe("Armor24Lv 2");
     // The reveal: [Ahri · Lv 2] → [Armor · 24]; 24.024 only in the exact working.
     const w = screen.getByTestId("journey-stat-working");
@@ -331,21 +332,21 @@ describe("K2 — the board is the memory surface", () => {
     const at = (label: string) => t.find((x) => x.startsWith(`${label} `))!.slice(label.length + 1);
     expect(at("child0-live")).toBe("");
     expect(at("child0-reveal")).toBe("subject-E:1");                            // the formula
-    // A STATED stat counts too (owner rule): Step 2's premise states Zed's bonus
-    // AD, so his popup holds it and his portrait takes the `!` with the question.
-    expect(at("child1-live")).toBe("subject-E:1,subject-portrait");             // raw not yet revealed
+    // JATTN1 — a STATED stat is not SAVED: Step 2's premise states Zed's bonus
+    // AD (his popup lists it) but his portrait wears no `!` for it.
+    expect(at("child1-live")).toBe("subject-E:1");                              // raw not yet revealed
     // The reveal moment: the raw value joins Zed E's own `!` (JP5: no board bubble).
-    expect(at("child1-reveal")).toBe("subject-E:2,subject-portrait");           // + raw 85 on E's `!`
-    expect(at("child2-live")).toBe("subject-E:2,subject-portrait");
-    expect(at("child2-reveal")).toBe("opponent-portrait,subject-E:2,subject-portrait"); // + Ahri's armor
-    expect(at("finished")).toBe("opponent-portrait,subject-E:2,subject-portrait");
+    expect(at("child1-reveal")).toBe("subject-E:2");                            // + raw 85 on E's `!`
+    expect(at("child2-live")).toBe("subject-E:2");
+    expect(at("child2-reveal")).toBe("opponent-portrait,subject-E:2");          // + Ahri's armor
+    expect(at("finished")).toBe("opponent-portrait,subject-E:2");
   });
 
   it("a WRONG answer still establishes the fact by its reveal (steps 1 and 3 answered wrong)", () => {
     const t = timeline(WRONG);
     const at = (label: string) => t.find((x) => x.startsWith(`${label} `))!.slice(label.length + 1);
     expect(at("child0-reveal")).toBe("subject-E:1");
-    expect(at("child2-reveal")).toBe("opponent-portrait,subject-E:2,subject-portrait");
+    expect(at("child2-reveal")).toBe("opponent-portrait,subject-E:2");
     cleanup();
     show(snap(WRONG, "child3-live"));
     expect(portraitPopupRow("opponent", "armor").textContent).toBe("Armor24Lv 2");
@@ -354,7 +355,7 @@ describe("K2 — the board is the memory surface", () => {
   it("a TIMEOUT reveal shows in place, says so, and keeps every earlier fact", () => {
     show(snap(TIMEOUT, "child3-timeout-reveal"));
     expect(screen.getByTestId("journey-reveal-verdict")).toHaveTextContent("Time's up · 68");
-    expect(marks()).toEqual(["opponent-portrait", "subject-E:2", "subject-portrait"]);
+    expect(marks()).toEqual(["opponent-portrait", "subject-E:2"]);
   });
 
   it("no child's own fact is known while it is asked (leak sweep over every open/live snapshot)", () => {

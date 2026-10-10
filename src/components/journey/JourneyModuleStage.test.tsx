@@ -144,8 +144,9 @@ describe("answer safety in the DOM", () => {
     render(stage(read(ARC_C_CHILD_0_WITHHELD), "c0"));
     // JP5 — the board prints no stat at all (the question asks it in words).
     expect(screen.queryByTestId("journey-stat-opponent-armor")).toBeNull();
-    // The question is about the opponent's stat: its portrait is outlined.
-    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-focus", "true");
+    // The question is about the opponent's stat: its portrait is RELEVANT (JATTN1 ice reticle, no value).
+    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-relevant", "true");
+    expect(screen.getByTestId("journey-portrait-popup-opponent-relevant")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("journey-open-state"));
     expect(screen.getByTestId("journey-sheet-stat-opponent-armor")).toHaveTextContent("asked in this question");
     expect(document.body.innerHTML).not.toContain("44.195");
@@ -166,8 +167,9 @@ describe("Matchup and Combat presentation", () => {
     expect(ranks("subject")).toBe("3111");
     expect(ranks("opponent")).toBe("3021");
     expect(screen.getByTestId("journey-ability-opponent-W")).toHaveAttribute("data-locked", "true");
-    expect(screen.getByTestId("journey-ability-subject-Q")).toHaveAttribute("data-focus", "true");
-    expect(screen.getByTestId("journey-ability-opponent-Q")).toHaveAttribute("data-focus", "true");
+    // JATTN1 — a matchup's compared abilities are RELEVANT on BOTH sides, symmetrically.
+    expect(screen.getByTestId("journey-ability-subject-Q")).toHaveAttribute("data-relevant", "true");
+    expect(screen.getByTestId("journey-ability-opponent-Q")).toHaveAttribute("data-relevant", "true");
     expect(screen.getByTestId("journey-seam")).toHaveAttribute("data-seam", "versus");
   });
 
@@ -176,12 +178,13 @@ describe("Matchup and Combat presentation", () => {
     expect(screen.getByTestId("journey-side-subject")).toHaveAttribute("data-combat-role", "attacker");
     expect(screen.getByTestId("journey-side-opponent")).toHaveAttribute("data-combat-role", "target");
     expect(screen.getByTestId("journey-seam")).toHaveAttribute("data-seam", "combat");
-    // JP5 — the stats the question is about outline their champion's portrait
-    // (its champion portrait popup), not a board bubble.
+    // JP5 — the stats the question is about mark their champion's portrait
+    // (its champion portrait popup), not a board bubble. JATTN1: RELEVANT.
     for (const id of ["journey-ability-subject-Q", "journey-portrait-popup-subject",
       "journey-portrait-popup-opponent", "journey-item-opponent-0"]) {
-      expect(screen.getByTestId(id)).toHaveAttribute("data-focus", "true");
+      expect(screen.getByTestId(id)).toHaveAttribute("data-relevant", "true");
     }
+    expect(screen.getByTestId("journey-relevant-opponent-item-0")).toBeInTheDocument();
   });
 
   it("JP5 — the former anchor row is gone (geometry pass); every stat waits in the State sheet", () => {

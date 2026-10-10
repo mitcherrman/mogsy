@@ -1,0 +1,856 @@
+{
+ "desktop": {
+  "1-saved-ability": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child0-reveal",
+   "saved": [
+    "journey-saved-tag-subject-W"
+   ],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W"
+   ],
+   "savedLine": " Saved to the board: Ashe W cooldown, 18 seconds"
+  },
+  "2-saved-champion-stat": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child2-reveal",
+   "saved": [
+    "journey-saved-tag-opponent-portrait"
+   ],
+   "relevant": [
+    "journey-portrait-popup-opponent-relevant",
+    "journey-level-opponent-relevant"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": " Saved to the board: Jinx armor at level 3, 32"
+  },
+  "3a-pickaxe-beat": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child4-beat-start",
+   "saved": [],
+   "relevant": [],
+   "changed": 1,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "3b-pickaxe-resting": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child4-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 1,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "4a-level-rank-beat": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child6-beat-start",
+   "saved": [],
+   "relevant": [],
+   "changed": 4,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "4b-level-rank-resting": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child6-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 4,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "5-relevant-combat": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child3-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-W",
+    "journey-portrait-popup-opponent-relevant"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "6-ashe-r-vs-jinx-r": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child10-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-R",
+    "journey-relevant-opponent-R"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-know-subject-R",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "7-first-use-coach": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child1-reveal",
+   "saved": [
+    "journey-saved-tag-subject-W"
+   ],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 0,
+   "coach": "The board saves facts as you go. Hover or click highlighted parts for context.",
+   "marks": [
+    "journey-know-subject-W"
+   ],
+   "savedLine": " Saved to the board: Ashe W raw damage, 60"
+  },
+  "8-reduced-motion-saved": {
+   "before": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "after": {
+    "board": [
+     290,
+     127,
+     700,
+     274
+    ],
+    "question": [
+     290,
+     409,
+     700,
+     296
+    ]
+   },
+   "label": "child0-reveal",
+   "saved": [
+    "journey-saved-tag-subject-W"
+   ],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W"
+   ],
+   "savedLine": " Saved to the board: Ashe W cooldown, 18 seconds"
+  }
+ },
+ "mobile": {
+  "1-saved-ability": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child0-reveal",
+   "saved": [
+    "journey-saved-tag-subject-W"
+   ],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W"
+   ],
+   "savedLine": " Saved to the board: Ashe W cooldown, 18 seconds"
+  },
+  "2-saved-champion-stat": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child2-reveal",
+   "saved": [
+    "journey-saved-tag-opponent-portrait"
+   ],
+   "relevant": [
+    "journey-portrait-popup-opponent-relevant",
+    "journey-level-opponent-relevant"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": " Saved to the board: Jinx armor at level 3, 32"
+  },
+  "3a-pickaxe-beat": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child4-beat-start",
+   "saved": [],
+   "relevant": [],
+   "changed": 1,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "3b-pickaxe-resting": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child4-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 1,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "4a-level-rank-beat": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child6-beat-start",
+   "saved": [],
+   "relevant": [],
+   "changed": 4,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "4b-level-rank-resting": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child6-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 4,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "5-relevant-combat": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child3-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-W",
+    "journey-portrait-popup-opponent-relevant"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "6-ashe-r-vs-jinx-r": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child10-live",
+   "saved": [],
+   "relevant": [
+    "journey-relevant-subject-R",
+    "journey-relevant-opponent-R"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W",
+    "journey-know-subject-R",
+    "journey-portrait-popup-opponent-mark"
+   ],
+   "savedLine": null
+  },
+  "7-first-use-coach": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child1-reveal",
+   "saved": [
+    "journey-saved-tag-subject-W"
+   ],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 0,
+   "coach": "The board saves facts as you go. Tap highlighted parts for context.",
+   "marks": [
+    "journey-know-subject-W"
+   ],
+   "savedLine": " Saved to the board: Ashe W raw damage, 60"
+  },
+  "8-reduced-motion-saved": {
+   "before": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "after": {
+    "board": [
+     19,
+     139,
+     352,
+     200
+    ],
+    "question": [
+     19,
+     347,
+     352,
+     432
+    ]
+   },
+   "label": "child0-reveal",
+   "saved": [
+    "journey-saved-tag-subject-W"
+   ],
+   "relevant": [
+    "journey-relevant-subject-W"
+   ],
+   "changed": 0,
+   "coach": null,
+   "marks": [
+    "journey-know-subject-W"
+   ],
+   "savedLine": " Saved to the board: Ashe W cooldown, 18 seconds"
+  }
+ }
+}

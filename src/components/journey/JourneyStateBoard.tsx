@@ -38,6 +38,14 @@
  * ability sits in a same-size `journey-know-host`, marked or not, so a mark
  * appearing changes no box. Items are never marked (K1 has no item fact).
  *
+ * JATTN1 — THE ATTENTION GRAMMAR (`lib/journey/attention.ts`): CHANGED (green:
+ * the beat's motion, then a thin green inner rim on every changed object for
+ * the child), SAVED (gold: the persistent `!` + a brief anchored "Saved" tag
+ * during the reveal hold — never "correct") and RELEVANT NOW (ice corner
+ * brackets from the server's focus, drawn in once as the child opens). Three
+ * cues, three looks, one source each; the portrait's `!` now means a stat was
+ * SAVED by a reveal (a stated premise stat stays inspectable, unmarked).
+ *
  * JP3 — LEARNED HISTORY LIVES ON THE BOARD'S OBJECTS. One grammar (`knowledge.ts`): a
  * learned value FILLS the board's `?` for it — Ahri's "Armor ?" becomes
  * "Armor 24 !" at Step 3's reveal and stays; Zed's "E raw damage ?" becomes
@@ -66,29 +74,31 @@
  * gone (JP5 geometry pass): a phone's name line takes its column, and above a
  * phone its height went to the question region (`--jq-prompt-h`).
  */
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
 import { QuestionRoleEmblems } from "@/components/ranked-arena/RoleEmblem";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import { ArrowRight, Calculator, Check, PanelTopOpen } from "lucide-react";
-import type {
-  JourneyFocusRef, JourneyPublicState, JourneySide, JourneySideId,
-} from "@/lib/journey/contract";
+import type { JourneyPublicState, JourneySide } from "@/lib/journey/contract";
 import { itemGainTags, markKey, rankFrom, transitionMarks, type JourneyMarks } from "@/lib/journey/beat";
 import {
   knowledgeKeyFor, NO_KNOWLEDGE, type JourneyKnowledge, type KnowledgeFact,
 } from "@/lib/journey/knowledge";
 import type { JourneyChainNode } from "@/lib/journey/chain";
 import type { JourneyJ3 } from "@/lib/journey/j3";
-import { championPortraitPopup, statesInputsAt, type ChampionPortraitPopup } from "@/lib/journey/portraitPopup";
+import { championPortraitPopup, type ChampionPortraitPopup } from "@/lib/journey/portraitPopup";
+import { boardAttention, type BoardAttention, type PortraitPopups } from "@/lib/journey/attention";
+import { useCoarsePointer } from "@/hooks/useCoarsePointer";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { resolveEnvironmentSceneArt } from "@/lib/question-surface/environmentScenes";
 import { AbilityRankPips, InventorySlots, JourneyPortrait, LevelBadge } from "./JourneyPrimitives";
 import { JourneyKnowledgeMark } from "./JourneyKnowledgeMark";
 import { JourneyChampionPortraitPopup } from "./JourneyChampionPortraitPopup";
 import { ShardIcon } from "./JourneyIcons";
 import { JourneyShardReference } from "./JourneyReferencePopover";
-import { useKnowledgeCoach } from "./useKnowledgeCoach";
+import { useBoardCoach } from "./useKnowledgeCoach";
+import { useSavedNow, type SavedNow } from "./useSavedNow";
 
 /**
  * JP4 — the board's shared ground: ONE lane scene under both champions, so the
@@ -97,19 +107,13 @@ import { useKnowledgeCoach } from "./useKnowledgeCoach";
  */
 const BOARD_SCENE = resolveEnvironmentSceneArt("lane_minion")?.background ?? null;
 
-function focusSet(refs: JourneyFocusRef[], side: JourneySideId) {
-  const stats = new Set<string>();
-  const abilities = new Set<string>();
-  const items = new Set<number>();
-  let level = false;
-  for (const r of refs) {
-    if (r.side !== side) continue;
-    if (r.kind === "stat") stats.add(r.key);
-    if (r.kind === "ability") abilities.add(r.key);
-    if (r.kind === "item") items.add(r.key);
-    if (r.kind === "level") level = true;
-  }
-  return { stats, abilities, items, level };
+/**
+ * JATTN1 — the SAVED moment: a small gold tag anchored to the exact object a
+ * reveal just saved a fact on, for the ~1.6s fresh window. Says only "Saved"
+ * (never "Correct", never "You learned"); the value is the `!` card's.
+ */
+function SavedTag({ testId }: { testId: string }) {
+  return <span aria-hidden data-testid={testId} className="journey-saved-tag">Saved</span>;
 }
 
 /**
@@ -135,32 +139,6 @@ function SideArt({ side }: { side: JourneySide }) {
   );
 }
 
-/**
- * JP3 — which learned keys appeared SINCE THE LAST RENDER, kept for one short
- * glow. The first render seeds silently (a reload mid-Journey replays no
- * glow); after that, a key that arrives — a reveal establishing a fact — is
- * "just learned" for ~1.6s. Reads only which facts exist, never correctness.
- */
-function useJustLearned(keys: readonly string[]): ReadonlySet<string> {
-  const seen = useRef<Set<string> | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
-  const signature = keys.join("|");
-  useEffect(() => {
-    if (seen.current === null) { seen.current = new Set(keys); return; }
-    const added = keys.filter((k) => !seen.current!.has(k));
-    for (const k of keys) seen.current.add(k);
-    if (added.length === 0) return;
-    setFresh(new Set(added));
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setFresh(new Set()), 1600);
-    // `signature` is `keys`, by value.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature]);
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  return fresh;
-}
-
 /** The side's decorative splash underlay (compact phone rows). Nothing when there is no art. */
 function SideSplash({ side }: { side: JourneySide }) {
   const assets = useMasteryAssets();
@@ -174,27 +152,6 @@ function SideSplash({ side }: { side: JourneySide }) {
         onError={() => setBroken(true)} />
     </span>
   );
-}
-
-/**
- * JP5 — did a champion portrait become reviewable (its popup now holds a stat,
- * so it wears the `!`) SINCE THE LAST RENDER? True for that one render. A mount
- * that already shows a reviewable portrait (a reload mid-Journey) is not a
- * moment, so it says no.
- */
-function usePortraitBecameReviewable(journey: JourneyJ3 | null, knowledge: JourneyKnowledge, step: number): boolean {
-  const now = (["player", "opponent"] as const).map((s) => championPortraitPopup(journey, knowledge, s, step)?.known ?? false);
-  const prev = useRef(now);
-  const became = now.some((k, i) => k && !prev.current[i]);
-  useEffect(() => { prev.current = now; });
-  return became;
-}
-
-/** JP3 — every established fact, keyed by object (for the one-shot glow). */
-function learnedKeysOf(knowledge: JourneyKnowledge): string[] {
-  const out: string[] = [];
-  for (const m of knowledge.values()) for (const f of m.facts) out.push(`${m.key}#${f.fact}`);
-  return out;
 }
 
 /**
@@ -224,26 +181,30 @@ function ShardPage({ side, popup }: { side: JourneySide; popup: ChampionPortrait
   );
 }
 
-function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, journey }: {
+function SidePanel({ state, side, marks, knowledge, gains, saved, attention, popup, shardColumn }: {
   state: JourneyPublicState;
   side: JourneySide;
   marks: JourneyMarks;
   knowledge: JourneyKnowledge;
   /** MOTION-V1 — while the beat runs: a new item's server stat lines, by `side:slot`. */
   gains: ReadonlyMap<string, string[]> | null;
-  /** JP3 — fact keys learned just now (`useJustLearned`). */
-  fresh: ReadonlySet<string>;
+  /** JATTN1 — the facts / objects a reveal saved just now (`useSavedNow`). */
+  saved: SavedNow;
+  /** JATTN1 — each object's Changed / Saved / Relevant states. */
+  attention: BoardAttention;
   /** JP4 — either side has a shard page: both halves draw the column. */
   shardColumn: boolean;
-  /** JP5 — the served Journey block (reached prefix): the champion portrait popup's source. */
-  journey: JourneyJ3 | null;
+  /** JP5 — this champion's portrait popup (built once per render by the board). */
+  popup: ChampionPortraitPopup | null;
 }) {
   const id = side.side;
+  const step = state.step.index;
   const championKey = knowledgeKeyFor(side);
-  const isFresh = (objectKey: string, f: KnowledgeFact) => fresh.has(`${objectKey}#${f.fact}`);
-  const popup = championPortraitPopup(journey, knowledge, id === "subject" ? "player" : "opponent", state.step.index);
+  const isFresh = (objectKey: string, f: KnowledgeFact) => saved.facts.has(`${objectKey}#${f.fact}`);
   const championFacts = knowledge.get(championKey)?.facts ?? [];
-  const focus = focusSet(state.focus.refs, id);
+  const portrait = attention.of({ kind: "portrait", side: id });
+  const portraitFresh = championFacts.some((f) => f.kind === "champion_stat_at_level" && isFresh(championKey, f));
+  const levelState = attention.of({ kind: "level", side: id });
   const combat = state.focus.combat;
   const role = combat ? (combat.attacker === id ? "Attacker" : "Target") : null;
   const newSlots = new Set(side.items.map((it) => it.slot).filter((s) => marks.newItems.has(markKey(id, s))));
@@ -257,11 +218,12 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
       <header className="journey-side__id">
         {shardColumn && <ShardPage side={side} popup={popup} />}
         <span className="journey-know-host journey-know-host--portrait" data-know-key={knowledgeKeyFor(side)}>
-          {/* JP5 — the portrait opens the champion portrait popup. */}
+          {/* JP5 — the portrait opens the champion portrait popup. JATTN1: its
+              `!` is SAVED (a revealed stat), its brackets RELEVANT (the server's focus). */}
           <JourneyChampionPortraitPopup side={side} popup={popup}
-            focused={focus.stats.size > 0 || statesInputsAt(popup, state.step.index + 1)}
-            fresh={championFacts.some((f) => f.kind === "champion_stat_at_level" && isFresh(championKey, f))}
+            saved={portrait.saved} relevant={portrait.relevant} step={step} fresh={portraitFresh}
             testId={`journey-portrait-popup-${id}`} />
+          {portraitFresh && <SavedTag testId={`journey-saved-tag-${id}-portrait`} />}
         </span>
         <div className="journey-side__name min-w-0">
           <span className="journey-side__champion truncate font-black uppercase tracking-[0.08em] text-white"
@@ -269,7 +231,7 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
             {side.championName}
           </span>
           <span className="flex items-center gap-1">
-            <LevelBadge level={side.level} from={level?.from ?? null} focused={focus.level}
+            <LevelBadge level={side.level} from={level?.from ?? null} relevant={levelState.relevant} step={step}
               testId={`journey-level-${id}`} />
             {/* JPX — a reserved slot: the role chip arrives inside a box that is always there. */}
             <span className="journey-role-slot journey-chip rounded-md font-bold uppercase tracking-[0.18em]">
@@ -287,25 +249,29 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
       </header>
       <div className="journey-side__kit" role="group" aria-label={`${side.championName} abilities`}>
         {side.abilities.map((a) => {
-          const known = knowledge.get(knowledgeKeyFor(side, a.slot)) ?? null;
+          const key = knowledgeKeyFor(side, a.slot);
+          const known = knowledge.get(key) ?? null;
+          const relevant = attention.of({ kind: "ability", side: id, slot: a.slot }).relevant;
           return (
-            <span key={a.slot} className="journey-know-host journey-know-host--ability"
-              data-know-key={knowledgeKeyFor(side, a.slot)}>
+            <span key={a.slot} className="journey-know-host journey-know-host--ability" data-know-key={key}>
               <AbilityRankPips ability={a} champion={side.championName} side={id}
                 rankFrom={marks.rank.has(markKey(id, a.slot)) ? rankFrom(state.transition, id, a.slot) : null}
                 unlocked={marks.unlocked.has(markKey(id, a.slot))}
-                focused={focus.abilities.has(a.slot)} />
+                relevant={relevant} step={step} />
               {known && (
                 <JourneyKnowledgeMark mark={known} name={`${side.championName} ${a.slot}`} abilityName={a.name}
-                  placement="ability" fresh={known.facts.some((f) => isFresh(known.key, f))}
+                  placement="ability" fresh={known.facts.some((f) => isFresh(known.key, f))} relevant={relevant}
                   testId={`journey-know-${id}-${a.slot}`} />
               )}
+              {saved.objects.has(key) && <SavedTag testId={`journey-saved-tag-${id}-${a.slot}`} />}
             </span>
           );
         })}
       </div>
       <div className="journey-side__items">
-        <InventorySlots side={side} items={side.items} newSlots={newSlots} focusSlots={focus.items}
+        <InventorySlots side={side} items={side.items} newSlots={newSlots} step={step}
+          relevantSlots={new Set(side.items.map((it) => it.slot)
+            .filter((slot) => attention.of({ kind: "item", side: id, slot }).relevant))}
           gainTags={gains ? new Map([...newSlots].flatMap((slot) => {
             const tags = gains.get(markKey(id, slot));
             return tags ? [[slot, tags] as const] : [];
@@ -316,6 +282,9 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
 }
 
 /**
+ * JATTN1 — the one-time BOARD coach (`useBoardCoach`): a compact Mogzy-faced
+ * pill, non-modal, never focused, in the JPX state coach's placement:
+ *
  * JPX — the one-time STATE coach, anchored to the board's STATE control but
  * hung OUTSIDE the board: a pill resting on the board's top edge, right-aligned
  * to the header buttons. The board's box is `overflow: hidden` and every pixel
@@ -324,7 +293,7 @@ function SidePanel({ state, side, marks, knowledge, gains, fresh, shardColumn, j
  * the card's margin above the board, never the board. Presentation only; it
  * lays out nothing and follows the board on scroll / resize.
  */
-function CoachPill({ boardRef, onDismiss }: { boardRef: RefObject<HTMLDivElement>; onDismiss: () => void }) {
+function CoachPill({ boardRef, text, onDismiss }: { boardRef: RefObject<HTMLDivElement>; text: string; onDismiss: () => void }) {
   const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
   useLayoutEffect(() => {
     const place = () => {
@@ -344,10 +313,11 @@ function CoachPill({ boardRef, onDismiss }: { boardRef: RefObject<HTMLDivElement
   return createPortal(
     <p role="status" data-testid="journey-know-coach" className="journey-coach" onPointerDown={onDismiss}
       style={at ? { right: at.right, bottom: at.bottom } : { visibility: "hidden" }}>
-      <span aria-hidden className="journey-coach__mark">!</span>
-      <span className="journey-coach__text">
-        Tap champion portraits <span className="journey-coach__how">to review stats.</span>
+      {/* JATTN1 — Mogzy's face, compact (the guide's own art), decorative. */}
+      <span aria-hidden className="journey-coach__mogzy">
+        <MogzyMascot pose="explaining" scale="compact" decorative className="journey-coach__mogzy-img" />
       </span>
+      <span className="journey-coach__text">{text}</span>
     </p>,
     document.body,
   );
@@ -413,8 +383,18 @@ function JourneyPath({ nodes }: { nodes: readonly JourneyChainNode[] }) {
 
 export function JourneyStateBoard({
   state, beatActive = false, onOpenDetail, onOpenFormulas, questionRoles = null, knowledge = NO_KNOWLEDGE,
-  beatStamp = null, chain = null, journey = null, children,
+  beatStamp = null, chain = null, journey = null, revealing = false, clockFreeUntil = null, children,
 }: {
+  /**
+   * JATTN1 — the board is holding the reveal of the child on screen: a fact
+   * that arrives now was saved by THIS reveal (the "Saved" moment).
+   */
+  revealing?: boolean;
+  /**
+   * JATTN1 — the client-clock ms the next answer window opens (null: one is
+   * open now; Infinity: none follows). The board coach runs only before it.
+   */
+  clockFreeUntil?: number | null;
   state: JourneyPublicState;
   /** JP5 — the served Journey block (reached prefix), for the champion portrait popups. */
   journey?: JourneyJ3 | null;
@@ -448,12 +428,20 @@ export function JourneyStateBoard({
   const gains = beatActive ? itemGainTags(state.transition) : null;
   const [subject, opponent] = state.sides;
   const combat = state.focus.combat;
-  const fresh = useJustLearned(learnedKeysOf(knowledge));
+  // JP5 — each champion's portrait popup, once (the side panel and the attention model share it).
+  const popups: PortraitPopups = {
+    subject: championPortraitPopup(journey, knowledge, "player", state.step.index),
+    opponent: championPortraitPopup(journey, knowledge, "opponent", state.step.index),
+  };
+  const attention = boardAttention(state, knowledge, journey, popups);
+  // JATTN1 — the facts this reveal saved just now (seeded silently on mount).
+  const saved = useSavedNow(knowledge, revealing ? state.step.index : null);
   // JP4 — one shard column for both halves when either has a page.
   const shardColumn = Boolean(subject.shards?.length || opponent.shards?.length);
-  // JP5 — the first portrait to become reviewable (gain its `!`) teaches the mechanic once.
-  const coach = useKnowledgeCoach(usePortraitBecameReviewable(journey, knowledge, state.step.index));
   const boardRef = useRef<HTMLDivElement>(null);
+  // JATTN1 — the first fact the board saves (any fact) teaches the board once.
+  const coarse = useCoarsePointer();
+  const coach = useBoardCoach({ savedNow: saved.objects.size > 0, clockFreeUntil, coarse, boardRef });
   return (
     <div ref={boardRef} data-testid="journey-board" data-journey-key={state.journeyKey}
       data-step={state.step.index} data-node={state.step.nodeId}
@@ -508,8 +496,8 @@ export function JourneyStateBoard({
       <SideArt side={subject} />
       <SideArt side={opponent} />
       <div className="journey-board__sides">
-        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} fresh={fresh}
-          shardColumn={shardColumn} journey={journey} />
+        <SidePanel state={state} side={subject} marks={marks} knowledge={knowledge} gains={gains} saved={saved}
+          attention={attention} popup={popups.subject ?? null} shardColumn={shardColumn} />
         <div aria-hidden className="journey-board__seam" data-testid="journey-seam"
           data-seam={combat ? "combat" : "versus"}>
           {combat ? (
@@ -518,10 +506,10 @@ export function JourneyStateBoard({
             <span className="font-black tracking-[0.2em] text-[#e8c97a]/80">VS</span>
           )}
         </div>
-        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} fresh={fresh}
-          shardColumn={shardColumn} journey={journey} />
+        <SidePanel state={state} side={opponent} marks={marks} knowledge={knowledge} gains={gains} saved={saved}
+          attention={attention} popup={popups.opponent ?? null} shardColumn={shardColumn} />
       </div>
-      {coach.visible && <CoachPill boardRef={boardRef} onDismiss={coach.dismiss} />}
+      {coach.visible && <CoachPill boardRef={boardRef} text={coach.text} onDismiss={coach.dismiss} />}
       {children}
     </div>
   );

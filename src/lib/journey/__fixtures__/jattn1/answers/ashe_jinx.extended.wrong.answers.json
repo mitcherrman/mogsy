@@ -1,0 +1,111 @@
+[
+ {
+  "index": 0,
+  "correct_answer": "18",
+  "answer_options": [
+   "20",
+   "18",
+   "24",
+   "22"
+  ]
+ },
+ {
+  "index": 1,
+  "correct_answer": "60",
+  "answer_options": [
+   "45",
+   "70",
+   "60",
+   "40"
+  ]
+ },
+ {
+  "index": 2,
+  "correct_answer": "32",
+  "answer_options": [
+   "43",
+   "32",
+   "38",
+   "34"
+  ]
+ },
+ {
+  "index": 3,
+  "correct_answer": "45",
+  "answer_options": [
+   "30",
+   "35",
+   "45",
+   "40"
+  ]
+ },
+ {
+  "index": 4,
+  "correct_answer": "85",
+  "answer_options": [
+   "125",
+   "85",
+   "105",
+   "115"
+  ]
+ },
+ {
+  "index": 5,
+  "correct_answer": "64",
+  "answer_options": [
+   "79",
+   "44",
+   "94",
+   "64"
+  ]
+ },
+ {
+  "index": 6,
+  "correct_answer": "11",
+  "answer_options": [
+   "11",
+   "15",
+   "13",
+   "14"
+  ]
+ },
+ {
+  "index": 7,
+  "correct_answer": "43",
+  "answer_options": [
+   "50",
+   "46",
+   "48",
+   "43"
+  ]
+ },
+ {
+  "index": 8,
+  "correct_answer": "109",
+  "answer_options": [
+   "139",
+   "109",
+   "119",
+   "149"
+  ]
+ },
+ {
+  "index": 9,
+  "correct_answer": "100",
+  "answer_options": [
+   "100",
+   "130",
+   "120",
+   "140"
+  ]
+ },
+ {
+  "index": 10,
+  "correct_answer": "jinx",
+  "answer_options": [
+   "ashe",
+   "jinx",
+   "tie"
+  ]
+ }
+]

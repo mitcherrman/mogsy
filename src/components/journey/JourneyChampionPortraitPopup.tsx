@@ -14,11 +14,14 @@
  * Armor +15, exact 65.08). The checkpoint selector lists only the Journey's
  * own reached states (no stat-category filter, no calculator).
  *
- * The portrait wears the existing gold `!` when a champion stat was LEARNED by
- * a reveal (K2's grammar: established, never "you were right"); a question
- * about one of this champion's stats outlines it (`focused`). The sheet is
- * portalled (Radix Popover), so the board's `overflow: hidden` never clips it,
- * and it lays out nothing on the board.
+ * JATTN1 — the portrait wears the gold `!` only when a champion stat was SAVED
+ * by a reveal (`saved`: K2's grammar — established, never "you were right"). A
+ * stat a premise merely STATED is still listed in the sheet (the portrait stays
+ * a button), but it is not a saved fact, so it wears no `!`. A question about
+ * one of this champion's stats — the server's focus, or a Combat target's
+ * `target_stat` — draws the RELEVANT reticle (`relevant`), never gold. The
+ * sheet is portalled (Radix Popover), so the board's `overflow: hidden` never
+ * clips it, and it lays out nothing on the board; it never opens by itself.
  */
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
@@ -29,7 +32,8 @@ import {
 } from "@/lib/journey/portraitPopup";
 import { exactNumber, isRoundedForDisplay, JOURNEY_STAT_META } from "@/lib/journey/stats";
 import { ItemIcon, ShardIcon } from "./JourneyIcons";
-import { JourneyPortrait } from "./JourneyPrimitives";
+import { JourneyPortrait, RelevantReticle } from "./JourneyPrimitives";
+import { RELEVANT_LABEL } from "@/lib/journey/attention";
 
 /** A served source's share, exactly as served ("+15", "+5.4"; a level base unsigned). */
 const share = (s: JourneyStatSource) =>
@@ -105,13 +109,17 @@ function Row({ stat, entry, testId }: { stat: (typeof PORTRAIT_POPUP_STATS)[numb
   );
 }
 
-export function JourneyChampionPortraitPopup({ side, popup, fresh = false, focused = false, testId }: {
+export function JourneyChampionPortraitPopup({ side, popup, saved = false, fresh = false, relevant = false, step = 0, testId }: {
   side: JourneySide;
   popup: ChampionPortraitPopup | null;
-  /** A stat was learned just now: the `!` settles in with one glow (JP3). */
+  /** JATTN1 — a champion stat was SAVED by a reveal: the persistent `!`. */
+  saved?: boolean;
+  /** A stat was saved just now: the `!` settles in with one glow (JP3). */
   fresh?: boolean;
-  /** The question on screen is about one of this champion's stats. */
-  focused?: boolean;
+  /** JATTN1 — the question on screen is about one of this champion's stats. */
+  relevant?: boolean;
+  /** The step on screen: the reticle draws in once per child. */
+  step?: number;
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -122,14 +130,17 @@ export function JourneyChampionPortraitPopup({ side, popup, fresh = false, focus
   const checkpoints = popup?.checkpoints ?? [];
   const cp = checkpoints.find((c) => c.node === picked) ?? checkpoints.find((c) => c.node === current) ?? null;
   const known = popup?.known ?? false;
+  const label = `${side.championName} stats${saved ? ", saved facts to review" : known ? ", stats to review" : ""}${
+    relevant ? `, ${RELEVANT_LABEL}` : ""}`;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className="journey-portrait-btn" data-testid={testId}
-          data-known={known ? "true" : undefined} data-focus={focused ? "true" : undefined}
-          aria-label={`${side.championName} stats${known ? ", stats to review" : ""}`}>
+          data-known={known ? "true" : undefined} data-saved={saved ? "true" : undefined}
+          data-relevant={relevant ? "true" : undefined} aria-label={label}>
           <JourneyPortrait side={side} />
-          {known && (
+          {relevant && <RelevantReticle step={step} testId={`${testId}-relevant`} />}
+          {saved && (
             <span aria-hidden data-testid={`${testId}-mark`} data-just-learned={fresh ? "true" : undefined}
               className="journey-know journey-know--portrait">!</span>
           )}

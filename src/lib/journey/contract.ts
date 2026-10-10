@@ -183,7 +183,15 @@ export type JourneyEvent =
    * JOURNEY-UI3 — J3's item stat line: a DELTA ("+20 attack damage from
    * Serrated Dirk"), never a total. The client adds it to nothing.
    */
-  | { kind: "stat_change"; side: JourneySideId; key: JourneyStatKey; delta: number; source: string | null };
+  | {
+    kind: "stat_change"; side: JourneySideId; key: JourneyStatKey; delta: number; source: string | null;
+    /**
+     * JATTN1 — the source item's id exactly as served (`stat_change.source.item_id`),
+     * the one exact link to the purchase that granted it. Absent/null when the
+     * wire names no item (or a non-numeric id).
+     */
+    sourceItemId?: number | null;
+  };
 
 export interface JourneyTransition {
   fromNode: string;

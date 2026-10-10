@@ -48,8 +48,13 @@ import { JourneyWorkbenchSheet } from "./workbench/JourneyWorkbenchSheet";
 
 export function JourneyModuleStage({
   state, skewMs = 0, holdPrevious = false, questionRoles = null, knowledge = NO_KNOWLEDGE,
-  reached = null, answeredThrough = 0, journey = null, children,
+  reached = null, answeredThrough = 0, journey = null, clockFreeUntil = null, children,
 }: {
+  /**
+   * JATTN1 — the client-clock ms the viewer's next answer window opens (null:
+   * one is open now; Infinity: none follows). The board coach lives before it.
+   */
+  clockFreeUntil?: number | null;
   /** JP5 — the served Journey block (reached prefix): the champion portrait popups read it. */
   journey?: JourneyJ3 | null;
   /**
@@ -111,7 +116,7 @@ export function JourneyModuleStage({
           <JourneyStateBoard state={board} beatActive={beatActive} onOpenDetail={() => setSheetOpen(true)}
             questionRoles={beatActive ? null : questionRoles} knowledge={knowledge} chain={chain} journey={journey}
             beatStamp={beatActive ? <JourneyBeatStamp key={board.step.index} state={board} /> : null}
-            onOpenFormulas={() => setFormulasOpen(true)}>
+            onOpenFormulas={() => setFormulasOpen(true)} revealing={holdPrevious} clockFreeUntil={clockFreeUntil}>
             {beatActive && <JourneyTransitionBeat key={board.step.index} state={board} />}
           </JourneyStateBoard>
         </ScenarioMediaBand>

@@ -228,8 +228,9 @@ describe("adapter: the board on real J3 data", () => {
     expect(zed.stats).toEqual([]);
     expect(v.board.transition!.events).toEqual([
       { kind: "purchase", side: "subject", group: "first_back", items: [{ slot: 0, itemId: 3134, name: "Serrated Dirk" }] },
-      { kind: "stat_change", side: "subject", key: "attack_damage", delta: 20, source: "Serrated Dirk" },
-      { kind: "stat_change", side: "subject", key: "lethality", delta: 10, source: "Serrated Dirk" },
+      // JATTN1 — the source item's exact id travels with its name.
+      { kind: "stat_change", side: "subject", key: "attack_damage", delta: 20, source: "Serrated Dirk", sourceItemId: 3134 },
+      { kind: "stat_change", side: "subject", key: "lethality", delta: 10, source: "Serrated Dirk", sourceItemId: 3134 },
     ]);
   });
 

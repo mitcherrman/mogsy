@@ -163,22 +163,46 @@ export function beatShortStamp(transition: JourneyTransition | null): string {
 }
 
 /**
+ * Which slot (`side:slot`) a `stat_change` belongs to: the item this
+ * transition put in that side's inventory and that the change names as its
+ * source — the one causal link the public data states. JATTN1: matched by the
+ * served ITEM ID (`stat_change.source.item_id` ↔ the purchase's `item_id`)
+ * whenever the change carries one — never by name then. The item NAME is only
+ * the fallback for a change that carries no id (an older wire). Unmatched
+ * when the change names no item bought here.
+ */
+function statChangeSlots(transition: JourneyTransition | null): Map<JourneyEvent, string> {
+  const byId = new Map<string, string>();         // `side|itemId` → markKey(side, slot)
+  const byName = new Map<string, string>();       // `side|name`   → markKey(side, slot)
+  const out = new Map<JourneyEvent, string>();
+  const events = transition?.events ?? [];
+  for (const e of events) {
+    if (e.kind !== "purchase") continue;
+    for (const it of e.items) {
+      if (it.slot < 0) continue;
+      if (it.itemId !== null) byId.set(`${e.side}|${it.itemId}`, k(e.side, it.slot));
+      byName.set(`${e.side}|${it.name}`, k(e.side, it.slot));
+    }
+  }
+  for (const e of events) {
+    if (e.kind !== "stat_change" || !e.source) continue;
+    const at = e.sourceItemId != null ? byId.get(`${e.side}|${e.sourceItemId}`) : byName.get(`${e.side}|${e.source}`);
+    if (at) out.set(e, at);
+  }
+  return out;
+}
+
+/**
  * The item's own stat lines, as the server published them, keyed by the slot
- * the item landed in (`side:slot`): "+10 AH". Only a `stat_change` whose
- * `source` names an item this transition put in that side's inventory — the
- * one causal link the public data states. Nothing is summed or derived; a
- * `stat_delta` (from/to, J2) belongs to its stat chip, not to an item.
+ * the item landed in (`side:slot`): "+10 AH" (`statChangeSlots`). Nothing is
+ * summed or derived; a `stat_delta` (from/to, J2) belongs to its stat chip,
+ * not to an item.
  */
 export function itemGainTags(transition: JourneyTransition | null): Map<string, string[]> {
-  const bought = new Map<string, string>();       // `side|name` → markKey(side, slot)
   const out = new Map<string, string[]>();
-  for (const e of transition?.events ?? []) {
-    if (e.kind === "purchase") for (const it of e.items) if (it.slot >= 0) bought.set(`${e.side}|${it.name}`, k(e.side, it.slot));
-    if (e.kind === "stat_change" && e.source) {
-      const at = bought.get(`${e.side}|${e.source}`);
-      if (!at) continue;
-      out.set(at, [...(out.get(at) ?? []), `${formatStatGain(e.delta, e.key)} ${JOURNEY_STAT_META[e.key].short}`]);
-    }
+  for (const [e, at] of statChangeSlots(transition)) {
+    if (e.kind !== "stat_change") continue;
+    out.set(at, [...(out.get(at) ?? []), `${formatStatGain(e.delta, e.key)} ${JOURNEY_STAT_META[e.key].short}`]);
   }
   return out;
 }

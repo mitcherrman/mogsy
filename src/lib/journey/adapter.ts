@@ -27,7 +27,8 @@
  *     are NOT published yet, so the beat board shows none rather than stale
  *     ones beside a new "+20 AD";
  *   * FOCUS — the state's `focus` (champion: side + slot/stat; matchup: both
- *     sides' slot; combat: attacker slot, target, and the target stat shown);
+ *     sides' slot; combat: attacker slot, target, and — JATTN1 — the target
+ *     stat the server names in `focus.target_stat`);
  *   * the transition's marks — while the child it precedes is on screen;
  *   * the canonical BEAT — `until` is `own_card_started_at`, the instant the
  *     server opens that child, and only while the child is NOT yet exposed.
@@ -306,7 +307,12 @@ function events3(ts: J3Transition[], inventories: Record<J3Side, { itemId: strin
       });
     }
     if (e.type === "stat_change") {
-      out.push({ kind: "stat_change", side, key: e.stat, delta: e.delta, source: e.source?.name ?? null });
+      // JATTN1 — the source item's exact id travels with its name (B1).
+      const id = e.source ? Number(e.source.itemId) : Number.NaN;
+      out.push({
+        kind: "stat_change", side, key: e.stat, delta: e.delta, source: e.source?.name ?? null,
+        sourceItemId: Number.isInteger(id) && id > 0 ? id : null,
+      });
     }
   }
   return out;
@@ -323,9 +329,12 @@ function focus3(state: J3State, stats: Record<J3Side, JourneyStat[]>): JourneyPu
   }
   if (f.engine === "combat") {
     refs.push({ side: SIDE3[f.side], kind: "ability", key: f.slot });
-    // The target's resistance the question is read against, when it is shown.
-    for (const key of ["armor", "magic_resist"] as const) {
-      if (hasStat(f.targetSide, key)) refs.push({ side: SIDE3[f.targetSide], kind: "stat", key });
+    // JATTN1 — the target stat the question is read against, as the server
+    // NAMES it (`focus.target_stat`, from the ability's damage type); never
+    // guessed from which resistances happen to be on the board. A raw
+    // (pre-mitigation) child names none, and so points at no target stat.
+    if (f.targetStat && hasStat(f.targetSide, f.targetStat)) {
+      refs.push({ side: SIDE3[f.targetSide], kind: "stat", key: f.targetStat });
     }
     return { refs, combat: { attacker: SIDE3[f.side], target: SIDE3[f.targetSide] } };
   }

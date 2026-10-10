@@ -334,7 +334,8 @@ describe("interaction", () => {
   it("mouse hover opens and leaving closes", () => {
     show(snap("voli.standard", "child2-reveal"));
     const b = screen.getByTestId("journey-know-subject-Q");
-    expect(b).toHaveAccessibleName("Known facts: Volibear Q");
+    // JATTN1 — Step 3 asks about this Q again: the `!` says it is relevant now.
+    expect(b).toHaveAccessibleName("Known facts: Volibear Q, relevant to this question");
     pointer(b, "pointerover", "mouse");
     expect(open()).not.toBeNull();
     expect(popText("journey-know-subject-Q")).toMatch(/Q · .*Rank 1.*12s.*Step 1.*11s.*10 AH.*Step 3/);

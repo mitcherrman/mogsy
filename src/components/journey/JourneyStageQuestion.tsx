@@ -276,7 +276,7 @@ const CHAIN_TEST_IDS: Record<Reasoning["kind"], string> = {
  * keeps the served explanation, whole-number display.
  */
 function JourneyReveal({ challenge, journey, question, correct, timedOut, answer, explanation, working,
-  comparison, winnerToken, learnedFormula, rawRecalled, windowMs, endsAt }: {
+  comparison, winnerToken, learnedFormula, rawRecalled, windowMs, endsAt, savedLine }: {
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
   question: JourneyQuestion;
@@ -296,6 +296,8 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
   /** JP5 — the server's reveal window, and the client-clock instant it ends (null when unnamed). */
   windowMs: number | null;
   endsAt: number | null;
+  /** JATTN1 — "Saved to the board: …" (the facts this reveal saved; never a verdict). */
+  savedLine: string | null;
 }) {
   const shown = displayExplanation(explanation);
   const statRecall = statRecallOf(challenge);
@@ -352,13 +354,18 @@ function JourneyReveal({ challenge, journey, question, correct, timedOut, answer
           {shown.text}
         </p>
       ) : null}
+      {/* JATTN1 — the board's Saved cue, spoken once in this same polite region, last. */}
+      {savedLine && <span data-testid="journey-saved-line" className="sr-only"> {savedLine}</span>}
     </div>
   );
 }
 
 export function JourneyStageQuestion({
   challenge, journey, submitting, onSubmit, reveal, working = null, revealWindowMs = null, revealEndsAt = null,
+  savedLine = null,
 }: {
+  /** JATTN1 — the reveal's "Saved to the board: …" line, when it saved a fact. */
+  savedLine?: string | null;
   challenge: MasterySliceChallengeView;
   journey: JourneyChildContext;
   submitting: boolean;
@@ -456,7 +463,7 @@ export function JourneyStageQuestion({
           working={working} comparison={reveal.comparisonValues ?? null} winnerToken={reveal.correctValue}
           learnedFormula={journey.learnedFormula ?? null}
           rawRecalled={journey.recalled.some((r) => r.what === "raw_damage")}
-          windowMs={revealWindowMs} endsAt={revealEndsAt} />
+          windowMs={revealWindowMs} endsAt={revealEndsAt} savedLine={savedLine} />
       )}
     </div>
   );

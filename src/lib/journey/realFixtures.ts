@@ -75,16 +75,28 @@ export const J3_CAPTURES = {
   // JEXT — the admin 11-child Ashe vs Jinx EXTENDED Journey (preset
   // `admin.ashe_jinx_extended_journey`, backend 7c203aeb), same harness: `__fixtures__/jext/`.
   "jext-ashe-jinx": "jext/ashe_jinx.extended",
+  // JATTN1 — the board attention grammar's backend (`focus.target_stat`, damage
+  // facts' ability objects), every host: `__fixtures__/jattn1/`.
+  "jattn1-ref-zed-ahri": "jattn1/zed_ahri.reference",
+  "jattn1-ref-zed-ahri-wrong": "jattn1/zed_ahri.reference.wrong",
+  "jattn1-ref-zed-ahri-timeout": "jattn1/zed_ahri.reference.timeout",
+  "jattn1-voli": "jattn1/voli.standard",
+  "jattn1-pantheon": "jattn1/pantheon.standard",
+  "jattn1-voli-survival": "jattn1/voli.survival",
+  "jattn1-ahri-survival": "jattn1/ahri.survival",
+  "jattn1-ashe-jinx": "jattn1/ashe_jinx.extended",
+  "jattn1-ashe-jinx-wrong": "jattn1/ashe_jinx.extended.wrong",
 } as const;
 export type CaptureKey = keyof typeof J3_CAPTURES;
 
 const loaders = import.meta.glob<CaptureSnapshot[]>(
   ["./__fixtures__/j3/*.json", "./__fixtures__/j4/*.json", "./__fixtures__/k1/*.json", "./__fixtures__/m1/*.json",
-    "./__fixtures__/jref/*.json", "./__fixtures__/jp5/*.json", "./__fixtures__/jext/*.json"], { import: "default" });
+    "./__fixtures__/jref/*.json", "./__fixtures__/jp5/*.json", "./__fixtures__/jext/*.json",
+    "./__fixtures__/jattn1/*.json"], { import: "default" });
 
 export async function loadCapture(key: CaptureKey): Promise<CaptureSnapshot[]> {
   const file = J3_CAPTURES[key];
-  const load = loaders[/^(j4|k1|m1|jref|jp5|jext)\//.test(file) ? `./__fixtures__/${file}.json` : `./__fixtures__/j3/${file}.json`];
+  const load = loaders[/^(j4|k1|m1|jref|jp5|jext|jattn1)\//.test(file) ? `./__fixtures__/${file}.json` : `./__fixtures__/j3/${file}.json`];
   if (!load) throw new Error(`no capture ${key}`);
   return load();
 }

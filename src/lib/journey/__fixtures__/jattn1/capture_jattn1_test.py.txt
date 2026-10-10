@@ -1,0 +1,282 @@
+"""JATTN1 capture harness (the JP5 harness + the JLONG1 Ashe/Jinx extended
+preset), run on the JATTN1 backend (`jattn1/board-attention-be`).
+
+JP5 capture harness -- the JREF (reference preset) and M1 (Daily Journey
+module) harnesses on the JP5 backend (``jp5/journey-structured-working``),
+with ONE change: every reveal is read against the child's OWN frozen window
+(``reveal_windows_ms``, else ``reveal_window_ms``), and a long reveal is read
+at more instants (expanded, the fold point, late in the window).
+
+Real ``GET /api/ranked/matches/{id}`` responses at controlled server instants;
+the Journey composes against the canonical DB opened ``mode=ro``; Ranked
+tables live in a seeded scratch DB. No guard is narrowed. Scratch only; NOT
+part of the backend repo.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sqlite3
+import sys
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+sys.path.insert(0, os.getcwd())
+
+OUT = os.environ["JOURNEY_CAPTURE_OUT"]
+DAY = "day-ui3-capture"
+PRESET = "admin.zed_ahri_reference_journey"
+LAUNCH = {
+    "voli": "jungle.volibear_vs_leesin",
+    "pantheon": "support.pantheon_vs_leona",
+    "ahri": "mid.ahri_vs_syndra",
+}
+CHAMPS = ("Volibear", "Lee Sin", "Zed", "Ahri", "Pantheon", "Leona", "Syndra", "Ashe", "Jinx")
+EXTENDED = "admin.ashe_jinx_extended_journey"
+T0 = datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc)
+A = "0d44d444-0000-4000-8000-000000000004"
+
+
+@pytest.fixture
+def ranked_db(monkeypatch):
+    canonical = os.environ["LOL_CALC_DB_PATH"]
+    monkeypatch.setenv("RANKED_PUBLIC_ENABLED", "1")
+    monkeypatch.setenv("RANKED_FORMATS_ENABLED", "1")
+    monkeypatch.setenv("LOL_CALC_DB_PATH", canonical)
+    monkeypatch.setenv("RANKED_RATELIMIT_ENABLED", "0")
+    monkeypatch.delenv("RANKED_MASTERY_REVEAL_WINDOW_MS", raising=False)
+    monkeypatch.delenv("RANKED_BOT_ENABLED", raising=False)
+    from mastery.identity.champion_identity import reset_identity_registry_cache
+    reset_identity_registry_cache()
+    from migrate_quiz_attempts_v2 import migrate as migrate_attempts
+    from test_gr1_combatq1_ranked_serving import COMBAT_TABLES
+    from test_gr1_player_serving_slice import _copy_tables
+    from test_ranked_mastery_on_demand import (
+        E2E_CHAMPIONS, _clone_champion_tables, _seeded_db)
+    path = _seeded_db()
+    migrate_attempts(path)
+    _clone_champion_tables(path, champions=tuple(set(E2E_CHAMPIONS + CHAMPS)))
+    _copy_tables(path, COMBAT_TABLES)
+    from ranked_modules import mastery_state_slice as MSS
+    real = MSS.compose_journey
+
+    def _compose(_conn, **kw):
+        c = sqlite3.connect(f"file:{canonical}?mode=ro", uri=True,
+                            check_same_thread=False)
+        c.row_factory = sqlite3.Row
+        try:
+            return real(c, **kw)
+        finally:
+            c.close()
+    monkeypatch.setattr(MSS, "compose_journey", _compose)
+    return path
+
+
+@pytest.fixture
+def http(ranked_db):
+    from fastapi.testclient import TestClient
+    from api_server import app
+    from routes import ranked_public as routes
+    from routes.supabase_auth import Identity, get_identity
+    clock = {"now": T0}
+    app.dependency_overrides[routes.get_db_path] = lambda: ranked_db
+    app.dependency_overrides[routes.get_utc_now] = lambda: clock["now"]
+    app.dependency_overrides[get_identity] = lambda: Identity(
+        user_id=A, verified=True, is_anonymous=False, token="t")
+    yield {"db": ranked_db, "clock": clock, "client": TestClient(app)}
+    app.dependency_overrides.clear()
+
+
+def _get(http, mid, at):
+    http["clock"]["now"] = at
+    r = http["client"].get(f"/api/ranked/matches/{mid}")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _format(db, fid, recipe_id, plan):
+    from content_sets import products as P
+    from daily_challenge import recipe as stage_recipe
+    from ranked_formats import RankedFormat
+    from ranked_formats.schema import SCORING_MODEL_POINTS
+    from ranked_public import format_config
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        n = 5 if plan == "standard" else 3
+        product = P.check(conn.cursor(), P.JOURNEY_SLICE, (recipe_id,), n, DAY)
+    finally:
+        conn.close()
+    spec = (stage_recipe._journey_spec(product, 10) if plan == "standard"
+            else stage_recipe._survival_journey_spec(product, 6))
+    fmt = RankedFormat(format_id=fid, format_version=1, status="active",
+                       segment_pattern=(spec,), bot_eligible=True,
+                       rating_eligible=False,
+                       scoring_model=SCORING_MODEL_POINTS,
+                       match_length=1).validate()
+    format_config.save_config(db, "public", fmt)
+
+
+def _payloads(db, mid):
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM ranked_rounds WHERE match_id = ? "
+                           "AND round_number = 1", (mid,)).fetchone()
+        return (json.loads(row["segment_payload_json"]),
+                json.loads(row["segment_private_json"]))
+    finally:
+        conn.close()
+
+
+def _dump(name, snaps, answers):
+    os.makedirs(os.path.join(OUT, "answers"), exist_ok=True)
+    with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8") as fh:
+        json.dump(snaps, fh, separators=(",", ":"), ensure_ascii=False,
+                  default=str)
+    with open(os.path.join(OUT, "answers", f"{name}.answers.json"), "w",
+              encoding="utf-8") as fh:
+        json.dump(answers, fh, indent=1, ensure_ascii=False, default=str)
+
+
+def _walk(http, mid, *, wrong=(), think_s=8, timeout_child=None,
+          timeout_s=None):
+    from ranked_public import segment_flow as sf
+    from ranked_public import service
+    db = http["db"]
+    public, private = _payloads(db, mid)
+    windows = sf.reveal_windows_from_payload(public)
+    count = len(private["challenges"])
+    answers = [{"index": i, "correct_answer": c["correct_answer"],
+                "answer_options": c.get("answer_options")}
+               for i, c in enumerate(private["challenges"])]
+    delays = public["journey"]["open_delays_ms"]
+    snaps = []
+
+    def snap(label, at):
+        snaps.append({"label": label, "at": at.isoformat(),
+                      "envelope": _get(http, mid, at)})
+        return snaps[-1]["envelope"]
+
+    def reveal_reads(index, at):
+        """The reveal at its own window: expanded, late-expanded, folded
+        (a long window), and just before it ends."""
+        w = sf.window_at(windows, index)
+        snap(f"child{index}-reveal", at + timedelta(milliseconds=500))
+        snap(f"child{index}-reveal-late", at + timedelta(milliseconds=1500))
+        if w >= 4400:
+            snap(f"child{index}-reveal-compressed",
+                 at + timedelta(milliseconds=3700))
+        snap(f"child{index}-reveal-end", at + timedelta(milliseconds=w - 150))
+        return w
+
+    env = snap("child0-leadin", T0 + timedelta(milliseconds=10))
+    opened = datetime.fromisoformat(
+        env["payload"]["segment_state"]["own_card_started_at"])
+    snap("child0-open", opened + timedelta(milliseconds=100))
+    for index in range(count):
+        live_at = opened + timedelta(seconds=think_s / 4)
+        live = snap(f"child{index}-live", live_at)
+        at = opened + timedelta(seconds=think_s)
+        if index == timeout_child:
+            if timeout_s is None:
+                left = live["payload"]["segment_state"][
+                    "active_time_remaining_ms"]
+                gone = live_at + timedelta(milliseconds=left + 300)
+            else:
+                gone = opened + timedelta(seconds=timeout_s, milliseconds=300)
+            snap(f"child{index}-timeout-reveal", gone)
+            snap(f"child{index}-timeout-reconnect",
+                 gone + timedelta(milliseconds=700))
+            if sf.window_at(windows, index) >= 4400:
+                snap(f"child{index}-timeout-compressed",
+                     gone + timedelta(milliseconds=3400))
+            snap(f"child{index}-timeout", gone + timedelta(seconds=10))
+            break
+        row = private["challenges"][index]
+        choice = row["correct_answer"]
+        if index in wrong:
+            choice = next((o for o in (row.get("answer_options") or [])
+                           if o != choice), "1")
+        response = service.submit_challenge(db, mid, A, 1, index,
+                                            {"selected": choice}, at)
+        assert response.get("challenge_reveal_window_ms",
+                            sf.window_at(windows, index)) == \
+            sf.window_at(windows, index)
+        w = reveal_reads(index, at)
+        if index == count - 1:
+            snap("final-reconnect", at + timedelta(milliseconds=1200))
+            snap("finished", at + timedelta(milliseconds=w + 3000))
+            break
+        delay = int(delays[index + 1]) if index + 1 < len(delays) else 0
+        if delay:
+            snap(f"child{index + 1}-beat-start",
+                 at + timedelta(milliseconds=w + 10))
+            snap(f"child{index + 1}-beat",
+                 at + timedelta(milliseconds=w + delay // 2))
+        env = snap(f"child{index + 1}-open",
+                   at + timedelta(milliseconds=w + delay + 100))
+        opened = datetime.fromisoformat(
+            env["payload"]["segment_state"]["own_card_started_at"])
+    return snaps, answers, public
+
+
+def _reference(http, name, preset=PRESET):
+    from ranked_public import service
+    mid = f"jattn1-{name}"
+    service.create_bot_match(http["db"], match_id=mid, human_user_id=A,
+                             human_class="tank", now=T0, preset=preset)
+    return mid
+
+
+def test_capture_extended_correct(http):
+    snaps, answers, public = _walk(http, _reference(http, "ext", EXTENDED))
+    assert public["journey"]["child_count"] == 11
+    _dump("ashe_jinx.extended", snaps, answers)
+
+
+def test_capture_extended_wrong(http):
+    snaps, answers, _ = _walk(http, _reference(http, "ext-wrong", EXTENDED),
+                              wrong=(0, 1, 9, 10))
+    _dump("ashe_jinx.extended.wrong", snaps, answers)
+
+
+def test_capture_reference_correct(http):
+    snaps, answers, public = _walk(http, _reference(http, "correct"))
+    assert public["reveal_windows_ms"] == [1750, 4000, 1750, 6000]
+    _dump("zed_ahri.reference", snaps, answers)
+
+
+def test_capture_reference_wrong(http):
+    snaps, answers, _ = _walk(http, _reference(http, "wrong"), wrong=(0, 1, 3))
+    _dump("zed_ahri.reference.wrong", snaps, answers)
+
+
+def test_capture_reference_timeout(http):
+    snaps, answers, _ = _walk(http, _reference(http, "timeout"),
+                              timeout_child=3)
+    _dump("zed_ahri.reference.timeout", snaps, answers)
+
+
+def _daily(http, key, plan):
+    from ranked_public import service
+    mid = f"jattn1-{key}-{plan}"
+    _format(http["db"], mid, LAUNCH[key], plan)
+    service.create_bot_match(http["db"], match_id=mid, human_user_id=A,
+                             human_class="tank", now=T0)
+    return mid
+
+
+@pytest.mark.parametrize("key", ["voli", "pantheon"])
+def test_capture_standard(http, key):
+    snaps, answers, _ = _walk(http, _daily(http, key, "standard"),
+                              wrong=(0, 2))
+    _dump(f"{key}.standard", snaps, answers)
+
+
+@pytest.mark.parametrize("key", ["voli", "ahri"])
+def test_capture_survival(http, key):
+    snaps, answers, _ = _walk(http, _daily(http, key, "survival"),
+                              wrong=(2,) if key == "ahri" else ())
+    _dump(f"{key}.survival", snaps, answers)

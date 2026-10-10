@@ -86,7 +86,15 @@ export const J3_SHARD_ROWS: readonly J3ShardRow[] = ["offense", "flex", "defense
 export type J3Focus =
   | { engine: "champion"; objective: string; side: J3Side; slot: AbilitySlot | null; stat: JourneyStatKey | null }
   | { engine: "matchup"; objective: string; sides: J3Side[]; slot: AbilitySlot }
-  | { engine: "combat"; objective: string; side: J3Side; slot: AbilitySlot; targetSide: J3Side };
+  | {
+    engine: "combat"; objective: string; side: J3Side; slot: AbilitySlot; targetSide: J3Side;
+    /**
+     * JATTN1 — the target stat the answer is read against (`focus.target_stat`:
+     * `armor` for physical damage, `magic_resist` for magic). Value-free; null
+     * when the wire names none (a raw-damage child, or a backend before it).
+     */
+    targetStat: JourneyStatKey | null;
+  };
 
 export interface J3StateWithheld {
   side: J3Side;
@@ -401,11 +409,20 @@ function readFocus(v: unknown, l: string): J3Focus | null {
     };
   }
   if (engine === "combat") {
-    const x = shape(o, l, ["engine", "objective", "side", "slot", "target_side"]);
+    // JATTN1: `target_stat` is optional (additive to v1).
+    const x = shape(o, l, ["engine", "objective", "side", "slot", "target_side", "target_stat"],
+      ["engine", "objective", "side", "slot", "target_side"]);
     const attacker = side(x.side, `${l}.side`);
     const target = side(x.target_side, `${l}.target_side`);
     if (attacker === target) fail(`${l} attacker and target must differ`);
-    return { engine, objective: str(x.objective, `${l}.objective`), side: attacker, slot: slot(x.slot, `${l}.slot`), targetSide: target };
+    const targetStat = x.target_stat === undefined ? null : statKey(x.target_stat, `${l}.target_stat`);
+    if (targetStat !== null && targetStat !== "armor" && targetStat !== "magic_resist") {
+      fail(`${l}.target_stat must be armor|magic_resist`);
+    }
+    return {
+      engine, objective: str(x.objective, `${l}.objective`), side: attacker, slot: slot(x.slot, `${l}.slot`),
+      targetSide: target, targetStat,
+    };
   }
   const x = shape(o, l, ["engine", "objective", "side", "slot", "stat"], ["engine", "objective", "side"]);
   return {

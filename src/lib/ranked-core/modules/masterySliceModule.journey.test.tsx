@@ -137,9 +137,9 @@ describe("answer leaks — the reached prefix only", () => {
     const answer = String(answersOf(v)[0].correct_answer);   // Lee Sin's L3 armor, as asked
     show(snap(v, "child0-live"));
     const board = screen.getByTestId("journey-board");
-    // JP5 — no stat bubble; the asked champion's portrait is outlined instead.
+    // JP5 — no stat bubble; the asked champion's portrait is RELEVANT instead (JATTN1).
     expect(within(board).queryByTestId("journey-stat-opponent-armor")).toBeNull();
-    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-focus", "true");
+    expect(screen.getByTestId("journey-portrait-popup-opponent")).toHaveAttribute("data-relevant", "true");
     expect(board.textContent).not.toContain(answer);
     fireEvent.click(screen.getByTestId("journey-open-state"));
     const sheet = screen.getByTestId("journey-state-sheet");
@@ -277,10 +277,12 @@ describe("JP2 — Matchup and Combat children on the Journey stage", () => {
     afterReveal();
     expect(screen.queryByTestId("journey-combat-premise")).toBeNull();
     expect(screen.getByTestId("journey-child")).toHaveAttribute("data-render-path", "combat");
-    // JP5 — the premise's inputs live in the attacker's champion portrait popup (its portrait
-    // is outlined): the served number, whole for display (70.1625 → 70), every
-    // digit of it one tap away.
-    expect(screen.getByTestId("journey-portrait-popup-subject")).toHaveAttribute("data-focus", "true");
+    // JP5 — the premise's inputs live in the attacker's champion portrait popup: the
+    // served number, whole for display (70.1625 → 70), every digit of it one tap away.
+    // JATTN1 — RELEVANT is the server's objective focus only (the attacker's ability),
+    // so the attacker's portrait is inspectable but not highlighted (no inputs tier).
+    expect(screen.getByTestId("journey-ability-subject-Q")).toHaveAttribute("data-relevant", "true");
+    expect(screen.getByTestId("journey-portrait-popup-subject")).not.toHaveAttribute("data-relevant");
     fireEvent.click(screen.getByTestId("journey-portrait-popup-subject"));
     const ad = screen.getByTestId("journey-portrait-popup-subject-row-attack_damage");
     expect(ad.textContent).toMatch(/^AD70Lv \d+$/);

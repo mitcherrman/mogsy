@@ -21,7 +21,7 @@ import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type { CaptureSnapshot } from "@/lib/journey/realFixtures";
 import { useRef } from "react";
 import { useFittedQuestion } from "@/components/journey/JourneyQuestionText";
-import { KNOWLEDGE_COACH_KEY, KNOWLEDGE_COACH_MS, resetKnowledgeCoach } from "@/components/journey/useKnowledgeCoach";
+import { resetKnowledgeCoach } from "@/components/journey/useKnowledgeCoach";
 import { hostOfCapture, journeyArenaView } from "@/pages/dev/journey-arena/JourneyArenaHarness";
 import type { ArenaRail } from "@/lib/ranked-core/arenaView";
 import { masterySliceModule } from "./masterySliceModule";
@@ -233,60 +233,9 @@ describe("learned history: learned facts are recalled, not reprinted", () => {
   });
 });
 
-describe("the `!` coach: taught once", () => {
-  const COACH = "Tap champion portraits to review stats.";
-  const stepTo = (r: ReturnType<typeof render>, s: CaptureSnapshot, prev: CaptureSnapshot) => {
-    act(() => { vi.advanceTimersByTime(Date.parse(s.at) - Date.parse(prev.at)); });
-    vi.setSystemTime(Date.parse(s.at));
-    r.rerender(view(s));
-  };
-
-  it("the first portrait to gain its `!` brings the coach — not before; it leaves by itself and never comes back", () => {
-    // A viewer who saw JP4's board-based coach still gets this one: its own key.
-    window.localStorage.setItem("mogzy.journey.knowledgeCoach.v1", "seen");
-    expect(KNOWLEDGE_COACH_KEY).toBe("mogzy.journey.portraitCoach.v1");
-    const live0 = snap(REF, "child0-live");
-    const reveal0 = snap(REF, "child0-reveal");
-    const live1 = snap(REF, "child1-live");
-    const r = show(live0);
-    expect(screen.queryByTestId("journey-know-coach")).toBeNull();
-    // Step 1's reveal teaches Zed E's formula (an ability `!`), but no portrait is
-    // reviewable yet: no coach.
-    stepTo(r, reveal0, live0);
-    expect(screen.getByTestId("journey-know-subject-E")).toBeInTheDocument();
-    expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
-    expect(screen.queryByTestId("journey-know-coach")).toBeNull();
-    // Step 2 states Zed's bonus AD: his portrait gains its `!` — the coach, now.
-    stepTo(r, live1, reveal0);
-    expect(screen.getByTestId("journey-portrait-popup-subject-mark")).toBeInTheDocument();
-    const coach = screen.getByTestId("journey-know-coach");
-    expect(coach).toHaveTextContent(COACH);
-    expect(coach).toHaveAttribute("role", "status");
-    expect(board()).toHaveAttribute("data-coach", "true");
-    expect(window.localStorage.getItem(KNOWLEDGE_COACH_KEY)).toBe("seen");
-    act(() => { vi.advanceTimersByTime(KNOWLEDGE_COACH_MS + 10); });
-    expect(screen.queryByTestId("journey-know-coach")).toBeNull();
-    // Ahri's portrait gains its `!` at Step 3's reveal — no second coach.
-    const live2 = snap(REF, "child2-live");
-    const reveal2 = snap(REF, "child2-reveal");
-    stepTo(r, snap(REF, "child1-reveal"), live1);
-    stepTo(r, live2, snap(REF, "child1-reveal"));
-    stepTo(r, reveal2, live2);
-    expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toBeInTheDocument();
-    expect(screen.queryByTestId("journey-know-coach")).toBeNull();
-  });
-
-  it("a tap dismisses it; a reload mid-Journey shows none (the `!` is simply there)", () => {
-    const r = show(snap(REF, "child0-reveal"));
-    stepTo(r, snap(REF, "child1-live"), snap(REF, "child0-reveal"));
-    fireEvent.pointerDown(screen.getByTestId("journey-know-coach"));
-    expect(screen.queryByTestId("journey-know-coach")).toBeNull();
-    cleanup();
-    resetKnowledgeCoach();
-    show(snap(REF, "child2-live"));
-    expect(screen.queryByTestId("journey-know-coach")).toBeNull();
-  });
-
+describe("the State sheet legend", () => {
+  // JATTN1 — the one-time coach is the BOARD coach now (first fact SAVED, any
+  // kind, clock-free time only): `masterySliceModule.boardCoach.test.tsx`.
   it("the State sheet keeps a permanent legend", () => {
     show(snap(REF, "child3-live"));
     fireEvent.click(screen.getByTestId("journey-open-state"));

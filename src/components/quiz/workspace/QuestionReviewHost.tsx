@@ -18,7 +18,7 @@
  * not `SheetContent`, whose built-in 16px close and dark `bg-background` are
  * wrong for a parchment inspector.
  */
-import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
+import { useLayoutEffect, useState, type RefObject } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { Sheet, SheetClose, SheetOverlay, SheetPortal, SheetTitle } from "@/components/ui/sheet";
@@ -26,25 +26,8 @@ import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import QuestionReviewCard from "@/components/quiz/workspace/QuestionReviewCard";
 import type { ReviewRound } from "@/lib/ranked-public/contracts";
 
-const COARSE_QUERY = "(pointer: coarse)";
-
-function readCoarse(): boolean {
-  return typeof window !== "undefined" && Boolean(window.matchMedia?.(COARSE_QUERY)?.matches);
-}
-
-/** Live `(pointer: coarse)` — the PRIMARY pointer is a finger. A touch laptop
- *  whose primary pointer is its trackpad stays on the Popover. */
-export function useCoarsePointer(): boolean {
-  const [coarse, setCoarse] = useState(readCoarse);
-  useEffect(() => {
-    const mq = window.matchMedia?.(COARSE_QUERY);
-    const sync = () => setCoarse(readCoarse());
-    sync();
-    mq?.addEventListener?.("change", sync);
-    return () => mq?.removeEventListener?.("change", sync);
-  }, []);
-  return coarse;
-}
+/** Live `(pointer: coarse)` — moved to `@/hooks/useCoarsePointer`; re-exported for this module's importers. */
+export { useCoarsePointer } from "@/hooks/useCoarsePointer";
 
 /**
  * How many icons fit on one line of `ref`'s width, capped at `max`.

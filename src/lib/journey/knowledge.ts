@@ -34,16 +34,18 @@
  *     The line wraps; the text is the reveal's, in the Journey's AD wording.
  *     A formula merely STATED as a premise is still not marked: it is on the
  *     question that states it.
- *   `ability_raw_damage` — JREF1's raw result. K1 publishes it with
- *     `object: null`, so it is ANCHORED instead by the establishing child's
- *     own asked field (`state.withheld`: `abilities.<slot>.raw_damage`,
- *     reason `asked`) — the backend's value-free statement of exactly which
- *     board object the answer belongs to. Only that one field name anchors:
- *     a matchup's `cooldown` is asked of BOTH sides (its answer is a champion,
- *     not a number), and Combat damage after armor relates two objects (K1's
- *     reason for `object: null`), so neither is ever marked this way.
+ *   `ability_raw_damage` — JREF1's raw result. JATTN1: the backend names its
+ *     object (the attacker's ability, `context: {rank}`) exactly as it names a
+ *     cooldown's, so the mark is placed by that STRUCTURED identity like every
+ *     other kind. Only a block frozen before JATTN1 publishes it with
+ *     `object: null`; for that legacy wire alone it is still ANCHORED by the
+ *     establishing child's own asked field (`state.withheld`:
+ *     `abilities.<slot>.raw_damage`, reason `asked`). Only that one field name
+ *     ever anchored: a matchup's `cooldown` is asked of BOTH sides.
  *
- * Still deferred: Combat damage after armor, cooldown compare, stated facts.
+ * Still not marked: Combat damage after armor (JATTN1 gives it an ability
+ * object too, but the number relates two objects and is state-bound — kept
+ * off the board until a playtest decides), cooldown compare, stated facts.
  * No item fact kind exists, so no item is ever marked.
  */
 import type { JourneyJ3, J3AsksFact, J3FactContext, J3KnowledgeObject } from "./j3";
@@ -156,7 +158,7 @@ export function journeyKnowledge(
 }
 
 const RAW_DAMAGE_KIND = "ability_raw_damage";
-/** The one asked-field shape that anchors an object-less fact (see the header). */
+/** LEGACY (pre-JATTN1 wire only): the asked-field shape that anchored an object-less raw fact. */
 const RAW_DAMAGE_FIELD = /^abilities\.([QWER])\.raw_damage$/;
 
 /**
@@ -183,6 +185,48 @@ function anchoredObjects(journey: JourneyJ3): Map<number, { object: J3KnowledgeO
     });
   }
   return out;
+}
+
+/**
+ * JATTN1 — the facts the board SAVED from one child's reveal (`child`), by
+ * board object. A fact is in `knowledge` only once its reveal is in the
+ * payload, so this never names a value before it is public. Correctness is
+ * never read: a wrong answer or a timeout saves exactly as a right one does.
+ */
+export function savedFromChild(knowledge: JourneyKnowledge, child: number): { mark: KnowledgeObjectMark; fact: KnowledgeFact }[] {
+  const out: { mark: KnowledgeObjectMark; fact: KnowledgeFact }[] = [];
+  for (const mark of knowledge.values()) for (const fact of mark.facts) if (fact.child === child) out.push({ mark, fact });
+  return out;
+}
+
+/**
+ * JATTN1 — one saved fact as the reveal's polite line speaks it, e.g.
+ * "Ashe W cooldown, 18 seconds". `champion` is the board's name for the
+ * object's side. The value is the reveal's own display (already public).
+ */
+export function savedFactPhrase(object: J3KnowledgeObject, fact: KnowledgeFact, champion: string): string {
+  const value = fact.unit === "seconds" ? `${fact.display} seconds` : fact.display;
+  if (object.type === "ability") {
+    const who = `${champion} ${object.slot}`;
+    switch (fact.kind) {
+      case "ability_damage_formula": return `${who} damage formula`;
+      case "ability_raw_damage": return `${who} raw damage, ${value}`;
+      case "ability_cooldown_under_haste":
+        return `${who} cooldown with ${fact.context.abilityHaste !== undefined ? `${plain(fact.context.abilityHaste)} ` : ""}ability haste, ${value}`;
+      default: return `${who} cooldown, ${value}`;
+    }
+  }
+  const level = fact.context.level !== undefined ? ` at level ${fact.context.level}` : "";
+  return `${champion} ${statLong(fact.context.stat).toLowerCase()}${level}, ${value}`;
+}
+
+/** JATTN1 — the reveal's one polite "Saved to the board" line, or null when it saved nothing. */
+export function savedAnnouncement(knowledge: JourneyKnowledge, child: number,
+  championOf: (side: J3KnowledgeObject["side"]) => string): string | null {
+  const saved = savedFromChild(knowledge, child);
+  if (saved.length === 0) return null;
+  // No trailing period: the line ends on the value as the reveal shows it.
+  return `Saved to the board: ${saved.map(({ mark, fact }) => savedFactPhrase(mark.object, fact, championOf(mark.object.side))).join("; ")}`;
 }
 
 /** The K1 key of a board object (`subject` is K1's `player`). */

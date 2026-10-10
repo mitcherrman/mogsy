@@ -14,6 +14,11 @@
  *
  * Every value drawn is the server's. These components format; they never
  * derive, add or convert.
+ *
+ * JATTN1 — two board cues live here: RELEVANT NOW (`RelevantReticle`, ice
+ * corner ticks outset from the object; the old gold `.journey-focus` glow is
+ * gone from the board) and the CHANGED resting face (`.journey-changed`: one
+ * thin green inner rim, the same on an ability tile and an item slot).
  */
 import { useState, type ReactNode } from "react";
 import { Lock } from "lucide-react";
@@ -21,6 +26,7 @@ import type {
   AbilitySlot, JourneyAbility, JourneyItem, JourneySide, JourneyStat,
 } from "@/lib/journey/contract";
 import { exactValueNote, formatStatGain, formatStatValue, JOURNEY_STAT_META } from "@/lib/journey/stats";
+import { RELEVANT_LABEL } from "@/lib/journey/attention";
 import { getAbilityIconUrl } from "@/lib/combat-lab/abilityIcons";
 import { resolveAssetUrl } from "@/hooks/useChampionAssets";
 import { useMasteryAssets } from "@/features/mastery/player/MasteryAssets";
@@ -50,6 +56,16 @@ function Art({ url, alt, mono }: { url: string | null; alt: string; mono: string
   );
 }
 
+/**
+ * JATTN1 — the RELEVANT NOW cue: four outset corner ticks (ice, never gold),
+ * drawn in once when the child opens (keyed on the step, so the next child
+ * draws them again) and static after. Decorative: what it means is in its
+ * object's accessible name (`RELEVANT_LABEL`). It lays out nothing.
+ */
+export function RelevantReticle({ step, testId }: { step: number; testId?: string }) {
+  return <span key={step} aria-hidden data-testid={testId} data-step={step} className="journey-reticle" />;
+}
+
 /** Champion portrait: the `ScenarioSubject` gold ring, round like the entity strip's champions. */
 export function JourneyPortrait({ side, className = "" }: { side: JourneySide; className?: string }) {
   const assets = useMasteryAssets();
@@ -63,19 +79,27 @@ export function JourneyPortrait({ side, className = "" }: { side: JourneySide; c
   );
 }
 
-/** "LV 7" — with the server's previous level kept beside it for the whole child. */
-export function LevelBadge({ level, from = null, focused = false, testId }: {
-  level: number; from?: number | null; focused?: boolean; testId?: string;
+/**
+ * "LV 7" — with the server's previous level kept beside it for the whole child.
+ * JATTN1: its host (`journey-level-host`, exactly the chip's size) carries the
+ * RELEVANT reticle outside the chip's clipped box.
+ */
+export function LevelBadge({ level, from = null, relevant = false, step = 0, testId }: {
+  level: number; from?: number | null; relevant?: boolean; step?: number; testId?: string;
 }) {
   return (
-    <span data-testid={testId} data-changed={from !== null ? "true" : undefined}
-      data-focus={focused ? "true" : undefined}
-      className={`journey-chip journey-level inline-flex shrink-0 items-baseline gap-1 overflow-hidden rounded-md border px-1.5 font-semibold uppercase tracking-[0.16em] ${
-        from !== null ? "journey-chip--delta" : "border-[#d4b35a]/35 bg-black/55"} ${focused ? "journey-focus" : ""}`}>
-      <span className="text-white/70">Lv</span>
-      {from !== null && <span className="journey-level__from text-white/55 line-through decoration-white/40">{from}</span>}
-      {/* MOTION-V1: the new number rolls in during the beat (CSS); it is the final value from the first frame. */}
-      <span className="journey-level__to inline-block font-black text-white">{level}</span>
+    <span className="journey-level-host">
+      <span data-testid={testId} data-changed={from !== null ? "true" : undefined}
+        data-relevant={relevant ? "true" : undefined}
+        className={`journey-chip journey-level inline-flex shrink-0 items-baseline gap-1 overflow-hidden rounded-md border px-1.5 font-semibold uppercase tracking-[0.16em] ${
+          from !== null ? "journey-chip--delta" : "border-[#d4b35a]/35 bg-black/55"}`}>
+        <span className="text-white/70">Lv</span>
+        {from !== null && <span className="journey-level__from text-white/55 line-through decoration-white/40">{from}</span>}
+        {/* MOTION-V1: the new number rolls in during the beat (CSS); it is the final value from the first frame. */}
+        <span className="journey-level__to inline-block font-black text-white">{level}</span>
+        {relevant && <span className="sr-only">, {RELEVANT_LABEL}</span>}
+      </span>
+      {relevant && <RelevantReticle step={step} testId={testId ? `${testId}-relevant` : undefined} />}
     </span>
   );
 }
@@ -85,13 +109,16 @@ export function LevelBadge({ level, from = null, focused = false, testId }: {
  * rank, filled to the current rank. Rank 0 is LOCKED (an R before 6), drawn
  * dim with a lock, never as missing.
  */
-export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlocked = false, focused = false }: {
+export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlocked = false, relevant = false, step = 0 }: {
   ability: JourneyAbility;
   champion: string;
   side: JourneySide["side"];
   rankFrom?: number | null;
   unlocked?: boolean;
-  focused?: boolean;
+  /** JATTN1 — the current question is about this ability (the server's focus). */
+  relevant?: boolean;
+  /** The step on screen: the reticle draws in once per child. */
+  step?: number;
 }) {
   const locked = ability.rank === 0;
   const url = resolveAssetUrl(ability.icon) ?? getAbilityIconUrl(champion, ability.slot as AbilitySlot);
@@ -99,17 +126,17 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
   const label = `${champion} ${ability.slot}${ability.name ? ` (${ability.name})` : ""}: ${
     locked ? "not learned" : ability.maxRank !== null
       ? `rank ${ability.rank} of ${ability.maxRank}` : `rank ${ability.rank}`}${
-    rankFrom !== null ? `, up from ${rankFrom}` : ""}${unlocked ? ", just unlocked" : ""}`;
+    rankFrom !== null ? `, up from ${rankFrom}` : ""}${unlocked ? ", just unlocked" : ""}${relevant ? `, ${RELEVANT_LABEL}` : ""}`;
   return (
     <span role="img" aria-label={label} title={label}
       data-testid={`journey-ability-${side}-${ability.slot}`}
       data-rank={ability.rank} data-max-rank={ability.maxRank}
       data-locked={locked ? "true" : undefined}
       data-changed={changed ? "true" : undefined}
-      data-focus={focused ? "true" : undefined}
-      className="journey-ability flex shrink-0 flex-col items-center gap-[3px]">
+      data-relevant={relevant ? "true" : undefined}
+      className="journey-ability relative flex shrink-0 flex-col items-center gap-[3px]">
       <span className={`relative flex items-center justify-center overflow-hidden rounded-md border bg-black/70 ${
-        focused ? "journey-focus" : ""} ${changed ? "journey-changed" : ""} ${sideRim(side)}`}
+        changed ? "journey-changed" : ""} ${sideRim(side)}`}
         style={{ width: "var(--jb-ability)", height: "var(--jb-ability)" }}>
         <span className={locked ? "h-full w-full opacity-30 grayscale" : `h-full w-full ${unlocked ? "journey-unlock-art" : ""}`}>
           <Art url={url} alt="" mono={ability.slot} />
@@ -138,6 +165,7 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
           </span>
         )}
       </span>
+      {relevant && <RelevantReticle step={step} testId={`journey-relevant-${side}-${ability.slot}`} />}
       {ability.maxRank === null ? null : (
       <span aria-hidden className="flex gap-[2px]" data-testid={`journey-pips-${side}-${ability.slot}`}>
         {Array.from({ length: ability.maxRank }, (_, i) => (
@@ -159,11 +187,13 @@ export function AbilityRankPips({ ability, champion, side, rankFrom = null, unlo
  * wears the game's count in its bottom-right corner — absolutely positioned,
  * so a stack changes nothing about the slot's box.
  */
-export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: {
+export function InventorySlots({ side, items, newSlots, relevantSlots, step = 0, gainTags }: {
   side: JourneySide;
   items: JourneyItem[];
   newSlots: ReadonlySet<number>;
-  focusSlots: ReadonlySet<number>;
+  /** JATTN1 — occupied slots the current question is about (the server's focus). */
+  relevantSlots: ReadonlySet<number>;
+  step?: number;
   /**
    * MOTION-V1 — while the beat runs, a NEW item's own stat lines as the server
    * published them ("+10 AH"), by slot. Drawn as a transient tag anchored to
@@ -175,6 +205,12 @@ export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: 
   return (
     <span role="list" aria-label={`${side.championName} items`}
       data-testid={`journey-items-${side.side}`} className="journey-items relative flex shrink-0 gap-[3px]">
+      {/* JATTN1 â€” a relevant item's reticle, outside the slot's clipped box (anchored like the gain tags). */}
+      {[...relevantSlots].filter((slot) => items.some((x) => x.slot === slot)).map((slot) => (
+        <span key={`relevant-${step}-${slot}`} aria-hidden data-testid={`journey-relevant-${side.side}-item-${slot}`}
+          className="journey-reticle journey-reticle--item" style={{ left: `calc(${slot} * (var(--jb-slot) + var(--jb-item-gap, 3px)) - 2px)` }}
+          data-step={step} />
+      ))}
       {[...(gainTags ?? [])].map(([slot, tags]) => (
         <span key={`gain-${slot}`} aria-hidden data-testid={`journey-item-gain-${side.side}-${slot}`}
           className="journey-item-gain"
@@ -188,21 +224,21 @@ export function InventorySlots({ side, items, newSlots, focusSlots, gainTags }: 
       {Array.from({ length: 6 }, (_, slot) => {
         const it = items.find((x) => x.slot === slot) ?? null;
         const isNew = it !== null && newSlots.has(slot);
-        const focused = it !== null && focusSlots.has(slot);
+        const relevant = it !== null && relevantSlots.has(slot);
         const qty = it?.quantity ?? 1;
         return (
           <span key={slot} role="listitem"
-            aria-label={it ? `${it.name}${qty > 1 ? `, ${qty}` : ""}${isNew ? ", just bought" : ""}` : "Empty slot"}
+            aria-label={it ? `${it.name}${qty > 1 ? `, ${qty}` : ""}${isNew ? ", just bought" : ""}${relevant ? `, ${RELEVANT_LABEL}` : ""}` : "Empty slot"}
             title={it ? `${it.name}${qty > 1 ? ` ×${qty}` : ""}` : undefined}
             data-testid={`journey-item-${side.side}-${slot}`}
             data-item-id={it?.itemId}
             data-quantity={qty > 1 ? qty : undefined}
             data-new={isNew ? "true" : undefined}
-            data-focus={focused ? "true" : undefined}
+            data-relevant={relevant ? "true" : undefined}
             data-inspect={it?.itemId ? "true" : undefined}
             className={`relative flex items-center justify-center overflow-hidden rounded-[5px] border ${
               it ? `bg-black/70 ${sideRim(side.side)}` : "border-dashed border-white/15 bg-black/25"} ${
-              isNew ? "ring-1 ring-[#8fd0a0]/80 journey-changed" : ""} ${focused ? "journey-focus" : ""}`}
+              isNew ? "journey-changed" : ""}`}
             style={{ width: "var(--jb-slot)", height: "var(--jb-slot)" }}>
             {it && <Art url={resolveAssetUrl(it.icon) ?? assets.itemIconUrl(it.itemId)} alt="" mono={it.name} />}
             {/* JPX — an occupied item is inspectable: its canonical stats. Empty slots stay inert. */}

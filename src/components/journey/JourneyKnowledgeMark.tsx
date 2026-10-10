@@ -28,8 +28,10 @@ import { useRef, useState } from "react";
 import { SquareFunction, Sword, Timer, Zap } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { knowledgeCard, stepLabel, type KnowledgeObjectMark } from "@/lib/journey/knowledge";
+import { RELEVANT_LABEL } from "@/lib/journey/attention";
 
-export function JourneyKnowledgeMark({ mark, name, abilityName = null, championName = null, placement, fresh = false, testId }: {
+export function JourneyKnowledgeMark({ mark, name, abilityName = null, championName = null, placement, fresh = false,
+  relevant = false, testId }: {
   mark: KnowledgeObjectMark;
   /** The object's accessible name, e.g. "Zed E". */
   name: string;
@@ -43,6 +45,8 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, championN
   placement: "ability";
   /** JP3 — established just now: the badge settles in with one short glow. */
   fresh?: boolean;
+  /** JATTN1 — the object is relevant to the question on screen (its name says so). */
+  relevant?: boolean;
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -57,7 +61,7 @@ export function JourneyKnowledgeMark({ mark, name, abilityName = null, championN
       <PopoverTrigger asChild>
         <button type="button" data-testid={testId} data-facts={mark.facts.length}
           data-just-learned={fresh ? "true" : undefined}
-          aria-label={`Known facts: ${name}`}
+          aria-label={`Known facts: ${name}${relevant ? `, ${RELEVANT_LABEL}` : ""}`}
           className={`journey-know journey-know--${placement}`}
           onPointerEnter={(e) => { if (e.pointerType === "mouse" && !open) set(true); }}
           onPointerLeave={(e) => { if (e.pointerType === "mouse" && !pinned.current) set(false); }}

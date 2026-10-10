@@ -277,8 +277,13 @@ export function ProseChallenge({
  */
 export function MasterySliceChallengeSurface({
   challenge, total, submitting, onSubmit, reveal = null, journey = null, working = null,
-  revealWindowMs = null, revealEndsAt = null,
+  revealWindowMs = null, revealEndsAt = null, savedLine = null,
 }: {
+  /**
+   * JATTN1 — a Journey reveal's one polite "Saved to the board: …" line (the
+   * facts this child's reveal saved, already public). Read only by a Journey child.
+   */
+  savedLine?: string | null;
   challenge: MasterySliceChallengeView;
   total: number;
   submitting: boolean;
@@ -308,7 +313,7 @@ export function MasterySliceChallengeSurface({
     return (
       <JourneyChild challenge={challenge} total={total} submitting={submitting}
         onSubmit={onSubmit} reveal={reveal} journey={journey} working={working}
-        revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} />
+        revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} savedLine={savedLine} />
     );
   }
   return (
@@ -328,7 +333,7 @@ export function MasterySliceChallengeSurface({
  * (a numeric free-entry recall) keeps its Mastery renderer, in the same frame.
  */
 function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey, working,
-  revealWindowMs, revealEndsAt }: {
+  revealWindowMs, revealEndsAt, savedLine }: {
   challenge: MasterySliceChallengeView;
   total: number;
   submitting: boolean;
@@ -338,6 +343,7 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   working: JourneyWorking | null;
   revealWindowMs: number | null;
   revealEndsAt: number | null;
+  savedLine: string | null;
 }) {
   const path = renderPathFor(challenge);
   // A structural renderer throws on a template it cannot phrase; such a child
@@ -355,6 +361,8 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
             onSubmit={onSubmit}
             reveal={reveal}
           />
+          {/* JATTN1 — this renderer's reveal region is its own: the saved line rides beside it. */}
+          {reveal && savedLine && <p role="status" data-testid="journey-saved-line" className="sr-only">{savedLine}</p>}
         </div>
       </MasteryAssetsProvider>
     );
@@ -362,7 +370,7 @@ function JourneyChild({ challenge, total, submitting, onSubmit, reveal, journey,
   return (
     <JourneyStageQuestion challenge={challenge} journey={journey} submitting={submitting}
       onSubmit={onSubmit} reveal={reveal} working={working}
-      revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} />
+      revealWindowMs={revealWindowMs} revealEndsAt={revealEndsAt} savedLine={savedLine} />
   );
 }
 

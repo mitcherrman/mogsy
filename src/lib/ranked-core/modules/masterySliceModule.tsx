@@ -41,7 +41,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { journeyViewFor } from "@/lib/journey/adapter";
-import { journeyKnowledge } from "@/lib/journey/knowledge";
+import { journeyKnowledge, savedAnnouncement } from "@/lib/journey/knowledge";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
 import { JourneyModuleStage, JourneyStageLeadIn } from "@/components/journey/JourneyModuleStage";
 import {
@@ -248,12 +248,23 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
   const knowledge = useMemo(
     () => journeyKnowledge(state.journey, state.ownChallengeReveals, state.ownCardIndex),
     [state.journey, state.ownChallengeReveals, state.ownCardIndex]);
+  // JATTN1 — CLOCK-FREE TIME: the client instant the viewer's next answer
+  // window opens. While a reveal holds or a beat runs, the server names the
+  // NEXT card's open (`own_card_started_at`, in the future); once the viewer
+  // has finished, no answer window follows. Otherwise an answer clock runs.
+  const cardOpensMs = state.ownCardStartedAt ? Date.parse(state.ownCardStartedAt) - skewMs : Number.NaN;
+  const clockFreeUntil = state.ownFinished ? Number.POSITIVE_INFINITY
+    : !Number.isNaN(cardOpensMs) && cardOpensMs > Date.now() ? cardOpensMs : null;
+  // JATTN1 — the reveal's one polite "Saved to the board" line: the facts the
+  // held child's reveal saved, as the reveal already shows them.
+  const savedLine = holding && state.journey ? savedAnnouncement(knowledge, holding.challengeIndex, (side) =>
+    state.journey!.children.find((c) => c.index === holding.challengeIndex)?.state.sides[side].champion ?? side) : null;
   // JOURNEY-PRES-V1 — `questionRoles`: the RQ1 roles of the challenge ON
   // SCREEN (its own frozen `roles`), passed only by the question branch; the
   // pending / waiting branches have no question and so no role badge.
   const inJourney = (node: ReactNode, questionRoles: MasterySliceChallengeView["roles"] = null) => (journey
     ? (
-      <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null}
+      <JourneyModuleStage state={journey.board} skewMs={skewMs} holdPrevious={holding !== null} clockFreeUntil={clockFreeUntil}
         questionRoles={questionRoles} knowledge={knowledge} journey={state.journey}
         // JP3 — the micro-chain's nodes: the reached steps' served asks.
         reached={journey.children} answeredThrough={state.ownFinished ? state.challengeCount : state.ownNextChallengeIndex}>
@@ -360,6 +371,7 @@ function MasterySliceChallengePhase({ state, actions, skewMs = 0, roundStartedAt
         // It is never lengthened here.
         revealWindowMs={childWindowMs}
         revealEndsAt={Number.isNaN(revealUntilMs) ? null : revealUntilMs - skewMs}
+        savedLine={reveal ? savedLine : null}
       />
     </div>,
     current.roles ?? null,

@@ -117,9 +117,9 @@ describe("the portrait opens the champion portrait popup", () => {
       "Doran's Blade: +10", "Adaptive Force: +5.4", "Adaptive Force: +5.4", "Exact 20.8"]);
     // Zed's other stats were never established.
     expect(row("subject", "armor")).toHaveAttribute("data-known", "false");
-    // Owner rule: a popup that holds any established OR stated stat puts the `!`
-    // on its portrait — Zed's stated Bonus AD is enough.
-    expect(screen.getByTestId("journey-portrait-popup-subject-mark")).toHaveTextContent("!");
+    // JATTN1 — a STATED premise stat is inspectable (the popup lists it) but is
+    // not SAVED: no `!` on Zed's portrait; its name still says there is a stat.
+    expect(screen.queryByTestId("journey-portrait-popup-subject-mark")).toBeNull();
     expect(portrait("subject")).toHaveAccessibleName("Zed stats, stats to review");
   });
 
@@ -134,20 +134,25 @@ describe("the portrait opens the champion portrait popup", () => {
     cleanup();
     show(snap(REF, "child2-reveal"));
     expect(screen.getByTestId("journey-portrait-popup-opponent-mark")).toHaveTextContent("!");
-    expect(portrait("opponent")).toHaveAccessibleName("Ahri stats, stats to review");
+    // The reveal holds Step 3's board, still about Ahri's armor: saved AND relevant.
+    expect(portrait("opponent")).toHaveAccessibleName("Ahri stats, saved facts to review, relevant to this question");
     openSheet("opponent");
     const armor = row("opponent", "armor");
     expect(armor).toHaveAttribute("data-how", "learned");
     expect(armor.textContent).toBe("Armor24Lv 2");
   }, 60_000);
 
-  it("the portrait whose stats the question states is outlined (where its inputs are)", () => {
+  it("JATTN1 — RELEVANT is the server's focus only: a premise's stated inputs are not a second tier", () => {
     show(snap(REF, "child1-live"));                                // Step 2 states Zed's bonus AD
-    expect(portrait("subject")).toHaveAttribute("data-focus", "true");
-    expect(portrait("opponent")).not.toHaveAttribute("data-focus");
+    // The question is about Zed E (raw damage): the ability, not his portrait.
+    expect(screen.getByTestId("journey-ability-subject-E")).toHaveAttribute("data-relevant", "true");
+    expect(portrait("subject")).not.toHaveAttribute("data-relevant");
+    expect(portrait("opponent")).not.toHaveAttribute("data-relevant");
     cleanup();
     show(snap(REF, "child2-live"));                                // Step 3 asks Ahri's armor
-    expect(portrait("opponent")).toHaveAttribute("data-focus", "true");
+    expect(portrait("opponent")).toHaveAttribute("data-relevant", "true");
+    expect(portrait("opponent")).toHaveAccessibleName("Ahri stats, relevant to this question");
+    expect(screen.getByTestId("journey-portrait-popup-opponent-relevant")).toBeInTheDocument();
   });
 });
 
