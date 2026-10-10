@@ -59,6 +59,9 @@ const META = "text-[10px] font-semibold uppercase leading-tight tracking-[0.08em
  */
 const CODE_ROW = "flex h-4 min-w-0 flex-wrap items-center gap-1 overflow-hidden";
 
+/** Compact facts: stacked in the 2x2 grid, one line in the single column. */
+const COMPACT_FACTS = "items-start max-lg:flex-row max-lg:items-center max-lg:gap-x-2.5";
+
 /** A short code chip as plain text; the full name is its `title`. */
 function CodeChip({ label, title }: { label: string; title?: string | null }) {
   return (
@@ -155,9 +158,11 @@ function TabletFacts({ identity, compact }: { identity: TabletIdentity; compact:
   if (identity.kind === "player") {
     const s = identity.subject;
     return (
-      // The codes always take their own full-width line: beside the facts a
-      // shrinking row would cut its first chip in half.
-      <span className={cn("flex min-w-0 flex-col gap-1", compact ? "items-start" : "items-center")}>
+      // The codes take their own line in the 2x2 grid, where beside the facts
+      // the row would have no room. Below `lg` that grid is ONE full-width
+      // column (PPQ2-INT density), so a compact tablet puts them beside the
+      // facts; the row still drops whole chips, never half of one.
+      <span className={cn("flex min-w-0 flex-col gap-1", compact ? COMPACT_FACTS : "items-center")}>
         <span className={cn("flex shrink-0 items-center gap-1.5", META)}>
           {compact ? <RoleMark subject={s} large={false} /> : null}
           <span data-pp-fact="role" className="shrink-0 text-[#e8c97a]">{roleLabel(s)}</span>
@@ -171,9 +176,11 @@ function TabletFacts({ identity, compact }: { identity: TabletIdentity; compact:
   if (identity.kind === "team") {
     const s = identity.subject;
     return (
-      // The codes always take their own full-width line: beside the facts a
-      // shrinking row would cut its first chip in half.
-      <span className={cn("flex min-w-0 flex-col gap-1", compact ? "items-start" : "items-center")}>
+      // The codes take their own line in the 2x2 grid, where beside the facts
+      // the row would have no room. Below `lg` that grid is ONE full-width
+      // column (PPQ2-INT density), so a compact tablet puts them beside the
+      // facts; the row still drops whole chips, never half of one.
+      <span className={cn("flex min-w-0 flex-col gap-1", compact ? COMPACT_FACTS : "items-center")}>
         <span className={cn("flex shrink-0 items-center gap-1.5", META)}>
           <span data-pp-fact="region" className="shrink-0 text-[#e8c97a]">{s.region?.trim() || EMPTY_VALUE}</span>
           <span aria-hidden className="opacity-40">·</span>

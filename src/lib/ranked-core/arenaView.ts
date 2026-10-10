@@ -182,6 +182,13 @@ export interface ArenaHeaderView {
    */
   titleSuffix?: string | null;
   /**
+   * PPQ2-INT — a fact the title carries ONLY below `lg`, where `panel` flanks
+   * are hidden and the header is what remains (a solo mode's running score).
+   * From `lg` the flank shows it, and a longer title would widen the header's
+   * left block under the app's corner chip. Absent for every existing mode.
+   */
+  titleDetail?: string | null;
+  /**
    * RD1 — the viewer's duel standing for the clock face's secondary line
    * (`LEADING +2` / `TIED` / `TRAILING 1`), or absent for any mode that is
    * not a live points duel.

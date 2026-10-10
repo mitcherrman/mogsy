@@ -11,8 +11,8 @@
  *    gating, tablet states and the reveal stay the canonical grid's;
  *  - the FLANKS are the dossier (left) and the session panel (right), both
  *    desktop-only by the arena's own rule;
- *  - the HEADER title carries the server score (`sessionHeadline`), because on
- *    a phone the session panel is hidden and the header is what remains;
+ *  - the HEADER title is `Question n / N`; below `lg`, where the session panel
+ *    is hidden, it also carries the server score (`titleDetail`);
  *  - the HUD ACTION is whatever the caller passes, on EVERY frame: Next / See
  *    results while a reveal shows, Try again while an error stands over a
  *    question, otherwise an invisible reserve of the same size. The HUD row is
@@ -39,7 +39,6 @@ import {
   ProPlayQuestionDossier,
   ProPlaySessionPanel,
   proPlayAnswerSlots,
-  sessionHeadline,
   type ProPlayOutcome,
 } from "@/components/pro-play/arena";
 
@@ -103,12 +102,8 @@ export function composeProPlayArenaStage({
     ...view,
     header: {
       ...view.header,
-      title: sessionHeadline({
-        number: question.number,
-        total: session.total,
-        score: session.score,
-        answered: session.answered,
-      }),
+      title: `Question ${question.number} / ${session.total}`,
+      titleDetail: session.answered > 0 ? `${session.score} correct` : null,
     },
     surface: {
       ...view.surface,

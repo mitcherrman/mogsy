@@ -458,6 +458,12 @@ export function CanonicalArena({
                   {" · "}{header.titleSuffix}
                 </span>
               )}
+              {/* PPQ2-INT — phone-only detail; from `lg` a panel flank shows it. */}
+              {header.titleDetail && (
+                <span data-testid="ranked-header-title-detail" className="lg:hidden">
+                  {" · "}{header.titleDetail}
+                </span>
+              )}
             </p>
           )}
         </div>

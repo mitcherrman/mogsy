@@ -80,7 +80,7 @@ const PROBE = () => {
     const hs = new Set(tablets.map((t) => Math.round(t.getBoundingClientRect().height))); if (hs.size > 1) out.notes.push("tablet heights " + [...hs].join("/"));
     void tb0;
   }
-  if (out.next && out.next.bottom > innerHeight + 0.5) out.notes.push(`Next below fold ${Math.round(out.next.bottom)}/${innerHeight}`);
+  if (out.next && out.next.bottom - scrollY > innerHeight + 0.5) out.notes.push(`Next below fold ${Math.round(out.next.bottom)}/${innerHeight}`);
   const brokenImgs = [...document.querySelectorAll("img")].filter((i) => i.complete && i.naturalWidth === 0 && i.getAttribute("src") && i.offsetParent).length;
   if (brokenImgs) out.notes.push("broken images " + brokenImgs);
   return out;

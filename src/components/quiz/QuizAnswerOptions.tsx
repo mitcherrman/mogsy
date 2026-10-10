@@ -354,7 +354,12 @@ export default function QuizAnswerOptions({
               )}
               {showPick && (
                 <span data-testid="answer-your-pick"
-                  className="pointer-events-none absolute bottom-0.5 right-2 text-[9px] font-black uppercase leading-none tracking-[0.16em] opacity-90">
+                  className={content
+                    // PPQ2-INT: rich tablet content reaches the tablet's lower
+                    // right corner (a code row), so the label rides the top
+                    // edge as a tab in the pick ring's gold instead.
+                    ? "pointer-events-none absolute -top-2 right-3 rounded-sm bg-[#f0d78c] px-1.5 py-0.5 text-[9px] font-black uppercase leading-none tracking-[0.16em] text-[#1d1608] shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+                    : "pointer-events-none absolute bottom-0.5 right-2 text-[9px] font-black uppercase leading-none tracking-[0.16em] opacity-90"}>
                   Your pick
                 </span>
               )}
