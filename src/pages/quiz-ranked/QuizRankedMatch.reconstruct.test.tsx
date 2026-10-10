@@ -32,13 +32,13 @@ const MID = C.queue_join.payload.match_id as string;
 const RIGHT = C.meta.submitted_placement_segment_2 as string[];
 const REVEAL = C.submit_accepted_bot_settled.challenge_reveal as {
   canonical_parts: { piece_id: string; label: string; value_display: string }[];
-  target: { total_display: string; combine_display: string };
+  target: { total_display: string; base_display: string; combine_display: string };
   slot_correct: boolean[];
 };
 /** Every reveal-only string the server sent for this segment. */
 const SECRETS = [
   ...REVEAL.canonical_parts.map((p) => p.value_display),
-  REVEAL.target.total_display, `${REVEAL.target.combine_display} to combine`,
+  REVEAL.target.total_display, REVEAL.target.base_display,
 ];
 
 const json = (body: unknown, status = 200) =>
@@ -114,11 +114,9 @@ async function mountOpen() {
   expect(screen.getByTestId("reconstruct-phase")).toHaveAttribute("data-phase", "open");
 }
 
+/** R2: one tap per part; each fills the next empty socket, in order. */
 function build(placement: string[]) {
-  placement.forEach((token, slot) => {
-    fireEvent.click(screen.getByTestId(`reconstruct-option-${token}`));
-    fireEvent.click(screen.getByTestId(`reconstruct-socket-${slot}`));
-  });
+  for (const token of placement) fireEvent.click(screen.getByTestId(`reconstruct-option-${token}`));
 }
 
 async function lockAndWatch(ms: number, before: Frame[] = []) {

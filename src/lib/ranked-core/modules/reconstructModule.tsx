@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Reconstruct } from "@/components/interaction-grammar/Reconstruct";
 import type {
-  ReconstructChild, ReconstructPublic, ReconstructReveal, SubjectMedia,
+  ReconstructBreakdownPart, ReconstructEquation, ReconstructPublic, ReconstructReveal, SubjectMedia,
 } from "@/lib/interaction-grammar/types";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { msUntilServerInstant, useServerInstantWake } from "@/lib/ranked-core/flow/useServerInstantWake";
@@ -28,6 +28,8 @@ import {
   type ReconstructBlockView,
   type ReconstructChallengeReveal,
   type ReconstructMedia,
+  type ReconstructPartView,
+  type ReconstructRecipeTarget,
   type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleViewportProps } from "./types";
@@ -57,36 +59,49 @@ export function toReconstructPublic(block: ReconstructBlockView): ReconstructPub
 }
 
 /**
- * The server's reveal -> the primitive's. Every string is the server's; the
- * only arithmetic is COUNTING the server's own per-socket marks, to say how
- * many copies of a part the player had right ("1/2 placed").
+ * One canonical part as a breakdown block (R2). The words are this module's;
+ * every FIGURE is a server string frozen when the round was generated
+ * (`value_display`, `combine_display`, `line_total_display`, each child's
+ * `value_display`). A round generated before R2 carries none of the new
+ * figures, and its block simply omits those lines — nothing is filled in.
  */
+function breakdownPart(r: ReconstructChallengeReveal, part: ReconstructPartView): ReconstructBreakdownPart {
+  const basic = part.partKind === "basic" || (part.partKind === null && part.subParts.length === 0);
+  // The only arithmetic: COUNTING the server's own per-socket marks, to say
+  // how many copies of a part the player had right.
+  const matched = r.placement.filter((t, i) => t === part.pieceId && r.slotCorrect[i] === true).length;
+  return {
+    token: part.pieceId,
+    quantity: part.quantity,
+    valueDisplay: part.valueDisplay,
+    lineTotalDisplay: part.lineTotalDisplay,
+    caption: basic ? "Basic component" : "Built from",
+    children: part.subParts.map((s) => ({
+      label: s.label, media: reconstructMedia(s.media), quantity: s.quantity, valueDisplay: s.valueDisplay,
+    })),
+    joinDisplay: !basic && part.combineDisplay !== null ? `+ ${part.combineDisplay} to combine` : null,
+    annotation: matched < part.quantity ? `${matched}/${part.quantity} placed` : null,
+  };
+}
+
+/** The closing line: parts subtotal + combine = the item's price, every figure the server's. */
+function breakdownEquation(t: ReconstructRecipeTarget | null): ReconstructEquation | null {
+  if (!t || t.totalDisplay === null) return null;
+  const terms = [{ label: "Parts", valueDisplay: t.baseDisplay }];
+  if (t.combineDisplay !== null) terms.push({ label: "Combine", valueDisplay: t.combineDisplay });
+  return { terms, result: { label: t.label, valueDisplay: t.totalDisplay } };
+}
+
+/** The server's reveal -> the primitive's. Every figure is the server's. */
 export function toReconstructReveal(r: ReconstructChallengeReveal): ReconstructReveal {
-  const values: Record<string, string> = {};
-  const annotations: Record<string, string> = {};
-  const children: Record<string, ReconstructChild[]> = {};
-  for (const part of r.canonicalParts) {
-    if (part.valueDisplay !== null) values[part.pieceId] = part.valueDisplay;
-    const matched = r.placement.filter((t, i) => t === part.pieceId && r.slotCorrect[i] === true).length;
-    if (matched < part.quantity) annotations[part.pieceId] = `${matched}/${part.quantity} placed`;
-    children[part.pieceId] = part.subParts.map((s) => ({
-      label: s.label, media: reconstructMedia(s.media), quantity: s.quantity,
-    }));
-  }
-  const t = r.target;
   return {
     placement: r.placement,
     slotCorrect: r.slotCorrect,
     settled: r.settledPlacement,
     isCorrect: r.isCorrect,
     evidence: {
-      parts: r.canonicalParts.map((p) => ({ token: p.pieceId, quantity: p.quantity })),
-      values, annotations, children,
-      total: t && t.totalDisplay !== null ? {
-        // The target is named in the header; the line states how its price is made.
-        label: t.combineDisplay !== null ? `Parts + ${t.combineDisplay} to combine` : "Total",
-        valueDisplay: t.totalDisplay,
-      } : null,
+      parts: r.canonicalParts.map((p) => breakdownPart(r, p)),
+      equation: breakdownEquation(r.target),
     },
   };
 }
@@ -159,8 +174,8 @@ function ReconstructPhase({ state, actions, skewMs, roundStartedAt }: {
       {...(phase === "open" && notOpen ? { inert: "" } : {})}>
       <Reconstruct key={key} content={content} phase={phase} value={value}
         onChange={(board) => setDraft({ key, board })} onLock={onLock} reveal={reveal} />
-      {/* Reserved in every phase, so the lock never adds a line. */}
-      <p className={`min-h-[1rem] text-center text-xs text-muted-foreground ${phase === "open" ? "invisible" : ""}`}
+      {/* Reserved in every phase at ONE line's height, so the lock never adds a line. */}
+      <p className={`h-4 truncate text-center text-xs leading-4 text-muted-foreground ${phase === "open" ? "invisible" : ""}`}
         role="status" aria-hidden={phase === "open" ? true : undefined}
         data-testid="reconstruct-opponent-progress">
         {phase === "open" ? "" : state.opponentFinished

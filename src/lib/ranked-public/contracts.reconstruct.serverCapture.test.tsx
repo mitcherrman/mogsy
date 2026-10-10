@@ -99,7 +99,9 @@ describe("server capture — live segment", () => {
 
   it("the disclosure guard refuses every reveal-only key on a live segment", () => {
     for (const key of ["canonical_parts", "slot_correct", "settled_placement",
-      "sub_parts", "decoys", "total_display", "combine_display", "value_display"]) {
+      "sub_parts", "decoys", "total_display", "combine_display", "value_display",
+      // GM1-R2 breakdown figures
+      "base_display", "line_total_display", "part_kind"]) {
       const body = clone(capture.private_open);
       (body.payload.segment_state.challenges.challenges[0] as Record<string, unknown>)[key] = [];
       expect(() => readPrivatePlayer(body), key).toThrow(RankedPublicParseError);
@@ -123,6 +125,23 @@ describe("server capture — live segment", () => {
     expect(rc.canonicalParts.length).toBeGreaterThan(0);
     expect(rc.pieces).toHaveLength(6);
     expect(rc.target?.totalDisplay).toMatch(/ g$/);
+  });
+
+  it("R2: the reveal carries every breakdown figure, frozen server-side, and none exists pre-lock", () => {
+    const rc = readPrivatePlayer(capture.private_locked).segmentState!.ownChallengeReveals[0].reconstruct!;
+    expect(rc.target?.baseDisplay).toMatch(/^\d+ g$/);
+    expect(rc.target?.combineDisplay).toMatch(/^\d+ g$/);
+    for (const part of rc.canonicalParts) {
+      expect(["basic", "composite"]).toContain(part.partKind);
+      expect(part.lineTotalDisplay).toMatch(/^\d+ g$/);
+      expect(part.combineDisplay === null).toBe(part.partKind === "basic");
+      for (const sub of part.subParts) expect(sub.valueDisplay).toMatch(/^\d+ g$/);
+    }
+    const pre = JSON.stringify([capture.private_open, capture.public_open, capture.private_after_refusal]);
+    for (const key of ["base_display", "line_total_display", "part_kind", "combine_display",
+      "total_display", "value_display", "sub_parts"]) {
+      expect(pre).not.toContain(`"${key}"`);
+    }
   });
 
   it("the lock ack's inline reveal reads through the same guard", () => {

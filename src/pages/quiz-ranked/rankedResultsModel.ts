@@ -74,6 +74,14 @@ export interface RankedResultsInput {
   result: "victory" | "defeat" | "draw";
   finalScores: Record<string, number> | null;
   modulesPlayed: number | null;
+  /**
+   * R2 — the viewer's head-to-head module wins, as the result's scoring block
+   * states them (`scoring.modules_won`), or null when it states none. Never
+   * derived here: a module answered correctly is not a module won (the owner's
+   * live Reconstruct result read "Modules won 3/3" beside a 6-6 draw in which
+   * the bot took two of the three modules on speed).
+   */
+  modulesWon?: number | null;
   /** Why the match ended, when it was not ordinary combat. */
   subheading?: string | null;
   isBotMatch: boolean;
@@ -139,7 +147,7 @@ export function reviewRoundQuestionTally(
 
 export function buildRankedResults(input: RankedResultsInput): GameResultsModel {
   const {
-    player, opponent, result, finalScores, modulesPlayed, subheading, isBotMatch,
+    player, opponent, result, finalScores, modulesPlayed, modulesWon = null, subheading, isBotMatch,
     ratingDelta, ratingAfter, progressionEnabled, review, roundHistory,
     discoveries, opponentLabel,
   } = input;
@@ -150,13 +158,25 @@ export function buildRankedResults(input: RankedResultsInput): GameResultsModel 
 
   const snapshot: ResultStat[] = [];
   if (timeline.length > 0) {
-    const won = timeline.filter((e) => e.outcome === "correct").length;
-    snapshot.push({
-      key: "modules-won",
-      label: "Modules won",
-      value: `${won} / ${timeline.length}`,
-      tone: won * 2 >= timeline.length ? "good" : "bad",
-    });
+    // Head-to-head when the server stated it; otherwise the honest name for
+    // what the review can count, which is correct answers, not wins.
+    if (modulesWon !== null) {
+      const played = modulesPlayed ?? timeline.length;
+      snapshot.push({
+        key: "modules-won",
+        label: "Modules won",
+        value: `${modulesWon} / ${played}`,
+        tone: modulesWon * 2 >= played ? "good" : "bad",
+      });
+    } else {
+      const correct = timeline.filter((e) => e.outcome === "correct").length;
+      snapshot.push({
+        key: "modules-correct",
+        label: "Modules correct",
+        value: `${correct} / ${timeline.length}`,
+        tone: correct * 2 >= timeline.length ? "good" : "bad",
+      });
+    }
     // Question accuracy, NOT the module-win rate above: a 2-of-5 Journey is a
     // lost module but a 40% answerer. `review` is non-null whenever the
     // timeline is non-empty, and every round tallies at least one question.

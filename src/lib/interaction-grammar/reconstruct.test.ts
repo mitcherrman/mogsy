@@ -116,3 +116,62 @@ describe("speech helpers", () => {
     expect(filledSummary(3, 3)).toBe("Three of three parts filled. Lock is available.");
   });
 });
+
+// ------------------------------------------------------------- R2 input paths
+
+describe("placeFromTray — the one placement every input path calls", () => {
+  const content = { slotCount: 3, options: opts(["a"], ["b", 3], ["c"]) };
+
+  it("with no socket named, fills the first empty socket", () => {
+    expect(lib.nextEmptySlot([null, null, null])).toBe(0);
+    expect(lib.nextEmptySlot(["a", null, "c"])).toBe(1);
+    expect(lib.nextEmptySlot(["a", "b", "c"])).toBe(-1);
+    expect(lib.placeFromTray(content, ["a", null, null], "b").next).toEqual(["a", "b", null]);
+    expect(lib.placeFromTray(content, ["a", null, "c"], "b").next).toEqual(["a", "b", "c"]);
+  });
+
+  it("repeated adds stack copies within the limit", () => {
+    let board: (string | null)[] = [null, null, null];
+    for (let i = 0; i < 3; i++) board = lib.placeFromTray(content, board, "b").next;
+    expect(board).toEqual(["b", "b", "b"]);
+  });
+
+  it("a full board with no socket named is `full`, unchanged", () => {
+    expect(lib.placeFromTray(content, ["a", "b", "c"], "b")).toEqual({ kind: "full", next: ["a", "b", "c"] });
+  });
+
+  it("with a socket named (a drop), it is exactly placeToken: replacement included", () => {
+    expect(lib.placeFromTray(content, ["a", "c", null], "b", 1))
+      .toEqual(placeToken(content, ["a", "c", null], 1, "b"));
+    expect(lib.placeFromTray(content, ["a", "c", null], "b", 1)).toMatchObject({ kind: "replaced", previous: "c" });
+  });
+});
+
+describe("snapToSocket — the forgiving drop", () => {
+  // Three 56px sockets, 16px apart.
+  const r = (left: number) => ({ left, top: 100, right: left + 56, bottom: 156 });
+  const sockets = [r(100), r(172), r(244)];
+  const slack = { x: 28, y: 64 };
+
+  it("inside a socket: that socket", () => {
+    expect(lib.snapToSocket({ x: 128, y: 128 }, sockets, slack)).toBe(0);
+    expect(lib.snapToSocket({ x: 270, y: 110 }, sockets, slack)).toBe(2);
+  });
+
+  it("between sockets: the nearer centre", () => {
+    expect(lib.snapToSocket({ x: 160, y: 128 }, sockets, slack)).toBe(0);
+    expect(lib.snapToSocket({ x: 168, y: 128 }, sockets, slack)).toBe(1);
+  });
+
+  it("outside the visible boxes but inside the region: still lands", () => {
+    expect(lib.snapToSocket({ x: 120, y: 156 + 60 }, sockets, slack)).toBe(0);     // under the row
+    expect(lib.snapToSocket({ x: 100 - 20, y: 100 - 50 }, sockets, slack)).toBe(0); // above-left
+    expect(lib.snapToSocket({ x: 300 + 25, y: 128 }, sockets, slack)).toBe(2);     // past the end
+  });
+
+  it("outside the region: null", () => {
+    expect(lib.snapToSocket({ x: 128, y: 156 + 65 }, sockets, slack)).toBeNull();
+    expect(lib.snapToSocket({ x: 100 - 29, y: 128 }, sockets, slack)).toBeNull();
+    expect(lib.snapToSocket({ x: 128, y: 128 }, [], slack)).toBeNull();
+  });
+});

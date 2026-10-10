@@ -110,7 +110,7 @@ describe("the Ranked result model", () => {
       .toBe(false);
   });
 
-  it("reports modules won and the two subjects, from the review", () => {
+  it("without a server tally, reports modules CORRECT (never 'won') and the two subjects", () => {
     const model = buildRankedResults({
       ...base,
       review: review([
@@ -119,12 +119,39 @@ describe("the Ranked result model", () => {
       ]),
       roundHistory: [settled(1, 3), settled(2, 3), settled(3, 0), settled(4, 0)],
     });
-    expect(model.snapshot?.find((s) => s.key === "modules-won")?.value).toBe("2 / 4");
+    expect(model.snapshot?.find((s) => s.key === "modules-correct")?.value).toBe("2 / 4");
     expect(model.snapshot?.find((s) => s.key === "accuracy")?.value).toBe("50%");
     expect(model.snapshot?.find((s) => s.key === "strongest")?.value).toBe("Runes");
     expect(model.snapshot?.find((s) => s.key === "weakest")?.value).toBe("Items");
     expect(model.timeline?.unitLabel).toBe("Modules");
     expect(model.timeline?.entries).toHaveLength(4);
+  });
+
+  describe("GM1-R2 — Modules won is the server's head-to-head tally", () => {
+    const stat = (m: ReturnType<typeof buildRankedResults>, key: string) =>
+      m.snapshot?.find((s) => s.key === key);
+    // The owner's live Reconstruct draw: three correct builds, two modules
+    // lost to a faster bot. 6–6.
+    const draw = {
+      ...base, result: "draw" as const, finalScores: { userA: 6, userB: 6 }, modulesPlayed: 3,
+      review: review([round(1, "items", true), round(2, "items", true), round(3, "items", true)]),
+    };
+
+    it("prints scoring.modules_won, not the correct count", () => {
+      const model = buildRankedResults({ ...draw, modulesWon: 1 });
+      expect(stat(model, "modules-won")?.label).toBe("Modules won");
+      expect(stat(model, "modules-won")?.value).toBe("1 / 3");
+      expect(stat(model, "modules-won")?.tone).toBe("bad");
+      expect(stat(model, "modules-correct")).toBeUndefined();
+      // Accuracy still says what was answered right.
+      expect(stat(model, "accuracy")?.value).toBe("100%");
+    });
+
+    it("never prints 'Modules won' from correct answers when the server stated no tally", () => {
+      const model = buildRankedResults({ ...draw, modulesWon: null });
+      expect(stat(model, "modules-won")).toBeUndefined();
+      expect(stat(model, "modules-correct")?.value).toBe("3 / 3");
+    });
   });
 
   describe("Accuracy is question accuracy, not module-win rate", () => {
@@ -141,12 +168,12 @@ describe("the Ranked result model", () => {
     const stat = (m: ReturnType<typeof buildRankedResults>, key: string) =>
       m.snapshot?.find((s) => s.key === key)?.value;
 
-    it("a one-module Journey at 2/5 is 40% accurate while Modules won stays 0 / 1", () => {
+    it("a one-module Journey at 2/5 is 40% accurate while Modules correct stays 0 / 1", () => {
       const model = buildRankedResults({
         ...base, review: review([counted(1, "mastery_slice", 2, 5)]),
       });
       expect(stat(model, "accuracy")).toBe("40%");
-      expect(stat(model, "modules-won")).toBe("0 / 1");
+      expect(stat(model, "modules-correct")).toBe("0 / 1");
       expect(model.timeline?.entries[0].outcome).toBe("incorrect");
     });
 
@@ -155,7 +182,7 @@ describe("the Ranked result model", () => {
         ...base, review: review([counted(1, "mastery_slice", 5, 5)]),
       });
       expect(stat(model, "accuracy")).toBe("100%");
-      expect(stat(model, "modules-won")).toBe("1 / 1");
+      expect(stat(model, "modules-correct")).toBe("1 / 1");
       expect(model.timeline?.entries[0].outcome).toBe("correct");
     });
 
@@ -168,7 +195,7 @@ describe("the Ranked result model", () => {
         ]),
       });
       expect(stat(model, "accuracy")).toBe("50%");
-      expect(stat(model, "modules-won")).toBe("2 / 4");
+      expect(stat(model, "modules-correct")).toBe("2 / 4");
     });
 
     it("a mixed match is total correct over total questions", () => {
@@ -183,7 +210,7 @@ describe("the Ranked result model", () => {
       });
       expect(stat(model, "accuracy")).toBe("50%");
       // Module outcomes are untouched: only the first single is a win.
-      expect(stat(model, "modules-won")).toBe("1 / 4");
+      expect(stat(model, "modules-correct")).toBe("1 / 4");
       expect(model.timeline?.entries.map((e) => e.outcome)).toEqual([
         "correct", "incorrect", "incorrect", "incorrect",
       ]);

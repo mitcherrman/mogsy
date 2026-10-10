@@ -6,9 +6,9 @@
  * awarded the speed bonus.
  *
  * ─────────────────────────────────────────────────────────────────────────
- * THE ONE RULE: THE NUMBER IS THE BASE, THE DOT IS THE BONUS
+ * THE ONE RULE: THE NUMBER IS THE BASE, THE CHIP IS THE BONUS
  * ─────────────────────────────────────────────────────────────────────────
- * A bubble NEVER adds the bonus into its figure. `+2` with a dot means "two
+ * A bubble NEVER adds the bonus into its figure. `+2` with a `+1` chip means "two
  * base, and it was also quick" — three points banked — and that is deliberate:
  * the product sentence RP1 exists to teach is knowledge first, speed second,
  * and a merged `+3` erases the half that says which one the player earned.
@@ -124,14 +124,21 @@ export function ModuleBubble({
     >
       <span aria-hidden>{moduleBubbleGlyph(basePoints)}</span>
       {hasBonus && (
-        // The speed mark. Top-RIGHT of the token, and deliberately not
-        // mirrored with the column it may sit in: it is a property of the
-        // module, so a reader comparing the viewer's row against the
-        // opponent's finds it in the same corner on both. `aria-hidden`
-        // because the label above already says it in words.
+        // The speed mark: the bonus FIGURE, legible. Top-RIGHT of the token,
+        // and deliberately not mirrored with the column it may sit in: it is
+        // a property of the module, so a reader comparing the viewer's row
+        // against the opponent's finds it in the same corner on both.
+        //
+        // R2: this was a 6px white dot, and on the owner's live Reconstruct
+        // result the bot's two speed bonuses were invisible — "+2 +2 +0"
+        // beside a 6-6 draw read as a scoring bug. The chip states "+1" so a
+        // row visibly sums to the total printed at its end. Absolute, so the
+        // token's size is unchanged. `aria-hidden`: the label says it in words.
         <span aria-hidden data-testid="module-bubble-speed"
-          className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-white
-            ring-1 ring-[#070f1c]" />
+          className="absolute -right-2 -top-2 rounded-full bg-amber-300 px-[3px] text-[9px]
+            font-black leading-[12px] text-[#070f1c] ring-1 ring-[#070f1c]">
+          {`+${bonus}`}
+        </span>
       )}
     </span>
   );

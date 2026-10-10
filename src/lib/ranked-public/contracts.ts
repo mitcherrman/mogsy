@@ -271,13 +271,21 @@ export interface ReconstructPartView {
   quantity: number;
   /** The authority's formatted gold value ("875 g"); never computed here. */
   valueDisplay: string | null;
-  subParts: { label: string; media: ReconstructMedia; quantity: number }[];
+  /** R2 — "basic" | "composite", the server's word; null on an older round. */
+  partKind: string | null;
+  /** R2 — the part's own combine fee ("425 g"); null for a basic part or an older round. */
+  combineDisplay: string | null;
+  /** R2 — value × quantity, formatted by the server; null on an older round. */
+  lineTotalDisplay: string | null;
+  subParts: { label: string; media: ReconstructMedia; quantity: number; valueDisplay: string | null }[];
 }
 
 /** The finished item's own figures, formatted by the server. */
 export interface ReconstructRecipeTarget {
   label: string;
   totalDisplay: string | null;
+  /** R2 — the direct parts' subtotal; null on an older round. */
+  baseDisplay: string | null;
   combineDisplay: string | null;
 }
 
@@ -831,6 +839,14 @@ export interface ResultScoringView {
   modulesPlayed: number | null;
   /** Always covers every participant — a match that scored nothing reads 0. */
   finalScores: Record<string, number>;
+  /**
+   * R2 — per player, how many settled modules the MODULE ITSELF declared won
+   * (its own `segment_result`), tallied server-side from the same settlement
+   * log as `finalScores`. Null when any module stated no head-to-head verdict
+   * (a quiz round) or the backend predates it: then "modules won" is not a
+   * fact this screen may print, and nothing here derives it from points.
+   */
+  modulesWon: Record<string, number> | null;
 }
 
 /**
@@ -1304,6 +1320,8 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   // private payload's own names for the recipe tree and the gold breakdown.
   "canonical_parts", "slot_correct", "settled_placement",
   "sub_parts", "decoys", "total_display", "combine_display",
+  // GM1-R2 - the breakdown's further frozen figures (backend guard too).
+  "base_display", "line_total_display", "part_kind",
 ]);
 
 /**
@@ -1548,12 +1566,16 @@ function readReconstructParts(v: unknown, label: string): ReconstructPartView[] 
       label: str(o.label, `${label}[${i}].label`),
       quantity: num(o.quantity, `${label}[${i}].quantity`),
       valueDisplay: nstr(o.value_display, `${label}[${i}].value_display`),
+      partKind: nstr(o.part_kind, `${label}[${i}].part_kind`),
+      combineDisplay: nstr(o.combine_display, `${label}[${i}].combine_display`),
+      lineTotalDisplay: nstr(o.line_total_display, `${label}[${i}].line_total_display`),
       subParts: subs.map((sraw, j) => {
         const sub = rec(sraw, `${label}[${i}].sub_parts[${j}]`);
         return {
           label: str(sub.label, `${label}[${i}].sub_parts[${j}].label`),
           media: readOrderForgeMedia(sub.media, `${label}[${i}].sub_parts[${j}].media`),
           quantity: num(sub.quantity, `${label}[${i}].sub_parts[${j}].quantity`),
+          valueDisplay: nstr(sub.value_display, `${label}[${i}].sub_parts[${j}].value_display`),
         };
       }),
     };
@@ -1566,6 +1588,7 @@ function readReconstructTarget(v: unknown, label: string): ReconstructRecipeTarg
   return {
     label: str(o.label, `${label}.label`),
     totalDisplay: nstr(o.total_display, `${label}.total_display`),
+    baseDisplay: nstr(o.base_display, `${label}.base_display`),
     combineDisplay: nstr(o.combine_display, `${label}.combine_display`),
   };
 }
@@ -2384,11 +2407,19 @@ function readResultScoring(value: unknown): ResultScoringView | null {
   for (const [pid, raw] of Object.entries(rec(o.final_scores, "scoring.final_scores"))) {
     finalScores[pid] = num(raw, `scoring.final_scores.${pid}`);
   }
+  let modulesWon: Record<string, number> | null = null;
+  if (o.modules_won !== null && o.modules_won !== undefined) {
+    modulesWon = {};
+    for (const [pid, raw] of Object.entries(rec(o.modules_won, "scoring.modules_won"))) {
+      modulesWon[pid] = num(raw, `scoring.modules_won.${pid}`);
+    }
+  }
   return {
     model,
     matchLength: nnum(o.match_length, "scoring.match_length"),
     modulesPlayed: nnum(o.modules_played, "scoring.modules_played"),
     finalScores,
+    modulesWon,
   };
 }
 

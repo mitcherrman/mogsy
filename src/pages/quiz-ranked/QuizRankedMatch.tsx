@@ -1165,6 +1165,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
       result,
       finalScores,
       modulesPlayed: m.result?.scoring?.modulesPlayed ?? null,
+      // R2 — the head-to-head tally the server read from the same settlements
+      // as `finalScores`; null when it could not be stated.
+      modulesWon: m.result?.scoring?.modulesWon?.[combatants.player.playerId] ?? null,
       subheading: reason === "forfeit"
         ? (won ? `${otherLabel} forfeited.` : "You forfeited.")
         : reason === "no_contest" ? "No contest — both players left." : null,
@@ -1269,7 +1272,9 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
             roleId: results.contestants.opponent?.roleId ?? null,
             tag: results.contestants.opponent?.tag }}
           scoreline={scorelineNode}
-          slots={duelSlots} />
+          slots={duelSlots}
+          viewerTotal={finalScores?.[combatants.player.playerId] ?? null}
+          opponentTotal={finalScores?.[combatants.opponent.playerId] ?? null} />
       ) : undefined,
       identity: results.contestants && (scorelineNode || duelSlots.length > 0)
         ? null

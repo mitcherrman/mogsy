@@ -73,6 +73,8 @@ describe("the result scoreline", () => {
     expect(view.scoring).toEqual({
       model: "points", matchLength: 10, modulesPlayed: 10,
       finalScores: { userA: 24, userB: 19 },
+      // GM1-R2: a backend that states no head-to-head tally reads as null.
+      modulesWon: null,
     });
     // The winner is still the result row's, never a comparison of the two.
     expect(view.winnerUserId).toBe("userA");

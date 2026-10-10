@@ -8,9 +8,15 @@
  * `+0`, `+4`, a dot, a neutral dash.
  *
  * The bubbles are `ModuleBubble`, the same token the live Player Columns draw,
- * with its meaning unchanged: the number is the BASE award, the white dot is
+ * with its meaning unchanged: the number is the BASE award, the `+1` chip is
  * the speed bonus, green is a positive base, red is `+0`, neutral is a module
  * with no award to show. Oldest module on the left.
+ *
+ * R2 — each row ENDS with that player's total, read from the result row's
+ * `final_scores` (the same number the headline prints), never summed here.
+ * The owner's live Reconstruct result showed rows that did not visibly add up
+ * to the 6-6 headline; a row that states its own total next to legible bonus
+ * chips is a row a player can check.
  *
  * The axis comes from `buildModuleDuel`, which places each settlement by its
  * own module number — see that file for why an index never decides a column.
@@ -63,14 +69,33 @@ function Cell({ slot, side }: { slot: ModuleDuelSlot; side: Side }) {
   );
 }
 
+function RowTotal({ total, side }: { total: number | null; side: Side }) {
+  return (
+    <div role="cell" data-testid={`module-duel-total-${side}`}
+      className="flex items-center justify-end gap-1 pl-1 text-[11px] font-black tabular-nums
+        text-slate-100 sm:pl-2 sm:text-[12px]">
+      {total === null ? null : (
+        <>
+          <span aria-hidden className="text-muted-foreground/70">=</span>
+          <span aria-label={`Total ${total} points`}>{total}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function RankedModuleDuel({
   slots, viewerLabel, opponentLabel, viewerIdentity, opponentIdentity,
+  viewerTotal = null, opponentTotal = null,
 }: {
   slots: readonly ModuleDuelSlot[];
   viewerLabel: string;
   opponentLabel: string;
   viewerIdentity: RoleIdentity;
   opponentIdentity: RoleIdentity;
+  /** The result row's `final_scores` for each player; null draws no total. */
+  viewerTotal?: number | null;
+  opponentTotal?: number | null;
 }) {
   if (slots.length === 0) return null;
   return (
@@ -82,10 +107,10 @@ export function RankedModuleDuel({
     // stop reading as one row, and the comparison is a thing the eye takes in
     // at once, not scans across.
     //
-    // `py-1` because the speed dot sits on the bubble's top-right edge: a
-    // scroll container clips on both axes, and a dot cut in half reads as a
-    // different mark.
-    <div className="mx-auto w-full max-w-[46rem] overflow-x-auto py-1 sm:overflow-visible">
+    // `py-2 pr-2` because the speed chip sits over the bubble's top-right
+    // edge: a scroll container clips on both axes, and a chip cut in half
+    // reads as a different mark.
+    <div className="mx-auto w-full max-w-[46rem] overflow-x-auto py-2 pr-2 sm:overflow-visible">
       <div
         role="table"
         aria-label="Module comparison"
@@ -93,12 +118,13 @@ export function RankedModuleDuel({
         data-module-count={slots.length}
         className="grid min-w-max items-center gap-x-1 gap-y-1.5 sm:min-w-0 sm:gap-x-1.5 lg:gap-y-2.5"
         style={{
-          gridTemplateColumns: `auto repeat(${slots.length}, minmax(1.75rem, 1fr))`,
+          gridTemplateColumns: `auto repeat(${slots.length}, minmax(1.75rem, 1fr)) auto`,
         }}
       >
         <div role="row" className="contents">
           <RowHeader label={viewerLabel} identity={viewerIdentity} side="viewer" />
           {slots.map((s) => <Cell key={s.module} slot={s} side="viewer" />)}
+          <RowTotal total={viewerTotal} side="viewer" />
         </div>
         {/* The shared module numbers, between the rows they index. */}
         <div role="row" className="contents" data-testid="module-duel-axis">
@@ -111,10 +137,12 @@ export function RankedModuleDuel({
               {s.module}
             </span>
           ))}
+          <span aria-hidden />
         </div>
         <div role="row" className="contents">
           <RowHeader label={opponentLabel} identity={opponentIdentity} side="opponent" />
           {slots.map((s) => <Cell key={s.module} slot={s} side="opponent" />)}
+          <RowTotal total={opponentTotal} side="opponent" />
         </div>
       </div>
     </div>

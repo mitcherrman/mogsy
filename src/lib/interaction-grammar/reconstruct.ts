@@ -3,9 +3,9 @@
  * socket counts and placement limits, and nothing else: no domain, no data, no
  * League words, no points.
  *
- * Placement only (`normalizePlacement`, `placeToken`, `clearSlot`,
- * `countUses`): it keeps the board within the host's limits and never asks
- * whether a placement is right.
+ * Placement only (`normalizePlacement`, `placeFromTray` over `placeToken`,
+ * `clearSlot`, `countUses`, `snapToSocket`): it keeps the board within the
+ * host's limits and never asks whether a placement is right.
  *
  * GM1-R1: there is deliberately NO grader here. STUDIO3-S2's `gradeAssembly`
  * was ported to the server (`ranked_modules/reconstruct.py::grade_assembly`),
@@ -92,6 +92,8 @@ export type PlaceOutcome =
   /** The socket already holds this token: nothing to do. */
   | { kind: "same"; next: (string | null)[] }
   | { kind: "at-limit"; next: (string | null)[]; used: number; max: number }
+  /** No socket was named and none is empty. */
+  | { kind: "full"; next: (string | null)[] }
   | { kind: "invalid"; next: (string | null)[] };
 
 /**
@@ -115,6 +117,64 @@ export function placeToken(
   if (used >= max) return { kind: "at-limit", next, used, max };
   next[slot] = token;
   return current === null ? { kind: "placed", next } : { kind: "replaced", next, previous: current };
+}
+
+/** The first empty socket, or -1 on a full board. Position carries no meaning. */
+export function nextEmptySlot(board: readonly (string | null)[]): number {
+  return board.findIndex((t) => t === null);
+}
+
+/**
+ * THE placement every input path calls (R2): a tap or click on a tray choice,
+ * Enter/Space on one (no `slot`: it goes into the next empty socket, because
+ * order is irrelevant) and a pointer drop (`slot`: the socket the drop snapped
+ * to, replacing its occupant). One function, so every path produces the same
+ * board and therefore the same submitted `{placement}`.
+ */
+export function placeFromTray(
+  content: Pick<ReconstructPublic, "slotCount" | "options">,
+  board: readonly (string | null)[],
+  token: string,
+  slot?: number,
+): PlaceOutcome {
+  const target = slot ?? nextEmptySlot(board);
+  if (target < 0) return { kind: "full", next: [...board] };
+  return placeToken(content, board, target, token);
+}
+
+/** A screen rectangle (client pixels). */
+export interface SnapRect { left: number; top: number; right: number; bottom: number }
+
+/**
+ * Which socket a pointer drop lands in (R2). Forgiving on purpose: the drop
+ * zone is the whole assembly region — the sockets' bounding box grown by
+ * `slack` on every side — and inside it the NEAREST socket centre wins, so a
+ * drop between two sockets or just below the row still lands. Outside the
+ * region: null (the drag is cancelled, nothing changes).
+ */
+export function snapToSocket(
+  point: { x: number; y: number },
+  sockets: readonly SnapRect[],
+  slack: { x: number; y: number },
+): number | null {
+  if (sockets.length === 0) return null;
+  const region = {
+    left: Math.min(...sockets.map((r) => r.left)) - slack.x,
+    right: Math.max(...sockets.map((r) => r.right)) + slack.x,
+    top: Math.min(...sockets.map((r) => r.top)) - slack.y,
+    bottom: Math.max(...sockets.map((r) => r.bottom)) + slack.y,
+  };
+  if (point.x < region.left || point.x > region.right
+    || point.y < region.top || point.y > region.bottom) return null;
+  let best = 0;
+  let bestDistance = Infinity;
+  sockets.forEach((r, i) => {
+    const dx = point.x - (r.left + r.right) / 2;
+    const dy = point.y - (r.top + r.bottom) / 2;
+    const d = dx * dx + dy * dy;
+    if (d < bestDistance) { best = i; bestDistance = d; }
+  });
+  return best;
 }
 
 /** Empty one socket. Returns the removed token (null when it was already empty). */

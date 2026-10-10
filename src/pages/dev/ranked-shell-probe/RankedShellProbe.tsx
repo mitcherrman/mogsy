@@ -18,7 +18,9 @@
  *   stressA | stressB | metareflex | orderforge (OF1-B: an Order Forge segment; `?forge=locked|revealed|live`
  *   serves the viewer past their Lock In) | reconstruct (GM1-R1: a Reconstruct
  *   segment; `?rc=witsEnd|stormrazor|fourSlot` picks the real round and
- *   `?recon=locked|wrong|right|live` serves the viewer past their Lock In) | junglePet | junglePetBase | jungleRule |
+ *   `?recon=locked|wrong|right|live` serves the viewer past their Lock In;
+ *   GM1-R2 `?recon=bot` replays the REAL bot-inline lock lifecycle from the
+ *   wire capture, segment 2 through segment 3 opening) | junglePet | junglePetBase | jungleRule |
  *   masteryRecall | masteryCompare (RQ1: a Mastery slice whose challenges
  *   carry `?qroles=` as their frozen roles) | masteryStat (QF1.2A: a
  *   base-stat recall) | abilityCost (QF1.2A: a real `ability_cost_rank`
@@ -107,6 +109,9 @@ import {
 import {
   FORGE_BOT_MATCH_ID, FORGE_BOT_VIEWER, forgeBotReplay, isForgeBotReplay,
 } from "./orderForgeBotReplay";
+import {
+  RECON_BOT_MATCH_ID, RECON_BOT_VIEWER, isReconstructBotReplay, reconstructBotReplay,
+} from "./reconstructBotReplay";
 
 const VIEWER = "userA";
 
@@ -1093,6 +1098,12 @@ function installInterceptor() {
       const replayed = await forgeBotReplay(path, init);
       if (replayed) return replayed;
     }
+    // GM1-R2 — `?q=reconstruct&recon=bot` replays the real Reconstruct
+    // bot-lock lifecycle (segment 2 → inline reveal → segment 3 opening).
+    if (isReconstructBotReplay()) {
+      const replayed = await reconstructBotReplay(path, init);
+      if (replayed) return replayed;
+    }
     // RE1 — a finished match. Checked first: every read below has a terminal
     // answer that differs from the live one.
     const end = probe.end;
@@ -1222,6 +1233,9 @@ export default function RankedShellProbe() {
    */
   const beatPreview = params.get("beat");
   const forgeBot = state === "orderforge" && params.get("forge") === "bot";
+  const reconBot = state === "reconstruct" && params.get("recon") === "bot";
+  const replayMatchId = forgeBot ? FORGE_BOT_MATCH_ID : reconBot ? RECON_BOT_MATCH_ID : "m1";
+  const replayViewer = forgeBot ? FORGE_BOT_VIEWER : reconBot ? RECON_BOT_VIEWER : VIEWER;
   probe.sfxStep = sfxQa ? sfxStep : 0;
   probe.mrStep = params.get("mrlive") === "1" ? mrStep : null;
   probe.seq = (params.get("seq") ?? "").split(",")
@@ -1334,7 +1348,7 @@ export default function RankedShellProbe() {
       )}
       {params.get("frame") === "0" || dailyHost ? (
         <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
-          matchId={forgeBot ? FORGE_BOT_MATCH_ID : "m1"} viewerUserId={forgeBot ? FORGE_BOT_VIEWER : VIEWER} viewerDisplayName={viewerName}
+          matchId={replayMatchId} viewerUserId={replayViewer} viewerDisplayName={viewerName}
           entry={probe.entryFresh ? "fresh" : "recovered"}
           // VISCONT1 — `?host=daily`: hosted exactly as `DailyRunPage` hosts
           // a stage (its own eyebrow and settling copy, no settlement action
@@ -1344,7 +1358,7 @@ export default function RankedShellProbe() {
       ) : (
         <Frame size="wide">
           <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}:${params.get("qroles") ?? ""}:${params.toString()}`}
-            matchId={forgeBot ? FORGE_BOT_MATCH_ID : "m1"} viewerUserId={forgeBot ? FORGE_BOT_VIEWER : VIEWER} viewerDisplayName={viewerName}
+            matchId={replayMatchId} viewerUserId={replayViewer} viewerDisplayName={viewerName}
             entry={probe.entryFresh ? "fresh" : "recovered"} />
         </Frame>
       )}

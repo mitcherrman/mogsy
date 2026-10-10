@@ -100,7 +100,7 @@ function Duelist({ duelist, identity, mirrored, emphasis }: {
 }
 
 export function RankedResultDuel({
-  viewer, opponent, result, scoreline, slots,
+  viewer, opponent, result, scoreline, slots, viewerTotal = null, opponentTotal = null,
 }: {
   viewer: ResultDuelist;
   opponent: ResultDuelist;
@@ -109,6 +109,9 @@ export function RankedResultDuel({
   /** The final scoreline, already built from the result row. */
   scoreline: ReactNode;
   slots: readonly ModuleDuelSlot[];
+  /** R2 — each row's total, the result row's `final_scores` entry. */
+  viewerTotal?: number | null;
+  opponentTotal?: number | null;
 }) {
   const viewerIdentity = roleIdentityFor(viewer.roleId);
   const opponentIdentity = roleIdentityFor(opponent.roleId);
@@ -132,7 +135,8 @@ export function RankedResultDuel({
         <div className="border-t border-white/10 pt-3">
           <RankedModuleDuel slots={slots}
             viewerLabel={viewer.name} opponentLabel={opponent.name}
-            viewerIdentity={viewerIdentity} opponentIdentity={opponentIdentity} />
+            viewerIdentity={viewerIdentity} opponentIdentity={opponentIdentity}
+            viewerTotal={viewerTotal} opponentTotal={opponentTotal} />
         </div>
       )}
     </section>

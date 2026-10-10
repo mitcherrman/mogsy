@@ -156,10 +156,10 @@ export interface AssemblyOption {
   /**
    * How many sockets this choice may fill at once. Defaults to 1.
    *
-   * It is a PUBLIC fact (it is drawn as "Used 0 / 2"), so the host decides what
-   * it discloses: a limit above 1 on one choice tells the player that choice is
-   * wanted more than once. A host that must not hint gives every choice the same
-   * limit. The primitive never derives it from the answer and never grades it.
+   * Enforced, never drawn (R2): the tray shows only how many copies are
+   * PLACED ("×2"), so not even a uniform limit is put on screen. A host that
+   * must not hint still gives every choice the same limit. The primitive never
+   * derives it from the answer and never grades it.
    */
   maxUses?: number;
 }
@@ -184,30 +184,41 @@ export type ReconstructResponse = { placement: readonly string[] };
 export type _ReconstructIsSegmentChoice = Assert<ReconstructResponse extends SegmentChoice ? true : false>;
 
 /**
- * Host-supplied, after the reveal. Every figure is already formatted by the
- * host; the primitive writes the strings verbatim and knows what none of them
- * mean.
+ * Host-supplied, after the reveal: a BREAKDOWN of the whole (R2). Every string
+ * is already formatted and worded by the host; the primitive lays the blocks
+ * out and knows what none of them mean.
  */
 export interface ReconstructEvidence {
-  /** A secondary figure per option token, drawn under the settled part. */
-  values?: Readonly<Record<string, string>>;
-  /** A short note per option token, e.g. a quantity bracket ("×2"). */
-  annotations?: Readonly<Record<string, string>>;
-  /** Further labelled terms that join the parts into the whole. */
-  extras?: readonly { label: string; valueDisplay: string }[];
-  /** The whole's own figure, drawn last. */
-  total?: { label: string; valueDisplay: string } | null;
   /**
-   * The canonical parts in the host's order, each once with its required
-   * count as the host states it. When present, the evidence lists THESE rows
-   * (instead of the settled tokens) so a part needed twice reads "×2" once.
+   * One block per canonical part, in the host's order, each once with the
+   * count the host states (a part needed twice is one block reading ×2).
    */
-  parts?: readonly { token: string; quantity: number }[];
-  /**
-   * One level further down, per option token: what that part is itself made
-   * of, as the host states it. Display only.
-   */
-  children?: Readonly<Record<string, readonly ReconstructChild[]>>;
+  parts: readonly ReconstructBreakdownPart[];
+  /** The closing line: `terms` joined by "+", then "=" and `result`. */
+  equation?: ReconstructEquation | null;
+}
+
+export interface ReconstructBreakdownPart {
+  /** An option token: the block shows that option's art and label. */
+  token: string;
+  quantity: number;
+  /** The part's own figure (one copy), e.g. "775 g". */
+  valueDisplay: string | null;
+  /** The figure for all `quantity` copies; drawn only when quantity > 1. */
+  lineTotalDisplay?: string | null;
+  /** One short line under the name, e.g. "Basic component" or "Built from". */
+  caption: string | null;
+  /** What the part is itself made of, each with its own figure. */
+  children: readonly ReconstructChild[];
+  /** The joining term under the children, e.g. "+ 425 g to combine". */
+  joinDisplay?: string | null;
+  /** A short note on the block, e.g. how many copies the player had right. */
+  annotation?: string | null;
+}
+
+export interface ReconstructEquation {
+  terms: readonly { label: string; valueDisplay: string | null }[];
+  result: { label: string; valueDisplay: string };
 }
 
 /** One sub-part under a revealed part. */
@@ -215,6 +226,8 @@ export interface ReconstructChild {
   label: string;
   media?: SubjectMedia | null;
   quantity: number;
+  /** Its own figure, as the host states it; null when the host stated none. */
+  valueDisplay?: string | null;
 }
 
 /** Authority-supplied, post-lock only. The primitive displays it and grades nothing. */
