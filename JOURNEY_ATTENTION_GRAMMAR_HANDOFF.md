@@ -5,6 +5,8 @@ One handoff for both repos (identical copy in each).
 > **Integrated onto current mainline (GM1-R2) — see §12.** §12's bases, branches and deploy order supersede the table below and the "(or together)" in §3 / §10 / §11.7: **frontend publish first → verify → backend deploy second.**
 >
 > **Re-integrated onto frontend main after PPQ2-A — see §13.** The frontend candidate is now `jattn1/integration-fe-ppq2a` on `924f0192`; the backend candidate is unchanged (`13ef9aef`).
+>
+> **Forward-integrated onto PPQ2-B (frontend) and PHSR5 (backend) — see §14.** §14's candidates supersede §12/§13's SHAs; the release order is unchanged.
 
 | | Backend `League_Combat_Simulator` | Frontend `mogsy` |
 |---|---|---|
@@ -372,3 +374,61 @@ Evidence: `docs/handoffs/jattn1-ppq2a/four-pair-reader.json`.
 ### 13.7 Readiness
 
 Ready to return for the **frontend-first** release: this frontend candidate + backend `13ef9aef`, in the §12.7 order. Never deploy `13ef9aef` while `924f0192` (or any frontend without JATTN1) is live.
+
+## 14. Forward-integration onto PPQ2-B / PHSR5 (no file overlap)
+
+Local candidates only: no push, no deploy, no Lovable publish. No JATTN1 content changed, and no visual or capture work was repeated.
+
+| | Backend `League_Combat_Simulator` | Frontend `mogsy` |
+|---|---|---|
+| Verified base (fetched) | `origin/master` **`63847f4f`** | `origin/main` **`bdf4bbf1`** |
+| Drift | `10479421`, `5ef8e79b`, `63847f4f` (PHSR5): `knowledge_engine/patch_report/{authority,builder}.py`, 3 Patch Hub tests, `docs/PATCH_HUB_PHSR5_FRESHNESS_HANDOFF.md` | `1be4ac80`, `bdf4bbf1` (PPQ2-B): `src/lib/pro-play/arena/**` (11 files), `docs/handoffs/PPQ2-B.md` |
+| File overlap with JATTN1 | none | none |
+| Method | cherry-pick `-x` of the 4 JATTN1 commits of `72c32c89..13ef9aef` (+ this handoff) | cherry-pick `-x` of the 6 commits of `924f0192..0e123adc` (+ this handoff); 0 conflicts |
+| Branch / worktree | `jattn1/integration-be-phsr5` / `mogzy-wt/jattn1-int3-be` | `jattn1/integration-fe-ppq2b` / `mogzy-wt/jattn1-int3-fe` |
+
+**Tree equivalence (both repos):**
+* The new delta over the new base is patch-identical to the certified delta (hunk bodies).
+* Every JATTN1 file is byte-identical to the certified candidate (`0e123adc` / `13ef9aef`).
+* Every drift file is byte-identical to current main/master.
+* `git diff <certified candidate> <new code tip>` lists exactly the drift files and nothing else: frontend 12 files (PPQ2-B), backend 6 files (PHSR5).
+
+**Why the prior evidence stands:**
+* **Frontend:** PPQ2-B touches no CSS, layout, Journey, ranked-core, ranked-public or component file. `src/lib/{journey,ranked-public,ranked-core}`, `src/components` and `src/index.css` are byte-identical between `924f0192` and `bdf4bbf1`. So §12.5/§13.5–13.6 geometry and screenshots stand.
+* **Backend:** `mastery/` and `ranked_public/` are byte-identical to `13ef9aef`, and no Journey code imports `patch_report`. So the JATTN1 payload is unchanged:
+  * value-free `focus.target_stat`;
+  * ability objects on raw/final damage facts;
+  * `journey_knowledge_object.v1`, with no version bump;
+  * nothing else.
+
+  The real fixtures in `__fixtures__/jattn1/` remain representative.
+
+**Strict-reader boundary (by equivalence to §13.3's measured run):**
+
+| Frontend ↓ / Backend → | current `63847f4f` | integrated (this §) |
+|---|---|---|
+| **integrated (this §)** | safe: its reader is identical to `0e123adc`, and the payload is identical to `72c32c89` (315/315) | safe: 315/315 |
+| **current main `bdf4bbf1`** | safe | **unsafe**: its reader is byte-identical to `924f0192`, which refused 181/315 on `target_stat` |
+
+`jattn1DeployCompat` (9/9) re-plays both backends' real fixtures through the production reader on this tree. The reader was not weakened.
+
+**Focused tests:**
+
+* **Frontend: 10 files, 334/334.**
+  * JATTN1 suites: `jattn1.attention`, `masterySliceModule.{jattn1,boardCoach,jattn1DeployCompat}`.
+  * PPQ2-B suites: all 5 `src/lib/pro-play/arena` tests.
+  * `CanonicalArena.questionSurface` (PPQ2-A).
+  * GM1-R2 / Reconstruct were not re-run, because no shared contract file changed.
+* **Backend: 241 passed / 1 failed.**
+  * JATTN1 suites: `test_jattn1_board_attention_semantics`, `test_journey_k1_knowledge_objects`, `test_jhaste1_base_cooldown_contract`, `test_answer_safety_guard`.
+  * PHSR5 suites: `test_patch_editorial_authority`, `test_patch_ops_stored_direction_recovery`, `test_patch_semantic_card_identity`.
+  * The 1 failure is `test_journey_k1_knowledge_objects::test_identity_is_unchanged`, a K1 digest pin. It is in §12.4's pre-existing 39-failure set and also fails on `13ef9aef` and on the untouched `72c32c89`.
+
+**Release order (unchanged):**
+
+1. Publish this frontend.
+2. Verify Journeys draw on backend `63847f4f`.
+3. Deploy this backend.
+4. Verify the target rail.
+
+Never deploy this backend while `bdf4bbf1` (or any frontend without JATTN1) is live.
