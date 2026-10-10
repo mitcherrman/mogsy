@@ -3,6 +3,8 @@
 One handoff for both repos (identical copy in each).
 
 > **Integrated onto current mainline (GM1-R2) — see §12.** §12's bases, branches and deploy order supersede the table below and the "(or together)" in §3 / §10 / §11.7: **frontend publish first → verify → backend deploy second.**
+>
+> **Re-integrated onto frontend main after PPQ2-A — see §13.** The frontend candidate is now `jattn1/integration-fe-ppq2a` on `924f0192`; the backend candidate is unchanged (`13ef9aef`).
 
 | | Backend `League_Combat_Simulator` | Frontend `mogsy` |
 |---|---|---|
@@ -240,3 +242,133 @@ Ready for a **frontend-first** release:
 4. Verify the target rail appears.
 
 Never deploy this backend while the current-main frontend is live.
+
+## 13. Re-integration onto frontend main after PPQ2-A (frontend only)
+
+Local candidates only: no push, no deploy, no Lovable publish. No JATTN1 behaviour changed; this is the §12 frontend delta replayed onto the new main.
+
+| | Backend `League_Combat_Simulator` | Frontend `mogsy` |
+|---|---|---|
+| Verified base (fetched) | `origin/master` **`72c32c89`** (unmoved) | `origin/main` **`924f0192`** |
+| Drift since §12 | none | `84ddda8b` PPQ1 docs, `75b50b66` PPQ2-A seam, `924f0192` PPQ2-A docs |
+| Candidate | **`13ef9aef`** (unchanged, not rebuilt) | branch `jattn1/integration-fe-ppq2a`, worktree `mogzy-wt/jattn1-int2-fe` |
+| Untouched base worktree | `mogzy-wt/jattn1-int-be-base` | `mogzy-wt/jattn1-int2-fe-base` (`924f0192`) |
+
+### 13.1 Method
+
+The five JATTN1 commits of `d6c67abc..38af3531` were cherry-picked `-x` onto `924f0192`, so no old main commits were replayed:
+
+* `3f2cda29`→`473f6728`
+* `13d17791`→`e104d31f`
+* `ba337a0f`→`fe53d563`
+* `6bb53a80`→`bafac011`
+* `38af3531`→`4c1a1756`
+
+This handoff commit follows them. **Zero conflicts.**
+
+**Proof of exactness:**
+
+* `git diff 924f0192 4c1a1756` is patch-identical (hunk bodies) to `git diff d6c67abc 38af3531`.
+* `git diff 38af3531 4c1a1756` is exactly PPQ2-A's `d6c67abc..924f0192`.
+
+### 13.2 Overlap audit
+
+* **Files:** the only file both touch is `src/index.css`.
+* **`src/index.css`, reconciled by a clean 3-way merge, nothing hand-edited:**
+  * PPQ2-A's one rule (`.ranked-academy[data-phone-stacked="true"]::before { inset: 0 }`) stays inside the existing `max-width: 1023.98px` block at ~L15350. That is where `CanonicalArena.questionSurface.test.tsx` source-scans for it.
+  * The JATTN1 section stays where §5 put it (before the OF4 block, ~L18772), including its reduced-motion rules. The removed gold portrait-focus rule (~L17770) is still removed.
+  * No duplicated block.
+* **Selector audit:**
+  * Every selector JATTN1 adds or changes is `.journey-*`, plus `html.reduce-motion .journey-*`. None matches the PPQ2-A question surface (`InteractiveScenarioSurface`, `ranked-question`, `[data-surface-region]`). None of the PPQ2-A files contain a `journey-` class.
+  * PPQ2-A's only selector is the `data-phone-stacked` frame bleed.
+* **Semantic audit:**
+  * PPQ2-A's `phoneStacked` and its `panel`-flank `hidden lg:block` apply only when a flank is `kind: "panel"`. Outside admin pages, the only producer of a `panel` flank is the dev question probe. Every Journey host (Daily, Survival, admin playtest, Library) uses combatant or card flanks, so neither rule can reach a Journey board.
+  * PPQ2-A's `ArenaSurfaceView` union: Journey uses the `module` member (`kind` absent). Its `<Viewport>` props are unchanged.
+  * `reportSnapshot`/`arenaView` changes do not touch the J3 reader. JATTN1 does not touch any PPQ2-A file.
+
+### 13.3 Deploy compatibility (re-certified with fresh captures)
+
+* The capture harness was re-run on both backends: `72c32c89` and `13ef9aef`, 9 Journeys, 315 snapshots each.
+* The `13ef9aef` Journey content is identical to the committed `__fixtures__/jattn1/` (non-Journey diffs only: bot pace, deadlines, score).
+* Every snapshot was read through `readPublicRound` on each frontend.
+
+| Frontend ↓ / Backend → | current `72c32c89` | integrated `13ef9aef` |
+|---|---|---|
+| **current main `924f0192`** | 315/315 read → **safe** | **181/315 REFUSED** (8 of 9 Journeys, `focus carries a field J3 does not publish: "target_stat"`) → **unsafe** |
+| **integrated (this branch)** | 315/315 read; 0 `targetStat` → **safe** | 315/315 read; 328 Combat foci carry `targetStat` → **safe** |
+
+The reader was not weakened. Release order is unchanged:
+
+1. Publish this frontend.
+2. Verify Journeys draw on the current backend.
+3. Deploy `13ef9aef`.
+4. Verify the target rail.
+
+Evidence: `docs/handoffs/jattn1-ppq2a/four-pair-reader.json`.
+
+### 13.4 Tests (integrated vs untouched `924f0192`, same machine, run concurrently)
+
+**Scope:** `lib/journey`, `components/journey`, `lib/ranked-core`, `components/mogzy-guide`, `components/quiz/workspace`, `hooks`, `lib/ranked-public`, `pages/quiz-ranked`, `components/ranked-arena`, `{components,lib}/interaction-grammar`, `pages/dev`, `components/question-surface`.
+
+**Totals:**
+
+| Tree | Files | Passed | Failed |
+|---|---|---|---|
+| Integrated | 334 | 5168 | 17 |
+| Base `924f0192` | 330 | 5098 | 15 |
+
+**Failure comparison:** after an isolated re-run, the failure set is **identical to base**.
+
+* The only difference under load was `LobbyPreviewPage.premiumAnalytics`: 3 failures on the integrated run vs 1 on base. Alone it passes 39/39 on both trees.
+* Shared failures:
+  * QuestionStageGeometry 4, DailyOnCanonicalArena.boundary 2, AnswerGrid.elimination 2, visualLanguage 2 (CRLF source scans);
+  * CanonicalArena.boundary 1, QuestionMotifLayer.qf1 1, syntheticRankedHistory 1, premiumAnalytics 1.
+
+**Suites by group:**
+
+| Group | Integrated | Base |
+|---|---|---|
+| JATTN1: `jattn1.attention` 24/24, `masterySliceModule.jattn1` 26/26, `boardCoach` 15/15, `jattn1DeployCompat` 9/9 | **74/74** | — |
+| JATTN1-updated suites (`JourneyModuleStage`, `j3.adapter`, `masterySliceModule.{journey,jp4,knowledge,portraitPopup,stageGrammar}`) | 187/187 | 189/189 (jp4's 2 old coach tests were moved by JATTN1) |
+| GM1-R2 / Reconstruct (same 10 files as §12.4) | 199/199 | 199/199 |
+| PPQ2-A (`CanonicalArena.questionSurface` 21, `CanonicalArena.rm1Integration` 10, `QuizRankedMatch.geometry` 19) | **50/50** | 50/50 |
+| Host files (Daily boundary/history, Survival finish, playtest access, question library) | 127/129 | 127/129 (the same 2 CRLF scans) |
+
+**Static checks:** `tsc -p tsconfig.app.json` reports only the 2 known Supabase errors.
+
+### 13.5 PPQ2-A coexistence (PPQ2-A's own `ppq2a-cert.cjs`, unmodified except for env-overridable origins)
+
+* **Existing callers, `924f0192` (5241) vs integrated (5242),** 12 states × 5 viewports:
+  * Ranked ×9 and Daily-hosted: **DOM identical 50/50**. Pixel deltas are only PPQ2-A's documented noise: the mascot sprite (195 px at 1165,739 / 1325,839) and the Friends button (1,050 px).
+  * The two Journey states differ by design (JATTN1 cues).
+  * Evidence: `ppq2a-existing-callers-924f0192-vs-int.json`.
+* **Journey vs the previously certified candidate `38af3531` (5243):**
+  * Re-run: **DOM identical and 0 pixels > 24 in 10/10.** In the first run, champion art failed to load on one side of two desktop rows (initials fallback). This did not reproduce.
+  * So PPQ2-A changes nothing on the Journey board. Evidence: `journey-38af3531-vs-int.json`.
+* **Question probe `/dev/arena-question-probe`** (8 states × 5 viewports + Ranked `opts4` reference):
+  * The integrated probe equals PPQ2-A's committed `docs/handoffs/ppq2a/probe.json` in every geometry field: 45/45 rows, 0 differences.
+  * It also equals a fresh `924f0192` probe: 0 differences, and **all 40 screenshots byte-identical**.
+  * The only violations are PPQ2-A's documented pre-existing 1024×768 1028 px overflow (Ranked reference included). Page errors: 0.
+  * Evidence: `ppq2a-probe-int.json`.
+
+### 13.6 Visual re-certification (`/dev/journey-arena`, J3 harness, headless Edge, 1280×800 + 390×844 touch)
+
+* All 13 states × 2 devices are recorded in `docs/handoffs/jattn1-ppq2a/geometry.json`. Every field is **identical** to §12.5's committed geometry and to the `38af3531` candidate run side by side. The states are:
+  * saved ability and saved champion stat;
+  * Pickaxe beat/resting and level+rank beat/resting;
+  * Relevant combat, and Ashe R vs Jinx R (symmetric rails, no Jinx R `!`);
+  * coach desktop/phone and reduced motion;
+  * Daily Standard Combat/R-compare and Survival Saved.
+* **Layout:** no reflow (board and question rects equal before and after, every state).
+* **Coach (both devices):**
+  * inside the board;
+  * no timer, question, answer, mobile-bar or kit overlap;
+  * fine-pointer copy on desktop, tap copy on phone;
+  * Mogzy recognizable.
+* **Rails:** visible on phone.
+* **Remaining pixel deltas:** small boxes (about 25 px) at the Saved-tag/Mogzy animation phase and on the bot flank banner. This harness runs on the live clock.
+* §7/§11.6/§12.5 screenshots stand.
+
+### 13.7 Readiness
+
+Ready to return for the **frontend-first** release: this frontend candidate + backend `13ef9aef`, in the §12.7 order. Never deploy `13ef9aef` while `924f0192` (or any frontend without JATTN1) is live.

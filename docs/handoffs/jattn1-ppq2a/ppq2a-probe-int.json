@@ -1,0 +1,3735 @@
+[
+ {
+  "name": "q-pre-4",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 317,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 317,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 332,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 332,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 517,
+   "y": 511,
+   "w": 235.4,
+   "h": 40.8,
+   "bottom": 551.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 645,
+   "y": 565,
+   "w": 287.2,
+   "h": 42.4,
+   "bottom": 607.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 725,
+   "y": 639,
+   "w": 287.2,
+   "h": 54.4,
+   "bottom": 693.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-2",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1202,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 318.7,
+   "bottom": 458.7
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 317,
+    "h": 107.5,
+    "bottom": 400.7
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 351.9,
+   "w": 317,
+   "h": 48.8,
+   "bottom": 400.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 2,
+  "choiceStates": [
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 482.7,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 544.5
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-2",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1202,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 318.7,
+   "bottom": 458.7
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 332,
+    "h": 107.5,
+    "bottom": 400.7
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 351.9,
+   "w": 332,
+   "h": 48.8,
+   "bottom": 400.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 2,
+  "choiceStates": [
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 482.7,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 544.5
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-2",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 271.6,
+   "y": 511,
+   "w": 480.7,
+   "h": 40.8,
+   "bottom": 551.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 2,
+  "choiceStates": [
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-2",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 347.8,
+   "y": 565,
+   "w": 584.4,
+   "h": 42.4,
+   "bottom": 607.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 2,
+  "choiceStates": [
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-2",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 427.8,
+   "y": 639,
+   "w": 584.4,
+   "h": 54.4,
+   "bottom": 693.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 2,
+  "choiceStates": [
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-3-long",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1407,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 524,
+   "bottom": 664
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 130.5,
+    "bottom": 359.5
+   },
+   {
+    "x": 29,
+    "y": 371.5,
+    "w": 317,
+    "h": 234.5,
+    "bottom": 606
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 534.5,
+   "w": 317,
+   "h": 71.5,
+   "bottom": 606
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 3,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 688,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 749.8
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-3-long",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1362,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 478.5,
+   "bottom": 618.5
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 130.5,
+    "bottom": 359.5
+   },
+   {
+    "x": 29,
+    "y": 371.5,
+    "w": 332,
+    "h": 189,
+    "bottom": 560.5
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 489,
+   "w": 332,
+   "h": 71.5,
+   "bottom": 560.5
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 3,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 642.5,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 704.3
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-3-long",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 271.6,
+   "y": 512.2,
+   "w": 235.4,
+   "h": 42,
+   "bottom": 554.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 3,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-3-long",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 347.8,
+   "y": 564.6,
+   "w": 287.2,
+   "h": 42,
+   "bottom": 606.6
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 3,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-3-long",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 427.8,
+   "y": 626.6,
+   "w": 287.2,
+   "h": 42,
+   "bottom": 668.6
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 3,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-long",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1489,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 605.5,
+   "bottom": 745.5
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 130.5,
+    "bottom": 359.5
+   },
+   {
+    "x": 29,
+    "y": 371.5,
+    "w": 317,
+    "h": 316,
+    "bottom": 687.5
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 616,
+   "w": 317,
+   "h": 71.5,
+   "bottom": 687.5
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 769.5,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 831.3
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-long",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1420,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 537.2,
+   "bottom": 677.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 130.5,
+    "bottom": 359.5
+   },
+   {
+    "x": 29,
+    "y": 371.5,
+    "w": 332,
+    "h": 247.8,
+    "bottom": 619.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 570.5,
+   "w": 332,
+   "h": 48.8,
+   "bottom": 619.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 701.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 763
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-long",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 517,
+   "y": 512.2,
+   "w": 235.4,
+   "h": 42,
+   "bottom": 554.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-long",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 645,
+   "y": 564.6,
+   "w": 287.2,
+   "h": 42,
+   "bottom": 606.6
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-long",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 725,
+   "y": 626.6,
+   "w": 287.2,
+   "h": 42,
+   "bottom": 668.6
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-selected-4",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 317,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 317,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "selected",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-selected-4",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 332,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 332,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "selected",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-selected-4",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 517,
+   "y": 511,
+   "w": 235.4,
+   "h": 40.8,
+   "bottom": 551.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "selected",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-selected-4",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 645,
+   "y": 565,
+   "w": 287.2,
+   "h": 42.4,
+   "bottom": 607.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "selected",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-selected-4",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 725,
+   "y": 639,
+   "w": 287.2,
+   "h": 54.4,
+   "bottom": 693.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "selected",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-correct-4",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 317,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 317,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-correct-4",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 332,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 332,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-correct-4",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 517,
+   "y": 511,
+   "w": 235.4,
+   "h": 40.8,
+   "bottom": 551.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-correct-4",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 645,
+   "y": 565,
+   "w": 287.2,
+   "h": 42.4,
+   "bottom": 607.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-correct-4",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 725,
+   "y": 639,
+   "w": 287.2,
+   "h": 54.4,
+   "bottom": 693.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-wrong-4-long",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1489,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 605.5,
+   "bottom": 745.5
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 130.5,
+    "bottom": 359.5
+   },
+   {
+    "x": 29,
+    "y": 371.5,
+    "w": 317,
+    "h": 316,
+    "bottom": 687.5
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 616,
+   "w": 317,
+   "h": 71.5,
+   "bottom": 687.5
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "incorrect-selected",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 769.5,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 831.3
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-wrong-4-long",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1420,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 537.2,
+   "bottom": 677.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 130.5,
+    "bottom": 359.5
+   },
+   {
+    "x": 29,
+    "y": 371.5,
+    "w": 332,
+    "h": 247.8,
+    "bottom": 619.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 570.5,
+   "w": 332,
+   "h": 48.8,
+   "bottom": 619.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "incorrect-selected",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 701.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 763
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-wrong-4-long",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 517,
+   "y": 512.2,
+   "w": 235.4,
+   "h": 42,
+   "bottom": 554.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "incorrect-selected",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-wrong-4-long",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 645,
+   "y": 564.6,
+   "w": 287.2,
+   "h": 42,
+   "bottom": 606.6
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "incorrect-selected",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-revealed-wrong-4-long",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 725,
+   "y": 626.6,
+   "w": 287.2,
+   "h": 42,
+   "bottom": 668.6
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "incorrect-selected",
+   "correct",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": true
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": true
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-empty-rails",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 343,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 317,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 317,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 317,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 317,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 343,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-empty-rails",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 1319,
+  "stage": {
+   "x": 16,
+   "y": 140,
+   "w": 358,
+   "h": 436.2,
+   "bottom": 576.2
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 29,
+    "y": 153,
+    "w": 332,
+    "h": 64,
+    "bottom": 217
+   },
+   {
+    "x": 29,
+    "y": 229,
+    "w": 332,
+    "h": 52.2,
+    "bottom": 281.2
+   },
+   {
+    "x": 29,
+    "y": 293.2,
+    "w": 332,
+    "h": 225,
+    "bottom": 518.2
+   }
+  ],
+  "lastTablet": {
+   "x": 29,
+   "y": 469.4,
+   "w": 332,
+   "h": 48.8,
+   "bottom": 518.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 600.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 662
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-empty-rails",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 1134,
+  "stage": {
+   "x": 250.6,
+   "y": 78,
+   "w": 522.7,
+   "h": 604.2,
+   "bottom": 682.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 93,
+    "w": 480.7,
+    "h": 221.2,
+    "bottom": 314.2
+   },
+   {
+    "x": 271.6,
+    "y": 322.2,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 452.2
+   },
+   {
+    "x": 271.6,
+    "y": 460.2,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 626.2
+   }
+  ],
+  "lastTablet": {
+   "x": 517,
+   "y": 511,
+   "w": 235.4,
+   "h": 40.8,
+   "bottom": 551.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-empty-rails",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 1146,
+  "stage": {
+   "x": 326.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 636.2,
+   "bottom": 714.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 110.6,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 366.6
+   },
+   {
+    "x": 347.8,
+    "y": 374.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 504.6
+   },
+   {
+    "x": 347.8,
+    "y": 512.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 640.6
+   }
+  ],
+  "lastTablet": {
+   "x": 645,
+   "y": 565,
+   "w": 287.2,
+   "h": 42.4,
+   "bottom": 607.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "q-pre-4-empty-rails",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 1246,
+  "stage": {
+   "x": 406.8,
+   "y": 78,
+   "w": 626.4,
+   "h": 736.2,
+   "bottom": 814.2
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 144.6,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 420.6
+   },
+   {
+    "x": 427.8,
+    "y": 432.6,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 562.6
+   },
+   {
+    "x": 427.8,
+    "y": 574.6,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 702.6
+   }
+  ],
+  "lastTablet": {
+   "x": 725,
+   "y": 639,
+   "w": 287.2,
+   "h": 54.4,
+   "bottom": 693.4
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": null,
+  "mobileBar": false,
+  "bottomBar": false,
+  "combatant": false,
+  "timer": false,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [],
+  "pageErrors": []
+ },
+ {
+  "name": "reference-ranked-opts4",
+  "size": "375x812",
+  "vw": 375,
+  "vh": 812,
+  "docH": 812,
+  "stage": {
+   "x": 8,
+   "y": 104.3,
+   "w": 359,
+   "h": 617.9,
+   "bottom": 722.1
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 19,
+    "y": 155.7,
+    "w": 337,
+    "h": 124,
+    "bottom": 279.7
+   },
+   {
+    "x": 19,
+    "y": 287.7,
+    "w": 337,
+    "h": 124,
+    "bottom": 411.7
+   },
+   {
+    "x": 19,
+    "y": 419.7,
+    "w": 337,
+    "h": 210,
+    "bottom": 629.7
+   }
+  ],
+  "lastTablet": {
+   "x": 19,
+   "y": 581.7,
+   "w": 337,
+   "h": 48,
+   "bottom": 629.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": "true",
+  "mobileBar": true,
+  "bottomBar": true,
+  "combatant": true,
+  "timer": true,
+  "headerVisible": false,
+  "timeline": {
+   "x": 0,
+   "y": 0,
+   "w": 0,
+   "h": 0,
+   "bottom": 0
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": []
+ },
+ {
+  "name": "reference-ranked-opts4",
+  "size": "390x844",
+  "vw": 390,
+  "vh": 844,
+  "docH": 844,
+  "stage": {
+   "x": 8,
+   "y": 104.3,
+   "w": 374,
+   "h": 649.9,
+   "bottom": 754.1
+  },
+  "stageMinHeight": "66px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 19,
+    "y": 171.7,
+    "w": 352,
+    "h": 124,
+    "bottom": 295.7
+   },
+   {
+    "x": 19,
+    "y": 303.7,
+    "w": 352,
+    "h": 124,
+    "bottom": 427.7
+   },
+   {
+    "x": 19,
+    "y": 435.7,
+    "w": 352,
+    "h": 210,
+    "bottom": 645.7
+   }
+  ],
+  "lastTablet": {
+   "x": 19,
+   "y": 597.7,
+   "w": 352,
+   "h": 48,
+   "bottom": 645.7
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": "true",
+  "mobileBar": true,
+  "bottomBar": true,
+  "combatant": true,
+  "timer": true,
+  "headerVisible": false,
+  "timeline": {
+   "x": 0,
+   "y": 0,
+   "w": 0,
+   "h": 0,
+   "bottom": 0
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": []
+ },
+ {
+  "name": "reference-ranked-opts4",
+  "size": "1024x768",
+  "vw": 1024,
+  "vh": 768,
+  "docH": 768,
+  "stage": {
+   "x": 250.6,
+   "y": 92,
+   "w": 522.7,
+   "h": 571.7,
+   "bottom": 663.7
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 271.6,
+    "y": 107,
+    "w": 480.7,
+    "h": 188.7,
+    "bottom": 295.7
+   },
+   {
+    "x": 271.6,
+    "y": 303.7,
+    "w": 480.7,
+    "h": 130,
+    "bottom": 433.7
+   },
+   {
+    "x": 271.6,
+    "y": 441.7,
+    "w": 480.7,
+    "h": 166,
+    "bottom": 607.7
+   }
+  ],
+  "lastTablet": {
+   "x": 517,
+   "y": 492.5,
+   "w": 235.4,
+   "h": 40.8,
+   "bottom": 533.2
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": "true",
+  "mobileBar": true,
+  "bottomBar": false,
+  "combatant": true,
+  "timer": true,
+  "headerVisible": true,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": [
+   "document x-overflow"
+  ]
+ },
+ {
+  "name": "reference-ranked-opts4",
+  "size": "1280x800",
+  "vw": 1280,
+  "vh": 800,
+  "docH": 800,
+  "stage": {
+   "x": 326.8,
+   "y": 92,
+   "w": 626.4,
+   "h": 603.7,
+   "bottom": 695.7
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 347.8,
+    "y": 108.4,
+    "w": 584.4,
+    "h": 256,
+    "bottom": 364.4
+   },
+   {
+    "x": 347.8,
+    "y": 372.4,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 502.4
+   },
+   {
+    "x": 347.8,
+    "y": 510.4,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 638.4
+   }
+  ],
+  "lastTablet": {
+   "x": 645,
+   "y": 562.7,
+   "w": 287.2,
+   "h": 42.4,
+   "bottom": 605.1
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": "true",
+  "mobileBar": true,
+  "bottomBar": false,
+  "combatant": true,
+  "timer": true,
+  "headerVisible": true,
+  "timeline": {
+   "x": 48,
+   "y": 726.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 788
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": []
+ },
+ {
+  "name": "reference-ranked-opts4",
+  "size": "1440x900",
+  "vw": 1440,
+  "vh": 900,
+  "docH": 900,
+  "stage": {
+   "x": 406.8,
+   "y": 92,
+   "w": 626.4,
+   "h": 703.7,
+   "bottom": 795.7
+  },
+  "stageMinHeight": "0px",
+  "stageClass": [
+   "ranked-panel",
+   "ranked-folio",
+   "ranked-question-stage"
+  ],
+  "regions": [
+   {
+    "x": 427.8,
+    "y": 142.4,
+    "w": 584.4,
+    "h": 276,
+    "bottom": 418.4
+   },
+   {
+    "x": 427.8,
+    "y": 430.4,
+    "w": 584.4,
+    "h": 130,
+    "bottom": 560.4
+   },
+   {
+    "x": 427.8,
+    "y": 572.4,
+    "w": 584.4,
+    "h": 128,
+    "bottom": 700.4
+   }
+  ],
+  "lastTablet": {
+   "x": 725,
+   "y": 636.7,
+   "w": 287.2,
+   "h": 54.4,
+   "bottom": 691.1
+  },
+  "lastTabletInViewport": true,
+  "tabletCount": 4,
+  "choiceStates": [
+   "idle",
+   "idle",
+   "idle",
+   "idle"
+  ],
+  "phoneArena": "true",
+  "mobileBar": true,
+  "bottomBar": false,
+  "combatant": true,
+  "timer": true,
+  "headerVisible": true,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "flanks": [
+   {
+    "id": "probe-panel-left",
+    "visible": false
+   },
+   {
+    "id": "probe-panel-right",
+    "visible": false
+   }
+  ],
+  "violations": []
+ }
+]

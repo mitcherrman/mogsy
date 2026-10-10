@@ -1,0 +1,62 @@
+[
+ {
+  "name": "journey-daily",
+  "size": "375x812",
+  "pixel": {
+   "pixels": 533625,
+   "differing": 0,
+   "over24": 0,
+   "box": null
+  },
+  "domSame": true,
+  "domCount": 371
+ },
+ {
+  "name": "journey-daily",
+  "size": "390x844",
+  "pixel": {
+   "pixels": 554970,
+   "differing": 0,
+   "over24": 0,
+   "box": null
+  },
+  "domSame": true,
+  "domCount": 371
+ },
+ {
+  "name": "journey-daily",
+  "size": "1024x768",
+  "pixel": {
+   "pixels": 1161216,
+   "differing": 0,
+   "over24": 0,
+   "box": null
+  },
+  "domSame": true,
+  "domCount": 350
+ },
+ {
+  "name": "journey-daily",
+  "size": "1280x800",
+  "pixel": {
+   "pixels": 1466880,
+   "differing": 15720,
+   "over24": 0,
+   "box": null
+  },
+  "domSame": true,
+  "domCount": 350
+ },
+ {
+  "name": "journey-daily",
+  "size": "1440x900",
+  "pixel": {
+   "pixels": 1794240,
+   "differing": 11163,
+   "over24": 0,
+   "box": null
+  },
+  "domSame": true,
+  "domCount": 350
+ }
+]

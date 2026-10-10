@@ -1,0 +1,55 @@
+{
+ "frontend_integrated": {
+  "current": {
+   "total": 315,
+   "ok": 315,
+   "refusedCount": 0,
+   "refusedJourneys": 0,
+   "refused": {},
+   "reasons": [],
+   "targetStat": 0
+  },
+  "integrated": {
+   "total": 315,
+   "ok": 315,
+   "refusedCount": 0,
+   "refusedJourneys": 0,
+   "refused": {},
+   "reasons": [],
+   "targetStat": 328
+  }
+ },
+ "frontend_924f0192": {
+  "current": {
+   "total": 315,
+   "ok": 315,
+   "refusedCount": 0,
+   "refusedJourneys": 0,
+   "refused": {},
+   "reasons": [],
+   "targetStat": 0
+  },
+  "integrated": {
+   "total": 315,
+   "ok": 134,
+   "refusedCount": 181,
+   "refusedJourneys": 8,
+   "refused": {
+    "ashe_jinx.extended.json": 49,
+    "ashe_jinx.extended.wrong.json": 49,
+    "pantheon.standard.json": 24,
+    "voli.standard.json": 29,
+    "voli.survival.json": 8,
+    "zed_ahri.reference.json": 8,
+    "zed_ahri.reference.timeout.json": 6,
+    "zed_ahri.reference.wrong.json": 8
+   },
+   "reasons": [
+    "Ranked public contract: segment_state.challenges.journey: journey(j3): journey.children[3].state.focus carries a field J3 does not publish: ",
+    "Ranked public contract: segment_state.challenges.journey: journey(j3): journey.children[2].state.focus carries a field J3 does not publish: ",
+    "Ranked public contract: segment_state.challenges.journey: journey(j3): journey.children[1].state.focus carries a field J3 does not publish: "
+   ],
+   "targetStat": 0
+  }
+ }
+}
