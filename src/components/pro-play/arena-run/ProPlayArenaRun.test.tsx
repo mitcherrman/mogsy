@@ -34,7 +34,7 @@ import {
 } from "@/lib/feedback/reportable-question";
 import type { ReportableQuestionSnapshot } from "@/lib/feedback/report-context";
 import { createFixtureTransport, DEFAULT_FIXTURE_SET, type FixtureFault } from "@/pages/dev/pro-play-arena/fixtureTransport";
-import { readArenaDevParams } from "@/pages/dev/pro-play-arena/ProPlayArenaDev";
+import { readArenaDevParams } from "@/pages/dev/pro-play-arena/devParams";
 import ProPlayArenaRun from "./ProPlayArenaRun";
 
 afterEach(cleanup);
@@ -120,7 +120,7 @@ describe("the assembled arena", () => {
     expect(screen.getByTestId("pro-play-session-panel")).toBeTruthy();
     // Header: the plan position, no score before any answer.
     expect(screen.getByTestId("ranked-header-title").textContent).toBe("Question 1 / 10");
-    expect(screen.queryByTestId("ranked-header-title-detail")).toBeNull();
+    expect(screen.queryByTestId("ranked-header-detail")).toBeNull();
   });
 
   it("draws a four-choice question as the 2-up grid of the same canonical tablets", async () => {
@@ -189,7 +189,7 @@ describe("answer safety and exactly-once submission", () => {
     expect(phase()).toBe("revealed");
     expect(screen.getByTestId("ranked-header-title").textContent).toContain("Question 1 / 10");
     // The phone-only score detail is the server's.
-    const detail = screen.getByTestId("ranked-header-title-detail");
+    const detail = screen.getByTestId("ranked-header-detail");
     expect(detail.textContent).toContain("0 correct");
     expect(detail.className).toContain("lg:hidden");
     const next = screen.getByTestId("pro-play-next");
@@ -230,6 +230,7 @@ describe("report publishing: the arena is the one publisher", () => {
       "components/pro-play/arena-run/composeProPlayArenaStage.tsx",
       "pages/dev/pro-play-arena/ProPlayArenaDev.tsx",
       "pages/dev/pro-play-arena/fixtureTransport.ts",
+      "pages/dev/pro-play-arena/devParams.ts",
     ]) {
       expect(codeOnly(read(rel)), rel).not.toMatch(/usePublishReportableQuestion|ReportableQuestionProvider/);
     }

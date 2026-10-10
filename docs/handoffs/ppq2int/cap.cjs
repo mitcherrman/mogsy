@@ -2,7 +2,8 @@
 // Run with cwd = the integration worktree (needs its node_modules/playwright).
 //   node docs/handoffs/ppq2int/cap.cjs <outDir> <caseList> [viewportList]
 // caseList: comma list of <setOrKey>:<state>[:<extra query>]
-//   state: pre | correct | wrong | next   (next = reveal, then Next to question 2)
+//   state: pre | selected | correct | wrong | next   (next = reveal, then Next to question 2;
+//          selected = locked awaiting the server: pass latency=60000 as the extra query)
 //   e.g. champion_player:pre,t1_lineage:wrong,default:next
 // Env: PPQ_BASE (default http://localhost:5276), PPQ_CACHE (asset disk cache dir),
 //      PPQ_SOURCE=live to drive the live API instead of fixtures (pre/correct/wrong only).
@@ -144,6 +145,17 @@ async function settle(page) {
           const n = await page.$$eval("[data-quiz-choice]", (els) => els.length);
           const pickIdx = c.state === "wrong" ? (right + 1) % n : right;
           await page.click(`[data-quiz-choice="${pickIdx}"]`);
+          if (c.state === "selected") {
+            // Locked, awaiting the server (run with latency=<large> in the extra query).
+            await page.waitForSelector('[data-choice-state="selected"]', { timeout: 60000 });
+            await page.waitForTimeout(400);
+            probe = await page.evaluate(PROBE);
+            const name = `${c.set}-selected-${vp.width}x${vp.height}`;
+            await page.screenshot({ path: path.join(outDir, name + ".png"), fullPage: vp.width < 1024 });
+            results.push({ name, ...c, source: SOURCE, viewport: vp, errors: [...errors], ...probe });
+            console.log(`${name}: ${probe.violations.length || errors.length ? "FAIL" : "ok"} ${[...probe.violations, ...probe.notes, ...errors].join("; ")}`);
+            continue;
+          }
           await page.waitForSelector('[data-pro-play-phase="revealed"]', { timeout: 60000 });
           await settle(page);
           probe = await page.evaluate(PROBE);

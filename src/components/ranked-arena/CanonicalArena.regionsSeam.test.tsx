@@ -55,7 +55,7 @@ describe("absent regions: the arena is unchanged", () => {
     expect(document.querySelector("[data-pair-divider]")).toBeNull();
     for (const t of tablets()) expect(t.hasAttribute("aria-label")).toBe(false);
     expect(document.querySelector("[data-answer-layout]")?.getAttribute("data-answer-layout")).not.toBe("pair");
-    expect(screen.queryByTestId("ranked-header-title-detail")).toBeNull();
+    expect(screen.queryByTestId("ranked-header-detail")).toBeNull();
   });
 
   it("keeps the classic bottom-right Your pick on label tablets", () => {
@@ -122,7 +122,7 @@ describe("titleDetail", () => {
   it("is drawn after the title, below lg only", () => {
     render(<CanonicalArena view={view({}, undefined, { title: "Question 3 / 10", titleDetail: "2 correct" })} />);
     const title = screen.getByTestId("ranked-header-title");
-    const detail = screen.getByTestId("ranked-header-title-detail");
+    const detail = screen.getByTestId("ranked-header-detail");
     expect(title.contains(detail)).toBe(true);
     expect(detail.textContent).toBe(" · 2 correct");
     expect(detail.className).toBe("lg:hidden");

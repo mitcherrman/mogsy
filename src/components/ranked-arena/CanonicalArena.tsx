@@ -460,7 +460,7 @@ export function CanonicalArena({
               )}
               {/* PPQ2-INT — phone-only detail; from `lg` a panel flank shows it. */}
               {header.titleDetail && (
-                <span data-testid="ranked-header-title-detail" className="lg:hidden">
+                <span data-testid="ranked-header-detail" className="lg:hidden">
                   {" · "}{header.titleDetail}
                 </span>
               )}

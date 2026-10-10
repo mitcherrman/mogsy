@@ -19,28 +19,8 @@ import { useMemo } from "react";
 import ProPlayArenaRun from "@/components/pro-play/arena-run/ProPlayArenaRun";
 import { proPlayApi } from "@/lib/pro-play/api";
 import { useProPlayArenaController } from "@/lib/pro-play/arena";
-import { createFixtureTransport, resolveFixtureKeys, type FixtureFault } from "./fixtureTransport";
-
-export type ArenaDevSource = "live" | "fixture";
-
-export interface ArenaDevParams {
-  source: ArenaDevSource;
-  keys: string[];
-  latencyMs: number;
-  fault: FixtureFault;
-}
-
-export function readArenaDevParams(search: string): ArenaDevParams {
-  const q = new URLSearchParams(search);
-  const latency = Number(q.get("latency"));
-  const fault = q.get("fault");
-  return {
-    source: q.get("source") === "fixture" ? "fixture" : "live",
-    keys: resolveFixtureKeys(q.get("set")),
-    latencyMs: Number.isFinite(latency) && q.get("latency") !== null ? latency : 350,
-    fault: fault === "start" || fault === "answer" ? fault : "none",
-  };
-}
+import { readArenaDevParams, type ArenaDevParams } from "./devParams";
+import { createFixtureTransport } from "./fixtureTransport";
 
 function apiHost(): string {
   try {
