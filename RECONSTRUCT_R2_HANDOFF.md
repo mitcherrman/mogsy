@@ -98,10 +98,12 @@ R2 holds every structural box (shell, stage, body, module, header, sockets, stat
 ## Tests
 - **Backend**
   - All Reconstruct suites pass: module, flow, certification, wire (4), decoy relevance (22).
-  - The related ranked/guard/order-forge/RP1 set fails identically on the branch and on clean `56f42070`; those failures are pre-existing (stale OWN1 admin harness and an RP1 clock issue).
+  - Related set: 36 files touching scoring, the pre-reveal guard, Order Forge, RP1 and presets. Branch and clean `56f42070` give the IDENTICAL failure set: 1626 passed, 76 failed, 43 errors, all pre-existing (stale OWN1 admin harness, RP1 clock).
+  - No question table in the certified DB uses the new guard keys.
 - **Frontend:**
   - The primitive (76), lib (26), module (22), contract (18), host (4), result regression (4), results model and end screen pass.
-  - The broad related set matches the clean baseline.
+  - Broad related set (4995 tests): the two real branch-only failures were fixed (an RP1 expectation now includes `modulesWon: null`; a review-load race in the new result test).
+  - The rest fail inconsistently on BOTH branch and baseline under load (lobby-preview analytics, mastery-slice stylesheet/timing) and pass in isolation.
   - `tsc`: only the 2 pre-existing onboarding/identity errors.
   - eslint: 0 errors.
   - The continuity e2e spec: 10/10.
