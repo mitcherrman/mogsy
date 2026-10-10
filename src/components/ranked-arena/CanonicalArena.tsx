@@ -747,6 +747,10 @@ export function CanonicalArena({
                   variant="competitive"
                   scenarioSource={null}
                   reveal={questionSurface.reveal}
+                  mediaNode={questionSurface.regions?.media ?? null}
+                  answerContent={questionSurface.regions?.optionContent ?? null}
+                  answerColumns={questionSurface.regions?.answerColumns}
+                  pairDivider={questionSurface.regions?.pairDivider ?? null}
                 />
               ) : Viewport && moduleSurface ? (
               <Viewport

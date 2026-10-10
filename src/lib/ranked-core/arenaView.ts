@@ -365,6 +365,27 @@ export interface ArenaQuestionSurface {
    * (the canonical answer only once `reveal.revealed`).
    */
   reportRef?: QuestionReportRef | null;
+  /**
+   * PPQ2-C (proposed) — optional mode presentation for the stage's regions.
+   * Absent for every existing caller, which renders exactly as before.
+   * Presentation only: the canonical grid still owns selection
+   * (`onSelectOption`), gating (`permissions`) and every tablet state; grading
+   * still arrives only through `reveal`. (Not named `presentation`: that is
+   * the legacy Pro Play payload field the arena must never read.)
+   */
+  regions?: QuestionSurfaceRegions | null;
+}
+
+/** PPQ2-C (proposed) — mode-supplied presentation for the stage's regions. */
+export interface QuestionSurfaceRegions {
+  /** Replaces the surface's own band inside the media region. */
+  media?: ReactNode;
+  /** Positional content INSIDE each canonical tablet (all or none). */
+  optionContent?: ReactNode[] | null;
+  /** Column strategy for the canonical grid; "pair" = two side by side. */
+  answerColumns?: "auto" | "wide-2" | "pair";
+  /** Drawn over the gap between a pair's tablets. */
+  pairDivider?: ReactNode;
 }
 
 /** Server-side provenance for a reported `ArenaQuestionSurface` question. */

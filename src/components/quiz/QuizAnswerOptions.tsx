@@ -8,7 +8,7 @@
  * (idle | selected | correct | incorrect-selected), so an unanswered render
  * carries no correct-answer information in the DOM.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
@@ -95,7 +95,16 @@ type QuizAnswerOptionsProps = {
    * competitive surfaces whose callers have verified the labels are short
    * enough to stay readable side by side.
    */
-  columns?: "auto" | "wide-2";
+  columns?: "auto" | "wide-2" | "pair";
+  /**
+   * PPQ2-C (proposed) — positional content drawn INSIDE each tablet in place
+   * of its media badge and label. All or none: a length mismatch or any empty
+   * entry keeps the classic label. The button, its letter, states, verdict
+   * icons and "Your pick" are unchanged; its accessible name stays the label.
+   */
+  optionContent?: ReactNode[];
+  /** PPQ2-C (proposed) — drawn over the gap of a "pair" grid. */
+  pairDivider?: ReactNode;
   /**
    * OPTIONAL canonical media for the choices (RA6), POSITIONAL and
    * length-matched: entry i belongs to choice i. Omit for the classic
@@ -142,7 +151,14 @@ export default function QuizAnswerOptions({
   optionMedia,
   markSelectionOnReveal = false,
   eliminatedIndexes,
+  optionContent,
+  pairDivider = null,
 }: QuizAnswerOptionsProps) {
+  const content =
+    !choicesHaveImages(choices) && optionContent
+    && optionContent.length === (choices || []).length && optionContent.every(Boolean)
+      ? optionContent
+      : null;
   const eliminated = new Set(answerResult ? [] : (eliminatedIndexes ?? []));
   const hasImages = choicesHaveImages(choices);
   // Picture-choice mode already renders large per-choice art and manages its
@@ -177,6 +193,8 @@ export default function QuizAnswerOptions({
        */
       className={hasImages
         ? "grid grid-cols-2 auto-rows-fr gap-2.5"
+        : columns === "pair"
+        ? "relative grid grid-cols-2 auto-rows-fr gap-x-8 gap-y-2.5 sm:gap-x-10"
         : `grid grid-cols-1 gap-2.5 [@media(max-height:480px)_and_(orientation:landscape)]:grid-cols-2 [@media(max-height:480px)_and_(orientation:landscape)]:auto-rows-fr [@media(max-height:480px)]:gap-2${
           columns === "wide-2" ? " lg:grid-cols-2 lg:auto-rows-fr" : ""}`}
     >
@@ -248,6 +266,7 @@ export default function QuizAnswerOptions({
               data-choice-state={choiceState}
               data-your-pick={showPick ? "true" : undefined}
               onClick={() => onSelect(label, idx)}
+              aria-label={content ? `${String.fromCharCode(65 + idx)}. ${label}` : undefined}
               // An eliminated option is unavailable INDIVIDUALLY: the rest of
               // the grid stays live, which is what makes the retry a retry.
               disabled={!!answerResult || isEliminated}
@@ -271,6 +290,7 @@ export default function QuizAnswerOptions({
                 isEliminated
                   ? "line-through opacity-45 border-destructive/40 disabled:opacity-45"
                   : "",
+                content && columns === "pair" ? "relative" : "",
                 showPick
                   ? "relative ring-2 ring-offset-2 ring-offset-transparent ring-[#f0d78c] disabled:opacity-100"
                   : "",
@@ -310,11 +330,20 @@ export default function QuizAnswerOptions({
                 </>
               ) : (
                 <>
-                  <span data-choice-letter className={`mr-2 shrink-0 text-xs font-bold ${letterClass}`}>
+                  <span data-choice-letter className={`${content && columns === "pair"
+                    // PPQ2-C (proposed): a pair's content is a centred column,
+                    // so its letter moves to the corner instead of eating width.
+                    ? "absolute left-2 top-2" : "mr-2 shrink-0"} text-xs font-bold ${letterClass}`}>
                     {String.fromCharCode(65 + idx)}.
                   </span>
-                  {media && <OptionMediaIcon media={media[idx] ?? null} />}
-                  <span className="min-w-0 flex-1 break-words">{label}</span>
+                  {content ? (
+                    <span data-option-content className="min-w-0 flex-1">{content[idx]}</span>
+                  ) : (
+                    <>
+                      {media && <OptionMediaIcon media={media[idx] ?? null} />}
+                      <span className="min-w-0 flex-1 break-words">{label}</span>
+                    </>
+                  )}
                   {answerResult && isCorrect && (
                     <CheckCircle2 className="h-4 w-4 text-primary-foreground ml-2 shrink-0" />
                   )}
@@ -335,6 +364,13 @@ export default function QuizAnswerOptions({
           </div>
         );
       })}
+      {/* PPQ2-C (proposed): a span, so the `> div` entrance never moves it. */}
+      {columns === "pair" && pairDivider ? (
+        <span aria-hidden data-pair-divider
+          className="pointer-events-none absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center">
+          {pairDivider}
+        </span>
+      ) : null}
     </div>
   );
 }
