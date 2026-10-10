@@ -45,6 +45,7 @@ import { useDailyRun } from "./useDailyRun";
 import { hasDailyStartIntent } from "@/lib/daily-challenge/run/entry";
 import { dailyLeaveCopy, shouldBlockDailyNavigation, shouldGuardDailyLeave } from "./dailyLeaveContract";
 import { hasMainDaily } from "@/lib/daily-challenge/run/contracts";
+import { isDailyOpeningStage } from "@/lib/daily-challenge/run/flow";
 import { useTransactionalLeaveGuard } from "@/lib/navigation/useTransactionalLeaveGuard";
 
 export const DAILY_EYEBROW = "Daily Challenge";
@@ -197,7 +198,8 @@ export function DailyRunPage({
     case "stage-intro":
       return shell(
         <StageIntroBeat run={run} stage={flow.stage!} error={dc.error} onRetry={dc.retry} busy={dc.busy} />,
-        <DailyStageChrome run={run} stage={flow.stage} />);
+        // DV2-P2C — the v5+ opening names no stage, so neither does its header.
+        <DailyStageChrome run={run} stage={isDailyOpeningStage(run, flow.stage!) ? null : flow.stage} />);
     case "stage-settling":
     case "stage-result": {
       const onProceed = flow.phase === "stage-result" ? dc.continueFromResult : undefined;

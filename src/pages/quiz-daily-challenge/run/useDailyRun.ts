@@ -29,6 +29,9 @@
  * main result replay, and no optional child launched until the player asks
  * (`enterOptional`). A live optional child still recovers as above.
  *
+ * DV2-P2C — a v5+ day plays no separate Daily intro: Standard's tag is its
+ * one opening beat (see `flow.ts`). v1–v4 arrivals are unchanged.
+ *
  * DV2-P2A.1 — once the player COMMITS to an optional stage (leaves
  * `optional-entry`, presses Continue into it, or Try again), the stage's id is
  * latched (`optionalLaunchFor`) until the launch reaches a known outcome: a
@@ -47,7 +50,7 @@ import {
 import { newInteractionId } from "@/lib/analytics/correlation";
 import {
   DAILY_INTRO_MS, STAGE_INTRO_MIN_MS,
-  arrivesAtOptionalEntry, optionalLaunchInFlight, optionalLaunchTarget,
+  arrivesAtOptionalEntry, opensWithDailyIntro, optionalLaunchInFlight, optionalLaunchTarget,
   projectDailyFlow, stageCompletedBetween, type DailyFlowView,
 } from "@/lib/daily-challenge/run/flow";
 import { runSkewMs } from "@/lib/daily-challenge/run/timeBank";
@@ -221,6 +224,17 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     }
   }, [noteStrikes, playSfx]);
 
+  /**
+   * A fresh arrival's Daily intro — v1–v4 only. DV2-P2C: a v5+ day plays no
+   * separate intro; Standard's tag, drawn as the Daily's opening, is the one
+   * beat, and it is the tag that covers the launch (as for every stage).
+   */
+  const playDailyIntro = useCallback((r: DailyRun) => {
+    if (!opensWithDailyIntro(r)) return;
+    setDailyIntroUp(true);
+    after(DAILY_INTRO_MS, () => setDailyIntroUp(false));
+  }, [after]);
+
   const ask = useCallback(async (work: () => Promise<DailyRun>, quiet = false): Promise<DailyRun | null> => {
     if (!quiet) { setBusy(true); setError(null); }
     try {
@@ -248,17 +262,13 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
           const next = await ask(() => transport.startToday());
           if (cancelled || !mounted.current) return;
           if (!next) { setLoad("ready"); return; }
-          setDailyIntroUp(true);
-          after(DAILY_INTRO_MS, () => setDailyIntroUp(false));
+          playDailyIntro(next);
           return;
         }
         // A run nobody has played a stage of yet is still an arrival.
         const untouched = today.status === "active" && today.currentStageIndex === 0
           && today.stages[0].status === "pending";
-        if (untouched) {
-          setDailyIntroUp(true);
-          after(DAILY_INTRO_MS, () => setDailyIntroUp(false));
-        }
+        if (untouched) playDailyIntro(today);
         // DV2-P2A — the main Daily is done; optional content waits for a choice.
         if (arrivesAtOptionalEntry(today)) setOptionalEntryUp(true);
         adopt(today);
@@ -272,16 +282,15 @@ export function useDailyRun(transport: DailyRunTransport, autoStart = false): Da
     return () => { cancelled = true; };
   // `autoStart` is read once, on arrival — it is an intent, not a mode.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transport, adopt, after, ask]);
+  }, [transport, adopt, playDailyIntro, ask]);
 
   const start = useCallback(() => {
     void (async () => {
       const next = await ask(() => transport.startToday());
       if (!next) return;
-      setDailyIntroUp(true);
-      after(DAILY_INTRO_MS, () => setDailyIntroUp(false));
+      playDailyIntro(next);
     })();
-  }, [ask, transport, after]);
+  }, [ask, transport, playDailyIntro]);
 
   // ── the stage tag, and the launch it covers ───────────────────────────────
   const stage = run ? currentStage(run) : null;

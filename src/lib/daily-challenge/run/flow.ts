@@ -34,10 +34,15 @@
  * stage has not started. It replays nothing (it is not the main result), and
  * it keeps a page load from launching an optional child the player did not
  * ask for.
+ *
+ * DV2-P2C — a v5+ day opens with ONE beat, not two: there is no separate
+ * Daily intro, and Standard's own tag (which already covers its launch) is
+ * drawn as the Daily's opening — the "Daily Challenge" title and nothing
+ * else. v1–v4 keep the Daily intro and their tags as before.
  */
 import { ENTRY_INTRO_MIN_MS } from "@/lib/ranked-core/pacing";
 import type { DailyRun, DailyStage } from "./contracts";
-import { currentStage, isMainDailyComplete } from "./contracts";
+import { currentStage, hasMainDaily, isMainDailyComplete, mainStage } from "./contracts";
 
 /**
  * Pacing, borrowed from Ranked rather than invented, so the Daily and Ranked
@@ -165,6 +170,24 @@ export function stageCompletedBetween(prev: DailyRun | null, next: DailyRun): Da
   const after = next.stages[before.index];
   if (!after || (after.status !== "completed" && after.status !== "skipped")) return null;
   return after;
+}
+
+/**
+ * DV2-P2C — does a fresh arrival on this run play the separate Daily intro?
+ * v1–v4 only. A v5+ day goes straight to Standard's tag, which is drawn as
+ * the opening (`isDailyOpeningStage`) — one beat instead of two.
+ */
+export function opensWithDailyIntro(run: Pick<DailyRun, "planVersion">): boolean {
+  return !hasMainDaily(run);
+}
+
+/**
+ * DV2-P2C — is this stage's tag the v5+ Daily's opening beat? True only for
+ * the MAIN stage (Standard) of a v5+ run; every optional stage, and every
+ * v1–v4 stage, keeps its ordinary tag.
+ */
+export function isDailyOpeningStage(run: DailyRun, stage: DailyStage): boolean {
+  return mainStage(run)?.id === stage.id;
 }
 
 /**
