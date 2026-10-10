@@ -247,6 +247,12 @@ const LobbyPreviewPage = import.meta.env.DEV
 const ArenaQuestionProbe = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/arena-question-probe/ArenaQuestionProbe"))
   : null;
+// PPQ2-INT: the playable Pro Play Arena (live API or frozen fixtures). Same
+// DEVELOPMENT-ONLY rule: the production quiz route is not switched yet. Its
+// path is under /lol/ so it renders in the LoL theme, as the real route will.
+const ProPlayArenaDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/pro-play-arena/ProPlayArenaDev"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -639,6 +645,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {ArenaQuestionProbe ? (
                     <Route path="/dev/arena-question-probe" element={<Suspense fallback={<RouteFallback />}><ArenaQuestionProbe /></Suspense>} />
+                  ) : null}
+                  {ProPlayArenaDev ? (
+                    <Route path="/lol/dev/pro-play-arena" element={<Suspense fallback={<RouteFallback />}><ProPlayArenaDev /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
