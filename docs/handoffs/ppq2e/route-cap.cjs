@@ -17,6 +17,7 @@
 //  real production route; each capture name says which. A variant run plays
 //  until it has captured a two-way and a four-way reveal.
 //
+// PPQ_ALL=1: a variant run captures EVERY reveal of the session (all ten).
 // Env: PPQ_BASE (default http://localhost:5281), PPQ_CACHE (asset cache),
 //      PPQ_RM=1 (reduced motion), PPQ_LEGACY=1 (the pre-PPQ2-E page on main:
 //      pre, first reveal and the completed summary only).
@@ -204,10 +205,11 @@ const LONG_TAIL = " Synthetic second sentence for the long-explanation check: th
             }
             if (LEGACY && seen.size >= 1 && qn === 1) { /* one legacy reveal is enough */ }
           } else {
-            const want = n >= 3 ? !fourWay : !twoWay;
-            if (want) await shoot(`reveal${tag}-${verdict}-${n === 2 ? "2way" : "4way"}`, { choices: n, verdict, evidenceState: state });
+            const all = process.env.PPQ_ALL === "1";
+            const want = all || (n >= 3 ? !fourWay : !twoWay);
+            if (want) await shoot(`reveal${tag}-${all ? `q${qn}-` : ""}${verdict}-${n === 2 ? "2way" : "4way"}`, { choices: n, verdict, evidenceState: state });
             if (n >= 3) fourWay = true; else twoWay = true;
-            if (fourWay && twoWay) break;
+            if (fourWay && twoWay && !all) break;
           }
           const next = LEGACY
             ? page.getByRole("button", { name: qn === 10 ? "See results" : "Next" })

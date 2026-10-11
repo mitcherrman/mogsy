@@ -182,8 +182,14 @@ function TabletFacts({ identity, compact }: { identity: TabletIdentity; compact:
       // column (PPQ2-INT density), so a compact tablet puts them beside the
       // facts; the row still drops whole chips, never half of one.
       <span className={cn("flex min-w-0 flex-col gap-1", compact ? COMPACT_FACTS : "items-center")}>
-        <span className={cn("flex shrink-0 items-center gap-1.5", META)}>
-          <span data-pp-fact="region" className="shrink-0 text-[#e8c97a]">{s.region?.trim() || EMPTY_VALUE}</span>
+        {/* PPQ2-E: from `lg` a 2x2 tablet is ~235px wide at 1024, and a long
+            region ("NORTH AMERICA · 2015–2026") ran past its right edge under
+            the verdict icon. There the row may shrink and the REGION
+            truncates (full text in its title); the seasons never do. Below
+            `lg` the row keeps its size beside the codes, as before. */}
+        <span className={cn("flex shrink-0 items-center gap-1.5 lg:max-w-full lg:shrink", META)}>
+          <span data-pp-fact="region" title={s.region?.trim() || undefined}
+            className="shrink-0 text-[#e8c97a] lg:min-w-0 lg:shrink lg:truncate">{s.region?.trim() || EMPTY_VALUE}</span>
           <span aria-hidden className="opacity-40">·</span>
           <span data-pp-fact="seasons" className="shrink-0">{seasonsLabel(s)}</span>
         </span>

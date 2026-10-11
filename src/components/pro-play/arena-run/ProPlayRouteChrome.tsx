@@ -2,13 +2,18 @@
  * PPQ2-E — the Pro Play Quiz route's chrome: the way back, and no height.
  *
  * It is the arena routes' own pattern (`RankedRouteHeader`): a zero-height box
- * in the shell's header slot, with the link in the HUD band beside the hat
- * (56px from the viewport's left edge clears the hat chip at every width; see
- * that file for the geometry). One difference, because this arena is not one
- * screen tall:
+ * in the shell's header slot, with the link in the HUD band (below `lg`
+ * beside the hat: 56px from the viewport's left edge clears the hat chip; see
+ * that file for the geometry). Two differences, because this arena is not one
+ * screen tall and has no clock:
  *
  *  - from `lg` the shell is locked to the viewport and nothing scrolls, so the
- *    link is `fixed` in the viewport's own space, exactly as Ranked's;
+ *    link is `fixed` in the viewport's own space, as Ranked's. But not beside
+ *    the hat: from `lg` the arena header strip is pulled up into the HUD band,
+ *    and below ~1350px its left zone ("PRO PLAY QUIZ / QUESTION n / N") starts
+ *    under that spot (measured at 1024: the link ran over the eyebrow). Pro
+ *    Play has no clock, so the strip's CENTRE track is empty at every width;
+ *    the link sits there, centred in the band;
  *  - below `lg` the arena stacks and the PAGE scrolls. A `fixed` text link
  *    there floated over the stage as it scrolled under it (measured at
  *    390×844), unreadable and on top of the plate. So below `lg` it is
@@ -33,7 +38,7 @@ export function ProPlayRouteChrome({ to, label = "Back to Pro Play" }: { to: str
         data-testid="pro-play-back"
         className="absolute -top-[calc(var(--app-header-h)+0.75rem)] left-10 z-40 flex h-[var(--app-header-h)]
           items-center text-xs text-muted-foreground/70 underline underline-offset-2 transition-colors
-          hover:text-muted-foreground lg:fixed lg:left-14 lg:top-0"
+          hover:text-muted-foreground lg:fixed lg:left-1/2 lg:top-0 lg:-translate-x-1/2"
       >
         {label}
       </Link>

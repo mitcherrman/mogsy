@@ -17,6 +17,7 @@ import { RoleEmblem } from "@/components/ranked-arena/RoleEmblem";
 import type { ProPlayQuestionContext, ProPlaySubject } from "@/lib/pro-play/contract";
 import { cn } from "@/lib/utils";
 import { GoldHairline } from "./ArenaOrnaments";
+import { useYieldToFit } from "./useYieldToFit";
 import {
   EMPTY_VALUE,
   isRecent,
@@ -113,8 +114,13 @@ export default function ProPlayQuestionDossier({ context, topic, className }: Pr
   const tags = scopeTags(context);
   const recent = context ? isRecent(context) : false;
   const recentTag = context?.editorial_tags?.find((t) => t.id === "recent_esports");
+  // PPQ2-E: the flank is the arena row's height from `lg`; when a tall reveal
+  // footer shrinks that row, the lines that repeat the plate, the footer or
+  // Source drop in order instead of being cut off (see `useYieldToFit`).
+  const fitRef = useYieldToFit<HTMLElement>(context);
   return (
     <aside
+      ref={fitRef}
       aria-label="Question dossier"
       data-testid="pro-play-question-dossier"
       className={cn("ranked-panel flex h-full min-h-0 flex-col gap-3.5 overflow-hidden p-4 text-left xl:p-5", className)}
@@ -137,7 +143,7 @@ export default function ProPlayQuestionDossier({ context, topic, className }: Pr
                 <span data-testid="dossier-anchor" className="font-semibold text-white/90">{context.anchor.label}</span>
               </p>
             ) : null}
-            {context.anchor ? <AnchorLedger anchor={context.anchor} /> : null}
+            {context.anchor ? <div data-pp-yield={3}><AnchorLedger anchor={context.anchor} /></div> : null}
           </Section>
 
           <Section title="Scope">
@@ -154,7 +160,7 @@ export default function ProPlayQuestionDossier({ context, topic, className }: Pr
                     </span>
                   </dt>
                   {tag.tooltip && tag.tooltip !== tag.label ? (
-                    <dd className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/65">{tag.tooltip}</dd>
+                    <dd data-pp-yield={2} className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/65">{tag.tooltip}</dd>
                   ) : null}
                 </div>
               ))}
@@ -166,13 +172,13 @@ export default function ProPlayQuestionDossier({ context, topic, className }: Pr
               className="rounded-md border border-sky-300/25 bg-sky-300/[0.06] px-2.5 py-1.5">
               <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-sky-100">{context.metric.label}</p>
               {context.metric.tooltip ? (
-                <p className="mt-0.5 text-[11px] leading-snug text-white/65">{context.metric.tooltip}</p>
+                <p data-pp-yield={1} className="mt-0.5 text-[11px] leading-snug text-white/65">{context.metric.tooltip}</p>
               ) : null}
             </div>
           </Section>
 
           {recent ? (
-            <p data-testid="dossier-recent"
+            <p data-testid="dossier-recent" data-pp-yield={4}
               className="rounded-md border border-emerald-300/25 bg-emerald-300/[0.06] px-2.5 py-1.5 text-[11px] leading-snug text-emerald-50/85">
               <span className="mr-1 font-bold uppercase tracking-[0.1em] text-emerald-200">Recent</span>
               {recentTag?.tooltip ?? recentTag?.label ?? null}

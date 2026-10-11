@@ -35,6 +35,7 @@ import {
 import type { ProPlayQuestionContext, ProPlaySubject } from "@/lib/pro-play/contract";
 import { cn } from "@/lib/utils";
 import { BoardPlate, PlateChip, PlateEyebrow } from "./ArenaOrnaments";
+import { useYieldToFit } from "./useYieldToFit";
 import {
   EMPTY_VALUE,
   anchorPlateKind,
@@ -64,13 +65,15 @@ export interface ProPlayAnchorPlateProps {
 }
 
 /** The scope + metric chips, in the server's order. Shared by every plate. */
-export function PlateScopeLine({ context, className, withRecent = true }: {
+export function PlateScopeLine({ context, className, withRecent = true, yieldOrder }: {
   context: ProPlayQuestionContext;
   className?: string;
   withRecent?: boolean;
+  /** PPQ2-E: may be dropped, in this order, when the plate is too short (see `useYieldToFit`). */
+  yieldOrder?: number;
 }) {
   return (
-    <div data-pro-play-scope-line
+    <div data-pro-play-scope-line data-pp-yield={yieldOrder}
       className={cn("flex min-w-0 flex-wrap items-center gap-1 overflow-hidden", className)}>
       {scopeTags(context).map((tag) => (
         <PlateChip
@@ -181,11 +184,11 @@ function ChampionPlate({ context, anchor }: { context: ProPlayQuestionContext; a
             + " rgba(7,17,31,0.25) 72%, rgba(7,17,31,0) 100%),"
             + " linear-gradient(0deg, rgba(6,13,24,0.85) 0%, rgba(6,13,24,0) 45%)",
         }} />
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
+      <div data-pp-plate-column className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         <RelationshipEyebrow context={context} />
         <div className="min-w-0 max-w-[64%] space-y-1.5 sm:max-w-[60%] lg:space-y-2">
           <PlateName>{anchor.label}</PlateName>
-          <PlateScopeLine context={context} />
+          <PlateScopeLine context={context} yieldOrder={1} />
         </div>
       </div>
     </BoardPlate>
@@ -264,11 +267,11 @@ function RoleCrest({ subject }: { subject: ProPlaySubject }) {
 }
 
 /** "UP · FPX · ES +2" — the server's short codes; tooltips hold full names. */
-function TeamLine({ subject, className }: { subject: ProPlaySubject; className?: string }) {
+function TeamLine({ subject, className, yieldOrder }: { subject: ProPlaySubject; className?: string; yieldOrder?: number }) {
   const { shown, hidden } = teamChips(subject);
-  if (!shown.length) return <span className={cn("text-white/50", className)}>{EMPTY_VALUE}</span>;
+  if (!shown.length) return <span data-pp-yield={yieldOrder} className={cn("text-white/50", className)}>{EMPTY_VALUE}</span>;
   return (
-    <span data-pro-play-team-line className={cn("flex min-w-0 flex-wrap items-center gap-1", className)}>
+    <span data-pro-play-team-line data-pp-yield={yieldOrder} className={cn("flex min-w-0 flex-wrap items-center gap-1", className)}>
       {shown.map((team) => (
         <PlateChip key={team.id ?? team.label} label={team.short ?? team.label}
           tooltip={team.short ? (team.tooltip ?? team.label) : null} tone="window" />
@@ -290,7 +293,7 @@ function PlayerPlate({ context, anchor }: { context: ProPlayQuestionContext; anc
           <RoleEmblem role={role} size="lg" decorative className="!h-40 !w-40 lg:!h-56 lg:!w-56" />
         </span>
       ) : null}
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
+      <div data-pp-plate-column className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         <div className="flex items-center justify-between gap-2">
           <RelationshipEyebrow context={context} />
           <PlateEyebrow className={cn("hidden text-white/45 sm:block", field && "lg:hidden")}>Player dossier</PlateEyebrow>
@@ -304,8 +307,8 @@ function PlayerPlate({ context, anchor }: { context: ProPlayQuestionContext; anc
               <span aria-hidden className="text-white/30">·</span>
               <span data-testid="pro-play-plate-seasons">{seasonsLabel(anchor)}</span>
             </div>
-            <TeamLine subject={anchor} className="hidden sm:flex" />
-            <PlateScopeLine context={context} className="hidden lg:flex" />
+            <TeamLine subject={anchor} className="hidden sm:flex" yieldOrder={1} />
+            <PlateScopeLine context={context} className="hidden lg:flex" yieldOrder={2} />
           </div>
         </div>
         {/* Phones: the scope line drops under the identity, full width. */}
@@ -363,11 +366,11 @@ export function TeamShield({ label, short, size = "md", className }: {
   );
 }
 
-function LeagueLine({ subject, className }: { subject: ProPlaySubject; className?: string }) {
+function LeagueLine({ subject, className, yieldOrder }: { subject: ProPlaySubject; className?: string; yieldOrder?: number }) {
   const { shown, hidden } = leagueChips(subject);
-  if (!shown.length) return <span className={cn("text-white/50", className)}>{EMPTY_VALUE}</span>;
+  if (!shown.length) return <span data-pp-yield={yieldOrder} className={cn("text-white/50", className)}>{EMPTY_VALUE}</span>;
   return (
-    <span data-pro-play-league-line className={cn("flex min-w-0 flex-wrap items-center gap-1", className)}>
+    <span data-pro-play-league-line data-pp-yield={yieldOrder} className={cn("flex min-w-0 flex-wrap items-center gap-1", className)}>
       {shown.map((league) => (
         <PlateChip key={league.id} label={league.label}
           tooltip={league.tooltip !== league.label ? league.tooltip : null} tone="competition" />
@@ -388,7 +391,7 @@ function TeamPlate({ context, anchor }: { context: ProPlayQuestionContext; ancho
         className={cn(field && "lg:hidden", "pointer-events-none absolute -right-2 top-1/2 -z-10 -translate-y-1/2 select-none text-[6.5rem] font-black leading-none text-[#e8c97a]/[0.06] lg:right-4 lg:text-[10rem]")}>
         {monogram(anchor.label, anchor.short)}
       </span>
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
+      <div data-pp-plate-column className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         <div className="flex items-center justify-between gap-2">
           <RelationshipEyebrow context={context} />
           <PlateEyebrow className={cn("hidden text-white/45 sm:block", field && "lg:hidden")}>Team dossier</PlateEyebrow>
@@ -404,8 +407,8 @@ function TeamPlate({ context, anchor }: { context: ProPlayQuestionContext; ancho
               <span aria-hidden className="text-white/30">·</span>
               <span data-testid="pro-play-plate-seasons">{seasonsLabel(anchor)}</span>
             </div>
-            <LeagueLine subject={anchor} className="hidden sm:flex" />
-            <PlateScopeLine context={context} className="hidden lg:flex" />
+            <LeagueLine subject={anchor} className="hidden sm:flex" yieldOrder={1} />
+            <PlateScopeLine context={context} className="hidden lg:flex" yieldOrder={2} />
           </div>
         </div>
         <PlateScopeLine context={context} className="lg:hidden" />
@@ -444,7 +447,7 @@ function CompetitionPlate({ context, anchor }: { context: ProPlayQuestionContext
         <span className="absolute inset-5 rounded-full border border-[#c9a84c]/10" />
         <span className="absolute inset-12 rounded-full border border-[#c9a84c]/[0.07]" />
       </span>
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
+      <div data-pp-plate-column className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         {/* Recent sits beside the eyebrow, on the copy side, so it never
             lands on one lineup slice and favours that option. */}
         <div className="flex min-w-0 items-center gap-2">
@@ -452,10 +455,12 @@ function CompetitionPlate({ context, anchor }: { context: ProPlayQuestionContext
           {isRecent(context) ? <RecentChip context={context} /> : null}
         </div>
         <div className={cn("min-w-0 space-y-1 lg:space-y-1.5", field && "lg:max-w-[58%]")}>
-          <PlateEyebrow className="hidden text-white/50 lg:block">Competition</PlateEyebrow>
+          <span data-pp-yield={2} className="contents">
+            <PlateEyebrow className="hidden text-white/50 lg:block">Competition</PlateEyebrow>
+          </span>
           <PlateName shared={field !== null}>{headline}</PlateName>
           {fullName ? (
-            <p data-testid="pro-play-plate-fullname" title={fullName}
+            <p data-testid="pro-play-plate-fullname" data-pp-yield={1} title={fullName}
               className="hidden truncate text-xs font-medium text-white/75 sm:block lg:text-sm">
               {fullName}
             </p>
@@ -463,7 +468,7 @@ function CompetitionPlate({ context, anchor }: { context: ProPlayQuestionContext
         </div>
         {/* Time-window facts as medallions (season, patch, all-time), as
             served, then the metric. One wrapping row at every width. */}
-        <div data-pro-play-window-facts
+        <div data-pro-play-window-facts data-pp-yield={3}
           className={cn("flex min-w-0 flex-wrap items-center gap-1.5 lg:gap-2", field && "lg:max-w-[58%]")}>
           {windows.map((tag) => (
             <span key={`${tag.type}:${tag.id ?? tag.label}`} title={tag.tooltip ?? undefined}
@@ -492,7 +497,7 @@ function CompetitionPlate({ context, anchor }: { context: ProPlayQuestionContext
 function PlainPlate({ title }: { title: string }) {
   return (
     <BoardPlate kind="none" label="Pro Play question">
-      <div className="relative flex h-full min-w-0 flex-col justify-between p-3 sm:p-4 lg:p-5">
+      <div data-pp-plate-column className="relative flex h-full min-w-0 flex-col justify-between p-3 sm:p-4 lg:p-5">
         <PlateEyebrow>Pro Play</PlateEyebrow>
         <PlateName>{title}</PlateName>
       </div>
@@ -502,6 +507,9 @@ function PlainPlate({ title }: { title: string }) {
 
 /** The anchor plate for one question. Pure presentation; no data fetching beyond the asset manifest. */
 export default function ProPlayAnchorPlate({ context, fallbackTitle, className }: ProPlayAnchorPlateProps) {
+  // PPQ2-E: rows that repeat the dossier drop, in order, rather than clip
+  // when a tall reveal footer shrinks the plate (see `useYieldToFit`).
+  const fitRef = useYieldToFit<HTMLDivElement>(context, "[data-pp-plate-column]");
   const kind = anchorPlateKind(context);
   const anchor = context?.anchor ?? null;
   let plate;
@@ -511,7 +519,7 @@ export default function ProPlayAnchorPlate({ context, fallbackTitle, className }
   else if (kind === "team" && anchor) plate = <TeamPlate context={context} anchor={anchor} />;
   else plate = <CompetitionPlate context={context} anchor={anchor} />;
   return (
-    <div data-pro-play-anchor-plate={context ? kind : "plain"} className={cn("flex w-full min-w-0 lg:h-full lg:min-h-0", className)}>
+    <div ref={fitRef} data-pro-play-anchor-plate={context ? kind : "plain"} className={cn("flex w-full min-w-0 lg:h-full lg:min-h-0", className)}>
       {plate}
     </div>
   );
