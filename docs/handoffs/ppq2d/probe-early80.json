@@ -1,0 +1,374 @@
+[
+ {
+  "name": "early80-t1_lineage-wrong-390x844",
+  "fixture": "t1_lineage",
+  "grade": "wrong",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 1085,
+  "stageH": 654.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 402.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 480.3,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 494.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 572.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 584.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 662.3,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 672.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 750.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": false,
+    "opacity": "0.812754"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": false,
+    "opacity": "0.525014"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "0"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": false,
+    "opacity": "0"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 806.3,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 929
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 929/844"
+  ],
+  "lastTabletBottom": 750,
+  "footerBottom": 929,
+  "preStageH": 654.3,
+  "preTabletH": [
+   78,
+   78,
+   78,
+   78
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "early80-champion_player-real-390x844",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 844,
+  "stageH": 403.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 382.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 499.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 382.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 499.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "0.321681"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "0"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 555.4,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 678.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "\"Your pick\" overlaps support text in tablet 0"
+  ],
+  "lastTabletBottom": 499,
+  "footerBottom": 678,
+  "preStageH": 403.4,
+  "preTabletH": [
+   117.3,
+   117.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "early80-t1_lineage-wrong-1440x900",
+  "fixture": "t1_lineage",
+  "grade": "wrong",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 535.1,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 619.6,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 725,
+    "y": 537.2,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 621.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 427.8,
+    "y": 631.7,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 716.2,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 725,
+    "y": 631.7,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 716.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": false,
+    "opacity": "0.542662"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": false,
+    "opacity": "0"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "0"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": false,
+    "opacity": "0"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 716,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   84.5,
+   84.5,
+   84.5,
+   84.5
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "early80-champion_player-real-1440x900",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 565.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 697.3,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 565.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 697.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "0.322051"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "0"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 697,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   131.8,
+   131.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ }
+]

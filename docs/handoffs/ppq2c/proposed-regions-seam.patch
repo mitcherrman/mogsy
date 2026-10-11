@@ -1,0 +1,281 @@
+diff --git a/src/components/question-surface/InteractiveScenarioSurface.tsx b/src/components/question-surface/InteractiveScenarioSurface.tsx
+index a0b1d5b1..cacf7825 100644
+--- a/src/components/question-surface/InteractiveScenarioSurface.tsx
++++ b/src/components/question-surface/InteractiveScenarioSurface.tsx
+@@ -114,6 +114,14 @@ export interface InteractiveScenarioSurfaceProps {
+    * the Journey stage: every other caller renders exactly as before.
+    */
+   promptFooter?: ReactNode;
++  /** PPQ2-C (proposed) — a mode's node for the media region. Absent elsewhere. */
++  mediaNode?: ReactNode;
++  /** PPQ2-C (proposed) — positional content inside each canonical tablet. */
++  answerContent?: ReactNode[] | null;
++  /** PPQ2-C (proposed) — column strategy override for the canonical grid. */
++  answerColumns?: "auto" | "wide-2" | "pair";
++  /** PPQ2-C (proposed) — drawn over the gap of a "pair". */
++  pairDivider?: ReactNode;
+ }
+ 
+ /**
+@@ -193,12 +201,19 @@ export function InteractiveScenarioSurface({
+   context = null,
+   promptNode = null,
+   promptFooter = null,
++  mediaNode = null,
++  answerContent = null,
++  answerColumns,
++  pairDivider = null,
+ }: InteractiveScenarioSurfaceProps) {
+   const settings = resolveSettings(variant, overrides);
+   // Pre-reveal premise fields only — see resolveBandProfile. Recomputed per
+   // render like the existing selectScenario call; both are pure and cheap.
+   const familyLayout = selectFamilyLayout(scenarioSource);
+-  const bandProfile = resolveBandProfile(scenarioSource, settings.mediaScale, familyLayout);
++  const resolvedBand = resolveBandProfile(scenarioSource, settings.mediaScale, familyLayout);
++  // PPQ2-C (proposed): a supplied media node takes the media region; the
++  // category then shows in the prompt header, as for a cinematic band.
++  const bandProfile = mediaNode ? "media-node" as const : resolvedBand;
+   // ONE disclosure decision, whichever channel supplied it. `feedback` wins
+   // where both are present, because it is the richer statement of the same
+   // fact and a caller that passes it has said this surface's state is more
+@@ -285,14 +300,14 @@ export function InteractiveScenarioSurface({
+           empty box between them. */}
+       {bandProfile !== "none" && (
+         <div data-surface-region="media">
+-          <HeroBand
+-            profile={bandProfile}
++          {mediaNode ?? <HeroBand
++            profile={resolvedBand}
+             scenarioSource={scenarioSource}
+             question={question}
+             reveal={reveal}
+             settings={settings}
+             familyLayout={familyLayout}
+-          />
++          />}
+         </div>
+       )}
+ 
+@@ -349,6 +364,9 @@ export function InteractiveScenarioSurface({
+           revealedCorrectOptionId={revealedCorrectOptionId}
+           wideTwoColumn={wideTwoColumn}
+           eliminatedOptionIds={eliminatedOptionIds}
++          optionContent={answerContent ?? undefined}
++          columns={answerColumns}
++          pairDivider={pairDivider}
+         />
+       </div>
+ 
+diff --git a/src/components/quiz/QuizAnswerOptions.tsx b/src/components/quiz/QuizAnswerOptions.tsx
+index d6056a68..0d06df1f 100644
+--- a/src/components/quiz/QuizAnswerOptions.tsx
++++ b/src/components/quiz/QuizAnswerOptions.tsx
+@@ -8,7 +8,7 @@
+  * (idle | selected | correct | incorrect-selected), so an unanswered render
+  * carries no correct-answer information in the DOM.
+  */
+-import { useState } from "react";
++import { useState, type ReactNode } from "react";
+ import { CheckCircle2, XCircle } from "lucide-react";
+ import { Button } from "@/components/ui/button";
+ import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+@@ -95,7 +95,16 @@ type QuizAnswerOptionsProps = {
+    * competitive surfaces whose callers have verified the labels are short
+    * enough to stay readable side by side.
+    */
+-  columns?: "auto" | "wide-2";
++  columns?: "auto" | "wide-2" | "pair";
++  /**
++   * PPQ2-C (proposed) — positional content drawn INSIDE each tablet in place
++   * of its media badge and label. All or none: a length mismatch or any empty
++   * entry keeps the classic label. The button, its letter, states, verdict
++   * icons and "Your pick" are unchanged; its accessible name stays the label.
++   */
++  optionContent?: ReactNode[];
++  /** PPQ2-C (proposed) — drawn over the gap of a "pair" grid. */
++  pairDivider?: ReactNode;
+   /**
+    * OPTIONAL canonical media for the choices (RA6), POSITIONAL and
+    * length-matched: entry i belongs to choice i. Omit for the classic
+@@ -142,7 +151,14 @@ export default function QuizAnswerOptions({
+   optionMedia,
+   markSelectionOnReveal = false,
+   eliminatedIndexes,
++  optionContent,
++  pairDivider = null,
+ }: QuizAnswerOptionsProps) {
++  const content =
++    !choicesHaveImages(choices) && optionContent
++    && optionContent.length === (choices || []).length && optionContent.every(Boolean)
++      ? optionContent
++      : null;
+   const eliminated = new Set(answerResult ? [] : (eliminatedIndexes ?? []));
+   const hasImages = choicesHaveImages(choices);
+   // Picture-choice mode already renders large per-choice art and manages its
+@@ -177,6 +193,8 @@ export default function QuizAnswerOptions({
+        */
+       className={hasImages
+         ? "grid grid-cols-2 auto-rows-fr gap-2.5"
++        : columns === "pair"
++        ? "relative grid grid-cols-2 auto-rows-fr gap-x-8 gap-y-2.5 sm:gap-x-10"
+         : `grid grid-cols-1 gap-2.5 [@media(max-height:480px)_and_(orientation:landscape)]:grid-cols-2 [@media(max-height:480px)_and_(orientation:landscape)]:auto-rows-fr [@media(max-height:480px)]:gap-2${
+           columns === "wide-2" ? " lg:grid-cols-2 lg:auto-rows-fr" : ""}`}
+     >
+@@ -248,6 +266,7 @@ export default function QuizAnswerOptions({
+               data-choice-state={choiceState}
+               data-your-pick={showPick ? "true" : undefined}
+               onClick={() => onSelect(label, idx)}
++              aria-label={content ? `${String.fromCharCode(65 + idx)}. ${label}` : undefined}
+               // An eliminated option is unavailable INDIVIDUALLY: the rest of
+               // the grid stays live, which is what makes the retry a retry.
+               disabled={!!answerResult || isEliminated}
+@@ -271,6 +290,7 @@ export default function QuizAnswerOptions({
+                 isEliminated
+                   ? "line-through opacity-45 border-destructive/40 disabled:opacity-45"
+                   : "",
++                content && columns === "pair" ? "relative" : "",
+                 showPick
+                   ? "relative ring-2 ring-offset-2 ring-offset-transparent ring-[#f0d78c] disabled:opacity-100"
+                   : "",
+@@ -310,11 +330,20 @@ export default function QuizAnswerOptions({
+                 </>
+               ) : (
+                 <>
+-                  <span data-choice-letter className={`mr-2 shrink-0 text-xs font-bold ${letterClass}`}>
++                  <span data-choice-letter className={`${content && columns === "pair"
++                    // PPQ2-C (proposed): a pair's content is a centred column,
++                    // so its letter moves to the corner instead of eating width.
++                    ? "absolute left-2 top-2" : "mr-2 shrink-0"} text-xs font-bold ${letterClass}`}>
+                     {String.fromCharCode(65 + idx)}.
+                   </span>
+-                  {media && <OptionMediaIcon media={media[idx] ?? null} />}
+-                  <span className="min-w-0 flex-1 break-words">{label}</span>
++                  {content ? (
++                    <span data-option-content className="min-w-0 flex-1">{content[idx]}</span>
++                  ) : (
++                    <>
++                      {media && <OptionMediaIcon media={media[idx] ?? null} />}
++                      <span className="min-w-0 flex-1 break-words">{label}</span>
++                    </>
++                  )}
+                   {answerResult && isCorrect && (
+                     <CheckCircle2 className="h-4 w-4 text-primary-foreground ml-2 shrink-0" />
+                   )}
+@@ -335,6 +364,13 @@ export default function QuizAnswerOptions({
+           </div>
+         );
+       })}
++      {/* PPQ2-C (proposed): a span, so the `> div` entrance never moves it. */}
++      {columns === "pair" && pairDivider ? (
++        <span aria-hidden data-pair-divider
++          className="pointer-events-none absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center">
++          {pairDivider}
++        </span>
++      ) : null}
+     </div>
+   );
+ }
+diff --git a/src/components/ranked-arena/AnswerGrid.tsx b/src/components/ranked-arena/AnswerGrid.tsx
+index 87ed3b40..956e0758 100644
+--- a/src/components/ranked-arena/AnswerGrid.tsx
++++ b/src/components/ranked-arena/AnswerGrid.tsx
+@@ -16,6 +16,7 @@
+  *   backend-resolved from the option text alone and is all-or-nothing per
+  *   question, so it carries no correctness and needs no gating here.
+  */
++import type { ReactNode } from "react";
+ import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
+ import { answerDensity } from "@/lib/question-surface/textDensity";
+ import {
+@@ -46,6 +47,12 @@ export interface AnswerGridProps {
+    * card genuinely is.
+    */
+   eliminatedOptionIds?: readonly string[];
++  /** PPQ2-C (proposed) — positional tablet content, forwarded unchanged. */
++  optionContent?: ReactNode[];
++  /** PPQ2-C (proposed) — column strategy override ("pair" for two-way). */
++  columns?: "auto" | "wide-2" | "pair";
++  /** PPQ2-C (proposed) — drawn over a pair's gap. */
++  pairDivider?: ReactNode;
+ }
+ 
+ export function AnswerGrid({
+@@ -56,7 +63,11 @@ export function AnswerGrid({
+   revealedCorrectOptionId = null,
+   wideTwoColumn = false,
+   eliminatedOptionIds = [],
++  optionContent,
++  columns,
++  pairDivider = null,
+ }: AnswerGridProps) {
++  const resolvedColumns = columns ?? (wideTwoColumn ? "wide-2" : "auto");
+   const selected = options.find((o) => o.id === selectedOptionId) ?? null;
+   const revealed = options.find((o) => o.id === revealedCorrectOptionId) ?? null;
+   const eliminatedSet = new Set(eliminatedOptionIds);
+@@ -95,7 +106,7 @@ export function AnswerGrid({
+       data-answers-state={revealed ? "revealed" : interactive ? "open" : "locked"}
+       // RS2: the answer LAYOUT, from the same `wideTwoColumn` decision that
+       // picks the grid, so CSS can size tablets by layout without re-deriving it.
+-      data-answer-layout={wideTwoColumn ? "grid" : "stacked"}
++      data-answer-layout={resolvedColumns === "pair" ? "pair" : resolvedColumns === "wide-2" ? "grid" : "stacked"}
+       data-answer-count={options.length}
+       // VISCONT1: the type tier the arena seats this grid at (from the longest
+       // label and whether the tablets carry option media, before layout) —
+@@ -110,7 +121,9 @@ export function AnswerGrid({
+         selectedAnswer={selected?.label ?? null}
+         answerResult={revealed ? { correct_answer: revealed.label } : null}
+         onSelect={handleSelect}
+-        columns={wideTwoColumn ? "wide-2" : "auto"}
++        columns={resolvedColumns}
++        optionContent={optionContent}
++        pairDivider={pairDivider}
+         optionMedia={
+           hasOptionMedia ? options.map((o) => o.media ?? null) : undefined
+         }
+diff --git a/src/components/ranked-arena/CanonicalArena.tsx b/src/components/ranked-arena/CanonicalArena.tsx
+index 39f78441..eb565f4c 100644
+--- a/src/components/ranked-arena/CanonicalArena.tsx
++++ b/src/components/ranked-arena/CanonicalArena.tsx
+@@ -747,6 +747,10 @@ export function CanonicalArena({
+                   variant="competitive"
+                   scenarioSource={null}
+                   reveal={questionSurface.reveal}
++                  mediaNode={questionSurface.regions?.media ?? null}
++                  answerContent={questionSurface.regions?.optionContent ?? null}
++                  answerColumns={questionSurface.regions?.answerColumns}
++                  pairDivider={questionSurface.regions?.pairDivider ?? null}
+                 />
+               ) : Viewport && moduleSurface ? (
+               <Viewport
+diff --git a/src/lib/ranked-core/arenaView.ts b/src/lib/ranked-core/arenaView.ts
+index e729bf73..94bbe714 100644
+--- a/src/lib/ranked-core/arenaView.ts
++++ b/src/lib/ranked-core/arenaView.ts
+@@ -365,6 +365,27 @@ export interface ArenaQuestionSurface {
+    * (the canonical answer only once `reveal.revealed`).
+    */
+   reportRef?: QuestionReportRef | null;
++  /**
++   * PPQ2-C (proposed) — optional mode presentation for the stage's regions.
++   * Absent for every existing caller, which renders exactly as before.
++   * Presentation only: the canonical grid still owns selection
++   * (`onSelectOption`), gating (`permissions`) and every tablet state; grading
++   * still arrives only through `reveal`. (Not named `presentation`: that is
++   * the legacy Pro Play payload field the arena must never read.)
++   */
++  regions?: QuestionSurfaceRegions | null;
++}
++
++/** PPQ2-C (proposed) — mode-supplied presentation for the stage's regions. */
++export interface QuestionSurfaceRegions {
++  /** Replaces the surface's own band inside the media region. */
++  media?: ReactNode;
++  /** Positional content INSIDE each canonical tablet (all or none). */
++  optionContent?: ReactNode[] | null;
++  /** Column strategy for the canonical grid; "pair" = two side by side. */
++  answerColumns?: "auto" | "wide-2" | "pair";
++  /** Drawn over the gap between a pair's tablets. */
++  pairDivider?: ReactNode;
+ }
+ 
+ /** Server-side provenance for a reported `ArenaQuestionSurface` question. */

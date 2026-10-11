@@ -1,0 +1,39 @@
+{
+ "tablets": [
+  {
+   "name": "A. H4cker",
+   "disabled": true
+  },
+  {
+   "name": "B. Weiwei",
+   "disabled": true
+  }
+ ],
+ "tabStopsToSource": [
+  "LPL — Tencent LoL Pro League",
+  "ALL TIME — Every season available in thi",
+  "WIN RATE — Share of games won in this sc",
+  "Evidence source and authority"
+ ],
+ "focusVisibleRing": true,
+ "openedByEnter": {
+  "open": true,
+  "expanded": "true",
+  "role": "dialog",
+  "focusInPanel": true
+ },
+ "afterEscape": {
+  "open": false,
+  "focusOnTrigger": true
+ },
+ "nextStop": "Next",
+ "status": {
+  "role": "status",
+  "text": "Incorrect. You picked A, H4cker. The answer is B, Weiwei."
+ },
+ "readout": [
+  "A. H4cker: 7.1%, 14 games · 1W–13L. Your pick.",
+  "B. Weiwei: 25.0%, 12 games · 3W–9L. Correct answer."
+ ],
+ "footerName": "Answer evidence"
+}

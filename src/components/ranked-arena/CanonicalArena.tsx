@@ -458,6 +458,12 @@ export function CanonicalArena({
                   {" · "}{header.titleSuffix}
                 </span>
               )}
+              {/* PPQ2-INT — phone-only detail; from `lg` a panel flank shows it. */}
+              {header.titleDetail && (
+                <span data-testid="ranked-header-detail" className="lg:hidden">
+                  {" · "}{header.titleDetail}
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -747,6 +753,10 @@ export function CanonicalArena({
                   variant="competitive"
                   scenarioSource={null}
                   reveal={questionSurface.reveal}
+                  mediaNode={questionSurface.regions?.media ?? null}
+                  answerContent={questionSurface.regions?.optionContent ?? null}
+                  answerColumns={questionSurface.regions?.answerColumns}
+                  pairDivider={questionSurface.regions?.pairDivider ?? null}
                 />
               ) : Viewport && moduleSurface ? (
               <Viewport

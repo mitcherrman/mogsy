@@ -101,7 +101,11 @@ export default function Layout() {
     || pathname === PRO_PLAY_MATCHUP_ROUTE
     // PPQ2-A — the neutral question-surface probe measures the arena's own
     // footprint, so it gets the same page frame as Ranked.
-    || pathname === "/dev/arena-question-probe";
+    || pathname === "/dev/arena-question-probe"
+    // PPQ2-INT — the playable Pro Play Arena gets the same arena frame. It sits
+    // under /lol/ so it also gets the LoL theme (`dark theme-lol`) that every
+    // production arena route has; outside it the header reads dark-on-navy.
+    || pathname === "/lol/dev/pro-play-arena";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would
