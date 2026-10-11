@@ -16,6 +16,7 @@
  *   backend-resolved from the option text alone and is all-or-nothing per
  *   question, so it carries no correctness and needs no gating here.
  */
+import type { ReactNode } from "react";
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
 import { answerDensity } from "@/lib/question-surface/textDensity";
 import {
@@ -46,6 +47,12 @@ export interface AnswerGridProps {
    * card genuinely is.
    */
   eliminatedOptionIds?: readonly string[];
+  /** PPQ2-C (proposed) — positional tablet content, forwarded unchanged. */
+  optionContent?: ReactNode[];
+  /** PPQ2-C (proposed) — column strategy override ("pair" for two-way). */
+  columns?: "auto" | "wide-2" | "pair";
+  /** PPQ2-C (proposed) — drawn over a pair's gap. */
+  pairDivider?: ReactNode;
 }
 
 export function AnswerGrid({
@@ -56,7 +63,11 @@ export function AnswerGrid({
   revealedCorrectOptionId = null,
   wideTwoColumn = false,
   eliminatedOptionIds = [],
+  optionContent,
+  columns,
+  pairDivider = null,
 }: AnswerGridProps) {
+  const resolvedColumns = columns ?? (wideTwoColumn ? "wide-2" : "auto");
   const selected = options.find((o) => o.id === selectedOptionId) ?? null;
   const revealed = options.find((o) => o.id === revealedCorrectOptionId) ?? null;
   const eliminatedSet = new Set(eliminatedOptionIds);
@@ -95,7 +106,7 @@ export function AnswerGrid({
       data-answers-state={revealed ? "revealed" : interactive ? "open" : "locked"}
       // RS2: the answer LAYOUT, from the same `wideTwoColumn` decision that
       // picks the grid, so CSS can size tablets by layout without re-deriving it.
-      data-answer-layout={wideTwoColumn ? "grid" : "stacked"}
+      data-answer-layout={resolvedColumns === "pair" ? "pair" : resolvedColumns === "wide-2" ? "grid" : "stacked"}
       data-answer-count={options.length}
       // VISCONT1: the type tier the arena seats this grid at (from the longest
       // label and whether the tablets carry option media, before layout) —
@@ -110,7 +121,9 @@ export function AnswerGrid({
         selectedAnswer={selected?.label ?? null}
         answerResult={revealed ? { correct_answer: revealed.label } : null}
         onSelect={handleSelect}
-        columns={wideTwoColumn ? "wide-2" : "auto"}
+        columns={resolvedColumns}
+        optionContent={optionContent}
+        pairDivider={pairDivider}
         optionMedia={
           hasOptionMedia ? options.map((o) => o.media ?? null) : undefined
         }

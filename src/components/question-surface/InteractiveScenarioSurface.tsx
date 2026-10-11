@@ -114,6 +114,14 @@ export interface InteractiveScenarioSurfaceProps {
    * the Journey stage: every other caller renders exactly as before.
    */
   promptFooter?: ReactNode;
+  /** PPQ2-C (proposed) — a mode's node for the media region. Absent elsewhere. */
+  mediaNode?: ReactNode;
+  /** PPQ2-C (proposed) — positional content inside each canonical tablet. */
+  answerContent?: ReactNode[] | null;
+  /** PPQ2-C (proposed) — column strategy override for the canonical grid. */
+  answerColumns?: "auto" | "wide-2" | "pair";
+  /** PPQ2-C (proposed) — drawn over the gap of a "pair". */
+  pairDivider?: ReactNode;
 }
 
 /**
@@ -193,12 +201,19 @@ export function InteractiveScenarioSurface({
   context = null,
   promptNode = null,
   promptFooter = null,
+  mediaNode = null,
+  answerContent = null,
+  answerColumns,
+  pairDivider = null,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
   // Pre-reveal premise fields only — see resolveBandProfile. Recomputed per
   // render like the existing selectScenario call; both are pure and cheap.
   const familyLayout = selectFamilyLayout(scenarioSource);
-  const bandProfile = resolveBandProfile(scenarioSource, settings.mediaScale, familyLayout);
+  const resolvedBand = resolveBandProfile(scenarioSource, settings.mediaScale, familyLayout);
+  // PPQ2-C (proposed): a supplied media node takes the media region; the
+  // category then shows in the prompt header, as for a cinematic band.
+  const bandProfile = mediaNode ? "media-node" as const : resolvedBand;
   // ONE disclosure decision, whichever channel supplied it. `feedback` wins
   // where both are present, because it is the richer statement of the same
   // fact and a caller that passes it has said this surface's state is more
@@ -285,14 +300,14 @@ export function InteractiveScenarioSurface({
           empty box between them. */}
       {bandProfile !== "none" && (
         <div data-surface-region="media">
-          <HeroBand
-            profile={bandProfile}
+          {mediaNode ?? <HeroBand
+            profile={resolvedBand}
             scenarioSource={scenarioSource}
             question={question}
             reveal={reveal}
             settings={settings}
             familyLayout={familyLayout}
-          />
+          />}
         </div>
       )}
 
@@ -349,6 +364,9 @@ export function InteractiveScenarioSurface({
           revealedCorrectOptionId={revealedCorrectOptionId}
           wideTwoColumn={wideTwoColumn}
           eliminatedOptionIds={eliminatedOptionIds}
+          optionContent={answerContent ?? undefined}
+          columns={answerColumns}
+          pairDivider={pairDivider}
         />
       </div>
 

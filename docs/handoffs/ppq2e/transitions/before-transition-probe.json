@@ -1,0 +1,236 @@
+[
+ {
+  "name": "before-reveal-q1-375x812",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 13,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 1 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 302,
+   "bottom": 380,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "before-after-next-375x812",
+  "state": "after-next",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 13,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "question",
+  "header": "Question 2 / 10 · 1 correct",
+  "focus": "BODY",
+  "stem": {
+   "top": 299,
+   "bottom": 377,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": null
+ },
+ {
+  "name": "before-last-reveal-375x812",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 107,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 5 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 208,
+   "bottom": 286,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "",
+  "timelineStates": "rrrrrrrrrr",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "before-after-results-375x812",
+  "state": "after-results",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 107,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "complete",
+  "header": null,
+  "focus": "BODY",
+  "stem": null,
+  "summaryHeading": null,
+  "score": {
+   "top": 49,
+   "bottom": 89,
+   "inView": true
+  },
+  "playAgain": {
+   "top": 183,
+   "bottom": 227,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": -39,
+   "bottom": 304,
+   "inView": false
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": null,
+  "tabAfterResults": "Play again"
+ },
+ {
+  "name": "before-reveal-q1-390x844",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 98,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 0 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 215,
+   "bottom": 293,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "before-after-next-390x844",
+  "state": "after-next",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 98,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "question",
+  "header": "Question 2 / 10 · 0 correct",
+  "focus": "BODY",
+  "stem": {
+   "top": 217,
+   "bottom": 295,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": null
+ },
+ {
+  "name": "before-last-reveal-390x844",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 133,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 3 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 179,
+   "bottom": 257,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "",
+  "timelineStates": "rrrrrrrrrr",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "before-after-results-390x844",
+  "state": "after-results",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 133,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "complete",
+  "header": null,
+  "focus": "BODY",
+  "stem": null,
+  "summaryHeading": null,
+  "score": {
+   "top": 23,
+   "bottom": 63,
+   "inView": false
+  },
+  "playAgain": {
+   "top": 157,
+   "bottom": 201,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": -65,
+   "bottom": 278,
+   "inView": false
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": null,
+  "tabAfterResults": "Play again"
+ }
+]

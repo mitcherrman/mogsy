@@ -1,0 +1,12 @@
+- Expected
++ Received
+-   "components/quiz/QuizAnswerOptions.tsx",
++   "components\\quiz\\QuizAnswerOptions.tsx",
+- Expected
++ Received
+-   "components/quiz-broadcast/BroadcastRenderer.tsx",
+-   "components/quiz/QuizAnswerOptions.tsx",
+-   "components/ranked-arena/AnswerGrid.tsx",
++   "components\\quiz-broadcast\\BroadcastRenderer.tsx",
++   "components\\quiz\\QuizAnswerOptions.tsx",
++   "components\\ranked-arena\\AnswerGrid.tsx",

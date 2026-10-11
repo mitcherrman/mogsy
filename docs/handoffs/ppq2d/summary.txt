@@ -1,0 +1,51 @@
+total captures: 152; violations: 28; page errors: 0
+
+| Viewport | n | Tablet growth, facts tablets (px) | Tablet growth, champion tablets (px) | Stage Δ vs pre (px) | Footer height (px) | Last tablet bottom | Footer bottom | Violations |
+|---|---|---|---|---|---|---|---|---|
+| 375x812 | 28 | 0 | 0–36.5 | -68.5–36.5 | 105–263 | 748 | 961 | 0 |
+| 390x844 | 34 | 0–0.1 | 0–36.5 | -68.5–36.5 | 105–263 | 750 | 961 | 0 |
+| 768x1024 | 14 | 0–2 | 2.5–39.8 | 0–39.7 | 64–105 | 753 | 915 | 0 |
+| 1024x768 | 28 | 0 | 2.5–34.8 | -204–-46 | 46–204 | 566 | 688 | 28 |
+| 1280x800 | 14 | 0 | 2.5–34.8 | -50–-46 | 46–50 | 612 | 720 | 0 |
+| 1440x900 | 34 | 0 | 2.5–34.8 | -204–-46 | 46–204 | 716 | 820 | 0 |
+
+Notes (deduplicated by kind):
+- footer below fold #/#: 29 — e.g. team_champion-real-375x812, scope_champion-real-375x812, recent-real-375x812, tournament-real-375x812
+- support truncated on # tablet(s): 14 — e.g. team_champion-real-1024x768, scope_champion-real-1024x768, patch-real-1024x768, pro_play-real-1024x768
+- "Your pick" overlaps support text in tablet #: 1 — e.g. early80-champion_player-real-390x844
+
+Violations:
+- champion_player-real-1024x768: document x-overflow 1028/1024
+- player_champion-real-1024x768: document x-overflow 1028/1024
+- team_champion-real-1024x768: document x-overflow 1028/1024
+- champion_team-real-1024x768: document x-overflow 1028/1024
+- scope_champion-real-1024x768: document x-overflow 1028/1024
+- recent-real-1024x768: document x-overflow 1028/1024
+- tournament-real-1024x768: document x-overflow 1028/1024
+- patch-real-1024x768: document x-overflow 1028/1024
+- all_time-real-1024x768: document x-overflow 1028/1024
+- flex-real-1024x768: document x-overflow 1028/1024
+- multi_team-real-1024x768: document x-overflow 1028/1024
+- pro_play-real-1024x768: document x-overflow 1028/1024
+- nuguri_clear-real-1024x768: document x-overflow 1028/1024
+- t1_lineage-real-1024x768: document x-overflow 1028/1024
+- champion_player-correct-1024x768: document x-overflow 1028/1024
+- champion_player-wrong-1024x768: document x-overflow 1028/1024
+- t1_lineage-correct-1024x768: document x-overflow 1028/1024
+- patch-wrong-1024x768: document x-overflow 1028/1024
+- champion_player-real-evpartial-1024x768: document x-overflow 1028/1024
+- pro_play-wrong-evpartial-1024x768: document x-overflow 1028/1024
+- t1_lineage-real-evabsent-1024x768: document x-overflow 1028/1024
+- nuguri_clear-real-evabsent-1024x768: document x-overflow 1028/1024
+- champion_player-real-longnames-1024x768: document x-overflow 1028/1024
+- t1_lineage-wrong-longnames-1024x768: document x-overflow 1028/1024
+- flex-real-longnames-1024x768: document x-overflow 1028/1024
+- recent-real-longnames-1024x768: document x-overflow 1028/1024
+- pro_play-real-plain-1024x768: document x-overflow 1028/1024
+- champion_player-real-plain-1024x768: document x-overflow 1028/1024
+
+Readout modes: {"rich/full->sr-only":128,"rich/partial->sr-only":8,"rich/absent->null":8,"plain/full->visible":8}
+
+Source disclosure: [{"name":"source-champion_player-real-390x844","open":true,"expanded":"true","text":"Evidence authorityMetricWIN RATE — Share of games won in this scopeScopeUdyr in "},{"name":"source-t1_lineage-wrong-390x844","open":true,"expanded":"true","text":"Evidence authorityMetricGAMES — Games played on this champion in this scopeScope"},{"name":"source-champion_player-real-1440x900","open":true,"expanded":"true","text":"Evidence authorityMetricWIN RATE — Share of games won in this scopeScopeUdyr in "},{"name":"source-t1_lineage-wrong-1440x900","open":true,"expanded":"true","text":"Evidence authorityMetricGAMES — Games played on this champion in this scopeScope"}]
+
+Early-frame opacities: [{"name":"early80-t1_lineage-wrong-390x844","opacities":["0.812754","0.525014","0","0"]},{"name":"early80-champion_player-real-390x844","opacities":["0.321681","0"]},{"name":"early80-t1_lineage-wrong-1440x900","opacities":["0.542662","0","0","0"]},{"name":"early80-champion_player-real-1440x900","opacities":["0.322051","0"]},{"name":"rm-early80-t1_lineage-wrong-390x844","opacities":["1","1","1","1"]},{"name":"rm-early80-champion_player-real-390x844","opacities":["1","1"]},{"name":"rm-early80-t1_lineage-wrong-1440x900","opacities":["1","1","1","1"]},{"name":"rm-early80-champion_player-real-1440x900","opacities":["1","1"]}]

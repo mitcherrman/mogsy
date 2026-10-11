@@ -1,0 +1,123 @@
+[
+ {
+  "name": "after-rm-reveal-q1-375x812",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 11,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 1 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 302,
+   "bottom": 380,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "1",
+  "timelineStates": "cuuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "after-rm-after-next-375x812",
+  "state": "after-next",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 11,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "question",
+  "header": "Question 2 / 10 · 1 correct",
+  "focus": "h2[stem]: Which team has more pro wins on Heimerdinger: Cloud9 or G2 E",
+  "stem": {
+   "top": 307,
+   "bottom": 385,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- 'heading \"Which team has more pro wins on Heimerdinger: Cloud9 or G2 Esports?\" [level=2]'"
+ },
+ {
+  "name": "after-rm-last-reveal-375x812",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 132,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 3 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 181,
+   "bottom": 285,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "10",
+  "timelineStates": "rrrrrrrrrc",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "after-rm-after-results-375x812",
+  "state": "after-results",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 16,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "complete",
+  "header": null,
+  "focus": "h2[summary-heading]: Quiz complete",
+  "stem": null,
+  "summaryHeading": {
+   "top": 100,
+   "bottom": 128,
+   "inView": true
+  },
+  "score": {
+   "top": 140,
+   "bottom": 180,
+   "inView": true
+  },
+  "playAgain": {
+   "top": 274,
+   "bottom": 318,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": 52,
+   "bottom": 395,
+   "inView": true
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": "- heading \"Quiz complete\" [level=2]",
+  "tabAfterResults": "Play again"
+ }
+]

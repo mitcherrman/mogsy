@@ -1,0 +1,221 @@
+[
+ {
+  "name": "main-legacy-pre-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 4,
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-reveal-incorrect-4way-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "legacy",
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-reveal-correct-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "legacy",
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-completed-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-pre-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-reveal-correct-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "legacy",
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-reveal-incorrect-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "evidenceState": "legacy",
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-reveal-incorrect-4way-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "legacy",
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-completed-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-pre-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 4,
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-reveal-incorrect-4way-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "legacy",
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-reveal-correct-4way-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "correct",
+  "evidenceState": "legacy",
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ },
+ {
+  "name": "main-legacy-completed-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "violations": [],
+  "notes": [],
+  "dock": {
+   "violations": [],
+   "notes": []
+  }
+ }
+]

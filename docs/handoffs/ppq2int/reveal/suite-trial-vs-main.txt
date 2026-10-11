@@ -1,0 +1,20 @@
+## components-a.log
+  base: {'Test Files': '1 failed | 99 passed (100)', 'Tests': '1 failed | 1644 passed (1645)'}
+  cand: {'Test Files': '1 failed | 103 passed (104)', 'Tests': '1 failed | 1996 passed (1997)'}
+## components-b.log
+  base: {}
+  cand: {'Test Files': '6 failed | 104 passed (110)', 'Tests': '12 failed | 2037 passed (2049)'}
+## components-c.log
+  base: {}
+  cand: {'Test Files': '14 passed (14)', 'Tests': '99 passed (99)'}
+## lib-a.log
+  base: {'Test Files': '3 failed | 122 passed (125)', 'Tests': '8 failed | 2106 passed (2114)'}
+  cand: {'Test Files': '3 failed | 122 passed (125)', 'Tests': '8 failed | 2106 passed (2114)'}
+## lib-b.log
+  base: {'Test Files': '4 failed | 205 passed (209)', 'Tests': '10 failed | 3320 passed | 3 skipped (3333)'}
+  cand: {'Test Files': '4 failed | 205 passed (209)', 'Tests': '10 failed | 3320 passed | 3 skipped (3333)'}
+## pages.log
+  base: {'Test Files': '6 failed | 254 passed (260)', 'Tests': '11 failed | 4620 passed | 4 skipped (4635)', 'Errors': '1 error'}
+  cand: {'Test Files': '8 failed | 252 passed (260)', 'Tests': '19 failed | 4612 passed | 4 skipped (4635)', 'Errors': '1 error'}
+  NEW FAIL (cand only): src/pages/dev/lobby-preview/LobbyPreviewPage.premiumAnalytics.test.tsx > Daily Overview — the mature Daily (L14) > Core Daily records: most correct and longest streak, with the server's status
+  NEW FAIL (cand only): 

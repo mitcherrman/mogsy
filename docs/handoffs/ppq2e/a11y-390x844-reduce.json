@@ -1,0 +1,78 @@
+{
+ "viewport": "390x844",
+ "reducedMotion": true,
+ "h1": [
+  {
+   "text": "Pro Play Quiz",
+   "srOnly": true
+  }
+ ],
+ "title": "Pro Play Quiz | Mogzy",
+ "tablets": [
+  {
+   "name": "A. FunPlus Phoenix",
+   "disabled": false,
+   "tag": "BUTTON"
+  },
+  {
+   "name": "B. JD Gaming",
+   "disabled": false,
+   "tag": "BUTTON"
+  }
+ ],
+ "tabStopsToFirstTablet": [
+  "hud-home",
+  "hud-signup-chip",
+  "academy-radio-hud-trigger",
+  "hud-page-report",
+  "hud-profile",
+  "hud-notifications-trigger",
+  "pro-play-back",
+  "pro-play-scope-tag",
+  "pro-play-scope-tag",
+  "pro-play-metric-tag",
+  "A. FunPlus Phoenix"
+ ],
+ "firstTabletFocusRing": true,
+ "afterEnter": {
+  "focus": "pro-play-next",
+  "tabletsDisabled": true,
+  "verdict": {
+   "role": "status",
+   "text": "Incorrect. You picked A, FunPlus Phoenix. The answer is B, JD Gaming."
+  },
+  "readout": [
+   "A. FunPlus Phoenix: 53.6%, 28 games · 15W–13L. Your pick.",
+   "B. JD Gaming: 69.6%, 23 games · 16W–7L. Correct answer."
+  ],
+  "readoutMode": "sr-only",
+  "motion": [
+   "static"
+  ],
+  "animatedNodes": 0
+ },
+ "shiftTab": "Evidence source and authority",
+ "sourceOpen": {
+  "open": true,
+  "role": "dialog",
+  "expanded": "true",
+  "focusInPanel": true
+ },
+ "afterEscape": {
+  "open": false,
+  "focus": "Evidence source and authority"
+ },
+ "tabAfterSource": "pro-play-next",
+ "report": {
+  "name": "Report a problem with this question",
+  "w": 117,
+  "h": 46,
+  "tabIndex": 0
+ },
+ "afterNext": {
+  "header": "Question 2 / 10 · 0 correct",
+  "focus": "BODY",
+  "tabletsEnabled": true
+ },
+ "errors": []
+}

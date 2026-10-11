@@ -178,9 +178,11 @@ describe.each(SAMPLES)("fixture %s", (_name, { question: q, result: r }) => {
     it("records the verdict on the run, at the question's position", () => {
       const pip = view.run!.pips.find((p) => p.number === q.number)!;
       expect(pip.state).toBe(r.is_correct ? "correct" : "incorrect");
+      // PPQ2-E: the strip's marker stays on the graded question while its
+      // reveal is on stage; the verdict lands on the node at Next.
       const node = view.timeline!.nodes.find((n) => n.roundNumber === q.number)!;
-      expect(node.state).toBe("resolved");
-      expect(node.outcome).toBe(r.is_correct ? "correct" : "incorrect");
+      expect(node.state).toBe("current");
+      expect(view.timeline!.currentRoundNumber).toBe(q.number);
     });
   });
 });
@@ -233,6 +235,79 @@ describe("run history uses only observed results", () => {
       "correct", "incorrect", null, null, "correct", null, null, null, null, null,
     ]);
     expect(timeline.currentRoundNumber).toBe(8);
+  });
+});
+
+/**
+ * PPQ2-E — the timeline marker follows the question ON STAGE: it stays on a
+ * graded question while its reveal shows and moves when Next mounts the next
+ * question. Presentation only: every server count is untouched.
+ */
+describe("timeline marker during a reveal (presentation only)", () => {
+  const { question: base, result: r } = PRO_PLAY_SAMPLES.champion_team as ProPlaySample;
+  const at = (n: number): ProPlayQuestion => ({ ...base, number: n, index: n - 1, total: 10 });
+  const nodeStates = (s: ProPlayArenaState) => projectProPlayArena(s).timeline!.nodes.map((n) => n.state);
+
+  it("mid-run: the graded question stays current until Next; the server's count is unchanged", () => {
+    const q = at(3);
+    const revealed: ProPlayArenaState = {
+      ...postAnswer(q, r),
+      session: { session_id: "sess-1", total: 10, answered: 3, score: 2, complete: false },
+      outcomes: { 1: "correct", 2: "incorrect", 3: r.is_correct ? "correct" : "incorrect" },
+      pendingNext: at(4),
+    };
+    const view = projectProPlayArena(revealed);
+    expect(view.phase).toBe("revealed");
+    expect(view.timeline!.currentRoundNumber).toBe(3);
+    expect(nodeStates(revealed)).toEqual([
+      "resolved", "resolved", "current", "upcoming", "upcoming",
+      "upcoming", "upcoming", "upcoming", "upcoming", "upcoming",
+    ]);
+    // Earlier verdicts still on their nodes; the graded one is the stage's.
+    expect(view.timeline!.nodes.slice(0, 2).map((n) => n.outcome)).toEqual(["correct", "incorrect"]);
+    // Server truth elsewhere is untouched: 3 answered, the verdict in the run.
+    expect(view.run).toMatchObject({ answered: 3, score: 2, questionNumber: 3 });
+    expect(view.run!.pips[2].state).toBe(r.is_correct ? "correct" : "incorrect");
+    expect(revealed.session!.answered).toBe(3);
+  });
+
+  it("Next moves the marker: the graded node resolves with its verdict, the next is current", () => {
+    const q4 = at(4);
+    const advanced: ProPlayArenaState = {
+      ...preAnswer(q4),
+      session: { session_id: "sess-1", total: 10, answered: 3, score: 2, complete: false },
+      outcomes: { 1: "correct", 2: "incorrect", 3: "correct" },
+    };
+    const t = projectProPlayArena(advanced).timeline!;
+    expect(t.currentRoundNumber).toBe(4);
+    expect(t.nodes[2]).toMatchObject({ state: "resolved", outcome: "correct" });
+    expect(t.nodes[3].state).toBe("current");
+  });
+
+  it("final question: the marker stays on it through the last reveal although the session is complete", () => {
+    const q10 = at(10);
+    const lastReveal: ProPlayArenaState = {
+      ...postAnswer(q10, r),
+      session: { session_id: "sess-1", total: 10, answered: 10, score: 7, complete: true },
+      outcomes: { 10: r.is_correct ? "correct" : "incorrect" },
+    };
+    const view = projectProPlayArena(lastReveal);
+    expect(view.phase).toBe("revealed");
+    expect(view.next).toEqual({ label: "See results", enabled: true });
+    expect(view.timeline!.currentRoundNumber).toBe(10);
+    expect(nodeStates(lastReveal)).toEqual([...Array(9).fill("resolved"), "current"]);
+    // The server's completion is still what the run and the summary read.
+    expect(view.run).toMatchObject({ answered: 10, score: 7 });
+    expect(lastReveal.session!.complete).toBe(true);
+  });
+
+  it("no hold before the grade, while locked, or once the stage has moved on", () => {
+    const q = at(5);
+    const pre = preAnswer(q, { session: { session_id: "sess-1", total: 10, answered: 4, score: 1, complete: false } });
+    expect(projectProPlayArena(pre).timeline!.currentRoundNumber).toBe(5);
+    const locked = { ...pre, busy: "answering" as const, selected: q.choices[0] };
+    expect(projectProPlayArena(locked).timeline!.currentRoundNumber).toBe(5);
+    expect(projectProPlayArena(locked).timeline!.nodes[3].state).toBe("resolved");
   });
 });
 
