@@ -75,3 +75,35 @@ No sitemap source, route registry, backend, database, deployment, production dat
 - A release-environment build should regenerate the sitemap with production Supabase credentials so published blog entries are included by the existing generator.
 
 Recommendation: review this isolated candidate, fetch/recheck `origin/main`, and if no drift overlaps these files, integrate with a normal non-rewriting merge so the three source histories remain auditable. Do not deploy from this worktree, and do not extend this candidate into later Mastery retirement phases.
+
+## Mainline integration record — 2026-10-11
+
+- Fetched main remained exactly `a59526b2a6af7c81c6e0efa3e886fa4aae891c75`; there were no intervening commits to audit.
+- The approved remote feature remained exactly `5d2575ead7df4b701dcc61d63bea942cfe79545a` and its diff remained the eleven files documented above.
+- Normal non-rewriting merge commit: `b855bb0081f2a40ce6fa239c6f02b37863c13302`.
+- Merge parents, in order: current main `a59526b2a6af7c81c6e0efa3e886fa4aae891c75` and approved feature `5d2575ead7df4b701dcc61d63bea942cfe79545a`.
+- The merge completed automatically with the `ort` strategy and required no conflict resolution or behavioral change.
+- `git merge-base --is-ancestor 5d2575ea... b855bb00...` passed, independently confirming that the reviewed feature history is preserved by the merge.
+
+### Exact integrated-result verification
+
+| Check | Integrated result | Baseline comparison / notes |
+| --- | --- | --- |
+| Focused SEO, sitemap, Journey Library, complete Ranked route family, and legacy Mastery Vitest | **PASS — 13 files, 100/100 tests** | Includes a throwaway integration-only lifecycle probe (removed after the run) proving canonical replacement, JSON-LD replacement/teardown, and robots removal across route rerenders. Existing React Router warnings and one existing Ranked `act(...)` warning only. |
+| Journey Library indexing | **PASS** | Route-specific title/description/canonical; no robots noindex. Existing Archives sitemap discovery remains present exactly once. |
+| Ranked indexing and behavior | **PASS** | Both account states render `noindex, nofollow`; handed-off match launch, active-match reconnect, auth return links, Journey origin, leave guard, and terminal history all pass unchanged. |
+| Legacy Mastery indexing | **PASS** | Both catalog and player remain `noindex, nofollow`; their existing behavioral suite passes. |
+| TypeScript: `tsc --noEmit -p tsconfig.app.json` | **BASELINE FAIL — 2 diagnostics** | Exact same diagnostics reproduce on pristine current main at `OnboardingProfile.tsx:180:48` and `connections.ts:263:13`; neither file is changed. |
+| Modified-file ESLint | **BASELINE FAIL — 5 errors** | Exact same five existing `no-explicit-any` findings reproduce on pristine current main in `QuizAdmin.tsx:82,111,130,165,188`. Every other changed TypeScript file passes. |
+| Production `npm run build` | **PASS** | 4,790 modules transformed; only existing Tailwind ambiguity, mixed-import, and chunk-size warnings. |
+| Sitemap generation and route truth | **PASS — 423 URLs** | 21 static + 173 champions + 16 pro years + 213 items + 0 blog; zero duplicate `<loc>` values. Journey, Glossary, and Items occur once; Tier List is absent. |
+| Item prerender verification | **PASS — 213/213** | Archives item-directory contract preserved. |
+| Champion prerender verification | **PASS — 173/173** | Existing champion discovery/prerender contract preserved. |
+| `git diff --check origin/main...HEAD` | **PASS** | No whitespace errors. |
+
+### Outstanding release checks
+
+- Deployment was not performed by this integration.
+- The normal release-environment build must regenerate `public/sitemap.xml` with production Supabase credentials so the existing generator can include published blog entries; the local build intentionally reported `0 blog` because no anon key was present.
+- The two TypeScript diagnostics and five Quiz Admin lint errors remain separately owned baseline debt and must not be folded into this SEO change.
+- After the integration documentation commit, re-fetch remote main, require it still to equal `a59526b2...`, then push the verified integration tip to `main` without force and confirm remotely that `5d2575ea...` is an ancestor.
