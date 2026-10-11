@@ -3,7 +3,6 @@ Allow: /
 # Private / utility routes — not useful in search results
 Disallow: /admin
 Disallow: /admin/
-Disallow: /admin
 Disallow: /moderator
 Disallow: /feedback
 Disallow: /secret-room

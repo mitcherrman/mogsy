@@ -141,23 +141,23 @@ export default function QuizRankedPage() {
           noindex
         />
         <Frame>
-        <section data-testid="ranked-account-required" className="ranked-panel p-5">
-          <div className="ranked-eyebrow ranked-eyebrow--cyan">Account required</div>
-          <h2 className="mt-1 font-semibold">Sign in to play Ranked</h2>
-          <p className="text-sm text-muted-foreground">Ranked Duel requires a signed-in account.</p>
-          {/* AUTH1: both actions carry this route as returnTo. Without it the
-              Auth page fell back to its default (the League hub), which is the
-              exact reported bug — start Ranked, get prompted, sign up, land in
-              the hub instead of back in Ranked. */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button asChild data-testid="ranked-signup-link">
-              <Link to={authHref(RANKED_ROUTE, { mode: "signup" })}>Create account</Link>
-            </Button>
-            <Button asChild variant="outline" data-testid="ranked-signin-link">
-              <Link to={authHref(RANKED_ROUTE)}>Sign in</Link>
-            </Button>
-          </div>
-        </section>
+          <section data-testid="ranked-account-required" className="ranked-panel p-5">
+            <div className="ranked-eyebrow ranked-eyebrow--cyan">Account required</div>
+            <h2 className="mt-1 font-semibold">Sign in to play Ranked</h2>
+            <p className="text-sm text-muted-foreground">Ranked Duel requires a signed-in account.</p>
+            {/* AUTH1: both actions carry this route as returnTo. Without it the
+                Auth page fell back to its default (the League hub), which is the
+                exact reported bug — start Ranked, get prompted, sign up, land in
+                the hub instead of back in Ranked. */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild data-testid="ranked-signup-link">
+                <Link to={authHref(RANKED_ROUTE, { mode: "signup" })}>Create account</Link>
+              </Button>
+              <Button asChild variant="outline" data-testid="ranked-signin-link">
+                <Link to={authHref(RANKED_ROUTE)}>Sign in</Link>
+              </Button>
+            </div>
+          </section>
         </Frame>
       </>
     );

@@ -95,6 +95,12 @@ describe("route and list", () => {
   it("renders the Library from one list request, with role, title, champions and question count", async () => {
     renderLibrary();
     expect(screen.getByRole("heading", { name: "Journey Library" })).toBeTruthy();
+    expect(document.title).toBe("Journey Library — League of Legends Matchup Training | Mogzy");
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://mogzy.lol/quiz/journeys",
+    );
+    expect(document.head.querySelector('meta[name="robots"]')).toBeNull();
     await ready();
     expect(h.listJourneys).toHaveBeenCalledTimes(1);
     expect(visibleKeys()).toHaveLength(14);

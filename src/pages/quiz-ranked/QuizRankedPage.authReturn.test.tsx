@@ -66,6 +66,14 @@ describe("Ranked account gate returns the player to Ranked", () => {
   it("shows the gate to a signed-out visitor", () => {
     renderGate();
     expect(screen.getByTestId("ranked-account-required")).toBeTruthy();
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex, nofollow",
+    );
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://mogzy.lol/quiz/ranked",
+    );
   });
 
   it("shows the gate to an anonymous guest too", () => {

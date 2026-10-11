@@ -145,8 +145,8 @@ export default function JourneyLibraryPage() {
       />
       <div
         className="ranked-academy relative mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-12 pt-3"
-      data-testid="journey-library"
-    >
+        data-testid="journey-library"
+      >
       <header className="flex flex-col gap-2">
         <Link
           to="/quiz"

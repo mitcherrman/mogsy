@@ -60,4 +60,16 @@ describe("SEOHead route metadata cleanup", () => {
     expect(meta('meta[property="article:section"]')).toBeNull();
     expect(meta('meta[property="article:author"]')).toBeNull();
   });
+
+  it("clears noindex when navigation returns to an indexable route", () => {
+    const { rerender } = render(
+      <SEOHead title="Private" description="Private route" path="/private" noindex />,
+    );
+
+    expect(meta('meta[name="robots"]')).toBe("noindex, nofollow");
+
+    rerender(<SEOHead title="Public" description="Public route" path="/public" />);
+
+    expect(meta('meta[name="robots"]')).toBeNull();
+  });
 });
