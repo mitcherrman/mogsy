@@ -1,0 +1,18 @@
+## components-b.log
+  base: {'Test Files': '6 failed | 103 passed (109)', 'Tests': '12 failed | 2029 passed (2041)'}
+  cand: {'Test Files': '6 failed | 104 passed (110)', 'Tests': '12 failed | 2037 passed (2049)'}
+## components-c.log
+  base: {'Test Files': '14 passed (14)', 'Tests': '99 passed (99)'}
+  cand: {'Test Files': '14 passed (14)', 'Tests': '99 passed (99)'}
+## pages-recheck.log
+  base: {'Test Files': '3 passed (3)', 'Tests': '107 passed (107)'}
+  cand: {'Test Files': '3 passed (3)', 'Tests': '107 passed (107)'}
+## rest-app.log
+  base: {'Test Files': '2 failed | 91 passed (93)', 'Tests': '3 failed | 1137 passed (1140)'}
+  cand: {'Test Files': '2 failed | 91 passed (93)', 'Tests': '3 failed | 1137 passed (1140)'}
+## rest-test.log
+  base: {'Test Files': '8 failed | 23 passed (31)', 'Tests': '25 failed | 503 passed (528)'}
+  cand: {'Test Files': '8 failed | 23 passed (31)', 'Tests': '25 failed | 503 passed (528)'}
+
+TOTAL failing tests: base 40 cand 40
+identical failure sets: True
