@@ -1,0 +1,5655 @@
+[
+ {
+  "name": "pre-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 0,
+  "phase": "question",
+  "docW": 390,
+  "docH": 1395,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 772.1,
+   "bottom": 820.1
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 1 / 10",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 460.3,
+   "bottom": 608.3
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "prompt": {
+   "x": 29,
+   "y": 293,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 390.3
+  },
+  "answers": {
+   "x": 29,
+   "y": 402.3,
+   "w": 332,
+   "h": 148,
+   "bottom": 550.3
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "idle"
+   },
+   {
+    "x": 211,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 234,
+   "y": 620.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 664.3
+  },
+  "next": null,
+  "timeline": {
+   "x": 16,
+   "y": 676.3,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 738.1
+  },
+  "yourPick": null,
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": {
+   "x": 20,
+   "y": 620.3,
+   "w": 350,
+   "h": 44,
+   "bottom": 664.3
+  },
+  "values": [],
+  "lastTabletBottom": 550,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ]
+  }
+ },
+ {
+  "name": "selected-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 0,
+  "phase": "question",
+  "docW": 390,
+  "docH": 1395,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 772.1,
+   "bottom": 820.1
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 1 / 10",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 460.3,
+   "bottom": 608.3
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "prompt": {
+   "x": 29,
+   "y": 293,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 390.3
+  },
+  "answers": {
+   "x": 29,
+   "y": 402.3,
+   "w": 332,
+   "h": 148,
+   "bottom": 550.3
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "selected"
+   },
+   {
+    "x": 211,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 234,
+   "y": 620.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 664.3
+  },
+  "next": null,
+  "timeline": {
+   "x": 16,
+   "y": 676.3,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 738.1
+  },
+  "yourPick": null,
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": {
+   "x": 20,
+   "y": 620.3,
+   "w": 350,
+   "h": 44,
+   "bottom": 664.3
+  },
+  "values": [],
+  "lastTabletBottom": 550,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ]
+  }
+ },
+ {
+  "name": "reveal-incorrect-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1482,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 858.8,
+   "bottom": 906.8
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 460.3,
+   "bottom": 608.3
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "prompt": {
+   "x": 29,
+   "y": 293,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 390.3
+  },
+  "answers": {
+   "x": 29,
+   "y": 402.3,
+   "w": 332,
+   "h": 148,
+   "bottom": 550.3
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 211,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 696,
+   "w": 136,
+   "h": 44,
+   "bottom": 740
+  },
+  "next": {
+   "x": 221,
+   "y": 696,
+   "w": 136,
+   "h": 44,
+   "bottom": 740
+  },
+  "timeline": {
+   "x": 16,
+   "y": 763,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 824.8
+  },
+  "yourPick": {
+   "x": 91.8,
+   "y": 395.3,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 408.3
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 620.3,
+   "w": 350,
+   "h": 130.8,
+   "bottom": 751
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "8",
+   "12"
+  ],
+  "lastTabletBottom": 550,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 620,
+    "bottom": 751,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "source-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1482,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 858.8,
+   "bottom": 906.8
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 460.3,
+   "bottom": 608.3
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "prompt": {
+   "x": 29,
+   "y": 293,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 390.3
+  },
+  "answers": {
+   "x": 29,
+   "y": 402.3,
+   "w": 332,
+   "h": 148,
+   "bottom": 550.3
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 211,
+    "y": 402.3,
+    "w": 150,
+    "h": 148,
+    "bottom": 550.3,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 696,
+   "w": 136,
+   "h": 44,
+   "bottom": 740
+  },
+  "next": {
+   "x": 221,
+   "y": 696,
+   "w": 136,
+   "h": 44,
+   "bottom": 740
+  },
+  "timeline": {
+   "x": 16,
+   "y": 763,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 824.8
+  },
+  "yourPick": {
+   "x": 91.8,
+   "y": 395.3,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 408.3
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "DIV",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 620.3,
+   "w": 350,
+   "h": 130.8,
+   "bottom": 751
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "8",
+   "12"
+  ],
+  "lastTabletBottom": 550,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 620,
+    "bottom": 751,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-correct-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "complete",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 93,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1590,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 966.9,
+   "bottom": 1014.9
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 2 / 10 · 1 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 530,
+   "bottom": 678
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 144.3,
+   "bottom": 305.3
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 144.3,
+   "bottom": 305.3
+  },
+  "prompt": {
+   "x": 29,
+   "y": 317.3,
+   "w": 332,
+   "h": 149.5,
+   "bottom": 466.8
+  },
+  "answers": {
+   "x": 29,
+   "y": 478.8,
+   "w": 332,
+   "h": 141.3,
+   "bottom": 620
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 478.8,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 620,
+    "state": "correct"
+   },
+   {
+    "x": 211,
+    "y": 478.8,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 620,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 804.1,
+   "w": 136,
+   "h": 44,
+   "bottom": 848.1
+  },
+  "next": {
+   "x": 221,
+   "y": 804.1,
+   "w": 136,
+   "h": 44,
+   "bottom": 848.1
+  },
+  "timeline": {
+   "x": 16,
+   "y": 871.1,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 932.9
+  },
+  "yourPick": {
+   "x": 91.8,
+   "y": 471.8,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 484.8
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 690,
+   "w": 350,
+   "h": 169.1,
+   "bottom": 859.1
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "76.0%",
+   "30.8%"
+  ],
+  "lastTabletBottom": 620,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 597,
+    "bottom": 766,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-incorrect-4way-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 117,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1614,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 991.1,
+   "bottom": 1039.1
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 5 / 10 · 3 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 592.6,
+   "bottom": 740.6
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 122.3,
+   "bottom": 283.3
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 122.3,
+   "bottom": 283.3
+  },
+  "prompt": {
+   "x": 29,
+   "y": 295.3,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 392.6
+  },
+  "answers": {
+   "x": 29,
+   "y": 404.6,
+   "w": 332,
+   "h": 278,
+   "bottom": 682.6
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 404.6,
+    "w": 332,
+    "h": 62,
+    "bottom": 466.6,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 29,
+    "y": 476.6,
+    "w": 332,
+    "h": 62,
+    "bottom": 538.6,
+    "state": "idle"
+   },
+   {
+    "x": 29,
+    "y": 548.6,
+    "w": 332,
+    "h": 62,
+    "bottom": 610.6,
+    "state": "idle"
+   },
+   {
+    "x": 29,
+    "y": 620.6,
+    "w": 332,
+    "h": 62,
+    "bottom": 682.6,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 828.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 872.3
+  },
+  "next": {
+   "x": 221,
+   "y": 828.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 872.3
+  },
+  "timeline": {
+   "x": 16,
+   "y": 895.3,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 957.1
+  },
+  "yourPick": {
+   "x": 273.8,
+   "y": 397.6,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 410.6
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 752.6,
+   "w": 350,
+   "h": 130.8,
+   "bottom": 883.3
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "3",
+   "4",
+   "4",
+   "8"
+  ],
+  "lastTabletBottom": 683,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 766,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "completed-390x844",
+  "run": "main",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 117,
+  "phase": "complete",
+  "docW": 390,
+  "docH": 998,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 375,
+   "bottom": 423
+  },
+  "header": null,
+  "headerTitle": null,
+  "stage": null,
+  "plate": null,
+  "media": null,
+  "prompt": null,
+  "answers": null,
+  "tablets": [],
+  "hudControl": null,
+  "next": null,
+  "timeline": null,
+  "yourPick": null,
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": null,
+  "values": [],
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": []
+  }
+ },
+ {
+  "name": "reveal-evidence_partial-correct-2way-390x844",
+  "run": "partial",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "partial",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1498,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 874.2,
+   "bottom": 922.2
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 1 / 10 · 1 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 456.5,
+   "bottom": 604.5
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 123,
+   "bottom": 284
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 123,
+   "bottom": 284
+  },
+  "prompt": {
+   "x": 29,
+   "y": 296,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 393.3
+  },
+  "answers": {
+   "x": 29,
+   "y": 405.3,
+   "w": 332,
+   "h": 141.3,
+   "bottom": 546.5
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 405.3,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 546.5,
+    "state": "correct"
+   },
+   {
+    "x": 211,
+    "y": 405.3,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 546.5,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 711.4,
+   "w": 136,
+   "h": 44,
+   "bottom": 755.4
+  },
+  "next": {
+   "x": 221,
+   "y": 711.4,
+   "w": 136,
+   "h": 44,
+   "bottom": 755.4
+  },
+  "timeline": {
+   "x": 16,
+   "y": 778.4,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 840.2
+  },
+  "yourPick": {
+   "x": 91.8,
+   "y": 398.3,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 411.3
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 616.5,
+   "w": 350,
+   "h": 149.9,
+   "bottom": 766.4
+  },
+  "footerState": "partial",
+  "reserve": null,
+  "values": [
+   "57.1%",
+   "—"
+  ],
+  "lastTabletBottom": 547,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 617,
+    "bottom": 766,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_partial-correct-4way-390x844",
+  "run": "partial",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "correct",
+  "evidenceState": "partial",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 134,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1631,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 1007.9,
+   "bottom": 1055.9
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 3 / 10 · 2 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 590.3,
+   "bottom": 738.3
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 120,
+   "bottom": 281
+  },
+  "prompt": {
+   "x": 29,
+   "y": 293,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 390.3
+  },
+  "answers": {
+   "x": 29,
+   "y": 402.3,
+   "w": 332,
+   "h": 278,
+   "bottom": 680.3
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 402.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 464.3,
+    "state": "correct"
+   },
+   {
+    "x": 29,
+    "y": 474.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 536.3,
+    "state": "idle"
+   },
+   {
+    "x": 29,
+    "y": 546.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 608.3,
+    "state": "idle"
+   },
+   {
+    "x": 29,
+    "y": 618.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 680.3,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 845.2,
+   "w": 136,
+   "h": 44,
+   "bottom": 889.2
+  },
+  "next": {
+   "x": 221,
+   "y": 845.2,
+   "w": 136,
+   "h": 44,
+   "bottom": 889.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 912.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 973.9
+  },
+  "yourPick": {
+   "x": 273.8,
+   "y": 395.3,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 408.3
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 750.3,
+   "w": 350,
+   "h": 149.9,
+   "bottom": 900.2
+  },
+  "footerState": "partial",
+  "reserve": null,
+  "values": [
+   "23",
+   "—",
+   "13",
+   "16"
+  ],
+  "lastTabletBottom": 680,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 616,
+    "bottom": 766,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_absent-incorrect-2way-390x844",
+  "run": "absent",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "evidenceState": "absent",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1447,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 824,
+   "bottom": 872
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 423.3,
+   "bottom": 571.3
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 122.3,
+   "bottom": 283.3
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 122.3,
+   "bottom": 283.3
+  },
+  "prompt": {
+   "x": 29,
+   "y": 295.3,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 392.6
+  },
+  "answers": {
+   "x": 29,
+   "y": 404.6,
+   "w": 332,
+   "h": 108.8,
+   "bottom": 513.3
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 404.6,
+    "w": 150,
+    "h": 108.8,
+    "bottom": 513.3,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 211,
+    "y": 404.6,
+    "w": 150,
+    "h": 108.8,
+    "bottom": 513.3,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 661.2,
+   "w": 136,
+   "h": 44,
+   "bottom": 705.2
+  },
+  "next": {
+   "x": 221,
+   "y": 661.2,
+   "w": 136,
+   "h": 44,
+   "bottom": 705.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 728.2,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 790
+  },
+  "yourPick": {
+   "x": 91.8,
+   "y": 397.6,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 410.6
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 583.3,
+   "w": 350,
+   "h": 132.9,
+   "bottom": 716.2
+  },
+  "footerState": "absent",
+  "reserve": null,
+  "values": [],
+  "lastTabletBottom": 513,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 583,
+    "bottom": 716,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_absent-incorrect-4way-390x844",
+  "run": "absent",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "absent",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 102,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1599,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 976.1,
+   "bottom": 1024.1
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 8 / 10 · 6 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 593.3,
+   "bottom": 741.3
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 123,
+   "bottom": 284
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 123,
+   "bottom": 284
+  },
+  "prompt": {
+   "x": 29,
+   "y": 296,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 393.3
+  },
+  "answers": {
+   "x": 29,
+   "y": 405.3,
+   "w": 332,
+   "h": 278,
+   "bottom": 683.3
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 405.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 467.3,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 29,
+    "y": 477.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 539.3,
+    "state": "correct"
+   },
+   {
+    "x": 29,
+    "y": 549.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 611.3,
+    "state": "idle"
+   },
+   {
+    "x": 29,
+    "y": 621.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 683.3,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 813.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 857.3
+  },
+  "next": {
+   "x": 221,
+   "y": 813.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 857.3
+  },
+  "timeline": {
+   "x": 16,
+   "y": 880.3,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 942.1
+  },
+  "yourPick": {
+   "x": 273.8,
+   "y": 398.3,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 411.3
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 753.3,
+   "w": 350,
+   "h": 115,
+   "bottom": 868.3
+  },
+  "footerState": "absent",
+  "reserve": null,
+  "values": [],
+  "lastTabletBottom": 683,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 651,
+    "bottom": 766,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-long_explanation-incorrect-2way-390x844",
+  "run": "long",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 97,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1594,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 970.5,
+   "bottom": 1018.5
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 482.6,
+   "bottom": 630.6
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 123,
+   "bottom": 284
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 123,
+   "bottom": 284
+  },
+  "prompt": {
+   "x": 29,
+   "y": 296,
+   "w": 332,
+   "h": 123.4,
+   "bottom": 419.4
+  },
+  "answers": {
+   "x": 29,
+   "y": 431.4,
+   "w": 332,
+   "h": 141.3,
+   "bottom": 572.6
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 431.4,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 572.6,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 211,
+    "y": 431.4,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 572.6,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 807.8,
+   "w": 136,
+   "h": 44,
+   "bottom": 851.8
+  },
+  "next": {
+   "x": 221,
+   "y": 807.8,
+   "w": 136,
+   "h": 44,
+   "bottom": 851.8
+  },
+  "timeline": {
+   "x": 16,
+   "y": 874.8,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 936.5
+  },
+  "yourPick": {
+   "x": 91.8,
+   "y": 424.4,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 437.4
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 642.6,
+   "w": 350,
+   "h": 220.1,
+   "bottom": 862.8
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "5",
+   "10"
+  ],
+  "lastTabletBottom": 573,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 546,
+    "bottom": 766,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-long_explanation-correct-4way-390x844",
+  "run": "long",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "correct",
+  "evidenceState": "complete",
+  "vw": 390,
+  "vh": 844,
+  "scrollY": 196,
+  "phase": "revealed",
+  "docW": 390,
+  "docH": 1693,
+  "shell": {
+   "x": 0,
+   "y": 48,
+   "w": 390,
+   "h": 1070.1,
+   "bottom": 1118.1
+  },
+  "header": {
+   "x": 16,
+   "y": 68,
+   "w": 358,
+   "h": 68,
+   "bottom": 136
+  },
+  "headerTitle": "Question 2 / 10 · 1 correct",
+  "stage": {
+   "x": 16,
+   "y": 148,
+   "w": 358,
+   "h": 600.1,
+   "bottom": 748.1
+  },
+  "plate": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 131.8,
+   "bottom": 292.8
+  },
+  "media": {
+   "x": 29,
+   "y": 161,
+   "w": 332,
+   "h": 131.8,
+   "bottom": 292.8
+  },
+  "prompt": {
+   "x": 29,
+   "y": 304.8,
+   "w": 332,
+   "h": 97.3,
+   "bottom": 402.1
+  },
+  "answers": {
+   "x": 29,
+   "y": 414.1,
+   "w": 332,
+   "h": 276,
+   "bottom": 690.1
+  },
+  "tablets": [
+   {
+    "x": 29,
+    "y": 414.1,
+    "w": 332,
+    "h": 61.5,
+    "bottom": 475.6,
+    "state": "correct"
+   },
+   {
+    "x": 29,
+    "y": 485.6,
+    "w": 332,
+    "h": 61.5,
+    "bottom": 547.1,
+    "state": "idle"
+   },
+   {
+    "x": 29,
+    "y": 557.1,
+    "w": 332,
+    "h": 61.5,
+    "bottom": 618.6,
+    "state": "idle"
+   },
+   {
+    "x": 29,
+    "y": 628.6,
+    "w": 332,
+    "h": 61.5,
+    "bottom": 690.1,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 221,
+   "y": 907.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 951.3
+  },
+  "next": {
+   "x": 221,
+   "y": 907.3,
+   "w": 136,
+   "h": 44,
+   "bottom": 951.3
+  },
+  "timeline": {
+   "x": 16,
+   "y": 974.3,
+   "w": 358,
+   "h": 61.8,
+   "bottom": 1036.1
+  },
+  "yourPick": {
+   "x": 273.8,
+   "y": 407.1,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 420.1
+  },
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 760.1,
+   "w": 350,
+   "h": 202.3,
+   "bottom": 962.3
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "10",
+   "4",
+   "9",
+   "9"
+  ],
+  "lastTabletBottom": 690,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 12,
+     "y": 782,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 564,
+    "bottom": 766,
+    "vh": 844
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "pre-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "question",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "idle"
+   },
+   {
+    "x": 532,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 868,
+   "y": 644.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 680.2
+  },
+  "next": null,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": null,
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "values": [],
+  "lastTabletBottom": 547,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ]
+  }
+ },
+ {
+  "name": "selected-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "question",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "selected"
+   },
+   {
+    "x": 532,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 868,
+   "y": 644.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 680.2
+  },
+  "next": null,
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": null,
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "values": [],
+  "lastTabletBottom": 547,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ]
+  }
+ },
+ {
+  "name": "reveal-incorrect-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 532,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "next": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 404.8,
+   "y": 401.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 414.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "8",
+   "13"
+  ],
+  "lastTabletBottom": 547,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "source-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 532,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "next": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 404.8,
+   "y": 401.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 414.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "DIV",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "8",
+   "13"
+  ],
+  "lastTabletBottom": 547,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-incorrect-4way-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 3 / 10 · 0 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 517,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "idle"
+   },
+   {
+    "x": 271.6,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "correct"
+   },
+   {
+    "x": 517,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 641.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 677.2
+  },
+  "next": {
+   "x": 851,
+   "y": 641.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 677.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 419.8,
+   "y": 401.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 414.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "10",
+   "11",
+   "13",
+   "11"
+  ],
+  "lastTabletBottom": 531,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-correct-4way-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "correct",
+  "evidenceState": "complete",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 5 / 10 · 1 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "correct"
+   },
+   {
+    "x": 517,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "idle"
+   },
+   {
+    "x": 271.6,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "idle"
+   },
+   {
+    "x": 517,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 641.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 677.2
+  },
+  "next": {
+   "x": 851,
+   "y": 641.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 677.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 419.8,
+   "y": 401.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 414.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "6",
+   "4",
+   "4",
+   "3"
+  ],
+  "lastTabletBottom": 531,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "completed-1024x768",
+  "run": "main",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "complete",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": null,
+  "headerTitle": null,
+  "stage": null,
+  "plate": null,
+  "media": null,
+  "prompt": null,
+  "answers": null,
+  "tablets": [],
+  "hudControl": null,
+  "next": null,
+  "timeline": null,
+  "yourPick": null,
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": null,
+  "values": [],
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": []
+  }
+ },
+ {
+  "name": "reveal-evidence_partial-incorrect-4way-1024x768",
+  "run": "partial",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "partial",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 517,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "idle"
+   },
+   {
+    "x": 271.6,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "correct"
+   },
+   {
+    "x": 517,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "next": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 419.8,
+   "y": 401.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 414.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "footerState": "partial",
+  "reserve": null,
+  "values": [
+   "5",
+   "—",
+   "6",
+   "4"
+  ],
+  "lastTabletBottom": 531,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_partial-correct-2way-1024x768",
+  "run": "partial",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "partial",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 2 / 10 · 1 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 530.2,
+   "bottom": 612.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 147.2,
+   "bottom": 244.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 147.2,
+   "bottom": 244.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 252.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 382.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 390.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 556.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 390.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 529,
+    "state": "correct"
+   },
+   {
+    "x": 532,
+    "y": 390.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 529,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 635.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 671.2
+  },
+  "next": {
+   "x": 851,
+   "y": 635.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 671.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 404.8,
+   "y": 383.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 396.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [
+   "plate clip: LEC2026GAMESRe 16px"
+  ],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 618.2,
+   "w": 984,
+   "h": 70,
+   "bottom": 688.2
+  },
+  "footerState": "partial",
+  "reserve": null,
+  "values": [
+   "10",
+   "—"
+  ],
+  "lastTabletBottom": 529,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 618,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_absent-correct-4way-1024x768",
+  "run": "absent",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "correct",
+  "evidenceState": "absent",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 1 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "correct"
+   },
+   {
+    "x": 517,
+    "y": 408.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 464.7,
+    "state": "idle"
+   },
+   {
+    "x": 271.6,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "idle"
+   },
+   {
+    "x": 517,
+    "y": 474.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 531.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 641.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 677.2
+  },
+  "next": {
+   "x": 851,
+   "y": 641.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 677.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 419.8,
+   "y": 401.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 414.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "footerState": "absent",
+  "reserve": null,
+  "values": [],
+  "lastTabletBottom": 531,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_absent-correct-2way-1024x768",
+  "run": "absent",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "absent",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 2 / 10 · 2 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 548.2,
+   "bottom": 630.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 165.2,
+   "bottom": 262.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 270.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 400.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 408.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 574.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "correct"
+   },
+   {
+    "x": 532,
+    "y": 408.2,
+    "w": 220.4,
+    "h": 138.8,
+    "bottom": 547,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "next": {
+   "x": 851,
+   "y": 643.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 679.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 404.8,
+   "y": 401.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 414.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 636.2,
+   "w": 984,
+   "h": 52,
+   "bottom": 688.2
+  },
+  "footerState": "absent",
+  "reserve": null,
+  "values": [],
+  "lastTabletBottom": 547,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 636,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-long_explanation-correct-2way-1024x768",
+  "run": "long",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "complete",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 1 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 510.2,
+   "bottom": 592.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 127.2,
+   "bottom": 224.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 127.2,
+   "bottom": 224.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 232.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 362.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 370.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 536.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 370.2,
+    "w": 220.4,
+    "h": 131.8,
+    "bottom": 502,
+    "state": "correct"
+   },
+   {
+    "x": 532,
+    "y": 370.2,
+    "w": 220.4,
+    "h": 131.8,
+    "bottom": 502,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 625.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 661.2
+  },
+  "next": {
+   "x": 851,
+   "y": 625.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 661.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 404.8,
+   "y": 363.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 376.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 598.2,
+   "w": 984,
+   "h": 90,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "59",
+   "56"
+  ],
+  "lastTabletBottom": 502,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 598,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-long_explanation-incorrect-4way-1024x768",
+  "run": "long",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 1024,
+  "vh": 768,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1024,
+  "docH": 1134,
+  "shell": {
+   "x": 0,
+   "y": 0,
+   "w": 1024,
+   "h": 764,
+   "bottom": 764
+  },
+  "header": {
+   "x": 16,
+   "y": 8,
+   "w": 992,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 2 / 10 · 1 correct",
+  "stage": {
+   "x": 250.6,
+   "y": 82,
+   "w": 522.7,
+   "h": 490.2,
+   "bottom": 572.2
+  },
+  "plate": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 107.2,
+   "bottom": 204.2
+  },
+  "media": {
+   "x": 271.6,
+   "y": 97,
+   "w": 480.7,
+   "h": 107.2,
+   "bottom": 204.2
+  },
+  "prompt": {
+   "x": 271.6,
+   "y": 212.2,
+   "w": 480.7,
+   "h": 130,
+   "bottom": 342.2
+  },
+  "answers": {
+   "x": 271.6,
+   "y": 350.2,
+   "w": 480.7,
+   "h": 166,
+   "bottom": 516.2
+  },
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 350.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 406.7,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 517,
+    "y": 350.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 406.7,
+    "state": "correct"
+   },
+   {
+    "x": 271.6,
+    "y": 416.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 473.2,
+    "state": "idle"
+   },
+   {
+    "x": 517,
+    "y": 416.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 473.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 851,
+   "y": 615.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 651.2
+  },
+  "next": {
+   "x": 851,
+   "y": 615.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 651.2
+  },
+  "timeline": {
+   "x": 16,
+   "y": 694.2,
+   "w": 992,
+   "h": 61.8,
+   "bottom": 756
+  },
+  "yourPick": {
+   "x": 419.8,
+   "y": 343.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 356.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [
+   "plate clip: LTA 2025 Split 8px"
+  ],
+  "notes": [],
+  "footer": {
+   "x": 20,
+   "y": 578.2,
+   "w": 984,
+   "h": 110,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "72.2%",
+   "83.3%",
+   "72.2%",
+   "77.8%"
+  ],
+  "lastTabletBottom": 473,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 702,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 578,
+    "bottom": 688,
+    "vh": 768
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "pre-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "question",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 403.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 533.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 545.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "idle"
+   },
+   {
+    "x": 740,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1172,
+   "y": 776.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 812.2
+  },
+  "next": null,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": null,
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "values": [],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ]
+  }
+ },
+ {
+  "name": "selected-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "question",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 403.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 533.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 545.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "selected"
+   },
+   {
+    "x": 740,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1172,
+   "y": 776.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 812.2
+  },
+  "next": null,
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": null,
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "values": [],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ]
+  }
+ },
+ {
+  "name": "reveal-incorrect-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 403.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 533.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 545.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 740,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 775.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 811.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 775.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 811.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 612.8,
+   "y": 538.5,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 551.5
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "10",
+   "13"
+  ],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "source-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 403.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 533.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 545.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 740,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 775.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 811.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 775.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 811.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 612.8,
+   "y": 538.5,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 551.5
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "DIV",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "10",
+   "13"
+  ],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-correct-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "complete",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 3 / 10 · 1 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 403.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 533.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 545.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "correct"
+   },
+   {
+    "x": 740,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 612.8,
+   "y": 538.5,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 551.5
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "14.6%",
+   "4.9%"
+  ],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-correct-4way-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "correct",
+  "evidenceState": "complete",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 7 / 10 · 5 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 274.6,
+   "bottom": 395.2
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 274.6,
+   "bottom": 395.2
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 407.2,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 537.2
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 549.2,
+   "w": 584.4,
+   "h": 147,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 549.2,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 617.7,
+    "state": "correct"
+   },
+   {
+    "x": 725,
+    "y": 549.2,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 617.7,
+    "state": "idle"
+   },
+   {
+    "x": 427.8,
+    "y": 627.7,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 696.2,
+    "state": "idle"
+   },
+   {
+    "x": 725,
+    "y": 627.7,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 696.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 627.8,
+   "y": 542.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 555.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "25",
+   "17",
+   "19",
+   "19"
+  ],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "completed-1440x900",
+  "run": "main",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "complete",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": null,
+  "headerTitle": null,
+  "stage": null,
+  "plate": null,
+  "media": null,
+  "prompt": null,
+  "answers": null,
+  "tablets": [],
+  "hudControl": null,
+  "next": null,
+  "timeline": null,
+  "yourPick": null,
+  "dossierVisible": false,
+  "sessionVisible": false,
+  "activeTestId": "BODY",
+  "violations": [],
+  "notes": [],
+  "footer": null,
+  "footerState": null,
+  "reserve": null,
+  "values": [],
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": []
+  }
+ },
+ {
+  "name": "reveal-evidence_partial-correct-4way-1440x900",
+  "run": "partial",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "correct",
+  "evidenceState": "partial",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 1 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 242.1,
+   "bottom": 362.7
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 242.1,
+   "bottom": 362.7
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 374.7,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 504.7
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 516.7,
+   "w": 584.4,
+   "h": 179.5,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 516.7,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 601.5,
+    "state": "correct"
+   },
+   {
+    "x": 725,
+    "y": 516.7,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 601.5,
+    "state": "idle"
+   },
+   {
+    "x": 427.8,
+    "y": 611.5,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 696.2,
+    "state": "idle"
+   },
+   {
+    "x": 725,
+    "y": 611.5,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 696.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 627.8,
+   "y": 509.7,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 522.7
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "partial",
+  "reserve": null,
+  "values": [
+   "5",
+   "—",
+   "4",
+   "4"
+  ],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_partial-correct-2way-1440x900",
+  "run": "partial",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "partial",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 3 / 10 · 2 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 403.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 533.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 545.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "correct"
+   },
+   {
+    "x": 740,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 775.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 811.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 775.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 811.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 612.8,
+   "y": 538.5,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 551.5
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "partial",
+  "reserve": null,
+  "values": [
+   "80.0%",
+   "—"
+  ],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_absent-incorrect-2way-1440x900",
+  "run": "absent",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "incorrect",
+  "evidenceState": "absent",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 270.9,
+   "bottom": 391.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 403.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 533.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 545.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 740,
+    "y": 545.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 696.2,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 612.8,
+   "y": 538.5,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 551.5
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "absent",
+  "reserve": null,
+  "values": [],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-evidence_absent-incorrect-4way-1440x900",
+  "run": "absent",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "absent",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 4 / 10 · 0 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 680.2,
+   "bottom": 762.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 274.6,
+   "bottom": 395.2
+  },
+  "media": {
+   "x": 427.8,
+   "y": 120.6,
+   "w": 584.4,
+   "h": 274.6,
+   "bottom": 395.2
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 407.2,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 537.2
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 549.2,
+   "w": 584.4,
+   "h": 147,
+   "bottom": 696.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 549.2,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 617.7,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 725,
+    "y": 549.2,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 617.7,
+    "state": "idle"
+   },
+   {
+    "x": 427.8,
+    "y": 627.7,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 696.2,
+    "state": "idle"
+   },
+   {
+    "x": 725,
+    "y": 627.7,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 696.2,
+    "state": "correct"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 773.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 809.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 627.8,
+   "y": 542.2,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 555.2
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 768.2,
+   "w": 1176,
+   "h": 52,
+   "bottom": 820.2
+  },
+  "footerState": "absent",
+  "reserve": null,
+  "values": [],
+  "lastTabletBottom": 696,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 768,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-long_explanation-incorrect-4way-1440x900",
+  "run": "long",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 4,
+  "verdict": "incorrect",
+  "evidenceState": "complete",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 1 / 10 · 0 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 622.2,
+   "bottom": 704.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 103,
+   "w": 584.4,
+   "h": 201.7,
+   "bottom": 304.7
+  },
+  "media": {
+   "x": 427.8,
+   "y": 103,
+   "w": 584.4,
+   "h": 201.7,
+   "bottom": 304.7
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 316.7,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 446.7
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 458.7,
+   "w": 584.4,
+   "h": 179.5,
+   "bottom": 638.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 458.7,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 543.5,
+    "state": "incorrect-selected"
+   },
+   {
+    "x": 725,
+    "y": 458.7,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 543.5,
+    "state": "idle"
+   },
+   {
+    "x": 427.8,
+    "y": 553.5,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 638.2,
+    "state": "correct"
+   },
+   {
+    "x": 725,
+    "y": 553.5,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 638.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 747.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 783.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 747.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 783.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 627.8,
+   "y": 451.7,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 464.7
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 710.2,
+   "w": 1176,
+   "h": 110,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "5",
+   "8",
+   "14",
+   "5"
+  ],
+  "lastTabletBottom": 638,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 710,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ },
+ {
+  "name": "reveal-long_explanation-correct-2way-1440x900",
+  "run": "long",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "choices": 2,
+  "verdict": "correct",
+  "evidenceState": "complete",
+  "vw": 1440,
+  "vh": 900,
+  "scrollY": 0,
+  "phase": "revealed",
+  "docW": 1440,
+  "docH": 1246,
+  "shell": {
+   "x": 112,
+   "y": 0,
+   "w": 1216,
+   "h": 896,
+   "bottom": 896
+  },
+  "header": {
+   "x": 128,
+   "y": 8,
+   "w": 1184,
+   "h": 68,
+   "bottom": 76
+  },
+  "headerTitle": "Question 3 / 10 · 1 correct",
+  "stage": {
+   "x": 406.8,
+   "y": 82,
+   "w": 626.4,
+   "h": 642.2,
+   "bottom": 724.2
+  },
+  "plate": {
+   "x": 427.8,
+   "y": 103,
+   "w": 584.4,
+   "h": 250.5,
+   "bottom": 353.5
+  },
+  "media": {
+   "x": 427.8,
+   "y": 103,
+   "w": 584.4,
+   "h": 250.5,
+   "bottom": 353.5
+  },
+  "prompt": {
+   "x": 427.8,
+   "y": 365.5,
+   "w": 584.4,
+   "h": 130,
+   "bottom": 495.5
+  },
+  "answers": {
+   "x": 427.8,
+   "y": 507.5,
+   "w": 584.4,
+   "h": 150.8,
+   "bottom": 658.2
+  },
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 507.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 658.2,
+    "state": "correct"
+   },
+   {
+    "x": 740,
+    "y": 507.5,
+    "w": 272.2,
+    "h": 150.8,
+    "bottom": 658.2,
+    "state": "idle"
+   }
+  ],
+  "hudControl": {
+   "x": 1155,
+   "y": 757.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 793.2
+  },
+  "next": {
+   "x": 1155,
+   "y": 757.2,
+   "w": 136,
+   "h": 36,
+   "bottom": 793.2
+  },
+  "timeline": {
+   "x": 128,
+   "y": 826.2,
+   "w": 1184,
+   "h": 61.8,
+   "bottom": 888
+  },
+  "yourPick": {
+   "x": 612.8,
+   "y": 500.5,
+   "w": 74.2,
+   "h": 13,
+   "bottom": 513.5
+  },
+  "dossierVisible": true,
+  "sessionVisible": true,
+  "activeTestId": "pro-play-next",
+  "violations": [],
+  "notes": [],
+  "footer": {
+   "x": 132,
+   "y": 730.2,
+   "w": 1176,
+   "h": 90,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "reserve": null,
+  "values": [
+   "12",
+   "9"
+  ],
+  "lastTabletBottom": 658,
+  "dock": {
+   "violations": [],
+   "notes": [],
+   "dockTabs": [
+    {
+     "x": 16,
+     "y": 834,
+     "w": 117,
+     "h": 46
+    }
+   ],
+   "footerViewport": {
+    "top": 730,
+    "bottom": 820,
+    "vh": 900
+   },
+   "clearance": 78
+  }
+ }
+]

@@ -27,11 +27,11 @@
   - 1440: Tab reaches the tablets; Enter answers; focus moves to Next. The `role=status` verdict is present. Shift+Tab reaches Source; Enter opens the dialog with focus inside; Escape returns focus to Source. The Report tab is reachable (117×46).
   - 390 with reduced motion: every node is `static`, with 0 animated nodes.
   - After Next, focus falls to BODY. The old page behaved the same; this is a possible follow-up.
-- Production-route capture sweep (`route-cap.cjs`, live guest sessions; variants are labelled synthetic response rewrites): **390 complete, 0 violations**. The 1024/1440 run was still in progress when the session ended; `route/run.log` and `route/probe.json` may be incomplete.
+- Production-route capture sweep (`route-cap.cjs`, live guest sessions; variants are labelled synthetic response rewrites): **complete: 39 captures at 390/1024/1440, 37 ok, 0 dock/footer violations.** Two **open 1024x768 defects: anchor-plate content clipped by 8-16px** after the reveal, on a long-explanation four-way and a partial-evidence two-way (footer taller than the reserved row, so the stage shrinks; see PPQ2-INT 2.6 item 3). Not fixed.
 
 ## Left (blocking certification)
-1. Finish or re-run the capture sweep at 1024 and 1440:
-   `node docs/handoffs/ppq2e/route-cap.cjs docs/handoffs/ppq2e/route 1024x768,1440x900`
+1. Fix the 1024x768 plate clip on tall reveal footers (`route/run.log`), then re-run the sweep:
+   `node docs/handoffs/ppq2e/route-cap.cjs docs/handoffs/ppq2e/route 390x844,1024x768,1440x900`
 2. Capture the old page on main (:5280, launch entry `main-a59526b2`) for comparison:
    `PPQ_LEGACY=1 PPQ_BASE=http://localhost:5280 node docs/handoffs/ppq2e/route-cap.cjs <out>`
 3. Run the full Vitest suite in chunks on `mogzy-wt/main-a59526b2` and on this worktree, then diff the failures. The chunk script pattern is in the session scratchpad `vt-chunks.sh`; per memory, don't run it concurrently with a capture sweep.
