@@ -42,7 +42,8 @@ export const DeckArt = ({
           alt=""
           loading={priority ? "eager" : "lazy"}
           decoding="async"
-          fetchPriority={priority ? "high" : "auto"}
+          // React 18 only knows the lowercase DOM attribute; the camelCase prop warns.
+          {...({ fetchpriority: priority ? "high" : "auto" } as Record<string, string>)}
           onLoad={() => setState("ready")}
           onError={() => setState("failed")}
         />

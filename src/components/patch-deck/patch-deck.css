@@ -323,7 +323,7 @@
   object-fit: cover;
 }
 .dk-card__art--portrait img { object-position: center 12%; }
-.dk-card__art--wide img { object-position: 60% 18%; }
+.dk-card__art--wide img { object-position: 60% 24%; }
 
 /* Phone: hero on top, name over its foot, content flows below. */
 .dk-card__art {
@@ -915,7 +915,7 @@
     align-items: center;
     min-height: 0;
   }
-  .dk-cover__right { max-height: 100%; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(236, 230, 214, 0.18) transparent; padding-right: 0.5rem; }
+  .dk-cover__right { position: relative; z-index: 1; max-height: 100%; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(236, 230, 214, 0.18) transparent; padding-right: 0.5rem; }
 }
 .dk-cover__version {
   font-family: var(--dk-display);
@@ -937,7 +937,7 @@
 }
 .dk-fan__card {
   position: absolute;
-  width: clamp(130px, 18vw, 220px);
+  width: clamp(120px, 14.5vw, 200px);
   aspect-ratio: 308 / 560;
   border-radius: 0.9rem;
   overflow: hidden;

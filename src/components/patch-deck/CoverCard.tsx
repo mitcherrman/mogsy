@@ -41,8 +41,8 @@ export const CoverCard = ({
       <div className="dk-cover">
         <div className="dk-fan" aria-hidden>
           {fan.map(({ card, art }, i) => {
-            const rot = (i - (fan.length - 1) / 2) * 12;
-            const x = (i - (fan.length - 1) / 2) * 46;
+            const rot = (i - (fan.length - 1) / 2) * 10;
+            const x = (i - (fan.length - 1) / 2) * 42;
             return (
               <div key={card.id} className="dk-fan__card" style={{ transform: `translateX(${x}%) rotate(${rot}deg)`, zIndex: i === 1 ? 2 : 1 }}>
                 {art?.loading ? <img src={art.loading} alt="" loading="lazy" decoding="async" /> : null}
