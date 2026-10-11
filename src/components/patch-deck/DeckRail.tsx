@@ -1,62 +1,106 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { DeckModel } from "@/lib/patch-deck/deck";
-import { isEntityCard } from "@/lib/patch-deck/deck";
+import { bucketOf, chapterOf, isEntityCard } from "@/lib/patch-deck/deck";
 
 /**
- * Chapters and progress under the stage: one segment per official section
- * (width proportional to its card count), one tick per card, tinted by Riot's
- * editorial bucket. The current card's tick stands tall in gold. Clicking a
- * chapter jumps to its first card; each tick is its own target too.
+ * The navigator under the stage, in three readings:
+ *
+ *   1. Progress through the whole deck: a hairline filled in gold to the
+ *      current card, notched at chapter boundaries.
+ *   2. Chapters: Riot's sections as pills, never truncated; main-game
+ *      chapters first, a divider, then modes. One click opens a chapter.
+ *   3. This chapter's cards: one tick per card, tinted by Riot's bucket,
+ *      the current one tall and gold, with the card's name and position
+ *      beside it and explicit previous/next controls.
+ *
+ * Chapter navigation and card navigation are therefore different rows with
+ * different shapes, and the sense of moving through a collection comes from
+ * the progress line rather than from a grid of everything at once.
  */
-export const DeckRail = ({ model, index, onJump }: { model: DeckModel; index: number; onJump: (index: number) => void }) => {
+export const DeckRail = ({ model, index, onJump, onStep }: { model: DeckModel; index: number; onJump: (index: number) => void; onStep: (delta: number) => void }) => {
   const chapters = model.chapters.filter((c) => c.kind !== "cover");
+  const chapter = chapterOf(model, index);
+  const bucket = bucketOf(model, index);
+  const total = model.cards.length - 1;
+  const current = model.cards[index];
+  const name = isEntityCard(current) ? current.entity.card.entity_name : `Patch ${model.patchVersion}`;
+  const progress = total > 0 ? (index / total) * 100 : 0;
+  const firstMode = chapters.findIndex((c) => c.kind === "mode");
+
   return (
-    <nav className="dk-rail__chapters" aria-label="Deck chapters" data-testid="deck-rail">
-      {chapters.map((chapter) => {
-        const count = chapter.to - chapter.from;
-        const current = index >= chapter.from && index < chapter.to;
-        return (
-          <div
-            key={chapter.id}
-            className="dk-chapter"
-            style={{ ["--dk-chapter-weight" as string]: Math.max(count, 2) }}
-            aria-current={current ? "true" : undefined}
-            data-testid="deck-chapter"
-          >
-            <button
-              type="button"
-              className="dk-chapter__label"
-              style={{ background: "none", border: 0, color: "inherit", cursor: "pointer", padding: 0, font: "inherit", textAlign: "left" }}
-              onClick={() => onJump(chapter.from)}
-              title={`${chapter.title}: ${count} ${count === 1 ? "card" : "cards"}`}
-            >
-              {chapter.title}
-              <span className="dk-chapter__count">{count}</span>
-            </button>
-            <div className="dk-chapter__track" role="list" aria-label={`${chapter.title} cards`}>
-              {model.cards.slice(chapter.from, chapter.to).map((card, i) => {
-                const at = chapter.from + i;
-                const bucket = chapter.buckets.find((b) => at >= b.from && at < b.to);
-                const name = isEntityCard(card) ? card.entity.card.entity_name : chapter.title;
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    role="listitem"
-                    className="dk-tickmark"
-                    data-direction={bucket && bucket.direction !== "ungrouped" ? bucket.direction : undefined}
-                    data-current={at === index ? "true" : undefined}
-                    aria-label={`${name}, card ${at} of ${model.cards.length - 1}`}
-                    aria-current={at === index ? "true" : undefined}
-                    title={name}
-                    onClick={() => onJump(at)}
-                    style={{ border: 0, padding: 0, cursor: "pointer" }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </nav>
+    <div data-testid="deck-rail">
+      <div className="dk-progress" aria-hidden>
+        <div className="dk-progress__fill" style={{ width: `${progress}%` }} />
+        {chapters.slice(1).map((c) => (
+          <span key={c.id} className="dk-progress__notch" style={{ left: `${((c.from - 1) / Math.max(total - 1, 1)) * 100}%` }} />
+        ))}
+      </div>
+
+      <nav className="dk-chapters" aria-label="Deck chapters">
+        {chapters.map((c, i) => {
+          const count = c.to - c.from;
+          const active = c.id === chapter.id;
+          return (
+            <span key={c.id} className="contents">
+              {i === firstMode && firstMode > 0 && <span className="dk-chapter-divider" aria-hidden />}
+              <button
+                type="button"
+                className={`dk-chapter${c.kind === "mode" ? " dk-chapter--mode" : ""}`}
+                aria-current={active ? "true" : undefined}
+                onClick={() => onJump(c.from)}
+                title={`${c.title}: ${count} ${count === 1 ? "card" : "cards"}`}
+                data-testid="deck-chapter"
+              >
+                {c.title}
+                <span className="dk-chapter__count">{count}</span>
+              </button>
+            </span>
+          );
+        })}
+      </nav>
+
+      <div className="dk-cards-row">
+        <div className="dk-cards" role="list" aria-label={`${chapter.title} cards`}>
+          {chapter.kind !== "cover" &&
+            model.cards.slice(chapter.from, chapter.to).map((card, i) => {
+              const at = chapter.from + i;
+              const b = chapter.buckets.find((x) => at >= x.from && at < x.to);
+              const n = isEntityCard(card) ? card.entity.card.entity_name : chapter.title;
+              return (
+                <button
+                  key={card.id}
+                  type="button"
+                  role="listitem"
+                  className="dk-tickmark"
+                  data-direction={b && b.direction !== "ungrouped" ? b.direction : undefined}
+                  data-current={at === index ? "true" : undefined}
+                  aria-label={`${n}, card ${at} of ${total}`}
+                  aria-current={at === index ? "true" : undefined}
+                  title={n}
+                  onClick={() => onJump(at)}
+                />
+              );
+            })}
+        </div>
+        <p className="dk-cards-row__label" data-testid="deck-position">
+          <strong>{index === 0 ? "Cover" : `${index} / ${total}`}</strong>
+          <span>{name}</span>
+          {index > 0 && (
+            <span style={{ color: "var(--dk-ink-4)" }}>
+              · {chapter.title}
+              {bucket && bucket.direction !== "ungrouped" ? ` · ${bucket.label}` : ""}
+            </span>
+          )}
+        </p>
+        <span className="dk-cards-row__nav" aria-hidden>
+          <button type="button" tabIndex={-1} onClick={() => onStep(-1)} disabled={index === 0} title="Previous card">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button type="button" tabIndex={-1} onClick={() => onStep(1)} disabled={index >= total} title="Next card">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </span>
+      </div>
+    </div>
   );
 };

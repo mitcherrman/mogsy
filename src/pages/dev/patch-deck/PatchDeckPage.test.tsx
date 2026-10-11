@@ -99,7 +99,7 @@ describe("Patch Deck page on the real 26.20 report", () => {
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     await waitFor(() => expect(currentCard()).toHaveAttribute("data-card-kind", "cover"));
     fireEvent.keyDown(window, { key: "End" });
-    await waitFor(() => expect(screen.getByTestId("deck-position")).toHaveTextContent("Card 41 of 41"));
+    await waitFor(() => expect(screen.getByTestId("deck-position")).toHaveTextContent("41 / 41"));
   });
 
   it("deep-links to a card and a face, and keeps the backend's published K'Sante classification", async () => {
@@ -140,6 +140,14 @@ describe("Patch Deck page on the real 26.20 report", () => {
     expect(within(panel).getByTestId("deck-impact-dial")).toHaveAttribute("data-level", "18");
     expect(within(panel).getByTestId("deck-impact-fact")).toHaveTextContent("AD growth");
     expect(callsTo(backend, STATS_PATH)).toBe(0);
+    // The deck's own chart draws PH2's 18 points and selects a level on click; the scrubber follows.
+    const chart = within(panel).getByTestId("deck-impact-chart");
+    expect(within(chart).getAllByTestId("deck-chart-hit")).toHaveLength(18);
+    expect(chart).toHaveAttribute("data-level", "18");
+    fireEvent.click(within(chart).getAllByTestId("deck-chart-hit")[7]);
+    await waitFor(() => expect(within(panel).getByTestId("deck-impact-dial")).toHaveAttribute("data-level", "8"));
+    expect(chart).toHaveAttribute("data-level", "8");
+    expect(within(chart).getByRole("img").getAttribute("aria-label")).toMatch(/Level 8:/);
   });
 
   it("requests Impact evidence only once the Impact face is opened", async () => {

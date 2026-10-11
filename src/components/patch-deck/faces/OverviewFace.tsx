@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { DeckEntityCard } from "@/lib/patch-deck/deck";
 import { changeCount, headlineChanges, impactLines, touchedGroups } from "@/lib/patch-deck/deck";
 import type { DeckFace } from "@/lib/patch-deck/route";
@@ -8,24 +8,8 @@ import { summarizeReconciliation } from "@/lib/patch-reports/mogzy-status";
 import { analyzeImmediate } from "@/lib/patch-impact-loader/analysis";
 import { IMPACT_MAX_LEVEL } from "@/lib/patch-impact/math";
 import { formatDelta, formatParameterValue, formatRelative, formatStatValue, parameterLabel, projectedStatLabel } from "@/components/patch-impact/format";
-import { FaceLabel, GroupArt, StatusMark, Values } from "../shared";
+import { Clamp, FaceLabel, GroupArt, StatusMark, Values } from "../shared";
 import { directionProvenance } from "../editorial";
-
-/** Long shared prose (a mode intro) shows four lines until asked for more. */
-const Clamp = ({ text }: { text: string }) => {
-  const [open, setOpen] = useState(false);
-  const long = text.length > 320;
-  return (
-    <>
-      <span className={long && !open ? "dk-clamp" : "dk-clamp dk-clamp--open"}>{text}</span>
-      {long && (
-        <button type="button" className="dk-clamp-more" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          {open ? "Show less" : "Read Riot's full note"}
-        </button>
-      )}
-    </>
-  );
-};
 
 /**
  * The opening face: why this entity is in the patch, in one screen.
@@ -61,11 +45,12 @@ export const OverviewFace = ({
   const recon = summarizeReconciliation(reconciliation);
   const provenance = directionProvenance(entity.editorial);
   const champion = card.kind === "champion" && !card.mode;
+  const showTouched = touched.some((t) => t.group.title);
 
   return (
-    <div className="space-y-6" data-testid="deck-face-overview">
+    <div className="space-y-7" data-testid="deck-face-overview">
       {entity.context ? (
-        <blockquote className="dk-quote dk-wrap">
+        <blockquote className="dk-quote dk-quote--lg dk-wrap">
           {entity.context}
           <cite>
             Riot, patch {patchVersion}
@@ -83,7 +68,7 @@ export const OverviewFace = ({
         </p>
       )}
 
-      {touched.some((t) => t.group.title) && (
+      {showTouched && (
         <section aria-labelledby="deck-touched" className="space-y-3">
           <FaceLabel id="deck-touched">
             Touched · {touched.length} {touched.length === 1 ? "group" : "groups"} · {total} {total === 1 ? "change" : "changes"}
@@ -99,7 +84,11 @@ export const OverviewFace = ({
                 aria-label={`${group.slotLabel ? `${group.slotLabel === "P" ? "Passive" : group.slotLabel} — ` : ""}${group.name || group.title}: ${count} ${count === 1 ? "change" : "changes"}. Open Riot changes.`}
               >
                 <GroupArt group={group} card={report} className="dk-touch__art" />
-                {group.slot && <span className="dk-touch__slot" aria-hidden>{group.slot}</span>}
+                {group.slot && (
+                  <span className="dk-touch__slot" aria-hidden>
+                    {group.slot}
+                  </span>
+                )}
                 <span className="dk-touch__name dk-wrap">{group.name || group.title || "Changes"}</span>
                 <span className="dk-touch__count" aria-hidden>
                   {count}
@@ -117,11 +106,11 @@ export const OverviewFace = ({
             {headlines.map(({ group, change, anchor }) => (
               <li key={anchor} className="dk-row dk-row--labelled" data-testid="deck-headline">
                 <p className="dk-row__prop dk-wrap">
-                  {group.slot && <span className="dk-group__slot mr-2 text-[0.8rem]">{group.slot}</span>}
+                  {group.slot && <span className="dk-group__slot mr-2 text-[0.9rem]">{group.slot}</span>}
                   {(change.property_name || group.name || group.title || "").trim()}
                 </p>
                 {hasExactValues(change) ? (
-                  <Values before={change.before_raw?.trim() || null} after={change.after_raw?.trim() || null} isNew={change.is_new} />
+                  <Values before={change.before_raw?.trim() || null} after={change.after_raw?.trim() || null} isNew={change.is_new} size="xl" />
                 ) : (
                   <p className="dk-row__prose dk-wrap">{(change.detail_text || "").trim() || "Riot published no exact values."}</p>
                 )}
@@ -139,18 +128,15 @@ export const OverviewFace = ({
       <section aria-labelledby="deck-insight" className="space-y-3">
         <FaceLabel id="deck-insight">Mogzy Impact</FaceLabel>
         {insights.length > 0 ? (
-          <div className="dk-tile dk-tile--gold space-y-3" data-testid="deck-insight-available">
+          <div className="dk-tile dk-tile--gold space-y-4" data-testid="deck-insight-available">
             {insights.map(({ line, analysis }) => {
               if (analysis.status === "unavailable") return null;
-              const fact = analysis.facts[0];
               const projected = analysis.status === "projected" ? analysis.projection : null;
               const l18 = projected?.levels[IMPACT_MAX_LEVEL - 1];
               return (
                 <div key={line.anchor} className="space-y-1.5">
-                  <p className="text-sm font-semibold">
-                    {analysis.facts.map((f) => parameterLabel(f.family, f.half)).join(" · ")}
-                  </p>
-                  <ul className="dk-mono space-y-0.5 text-[0.8125rem]" style={{ color: "var(--dk-ink-2)" }}>
+                  <p className="text-[0.9375rem] font-semibold">{analysis.facts.map((f) => parameterLabel(f.family, f.half)).join(" · ")}</p>
+                  <ul className="dk-mono space-y-0.5 text-[0.9375rem]" style={{ color: "var(--dk-ink-2)" }}>
                     {analysis.facts.map((f) => (
                       <li key={f.property}>
                         {formatParameterValue(f.before, f.unit)} → {formatParameterValue(f.after, f.unit)}{" "}
@@ -160,7 +146,7 @@ export const OverviewFace = ({
                     ))}
                   </ul>
                   {projected && l18 ? (
-                    <p className="text-[0.8125rem]" style={{ color: "var(--dk-ink-2)" }}>
+                    <p className="text-[0.875rem]" style={{ color: "var(--dk-ink-2)" }}>
                       Projected {projectedStatLabel(projected.family)} at level 18:{" "}
                       <span className="dk-mono">
                         {formatStatValue(l18.before)} → <strong style={{ color: "var(--dk-gold-2)" }}>{formatStatValue(l18.after)}</strong>
@@ -168,29 +154,29 @@ export const OverviewFace = ({
                       {projected.crossoverLevel !== null && ` · the difference changes sign at level ${projected.crossoverLevel}`}
                     </p>
                   ) : (
-                    <p className="text-[0.75rem]" style={{ color: "var(--dk-ink-3)" }}>
-                      {fact ? "Parameter change from Riot's notes. A level projection may be available once Mogzy's evidence is loaded." : null}
+                    <p className="text-[0.8125rem]" style={{ color: "var(--dk-ink-3)" }}>
+                      Parameter change from Riot&apos;s notes. A level projection may be available once Mogzy&apos;s evidence is loaded.
                     </p>
                   )}
                 </div>
               );
             })}
             <button type="button" className="dk-btn dk-btn--gold" onClick={() => onFace("impact")}>
-              Open Mogzy Impact
+              Open Mogzy Impact →
             </button>
           </div>
         ) : (
-          <div className="dk-tile dk-tile--muted text-[0.8125rem] leading-relaxed" style={{ color: "var(--dk-ink-3)" }} data-testid="deck-insight-none">
+          <p className="text-[0.875rem] leading-relaxed" style={{ color: "var(--dk-ink-3)" }} data-testid="deck-insight-none">
             {champion
-              ? `Mogzy Impact projects champion base-stat changes level by level. ${report.entity_name}'s changes this patch are ${lines.length === 0 ? "ability or mechanic changes" : "base-stat lines Mogzy cannot project"}, so there is no Mogzy projection here — Riot's exact values above are the whole story.`
+              ? `Mogzy Impact projects champion base-stat changes level by level. ${report.entity_name}'s changes this patch are ${lines.length === 0 ? "ability or mechanic changes" : "base-stat lines Mogzy cannot project"}, so there is no Mogzy projection here. Riot's exact values above are the whole story.`
               : card.mode
                 ? `Mogzy Impact covers Summoner's Rift champion base stats. ${card.section.title} changes are mode-scoped and are not projected.`
                 : "Mogzy Impact covers champion base stats; this entry has none."}
-          </div>
+          </p>
         )}
       </section>
 
-      <footer className="space-y-1.5 border-t pt-4 text-[0.75rem]" style={{ borderColor: "var(--dk-line)", color: "var(--dk-ink-3)" }}>
+      <footer className="space-y-1.5 border-t pt-4 text-[0.8125rem]" style={{ borderColor: "var(--dk-line)", color: "var(--dk-ink-3)" }}>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <StatusMark status={report.aggregate_status} />
           <span>· Patch {patchVersion}: {recon.shortLabel}</span>

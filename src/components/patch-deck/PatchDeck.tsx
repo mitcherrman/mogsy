@@ -29,14 +29,12 @@ function useWide(): boolean {
   return wide;
 }
 
-const cardName = (card: DeckCard, model: DeckModel): string =>
-  isEntityCard(card) ? card.entity.card.entity_name : `Patch ${model.patchVersion}`;
+const cardName = (card: DeckCard, model: DeckModel): string => (isEntityCard(card) ? card.entity.card.entity_name : `Patch ${model.patchVersion}`);
 
 /** Keys typed into a field or a tablist belong to it, not to the deck. */
 function ownsKeys(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  if (target.closest("input, select, textarea, [contenteditable=''], [contenteditable='true'], [role='tablist'], [role='slider']")) return true;
-  return false;
+  return Boolean(target.closest("input, select, textarea, [contenteditable=''], [contenteditable='true'], [role='tablist'], [role='slider']"));
 }
 
 const SWIPE_DISTANCE = 56;
@@ -55,9 +53,9 @@ export type PatchDeckProps = {
 };
 
 /**
- * The stage: one card in the light, its neighbours as slivers at the edges, a
- * chapter rail underneath. Owns navigation between cards (buttons, slivers,
- * rail, keyboard, swipe) and hands the current face down to the card.
+ * The stage: one card in the light, its neighbours as slivers at the edges, the
+ * navigator underneath. Owns navigation between cards (buttons, slivers, rail,
+ * keyboard, swipe) and hands the current face down to the card.
  */
 export const PatchDeck = ({ model, detail, manifest, versions, index, face, onIndex, onFace }: PatchDeckProps) => {
   const wide = useWide();
@@ -162,7 +160,7 @@ export const PatchDeck = ({ model, detail, manifest, versions, index, face, onIn
 
   const chapter = chapterOf(model, safeIndex);
   const bucket = bucketOf(model, safeIndex);
-  const position = `${safeIndex === 0 ? "Cover" : `Card ${safeIndex} of ${model.cards.length - 1}`}`;
+  const position = safeIndex === 0 ? "Cover" : `Card ${safeIndex} of ${model.cards.length - 1}`;
 
   const overlay = (
     <>
@@ -190,18 +188,32 @@ export const PatchDeck = ({ model, detail, manifest, versions, index, face, onIn
   );
 
   const renderCard = (card: DeckCard) => {
-    if (!isEntityCard(card)) return <CoverCard model={model} detail={detail} artFor={artFor} onJump={jump}>{overlay}</CoverCard>;
+    if (!isEntityCard(card))
+      return (
+        <CoverCard model={model} detail={detail} artFor={artFor} onJump={jump}>
+          {overlay}
+        </CoverCard>
+      );
     const art = artFor(card.id) ?? { splash: null, loading: null, icon: null, champion: null };
-    if (card.kind === "item") return <ItemCard card={card} art={art} model={model} detail={detail}>{overlay}</ItemCard>;
+    if (card.kind === "item")
+      return (
+        <ItemCard card={card} art={art} model={model} detail={detail}>
+          {overlay}
+        </ItemCard>
+      );
     // A champion, a rune, or a mode entity whose art is a champion's: the cinematic composition.
     if (card.kind === "champion" || card.kind === "rune" || art.champion) {
       return (
-        <EntityCard card={card} art={art} model={model} detail={detail} versions={versions} face={face} onFace={onFace} onJump={jumpTo} wide={wide}>
+        <EntityCard card={card} art={art} model={model} detail={detail} versions={versions} face={face} onFace={onFace} onJump={jumpTo} wide={wide} direction={direction}>
           {overlay}
         </EntityCard>
       );
     }
-    return <SystemCard card={card} art={art} model={model} detail={detail}>{overlay}</SystemCard>;
+    return (
+      <SystemCard card={card} art={art} model={model} detail={detail}>
+        {overlay}
+      </SystemCard>
+    );
   };
 
   const sliver = (card: DeckCard | null, side: "prev" | "next") => {
@@ -211,6 +223,9 @@ export const PatchDeck = ({ model, detail, manifest, versions, index, face, onIn
     return (
       <button type="button" className="dk-sliver" data-side={side} onClick={() => go(side === "next" ? 1 : -1)} aria-label={`${side === "next" ? "Next" : "Previous"} card: ${name}`} data-testid={`deck-sliver-${side}`}>
         {art?.loading ? <img src={art.loading} alt="" loading="lazy" decoding="async" /> : null}
+        <span className="dk-sliver__arrow" aria-hidden>
+          {side === "next" ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+        </span>
         <span className="dk-sliver__label" aria-hidden>
           {name}
         </span>
@@ -218,10 +233,12 @@ export const PatchDeck = ({ model, detail, manifest, versions, index, face, onIn
     );
   };
 
+  // The wrapper only fades and settles; the card's own hero and panel slide in
+  // at different distances (a parallax), so the art leads and the words follow.
   const variants = {
-    enter: (dir: number) => ({ x: reduced ? 0 : dir * 48, opacity: 0, scale: reduced ? 1 : 0.985 }),
-    center: { x: 0, opacity: 1, scale: 1 },
-    exit: (dir: number) => ({ x: reduced ? 0 : dir * -48, opacity: 0, scale: reduced ? 1 : 0.985 }),
+    enter: { opacity: 0, scale: reduced ? 1 : 0.985 },
+    center: { opacity: 1, scale: 1 },
+    exit: (dir: number) => ({ opacity: 0, scale: reduced ? 1 : 0.985, x: reduced ? 0 : dir * -40 }),
   };
 
   return (
@@ -242,7 +259,7 @@ export const PatchDeck = ({ model, detail, manifest, versions, index, face, onIn
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: cardDuration, ease }}
+              transition={{ duration: cardDuration * 0.8, ease }}
               style={wide ? { position: "absolute", inset: 0 } : undefined}
             >
               {renderCard(current)}
@@ -253,24 +270,7 @@ export const PatchDeck = ({ model, detail, manifest, versions, index, face, onIn
       </div>
 
       <div className="dk-rail">
-        <DeckRail model={model} index={safeIndex} onJump={jump} />
-        <div className="dk-rail__status">
-          <p data-testid="deck-position">
-            <span className="dk-mono" style={{ color: "var(--dk-ink-2)" }}>
-              {position}
-            </span>
-            <span> · {chapter.title}</span>
-            {bucket && bucket.direction !== "ungrouped" && <span> · {bucket.label}</span>}
-          </p>
-          <p className="hidden items-center gap-1.5 lg:flex" aria-hidden>
-            <span className="dk-kbd">←</span>
-            <span className="dk-kbd">→</span>
-            <span className="mr-2">cards</span>
-            <span className="dk-kbd">[</span>
-            <span className="dk-kbd">]</span>
-            <span>views</span>
-          </p>
-        </div>
+        <DeckRail model={model} index={safeIndex} onJump={jump} onStep={go} />
       </div>
     </section>
   );

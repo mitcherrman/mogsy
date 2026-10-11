@@ -9,7 +9,6 @@ import { isImpactScopedLine } from "@/lib/patch-impact/eligibility";
 import { cn } from "@/lib/utils";
 import { DIRECTION_WORD, SOURCE_WORD } from "./editorial";
 
-
 /* -------------------------------------------------------------------------- */
 /* Editorial direction                                                        */
 /* -------------------------------------------------------------------------- */
@@ -35,7 +34,7 @@ export const DirectionLabel = ({ editorial, className }: { editorial: EditorialR
       title={source ? `${DIRECTION_WORD[editorial.direction]} — ${source}` : undefined}
     >
       {DIRECTION_WORD[editorial.direction]}
-      {editorial.inferred && <span style={{ opacity: 0.7, letterSpacing: "0.1em" }}>· inferred by Mogzy</span>}
+      {editorial.inferred && <em>· inferred by Mogzy</em>}
     </span>
   );
 };
@@ -54,28 +53,33 @@ export const Values = ({
   before: string | null;
   after: string | null;
   isNew?: boolean;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
 }) => (
-  <p className={cn("dk-values dk-wrap", size === "lg" && "dk-values--lg")} data-testid="deck-values">
+  <p className={cn("dk-values dk-wrap", size === "lg" && "dk-values--lg", size === "xl" && "dk-values--xl")} data-testid="deck-values">
     {before ? (
       <>
         <span className="sr-only">From </span>
         <span className="dk-values__before">{before}</span>
-        <span aria-hidden className="dk-values__arrow">
-          →
-        </span>
-        <span className="sr-only"> to </span>
       </>
     ) : (
       isNew && <span className="sr-only">Newly added. </span>
     )}
-    {after ? (
-      <span className="dk-values__after">{after}</span>
-    ) : (
-      <span style={{ color: "var(--dk-ink-3)", fontStyle: "italic", fontFamily: "Inter, system-ui, sans-serif" }}>
-        no after value published
-      </span>
-    )}
+    {/* The arrow travels with the new value, so a wrap never strands it. */}
+    <span className="dk-values__to">
+      {before && (
+        <>
+          <span aria-hidden className="dk-values__arrow">
+            →
+          </span>
+          <span className="sr-only"> to </span>
+        </>
+      )}
+      {after ? (
+        <span className="dk-values__after">{after}</span>
+      ) : (
+        <span style={{ color: "var(--dk-ink-3)", fontStyle: "italic", fontFamily: "Inter, system-ui, sans-serif" }}>no after value published</span>
+      )}
+    </span>
   </p>
 );
 
@@ -94,13 +98,7 @@ const TONE: Record<MogzyStatus, "current" | "flagged" | "unchecked" | "none"> = 
 };
 
 export const StatusMark = ({ status, className }: { status: MogzyStatus; className?: string }) => (
-  <span
-    className={cn("dk-status", className)}
-    data-tone={TONE[status]}
-    data-mogzy-status={status}
-    title={MOGZY_STATUS_GLOSS[status]}
-    data-testid="deck-status"
-  >
+  <span className={cn("dk-status", className)} data-tone={TONE[status]} data-mogzy-status={status} title={MOGZY_STATUS_GLOSS[status]} data-testid="deck-status">
     <span className="sr-only">Mogzy data status: </span>
     {MOGZY_STATUS_LABEL[status]}
   </span>
@@ -110,34 +108,24 @@ export const StatusMark = ({ status, className }: { status: MogzyStatus; classNa
 /* Ability group                                                              */
 /* -------------------------------------------------------------------------- */
 
-export const GroupArt = ({
-  group,
-  card,
-  className,
-}: {
-  group: ReportGroupNode;
-  card: PatchReportCard;
-  className?: string;
-}) => {
+export const GroupArt = ({ group, card, className }: { group: ReportGroupNode; card: PatchReportCard; className?: string }) => {
   const [failed, setFailed] = useState(false);
   const src = failed ? null : group.iconUrl ?? storedPassiveIconUrl(card, group);
   const glyph = group.slot ?? (/^base stats$/i.test(group.title) ? "ST" : "•");
   return (
     <span className={className} aria-hidden>
-      {src ? (
-        <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
-      ) : (
-        <span className="dk-group__slot">{glyph}</span>
-      )}
+      {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} /> : <span className="dk-group__slot">{glyph}</span>}
     </span>
   );
 };
+
+const slotWord = (slot: string | null) => (slot === "P" ? "Passive" : slot);
 
 export const GroupHeader = ({ group, card }: { group: ReportGroupNode; card: PatchReportCard }) => (
   <header className="dk-group" data-testid="deck-group" data-ability-slot={group.slot ?? undefined}>
     <GroupArt group={group} card={card} className="dk-group__art" />
     <div className="min-w-0">
-      {group.slotLabel && <p className="dk-group__kicker">{group.slotLabel === "P" ? "Passive" : group.slotLabel}</p>}
+      {group.slotLabel && <p className="dk-group__kicker">{slotWord(group.slotLabel)}</p>}
       <h4 className="dk-group__name dk-wrap">{group.name || group.title || "Changes"}</h4>
     </div>
   </header>
@@ -151,7 +139,7 @@ const MogzyNote = ({ change, impactScoped }: { change: PatchReportChange; impact
   const sentences = explainChangeStatus(change, { impactScoped });
   const tracked = trackedValueAtBuild(change);
   return (
-    <details className="text-[0.75rem]" style={{ color: "var(--dk-ink-3)" }} data-testid="deck-mogzy-note">
+    <details className="text-[0.8125rem]" style={{ color: "var(--dk-ink-3)" }} data-testid="deck-mogzy-note">
       <summary className="cursor-pointer select-none list-none py-1 [&::-webkit-details-marker]:hidden">
         <StatusMark status={change.mogzy_status} />
         <span className="sr-only"> (what this means)</span>
@@ -176,11 +164,13 @@ export const ChangeRow = ({
   node,
   card,
   entityStatus,
+  valueSize = "lg",
   children,
 }: {
   node: ReportChangeNode;
   card: PatchReportCard;
   entityStatus: MogzyStatus;
+  valueSize?: "md" | "lg" | "xl";
   /** Extra content under the line (Impact summary, actions). */
   children?: ReactNode;
 }) => {
@@ -201,12 +191,7 @@ export const ChangeRow = ({
     Boolean(change.mogzy_property);
 
   return (
-    <li
-      id={`deck-${node.anchor}`}
-      className={cn("dk-row", property && "dk-row--labelled")}
-      data-testid="deck-change"
-      data-change-kind={change.change_kind}
-    >
+    <li id={`deck-${node.anchor}`} className={cn("dk-row", property && "dk-row--labelled")} data-testid="deck-change" data-change-kind={change.change_kind}>
       {property && (
         <p className="dk-row__prop dk-wrap">
           {change.is_new && <span className="dk-new mr-2">New</span>}
@@ -215,7 +200,7 @@ export const ChangeRow = ({
       )}
       <div className="min-w-0">
         {exact ? (
-          <Values before={change.before_raw?.trim() || null} after={change.after_raw?.trim() || null} isNew={change.is_new} />
+          <Values before={change.before_raw?.trim() || null} after={change.after_raw?.trim() || null} isNew={change.is_new} size={valueSize} />
         ) : prose ? (
           <p className="dk-row__prose dk-wrap">
             {!property && change.is_new && <span className="dk-new mr-2">New</span>}
@@ -244,3 +229,19 @@ export const FaceLabel = ({ children, id }: { children: ReactNode; id?: string }
     {children}
   </p>
 );
+
+/** Long shared prose (a mode intro) shows four lines until asked for more. */
+export const Clamp = ({ text }: { text: string }) => {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 320;
+  return (
+    <>
+      <span className={long && !open ? "dk-clamp" : "dk-clamp dk-clamp--open"}>{text}</span>
+      {long && (
+        <button type="button" className="dk-clamp-more" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          {open ? "Show less" : "Read Riot's full note"}
+        </button>
+      )}
+    </>
+  );
+};
