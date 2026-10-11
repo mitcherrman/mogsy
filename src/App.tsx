@@ -296,6 +296,11 @@ const LolGlossary = lazy(() => import("./pages/lol/Glossary"));
 // Patch Reports — public per-patch change reports with Mogzy data comparison.
 const PatchReports = lazy(() => import("./pages/lol/PatchReports"));
 
+// PHD1 — Patch Hub Deck View prototype (cinematic card deck over the same
+// Patch Report data). Dev surface only; sits outside <Layout /> so the stage
+// owns the viewport. Not yet linked from the Patch Hub.
+const PatchDeckPage = lazy(() => import("./pages/dev/patch-deck/PatchDeckPage"));
+
 // Mechanics Explorer — public tools over the canonical mechanics engine
 // (MECH1 Phase 5B1: respawn calculator + wave timeline).
 const MechanicsExplorerPage = lazy(() => import("./pages/lol/mechanics/MechanicsExplorerPage"));
@@ -393,6 +398,8 @@ export const appRouter = createBrowserRouter(
                 {/* Dev-only V2 entrance concept. Full-screen and layout-free like the
                     original, so it sits outside <Layout /> alongside the legacy route. */}
                 <Route path="/dev/mogzy-entry-v2" element={<Suspense fallback={<StartupSurface pathname="/dev/mogzy-entry-v2" />}><MogzyEntryV2 /></Suspense>} />
+                {/* PHD1 Patch Deck prototype: full-viewport, layout-free like the entrance above. */}
+                <Route path="/dev/patch-deck" element={<Suspense fallback={<RouteFallback />}><PatchDeckPage /></Suspense>} />
                 <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
                 <Route path="/auth/callback" element={<Suspense fallback={<RouteLoader />}><AuthCallback /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
