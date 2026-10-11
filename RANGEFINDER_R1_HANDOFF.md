@@ -348,4 +348,7 @@ newer ffmpeg than this machine has): `1600x900-janna-w-lifecycle.webm` and
 
 ## 19. Final SHA
 
-(filled in below after the local commit)
+- `0a2290d1` — GM-R1: Rangefinder — the PLACE primitive, lab host, frozen cast-range pool (everything in §7).
+- the commit after it — "GM-R1: handoff current" (this file only). `git log -2 rangefinder/r1-fable`.
+
+Base `a59526b2` (mogsy main) · backend read at `679173bf` (master), unchanged.
