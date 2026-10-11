@@ -27,8 +27,19 @@
  * same box `RankedRouteHeader` uses (x 56, y 0..band), at scroll 0.
  */
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
-export function ProPlayRouteChrome({ to, label = "Back to Pro Play" }: { to: string; label?: string }) {
+/**
+ * `fromLg={false}` on the arena's empty frames (loading, error, end): from
+ * `lg` their centred panel is pulled up into the HUD band and covered the
+ * link (still focusable, so a keyboard user landed on an invisible control).
+ * Those panels carry their own way back, so there the band link is phone-only.
+ */
+export function ProPlayRouteChrome({ to, label = "Back to Pro Play", fromLg = true }: {
+  to: string;
+  label?: string;
+  fromLg?: boolean;
+}) {
   return (
     // `h-0` and not "no element": the shell gives its header slot a place in
     // the flex column, and a zero-height box there collapses the row.
@@ -36,9 +47,12 @@ export function ProPlayRouteChrome({ to, label = "Back to Pro Play" }: { to: str
       <Link
         to={to}
         data-testid="pro-play-back"
-        className="absolute -top-[calc(var(--app-header-h)+0.75rem)] left-10 z-40 flex h-[var(--app-header-h)]
+        className={cn(
+          `absolute -top-[calc(var(--app-header-h)+0.75rem)] left-10 z-40 flex h-[var(--app-header-h)]
           items-center text-xs text-muted-foreground/70 underline underline-offset-2 transition-colors
-          hover:text-muted-foreground lg:fixed lg:left-1/2 lg:top-0 lg:-translate-x-1/2"
+          hover:text-muted-foreground`,
+          fromLg ? "lg:fixed lg:left-1/2 lg:top-0 lg:-translate-x-1/2" : "lg:hidden",
+        )}
       >
         {label}
       </Link>

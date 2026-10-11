@@ -2,7 +2,6 @@ import SEOHead from "@/components/SEOHead";
 import ProPlayArenaRun from "@/components/pro-play/arena-run/ProPlayArenaRun";
 import { useProPlayArenaController } from "@/lib/pro-play/arena";
 import { PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
-import { ProPlayRouteChrome } from "@/components/pro-play/arena-run/ProPlayRouteChrome";
 
 /**
  * Pro Play Quiz — ten questions generated on demand from Pro Play Authority,
@@ -42,7 +41,7 @@ export default function ProPlayQuiz() {
       <ProPlayArenaRun
         controller={controller}
         exitTo={PRO_PLAY_ROUTE}
-        chrome={<ProPlayRouteChrome to={PRO_PLAY_ROUTE} />}
+        backLink
       />
     </>
   );

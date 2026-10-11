@@ -29,13 +29,20 @@ import { PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
 import type { ProPlayArenaController, ProPlayRunPip } from "@/lib/pro-play/arena";
 import { cn } from "@/lib/utils";
 import { composeProPlayArenaStage, DOCK_SCROLL_MARGIN } from "./composeProPlayArenaStage";
+import { ProPlayRouteChrome } from "./ProPlayRouteChrome";
 
 export interface ProPlayArenaRunProps {
   controller: ProPlayArenaController;
   /** Where "Back to Pro Play" goes. */
   exitTo?: string;
-  /** Rendered above the arena (the shell's chrome row). */
+  /** Rendered above the arena (the shell's chrome row). Overrides `backLink`. */
   chrome?: ReactNode;
+  /**
+   * PPQ2-E: the route's way back (`ProPlayRouteChrome` to `exitTo`) in the
+   * HUD band. On the empty frames it is phone-only (their panels carry the
+   * way back; the loading panel gains one from `lg`).
+   */
+  backLink?: boolean;
 }
 
 /**
@@ -146,7 +153,7 @@ function FramePanel({ testId, eyebrow, children }: { testId: string; eyebrow: st
   );
 }
 
-export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, chrome }: ProPlayArenaRunProps) {
+export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, chrome, backLink = false }: ProPlayArenaRunProps) {
   const { state, projection } = controller;
 
   const action = projection.error && projection.surface ? (
@@ -165,7 +172,7 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
   if (view) {
     return (
       <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
-        <CanonicalArena view={view} chrome={chrome} />
+        <CanonicalArena view={view} chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} /> : undefined)} />
       </div>
     );
   }
@@ -215,13 +222,21 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
         <p role="status" className="text-sm text-muted-foreground">
           {projection.header.title || "Preparing questions…"}
         </p>
+        {backLink && !chrome ? (
+          <Link to={exitTo} data-testid="pro-play-loading-back"
+            className="hidden text-xs text-muted-foreground/70 underline underline-offset-2 hover:text-muted-foreground lg:inline">
+            Back to Pro Play
+          </Link>
+        ) : null}
       </FramePanel>
     );
   }
 
   return (
     <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
-      <CanonicalArena view={null} chrome={chrome} recovering={{ eyebrow: "Pro Play Quiz", message: "", intro }} />
+      <CanonicalArena view={null}
+        chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} fromLg={false} /> : undefined)}
+        recovering={{ eyebrow: "Pro Play Quiz", message: "", intro }} />
     </div>
   );
 }

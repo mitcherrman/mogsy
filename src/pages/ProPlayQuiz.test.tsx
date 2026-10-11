@@ -754,6 +754,31 @@ describe("ProPlayQuiz — the Arena route (PPQ2-E)", () => {
     expect(screen.getByTestId("pro-play-arena").className).toContain("overflow-x-clip");
   });
 
+  it("on the empty frames the band link is phone-only: from lg the panel covers that band and carries the way back", async () => {
+    installServer({ failStart: true });
+    renderQuiz();
+    const error = await screen.findByTestId("pro-play-error");
+    const band = screen.getByTestId("pro-play-back");
+    expect(band.className).toContain("lg:hidden");
+    expect(band.className).not.toContain("lg:fixed");
+    expect(within(error).getByRole("link", { name: "Back to Pro Play" }).getAttribute("href")).toBe(PRO_PLAY_ROUTE);
+  });
+
+  it("the loading frame offers the way back from lg too", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const fetchMock = installServer();
+    const inner = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => { await gate; return inner(url, init); });
+    renderQuiz();
+    const loading = await screen.findByTestId("pro-play-loading");
+    const link = within(loading).getByTestId("pro-play-loading-back");
+    expect(link.getAttribute("href")).toBe(PRO_PLAY_ROUTE);
+    expect(link.className).toContain("lg:inline");
+    await act(async () => { release(); });
+    await screen.findByText("Question 1?");
+  });
+
   it("answers through a focused canonical tablet and hands focus to Next (real-browser keyboard run: handoff)", async () => {
     installServer();
     renderQuiz();
