@@ -16,7 +16,15 @@ describe("prefetchRoute", () => {
       idle.push(cb);
       return idle.length;
     });
-    for (const key of ["Quiz", "CombatLab", "LolHub", "LeagueDocsLanding", "ProPlayHub"] as const) {
+    for (const key of [
+      "Quiz",
+      "CombatLab",
+      "LolHub",
+      "LeagueDocsLanding",
+      "LeagueDocsItemIndex",
+      "ItemDetail",
+      "ProPlayHub",
+    ] as const) {
       vi.spyOn(Routes[key], "prefetch").mockResolvedValue({ default: () => null } as never);
     }
   });
@@ -49,6 +57,12 @@ describe("prefetchRoute", () => {
     idle.forEach((cb) => cb());
     prefetchRoute("/lol/docs", { intent: true });
     expect(Routes.LeagueDocsLanding.prefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("warms the item directory and item detail chunks for the Archives Items shelf", () => {
+    prefetchRoute("/lol/docs/items", { intent: true });
+    expect(Routes.LeagueDocsItemIndex.prefetch).toHaveBeenCalledTimes(1);
+    expect(Routes.ItemDetail.prefetch).toHaveBeenCalledTimes(1);
   });
 
   it("an unknown path is remembered and costs nothing, with or without intent", () => {
