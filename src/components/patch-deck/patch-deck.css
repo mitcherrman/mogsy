@@ -35,6 +35,20 @@
   --dk-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --dk-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
+  /* The app theme tokens, pinned to the deck ground so reused Patch Hub
+     pieces (the Impact graph, Historical Context) stay legible whatever the
+     OS colour scheme is: this route sits outside the League section, so the
+     shell does not force .dark here. HSL triplets, as Tailwind consumes them. */
+  --background: 225 44% 4%;
+  --foreground: 40 32% 88%;
+  --card: 225 36% 7%;
+  --card-foreground: 40 32% 88%;
+  --muted: 225 20% 16%;
+  --muted-foreground: 40 16% 64%;
+  --border: 40 18% 22%;
+  --input: 40 18% 22%;
+  --ring: 43 56% 54%;
+
   min-height: 100dvh;
   color: var(--dk-ink);
   background:
