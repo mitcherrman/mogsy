@@ -29,7 +29,7 @@ import {
   assertMatchContent, isBoardComplete, membersOf, normalizeValue, numberWord, seatEntity, settleReveal, snapToGroup,
   toMatchResponse, unseatEntity, unsortedCount,
 } from "@/lib/match-grid/board";
-import { computeLayout, compositionFor, instrumentHeight, wellSockets, type HeightTier, type InstrumentLayout } from "@/lib/match-grid/layout";
+import { computeLayout, compositionFor, constellationSizes, instrumentHeight, RAIL, wellSockets, type HeightTier, type InstrumentLayout } from "@/lib/match-grid/layout";
 import { planReveal, reached, type RevealStage } from "@/lib/match-grid/reveal";
 import "./matchGrid.css";
 
@@ -51,6 +51,13 @@ export interface MatchGridProps {
    * framed stage is shorter than the window). Omitted: chosen from the viewport.
    */
   heightTier?: HeightTier;
+  /**
+   * MG-P3.1 — the tallest the whole board may be, when the host frames it in
+   * a fixed stage (the Ranked arena). If the usual composition is taller, the
+   * ledger's RAIL arrangement is used instead (well beside the wires). Nothing
+   * is ever scaled: every target keeps its full size. Omitted: no limit.
+   */
+  maxHeight?: number;
 }
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
@@ -115,7 +122,7 @@ function useMeasuredWidth(ref: React.RefObject<HTMLElement>): number {
   return width;
 }
 
-export function MatchGrid({ content, phase, value, onChange, onLock, reveal, renderGroupGlyph, promptRef, onRevealComplete, heightTier }: MatchGridProps) {
+export function MatchGrid({ content, phase, value, onChange, onLock, reveal, renderGroupGlyph, promptRef, onRevealComplete, heightTier, maxHeight }: MatchGridProps) {
   assertMatchContent(content);
   const { entities, groups } = content;
   const K = groups.length;
@@ -131,25 +138,43 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
   const reduced = useReducedMotionPreference();
 
   // ------------------------------------------------------------ geometry
-  const composition = compositionFor(width, K, tier);
-  const instrH = instrumentHeight(composition, K, tier);
+  const wellPad = 14;
+  // The usual composition, stacked: instrument, then the well beneath it.
+  const stackedComposition = compositionFor(width, K, tier);
+  const stackedInstrH = instrumentHeight(stackedComposition, K, tier);
+  const stackedSigil = stackedComposition === "ledger" ? 44 : constellationSizes(tier).sigil;
+  const stackedCaption = stackedComposition === "ledger" ? 18 : compact ? 20 : tier === "tall" ? 26 : 24;
+  const stackedPitch = stackedComposition === "ledger"
+    ? Math.max(58, Math.floor((width - 16) / Math.min(N, 6))) : compact ? 80 : tier === "tall" ? 102 : 92;
+  const stackedWell = wellSockets(N, width - 2 * wellPad, stackedPitch);
+  const stackedBoardH = stackedInstrH + GAP_INSTRUMENT_WELL
+    + stackedWell.rows * (stackedSigil + stackedCaption + 8) + wellPad * 2;
+  // MG-P3.1: a host-imposed height the stacked board cannot meet → RAIL.
+  const chrome = (compact ? 58 : tier === "tall" ? 72 : 66) + (compact ? 56 : tier === "tall" ? 68 : 64) + 2;
+  const rail = maxHeight !== undefined && width >= RAIL.minWidth && stackedBoardH + chrome > maxHeight;
+
+  const composition = rail ? "ledger" : stackedComposition;
+  const instrW = rail ? RAIL.columnW : width;
+  const instrH = rail ? RAIL.rowH * K : stackedInstrH;
   const layout: InstrumentLayout = useMemo(
-    () => computeLayout({ width, height: instrH, groupCount: K, tier }),
-    [width, instrH, K, tier],
+    () => computeLayout({ width: instrW, height: instrH, groupCount: K, tier, rail }),
+    [instrW, instrH, K, tier, rail],
   );
   const sigil = layout.sigil;
   const captionBand = composition === "ledger" ? 18 : compact ? 20 : tier === "tall" ? 26 : 24;
-  const wellPitch = composition === "ledger" ? Math.max(58, Math.floor((width - 16) / Math.min(N, 6))) : compact ? 80 : tier === "tall" ? 102 : 92;
-  const wellPad = 14;
+  const wellPitch = rail ? RAIL.wellPitch : stackedPitch;
   const wellRowH = sigil + captionBand + 8;
-  const well = useMemo(() => wellSockets(N, width - 2 * wellPad, wellPitch), [N, width, wellPitch]);
+  // The well's footprint: beneath the instrument, or (rail) a column beside it.
+  const wellX = rail ? instrW + RAIL.gap : 0;
+  const wellW = width - wellX;
+  const well = useMemo(() => wellSockets(N, wellW - 2 * wellPad, wellPitch), [N, wellW, wellPitch]);
   const wellH = well.rows * wellRowH + wellPad * 2;
-  const wellTop = instrH + GAP_INSTRUMENT_WELL;
-  const boardH = wellTop + wellH;
+  const wellTop = rail ? RAIL.headH : instrH + GAP_INSTRUMENT_WELL;
+  const boardH = rail ? Math.max(instrH, wellTop + wellH) : wellTop + wellH;
   const socketCenter = useCallback((i: number) => {
     const p = well.at(i);
-    return { x: wellPad + p.x, y: wellTop + wellPad + p.y * wellRowH + sigil / 2 };
-  }, [well, wellTop, wellRowH, sigil]);
+    return { x: wellX + wellPad + p.x, y: wellTop + wellPad + p.y * wellRowH + sigil / 2 };
+  }, [well, wellX, wellTop, wellRowH, sigil]);
 
   // ------------------------------------------------------------ board state
   const board = useMemo(() => normalizeValue(content, value), [content, value]);
@@ -303,12 +328,15 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
 
   const resolveDrop = useCallback((d: DragState) => {
     const zones = layout.seals.map((s) => s.zone);
-    const g = snapToGroup({ x: d.x, y: d.y }, zones, { x: 24, y: GAP_INSTRUMENT_WELL + 24 });
-    if (g !== null && d.y < wellTop + 24) { commitSeat(d.token, groups[g].token); return; }
-    const inWell = d.y >= wellTop - 24 && d.y <= boardH + 24 && d.x >= -24 && d.x <= width + 24;
+    const g = snapToGroup({ x: d.x, y: d.y }, zones, { x: rail ? RAIL.gap / 2 : 24, y: GAP_INSTRUMENT_WELL + 24 });
+    const overWires = rail ? d.x < wellX : d.y < wellTop + 24;
+    if (g !== null && overWires) { commitSeat(d.token, groups[g].token); return; }
+    const inWell = rail
+      ? d.x >= wellX - 4 && d.x <= width + 24 && d.y >= -24 && d.y <= boardH + 24
+      : d.y >= wellTop - 24 && d.y <= boardH + 24 && d.x >= -24 && d.x <= width + 24;
     if (inWell) { if (board[d.token]) commitUnseat(d.token); else setHeld(null); return; }
     setNote(`${entityLabel(d.token)} put back.`);
-  }, [layout, wellTop, boardH, width, groups, board, commitSeat, commitUnseat, entityLabel]);
+  }, [layout, rail, wellX, wellTop, boardH, width, groups, board, commitSeat, commitUnseat, entityLabel]);
 
   const onSigilPointerUp = (token: string) => (e: ReactPointerEvent<HTMLButtonElement>) => {
     const d = dragRef.current;
@@ -439,6 +467,8 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
       data-mig-primitive="match-grid"
       data-phase={reveal ? "revealed" : phase}
       data-composition={composition}
+      data-rail={rail ? "" : undefined}
+      style={rail ? ({ "--mg-rail-well-x": `${wellX}px`, "--mg-rail-head-h": `${RAIL.headH}px` } as CSSProperties) : undefined}
       data-tier={tier}
       data-compact={compact ? "" : undefined}
       data-reduced-motion={reduced ? "" : undefined}
@@ -483,10 +513,10 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
             </>
           ) : (
             layout.seals.map((s, g) => (
-              <line key={g} x1={s.x + s.r + 6} x2={width - 8} y1={s.y} y2={s.y} className="mg-guide-wire" />
+              <line key={g} x1={s.x + s.r + 6} x2={instrW - 8} y1={s.y} y2={s.y} className="mg-guide-wire" />
             ))
           )}
-          <rect x={6} y={wellTop + 0.5} width={Math.max(0, width - 12)} height={Math.max(0, wellH - 1)} rx={10} className="mg-well-plate" />
+          <rect x={wellX + 6} y={wellTop + 0.5} width={Math.max(0, wellW - 12)} height={Math.max(0, wellH - 1)} rx={10} className="mg-well-plate" />
           {entities.map((e, i) => {
             const c = socketCenter(i);
             return <circle key={e.token} cx={c.x} cy={c.y} r={sigil / 2 + 3} className="mg-socket" data-empty={drawn[e.token] ? "" : undefined} />;
@@ -550,7 +580,7 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
                 </span>
                 <span className="mg-seal-index" aria-hidden>{ROMAN[gi] ?? String(gi + 1)}</span>
               </button>
-              <span className="mg-seal-name" aria-hidden style={{ marginTop: s.r + (composition === "constellation" ? 6 : 3) }}>{g.label}</span>
+              <span className="mg-seal-name" aria-hidden style={rail ? undefined : { marginTop: s.r + (composition === "constellation" ? 6 : 3) }}>{g.label}</span>
             </div>
           );
         })}
@@ -605,7 +635,7 @@ export function MatchGrid({ content, phase, value, onChange, onLock, reveal, ren
             content={content}
             reveal={reveal}
             shown={ledgerShown}
-            style={{ top: wellTop, height: wellH }}
+            style={rail ? { top: wellTop, height: wellH, left: wellX + 6, right: 6 } : { top: wellTop, height: wellH }}
             groupLabel={groupLabel}
           />
         ) : null}

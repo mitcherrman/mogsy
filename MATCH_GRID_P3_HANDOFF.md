@@ -291,3 +291,56 @@ ported M1 files (primitive, helpers, lab, lab spec, M1 handoff, audit).
 ## Final
 
 See the commit on `match-grid/p3-frontend` (local only).
+
+## MG-P3.1 — short-desktop layout / accessibility repair
+
+**Root cause (measured in the real arena):** M1 stacks head (58) + instrument +
+a full-width well (168–176) + foot (56). The arena stage leaves ~490 / ~420 /
+~370px at 1280×720 / 1366×650 / 1280×600, but the board needed 510 / 560 /
+626px (3 / 4 / 5 trees). P3 scaled the whole board to 0.96 → 0.59, which put
+rune targets at 26–44px.
+
+**Strategy:** a module-local **rail** arrangement of the approved ledger,
+with no scaling (`FitToStage` removed):
+- The well moves into a column beside the wires, with the prompt at its top
+  (DOM order unchanged).
+- Rows are 56px, with 48px seals and 44px sigils, and each tree name rides on
+  its wire.
+- The seat pitch is 58px, so captions never touch.
+- It is selected only when the host passes `maxHeight` (the arena stage's
+  room) and the stacked board would not fit. Phones and the M1 lab are
+  unchanged.
+- `boardPoint` remains transform-aware; with no transform it is the identity.
+
+**Rendered targets (real host, all deals):**
+
+| Viewport | 3 trees | 4 trees | 5 trees | min rune | min seal |
+|---|---|---|---|---|---|
+| 1600×900 | constellation | ledger | ledger | 44×44 (46 in constellation) | 48×48 (72 in constellation) |
+| 1280×720 | rail | rail | rail | 44×44 | 48×48 |
+| 1366×650 | rail | rail | rail | 44×44 | 48×48 |
+| 1280×600 | rail | rail | rail | 44×44 | 48×48 |
+| 390×844 | ledger | ledger | ledger | 44×44 | 48×48 |
+| 360×640 | ledger | ledger | ledger | 44×44 | 48×48 |
+
+Old (P3, 1280×600): rune 26–33px, seal 28–52px.
+
+The spec asserts rendered box ≥44, rendered == layout size (nothing shrunk by
+a transform), and a hit test at the center ±20px on every rune and seal.
+
+**Continuity (real server, P2 `7da4f2ec`):**
+- All 12 cases at 0.00px. 10 passed in a single run; the two 360×640 cases
+  passed after the spec change below, in a separate run.
+- The spec now plays all three deals.
+- At 360×640 the 4- and 5-tree ledger is taller than the screen. The player
+  must scroll to reach Lock (the arena's mobile stage scrolls by design). The
+  spec marks that deliberate scroll; any scroll the page makes by itself still
+  fails.
+
+**Not done at this commit (usage limit):**
+- Final reveal certification against MG-P2.1
+  (`match-grid/p2.1-release-candidate` @ `2464703c`, hold 4500ms). The
+  launcher `scratchpad/mg_backend/run_p21.py` and launch entry `mg-p21-be` are
+  prepared but were not run.
+- The M1 lab spec has not been re-run since the rail change.
+- The final scoped regression run was started but not read.

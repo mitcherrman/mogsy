@@ -15,7 +15,7 @@
 // is never read here.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { HeightTier } from "@/lib/match-grid/layout";
 import { MatchGrid } from "@/components/match-grid/MatchGrid";
@@ -142,55 +142,38 @@ function useArenaHeightTier(): HeightTier {
 }
 
 /**
- * Fit the board to the arena's stage. A short desktop (1280×600 leaves the
- * module ~400px) cannot hold M1's shortest tier, so the WHOLE board is scaled
- * uniformly — the same picture, smaller, nothing reflowed — never clipped or
- * scrolled. The scale is fixed for a deal (the board's height never changes
- * across its phases) and is 1 wherever the board already fits, including
- * every phone, where the stage grows with its content.
+ * MG-P3.1 — the room the arena's question stage gives the module, in px, or
+ * undefined where the stage grows with its content (phones) or is absent.
+ *
+ * Read from the STAGE (fixed by the arena's grid on desktop), never from the
+ * module's own wrapper, which is sized by its content and would feed back.
+ * The board uses it to choose a composition that fits at FULL size (the
+ * ledger's rail arrangement on short desktops) — it is never scaled.
  */
-function FitToStage({ children }: { children: ReactNode }) {
-  const outer = useRef<HTMLDivElement>(null);
-  const inner = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState<{ scale: number; height: number } | null>(null);
+const STAGE_SLACK_PX = 12;
+
+function useStageRoom(ref: React.RefObject<HTMLElement>): number | undefined {
+  const [room, setRoom] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
-    const o = outer.current;
-    const i = inner.current;
-    const host = o?.parentElement?.parentElement?.parentElement;
-    if (!o || !i || !host) return;
+    const el = ref.current;
+    const stage = el?.closest<HTMLElement>(".ranked-question-stage");
+    const host = el?.parentElement?.parentElement;
+    if (!el || !stage || !host) return;
     const read = () => {
-      const natural = i.offsetHeight;
-      // The room the arena gives the module: the flex region holding the viewport.
-      const room = host.clientHeight - (o.getBoundingClientRect().top - host.getBoundingClientRect().top);
-      // Only a flex-sized stage (desktop) has a height of its own; a phone's
-      // grows with its content, and fitting to it would feed back on itself.
-      const sized = getComputedStyle(host).display.includes("flex");
-      if (!natural || room <= 0 || !sized || room >= natural - 2) {
-        setFit((f) => (f === null ? f : null));
-        return;
-      }
-      const scale = Math.min(1, Math.floor((room / natural) * 100) / 100);
-      setFit((f) => (f && f.scale === scale && f.height === natural ? f : { scale, height: natural }));
+      if (!getComputedStyle(host).display.includes("flex")) { setRoom(undefined); return; }
+      const cs = getComputedStyle(stage);
+      const inner = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const next = Math.floor(inner - STAGE_SLACK_PX);
+      setRoom((r) => (r === next ? r : next));
     };
+    // Committed before paint, so a board never paints in the wrong composition.
     read();
     if (typeof ResizeObserver === "undefined") return;
-    // ResizeObserver callbacks run after layout and BEFORE paint; committing
-    // synchronously there means a new deal never paints at the old scale.
     const ro = new ResizeObserver(() => flushSync(read));
-    ro.observe(i);
-    ro.observe(host);
+    ro.observe(stage);
     return () => ro.disconnect();
-  }, []);
-  const scale = fit?.scale ?? 1;
-  return (
-    <div ref={outer} data-testid="match-grid-fit" data-fit-scale={scale}
-      style={scale < 1 && fit ? { height: Math.ceil(fit.height * scale) } : undefined}>
-      <div ref={inner}
-        style={scale < 1 ? { transform: `scale(${scale})`, transformOrigin: "top center" } : undefined}>
-        {children}
-      </div>
-    </div>
-  );
+  }, [ref]);
+  return room;
 }
 
 /** The latest of the instants at which the server lets this challenge be answered. */
@@ -209,6 +192,8 @@ function MatchPhase({ state, actions, skewMs, roundStartedAt }: {
 }) {
   const block = state.block?.contract === "match" ? state.block : null;
   const heightTier = useArenaHeightTier();
+  const phaseRef = useRef<HTMLDivElement>(null);
+  const maxHeight = useStageRoom(phaseRef);
   // Every poll re-parses the snapshot into NEW objects. The primitive keys its
   // reveal clock on object identity, so everything handed to it is memoised
   // by VALUE: a fresh-but-equal snapshot must not restart the choreography.
@@ -274,17 +259,15 @@ function MatchPhase({ state, actions, skewMs, roundStartedAt }: {
   };
 
   return (
-    <div data-testid="match-grid-phase" data-phase={phase}
+    <div ref={phaseRef} data-testid="match-grid-phase" data-phase={phase}
       data-not-open={phase === "open" && notOpen ? "true" : undefined}
       {...(phase === "open" && notOpen ? { inert: "" } : {})}>
       {/* The primitive's own status line already says "Locked in · waiting…",
           so no second opponent line is added beneath it. */}
-      {/* Keyed per deal: the fit is measured before the new board's first paint. */}
-      <FitToStage key={key}>
-        <MatchGrid key={key} content={content} phase={phase} value={value}
-          onChange={(board) => setDraft({ key, board })} onLock={onLock} reveal={reveal}
-          renderGroupGlyph={(g) => <RuneTreeGlyph glyph={g.glyph} />} heightTier={heightTier} />
-      </FitToStage>
+      <MatchGrid key={key} content={content} phase={phase} value={value}
+        onChange={(board) => setDraft({ key, board })} onLock={onLock} reveal={reveal}
+        renderGroupGlyph={(g) => <RuneTreeGlyph glyph={g.glyph} />} heightTier={heightTier}
+        maxHeight={maxHeight} />
     </div>
   );
 }

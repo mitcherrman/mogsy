@@ -43,6 +43,58 @@ export interface LayoutOptions {
   groupCount: number;
   /** Height tier chosen by the component from the viewport. */
   tier: HeightTier;
+  /**
+   * MG-P3.1 — the RAIL arrangement of the ledger (short frames): `width` is
+   * then the wires' column only; the well sits beside it, not below.
+   */
+  rail?: boolean;
+}
+
+/**
+ * MG-P3.1 — the ledger's RAIL arrangement, for a frame too short to stack the
+ * well under the wires (the real arena at 1280×600 leaves ~370px). Same seals,
+ * wires, sigils and threads as the ledger, at full target size (44px sigils,
+ * 48px seals); each discipline's name rides on its wire beside the seal
+ * instead of under it, so a row is 56px, and the well moves to a column on
+ * the right. Nothing is scaled.
+ */
+export const RAIL = {
+  rowH: 56,
+  sigil: 44,
+  sealR: 24,
+  /** Seal centre x. */
+  sealX: 32,
+  /** First seat centre x: clears the seal and the name riding on the wire. */
+  firstSeatX: 164,
+  /** One caption's width (58px), so neighbouring captions never touch. */
+  pitchX: 58,
+  /** The wires' column: the seal, its name, and three seats (P2 deals ≤3 per seal). */
+  columnW: 164 + 2 * 58 + 22 + 8,
+  /** Gap between the wires' column and the well column. */
+  gap: 8,
+  /** The prompt's band at the top of the well column. */
+  headH: 46,
+  wellPitch: 58,
+  /** The narrowest frame the rail is laid out in (wires + a 4-socket well). */
+  minWidth: 164 + 2 * 58 + 22 + 8 + 8 + 4 * 58 + 28,
+} as const;
+
+function railLayout(opts: LayoutOptions): InstrumentLayout {
+  const { width, groupCount } = opts;
+  const rowH = RAIL.rowH;
+  const seals: SealGeometry[] = Array.from({ length: groupCount }, (_, g) => ({
+    x: RAIL.sealX, y: rowH * (g + 0.5), r: RAIL.sealR,
+    zone: { left: 0, top: rowH * g, right: width, bottom: rowH * (g + 1) },
+  }));
+  const perRow = Math.max(1, Math.floor((width - RAIL.firstSeatX - RAIL.sigil / 2 - 6) / RAIL.pitchX) + 1);
+  const seat = (g: number, index: number): Point => {
+    const s = seals[Math.max(0, Math.min(groupCount - 1, g))];
+    const col = index % perRow;
+    const overflow = Math.floor(index / perRow);
+    // Beyond one wire the seats stack slightly up and right, as in the ledger.
+    return { x: RAIL.firstSeatX + col * RAIL.pitchX + overflow * 8, y: s.y - overflow * 10 };
+  };
+  return { composition: "ledger", width, height: rowH * groupCount, sigil: RAIL.sigil, seals, seat };
 }
 
 export const LEDGER_MAX_WIDTH = 719;
@@ -103,6 +155,7 @@ const FAN: readonly { ring: number; deg: number }[] = [
 
 export function computeLayout(opts: LayoutOptions): InstrumentLayout {
   const { width, height, groupCount } = opts;
+  if (opts.rail) return railLayout(opts);
   const composition = compositionFor(width, groupCount, opts.tier);
   if (composition === "ledger") return ledgerLayout(opts);
 

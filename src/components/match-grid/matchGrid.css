@@ -688,3 +688,27 @@
   .mg-root *, .mg-root *::before, .mg-root *::after { transition: none !important; animation: none !important; }
   .mg-thread[data-state="inked"] line { stroke-dashoffset: 0; }
 }
+
+/* ------------------------------------------------------------- rail (MG-P3.1)
+   The ledger's arrangement for a short host frame: the well is a column beside
+   the wires and the prompt heads that column, so nothing is stacked under the
+   wires and nothing is scaled. Every target keeps its size (44px sigils, 48px
+   seals). Each discipline's name rides on its wire, beside the seal. */
+.mg-root[data-rail] .mg-head {
+  position: absolute;
+  top: 0;
+  left: var(--mg-rail-well-x);
+  right: 0;
+  height: var(--mg-rail-head-h);
+  padding: 8px 14px 0;
+  z-index: 2;
+}
+.mg-root[data-rail] .mg-eyebrow { display: none; }
+.mg-root[data-rail] .mg-seal-name {
+  transform: none;
+  left: 30px;
+  top: -19px;
+  width: auto;
+  text-align: left;
+  white-space: nowrap;
+}

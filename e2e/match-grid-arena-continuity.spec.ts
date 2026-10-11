@@ -2,6 +2,9 @@
  * MG-P3 — MATCH GRID CONTINUITY IN THE REAL HOST, against a REAL `match.v1`
  * backend (P2), measured on every animation frame.
  *
+ * MG-P3.1: every rune and seal is also measured as RENDERED and hit-tested
+ * (≥44×44, never shrunk by a transform) on all three deals (3, 4, 5 trees).
+ *
  * Unlike `match-grid-continuity.spec.ts` (the M1 DEV lab, kept for visual
  * diagnosis), this drives `QuizRankedMatch → CanonicalArena`: an `admin.match`
  * bot match is created through the ordinary queue join, the first segment is
@@ -54,6 +57,9 @@ const BUDGET_PX = 1;
 
 interface Frame {
   phase: string | null; stage: string | null; seg: string | null; scrollY: number; t: number; node: number;
+  /** How many deliberate user scrolls the test has made so far (see `userScroll`). */
+  userScrolls: number;
+  /** The composition in force (constellation / ledger / rail). */
   fit: string | null;
   /** Sampled in requestAnimationFrame (a painted frame) vs. on a DOM commit (may never paint). */
   painted: boolean;
@@ -73,10 +79,11 @@ function installSampler(regions: Record<string, string>) {
       phase: m?.getAttribute("data-phase") ?? null,
       stage: m?.getAttribute("data-reveal-stage") ?? null,
       seg: String(document.querySelectorAll('[data-part="sigil"]').length),
-      fit: document.querySelector('[data-testid="match-grid-fit"]')?.getAttribute("data-fit-scale") ?? null,
+      fit: m ? (m.hasAttribute("data-rail") ? "rail" : m.getAttribute("data-composition")) : null,
       painted,
       scrollY: window.scrollY,
       t: Math.round(performance.now()),
+      userScrolls: (window as unknown as { __mgUserScrolls?: number }).__mgUserScrolls ?? 0,
       node: m ? (ids.get(m) ?? (ids.set(m, nextId++), nextId - 1)) : 0,
       r: {},
     };
@@ -100,6 +107,25 @@ function installSampler(regions: Record<string, string>) {
   const w = window as unknown as { __mgStop: () => Frame[]; __mgPause: (p: boolean) => void };
   w.__mgStop = () => { running = false; mo.disconnect(); return frames; };
   w.__mgPause = (p) => { paused = p; };
+}
+
+/**
+ * A DELIBERATE scroll, as a player makes one to reach part of a board taller
+ * than the phone (the arena's mobile stage grows with its content and the page
+ * scrolls by design). Frames are tagged with the count, so the no-scroll rule
+ * still catches every scroll the page makes by itself.
+ */
+async function userScroll(page: Page, target: ReturnType<Page["locator"]>) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __mgUserScrolls?: number };
+    w.__mgUserScrolls = (w.__mgUserScrolls ?? 0) + 1;
+  });
+  await target.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(150);
+  await page.evaluate(() => {
+    const w = window as unknown as { __mgUserScrolls?: number };
+    w.__mgUserScrolls = (w.__mgUserScrolls ?? 0) + 1;
+  });
 }
 
 async function shot(page: Page, file: string) {
@@ -137,6 +163,49 @@ function worstMovement(all: Frame[]) {
     }
   }
   return worst;
+}
+
+/**
+ * MG-P3.1 — every interactive rune (sigil) and destination (seal) as the
+ * player can actually hit it: the RENDERED box (getBoundingClientRect, so any
+ * transform counts), its layout size (a transform may not shrink it), and a
+ * hit test at the centre and ±20px on each axis that must land on the target.
+ */
+async function targetReport(page: Page) {
+  return page.evaluate(() => {
+    const read = (sel: string) => Array.from(document.querySelectorAll<HTMLElement>(sel)).map((el) => {
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const pts = [[cx, cy], [cx - 20, cy], [cx + 20, cy], [cx, cy - 20], [cx, cy + 20]];
+      const missed = pts.map(([x, y]) => document.elementFromPoint(x, y))
+        .filter((hit) => !(hit && (hit === el || el.contains(hit))));
+      const by = missed[0] ? `${missed[0].tagName}.${String(missed[0].className).slice(0, 40)}` : null;
+      return { w: r.width, h: r.height, lw: el.offsetWidth, lh: el.offsetHeight, misses: missed.length, by };
+    });
+    const sum = (a: { w: number; h: number; lw: number; lh: number; misses: number; by: string | null }[]) => ({
+      coveredBy: a.find((x) => x.by)?.by ?? null,
+      n: a.length,
+      minW: Math.min(...a.map((x) => x.w)), minH: Math.min(...a.map((x) => x.h)),
+      shrunk: a.filter((x) => Math.abs(x.w - x.lw) > 0.5 || Math.abs(x.h - x.lh) > 0.5).length,
+      misses: a.reduce((t, x) => t + x.misses, 0),
+    });
+    return {
+      rune: sum(read('[data-mig-primitive="match-grid"] [data-part="sigil"]')),
+      seal: sum(read('[data-mig-primitive="match-grid"] [data-part="seal"] .mg-seal')),
+      rail: document.querySelector('[data-mig-primitive="match-grid"]')?.hasAttribute("data-rail") ?? false,
+      composition: document.querySelector('[data-mig-primitive="match-grid"]')?.getAttribute("data-composition") ?? null,
+    };
+  });
+}
+
+function assertTargets(t: Awaited<ReturnType<typeof targetReport>>, when: string) {
+  for (const [kind, r] of [["rune", t.rune], ["seal", t.seal]] as const) {
+    expect(r.minW, `${when}: smallest ${kind} is ${r.minW}px wide`).toBeGreaterThanOrEqual(44);
+    expect(r.minH, `${when}: smallest ${kind} is ${r.minH}px tall`).toBeGreaterThanOrEqual(44);
+    expect(r.shrunk, `${when}: a ${kind} is rendered smaller than its layout box`).toBe(0);
+    expect(r.misses, `${when}: a ${kind}'s hit area is covered by ${r.coveredBy}`).toBe(0);
+  }
 }
 
 const root = (page: Page) => page.locator('[data-mig-primitive="match-grid"]');
@@ -199,6 +268,8 @@ for (const reduced of [false, true]) {
         await page.evaluate(installSampler, REGIONS);
         const tag = `${vp.name}${reduced ? "-rm" : ""}`;
         await shot(page, path.join(SHOTS, `${tag}-01-open.png`));
+        const openTargets = await targetReport(page);
+        assertTargets(openTargets, "open");
 
         // First assignment by direct drag.
         const s0 = (await sigils(page).nth(0).boundingBox())!;
@@ -228,6 +299,13 @@ for (const reduced of [false, true]) {
         }
         await page.waitForTimeout(650);
         await shot(page, path.join(SHOTS, `${tag}-04-full.png`));
+        const fullTargets = await targetReport(page);
+        assertTargets(fullTargets, "full board");
+        test.info().annotations.push({ type: "targets", description: JSON.stringify({
+          composition: fullTargets.composition, rail: fullTargets.rail, groups: k,
+          rune: [Math.min(openTargets.rune.minW, fullTargets.rune.minW), Math.min(openTargets.rune.minH, fullTargets.rune.minH)],
+          seal: [Math.min(openTargets.seal.minW, fullTargets.seal.minW), Math.min(openTargets.seal.minH, fullTargets.seal.minH)],
+        }) });
 
         // Clipped seats: every sigil sits inside the board.
         const clip = await page.evaluate(() => {
@@ -276,6 +354,45 @@ for (const reduced of [false, true]) {
         await expect(root(page)).toHaveAttribute("data-phase", "open", { timeout: 20_000 });
         await page.waitForTimeout(400);
         await shot(page, path.join(SHOTS, `${tag}-07-next.png`));
+        // The next deal (a different tree count) is held to the same floor.
+        const n2 = await sigils(page).count();
+        // Measured once the deal is answerable (the arena's module title beat
+        // covers the stage until then).
+        await expect(page.locator('[data-testid="match-grid-phase"]')).not.toHaveAttribute("data-not-open", "true", { timeout: 20_000 });
+        await page.waitForTimeout(600);
+        const nextTargets = await targetReport(page);
+        assertTargets(nextTargets, "next deal");
+        test.info().annotations.push({ type: "targets-next", description: JSON.stringify({
+          composition: nextTargets.composition, rail: nextTargets.rail,
+          groups: await sealButtons(page).count(),
+          rune: [nextTargets.rune.minW, nextTargets.rune.minH], seal: [nextTargets.seal.minW, nextTargets.seal.minH],
+        }) });
+
+        // Deal 2 played through (keyboard), then deal 3 — the five-tree board.
+        await expect(page.locator('[data-testid="match-grid-phase"]')).not.toHaveAttribute("data-not-open", "true", { timeout: 20_000 });
+        // On a phone a four-tree ledger is taller than the screen: the player
+        // scrolls down to the well and the Lock. (No-op where it fits.)
+        if (!(await lock.isVisible()) || (await lock.boundingBox())!.y + 44 > vp.height) await userScroll(page, lock);
+        const k2 = await sealButtons(page).count();
+        for (let i = 0; i < n2; i++) {
+          await sigils(page).nth(i).focus();
+          await page.keyboard.press(String((i % k2) + 1));
+        }
+        await expect(lock).toBeEnabled();
+        await lock.click();
+        await expect.poll(async () => sigils(page).count(), { timeout: 40_000 }).not.toBe(n2);
+        await expect(root(page)).toHaveAttribute("data-phase", "open", { timeout: 20_000 });
+        await page.waitForTimeout(400);
+        await expect(page.locator('[data-testid="match-grid-phase"]')).not.toHaveAttribute("data-not-open", "true", { timeout: 20_000 });
+        await page.waitForTimeout(600);
+        await shot(page, path.join(SHOTS, `${tag}-08-deal3.png`));
+        const thirdTargets = await targetReport(page);
+        assertTargets(thirdTargets, "deal 3");
+        test.info().annotations.push({ type: "targets-third", description: JSON.stringify({
+          composition: thirdTargets.composition, rail: thirdTargets.rail,
+          groups: await sealButtons(page).count(),
+          rune: [thirdTargets.rune.minW, thirdTargets.rune.minH], seal: [thirdTargets.seal.minW, thirdTargets.seal.minH],
+        }) });
 
         const frames = await page.evaluate(() => (window as unknown as { __mgStop: () => Frame[] }).__mgStop());
         expect(frames.length).toBeGreaterThan(30);
@@ -300,8 +417,21 @@ for (const reduced of [false, true]) {
         const report = Object.entries(worst).map(([r, w]) => `${r}: ${w.max.toFixed(2)}px @${w.frame} (${w.from} → ${w.to})`).join("\n");
         test.info().annotations.push({ type: "movement", description: report });
         // No page scroll at any point (focus moves included).
-        const ys = frames.map((f) => f.scrollY);
-        expect(Math.max(...ys) - Math.min(...ys), "the page scrolled").toBeLessThanOrEqual(BUDGET_PX);
+        const firstScroll = frames.findIndex((f) => Math.abs(f.scrollY - frames[0].scrollY) > BUDGET_PX);
+        if (firstScroll >= 0) {
+          const f = frames[firstScroll];
+          test.info().annotations.push({ type: "first-scroll", description: `deal ${f.seg} ${f.phase}/${f.stage} y=${f.scrollY} @${f.t}` });
+        }
+        // No scroll the player did not make: between deliberate scrolls the
+        // page must hold still (focus moves and deal swaps included).
+        for (let i = 1; i < frames.length; i++) {
+          const a = frames[i - 1]; const b = frames[i];
+          if (a.userScrolls !== b.userScrolls || b.userScrolls % 2 === 1) continue;
+          expect(Math.abs(b.scrollY - a.scrollY), `the page scrolled by itself (deal ${b.seg} ${b.phase}/${b.stage})`)
+            .toBeLessThanOrEqual(BUDGET_PX);
+        }
+        const userScrolled = Math.max(...frames.map((f) => f.userScrolls)) > 0;
+        test.info().annotations.push({ type: "user-scroll", description: userScrolled ? "needed to reach the board" : "none" });
         // The module never overflows the arena stage.
         for (const f of frames.filter((x) => x.painted)) {
           const st = f.r.stage; const v = f.r.viewport;

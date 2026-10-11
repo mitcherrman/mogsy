@@ -351,3 +351,50 @@ describe("MatchGrid — continuity", () => {
     expect(Number.parseFloat(ledger.style.top) + Number.parseFloat(ledger.style.height)).toBeLessThanOrEqual(Number.parseFloat(heightOpen) + 0.5);
   });
 });
+
+// ---------------------------------------------------------------- MG-P3.1 rail
+describe("MatchGrid — host height budget (rail)", () => {
+  const props = { content, phase: "open" as const, value: {}, onChange: () => {}, onLock: () => {}, reveal: null };
+
+  it("without a budget keeps the stacked composition", () => {
+    const { container } = render(<MatchGrid {...props} />);
+    expect(container.querySelector("[data-mig-primitive]")!.hasAttribute("data-rail")).toBe(false);
+  });
+
+  it("a budget the stacked board cannot meet selects the rail, with the well beside the wires", () => {
+    const { container } = render(<MatchGrid {...props} heightTier="compact" maxHeight={360} />);
+    const root = container.querySelector("[data-mig-primitive]")!;
+    expect(root.hasAttribute("data-rail")).toBe(true);
+    expect(root.getAttribute("data-composition")).toBe("ledger");
+    // Every target is still reachable by name and the board is shorter than the budget.
+    for (const e of content.entities) expect(sigil(e.label)).toBeInTheDocument();
+    const board = container.querySelector<HTMLElement>('[data-part="board"]')!;
+    expect(parseFloat(board.style.height)).toBeLessThanOrEqual(360 - 56 - 2);
+  });
+
+  it("a generous budget keeps the stacked composition", () => {
+    const { container } = render(<MatchGrid {...props} heightTier="compact" maxHeight={2000} />);
+    expect(container.querySelector("[data-mig-primitive]")!.hasAttribute("data-rail")).toBe(false);
+  });
+
+  it("the rail plays the same game: keyboard, tap→tap and Lock payload", () => {
+    const onLock = vi.fn();
+    function RailHost() {
+      const [value, setValue] = useState<MatchValue>({});
+      return <MatchGrid content={content} phase="open" value={value} onChange={setValue} onLock={onLock} reveal={null}
+        heightTier="compact" maxHeight={360} />;
+    }
+    render(<RailHost />);
+    fireEvent.keyDown(sigil("Ash"), { key: "2" });
+    expect(sigil("Ash")).toHaveAccessibleName(/In Beta/);
+    const bell = sigil("Bell");
+    pointer("pointerdown", bell, 10, 10);
+    pointer("pointerup", bell, 10, 10);
+    fireEvent.click(seal("Gamma"));
+    expect(sigil("Bell")).toHaveAccessibleName(/In Gamma/);
+    for (const [i, e] of content.entities.slice(2).entries()) fireEvent.keyDown(sigil(e.label), { key: String((i % 3) + 1) });
+    fireEvent.click(lockButton());
+    expect(onLock).toHaveBeenCalledTimes(1);
+    expect(onLock.mock.calls[0][0].assignments).toHaveLength(content.entities.length);
+  });
+});
