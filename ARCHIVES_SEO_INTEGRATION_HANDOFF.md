@@ -57,3 +57,25 @@ Build warnings were limited to existing Tailwind ambiguity, chunk-size, and mixe
 - Baseline TypeScript and lockfile failures remain outside this integration's scope.
 - Re-run `npm run build` in the normal release environment so sitemap blog entries are generated with production credentials.
 - Recommended next action: review this branch, then merge it into an up-to-date main without adding the other SEO branches. Do not deploy from this worktree.
+
+## Mainline integration status — 2026-10-10
+
+- Mainline base: `0e37e62125b63806fa8a5f88051930c333b915a7`
+- Approved candidate: `0d7a91b26f91621b78b72e5d19ae024ee219227c`
+- Verified merge commit: `896e55f2b1448e07e8c9ad7a45b03142757620cb`
+- Merge method: normal non-fast-forward merge with parents `0e37e62125b63806fa8a5f88051930c333b915a7` and `0d7a91b26f91621b78b72e5d19ae024ee219227c`; reviewed history is preserved.
+- Drift/ownership result: no remote-main drift, merge conflict, unexpected file, or other-workstream change was present.
+
+Exact merge-result verification:
+
+| Check | Result |
+|---|---|
+| Focused Archives/routing/sitemap/SEO Vitest | PASS — 7 files, 28 tests |
+| Modified-file ESLint | PASS — 0 errors; the existing `App.tsx` Fast Refresh warning remains |
+| TypeScript `tsc --noEmit -p tsconfig.app.json` | BASELINE FAIL — the same two current-main errors in `OnboardingProfile.tsx:180` and `connections.ts:263` |
+| Production `npm run build` | PASS — 423 URLs: 21 static, 173 champions, 16 pro years, 213 items, 0 blog |
+| Item prerender invariant | PASS — 213 sitemap URLs / 213 pages |
+| Champion prerender invariant | PASS — 173 sitemap URLs / 173 pages |
+| Sitemap uniqueness and route truth | PASS — 0 duplicate URLs; Journey, Glossary, and Items occur once; tier list is absent |
+
+Deployment was not performed. The remaining release action is the repository's normal deployment from main, including a production-environment build so blog sitemap entries can be generated with the existing Supabase credentials. No backend, Supabase, or production data changes are required by this integration.
