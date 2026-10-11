@@ -107,6 +107,11 @@ In this session's scratchpad: `evidence/` holds 120 state screenshots (s1-open, 
 
 **How to rerun the continuity spec on this machine.** Playwright 1.64 wants chromium headless-shell 1248 / ffmpeg 1013, but 1228 / 1011 are installed. Start the S2 Vite (`.claude/launch.json` entry `scrub-s2-fe`, port 5420), then use a throwaway config with `use: { baseURL: "http://localhost:5420", launchOptions: { executablePath: ".../chromium_headless_shell-1228/chrome-headless-shell-win64/chrome-headless-shell.exe" } }`, or install the matching browser and use `playwright.arena.config.ts` (the spec is registered there).
 
+## Final SHAs (local only, nothing pushed)
+- Frontend `scrub/s2-frontend`: **`bc50ca8b`** (the module), on `a59526b2`; this handoff note follows it.
+- Backend `scrub/s2-backend`: **`e832ff39`** (the module), on `679173bf`; this handoff note follows it.
+- Deploy order: backend before frontend. The backend is inert without the admin preset, and a frontend without the backend can't reach a `scrub` segment.
+
 ## Remaining limitations
 1. **The answer is derivable from public readings by design.** S1 made level and XP public at every checkpoint ("that is the game"). The task is locating the first crossing under time pressure, not recalling a hidden fact. A scripted client could compute the first `level >= L` itself. The server-side guarantees (frozen canonical, exact grading, no canonical/proof/notes pre-lock) hold; the information-theoretic one cannot without redesigning what the lens shows, which is out of scope.
 2. **The shell's header verdict lands before the traverse.** On the bot-inline path the arena's top strip shows "INCORRECT / +0 points" as soon as the settlement is discovered, while the instrument is still clamping and traversing. The instrument's own choreography is intact, and `ownsResultReveal` suppresses the overlay stamp, but the header pre-empts it. This is shared shell behaviour (Order Forge and Reconstruct show it too); holding the header beat until the module reports reveal complete would be a shell change for the owner to decide on.
