@@ -1,0 +1,486 @@
+[
+ {
+  "name": "after-reveal-q1-375x812",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 148,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 1 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 165,
+   "bottom": 243,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "1",
+  "timelineStates": "cuuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "after-after-next-375x812",
+  "state": "after-next",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 148,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "question",
+  "header": "Question 2 / 10 · 1 correct",
+  "focus": "h2[stem]: In LTA North, which of these players has the most games play",
+  "stem": {
+   "top": 176,
+   "bottom": 254,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- heading \"In LTA North, which of these players has the most games played on Xin Zhao?\" [level=2]"
+ },
+ {
+  "name": "after-last-reveal-375x812",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 194,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 3 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 118,
+   "bottom": 222,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "10",
+  "timelineStates": "rrrrrrrrrc",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "after-after-results-375x812",
+  "state": "after-results",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "scrollY": 16,
+  "vh": 812,
+  "hudBottom": 44,
+  "phase": "complete",
+  "header": null,
+  "focus": "h2[summary-heading]: Quiz complete",
+  "stem": null,
+  "summaryHeading": {
+   "top": 100,
+   "bottom": 128,
+   "inView": true
+  },
+  "score": {
+   "top": 140,
+   "bottom": 180,
+   "inView": true
+  },
+  "playAgain": {
+   "top": 274,
+   "bottom": 318,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": 52,
+   "bottom": 395,
+   "inView": true
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": "- heading \"Quiz complete\" [level=2]",
+  "tabAfterResults": "Play again"
+ },
+ {
+  "name": "after-reveal-q1-390x844",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 25,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 0 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 287,
+   "bottom": 391,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "1",
+  "timelineStates": "cuuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "after-after-next-390x844",
+  "state": "after-next",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 25,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "question",
+  "header": "Question 2 / 10 · 0 correct",
+  "focus": "h2[stem]: In LCK, which team has the higher win rate on Miss Fortune: ",
+  "stem": {
+   "top": 287,
+   "bottom": 365,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- 'heading \"In LCK, which team has the higher win rate on Miss Fortune: Dplus Kia or T1?\" [level=2]'"
+ },
+ {
+  "name": "after-last-reveal-390x844",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 16,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 5 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 297,
+   "bottom": 375,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "10",
+  "timelineStates": "rrrrrrrrrc",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "after-after-results-390x844",
+  "state": "after-results",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 16,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "complete",
+  "header": null,
+  "focus": "h2[summary-heading]: Quiz complete",
+  "stem": null,
+  "summaryHeading": {
+   "top": 100,
+   "bottom": 128,
+   "inView": true
+  },
+  "score": {
+   "top": 140,
+   "bottom": 180,
+   "inView": true
+  },
+  "playAgain": {
+   "top": 274,
+   "bottom": 318,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": 52,
+   "bottom": 395,
+   "inView": true
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": "- heading \"Quiz complete\" [level=2]",
+  "tabAfterResults": "Play again"
+ },
+ {
+  "name": "after-reveal-q1-1024x768",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 768,
+  "hudBottom": 56,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 1 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 289,
+   "bottom": 372,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "1",
+  "timelineStates": "cuuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "after-after-next-1024x768",
+  "state": "after-next",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 768,
+  "hudBottom": 56,
+  "phase": "question",
+  "header": "Question 2 / 10 · 1 correct",
+  "focus": "h2[stem]: Which champion does Apex Gaming have more pro games on: Brau",
+  "stem": {
+   "top": 289,
+   "bottom": 344,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- 'heading \"Which champion does Apex Gaming have more pro games on: Braum or Karma?\" [level=2]'"
+ },
+ {
+  "name": "after-last-reveal-1024x768",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 768,
+  "hudBottom": 56,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 2 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 289,
+   "bottom": 344,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "10",
+  "timelineStates": "rrrrrrrrrc",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "after-after-results-1024x768",
+  "state": "after-results",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 768,
+  "hudBottom": 56,
+  "phase": "complete",
+  "header": null,
+  "focus": "h2[summary-heading]: Quiz complete",
+  "stem": null,
+  "summaryHeading": {
+   "top": 56,
+   "bottom": 84,
+   "inView": true
+  },
+  "score": {
+   "top": 96,
+   "bottom": 136,
+   "inView": true
+  },
+  "playAgain": {
+   "top": 196,
+   "bottom": 240,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": 8,
+   "bottom": 265,
+   "inView": false
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": "- heading \"Quiz complete\" [level=2]",
+  "tabAfterResults": "Play again"
+ },
+ {
+  "name": "after-reveal-q1-1440x900",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 900,
+  "hudBottom": 56,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 1 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 428,
+   "bottom": 483,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "1",
+  "timelineStates": "cuuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "after-after-next-1440x900",
+  "state": "after-next",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 900,
+  "hudBottom": 56,
+  "phase": "question",
+  "header": "Question 2 / 10 · 1 correct",
+  "focus": "h2[stem]: In LPL 2025, which champion does Weibo Gaming have more wins",
+  "stem": {
+   "top": 422,
+   "bottom": 478,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- 'heading \"In LPL 2025, which champion does Weibo Gaming have more wins on: K''Sante or Rakan?\" [level=2]'"
+ },
+ {
+  "name": "after-last-reveal-1440x900",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 900,
+  "hudBottom": 56,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 3 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 394,
+   "bottom": 449,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "10",
+  "timelineStates": "rrrrrrrrrc",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "after-after-results-1440x900",
+  "state": "after-results",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 900,
+  "hudBottom": 56,
+  "phase": "complete",
+  "header": null,
+  "focus": "h2[summary-heading]: Quiz complete",
+  "stem": null,
+  "summaryHeading": {
+   "top": 56,
+   "bottom": 84,
+   "inView": true
+  },
+  "score": {
+   "top": 96,
+   "bottom": 136,
+   "inView": true
+  },
+  "playAgain": {
+   "top": 196,
+   "bottom": 240,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": 8,
+   "bottom": 265,
+   "inView": false
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": "- heading \"Quiz complete\" [level=2]",
+  "tabAfterResults": "Play again"
+ }
+]

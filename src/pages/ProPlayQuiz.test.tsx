@@ -827,3 +827,117 @@ describe("ProPlayQuiz — the Arena route (PPQ2-E)", () => {
     }
   });
 });
+
+/**
+ * PPQ2-E polish — the two stage swaps that happen under the player: Next
+ * mounts a new question, See results replaces the stage with the end panel.
+ * Focus moves to the new stem / the "Quiz complete" heading (only when it
+ * was stranded), and the page scrolls only when that target is out of view.
+ */
+describe("ProPlayQuiz — focus and scroll across stage swaps (PPQ2-E)", () => {
+  const stem = () => document.querySelector<HTMLElement>('[data-testid="ranked-question"] [data-surface-region="prompt"] h2');
+
+  async function playTo(n: number) {
+    for (let i = 1; i < n; i += 1) {
+      await answerCurrent();
+      fireEvent.click(await screen.findByRole("button", { name: "Next" }));
+      await screen.findByText(`Question ${i + 1}?`);
+    }
+  }
+
+  it("leaves focus alone on the first question of a page load", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("after Next, focus is on the new question's stem: one programmatic focus target, no tab stop", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    await answerCurrent();
+    const next = await screen.findByRole("button", { name: "Next" });
+    expect(document.activeElement).toBe(next);
+    fireEvent.click(next);
+    await screen.findByText("Question 2?");
+    await waitFor(() => expect(document.activeElement).toBe(stem()));
+    expect(stem()!.textContent).toBe("Question 2?");
+    expect(stem()!.tabIndex).toBe(-1);
+    // The answer key is still not in the DOM before the answer.
+    expect(document.body.innerHTML).not.toContain("correct_answer");
+    expect(reveal()).toBeNull();
+  });
+
+  it("does not take focus the player put somewhere on purpose", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    await answerCurrent();
+    const next = await screen.findByRole("button", { name: "Next" });
+    const back = screen.getByTestId("pro-play-back");
+    back.focus();
+    fireEvent.click(next); // a pointer click does not move focus in jsdom
+    await screen.findByText("Question 2?");
+    expect(document.activeElement).toBe(back);
+  });
+
+  it("after the last See results, focus is on the Quiz complete heading with the score and actions in the same panel", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    await playTo(TOTAL);
+    await answerCurrent();
+    fireEvent.click(await screen.findByRole("button", { name: "See results" }));
+    const summary = await screen.findByTestId("pro-play-summary");
+    const heading = within(summary).getByRole("heading", { level: 2, name: "Quiz complete" });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(heading.tabIndex).toBe(-1);
+    expect(within(summary).getByTestId("pro-play-final-score").textContent).toBe("10 / 10");
+    // Keyboard: the next stops are the panel's own actions.
+    expect(within(summary).getByRole("button", { name: "Play again" })).toBeTruthy();
+    expect(within(summary).getByRole("link", { name: "Back to Pro Play" })).toBeTruthy();
+  });
+
+  it("Play again hands focus to the new run's first stem", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    await playTo(TOTAL);
+    await answerCurrent();
+    fireEvent.click(await screen.findByRole("button", { name: "See results" }));
+    const again = await screen.findByRole("button", { name: "Play again" });
+    again.focus();
+    fireEvent.click(again);
+    await screen.findByText("Question 1?");
+    await waitFor(() => expect(document.activeElement).toBe(stem()));
+  });
+
+  it("scrolls only when the new target is out of view: the end panel is brought below the HUD", async () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal("scrollTo", scrollTo);
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    await playTo(TOTAL);
+    // jsdom lays nothing out: every box is 0×0 at the top, i.e. in view, so
+    // nothing has scrolled across ten questions and their reveals.
+    expect(scrollTo).not.toHaveBeenCalled();
+    await answerCurrent();
+    // The panel will mount above the viewport (the page kept the reveal's offset).
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const panel = this.matches('[data-testid="pro-play-summary"]');
+      const top = panel ? -180 : 0;
+      return { top, bottom: panel ? top + 360 : 0, left: 0, right: 0, width: 0, height: panel ? 360 : 0, x: 0, y: top, toJSON() {} } as DOMRect;
+    });
+    try {
+      fireEvent.click(await screen.findByRole("button", { name: "See results" }));
+      await screen.findByTestId("pro-play-summary");
+      await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(1));
+      expect(scrollTo.mock.calls[0][0]).toMatchObject({ behavior: "auto" });
+      expect(scrollTo.mock.calls[0][0].top).toBe(0); // max(0, scrollY 0 - 180 - 8)
+    } finally {
+      rect.mockRestore();
+    }
+  });
+});

@@ -1,0 +1,10 @@
+ × src/components/question-surface/QuestionMotifLayer.qf1.test.tsx > QuestionMotifLayer > Champion/Combat is unchanged by the Rift art
+ × src/components/ranked-arena/AnswerGrid.elimination.test.tsx > there is exactly one answer-rendering path > no second INTERACTIVE component is named as an answer grid
+ × src/components/ranked-arena/AnswerGrid.elimination.test.tsx > there is exactly one answer-rendering path > only the canonical grid emits answer tablets
+ × src/components/ranked-arena/DailyOnCanonicalArena.boundary.test.tsx > the Daily owns no game surface of its own > names no manual progression control anywhere in its source
+ × src/components/ranked-arena/DailyOnCanonicalArena.boundary.test.tsx > the Daily owns no game surface of its own > the parent run is the ONLY Daily runtime
+ × src/lib/feedback/contract.test.ts > entry intent to type mapping > mirrors normalize_feedback_submission()
+ × src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > entry intents match feedback_entry_intent_check
+ × src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > reproducibilities match feedback_reproducibility_check
+ × src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > severities match feedback_severity_check
+ × src/lib/feedback/contract.test.ts > feedback contract mirrors the database CHECK constraints > types match feedback_type_check

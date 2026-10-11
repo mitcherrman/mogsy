@@ -19,7 +19,7 @@
  * actions): the end-screen tone is an open owner question (PPQ1 Q3), so it
  * says only what is true.
  */
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import { Check, X } from "lucide-react";
 
@@ -59,6 +59,86 @@ export interface ProPlayArenaRunProps {
  */
 const FRAME_CLIP = "overflow-x-clip";
 
+/** Either reduced-motion switch: the OS preference or the app's own. */
+function reducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
+    || document.documentElement.classList.contains("reduce-motion");
+}
+
+/**
+ * Focus was not put anywhere on purpose: nothing, the page body, or the
+ * answer grid (whose control just locked or unmounted). Only then may the
+ * arena move it.
+ */
+function focusStranded(): boolean {
+  const active = document.activeElement;
+  return !active || active === document.body
+    || active.closest?.('[data-surface-region="answers"]') !== null;
+}
+
+/**
+ * Bring `el` fully into view below the fixed HUD band, scrolling to `anchor`'s
+ * top, and only when `el` is not already in view: on a height-locked desktop
+ * stage this is a no-op. Instant: the stage was just replaced, so there is
+ * nothing to travel through (and nothing to reduce under Reduce Motion).
+ */
+function revealBelowHud(el: HTMLElement, anchor: HTMLElement = el) {
+  const hudBottom = document.querySelector("nav.global-hud")?.getBoundingClientRect().bottom ?? 0;
+  const box = el.getBoundingClientRect();
+  if (box.top >= hudBottom && box.bottom <= window.innerHeight) return;
+  const top = anchor.getBoundingClientRect().top + window.scrollY - hudBottom - 8;
+  window.scrollTo?.({ top: Math.max(0, top), behavior: "auto" });
+}
+
+const SUMMARY_KEY = "summary";
+
+/**
+ * PPQ2-E — THE TWO STAGE SWAPS THAT HAPPEN UNDER THE PLAYER.
+ *
+ * Next (or a resync, or Play again) mounts a new question, and See results
+ * replaces the stage with the end panel. In both, the control the player was
+ * on unmounts, so focus fell to the page body; and below `lg` the page keeps
+ * its scroll offset, which was the reveal footer's. The end panel is far
+ * shorter than the revealed question, so after See results its heading and
+ * score sat above the viewport (390x844), and a new stem could too.
+ *
+ * So on exactly those transitions (the question on stage changed, or the end
+ * panel replaced a question), and only when focus was stranded:
+ *  - a new question: focus moves to its stem (the stage's `h2`, made
+ *    programmatically focusable), which a screen reader announces once;
+ *  - the end panel: focus moves to its "Quiz complete" heading;
+ *  - the target is brought into view below the HUD only if it is not already.
+ * Nothing happens on the first question of a page load, on ordinary renders,
+ * or within one question (select, lock, reveal: the Next control and the
+ * reveal footer own those). Loading and error frames never move focus.
+ */
+function useStageHandoff(root: RefObject<HTMLDivElement>, stageKey: string | null) {
+  // undefined = nothing has been on stage yet in this mount.
+  const previous = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const before = previous.current;
+    if (stageKey === null) return; // a loading / error frame: keep the last stage
+    previous.current = stageKey;
+    if (before === undefined || before === stageKey) return;
+    const el = root.current;
+    if (!el || !focusStranded()) return;
+    if (stageKey === SUMMARY_KEY) {
+      const heading = el.querySelector<HTMLElement>("[data-pro-play-summary-heading]");
+      const panel = el.querySelector<HTMLElement>('[data-testid="pro-play-summary"]');
+      if (!heading || !panel) return;
+      heading.focus({ preventScroll: true });
+      revealBelowHud(panel);
+      return;
+    }
+    const stem = el.querySelector<HTMLElement>('[data-testid="ranked-question"] [data-surface-region="prompt"] h2');
+    if (!stem) return;
+    stem.tabIndex = -1;
+    stem.focus({ preventScroll: true });
+    // The arena header strip names the new position; show it with the stem.
+    revealBelowHud(stem, el.querySelector<HTMLElement>('[data-testid="ranked-header"]') ?? stem);
+  }, [root, stageKey]);
+}
+
 /** 44px touch target below `lg`; 36px where the stage height is definite. */
 const ACTION_BOX = "h-11 min-w-[8.5rem] shrink-0 lg:h-9";
 
@@ -79,17 +159,11 @@ function NextControl({ label, enabled, onNext }: { label: string; enabled: boole
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const active = document.activeElement;
-    const stranded = !active || active === document.body
-      || active.closest?.('[data-surface-region="answers"]') !== null;
-    if (stranded) el.focus({ preventScroll: true });
+    if (focusStranded()) el.focus({ preventScroll: true });
     const target = el.closest<HTMLElement>("[data-pp-reveal-footer]") ?? el;
     const margin = parseFloat(getComputedStyle(target).scrollMarginBottom) || 0;
     if (target.getBoundingClientRect().bottom > window.innerHeight - margin) {
-      // Either reduced-motion switch: the OS preference or the app's own.
-      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-        || document.documentElement.classList.contains("reduce-motion");
-      target.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+      target.scrollIntoView?.({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
     }
   }, []);
   return (
@@ -162,6 +236,7 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
     <NextControl label={projection.next.label} enabled={projection.next.enabled} onNext={controller.next} />
   ) : <ActionReserve />;
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const view = composeProPlayArenaStage({
     state,
     projection,
@@ -169,9 +244,14 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
     action,
   });
 
+  // What occupies the stage: a question (by its server id), the end panel, or
+  // nothing (loading / error frames).
+  const stageKey = view ? state.question?.question_id ?? null : projection.terminal ? SUMMARY_KEY : null;
+  useStageHandoff(rootRef, stageKey);
+
   if (view) {
     return (
-      <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
+      <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
         <CanonicalArena view={view} chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} /> : undefined)} />
       </div>
     );
@@ -188,7 +268,10 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
     const t = projection.terminal;
     intro = (
       <FramePanel testId="pro-play-summary" eyebrow="Pro Play Quiz">
-        <h2 className="ranked-title text-xl font-semibold">Quiz complete</h2>
+        {/* PPQ2-E: focused when this panel replaces the last question. */}
+        <h2 data-pro-play-summary-heading tabIndex={-1} className="ranked-title text-xl font-semibold outline-none">
+          Quiz complete
+        </h2>
         <p className="text-4xl font-bold tabular-nums" data-testid="pro-play-final-score">
           {t.score} / {t.total}
         </p>
@@ -233,7 +316,7 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
   }
 
   return (
-    <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
+    <div ref={rootRef} data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
       <CanonicalArena view={null}
         chrome={chrome ?? (backLink ? <ProPlayRouteChrome to={exitTo} fromLg={false} /> : undefined)}
         recovering={{ eyebrow: "Pro Play Quiz", message: "", intro }} />

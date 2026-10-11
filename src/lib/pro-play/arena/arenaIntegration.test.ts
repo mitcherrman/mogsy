@@ -119,13 +119,18 @@ describe("the reveal stays on the answered question until Next", () => {
     expect(revealed.surface.reveal?.revealed).toBe(true);
     expect(revealed.header.title).toBe(`Question ${q.number} / ${q.total}`);
     expect(revealed.surface.reportRef).toEqual({ sessionId: "sess-1", questionNumber: q.number });
-    // Server truth already advanced: the strip shows the graded node resolved.
+    // PPQ2-E: the server's count already advanced, but the strip's marker
+    // stays on the question on stage until Next (presentation only).
     const node = revealed.timeline!.nodes.find((n) => n.roundNumber === q.number)!;
-    expect(node.state).toBe("resolved");
+    expect(node.state).toBe("current");
 
     const advanced = composeProPlayArenaView(projectProPlayArena(proPlayArenaReducer(s, { type: "advance" })), SLOTS)!;
     expect(advanced.surface.question.questionId).toBe(next.question_id);
     expect(advanced.surface.reveal).toBeNull();
     expect(advanced.hudAction).toBeNull();
+    // Next moves the marker; the graded node now carries its verdict.
+    const graded = advanced.timeline!.nodes.find((n) => n.roundNumber === q.number)!;
+    expect(graded.state).toBe("resolved");
+    expect(advanced.timeline!.currentRoundNumber).toBe(next.number);
   });
 });

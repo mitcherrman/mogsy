@@ -144,7 +144,14 @@ describe("useProPlayArenaController", () => {
     expect(p.surface!.selectedOptionId).toBe("0");
     expect(p.reveal!.explanation).toBe("server explanation");
     expect(p.run!.score).toBe(0);
-    expect(p.timeline!.nodes[0].outcome).toBe("incorrect");
+    expect(p.run!.pips[0].state).toBe("incorrect");
+    // PPQ2-E: the strip's marker stays on Q1 while its reveal shows...
+    expect(p.timeline!.nodes[0].state).toBe("current");
+    // ...and Next moves it, the verdict landing on Q1's node.
+    act(() => h.view.result.current.next());
+    const after = h.view.result.current.projection;
+    expect(after.timeline!.nodes[0]).toMatchObject({ state: "resolved", outcome: "incorrect" });
+    expect(after.timeline!.currentRoundNumber).toBe(2);
   });
 
   it("transport failure: resends the IDENTICAL request, and a replayed grade is recorded once", async () => {

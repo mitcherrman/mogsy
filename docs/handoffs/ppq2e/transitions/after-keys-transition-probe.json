@@ -1,0 +1,123 @@
+[
+ {
+  "name": "after-keys-reveal-q1-390x844",
+  "state": "reveal-q1",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 1 / 10 · 0 correct",
+  "focus": "button#pro-play-next: Next",
+  "stem": {
+   "top": 312,
+   "bottom": 390,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "1",
+  "timelineStates": "cuuuuuuuuu",
+  "aria": "- button \"Next\""
+ },
+ {
+  "name": "after-keys-after-next-390x844",
+  "state": "after-next",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 0,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "question",
+  "header": "Question 2 / 10 · 0 correct",
+  "focus": "h2[stem]: Which of these champions does Cpt Jack have the most pro win",
+  "stem": {
+   "top": 314,
+   "bottom": 393,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "2",
+  "timelineStates": "rcuuuuuuuu",
+  "aria": "- heading \"Which of these champions does Cpt Jack have the most pro wins on?\" [level=2]"
+ },
+ {
+  "name": "after-keys-last-reveal-390x844",
+  "state": "last-reveal",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 117,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "revealed",
+  "header": "Question 10 / 10 · 3 correct",
+  "focus": "button#pro-play-next: See results",
+  "stem": {
+   "top": 196,
+   "bottom": 274,
+   "inView": true
+  },
+  "summaryHeading": null,
+  "score": null,
+  "playAgain": null,
+  "summaryPanel": null,
+  "timelineCurrent": "10",
+  "timelineStates": "rrrrrrrrrc",
+  "aria": "- button \"See results\""
+ },
+ {
+  "name": "after-keys-after-results-390x844",
+  "state": "after-results",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "scrollY": 16,
+  "vh": 844,
+  "hudBottom": 44,
+  "phase": "complete",
+  "header": null,
+  "focus": "h2[summary-heading]: Quiz complete",
+  "stem": null,
+  "summaryHeading": {
+   "top": 100,
+   "bottom": 128,
+   "inView": true
+  },
+  "score": {
+   "top": 140,
+   "bottom": 180,
+   "inView": true
+  },
+  "playAgain": {
+   "top": 274,
+   "bottom": 318,
+   "inView": true
+  },
+  "summaryPanel": {
+   "top": 52,
+   "bottom": 395,
+   "inView": true
+  },
+  "timelineCurrent": null,
+  "timelineStates": "",
+  "aria": "- heading \"Quiz complete\" [level=2]",
+  "tabAfterResults": "Play again"
+ }
+]

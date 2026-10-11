@@ -5,7 +5,42 @@
 | Branch | `ppq2e/arena-route-integration` (worktree `C:\Users\mlmit\mogzy-wt\ppq2e`). Pushed as a feature branch only. **Not merged, not published** |
 | Base | origin/main `a59526b2` (unchanged when the work started and at the end) |
 | PPQ2-INT | `2367a004` merged `--no-ff` as `17431899`. All PPQ2-B/C/D/INT commits are preserved as ancestry, none duplicated. `src` is identical to the PPQ2-INT trial merge `7667ad45` |
-| Status | **Certification candidate. Every gate below passes or matches clean main. STOP for control-center review** |
+| Status | **Certification candidate, with polish (§0). Every gate below passes or matches clean main. STOP for control-center review** |
+
+## 0. Polish pass (control-center review of `f7a0c157`)
+
+Three changes, all Pro Play-only (`arena-run/ProPlayArenaRun.tsx`, `lib/pro-play/arena/projectProPlayArena.ts`). No shared Arena, Ranked, Daily or Journey code changed, so the shared certification was not re-run. origin/main is still `a59526b2`, so there is no new overlap.
+
+| Issue (reproduced on `f7a0c157`, real browser, live API) | Fix |
+|---|---|
+| **Completion off-screen on phones.** After the last See results the page kept the reveal's scroll offset (107–133 px). The end panel is much shorter, so at 390×844 the score sat under the HUD (top 23 < HUD 49) and the heading was above the viewport. Focus fell to BODY | `useStageHandoff`. Only when the end panel replaces a question and focus was stranded: focus the **"Quiz complete" `h2`** (`tabIndex=-1`, no ring), and bring the panel fully below the HUD **only if it is not already** (instant scroll; the stage was replaced, so there is nothing to animate). Ordinary renders never scroll |
+| **Focus after Next** fell to BODY (Next unmounts) | Same hook: when the question on stage changes (Next, a resync, Play again) and focus was stranded, focus moves to the new question's **stem `h2`** (made programmatically focusable, no tab stop, no ring). It scrolls only if the stem is out of view. Not on the first question of a page load. Not when the player had put focus elsewhere |
+| **Timeline marker** moved to the next node at grading, and vanished on the final reveal | `projectTimeline`: while a graded reveal is on stage, its node stays **current**; Next moves the marker, and the node resolves with its verdict. On the final reveal the marker stays on 10 until See results. **Presentation only**: `session.answered/score/complete`, the run panel, header detail, summary, grading and progression are untouched (tests assert it) |
+
+**Real browser, production route, live API** (`ppq2e/transitions/`, `transition-cap.cjs`; viewport screenshots, **no scroll reset**):
+
+| Run | after Next | after See results | Tab from summary | Timeline (Q1 reveal / Q10 reveal) |
+|---|---|---|---|---|
+| **before** `f7a0c157` 375 / 390 | focus BODY | focus BODY; 390: score under the HUD, heading above the viewport | Play again | 2 / none |
+| **after** 375, 390, 1024, 1440 | focus = new stem, in view, **scroll unchanged** (148 / 25 / 0 / 0) | focus = "Quiz complete"; heading, full score and Play again **all in view** (phones scroll to 16; desktop 0, no scroll) | Play again | **1 / 10** |
+| after, keyboard only (Tab + Enter), 390 | stem | heading, all in view | Play again | 1 / 10 |
+| after, OS reduced motion, 375 | stem | heading, all in view | Play again | 1 / 10 |
+
+- **Screen reader** (Playwright ARIA snapshot of the focused element): `heading "<the new stem>" [level=2]` after Next and `heading "Quiz complete" [level=2]` after results. One announcement each, no live region added.
+- 0 page errors in all runs.
+- Screenshots: `transitions/{before,after,after-keys,after-rm}-{reveal-q1,after-next,last-reveal,after-results}-<WxH>.jpg`, plus probes `*transition-probe.json`.
+
+**Tests**
+- Pro Play suites (`components/pro-play`, `lib/pro-play`, page): **all pass**.
+- Page suite: 36/36. The 21 PPQ0C cases are unchanged, plus 6 new: no focus move on first load; stem focus after Next with no answer key in the DOM; no focus steal when focus is elsewhere; heading focus after the last See results; stem focus after Play again; scroll only when out of view.
+- New timeline tests: mid-run hold with server counts unchanged; Next moves the marker and resolves the node; **final-question reveal** holds on 10 though the session is complete; no hold before the grade or while locked.
+- Three existing PPQ2-B assertions encoded the old marker behaviour. They are updated to the requested one and still assert the verdict, now after Next.
+- Focused regression set: **1453 passed / 10 failed. The 10 are the same tests that fail on clean main**, listed in `focused-failures-main.txt`.
+- tsc: only the 2 errors already on main.
+- Lint on changed files: 0 problems.
+- `npm run build`: OK. The new code is in the quiz chunk; no dev or fixture code in dist.
+
+---
 
 ## 1. What changed
 
@@ -30,7 +65,7 @@
 
 **Completion screen:** unchanged neutral panel. Server score, received verdicts as pips, Play again, Back to Pro Play. No Ranked vocabulary, LP, rating, opponent or reward. A test asserts this.
 
-**Timeline marker (documented, not changed).** After the grade, the server's `answered` advances, so the strip marks the graded node resolved and the *next* node current. Meanwhile the answered question stays on stage until Next (PPQ2-B assumption 4: server truth). The alternative is a presentation-only hold: keep the current marker on the revealed node until Next (`projection.reveal !== null` → `current = answered`). It changes no server progression and would be a one-line projection change plus timeline tests. It's the owner's call.
+**Timeline marker:** changed in the polish pass (§0): the marker holds on the graded question until Next.
 
 ## 2. The 390 "Report pill over the explanation" finding
 
@@ -83,15 +118,14 @@
 ## 5. Next steps / open owner calls
 
 1. **Review, then merge onto main.** Merge, don't rebase, so the PPQ2 ancestry is kept. FE-only change: after merge, Lovable Publish, then smoke-test `/lol/pro-play/quiz` live (guest run, Report, reveal on a phone).
-2. Timeline marker hold during the reveal (§1): an owner call.
-3. After Next, focus falls to the page body; the legacy page behaved the same. Optionally move it to the new question's stem or first tablet.
-4. Follow-up: `lib/quiz-screenshot/presentation.ts` and `pages/dev/quiz-render/QuizRenderPage.tsx` still describe `ProPlayQuestionCard` as "the component ProPlayQuiz renders". That is stale now; those legacy components remain only for those tools. `revealSupportLine` (PPQ2-D) can import `ProPlayEvidence`'s helper or retire it with them.
-5. Still open from PPQ2-INT:
+2. Done in the polish pass (§0): the timeline marker hold and focus after Next and after completion.
+3. Follow-up: `lib/quiz-screenshot/presentation.ts` and `pages/dev/quiz-render/QuizRenderPage.tsx` still describe `ProPlayQuestionCard` as "the component ProPlayQuiz renders". That is stale now; those legacy components remain only for those tools. `revealSupportLine` (PPQ2-D) can import `ProPlayEvidence`'s helper or retire it with them.
+4. Still open from PPQ2-INT:
    - 3–4-way support lines truncate at 1024–1440, with `title`;
    - "(authority revision n)" in explanations (backend, PPQ1 Q4);
    - player/team media keys (PPQ1 Q6);
    - free vertical space in the flanks on tall desktops.
-6. Worlds 2026 editorial focus is untouched here, as instructed.
+5. Worlds 2026 editorial focus is untouched here, as instructed.
 
 **Blockers:** none.
 

@@ -188,21 +188,38 @@ function projectRun(state: ProPlayArenaState): ProPlayRunData | null {
   };
 }
 
+/**
+ * PPQ2-E — THE MARKER STAYS WITH THE QUESTION ON STAGE.
+ *
+ * The moment a question is graded the server's `answered` counts it, and fed
+ * straight through, the strip marked that node resolved and the NEXT one
+ * current while the graded question was still on stage until Next (and, on
+ * the last question, dropped the marker altogether: the session is complete).
+ * The strip now says what the player is looking at: while a graded reveal is
+ * on stage its node stays the current one, and the marker moves when Next
+ * mounts the next question (or the summary replaces the stage).
+ *
+ * Presentation only. It changes nothing the server said: `session.answered`,
+ * `score` and `complete` are untouched everywhere else (session panel, header
+ * detail, summary), and grading and progression are the controller's.
+ */
 function projectTimeline(state: ProPlayArenaState) {
   const session = state.session;
   if (!session || session.total <= 0) return null;
   const outcomes = new Map<number, ResultKind>();
   for (const [n, v] of Object.entries(state.outcomes)) outcomes.set(Number(n), v);
   const roundNumber = state.question?.number ?? null;
+  // The graded question on stage is the one the server just counted.
+  const holding = gradedFor(state) !== null && roundNumber !== null && roundNumber <= session.answered;
   return projectRoundTimeline({
     roundNumber,
-    completedRounds: session.answered,
+    completedRounds: holding ? roundNumber - 1 : session.answered,
     segmentRoundNumber: roundNumber,
     settlements: [],
     viewerSlot: "p1",
     totalRounds: session.total,
     outcomes,
-    matchOver: session.complete,
+    matchOver: session.complete && !holding,
   });
 }
 
