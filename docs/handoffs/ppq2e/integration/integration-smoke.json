@@ -1,0 +1,94 @@
+[
+ {
+  "viewport": "390x844",
+  "before": {
+   "path": "/quiz/ranked",
+   "title": "Ranked Match — Mogzy Leaguecraft",
+   "robots": "noindex, nofollow",
+   "canonical": "https://mogzy.lol/quiz/ranked",
+   "description": "Mogzy Leaguecraft Ranked match host.",
+   "ogUrl": "https://mogzy.lol/quiz/ranked"
+  },
+  "afterSpa": {
+   "path": "/lol/pro-play/quiz",
+   "title": "Pro Play Quiz | Mogzy",
+   "robots": null,
+   "canonical": "https://mogzy.lol/lol/pro-play/quiz",
+   "description": "Ten questions on champions, players and teams from professional League of Legends.",
+   "ogUrl": "https://mogzy.lol/lol/pro-play/quiz"
+  },
+  "robotsDirectives": [],
+  "reveal": {
+   "footer": true,
+   "values": 4,
+   "timeline": "1"
+  },
+  "afterNext": {
+   "header": "Question 2 / 10 · 0 correct",
+   "focusStem": true,
+   "timeline": "2"
+  },
+  "completion": {
+   "focus": "Quiz complete",
+   "heading": true,
+   "score": "4 / 10",
+   "scoreVisible": true,
+   "playAgainVisible": true
+  },
+  "metaAtEnd": {
+   "path": "/lol/pro-play/quiz",
+   "title": "Pro Play Quiz | Mogzy",
+   "robots": null,
+   "canonical": "https://mogzy.lol/lol/pro-play/quiz",
+   "description": "Ten questions on champions, players and teams from professional League of Legends.",
+   "ogUrl": "https://mogzy.lol/lol/pro-play/quiz"
+  },
+  "errors": []
+ },
+ {
+  "viewport": "1440x900",
+  "before": {
+   "path": "/quiz/ranked",
+   "title": "Ranked Match — Mogzy Leaguecraft",
+   "robots": "noindex, nofollow",
+   "canonical": "https://mogzy.lol/quiz/ranked",
+   "description": "Mogzy Leaguecraft Ranked match host.",
+   "ogUrl": "https://mogzy.lol/quiz/ranked"
+  },
+  "afterSpa": {
+   "path": "/lol/pro-play/quiz",
+   "title": "Pro Play Quiz | Mogzy",
+   "robots": null,
+   "canonical": "https://mogzy.lol/lol/pro-play/quiz",
+   "description": "Ten questions on champions, players and teams from professional League of Legends.",
+   "ogUrl": "https://mogzy.lol/lol/pro-play/quiz"
+  },
+  "robotsDirectives": [],
+  "reveal": {
+   "footer": true,
+   "values": 2,
+   "timeline": "1"
+  },
+  "afterNext": {
+   "header": "Question 2 / 10 · 1 correct",
+   "focusStem": true,
+   "timeline": "2"
+  },
+  "completion": {
+   "focus": "Quiz complete",
+   "heading": true,
+   "score": "5 / 10",
+   "scoreVisible": true,
+   "playAgainVisible": true
+  },
+  "metaAtEnd": {
+   "path": "/lol/pro-play/quiz",
+   "title": "Pro Play Quiz | Mogzy",
+   "robots": null,
+   "canonical": "https://mogzy.lol/lol/pro-play/quiz",
+   "description": "Ten questions on champions, players and teams from professional League of Legends.",
+   "ogUrl": "https://mogzy.lol/lol/pro-play/quiz"
+  },
+  "errors": []
+ }
+]
