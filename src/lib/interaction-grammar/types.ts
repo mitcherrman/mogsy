@@ -245,3 +245,95 @@ export interface ReconstructReveal {
   isCorrect: boolean | null;
   evidence?: ReconstructEvidence | null;
 }
+
+// ---------------------------------------------------------------- Rangefinder
+//
+// GM-R1 — PLACE. The player puts a target on a field at the distance a
+// subject's measure reaches. The field is a set of discrete STOPS (opaque
+// tokens with a presentation distance); the response is one stop token. The
+// primitive draws distance; it never knows which stop is canonical until a
+// reveal hands it one.
+
+/** One legal placement. `units` is for drawing and reading; `token` is what is submitted. */
+export interface RangefinderStop {
+  token: string;
+  units: number;
+}
+
+/** One optical setting of the instrument: how far the field shows. Presentation only. */
+export interface RangefinderLens {
+  id: string;
+  /** Short engraved label, e.g. "Field" / "Horizon". */
+  label: string;
+  /** The distance at the field's far edge. */
+  maxUnits: number;
+  /** Calibration ring spacing, e.g. 100. */
+  ringEveryUnits: number;
+  /** Which rings carry an engraved figure, e.g. 500. A multiple of `ringEveryUnits`. */
+  labelEveryUnits: number;
+}
+
+export interface RangefinderField {
+  /** "units" — the engraved unit name. */
+  unitLabel: string;
+  /** Ascending by `units`, distinct tokens, distinct units. Every stop behaves identically. */
+  stops: readonly RangefinderStop[];
+  /** At least one; the first is the default. The player chooses; nothing in a round suggests one. */
+  lenses: readonly RangefinderLens[];
+}
+
+export interface RangefinderSubject {
+  /** The ability's name. */
+  label: string;
+  /** Under the label: "Janna · W". */
+  sublabel?: string | null;
+  /** The slot letter drawn on the art bezel, if any. */
+  slot?: string | null;
+  /** Ability art. */
+  media?: SubjectMedia | null;
+  /** Art for the origin piece (the champion). */
+  originMedia?: SubjectMedia | null;
+  monogram?: string | null;
+}
+
+/** Everything a player may see before the reveal. No field can hold the answer. */
+export interface RangefinderPublic {
+  prompt: string;
+  /** The measure the ring stands for, e.g. "Cast range". */
+  measureLabel: string;
+  subject: RangefinderSubject;
+  field: RangefinderField;
+  /** The host's footnote under the instrument once the hand is off, e.g. a source line. */
+  footnote?: string | null;
+}
+
+/** The host-owned value: a stop token, or null before any placement. */
+export type RangefinderValue = string | null;
+
+/** The response: the stop the player locked. Opaque to the client. */
+export interface RangefinderResponse {
+  stop: string;
+}
+
+/** Authority-supplied, post-reveal only. Display only. */
+export interface RangefinderReveal {
+  /** The stop the player locked, as the host recorded it. */
+  lockedToken: string;
+  /** The stop the authority says is right. */
+  canonicalToken: string;
+  /** The host's verdict; the primitive never derives it from the tokens. */
+  verdict: "exact" | "short" | "long";
+  /** The fact plate: "Cast range" / "550". */
+  measurement: { label: string; valueText: string };
+  /** The player's reading, formatted by the host: "600". */
+  lockedText: string;
+  /** The signed difference, formatted by the host: "+50 units". Null when exact. */
+  deltaText?: string | null;
+  /** A short line from the authority, if any. */
+  note?: string | null;
+  source?: { label: string; url?: string | null } | null;
+}
+
+// Rangefinder is NOT a SegmentChoice yet: `{ stop }` is a new transport shape.
+// The production seam (a `rangefinder.v1` module) widens `SegmentChoice` then.
+export type _RangefinderIsNotSegmentChoiceYet = Assert<RangefinderResponse extends SegmentChoice ? false : true>;
