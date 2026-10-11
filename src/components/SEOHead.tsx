@@ -67,14 +67,30 @@ export default function SEOHead({ title, description, path, image, jsonLd, type,
     upsertMeta('meta[property="og:type"]', "property", "og:type", type ?? "website");
     upsertMeta('meta[property="og:site_name"]', "property", "og:site_name", "Mogsy");
     if (image) upsertMeta('meta[property="og:image"]', "property", "og:image", image);
+    else document.head.querySelector('meta[property="og:image"]')?.remove();
 
     // Twitter
     upsertMeta('meta[name="twitter:card"]', "name", "twitter:card", image ? "summary_large_image" : "summary");
     upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
     upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
     if (image) upsertMeta('meta[name="twitter:image"]', "name", "twitter:image", image);
+    else document.head.querySelector('meta[name="twitter:image"]')?.remove();
 
     if (keywords) upsertMeta('meta[name="keywords"]', "name", "keywords", keywords);
+    else document.head.querySelector('meta[name="keywords"]')?.remove();
+
+    // Optional article fields must not leak across SPA navigations. A prior
+    // article can otherwise leave publication/section/author metadata behind
+    // when the next route is a normal website page (or a sparser article).
+    const articleSingletons = [
+      "article:published_time",
+      "article:modified_time",
+      "article:section",
+      "article:author",
+    ];
+    for (const property of articleSingletons) {
+      document.head.querySelector(`meta[property="${property}"]`)?.remove();
+    }
 
     // Article metadata + per-tag <meta property="article:tag"> nodes
     const articleNodes: HTMLMetaElement[] = [];
