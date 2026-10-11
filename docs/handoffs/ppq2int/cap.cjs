@@ -58,6 +58,37 @@ const PROBE = () => {
   if (stage && stage.scrollHeight > stage.clientHeight + 1) bad(`stage clip ${stage.scrollHeight - stage.clientHeight}px`);
   if (stage) for (const el of stage.querySelectorAll("*")) { const cs = getComputedStyle(el); if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) bad("nested scroller: " + (el.className || el.tagName)); }
   for (const p of [q('[data-testid="pro-play-question-dossier"]'), q('[data-testid="pro-play-session-panel"]')]) if (p && p.offsetParent && p.scrollHeight > p.clientHeight + 1) bad(`panel content clipped: ${p.dataset.testid} ${p.scrollHeight - p.clientHeight}px`);
+  // PPQ2-INT (reveal): plate content must sit inside the plate (the media
+  // region is shorter now that the HUD row reserves the footer's height).
+  const plateEl = q("[data-pro-play-plate]");
+  if (plateEl) {
+    const pb = plateEl.getBoundingClientRect();
+    for (const el of plateEl.querySelectorAll("h3, p, span, [data-pro-play-scope-line], [data-pro-play-window-facts]")) {
+      if (!el.offsetParent || el.closest("[aria-hidden]")) continue;
+      const b = el.getBoundingClientRect();
+      if (!b.width || !b.height) continue;
+      if (b.bottom > pb.bottom + 0.5 || b.top < pb.top - 0.5) { bad(`plate clip: ${(el.textContent || el.tagName).trim().slice(0, 14)} ${Math.round(b.bottom - pb.bottom)}px`); break; }
+    }
+  }
+  // PPQ2-D: reveal footer and in-tablet values.
+  const footer = q("[data-pp-reveal-footer]");
+  out.footer = r(footer);
+  out.footerState = footer?.dataset.ppEvidenceState ?? null;
+  out.reserve = r(q("[data-pro-play-hud-reserve]"));
+  if (footer && footer.scrollWidth > footer.clientWidth + 1) bad("footer x-overflow");
+  out.values = [...document.querySelectorAll("[data-pp-reveal-display]")].map((e) => e.textContent);
+  // A value or support line under "Your pick" or a verdict icon.
+  const pickEl = q('[data-testid="answer-your-pick"]');
+  for (const v of document.querySelectorAll("[data-pp-reveal-display], [data-pp-reveal-support]")) {
+    const vb = v.getBoundingClientRect(); if (!vb.width || getComputedStyle(v).visibility === "hidden") continue;
+    const tab = v.closest("[data-quiz-choice]");
+    for (const o of [pickEl, ...(tab ? tab.querySelectorAll(":scope > svg") : [])]) {
+      if (!o || !tab || !tab.contains(o)) continue;
+      const ob = o.getBoundingClientRect();
+      const ix = Math.min(vb.right, ob.right) - Math.max(vb.left, ob.left); const iy = Math.min(vb.bottom, ob.bottom) - Math.max(vb.top, ob.top);
+      if (ix > 0.5 && iy > 0.5) bad(`value under ${o.tagName === "svg" ? "verdict icon" : "your pick"}: ${v.textContent.trim().slice(0, 12)}`);
+    }
+  }
   // "Your pick" must not sit over any visible text in its tablet.
   const pick = q('[data-testid="answer-your-pick"]');
   if (pick) {

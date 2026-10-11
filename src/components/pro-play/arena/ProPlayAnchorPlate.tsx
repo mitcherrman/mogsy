@@ -181,7 +181,7 @@ function ChampionPlate({ context, anchor }: { context: ProPlayQuestionContext; a
             + " rgba(7,17,31,0.25) 72%, rgba(7,17,31,0) 100%),"
             + " linear-gradient(0deg, rgba(6,13,24,0.85) 0%, rgba(6,13,24,0) 45%)",
         }} />
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5">
+      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         <RelationshipEyebrow context={context} />
         <div className="min-w-0 max-w-[64%] space-y-1.5 sm:max-w-[60%] lg:space-y-2">
           <PlateName>{anchor.label}</PlateName>
@@ -243,12 +243,15 @@ function championField(context: ProPlayQuestionContext): ProPlaySubject[] | null
 
 // ─── Player dossier ────────────────────────────────────────────────────────
 
+// PPQ2-INT: on a short desktop (lg, height <= 820px) the HUD row holds the reveal
+// footer's height, so the media region is ~50px shorter: plates tighten their
+// padding and the crest/shield shrink there, so no chip or line is clipped.
 /** Role emblem in a navy crest box; FLEX/unknown shows the role word instead. */
 function RoleCrest({ subject }: { subject: ProPlaySubject }) {
   const role = rankedRoleFor(subject);
   return (
     <div data-pro-play-role-crest={role ?? "none"}
-      className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-[#c9a84c]/55 bg-[#0e1c2f] shadow-[inset_0_1px_0_rgba(240,215,140,0.25),0_0_18px_-6px_rgba(201,168,76,0.45)] sm:h-14 sm:w-14 lg:h-[4.5rem] lg:w-[4.5rem]">
+      className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-[#c9a84c]/55 bg-[#0e1c2f] shadow-[inset_0_1px_0_rgba(240,215,140,0.25),0_0_18px_-6px_rgba(201,168,76,0.45)] sm:h-14 sm:w-14 lg:h-[4.5rem] lg:w-[4.5rem] [@media(min-width:1024px)_and_(max-height:820px)]:h-14 [@media(min-width:1024px)_and_(max-height:820px)]:w-14">
       {role ? (
         <RoleEmblem role={role} size="lg" decorative className="sm:scale-110 lg:scale-125" />
       ) : (
@@ -287,7 +290,7 @@ function PlayerPlate({ context, anchor }: { context: ProPlayQuestionContext; anc
           <RoleEmblem role={role} size="lg" decorative className="!h-40 !w-40 lg:!h-56 lg:!w-56" />
         </span>
       ) : null}
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5">
+      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         <div className="flex items-center justify-between gap-2">
           <RelationshipEyebrow context={context} />
           <PlateEyebrow className={cn("hidden text-white/45 sm:block", field && "lg:hidden")}>Player dossier</PlateEyebrow>
@@ -385,13 +388,13 @@ function TeamPlate({ context, anchor }: { context: ProPlayQuestionContext; ancho
         className={cn(field && "lg:hidden", "pointer-events-none absolute -right-2 top-1/2 -z-10 -translate-y-1/2 select-none text-[6.5rem] font-black leading-none text-[#e8c97a]/[0.06] lg:right-4 lg:text-[10rem]")}>
         {monogram(anchor.label, anchor.short)}
       </span>
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5">
+      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         <div className="flex items-center justify-between gap-2">
           <RelationshipEyebrow context={context} />
           <PlateEyebrow className={cn("hidden text-white/45 sm:block", field && "lg:hidden")}>Team dossier</PlateEyebrow>
         </div>
         <div className={cn("flex min-w-0 items-end gap-3 lg:gap-4", field && "lg:max-w-[58%]")}>
-          <TeamShield label={anchor.label} short={anchor.short} size="md" className="lg:h-[4.75rem] lg:w-16" />
+          <TeamShield label={anchor.label} short={anchor.short} size="md" className="lg:h-[4.75rem] lg:w-16 [@media(min-width:1024px)_and_(max-height:820px)]:h-14 [@media(min-width:1024px)_and_(max-height:820px)]:w-12" />
           <div className="min-w-0 flex-1 space-y-1 lg:space-y-1.5">
             <PlateName shared={field !== null}>{anchor.label}</PlateName>
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/80 sm:text-xs">
@@ -441,7 +444,7 @@ function CompetitionPlate({ context, anchor }: { context: ProPlayQuestionContext
         <span className="absolute inset-5 rounded-full border border-[#c9a84c]/10" />
         <span className="absolute inset-12 rounded-full border border-[#c9a84c]/[0.07]" />
       </span>
-      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5">
+      <div className="relative flex h-full min-w-0 flex-col justify-between gap-1 p-3 sm:p-4 lg:p-5 [@media(min-width:1024px)_and_(max-height:820px)]:p-3">
         {/* Recent sits beside the eyebrow, on the copy side, so it never
             lands on one lineup slice and favours that option. */}
         <div className="flex min-w-0 items-center gap-2">

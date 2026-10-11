@@ -33,6 +33,59 @@ export interface ProPlayRevealValueProps {
   layout: TabletLayout;
 }
 
+/** The value's box, display and support classes: shared with the ghost below. */
+function boxClass(facing: boolean): string {
+  return cn(
+    "flex min-w-0",
+    // A pair stacks value over support on phones (~100px of text). From
+    // lg the stage is height-locked and a pair tablet is wide, so it is one
+    // line: a champion pair (no facts cell to fill) then grows ~18px, not ~40.
+    // No "Your pick" clearance: on a tablet with rich content the
+    // canonical label rides the tablet's top edge (PPQ2-INT), so a value
+    // may use the tablet's last line in full.
+    facing
+      ? "flex-col items-center gap-0.5 text-center lg:flex-row lg:items-baseline lg:justify-center lg:gap-1.5"
+      : "items-baseline gap-1.5 self-center",
+  );
+}
+function displayClass(facing: boolean): string {
+  return cn(
+    "shrink-0 font-black tabular-nums tracking-tight",
+    facing ? "text-[18px] sm:text-[20px]" : "text-[15px] sm:text-[16px]",
+    // AFTER the size: tailwind-merge drops a `leading-*` that precedes a
+    // font-size class, and the value then inherits the tablet's relaxed
+    // line-height (10px taller than the facts it replaces).
+    "leading-none sm:leading-none",
+  );
+}
+function supportClass(facing: boolean): string {
+  return cn(
+    "min-w-0 text-[10px] font-semibold leading-tight opacity-80 sm:text-[11px]",
+    // A phone pair tablet is ~100px of text: tracked capitals clip
+    // "of 22 scope games", plain case fits it.
+    facing
+      ? "line-clamp-1 normal-case tracking-normal sm:uppercase sm:tracking-[0.06em] lg:line-clamp-none lg:truncate"
+      : "truncate uppercase tracking-[0.06em]",
+  );
+}
+
+/**
+ * PPQ2-INT — the value's exact box, empty and invisible, for a tablet that has
+ * no identity facts to hold it (champion tablets). Mounted from `lg`, where
+ * the stage height is definite, so the reveal replaces it in place and the
+ * tablet does not grow at the grade. Below `lg` the page scrolls and the
+ * tablet stays compact until the value arrives.
+ */
+export function ProPlayRevealValueGhost({ layout }: { layout: TabletLayout }) {
+  const facing = layout === "facing";
+  return (
+    <span aria-hidden data-pp-reveal-ghost className={cn(boxClass(facing), "invisible max-lg:hidden")}>
+      <span className={displayClass(facing)}>0</span>
+      <span className={supportClass(facing)}>0</span>
+    </span>
+  );
+}
+
 export function ProPlayRevealValue({ candidate, layout }: ProPlayRevealValueProps) {
   const reduced = useReducedMotionPreference();
   const facing = layout === "facing";
@@ -45,21 +98,7 @@ export function ProPlayRevealValue({ candidate, layout }: ProPlayRevealValueProp
       data-pp-reveal-motion={motion}
       title={support ? `${display} · ${support}` : display}
       className={cn(
-        "flex min-w-0",
-        // A pair stacks value over support on phones (~100px of text). From
-        // lg the stage is height-locked and a pair tablet is wide, so it is one
-        // line: a champion pair (no facts cell to fill) then grows ~18px, not ~40.
-        // `lg:pb-2` clears the canonical "Your pick" label (bottom-right) for
-        // a champion pair, whose value is the tablet's last line; a player or
-        // team pair still fits inside its facts box.
-        facing
-          ? "flex-col items-center gap-0.5 text-center lg:flex-row lg:items-baseline lg:justify-center lg:gap-1.5 lg:pb-2"
-          // `pr-12`: a compact value can be the tablet's bottom line, where the
-          // canonical "Your pick" label sits at the right (measured up to 46px
-          // into the content box at 1024×768); the support line truncates
-          // before it. Same inset on every candidate, so no tablet differs by
-          // correctness or pick.
-          : "items-baseline gap-1.5 self-center pr-12",
+        boxClass(facing),
         !reduced && "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both ease-out",
       )}
       style={reduced ? undefined : {
@@ -69,15 +108,7 @@ export function ProPlayRevealValue({ candidate, layout }: ProPlayRevealValueProp
     >
       <span
         data-pp-reveal-display
-        className={cn(
-          "shrink-0 font-black tabular-nums tracking-tight",
-          facing ? "text-[18px] sm:text-[20px]" : "text-[15px] sm:text-[16px]",
-          // AFTER the size: tailwind-merge drops a `leading-*` that precedes a
-          // font-size class, and the value then inherits the tablet's relaxed
-          // line-height (10px taller than the facts it replaces).
-          "leading-none sm:leading-none",
-          !candidate.value && "opacity-60",
-        )}
+        className={cn(displayClass(facing), !candidate.value && "opacity-60")}
       >
         {display}
       </span>
@@ -86,15 +117,7 @@ export function ProPlayRevealValue({ candidate, layout }: ProPlayRevealValueProp
         // An absent line keeps its box (one line tall) so every tablet keeps
         // the same rhythm; it is not announced.
         aria-hidden={support ? undefined : true}
-        className={cn(
-          "min-w-0 text-[10px] font-semibold leading-tight opacity-80 sm:text-[11px]",
-          // A phone pair tablet is ~100px of text: tracked capitals clip
-          // "of 22 scope games", plain case fits it.
-          facing
-            ? "line-clamp-1 normal-case tracking-normal sm:uppercase sm:tracking-[0.06em] lg:line-clamp-none lg:truncate"
-            : "truncate uppercase tracking-[0.06em]",
-          !support && "invisible",
-        )}
+        className={cn(supportClass(facing), !support && "invisible")}
       >
         {support ?? REVEAL_EMPTY_VALUE}
       </span>

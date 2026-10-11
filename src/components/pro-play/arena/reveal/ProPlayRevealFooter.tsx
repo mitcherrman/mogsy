@@ -221,7 +221,7 @@ export function ProPlayRevealFooter({ model, valuesOnTablets, action, className 
             costs the stage only what the action button already needs. */}
         <div className="min-w-0 flex-1 lg:flex lg:items-baseline lg:gap-3">
           {model.metric || model.scopeLabel ? (
-            <p data-pp-reveal-scope className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 lg:max-w-[40%] lg:shrink-0 lg:flex-nowrap">
+            <p data-pp-reveal-scope className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 lg:max-w-[13rem] lg:shrink-0 lg:flex-nowrap xl:max-w-[40%]">
               {model.metric ? (
                 <span className="inline-flex shrink-0 items-center rounded border border-sky-300/35 bg-sky-300/10 px-1.5 py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.12em] text-sky-100 sm:text-[10px]">
                   {model.metric.label}

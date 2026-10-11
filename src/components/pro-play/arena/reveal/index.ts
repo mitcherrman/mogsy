@@ -9,6 +9,7 @@ export { buildProPlayReveal, revealValuesOnTablets, type ProPlayReveal } from ".
 export { ProPlayRevealFooter, type ProPlayRevealFooterProps } from "./ProPlayRevealFooter";
 export {
   ProPlayRevealValue,
+  ProPlayRevealValueGhost,
   REVEAL_VALUE_DELAY_MS,
   REVEAL_VALUE_DURATION_MS,
   REVEAL_VALUE_STAGGER_MS,

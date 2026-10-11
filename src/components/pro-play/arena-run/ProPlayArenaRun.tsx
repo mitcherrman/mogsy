@@ -36,8 +36,6 @@ export interface ProPlayArenaRunProps {
   exitTo?: string;
   /** Rendered above the arena (the shell's chrome row). */
   chrome?: ReactNode;
-  /** PPQ2-D — positional tablet reveal content; used only after grading. */
-  revealSlots?: ReadonlyArray<ReactNode | null>;
 }
 
 /** 44px touch target below `lg`; 36px where the stage height is definite. */
@@ -124,7 +122,7 @@ function FramePanel({ testId, eyebrow, children }: { testId: string; eyebrow: st
   );
 }
 
-export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, chrome, revealSlots }: ProPlayArenaRunProps) {
+export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, chrome }: ProPlayArenaRunProps) {
   const { state, projection } = controller;
 
   const action = projection.error && projection.surface ? (
@@ -137,8 +135,7 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
     state,
     projection,
     onSelectOption: controller.selectOption,
-    hudAction: action,
-    revealSlots,
+    action,
   });
 
   if (view) {

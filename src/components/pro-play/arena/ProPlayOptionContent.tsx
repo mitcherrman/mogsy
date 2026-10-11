@@ -32,6 +32,7 @@ import type { ProPlayQuestionContext, ProPlaySubject } from "@/lib/pro-play/cont
 import type { AnswerOptionView } from "@/lib/ranked-core/viewTypes";
 import { cn } from "@/lib/utils";
 import { TeamShield } from "./ProPlayAnchorPlate";
+import { ProPlayRevealValueGhost } from "./reveal/ProPlayRevealValue";
 import {
   EMPTY_VALUE,
   alignTabletIdentities,
@@ -206,7 +207,10 @@ export interface ProPlayOptionContentProps {
 export function ProPlayOptionContent({ identity, layout, revealSlot = null }: ProPlayOptionContentProps) {
   const facing = layout === "facing";
   const hasFacts = identity.kind === "player" || identity.kind === "team";
-  const facts = hasFacts ? <TabletFacts identity={identity} compact={!facing} /> : null;
+  // A champion tablet has no facts; from `lg` a value-sized ghost holds the
+  // cell instead, so the reveal never grows the tablet (PPQ2-INT).
+  const facts = hasFacts ? <TabletFacts identity={identity} compact={!facing} />
+    : identity.kind === "champion" ? <ProPlayRevealValueGhost layout={layout} /> : null;
   // Facts and the reveal slot share ONE grid cell: the slot replaces the
   // facts in place, and the facts stay (invisible) to hold the box.
   const factCell = facts || revealSlot ? (

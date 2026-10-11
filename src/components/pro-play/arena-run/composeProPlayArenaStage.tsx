@@ -13,10 +13,14 @@
  *    desktop-only by the arena's own rule;
  *  - the HEADER title is `Question n / N`; below `lg`, where the session panel
  *    is hidden, it also carries the server score (`titleDetail`);
- *  - the HUD ACTION is whatever the caller passes, on EVERY frame: Next / See
- *    results while a reveal shows, Try again while an error stands over a
- *    question, otherwise an invisible reserve of the same size. The HUD row is
- *    as tall as its control, so a slot filled only on reveal would take its
+ *  - the REVEAL is PPQ2-D's, built only from the server-graded
+ *    `projection.reveal`: positional values go into PPQ2-C's `revealSlots`
+ *    (inside the canonical tablets), and `ProPlayRevealFooter` takes the HUD
+ *    row, carrying the caller's action (Next / See results / Try again);
+ *  - before a grade the HUD row is a RESERVE of the footer's ordinary height
+ *    from `lg` (where the stage height is definite), holding the action slot,
+ *    so the stage never changes height at the reveal. The HUD row is as tall
+ *    as its content; a footer that appeared only on reveal would take its
  *    height out of the stage at that moment.
  *
  * It decides nothing the server has not: every number is `session.*`, every
@@ -41,18 +45,29 @@ import {
   proPlayAnswerSlots,
   type ProPlayOutcome,
 } from "@/components/pro-play/arena";
+import {
+  buildProPlayReveal,
+  ProPlayRevealFooter,
+  revealValuesOnTablets,
+} from "@/components/pro-play/arena/reveal";
+
+/**
+ * The reveal footer's ordinary height from `lg` (one line of scope +
+ * explanation beside a 36px control, `py-1`, 1px borders), and the box the
+ * HUD row holds before the grade. Taller fallbacks (no tablet values, a long
+ * explanation) may exceed it; the stage then yields, which only they pay.
+ */
+export const REVEAL_FOOTER_MIN_H = "lg:min-h-[3.25rem]";
 
 export interface ProPlayArenaStageInput {
   state: ProPlayArenaState;
   projection: ProPlayArenaProjection;
   onSelectOption: (option: AnswerOptionView) => void;
-  /** The HUD row's control (Next, See results, Try again or a reserve). */
-  hudAction: ReactNode | null;
   /**
-   * PPQ2-D — positional reveal content for the tablets. Ignored until the
-   * server has graded the question on the stage (the projection's `reveal`).
+   * The HUD row's control: Next / See results while a reveal shows, Try again
+   * over an errored question, or an invisible placeholder of the same size.
    */
-  revealSlots?: ReadonlyArray<ReactNode | null>;
+  action: ReactNode;
 }
 
 /** Received verdicts only, keyed by question number (never inferred). */
@@ -67,21 +82,30 @@ export function composeProPlayArenaStage({
   state,
   projection,
   onSelectOption,
-  hudAction,
-  revealSlots,
+  action,
 }: ProPlayArenaStageInput): ProPlayArenaViewModel | null {
   const question = state.question;
   const session = state.session;
   if (!question || !session || !projection.surface) return null;
 
   const context = asQuestionContext(question.context);
-  const revealed = projection.reveal !== null;
+  const options = projection.surface.question.options;
+  // Null until the server graded the question on the stage.
+  const reveal = buildProPlayReveal({ options, reveal: projection.reveal });
   const slots = proPlayAnswerSlots({
-    options: projection.surface.question.options,
+    options,
     context,
-    revealed,
-    revealSlots: revealed ? revealSlots : undefined,
+    revealed: reveal !== null,
+    revealSlots: reveal?.revealSlots,
   });
+  const hudAction = reveal ? (
+    <ProPlayRevealFooter model={reveal.model} valuesOnTablets={revealValuesOnTablets(reveal, slots)}
+      action={action} className={REVEAL_FOOTER_MIN_H} />
+  ) : (
+    <div data-pro-play-hud-reserve className={`flex w-full items-center justify-end ${REVEAL_FOOTER_MIN_H}`}>
+      {action}
+    </div>
+  );
   const outcomes = receivedOutcomes(state);
 
   const view = composeProPlayArenaView(projection, {
@@ -115,7 +139,7 @@ export function composeProPlayArenaStage({
       },
     },
     // composeProPlayArenaView only carries a control while a reveal shows; the
-    // slot is held on every frame instead (see the header note).
+    // row is held on every frame instead (see the header note).
     hudAction,
   };
 }
