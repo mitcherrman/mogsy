@@ -1,0 +1,7598 @@
+[
+ {
+  "name": "champion_player-real-375x812",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 834,
+  "stageH": 403.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 368.2,
+    "w": 142.5,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 368.2,
+    "w": 142.5,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 555.4,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 678.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 485,
+  "footerBottom": 678,
+  "preStageH": 403.4,
+  "preTabletH": [
+   117.3,
+   117.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "player_champion-real-375x812",
+  "fixture": "player_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 907,
+  "stageH": 455.8,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 396.6,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 396.6,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 607.8,
+   "w": 335,
+   "h": 143.3,
+   "bottom": 751.1
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 538,
+  "footerBottom": 751,
+  "preStageH": 419.3,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "team_champion-real-375x812",
+  "fixture": "team_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 1024,
+  "stageH": 593.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 397.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 459.3,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 469.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 531.3,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 541.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 603.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 613.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 675.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "31",
+    "support": "of 64 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "35",
+    "support": "of 73 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "31",
+    "support": "of 68 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "29",
+    "support": "of 62 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 745.3,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 868
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 868/812"
+  ],
+  "lastTabletBottom": 675,
+  "footerBottom": 868,
+  "preStageH": 593.3,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "champion_team-real-375x812",
+  "fixture": "champion_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 872,
+  "stageH": 441.5,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 142.5,
+    "h": 129.3,
+    "bottom": 523.5,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 394.3,
+    "w": 142.5,
+    "h": 129.3,
+    "bottom": 523.5,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "16",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "7",
+    "support": "3 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 593.5,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 716.3
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 524,
+  "footerBottom": 716,
+  "preStageH": 441.5,
+  "preTabletH": [
+   129.3,
+   129.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "scope_champion-real-375x812",
+  "fixture": "scope_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 1021,
+  "stageH": 590.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 456.3,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 466.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 528.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 538.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 600.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 610.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 672.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 742.3,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 865
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 865/812"
+  ],
+  "lastTabletBottom": 672,
+  "footerBottom": 865,
+  "preStageH": 590.3,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "recent-real-375x812",
+  "fixture": "recent",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 975,
+  "stageH": 506.5,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 447.3,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 588.5,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 447.3,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 588.5,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 658.5,
+   "w": 335,
+   "h": 161.1,
+   "bottom": 819.6
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 820/812"
+  ],
+  "lastTabletBottom": 589,
+  "footerBottom": 820,
+  "preStageH": 470,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "tournament-real-375x812",
+  "fixture": "tournament",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 975,
+  "stageH": 506.5,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 447.3,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 588.5,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 447.3,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 588.5,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 658.5,
+   "w": 335,
+   "h": 161.1,
+   "bottom": 819.6
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 820/812"
+  ],
+  "lastTabletBottom": 589,
+  "footerBottom": 820,
+  "preStageH": 470,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "patch-real-375x812",
+  "fixture": "patch",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 1021,
+  "stageH": 590.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 456.3,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 466.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 528.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 538.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 600.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 610.3,
+    "w": 317,
+    "h": 62,
+    "bottom": 672.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 742.3,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 865
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 865/812"
+  ],
+  "lastTabletBottom": 672,
+  "footerBottom": 865,
+  "preStageH": 590.3,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "all_time-real-375x812",
+  "fixture": "all_time",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 907,
+  "stageH": 455.8,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 396.6,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 396.6,
+    "w": 142.5,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 607.8,
+   "w": 335,
+   "h": 143.3,
+   "bottom": 751.1
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 538,
+  "footerBottom": 751,
+  "preStageH": 419.3,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "flex-real-375x812",
+  "fixture": "flex",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 1117,
+  "stageH": 666.1,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 400.1,
+    "w": 317,
+    "h": 79.5,
+    "bottom": 479.6,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 489.6,
+    "w": 317,
+    "h": 79.5,
+    "bottom": 569.1,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 579.1,
+    "w": 317,
+    "h": 79.5,
+    "bottom": 658.6,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 668.6,
+    "w": 317,
+    "h": 79.5,
+    "bottom": 748.1,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "18",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "20",
+    "support": "13 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "11",
+    "support": "5 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "13",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 818.1,
+   "w": 335,
+   "h": 143.3,
+   "bottom": 961.3
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 961/812"
+  ],
+  "lastTabletBottom": 748,
+  "footerBottom": 961,
+  "preStageH": 666.1,
+  "preTabletH": [
+   79.5,
+   79.5,
+   79.5,
+   79.5
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "multi_team-real-375x812",
+  "fixture": "multi_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 834,
+  "stageH": 403.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 368.2,
+    "w": 142.5,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 368.2,
+    "w": 142.5,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 555.4,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 678.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 485,
+  "footerBottom": 678,
+  "preStageH": 403.4,
+  "preTabletH": [
+   117.3,
+   117.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "pro_play-real-375x812",
+  "fixture": "pro_play",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 979,
+  "stageH": 566.5,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 370.5,
+    "w": 317,
+    "h": 62,
+    "bottom": 432.5,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 442.5,
+    "w": 317,
+    "h": 62,
+    "bottom": 504.5,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 514.5,
+    "w": 317,
+    "h": 62,
+    "bottom": 576.5,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 586.5,
+    "w": 317,
+    "h": 62,
+    "bottom": 648.5,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "90",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "113",
+    "support": "77 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "50 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "43 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 718.5,
+   "w": 335,
+   "h": 104.9,
+   "bottom": 823.4
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 823/812"
+  ],
+  "lastTabletBottom": 648,
+  "footerBottom": 823,
+  "preStageH": 566.5,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "nuguri_clear-real-375x812",
+  "fixture": "nuguri_clear",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 834,
+  "stageH": 403.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 368.2,
+    "w": 142.5,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 203.5,
+    "y": 368.2,
+    "w": 142.5,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "75.0%",
+    "support": "12 games · 9W–3L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "60.0%",
+    "support": "10 games · 6W–4L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 555.4,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 678.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 485,
+  "footerBottom": 678,
+  "preStageH": 403.4,
+  "preTabletH": [
+   117.3,
+   117.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "t1_lineage-real-375x812",
+  "fixture": "t1_lineage",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 375,
+   "height": 812
+  },
+  "errors": [],
+  "vw": 375,
+  "vh": 812,
+  "docW": 375,
+  "docH": 1085,
+  "stageH": 654.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 317,
+    "h": 78,
+    "bottom": 472.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 482.3,
+    "w": 317,
+    "h": 78,
+    "bottom": 560.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 570.3,
+    "w": 317,
+    "h": 78,
+    "bottom": 648.3,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 658.3,
+    "w": 317,
+    "h": 78,
+    "bottom": 736.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 806.3,
+   "w": 335,
+   "h": 122.8,
+   "bottom": 929
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 929/812"
+  ],
+  "lastTabletBottom": 736,
+  "footerBottom": 929,
+  "preStageH": 654.3,
+  "preTabletH": [
+   78,
+   78,
+   78,
+   78
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "champion_player-real-390x844",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 844,
+  "stageH": 403.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 368.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 368.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 555.4,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 678.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 485,
+  "footerBottom": 678,
+  "preStageH": 403.4,
+  "preTabletH": [
+   117.3,
+   117.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "player_champion-real-390x844",
+  "fixture": "player_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 886,
+  "stageH": 455.8,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 396.6,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 396.6,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 607.8,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 730.6
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 538,
+  "footerBottom": 731,
+  "preStageH": 419.3,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "team_champion-real-390x844",
+  "fixture": "team_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 1024,
+  "stageH": 593.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 397.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 459.3,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 469.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 531.3,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 541.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 603.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 613.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 675.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "31",
+    "support": "of 64 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "35",
+    "support": "of 73 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "31",
+    "support": "of 68 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "29",
+    "support": "of 62 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 745.3,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 868
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 868/844"
+  ],
+  "lastTabletBottom": 675,
+  "footerBottom": 868,
+  "preStageH": 593.3,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "champion_team-real-390x844",
+  "fixture": "champion_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 872,
+  "stageH": 441.5,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 150,
+    "h": 129.3,
+    "bottom": 523.5,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 394.3,
+    "w": 150,
+    "h": 129.3,
+    "bottom": 523.5,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "16",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "7",
+    "support": "3 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 593.5,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 716.3
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 524,
+  "footerBottom": 716,
+  "preStageH": 441.5,
+  "preTabletH": [
+   129.3,
+   129.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "scope_champion-real-390x844",
+  "fixture": "scope_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 1021,
+  "stageH": 590.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 456.3,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 466.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 528.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 538.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 600.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 610.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 672.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 742.3,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 865
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 865/844"
+  ],
+  "lastTabletBottom": 672,
+  "footerBottom": 865,
+  "preStageH": 590.3,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "recent-real-390x844",
+  "fixture": "recent",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 949,
+  "stageH": 480.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 421.2,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 562.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 421.2,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 562.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 632.4,
+   "w": 350,
+   "h": 161.1,
+   "bottom": 793.5
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 562,
+  "footerBottom": 794,
+  "preStageH": 443.9,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "tournament-real-390x844",
+  "fixture": "tournament",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 949,
+  "stageH": 480.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 421.2,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 562.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 421.2,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 562.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 632.4,
+   "w": 350,
+   "h": 161.1,
+   "bottom": 793.5
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 562,
+  "footerBottom": 794,
+  "preStageH": 443.9,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "patch-real-390x844",
+  "fixture": "patch",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 1021,
+  "stageH": 590.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 456.3,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 466.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 528.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 538.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 600.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 610.3,
+    "w": 332,
+    "h": 62,
+    "bottom": 672.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 742.3,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 865
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 865/844"
+  ],
+  "lastTabletBottom": 672,
+  "footerBottom": 865,
+  "preStageH": 590.3,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "all_time-real-390x844",
+  "fixture": "all_time",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 886,
+  "stageH": 455.8,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 396.6,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 396.6,
+    "w": 150,
+    "h": 141.3,
+    "bottom": 537.8,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 607.8,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 730.6
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 538,
+  "footerBottom": 731,
+  "preStageH": 419.3,
+  "preTabletH": [
+   104.8,
+   104.8
+  ],
+  "tabletGrowth": [
+   36.5,
+   36.5
+  ],
+  "stageGrowth": 36.5
+ },
+ {
+  "name": "flex-real-390x844",
+  "fixture": "flex",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 1117,
+  "stageH": 666.1,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 400.1,
+    "w": 332,
+    "h": 79.5,
+    "bottom": 479.6,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 489.6,
+    "w": 332,
+    "h": 79.5,
+    "bottom": 569.1,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 579.1,
+    "w": 332,
+    "h": 79.5,
+    "bottom": 658.6,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 668.6,
+    "w": 332,
+    "h": 79.5,
+    "bottom": 748.1,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "18",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "20",
+    "support": "13 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "11",
+    "support": "5 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "13",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 818.1,
+   "w": 350,
+   "h": 143.3,
+   "bottom": 961.3
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 961/844"
+  ],
+  "lastTabletBottom": 748,
+  "footerBottom": 961,
+  "preStageH": 666.1,
+  "preTabletH": [
+   79.5,
+   79.5,
+   79.5,
+   79.5
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "multi_team-real-390x844",
+  "fixture": "multi_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 844,
+  "stageH": 403.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 368.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 368.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 555.4,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 678.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 485,
+  "footerBottom": 678,
+  "preStageH": 403.4,
+  "preTabletH": [
+   117.3,
+   117.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "pro_play-real-390x844",
+  "fixture": "pro_play",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 979,
+  "stageH": 566.5,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 370.5,
+    "w": 332,
+    "h": 62,
+    "bottom": 432.5,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 442.5,
+    "w": 332,
+    "h": 62,
+    "bottom": 504.5,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 514.5,
+    "w": 332,
+    "h": 62,
+    "bottom": 576.5,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 586.5,
+    "w": 332,
+    "h": 62,
+    "bottom": 648.5,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "90",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "113",
+    "support": "77 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "50 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "43 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 718.5,
+   "w": 350,
+   "h": 104.9,
+   "bottom": 823.4
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 648,
+  "footerBottom": 823,
+  "preStageH": 566.5,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "nuguri_clear-real-390x844",
+  "fixture": "nuguri_clear",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 844,
+  "stageH": 403.4,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 368.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 211,
+    "y": 368.2,
+    "w": 150,
+    "h": 117.3,
+    "bottom": 485.4,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "75.0%",
+    "support": "12 games · 9W–3L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "60.0%",
+    "support": "10 games · 6W–4L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 555.4,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 678.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 485,
+  "footerBottom": 678,
+  "preStageH": 403.4,
+  "preTabletH": [
+   117.3,
+   117.3
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "t1_lineage-real-390x844",
+  "fixture": "t1_lineage",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 390,
+   "height": 844
+  },
+  "errors": [],
+  "vw": 390,
+  "vh": 844,
+  "docW": 390,
+  "docH": 1085,
+  "stageH": 654.3,
+  "tablets": [
+   {
+    "x": 29,
+    "y": 394.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 472.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 482.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 560.3,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 29,
+    "y": 570.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 648.3,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 29,
+    "y": 658.3,
+    "w": 332,
+    "h": 78,
+    "bottom": 736.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 806.3,
+   "w": 350,
+   "h": 122.8,
+   "bottom": 929
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "footer below fold 929/844"
+  ],
+  "lastTabletBottom": 736,
+  "footerBottom": 929,
+  "preStageH": 654.3,
+  "preTabletH": [
+   78,
+   78,
+   78,
+   78
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "champion_player-real-768x1024",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 417.8,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 374.1,
+    "w": 327,
+    "h": 125.8,
+    "bottom": 499.8,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 374.1,
+    "w": 327,
+    "h": 125.8,
+    "bottom": 499.8,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 577.8,
+   "w": 728,
+   "h": 64,
+   "bottom": 641.8
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 500,
+  "footerBottom": 642,
+  "preStageH": 415.8,
+  "preTabletH": [
+   123.8,
+   123.8
+  ],
+  "tabletGrowth": [
+   2,
+   2
+  ],
+  "stageGrowth": 2
+ },
+ {
+  "name": "player_champion-real-768x1024",
+  "fixture": "player_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 499.1,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 431.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 581.1,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 431.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 581.1,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 659.1,
+   "w": 728,
+   "h": 84,
+   "bottom": 743.1
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 581,
+  "footerBottom": 743,
+  "preStageH": 459.4,
+  "preTabletH": [
+   110,
+   110
+  ],
+  "tabletGrowth": [
+   39.8,
+   39.8
+  ],
+  "stageGrowth": 39.7
+ },
+ {
+  "name": "team_champion-real-768x1024",
+  "fixture": "team_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 637.4,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 431.4,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 495.9,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 37,
+    "y": 505.9,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 570.4,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 580.4,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 644.9,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 654.9,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 719.4,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "31",
+    "support": "of 64 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "35",
+    "support": "of 73 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "31",
+    "support": "of 68 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "29",
+    "support": "of 62 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 797.4,
+   "w": 728,
+   "h": 64,
+   "bottom": 861.4
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 719,
+  "footerBottom": 861,
+  "preStageH": 627.4,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": 10
+ },
+ {
+  "name": "champion_team-real-768x1024",
+  "fixture": "champion_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 455.9,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 400.2,
+    "w": 327,
+    "h": 137.8,
+    "bottom": 537.9,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 400.2,
+    "w": 327,
+    "h": 137.8,
+    "bottom": 537.9,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "16",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "7",
+    "support": "3 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 615.9,
+   "w": 728,
+   "h": 84,
+   "bottom": 699.9
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 538,
+  "footerBottom": 700,
+  "preStageH": 453.9,
+  "preTabletH": [
+   135.8,
+   135.8
+  ],
+  "tabletGrowth": [
+   2,
+   2
+  ],
+  "stageGrowth": 2
+ },
+ {
+  "name": "scope_champion-real-768x1024",
+  "fixture": "scope_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 613.4,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 407.4,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 471.9,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 37,
+    "y": 481.9,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 546.4,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 556.4,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 620.9,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 630.9,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 695.4,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 773.4,
+   "w": 728,
+   "h": 64,
+   "bottom": 837.4
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 695,
+  "footerBottom": 837,
+  "preStageH": 603.4,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": 10
+ },
+ {
+  "name": "recent-real-768x1024",
+  "fixture": "recent",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 489.1,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 421.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 571.1,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 421.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 571.1,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 649.1,
+   "w": 728,
+   "h": 104.5,
+   "bottom": 753.6
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 571,
+  "footerBottom": 754,
+  "preStageH": 449.4,
+  "preTabletH": [
+   110,
+   110
+  ],
+  "tabletGrowth": [
+   39.8,
+   39.8
+  ],
+  "stageGrowth": 39.7
+ },
+ {
+  "name": "tournament-real-768x1024",
+  "fixture": "tournament",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 489.1,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 421.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 571.1,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 421.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 571.1,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 649.1,
+   "w": 728,
+   "h": 104.5,
+   "bottom": 753.6
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 571,
+  "footerBottom": 754,
+  "preStageH": 449.4,
+  "preTabletH": [
+   110,
+   110
+  ],
+  "tabletGrowth": [
+   39.8,
+   39.8
+  ],
+  "stageGrowth": 39.7
+ },
+ {
+  "name": "patch-real-768x1024",
+  "fixture": "patch",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 613.4,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 407.4,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 471.9,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 37,
+    "y": 481.9,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 546.4,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 556.4,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 620.9,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 630.9,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 695.4,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 773.4,
+   "w": 728,
+   "h": 64,
+   "bottom": 837.4
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 695,
+  "footerBottom": 837,
+  "preStageH": 603.4,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": 10
+ },
+ {
+  "name": "all_time-real-768x1024",
+  "fixture": "all_time",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 499.1,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 431.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 581.1,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 431.4,
+    "w": 327,
+    "h": 149.8,
+    "bottom": 581.1,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 659.1,
+   "w": 728,
+   "h": 84,
+   "bottom": 743.1
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 581,
+  "footerBottom": 743,
+  "preStageH": 459.4,
+  "preTabletH": [
+   110,
+   110
+  ],
+  "tabletGrowth": [
+   39.8,
+   39.8
+  ],
+  "stageGrowth": 39.7
+ },
+ {
+  "name": "flex-real-768x1024",
+  "fixture": "flex",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1071,
+  "stageH": 671.2,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 400.2,
+    "w": 694,
+    "h": 80.8,
+    "bottom": 480.9,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 37,
+    "y": 490.9,
+    "w": 694,
+    "h": 80.8,
+    "bottom": 571.7,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 581.7,
+    "w": 694,
+    "h": 80.8,
+    "bottom": 662.4,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 672.4,
+    "w": 694,
+    "h": 80.8,
+    "bottom": 753.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "18",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "20",
+    "support": "13 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "11",
+    "support": "5 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "13",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 831.2,
+   "w": 728,
+   "h": 84,
+   "bottom": 915.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 753,
+  "footerBottom": 915,
+  "preStageH": 671.2,
+  "preTabletH": [
+   80.8,
+   80.8,
+   80.8,
+   80.8
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "multi_team-real-768x1024",
+  "fixture": "multi_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 417.8,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 374.1,
+    "w": 327,
+    "h": 125.8,
+    "bottom": 499.8,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 374.1,
+    "w": 327,
+    "h": 125.8,
+    "bottom": 499.8,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 577.8,
+   "w": 728,
+   "h": 64,
+   "bottom": 641.8
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 500,
+  "footerBottom": 642,
+  "preStageH": 415.8,
+  "preTabletH": [
+   123.8,
+   123.8
+  ],
+  "tabletGrowth": [
+   2,
+   2
+  ],
+  "stageGrowth": 2
+ },
+ {
+  "name": "pro_play-real-768x1024",
+  "fixture": "pro_play",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 611.3,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 405.3,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 469.8,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 37,
+    "y": 479.8,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 544.3,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 554.3,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 618.8,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 628.8,
+    "w": 694,
+    "h": 64.5,
+    "bottom": 693.3,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "90",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "113",
+    "support": "77 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "50 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "43 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 771.3,
+   "w": 728,
+   "h": 64,
+   "bottom": 835.3
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 693,
+  "footerBottom": 835,
+  "preStageH": 601.3,
+  "preTabletH": [
+   62,
+   62,
+   62,
+   62
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": 10
+ },
+ {
+  "name": "nuguri_clear-real-768x1024",
+  "fixture": "nuguri_clear",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1024,
+  "stageH": 417.8,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 374.1,
+    "w": 327,
+    "h": 125.8,
+    "bottom": 499.8,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 404,
+    "y": 374.1,
+    "w": 327,
+    "h": 125.8,
+    "bottom": 499.8,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "75.0%",
+    "support": "12 games · 9W–3L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "60.0%",
+    "support": "10 games · 6W–4L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 577.8,
+   "w": 728,
+   "h": 64,
+   "bottom": 641.8
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 500,
+  "footerBottom": 642,
+  "preStageH": 415.8,
+  "preTabletH": [
+   123.8,
+   123.8
+  ],
+  "tabletGrowth": [
+   2,
+   2
+  ],
+  "stageGrowth": 2
+ },
+ {
+  "name": "t1_lineage-real-768x1024",
+  "fixture": "t1_lineage",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 768,
+   "height": 1024
+  },
+  "errors": [],
+  "vw": 768,
+  "vh": 1024,
+  "docW": 768,
+  "docH": 1070,
+  "stageH": 670.2,
+  "tablets": [
+   {
+    "x": 37,
+    "y": 400.2,
+    "w": 694,
+    "h": 80.5,
+    "bottom": 480.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 490.7,
+    "w": 694,
+    "h": 80.5,
+    "bottom": 571.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 37,
+    "y": 581.2,
+    "w": 694,
+    "h": 80.5,
+    "bottom": 661.7,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 37,
+    "y": 671.7,
+    "w": 694,
+    "h": 80.5,
+    "bottom": 752.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 830.2,
+   "w": 728,
+   "h": 84,
+   "bottom": 914.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 752,
+  "footerBottom": 914,
+  "preStageH": 670.2,
+  "preTabletH": [
+   80.5,
+   80.5,
+   80.5,
+   80.5
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": 0
+ },
+ {
+  "name": "champion_player-real-1024x768",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 558.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 414.2,
+    "w": 220.4,
+    "h": 119.8,
+    "bottom": 534,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 414.2,
+    "w": 220.4,
+    "h": 119.8,
+    "bottom": 534,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 642.2,
+   "w": 984,
+   "h": 46,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 534,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   119.8,
+   119.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "player_champion-real-1024x768",
+  "fixture": "player_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 557,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "team_champion-real-1024x768",
+  "fixture": "team_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 466.7,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 517,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 466.7,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 271.6,
+    "y": 476.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 533.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 517,
+    "y": 476.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 533.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "31",
+    "support": "of 64 games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "35",
+    "support": "of 73 games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "31",
+    "support": "of 68 games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "29",
+    "support": "of 62 games",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 533,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "champion_team-real-1024x768",
+  "fixture": "champion_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 131.8,
+    "bottom": 542,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 131.8,
+    "bottom": 542,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "16",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "7",
+    "support": "3 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 542,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   131.8,
+   131.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "scope_champion-real-1024x768",
+  "fixture": "scope_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 466.7,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 517,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 466.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 271.6,
+    "y": 476.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 533.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 517,
+    "y": 476.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 533.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 533,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "recent-real-1024x768",
+  "fixture": "recent",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 557,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "tournament-real-1024x768",
+  "fixture": "tournament",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 557,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "patch-real-1024x768",
+  "fixture": "patch",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 466.7,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 517,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 466.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 271.6,
+    "y": 476.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 533.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 517,
+    "y": 476.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 533.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 533,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "all_time-real-1024x768",
+  "fixture": "all_time",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 410.2,
+    "w": 220.4,
+    "h": 146.8,
+    "bottom": 557,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 557,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "flex-real-1024x768",
+  "fixture": "flex",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 72.8,
+    "bottom": 483,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 517,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 72.8,
+    "bottom": 483,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 271.6,
+    "y": 493,
+    "w": 235.4,
+    "h": 72.8,
+    "bottom": 565.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 517,
+    "y": 493,
+    "w": 235.4,
+    "h": 72.8,
+    "bottom": 565.7,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "18",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "20",
+    "support": "13 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "11",
+    "support": "5 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "13",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 566,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   72.8,
+   72.8,
+   72.8,
+   72.8
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "multi_team-real-1024x768",
+  "fixture": "multi_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 558.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 414.2,
+    "w": 220.4,
+    "h": 119.8,
+    "bottom": 534,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 414.2,
+    "w": 220.4,
+    "h": 119.8,
+    "bottom": 534,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 642.2,
+   "w": 984,
+   "h": 46,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 534,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   119.8,
+   119.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "pro_play-real-1024x768",
+  "fixture": "pro_play",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 558.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 414.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 470.7,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 517,
+    "y": 414.2,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 470.7,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 271.6,
+    "y": 480.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 537.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 517,
+    "y": 480.7,
+    "w": 235.4,
+    "h": 56.5,
+    "bottom": 537.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "90",
+    "support": "51 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "113",
+    "support": "77 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "50 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "43 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 642.2,
+   "w": 984,
+   "h": 46,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 537,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "nuguri_clear-real-1024x768",
+  "fixture": "nuguri_clear",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 558.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 414.2,
+    "w": 220.4,
+    "h": 119.8,
+    "bottom": 534,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 532,
+    "y": 414.2,
+    "w": 220.4,
+    "h": 119.8,
+    "bottom": 534,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "75.0%",
+    "support": "12 games · 9W–3L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "60.0%",
+    "support": "10 games · 6W–4L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 642.2,
+   "w": 984,
+   "h": 46,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [],
+  "lastTabletBottom": 534,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   119.8,
+   119.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "t1_lineage-real-1024x768",
+  "fixture": "t1_lineage",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1024,
+   "height": 768
+  },
+  "errors": [],
+  "vw": 1024,
+  "vh": 768,
+  "docW": 1028,
+  "docH": 768,
+  "stageH": 554.2,
+  "tablets": [
+   {
+    "x": 271.6,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 72.5,
+    "bottom": 482.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 517,
+    "y": 410.2,
+    "w": 235.4,
+    "h": 72.5,
+    "bottom": 482.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 271.6,
+    "y": 492.7,
+    "w": 235.4,
+    "h": 72.5,
+    "bottom": 565.2,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 517,
+    "y": 492.7,
+    "w": 235.4,
+    "h": 72.5,
+    "bottom": 565.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 20,
+   "y": 638.2,
+   "w": 984,
+   "h": 50,
+   "bottom": 688.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [
+   "document x-overflow 1028/1024"
+  ],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 565,
+  "footerBottom": 688,
+  "preStageH": 604.2,
+  "preTabletH": [
+   72.5,
+   72.5,
+   72.5,
+   72.5
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "champion_player-real-1280x800",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 484.2,
+    "w": 272.2,
+    "h": 119.8,
+    "bottom": 604,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 484.2,
+    "w": 272.2,
+    "h": 119.8,
+    "bottom": 604,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 604,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   119.8,
+   119.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "player_champion-real-1280x800",
+  "fixture": "player_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 465.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 612.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 465.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 612.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 612,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "team_champion-real-1280x800",
+  "fixture": "team_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 645,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 347.8,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 645,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "31",
+    "support": "of 64 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "35",
+    "support": "of 73 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "31",
+    "support": "of 68 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "29",
+    "support": "of 62 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 607,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "champion_team-real-1280x800",
+  "fixture": "champion_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 480.5,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 612.2,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 480.5,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 612.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "16",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "7",
+    "support": "3 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 612,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   131.8,
+   131.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "scope_champion-real-1280x800",
+  "fixture": "scope_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 645,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 347.8,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 645,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 607,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "recent-real-1280x800",
+  "fixture": "recent",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 586.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 461.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 608.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 461.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 608.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 670.2,
+   "w": 1176,
+   "h": 50,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 608,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "tournament-real-1280x800",
+  "fixture": "tournament",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 586.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 461.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 608.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 461.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 608.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 670.2,
+   "w": 1176,
+   "h": 50,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 608,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "patch-real-1280x800",
+  "fixture": "patch",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 645,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 347.8,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 645,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 607,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "all_time-real-1280x800",
+  "fixture": "all_time",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 465.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 612.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 465.5,
+    "w": 272.2,
+    "h": 146.8,
+    "bottom": 612.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 612,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   112,
+   112
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "flex-real-1280x800",
+  "fixture": "flex",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 586.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 452.7,
+    "w": 287.2,
+    "h": 72.8,
+    "bottom": 525.5,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 645,
+    "y": 452.7,
+    "w": 287.2,
+    "h": 72.8,
+    "bottom": 525.5,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 347.8,
+    "y": 535.5,
+    "w": 287.2,
+    "h": 72.8,
+    "bottom": 608.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 645,
+    "y": 535.5,
+    "w": 287.2,
+    "h": 72.8,
+    "bottom": 608.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "18",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "20",
+    "support": "13 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "11",
+    "support": "5 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "13",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 670.2,
+   "w": 1176,
+   "h": 50,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 608,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   72.8,
+   72.8,
+   72.8,
+   72.8
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "multi_team-real-1280x800",
+  "fixture": "multi_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 484.2,
+    "w": 272.2,
+    "h": 119.8,
+    "bottom": 604,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 484.2,
+    "w": 272.2,
+    "h": 119.8,
+    "bottom": 604,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 604,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   119.8,
+   119.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "pro_play-real-1280x800",
+  "fixture": "pro_play",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 645,
+    "y": 484.2,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 540.7,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 347.8,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 645,
+    "y": 550.7,
+    "w": 287.2,
+    "h": 56.5,
+    "bottom": 607.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "90",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "113",
+    "support": "77 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "50 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "43 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 607,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   54,
+   54,
+   54,
+   54
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "nuguri_clear-real-1280x800",
+  "fixture": "nuguri_clear",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 484.2,
+    "w": 272.2,
+    "h": 119.8,
+    "bottom": 604,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 660,
+    "y": 484.2,
+    "w": 272.2,
+    "h": 119.8,
+    "bottom": 604,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "75.0%",
+    "support": "12 games · 9W–3L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "60.0%",
+    "support": "10 games · 6W–4L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 604,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   119.8,
+   119.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "t1_lineage-real-1280x800",
+  "fixture": "t1_lineage",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1280,
+   "height": 800
+  },
+  "errors": [],
+  "vw": 1280,
+  "vh": 800,
+  "docW": 1280,
+  "docH": 800,
+  "stageH": 590.2,
+  "tablets": [
+   {
+    "x": 347.8,
+    "y": 457.2,
+    "w": 287.2,
+    "h": 72.5,
+    "bottom": 529.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 645,
+    "y": 457.2,
+    "w": 287.2,
+    "h": 72.5,
+    "bottom": 529.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 347.8,
+    "y": 539.7,
+    "w": 287.2,
+    "h": 72.5,
+    "bottom": 612.2,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 645,
+    "y": 539.7,
+    "w": 287.2,
+    "h": 72.5,
+    "bottom": 612.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 52,
+   "y": 674.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 720.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 612,
+  "footerBottom": 720,
+  "preStageH": 636.2,
+  "preTabletH": [
+   72.5,
+   72.5,
+   72.5,
+   72.5
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "champion_player-real-1440x900",
+  "fixture": "champion_player",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 683.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 683.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 683,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   131.8,
+   131.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "player_champion-real-1440x900",
+  "fixture": "player_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 543.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 702.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 543.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 702.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 702,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   124,
+   124
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "team_champion-real-1440x900",
+  "fixture": "team_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 725,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 427.8,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 725,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "31",
+    "support": "of 64 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "35",
+    "support": "of 73 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "31",
+    "support": "of 68 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "29",
+    "support": "of 62 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 699,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   66,
+   66,
+   66,
+   66
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "champion_team-real-1440x900",
+  "fixture": "champion_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 143.8,
+    "bottom": 695.4,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 143.8,
+    "bottom": 695.4,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "16",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "7",
+    "support": "3 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 695,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   143.8,
+   143.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "scope_champion-real-1440x900",
+  "fixture": "scope_champion",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 725,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 427.8,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 725,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 699,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   66,
+   66,
+   66,
+   66
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "recent-real-1440x900",
+  "fixture": "recent",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 686.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 539.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 698.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 539.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 698.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 770.2,
+   "w": 1176,
+   "h": 50,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 698,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   124,
+   124
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "tournament-real-1440x900",
+  "fixture": "tournament",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 686.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 539.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 698.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 539.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 698.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "4",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "6",
+    "support": "of 22 scope games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 770.2,
+   "w": 1176,
+   "h": 50,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 698,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   124,
+   124
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "patch-real-1440x900",
+  "fixture": "patch",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 725,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 427.8,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 725,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "54",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "49",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "37",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   },
+   {
+    "display": "41",
+    "support": "of 77 scope games",
+    "supportTruncated": true,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [
+   "support truncated on 4 tablet(s)"
+  ],
+  "lastTabletBottom": 699,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   66,
+   66,
+   66,
+   66
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "all_time-real-1440x900",
+  "fixture": "all_time",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 543.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 702.2,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 543.5,
+    "w": 272.2,
+    "h": 158.8,
+    "bottom": 702.2,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "5.9%",
+    "support": "1 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "17.6%",
+    "support": "3 of 17 games",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 702,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   124,
+   124
+  ],
+  "tabletGrowth": [
+   34.8,
+   34.8
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "flex-real-1440x900",
+  "fixture": "flex",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 686.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 518.7,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 603.5,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 725,
+    "y": 518.7,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 603.5,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 427.8,
+    "y": 613.5,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 698.2,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 725,
+    "y": 613.5,
+    "w": 287.2,
+    "h": 84.8,
+    "bottom": 698.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "18",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "20",
+    "support": "13 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "11",
+    "support": "5 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "13",
+    "support": "11 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 770.2,
+   "w": 1176,
+   "h": 50,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 698,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   84.8,
+   84.8,
+   84.8,
+   84.8
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": -50
+ },
+ {
+  "name": "multi_team-real-1440x900",
+  "fixture": "multi_team",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 683.4,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 683.4,
+    "state": "correct",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "7.1%",
+    "support": "14 games · 1W–13L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "25.0%",
+    "support": "12 games · 3W–9L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 683,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   131.8,
+   131.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "pro_play-real-1440x900",
+  "fixture": "pro_play",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "incorrect-selected",
+    "pick": true
+   },
+   {
+    "x": 725,
+    "y": 551.6,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 620.1,
+    "state": "correct",
+    "pick": false
+   },
+   {
+    "x": 427.8,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 725,
+    "y": 630.1,
+    "w": 287.2,
+    "h": 68.5,
+    "bottom": 698.6,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "90",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "113",
+    "support": "77 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "50 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "68",
+    "support": "43 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 699,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   66,
+   66,
+   66,
+   66
+  ],
+  "tabletGrowth": [
+   2.5,
+   2.5,
+   2.5,
+   2.5
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "nuguri_clear-real-1440x900",
+  "fixture": "nuguri_clear",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 683.4,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 740,
+    "y": 551.6,
+    "w": 272.2,
+    "h": 131.8,
+    "bottom": 683.4,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "75.0%",
+    "support": "12 games · 9W–3L",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "60.0%",
+    "support": "10 games · 6W–4L",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 683,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   131.8,
+   131.8
+  ],
+  "tabletGrowth": [
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ },
+ {
+  "name": "t1_lineage-real-1440x900",
+  "fixture": "t1_lineage",
+  "grade": "real",
+  "evidence": "full",
+  "names": "real",
+  "ids": "rich",
+  "viewport": {
+   "width": 1440,
+   "height": 900
+  },
+  "errors": [],
+  "vw": 1440,
+  "vh": 900,
+  "docW": 1440,
+  "docH": 900,
+  "stageH": 690.2,
+  "tablets": [
+   {
+    "x": 427.8,
+    "y": 523.2,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 607.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 725,
+    "y": 523.2,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 607.7,
+    "state": "idle",
+    "pick": false
+   },
+   {
+    "x": 427.8,
+    "y": 617.7,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 702.2,
+    "state": "correct",
+    "pick": true
+   },
+   {
+    "x": 725,
+    "y": 617.7,
+    "w": 287.2,
+    "h": 84.5,
+    "bottom": 702.2,
+    "state": "idle",
+    "pick": false
+   }
+  ],
+  "values": [
+   {
+    "display": "64",
+    "support": "48 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "84",
+    "support": "47 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "101",
+    "support": "51 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   },
+   {
+    "display": "51",
+    "support": "30 won",
+    "supportTruncated": false,
+    "opacity": "1"
+   }
+  ],
+  "footer": {
+   "x": 132,
+   "y": 774.2,
+   "w": 1176,
+   "h": 46,
+   "bottom": 820.2
+  },
+  "footerState": "complete",
+  "readout": "sr-only",
+  "violations": [],
+  "notes": [],
+  "lastTabletBottom": 702,
+  "footerBottom": 820,
+  "preStageH": 736.2,
+  "preTabletH": [
+   84.5,
+   84.5,
+   84.5,
+   84.5
+  ],
+  "tabletGrowth": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "stageGrowth": -46
+ }
+]
