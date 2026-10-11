@@ -26,7 +26,7 @@ import { useProPlayArenaController } from "@/lib/pro-play/arena";
 import { ReportableQuestionProvider } from "@/lib/feedback/reportable-question";
 import { createFixtureTransport } from "@/pages/dev/pro-play-arena/fixtureTransport";
 import ProPlayArenaRun from "./ProPlayArenaRun";
-import { REVEAL_FOOTER_MIN_H } from "./composeProPlayArenaStage";
+import { DOCK_SCROLL_MARGIN, REVEAL_FOOTER_MIN_H } from "./composeProPlayArenaStage";
 
 afterEach(() => {
   cleanup();
@@ -230,12 +230,69 @@ describe("the DEV fixture variants stay internally consistent", () => {
 });
 
 describe("Next on a phone", () => {
-  it("scrolls into view above the app's floating dock, not under it", async () => {
+  it("the footer and Next carry the app dock's clearance as their scroll margin", async () => {
     setup(["champion_player"]);
     await ready();
     await answer(0);
     const next = screen.getByTestId("pro-play-next");
-    expect(next.style.scrollMarginBottom).toContain("--mogzy-dock-clearance");
+    const footer = document.querySelector<HTMLElement>("[data-pp-reveal-footer]")!;
+    expect(DOCK_SCROLL_MARGIN).toContain("--mogzy-dock-clearance");
+    expect(footer.className).toContain(DOCK_SCROLL_MARGIN);
+    expect(next.className).toContain(DOCK_SCROLL_MARGIN);
+  });
+
+  // PPQ2-E — the 390px partial-evidence capture showed the floating Report
+  // pill over the footer's explanation. Bringing only Next above the dock is
+  // not enough from `sm`, where the explanation sits beside it and can be
+  // taller; the WHOLE footer is the scroll target.
+  it("brings the whole reveal footer into view when it lands under the fold", async () => {
+    const spy = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const below = this.matches("[data-pp-reveal-footer]");
+      return { top: below ? 745 : 0, bottom: below ? window.innerHeight + 33 : 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} } as DOMRect;
+    });
+    try {
+      setup(["t1_lineage"]);
+      await ready();
+      await answer(0);
+      const footer = document.querySelector("[data-pp-reveal-footer]");
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.mock.contexts[0]).toBe(footer);
+      expect(spy.mock.calls[0][0]).toMatchObject({ block: "nearest" });
+      // Focus still goes to Next (without scrolling to it separately).
+      expect(document.activeElement).toBe(screen.getByTestId("pro-play-next"));
+    } finally {
+      spy.mockRestore();
+      rect.mockRestore();
+    }
+  });
+
+  it("does not scroll when the footer is already in view, and jumps under Reduce Motion", async () => {
+    const spy = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
+    try {
+      setup(["champion_player"]);
+      await ready();
+      await answer(0);
+      expect(spy).not.toHaveBeenCalled(); // jsdom: every rect is 0, in view
+    } finally {
+      spy.mockRestore();
+    }
+    cleanup();
+    document.documentElement.classList.add("reduce-motion");
+    const spy2 = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const below = this.matches("[data-pp-reveal-footer]");
+      return { top: 0, bottom: below ? window.innerHeight + 40 : 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} } as DOMRect;
+    });
+    try {
+      setup(["champion_player"]);
+      await ready();
+      await answer(0);
+      expect(spy2.mock.calls[0][0]).toMatchObject({ block: "nearest", behavior: "auto" });
+    } finally {
+      spy2.mockRestore();
+      rect.mockRestore();
+    }
   });
 });
 

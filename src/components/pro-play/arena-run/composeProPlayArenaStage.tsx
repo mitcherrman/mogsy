@@ -59,6 +59,15 @@ import {
  */
 export const REVEAL_FOOTER_MIN_H = "lg:min-h-[3.25rem]";
 
+/**
+ * PPQ2-E — a scroll target's clearance for the app dock: scrolled into view
+ * (`scrollIntoView({block: "nearest"})`), it stops above the floating Report
+ * pill (`MogzyDock`, fixed to the bottom corners), not under it. Below `lg`
+ * the page scrolls and the reveal footer is what is brought in (see
+ * `ProPlayArenaRun`'s Next control).
+ */
+export const DOCK_SCROLL_MARGIN = "scroll-mb-[calc(var(--mogzy-dock-clearance,0px)+0.5rem)]";
+
 export interface ProPlayArenaStageInput {
   state: ProPlayArenaState;
   projection: ProPlayArenaProjection;
@@ -100,7 +109,7 @@ export function composeProPlayArenaStage({
   });
   const hudAction = reveal ? (
     <ProPlayRevealFooter model={reveal.model} valuesOnTablets={revealValuesOnTablets(reveal, slots)}
-      action={action} className={REVEAL_FOOTER_MIN_H} />
+      action={action} className={`${REVEAL_FOOTER_MIN_H} ${DOCK_SCROLL_MARGIN}`} />
   ) : (
     <div data-pro-play-hud-reserve className={`flex w-full items-center justify-end ${REVEAL_FOOTER_MIN_H}`}>
       {action}

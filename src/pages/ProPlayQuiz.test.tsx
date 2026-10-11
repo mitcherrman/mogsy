@@ -1,18 +1,42 @@
 /**
- * Pro Play Quiz page.
+ * Pro Play Quiz page — now the canonical Pro Play Arena (PPQ2-E).
  *
  * The server owns the session, so these tests drive the page through a stubbed
  * `/api/pro-play/quiz/*` and assert what the PAGE is responsible for: showing
  * progress, locking a selection, revealing from the server's result, advancing,
  * scoring, playing again, and failing gracefully — never inventing an answer of
  * its own.
+ *
+ * PPQ2-E moved the page onto `ProPlayArenaRun` + `useProPlayArenaController`.
+ * Every behavioural assertion of the PPQ0C page suite is kept; only the DOM it
+ * reads changed, one for one:
+ *
+ *   old page                         arena
+ *   ───────────────────────────────  ─────────────────────────────────────────
+ *   `<h1>Pro Play Quiz</h1>`         the same heading (visually hidden)
+ *   "n / 10" progress                header title "Question n / 10"
+ *   `[data-quiz-answer-feedback]`    the reveal footer `[data-pp-reveal-footer]`
+ *   `[data-pro-play-evidence]`       reveal values `[data-pp-reveal-value]`
+ *   `[data-pro-play-error]`          the frame panel (`pro-play-error`) when no
+ *                                    question is on stage; otherwise the HUD's
+ *                                    Try again + `submission-status`
+ *   `[data-pro-play-summary]`        the end panel (`pro-play-summary`)
+ *   context rail / subject cards     the dossier, plate and identity tablets
  */
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProPlayQuiz from "./ProPlayQuiz";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { PRO_PLAY_SAMPLES } from "@/lib/pro-play/__fixtures__/proPlaySamples";
+import {
+  ReportableQuestionProvider,
+  useReportableQuestion,
+} from "@/lib/feedback/reportable-question";
+import type { ReportableQuestionSnapshot } from "@/lib/feedback/report-context";
 import { PRO_PLAY_ROUTE } from "./ProPlayHub";
 
 const TOTAL = 10;
@@ -85,33 +109,76 @@ function installServer(opts: { failStart?: boolean } = {}) {
 }
 
 /**
- * Mounted the way the app mounts it. The champion anchor resolves media
- * through `useChampionAssets`, a react-query hook, so the page now needs the
- * QueryClientProvider that `App.tsx` already supplies at the root — the same
- * dependency every other query-backed page has.
+ * Mounted the way the app mounts it: `App.tsx` supplies the query client, the
+ * tooltip provider and the report-context provider at the root. The sink
+ * records every snapshot the report slot holds, so the tests can prove there
+ * is exactly one publisher.
  */
+let reports: Array<ReportableQuestionSnapshot | null> = [];
+function ReportSink() {
+  reports.push(useReportableQuestion());
+  return null;
+}
 const renderQuiz = () =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <MemoryRouter initialEntries={["/lol/pro-play/quiz"]}>
-        <ProPlayQuiz />
-      </MemoryRouter>
+      <TooltipProvider>
+        <ReportableQuestionProvider>
+          <MemoryRouter initialEntries={["/lol/pro-play/quiz"]}>
+            <ProPlayQuiz />
+          </MemoryRouter>
+          <ReportSink />
+        </ReportableQuestionProvider>
+      </TooltipProvider>
     </QueryClientProvider>,
   );
+
+/**
+ * The arena header's plan position, e.g. "Question 2 / 10". Once a question
+ * has been answered the title also carries the phone-only score detail
+ * (" · 1 correct", hidden from `lg`), which is not the position.
+ */
+const progress = () => {
+  const title = screen.getByTestId("ranked-header-title");
+  const detail = title.querySelector('[data-testid="ranked-header-detail"]')?.textContent ?? "";
+  return (title.textContent ?? "").replace(detail, "").replace(/\s*·\s*$/, "").trim();
+};
+const reveal = () => document.querySelector("[data-pp-reveal-footer]");
+const tablets = () => Array.from(document.querySelectorAll<HTMLButtonElement>("[data-quiz-choice]"));
+
+/**
+ * The error the player is shown: the frame panel when no question is on the
+ * stage, otherwise the status line beside the HUD's Try again.
+ */
+function shownError(): string | null {
+  const frame = screen.queryByTestId("pro-play-error");
+  if (frame) return frame.textContent;
+  if (!screen.queryByTestId("pro-play-try-again")) return null;
+  return screen.getByTestId("submission-status").textContent;
+}
+const waitForError = (opts?: { timeout: number }) =>
+  waitFor(() => {
+    const text = shownError();
+    expect(text).toBeTruthy();
+    return text!;
+  }, opts);
 
 async function answerCurrent() {
   // data-quiz-choice is QuizAnswerOptions' own stable automation hook.
   const choice = await waitFor(() => {
-    const el = document.querySelector<HTMLElement>("[data-quiz-choice]");
+    const el = document.querySelector<HTMLElement>('[data-quiz-choice]:not([disabled])');
     expect(el).toBeTruthy();
     return el!;
   });
   fireEvent.click(choice);
 }
 
-beforeEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+  vi.unstubAllGlobals();
+  reports = [];
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -123,7 +190,10 @@ describe("ProPlayQuiz", () => {
     renderQuiz();
     expect(await screen.findByText("Question 1?")).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Pro Play Quiz" })).toBeTruthy();
-    expect(screen.getByText("1 / 10")).toBeTruthy();
+    expect(progress()).toBe("Question 1 / 10");
+    // It is the arena, not the old reading column.
+    expect(screen.getByTestId("pro-play-arena").dataset.proPlayPhase).toBe("question");
+    expect(screen.getByTestId("ranked-question")).toBeTruthy();
   });
 
   it("reveals the server's result after a locked selection", async () => {
@@ -133,7 +203,8 @@ describe("ProPlayQuiz", () => {
     await answerCurrent();
     expect(await screen.findByText("Because 1.")).toBeTruthy();
     // The page never computes correctness itself — it renders what came back.
-    expect(document.querySelector("[data-quiz-answer-feedback]")).toBeTruthy();
+    expect(reveal()).toBeTruthy();
+    expect(reveal()!.getAttribute("data-pp-reveal-footer")).toBe("correct");
   });
 
   it("advances on Next and tracks progress", async () => {
@@ -143,7 +214,7 @@ describe("ProPlayQuiz", () => {
     await answerCurrent();
     fireEvent.click(await screen.findByRole("button", { name: "Next" }));
     expect(await screen.findByText("Question 2?")).toBeTruthy();
-    expect(screen.getByText("2 / 10")).toBeTruthy();
+    expect(progress()).toBe("Question 2 / 10");
   });
 
   it("finishes after ten questions and shows the score", async () => {
@@ -157,8 +228,8 @@ describe("ProPlayQuiz", () => {
       });
       fireEvent.click(next);
     }
-    await waitFor(() => expect(document.querySelector("[data-pro-play-summary]")).toBeTruthy());
-    expect(screen.getByText("10 / 10")).toBeTruthy();
+    const summary = await screen.findByTestId("pro-play-summary");
+    expect(within(summary).getByText("10 / 10")).toBeTruthy();
   });
 
   it("plays again from the summary", async () => {
@@ -173,12 +244,15 @@ describe("ProPlayQuiz", () => {
     }
     await screen.findByText("10 / 10");
     const startCalls = fetchMock.mock.calls.filter(
-      ([, init]) => (init as RequestInit)?.method === "POST" &&
-        String(fetchMock.mock.calls[0][0]).endsWith("/quiz/sessions"),
+      ([u, init]) => (init as RequestInit)?.method === "POST" && String(u).endsWith("/quiz/sessions"),
     ).length;
+    expect(startCalls).toBe(1);
     fireEvent.click(screen.getByRole("button", { name: "Play again" }));
     expect(await screen.findByText("Question 1?")).toBeTruthy();
-    expect(fetchMock.mock.calls.length).toBeGreaterThan(startCalls);
+    expect(progress()).toBe("Question 1 / 10");
+    expect(fetchMock.mock.calls.filter(
+      ([u, init]) => (init as RequestInit)?.method === "POST" && String(u).endsWith("/quiz/sessions"),
+    )).toHaveLength(2);
   });
 
   it("returns to the Pro Play hub from the summary", async () => {
@@ -191,22 +265,20 @@ describe("ProPlayQuiz", () => {
         name: i === TOTAL ? "See results" : "Next",
       }));
     }
-    await screen.findByText("10 / 10");
-    const back = screen.getAllByRole("link", { name: /Back to Pro Play|Back to Pro Play/i });
-    expect(back.some((a) => a.getAttribute("href") === PRO_PLAY_ROUTE)).toBe(true);
+    const summary = await screen.findByTestId("pro-play-summary");
+    const back = within(summary).getByRole("link", { name: "Back to Pro Play" });
+    expect(back.getAttribute("href")).toBe(PRO_PLAY_ROUTE);
   });
 
   it("shows a plain message — never a stack trace — when Pro Play is down", async () => {
     installServer({ failStart: true });
     renderQuiz();
-    const error = await waitFor(() => {
-      const el = document.querySelector("[data-pro-play-error]");
-      expect(el).toBeTruthy();
-      return el!;
-    });
+    const error = await screen.findByTestId("pro-play-error");
     expect(error.textContent).toContain("Pro Play is down.");
     expect(error.textContent).not.toContain("Traceback");
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(within(error).getByRole("button", { name: "Try again" })).toBeTruthy();
+    // The way back is offered there too.
+    expect(within(error).getByRole("link", { name: "Back to Pro Play" }).getAttribute("href")).toBe(PRO_PLAY_ROUTE);
   });
 
   it("never receives or renders an answer key before the player answers", async () => {
@@ -216,7 +288,8 @@ describe("ProPlayQuiz", () => {
     // The pre-answer payload the page is given carries choices only; nothing
     // in the DOM marks which one is correct.
     expect(document.body.innerHTML).not.toContain("correct_answer");
-    expect(document.querySelector("[data-quiz-answer-feedback]")).toBeNull();
+    expect(reveal()).toBeNull();
+    expect(new Set(tablets().map((t) => t.dataset.choiceState))).toEqual(new Set(["idle"]));
   });
 });
 
@@ -372,11 +445,11 @@ describe("ProPlayQuiz — question-bound answers (PPQ0A)", () => {
     expect(state.responses.map((r) => r.replayed)).toEqual([true]);
     expect(state.grades).toBe(1);
     expect(state.score).toBe(1);
-    expect(document.querySelector("[data-pro-play-error]")).toBeNull();
+    expect(shownError()).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Question 2?")).toBeTruthy();
-    expect(screen.getByText("2 / 10")).toBeTruthy();
+    expect(progress()).toBe("Question 2 / 10");
     // Q2 is still PENDING on the server: the retry did not grade it.
     expect(state.served[1]).toMatchObject({ n: 2, answered: false });
   });
@@ -388,14 +461,13 @@ describe("ProPlayQuiz — question-bound answers (PPQ0A)", () => {
     await screen.findByText("Question 1?");
     await choose("A1");
 
-    const error = await waitFor(() => {
-      const el = document.querySelector("[data-pro-play-error]");
-      expect(el).toBeTruthy();
-      return el!;
-    }, RETRY_WAIT);
-    expect(error.textContent).not.toMatch(/TypeError|Failed to fetch/);
+    const error = await waitForError(RETRY_WAIT);
+    expect(error).not.toMatch(/TypeError|Failed to fetch/);
     expect(state.answerBodies).toHaveLength(3);
     expect(state.grades).toBe(1);
+    // The pick stays locked on the stage while the error shows.
+    expect(screen.getByText("Question 1?")).toBeTruthy();
+    expect(reveal()).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Because 1.")).toBeTruthy();
@@ -421,10 +493,10 @@ describe("ProPlayQuiz — question-bound answers (PPQ0A)", () => {
     expect(await screen.findByText("Question 2?")).toBeTruthy();
     expect(state.gets).toBe(1);
     expect(state.answerBodies).toHaveLength(1); // a conflict is never resent
-    expect(document.querySelector("[data-quiz-answer-feedback]")).toBeNull();
-    expect(document.querySelector("[data-pro-play-evidence]")).toBeNull();
-    expect(document.querySelector("[data-pro-play-error]")).toBeNull();
-    expect(screen.getByText("2 / 10")).toBeTruthy();
+    expect(reveal()).toBeNull();
+    expect(document.querySelector("[data-pp-reveal-value]")).toBeNull();
+    expect(shownError()).toBeNull();
+    expect(progress()).toBe("Question 2 / 10");
   });
 
   it("offers a restart when the session has expired", async () => {
@@ -434,18 +506,15 @@ describe("ProPlayQuiz — question-bound answers (PPQ0A)", () => {
     state.expired = true;
     await choose("A1");
 
-    const error = await waitFor(() => {
-      const el = document.querySelector("[data-pro-play-error]");
-      expect(el).toBeTruthy();
-      return el!;
-    });
-    expect(error.textContent).toContain("This quiz session has expired.");
+    const error = await waitForError();
+    expect(error).toContain("This quiz session has expired.");
     expect(state.answerBodies).toHaveLength(0); // refused before reaching the grader
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Question 1?")).toBeTruthy();
-    expect(state.sessions).toBe(2);
-    expect(screen.getByText("1 / 10")).toBeTruthy();
+    await waitFor(() => expect(state.sessions).toBe(2));
+    expect(progress()).toBe("Question 1 / 10");
+    expect(shownError()).toBeNull();
   });
 
   it("recovers the next question when the draw after grading fails (503)", async () => {
@@ -491,8 +560,8 @@ describe("ProPlayQuiz — question-bound answers (PPQ0A)", () => {
     expect(final).toMatchObject({ replayed: true, question: null, session: { complete: true, score: 1 } });
 
     fireEvent.click(screen.getByRole("button", { name: "See results" }));
-    await waitFor(() => expect(document.querySelector("[data-pro-play-summary]")).toBeTruthy());
-    expect(screen.getByText("1 / 2")).toBeTruthy();
+    const summary = await screen.findByTestId("pro-play-summary");
+    expect(within(summary).getByText("1 / 2")).toBeTruthy();
     expect(state.grades).toBe(2);
   });
 
@@ -522,8 +591,8 @@ describe("ProPlayQuiz — question-bound answers (PPQ0A)", () => {
     await choose("A1");
 
     // Between the click and the replay, the card is locked but unrevealed.
-    expect(document.querySelector("[data-quiz-answer-feedback]")).toBeNull();
-    expect(document.querySelector("[data-pro-play-evidence]")).toBeNull();
+    expect(reveal()).toBeNull();
+    expect(document.querySelector("[data-pp-reveal-value]")).toBeNull();
     expect(document.body.textContent).not.toContain("Because 1.");
     expect(document.querySelector('[data-choice-state="correct"]')).toBeNull();
 
@@ -568,23 +637,25 @@ describe("ProPlayQuiz — presentation contract", () => {
     vi.stubGlobal("fetch", fetchMock);
   }
 
-  it("renders the context rail and subject cards, and no evidence yet", async () => {
+  it("renders the context (dossier, plate, identity tablets), and no evidence yet", async () => {
     installContextServer();
     renderQuiz();
     await screen.findByText(SAMPLE.question.question_text);
 
-    expect(screen.getByTestId("pro-play-relationship")).toHaveTextContent(
-      "Champion → Player",
-    );
+    expect(screen.getByTestId("dossier-relationship")).toHaveTextContent("Champion → Player");
     expect(
-      screen.getAllByTestId("pro-play-scope-tag").map((e) => e.textContent),
+      screen.getAllByTestId("dossier-scope").map((e) => e.querySelector("dt span")?.textContent),
     ).toEqual(["LCK", "ALL TIME"]);
-    expect(screen.getByTestId("pro-play-metric-tag")).toHaveTextContent("WIN RATE");
-    expect(screen.getByText("2018–2022")).toBeTruthy();
-    expect(screen.getByText("2022–2026")).toBeTruthy();
+    expect(screen.getByTestId("dossier-metric")).toHaveTextContent("WIN RATE");
+    // The identity facts ride inside the canonical tablets.
+    const [nuguri, clear] = tablets();
+    expect(nuguri.querySelector("[data-pp-option-content]")).not.toBeNull();
+    expect(nuguri.textContent).toContain("2018–2022");
+    expect(clear.textContent).toContain("2022–2026");
 
     // The reveal half must not exist before an answer.
-    expect(document.querySelector("[data-pro-play-evidence]")).toBeNull();
+    expect(reveal()).toBeNull();
+    expect(document.querySelector("[data-pp-reveal-value]")).toBeNull();
     expect(document.body.textContent).not.toContain("75.0%");
   });
 
@@ -592,19 +663,19 @@ describe("ProPlayQuiz — presentation contract", () => {
     installContextServer();
     renderQuiz();
     await screen.findByText(SAMPLE.question.question_text);
-    // The subject cards legitimately name the same people, so the choice is
-    // selected from the answer grid rather than by accessible name alone.
+    // The plate and dossier legitimately name the same people, so the choice
+    // is selected from the answer grid rather than by accessible name alone.
     const choice = Array.from(
       document.querySelectorAll<HTMLButtonElement>("[data-quiz-answer-options] button"),
     ).find((b) => b.textContent?.includes(SAMPLE.question.choices[0]));
     fireEvent.click(choice ?? screen.getAllByText(SAMPLE.question.choices[0])[0]);
 
-    await waitFor(() =>
-      expect(document.querySelector("[data-pro-play-evidence]")).toBeTruthy(),
-    );
-    expect(screen.getByText("75.0%")).toBeTruthy();
-    expect(screen.getByText("60.0%")).toBeTruthy();
-    expect(screen.getByText(/12 games · 9W–3L/)).toBeTruthy();
+    await waitFor(() => expect(reveal()).toBeTruthy());
+    // Each value is on its own tablet, in server option order.
+    const values = tablets().map((t) => t.querySelector("[data-pp-reveal-value]")?.textContent ?? "");
+    expect(values[0]).toContain("75.0%");
+    expect(values[1]).toContain("60.0%");
+    expect(screen.getAllByText(/12 games · 9W–3L/).length).toBeGreaterThan(0);
   });
 
   it("keeps the stem exactly as the server wrote it — never expanded", async () => {
@@ -615,5 +686,106 @@ describe("ProPlayQuiz — presentation contract", () => {
       "In LCK, who has the higher win rate on Kennen: Nuguri or Clear?",
     );
     expect(stem.textContent).not.toMatch(/Across their full/i);
+  });
+});
+
+/**
+ * PPQ2-E — the route conversion itself: the page is the Arena, the Arena is
+ * the one report publisher, and the route keeps its way back and its frame.
+ */
+describe("ProPlayQuiz — the Arena route (PPQ2-E)", () => {
+  const ROOT = resolve(process.cwd(), "src");
+  const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
+  const codeOnly = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+  it("publishes the question once, from the Arena, with the server's identity; the answer only after grading", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    const pre = reports[reports.length - 1]!;
+    expect(pre).toMatchObject({
+      category: "Leaguecraft",
+      mode: "Pro Play Quiz",
+      runtimeQuestionId: "q1",
+      prompt: "Question 1?",
+      sessionId: "s1",
+      roundNumber: 1,
+    });
+    expect(pre.canonicalAnswer ?? null).toBeNull();
+    await answerCurrent();
+    await screen.findByText("Because 1.");
+    expect(reports[reports.length - 1]!.canonicalAnswer).toBe("A1");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText("Question 2?");
+    const second = reports[reports.length - 1]!;
+    expect(second).toMatchObject({ runtimeQuestionId: "q2", roundNumber: 2 });
+    expect(second.canonicalAnswer ?? null).toBeNull();
+  });
+
+  it("the page has no publisher of its own and no run state: it mounts the Arena on the controller", () => {
+    const page = codeOnly(read("pages/ProPlayQuiz.tsx"));
+    expect(page).not.toMatch(/usePublishReportableQuestion|ReportableQuestionProvider/);
+    expect(page).toMatch(/useProPlayArenaController\(\)/);
+    expect(page).toMatch(/<ProPlayArenaRun\b/);
+    // The legacy page's own run machinery and renderers are gone from it.
+    expect(page).not.toMatch(/useState|submitProPlayAnswer|startProPlayQuiz|QuizAnswerOptions|ProPlayQuestionCard|ProPlayEvidence/);
+  });
+
+  it("keeps the way back to Pro Play beside the HUD while a question is on stage", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    const back = screen.getByTestId("ranked-back-to-quiz");
+    expect(back.textContent).toBe("Back to Pro Play");
+    expect(back.getAttribute("href")).toBe(PRO_PLAY_ROUTE);
+  });
+
+  it("answers through a focused canonical tablet and hands focus to Next (real-browser keyboard run: handoff)", async () => {
+    installServer();
+    renderQuiz();
+    await screen.findByText("Question 1?");
+    const [first] = tablets();
+    first.focus();
+    expect(document.activeElement).toBe(first);
+    // A native button: Enter/Space activate it as a click (jsdom does not
+    // synthesise that; the real-browser Tab/Enter run is in the handoff).
+    fireEvent.click(first);
+    await screen.findByText("Because 1.");
+    expect(document.activeElement).toBe(screen.getByTestId("pro-play-next"));
+  });
+
+  it("is registered at /lol/pro-play/quiz on the same lazy page, with the arena's full-bleed frame", () => {
+    const app = read("App.tsx");
+    expect(app).toMatch(/path="\/lol\/pro-play\/quiz" element=\{<Suspense fallback=\{<RouteFallback \/>\}><ProPlayQuiz \/>/);
+    expect(read("lib/route-prefetch.ts")).toContain('ProPlayQuiz: lazyWithRetry(() => import("@/pages/ProPlayQuiz"))');
+    expect(read("components/Layout.tsx")).toMatch(/\|\| pathname === PRO_PLAY_QUIZ_ROUTE/);
+  });
+
+  it("leaving mid-answer drops the late response: nothing paints, nothing is resent", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const fetchMock = installServer();
+    const inner = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/answer")) await gate;
+      return inner(url, init);
+    });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      renderQuiz();
+      await screen.findByText("Question 1?");
+      fireEvent.click(tablets()[0]);
+      cleanup(); // the player navigates away while the answer is in flight
+      await act(async () => {
+        release();
+        await new Promise((r) => setTimeout(r, 20));
+      });
+      expect(document.querySelector("[data-pp-reveal-footer]")).toBeNull();
+      expect(fetchMock.mock.calls.filter(([u]) => String(u).includes("/answer"))).toHaveLength(1);
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
   });
 });

@@ -224,8 +224,9 @@ describe("report publishing: the arena is the one publisher", () => {
     expect(lastReport()!.canonicalAnswer ?? null).toBeNull();
   });
 
-  it("no assembly or dev-route file publishes a report itself", () => {
+  it("no assembly, route or dev-route file publishes a report itself", () => {
     for (const rel of [
+      "pages/ProPlayQuiz.tsx",
       "components/pro-play/arena-run/ProPlayArenaRun.tsx",
       "components/pro-play/arena-run/composeProPlayArenaStage.tsx",
       "pages/dev/pro-play-arena/ProPlayArenaDev.tsx",
@@ -326,7 +327,9 @@ describe("the DEV route", () => {
     expect(app).toMatch(/const ProPlayArenaDev = import\.meta\.env\.DEV\s*\?\s*lazy\(/);
     expect(app).toContain('path="/lol/dev/pro-play-arena"');
     expect(read("components/Layout.tsx")).toContain('pathname === "/lol/dev/pro-play-arena"');
-    // The production route is not switched by this pass.
+    // PPQ2-E: the production route keeps its lazy page, which now IS this
+    // arena on the production controller (see pages/ProPlayQuiz.test.tsx).
     expect(app).toMatch(/path="\/lol\/pro-play\/quiz" element=\{<Suspense fallback=\{<RouteFallback \/>\}><ProPlayQuiz \/>/);
+    expect(codeOnly(read("pages/ProPlayQuiz.tsx"))).toMatch(/<ProPlayArenaRun\b/);
   });
 });

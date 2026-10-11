@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
 import type { ProPlayArenaController, ProPlayRunPip } from "@/lib/pro-play/arena";
 import { cn } from "@/lib/utils";
-import { composeProPlayArenaStage } from "./composeProPlayArenaStage";
+import { composeProPlayArenaStage, DOCK_SCROLL_MARGIN } from "./composeProPlayArenaStage";
 
 export interface ProPlayArenaRunProps {
   controller: ProPlayArenaController;
@@ -45,32 +45,36 @@ const ACTION_BOX = "h-11 min-w-[8.5rem] shrink-0 lg:h-9";
  * Next / See results. Takes focus when it appears if focus was left on the
  * page body or inside the (now locked) answer grid, so a keyboard player can
  * read the reveal and continue without hunting for the control.
+ *
+ * Below `lg` the page scrolls, and the reveal footer can land across the fold
+ * (measured: footer 745–877 at 390×844 on a four-way question), where the
+ * app's floating Report pill covers its left edge — the explanation. So the
+ * WHOLE footer is brought into view above the dock, by the least amount, not
+ * only this control: from `sm` the explanation sits beside the control and can
+ * be taller than it. This is independent of focus: the footer is the reveal.
  */
 function NextControl({ label, enabled, onNext }: { label: string; enabled: boolean; onNext: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
     const active = document.activeElement;
     const stranded = !active || active === document.body
       || active.closest?.('[data-surface-region="answers"]') !== null;
-    const el = ref.current;
-    if (!stranded || !el) return;
-    el.focus({ preventScroll: true });
-    // Below `lg` the page scrolls and the control can land just under the
-    // fold (measured: 850/844 at 390×844); bring it in, by the least amount.
-    const margin = parseFloat(getComputedStyle(el).scrollMarginBottom) || 0;
-    if (el.getBoundingClientRect().bottom > window.innerHeight - margin) {
+    if (stranded) el.focus({ preventScroll: true });
+    const target = el.closest<HTMLElement>("[data-pp-reveal-footer]") ?? el;
+    const margin = parseFloat(getComputedStyle(target).scrollMarginBottom) || 0;
+    if (target.getBoundingClientRect().bottom > window.innerHeight - margin) {
       // Either reduced-motion switch: the OS preference or the app's own.
       const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
         || document.documentElement.classList.contains("reduce-motion");
-      el.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+      target.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
     }
   }, []);
   return (
     <Button ref={ref} type="button" data-testid="pro-play-next" onClick={onNext} disabled={!enabled}
-      // Scrolled into view above the app's floating dock (Report pill), not
-      // under it: on a phone the reveal footer's controls sit at that edge.
-      style={{ scrollMarginBottom: "calc(var(--mogzy-dock-clearance, 0px) + 0.5rem)" }}
-      className={ACTION_BOX}>
+      // The fallback target when there is no footer around it.
+      className={cn(ACTION_BOX, DOCK_SCROLL_MARGIN)}>
       {label}
     </Button>
   );
