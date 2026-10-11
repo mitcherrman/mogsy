@@ -13,7 +13,7 @@ import {
   REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
   swapMediaWaitMs,
   MATCH_OUTRO_MS, PRESENTATION_HEADROOM_MS, REVEAL_ABSORB_CAP_MS,
-  specialTransitionBudgetMs,
+  specialTransitionBudgetMs, serverPacedHoldMs,
 } from "@/lib/ranked-core/pacing";
 import { projectSpecialTransition } from "@/lib/ranked-core/flow/rankedFlow";
 import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
@@ -497,7 +497,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
                                         * hold to absorb the poll's slack so
                                         * the beat does not have to.
                                         */
-                                       special: { tailMs: number } | null = null) => {
+                                       special: { tailMs: number } | null = null,
+                                       /**
+                                        * MG-P3.1 — the module paces its own
+                                        * settlement (Match Grid, MG-P2.1): hold
+                                        * until the server's boundary rather
+                                        * than the generic result beat.
+                                        */
+                                       serverPaced = false) => {
     if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
     setRevealHold(true);
     // The LONGEST applicable allowance, not a chain of branches: a round that
@@ -508,6 +515,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       REVEAL_HOLD_MS,
       leveledUp ? REVEAL_HOLD_LEVEL_UP_MS : 0,
       hasEvidence ? REVEAL_HOLD_EVIDENCE_MS : 0,
+      // The server already spaced the next board by the module's own window;
+      // the title beat keeps its share, exactly as `anchoredRevealHoldMs` does.
+      serverPaced ? serverPacedHoldMs(msUntilNextAnswerable, MODULE_TITLE_MS) : 0,
     );
     // RFX1 — end no later than the server's `started_at − title`, so a late
     // discovery shortens the reveal instead of the next module's intro.
@@ -620,7 +630,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         && conciseEvidence(settlement.questionExplanation) !== null;
       const nextStart = opts.nextStartedAt ? Date.parse(opts.nextStartedAt) : NaN;
       beginRevealHold(leveledUp, hasEvidence, Number.isNaN(nextStart)
-        ? null : nextStart - Date.now() - (opts.skewMs ?? 0), opts.special ?? null);
+        ? null : nextStart - Date.now() - (opts.skewMs ?? 0), opts.special ?? null,
+        // MG-P3.1 — only a Match Grid settlement (its server window, MG-P2.1).
+        !!segment?.reveal.match);
     }
   }, [matchId, beginRevealHold]);
 

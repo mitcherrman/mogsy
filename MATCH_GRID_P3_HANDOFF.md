@@ -337,10 +337,52 @@ a transform), and a hit test at the center ±20px on every rune and seal.
   spec marks that deliberate scroll; any scroll the page makes by itself still
   fails.
 
-**Not done at this commit (usage limit):**
-- Final reveal certification against MG-P2.1
-  (`match-grid/p2.1-release-candidate` @ `2464703c`, hold 4500ms). The
-  launcher `scratchpad/mg_backend/run_p21.py` and launch entry `mg-p21-be` are
-  prepared but were not run.
-- The M1 lab spec has not been re-run since the rail change.
-- The final scoped regression run was started but not read.
+**Reveal pacing (MG-P2.1):** certified against
+`match-grid/p2.1-release-candidate` @ **`2464703c`** (fix `67811e0a`; wire
+contract unchanged except `reveal_window_ms` 3000 → 4500; the server opens the
+next board 5900 ms after a wrong or timed-out board, 4400 ms after an exact one).
+
+The server window alone did not reach the board. The client's nominal hold
+(`REVEAL_HOLD_MS` 1500) was the ceiling, because `anchoredRevealHoldMs` only
+ever shortens toward the server boundary. Fix, frontend only and Match only:
+- `pacing.serverPacedHoldMs(lead, title)`.
+- `beginRevealHold(…, serverPaced)`, passed only when the settlement is a
+  `match` segment.
+- The nominal hold becomes `next started_at − module title`, the same ceiling
+  the anchored rule already enforces.
+- Every other module's beat is unchanged (pure-arithmetic tests added beside
+  the existing hold tests).
+
+Real-server matrix vs P2.1, run with `MG_REQUIRE_SETTLE=1`. Deal 1 is a wrong
+board. Each case asserts the reveal reaches `done` (which comes only through
+`ledger`) before the next deal, and that the ledger is held ≥2500 ms:
+
+| Viewport | normal: ledger→next | reduced: lock→next | movement | targets |
+|---|---|---|---|---|
+| 1600×900 | 3059 ms | 4491 ms | 0.00px | pass |
+| 1280×720 | 2849 ms | 4486 ms | 0.00px | pass |
+| 1366×650 | 2822 ms | 4476 ms | 0.00px | pass |
+| 1280×600 | 2899 ms | 4474 ms | 0.00px | pass |
+| 390×844 | 3172 ms | 4495 ms | 0.00px | pass |
+| 360×640 | 3023 ms | 4485 ms | 0.00px | pass (one deliberate scroll to reach Lock on 4–5 tree boards) |
+
+12/12 passed. The correction finishes, the canonical board settles and the
+ledger reads (for example "Grasp of the Undying → Resolve · Keystone · was in
+Sorcery" in the rail's well column), and the next round does not interrupt
+the choreography. Captures:
+`C:/Users/mlmit/OneDrive/Desktop/match-grid-p3-shots/p3.1-arena-p2.1/`.
+
+**Regressions:**
+- M1 lab spec 13/13.
+- Match Grid unit tests (99 at the first P3.1 commit) still pass, plus 4 new
+  hold tests.
+- Scoped suite vs clean `a59526b2`: 9 failed | 260 passed (269), the **same 9
+  files as baseline, none new**.
+- One intermediate run showed the known `QuizRankedMatch.rfx1b3` load flake
+  (32/32 in isolation).
+- `tsc` clean.
+
+**Final:**
+- Frontend: `match-grid/p3-frontend` (P3 `9a7517fb` → P3.1 layout `2be309e0`
+  → P3.1 pacing + certification, this commit; local only).
+- Backend used for certification: P2.1 RC `2464703c`.

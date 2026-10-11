@@ -411,6 +411,22 @@ for (const reduced of [false, true]) {
         const reached = new Set(frames.filter((f) => f.phase === "revealed").map((f) => f.stage));
         test.info().annotations.push({ type: "reveal-stages", description: [...reached].join(",") });
         expect(reached.size, "the server reveal never reached the board").toBeGreaterThan(0);
+        // MG-P2.1 pacing certification (server hold 4500 ms after a wrong
+        // board): the choreography finishes, the board settles, the ledger is
+        // held readably, and the next deal never interrupts it.
+        const firstDeal = frames[0]?.seg;
+        const deal1 = frames.filter((f) => f.seg === firstDeal);
+        const ledgerAt = deal1.find((f) => f.phase === "revealed" && (f.stage === "ledger" || f.stage === "done"))?.t;
+        const nextAt = frames.find((f) => f.seg !== firstDeal && f.phase === "open")?.t;
+        const hold = ledgerAt !== undefined && nextAt !== undefined ? nextAt - ledgerAt : null;
+        test.info().annotations.push({ type: "ledger-hold-ms", description: String(hold) });
+        if (process.env.MG_REQUIRE_SETTLE === "1") {
+          const r1 = new Set(deal1.filter((f) => f.phase === "revealed").map((f) => f.stage));
+          expect(r1.has("done"), "deal 1 reveal did not settle before the next deal").toBe(true);
+          // `done` is only reached through `ledger` (reveal.ts orders the
+          // stages); a screenshot pause can hide the 160ms between them.
+          expect(hold ?? 0, "ledger hold too short to read").toBeGreaterThanOrEqual(2500);
+        }
         if (reduced) expect(reached.has("done"), "reduced motion must settle instantly").toBe(true);
         else expect(reached.has("travel") || reached.has("ledger") || reached.has("done")).toBe(true);
         const worst = worstMovement(frames);
