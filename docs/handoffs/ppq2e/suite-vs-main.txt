@@ -1,0 +1,6 @@
+base: {'files': [30, 907], 'tests': [70, 15353, 7], 'errors': 1, 'unfinished': []}
+cand: {'files': [30, 913], 'tests': [70, 15731, 7], 'errors': 1, 'unfinished': []}
+failing tests: base 70, cand 70
+NEW on cand:
+fixed on cand:
+failed-to-run files base: [] cand: []
