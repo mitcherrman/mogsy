@@ -38,6 +38,20 @@ export interface ProPlayArenaRunProps {
   chrome?: ReactNode;
 }
 
+/**
+ * PPQ2-E — the arena frame's glow bleeds 0.25rem past the shell on each side
+ * (`.ranked-shell::before`). Inside a centred desktop column that is harmless,
+ * but where the frame is as wide as the viewport it is real horizontal
+ * overflow: 394/390 on the loading, error and end frames on a phone (the
+ * shared empty frame does not take PPQ2-A's `phoneStacked` bleed rule), and
+ * 1028/1024 on every frame at 1024 (PPQ2-A A5, shared by all full-bleed
+ * arenas). A mobile browser answers 4px of overflow by zooming the page out.
+ * `overflow-x: clip` trims the bleed at the page edge for this route only: it
+ * is not a scroll container, so nothing gains a scrollbar and sticky or fixed
+ * descendants are unaffected; the dock and popovers are portalled outside.
+ */
+const FRAME_CLIP = "overflow-x-clip";
+
 /** 44px touch target below `lg`; 36px where the stage height is definite. */
 const ACTION_BOX = "h-11 min-w-[8.5rem] shrink-0 lg:h-9";
 
@@ -150,7 +164,7 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
 
   if (view) {
     return (
-      <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase}>
+      <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
         <CanonicalArena view={view} chrome={chrome} />
       </div>
     );
@@ -206,7 +220,7 @@ export default function ProPlayArenaRun({ controller, exitTo = PRO_PLAY_ROUTE, c
   }
 
   return (
-    <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase}>
+    <div data-testid="pro-play-arena" data-pro-play-phase={projection.phase} className={FRAME_CLIP}>
       <CanonicalArena view={null} chrome={chrome} recovering={{ eyebrow: "Pro Play Quiz", message: "", intro }} />
     </div>
   );

@@ -2,7 +2,7 @@ import SEOHead from "@/components/SEOHead";
 import ProPlayArenaRun from "@/components/pro-play/arena-run/ProPlayArenaRun";
 import { useProPlayArenaController } from "@/lib/pro-play/arena";
 import { PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
-import { RankedRouteHeader } from "./quiz-ranked/RankedRouteHeader";
+import { ProPlayRouteChrome } from "@/components/pro-play/arena-run/ProPlayRouteChrome";
 
 /**
  * Pro Play Quiz — ten questions generated on demand from Pro Play Authority,
@@ -25,9 +25,9 @@ import { RankedRouteHeader } from "./quiz-ranked/RankedRouteHeader";
  * its own snapshot; it must not any more, or two publishers would race for the
  * one report slot. A source guard holds that.
  *
- * The way back is the arena routes' own chrome (`RankedRouteHeader`, fixed
- * beside the HUD hat), so it costs the stage no height. The `h1` is for
- * document structure only: the arena header already names the position.
+ * The way back is the arena routes' kind of chrome (`ProPlayRouteChrome`, in
+ * the HUD band beside the hat), so it costs the stage no height. The `h1` is
+ * for document structure only: the arena header already names the position.
  */
 export default function ProPlayQuiz() {
   const controller = useProPlayArenaController();
@@ -42,7 +42,7 @@ export default function ProPlayQuiz() {
       <ProPlayArenaRun
         controller={controller}
         exitTo={PRO_PLAY_ROUTE}
-        chrome={<RankedRouteHeader back={{ href: PRO_PLAY_ROUTE, label: "Back to Pro Play" }} />}
+        chrome={<ProPlayRouteChrome to={PRO_PLAY_ROUTE} />}
       />
     </>
   );

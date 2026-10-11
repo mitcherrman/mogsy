@@ -736,9 +736,22 @@ describe("ProPlayQuiz — the Arena route (PPQ2-E)", () => {
     installServer();
     renderQuiz();
     await screen.findByText("Question 1?");
-    const back = screen.getByTestId("ranked-back-to-quiz");
+    const back = screen.getByTestId("pro-play-back");
     expect(back.textContent).toBe("Back to Pro Play");
     expect(back.getAttribute("href")).toBe(PRO_PLAY_ROUTE);
+    // In the HUD band: scrolls with the page below `lg` (the page scrolls
+    // there), fixed from `lg` (the stage is locked to the viewport).
+    expect(back.className).toMatch(/(^|\s)absolute(\s|$)/);
+    expect(back.className).toContain("lg:fixed");
+    // It is the arena's chrome, not a row of its own: a zero-height slot.
+    expect(back.parentElement!.className).toContain("h-0");
+  });
+
+  it("clips the frame's glow bleed at the page edge on every frame (no 4px overflow)", async () => {
+    installServer({ failStart: true });
+    renderQuiz();
+    await screen.findByTestId("pro-play-error");
+    expect(screen.getByTestId("pro-play-arena").className).toContain("overflow-x-clip");
   });
 
   it("answers through a focused canonical tablet and hands focus to Next (real-browser keyboard run: handoff)", async () => {
