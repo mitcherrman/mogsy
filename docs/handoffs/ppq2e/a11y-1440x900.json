@@ -1,0 +1,93 @@
+{
+ "viewport": "1440x900",
+ "reducedMotion": false,
+ "h1": [
+  {
+   "text": "Pro Play Quiz",
+   "srOnly": true
+  }
+ ],
+ "title": "Pro Play Quiz | Mogzy",
+ "tablets": [
+  {
+   "name": "A. Taliyah",
+   "disabled": false,
+   "tag": "BUTTON"
+  },
+  {
+   "name": "B. Anivia",
+   "disabled": false,
+   "tag": "BUTTON"
+  },
+  {
+   "name": "C. Pantheon",
+   "disabled": false,
+   "tag": "BUTTON"
+  },
+  {
+   "name": "D. Rumble",
+   "disabled": false,
+   "tag": "BUTTON"
+  }
+ ],
+ "tabStopsToFirstTablet": [
+  "hud-home",
+  "hud-signup-chip",
+  "academy-radio-hud-trigger",
+  "hud-page-report",
+  "hud-profile",
+  "hud-notifications-trigger",
+  "pro-play-back",
+  "LEC — LoL EMEA Championship",
+  "EWC — Esports World Cup",
+  "pro-play-scope-tag",
+  "pro-play-scope-tag",
+  "pro-play-metric-tag",
+  "pro-play-editorial-tag",
+  "A. Taliyah"
+ ],
+ "firstTabletFocusRing": true,
+ "afterEnter": {
+  "focus": "pro-play-next",
+  "tabletsDisabled": true,
+  "verdict": {
+   "role": "status",
+   "text": "Incorrect. You picked A, Taliyah. The answer is D, Rumble."
+  },
+  "readout": [
+   "A. Taliyah: 8, of 8 games. Your pick.",
+   "B. Anivia: 9, of 10 games.",
+   "C. Pantheon: 8, of 10 games.",
+   "D. Rumble: 12, of 18 games. Correct answer."
+  ],
+  "readoutMode": "sr-only",
+  "motion": [
+   "staged"
+  ],
+  "animatedNodes": 5
+ },
+ "shiftTab": "Evidence source and authority",
+ "sourceOpen": {
+  "open": true,
+  "role": "dialog",
+  "expanded": "true",
+  "focusInPanel": true
+ },
+ "afterEscape": {
+  "open": false,
+  "focus": "Evidence source and authority"
+ },
+ "tabAfterSource": "pro-play-next",
+ "report": {
+  "name": "Report a problem with this question",
+  "w": 117,
+  "h": 46,
+  "tabIndex": 0
+ },
+ "afterNext": {
+  "header": "Question 2 / 10 · 0 correct",
+  "focus": "BODY",
+  "tabletsEnabled": true
+ },
+ "errors": []
+}
