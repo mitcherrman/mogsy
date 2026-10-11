@@ -908,11 +908,18 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
     expect(facing(container).contains(mascot(container))).toBe(true);
   });
 
-  it("desktop Mogzy is decorative: no button, no focus stop ahead of the cards", () => {
+  it("desktop Mogzy is a labelled interactive mascot and retriggers his hop", () => {
     const { container } = renderHub();
+    const trigger = screen.getByTestId("mogzy-guide-hub-trigger");
+    expect(trigger).toHaveAttribute("aria-label", "Mogzy, Academy guide");
+    expect(trigger.tagName).toBe("BUTTON");
+    expect(mascot(container).closest("button")).toBe(trigger);
     expect(mascot(container).closest("a")).toBeNull();
-    expect(mascot(container).closest("button")).toBeNull();
-    expect(screen.queryByTestId("mogzy-guide-hub-trigger")).toBeNull();
+    const reaction = react(container);
+    fireEvent.click(trigger);
+    expect(reaction).toHaveClass("mogzy-click-react");
+    fireEvent.click(trigger);
+    expect(reaction).toHaveClass("mogzy-click-react");
   });
 
   it("hovering a card leans Mogzy toward it on the dedicated lean layer", () => {
