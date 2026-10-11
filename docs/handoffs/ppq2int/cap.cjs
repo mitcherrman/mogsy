@@ -190,6 +190,12 @@ async function settle(page) {
           await page.waitForSelector('[data-pro-play-phase="revealed"]', { timeout: 60000 });
           await settle(page);
           probe = await page.evaluate(PROBE);
+          if (c.state === "source") {
+            await page.click("[data-pp-reveal-source]");
+            await page.waitForSelector("[data-pp-reveal-source-panel]", { timeout: 10000 });
+            await page.waitForTimeout(400);
+            probe = await page.evaluate(PROBE);
+          }
           if (c.state === "next") {
             await page.click('[data-testid="pro-play-next"]');
             await page.waitForSelector('[data-pro-play-phase="question"]', { timeout: 60000 });

@@ -57,13 +57,19 @@ function NextControl({ label, enabled, onNext }: { label: string; enabled: boole
     el.focus({ preventScroll: true });
     // Below `lg` the page scrolls and the control can land just under the
     // fold (measured: 850/844 at 390×844); bring it in, by the least amount.
-    if (el.getBoundingClientRect().bottom > window.innerHeight) {
-      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const margin = parseFloat(getComputedStyle(el).scrollMarginBottom) || 0;
+    if (el.getBoundingClientRect().bottom > window.innerHeight - margin) {
+      // Either reduced-motion switch: the OS preference or the app's own.
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        || document.documentElement.classList.contains("reduce-motion");
       el.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
     }
   }, []);
   return (
     <Button ref={ref} type="button" data-testid="pro-play-next" onClick={onNext} disabled={!enabled}
+      // Scrolled into view above the app's floating dock (Report pill), not
+      // under it: on a phone the reveal footer's controls sit at that edge.
+      style={{ scrollMarginBottom: "calc(var(--mogzy-dock-clearance, 0px) + 0.5rem)" }}
       className={ACTION_BOX}>
       {label}
     </Button>

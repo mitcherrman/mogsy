@@ -3,6 +3,7 @@
  *
  *   /lol/dev/pro-play-arena?source=live|fixture
  *     fixture only: &set=default|two|four|<sample,keys> &latency=<ms> &fault=start|answer
+ *       &evidence=partial|absent &names=long   (synthetic, labelled on the badge)
  *
  * `live` (the default) plays real sessions against the configured backend
  * (`VITE_COMBAT_API_URL`) through the production controller. `fixture` plays
@@ -49,7 +50,8 @@ function SourceBadge({ params }: { params: ArenaDevParams }) {
           : "border-emerald-400/60 bg-emerald-950/90 text-emerald-200"}`}>
         <span>{fixture ? "Fixture" : "Live API"}</span>
         <span className="hidden lg:inline">{fixture
-          ? `· frozen payloads, simulated server${params.fault !== "none" ? ` · fault=${params.fault}` : ""}`
+          ? `· frozen payloads, simulated server${params.fault !== "none" ? ` · fault=${params.fault}` : ""}${
+            params.evidence !== "full" ? ` · evidence=${params.evidence}` : ""}${params.longNames ? " · long names" : ""}`
           : `· ${apiHost()}`}</span>
         <a className="underline decoration-dotted underline-offset-2 opacity-80 hover:opacity-100"
           href={`?${other.toString()}`}>
@@ -64,7 +66,10 @@ function ArenaDevRun({ params }: { params: ArenaDevParams }) {
   // One transport per mount: the controller reads it through a ref.
   const transport = useMemo(
     () => (params.source === "fixture"
-      ? createFixtureTransport({ keys: params.keys, latencyMs: params.latencyMs, fault: params.fault })
+      ? createFixtureTransport({
+        keys: params.keys, latencyMs: params.latencyMs, fault: params.fault,
+        evidence: params.evidence, longNames: params.longNames,
+      })
       : undefined),
     [params],
   );

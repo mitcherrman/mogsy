@@ -42,11 +42,56 @@ export const FIXTURE_SETS: Record<string, readonly string[]> = {
 };
 
 export type FixtureFault = "none" | "start" | "answer";
+/** Synthetic evidence variants (labelled on the route): what an older or
+ *  incomplete backend can send. `partial` drops option B's statistic. */
+export type FixtureEvidence = "full" | "partial" | "absent";
 
 export interface FixtureTransportOptions {
   keys?: readonly string[];
   latencyMs?: number;
   fault?: FixtureFault;
+  evidence?: FixtureEvidence;
+  /** Synthetic stress labels: every option relabelled consistently (choices,
+   *  context subjects, evidence and the key), so alignment stays real. The
+   *  stem and the server explanation keep the real names. */
+  longNames?: boolean;
+}
+
+const LONG_LABELS = [
+  "Wunderwaffe-Academy Challengers", "Nongshim RedForce Academy", "Shadowstrike Kim Seo-Jin",
+  "Rogue Warriors Shanghai",
+];
+
+/** Every string equal to a choice label, anywhere in the value, relabelled. */
+function relabel<T>(value: T, map: ReadonlyMap<string, string>): T {
+  if (typeof value === "string") return (map.get(value) ?? value) as T;
+  if (Array.isArray(value)) return value.map((v) => relabel(v, map)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, relabel(v, map)])) as T;
+  }
+  return value;
+}
+
+/** The sample as this fixture run serves it (stress labels, evidence variant). */
+function variant(sample: ProPlaySample, options: FixtureTransportOptions): ProPlaySample {
+  let { question, result } = sample;
+  if (options.longNames) {
+    const map = new Map(question.choices.map((c, i) => [c, LONG_LABELS[i % LONG_LABELS.length]]));
+    question = { ...question, choices: question.choices.map((c) => map.get(c) ?? c), context: relabel(question.context, map) };
+    result = {
+      ...result,
+      correct_answer: map.get(result.correct_answer) ?? result.correct_answer,
+      evidence: relabel(result.evidence, map),
+    };
+  }
+  if (options.evidence === "absent") {
+    result = { ...result, evidence: undefined };
+  } else if (options.evidence === "partial" && result.evidence && typeof result.evidence === "object") {
+    const ev = result.evidence as { subjects?: Array<{ label: string }> };
+    const dropped = question.choices[1];
+    result = { ...result, evidence: { ...ev, subjects: (ev.subjects ?? []).filter((s) => s.label !== dropped) } };
+  }
+  return { question, result };
 }
 
 type Session = {
@@ -96,7 +141,7 @@ export function createFixtureTransport(options: FixtureTransportOptions = {}): P
       }
       counter += 1;
       const id = `fixture-${counter}`;
-      const samples = keys.map((k) => PRO_PLAY_SAMPLES[k]);
+      const samples = keys.map((k) => variant(PRO_PLAY_SAMPLES[k], options));
       const total = samples.length;
       const questions = samples.map((sample, i) => ({
         ...sample.question,

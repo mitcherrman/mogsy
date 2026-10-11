@@ -200,6 +200,45 @@ describe("evidence the server did not fully send", () => {
   });
 });
 
+describe("the DEV fixture variants stay internally consistent", () => {
+  it("long names relabel choices, identities, evidence and the key together", async () => {
+    const t = createFixtureTransport({ keys: ["t1_lineage"], latencyMs: 0, longNames: true });
+    const turn = await t.start();
+    const q = turn.question!;
+    expect(q.choices.some((c) => PRO_PLAY_SAMPLES.t1_lineage.question.choices.includes(c))).toBe(false);
+    const ctx = q.context as { subjects: Array<{ label: string }> };
+    expect(ctx.subjects.map((s) => s.label)).toEqual(q.choices);
+    const right = q.choices[correctIndex("t1_lineage")];
+    const graded = await t.answer(turn.session.session_id, q.question_id, right);
+    expect(graded.result.is_correct).toBe(true);
+    const ev = graded.result.evidence as Evidence;
+    expect(ev.subjects.map((s) => s.label).sort()).toEqual([...q.choices].sort());
+  });
+
+  it("partial drops exactly option B's statistic; absent drops the evidence", async () => {
+    const partial = createFixtureTransport({ keys: ["t1_lineage"], latencyMs: 0, evidence: "partial" });
+    const p = await partial.start();
+    const pr = await partial.answer(p.session.session_id, p.question!.question_id, p.question!.choices[0]);
+    const labels = (pr.result.evidence as Evidence).subjects.map((s) => s.label);
+    expect(labels).not.toContain(p.question!.choices[1]);
+    expect(labels).toHaveLength(3);
+    const absent = createFixtureTransport({ keys: ["t1_lineage"], latencyMs: 0, evidence: "absent" });
+    const a = await absent.start();
+    const ar = await absent.answer(a.session.session_id, a.question!.question_id, a.question!.choices[0]);
+    expect(ar.result.evidence).toBeUndefined();
+  });
+});
+
+describe("Next on a phone", () => {
+  it("scrolls into view above the app's floating dock, not under it", async () => {
+    setup(["champion_player"]);
+    await ready();
+    await answer(0);
+    const next = screen.getByTestId("pro-play-next");
+    expect(next.style.scrollMarginBottom).toContain("--mogzy-dock-clearance");
+  });
+});
+
 describe("one answer path, still", () => {
   it("adds nothing interactive inside a revealed tablet", async () => {
     setup(["t1_lineage"]);
