@@ -248,6 +248,11 @@ const LobbyPreviewPage = import.meta.env.DEV
 const ArenaQuestionProbe = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/arena-question-probe/ArenaQuestionProbe"))
   : null;
+// GM-M1: the Match Grid visual-diagnosis lab. DEVELOPMENT-ONLY; the path
+// 404s in production. The production path is the `match` Ranked module.
+const MatchGridLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/match-grid/MatchGridLab"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -641,6 +646,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {ArenaQuestionProbe ? (
                     <Route path="/dev/arena-question-probe" element={<Suspense fallback={<RouteFallback />}><ArenaQuestionProbe /></Suspense>} />
+                  ) : null}
+                  {MatchGridLab ? (
+                    <Route path="/dev/match-grid" element={<Suspense fallback={<RouteFallback />}><MatchGridLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

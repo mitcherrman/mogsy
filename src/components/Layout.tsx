@@ -101,7 +101,9 @@ export default function Layout() {
     || pathname === PRO_PLAY_MATCHUP_ROUTE
     // PPQ2-A — the neutral question-surface probe measures the arena's own
     // footprint, so it gets the same page frame as Ranked.
-    || pathname === "/dev/arena-question-probe";
+    || pathname === "/dev/arena-question-probe"
+    // GM-M1 — the Match Grid lab brings its own max-width and gutters.
+    || pathname === "/dev/match-grid";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

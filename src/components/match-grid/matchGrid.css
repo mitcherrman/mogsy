@@ -1,0 +1,690 @@
+/* MATCH GRID — the relational instrument's material.
+   Roughly 70% arcane academy (navy stone, brass, vellum, ink) and 30% engineered
+   hextech (engraved guides, measured ticks, a cyan core in a stable thread).
+   Nothing here encodes correctness before `[data-mark]` exists, and `[data-mark]`
+   is only ever written from a reveal. Every state change is transform/opacity:
+   the frame never resizes because knowledge changed. */
+
+.mg-root {
+  --mg-brass: #d5b66f;
+  --mg-brass-dim: #b9934c;
+  --mg-brass-bright: #f0d78c;
+  --mg-vellum: #e6d7b0;
+  --mg-vellum-dim: #c6b48f;
+  --mg-ink: #2c2417;
+  --mg-ink-muted: rgba(58, 46, 26, 0.74);
+  --mg-cyan: #8fdcf2;
+  --mg-navy: #0b1727;
+  --mg-navy-deep: #07111f;
+  --mg-hue: 44; /* default: brass-neutral when a group declares no hue */
+  --mg-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mg-move: 420ms;
+  --mg-travel: 560ms;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  color: var(--mg-vellum);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  border-radius: 14px;
+  border: 1px solid rgba(201, 168, 76, 0.42);
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(47, 143, 202, 0.10) 0%, transparent 55%),
+    radial-gradient(80% 60% at 100% 0%, rgba(201, 168, 76, 0.10) 0%, transparent 55%),
+    linear-gradient(170deg, #0f1b30 0%, #0a1526 50%, #060d1a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 168, 76, 0.12),
+    inset 0 0 40px rgba(10, 200, 255, 0.04),
+    0 0 26px -8px rgba(201, 168, 76, 0.16),
+    0 18px 40px -20px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mg-root::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240, 215, 140, 0.85), transparent);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------- header */
+.mg-head {
+  flex: none;
+  height: 66px;
+  padding: 10px 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+.mg-root[data-compact] .mg-head { height: 58px; padding-top: 8px; }
+.mg-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--mg-brass-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mg-prompt {
+  margin: 0;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: #f2e6c8;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  outline: none;
+}
+.mg-root[data-compact] .mg-prompt { font-size: 16.5px; }
+.mg-root[data-composition="ledger"] .mg-prompt { font-size: 15.5px; }
+
+/* ------------------------------------------------------------- board */
+.mg-board {
+  position: relative;
+  flex: none;
+  width: 100%;
+  margin: 0;
+  touch-action: pan-y;
+}
+.mg-guides,
+.mg-threads {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.mg-guides { overflow: hidden; border-radius: 0 0 12px 12px; }
+.mg-guide-orbit circle {
+  fill: none;
+  stroke: rgba(213, 182, 111, 0.11);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.mg-guide-divider {
+  stroke: rgba(213, 182, 111, 0.09);
+  stroke-width: 1;
+}
+.mg-guide-wire {
+  stroke: rgba(213, 182, 111, 0.16);
+  stroke-width: 1;
+  stroke-dasharray: 1 5;
+}
+.mg-well-plate {
+  fill: rgba(0, 0, 0, 0.22);
+  stroke: rgba(213, 182, 111, 0.22);
+  stroke-width: 1;
+}
+.mg-socket {
+  fill: rgba(0, 0, 0, 0.32);
+  stroke: rgba(213, 182, 111, 0.20);
+  stroke-width: 1;
+}
+
+/* ------------------------------------------------------------- threads */
+.mg-thread line {
+  fill: none;
+  stroke-linecap: round;
+  transition: opacity 320ms ease, stroke 320ms ease, stroke-width 320ms ease;
+}
+.mg-thread-halo {
+  stroke: hsl(var(--mg-hue) 70% 62% / 0.22);
+  stroke-width: 8;
+}
+.mg-thread-core {
+  stroke: hsl(var(--mg-hue) 60% 78% / 0.92);
+  stroke-width: 1.75;
+}
+.mg-thread[data-state="stable"] .mg-thread-halo { stroke: hsl(var(--mg-hue) 80% 65% / 0.30); stroke-width: 9; }
+.mg-thread[data-state="stable"] .mg-thread-core { stroke: #f6ecc9; stroke-width: 1.8; }
+.mg-thread[data-state="fractured"] .mg-thread-halo { opacity: 0; }
+.mg-thread[data-state="fractured"] .mg-thread-core {
+  stroke: #8d919b;
+  stroke-dasharray: 0.06 0.05;
+  opacity: 0;
+  transition: opacity 480ms ease 120ms, stroke 200ms ease, stroke-dasharray 200ms ease;
+}
+.mg-thread[data-state="inked"] .mg-thread-halo {
+  stroke: hsl(var(--mg-hue) 80% 65% / 0.30);
+  stroke-width: 9;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mg-ink var(--mg-travel) var(--mg-ease) var(--mg-travel) forwards;
+}
+.mg-thread[data-state="inked"] .mg-thread-core {
+  stroke: #f6ecc9;
+  stroke-width: 1.8;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mg-ink var(--mg-travel) var(--mg-ease) var(--mg-travel) forwards;
+}
+@keyframes mg-ink { to { stroke-dashoffset: 0; } }
+
+/* ------------------------------------------------------------- seals */
+.mg-seal-wrap {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 10;
+}
+.mg-seal {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 40%, hsl(var(--mg-hue) 45% 30% / 0.55) 0%, rgba(11, 23, 39, 0.0) 62%),
+    radial-gradient(circle at 50% 50%, #132238 0%, #0a1527 70%, #070f1c 100%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 10px 26px -12px rgba(0, 0, 0, 0.9),
+    inset 0 2px 6px rgba(255, 255, 255, 0.05),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.55);
+  color: var(--mg-vellum);
+  cursor: pointer;
+  transition: box-shadow 260ms ease, transform 260ms var(--mg-ease);
+  outline: none;
+}
+.mg-seal[aria-disabled="true"] { cursor: default; }
+.mg-seal:focus-visible {
+  box-shadow:
+    0 0 0 2px #07111f,
+    0 0 0 4px var(--mg-brass),
+    0 10px 26px -12px rgba(0, 0, 0, 0.9);
+}
+/* While a sigil is in hand every seal — identically — offers itself. */
+.mg-seal[data-armed] {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 22px -4px hsl(var(--mg-hue) 70% 60% / 0.45),
+    0 10px 26px -12px rgba(0, 0, 0, 0.9),
+    inset 0 2px 6px rgba(255, 255, 255, 0.05),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.55);
+}
+.mg-seal[data-armed]:hover { transform: translate(-50%, -50%) scale(1.04); }
+.mg-seal[data-sealed] {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 30px -6px hsl(var(--mg-hue) 80% 65% / 0.55),
+    0 10px 26px -12px rgba(0, 0, 0, 0.9),
+    inset 0 2px 6px rgba(255, 255, 255, 0.07),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.55);
+}
+.mg-seal-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.mg-seal-rim {
+  fill: none;
+  stroke: var(--mg-brass-dim);
+  stroke-width: 2.2;
+  opacity: 0.9;
+}
+.mg-seal[data-sealed] .mg-seal-rim { stroke: var(--mg-brass-bright); }
+.mg-seal-groove {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 1.2;
+}
+.mg-seal-tick {
+  stroke: rgba(213, 182, 111, 0.22);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  transition: stroke 300ms ease;
+}
+.mg-seal-tick[data-lit] { stroke: var(--mg-brass-bright); }
+.mg-seal-face {
+  position: absolute;
+  inset: 20%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--mg-hue) 60% 78%);
+  filter: drop-shadow(0 0 6px hsl(var(--mg-hue) 70% 60% / 0.45));
+}
+.mg-seal-face img,
+.mg-seal-face svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.mg-seal-mono {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: 26px;
+}
+.mg-seal-index {
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  transform: translateX(-50%);
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(213, 182, 111, 0.75);
+}
+.mg-root[data-composition="ledger"] .mg-seal-index { display: none; }
+.mg-seal-name {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, 0);
+  width: 160px;
+  text-align: center;
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #e8d8ae;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.mg-root[data-composition="constellation"][data-compact] .mg-seal-name { font-size: 10.5px; }
+.mg-root[data-composition="ledger"] .mg-seal-name {
+  width: 84px;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+}
+.mg-root[data-composition="ledger"][data-compact] .mg-seal-name { font-size: 8.5px; }
+
+/* ------------------------------------------------------------- sigils */
+.mg-sigil {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: grab;
+  will-change: transform;
+  transition: transform var(--mg-move) var(--mg-ease);
+  outline: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+.mg-sigil[aria-disabled="true"] { cursor: default; }
+.mg-sigil[data-state="dragging"] { transition: none; cursor: grabbing; }
+.mg-sigil[data-traveller] { transition-duration: var(--mg-travel); transition-timing-function: cubic-bezier(0.55, 0, 0.3, 1); }
+.mg-sigil-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: visible;
+  background:
+    radial-gradient(circle at 50% 35%, hsl(var(--mg-hue) 50% 32% / 0.55) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, #142338 0%, #0a1527 72%, #060e1a 100%);
+  box-shadow:
+    0 0 0 1.5px rgba(213, 182, 111, 0.75),
+    0 0 0 3px rgba(0, 0, 0, 0.55),
+    0 6px 16px -6px rgba(0, 0, 0, 0.9),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 220ms ease, transform 220ms var(--mg-ease);
+}
+.mg-sigil-disc img {
+  position: absolute;
+  inset: 9%;
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+.mg-sigil-mono {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #e8c97a;
+}
+.mg-sigil:hover .mg-sigil-disc,
+.mg-sigil:focus-visible .mg-sigil-disc {
+  box-shadow:
+    0 0 0 1.5px var(--mg-brass-bright),
+    0 0 0 3px rgba(0, 0, 0, 0.55),
+    0 0 14px -2px rgba(213, 182, 111, 0.45),
+    0 6px 16px -6px rgba(0, 0, 0, 0.9),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.5);
+}
+.mg-sigil:focus-visible .mg-sigil-disc {
+  box-shadow:
+    0 0 0 2px #07111f,
+    0 0 0 4px var(--mg-brass),
+    0 6px 16px -6px rgba(0, 0, 0, 0.9);
+}
+.mg-sigil[data-state="held"] .mg-sigil-disc {
+  transform: scale(1.1);
+  box-shadow:
+    0 0 0 1.5px var(--mg-brass-bright),
+    0 0 0 3px rgba(0, 0, 0, 0.55),
+    0 0 22px 0 rgba(240, 215, 140, 0.45),
+    0 14px 26px -10px rgba(0, 0, 0, 0.95),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.5);
+}
+.mg-sigil[data-state="dragging"] .mg-sigil-disc {
+  transform: scale(1.14);
+  box-shadow:
+    0 0 0 1.5px var(--mg-brass-bright),
+    0 0 0 3px rgba(0, 0, 0, 0.55),
+    0 0 26px 0 rgba(240, 215, 140, 0.5),
+    0 22px 34px -12px rgba(0, 0, 0, 1),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.5);
+}
+.mg-sigil[data-traveller] .mg-sigil-disc { animation: mg-lift var(--mg-travel) cubic-bezier(0.55, 0, 0.3, 1); }
+@keyframes mg-lift {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.22); box-shadow: 0 0 0 1.5px var(--mg-brass-bright), 0 0 0 3px rgba(0, 0, 0, 0.55), 0 0 26px 0 rgba(240, 215, 140, 0.5), 0 26px 36px -12px rgba(0, 0, 0, 1); }
+  100% { transform: scale(1); }
+}
+.mg-sigil-caption {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  width: 88px;
+  font-size: 10.5px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--mg-vellum);
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+/* In the constellation a seated sigil wears its name ABOVE, away from the seal
+   and its thread; in the well and on the wire the name hangs below. */
+.mg-root[data-composition="constellation"] .mg-sigil[data-state="seated"] .mg-sigil-caption {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
+  width: 92px;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.mg-root[data-composition="ledger"] .mg-sigil-caption { width: 58px; font-size: 8.5px; margin-top: 2px; letter-spacing: 0; }
+.mg-root[data-compact] .mg-sigil-caption { font-size: 10px; margin-top: 3px; }
+.mg-sigil[data-state="dragging"] .mg-sigil-caption,
+.mg-sigil[data-state="held"] .mg-sigil-caption { color: #fff6dd; }
+
+/* Reveal marks on the sigil: a glyph, never colour alone. */
+.mg-sigil-mark {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 240ms ease, transform 240ms var(--mg-ease);
+  font-size: 10px;
+  line-height: 17px;
+  text-align: center;
+  font-weight: 900;
+}
+.mg-sigil-mark[data-mark] { opacity: 1; transform: scale(1); }
+.mg-sigil-mark[data-mark="stable"] { background: #2a2110; color: var(--mg-brass-bright); box-shadow: 0 0 0 1px var(--mg-brass); }
+.mg-sigil-mark[data-mark="stable"]::before { content: "✓"; }
+.mg-sigil-mark[data-mark="fractured"] { background: #3a3d44; color: #e8e2d2; box-shadow: 0 0 0 1px #8d919b; }
+.mg-sigil-mark[data-mark="fractured"]::before { content: "✕"; }
+.mg-sigil-mark[data-mark="corrected"] { background: #2a2110; color: var(--mg-cyan); box-shadow: 0 0 0 1px var(--mg-cyan); transition-delay: var(--mg-travel); }
+.mg-sigil-mark[data-mark="corrected"]::before { content: "➜"; }
+.mg-sigil[data-mark="fractured"] .mg-sigil-disc { filter: saturate(0.4) brightness(0.85); }
+
+/* ------------------------------------------------------------- ledger */
+.mg-ledger {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  z-index: 25;
+  display: flex;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(122, 98, 54, 0.7);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 30%),
+    linear-gradient(160deg, #f1e6c9 0%, #e6d6b0 100%);
+  color: var(--mg-ink);
+  box-shadow: inset 0 0 24px rgba(122, 98, 54, 0.18), 0 10px 30px -14px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 420ms ease, transform 420ms var(--mg-ease);
+  pointer-events: none;
+  overflow: hidden;
+}
+.mg-ledger[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
+.mg-ledger-head {
+  flex: none;
+  width: 182px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border-right: 1px solid rgba(122, 98, 54, 0.35);
+  padding-right: 12px;
+}
+.mg-ledger-verdict {
+  margin: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  color: var(--mg-ink);
+}
+.mg-ledger-sub {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--mg-ink-muted);
+}
+.mg-ledger-cards {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0 2px;
+  list-style: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  align-items: center;
+}
+.mg-ledger-card {
+  flex: none;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  align-self: center;
+  min-width: 150px;
+  max-width: 230px;
+  max-height: 100%;
+  padding: 6px 10px 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(122, 98, 54, 0.4);
+  background: rgba(44, 36, 23, 0.06);
+}
+.mg-ledger-card[data-kind="group"] { max-width: 260px; }
+.mg-ledger-art {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: radial-gradient(circle, #142338 0%, #070f1c 100%);
+  box-shadow: 0 0 0 1px rgba(122, 98, 54, 0.6);
+}
+.mg-ledger-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mg-ledger-title {
+  margin: 0;
+  font-family: "Lora", Georgia, serif;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mg-ledger-line {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--mg-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.mg-ledger-arrow { color: #7a5a1e; }
+.mg-ledger-facts {
+  font-weight: 500;
+  color: var(--mg-ink-muted);
+}
+.mg-ledger-source {
+  margin: 0;
+  font-size: 9.5px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  color: var(--mg-ink-muted);
+  opacity: 0.8;
+}
+.mg-ledger-from {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.2;
+  font-style: italic;
+  color: var(--mg-ink-muted);
+}
+.mg-root[data-tier="tall"] .mg-prompt { font-size: 21px; }
+.mg-root[data-tier="tall"] .mg-head { height: 72px; }
+.mg-root[data-tier="tall"] .mg-sigil-caption { font-size: 11px; width: 96px; }
+.mg-root[data-tier="tall"] .mg-seal-name { font-size: 12.5px; }
+.mg-root[data-tier="tall"] .mg-foot { height: 68px; }
+/* On the phone the ledger's cards wrap into two columns and scroll vertically,
+   so the well's footprint is used rather than a single strip floating in it. */
+.mg-root[data-composition="ledger"] .mg-ledger { flex-direction: column; gap: 6px; padding: 8px 10px; }
+.mg-root[data-composition="ledger"] .mg-ledger-cards { flex-wrap: wrap; overflow-x: hidden; overflow-y: auto; align-items: flex-start; align-content: flex-start; gap: 6px; }
+.mg-root[data-composition="ledger"] .mg-ledger-card { flex: 1 1 calc(50% - 3px); min-width: 0; max-width: none; align-self: auto; padding: 5px 8px; }
+.mg-root[data-composition="ledger"] .mg-ledger-art { width: 30px; height: 30px; }
+.mg-root[data-composition="ledger"] .mg-ledger-title { font-size: 12px; }
+.mg-root[data-composition="ledger"] .mg-ledger-line { font-size: 11px; }
+.mg-root[data-composition="ledger"] .mg-ledger-head { width: auto; border-right: 0; border-bottom: 1px solid rgba(122, 98, 54, 0.35); padding: 0 0 6px; flex-direction: row; align-items: baseline; gap: 10px; }
+.mg-root[data-composition="ledger"] .mg-ledger-card { min-width: 140px; }
+
+/* ------------------------------------------------------------- footer */
+.mg-foot {
+  flex: none;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px 0 18px;
+  border-top: 1px solid rgba(201, 168, 76, 0.18);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.28));
+}
+.mg-root[data-compact] .mg-foot { height: 56px; }
+.mg-status {
+  margin: 0;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.25;
+  color: var(--mg-vellum-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* On the phone the status may need two lines: the box is reserved at two lines
+   in every phase so the footer's contents never shift when the wording changes. */
+.mg-root[data-composition="ledger"] .mg-status {
+  font-size: 11.5px;
+  white-space: normal;
+  height: 2.5em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.mg-lock {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 164px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(213, 182, 111, 0.8);
+  background: linear-gradient(180deg, #3a2d14, #2a2110);
+  color: #f6e6bb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 8px 18px -10px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+  outline: none;
+}
+.mg-lock:hover:not(:disabled) { background: linear-gradient(180deg, #4a3a1a, #342912); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 18px -4px rgba(213, 182, 111, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.mg-lock:focus-visible { box-shadow: 0 0 0 2px #07111f, 0 0 0 4px var(--mg-brass); }
+.mg-lock:disabled { opacity: 0.55; cursor: default; }
+.mg-root[data-phase="locked"] .mg-lock,
+.mg-root[data-phase="revealed"] .mg-lock { opacity: 0.85; }
+.mg-lock-icon { width: 14px; height: 14px; }
+.mg-root[data-composition="ledger"] .mg-lock { min-width: 128px; padding: 0 12px; font-size: 11px; }
+
+/* ------------------------------------------------------------- motion */
+.mg-root[data-reduced-motion] *,
+.mg-root[data-reduced-motion] *::before,
+.mg-root[data-reduced-motion] *::after {
+  transition: none !important;
+  animation: none !important;
+}
+.mg-root[data-reduced-motion] .mg-thread[data-state="inked"] line { stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .mg-root *, .mg-root *::before, .mg-root *::after { transition: none !important; animation: none !important; }
+  .mg-thread[data-state="inked"] line { stroke-dashoffset: 0; }
+}

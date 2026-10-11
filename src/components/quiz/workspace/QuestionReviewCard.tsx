@@ -627,6 +627,73 @@ function ReconstructBody({ round }: { round: ReviewRound }) {
   );
 }
 
+/**
+ * MG-P3 — one `match` round, reviewed from the FROZEN review payload only: the
+ * viewer's board (each rune with the seal it was locked under and the
+ * server's mark) and, once revealed, the canonical seal and the server's own
+ * facts. Nothing is graded or looked up here; an unrevealed round shows only
+ * what was asked.
+ */
+function MatchBody({ round }: { round: ReviewRound }) {
+  const m = round.match;
+  if (!m) return null;
+  const groupLabel = new Map(m.groups.map((g) => [g.groupId, g.label]));
+  const mine = new Map((m.viewerAssignments ?? []).map((a) => [a.entityId, a.groupId]));
+  const home = new Map((m.canonicalAssignments ?? []).map((a) => [a.entityId, a.groupId]));
+  const total = m.entities.length;
+  return (
+    <div className="space-y-2" data-testid="review-match">
+      {m.prompt && (
+        <p className="text-[12px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }}>{m.prompt}</p>
+      )}
+      {m.viewerAssignments === null && (
+        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          {m.outcome === "timeout" ? "You did not lock in a board." : "No board was locked in."}
+        </p>
+      )}
+      {round.revealed && m.matched !== null && total > 0 && (
+        <p className="text-[11px]" style={{ color: LEAGUECRAFT_INK.body }} data-testid="review-match-count">
+          {m.matched} of {total} relationships correct
+        </p>
+      )}
+      <ul className="space-y-1" data-testid="review-match-board">
+        {m.entities.map((e) => {
+          const mark = m.entityCorrect?.[e.entityId];
+          const tone = mark === undefined ? TONE.idle : mark ? TONE.correct : TONE.incorrect;
+          const fact = m.entityFacts?.[e.entityId];
+          const placed = mine.get(e.entityId);
+          const canonical = home.get(e.entityId);
+          const url = resolveQuizAssetUrl(e.media?.src ?? null);
+          return (
+            <li key={e.entityId} data-testid="review-match-entity" data-entity={e.entityId}
+              data-mark={mark === undefined ? "none" : String(mark)}
+              className="space-y-0.5 rounded border px-1.5 py-1 text-[11.5px]"
+              style={{ color: tone.ink, borderColor: tone.edge, background: tone.fill }}>
+              <span className="flex items-center gap-1.5">
+                {url
+                  ? <img src={url} alt="" aria-hidden className="h-4 w-4 shrink-0 rounded-sm" loading="lazy" />
+                  : <span aria-hidden className="h-4 w-4 shrink-0 rounded-sm bg-black/10" />}
+                <span className="min-w-0 flex-1 break-words font-semibold">{e.label}</span>
+                {mark !== undefined && (
+                  mark
+                    ? <Check className="h-3 w-3 shrink-0" aria-label="Seated correctly" />
+                    : <X className="h-3 w-3 shrink-0" aria-label="Seated under another tree" />
+                )}
+              </span>
+              <span className="block pl-[22px] text-[10.5px] opacity-80" data-testid="review-match-line">
+                {placed !== undefined ? `You: ${groupLabel.get(placed) ?? placed}` : "Not seated"}
+                {canonical !== undefined && ` → ${groupLabel.get(canonical) ?? canonical}`}
+                {fact?.runeType === "keystone" ? " · Keystone" : fact?.runeType === "minor" ? " · Minor rune"
+                  : fact?.runeType ? ` · ${fact.runeType}` : ""}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function MetaReflexBody({ round }: { round: ReviewRound }) {
   const cards = round.challenges ?? [];
   const sub = round.viewerSubmission;
@@ -718,6 +785,8 @@ export default function QuestionReviewCard({
         ? "Order Forge"
         : round.kind === "reconstruct"
         ? "Reconstruct"
+        : round.kind === "match"
+        ? "Match Grid"
         : round.category
           ? prettyCategory(round.category)
           : icon.label;
@@ -757,6 +826,8 @@ export default function QuestionReviewCard({
         <OrderForgeBody round={round} />
       ) : round.kind === "reconstruct" ? (
         <ReconstructBody round={round} />
+      ) : round.kind === "match" ? (
+        <MatchBody round={round} />
       ) : (
         <QuizBody round={round} />
       )}

@@ -313,6 +313,92 @@ export interface ReconstructSettlement {
   slotCorrect: Record<string, boolean[]>;
 }
 
+// ---------------------------------------------------------------------------
+// MG-P3 — `match.v1` (Match Grid). Field names exactly as the P2 backend
+// emits them (`docs/MATCH_GRID_P2_WIRE_CAPTURE.json`). Entity / group ids are
+// opaque positional tokens (`e0..`, `g0..`): the client never reads a rune
+// or tree identity from them, and the pre-lock block has no field that could
+// carry the canonical map.
+// ---------------------------------------------------------------------------
+export const MATCH_MODULE_ID = "match";
+
+/** One `{entity_id, group_id}` row, as submitted and as revealed. */
+export interface MatchAssignmentView {
+  entityId: string;
+  groupId: string;
+}
+
+export interface MatchEntityView {
+  entityId: string;
+  label: string;
+  media: ReconstructMedia;
+}
+
+export interface MatchGroupView {
+  groupId: string;
+  label: string;
+  /** The seal-face key for the group the label publicly names. Decorative. */
+  glyph: string | null;
+}
+
+/** The pre-lock public block of a `match` segment. It has NO answer field. */
+export interface MatchBlockView {
+  family: string | null;
+  prompt: string;
+  revealWindowMs: number | null;
+  membership: "one";
+  entities: MatchEntityView[];
+  groups: MatchGroupView[];
+}
+
+/** One server fact about an entity, revealed only after the lock. */
+export interface MatchEntityFact {
+  label: string;
+  treeLabel: string | null;
+  runeType: string | null;
+}
+
+export interface MatchSource {
+  snapshotDigest: string | null;
+  parserVersion: string | null;
+}
+
+/** The viewer's own lock reveal (`own_challenge_reveals[0]` / inline `challenge_reveal`). */
+export interface MatchChallengeReveal {
+  assignments: MatchAssignmentView[];
+  isCorrect: boolean | null;
+  entityCorrect: Record<string, boolean>;
+  matched: number | null;
+  required: number | null;
+  canonicalAssignments: MatchAssignmentView[];
+  entityFacts: Record<string, MatchEntityFact>;
+  source: MatchSource | null;
+}
+
+/** A settled `match` segment, from `segment_reveal` (both players' boards). */
+export interface MatchSettlement {
+  canonicalAssignments: MatchAssignmentView[];
+  entityFacts: Record<string, MatchEntityFact>;
+  assignments: Record<string, MatchAssignmentView[] | null>;
+  entityCorrect: Record<string, Record<string, boolean>>;
+  matched: Record<string, number | null>;
+  required: number | null;
+}
+
+/** One reviewed `match` round (`ranked_duel.match_review.v1`, `kind: "match"`). */
+export interface ReviewMatch {
+  prompt: string | null;
+  entities: MatchEntityView[];
+  groups: MatchGroupView[];
+  viewerAssignments: MatchAssignmentView[] | null;
+  canonicalAssignments: MatchAssignmentView[] | null;
+  entityCorrect: Record<string, boolean> | null;
+  entityFacts: Record<string, MatchEntityFact> | null;
+  matched: number | null;
+  outcome: string | null;
+  isCorrect: boolean | null;
+}
+
 /** One reviewed `reconstruct` round (`ranked_duel.match_review.v1`). */
 export interface ReviewReconstruct {
   target: { label: string; media: string | null };
@@ -649,6 +735,8 @@ export interface MasteryChallengeReveal {
   orderForge?: OrderForgeChallengeReveal | null;
   /** Present only on a `reconstruct` reveal. */
   reconstruct?: ReconstructChallengeReveal | null;
+  /** MG-P3 — present only on a `match` reveal. */
+  match?: MatchChallengeReveal | null;
   explanation: string | null;
   answerOptions: string[];
   /**
@@ -677,7 +765,8 @@ export type SegmentBlockView =
   | { contract: "meta_reflex"; cards: MetaReflexCard[] }
   | { contract: "mastery_slice"; challenges: MasterySliceChallengeView[] }
   | ({ contract: "order_forge" } & OrderForgeBlockView)
-  | ({ contract: "reconstruct" } & ReconstructBlockView);
+  | ({ contract: "reconstruct" } & ReconstructBlockView)
+  | ({ contract: "match" } & MatchBlockView);
 
 /** The viewer's OWN ability state inside a multi-challenge segment. */
 export interface SegmentAbilityView {
@@ -714,6 +803,12 @@ export interface SegmentStateView {
   /** A scalar token per challenge; an `order_forge` challenge echoes its whole
    * order, a `reconstruct` challenge its whole placement. */
   ownSubmittedChoices: (string | readonly string[] | null)[];
+  /**
+   * MG-P3 — a `match` segment's lock echo (one `{entity_id, group_id}` row per
+   * entity). Absent on every other module, whose `ownSubmittedChoices` carry
+   * their echo; on a `match` segment `ownSubmittedChoices` holds only nulls.
+   */
+  ownSubmittedAssignments?: (MatchAssignmentView[] | null)[];
   ownChallengesCompleted: number;
   opponentChallengesCompleted: number;
   opponentFinished: boolean;
@@ -1322,6 +1417,12 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   "sub_parts", "decoys", "total_display", "combine_display",
   // GM1-R2 - the breakdown's further frozen figures (backend guard too).
   "base_display", "line_total_display", "part_kind",
+  // MG-P2/P3 - a match segment's canonical board, per-entity marks and facts
+  // are reveal-only (backend `answer_safety.FORBIDDEN_PRE_REVEAL_KEYS`).
+  "canonical", "canonical_assignments", "settled", "settled_assignments",
+  "answers", "entity_correct", "correct_group", "entity_facts",
+  // ...and the private half's names for the authority's identities.
+  "rune_key", "tree_key", "is_keystone", "rune_type", "tree_label",
 ]);
 
 /**
@@ -1626,6 +1727,171 @@ function displayMap(v: unknown, label: string): Record<string, string> {
   return out;
 }
 
+// MG-P3 — `match` readers. Strict: a malformed board fails the payload closed.
+
+function readMatchAssignments(v: unknown, label: string): MatchAssignmentView[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  const seen = new Set<string>();
+  return v.map((e, i) => {
+    const o = rec(e, `${label}[${i}]`);
+    const entityId = str(o.entity_id, `${label}[${i}].entity_id`);
+    if (seen.has(entityId)) throw new RankedPublicParseError(`${label} repeats ${entityId}`);
+    seen.add(entityId);
+    return { entityId, groupId: str(o.group_id, `${label}[${i}].group_id`) };
+  });
+}
+
+function readMatchEntityCorrect(v: unknown, label: string): Record<string, boolean> {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  const out: Record<string, boolean> = {};
+  v.forEach((e, i) => {
+    const o = rec(e, `${label}[${i}]`);
+    out[str(o.entity_id, `${label}[${i}].entity_id`)] = bool(o.correct, `${label}[${i}].correct`);
+  });
+  return out;
+}
+
+function readMatchFacts(v: unknown, label: string): Record<string, MatchEntityFact> {
+  const out: Record<string, MatchEntityFact> = {};
+  for (const [id, raw] of Object.entries(rec(v, label))) {
+    const o = rec(raw, `${label}.${id}`);
+    out[id] = {
+      label: str(o.label, `${label}.${id}.label`),
+      treeLabel: nstr(o.tree_label, `${label}.${id}.tree_label`),
+      runeType: nstr(o.rune_type, `${label}.${id}.rune_type`),
+    };
+  }
+  return out;
+}
+
+function readMatchSource(v: unknown, label: string): MatchSource | null {
+  if (v === null || v === undefined) return null;
+  const o = rec(v, label);
+  return {
+    snapshotDigest: nstr(o.snapshot_digest, `${label}.snapshot_digest`),
+    parserVersion: nstr(o.parser_version, `${label}.parser_version`),
+  };
+}
+
+function readMatchEntities(v: unknown, label: string): MatchEntityView[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  return v.map((e, i) => {
+    const o = rec(e, `${label}[${i}]`);
+    return {
+      entityId: str(o.entity_id, `${label}[${i}].entity_id`),
+      label: str(o.label, `${label}[${i}].label`),
+      media: readOrderForgeMedia(o.media, `${label}[${i}].media`),
+    };
+  });
+}
+
+function readMatchGroups(v: unknown, label: string): MatchGroupView[] {
+  if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
+  return v.map((e, i) => {
+    const o = rec(e, `${label}[${i}]`);
+    return {
+      groupId: str(o.group_id, `${label}[${i}].group_id`),
+      label: str(o.label, `${label}[${i}].label`),
+      glyph: nstr(o.glyph, `${label}[${i}].glyph`),
+    };
+  });
+}
+
+function assertDistinctIds(ids: string[], label: string): void {
+  if (ids.length === 0) throw new RankedPublicParseError(`${label} is empty`);
+  if (new Set(ids).size !== ids.length) throw new RankedPublicParseError(`${label} repeats an id`);
+}
+
+/**
+ * The `match` public block. Exactly one challenge, `membership: "one"`,
+ * distinct non-empty entity and group tokens; anything else fails closed.
+ */
+function readMatchBlock(block: Record<string, unknown>, list: unknown[]): MatchBlockView {
+  if (list.length !== 1) {
+    throw new RankedPublicParseError("match block must carry exactly one challenge");
+  }
+  const first = rec(list[0], "challenges[0]");
+  if (first.membership !== "one") {
+    throw new RankedPublicParseError('challenges[0].membership must be "one"');
+  }
+  const entities = readMatchEntities(first.entities, "challenges[0].entities");
+  const groups = readMatchGroups(first.groups, "challenges[0].groups");
+  assertDistinctIds(entities.map((e) => e.entityId), "challenges[0].entities");
+  assertDistinctIds(groups.map((g) => g.groupId), "challenges[0].groups");
+  return {
+    family: nstr(block.family, "challenges.family"),
+    prompt: str(block.prompt, "challenges.prompt"),
+    revealWindowMs: nnum(block.reveal_window_ms, "challenges.reveal_window_ms"),
+    membership: "one",
+    entities,
+    groups,
+  };
+}
+
+function readMatchChallengeReveal(o: Record<string, unknown>, label: string): MatchChallengeReveal {
+  return {
+    assignments: readMatchAssignments(o.assignments, `${label}.assignments`),
+    isCorrect: nbool(o.is_correct, `${label}.is_correct`),
+    entityCorrect: readMatchEntityCorrect(o.entity_correct, `${label}.entity_correct`),
+    matched: nnum(o.matched, `${label}.matched`),
+    required: nnum(o.required, `${label}.required`),
+    canonicalAssignments: readMatchAssignments(
+      o.canonical_assignments, `${label}.canonical_assignments`),
+    entityFacts: readMatchFacts(o.entity_facts, `${label}.entity_facts`),
+    source: readMatchSource(o.source, `${label}.source`),
+  };
+}
+
+function readMatchSettlement(o: Record<string, unknown>): MatchSettlement {
+  const assignments: Record<string, MatchAssignmentView[] | null> = {};
+  const entityCorrect: Record<string, Record<string, boolean>> = {};
+  const matched: Record<string, number | null> = {};
+  let required: number | null = null;
+  for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
+    const p = rec(value, `players.${pid}`);
+    assignments[pid] = p.assignments === null || p.assignments === undefined
+      ? null : readMatchAssignments(p.assignments, `players.${pid}.assignments`);
+    entityCorrect[pid] = p.entity_correct === null || p.entity_correct === undefined
+      ? {} : readMatchEntityCorrect(p.entity_correct, `players.${pid}.entity_correct`);
+    matched[pid] = nnum(p.matched, `players.${pid}.matched`);
+    required = required ?? nnum(p.required, `players.${pid}.required`);
+  }
+  return {
+    canonicalAssignments: readMatchAssignments(
+      o.canonical_assignments, "segment_reveal.canonical_assignments"),
+    entityFacts: readMatchFacts(o.entity_facts, "segment_reveal.entity_facts"),
+    assignments, entityCorrect, matched, required,
+  };
+}
+
+/**
+ * One `match` review round, with the inverse guard: an unrevealed round must
+ * carry no canonical board, mark or fact.
+ */
+function reviewMatch(r: Record<string, unknown>, label: string, revealed: boolean): ReviewMatch {
+  const present = (v: unknown) => v !== null && v !== undefined;
+  if (!revealed && (present(r.canonical_assignments) || present(r.entity_correct)
+    || present(r.entity_facts) || present(r.is_correct))) {
+    throw new RankedPublicParseError(`${label} is not revealed but carried the canonical board`);
+  }
+  return {
+    prompt: nstr(r.prompt, `${label}.prompt`),
+    entities: present(r.entities) ? readMatchEntities(r.entities, `${label}.entities`) : [],
+    groups: present(r.groups) ? readMatchGroups(r.groups, `${label}.groups`) : [],
+    viewerAssignments: present(r.viewer_assignments)
+      ? readMatchAssignments(r.viewer_assignments, `${label}.viewer_assignments`) : null,
+    canonicalAssignments: present(r.canonical_assignments)
+      ? readMatchAssignments(r.canonical_assignments, `${label}.canonical_assignments`) : null,
+    entityCorrect: present(r.entity_correct)
+      ? readMatchEntityCorrect(r.entity_correct, `${label}.entity_correct`) : null,
+    entityFacts: present(r.entity_facts)
+      ? readMatchFacts(r.entity_facts, `${label}.entity_facts`) : null,
+    matched: nnum(r.matched, `${label}.matched`),
+    outcome: nstr(r.outcome, `${label}.outcome`),
+    isCorrect: nbool(r.is_correct, `${label}.is_correct`),
+  };
+}
+
 function readSegmentBlock(
   raw: unknown, moduleId: string, moduleVersion: number,
 ): SegmentBlockView | null {
@@ -1639,6 +1905,9 @@ function readSegmentBlock(
   }
   if (moduleId === RECONSTRUCT_MODULE_ID) {
     return { contract: "reconstruct", ...readReconstructBlock(block, list) };
+  }
+  if (moduleId === MATCH_MODULE_ID) {
+    return { contract: "match", ...readMatchBlock(block, list) };
   }
   if (moduleId === MASTERY_SLICE_MODULE_ID) {
     return {
@@ -1689,6 +1958,8 @@ function readSubmittedChoices(
         "own_submitted_choices[].placement");
     });
   }
+  // MG-P3 - a match echo is a map, read by `readSubmittedAssignments`.
+  if (moduleId === MATCH_MODULE_ID) return choices.map(() => null);
   const key = moduleId === MASTERY_SLICE_MODULE_ID
     ? "selected"
     : moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
@@ -1702,6 +1973,15 @@ function readSubmittedChoices(
       return v === null || v === undefined ? null : String(v);
     }
     return str(choice[key], `own_submitted_choices[].${key}`);
+  });
+}
+
+/** MG-P3 - a `match` segment's own lock echo. */
+function readSubmittedAssignments(raw: unknown): (MatchAssignmentView[] | null)[] {
+  return (Array.isArray(raw) ? raw : []).map((c) => {
+    if (c === null || c === undefined) return null;
+    return readMatchAssignments(rec(c, "own_submitted_choices[]").assignments,
+      "own_submitted_choices[].assignments");
   });
 }
 
@@ -1821,6 +2101,15 @@ function readChallengeReveals(
         },
       };
     }
+    if (moduleId === MATCH_MODULE_ID) {
+      const match = readMatchChallengeReveal(o, label);
+      return {
+        challengeIndex,
+        isCorrect: match.isCorrect === true,
+        playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
+        match,
+      };
+    }
     const asText = (raw: unknown): string | null =>
       raw === null || raw === undefined ? null : String(raw);
     // Only a Journey Combat reveal carries it; every other reveal keeps its
@@ -1905,6 +2194,9 @@ function readSegmentState(v: unknown): SegmentStateView | null {
     opponentAbilityConfirmed: o.opponent_ability_confirmed === true,
     ownNextChallengeIndex: num(o.own_next_challenge_index, "own_next_challenge_index"),
     ownSubmittedChoices: readSubmittedChoices(o.own_submitted_choices, moduleId, moduleVersion),
+    ...(moduleId === MATCH_MODULE_ID
+      ? { ownSubmittedAssignments: readSubmittedAssignments(o.own_submitted_choices) }
+      : {}),
     ownChallengesCompleted: num(o.own_challenges_completed, "own_challenges_completed"),
     opponentChallengesCompleted: num(
       o.opponent_challenges_completed, "opponent_challenges_completed"),
@@ -2119,6 +2411,8 @@ export interface SegmentRevealView {
   orderForge?: OrderForgeSettlement | null;
   /** Present only on a `reconstruct` settlement; null on every other. */
   reconstruct?: ReconstructSettlement | null;
+  /** MG-P3 — present only on a `match` settlement; null on every other. */
+  match?: MatchSettlement | null;
   players: Record<string, SegmentRevealPlayer>;
   /** Already-public display metadata, keyed by item id. Empty for v4, whose
    * cards carry their own labels. */
@@ -2145,11 +2439,12 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   const moduleId = str(o.module_id, "segment_reveal.module_id");
   const isOrderForge = moduleId === ORDER_FORGE_MODULE_ID;
   const isReconstruct = moduleId === RECONSTRUCT_MODULE_ID;
+  const isMatch = moduleId === MATCH_MODULE_ID;
   const players: Record<string, SegmentRevealPlayer> = {};
   for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
     const p = rec(value, `players.${pid}`);
     const result = nstr(p.segment_result, `players.${pid}.segment_result`);
-    if (isOrderForge || isReconstruct) {
+    if (isOrderForge || isReconstruct || isMatch) {
       // An order_forge / reconstruct player has no per-card tallies: one sequence, one
       // verdict. Tolerant on purpose - every field here is display-only.
       players[pid] = {
@@ -2204,11 +2499,12 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
     moduleId,
     moduleVersion,
     challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
-    challenges: isMastery || isOrderForge || isReconstruct
+    challenges: isMastery || isOrderForge || isReconstruct || isMatch
       ? []
       : challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
     orderForge: isOrderForge ? readOrderForgeSettlement(o) : null,
     reconstruct: isReconstruct ? readReconstructSettlement(o) : null,
+    match: isMatch ? readMatchSettlement(o) : null,
     masteryChallenges: isMastery
       ? challenges.map((c, i) => readRevealMasteryChallenge(c, i))
       : [],
@@ -2749,7 +3045,7 @@ export interface ReviewMasteryChallenge {
 
 export interface ReviewRound {
   roundNumber: number;
-  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge" | "reconstruct";
+  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge" | "reconstruct" | "match";
   moduleId: string;
   category: string | null;
   canonicalQuestionRef: string | null;
@@ -2777,6 +3073,8 @@ export interface ReviewRound {
   orderForge?: ReviewOrderForge | null;
   /** Present only on a `reconstruct` round; null on every other kind. */
   reconstruct?: ReviewReconstruct | null;
+  /** MG-P3 — present only on a `match` round; null on every other kind. */
+  match?: ReviewMatch | null;
   viewerSubmission: ReviewSubmission;
 }
 
@@ -3002,7 +3300,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const r = rec(raw, label);
     const kind = str(r.kind, `${label}.kind`);
     if (kind !== "quiz" && kind !== "meta_reflex" && kind !== "mastery_slice"
-      && kind !== "order_forge" && kind !== "reconstruct") {
+      && kind !== "order_forge" && kind !== "reconstruct" && kind !== "match") {
       throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
     }
     const revealed = bool(r.revealed, `${label}.revealed`);
@@ -3038,7 +3336,8 @@ export function readMatchReview(body: unknown): MatchReviewView {
     // challenge would end up coerced into a card shape it has no sides for.
     let challenges: ReviewChallenge[] | null = null;
     let masteryChallenges: ReviewMasteryChallenge[] | null = null;
-    if (Array.isArray(r.challenges) && kind !== "order_forge" && kind !== "reconstruct") {
+    if (Array.isArray(r.challenges) && kind !== "order_forge" && kind !== "reconstruct"
+      && kind !== "match") {
       if (kind === "mastery_slice") {
         masteryChallenges = r.challenges.map((c, j) =>
           reviewMasteryChallenge(c, `${label}.challenges[${j}]`, revealed));
@@ -3054,6 +3353,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
 
     const orderForge = kind === "order_forge" ? reviewOrderForge(r, label, revealed) : null;
     const reconstruct = kind === "reconstruct" ? reviewReconstruct(r, label, revealed) : null;
+    const match = kind === "match" ? reviewMatch(r, label, revealed) : null;
     const sub = rec(r.viewer_submission, `${label}.viewer_submission`);
     return {
       roundNumber: num(r.round_number, `${label}.round_number`),
@@ -3070,6 +3370,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
       masteryChallenges,
       orderForge,
       reconstruct,
+      match,
       viewerSubmission: {
         answerIndex: nnum(sub.answer_index, `${label}.viewer_submission.answer_index`),
         isCorrect: nbool(sub.is_correct, `${label}.viewer_submission.is_correct`),

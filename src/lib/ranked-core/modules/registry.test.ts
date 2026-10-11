@@ -19,8 +19,9 @@ describe("ranked module renderer registry", () => {
     // Ranked-Mastery-Module proof of concept, gated by its own fail-closed
     // flag + allowlist on the backend, exactly like Item Cost Duel.
     // GM1-R1 adds reconstruct (admin-only unrated playtest).
+    // MG-P3 adds match (admin-only unrated playtest, `admin.match`).
     expect(registeredModuleIds()).toEqual(
-      ["item_cost_duel", "mastery_slice", "order_forge", "quiz", "reconstruct"]);
+      ["item_cost_duel", "mastery_slice", "match", "order_forge", "quiz", "reconstruct"]);
   });
 
   it("resolves each renderer by id", () => {
