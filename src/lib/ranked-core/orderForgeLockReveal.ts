@@ -14,7 +14,8 @@
 // ---------------------------------------------------------------------------
 
 import {
-  MATCH_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, type MasteryChallengeReveal, type SegmentStateView,
+  MATCH_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, SCRUB_MODULE_ID,
+  type MasteryChallengeReveal, type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 
 /**
@@ -22,25 +23,27 @@ import {
  * bot in the same transaction, so their reveal arrives inline. Reconstruct
  * shares Order Forge's lifecycle exactly; each reveal must carry its OWN
  * module's block, so one module's reveal can never attach to the other.
+ * SCRUB-S2: the Chronoscope's one checkpoint lock shares it too.
  */
 export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID]);
+  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID, SCRUB_MODULE_ID]);
 
 /**
- * MG-P3.1 / RANKED-INT1 / RECONSTRUCT-R3B — the modules whose in-board reveal
- * plays IN the result beat and whose backend declares `settlement_hold_ms`:
+ * MG-P3.1 / RANKED-INT1 / RECONSTRUCT-R3B / SCRUB-S3 — the modules whose in-board
+ * reveal plays IN the result beat and whose backend declares `settlement_hold_ms`:
  * the server spaces the next round by the module's own hold, so the client's
  * reveal hold follows the server's boundary instead of the generic beat.
- * Reconstruct (4000 wrong / 3400 exact) and, with MATCH-GRID-LIVE, Match Grid
- * (4500 wrong / 3000 exact). Every other module keeps the fixed beats.
+ * Reconstruct (4000 wrong / 3400 exact), Match Grid (4500 wrong / 3000 exact)
+ * and Scrub (4000 wrong / 3400 exact). Every other module keeps the fixed beats.
  */
 export const SERVER_PACED_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID]);
+  RECONSTRUCT_MODULE_ID, MATCH_MODULE_ID, SCRUB_MODULE_ID]);
 
 function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
   return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge
     : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct
-    : moduleId === MATCH_MODULE_ID ? !!reveal.match : false;
+    : moduleId === MATCH_MODULE_ID ? !!reveal.match
+      : moduleId === SCRUB_MODULE_ID ? !!reveal.scrub : false;
 }
 
 export interface OrderForgeLockRevealRef {
@@ -51,7 +54,7 @@ export interface OrderForgeLockRevealRef {
 
 /**
  * `state` with the lock's inline reveal attached, when and only when:
- *   * it is an Order Forge or Reconstruct segment state, and the reveal
+ *   * it is an Order Forge, Reconstruct or Scrub segment state, and the reveal
  *     carries that same module's block,
  *   * the reveal belongs to THIS match and THIS segment number, and
  *   * the snapshot does not already carry its own reveal for that challenge

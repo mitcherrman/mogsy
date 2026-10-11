@@ -25,6 +25,7 @@ import { metaReflexModule } from "./metaReflexModule";
 import { ORDER_FORGE_MODULE_ID, orderForgeModule } from "./orderForgeModule";
 import { QUIZ_MODULE_ID, quizModule } from "./quizModule";
 import { RECONSTRUCT_MODULE_ID, reconstructModule } from "./reconstructModule";
+import { SCRUB_MODULE_ID, scrubModule } from "./scrubModule";
 import type { ModuleRenderer } from "./types";
 
 /** Ordered candidates per module id; the first version match wins. */
@@ -39,6 +40,8 @@ const RENDERERS: Record<string, readonly ModuleRenderer[]> = {
   [RECONSTRUCT_MODULE_ID]: [reconstructModule],
   // MG-P3 - admin-only unrated playtest (`admin.match`): the board is the answer.
   [MATCH_MODULE_ID]: [matchGridModule],
+  // SCRUB-S2 - admin-only unrated playtest: the locked checkpoint is the answer.
+  [SCRUB_MODULE_ID]: [scrubModule],
 };
 
 /** Registered module ids, sorted — used by tests and diagnostics. */
@@ -73,8 +76,7 @@ export function rendererForSegment(segment: SegmentMeta | null | undefined): Mod
 
 export {
   itemCostDuelModule, masterySliceModule, metaReflexModule, orderForgeModule, quizModule,
-  reconstructModule,
-  matchGridModule,
+  reconstructModule, matchGridModule, scrubModule,
 };
 export type {
   ModuleRenderer, ModuleSegmentActions, ModuleViewportProps,

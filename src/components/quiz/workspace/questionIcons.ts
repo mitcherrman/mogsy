@@ -189,7 +189,9 @@ export function questionIconLabel(
             ? "Reconstruct"
             : round.kind === "match"
               ? "Match Grid"
-              : resolveQuestionIcon(round.iconHint).label;
+              : round.kind === "scrub"
+                ? "Chronoscope"
+                : resolveQuestionIcon(round.iconHint).label;
   const outcome = questionOutcome(round);
   const state =
     outcome === "correct" ? "correct"
@@ -231,6 +233,11 @@ export function questionOutcome(round: ReviewRound): QuestionOutcome {
   if (round.match) {
     // MG-P3 - the backend's word for the board.
     const o = round.match.outcome;
+    return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
+  }
+  if (round.scrub) {
+    // Likewise the backend's word for the checkpoint.
+    const o = round.scrub.outcome;
     return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
   }
   const sub = round.viewerSubmission;

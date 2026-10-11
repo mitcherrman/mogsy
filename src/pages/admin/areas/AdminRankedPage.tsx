@@ -62,6 +62,7 @@ import { AsheJinxExtendedJourneyLaunch } from "@/pages/admin/ranked/ExtendedJour
 import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
 import { ReconstructLaunch } from "@/pages/admin/ranked/ReconstructLaunch";
 import { MatchGridLaunch } from "@/pages/admin/ranked/MatchGridLaunch";
+import { ScrubLaunch } from "@/pages/admin/ranked/ScrubLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
 const rankedTools = (view: string) =>
@@ -345,6 +346,13 @@ export default function AdminRankedPage() {
                 testId="ranked-match-grid"
               >
                 <MatchGridLaunch />
+              </AdminPanel>
+              <AdminPanel
+                title="Chronoscope"
+                description="Owner playtest of the Chronoscope (scrub) module (find the first wave where a lane state becomes true), played through the normal Ranked Bot shell. Unrated."
+                testId="ranked-scrub"
+              >
+                <ScrubLaunch />
               </AdminPanel>
               <AdminPanel
                 title="Playtests"

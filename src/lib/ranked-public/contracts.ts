@@ -420,6 +420,110 @@ export interface ReviewReconstruct {
   outcome: string | null;
 }
 
+// ------------------------------------------------- Scrub / Chronoscope (SCRUB-S2)
+
+/** SCRUB-S2 — the Chronoscope: find the first checkpoint where a lane state becomes true. */
+export const SCRUB_MODULE_ID = "scrub";
+
+/**
+ * One checkpoint of a `scrub` rail: the lane's PUBLIC state at one wave spawn,
+ * every figure an authority string. It has no field that could say whether
+ * the objective holds here; every checkpoint carries the same fields.
+ */
+export interface ScrubCheckpointView {
+  /** Opaque-in-role token (`w4`): the wave identity, already engraved on the rail. */
+  token: string;
+  waveNumber: number;
+  spawnTimeDisplay: string;
+  isCannonWave: boolean;
+  meleeCount: number;
+  casterCount: number;
+  cannonCount: number;
+  /** The engine's level after the wave. */
+  level: number;
+  cumulativeXp: string;
+  waveXp: string;
+  /** The level curve's thresholds bracketing `cumulativeXp` (ceiling null at the cap). */
+  levelFloorXp: string | null;
+  levelCeilingXp: string | null;
+}
+
+export interface ScrubObjectiveView {
+  lane: "solo" | "duo";
+  targetLevel: number;
+  cannonOnly: boolean;
+  text: string;
+}
+
+/** The pre-reveal public block of a `scrub` segment. No canonical checkpoint, no proof. */
+export interface ScrubBlockView {
+  family: string;
+  prompt: string;
+  objective: ScrubObjectiveView;
+  source: { patch: string | null; map: string | null; mode: string | null };
+  unitLabel: string;
+  footnote: string | null;
+  checkpoints: ScrubCheckpointView[];
+}
+
+/** One reading of the before → after proof, as the authority states it (reveal-only). */
+export interface ScrubProofReadingView {
+  token: string;
+  waveNumber: number;
+  spawnTimeDisplay: string;
+  level: number | null;
+  cumulativeXp: string;
+  isCannonWave: boolean;
+  breakpointNote: string | null;
+  satisfied: boolean;
+}
+
+export interface ScrubProofView {
+  lane: "solo" | "duo";
+  targetLevel: number;
+  cannonOnly: boolean;
+  thresholdXp: string | null;
+  before: ScrubProofReadingView | null;
+  after: ScrubProofReadingView;
+}
+
+/** The viewer's own post-lock reveal: their checkpoint, the first one, the path between. */
+export interface ScrubChallengeReveal {
+  checkpoint: string | null;
+  isCorrect: boolean | null;
+  /** chosen → canonical inclusive (`[canonical]` for an exact lock), the SERVER's. */
+  traversePath: string[];
+  canonicalCheckpoint: string;
+  satisfiedCheckpoints: string[];
+  proof: ScrubProofView;
+  granularityCaveat: string | null;
+}
+
+/** A settled `scrub` segment, from `segment_reveal` (both players' checkpoints). */
+export interface ScrubSettlement {
+  canonicalCheckpoint: string;
+  satisfiedCheckpoints: string[];
+  proof: ScrubProofView;
+  checkpoints: string[];
+  /** player id -> that player's locked checkpoint (null: never locked). */
+  picks: Record<string, string | null>;
+}
+
+/** One reviewed `scrub` round (`ranked_duel.match_review.v1`). */
+export interface ReviewScrub {
+  objective: ScrubObjectiveView | null;
+  unitLabel: string;
+  checkpoints: ScrubCheckpointView[];
+  viewerCheckpoint: string | null;
+  canonicalCheckpoint: string | null;
+  satisfiedCheckpoints: string[];
+  proof: ScrubProofView | null;
+  traversePath: string[];
+  granularityCaveat: string | null;
+  /** The backend's word: `correct`, `incorrect` or `timeout`. */
+  outcome: string | null;
+}
+
 /** One card of an `order_forge` segment, in the server's shuffled display order. */
 export interface OrderForgeEntryView {
   /** Opaque positional token (`e0`...). Carries no entity name and no rank. */
@@ -744,6 +848,8 @@ export interface MasteryChallengeReveal {
   reconstruct?: ReconstructChallengeReveal | null;
   /** MG-P3 — present only on a `match` reveal. */
   match?: MatchChallengeReveal | null;
+  /** Present only on a `scrub` reveal. */
+  scrub?: ScrubChallengeReveal | null;
   explanation: string | null;
   answerOptions: string[];
   /**
@@ -773,7 +879,8 @@ export type SegmentBlockView =
   | { contract: "mastery_slice"; challenges: MasterySliceChallengeView[] }
   | ({ contract: "order_forge" } & OrderForgeBlockView)
   | ({ contract: "reconstruct" } & ReconstructBlockView)
-  | ({ contract: "match" } & MatchBlockView);
+  | ({ contract: "match" } & MatchBlockView)
+  | ({ contract: "scrub" } & ScrubBlockView);
 
 /** The viewer's OWN ability state inside a multi-challenge segment. */
 export interface SegmentAbilityView {
@@ -808,7 +915,8 @@ export interface SegmentStateView {
   opponentAbilityConfirmed: boolean;
   ownNextChallengeIndex: number;
   /** A scalar token per challenge; an `order_forge` challenge echoes its whole
-   * order, a `reconstruct` challenge its whole placement. */
+   * order, a `reconstruct` challenge its whole placement, a `scrub` challenge
+   * its checkpoint token. */
   ownSubmittedChoices: (string | readonly string[] | null)[];
   /**
    * MG-P3 — a `match` segment's lock echo (one `{entity_id, group_id}` row per
@@ -1430,6 +1538,13 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   "answers", "entity_correct", "correct_group", "entity_facts",
   // ...and the private half's names for the authority's identities.
   "rune_key", "tree_key", "is_keystone", "rune_type", "tree_label",
+  // SCRUB-S2 - a scrub segment's canonical checkpoint, the checkpoints that
+  // satisfy the objective, the before/after proof, the traverse path, the
+  // objective's threshold, the authority's caveat and its breakpoint notes are
+  // reveal-only (backend `FORBIDDEN_PRE_REVEAL_KEYS`); they may arrive only
+  // inside `own_challenge_reveals`.
+  "canonical_checkpoint", "satisfied_checkpoints", "proof", "traverse_path",
+  "threshold_xp", "granularity_caveat", "breakpoint_note",
 ]);
 
 /**
@@ -1705,6 +1820,92 @@ function readReconstructPieces(v: unknown, label: string): ReconstructPieceView[
   return Array.isArray(v) ? v.map((e, i) => readReconstructPiece(e, `${label}[${i}]`)) : [];
 }
 
+/** The `scrub` public block. Reads ONLY the allow-listed public fields. */
+function readScrubBlock(block: Record<string, unknown>, list: unknown[]): ScrubBlockView {
+  const first = rec(list[0], "challenges[0]");
+  const objective = readScrubObjective(first.objective, "challenges[0].objective");
+  const source = first.source && typeof first.source === "object"
+    ? first.source as Record<string, unknown> : {};
+  const checkpoints = Array.isArray(first.checkpoints) ? first.checkpoints : [];
+  if (checkpoints.length < 2) {
+    throw new RankedPublicParseError("challenges[0].checkpoints must hold at least two checkpoints");
+  }
+  return {
+    family: str(block.family, "challenges.family"),
+    prompt: str(block.prompt, "challenges.prompt"),
+    objective,
+    source: {
+      patch: nstr(source.patch, "challenges[0].source.patch"),
+      map: nstr(source.map, "challenges[0].source.map"),
+      mode: nstr(source.mode, "challenges[0].source.mode"),
+    },
+    unitLabel: str(first.unit_label, "challenges[0].unit_label"),
+    footnote: nstr(first.footnote, "challenges[0].footnote"),
+    checkpoints: checkpoints.map((c, i) => readScrubCheckpoint(c, `checkpoints[${i}]`)),
+  };
+}
+
+function readScrubLane(v: unknown, label: string): "solo" | "duo" {
+  const lane = str(v, label);
+  if (lane !== "solo" && lane !== "duo") throw new RankedPublicParseError(`${label} is unknown: ${lane}`);
+  return lane;
+}
+
+function readScrubObjective(v: unknown, label: string): ScrubObjectiveView {
+  const o = rec(v, label);
+  return {
+    lane: readScrubLane(o.lane, `${label}.lane`),
+    targetLevel: num(o.target_level, `${label}.target_level`),
+    cannonOnly: bool(o.cannon_only, `${label}.cannon_only`),
+    text: str(o.text, `${label}.text`),
+  };
+}
+
+function readScrubCheckpoint(raw: unknown, label: string): ScrubCheckpointView {
+  const o = rec(raw, label);
+  return {
+    token: str(o.token, `${label}.token`),
+    waveNumber: num(o.wave_number, `${label}.wave_number`),
+    spawnTimeDisplay: str(o.spawn_time_display, `${label}.spawn_time_display`),
+    isCannonWave: bool(o.is_cannon_wave, `${label}.is_cannon_wave`),
+    meleeCount: num(o.melee_count, `${label}.melee_count`),
+    casterCount: num(o.caster_count, `${label}.caster_count`),
+    cannonCount: num(o.cannon_count, `${label}.cannon_count`),
+    level: num(o.level, `${label}.level`),
+    cumulativeXp: str(o.cumulative_xp, `${label}.cumulative_xp`),
+    waveXp: str(o.wave_xp, `${label}.wave_xp`),
+    levelFloorXp: nstr(o.level_floor_xp, `${label}.level_floor_xp`),
+    levelCeilingXp: nstr(o.level_ceiling_xp, `${label}.level_ceiling_xp`),
+  };
+}
+
+function readScrubProofReading(v: unknown, label: string): ScrubProofReadingView {
+  const o = rec(v, label);
+  return {
+    token: str(o.token, `${label}.token`),
+    waveNumber: num(o.wave_number, `${label}.wave_number`),
+    spawnTimeDisplay: str(o.spawn_time_display, `${label}.spawn_time_display`),
+    level: nnum(o.level, `${label}.level`),
+    cumulativeXp: str(o.cumulative_xp, `${label}.cumulative_xp`),
+    isCannonWave: bool(o.is_cannon_wave, `${label}.is_cannon_wave`),
+    breakpointNote: nstr(o.breakpoint_note, `${label}.breakpoint_note`),
+    satisfied: bool(o.satisfied, `${label}.satisfied`),
+  };
+}
+
+function readScrubProof(v: unknown, label: string): ScrubProofView {
+  const o = rec(v, label);
+  return {
+    lane: readScrubLane(o.lane, `${label}.lane`),
+    targetLevel: num(o.target_level, `${label}.target_level`),
+    cannonOnly: bool(o.cannon_only, `${label}.cannon_only`),
+    thresholdXp: nstr(o.threshold_xp, `${label}.threshold_xp`),
+    before: o.before === null || o.before === undefined
+      ? null : readScrubProofReading(o.before, `${label}.before`),
+    after: readScrubProofReading(o.after, `${label}.after`),
+  };
+}
+
 /** A list of ids, refusing anything else (an order is ids and nothing more). */
 function idList(v: unknown, label: string): string[] {
   if (!Array.isArray(v)) throw new RankedPublicParseError(`${label} must be an array`);
@@ -1916,6 +2117,9 @@ function readSegmentBlock(
   if (moduleId === MATCH_MODULE_ID) {
     return { contract: "match", ...readMatchBlock(block, list) };
   }
+  if (moduleId === SCRUB_MODULE_ID) {
+    return { contract: "scrub", ...readScrubBlock(block, list) };
+  }
   if (moduleId === MASTERY_SLICE_MODULE_ID) {
     return {
       contract: "mastery_slice",
@@ -1967,6 +2171,13 @@ function readSubmittedChoices(
   }
   // MG-P3 - a match echo is a map, read by `readSubmittedAssignments`.
   if (moduleId === MATCH_MODULE_ID) return choices.map(() => null);
+  if (moduleId === SCRUB_MODULE_ID) {
+    return choices.map((c) => {
+      if (c === null || c === undefined) return null;
+      return str(rec(c, "own_submitted_choices[]").checkpoint,
+        "own_submitted_choices[].checkpoint");
+    });
+  }
   const key = moduleId === MASTERY_SLICE_MODULE_ID
     ? "selected"
     : moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
@@ -2115,6 +2326,22 @@ function readChallengeReveals(
         isCorrect: match.isCorrect === true,
         playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
         match,
+      };
+    }
+    if (moduleId === SCRUB_MODULE_ID) {
+      return {
+        challengeIndex,
+        isCorrect: o.is_correct === true,
+        playerAnswer: null, correctAnswer: null, explanation: null, answerOptions: [],
+        scrub: {
+          checkpoint: nstr(o.checkpoint, `${label}.checkpoint`),
+          isCorrect: nbool(o.is_correct, `${label}.is_correct`),
+          traversePath: idList(o.traverse_path ?? [], `${label}.traverse_path`),
+          canonicalCheckpoint: str(o.canonical_checkpoint, `${label}.canonical_checkpoint`),
+          satisfiedCheckpoints: idList(o.satisfied_checkpoints ?? [], `${label}.satisfied_checkpoints`),
+          proof: readScrubProof(o.proof, `${label}.proof`),
+          granularityCaveat: nstr(o.granularity_caveat, `${label}.granularity_caveat`),
+        },
       };
     }
     const asText = (raw: unknown): string | null =>
@@ -2420,6 +2647,8 @@ export interface SegmentRevealView {
   reconstruct?: ReconstructSettlement | null;
   /** MG-P3 — present only on a `match` settlement; null on every other. */
   match?: MatchSettlement | null;
+  /** Present only on a `scrub` settlement; null on every other. */
+  scrub?: ScrubSettlement | null;
   players: Record<string, SegmentRevealPlayer>;
   /** Already-public display metadata, keyed by item id. Empty for v4, whose
    * cards carry their own labels. */
@@ -2447,12 +2676,13 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   const isOrderForge = moduleId === ORDER_FORGE_MODULE_ID;
   const isReconstruct = moduleId === RECONSTRUCT_MODULE_ID;
   const isMatch = moduleId === MATCH_MODULE_ID;
+  const isScrub = moduleId === SCRUB_MODULE_ID;
   const players: Record<string, SegmentRevealPlayer> = {};
   for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
     const p = rec(value, `players.${pid}`);
     const result = nstr(p.segment_result, `players.${pid}.segment_result`);
-    if (isOrderForge || isReconstruct || isMatch) {
-      // An order_forge / reconstruct player has no per-card tallies: one sequence, one
+    if (isOrderForge || isReconstruct || isMatch || isScrub) {
+      // An order_forge / reconstruct / match / scrub player has no per-card tallies: one sequence, one
       // verdict. Tolerant on purpose - every field here is display-only.
       players[pid] = {
         segmentResult: result && _SEGMENT_RESULTS.has(result) ? (result as SegmentResult) : null,
@@ -2506,12 +2736,13 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
     moduleId,
     moduleVersion,
     challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
-    challenges: isMastery || isOrderForge || isReconstruct || isMatch
+    challenges: isMastery || isOrderForge || isReconstruct || isMatch || isScrub
       ? []
       : challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
     orderForge: isOrderForge ? readOrderForgeSettlement(o) : null,
     reconstruct: isReconstruct ? readReconstructSettlement(o) : null,
     match: isMatch ? readMatchSettlement(o) : null,
+    scrub: isScrub ? readScrubSettlement(o) : null,
     masteryChallenges: isMastery
       ? challenges.map((c, i) => readRevealMasteryChallenge(c, i))
       : [],
@@ -2558,6 +2789,21 @@ function readReconstructSettlement(o: Record<string, unknown>): ReconstructSettl
     canonicalParts: readReconstructParts(o.canonical_parts, "segment_reveal.canonical_parts"),
     target: readReconstructTarget(o.target, "segment_reveal.target"),
     pieces, labels, placements, slotCorrect,
+  };
+}
+
+function readScrubSettlement(o: Record<string, unknown>): ScrubSettlement {
+  const picks: Record<string, string | null> = {};
+  for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
+    const p = rec(value, `players.${pid}`);
+    picks[pid] = nstr(p.checkpoint, `players.${pid}.checkpoint`);
+  }
+  return {
+    canonicalCheckpoint: str(o.canonical_checkpoint, "segment_reveal.canonical_checkpoint"),
+    satisfiedCheckpoints: idList(o.satisfied_checkpoints ?? [], "segment_reveal.satisfied_checkpoints"),
+    proof: readScrubProof(o.proof, "segment_reveal.proof"),
+    checkpoints: idList(o.checkpoints ?? [], "segment_reveal.checkpoints"),
+    picks,
   };
 }
 
@@ -3064,7 +3310,7 @@ export interface ReviewMasteryChallenge {
 
 export interface ReviewRound {
   roundNumber: number;
-  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge" | "reconstruct" | "match";
+  kind: "quiz" | "meta_reflex" | "mastery_slice" | "order_forge" | "reconstruct" | "match" | "scrub";
   moduleId: string;
   category: string | null;
   canonicalQuestionRef: string | null;
@@ -3094,6 +3340,8 @@ export interface ReviewRound {
   reconstruct?: ReviewReconstruct | null;
   /** MG-P3 — present only on a `match` round; null on every other kind. */
   match?: ReviewMatch | null;
+  /** Present only on a `scrub` round; null on every other kind. */
+  scrub?: ReviewScrub | null;
   viewerSubmission: ReviewSubmission;
 }
 
@@ -3300,6 +3548,36 @@ function reviewReconstruct(
 }
 
 /**
+ * One `scrub` review round, with the same inverse guard as Reconstruct: an
+ * unrevealed round must carry no canonical checkpoint, proof or traverse.
+ */
+function reviewScrub(r: Record<string, unknown>, label: string, revealed: boolean): ReviewScrub {
+  const hasAnswer = (r.canonical_checkpoint !== null && r.canonical_checkpoint !== undefined)
+    || (r.proof !== null && r.proof !== undefined)
+    || (Array.isArray(r.satisfied_checkpoints) && r.satisfied_checkpoints.length > 0)
+    || (Array.isArray(r.traverse_path) && r.traverse_path.length > 0);
+  if (!revealed && hasAnswer) {
+    throw new RankedPublicParseError(`${label} is not revealed but carried the checkpoint`);
+  }
+  const checkpoints = Array.isArray(r.checkpoints) ? r.checkpoints : [];
+  return {
+    objective: r.objective === null || r.objective === undefined
+      ? null : readScrubObjective(r.objective, `${label}.objective`),
+    unitLabel: typeof r.unit_label === "string" ? r.unit_label : "Wave",
+    checkpoints: checkpoints.map((c, i) => readScrubCheckpoint(c, `${label}.checkpoints[${i}]`)),
+    viewerCheckpoint: nstr(r.viewer_checkpoint, `${label}.viewer_checkpoint`),
+    canonicalCheckpoint: nstr(r.canonical_checkpoint, `${label}.canonical_checkpoint`),
+    satisfiedCheckpoints: r.satisfied_checkpoints === null || r.satisfied_checkpoints === undefined
+      ? [] : idList(r.satisfied_checkpoints, `${label}.satisfied_checkpoints`),
+    proof: r.proof === null || r.proof === undefined ? null : readScrubProof(r.proof, `${label}.proof`),
+    traversePath: r.traverse_path === null || r.traverse_path === undefined
+      ? [] : idList(r.traverse_path, `${label}.traverse_path`),
+    granularityCaveat: nstr(r.granularity_caveat, `${label}.granularity_caveat`),
+    outcome: nstr(r.outcome, `${label}.outcome`),
+  };
+}
+
+/**
  * Post-match review (`ranked_duel.match_review.v1`).
  *
  * This is the ONE reader that expects a correct answer, so the guard that
@@ -3319,7 +3597,8 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const r = rec(raw, label);
     const kind = str(r.kind, `${label}.kind`);
     if (kind !== "quiz" && kind !== "meta_reflex" && kind !== "mastery_slice"
-      && kind !== "order_forge" && kind !== "reconstruct" && kind !== "match") {
+      && kind !== "order_forge" && kind !== "reconstruct" && kind !== "match"
+      && kind !== "scrub") {
       throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
     }
     const revealed = bool(r.revealed, `${label}.revealed`);
@@ -3356,7 +3635,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     let challenges: ReviewChallenge[] | null = null;
     let masteryChallenges: ReviewMasteryChallenge[] | null = null;
     if (Array.isArray(r.challenges) && kind !== "order_forge" && kind !== "reconstruct"
-      && kind !== "match") {
+      && kind !== "match" && kind !== "scrub") {
       if (kind === "mastery_slice") {
         masteryChallenges = r.challenges.map((c, j) =>
           reviewMasteryChallenge(c, `${label}.challenges[${j}]`, revealed));
@@ -3373,6 +3652,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const orderForge = kind === "order_forge" ? reviewOrderForge(r, label, revealed) : null;
     const reconstruct = kind === "reconstruct" ? reviewReconstruct(r, label, revealed) : null;
     const match = kind === "match" ? reviewMatch(r, label, revealed) : null;
+    const scrub = kind === "scrub" ? reviewScrub(r, label, revealed) : null;
     const sub = rec(r.viewer_submission, `${label}.viewer_submission`);
     return {
       roundNumber: num(r.round_number, `${label}.round_number`),
@@ -3390,6 +3670,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
       orderForge,
       reconstruct,
       match,
+      scrub,
       viewerSubmission: {
         answerIndex: nnum(sub.answer_index, `${label}.viewer_submission.answer_index`),
         isCorrect: nbool(sub.is_correct, `${label}.viewer_submission.is_correct`),

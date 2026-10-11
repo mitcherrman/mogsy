@@ -63,6 +63,7 @@ export function moduleSubject(round: ReviewRound): string {
   if (round.kind === "order_forge") return "Order Forge";
   if (round.kind === "reconstruct") return "Reconstruct";
   if (round.kind === "match") return "Match Grid";
+  if (round.kind === "scrub") return "Chronoscope";
   if (round.topic?.category) return categoryLabel(round.topic.category as CategoryKey);
   if (round.category) return prettyCategory(round.category);
   return "Question";
