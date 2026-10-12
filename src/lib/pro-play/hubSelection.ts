@@ -12,10 +12,12 @@
  * `?game=` is an explicit choice and is never overridden by any of this; the
  * hub applies these rules only when nobody has chosen.
  */
-import type { LiveGameSummary, LivePlayer } from "@/lib/live-esports/api";
+import type { LiveGameSummary, LivePlayer, UpcomingMatch } from "@/lib/live-esports/api";
+import { isWorldsGame, nextWorldsFixture } from "@/lib/pro-play/worlds";
 
 /** First live game; else the first recent game that is final; else the first
- *  recent game; else nothing. */
+ *  recent game; else nothing. This is the hub's rule when Worlds is not in
+ *  play — `pickHubSelection` below puts Worlds in front of it (PW1). */
 export function pickHubGame(
   live: readonly LiveGameSummary[],
   recent: readonly LiveGameSummary[],
@@ -43,6 +45,92 @@ export function nextHubAutoGame(
     if (!live.length && recent.some((g) => g.game_id === current)) return current;
   }
   return pickHubGame(live, recent);
+}
+
+/* ── Worlds (PW1) ───────────────────────────────────────────────────────── */
+
+/**
+ * What the hub features when nobody has chosen: a played or playing game, or
+ * an upcoming match (upstream's `match_id`). An upcoming pick is not a game
+ * id, so it never enters `?game=`; it is shown the way `?next=` shows one.
+ */
+export type HubPick = { kind: "game"; id: string } | { kind: "upcoming"; id: string };
+
+export const samePick = (a: HubPick | null, b: HubPick | null): boolean =>
+  a === b || (!!a && !!b && a.kind === b.kind && a.id === b.id);
+
+const isFinal = (g: LiveGameSummary) => g.freshness?.label === "final";
+
+/**
+ * The hub's automatic pick, with Worlds in front.
+ *
+ * 1. a LIVE Worlds game;
+ * 2. else the most recently COMPLETED Worlds game (a stale Worlds row is not
+ *    a result and does not count);
+ * 3. else the next officially scheduled Worlds match — TBD sides included,
+ *    stale schedule entries excluded (`worlds.nextWorldsFixture`);
+ * 4. else the hub's ordinary rule (`pickHubGame`): live, then finished, then
+ *    anything recent.
+ *
+ * So an unrelated live or finished match never outranks Worlds, and nothing
+ * Worlds-shaped is invented when upstream has published none: with no Worlds
+ * game and no Worlds fixture the hub behaves exactly as before PW1.
+ */
+export function pickHubSelection(
+  live: readonly LiveGameSummary[],
+  recent: readonly LiveGameSummary[],
+  upcoming: readonly UpcomingMatch[],
+  now: number = Date.now(),
+): HubPick | null {
+  const liveWorlds = live.find(isWorldsGame);
+  if (liveWorlds) return { kind: "game", id: liveWorlds.game_id };
+  const doneWorlds = recent.find((g) => isWorldsGame(g) && isFinal(g));
+  if (doneWorlds) return { kind: "game", id: doneWorlds.game_id };
+  const fixture = nextWorldsFixture(upcoming, now);
+  if (fixture) return { kind: "upcoming", id: fixture.match_id };
+  const fallback = pickHubGame(live, recent);
+  return fallback ? { kind: "game", id: fallback } : null;
+}
+
+/**
+ * The next automatic pick, given the current one — `nextHubAutoGame`'s
+ * stickiness, extended to Worlds and to upcoming picks.
+ *
+ * Sticky WITHIN a tier, never across one: two live Worlds games do not swap on
+ * poll order, and a completed Worlds game stays while a newer one finishes —
+ * but a pick made before Worlds data arrived (the feed lands before the
+ * schedule) gives way to Worlds, and any live Worlds game takes over from a
+ * completed one. An upcoming pick is recomputed every time, so a fixture that
+ * has started or left the schedule is never held on to.
+ */
+export function nextHubAutoPick(
+  current: HubPick | null,
+  live: readonly LiveGameSummary[],
+  recent: readonly LiveGameSummary[],
+  upcoming: readonly UpcomingMatch[],
+  now: number = Date.now(),
+): HubPick | null {
+  const target = pickHubSelection(live, recent, upcoming, now);
+  if (!target || target.kind === "upcoming") return target;
+  const held = current?.kind === "game" ? current.id : null;
+  if (held) {
+    const targetGame = [...live, ...recent].find((g) => g.game_id === target.id);
+    if (targetGame && isWorldsGame(targetGame)) {
+      // Worlds tier: keep the held game only if it is the same kind of Worlds
+      // pick (live with live, completed with completed).
+      if (live.some((g) => g.game_id === held && isWorldsGame(g))) return current;
+      const liveWorlds = live.some(isWorldsGame);
+      if (!liveWorlds && recent.some((g) => g.game_id === held && isWorldsGame(g) && isFinal(g))) return current;
+      return target;
+    }
+    // Ordinary tier: the legacy stickiness, on a game that is not Worlds.
+    const heldGame = [...live, ...recent].find((g) => g.game_id === held);
+    if (heldGame && !isWorldsGame(heldGame)) {
+      const next = nextHubAutoGame(held, live, recent);
+      return next ? { kind: "game", id: next } : null;
+    }
+  }
+  return target;
 }
 
 /* ── lanes ──────────────────────────────────────────────────────────────── */

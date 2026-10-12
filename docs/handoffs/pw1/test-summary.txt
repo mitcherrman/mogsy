@@ -1,0 +1,5 @@
+PW1 focused regression set (vitest run, JSON reporter)
+paths: src/pages/ProPlayHub.test.tsx src/lib/pro-play src/components/pro-play src/lib/live-esports src/pages/esports src/lib/route-prefetch.test.ts
+clean main b1f65a9c: {"numTotalTestSuites": 258, "numPassedTests": 1300, "numFailedTests": 0, "numTotalTests": 1300, "numFailedTestSuites": 0}
+pw1/worlds-hub:      {"numTotalTestSuites": 270, "numPassedTests": 1356, "numFailedTests": 0, "numTotalTests": 1356, "numFailedTestSuites": 0}
+failures on clean main: none; failures on branch: none
