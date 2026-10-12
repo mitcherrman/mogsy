@@ -1,0 +1,611 @@
+/* ===========================================================================
+   MIG — CHRONOSCOPE (SCRUB). The instrument's material and its fixed geometry.
+
+   GEOMETRY FIRST. Every region is a box of constant height per viewport tier,
+   the same in every phase (open → locked → revealed → next round), so TIME
+   MOVES AND THE INTERFACE DOES NOT. The tiers mirror the arena's own
+   short-desktop lock (`lg` + max-height 719px: the stage is clipped to the
+   374px a 600px window leaves) and its tall tier (≥ 800px).
+
+   Material: vellum and ink outside the instrument; blue-grey stone and brass
+   for the instrument body; cyan only where state lives; gold only for the
+   canonical checkpoint at reveal.
+   =========================================================================== */
+
+.chronoscope {
+  --cs-stone: #0f1d31;
+  --cs-stone-deep: #07111f;
+  --cs-brass: #b9934c;
+  --cs-brass-bright: #d5b66f;
+  --cs-brass-dark: #7a6236;
+  --cs-cyan: #7fd6ef;
+  --cs-cyan-deep: #2f8fca;
+  --cs-gold: #e8c97a;
+  --cs-ink: var(--ranked-ink, #2c2417);
+  --cs-ink-muted: var(--ranked-ink-muted, #5a4a2e);
+  --cs-inset: 22px;
+
+  /* normal tier (1280×720-class desktops, tablets) */
+  --cs-objective-h: 44px;
+  --cs-lens-h: 216px;
+  --cs-reading-h: 56px;
+  --cs-rail-h: 72px;
+  --cs-footer-h: 48px;
+  --cs-status-h: 18px;
+  --cs-gap: 8px;
+  --cs-prompt-size: 17px;
+  --cs-reading-size: 15px;
+  --cs-reticle-h: 40px;
+  --cs-channel-y: 28px;
+  --cs-mark-y: 52px;
+
+  max-width: 42rem;
+  margin-inline: auto;
+  color: var(--cs-ink);
+  gap: var(--cs-gap);
+}
+/* compact tier: a desktop window under 720px tall; the stage clips at 374px. */
+@media (min-width: 1024px) and (max-height: 719px) {
+  .chronoscope {
+    --cs-objective-h: 40px;
+    --cs-lens-h: 148px;
+    --cs-reading-h: 48px;
+    --cs-rail-h: 58px;
+    --cs-footer-h: 44px;
+    --cs-status-h: 16px;
+    --cs-gap: 6px;
+    --cs-prompt-size: 15px;
+    --cs-reading-size: 13.5px;
+    --cs-reticle-h: 34px;
+    --cs-channel-y: 22px;
+    --cs-mark-y: 43px;
+  }
+}
+/* tall tier: the spare vellum goes to the lens. */
+@media (min-width: 1024px) and (min-height: 800px) {
+  .chronoscope {
+    --cs-objective-h: 64px;
+    --cs-lens-h: 290px;
+    --cs-reading-h: 64px;
+    --cs-rail-h: 80px;
+    --cs-footer-h: 52px;
+    --cs-gap: 10px;
+    --cs-prompt-size: 19px;
+    --cs-reading-size: 16px;
+    --cs-reticle-h: 44px;
+    --cs-channel-y: 31px;
+    --cs-mark-y: 58px;
+  }
+}
+/* phone: thumb-sized rail, the lens still dominant. */
+@media (max-width: 639px) {
+  .chronoscope {
+    --cs-objective-h: 60px;
+    --cs-lens-h: 224px;
+    --cs-reading-h: 64px;
+    --cs-rail-h: 88px;
+    --cs-footer-h: 52px;
+    --cs-gap: 8px;
+    --cs-prompt-size: 16px;
+    --cs-reading-size: 14px;
+    --cs-reticle-h: 48px;
+    --cs-inset: 24px;
+    --cs-channel-y: 34px;
+    --cs-mark-y: 64px;
+  }
+}
+@media (max-width: 639px) and (max-height: 700px) {
+  .chronoscope { --cs-lens-h: 180px; --cs-objective-h: 56px; --cs-rail-h: 80px; --cs-channel-y: 30px; --cs-mark-y: 58px; }
+}
+
+/* ---- objective --------------------------------------------------------- */
+.cs-objective {
+  height: var(--cs-objective-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+  padding-inline: 4px;
+}
+.cs-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--cs-ink-muted);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.cs-prompt {
+  font-family: "Lora", Georgia, serif;
+  font-size: var(--cs-prompt-size);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--cs-ink);
+  outline: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-wrap: balance;
+}
+@media (max-width: 639px) { .cs-prompt { -webkit-line-clamp: 3; } }
+
+/* ---- instrument body --------------------------------------------------- */
+.cs-instrument {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, #14253c 0%, var(--cs-stone) 38%, #0a1628 72%, var(--cs-stone-deep) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 190, 0.16),
+    inset 0 0 0 1px rgba(185, 147, 76, 0.42),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 251, 236, 0.35),
+    0 14px 28px -18px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  isolation: isolate;
+}
+/* a faint brass hairline inset from the edge: the carved border of the plate */
+.cs-instrument::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 11px;
+  border: 1px solid rgba(185, 147, 76, 0.22);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ---- lens -------------------------------------------------------------- */
+.cs-lens {
+  position: relative;
+  height: var(--cs-lens-h);
+  margin: 10px 10px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(47, 143, 202, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #0b1a2f 0%, #081426 60%, #061020 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(185, 147, 76, 0.55),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.55),
+    inset 0 10px 30px rgba(0, 0, 0, 0.55),
+    inset 0 -20px 40px -20px rgba(47, 143, 202, 0.25);
+}
+.cs-lens-glass { position: absolute; inset: 0; }
+/* a soft glass sheen, top-left; never moves */
+.cs-lens-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 45% at 22% 0%, rgba(255, 255, 255, 0.10) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%);
+  z-index: 2;
+}
+/* brass bezel ring with four engraved corner marks */
+.cs-lens-bezel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 10px;
+  border: 1px solid rgba(213, 182, 111, 0.35);
+  z-index: 3;
+}
+.cs-lens-bezel::before, .cs-lens-bezel::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(213, 182, 111, 0.85);
+  border-style: solid;
+}
+.cs-lens-bezel::before { left: 6px; top: 6px; border-width: 1px 0 0 1px; }
+.cs-lens-bezel::after { right: 6px; bottom: 6px; border-width: 0 1px 1px 0; }
+.cs-lens[data-traversing="true"] .cs-lens-bezel { border-color: rgba(127, 214, 239, 0.55); }
+
+/* ---- reading plate ----------------------------------------------------- */
+.cs-reading {
+  position: relative;
+  height: var(--cs-reading-h);
+  margin: 6px 10px 0;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #3a2d14 0%, #2a2110 55%, #1f1a0c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 190, 0.22),
+    inset 0 0 0 1px rgba(185, 147, 76, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.7);
+  color: #f6e6bb;
+  overflow: hidden;
+}
+.cs-reading-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 10px;
+  transition: opacity 260ms ease;
+}
+.chronoscope[data-animate="false"] .cs-reading-layer { transition: none; }
+.cs-reading-live { gap: 0; }
+.cs-reading[data-mode="proof"] .cs-reading-live { opacity: 0; }
+.cs-reading-proof { opacity: 0; }
+.cs-reading-proof[data-shown="true"] { opacity: 1; }
+.cs-reading-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  border-left: 1px solid rgba(185, 147, 76, 0.28);
+  padding-inline: 4px;
+}
+.cs-reading-cell:first-child { border-left: 0; }
+.cs-reading-cell dt {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(246, 230, 187, 0.62);
+  font-weight: 700;
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+.cs-reading-cell dd {
+  font-family: "Cinzel", "Lora", Georgia, serif;
+  font-size: var(--cs-reading-size);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.cs-reading-cell--name dd { font-size: calc(var(--cs-reading-size) + 3px); color: #fff3cf; }
+@media (max-width: 639px) {
+  .cs-reading-cell dt { font-size: 8.5px; letter-spacing: 0.16em; }
+}
+
+/* the proof: before → after, one row, the threshold line beneath */
+.cs-reading-proof { flex-wrap: wrap; align-content: center; gap: 0 8px; padding-block: 3px; }
+.cs-proof-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.cs-proof-col[data-satisfied="true"] {
+  background: rgba(232, 201, 122, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(232, 201, 122, 0.55);
+}
+.cs-proof-col[data-satisfied="false"] { box-shadow: inset 0 0 0 1px rgba(185, 147, 76, 0.25); }
+.cs-proof-col--none { opacity: 0.6; }
+.cs-proof-title {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(246, 230, 187, 0.7);
+  white-space: nowrap;
+}
+.cs-proof-col[data-satisfied="true"] .cs-proof-title { color: var(--cs-gold); }
+.cs-proof-lines { display: flex; gap: 10px; margin-top: 2px; }
+.cs-proof-line { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.cs-proof-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(246, 230, 187, 0.6); font-weight: 700; }
+.cs-proof-value {
+  font-family: "Cinzel", "Lora", Georgia, serif;
+  font-size: calc(var(--cs-reading-size) - 1px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cs-proof-caption {
+  font-size: 10px;
+  color: rgba(246, 230, 187, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cs-proof-col[data-satisfied="true"] .cs-proof-caption { color: var(--cs-gold); }
+.cs-proof-arrow { font-size: 14px; color: var(--cs-gold); flex: 0 0 auto; }
+.cs-proof-threshold {
+  flex: 1 0 100%;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(246, 230, 187, 0.62);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 12px;
+}
+@media (max-width: 639px) {
+  .cs-proof-lines { gap: 6px; }
+  .cs-proof-caption { font-size: 9px; }
+}
+
+/* ---- rail -------------------------------------------------------------- */
+.cs-rail {
+  position: relative;
+  height: var(--cs-rail-h);
+  margin: 4px 0 0;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  outline: none;
+}
+.cs-rail[aria-disabled="true"] { cursor: default; }
+.chronoscope[data-dragging="true"] .cs-rail { cursor: grabbing; }
+.cs-rail[data-focus-from="pointer"]:focus-visible::after { display: none; }
+.cs-rail:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 4px 6px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px rgba(127, 214, 239, 0.75);
+  pointer-events: none;
+}
+/* a detent's horizontal position on the track */
+.cs-rail > [style*="--f"] { left: calc(var(--cs-inset) + (100% - 2 * var(--cs-inset)) * var(--f)); }
+
+/* the engraved channel */
+.cs-channel {
+  position: absolute;
+  left: var(--cs-inset);
+  right: var(--cs-inset);
+  top: calc(var(--cs-channel-y) - 2.5px);
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #040a14, #0a1626);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.9),
+    0 1px 0 rgba(255, 236, 190, 0.08);
+}
+/* the traverse trace: energy between the locked detent and the reticle */
+.cs-trace {
+  position: absolute;
+  top: calc(var(--cs-channel-y) - 2.5px);
+  height: 5px;
+  left: calc(var(--cs-inset) + (100% - 2 * var(--cs-inset)) * var(--a));
+  width: calc((100% - 2 * var(--cs-inset)) * (var(--b) - var(--a)));
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(127, 214, 239, 0.35), rgba(127, 214, 239, 0.95));
+  box-shadow: 0 0 10px rgba(127, 214, 239, 0.55);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.cs-trace[data-on="true"] { opacity: 1; }
+.chronoscope[data-animate="false"] .cs-trace { transition: none; }
+
+/* detents: brass ticks; an emphasised detent is a diamond */
+.cs-detent {
+  position: absolute;
+  top: var(--cs-channel-y);
+  width: 2px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(180deg, var(--cs-brass-bright), var(--cs-brass-dark));
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  transition: background-color 120ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.cs-detent[data-emphasised="true"] {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: linear-gradient(135deg, var(--cs-brass-bright), var(--cs-brass-dark));
+}
+.cs-detent[data-near="true"] {
+  background: linear-gradient(180deg, #fff, var(--cs-cyan));
+  box-shadow: 0 0 8px rgba(127, 214, 239, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+.cs-detent[data-emphasised="true"][data-near="true"] { background: linear-gradient(135deg, #fff, var(--cs-cyan)); }
+.cs-detent[data-passed="true"] { background: linear-gradient(180deg, var(--cs-cyan), var(--cs-cyan-deep)); }
+.chronoscope[data-animate="false"] .cs-detent { transition: none; }
+
+/* engraved marks under the channel */
+.cs-rail-mark {
+  position: absolute;
+  top: var(--cs-mark-y);
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(213, 182, 111, 0.72);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* the lock marker: a brass ring that closes on the chosen detent */
+.cs-lock-mark, .cs-canon-mark {
+  position: absolute;
+  top: var(--cs-channel-y);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1), opacity 180ms ease;
+}
+.cs-lock-mark {
+  border: 2px solid var(--cs-brass-bright);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.cs-canon-mark {
+  border: 2px solid var(--cs-gold);
+  box-shadow: 0 0 14px rgba(232, 201, 122, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.cs-lock-mark[data-shown="true"], .cs-canon-mark[data-shown="true"] {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.chronoscope[data-animate="false"] :is(.cs-lock-mark, .cs-canon-mark) { transition: none; }
+
+/* the reticle: a crystal riding the channel, brass-capped */
+.cs-reticle {
+  position: absolute;
+  top: var(--cs-channel-y);
+  width: 24px;
+  height: var(--cs-reticle-h);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 160ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.chronoscope[data-dragging="true"] .cs-reticle,
+.chronoscope[data-reveal-stage="traverse"] .cs-reticle,
+.chronoscope[data-animate="false"] .cs-reticle { transition: none; }
+.cs-reticle::before, .cs-reticle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  height: 5px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--cs-brass-bright), var(--cs-brass-dark));
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+}
+.cs-reticle::before { top: 0; }
+.cs-reticle::after { bottom: 0; }
+.cs-reticle-crystal {
+  width: 9px;
+  height: calc(100% - 8px);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #eafbff 0%, var(--cs-cyan) 35%, var(--cs-cyan-deep) 100%);
+  box-shadow:
+    0 0 10px rgba(127, 214, 239, 0.75),
+    0 0 0 1px rgba(5, 20, 40, 0.8),
+    inset 0 0 4px rgba(255, 255, 255, 0.6);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.cs-reticle[data-state="held"] .cs-reticle-crystal {
+  transform: scaleX(1.25);
+  box-shadow: 0 0 16px rgba(127, 214, 239, 0.95), 0 0 0 1px rgba(5, 20, 40, 0.8), inset 0 0 6px rgba(255, 255, 255, 0.8);
+}
+.cs-reticle[data-state="clamped"] .cs-reticle-crystal {
+  background: linear-gradient(180deg, #fff3cf 0%, var(--cs-brass-bright) 40%, var(--cs-brass-dark) 100%);
+  box-shadow: 0 0 6px rgba(213, 182, 111, 0.6), 0 0 0 1px rgba(5, 20, 40, 0.8);
+}
+.cs-reticle[data-state="traversing"] .cs-reticle-crystal {
+  box-shadow: 0 0 20px rgba(127, 214, 239, 1), 0 0 0 1px rgba(5, 20, 40, 0.8), inset 0 0 6px #fff;
+}
+.cs-reticle[data-state="settled"] .cs-reticle-crystal {
+  background: linear-gradient(180deg, #fff8e2 0%, var(--cs-gold) 40%, #b08a3a 100%);
+  box-shadow: 0 0 18px rgba(232, 201, 122, 0.95), 0 0 0 1px rgba(5, 20, 40, 0.8), inset 0 0 6px #fff;
+}
+/* the detent pulse: the crystal flashes when it lands on a new detent */
+.chronoscope[data-animate="true"] .cs-detent[data-near="true"] { animation: cs-detent-pulse 260ms ease-out; }
+@keyframes cs-detent-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(127, 214, 239, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.45); }
+  100% { box-shadow: 0 0 0 7px rgba(127, 214, 239, 0), 0 0 0 1px rgba(0, 0, 0, 0.45); }
+}
+
+/* ---- footer / lock ----------------------------------------------------- */
+.cs-footer {
+  height: var(--cs-footer-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.chronoscope .cs-footer .cs-lock-button,
+.theme-lol .chronoscope .cs-footer .cs-lock-button {
+  min-height: var(--cs-footer-h) !important;
+  height: var(--cs-footer-h);
+  width: 100%;
+  max-width: 34rem;
+  border: 1px solid rgba(213, 182, 111, 0.8);
+  background: #2a2110;
+  color: #f6e6bb;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  box-shadow: 0 6px 14px -10px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 236, 190, 0.18);
+}
+.chronoscope .cs-footer .cs-lock-button:hover:not(:disabled) { background: #3a2d14; }
+.chronoscope .cs-footer .cs-lock-button:disabled { opacity: 0.55; }
+.cs-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cs-ink-muted);
+  line-height: 1;
+}
+.cs-dots { display: inline-flex; gap: 4px; }
+.cs-dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+.chronoscope[data-animate="true"] .cs-dots i { animation: cs-dot 1.2s ease-in-out infinite; }
+.chronoscope[data-animate="true"] .cs-dots i:nth-child(2) { animation-delay: 160ms; }
+.chronoscope[data-animate="true"] .cs-dots i:nth-child(3) { animation-delay: 320ms; }
+@keyframes cs-dot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+.cs-verdict {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  opacity: 0;
+  transition: opacity 240ms ease;
+  text-align: center;
+  max-width: 100%;
+}
+.cs-verdict[data-shown="true"] { opacity: 1; }
+.chronoscope[data-animate="false"] .cs-verdict { transition: none; }
+.cs-verdict-text {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cs-ink);
+}
+.cs-footer[data-correct="true"] .cs-verdict-text { color: #2f5b38; }
+.cs-footer[data-correct="false"] .cs-verdict-text { color: #8d2f33; }
+.cs-verdict-note {
+  font-size: 12px;
+  color: var(--cs-ink-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-inline: 6px;
+}
+
+/* the one reserved status line under the footer */
+.cs-status-line {
+  height: var(--cs-status-h);
+  line-height: var(--cs-status-h);
+  font-size: 11.5px;
+  color: var(--cs-ink-muted);
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin-top: calc(-1 * var(--cs-gap) + 2px);
+}
+
+/* reduced motion from the OS, in case a host does not pass the flag through */
+@media (prefers-reduced-motion: reduce) {
+  .chronoscope .cs-reticle, .chronoscope .cs-detent, .chronoscope .cs-trace,
+  .chronoscope .cs-lock-mark, .chronoscope .cs-canon-mark, .chronoscope .cs-reading-layer,
+  .chronoscope .cs-verdict { transition: none; animation: none; }
+}

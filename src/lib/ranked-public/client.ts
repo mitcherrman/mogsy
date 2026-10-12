@@ -566,7 +566,12 @@ export type SegmentChoice =
    * `reconstruct.v1` (GM1-R1): one tray piece id per recipe socket. Socket
    * order carries no meaning; a piece id may repeat.
    */
-  | { placement: readonly string[] };
+  | { placement: readonly string[] }
+  /**
+   * `scrub.v1` (SCRUB-S2): the ONE checkpoint token the player locked
+   * (`"w4"`). Never a level, an XP figure or a verdict.
+   */
+  | { checkpoint: string };
 
 const assertNever = (x: never): never => {
   throw new Error(`Unsupported segment choice: ${JSON.stringify(x)}`);
@@ -593,6 +598,7 @@ export const submitSegmentChallenge = (
         : "selected" in choice ? { selected: choice.selected }
         : "order" in choice ? { order: [...choice.order] }
         : "placement" in choice ? { placement: [...choice.placement] }
+        : "checkpoint" in choice ? { checkpoint: choice.checkpoint }
         : "itemId" in choice ? { item_id: choice.itemId }
         : assertNever(choice),
       signal,

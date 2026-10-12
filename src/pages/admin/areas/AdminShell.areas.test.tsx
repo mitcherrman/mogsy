@@ -381,6 +381,13 @@ describe("7 · Ranked Admin home renders", () => {
     expect(panel.textContent).toMatch(/unrated/i);
   });
 
+  it("offers Play Chronoscope in Ranked > Playtests, in its own panel", async () => {
+    renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
+    const panel = await screen.findByTestId("ranked-scrub");
+    expect(within(panel).getByTestId("scrub-launch-button").textContent).toBe("Play Chronoscope");
+    expect(panel.textContent).toMatch(/unrated/i);
+  });
+
   it("offers the Journey launches in Ranked > Playtests, extended one last", async () => {
     renderAdmin("/admin/leaguecraft?section=ranked&view=playtests");
     const panel = await screen.findByTestId("ranked-reference-journeys");

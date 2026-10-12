@@ -14,7 +14,8 @@
 // ---------------------------------------------------------------------------
 
 import {
-  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, type MasteryChallengeReveal, type SegmentStateView,
+  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, SCRUB_MODULE_ID,
+  type MasteryChallengeReveal, type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 
 /**
@@ -22,13 +23,15 @@ import {
  * bot in the same transaction, so their reveal arrives inline. Reconstruct
  * shares Order Forge's lifecycle exactly; each reveal must carry its OWN
  * module's block, so one module's reveal can never attach to the other.
+ * SCRUB-S2: the Chronoscope's one checkpoint lock shares it too.
  */
 export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID]);
+  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, SCRUB_MODULE_ID]);
 
 function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
   return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge
-    : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct : false;
+    : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct
+      : moduleId === SCRUB_MODULE_ID ? !!reveal.scrub : false;
 }
 
 export interface OrderForgeLockRevealRef {
@@ -39,7 +42,7 @@ export interface OrderForgeLockRevealRef {
 
 /**
  * `state` with the lock's inline reveal attached, when and only when:
- *   * it is an Order Forge or Reconstruct segment state, and the reveal
+ *   * it is an Order Forge, Reconstruct or Scrub segment state, and the reveal
  *     carries that same module's block,
  *   * the reveal belongs to THIS match and THIS segment number, and
  *   * the snapshot does not already carry its own reveal for that challenge

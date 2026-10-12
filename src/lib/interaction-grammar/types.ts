@@ -245,3 +245,89 @@ export interface ReconstructReveal {
   isCorrect: boolean | null;
   evidence?: ReconstructEvidence | null;
 }
+
+// ---------------------------------------------------------------- Chronoscope (SCRUB)
+
+/**
+ * One discrete checkpoint on the chronoscope rail. Everything here is
+ * PRE-REVEAL public state: what the world looks like at this checkpoint. It has
+ * no field that could say whether the objective holds here, and no field that
+ * only the canonical checkpoint would carry.
+ */
+export interface ChronoscopeCheckpoint<TScene = unknown> {
+  /** Opaque identity the response carries. Never displayed. */
+  token: string;
+  /** The engraved name of the checkpoint: "Wave 4". */
+  label: string;
+  /** The clock engraving beside it: "2:00". */
+  clock: string;
+  /**
+   * Draws the rail's diamond detent. A UNIFORM public fact about the
+   * checkpoint (a cannon wave), never a hint: the host marks every checkpoint
+   * of that kind alike, or none.
+   */
+  emphasised?: boolean;
+  /** The reading plate's engraving at this checkpoint: authority strings only. */
+  reading: readonly ChronoscopeReadingLine[];
+  /** Everything the lens scene needs to draw this checkpoint. Host-typed. */
+  scene: TScene;
+}
+
+export interface ChronoscopeReadingLine {
+  label: string;
+  value: string;
+}
+
+/** Everything a player may see before the reveal. */
+export interface ChronoscopePublic<TScene = unknown> {
+  /** The eyebrow over the objective: "Chronoscope · Duo lane". */
+  eyebrow: string;
+  /** The objective sentence. */
+  prompt: string;
+  /** The instrument's engraved unit: "Wave". Used in announcements. */
+  unitLabel: string;
+  /** ≥ 2 checkpoints in rail order, distinct tokens. */
+  checkpoints: readonly ChronoscopeCheckpoint<TScene>[];
+  /** Short engravings under the rail at these indexes, e.g. the clock at 1, 5, 10, 15. */
+  railMarks?: readonly { index: number; text: string }[];
+  /** One short host line shown under the footer once the hand is off the rail (an authority caveat). */
+  footnote?: string | null;
+}
+
+/** The locked checkpoint: identity only, never correctness. */
+export type ChronoscopeResponse = { checkpoint: string };
+
+/** One reading in the before → after proof. Every string is the host's. */
+export interface ChronoscopeProofReading {
+  token: string;
+  /** "Wave 3 · 1:30" */
+  title: string;
+  lines: readonly ChronoscopeReadingLine[];
+  /** Whether the objective holds at this reading, as the authority states it. */
+  satisfied: boolean;
+  /** One short host-worded line: "still below 660 XP" / "threshold reached". */
+  caption: string | null;
+}
+
+/** Authority-supplied, post-lock only. The primitive displays it and grades nothing. */
+export interface ChronoscopeReveal {
+  /** The checkpoint the player locked, as the host recorded it. */
+  lockedToken: string;
+  /** The canonical checkpoint. Only ever supplied here. */
+  canonicalToken: string;
+  /** The host's verdict; null when it stated none. */
+  isCorrect: boolean | null;
+  /**
+   * The proof that the canonical checkpoint is the FIRST valid one: the
+   * reading just before it (null when it is the first checkpoint) and the
+   * reading at it.
+   */
+  proof: {
+    before: ChronoscopeProofReading | null;
+    after: ChronoscopeProofReading;
+    /** What the crossing is, host-worded: "Level 3 needs 660 cumulative XP". */
+    thresholdLine: string | null;
+  };
+  /** One host-worded teaching line for a wrong lock; null for a right one. */
+  note: string | null;
+}

@@ -25,6 +25,7 @@ import {
   MASTERY_SLICE_MODULE_ID,
   ORDER_FORGE_MODULE_ID,
   RECONSTRUCT_MODULE_ID,
+  SCRUB_MODULE_ID,
   META_REFLEX_MIXED_VERSION,
   revealChoiceEntityId,
 } from "@/lib/ranked-public/contracts";
@@ -49,8 +50,15 @@ export function segmentTitle(reveal: SegmentRevealView): string {
   if (reveal.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
   if (reveal.moduleId === ORDER_FORGE_MODULE_ID) return "Order Forge";
   if (reveal.moduleId === RECONSTRUCT_MODULE_ID) return "Reconstruct";
+  if (reveal.moduleId === SCRUB_MODULE_ID) return "Chronoscope";
   return reveal.moduleVersion >= META_REFLEX_MIXED_VERSION
     ? META_REFLEX_LABEL : "Item Cost Duel";
+}
+
+/** A scrub checkpoint token (`w4`) as the rail engraves it ("Wave 4"). */
+export function scrubCheckpointLabel(token: string): string {
+  const m = /^w(\d+)$/.exec(token);
+  return m ? `Wave ${m[1]}` : token;
 }
 
 /**
@@ -202,6 +210,48 @@ export function SegmentTranscript({
             {`${marks.filter(Boolean).length}/${marks.length} parts right`}
           </p>
         )}
+      </section>
+    );
+  }
+
+  // SCRUB-S2 - a scrub settlement is one checkpoint per player, shown against
+  // the first checkpoint where the objective holds. Every label is the
+  // server's wave token, engraved the way the rail engraves it.
+  if (reveal.scrub) {
+    const sc = reveal.scrub;
+    const pick = (pid: string | null) => {
+      const token = pid ? sc.picks[pid] ?? null : null;
+      return token ? scrubCheckpointLabel(token) : "No answer";
+    };
+    const row = (label: string, text: string, testId: string) => (
+      <div data-testid={testId}>
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd>{text}</dd>
+      </div>
+    );
+    const after = sc.proof.after;
+    return (
+      <section className="ranked-panel space-y-3 p-3 sm:p-4"
+               data-testid="icd-transcript" aria-labelledby="icd-transcript-heading">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="icd-transcript-heading" className="font-semibold">
+            {segmentTitle(reveal)} — segment result
+          </h4>
+          <p className="text-sm font-semibold" data-testid="icd-transcript-result">
+            {result ? RESULT_LABEL[result] : "—"}
+            {damageDealt !== null && (
+              <span className="ml-2 font-normal text-muted-foreground"
+                    data-testid="icd-transcript-damage">{damageDealt} damage</span>
+            )}
+          </p>
+        </header>
+        <dl className="space-y-1 text-sm" data-testid="scrub-transcript">
+          {row(viewerLabel, pick(viewerUserId), "scrub-transcript-you")}
+          {opponentUserId && row("Opponent", pick(opponentUserId), "scrub-transcript-them")}
+          {row("First checkpoint",
+            `${scrubCheckpointLabel(sc.canonicalCheckpoint)} · ${after.spawnTimeDisplay}`,
+            "scrub-transcript-correct")}
+        </dl>
       </section>
     );
   }

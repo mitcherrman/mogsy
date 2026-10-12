@@ -545,6 +545,70 @@ function OrderForgeBody({ round }: { round: ReviewRound }) {
  * is made of and the server's gold figures. Nothing is graded or summed here;
  * an unrevealed round shows only what was asked.
  */
+/**
+ * SCRUB-S2 — one reviewed Chronoscope round: the objective, the viewer's
+ * checkpoint beside the first one, and the authority's before → after proof.
+ * Every figure is the server's; the verdict is the backend's `outcome`.
+ */
+function ScrubBody({ round }: { round: ReviewRound }) {
+  const sc = round.scrub;
+  if (!sc) return null;
+  const byToken = new Map(sc.checkpoints.map((c) => [c.token, c]));
+  const name = (token: string | null) => {
+    const cp = token ? byToken.get(token) : undefined;
+    return cp ? `Wave ${cp.waveNumber} · ${cp.spawnTimeDisplay}` : token ?? "—";
+  };
+  const mine = sc.viewerCheckpoint ? byToken.get(sc.viewerCheckpoint) ?? null : null;
+  const tone = sc.outcome === "correct" ? TONE.correct : sc.outcome === "incorrect" ? TONE.incorrect : TONE.idle;
+  const reading = (r: NonNullable<typeof sc.proof>["after"] | null, label: string, testId: string) => r && (
+    <li data-testid={testId} className="rounded border px-1.5 py-1 text-[11.5px]"
+      style={{ color: TONE.idle.ink, borderColor: TONE.idle.edge, background: TONE.idle.fill }}>
+      <span className="font-semibold">{label} · Wave {r.waveNumber} · {r.spawnTimeDisplay}</span>
+      <span className="ml-1 tabular-nums">Level {r.level ?? "—"} · {r.cumulativeXp} XP</span>
+    </li>
+  );
+  return (
+    <div className="space-y-2" data-testid="review-scrub">
+      <p className="text-[12px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }}
+        data-testid="review-scrub-objective">
+        {sc.objective?.text ?? round.category ?? "Find the checkpoint"}
+      </p>
+      {sc.viewerCheckpoint === null ? (
+        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          {sc.outcome === "timeout" ? "You did not lock in a checkpoint." : "No checkpoint was locked in."}
+        </p>
+      ) : (
+        <p data-testid="review-scrub-mine" data-mark={sc.outcome ?? "none"}
+          className="flex items-center gap-1.5 rounded border px-1.5 py-1 text-[11.5px]"
+          style={{ color: tone.ink, borderColor: tone.edge, background: tone.fill }}>
+          <span className="min-w-0 flex-1 font-semibold">My checkpoint · {name(sc.viewerCheckpoint)}</span>
+          {mine && <span className="shrink-0 tabular-nums">Level {mine.level} · {mine.cumulativeXp} XP</span>}
+          {sc.outcome === "correct" && <Check className="h-3 w-3 shrink-0" aria-label="The first checkpoint" />}
+          {sc.outcome === "incorrect" && <X className="h-3 w-3 shrink-0" aria-label="Not the first checkpoint" />}
+        </p>
+      )}
+      {round.revealed && sc.proof && (
+        <div className="space-y-1">
+          <SectionLabel>First checkpoint · {name(sc.canonicalCheckpoint)}</SectionLabel>
+          <ul className="space-y-1" data-testid="review-scrub-proof">
+            {reading(sc.proof.before, "Before", "review-scrub-before")}
+            {reading(sc.proof.after, "First", "review-scrub-after")}
+          </ul>
+          {sc.proof.thresholdXp && (
+            <p className="text-[11px]" style={{ color: LEAGUECRAFT_INK.body }} data-testid="review-scrub-threshold">
+              Level {sc.proof.targetLevel} needs {sc.proof.thresholdXp} cumulative XP
+              {sc.proof.cannonOnly ? " · cannon waves only" : ""}
+            </p>
+          )}
+          <p className="text-[10.5px] opacity-75" style={{ color: LEAGUECRAFT_INK.body }}>
+            Checkpoints are wave spawn times · levels at wave granularity
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReconstructBody({ round }: { round: ReviewRound }) {
   const rc = round.reconstruct;
   if (!rc) return null;
@@ -718,6 +782,8 @@ export default function QuestionReviewCard({
         ? "Order Forge"
         : round.kind === "reconstruct"
         ? "Reconstruct"
+        : round.kind === "scrub"
+        ? "Chronoscope"
         : round.category
           ? prettyCategory(round.category)
           : icon.label;
@@ -757,6 +823,8 @@ export default function QuestionReviewCard({
         <OrderForgeBody round={round} />
       ) : round.kind === "reconstruct" ? (
         <ReconstructBody round={round} />
+      ) : round.kind === "scrub" ? (
+        <ScrubBody round={round} />
       ) : (
         <QuizBody round={round} />
       )}

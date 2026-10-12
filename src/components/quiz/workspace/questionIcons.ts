@@ -187,7 +187,9 @@ export function questionIconLabel(
           ? "Order Forge"
           : round.kind === "reconstruct"
             ? "Reconstruct"
-            : resolveQuestionIcon(round.iconHint).label;
+            : round.kind === "scrub"
+              ? "Chronoscope"
+              : resolveQuestionIcon(round.iconHint).label;
   const outcome = questionOutcome(round);
   const state =
     outcome === "correct" ? "correct"
@@ -224,6 +226,11 @@ export function questionOutcome(round: ReviewRound): QuestionOutcome {
   if (round.reconstruct) {
     // Likewise the backend's word for the build.
     const o = round.reconstruct.outcome;
+    return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
+  }
+  if (round.scrub) {
+    // Likewise the backend's word for the checkpoint.
+    const o = round.scrub.outcome;
     return o === "correct" ? "correct" : o === "incorrect" ? "incorrect" : "unanswered";
   }
   const sub = round.viewerSubmission;
