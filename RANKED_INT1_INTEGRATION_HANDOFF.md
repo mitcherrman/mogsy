@@ -31,6 +31,8 @@ working tree as found. The INT0 plan (`RANKED_INT0_INTEGRATION_PLAN.md`, uncommi
 `.worktrees/ranked-int0-audit`) is preserved byte-identically (sha256 `67090f88…`) in
 both integration branches; the original is left where it was.
 
+**Mainline moved during the session (seen at the end, 2026-10-12):** backend `origin/master` is now `bf4cffe4` (4 commits after `7e2cb3b7`: PW4-A Worlds 2026 tournament authority + retries, and "Add 42 Vision Practice questions with idempotent startup importer"). A `git merge-tree` dry run of the integration tip against it is **clean** (textual overlap only in `api_server.py` and `quiz/public_category.py`); it was not merged here. Note the new master commit adds another startup importer to the lifespan beside MG-P1's. Frontend `origin/main` is unchanged (`b2b1804a`).
+
 Handoffs read: Scrub S2, Match Grid P2 (+ P2.1 section), Match Grid P3 (+ P3.1),
 PA1, PA2A, PA2B.
 
@@ -445,13 +447,14 @@ session-scratchpad launchers / scratch DB / persona / oracle / captures, the ign
 
 ## 16. Exact recommended next step
 
-1. Owner reviews this handoff and the two integration branches (tips in §15).
-2. Owner works the rune-migration checklist: production backup → dry run of
+1. Merge the new backend master (`bf4cffe4`, clean in a dry run) into the backend integration branch and re-run the §12 backend matrix against a matching fresh baseline.
+2. Owner reviews this handoff and the two integration branches (tips in §15).
+3. Owner works the rune-migration checklist: production backup → dry run of
    `python -m rune_canonical.cli --apply --db <copy>` → Combat Lab / quiz checks on the
    converged copy → written rollback → explicit approval.
-3. Ops runs the Assembly recertification `--check` against READ-ONLY copies of the
+4. Ops runs the Assembly recertification `--check` against READ-ONLY copies of the
    deployed `lol_calc.db` and identity DB (§10); if it differs, commit the new artifact,
    bump `ASSEMBLY_TEST_CATALOG_REVISION`, rerun the Assembly suites.
-4. Owner decides the §14 items (Scrub hold, format-config allow-list, Scrub S2 items).
-5. Only then: push both branches for review (no bare `git push` from the source branches,
+5. Owner decides the §14 items (Scrub hold, format-config allow-list, Scrub S2 items).
+6. Only then: push both branches for review (no bare `git push` from the source branches,
    whose upstream is `origin/master`), backend before frontend at deploy time.
