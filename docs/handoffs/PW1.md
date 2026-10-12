@@ -6,7 +6,8 @@
 | Base | `origin/main` `b1f65a9c` (PPQ2-E main integration), fetched at the start |
 | Code commit | `333ae964` (this file lands in a second commit so it can name the first; see §10) |
 | Scope | Frontend only: Hub selection, the Match Center's presentation of a Worlds match, tests, this handoff |
-| PW1-A | Final selection safety patch on top of `ffa42573` — see §12. Head of the branch |
+| PW1-A | Final selection safety patch on top of `ffa42573` — see §12 |
+| PW1-C | Worlds-filtered schedule integrated on top of `2c3953a3` — see §13. Head of the branch |
 | Status | **Verified. STOP for control-center review** |
 
 ## 0. Result in one paragraph
@@ -273,3 +274,42 @@ with `/upcoming` blocked or held in the browser: `sim-next-unavailable-1440x900.
 
 Worlds priority and tiers, the rail, accent and year, the `settle` bound (2.5 s), the stale-fixture grace (30 min), the
 backend dependencies in §8, and the open decisions in §9 — all as reviewed.
+
+## 13. PW1-C — the Worlds-filtered schedule (closes §8.1)
+
+Backend PW1-B (`8829fc3c`) filters the cached schedule by exact slug **before** the 12-row cap:
+`GET /api/live-esports/upcoming?league=worlds` echoes `league: "worlds"` in the ordinary envelope. Unfiltered requests are unchanged.
+
+| Piece | Behaviour |
+|---|---|
+| `fetchUpcoming(league?)` (`api.ts`) | Adds `?league=`. `UpcomingResponse.league` is the echo |
+| `useUpcoming()` | Unchanged semantics, key `["live-esports","upcoming"]` (made an arrow so react-query's context is never read as a league) |
+| `useSchedule()` (`hooks.ts`) | Adds a **separate** query, key `["live-esports","upcoming","worlds"]`, same 120 s poll, `retry:false`. Merges by `match_id` (no duplicates), time-ordered (`mergeUpcoming`). Hub, rail and automatic pick all read the merged list |
+| Old backend | A filtered answer counts **only if it echoes `league: "worlds"`**. Otherwise it is the ordinary list again: it is not treated as verified Worlds and adds nothing |
+| Filtered read fails | Worlds rows in the ordinary response are kept; unrelated fixtures are never hidden; the hub behaves as before PW1-C |
+| Unavailable ≠ empty | `worldsVerifiedEmpty` is true only for a successful, honoured, `source_ok` read with no rows. `stale` / `sourceOk` are exposed from both reads |
+| Pending | Either read pending = pending. An explicit `?next=` is **not** "gone" while only the unfiltered read has answered; "slow" still appears after 2.5 s, and it resolves when the filtered read lands. The automatic pick does not wait on the second read once a Worlds fixture is already known |
+| Unavailable | Either read failing (or `source_ok:false`) with the fixture unresolved ⇒ `unavailable`, not `gone` |
+| "gone" copy | "…isn't in the current schedule response (it lists only the next few matches), so the latest match is shown instead." Absence from a bounded response is not proof Riot removed it |
+
+Unchanged: selection tiers, rail ordering, TBD handling, media, styling, `?game=`/`?next=` ownership (§12).
+
+### Tests (+14)
+`ProPlayHub.test.tsx` `PW1-C ·` (12) + `mergeUpcoming.test.ts` (2): full cap of unrelated fixtures with Worlds only in the filtered read;
+duplicates across reads; old backend (Worlds present / absent, never shown as filtered); filtered failure with and without ordinary Worlds rows;
+both unavailable; filtered slower than ordinary (not gone, then resolves; and not delaying a known fixture); gone only when both answered;
+fixture → live → completed with the filtered read as sole source; explicit `?game=` / `?next=` (non-Worlds fixture selectable).
+
+| Check | PW1-A `2c3953a3` | PW1-C |
+|---|---|---|
+| Focused set (clean main 1300 / 1300) | 1366 / 1366 | **1380 / 1380**, 275 suites |
+| `tsc` | 2 errors already on main | same 2 |
+| eslint (6 touched files) | 0 | 0 |
+| `vite build` | OK | OK |
+
+### Production verification (2026-10-12T03:46Z, independent of tests)
+- `/api/live-esports/upcoming` → 12 rows: 6 demacia_cup, 1 cblol_promotion, 1 lcs_promotion, 2 emea_masters, 2 worlds; no `league` key.
+- `/api/live-esports/upcoming?league=worlds` → `league: "worlds"`, `source_ok: true`, `stale: false`, **12 rows, all `worlds`** (FUR vs MVK, C9 vs KC, then TBD Play-Ins slots).
+- This branch's hub against production (dev server, headless Chromium): FUR vs MVK featured and selected in UP NEXT, no page errors.
+- One 502 ("Application failed to respond") was seen at ~03:39Z while Railway was deploying; the same endpoints returned 200 on every later call. **Not** a frontend issue, but note the hub degrades to the previous pick if both reads fail.
+- Not verified: behaviour during live Worlds play (no live Worlds game exists yet). Screenshots unchanged.

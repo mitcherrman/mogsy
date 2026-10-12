@@ -15,9 +15,10 @@
  * and the hub prefers a finished game over a stale one; each surface owns its
  * own rule and hands the result to `useLiveMatch`.
  */
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { isWorldsFixture, startMs, WORLDS_LEAGUE_SLUG } from "@/lib/pro-play/worlds";
 import {
   fetchGameInsights,
   fetchGoldSeries,
@@ -138,7 +139,9 @@ export function useLiveMatch(
 export function useUpcoming() {
   const query = useQuery({
     queryKey: ["live-esports", "upcoming"],
-    queryFn: fetchUpcoming,
+    // An arrow: react-query passes its context as the first argument, which
+    // `fetchUpcoming(league?)` must never mistake for a league slug.
+    queryFn: () => fetchUpcoming(),
     refetchInterval: UPCOMING_POLL_MS,
     retry: false,
   });
@@ -147,4 +150,82 @@ export function useUpcoming() {
     [query.data],
   );
   return { query, matches };
+}
+
+/**
+ * One schedule from two bounded reads (PW1-C).
+ *
+ * `/upcoming` is capped at 12 rows across every league, so on a busy day the
+ * Worlds fixtures can fall off it. `/upcoming?league=worlds` filters by exact
+ * slug before the cap. The two are separate queries under separate keys; their
+ * matches are merged by `match_id` (no duplicates), time-ordered, so every
+ * consumer — the automatic pick, the rail, an explicit `?next=` — sees one list.
+ *
+ * Honesty rules:
+ * - A filtered answer counts only when it echoes `league: "worlds"`. An older
+ *   backend ignores the parameter and returns the ordinary list; that response
+ *   is NOT treated as a verified Worlds result (`worldsFiltered` is false, its
+ *   rows add nothing the ordinary query does not already hold).
+ * - A failed filtered read keeps whatever Worlds rows the ordinary read has,
+ *   and unrelated fixtures are never hidden.
+ * - Unavailable is not empty: `worldsVerifiedEmpty` is true only for a
+ *   successful, honoured, source-ok filtered read with no rows.
+ * - Pending is either read still pending: an explicit fixture is never called
+ *   gone because only one of the two has answered.
+ */
+export function mergeUpcoming(...lists: readonly (readonly UpcomingMatch[])[]): UpcomingMatch[] {
+  const seen = new Set<string>();
+  const rows: { match: UpcomingMatch; start: number; index: number }[] = [];
+  lists.flat().forEach((match) => {
+    if (!match?.match_id || seen.has(match.match_id)) return;
+    seen.add(match.match_id);
+    rows.push({ match, start: startMs(match.scheduled_start) ?? Infinity, index: rows.length });
+  });
+  return rows
+    .sort((x, y) => (x.start === y.start ? x.index - y.index : x.start < y.start ? -1 : 1))
+    .map((r) => r.match);
+}
+
+export function useSchedule() {
+  const { query: ordinary, matches: ordinaryMatches } = useUpcoming();
+  const worlds = useQuery({
+    queryKey: ["live-esports", "upcoming", WORLDS_LEAGUE_SLUG],
+    queryFn: () => fetchUpcoming(WORLDS_LEAGUE_SLUG),
+    refetchInterval: UPCOMING_POLL_MS,
+    retry: false,
+  });
+
+  const worldsFiltered = worlds.data?.league === WORLDS_LEAGUE_SLUG;
+  const worldsMatches = useMemo<UpcomingMatch[]>(
+    () =>
+      worldsFiltered && Array.isArray(worlds.data?.matches) ? worlds.data!.matches.filter(isWorldsFixture) : [],
+    [worldsFiltered, worlds.data],
+  );
+  const matches = useMemo(() => mergeUpcoming(ordinaryMatches, worldsMatches), [ordinaryMatches, worldsMatches]);
+
+  const ordinaryUnusable = ordinary.isError || ordinary.data?.source_ok === false;
+  const worldsUnusable = worlds.isError || (worldsFiltered && worlds.data?.source_ok === false);
+  const refetch = useCallback(
+    () => Promise.all([ordinary.refetch(), worlds.refetch()]).then(() => undefined),
+    [ordinary, worlds],
+  );
+
+  return {
+    matches,
+    /** Either read has not answered yet. */
+    isPending: ordinary.isPending || worlds.isPending,
+    /** Either read failed, or upstream's own read behind it failed. */
+    unusable: ordinaryUnusable || worldsUnusable,
+    /** The filtered read was honoured by the backend. */
+    worldsFiltered,
+    /** A successful, honoured, source-ok filtered read that found nothing. */
+    worldsVerifiedEmpty:
+      worlds.isSuccess && worldsFiltered && worlds.data?.source_ok !== false && worldsMatches.length === 0,
+    /** Freshness of what is drawn, from both reads. */
+    stale: Boolean(ordinary.data?.stale || (worldsFiltered && worlds.data?.stale)),
+    sourceOk: ordinary.data?.source_ok !== false && !(worldsFiltered && worlds.data?.source_ok === false),
+    refetch,
+    ordinary,
+    worlds,
+  };
 }

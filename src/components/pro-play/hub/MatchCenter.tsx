@@ -845,7 +845,7 @@ export default function MatchCenter({
           data-testid="next-gone"
           className="border-b border-border/60 px-4 py-2 text-xs text-muted-foreground"
         >
-          The match in this link is no longer on the schedule, so the latest match is shown instead.
+          The match in this link isn't in the current schedule response (it lists only the next few matches), so the latest match is shown instead.
         </p>
       )}
     </>

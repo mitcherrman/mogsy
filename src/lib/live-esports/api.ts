@@ -610,9 +610,18 @@ export type UpcomingResponse = {
   fetched_at: string | null;
   horizon_days: number;
   limit: number;
+  /** Echoed only by a backend that honoured `?league=` (PW1-B). */
+  league?: string | null;
   matches: UpcomingMatch[];
 };
 
-export function fetchUpcoming(): Promise<UpcomingResponse> {
-  return getJson("/api/live-esports/upcoming");
+/**
+ * `league` asks the backend (PW1-B) to filter its cached schedule by exact
+ * league slug BEFORE the 12-match cap. A backend that predates it ignores the
+ * parameter and answers unfiltered — which is why a filtered response is
+ * trusted only when it echoes `league` back (`UpcomingResponse.league`).
+ */
+export function fetchUpcoming(league?: string): Promise<UpcomingResponse> {
+  const q = league ? `?league=${encodeURIComponent(league)}` : "";
+  return getJson(`/api/live-esports/upcoming${q}`);
 }

@@ -11,8 +11,9 @@ import TournamentSpotlight from "@/components/pro-play/hub/TournamentSpotlight";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { useChampionAssets } from "@/hooks/useChampionAssets";
 import { fetchLiveGame } from "@/lib/live-esports/api";
-import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useUpcoming } from "@/lib/live-esports/hooks";
+import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useSchedule } from "@/lib/live-esports/hooks";
 import { gamesNeedingResult, groupSeries, railUpcoming, type GameRecord } from "@/lib/pro-play/hubSeries";
+import { nextWorldsFixture } from "@/lib/pro-play/worlds";
 import { lanePlayerKey, nextHubAutoPick, samePick, type HubPick } from "@/lib/pro-play/hubSelection";
 import {
   PRO_PLAY_FEATURED_TOURNAMENT,
@@ -130,7 +131,8 @@ function ProPlayHubPage() {
   const nextId = params.get(PRO_PLAY_NEXT_PARAM);
   const feed = useLiveFeed();
   const { live, recent, selectable } = feed;
-  const { query: scheduleQuery, matches: allUpcoming } = useUpcoming();
+  const schedule = useSchedule();
+  const allUpcoming = schedule.matches;
   const now = useMinuteNow();
   const scheduleWaited = useElapsed(SCHEDULE_SETTLE_MS);
 
@@ -150,13 +152,16 @@ function ProPlayHubPage() {
    * unrelated match as though it were the one in the link:
    *  - slow: the schedule has not answered in time;
    *  - unavailable: it failed, or upstream's own read failed;
-   *  - gone: the schedule is fine and no longer lists it (a started match is
-   *    followed above, so this is a fixture that left the schedule). */
+   *  - gone: both schedule reads answered and neither lists it (a started
+   *    match is followed above). The responses are bounded, so this is "not in
+   *    the current schedule", not proof Riot removed the fixture.
+   * Pending means EITHER read (all upcoming / Worlds-filtered, PW1-C) is
+   * pending: one answering is never enough to call a fixture gone. */
   const waitingOnNext = !!nextId && !explicitUpcoming && !followedGameId;
-  const scheduleUnusable = scheduleQuery.isError || scheduleQuery.data?.source_ok === false;
+  const scheduleUnusable = schedule.unusable;
   const nextNotice: NextNotice | null = !waitingOnNext
     ? null
-    : scheduleQuery.isPending
+    : schedule.isPending
       ? scheduleWaited
         ? "slow"
         : null
@@ -169,7 +174,9 @@ function ProPlayHubPage() {
   // an explicit fixture's) until the schedule has answered, or for a bounded
   // wait. A game-only link never waits; neither does a followed match.
   const gameOnly = !!pinnedId && !nextId;
-  const settling = !gameOnly && scheduleQuery.isPending && !scheduleWaited && !followedGameId;
+  // No need to wait on the second read once a Worlds fixture is already known.
+  const worldsKnown = nextWorldsFixture(allUpcoming, now) !== null;
+  const settling = !gameOnly && schedule.isPending && !scheduleWaited && !followedGameId && !worldsKnown;
 
   /* Selection, the match centre's way: `?game=` / `?next=` are EXPLICIT
    * choices and are never overridden; `auto` is the hub following the action
@@ -325,7 +332,7 @@ function ProPlayHubPage() {
             pinnedId={explicitGameId}
             selecting={settling}
             nextNotice={nextNotice}
-            onRetrySchedule={() => void scheduleQuery.refetch()}
+            onRetrySchedule={() => void schedule.refetch()}
             onSelect={select}
             onSelectUpcoming={selectUpcoming}
             onClearPin={clearPin}

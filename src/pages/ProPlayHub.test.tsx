@@ -184,6 +184,10 @@ type Backend = {
   upcomingGate?: Promise<void>;
   /** Overrides on the `/upcoming` envelope (e.g. `source_ok: false`). */
   upcomingEnvelope?: Record<string, unknown>;
+  /** `/upcoming?league=worlds` (PW1-B): an array = honoured (echoes `league`);
+   *  "fail" = HTTP 500; undefined = an older backend that ignores the filter. */
+  worldsUpcoming?: unknown[] | "fail";
+  worldsGate?: Promise<void>;
   /** `/live-esports/tournament/{id}` (DCGI1); undefined = an older backend (404). */
   tournament?: unknown;
   itemIndex?: { id: number; name: string; slug: string }[];
@@ -209,6 +213,26 @@ function installBackend(opts: Backend) {
       return opts.tournament ? ok(opts.tournament) : notFound();
     }
     if (path.includes("/live-esports/upcoming")) {
+      const filtered = path.includes("league=worlds");
+      if (filtered && opts.worldsUpcoming === "fail") {
+        return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
+      }
+      if (filtered && Array.isArray(opts.worldsUpcoming)) {
+        if (opts.worldsGate) await opts.worldsGate;
+        return ok({
+          enabled: true,
+          generated_at: "x",
+          source: "getSchedule",
+          source_ok: true,
+          stale: false,
+          fetched_at: "x",
+          horizon_days: 14,
+          limit: 12,
+          league: "worlds",
+          matches: opts.worldsUpcoming,
+          ...opts.upcomingEnvelope,
+        });
+      }
       if (!opts.upcoming) return notFound();
       if (opts.upcomingGate) await opts.upcomingGate;
       return ok({
@@ -1532,7 +1556,7 @@ describe("PW1 · explicit selection is never overridden", () => {
     renderHub(`${PRO_PLAY_ROUTE}?next=gone`);
     expect(await upcomingTitle()).toBe("C9 vs KC");
     // Said, not silent: the link named a match the schedule no longer lists.
-    expect(within(matchCenter()).getByTestId("next-gone").textContent).toMatch(/no longer on the schedule/i);
+    expect(within(matchCenter()).getByTestId("next-gone").textContent).toMatch(/isn't in the current schedule/i);
   });
 });
 
@@ -1828,5 +1852,201 @@ describe("PW1-A · an explicit fixture the schedule is slow or unable to produce
     expect(await summaryTitle()).toBe("FUR vs MVK");
     expect(screen.queryByTestId("next-gone")).toBeNull();
     expect(screen.queryByTestId("next-unresolved")).toBeNull();
+  });
+});
+
+/* ── PW1-C: the Worlds-filtered schedule joins the ordinary one ─────────── */
+
+const dcgiFixture = (id: string, a: string, b: string, hours: number) =>
+  upcomingMatch(id, a, b, {
+    league: { slug: "demacia_cup", name: "DCGI", region: "INTERNATIONAL", scope: "international" },
+    scheduled_start: inHours(hours),
+  });
+const fifteenUnrelated = () =>
+  Array.from({ length: 12 }, (_, i) => dcgiFixture(`d${i}`, `A${i}`, `B${i}`, 1 + i));
+
+describe("PW1-C · two bounded schedule reads", () => {
+  it("features Worlds that exist only in the filtered response, behind a full cap of unrelated fixtures", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      // The ordinary response is the 12-row cap, all unrelated.
+      upcoming: fifteenUnrelated(),
+      worldsUpcoming: [worldsFixture("w1", "FUR", "MVK"), worldsFixture("w2", "C9", "KC", { scheduled_start: inHours(78) })],
+    });
+    renderHub();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    const chips = railChips();
+    expect(chips[0].getAttribute("aria-pressed")).toBe("true");
+    expect(chips[1].textContent).toMatch(/C9/);
+    expect(within(chips[0]).getByTestId("worlds-tag")).toBeTruthy();
+    // Unrelated fixtures stay in the rail and stay selectable.
+    expect(chips.map((c) => c.textContent).join("|")).toMatch(/A0/);
+    fireEvent.click(chips.find((c) => /A0/.test(c.textContent ?? ""))!);
+    await waitFor(() => expect(location.search).toBe("?next=d0"));
+    expect(await upcomingTitle()).toBe("A0 vs B0");
+    expect(requests.some((r) => r.includes("/upcoming?league=worlds"))).toBe(true);
+    expect(requests.some((r) => /\/upcoming$/.test(r))).toBe(true);
+  });
+
+  it("does not duplicate a match present in both responses", async () => {
+    const w1 = worldsFixture("w1", "FUR", "MVK");
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [w1, dcgiFixture("d1", "KT", "VIT", 5)],
+      worldsUpcoming: [w1],
+    });
+    renderHub();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    expect(railChips().filter((c) => /FUR/.test(c.textContent ?? "")).length).toBe(1);
+  });
+
+  it("an older backend that ignores league is treated as unfiltered: ordinary Worlds rows still lead", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [dcgiFixture("d1", "KT", "VIT", 5), worldsFixture("w1", "FUR", "MVK")],
+      // worldsUpcoming undefined: the filtered URL returns the ordinary list, no `league` echo.
+    });
+    renderHub();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    expect(railChips().length).toBe(2);
+  });
+
+  it("an older backend never shows unrelated fixtures as Worlds results", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [dcgiFixture("d1", "KT", "VIT", 5)],
+    });
+    renderHub();
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    expect(screen.queryByTestId("upcoming-summary")).toBeNull();
+    expect(within(railChips()[0]).queryByTestId("worlds-tag")).toBeNull();
+  });
+
+  it("keeps Worlds rows from the ordinary response when the filtered request fails", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [dcgiFixture("d1", "KT", "VIT", 5), worldsFixture("w1", "FUR", "MVK")],
+      worldsUpcoming: "fail",
+    });
+    renderHub();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    expect(railChips().map((c) => c.textContent).join("|")).toMatch(/KT/);
+  });
+
+  it("keeps the existing hub when the filtered request fails and holds no Worlds rows", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [dcgiFixture("d1", "KT", "VIT", 5)],
+      worldsUpcoming: "fail",
+    });
+    renderHub();
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    expect(railChips().length).toBe(1);
+  });
+
+  it("with both reads unavailable, an explicit fixture is unavailable and no unrelated match is shown", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")], worldsUpcoming: "fail" });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    const note = await screen.findByTestId("next-unresolved");
+    expect(note.getAttribute("data-reason")).toBe("unavailable");
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+  });
+
+  it("is not 'gone' while the filtered read is still pending, and resolves when it answers", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [dcgiFixture("d1", "KT", "VIT", 5)],
+      worldsUpcoming: [worldsFixture("w1", "FUR", "MVK")],
+      worldsGate: gate,
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    // The ordinary read has answered without the fixture; the filtered one has not.
+    const note = await screen.findByTestId("next-unresolved", undefined, { timeout: 4500 });
+    expect(note.getAttribute("data-reason")).toBe("slow");
+    expect(screen.queryByTestId("next-gone")).toBeNull();
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+    release();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    expect(location.search).toBe("?next=w1");
+  }, 9000);
+
+  it("is 'gone' only once both reads have answered without the fixture", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [dcgiFixture("d1", "KT", "VIT", 5)],
+      worldsUpcoming: [],
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    expect(screen.getByTestId("next-gone")).toBeTruthy();
+  });
+
+  it("a slow filtered read does not delay an ordinary Worlds row beyond the bound, and it then settles", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [worldsFixture("w1", "FUR", "MVK")],
+      worldsUpcoming: [worldsFixture("w1", "FUR", "MVK"), worldsFixture("w2", "C9", "KC", { scheduled_start: inHours(78) })],
+      worldsGate: gate,
+    });
+    renderHub();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    expect(railChips().length).toBe(1);
+    release();
+    await waitFor(() => expect(railChips().length).toBe(2));
+  }, 9000);
+
+  it("fixture → live → completed still works with the filtered read as the only source of the fixture", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: fifteenUnrelated(),
+      worldsUpcoming: [worldsFixture("w1", "FUR", "MVK")],
+    });
+    const { client } = renderHubWithClient();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    installBackend({
+      live: [liveWorlds("W1-G1", "FUR", "MVK", { match_id: "w1" })],
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: fifteenUnrelated(),
+      worldsUpcoming: [],
+    });
+    await client.refetchQueries({ queryKey: ["live-esports"] });
+    expect(await summaryTitle()).toBe("FUR vs MVK");
+    installBackend({
+      recent: [worldsGame("W1-G1", "FUR", "MVK", { match_id: "w1" }), summary("R1", "GEN", "T1")],
+      upcoming: fifteenUnrelated(),
+      worldsUpcoming: [],
+    });
+    await client.refetchQueries({ queryKey: ["live-esports"] });
+    await waitFor(() =>
+      expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Previous match" })).toBeTruthy(),
+    );
+    expect(await summaryTitle()).toBe("FUR vs MVK");
+    expect(location.search).toBe("");
+  });
+
+  it("explicit ?game= and ?next= still win over the filtered Worlds pick", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: fifteenUnrelated(),
+      worldsUpcoming: [worldsFixture("w1", "FUR", "MVK")],
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?game=R1`);
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    cleanup();
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: fifteenUnrelated(),
+      worldsUpcoming: [worldsFixture("w1", "FUR", "MVK")],
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=d3`);
+    expect(await upcomingTitle()).toBe("A3 vs B3");
   });
 });
