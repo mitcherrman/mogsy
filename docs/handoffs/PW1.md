@@ -6,6 +6,7 @@
 | Base | `origin/main` `b1f65a9c` (PPQ2-E main integration), fetched at the start |
 | Code commit | `333ae964` (this file lands in a second commit so it can name the first; see §10) |
 | Scope | Frontend only: Hub selection, the Match Center's presentation of a Worlds match, tests, this handoff |
+| PW1-A | Final selection safety patch on top of `ffa42573` — see §12. Head of the branch |
 | Status | **Verified. STOP for control-center review** |
 
 ## 0. Result in one paragraph
@@ -48,14 +49,15 @@ Applied only when nobody has chosen (`?game=` / `?next=` absent):
 
 Properties:
 
-- **Explicit choice wins.** `?game=` and `?next=` are never overridden, by anything, including across upcoming → live → completed.
+- **Explicit choice wins, one at a time.** `?game=` and `?next=` are never overridden by the automatic pick, including across
+  upcoming → live → completed. Choosing a fixture clears `?game=`; choosing a game clears `?next=` (PW1-A, §12).
 - **The automatic pick is never written to the URL**, so a shared link stays the reader's own choice.
 - **Sticky within a tier, never across one.** Two live Worlds games do not swap on poll order; a held completed pick is not
   yanked by a newer completed one; but a pick made before Worlds data arrived (the feed lands before the schedule) gives way
   to Worlds, and a live Worlds game replaces a held completed one.
 - **Never stuck on an expired fixture.** An upcoming pick is recomputed from the current schedule each render. An explicit
   `?next=` whose match has started **follows that match into its games** (same `match_id`): the live game, else its latest.
-  One that left the schedule entirely falls back to the automatic pick.
+  One that left the schedule entirely falls back to the automatic pick, with a one-line note (PW1-A, §12).
 - **Stale schedule entries are not featured**: a fixture more than 30 minutes past its start (`WORLDS_FIXTURE_GRACE_MS`) is
   ignored, as is one with no parseable start. Never a time that was not published.
 - **No flash of the unrelated match.** The schedule is a second request behind the feed. The automatic pick waits for it
@@ -202,3 +204,72 @@ None of these block the review. Each is a precise fact for the owner of the name
 - Mobile QA of the new chip tag and TBD stage text (deferred by the owner).
 - After the event: decide whether the Worlds treatment retires by date or by data (it already disappears when the feeds
   carry no Worlds game or fixture).
+
+## 12. PW1-A — final selection safety patch
+
+Two bounded corrections to `ProPlayHub.tsx` / `MatchCenter.tsx`. Worlds priority, styling, hub architecture and everything
+outside the hub are untouched.
+
+### Fix 1 — one explicit choice at a time
+
+**Defect (real).** `selectUpcoming` set `?next=` and left any `?game=` in place. From `?game=R1`, picking a Worlds fixture gave
+`?game=R1&next=w1`; once `w1` started and left `/upcoming`, the board went back to R1, away from the match the reader chose.
+
+| Change | Where |
+|---|---|
+| Selecting an upcoming match now deletes `?game=` (the inverse already deleted `?next=`) | `ProPlayHub.selectUpcoming` |
+| **Older or shared links that still carry both** resolve to the fixture — the later, more specific choice — once it starts, rather than the stale pin. If the fixture is gone and unfollowable, the pin is used | `explicitGameId = followedGameId ?? pinnedId` |
+
+### Fix 2 — an explicit fixture the schedule is slow or unable to produce
+
+**Defect (real).** After the 2.5 s settle bound, `?next=<id>` with a still-pending or failed schedule fell through to the
+automatic pick: an unrelated match, on the board, under a link that named a fixture, with nothing saying so.
+
+An explicit `?next=` the schedule cannot produce now has one of four outcomes, none of which shows an unrelated match as the selection:
+
+| State | Condition | What the reader sees |
+|---|---|---|
+| waiting | schedule pending, within 2.5 s (unchanged bound) | the existing loading frame |
+| **slow** | still pending past 2.5 s | "Still loading that match" + **Try again** + **Show the latest match**; the board is *not* an unrelated match; resolves by itself if the schedule answers later |
+| **unavailable** | schedule request failed, or upstream's own read failed (`source_ok: false`) and the fixture is not in the (possibly stale) page | "Couldn't load that match" + the same two actions |
+| **gone** | schedule healthy and no longer lists it, and no game of that `match_id` is in the feed | the automatic pick, under a one-line status: "The match in this link is no longer on the schedule, so the latest match is shown instead." |
+
+Unchanged: a started match is followed into its game (no wait, no notice); a `?game=`-only link never waits; an ordinary visit
+with no link keeps the pre-PW1-A behaviour (after the bound it shows what it has, silently, since no fixture was named).
+"Show the latest match" clears both params and returns the automatic pick. The reader's URL is never rewritten by any state.
+
+### Tests (+10, `ProPlayHub.test.tsx`)
+
+| Test | Pins |
+|---|---|
+| `selecting a fixture from a ?game= link leaves only that fixture in the URL, and it stays featured through live and completed` | the requested regression: `?game=R1` → pick fixture → URL is exactly `?next=w1` → fixture → live → completed keeps FUR vs MVK, URL unchanged |
+| `selecting a played game from a ?next= link leaves only that game in the URL` | the inverse |
+| `an older link that still carries both follows the fixture …` | `?game=R1&next=w1` once `w1` started |
+| `holds the loading frame within the bound, then says so …` | delayed schedule: skeleton, then "slow"; no unrelated match, no workspace, URL untouched |
+| `resolves by itself when the slow schedule finally answers` | recovery without a click |
+| `says the schedule is unavailable when it fails …` | unavailable schedule + **Try again** recovers |
+| `'Show the latest match' clears the link's fixture …` | escape hatch, URL `""` |
+| `treats a schedule whose upstream read failed as unavailable, not as 'gone'` | `source_ok: false` |
+| `a healthy schedule that does not list the fixture is 'gone' …` | labelled fallback |
+| `shows no such note on an ordinary visit, or when a started match is followed` | no false notices |
+
+(The existing "does not stick on a ?next= that left the schedule" test additionally asserts the `gone` note.)
+
+### Verification (clean main `b1f65a9c` baseline is unchanged from §6)
+
+| Check | PW1 `ffa42573` | PW1-A |
+|---|---|---|
+| Focused regression set (same paths as §6) | 1356 / 1356, 270 suites | **1366 / 1366**, 272 suites, 0 failures |
+| `tsc --noEmit -p tsconfig.app.json` | the 2 errors already on main | the same 2, nothing new |
+| `eslint` on the 3 touched files | 0 | 0 |
+| `vite build` | succeeds | succeeds (48 s, scratch outDir) |
+
+Screenshots reused from §7; the production "after" frames are unaffected (a fixture that resolves renders exactly as before).
+Two new, **simulated** frames show the new state, taken on a real fixture deep link (`?next=` FUR vs MVK, production match id)
+with `/upcoming` blocked or held in the browser: `sim-next-unavailable-1440x900.png` (HTTP 503) and
+`sim-next-slow-1440x900.png` (held past 2.5 s). Nothing about the schedule was changed upstream.
+
+### Not changed, on purpose
+
+Worlds priority and tiers, the rail, accent and year, the `settle` bound (2.5 s), the stale-fixture grace (30 min), the
+backend dependencies in §8, and the open decisions in §9 — all as reviewed.

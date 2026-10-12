@@ -45,7 +45,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowRight, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock, RefreshCw, WifiOff } from "lucide-react";
 
 import { EventMark } from "@/components/pro-play/media/EventMark";
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
@@ -92,6 +92,10 @@ import {
   teamLabel,
 } from "@/pages/esports/live/lib";
 import MatchStateBadge from "./MatchStateBadge";
+
+/** Why an explicit `?next=` fixture cannot be shown (PW1-A): the schedule is
+ *  slow or unavailable, or no longer lists it. */
+export type NextNotice = "slow" | "unavailable" | "gone";
 
 type Feed = ReturnType<typeof useLiveFeed>;
 type Match = ReturnType<typeof useLiveMatch>;
@@ -690,6 +694,8 @@ export default function MatchCenter({
   onSelectUpcoming,
   onClearPin,
   selecting = false,
+  nextNotice = null,
+  onRetrySchedule,
   lanes,
 }: {
   feed: Feed;
@@ -707,15 +713,23 @@ export default function MatchCenter({
    *  (PW1): the loading frame stays, so an unrelated match is not flashed
    *  in front of the Worlds fixture that replaces it. */
   selecting?: boolean;
+  /** An explicit `?next=` fixture the schedule cannot produce (PW1-A). `slow`
+   *  and `unavailable` replace the board with an honest state; `gone` is a
+   *  one-line note above the match the hub fell back to. */
+  nextNotice?: NextNotice | null;
+  onRetrySchedule?: () => void;
   /** The lane board for the selected game, drawn inside the match. */
   lanes?: React.ReactNode;
 }) {
   const { live, selectable, failing } = feed;
   const { selected, isFinal, detail, gold, insights } = match;
   const selectedIsLive = !!selectedId && live.some((g) => g.game_id === selectedId);
+  const nextBlocked = nextNotice === "slow" || nextNotice === "unavailable";
   const title = upcomingMatch
     ? "Up next"
-    : selectedIsLive
+    : nextBlocked
+      ? "Selected match"
+      : selectedIsLive
       ? "Live now"
       : pinnedId
         ? "Selected match"
@@ -806,7 +820,7 @@ export default function MatchCenter({
       </button>
     ) : null;
 
-  const rail = (
+  const railRow = (
     <Rail
       series={series}
       upcoming={upcoming}
@@ -822,6 +836,53 @@ export default function MatchCenter({
       }
     />
   );
+  const rail = (
+    <>
+      {railRow}
+      {nextNotice === "gone" && (
+        <p
+          role="status"
+          data-testid="next-gone"
+          className="border-b border-border/60 px-4 py-2 text-xs text-muted-foreground"
+        >
+          The match in this link is no longer on the schedule, so the latest match is shown instead.
+        </p>
+      )}
+    </>
+  );
+
+  if (nextBlocked) {
+    const slow = nextNotice === "slow";
+    return shell(
+      <>
+        {rail}
+        <div className="p-4" data-testid="next-unresolved" data-reason={nextNotice}>
+          <Alert variant={slow ? "default" : "destructive"}>
+            {slow ? <Clock className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+            <AlertTitle>{slow ? "Still loading that match" : "Couldn't load that match"}</AlertTitle>
+            <AlertDescription className="flex flex-col gap-2">
+              <span>
+                {slow
+                  ? "The schedule is taking longer than usual, so the match in this link can't be shown yet. It appears here as soon as the schedule answers — or open the latest match instead."
+                  : "The schedule didn't respond, so the match in this link can't be confirmed, and no other match is shown in its place."}
+              </span>
+              <span className="flex flex-wrap gap-2">
+                {onRetrySchedule && (
+                  <Button size="sm" variant="outline" onClick={onRetrySchedule}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    Try again
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={onClearPin}>
+                  Show the latest match
+                </Button>
+              </span>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </>,
+    );
+  }
 
   if (upcomingMatch) {
     return shell(

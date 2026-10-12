@@ -4,7 +4,7 @@ import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Trophy } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
-import MatchCenter from "@/components/pro-play/hub/MatchCenter";
+import MatchCenter, { type NextNotice } from "@/components/pro-play/hub/MatchCenter";
 import MatchWorkspace from "@/components/pro-play/hub/MatchWorkspace";
 import ProPlayDiscovery, { SearchEntry } from "@/components/pro-play/hub/ProPlayDiscovery";
 import TournamentSpotlight from "@/components/pro-play/hub/TournamentSpotlight";
@@ -57,8 +57,11 @@ import {
  * officially scheduled Worlds match (TBD sides shown as TBD) — and only
  * without any of those does the page fall back to the live/latest rule. The
  * automatic pick is never written to the URL; `?game=` / `?next=` stay the
- * only explicit choices and still win. A `?next=` whose match has since
- * started follows that match into its games rather than expiring.
+ * only explicit choices and still win; choosing a fixture clears `?game=` and
+ * choosing a game clears `?next=`. A `?next=` whose match has since started
+ * follows that match into its games rather than expiring, and one the
+ * schedule cannot produce (slow, unavailable, gone) is said so — an
+ * unrelated match is never shown in its place (PW1-A).
  *
  * Nothing on the hub is a placeholder. No match-specific quiz: the quiz API
  * cannot filter by match.
@@ -129,31 +132,56 @@ function ProPlayHubPage() {
   const { live, recent, selectable } = feed;
   const { query: scheduleQuery, matches: allUpcoming } = useUpcoming();
   const now = useMinuteNow();
-
-  // The feed lands before the schedule: hold the automatic pick (not an
-  // explicit one) until the schedule has answered, or for a bounded wait.
   const scheduleWaited = useElapsed(SCHEDULE_SETTLE_MS);
-  const settling = !pinnedId && scheduleQuery.isPending && !scheduleWaited;
 
+  /* An explicit `?next=` is an upcoming match. While it is upcoming the board
+   * shows it. Once it has started its games are in the feed under the same
+   * `match_id`: follow it into the live game, else its latest. */
+  const explicitUpcoming = nextId ? (allUpcoming.find((m) => m.match_id === nextId) ?? null) : null;
+  const roughSeries = useMemo(() => groupSeries(live, recent), [live, recent]);
+  const followedGameId =
+    nextId && !explicitUpcoming ? (roughSeries.find((s) => s.key === nextId)?.focus.game_id ?? null) : null;
+  // `?next=` is the later, more specific choice when a URL carries both
+  // (selecting a fixture clears `?game=`; an older link may still hold both).
+  const explicitGameId = followedGameId ?? pinnedId;
+
+  /* An explicit fixture the schedule cannot (yet) produce. Within the bound
+   * the loading frame holds; past it the board says so — it never shows an
+   * unrelated match as though it were the one in the link:
+   *  - slow: the schedule has not answered in time;
+   *  - unavailable: it failed, or upstream's own read failed;
+   *  - gone: the schedule is fine and no longer lists it (a started match is
+   *    followed above, so this is a fixture that left the schedule). */
+  const waitingOnNext = !!nextId && !explicitUpcoming && !followedGameId;
+  const scheduleUnusable = scheduleQuery.isError || scheduleQuery.data?.source_ok === false;
+  const nextNotice: NextNotice | null = !waitingOnNext
+    ? null
+    : scheduleQuery.isPending
+      ? scheduleWaited
+        ? "slow"
+        : null
+      : scheduleUnusable
+        ? "unavailable"
+        : "gone";
+  const nextBlocked = nextNotice === "slow" || nextNotice === "unavailable";
+
+  // The feed lands before the schedule: hold the pick (the automatic one, or
+  // an explicit fixture's) until the schedule has answered, or for a bounded
+  // wait. A game-only link never waits; neither does a followed match.
+  const gameOnly = !!pinnedId && !nextId;
+  const settling = !gameOnly && scheduleQuery.isPending && !scheduleWaited && !followedGameId;
+
+  /* Selection, the match centre's way: `?game=` / `?next=` are EXPLICIT
+   * choices and are never overridden; `auto` is the hub following the action
+   * when nobody has chosen — Worlds first (PW1), then live, then a FINISHED
+   * game. It is remembered (for stickiness) but never written to the URL. */
   const [auto, setAuto] = useState<HubPick | null>(null);
   const nextAuto = settling ? auto : nextHubAutoPick(auto, live, recent, allUpcoming, now);
   if (!samePick(nextAuto, auto)) setAuto(nextAuto);
 
-  /* An explicit `?next=` that is no longer upcoming has either started — its
-   * games are in the feed under the same `match_id` — or left the schedule.
-   * Started: follow it into the live game, else its latest. Gone: fall back
-   * to the automatic pick, never stay on an id nothing serves. */
-  const explicitUpcoming = nextId ? (allUpcoming.find((m) => m.match_id === nextId) ?? null) : null;
-  const roughSeries = useMemo(() => groupSeries(live, recent), [live, recent]);
-  const followedGameId =
-    !pinnedId && nextId && !explicitUpcoming
-      ? (roughSeries.find((s) => s.key === nextId)?.focus.game_id ?? null)
-      : null;
-  const explicitGameId = pinnedId ?? followedGameId;
-
   const autoGameId = nextAuto?.kind === "game" ? nextAuto.id : null;
   const autoUpcoming =
-    !explicitGameId && !explicitUpcoming && nextAuto?.kind === "upcoming"
+    !explicitGameId && !explicitUpcoming && !nextBlocked && nextAuto?.kind === "upcoming"
       ? (allUpcoming.find((m) => m.match_id === nextAuto.id) ?? null)
       : null;
   // The board's upcoming match: an explicit `?next=`, else the automatic
@@ -161,7 +189,7 @@ function ProPlayHubPage() {
   // list; a match that has since started is simply not offered any more.
   const upcomingMatch = explicitUpcoming ?? autoUpcoming;
 
-  const selectedId = explicitGameId ?? (upcomingMatch ? null : autoGameId);
+  const selectedId = nextBlocked ? null : (explicitGameId ?? (upcomingMatch ? null : autoGameId));
   const match = useLiveMatch(
     selectedId,
     selectable.find((g) => g.game_id === selectedId),
@@ -203,6 +231,10 @@ function ProPlayHubPage() {
   const selectUpcoming = (matchId: string) => {
     const next = new URLSearchParams(params);
     next.set(PRO_PLAY_NEXT_PARAM, matchId);
+    // One explicit choice at a time: a previous `?game=` pin must not be left
+    // behind to take the board back when this fixture starts and leaves
+    // `/upcoming` (the inverse is `select`, which clears `?next=`).
+    next.delete(PRO_PLAY_LIVE_GAME_PARAM);
     setParams(next, { replace: true });
   };
   const clearPin = () => {
@@ -292,6 +324,8 @@ function ProPlayHubPage() {
             selectedId={selectedId}
             pinnedId={explicitGameId}
             selecting={settling}
+            nextNotice={nextNotice}
+            onRetrySchedule={() => void scheduleQuery.refetch()}
             onSelect={select}
             onSelectUpcoming={selectUpcoming}
             onClearPin={clearPin}

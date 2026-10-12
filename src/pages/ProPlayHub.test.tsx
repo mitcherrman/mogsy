@@ -182,6 +182,8 @@ type Backend = {
   upcoming?: unknown[];
   /** Holds the `/upcoming` response until resolved (the feed lands first). */
   upcomingGate?: Promise<void>;
+  /** Overrides on the `/upcoming` envelope (e.g. `source_ok: false`). */
+  upcomingEnvelope?: Record<string, unknown>;
   /** `/live-esports/tournament/{id}` (DCGI1); undefined = an older backend (404). */
   tournament?: unknown;
   itemIndex?: { id: number; name: string; slug: string }[];
@@ -219,6 +221,7 @@ function installBackend(opts: Backend) {
         horizon_days: 14,
         limit: 12,
         matches: opts.upcoming,
+        ...opts.upcomingEnvelope,
       });
     }
     if (/\/api\/items(\?|$)/.test(path)) return ok({ ok: true, count: 0, items: opts.itemIndex ?? [] });
@@ -1528,6 +1531,8 @@ describe("PW1 · explicit selection is never overridden", () => {
     installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [worldsFixture("w2", "C9", "KC")] });
     renderHub(`${PRO_PLAY_ROUTE}?next=gone`);
     expect(await upcomingTitle()).toBe("C9 vs KC");
+    // Said, not silent: the link named a match the schedule no longer lists.
+    expect(within(matchCenter()).getByTestId("next-gone").textContent).toMatch(/no longer on the schedule/i);
   });
 });
 
@@ -1655,5 +1660,173 @@ describe("PW1 · load order and missing data", () => {
     renderHub();
     await within(matchCenter()).findByText(/Can't reach the live feed/i);
     expect(screen.queryByTestId("upcoming-summary")).toBeNull();
+  });
+});
+
+
+/* ── PW1-A: selection URL ownership and an explicit fixture the schedule is slow to produce ── */
+
+const clickChip = (re: RegExp) => {
+  const chip = railChips().find((c) => re.test(c.textContent ?? ""));
+  if (!chip) throw new Error(`no upcoming chip matching ${re}`);
+  fireEvent.click(chip);
+};
+
+describe("PW1-A · one explicit choice at a time", () => {
+  it("selecting a fixture from a ?game= link leaves only that fixture in the URL, and it stays featured through live and completed", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [worldsFixture("w1", "FUR", "MVK"), worldsFixture("w2", "C9", "KC", { scheduled_start: inHours(78) })],
+    });
+    const { client } = renderHubWithClient(`${PRO_PLAY_ROUTE}?game=R1`);
+    expect(await summaryTitle()).toBe("GEN vs T1");
+
+    // Select the Worlds fixture from UP NEXT: the old pin goes.
+    await waitFor(() => expect(railChips().length).toBeGreaterThan(0));
+    clickChip(/FUR/);
+    await waitFor(() => expect(location.search).toBe("?next=w1"));
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+
+    // The fixture starts and leaves /upcoming: the match, not the old pin.
+    installBackend({
+      live: [liveWorlds("W1-G1", "FUR", "MVK", { match_id: "w1" })],
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [worldsFixture("w2", "C9", "KC", { scheduled_start: inHours(78) })],
+    });
+    await client.refetchQueries({ queryKey: ["live-esports"] });
+    expect(await summaryTitle()).toBe("FUR vs MVK");
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Live now" })).toBeTruthy();
+    expect(location.search).toBe("?next=w1");
+
+    // It finishes: still that match.
+    installBackend({
+      recent: [worldsGame("W1-G1", "FUR", "MVK", { match_id: "w1" }), summary("R1", "GEN", "T1")],
+      upcoming: [worldsFixture("w2", "C9", "KC", { scheduled_start: inHours(78) })],
+    });
+    await client.refetchQueries({ queryKey: ["live-esports"] });
+    // An explicit choice, so "Selected match" (not the automatic "Previous match").
+    await waitFor(() =>
+      expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Selected match" })).toBeTruthy(),
+    );
+    expect(await summaryTitle()).toBe("FUR vs MVK");
+    expect(within(screen.getByTestId("match-summary")).getByTestId("match-state").textContent).toMatch(/Completed/i);
+    expect(location.search).toBe("?next=w1");
+  });
+
+  it("selecting a played game from a ?next= link leaves only that game in the URL", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [worldsFixture("w1", "FUR", "MVK")] });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    await upcomingTitle();
+    fireEvent.click(within(matchCenter()).getAllByTestId("series-chip")[0]);
+    await waitFor(() => expect(location.search).toBe("?game=R1"));
+    expect(await summaryTitle()).toBe("GEN vs T1");
+  });
+
+  it("an older link that still carries both follows the fixture (the later choice) once it starts", async () => {
+    installBackend({
+      live: [liveWorlds("W1-G1", "FUR", "MVK", { match_id: "w1" })],
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?game=R1&next=w1`);
+    expect(await summaryTitle()).toBe("FUR vs MVK");
+  });
+});
+
+describe("PW1-A · an explicit fixture the schedule is slow or unable to produce", () => {
+  it("holds the loading frame within the bound, then says so — never the unrelated match as the selection", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [worldsFixture("w1", "FUR", "MVK")],
+      upcomingGate: new Promise<void>(() => {}),
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    await waitFor(() => expect(requests.some((r) => r.includes("/live-esports/live"))).toBe(true));
+    await new Promise((r) => setTimeout(r, 150));
+    expect(screen.getByTestId("match-center-loading")).toBeTruthy();
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+
+    const note = await screen.findByTestId("next-unresolved", undefined, { timeout: 4500 });
+    expect(note.getAttribute("data-reason")).toBe("slow");
+    expect(note.textContent).toMatch(/Still loading that match/);
+    // The unrelated match is not on the board, and nothing is invented.
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+    expect(screen.queryByTestId("upcoming-summary")).toBeNull();
+    expect(document.getElementById("match-workspace")).toBeNull();
+    expect(within(matchCenter()).getByRole("heading", { level: 2, name: "Selected match" })).toBeTruthy();
+    // The reader's link is untouched.
+    expect(location.search).toBe("?next=w1");
+  }, 9000);
+
+  it("resolves by itself when the slow schedule finally answers", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [worldsFixture("w1", "FUR", "MVK")],
+      upcomingGate: gate,
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    await screen.findByTestId("next-unresolved", undefined, { timeout: 4500 });
+    release();
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+    expect(screen.queryByTestId("next-unresolved")).toBeNull();
+    expect(location.search).toBe("?next=w1");
+  }, 9000);
+
+  it("says the schedule is unavailable when it fails, and offers the latest match or another try", async () => {
+    // No /upcoming route at all (older backend / failing service).
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    const note = await screen.findByTestId("next-unresolved");
+    expect(note.getAttribute("data-reason")).toBe("unavailable");
+    expect(note.textContent).toMatch(/Couldn't load that match/);
+    expect(screen.queryByTestId("match-summary")).toBeNull();
+
+    // Try again, now that the schedule answers.
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [worldsFixture("w1", "FUR", "MVK")] });
+    fireEvent.click(within(note).getByRole("button", { name: /Try again/i }));
+    expect(await upcomingTitle()).toBe("FUR vs MVK");
+  });
+
+  it("'Show the latest match' clears the link's fixture and shows the automatic pick", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")] });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    const note = await screen.findByTestId("next-unresolved");
+    fireEvent.click(within(note).getByRole("button", { name: /Show the latest match/i }));
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    expect(location.search).toBe("");
+  });
+
+  it("treats a schedule whose upstream read failed as unavailable, not as 'gone'", async () => {
+    installBackend({
+      recent: [summary("R1", "GEN", "T1")],
+      upcoming: [],
+      upcomingEnvelope: { source_ok: false, stale: false },
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    const note = await screen.findByTestId("next-unresolved");
+    expect(note.getAttribute("data-reason")).toBe("unavailable");
+  });
+
+  it("a healthy schedule that does not list the fixture is 'gone': the fallback is labelled, not silent", async () => {
+    installBackend({ recent: [summary("R1", "GEN", "T1")], upcoming: [] });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    expect(await summaryTitle()).toBe("GEN vs T1");
+    expect(screen.getByTestId("next-gone")).toBeTruthy();
+    expect(screen.queryByTestId("next-unresolved")).toBeNull();
+  });
+
+  it("shows no such note on an ordinary visit, or when a started match is followed", async () => {
+    installBackend({
+      live: [liveWorlds("W1-G1", "FUR", "MVK", { match_id: "w1" })],
+      upcoming: [],
+    });
+    renderHub(`${PRO_PLAY_ROUTE}?next=w1`);
+    expect(await summaryTitle()).toBe("FUR vs MVK");
+    expect(screen.queryByTestId("next-gone")).toBeNull();
+    expect(screen.queryByTestId("next-unresolved")).toBeNull();
   });
 });
