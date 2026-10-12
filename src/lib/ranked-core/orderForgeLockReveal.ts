@@ -28,6 +28,16 @@ import {
 export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
   ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, SCRUB_MODULE_ID, MATCH_MODULE_ID, ASSEMBLY_MODULE_ID]);
 
+/**
+ * MG-P3.1 / RANKED-INT1 — the modules whose in-board reveal plays IN the
+ * result beat and whose backend declares `settlement_hold_ms` (MG-P2.1 hook):
+ * the server spaces the next round by the module's own hold, so the client's
+ * reveal hold follows the server's boundary instead of the generic beat.
+ * Every other module keeps the fixed beats.
+ */
+export const SERVER_PACED_REVEAL_MODULES: ReadonlySet<string> = new Set([
+  MATCH_MODULE_ID, ASSEMBLY_MODULE_ID]);
+
 function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
   return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge
     : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct

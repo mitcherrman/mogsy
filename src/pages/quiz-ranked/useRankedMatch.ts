@@ -13,7 +13,7 @@ import {
   REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS, anchoredRevealHoldMs,
   swapMediaWaitMs,
   MATCH_OUTRO_MS, PRESENTATION_HEADROOM_MS, REVEAL_ABSORB_CAP_MS,
-  specialTransitionBudgetMs, serverPacedHoldMs,
+  specialTransitionBudgetMs, serverPacedHoldMs, finalServerPacedHoldMs,
 } from "@/lib/ranked-core/pacing";
 import { projectSpecialTransition } from "@/lib/ranked-core/flow/rankedFlow";
 import { META_REFLEX_MODULE_ID } from "@/lib/ranked-core/modules/metaReflexModule";
@@ -31,10 +31,11 @@ import type {
   SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import {
-  META_REFLEX_MIXED_VERSION, readOwnChallengeReveal, readSegmentSettlement,
+  META_REFLEX_MIXED_VERSION, readOwnChallengeReveal, readResolvedPresentationMs,
+  readSegmentSettlement,
 } from "@/lib/ranked-public/contracts";
 import {
-  INLINE_LOCK_REVEAL_MODULES, type OrderForgeLockRevealRef,
+  INLINE_LOCK_REVEAL_MODULES, SERVER_PACED_REVEAL_MODULES, type OrderForgeLockRevealRef,
 } from "@/lib/ranked-core/orderForgeLockReveal";
 import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
@@ -504,7 +505,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
                                         * until the server's boundary rather
                                         * than the generic result beat.
                                         */
-                                       serverPaced = false) => {
+                                       serverPaced = false,
+                                       /**
+                                        * RANKED-INT1 — the round's stored
+                                        * `presentation_ms`, used by a
+                                        * server-paced module only when there
+                                        * is no next boundary (the final round).
+                                        */
+                                       presentationMs: number | null = null) => {
     if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
     setRevealHold(true);
     // The LONGEST applicable allowance, not a chain of branches: a round that
@@ -517,7 +525,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       hasEvidence ? REVEAL_HOLD_EVIDENCE_MS : 0,
       // The server already spaced the next board by the module's own window;
       // the title beat keeps its share, exactly as `anchoredRevealHoldMs` does.
-      serverPaced ? serverPacedHoldMs(msUntilNextAnswerable, MODULE_TITLE_MS) : 0,
+      // RANKED-INT1 — with no next board (the final round) the same hold comes
+      // from the round's own stored presentation, so the match-complete beat
+      // waits for the correction instead of cutting it at the generic 1.5 s.
+      serverPaced
+        ? (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)
+          ? finalServerPacedHoldMs(presentationMs, MODULE_TITLE_MS)
+          : serverPacedHoldMs(msUntilNextAnswerable, MODULE_TITLE_MS))
+        : 0,
     );
     // RFX1 — end no later than the server's `started_at − title`, so a late
     // discovery shortens the reveal instead of the next module's intro.
@@ -629,10 +644,13 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       const hasEvidence = settlement !== null
         && conciseEvidence(settlement.questionExplanation) !== null;
       const nextStart = opts.nextStartedAt ? Date.parse(opts.nextStartedAt) : NaN;
+      // MG-P3.1 / RANKED-INT1 — only a module whose backend paces its own
+      // settlement (Match Grid, Assembly); every other module keeps its beat.
+      const serverPaced = segment !== null
+        && SERVER_PACED_REVEAL_MODULES.has(segment.reveal.moduleId);
       beginRevealHold(leveledUp, hasEvidence, Number.isNaN(nextStart)
         ? null : nextStart - Date.now() - (opts.skewMs ?? 0), opts.special ?? null,
-        // MG-P3.1 — only a Match Grid settlement (its server window, MG-P2.1).
-        !!segment?.reveal.match);
+        serverPaced, serverPaced ? readResolvedPresentationMs(env.payload) : null);
     }
   }, [matchId, beginRevealHold]);
 

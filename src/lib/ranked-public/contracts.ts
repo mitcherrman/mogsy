@@ -3371,6 +3371,18 @@ export interface SegmentSettlementView {
  * The damage and ability values are read from the same authoritative
  * settlement the arena already renders — nothing is recomputed here.
  */
+/**
+ * RANKED-INT1 — the server's stored lead-in after this resolved round
+ * (`presentation_ms`, written at resolution: the result beat or a module's
+ * own settlement hold, plus the next beat). Null when absent or malformed,
+ * which is every pre-pacing backend: callers then keep their ordinary beat.
+ */
+export function readResolvedPresentationMs(payload: unknown): number | null {
+  if (!payload || typeof payload !== "object") return null;
+  const v = (payload as Record<string, unknown>).presentation_ms;
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
+}
+
 export function readSegmentSettlement(payload: unknown): SegmentSettlementView | null {
   const reveal = readSegmentReveal(payload);
   if (!reveal) return null;

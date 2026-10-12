@@ -72,3 +72,73 @@ describe("a server-paced (Match Grid) settlement", () => {
     }
   });
 });
+
+// RANKED-INT1 — Assembly joins Match Grid as a server-paced module, and the
+// final round (no next `started_at`) holds from the round's stored
+// `presentation_ms` instead of falling back to the generic beat.
+import { finalServerPacedHoldMs } from "@/lib/ranked-core/pacing";
+import { SERVER_PACED_REVEAL_MODULES } from "@/lib/ranked-core/orderForgeLockReveal";
+import { readResolvedPresentationMs, readSegmentSettlement } from "@/lib/ranked-public/contracts";
+import { ASSEMBLY_TIMING } from "@/lib/interaction-grammar/positionalAssembly";
+import rosterCapture from "@/lib/ranked-public/__fixtures__/assemblyRosterLockServerCapture.json";
+import draftCapture from "@/lib/ranked-public/__fixtures__/assemblyDraftMemoryServerCapture.json";
+import scrubCapture from "@/lib/ranked-public/__fixtures__/scrubServerCapture.json";
+
+describe("RANKED-INT1 — the shared server-paced hold (Match Grid + Assembly)", () => {
+  const TITLE = 1400;
+
+  it("is exactly Match Grid and Assembly; every other module keeps its beat", () => {
+    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["assembly", "match"]);
+    for (const id of ["scrub", "reconstruct", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
+      expect(SERVER_PACED_REVEAL_MODULES.has(id)).toBe(false);
+    }
+  });
+
+  it("gives a wrong Assembly board its whole server window (5800 → 4400)", () => {
+    const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(5800, TITLE));
+    expect(anchoredRevealHoldMs(nominal, 5800, TITLE)).toBe(4400);
+  });
+
+  it("the window covers the primitive's own measured correction plus reading time", () => {
+    // Backend `assembly.REVEAL_CHOREOGRAPHY_MS` (1900) is THIS clock's plate-in.
+    expect(ASSEMBLY_TIMING.contextEnd).toBe(1900);
+    expect(4400 - ASSEMBLY_TIMING.contextEnd).toBeGreaterThanOrEqual(2500);
+    // Exact boards skip the settle stage: plate in by 1100, held to 3600.
+    const exactPlateIn = ASSEMBLY_TIMING.marksEnd + (ASSEMBLY_TIMING.contextEnd - ASSEMBLY_TIMING.settleEnd);
+    expect(exactPlateIn).toBe(1100);
+    expect(3600 - exactPlateIn).toBeGreaterThanOrEqual(2500);
+  });
+
+  it("the FINAL round holds the server's stored hold, not the generic 1.5 s", () => {
+    expect(finalServerPacedHoldMs(5800, TITLE)).toBe(4400); // Assembly, wrong / timeout
+    expect(finalServerPacedHoldMs(5000, TITLE)).toBe(3600); // Assembly, all exact
+    expect(finalServerPacedHoldMs(5900, TITLE)).toBe(4500); // Match Grid, not exact
+    expect(finalServerPacedHoldMs(null, TITLE)).toBe(0);    // old backend: beat unchanged
+    expect(Math.max(REVEAL_HOLD_MS, finalServerPacedHoldMs(null, TITLE))).toBe(REVEAL_HOLD_MS);
+  });
+
+  it.each([["roster_lock", rosterCapture], ["draft_memory", draftCapture]])(
+    "reads the REAL final %s round's stored presentation", (_family, cap) => {
+      const final = cap.resolved_timeout.payload;
+      expect(final.round_number).toBe(3);
+      expect(readResolvedPresentationMs(final)).toBe(5800);
+      expect(readSegmentSettlement(final)?.reveal.moduleId).toBe("assembly");
+      expect(finalServerPacedHoldMs(readResolvedPresentationMs(final), TITLE)).toBe(4400);
+      // The same number the resume path carries for the finished match.
+      expect(readResolvedPresentationMs(cap.resume_final.payload.latest_resolved_round.payload)).toBe(5800);
+    });
+
+  it("a non-server-paced final round (Scrub) is unaffected", () => {
+    const final = scrubCapture.resume_final.payload.latest_resolved_round.payload;
+    expect(readSegmentSettlement(final)?.reveal.moduleId).toBe("scrub");
+    expect(SERVER_PACED_REVEAL_MODULES.has("scrub")).toBe(false);
+  });
+
+  it("refuses a malformed presentation (the ordinary beat then stands)", () => {
+    for (const bad of [undefined, null, -1, 1.5, "5800", {}]) {
+      expect(readResolvedPresentationMs({ presentation_ms: bad })).toBeNull();
+    }
+    expect(readResolvedPresentationMs(null)).toBeNull();
+    expect(readResolvedPresentationMs({ presentation_ms: 0 })).toBe(0);
+  });
+});

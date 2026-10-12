@@ -106,6 +106,25 @@ export function serverPacedHoldMs(msUntilNextAnswerable: number | null, titleMs:
 }
 
 /**
+ * RANKED-INT1 — the same server-paced hold when there is NO next round (the
+ * final round: the match ended in the transaction that settled it), so no
+ * `started_at` exists to hold towards.
+ *
+ * The server still wrote the round's `presentation_ms` at resolution — the
+ * module's own settlement hold plus the module title, since no special beat
+ * follows the last round — and stored it with the round, never recomputed.
+ * The hold is that number minus the title, i.e. exactly what the round would
+ * have shown before a next board. Counted from this client's discovery, so it
+ * can only run longer than the server's own window, never cut it short; with
+ * no next deadline, nothing waits on it but the match-complete beat.
+ * 0 (the ordinary beat stands) when the payload carries no presentation.
+ */
+export function finalServerPacedHoldMs(presentationMs: number | null, titleMs: number): number {
+  if (presentationMs === null || Number.isNaN(presentationMs)) return 0;
+  return Math.max(0, presentationMs - titleMs);
+}
+
+/**
  * RFX1 2B1 — the least time the next question stays on screen, locked, before
  * it becomes answerable, when the swap waited for its media. The module title
  * owns `MODULE_TITLE_MS` of the lead-in; the swap may borrow the part of it

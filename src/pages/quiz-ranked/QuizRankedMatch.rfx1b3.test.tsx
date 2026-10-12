@@ -70,6 +70,11 @@ let segmentOverride: Record<string, unknown> | null;
 let activeRound: number;
 /** Round-trip cost on the two reads the ending needs. Production has one. */
 let endingLatencyMs: number;
+/**
+ * RANKED-INT1 — extra fields for every resolved round (a captured server
+ * `segment_reveal` + its stored `presentation_ms`), or null for the quiz round.
+ */
+let resolvedExtra: Record<string, unknown> | null;
 
 function player(id: string) {
   return {
@@ -173,6 +178,7 @@ beforeEach(() => {
   segmentOverride = null;
   activeRound = 1;
   endingLatencyMs = 0;
+  resolvedExtra = null;
   startedAt = Date.now() + LEAD_ON_ARRIVAL;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const u = String(url);
@@ -185,7 +191,7 @@ beforeEach(() => {
       return json({
         schema_version: "ranked_duel.resolved_round.v2", projection_type: "resolved_round",
         match_id: "m1", round_number: rn, server_time: iso(Date.now()),
-        payload: { ...resolvedPayload(), round_number: rn, question_id: `q${rn}` },
+        payload: { ...resolvedPayload(), round_number: rn, question_id: `q${rn}`, ...(resolvedExtra ?? {}) },
       });
     }
     if (u.endsWith("/resume")) {
@@ -810,4 +816,66 @@ describe("RFX1 2B3 — when the final round IS a Meta Reflex block", () => {
       + SPECIAL_TRANSITION_VISIBLE_MS["meta-reflex-entry"]);
     expect(startedAt - endedAt).toBeGreaterThan(0);
   }, 25000);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* RANKED-INT1 — a server-paced FINAL round holds its correction               */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+import rosterCapture from "@/lib/ranked-public/__fixtures__/assemblyRosterLockServerCapture.json";
+import scrubCapture from "@/lib/ranked-public/__fixtures__/scrubServerCapture.json";
+
+describe("RANKED-INT1 — the final round's correction is not cut by the match-complete beat", () => {
+  /** Play to the end with the captured final settlement; sample the phases. */
+  async function sampleEnding(extra: Record<string, unknown>) {
+    resolvedExtra = extra;
+    startedAt = Date.now() - 4000;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
+    await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
+    liveOver = true;
+    const seen: { phase: string; at: number; outro: boolean }[] = [];
+    const deadline = Date.now() + 16_000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 15));
+      const phase = arena() === null
+        ? (endScreen() ? "end-screen" : "blank") : (phaseOf() ?? "?");
+      const last = seen[seen.length - 1];
+      if (!last || last.phase !== phase) seen.push({ phase, at: Date.now(), outro: outro() !== null });
+      if (phase === "end-screen") break;
+    }
+    return seen;
+  }
+
+  it("Assembly: the final correction holds the server's stored hold, then the outro, then the end",
+    async () => {
+      const final = rosterCapture.resolved_timeout.payload;
+      expect(final.presentation_ms).toBe(5800);
+      const seen = await sampleEnding({
+        segment_reveal: final.segment_reveal, presentation_ms: final.presentation_ms });
+      expect(seen.map((s) => s.phase)).toEqual(["answering", "revealing", "match-outro", "end-screen"]);
+      // Nothing announces the end of the match over the correction.
+      expect(seen[1].outro).toBe(false);
+      // The correction is held for the whole server hold (5800 − title = 4400),
+      // not the generic 1.5 s that let the outro cover the context plate.
+      expect(seen[2].at - seen[1].at).toBeGreaterThanOrEqual(4400 - 150);
+      expect(seen[3].at - seen[2].at).toBeGreaterThanOrEqual(MATCH_OUTRO_MS - 100);
+    }, 30000);
+
+  it("Scrub (not server-paced): its final round keeps the ordinary beat", async () => {
+    const final = scrubCapture.resume_final.payload.latest_resolved_round.payload;
+    const seen = await sampleEnding({
+      segment_reveal: final.segment_reveal, presentation_ms: final.presentation_ms });
+    expect(seen.map((s) => s.phase)).toEqual(["answering", "revealing", "match-outro", "end-screen"]);
+    const held = seen[2].at - seen[1].at;
+    expect(held).toBeGreaterThanOrEqual(REVEAL_HOLD_MIN_MS - 100);
+    expect(held).toBeLessThan(3000);
+  }, 30000);
+
+  it("a server-paced final round from a backend that stored no presentation keeps the ordinary beat",
+    async () => {
+      const final = rosterCapture.resolved_timeout.payload;
+      const seen = await sampleEnding({ segment_reveal: final.segment_reveal });
+      expect(seen.map((s) => s.phase)).toEqual(["answering", "revealing", "match-outro", "end-screen"]);
+      expect(seen[2].at - seen[1].at).toBeLessThan(3000);
+    }, 30000);
 });

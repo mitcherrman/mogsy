@@ -38,9 +38,9 @@
      "final_round_number": 3,
      "host": "playtest",
      "is_bot_match": true,
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "opponent_class": "tank",
-     "opponent_display_name": "Sparring Bot",
+     "opponent_display_name": "Practice Dummy",
      "opponent_is_bot": true,
      "opponent_role": null,
      "rating_after": null,
@@ -59,21 +59,21 @@
  },
  "meta": {
   "canonical": {
-   "1": "w4",
-   "2": "w6",
-   "3": "w13"
+   "1": "w6",
+   "2": "w4",
+   "3": "w6"
   },
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "preset": "admin.scrub",
   "submitted": {
-   "1": "w4",
+   "1": "w6",
    "2": "w15",
    "3": "w1"
   },
   "viewer_user_id": "0a11d111-0000-4000-8000-000000000001"
  },
  "private_after_bot_settled_correct": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:48.300000+00:00",
@@ -85,7 +85,7 @@
    },
    "completed_rounds": 1,
    "completion_reason": null,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -137,7 +137,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 3,
      "total_xp": 12
@@ -153,7 +153,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:2",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -428,8 +428,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "duo",
-        "target_level": 4,
-        "text": "Find the first wave where a duo laner reaches Level 4."
+        "target_level": 3,
+        "text": "Find the first wave where a duo laner reaches Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -440,7 +440,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 4.",
+     "prompt": "Find the first wave where a duo laner reaches Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -483,7 +483,7 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "private_after_bot_settled_wrong": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:01:04.750000+00:00",
@@ -495,7 +495,7 @@
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -547,10 +547,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
-     "score": 6,
-     "total_xp": 24
+     "score": 3,
+     "total_xp": 21
     }
    ],
    "presence": {
@@ -563,7 +563,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -836,10 +836,10 @@
        ],
        "footnote": "Checkpoints are wave spawn times \u00b7 levels at wave granularity",
        "objective": {
-        "cannon_only": false,
+        "cannon_only": true,
         "lane": "duo",
-        "target_level": 6,
-        "text": "Find the first wave where a duo laner reaches Level 6."
+        "target_level": 3,
+        "text": "Find the first cannon wave where a duo laner is at least Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -850,7 +850,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 6.",
+     "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -893,7 +893,7 @@
   "server_time": "2026-09-09T12:00:29.300000+00:00"
  },
  "private_after_refusal": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:01:04.750000+00:00",
@@ -905,7 +905,7 @@
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -957,10 +957,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
-     "score": 6,
-     "total_xp": 24
+     "score": 3,
+     "total_xp": 21
     }
    ],
    "presence": {
@@ -973,7 +973,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1246,10 +1246,10 @@
        ],
        "footnote": "Checkpoints are wave spawn times \u00b7 levels at wave granularity",
        "objective": {
-        "cannon_only": false,
+        "cannon_only": true,
         "lane": "duo",
-        "target_level": 6,
-        "text": "Find the first wave where a duo laner reaches Level 6."
+        "target_level": 3,
+        "text": "Find the first cannon wave where a duo laner is at least Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -1260,7 +1260,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 6.",
+     "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -1303,7 +1303,7 @@
   "server_time": "2026-09-09T12:00:35.300000+00:00"
  },
  "private_before_bot_lock_correct": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -1315,7 +1315,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1367,7 +1367,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -1383,7 +1383,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:1",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1658,8 +1658,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "solo",
-        "target_level": 4,
-        "text": "Find the first wave where a solo laner reaches Level 4."
+        "target_level": 5,
+        "text": "Find the first wave where a solo laner reaches Level 5."
        },
        "source": {
         "map": "summoners_rift",
@@ -1670,7 +1670,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a solo laner reaches Level 4.",
+     "prompt": "Find the first wave where a solo laner reaches Level 5.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -1713,7 +1713,7 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "private_before_bot_lock_wrong": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:48.300000+00:00",
@@ -1725,7 +1725,7 @@
    },
    "completed_rounds": 1,
    "completion_reason": null,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1777,7 +1777,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 3,
      "total_xp": 12
@@ -1793,7 +1793,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:2",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -2068,8 +2068,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "duo",
-        "target_level": 4,
-        "text": "Find the first wave where a duo laner reaches Level 4."
+        "target_level": 3,
+        "text": "Find the first wave where a duo laner reaches Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -2080,7 +2080,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 4.",
+     "prompt": "Find the first wave where a duo laner reaches Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -2123,7 +2123,7 @@
   "server_time": "2026-09-09T12:00:29.300000+00:00"
  },
  "private_locked": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:01:04.750000+00:00",
@@ -2135,7 +2135,7 @@
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -2187,10 +2187,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
-     "score": 6,
-     "total_xp": 24
+     "score": 3,
+     "total_xp": 21
     }
    ],
    "presence": {
@@ -2203,7 +2203,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -2476,10 +2476,10 @@
        ],
        "footnote": "Checkpoints are wave spawn times \u00b7 levels at wave granularity",
        "objective": {
-        "cannon_only": false,
+        "cannon_only": true,
         "lane": "duo",
-        "target_level": 6,
-        "text": "Find the first wave where a duo laner reaches Level 6."
+        "target_level": 3,
+        "text": "Find the first cannon wave where a duo laner is at least Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -2490,7 +2490,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 6.",
+     "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -2512,40 +2512,41 @@
     "own_card_started_at": null,
     "own_challenge_reveals": [
      {
-      "canonical_checkpoint": "w13",
+      "canonical_checkpoint": "w6",
       "challenge_index": 0,
       "checkpoint": "w1",
       "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
       "is_correct": false,
       "proof": {
        "after": {
-        "breakpoint_note": "Level 6 (1st melee in wave)",
-        "cumulative_xp": "2552.55",
-        "is_cannon_wave": false,
-        "level": 6,
+        "breakpoint_note": "Level 4 (1st cannon in wave)",
+        "cumulative_xp": "1185.60",
+        "is_cannon_wave": true,
+        "level": 4,
         "satisfied": true,
-        "spawn_time_display": "6:30",
-        "token": "w13",
-        "wave_number": 13
+        "spawn_time_display": "3:00",
+        "token": "w6",
+        "wave_number": 6
        },
        "before": {
         "breakpoint_note": null,
-        "cumulative_xp": "2371.20",
-        "is_cannon_wave": true,
-        "level": 5,
+        "cumulative_xp": "955.50",
+        "is_cannon_wave": false,
+        "level": 3,
         "satisfied": false,
-        "spawn_time_display": "6:00",
-        "token": "w12",
-        "wave_number": 12
+        "spawn_time_display": "2:30",
+        "token": "w5",
+        "wave_number": 5
        },
-       "cannon_only": false,
+       "cannon_only": true,
        "lane": "duo",
-       "target_level": 6,
-       "threshold_xp": "2400"
+       "target_level": 3,
+       "threshold_xp": "660"
       },
       "satisfied_checkpoints": [
-       "w13",
-       "w14",
+       "w6",
+       "w9",
+       "w12",
        "w15"
       ],
       "traverse_path": [
@@ -2554,14 +2555,7 @@
        "w3",
        "w4",
        "w5",
-       "w6",
-       "w7",
-       "w8",
-       "w9",
-       "w10",
-       "w11",
-       "w12",
-       "w13"
+       "w6"
       ]
      }
     ],
@@ -2589,7 +2583,7 @@
   "server_time": "2026-09-09T12:00:35.300000+00:00"
  },
  "private_open": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -2601,7 +2595,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -2653,7 +2647,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -2669,7 +2663,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:1",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -2944,8 +2938,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "solo",
-        "target_level": 4,
-        "text": "Find the first wave where a solo laner reaches Level 4."
+        "target_level": 5,
+        "text": "Find the first wave where a solo laner reaches Level 5."
        },
        "source": {
         "map": "summoners_rift",
@@ -2956,7 +2950,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a solo laner reaches Level 4.",
+     "prompt": "Find the first wave where a solo laner reaches Level 5.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -2999,7 +2993,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "public_after_bot_lock_correct": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:48.300000+00:00",
@@ -3012,7 +3006,7 @@
    "completed_rounds": 1,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -3038,7 +3032,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 3,
      "total_xp": 12
@@ -3060,7 +3054,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:2",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -3341,8 +3335,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "duo",
-        "target_level": 4,
-        "text": "Find the first wave where a duo laner reaches Level 4."
+        "target_level": 3,
+        "text": "Find the first wave where a duo laner reaches Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -3353,7 +3347,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 4.",
+     "prompt": "Find the first wave where a duo laner reaches Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -3396,7 +3390,7 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "public_after_bot_lock_wrong": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:01:04.750000+00:00",
@@ -3409,7 +3403,7 @@
    "completed_rounds": 2,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -3435,10 +3429,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
-     "score": 6,
-     "total_xp": 24
+     "score": 3,
+     "total_xp": 21
     }
    ],
    "playtest": {
@@ -3457,7 +3451,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -3736,10 +3730,10 @@
        ],
        "footnote": "Checkpoints are wave spawn times \u00b7 levels at wave granularity",
        "objective": {
-        "cannon_only": false,
+        "cannon_only": true,
         "lane": "duo",
-        "target_level": 6,
-        "text": "Find the first wave where a duo laner reaches Level 6."
+        "target_level": 3,
+        "text": "Find the first cannon wave where a duo laner is at least Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -3750,7 +3744,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 6.",
+     "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -3793,7 +3787,7 @@
   "server_time": "2026-09-09T12:00:29.300000+00:00"
  },
  "public_before_bot_lock_correct": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -3806,7 +3800,7 @@
    "completed_rounds": 0,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -3832,7 +3826,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -3854,7 +3848,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:1",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -4135,8 +4129,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "solo",
-        "target_level": 4,
-        "text": "Find the first wave where a solo laner reaches Level 4."
+        "target_level": 5,
+        "text": "Find the first wave where a solo laner reaches Level 5."
        },
        "source": {
         "map": "summoners_rift",
@@ -4147,7 +4141,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a solo laner reaches Level 4.",
+     "prompt": "Find the first wave where a solo laner reaches Level 5.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -4190,7 +4184,7 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "public_before_bot_lock_wrong": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:48.300000+00:00",
@@ -4203,7 +4197,7 @@
    "completed_rounds": 1,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -4229,7 +4223,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 3,
      "total_xp": 12
@@ -4251,7 +4245,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:2",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -4532,8 +4526,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "duo",
-        "target_level": 4,
-        "text": "Find the first wave where a duo laner reaches Level 4."
+        "target_level": 3,
+        "text": "Find the first wave where a duo laner reaches Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -4544,7 +4538,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 4.",
+     "prompt": "Find the first wave where a duo laner reaches Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -4587,7 +4581,7 @@
   "server_time": "2026-09-09T12:00:29.300000+00:00"
  },
  "public_locked": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:01:04.750000+00:00",
@@ -4600,7 +4594,7 @@
    "completed_rounds": 2,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -4626,10 +4620,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
-     "score": 6,
-     "total_xp": 24
+     "score": 3,
+     "total_xp": 21
     }
    ],
    "playtest": {
@@ -4648,7 +4642,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -4927,10 +4921,10 @@
        ],
        "footnote": "Checkpoints are wave spawn times \u00b7 levels at wave granularity",
        "objective": {
-        "cannon_only": false,
+        "cannon_only": true,
         "lane": "duo",
-        "target_level": 6,
-        "text": "Find the first wave where a duo laner reaches Level 6."
+        "target_level": 3,
+        "text": "Find the first cannon wave where a duo laner is at least Level 3."
        },
        "source": {
         "map": "summoners_rift",
@@ -4941,7 +4935,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a duo laner reaches Level 6.",
+     "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -4963,40 +4957,41 @@
     "own_card_started_at": null,
     "own_challenge_reveals": [
      {
-      "canonical_checkpoint": "w13",
+      "canonical_checkpoint": "w6",
       "challenge_index": 0,
       "checkpoint": "w1",
       "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
       "is_correct": false,
       "proof": {
        "after": {
-        "breakpoint_note": "Level 6 (1st melee in wave)",
-        "cumulative_xp": "2552.55",
-        "is_cannon_wave": false,
-        "level": 6,
+        "breakpoint_note": "Level 4 (1st cannon in wave)",
+        "cumulative_xp": "1185.60",
+        "is_cannon_wave": true,
+        "level": 4,
         "satisfied": true,
-        "spawn_time_display": "6:30",
-        "token": "w13",
-        "wave_number": 13
+        "spawn_time_display": "3:00",
+        "token": "w6",
+        "wave_number": 6
        },
        "before": {
         "breakpoint_note": null,
-        "cumulative_xp": "2371.20",
-        "is_cannon_wave": true,
-        "level": 5,
+        "cumulative_xp": "955.50",
+        "is_cannon_wave": false,
+        "level": 3,
         "satisfied": false,
-        "spawn_time_display": "6:00",
-        "token": "w12",
-        "wave_number": 12
+        "spawn_time_display": "2:30",
+        "token": "w5",
+        "wave_number": 5
        },
-       "cannon_only": false,
+       "cannon_only": true,
        "lane": "duo",
-       "target_level": 6,
-       "threshold_xp": "2400"
+       "target_level": 3,
+       "threshold_xp": "660"
       },
       "satisfied_checkpoints": [
-       "w13",
-       "w14",
+       "w6",
+       "w9",
+       "w12",
        "w15"
       ],
       "traverse_path": [
@@ -5005,14 +5000,7 @@
        "w3",
        "w4",
        "w5",
-       "w6",
-       "w7",
-       "w8",
-       "w9",
-       "w10",
-       "w11",
-       "w12",
-       "w13"
+       "w6"
       ]
      }
     ],
@@ -5040,7 +5028,7 @@
   "server_time": "2026-09-09T12:00:35.300000+00:00"
  },
  "public_open": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -5053,7 +5041,7 @@
    "completed_rounds": 0,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -5079,7 +5067,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -5101,7 +5089,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:1",
+    "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -5382,8 +5370,8 @@
        "objective": {
         "cannon_only": false,
         "lane": "solo",
-        "target_level": 4,
-        "text": "Find the first wave where a solo laner reaches Level 4."
+        "target_level": 5,
+        "text": "Find the first wave where a solo laner reaches Level 5."
        },
        "source": {
         "map": "summoners_rift",
@@ -5394,7 +5382,7 @@
       }
      ],
      "family": "wave_xp",
-     "prompt": "Find the first wave where a solo laner reaches Level 4.",
+     "prompt": "Find the first wave where a solo laner reaches Level 5.",
      "reveal_window_ms": 3000
     },
     "module_id": "scrub",
@@ -5437,11 +5425,11 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "queue_join": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "class_id": null,
    "enqueued_at": "2026-09-09T12:00:00+00:00",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "queue_version": 1,
    "role": null,
    "status": "matched"
@@ -5452,16 +5440,16 @@
   "server_time": "2026-09-09T12:00:00+00:00"
  },
  "resolved_correct": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:00:34.400000+00:00",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_9c37734bc706755a": 170
+    "p_0727105a61ca9071": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -5471,7 +5459,7 @@
      "score_before": 0,
      "speed_bonus_points": 0
     },
-    "p_9c37734bc706755a": {
+    "p_0727105a61ca9071": {
      "base_points": 2,
      "points_awarded": 3,
      "score_after": 3,
@@ -5547,7 +5535,7 @@
      "level_before": 1,
      "level_up_events": [],
      "outcome": "correct",
-     "player_id": "p_9c37734bc706755a",
+     "player_id": "p_0727105a61ca9071",
      "points_awarded": 3,
      "reached_zero_hp": false,
      "remaining_charges": {
@@ -5556,7 +5544,7 @@
      "score_after": 3,
      "score_before": 0,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:12.015629+00:00",
+     "submitted_at": "2026-09-09T12:00:11.425907+00:00",
      "timed_out": false,
      "total_xp_after": 12,
      "xp_gained": 12
@@ -5564,10 +5552,10 @@
    ],
    "presentation_ms": 2900,
    "pressure_applied": true,
-   "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:1",
+   "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:1",
    "round_number": 1,
    "segment_reveal": {
-    "canonical_checkpoint": "w4",
+    "canonical_checkpoint": "w6",
     "challenge_count": 1,
     "checkpoints": [
      "w1",
@@ -5593,7 +5581,7 @@
     "players": {
      "0a11d111-0000-4000-8000-000000000001": {
       "base_points": 2,
-      "checkpoint": "w4",
+      "checkpoint": "w6",
       "correct": 1,
       "duration_ms": 11000,
       "finished_first": false,
@@ -5602,55 +5590,53 @@
       "segment_result": "loss",
       "speed_bonus_points": 0,
       "traverse_path": [
-       "w4"
+       "w6"
       ],
       "unanswered": 0
      },
-     "p_9c37734bc706755a": {
+     "p_0727105a61ca9071": {
       "base_points": 2,
-      "checkpoint": "w4",
+      "checkpoint": "w6",
       "correct": 1,
-      "duration_ms": 7616,
+      "duration_ms": 7026,
       "finished_first": true,
       "incorrect": 0,
       "points_awarded": 3,
       "segment_result": "win",
       "speed_bonus_points": 1,
       "traverse_path": [
-       "w4"
+       "w6"
       ],
       "unanswered": 0
      }
     },
     "proof": {
      "after": {
-      "breakpoint_note": "Level 4 (2nd caster in wave)",
-      "cumulative_xp": "1191",
-      "is_cannon_wave": false,
-      "level": 4,
+      "breakpoint_note": "Level 5 (3rd caster in wave)",
+      "cumulative_xp": "1824",
+      "is_cannon_wave": true,
+      "level": 5,
       "satisfied": true,
-      "spawn_time_display": "2:00",
-      "token": "w4",
-      "wave_number": 4
+      "spawn_time_display": "3:00",
+      "token": "w6",
+      "wave_number": 6
      },
      "before": {
-      "breakpoint_note": "Level 3 (2nd melee in wave)",
-      "cumulative_xp": "912",
-      "is_cannon_wave": true,
-      "level": 3,
+      "breakpoint_note": null,
+      "cumulative_xp": "1470",
+      "is_cannon_wave": false,
+      "level": 4,
       "satisfied": false,
-      "spawn_time_display": "1:30",
-      "token": "w3",
-      "wave_number": 3
+      "spawn_time_display": "2:30",
+      "token": "w5",
+      "wave_number": 5
      },
      "cannon_only": false,
      "lane": "solo",
-     "target_level": 4,
-     "threshold_xp": "1140"
+     "target_level": 5,
+     "threshold_xp": "1720"
     },
     "satisfied_checkpoints": [
-     "w4",
-     "w5",
      "w6",
      "w7",
      "w8",
@@ -5674,16 +5660,16 @@
   "server_time": "2026-09-09T12:00:15.400000+00:00"
  },
  "resolved_held": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "completion_reason": "segments_complete",
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:01:04.750000+00:00",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": true,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_9c37734bc706755a": 170
+    "p_0727105a61ca9071": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -5693,11 +5679,11 @@
      "score_before": 2,
      "speed_bonus_points": 0
     },
-    "p_9c37734bc706755a": {
-     "base_points": 2,
-     "points_awarded": 2,
-     "score_after": 8,
-     "score_before": 6,
+    "p_0727105a61ca9071": {
+     "base_points": 0,
+     "points_awarded": 0,
+     "score_after": 3,
+     "score_before": 3,
      "speed_bonus_points": 0
     }
    },
@@ -5747,7 +5733,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 3,
+      "consecutive_correct": 0,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -5768,28 +5754,28 @@
      "level_after": 1,
      "level_before": 1,
      "level_up_events": [],
-     "outcome": "correct",
-     "player_id": "p_9c37734bc706755a",
-     "points_awarded": 2,
+     "outcome": "incorrect",
+     "player_id": "p_0727105a61ca9071",
+     "points_awarded": 0,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 8,
-     "score_before": 6,
+     "score_after": 3,
+     "score_before": 3,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:42.571826+00:00",
+     "submitted_at": "2026-09-09T12:00:41.398185+00:00",
      "timed_out": false,
-     "total_xp_after": 36,
-     "xp_gained": 12
+     "total_xp_after": 30,
+     "xp_gained": 9
     }
    ],
    "presentation_ms": 2900,
    "pressure_applied": true,
-   "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+   "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
    "round_number": 3,
    "segment_reveal": {
-    "canonical_checkpoint": "w13",
+    "canonical_checkpoint": "w6",
     "challenge_count": 1,
     "checkpoints": [
      "w1",
@@ -5821,7 +5807,7 @@
       "finished_first": true,
       "incorrect": 1,
       "points_awarded": 0,
-      "segment_result": "loss",
+      "segment_result": "draw",
       "speed_bonus_points": 0,
       "traverse_path": [
        "w1",
@@ -5829,69 +5815,66 @@
        "w3",
        "w4",
        "w5",
-       "w6",
-       "w7",
-       "w8",
-       "w9",
-       "w10",
-       "w11",
-       "w12",
-       "w13"
+       "w6"
       ],
       "unanswered": 0
      },
-     "p_9c37734bc706755a": {
-      "base_points": 2,
-      "checkpoint": "w13",
-      "correct": 1,
-      "duration_ms": 7822,
+     "p_0727105a61ca9071": {
+      "base_points": 0,
+      "checkpoint": "w9",
+      "correct": 0,
+      "duration_ms": 6648,
       "finished_first": false,
-      "incorrect": 0,
-      "points_awarded": 2,
-      "segment_result": "win",
+      "incorrect": 1,
+      "points_awarded": 0,
+      "segment_result": "draw",
       "speed_bonus_points": 0,
       "traverse_path": [
-       "w13"
+       "w9",
+       "w8",
+       "w7",
+       "w6"
       ],
       "unanswered": 0
      }
     },
     "proof": {
      "after": {
-      "breakpoint_note": "Level 6 (1st melee in wave)",
-      "cumulative_xp": "2552.55",
-      "is_cannon_wave": false,
-      "level": 6,
+      "breakpoint_note": "Level 4 (1st cannon in wave)",
+      "cumulative_xp": "1185.60",
+      "is_cannon_wave": true,
+      "level": 4,
       "satisfied": true,
-      "spawn_time_display": "6:30",
-      "token": "w13",
-      "wave_number": 13
+      "spawn_time_display": "3:00",
+      "token": "w6",
+      "wave_number": 6
      },
      "before": {
       "breakpoint_note": null,
-      "cumulative_xp": "2371.20",
-      "is_cannon_wave": true,
-      "level": 5,
+      "cumulative_xp": "955.50",
+      "is_cannon_wave": false,
+      "level": 3,
       "satisfied": false,
-      "spawn_time_display": "6:00",
-      "token": "w12",
-      "wave_number": 12
+      "spawn_time_display": "2:30",
+      "token": "w5",
+      "wave_number": 5
      },
-     "cannon_only": false,
+     "cannon_only": true,
      "lane": "duo",
-     "target_level": 6,
-     "threshold_xp": "2400"
+     "target_level": 3,
+     "threshold_xp": "660"
     },
     "satisfied_checkpoints": [
-     "w13",
-     "w14",
+     "w6",
+     "w9",
+     "w12",
      "w15"
     ],
     "scoring": "points",
     "speed_bonus_points": 1
    },
    "started_at": "2026-09-09T12:00:34.750000+00:00",
-   "winner_id": "p_9c37734bc706755a"
+   "winner_id": "p_0727105a61ca9071"
   },
   "projection_type": "resolved_round",
   "round_number": 3,
@@ -5899,16 +5882,16 @@
   "server_time": "2026-09-09T12:00:38.300000+00:00"
  },
  "resolved_wrong": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:00:48.300000+00:00",
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_9c37734bc706755a": 170
+    "p_0727105a61ca9071": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -5918,12 +5901,12 @@
      "score_before": 2,
      "speed_bonus_points": 0
     },
-    "p_9c37734bc706755a": {
-     "base_points": 2,
-     "points_awarded": 3,
-     "score_after": 6,
+    "p_0727105a61ca9071": {
+     "base_points": 0,
+     "points_awarded": 0,
+     "score_after": 3,
      "score_before": 3,
-     "speed_bonus_points": 1
+     "speed_bonus_points": 0
     }
    },
    "next_round_duration_delta": 0.0,
@@ -5972,7 +5955,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 2,
+      "consecutive_correct": 0,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -5993,28 +5976,28 @@
      "level_after": 1,
      "level_before": 1,
      "level_up_events": [],
-     "outcome": "correct",
-     "player_id": "p_9c37734bc706755a",
-     "points_awarded": 3,
+     "outcome": "incorrect",
+     "player_id": "p_0727105a61ca9071",
+     "points_awarded": 0,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 6,
+     "score_after": 3,
      "score_before": 3,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:24.055131+00:00",
+     "submitted_at": "2026-09-09T12:00:22.338224+00:00",
      "timed_out": false,
-     "total_xp_after": 24,
-     "xp_gained": 12
+     "total_xp_after": 21,
+     "xp_gained": 9
     }
    ],
    "presentation_ms": 5450,
    "pressure_applied": true,
-   "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:2",
+   "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:2",
    "round_number": 2,
    "segment_reveal": {
-    "canonical_checkpoint": "w6",
+    "canonical_checkpoint": "w4",
     "challenge_count": 1,
     "checkpoints": [
      "w1",
@@ -6046,7 +6029,7 @@
       "finished_first": false,
       "incorrect": 1,
       "points_awarded": 0,
-      "segment_result": "loss",
+      "segment_result": "draw",
       "speed_bonus_points": 0,
       "traverse_path": [
        "w15",
@@ -6058,53 +6041,58 @@
        "w9",
        "w8",
        "w7",
-       "w6"
+       "w6",
+       "w5",
+       "w4"
       ],
       "unanswered": 0
      },
-     "p_9c37734bc706755a": {
-      "base_points": 2,
-      "checkpoint": "w6",
-      "correct": 1,
-      "duration_ms": 5755,
+     "p_0727105a61ca9071": {
+      "base_points": 0,
+      "checkpoint": "w5",
+      "correct": 0,
+      "duration_ms": 4038,
       "finished_first": true,
-      "incorrect": 0,
-      "points_awarded": 3,
-      "segment_result": "win",
-      "speed_bonus_points": 1,
+      "incorrect": 1,
+      "points_awarded": 0,
+      "segment_result": "draw",
+      "speed_bonus_points": 0,
       "traverse_path": [
-       "w6"
+       "w5",
+       "w4"
       ],
       "unanswered": 0
      }
     },
     "proof": {
      "after": {
-      "breakpoint_note": "Level 4 (1st cannon in wave)",
-      "cumulative_xp": "1185.60",
-      "is_cannon_wave": true,
-      "level": 4,
+      "breakpoint_note": "Level 3 (2nd melee in wave)",
+      "cumulative_xp": "774.15",
+      "is_cannon_wave": false,
+      "level": 3,
       "satisfied": true,
-      "spawn_time_display": "3:00",
-      "token": "w6",
-      "wave_number": 6
+      "spawn_time_display": "2:00",
+      "token": "w4",
+      "wave_number": 4
      },
      "before": {
       "breakpoint_note": null,
-      "cumulative_xp": "955.50",
-      "is_cannon_wave": false,
-      "level": 3,
+      "cumulative_xp": "592.80",
+      "is_cannon_wave": true,
+      "level": 2,
       "satisfied": false,
-      "spawn_time_display": "2:30",
-      "token": "w5",
-      "wave_number": 5
+      "spawn_time_display": "1:30",
+      "token": "w3",
+      "wave_number": 3
      },
      "cannon_only": false,
      "lane": "duo",
-     "target_level": 4,
-     "threshold_xp": "1140"
+     "target_level": 3,
+     "threshold_xp": "660"
     },
     "satisfied_checkpoints": [
+     "w4",
+     "w5",
      "w6",
      "w7",
      "w8",
@@ -6128,11 +6116,11 @@
   "server_time": "2026-09-09T12:00:29.300000+00:00"
  },
  "result": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "completion_reason": "segments_complete",
    "final_round_number": 3,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "outcome": "decisive",
    "rating_application_status": "skipped",
    "rating_policy_version": "elo.v1",
@@ -6140,18 +6128,18 @@
    "scoring": {
     "final_scores": {
      "0a11d111-0000-4000-8000-000000000001": 2,
-     "p_9c37734bc706755a": 8
+     "p_0727105a61ca9071": 3
     },
     "match_length": 3,
     "model": "points",
     "modules_played": 3,
     "modules_won": {
      "0a11d111-0000-4000-8000-000000000001": 0,
-     "p_9c37734bc706755a": 3
+     "p_0727105a61ca9071": 1
     }
    },
    "terminal_reason": "combat",
-   "winner_user_id": "p_9c37734bc706755a"
+   "winner_user_id": "p_0727105a61ca9071"
   },
   "projection_type": "match_result",
   "round_number": 3,
@@ -6159,19 +6147,19 @@
   "server_time": "2026-09-09T12:01:08.300000+00:00"
  },
  "resume_final": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "latest_resolved_round": {
-    "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+    "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
     "payload": {
      "completion_reason": "segments_complete",
      "end_reason": "both_answered",
      "final_deadline": "2026-09-09T12:01:04.750000+00:00",
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "match_over": true,
      "max_hp": {
       "0a11d111-0000-4000-8000-000000000001": 170,
-      "p_9c37734bc706755a": 170
+      "p_0727105a61ca9071": 170
      },
      "module_points": {
       "0a11d111-0000-4000-8000-000000000001": {
@@ -6181,11 +6169,11 @@
        "score_before": 2,
        "speed_bonus_points": 0
       },
-      "p_9c37734bc706755a": {
-       "base_points": 2,
-       "points_awarded": 2,
-       "score_after": 8,
-       "score_before": 6,
+      "p_0727105a61ca9071": {
+       "base_points": 0,
+       "points_awarded": 0,
+       "score_after": 3,
+       "score_before": 3,
        "speed_bonus_points": 0
       }
      },
@@ -6235,7 +6223,7 @@
       {
        "answered_first": false,
        "carryover": {
-        "consecutive_correct": 3,
+        "consecutive_correct": 0,
         "effects_consumed": [],
         "effects_gained": []
        },
@@ -6256,28 +6244,28 @@
        "level_after": 1,
        "level_before": 1,
        "level_up_events": [],
-       "outcome": "correct",
-       "player_id": "p_9c37734bc706755a",
-       "points_awarded": 2,
+       "outcome": "incorrect",
+       "player_id": "p_0727105a61ca9071",
+       "points_awarded": 0,
        "reached_zero_hp": false,
        "remaining_charges": {
         "tank.fortify": 3
        },
-       "score_after": 8,
-       "score_before": 6,
+       "score_after": 3,
+       "score_before": 3,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:42.571826+00:00",
+       "submitted_at": "2026-09-09T12:00:41.398185+00:00",
        "timed_out": false,
-       "total_xp_after": 36,
-       "xp_gained": 12
+       "total_xp_after": 30,
+       "xp_gained": 9
       }
      ],
      "presentation_ms": 2900,
      "pressure_applied": true,
-     "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+     "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
      "round_number": 3,
      "segment_reveal": {
-      "canonical_checkpoint": "w13",
+      "canonical_checkpoint": "w6",
       "challenge_count": 1,
       "checkpoints": [
        "w1",
@@ -6309,7 +6297,7 @@
         "finished_first": true,
         "incorrect": 1,
         "points_awarded": 0,
-        "segment_result": "loss",
+        "segment_result": "draw",
         "speed_bonus_points": 0,
         "traverse_path": [
          "w1",
@@ -6317,69 +6305,66 @@
          "w3",
          "w4",
          "w5",
-         "w6",
-         "w7",
-         "w8",
-         "w9",
-         "w10",
-         "w11",
-         "w12",
-         "w13"
+         "w6"
         ],
         "unanswered": 0
        },
-       "p_9c37734bc706755a": {
-        "base_points": 2,
-        "checkpoint": "w13",
-        "correct": 1,
-        "duration_ms": 7822,
+       "p_0727105a61ca9071": {
+        "base_points": 0,
+        "checkpoint": "w9",
+        "correct": 0,
+        "duration_ms": 6648,
         "finished_first": false,
-        "incorrect": 0,
-        "points_awarded": 2,
-        "segment_result": "win",
+        "incorrect": 1,
+        "points_awarded": 0,
+        "segment_result": "draw",
         "speed_bonus_points": 0,
         "traverse_path": [
-         "w13"
+         "w9",
+         "w8",
+         "w7",
+         "w6"
         ],
         "unanswered": 0
        }
       },
       "proof": {
        "after": {
-        "breakpoint_note": "Level 6 (1st melee in wave)",
-        "cumulative_xp": "2552.55",
-        "is_cannon_wave": false,
-        "level": 6,
+        "breakpoint_note": "Level 4 (1st cannon in wave)",
+        "cumulative_xp": "1185.60",
+        "is_cannon_wave": true,
+        "level": 4,
         "satisfied": true,
-        "spawn_time_display": "6:30",
-        "token": "w13",
-        "wave_number": 13
+        "spawn_time_display": "3:00",
+        "token": "w6",
+        "wave_number": 6
        },
        "before": {
         "breakpoint_note": null,
-        "cumulative_xp": "2371.20",
-        "is_cannon_wave": true,
-        "level": 5,
+        "cumulative_xp": "955.50",
+        "is_cannon_wave": false,
+        "level": 3,
         "satisfied": false,
-        "spawn_time_display": "6:00",
-        "token": "w12",
-        "wave_number": 12
+        "spawn_time_display": "2:30",
+        "token": "w5",
+        "wave_number": 5
        },
-       "cannon_only": false,
+       "cannon_only": true,
        "lane": "duo",
-       "target_level": 6,
-       "threshold_xp": "2400"
+       "target_level": 3,
+       "threshold_xp": "660"
       },
       "satisfied_checkpoints": [
-       "w13",
-       "w14",
+       "w6",
+       "w9",
+       "w12",
        "w15"
       ],
       "scoring": "points",
       "speed_bonus_points": 1
      },
      "started_at": "2026-09-09T12:00:34.750000+00:00",
-     "winner_id": "p_9c37734bc706755a"
+     "winner_id": "p_0727105a61ca9071"
     },
     "projection_type": "resolved_round",
     "round_number": 3,
@@ -6395,12 +6380,12 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+    "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -6452,10 +6437,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_9c37734bc706755a",
+       "player_id": "p_0727105a61ca9071",
        "role": null,
-       "score": 8,
-       "total_xp": 36
+       "score": 3,
+       "total_xp": 30
       }
      ],
      "presence": {
@@ -6468,7 +6453,7 @@
      "ruleset": null,
      "segment": null,
      "segment_state": null,
-     "winner_id": "p_9c37734bc706755a"
+     "winner_id": "p_0727105a61ca9071"
     },
     "projection_type": "private_player",
     "round_number": null,
@@ -6476,13 +6461,13 @@
     "server_time": "2026-09-09T12:01:08.300000+00:00"
    },
    "public": {
-    "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+    "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
      "host": "playtest",
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -6508,10 +6493,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_9c37734bc706755a",
+       "player_id": "p_0727105a61ca9071",
        "role": null,
-       "score": 8,
-       "total_xp": 36
+       "score": 3,
+       "total_xp": 30
       }
      ],
      "playtest": {
@@ -6536,7 +6521,7 @@
      },
      "segment": null,
      "segment_state": null,
-     "winner_id": "p_9c37734bc706755a"
+     "winner_id": "p_0727105a61ca9071"
     },
     "projection_type": "public_round",
     "round_number": null,
@@ -6544,11 +6529,11 @@
     "server_time": "2026-09-09T12:01:08.300000+00:00"
    },
    "result": {
-    "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+    "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
     "payload": {
      "completion_reason": "segments_complete",
      "final_round_number": 3,
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "outcome": "decisive",
      "rating_application_status": "skipped",
      "rating_policy_version": "elo.v1",
@@ -6556,18 +6541,18 @@
      "scoring": {
       "final_scores": {
        "0a11d111-0000-4000-8000-000000000001": 2,
-       "p_9c37734bc706755a": 8
+       "p_0727105a61ca9071": 3
       },
       "match_length": 3,
       "model": "points",
       "modules_played": 3,
       "modules_won": {
        "0a11d111-0000-4000-8000-000000000001": 0,
-       "p_9c37734bc706755a": 3
+       "p_0727105a61ca9071": 1
       }
      },
      "terminal_reason": "combat",
-     "winner_user_id": "p_9c37734bc706755a"
+     "winner_user_id": "p_0727105a61ca9071"
     },
     "projection_type": "match_result",
     "round_number": 3,
@@ -6581,19 +6566,19 @@
   "server_time": "2026-09-09T12:01:08.300000+00:00"
  },
  "resume_locked": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "latest_resolved_round": {
-    "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+    "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
     "payload": {
      "completion_reason": null,
      "end_reason": "both_answered",
      "final_deadline": "2026-09-09T12:00:48.300000+00:00",
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "match_over": false,
      "max_hp": {
       "0a11d111-0000-4000-8000-000000000001": 170,
-      "p_9c37734bc706755a": 170
+      "p_0727105a61ca9071": 170
      },
      "module_points": {
       "0a11d111-0000-4000-8000-000000000001": {
@@ -6603,12 +6588,12 @@
        "score_before": 2,
        "speed_bonus_points": 0
       },
-      "p_9c37734bc706755a": {
-       "base_points": 2,
-       "points_awarded": 3,
-       "score_after": 6,
+      "p_0727105a61ca9071": {
+       "base_points": 0,
+       "points_awarded": 0,
+       "score_after": 3,
        "score_before": 3,
-       "speed_bonus_points": 1
+       "speed_bonus_points": 0
       }
      },
      "next_round_duration_delta": 0.0,
@@ -6657,7 +6642,7 @@
       {
        "answered_first": false,
        "carryover": {
-        "consecutive_correct": 2,
+        "consecutive_correct": 0,
         "effects_consumed": [],
         "effects_gained": []
        },
@@ -6678,28 +6663,28 @@
        "level_after": 1,
        "level_before": 1,
        "level_up_events": [],
-       "outcome": "correct",
-       "player_id": "p_9c37734bc706755a",
-       "points_awarded": 3,
+       "outcome": "incorrect",
+       "player_id": "p_0727105a61ca9071",
+       "points_awarded": 0,
        "reached_zero_hp": false,
        "remaining_charges": {
         "tank.fortify": 3
        },
-       "score_after": 6,
+       "score_after": 3,
        "score_before": 3,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:24.055131+00:00",
+       "submitted_at": "2026-09-09T12:00:22.338224+00:00",
        "timed_out": false,
-       "total_xp_after": 24,
-       "xp_gained": 12
+       "total_xp_after": 21,
+       "xp_gained": 9
       }
      ],
      "presentation_ms": 5450,
      "pressure_applied": true,
-     "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:2",
+     "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:2",
      "round_number": 2,
      "segment_reveal": {
-      "canonical_checkpoint": "w6",
+      "canonical_checkpoint": "w4",
       "challenge_count": 1,
       "checkpoints": [
        "w1",
@@ -6731,7 +6716,7 @@
         "finished_first": false,
         "incorrect": 1,
         "points_awarded": 0,
-        "segment_result": "loss",
+        "segment_result": "draw",
         "speed_bonus_points": 0,
         "traverse_path": [
          "w15",
@@ -6743,53 +6728,58 @@
          "w9",
          "w8",
          "w7",
-         "w6"
+         "w6",
+         "w5",
+         "w4"
         ],
         "unanswered": 0
        },
-       "p_9c37734bc706755a": {
-        "base_points": 2,
-        "checkpoint": "w6",
-        "correct": 1,
-        "duration_ms": 5755,
+       "p_0727105a61ca9071": {
+        "base_points": 0,
+        "checkpoint": "w5",
+        "correct": 0,
+        "duration_ms": 4038,
         "finished_first": true,
-        "incorrect": 0,
-        "points_awarded": 3,
-        "segment_result": "win",
-        "speed_bonus_points": 1,
+        "incorrect": 1,
+        "points_awarded": 0,
+        "segment_result": "draw",
+        "speed_bonus_points": 0,
         "traverse_path": [
-         "w6"
+         "w5",
+         "w4"
         ],
         "unanswered": 0
        }
       },
       "proof": {
        "after": {
-        "breakpoint_note": "Level 4 (1st cannon in wave)",
-        "cumulative_xp": "1185.60",
-        "is_cannon_wave": true,
-        "level": 4,
+        "breakpoint_note": "Level 3 (2nd melee in wave)",
+        "cumulative_xp": "774.15",
+        "is_cannon_wave": false,
+        "level": 3,
         "satisfied": true,
-        "spawn_time_display": "3:00",
-        "token": "w6",
-        "wave_number": 6
+        "spawn_time_display": "2:00",
+        "token": "w4",
+        "wave_number": 4
        },
        "before": {
         "breakpoint_note": null,
-        "cumulative_xp": "955.50",
-        "is_cannon_wave": false,
-        "level": 3,
+        "cumulative_xp": "592.80",
+        "is_cannon_wave": true,
+        "level": 2,
         "satisfied": false,
-        "spawn_time_display": "2:30",
-        "token": "w5",
-        "wave_number": 5
+        "spawn_time_display": "1:30",
+        "token": "w3",
+        "wave_number": 3
        },
        "cannon_only": false,
        "lane": "duo",
-       "target_level": 4,
-       "threshold_xp": "1140"
+       "target_level": 3,
+       "threshold_xp": "660"
       },
       "satisfied_checkpoints": [
+       "w4",
+       "w5",
        "w6",
        "w7",
        "w8",
@@ -6821,7 +6811,7 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+    "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
     "payload": {
      "active_round": {
       "active_deadline": "2026-09-09T12:01:04.750000+00:00",
@@ -6833,7 +6823,7 @@
      },
      "completed_rounds": 2,
      "completion_reason": null,
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -6885,10 +6875,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_9c37734bc706755a",
+       "player_id": "p_0727105a61ca9071",
        "role": null,
-       "score": 6,
-       "total_xp": 24
+       "score": 3,
+       "total_xp": 21
       }
      ],
      "presence": {
@@ -6901,7 +6891,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+      "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -7174,10 +7164,10 @@
          ],
          "footnote": "Checkpoints are wave spawn times \u00b7 levels at wave granularity",
          "objective": {
-          "cannon_only": false,
+          "cannon_only": true,
           "lane": "duo",
-          "target_level": 6,
-          "text": "Find the first wave where a duo laner reaches Level 6."
+          "target_level": 3,
+          "text": "Find the first cannon wave where a duo laner is at least Level 3."
          },
          "source": {
           "map": "summoners_rift",
@@ -7188,7 +7178,7 @@
         }
        ],
        "family": "wave_xp",
-       "prompt": "Find the first wave where a duo laner reaches Level 6.",
+       "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
        "reveal_window_ms": 3000
       },
       "module_id": "scrub",
@@ -7210,40 +7200,41 @@
       "own_card_started_at": null,
       "own_challenge_reveals": [
        {
-        "canonical_checkpoint": "w13",
+        "canonical_checkpoint": "w6",
         "challenge_index": 0,
         "checkpoint": "w1",
         "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
         "is_correct": false,
         "proof": {
          "after": {
-          "breakpoint_note": "Level 6 (1st melee in wave)",
-          "cumulative_xp": "2552.55",
-          "is_cannon_wave": false,
-          "level": 6,
+          "breakpoint_note": "Level 4 (1st cannon in wave)",
+          "cumulative_xp": "1185.60",
+          "is_cannon_wave": true,
+          "level": 4,
           "satisfied": true,
-          "spawn_time_display": "6:30",
-          "token": "w13",
-          "wave_number": 13
+          "spawn_time_display": "3:00",
+          "token": "w6",
+          "wave_number": 6
          },
          "before": {
           "breakpoint_note": null,
-          "cumulative_xp": "2371.20",
-          "is_cannon_wave": true,
-          "level": 5,
+          "cumulative_xp": "955.50",
+          "is_cannon_wave": false,
+          "level": 3,
           "satisfied": false,
-          "spawn_time_display": "6:00",
-          "token": "w12",
-          "wave_number": 12
+          "spawn_time_display": "2:30",
+          "token": "w5",
+          "wave_number": 5
          },
-         "cannon_only": false,
+         "cannon_only": true,
          "lane": "duo",
-         "target_level": 6,
-         "threshold_xp": "2400"
+         "target_level": 3,
+         "threshold_xp": "660"
         },
         "satisfied_checkpoints": [
-         "w13",
-         "w14",
+         "w6",
+         "w9",
+         "w12",
          "w15"
         ],
         "traverse_path": [
@@ -7252,14 +7243,7 @@
          "w3",
          "w4",
          "w5",
-         "w6",
-         "w7",
-         "w8",
-         "w9",
-         "w10",
-         "w11",
-         "w12",
-         "w13"
+         "w6"
         ]
        }
       ],
@@ -7287,7 +7271,7 @@
     "server_time": "2026-09-09T12:00:35.300000+00:00"
    },
    "public": {
-    "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+    "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
     "payload": {
      "active_round": {
       "active_deadline": "2026-09-09T12:01:04.750000+00:00",
@@ -7300,7 +7284,7 @@
      "completed_rounds": 2,
      "completion_reason": null,
      "host": "playtest",
-     "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+     "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -7326,10 +7310,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_9c37734bc706755a",
+       "player_id": "p_0727105a61ca9071",
        "role": null,
-       "score": 6,
-       "total_xp": 24
+       "score": 3,
+       "total_xp": 21
       }
      ],
      "playtest": {
@@ -7348,7 +7332,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "scrub:rkb_972f08c1083d05dc3d0a03c1:3",
+      "question_id": "scrub:rkb_9b4b12b76ef2ac925ca3207a:3",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -7627,10 +7611,10 @@
          ],
          "footnote": "Checkpoints are wave spawn times \u00b7 levels at wave granularity",
          "objective": {
-          "cannon_only": false,
+          "cannon_only": true,
           "lane": "duo",
-          "target_level": 6,
-          "text": "Find the first wave where a duo laner reaches Level 6."
+          "target_level": 3,
+          "text": "Find the first cannon wave where a duo laner is at least Level 3."
          },
          "source": {
           "map": "summoners_rift",
@@ -7641,7 +7625,7 @@
         }
        ],
        "family": "wave_xp",
-       "prompt": "Find the first wave where a duo laner reaches Level 6.",
+       "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
        "reveal_window_ms": 3000
       },
       "module_id": "scrub",
@@ -7663,40 +7647,41 @@
       "own_card_started_at": null,
       "own_challenge_reveals": [
        {
-        "canonical_checkpoint": "w13",
+        "canonical_checkpoint": "w6",
         "challenge_index": 0,
         "checkpoint": "w1",
         "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
         "is_correct": false,
         "proof": {
          "after": {
-          "breakpoint_note": "Level 6 (1st melee in wave)",
-          "cumulative_xp": "2552.55",
-          "is_cannon_wave": false,
-          "level": 6,
+          "breakpoint_note": "Level 4 (1st cannon in wave)",
+          "cumulative_xp": "1185.60",
+          "is_cannon_wave": true,
+          "level": 4,
           "satisfied": true,
-          "spawn_time_display": "6:30",
-          "token": "w13",
-          "wave_number": 13
+          "spawn_time_display": "3:00",
+          "token": "w6",
+          "wave_number": 6
          },
          "before": {
           "breakpoint_note": null,
-          "cumulative_xp": "2371.20",
-          "is_cannon_wave": true,
-          "level": 5,
+          "cumulative_xp": "955.50",
+          "is_cannon_wave": false,
+          "level": 3,
           "satisfied": false,
-          "spawn_time_display": "6:00",
-          "token": "w12",
-          "wave_number": 12
+          "spawn_time_display": "2:30",
+          "token": "w5",
+          "wave_number": 5
          },
-         "cannon_only": false,
+         "cannon_only": true,
          "lane": "duo",
-         "target_level": 6,
-         "threshold_xp": "2400"
+         "target_level": 3,
+         "threshold_xp": "660"
         },
         "satisfied_checkpoints": [
-         "w13",
-         "w14",
+         "w6",
+         "w9",
+         "w12",
          "w15"
         ],
         "traverse_path": [
@@ -7705,14 +7690,7 @@
          "w3",
          "w4",
          "w5",
-         "w6",
-         "w7",
-         "w8",
-         "w9",
-         "w10",
-         "w11",
-         "w12",
-         "w13"
+         "w6"
         ]
        }
       ],
@@ -7747,14 +7725,14 @@
   "server_time": "2026-09-09T12:00:35.300000+00:00"
  },
  "review": {
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "payload": {
    "final_round_number": 3,
-   "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+   "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
    "round_count": 3,
    "rounds": [
     {
-     "canonical_checkpoint": "w4",
+     "canonical_checkpoint": "w6",
      "canonical_question_ref": null,
      "category": null,
      "checkpoints": [
@@ -7982,40 +7960,339 @@
      "objective": {
       "cannon_only": false,
       "lane": "solo",
-      "target_level": 4,
-      "text": "Find the first wave where a solo laner reaches Level 4."
+      "target_level": 5,
+      "text": "Find the first wave where a solo laner reaches Level 5."
      },
      "outcome": "correct",
-     "prompt": "Find the first wave where a solo laner reaches Level 4.",
+     "prompt": "Find the first wave where a solo laner reaches Level 5.",
      "proof": {
       "after": {
-       "breakpoint_note": "Level 4 (2nd caster in wave)",
-       "cumulative_xp": "1191",
+       "breakpoint_note": "Level 5 (3rd caster in wave)",
+       "cumulative_xp": "1824",
+       "is_cannon_wave": true,
+       "level": 5,
+       "satisfied": true,
+       "spawn_time_display": "3:00",
+       "token": "w6",
+       "wave_number": 6
+      },
+      "before": {
+       "breakpoint_note": null,
+       "cumulative_xp": "1470",
        "is_cannon_wave": false,
        "level": 4,
+       "satisfied": false,
+       "spawn_time_display": "2:30",
+       "token": "w5",
+       "wave_number": 5
+      },
+      "cannon_only": false,
+      "lane": "solo",
+      "target_level": 5,
+      "threshold_xp": "1720"
+     },
+     "question": null,
+     "revealed": true,
+     "round_number": 1,
+     "satisfied_checkpoints": [
+      "w6",
+      "w7",
+      "w8",
+      "w9",
+      "w10",
+      "w11",
+      "w12",
+      "w13",
+      "w14",
+      "w15"
+     ],
+     "topic": {
+      "category": "general",
+      "icon_hint": {
+       "icon": null,
+       "key": null,
+       "kind": "generic"
+      },
+      "motif": null,
+      "roles": [],
+      "tier": null
+     },
+     "traverse_path": [
+      "w6"
+     ],
+     "unit_label": "Wave",
+     "viewer_checkpoint": "w6",
+     "viewer_submission": {
+      "answer_index": null,
+      "answered_count": 1,
+      "challenge_count": 1,
+      "correct_count": 1,
+      "is_correct": true
+     }
+    },
+    {
+     "canonical_checkpoint": "w4",
+     "canonical_question_ref": null,
+     "category": null,
+     "checkpoints": [
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "181.35",
+       "is_cannon_wave": false,
+       "level": 1,
+       "level_ceiling_xp": "280",
+       "level_floor_xp": "0",
+       "melee_count": 3,
+       "spawn_time_display": "0:30",
+       "token": "w1",
+       "wave_number": 1,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "362.70",
+       "is_cannon_wave": false,
+       "level": 2,
+       "level_ceiling_xp": "660",
+       "level_floor_xp": "280",
+       "melee_count": 3,
+       "spawn_time_display": "1:00",
+       "token": "w2",
+       "wave_number": 2,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 1,
+       "caster_count": 3,
+       "cumulative_xp": "592.80",
+       "is_cannon_wave": true,
+       "level": 2,
+       "level_ceiling_xp": "660",
+       "level_floor_xp": "280",
+       "melee_count": 3,
+       "spawn_time_display": "1:30",
+       "token": "w3",
+       "wave_number": 3,
+       "wave_xp": "230.10"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "774.15",
+       "is_cannon_wave": false,
+       "level": 3,
+       "level_ceiling_xp": "1140",
+       "level_floor_xp": "660",
+       "melee_count": 3,
+       "spawn_time_display": "2:00",
+       "token": "w4",
+       "wave_number": 4,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "955.50",
+       "is_cannon_wave": false,
+       "level": 3,
+       "level_ceiling_xp": "1140",
+       "level_floor_xp": "660",
+       "melee_count": 3,
+       "spawn_time_display": "2:30",
+       "token": "w5",
+       "wave_number": 5,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 1,
+       "caster_count": 3,
+       "cumulative_xp": "1185.60",
+       "is_cannon_wave": true,
+       "level": 4,
+       "level_ceiling_xp": "1720",
+       "level_floor_xp": "1140",
+       "melee_count": 3,
+       "spawn_time_display": "3:00",
+       "token": "w6",
+       "wave_number": 6,
+       "wave_xp": "230.10"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "1366.95",
+       "is_cannon_wave": false,
+       "level": 4,
+       "level_ceiling_xp": "1720",
+       "level_floor_xp": "1140",
+       "melee_count": 3,
+       "spawn_time_display": "3:30",
+       "token": "w7",
+       "wave_number": 7,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "1548.30",
+       "is_cannon_wave": false,
+       "level": 4,
+       "level_ceiling_xp": "1720",
+       "level_floor_xp": "1140",
+       "melee_count": 3,
+       "spawn_time_display": "4:00",
+       "token": "w8",
+       "wave_number": 8,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 1,
+       "caster_count": 3,
+       "cumulative_xp": "1778.40",
+       "is_cannon_wave": true,
+       "level": 5,
+       "level_ceiling_xp": "2400",
+       "level_floor_xp": "1720",
+       "melee_count": 3,
+       "spawn_time_display": "4:30",
+       "token": "w9",
+       "wave_number": 9,
+       "wave_xp": "230.10"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "1959.75",
+       "is_cannon_wave": false,
+       "level": 5,
+       "level_ceiling_xp": "2400",
+       "level_floor_xp": "1720",
+       "melee_count": 3,
+       "spawn_time_display": "5:00",
+       "token": "w10",
+       "wave_number": 10,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "2141.10",
+       "is_cannon_wave": false,
+       "level": 5,
+       "level_ceiling_xp": "2400",
+       "level_floor_xp": "1720",
+       "melee_count": 3,
+       "spawn_time_display": "5:30",
+       "token": "w11",
+       "wave_number": 11,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 1,
+       "caster_count": 3,
+       "cumulative_xp": "2371.20",
+       "is_cannon_wave": true,
+       "level": 5,
+       "level_ceiling_xp": "2400",
+       "level_floor_xp": "1720",
+       "melee_count": 3,
+       "spawn_time_display": "6:00",
+       "token": "w12",
+       "wave_number": 12,
+       "wave_xp": "230.10"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "2552.55",
+       "is_cannon_wave": false,
+       "level": 6,
+       "level_ceiling_xp": "3180",
+       "level_floor_xp": "2400",
+       "melee_count": 3,
+       "spawn_time_display": "6:30",
+       "token": "w13",
+       "wave_number": 13,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 0,
+       "caster_count": 3,
+       "cumulative_xp": "2733.90",
+       "is_cannon_wave": false,
+       "level": 6,
+       "level_ceiling_xp": "3180",
+       "level_floor_xp": "2400",
+       "melee_count": 3,
+       "spawn_time_display": "7:00",
+       "token": "w14",
+       "wave_number": 14,
+       "wave_xp": "181.35"
+      },
+      {
+       "cannon_count": 1,
+       "caster_count": 3,
+       "cumulative_xp": "2964.00",
+       "is_cannon_wave": true,
+       "level": 6,
+       "level_ceiling_xp": "3180",
+       "level_floor_xp": "2400",
+       "melee_count": 3,
+       "spawn_time_display": "7:30",
+       "token": "w15",
+       "wave_number": 15,
+       "wave_xp": "230.10"
+      }
+     ],
+     "family": "wave_xp",
+     "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "is_correct": false,
+     "kind": "scrub",
+     "module_id": "scrub",
+     "objective": {
+      "cannon_only": false,
+      "lane": "duo",
+      "target_level": 3,
+      "text": "Find the first wave where a duo laner reaches Level 3."
+     },
+     "outcome": "incorrect",
+     "prompt": "Find the first wave where a duo laner reaches Level 3.",
+     "proof": {
+      "after": {
+       "breakpoint_note": "Level 3 (2nd melee in wave)",
+       "cumulative_xp": "774.15",
+       "is_cannon_wave": false,
+       "level": 3,
        "satisfied": true,
        "spawn_time_display": "2:00",
        "token": "w4",
        "wave_number": 4
       },
       "before": {
-       "breakpoint_note": "Level 3 (2nd melee in wave)",
-       "cumulative_xp": "912",
+       "breakpoint_note": null,
+       "cumulative_xp": "592.80",
        "is_cannon_wave": true,
-       "level": 3,
+       "level": 2,
        "satisfied": false,
        "spawn_time_display": "1:30",
        "token": "w3",
        "wave_number": 3
       },
       "cannon_only": false,
-      "lane": "solo",
-      "target_level": 4,
-      "threshold_xp": "1140"
+      "lane": "duo",
+      "target_level": 3,
+      "threshold_xp": "660"
      },
      "question": null,
      "revealed": true,
-     "round_number": 1,
+     "round_number": 2,
      "satisfied_checkpoints": [
       "w4",
       "w5",
@@ -8042,16 +8319,27 @@
       "tier": null
      },
      "traverse_path": [
+      "w15",
+      "w14",
+      "w13",
+      "w12",
+      "w11",
+      "w10",
+      "w9",
+      "w8",
+      "w7",
+      "w6",
+      "w5",
       "w4"
      ],
      "unit_label": "Wave",
-     "viewer_checkpoint": "w4",
+     "viewer_checkpoint": "w15",
      "viewer_submission": {
       "answer_index": null,
       "answered_count": 1,
       "challenge_count": 1,
-      "correct_count": 1,
-      "is_correct": true
+      "correct_count": 0,
+      "is_correct": false
      }
     },
     {
@@ -8281,13 +8569,13 @@
      "kind": "scrub",
      "module_id": "scrub",
      "objective": {
-      "cannon_only": false,
+      "cannon_only": true,
       "lane": "duo",
-      "target_level": 4,
-      "text": "Find the first wave where a duo laner reaches Level 4."
+      "target_level": 3,
+      "text": "Find the first cannon wave where a duo laner is at least Level 3."
      },
      "outcome": "incorrect",
-     "prompt": "Find the first wave where a duo laner reaches Level 4.",
+     "prompt": "Find the first cannon wave where a duo laner is at least Level 3.",
      "proof": {
       "after": {
        "breakpoint_note": "Level 4 (1st cannon in wave)",
@@ -8309,325 +8597,18 @@
        "token": "w5",
        "wave_number": 5
       },
-      "cannon_only": false,
+      "cannon_only": true,
       "lane": "duo",
-      "target_level": 4,
-      "threshold_xp": "1140"
-     },
-     "question": null,
-     "revealed": true,
-     "round_number": 2,
-     "satisfied_checkpoints": [
-      "w6",
-      "w7",
-      "w8",
-      "w9",
-      "w10",
-      "w11",
-      "w12",
-      "w13",
-      "w14",
-      "w15"
-     ],
-     "topic": {
-      "category": "general",
-      "icon_hint": {
-       "icon": null,
-       "key": null,
-       "kind": "generic"
-      },
-      "motif": null,
-      "roles": [],
-      "tier": null
-     },
-     "traverse_path": [
-      "w15",
-      "w14",
-      "w13",
-      "w12",
-      "w11",
-      "w10",
-      "w9",
-      "w8",
-      "w7",
-      "w6"
-     ],
-     "unit_label": "Wave",
-     "viewer_checkpoint": "w15",
-     "viewer_submission": {
-      "answer_index": null,
-      "answered_count": 1,
-      "challenge_count": 1,
-      "correct_count": 0,
-      "is_correct": false
-     }
-    },
-    {
-     "canonical_checkpoint": "w13",
-     "canonical_question_ref": null,
-     "category": null,
-     "checkpoints": [
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "181.35",
-       "is_cannon_wave": false,
-       "level": 1,
-       "level_ceiling_xp": "280",
-       "level_floor_xp": "0",
-       "melee_count": 3,
-       "spawn_time_display": "0:30",
-       "token": "w1",
-       "wave_number": 1,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "362.70",
-       "is_cannon_wave": false,
-       "level": 2,
-       "level_ceiling_xp": "660",
-       "level_floor_xp": "280",
-       "melee_count": 3,
-       "spawn_time_display": "1:00",
-       "token": "w2",
-       "wave_number": 2,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 1,
-       "caster_count": 3,
-       "cumulative_xp": "592.80",
-       "is_cannon_wave": true,
-       "level": 2,
-       "level_ceiling_xp": "660",
-       "level_floor_xp": "280",
-       "melee_count": 3,
-       "spawn_time_display": "1:30",
-       "token": "w3",
-       "wave_number": 3,
-       "wave_xp": "230.10"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "774.15",
-       "is_cannon_wave": false,
-       "level": 3,
-       "level_ceiling_xp": "1140",
-       "level_floor_xp": "660",
-       "melee_count": 3,
-       "spawn_time_display": "2:00",
-       "token": "w4",
-       "wave_number": 4,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "955.50",
-       "is_cannon_wave": false,
-       "level": 3,
-       "level_ceiling_xp": "1140",
-       "level_floor_xp": "660",
-       "melee_count": 3,
-       "spawn_time_display": "2:30",
-       "token": "w5",
-       "wave_number": 5,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 1,
-       "caster_count": 3,
-       "cumulative_xp": "1185.60",
-       "is_cannon_wave": true,
-       "level": 4,
-       "level_ceiling_xp": "1720",
-       "level_floor_xp": "1140",
-       "melee_count": 3,
-       "spawn_time_display": "3:00",
-       "token": "w6",
-       "wave_number": 6,
-       "wave_xp": "230.10"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "1366.95",
-       "is_cannon_wave": false,
-       "level": 4,
-       "level_ceiling_xp": "1720",
-       "level_floor_xp": "1140",
-       "melee_count": 3,
-       "spawn_time_display": "3:30",
-       "token": "w7",
-       "wave_number": 7,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "1548.30",
-       "is_cannon_wave": false,
-       "level": 4,
-       "level_ceiling_xp": "1720",
-       "level_floor_xp": "1140",
-       "melee_count": 3,
-       "spawn_time_display": "4:00",
-       "token": "w8",
-       "wave_number": 8,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 1,
-       "caster_count": 3,
-       "cumulative_xp": "1778.40",
-       "is_cannon_wave": true,
-       "level": 5,
-       "level_ceiling_xp": "2400",
-       "level_floor_xp": "1720",
-       "melee_count": 3,
-       "spawn_time_display": "4:30",
-       "token": "w9",
-       "wave_number": 9,
-       "wave_xp": "230.10"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "1959.75",
-       "is_cannon_wave": false,
-       "level": 5,
-       "level_ceiling_xp": "2400",
-       "level_floor_xp": "1720",
-       "melee_count": 3,
-       "spawn_time_display": "5:00",
-       "token": "w10",
-       "wave_number": 10,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "2141.10",
-       "is_cannon_wave": false,
-       "level": 5,
-       "level_ceiling_xp": "2400",
-       "level_floor_xp": "1720",
-       "melee_count": 3,
-       "spawn_time_display": "5:30",
-       "token": "w11",
-       "wave_number": 11,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 1,
-       "caster_count": 3,
-       "cumulative_xp": "2371.20",
-       "is_cannon_wave": true,
-       "level": 5,
-       "level_ceiling_xp": "2400",
-       "level_floor_xp": "1720",
-       "melee_count": 3,
-       "spawn_time_display": "6:00",
-       "token": "w12",
-       "wave_number": 12,
-       "wave_xp": "230.10"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "2552.55",
-       "is_cannon_wave": false,
-       "level": 6,
-       "level_ceiling_xp": "3180",
-       "level_floor_xp": "2400",
-       "melee_count": 3,
-       "spawn_time_display": "6:30",
-       "token": "w13",
-       "wave_number": 13,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 0,
-       "caster_count": 3,
-       "cumulative_xp": "2733.90",
-       "is_cannon_wave": false,
-       "level": 6,
-       "level_ceiling_xp": "3180",
-       "level_floor_xp": "2400",
-       "melee_count": 3,
-       "spawn_time_display": "7:00",
-       "token": "w14",
-       "wave_number": 14,
-       "wave_xp": "181.35"
-      },
-      {
-       "cannon_count": 1,
-       "caster_count": 3,
-       "cumulative_xp": "2964.00",
-       "is_cannon_wave": true,
-       "level": 6,
-       "level_ceiling_xp": "3180",
-       "level_floor_xp": "2400",
-       "melee_count": 3,
-       "spawn_time_display": "7:30",
-       "token": "w15",
-       "wave_number": 15,
-       "wave_xp": "230.10"
-      }
-     ],
-     "family": "wave_xp",
-     "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
-     "icon_hint": {
-      "icon": null,
-      "key": null,
-      "kind": "generic"
-     },
-     "is_correct": false,
-     "kind": "scrub",
-     "module_id": "scrub",
-     "objective": {
-      "cannon_only": false,
-      "lane": "duo",
-      "target_level": 6,
-      "text": "Find the first wave where a duo laner reaches Level 6."
-     },
-     "outcome": "incorrect",
-     "prompt": "Find the first wave where a duo laner reaches Level 6.",
-     "proof": {
-      "after": {
-       "breakpoint_note": "Level 6 (1st melee in wave)",
-       "cumulative_xp": "2552.55",
-       "is_cannon_wave": false,
-       "level": 6,
-       "satisfied": true,
-       "spawn_time_display": "6:30",
-       "token": "w13",
-       "wave_number": 13
-      },
-      "before": {
-       "breakpoint_note": null,
-       "cumulative_xp": "2371.20",
-       "is_cannon_wave": true,
-       "level": 5,
-       "satisfied": false,
-       "spawn_time_display": "6:00",
-       "token": "w12",
-       "wave_number": 12
-      },
-      "cannon_only": false,
-      "lane": "duo",
-      "target_level": 6,
-      "threshold_xp": "2400"
+      "target_level": 3,
+      "threshold_xp": "660"
      },
      "question": null,
      "revealed": true,
      "round_number": 3,
      "satisfied_checkpoints": [
-      "w13",
-      "w14",
+      "w6",
+      "w9",
+      "w12",
       "w15"
      ],
      "topic": {
@@ -8647,14 +8628,7 @@
       "w3",
       "w4",
       "w5",
-      "w6",
-      "w7",
-      "w8",
-      "w9",
-      "w10",
-      "w11",
-      "w12",
-      "w13"
+      "w6"
      ],
      "unit_label": "Wave",
      "viewer_checkpoint": "w1",
@@ -8676,134 +8650,9 @@
  "submit_accepted": {
   "challenge_index": 0,
   "challenge_reveal": {
-   "canonical_checkpoint": "w13",
-   "challenge_index": 0,
-   "checkpoint": "w1",
-   "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
-   "is_correct": false,
-   "proof": {
-    "after": {
-     "breakpoint_note": "Level 6 (1st melee in wave)",
-     "cumulative_xp": "2552.55",
-     "is_cannon_wave": false,
-     "level": 6,
-     "satisfied": true,
-     "spawn_time_display": "6:30",
-     "token": "w13",
-     "wave_number": 13
-    },
-    "before": {
-     "breakpoint_note": null,
-     "cumulative_xp": "2371.20",
-     "is_cannon_wave": true,
-     "level": 5,
-     "satisfied": false,
-     "spawn_time_display": "6:00",
-     "token": "w12",
-     "wave_number": 12
-    },
-    "cannon_only": false,
-    "lane": "duo",
-    "target_level": 6,
-    "threshold_xp": "2400"
-   },
-   "satisfied_checkpoints": [
-    "w13",
-    "w14",
-    "w15"
-   ],
-   "traverse_path": [
-    "w1",
-    "w2",
-    "w3",
-    "w4",
-    "w5",
-    "w6",
-    "w7",
-    "w8",
-    "w9",
-    "w10",
-    "w11",
-    "w12",
-    "w13"
-   ]
-  },
-  "conflicting": false,
-  "idempotent": false,
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
-  "next_challenge_index": 1,
-  "reveal_window_ms": 3000,
-  "segment_number": 3,
-  "segment_resolved": false,
-  "status": "accepted"
- },
- "submit_accepted_bot_settled_correct": {
-  "challenge_index": 0,
-  "challenge_reveal": {
-   "canonical_checkpoint": "w4",
-   "challenge_index": 0,
-   "checkpoint": "w4",
-   "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
-   "is_correct": true,
-   "proof": {
-    "after": {
-     "breakpoint_note": "Level 4 (2nd caster in wave)",
-     "cumulative_xp": "1191",
-     "is_cannon_wave": false,
-     "level": 4,
-     "satisfied": true,
-     "spawn_time_display": "2:00",
-     "token": "w4",
-     "wave_number": 4
-    },
-    "before": {
-     "breakpoint_note": "Level 3 (2nd melee in wave)",
-     "cumulative_xp": "912",
-     "is_cannon_wave": true,
-     "level": 3,
-     "satisfied": false,
-     "spawn_time_display": "1:30",
-     "token": "w3",
-     "wave_number": 3
-    },
-    "cannon_only": false,
-    "lane": "solo",
-    "target_level": 4,
-    "threshold_xp": "1140"
-   },
-   "satisfied_checkpoints": [
-    "w4",
-    "w5",
-    "w6",
-    "w7",
-    "w8",
-    "w9",
-    "w10",
-    "w11",
-    "w12",
-    "w13",
-    "w14",
-    "w15"
-   ],
-   "traverse_path": [
-    "w4"
-   ]
-  },
-  "conflicting": false,
-  "idempotent": false,
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
-  "next_challenge_index": 1,
-  "reveal_window_ms": 3000,
-  "segment_number": 1,
-  "segment_resolved": true,
-  "status": "accepted"
- },
- "submit_accepted_bot_settled_wrong": {
-  "challenge_index": 0,
-  "challenge_reveal": {
    "canonical_checkpoint": "w6",
    "challenge_index": 0,
-   "checkpoint": "w15",
+   "checkpoint": "w1",
    "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
    "is_correct": false,
    "proof": {
@@ -8827,12 +8676,131 @@
      "token": "w5",
      "wave_number": 5
     },
-    "cannon_only": false,
+    "cannon_only": true,
     "lane": "duo",
-    "target_level": 4,
-    "threshold_xp": "1140"
+    "target_level": 3,
+    "threshold_xp": "660"
    },
    "satisfied_checkpoints": [
+    "w6",
+    "w9",
+    "w12",
+    "w15"
+   ],
+   "traverse_path": [
+    "w1",
+    "w2",
+    "w3",
+    "w4",
+    "w5",
+    "w6"
+   ]
+  },
+  "conflicting": false,
+  "idempotent": false,
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
+  "next_challenge_index": 1,
+  "reveal_window_ms": 3000,
+  "segment_number": 3,
+  "segment_resolved": false,
+  "status": "accepted"
+ },
+ "submit_accepted_bot_settled_correct": {
+  "challenge_index": 0,
+  "challenge_reveal": {
+   "canonical_checkpoint": "w6",
+   "challenge_index": 0,
+   "checkpoint": "w6",
+   "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
+   "is_correct": true,
+   "proof": {
+    "after": {
+     "breakpoint_note": "Level 5 (3rd caster in wave)",
+     "cumulative_xp": "1824",
+     "is_cannon_wave": true,
+     "level": 5,
+     "satisfied": true,
+     "spawn_time_display": "3:00",
+     "token": "w6",
+     "wave_number": 6
+    },
+    "before": {
+     "breakpoint_note": null,
+     "cumulative_xp": "1470",
+     "is_cannon_wave": false,
+     "level": 4,
+     "satisfied": false,
+     "spawn_time_display": "2:30",
+     "token": "w5",
+     "wave_number": 5
+    },
+    "cannon_only": false,
+    "lane": "solo",
+    "target_level": 5,
+    "threshold_xp": "1720"
+   },
+   "satisfied_checkpoints": [
+    "w6",
+    "w7",
+    "w8",
+    "w9",
+    "w10",
+    "w11",
+    "w12",
+    "w13",
+    "w14",
+    "w15"
+   ],
+   "traverse_path": [
+    "w6"
+   ]
+  },
+  "conflicting": false,
+  "idempotent": false,
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
+  "next_challenge_index": 1,
+  "reveal_window_ms": 3000,
+  "segment_number": 1,
+  "segment_resolved": true,
+  "status": "accepted"
+ },
+ "submit_accepted_bot_settled_wrong": {
+  "challenge_index": 0,
+  "challenge_reveal": {
+   "canonical_checkpoint": "w4",
+   "challenge_index": 0,
+   "checkpoint": "w15",
+   "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
+   "is_correct": false,
+   "proof": {
+    "after": {
+     "breakpoint_note": "Level 3 (2nd melee in wave)",
+     "cumulative_xp": "774.15",
+     "is_cannon_wave": false,
+     "level": 3,
+     "satisfied": true,
+     "spawn_time_display": "2:00",
+     "token": "w4",
+     "wave_number": 4
+    },
+    "before": {
+     "breakpoint_note": null,
+     "cumulative_xp": "592.80",
+     "is_cannon_wave": true,
+     "level": 2,
+     "satisfied": false,
+     "spawn_time_display": "1:30",
+     "token": "w3",
+     "wave_number": 3
+    },
+    "cannon_only": false,
+    "lane": "duo",
+    "target_level": 3,
+    "threshold_xp": "660"
+   },
+   "satisfied_checkpoints": [
+    "w4",
+    "w5",
     "w6",
     "w7",
     "w8",
@@ -8854,12 +8822,14 @@
     "w9",
     "w8",
     "w7",
-    "w6"
+    "w6",
+    "w5",
+    "w4"
    ]
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "next_challenge_index": 1,
   "reveal_window_ms": 3000,
   "segment_number": 2,
@@ -8869,40 +8839,41 @@
  "submit_conflict": {
   "challenge_index": 0,
   "challenge_reveal": {
-   "canonical_checkpoint": "w13",
+   "canonical_checkpoint": "w6",
    "challenge_index": 0,
    "checkpoint": "w1",
    "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
    "is_correct": false,
    "proof": {
     "after": {
-     "breakpoint_note": "Level 6 (1st melee in wave)",
-     "cumulative_xp": "2552.55",
-     "is_cannon_wave": false,
-     "level": 6,
+     "breakpoint_note": "Level 4 (1st cannon in wave)",
+     "cumulative_xp": "1185.60",
+     "is_cannon_wave": true,
+     "level": 4,
      "satisfied": true,
-     "spawn_time_display": "6:30",
-     "token": "w13",
-     "wave_number": 13
+     "spawn_time_display": "3:00",
+     "token": "w6",
+     "wave_number": 6
     },
     "before": {
      "breakpoint_note": null,
-     "cumulative_xp": "2371.20",
-     "is_cannon_wave": true,
-     "level": 5,
+     "cumulative_xp": "955.50",
+     "is_cannon_wave": false,
+     "level": 3,
      "satisfied": false,
-     "spawn_time_display": "6:00",
-     "token": "w12",
-     "wave_number": 12
+     "spawn_time_display": "2:30",
+     "token": "w5",
+     "wave_number": 5
     },
-    "cannon_only": false,
+    "cannon_only": true,
     "lane": "duo",
-    "target_level": 6,
-    "threshold_xp": "2400"
+    "target_level": 3,
+    "threshold_xp": "660"
    },
    "satisfied_checkpoints": [
-    "w13",
-    "w14",
+    "w6",
+    "w9",
+    "w12",
     "w15"
    ],
    "traverse_path": [
@@ -8911,64 +8882,58 @@
     "w3",
     "w4",
     "w5",
-    "w6",
-    "w7",
-    "w8",
-    "w9",
-    "w10",
-    "w11",
-    "w12",
-    "w13"
+    "w6"
    ]
   },
   "conflicting": true,
   "idempotent": true,
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "next_challenge_index": 1,
   "reveal_window_ms": 3000,
   "segment_number": 3,
   "segment_resolved": false,
   "status": "accepted"
  },
- "submit_request_bytes_correct": "{\"checkpoint\":\"w4\"}",
+ "submit_request_bytes_correct": "{\"checkpoint\":\"w6\"}",
  "submit_request_bytes_wrong": "{\"checkpoint\":\"w15\"}",
  "submit_retry": {
   "challenge_index": 0,
   "challenge_reveal": {
-   "canonical_checkpoint": "w13",
+   "canonical_checkpoint": "w6",
    "challenge_index": 0,
    "checkpoint": "w1",
    "granularity_caveat": "level breakpoints are asserted at wave (spawn-time) granularity, not exact minion death order; see league_mechanics.breakpoints for detail",
    "is_correct": false,
    "proof": {
     "after": {
-     "breakpoint_note": "Level 6 (1st melee in wave)",
-     "cumulative_xp": "2552.55",
-     "is_cannon_wave": false,
-     "level": 6,
+     "breakpoint_note": "Level 4 (1st cannon in wave)",
+     "cumulative_xp": "1185.60",
+     "is_cannon_wave": true,
+     "level": 4,
      "satisfied": true,
-     "spawn_time_display": "6:30",
-     "token": "w13",
-     "wave_number": 13
+     "spawn_time_display": "3:00",
+     "token": "w6",
+     "wave_number": 6
     },
     "before": {
      "breakpoint_note": null,
-     "cumulative_xp": "2371.20",
-     "is_cannon_wave": true,
-     "level": 5,
+     "cumulative_xp": "955.50",
+     "is_cannon_wave": false,
+     "level": 3,
      "satisfied": false,
-     "spawn_time_display": "6:00",
-     "token": "w12",
-     "wave_number": 12
+     "spawn_time_display": "2:30",
+     "token": "w5",
+     "wave_number": 5
     },
-    "cannon_only": false,
+    "cannon_only": true,
     "lane": "duo",
-    "target_level": 6,
-    "threshold_xp": "2400"
+    "target_level": 3,
+    "threshold_xp": "660"
    },
    "satisfied_checkpoints": [
-    "w13",
-    "w14",
+    "w6",
+    "w9",
+    "w12",
     "w15"
    ],
    "traverse_path": [
@@ -8977,19 +8942,12 @@
     "w3",
     "w4",
     "w5",
-    "w6",
-    "w7",
-    "w8",
-    "w9",
-    "w10",
-    "w11",
-    "w12",
-    "w13"
+    "w6"
    ]
   },
   "conflicting": false,
   "idempotent": true,
-  "match_id": "rkb_972f08c1083d05dc3d0a03c1",
+  "match_id": "rkb_9b4b12b76ef2ac925ca3207a",
   "next_challenge_index": 1,
   "reveal_window_ms": 3000,
   "segment_number": 3,

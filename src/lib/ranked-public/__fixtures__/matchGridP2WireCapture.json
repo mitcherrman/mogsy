@@ -3,11 +3,11 @@
   "assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -15,7 +15,7 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g2"
    },
    {
     "entity_id": "e4",
@@ -27,17 +27,17 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ],
   "canonical_assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g0"
+    "group_id": "g2"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -45,7 +45,7 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g2"
    },
    {
     "entity_id": "e4",
@@ -57,7 +57,7 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ],
   "challenge_index": 0,
@@ -93,37 +93,37 @@
   ],
   "entity_facts": {
    "e0": {
-    "label": "Conqueror",
+    "label": "Arcane Comet",
     "rune_type": "keystone",
-    "tree_label": "Precision"
-   },
-   "e1": {
-    "label": "Celerity",
-    "rune_type": "minor",
     "tree_label": "Sorcery"
    },
+   "e1": {
+    "label": "Revitalize",
+    "rune_type": "minor",
+    "tree_label": "Resolve"
+   },
    "e2": {
-    "label": "Scorch",
+    "label": "Gathering Storm",
     "rune_type": "minor",
     "tree_label": "Sorcery"
    },
    "e3": {
-    "label": "Treasure Hunter",
+    "label": "Waterwalking",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Sorcery"
    },
    "e4": {
-    "label": "Sudden Impact",
+    "label": "Last Stand",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Precision"
    },
    "e5": {
-    "label": "Grisly Mementos",
+    "label": "Absorb Life",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Precision"
    },
    "e6": {
-    "label": "Legend: Alacrity",
+    "label": "Cut Down",
     "rune_type": "minor",
     "tree_label": "Precision"
    }
@@ -143,71 +143,71 @@
     "entities": [
      {
       "entity_id": "e0",
-      "label": "Conqueror",
+      "label": "Arcane Comet",
       "media": {
        "alt": "",
-       "src": "assets/runes/Conqueror.png"
+       "src": "assets/runes/Arcane_Comet.png"
       }
      },
      {
       "entity_id": "e1",
-      "label": "Celerity",
+      "label": "Revitalize",
       "media": {
        "alt": "",
-       "src": "assets/runes/Celerity.png"
+       "src": "assets/runes/Revitalize.png"
       }
      },
      {
       "entity_id": "e2",
-      "label": "Scorch",
+      "label": "Gathering Storm",
       "media": {
        "alt": "",
-       "src": "assets/runes/Scorch.png"
+       "src": "assets/runes/Gathering_Storm.png"
       }
      },
      {
       "entity_id": "e3",
-      "label": "Treasure Hunter",
+      "label": "Waterwalking",
       "media": {
        "alt": "",
-       "src": "assets/runes/Treasure_Hunter.png"
+       "src": "assets/runes/Waterwalking.png"
       }
      },
      {
       "entity_id": "e4",
-      "label": "Sudden Impact",
+      "label": "Last Stand",
       "media": {
        "alt": "",
-       "src": "assets/runes/Sudden_Impact.png"
+       "src": "assets/runes/Last_Stand.png"
       }
      },
      {
       "entity_id": "e5",
-      "label": "Grisly Mementos",
+      "label": "Absorb Life",
       "media": {
        "alt": "",
-       "src": "assets/runes/Grisly_Mementos.png"
+       "src": "assets/runes/Absorb_Life.png"
       }
      },
      {
       "entity_id": "e6",
-      "label": "Legend: Alacrity",
+      "label": "Cut Down",
       "media": {
        "alt": "",
-       "src": "assets/runes/Legend_Alacrity.png"
+       "src": "assets/runes/Cut_Down.png"
       }
      }
     ],
     "groups": [
      {
-      "glyph": "precision",
+      "glyph": "resolve",
       "group_id": "g0",
-      "label": "Precision"
+      "label": "Resolve"
      },
      {
-      "glyph": "domination",
+      "glyph": "precision",
       "group_id": "g1",
-      "label": "Domination"
+      "label": "Precision"
      },
      {
       "glyph": "sorcery",
@@ -220,17 +220,17 @@
   ],
   "family": "rune_tree",
   "prompt": "Seat each rune under its tree",
-  "reveal_window_ms": 3000
+  "reveal_window_ms": 4500
  },
  "settlement_segment_reveal": {
   "canonical_assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g0"
+    "group_id": "g2"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -238,7 +238,7 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g2"
    },
    {
     "entity_id": "e4",
@@ -250,44 +250,44 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ],
   "challenge_count": 1,
   "correct_points": 2,
   "entity_facts": {
    "e0": {
-    "label": "Conqueror",
+    "label": "Arcane Comet",
     "rune_type": "keystone",
-    "tree_label": "Precision"
-   },
-   "e1": {
-    "label": "Celerity",
-    "rune_type": "minor",
     "tree_label": "Sorcery"
    },
+   "e1": {
+    "label": "Revitalize",
+    "rune_type": "minor",
+    "tree_label": "Resolve"
+   },
    "e2": {
-    "label": "Scorch",
+    "label": "Gathering Storm",
     "rune_type": "minor",
     "tree_label": "Sorcery"
    },
    "e3": {
-    "label": "Treasure Hunter",
+    "label": "Waterwalking",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Sorcery"
    },
    "e4": {
-    "label": "Sudden Impact",
+    "label": "Last Stand",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Precision"
    },
    "e5": {
-    "label": "Grisly Mementos",
+    "label": "Absorb Life",
     "rune_type": "minor",
-    "tree_label": "Domination"
+    "tree_label": "Precision"
    },
    "e6": {
-    "label": "Legend: Alacrity",
+    "label": "Cut Down",
     "rune_type": "minor",
     "tree_label": "Precision"
    }
@@ -299,11 +299,11 @@
     "assignments": [
      {
       "entity_id": "e0",
-      "group_id": "g0"
+      "group_id": "g1"
      },
      {
       "entity_id": "e1",
-      "group_id": "g2"
+      "group_id": "g0"
      },
      {
       "entity_id": "e2",
@@ -311,7 +311,7 @@
      },
      {
       "entity_id": "e3",
-      "group_id": "g1"
+      "group_id": "g2"
      },
      {
       "entity_id": "e4",
@@ -323,15 +323,15 @@
      },
      {
       "entity_id": "e6",
-      "group_id": "g0"
+      "group_id": "g1"
      }
     ],
-    "base_points": 2,
-    "correct": 1,
-    "duration_ms": 11337,
+    "base_points": 0,
+    "correct": 0,
+    "duration_ms": 11222,
     "entity_correct": [
      {
-      "correct": true,
+      "correct": false,
       "entity_id": "e0"
      },
      {
@@ -360,11 +360,11 @@
      }
     ],
     "finished_first": false,
-    "incorrect": 0,
-    "matched": 7,
-    "points_awarded": 2,
+    "incorrect": 1,
+    "matched": 6,
+    "points_awarded": 0,
     "required": 7,
-    "segment_result": "win",
+    "segment_result": "draw",
     "speed_bonus_points": 0,
     "unanswered": 0
    },
@@ -372,11 +372,11 @@
     "assignments": [
      {
       "entity_id": "e0",
-      "group_id": "g1"
+      "group_id": "g0"
      },
      {
       "entity_id": "e1",
-      "group_id": "g2"
+      "group_id": "g0"
      },
      {
       "entity_id": "e2",
@@ -384,7 +384,7 @@
      },
      {
       "entity_id": "e3",
-      "group_id": "g1"
+      "group_id": "g2"
      },
      {
       "entity_id": "e4",
@@ -396,7 +396,7 @@
      },
      {
       "entity_id": "e6",
-      "group_id": "g0"
+      "group_id": "g1"
      }
     ],
     "base_points": 0,
@@ -437,7 +437,7 @@
     "matched": 6,
     "points_awarded": 0,
     "required": 7,
-    "segment_result": "loss",
+    "segment_result": "draw",
     "speed_bonus_points": 0,
     "unanswered": 0
    }
@@ -453,11 +453,11 @@
   "assignments": [
    {
     "entity_id": "e0",
-    "group_id": "g1"
+    "group_id": "g0"
    },
    {
     "entity_id": "e1",
-    "group_id": "g2"
+    "group_id": "g0"
    },
    {
     "entity_id": "e2",
@@ -465,7 +465,7 @@
    },
    {
     "entity_id": "e3",
-    "group_id": "g1"
+    "group_id": "g2"
    },
    {
     "entity_id": "e4",
@@ -477,7 +477,7 @@
    },
    {
     "entity_id": "e6",
-    "group_id": "g0"
+    "group_id": "g1"
    }
   ]
  }
