@@ -102,14 +102,16 @@ export default function Layout() {
     // PPQ2-A — the neutral question-surface probe measures the arena's own
     // footprint, so it gets the same page frame as Ranked.
     || pathname === "/dev/arena-question-probe"
-    // PPQ2-INT â€” the playable Pro Play Arena gets the same arena frame. It sits
+    // PPQ2-INT — the playable Pro Play Arena gets the same arena frame. It sits
     // under /lol/ so it also gets the LoL theme (`dark theme-lol`) that every
     // production arena route has; outside it the header reads dark-on-navy.
     || pathname === "/lol/dev/pro-play-arena"
-    // PPQ2-E â€” the production Pro Play Quiz IS that arena now (it was a
+    // PAV1 — the Pro Play Assembly lab mounts the arena's own frame, so it gets the same page frame as Ranked.
+    || pathname === "/dev/pro-play-assembly"
+    // PPQ2-E — the production Pro Play Quiz IS that arena now (it was a
     // max-w-2xl reading column). Already in the LoL section for its theme.
     || pathname === PRO_PLAY_QUIZ_ROUTE
-    // GM-M1 â€” the Match Grid lab brings its own max-width and gutters.
+    // GM-M1 — the Match Grid lab brings its own max-width and gutters.
     || pathname === "/dev/match-grid";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel

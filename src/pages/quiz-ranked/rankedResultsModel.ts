@@ -64,6 +64,9 @@ export function moduleSubject(round: ReviewRound): string {
   if (round.kind === "reconstruct") return "Reconstruct";
   if (round.kind === "scrub") return "Chronoscope";
   if (round.kind === "match") return "Match Grid";
+  if (round.kind === "assembly") {
+    return round.assembly?.family === "draft_memory" ? "Draft Memory" : "Roster Lock";
+  }
   if (round.topic?.category) return categoryLabel(round.topic.category as CategoryKey);
   if (round.category) return prettyCategory(round.category);
   return "Question";
@@ -137,7 +140,7 @@ export function reviewRoundQuestionTally(
 ): { correct: number; total: number } {
   const sub = round.viewerSubmission;
   if (
-    !round.orderForge && !round.reconstruct && !round.match && sub.isCorrect === null
+    !round.orderForge && !round.reconstruct && !round.match && !round.assembly && sub.isCorrect === null
     && sub.challengeCount !== null && sub.challengeCount > 0
   ) {
     const total = sub.challengeCount;
