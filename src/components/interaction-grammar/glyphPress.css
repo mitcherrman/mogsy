@@ -306,23 +306,40 @@
   border-radius: 6px;
   transition: transform 160ms var(--gp-ease), opacity 160ms var(--gp-ease);
 }
-/* The player's type: a vellum tile, ink glyph — provisional, legible as "yours". */
+/* The player's type: a loose vellum tile, dark ink — lifted off the slate, provisional, "yours".
+   Light body / dark glyph is the opposite luminance to the engraved plates below, so the two
+   read apart by value, not only by hue. */
 .gp-cell[data-state="set"] .gp-cell-face {
-  background: linear-gradient(180deg, var(--gp-vellum-bright), var(--gp-vellum));
+  background: linear-gradient(180deg, #fbf3da 0%, var(--gp-vellum-bright) 40%, var(--gp-vellum) 100%);
   color: var(--gp-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.8), inset 0 -2px 0 rgba(122, 98, 54, 0.45), 0 2px 5px -2px rgba(0, 0, 0, 0.8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 238, 0.95),
+    inset 0 -3px 0 rgba(122, 98, 54, 0.5),
+    0 0 0 1px rgba(44, 36, 23, 0.55),
+    0 3px 6px -2px rgba(0, 0, 0, 0.85);
   animation: gp-set 160ms var(--gp-ease) 1 both;
 }
 @keyframes gp-set {
   0% { transform: translateY(-5px) scale(1.08); opacity: 0.4; }
   100% { transform: translateY(0) scale(1); opacity: 1; }
 }
-/* Engraved type: brass, a gold glyph, permanent. */
+/* Engraved type: a dark brass plate let into the slate, the glyph cut in bright gold — permanent.
+   Recessed and dark where the player's tile is raised and pale. A given glyph is bound by a brass
+   rim; a sounded one by the sounding's cyan. */
 .gp-cell[data-state="engraved"] .gp-cell-face {
-  background: linear-gradient(180deg, #d9b86f 0%, #b9934c 55%, #8d6f36 100%);
-  color: #2a2110;
-  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.45);
-  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.6), inset 0 -2px 0 rgba(60, 44, 16, 0.6), 0 2px 5px -2px rgba(0, 0, 0, 0.9);
+  background: linear-gradient(180deg, #4b3a1c 0%, #33270f 60%, #261c0a 100%);
+  color: var(--gp-gold);
+  text-shadow: 0 0 6px rgba(240, 215, 140, 0.35), 0 1px 0 rgba(0, 0, 0, 0.8);
+  box-shadow:
+    inset 0 0 0 2px rgba(213, 182, 111, 0.85),
+    inset 0 0 0 3px rgba(0, 0, 0, 0.55),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+.gp-cell[data-origin="sounded"] .gp-cell-face {
+  box-shadow:
+    inset 0 0 0 2px rgba(127, 214, 239, 0.85),
+    inset 0 0 0 3px rgba(0, 0, 0, 0.55),
+    inset 0 3px 6px rgba(0, 0, 0, 0.6);
 }
 /* A sounded engraving carries the sounding's cyan at its seat. */
 .gp-cell[data-origin="sounded"]::after { background: rgba(127, 214, 239, 0.7); }
@@ -406,10 +423,13 @@
   box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.7), inset 0 -2px 0 rgba(60, 44, 16, 0.6), 0 0 14px rgba(240, 215, 140, 0.45);
 }
 .gp-cell[data-result="right"]::after { background: var(--gp-gold); box-shadow: 0 0 8px rgba(240, 215, 140, 0.8); }
+/* Left blank: a hollow slot, drawn with a DASHED outline and no body. A given or sounded socket is a
+   solid dark plate; the dash is the cue that survives size, colour blindness and a quick glance. */
 .gp-cell[data-result="missing"] .gp-cell-face {
-  background: rgba(240, 215, 140, 0.06);
+  background: transparent;
   color: var(--gp-gold);
-  box-shadow: inset 0 0 0 1.5px rgba(240, 215, 140, 0.8);
+  border: 2px dashed rgba(240, 215, 140, 0.9);
+  box-shadow: none;
 }
 .gp-cell[data-result="missing"]::after { background: rgba(240, 215, 140, 0.5); }
 .gp-cell[data-result="wrong"] .gp-cell-face {
@@ -546,19 +566,21 @@
     inset 0 0 24px rgba(127, 214, 239, 0.35),
     0 0 18px rgba(127, 214, 239, 0.35);
 }
-/* the rims fade into shadow so the band reads as turning away */
+/* The rims fade into shadow so the band reads as turning away. They are kept NARROW and light:
+   the clearing tile rests one step left of centre, and a wide fade there hid the one control the
+   player reaches for to take a glyph back. */
 .gp-drum-window::before,
 .gp-drum-window::after {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 56px;
+  width: 18px;
   z-index: 2;
   pointer-events: none;
 }
-.gp-drum-window::before { left: 0; background: linear-gradient(90deg, rgba(40, 30, 12, 0.85), transparent); }
-.gp-drum-window::after { right: 0; background: linear-gradient(270deg, rgba(40, 30, 12, 0.85), transparent); }
+.gp-drum-window::before { left: 0; background: linear-gradient(90deg, rgba(40, 30, 12, 0.5), transparent); }
+.gp-drum-window::after { right: 0; background: linear-gradient(270deg, rgba(40, 30, 12, 0.5), transparent); }
 .gp-drum-band {
   position: absolute;
   left: 0;

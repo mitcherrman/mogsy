@@ -244,13 +244,23 @@ export function GlyphPress({
   const actOnGlyph = useCallback((glyph: string) => { if (armed) sound(glyph); else stamp(glyph); }, [armed, sound, stamp]);
   const actOnTile = useCallback((tile: string) => { if (tile === CLEAR_TILE) backspace(); else actOnGlyph(tile); }, [backspace, actOnGlyph]);
 
+  // The cue is the host's setState: it belongs in the handler. A functional updater would run it
+  // inside render whenever React cannot take the eager path ("Cannot update X while rendering").
   const toggleArmed = () => {
     if (!open || left <= 0 || pending !== null) return;
-    setArmed((a) => { if (!a) onCue?.("arm"); return !a; });
+    if (!armed) onCue?.("arm");
+    setArmed(!armed);
   };
 
+  // One Lock per round of input. A host that acknowledges asynchronously keeps `phase` open for a
+  // beat; a second click in that beat must not submit again. Any edit, sounding or phase change
+  // re-arms it, so a host that refuses a lock can accept a corrected one.
+  const lockedRef = useRef(false);
+  useEffect(() => { lockedRef.current = false; }, [open, value, ledger]);
+
   const lock = () => {
-    if (!open) return;
+    if (!open || lockedRef.current) return;
+    lockedRef.current = true;
     setArmed(false);
     onCue?.("lock");
     setAnnouncement("Locked. The press is inking.");

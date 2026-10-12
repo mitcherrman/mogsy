@@ -51,7 +51,15 @@ export interface FormeLayout {
   overflow: boolean;
 }
 
-export const FORME_CELL_SIZES: readonly number[] = [44, 40, 36, 32, 28, 24, 20];
+export const FORME_CELL_SIZES: readonly number[] = [64, 56, 48, 44, 40, 36, 32, 28, 24, 20];
+
+/**
+ * Sockets above this side are an upgrade for short phrases on a roomy forme. They are taken only
+ * when every word sits whole on its row: a long word keeps the layout it always had (the largest
+ * size at or below this one that fits, breaking with a tick if it must) rather than breaking a
+ * word to make its letters bigger.
+ */
+export const FORME_UNBROKEN_ABOVE = 44;
 
 type Word = readonly GlyphPressCell[];
 
@@ -103,22 +111,37 @@ function flow(ws: Word[], m: Metrics, maxW: number): { rows: Piece[][]; widest: 
       row.push(...pieces);
       continue;
     }
-    // The word is wider than a row: break it into chunks that fit, each ending in a tick.
+    // The word is wider than a row: break it into chunks that fit, each but the last ending in a tick.
     close();
+    const tick: Piece = { cell: null, w: m.breakW };
+    const greedy: Piece[][] = [];
     let chunk: Piece[] = [];
     for (let i = 0; i < pieces.length; i++) {
       const p = pieces[i];
       const last = i === pieces.length - 1;
       const trial = [...chunk, p];
       const trialW = widthOf(trial) + (last ? 0 : m.gap + m.breakW);
-      if (chunk.length && trialW > maxW) {
-        const withTick = [...chunk, { cell: null, w: m.breakW }];
-        rows.push(withTick);
-        widest = Math.max(widest, widthOf(withTick));
-        chunk = [p];
-      } else chunk = trial;
+      if (chunk.length && trialW > maxW) { greedy.push(chunk); chunk = [p]; } else chunk = trial;
     }
-    if (chunk.length) { rows.push(chunk); widest = Math.max(widest, widthOf(chunk)); }
+    if (chunk.length) greedy.push(chunk);
+    // Greedy fills every row to the edge and strands the remainder ("DISINTEGRATIO-" / "N"). The same
+    // number of rows can carry the word in near-equal chunks, so use those whenever each one fits.
+    const k = greedy.length;
+    const base = Math.floor(pieces.length / k);
+    const extra = pieces.length % k;
+    const even: Piece[][] = [];
+    for (let c = 0, at = 0; c < k; c++) {
+      const size = base + (c < extra ? 1 : 0);
+      even.push(pieces.slice(at, at + size));
+      at += size;
+    }
+    const evenFits = even.every((ch, c) => widthOf(c === k - 1 ? ch : [...ch, tick]) <= maxW);
+    const chunks = evenFits ? even : greedy;
+    chunks.forEach((ch, c) => {
+      const row = c === chunks.length - 1 ? ch : [...ch, tick];
+      rows.push(row);
+      widest = Math.max(widest, widthOf(row));
+    });
   }
   close();
   return { rows, widest };
@@ -138,6 +161,8 @@ export function layoutForme(structure: GlyphPressStructure, box: FormeBox, sizes
     const { rows, widest } = flow(ws, m, Math.max(1, box.width));
     const blockH = rows.length * m.rowPitch - (m.rowPitch - m.cell);
     const fits = widest <= box.width && blockH <= box.height;
+    const broken = rows.some((r) => r.some((p) => p.cell === null));
+    if (broken && size > FORME_UNBROKEN_ABOVE && size !== sizes[sizes.length - 1]) continue;
     chosen = { m, rows, widest, overflow: !fits };
     if (fits) break;
   }

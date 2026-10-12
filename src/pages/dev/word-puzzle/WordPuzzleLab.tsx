@@ -157,8 +157,22 @@ export default function WordPuzzleLab() {
   const [revealDone, setRevealDone] = useState(false);
   const [lastCue, setLastCue] = useState<string>("");
 
+  // The stand-in server's latency timers. A timer belongs to the round that set it: a new round
+  // (or unmount) cancels every one, so a late answer can never land on the next round's ledger.
+  const timersRef = useRef<Set<number>>(new Set());
+  const later = useCallback((fn: () => void, ms: number) => {
+    const id = window.setTimeout(() => { timersRef.current.delete(id); fn(); }, ms);
+    timersRef.current.add(id);
+  }, []);
+  const cancelTimers = useCallback(() => {
+    for (const id of timersRef.current) window.clearTimeout(id);
+    timersRef.current.clear();
+  }, []);
+  useEffect(() => cancelTimers, [cancelTimers]);
+
   // Reset on a new round, and apply a pre-arranged state when asked.
   useEffect(() => {
+    cancelTimers();
     const { secret } = round;
     setReveal(null);
     setLastResponse(null);
@@ -182,32 +196,31 @@ export default function WordPuzzleLab() {
     setLastResponse(response);
     setPhase("locked");
     if (prearranged === "locked") return;
-    const t = window.setTimeout(() => { setReveal(gradeLabRound(secret, round.ledger, response)); setPhase("revealed"); }, 300);
-    return () => window.clearTimeout(t);
-  }, [round, prearranged]);
+    later(() => { setReveal(gradeLabRound(secret, round.ledger, response)); setPhase("revealed"); }, 300);
+  }, [round, prearranged, later, cancelTimers]);
 
   const onSound = useCallback((glyph: string) => {
     const secret = secretRef.current;
     if (!secret) return;
     // Stand-in for the server round trip: the ledger grows after a beat; the player's value is reconciled with it.
-    window.setTimeout(() => {
+    later(() => {
       const next = soundLabRound(secret, ledgerRef.current, glyph);
       setLedger(next);
       setValue((v) => reconcileValue(v, next));
     }, SOUNDING_LATENCY_MS);
-  }, []);
+  }, [later]);
 
   const onLock = useCallback((response: GlyphPressResponse) => {
     setLastResponse(response);
     setPhase("locked");
     const secret = secretRef.current;
     const ledgerAtLock = ledgerRef.current;
-    window.setTimeout(() => {
+    later(() => {
       if (!secret) return;
       setReveal(gradeLabRound(secret, ledgerAtLock, response));
       setPhase("revealed");
     }, SERVER_LATENCY_MS);
-  }, []);
+  }, [later]);
   const onRevealComplete = useCallback(() => setRevealDone(true), []);
   const onCue = useCallback((cue: GlyphPressCue) => setLastCue(cue), []);
 

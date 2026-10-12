@@ -40,14 +40,42 @@ describe("content assertions", () => {
 describe("the forme's layout", () => {
   it("lays a short word in one row at the largest socket that fits", () => {
     const l = layoutForme(structureOf("Zephyr"), { width: 600, height: 300 });
-    expect(l.cell).toBe(44);
+    expect(l.cell).toBe(64);
     expect(l.rows).toBe(1);
     expect(l.items.filter((i) => i.kind === "glyph")).toHaveLength(6);
     expect(l.overflow).toBe(false);
     expect(l.width).toBeLessThanOrEqual(600);
   });
+  it("steps down through 56 and 48 as the phrase or the box tightens, to the 44 the prototype shipped with", () => {
+    expect(layoutForme(structureOf("Zephyr"), { width: 380, height: 300 }).cell).toBe(56);
+    expect(layoutForme(structureOf("Zephyr"), { width: 330, height: 300 }).cell).toBe(48);
+    expect(layoutForme(structureOf("Zephyr"), { width: 300, height: 300 }).cell).toBe(44);
+    expect(layoutForme(structureOf("Heimerdinger"), { width: 700, height: 200 }).cell).toBe(48);
+  });
+  it("takes a socket larger than 44 only when no word has to break for it", () => {
+    for (const text of ["Life Form Disintegration Ray", "Heimerdinger", "Sleepy Trouble Bubble", "Rabadon's Deathcap", "Command: Shockwave"]) {
+      for (const width of [220, 280, 360, 460, 560, 700, 900, 1200]) {
+        for (const height of [60, 120, 200, 320]) {
+          const l = layoutForme(structureOf(text), { width, height });
+          if (l.items.some((i) => i.kind === "break")) {
+            expect(l.cell, `${text} ${width}×${height} broke a word at ${l.cell}`).toBeLessThanOrEqual(44);
+          }
+        }
+      }
+    }
+  });
+  it("keeps the prototype's layout for the longest word on a forme too narrow for large sockets", () => {
+    // 14-glyph "Disintegration" needs 569px to sit whole at 36. In 548px a larger socket would have to
+    // break it, so the layout stays at or below the prototype's 44 and is identical to the old table's.
+    const box = { width: 548, height: 220 };
+    const l = layoutForme(structureOf("Life Form Disintegration Ray"), box);
+    const before = layoutForme(structureOf("Life Form Disintegration Ray"), box, [44, 40, 36, 32, 28, 24, 20]);
+    expect(l).toEqual(before);
+    expect(l.cell).toBeLessThanOrEqual(44);
+  });
   it("keeps marks narrower than sockets and gaps between words wider than between glyphs", () => {
-    const l = layoutForme(structureOf("Rabadon's Deathcap"), { width: 900, height: 300 });
+    const l = layoutForme(structureOf("Rabadon's Deathcap"), { width: 1400, height: 300 });
+    expect(l.rows).toBe(1);
     const mark = l.items.find((i) => i.kind === "mark")!;
     expect(mark.w).toBeLessThan(l.cell);
     const glyphs = l.items.filter((i): i is Extract<typeof i, { kind: "glyph" }> => i.kind === "glyph");
@@ -76,6 +104,25 @@ describe("the forme's layout", () => {
     // Every socket is present exactly once.
     const idx = l.items.filter((i): i is Extract<typeof i, { kind: "glyph" }> => i.kind === "glyph").map((g) => g.index).sort((a, b) => a - b);
     expect(idx).toEqual(Array.from({ length: 25 }, (_, i) => i));
+  });
+  it("splits a word that must break into near-equal chunks, never stranding a lone trailing glyph", () => {
+    // Greedy filling gave "DISINTEGRATIO-" over "N" (and "…ATI-" over "ON") in the longest round.
+    const perRow = (text: string, box: { width: number; height: number }) => {
+      const l = layoutForme(structureOf(text), box);
+      const counts = new Map<number, number>();
+      for (const i of l.items) if (i.kind === "glyph") counts.set(i.row, (counts.get(i.row) ?? 0) + 1);
+      return { l, counts: [...counts.values()] };
+    };
+    for (const width of [180, 220, 260, 300, 340]) {
+      const { l, counts } = perRow("Disintegration", { width, height: 400 });
+      expect(l.items.some((i) => i.kind === "break"), `${width}px breaks`).toBe(true);
+      expect(Math.max(...counts) - Math.min(...counts), `${width}px chunks ${counts}`).toBeLessThanOrEqual(1);
+      expect(counts.reduce((a, b) => a + b, 0)).toBe(14);
+    }
+    // Even chunks never widen the block past the box.
+    const { l } = perRow("Disintegration", { width: 300, height: 400 });
+    expect(l.width).toBeLessThanOrEqual(300);
+    expect(l.overflow).toBe(false);
   });
   it("shrinks the socket to fit the height before it overflows, and reports overflow only when nothing fits", () => {
     const tall = layoutForme(structureOf("Sleepy Trouble Bubble"), { width: 320, height: 300 });

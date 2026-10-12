@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GlyphPress, type GlyphPressProps } from "./GlyphPress";
@@ -322,6 +322,116 @@ describe("the reveal boundary", () => {
   it("the content type cannot carry an answer: a structure is kinds and indices only", () => {
     const c = makeContent("Life Form Disintegration Ray");
     expect(JSON.stringify(c.structure.cells).replace(/"(kind|index|text|glyph|mark|gap)"/g, "")).not.toMatch(/[A-Za-z]/);
+  });
+});
+
+/** A host shaped like the lab's: every cue is host STATE, so a cue raised during GlyphPress's render is a React error. */
+function CueHost({ onCueSeen, ...rest }: { onCueSeen?: (cue: string) => void } & Partial<Pick<GlyphPressProps, "onLock" | "onRevealComplete">>) {
+  const content = makeContent();
+  const [value, setValue] = useState<GlyphPressValue>([null, null, null, null, null, null]);
+  const [, setLastCue] = useState("");
+  return (
+    <GlyphPress content={content} ledger={emptyLedger(6)} phase="open" value={value} onChange={setValue}
+      onSound={() => {}} onLock={rest.onLock ?? (() => {})}
+      onCue={(cue) => { onCueSeen?.(cue); setLastCue(cue); }} />
+  );
+}
+const renderingErrors = (spy: { mock: { calls: unknown[][] } }) =>
+  spy.mock.calls.map((c) => String(c[0])).filter((m) => /while rendering a different component/.test(m));
+
+describe("lifecycle — no host state is touched during render", () => {
+  it("arming the press right behind another update raises the cue from the handler, not from an updater", () => {
+    // `setArmed((a) => { onCue("arm"); … })` ran inside render whenever the press already held a queued
+    // update, and the lab's `setLastCue` then warned "Cannot update WordPuzzleLab while rendering GlyphPress".
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<CueHost />);
+    act(() => {
+      fireEvent.keyDown(forme(), { key: "a" });
+      fireEvent.click(screen.getByTestId("gp-sound"));
+    });
+    expect(screen.getByTestId("mig-glyph-press").dataset.armed).toBe("true");
+    expect(renderingErrors(error)).toEqual([]);
+  });
+  it("raises each cue exactly once, even where React double-invokes render-phase work", () => {
+    const seen: string[] = [];
+    render(<StrictMode><CueHost onCueSeen={(c) => seen.push(c)} /></StrictMode>);
+    act(() => {
+      fireEvent.keyDown(forme(), { key: "a" });
+      fireEvent.click(screen.getByTestId("gp-sound"));
+    });
+    expect(seen.filter((c) => c === "arm")).toHaveLength(1);
+    fireEvent.keyDown(forme(), { key: "Escape" });
+    fireEvent.click(screen.getByTestId("gp-sound"));
+    expect(seen.filter((c) => c === "arm")).toHaveLength(2);
+  });
+});
+
+describe("lifecycle — lock", () => {
+  it("submits once however many clicks land before the host acknowledges", () => {
+    const onLock = vi.fn();
+    render(<CueHost onLock={onLock} />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("gp-lock"));
+      fireEvent.click(screen.getByTestId("gp-lock"));
+      fireEvent.click(screen.getByTestId("gp-lock"));
+    });
+    expect(onLock).toHaveBeenCalledTimes(1);
+  });
+  it("is not repeated by a re-render, and a corrected answer can be locked after the host refused the first", () => {
+    const onLock = vi.fn();
+    const { rerender } = render(<CueHost onLock={onLock} />);
+    fireEvent.click(screen.getByTestId("gp-lock"));
+    rerender(<CueHost onLock={onLock} />);
+    rerender(<CueHost onLock={onLock} />);
+    expect(onLock).toHaveBeenCalledTimes(1);
+    // Still open (the host refused): an edit re-arms the lock.
+    fireEvent.keyDown(forme(), { key: "z" });
+    fireEvent.click(screen.getByTestId("gp-lock"));
+    expect(onLock).toHaveBeenCalledTimes(2);
+    expect(onLock).toHaveBeenLastCalledWith({ glyphs: ["Z", null, null, null, null, null] });
+  });
+});
+
+describe("lifecycle — reveal callbacks", () => {
+  const revealed = revealFor(["Z", "E", "P", "H", "Y", "R"]);
+  it("completes once under reduced motion across re-renders with fresh callback identities", () => {
+    document.documentElement.classList.add(APP_REDUCE_MOTION_CLASS);
+    const first = vi.fn();
+    const props = { content: makeContent(), ledger: givenP, initialPhase: "revealed" as const, initialValue: ["Z", "E", null, "H", "Y", "R"], reveal: revealed };
+    const { rerender } = render(<Host {...props} onRevealComplete={first} onCue={() => {}} />);
+    const second = vi.fn();
+    rerender(<Host {...props} onRevealComplete={second} onCue={() => {}} />);
+    rerender(<Host {...props} onRevealComplete={second} onCue={() => {}} />);
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).not.toHaveBeenCalled();
+  });
+  it("a new round remounts cleanly: its reveal completes once, independently of the last", () => {
+    document.documentElement.classList.add(APP_REDUCE_MOTION_CLASS);
+    const onRevealComplete = vi.fn();
+    const props = { content: makeContent(), ledger: givenP, initialPhase: "revealed" as const, initialValue: ["Z", "E", null, "H", "Y", "R"], onRevealComplete };
+    const { rerender } = render(<Host key="round-1" {...props} reveal={revealed} />);
+    expect(onRevealComplete).toHaveBeenCalledTimes(1);
+    for (let round = 2; round <= 4; round++) {
+      rerender(<Host key={`round-${round}`} {...props} reveal={revealed} />);
+      expect(screen.getAllByTestId("mig-glyph-press")).toHaveLength(1);
+      expect(onRevealComplete).toHaveBeenCalledTimes(round);
+    }
+  });
+  it("unmounting mid-reveal cancels the clock and no completion arrives afterwards", () => {
+    const rafs = new Map<number, FrameRequestCallback>();
+    let id = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => 0);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { rafs.set(++id, cb); return id; });
+    const cancel = vi.spyOn(window, "cancelAnimationFrame").mockImplementation((h) => { rafs.delete(h); });
+    const onRevealComplete = vi.fn();
+    const { unmount } = render(<Host content={makeContent()} ledger={givenP} initialPhase="revealed" initialValue={["Z", "E", null, "H", "Y", "R"]} reveal={revealed} onRevealComplete={onRevealComplete} revealBudgetMs={1800} />);
+    const pending = [...rafs.values()];
+    expect(pending.length).toBeGreaterThan(0);
+    unmount();
+    expect(cancel).toHaveBeenCalled();
+    expect(rafs.size).toBe(0);
+    for (const cb of pending) cb(5000);
+    expect(onRevealComplete).not.toHaveBeenCalled();
   });
 });
 
