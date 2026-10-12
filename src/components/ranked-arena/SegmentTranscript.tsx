@@ -25,6 +25,7 @@ import {
   MASTERY_SLICE_MODULE_ID,
   ORDER_FORGE_MODULE_ID,
   RECONSTRUCT_MODULE_ID,
+  ASSEMBLY_MODULE_ID,
   META_REFLEX_MIXED_VERSION,
   revealChoiceEntityId,
 } from "@/lib/ranked-public/contracts";
@@ -49,6 +50,9 @@ export function segmentTitle(reveal: SegmentRevealView): string {
   if (reveal.moduleId === MASTERY_SLICE_MODULE_ID) return "Mastery";
   if (reveal.moduleId === ORDER_FORGE_MODULE_ID) return "Order Forge";
   if (reveal.moduleId === RECONSTRUCT_MODULE_ID) return "Reconstruct";
+  if (reveal.moduleId === ASSEMBLY_MODULE_ID) {
+    return reveal.assembly?.family === "draft_memory" ? "Draft Memory" : "Roster Lock";
+  }
   return reveal.moduleVersion >= META_REFLEX_MIXED_VERSION
     ? META_REFLEX_LABEL : "Item Cost Duel";
 }
@@ -200,6 +204,50 @@ export function SegmentTranscript({
         {marks.length > 0 && (
           <p className="text-xs text-muted-foreground" data-testid="rc-transcript-placed">
             {`${marks.filter(Boolean).length}/${marks.length} parts right`}
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  // PA2B - an assembly settlement is one five-position board per player, shown
+  // against the true lineup in lane order. Every mark is the server's.
+  if (reveal.assembly) {
+    const as = reveal.assembly;
+    const labels: Record<string, string> = {};
+    for (const [token, fact] of Object.entries(as.cardFacts)) labels[token] = fact.label;
+    const board = (ids: string[] | null) => ids
+      ? ids.map((id) => labels[id] ?? id).join(" · ") : "No answer";
+    const row = (label: string, text: string, testId: string) => (
+      <div data-testid={testId}>
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd>{text}</dd>
+      </div>
+    );
+    return (
+      <section className="ranked-panel space-y-3 p-3 sm:p-4"
+               data-testid="icd-transcript" aria-labelledby="icd-transcript-heading">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="icd-transcript-heading" className="font-semibold">
+            {segmentTitle(reveal)} — segment result
+          </h4>
+          <p className="text-sm font-semibold" data-testid="icd-transcript-result">
+            {result ? RESULT_LABEL[result] : "—"}
+            {damageDealt !== null && (
+              <span className="ml-2 font-normal text-muted-foreground"
+                    data-testid="icd-transcript-damage">{damageDealt} damage</span>
+            )}
+          </p>
+        </header>
+        <dl className="space-y-1 text-sm" data-testid="assembly-transcript">
+          {row(viewerLabel, board(as.placements[viewerUserId] ?? null), "as-transcript-you")}
+          {opponentUserId && row("Opponent", board(as.placements[opponentUserId] ?? null), "as-transcript-them")}
+          {row(as.family === "draft_memory" ? "The composition" : "The lineup",
+            as.canonicalLineup.map((e) => e.label).join(" · "), "as-transcript-correct")}
+        </dl>
+        {as.placements[viewerUserId] && (
+          <p className="text-xs text-muted-foreground" data-testid="as-transcript-placed">
+            {`${as.matched[viewerUserId] ?? 0}/5 in position`}
           </p>
         )}
       </section>

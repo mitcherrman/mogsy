@@ -58,6 +58,9 @@ import {
   masteryChallengeRolesDiffer, reviewRoundRoles,
 } from "@/lib/ranked-public/reviewRoles";
 import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
+import {
+  contextFor as assemblyContextFor, noteFor as assemblyNoteFor,
+} from "@/lib/ranked-core/modules/assemblyAdapter";
 
 /** The three marks, printed rather than lit — the row's own palette. */
 const TONE = {
@@ -627,6 +630,94 @@ function ReconstructBody({ round }: { round: ReviewRound }) {
   );
 }
 
+/**
+ * PA2B — one `assembly` round, reviewed: the viewer's board position by
+ * position (the server's mark on each), the true lineup beside it, what each
+ * wrong pick actually was, and where and when it happened. Every mark, card
+ * and fact is the server's; only the words are the host's (the same
+ * `noteFor` / `contextFor` the live reveal uses). An unrevealed round shows
+ * only what was asked.
+ */
+function AssemblyBody({ round }: { round: ReviewRound }) {
+  const as = round.assembly;
+  if (!as) return null;
+  const byToken = new Map(as.cards.map((c) => [c.token, c]));
+  const lineup = as.canonicalLineup;
+  const context = as.context;
+  const plate = context ? assemblyContextFor(context) : null;
+  return (
+    <div className="space-y-2" data-testid="review-assembly" data-family={as.family ?? undefined}>
+      {as.prompt && (
+        <p className="text-[12px] font-semibold" style={{ color: LEAGUECRAFT_INK.body }}
+          data-testid="review-assembly-prompt">{as.prompt}</p>
+      )}
+      {as.viewerPlacement === null && (
+        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          {as.outcome === "timeout" ? "You did not lock in a board." : "No board was locked in."}
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {as.viewerPlacement !== null && (
+          <div className="space-y-1">
+            <SectionLabel>My board</SectionLabel>
+            <ul className="space-y-1" data-testid="review-assembly-mine">
+              {as.positions.map((pos, i) => {
+                const token = as.viewerPlacement![i];
+                const mark = as.positionCorrect ? as.positionCorrect[pos.slotId] : undefined;
+                const tone = mark === undefined ? TONE.idle : mark ? TONE.correct : TONE.incorrect;
+                const fact = as.cardFacts?.[token];
+                const note = mark === false && fact && context ? assemblyNoteFor(fact, context) : null;
+                return (
+                  <li key={pos.slotId} data-mark={mark === undefined ? "none" : String(mark)}
+                    className="rounded border px-1.5 py-1 text-[11.5px]"
+                    style={{ color: tone.ink, borderColor: tone.edge, background: tone.fill }}>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-8 shrink-0 text-[10px] font-bold uppercase tracking-wider opacity-80">{pos.short}</span>
+                      <span className="min-w-0 flex-1 break-words font-semibold">{byToken.get(token)?.label ?? token}</span>
+                      {mark !== undefined && (
+                        mark
+                          ? <Check className="h-3 w-3 shrink-0" aria-label="In position" />
+                          : <X className="h-3 w-3 shrink-0" aria-label="Not in this position" />
+                      )}
+                    </span>
+                    {note && <span className="block pl-[38px] text-[10.5px] opacity-80"
+                      data-testid="review-assembly-note">{note}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {round.revealed && lineup !== null && (
+          <div className="space-y-1">
+            <SectionLabel>{as.family === "draft_memory" ? "The composition" : "The lineup"}</SectionLabel>
+            <ul className="space-y-1" data-testid="review-assembly-lineup">
+              {lineup.map((e) => (
+                <li key={e.slotId} className="flex items-center gap-1.5 rounded border px-1.5 py-1 text-[11.5px]"
+                  style={{ color: TONE.idle.ink, borderColor: TONE.idle.edge, background: TONE.idle.fill }}>
+                  <span className="w-8 shrink-0 text-[10px] font-bold uppercase tracking-wider opacity-80">
+                    {as.positions.find((p) => p.slotId === e.slotId)?.short ?? e.slotId}
+                  </span>
+                  <span className="min-w-0 flex-1 break-words font-semibold">{e.label}</span>
+                  {e.sublabel && <span className="shrink-0 text-[10.5px] opacity-70">{e.sublabel}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {plate && (
+        <div className="space-y-0.5 text-[11px]" style={{ color: LEAGUECRAFT_INK.body }}
+          data-testid="review-assembly-context">
+          <p className="font-semibold">{plate.title}</p>
+          {plate.lines.map((line) => <p key={line} className="opacity-80">{line}</p>)}
+          {plate.source && <p className="text-[10px] opacity-60">{plate.source.label}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MetaReflexBody({ round }: { round: ReviewRound }) {
   const cards = round.challenges ?? [];
   const sub = round.viewerSubmission;
@@ -718,6 +809,8 @@ export default function QuestionReviewCard({
         ? "Order Forge"
         : round.kind === "reconstruct"
         ? "Reconstruct"
+        : round.kind === "assembly"
+        ? (round.assembly?.family === "draft_memory" ? "Draft Memory" : "Roster Lock")
         : round.category
           ? prettyCategory(round.category)
           : icon.label;
@@ -757,6 +850,8 @@ export default function QuestionReviewCard({
         <OrderForgeBody round={round} />
       ) : round.kind === "reconstruct" ? (
         <ReconstructBody round={round} />
+      ) : round.kind === "assembly" ? (
+        <AssemblyBody round={round} />
       ) : (
         <QuizBody round={round} />
       )}

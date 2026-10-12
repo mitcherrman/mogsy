@@ -7,7 +7,7 @@ import {
   itemCostDuelModule,
   masterySliceModule,
   metaReflexModule,
-  orderForgeModule, reconstructModule,
+  assemblyModule, orderForgeModule, reconstructModule,
   registeredModuleIds,
   rendererForSegment,
   quizModule,
@@ -18,9 +18,10 @@ describe("ranked module renderer registry", () => {
     // UPDATED IN PHASE 4F (was: item_cost_duel + quiz). mastery_slice.v1 is a
     // Ranked-Mastery-Module proof of concept, gated by its own fail-closed
     // flag + allowlist on the backend, exactly like Item Cost Duel.
-    // GM1-R1 adds reconstruct (admin-only unrated playtest).
+    // GM1-R1 adds reconstruct (admin-only unrated playtest); PA2B adds
+    // assembly (Roster Lock / Draft Memory, admin-only unrated playtest).
     expect(registeredModuleIds()).toEqual(
-      ["item_cost_duel", "mastery_slice", "order_forge", "quiz", "reconstruct"]);
+      ["assembly", "item_cost_duel", "mastery_slice", "order_forge", "quiz", "reconstruct"]);
   });
 
   it("resolves each renderer by id", () => {
@@ -29,6 +30,11 @@ describe("ranked module renderer registry", () => {
     expect(getModuleRenderer("mastery_slice")).toBe(masterySliceModule);
     expect(getModuleRenderer("order_forge")).toBe(orderForgeModule);
     expect(getModuleRenderer("reconstruct")).toBe(reconstructModule);
+  });
+
+  it("serves assembly v1 only: an unknown version fails closed to unsupported", () => {
+    expect(getModuleRenderer("assembly", 1)).toBe(assemblyModule);
+    expect(getModuleRenderer("assembly", 2)).toBeNull();
   });
 
   it("serves reconstruct v1 only: a future contract fails closed to unsupported", () => {

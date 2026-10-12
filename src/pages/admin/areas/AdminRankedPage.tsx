@@ -61,6 +61,7 @@ import {
 import { AsheJinxExtendedJourneyLaunch } from "@/pages/admin/ranked/ExtendedJourneyLaunch";
 import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
 import { ReconstructLaunch } from "@/pages/admin/ranked/ReconstructLaunch";
+import { DraftMemoryLaunch, RosterLockLaunch } from "@/pages/admin/ranked/AssemblyLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
 const rankedTools = (view: string) =>
@@ -337,6 +338,16 @@ export default function AdminRankedPage() {
                 testId="ranked-reconstruct"
               >
                 <ReconstructLaunch />
+              </AdminPanel>
+              <AdminPanel
+                title="Pro Play Assembly"
+                description="Owner playtest of Roster Lock and Draft Memory (seat five historical Worlds players or champions by position), played through the normal Ranked Bot shell. Unrated; admin-only on the server."
+                testId="ranked-assembly"
+              >
+                <div className="space-y-3">
+                  <RosterLockLaunch />
+                  <DraftMemoryLaunch />
+                </div>
               </AdminPanel>
               <AdminPanel
                 title="Playtests"

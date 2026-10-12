@@ -18,6 +18,7 @@
 // ---------------------------------------------------------------------------
 
 import type { SegmentMeta } from "@/lib/ranked-public/contracts";
+import { ASSEMBLY_MODULE_ID, assemblyModule } from "./assemblyModule";
 import { ITEM_COST_DUEL_MODULE_ID, itemCostDuelModule } from "./itemCostDuelModule";
 import { MASTERY_SLICE_MODULE_ID, masterySliceModule } from "./masterySliceModule";
 import { metaReflexModule } from "./metaReflexModule";
@@ -36,6 +37,9 @@ const RENDERERS: Record<string, readonly ModuleRenderer[]> = {
   [ORDER_FORGE_MODULE_ID]: [orderForgeModule],
   // GM1-R1 - admin-only unrated playtest: the recipe build is the answer.
   [RECONSTRUCT_MODULE_ID]: [reconstructModule],
+  // PA2B - admin-only unrated playtest: Roster Lock / Draft Memory, the
+  // five-position board is the answer.
+  [ASSEMBLY_MODULE_ID]: [assemblyModule],
 };
 
 /** Registered module ids, sorted — used by tests and diagnostics. */
@@ -69,7 +73,7 @@ export function rendererForSegment(segment: SegmentMeta | null | undefined): Mod
 }
 
 export {
-  itemCostDuelModule, masterySliceModule, metaReflexModule, orderForgeModule, quizModule,
+  assemblyModule, itemCostDuelModule, masterySliceModule, metaReflexModule, orderForgeModule, quizModule,
   reconstructModule,
 };
 export type {

@@ -14,7 +14,8 @@
 // ---------------------------------------------------------------------------
 
 import {
-  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, type MasteryChallengeReveal, type SegmentStateView,
+  ASSEMBLY_MODULE_ID, ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, type MasteryChallengeReveal,
+  type SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 
 /**
@@ -24,11 +25,12 @@ import {
  * module's block, so one module's reveal can never attach to the other.
  */
 export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID]);
+  ORDER_FORGE_MODULE_ID, RECONSTRUCT_MODULE_ID, ASSEMBLY_MODULE_ID]);
 
 function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
   return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge
-    : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct : false;
+    : moduleId === RECONSTRUCT_MODULE_ID ? !!reveal.reconstruct
+    : moduleId === ASSEMBLY_MODULE_ID ? !!reveal.assembly : false;
 }
 
 export interface OrderForgeLockRevealRef {
