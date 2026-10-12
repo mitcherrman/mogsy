@@ -13,7 +13,7 @@ import { useChampionAssets } from "@/hooks/useChampionAssets";
 import { fetchLiveGame } from "@/lib/live-esports/api";
 import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useUpcoming } from "@/lib/live-esports/hooks";
 import { gamesNeedingResult, groupSeries, railUpcoming, type GameRecord } from "@/lib/pro-play/hubSeries";
-import { lanePlayerKey, nextHubAutoGame } from "@/lib/pro-play/hubSelection";
+import { lanePlayerKey, nextHubAutoPick, samePick, type HubPick } from "@/lib/pro-play/hubSelection";
 import {
   PRO_PLAY_FEATURED_TOURNAMENT,
   PRO_PLAY_LIVE_GAME_PARAM,
@@ -52,6 +52,14 @@ import {
  * are past unplayed games. `?next=<match_id>` selects an upcoming match the
  * way `?game=` selects a played one.
  *
+ * PW1 — WORLDS LEADS THE AUTOMATIC SELECTION (`hubSelection.pickHubSelection`):
+ * a live Worlds game, else the most recently completed one, else the next
+ * officially scheduled Worlds match (TBD sides shown as TBD) — and only
+ * without any of those does the page fall back to the live/latest rule. The
+ * automatic pick is never written to the URL; `?game=` / `?next=` stay the
+ * only explicit choices and still win. A `?next=` whose match has since
+ * started follows that match into its games rather than expiring.
+ *
  * Nothing on the hub is a placeholder. No match-specific quiz: the quiz API
  * cannot filter by match.
  *
@@ -75,6 +83,30 @@ export {
 /** Selects an upcoming match (its upstream `match_id`) instead of a game. */
 export const PRO_PLAY_NEXT_PARAM = "next";
 
+/** The schedule is a second request behind the feed. The automatic pick waits
+ *  for it this long, so a Worlds fixture is not preceded by a flash of the
+ *  unrelated match it replaces; past this the page shows what it has. */
+const SCHEDULE_SETTLE_MS = 2500;
+
+function useElapsed(ms: number) {
+  const [elapsed, setElapsed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setElapsed(true), ms);
+    return () => clearTimeout(t);
+  }, [ms]);
+  return elapsed;
+}
+
+/** Wall clock, refreshed each minute: fixture staleness is judged against it. */
+function useMinuteNow() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
 export default function ProPlayHub() {
   const [params] = useSearchParams();
   // A hub URL carrying the Stats Explorer's keys came from a "View in Pro
@@ -87,34 +119,60 @@ export default function ProPlayHub() {
 function ProPlayHubPage() {
   const [params, setParams] = useSearchParams();
 
-  /* Selection, the match centre's way: `?game=` is an EXPLICIT choice and is
-   * never overridden; `autoId` is the hub following the action when nobody
-   * has chosen. The hub's auto rule prefers live, then a FINISHED game. */
+  /* Selection, the match centre's way: `?game=` / `?next=` are EXPLICIT
+   * choices and are never overridden; `auto` is the hub following the action
+   * when nobody has chosen — Worlds first (PW1), then live, then a FINISHED
+   * game. It is remembered (for stickiness) but never written to the URL. */
   const pinnedId = params.get(PRO_PLAY_LIVE_GAME_PARAM);
-  const [autoId, setAutoId] = useState<string | null>(null);
+  const nextId = params.get(PRO_PLAY_NEXT_PARAM);
   const feed = useLiveFeed();
   const { live, recent, selectable } = feed;
+  const { query: scheduleQuery, matches: allUpcoming } = useUpcoming();
+  const now = useMinuteNow();
 
-  useEffect(() => {
-    if (pinnedId) return;
-    const next = nextHubAutoGame(autoId, live, recent);
-    if (next !== autoId) setAutoId(next);
-  }, [live, recent, autoId, pinnedId]);
+  // The feed lands before the schedule: hold the automatic pick (not an
+  // explicit one) until the schedule has answered, or for a bounded wait.
+  const scheduleWaited = useElapsed(SCHEDULE_SETTLE_MS);
+  const settling = !pinnedId && scheduleQuery.isPending && !scheduleWaited;
 
-  const selectedId = pinnedId ?? autoId;
+  const [auto, setAuto] = useState<HubPick | null>(null);
+  const nextAuto = settling ? auto : nextHubAutoPick(auto, live, recent, allUpcoming, now);
+  if (!samePick(nextAuto, auto)) setAuto(nextAuto);
+
+  /* An explicit `?next=` that is no longer upcoming has either started — its
+   * games are in the feed under the same `match_id` — or left the schedule.
+   * Started: follow it into the live game, else its latest. Gone: fall back
+   * to the automatic pick, never stay on an id nothing serves. */
+  const explicitUpcoming = nextId ? (allUpcoming.find((m) => m.match_id === nextId) ?? null) : null;
+  const roughSeries = useMemo(() => groupSeries(live, recent), [live, recent]);
+  const followedGameId =
+    !pinnedId && nextId && !explicitUpcoming
+      ? (roughSeries.find((s) => s.key === nextId)?.focus.game_id ?? null)
+      : null;
+  const explicitGameId = pinnedId ?? followedGameId;
+
+  const autoGameId = nextAuto?.kind === "game" ? nextAuto.id : null;
+  const autoUpcoming =
+    !explicitGameId && !explicitUpcoming && nextAuto?.kind === "upcoming"
+      ? (allUpcoming.find((m) => m.match_id === nextAuto.id) ?? null)
+      : null;
+  // The board's upcoming match: an explicit `?next=`, else the automatic
+  // Worlds fixture. A shared link may name a fixture outside the rail's short
+  // list; a match that has since started is simply not offered any more.
+  const upcomingMatch = explicitUpcoming ?? autoUpcoming;
+
+  const selectedId = explicitGameId ?? (upcomingMatch ? null : autoGameId);
   const match = useLiveMatch(
     selectedId,
     selectable.find((g) => g.game_id === selectedId),
   );
   const { data: manifest } = useChampionAssets();
-  const { matches: allUpcoming } = useUpcoming();
   const upcoming = useMemo(() => railUpcoming(allUpcoming), [allUpcoming]);
 
   /* Series: each series' last game's detail carries the series record
    * (PP-IA2) — every game's official result and the completed final score —
    * under the SAME query key the board uses, so the selected game costs
    * nothing extra, and a finished game is fetched once and never polled. */
-  const roughSeries = useMemo(() => groupSeries(live, recent), [live, recent]);
   const resultIds = useMemo(() => gamesNeedingResult(roughSeries), [roughSeries]);
   const results = useQueries({
     queries: resultIds.map((id) => ({
@@ -135,12 +193,6 @@ function ProPlayHubPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, recent, resultIds, resultKey]);
 
-  const nextId = params.get(PRO_PLAY_NEXT_PARAM);
-  // A match that has since started (or left the schedule window) is simply
-  // not offered any more: the board falls back to the played games.
-  // A shared link may name a fixture outside the rail's short list.
-  const upcomingMatch = nextId ? (allUpcoming.find((m) => m.match_id === nextId) ?? null) : null;
-
   // Picking a match writes the URL — the copyable address is what is shown.
   const select = (gameId: string) => {
     const next = new URLSearchParams(params);
@@ -156,6 +208,7 @@ function ProPlayHubPage() {
   const clearPin = () => {
     const next = new URLSearchParams(params);
     next.delete(PRO_PLAY_LIVE_GAME_PARAM);
+    next.delete(PRO_PLAY_NEXT_PARAM);
     setParams(next, { replace: true });
   };
 
@@ -167,16 +220,23 @@ function ProPlayHubPage() {
     () => [
       ...series.flatMap((x) => [x.a.team.resolved_page, x.b.team.resolved_page]),
       ...upcoming.flatMap((m) => [m.teams.a.resolved_page, m.teams.b.resolved_page]),
+      upcomingMatch?.teams.a.resolved_page,
+      upcomingMatch?.teams.b.resolved_page,
       selected?.teams.blue?.resolved_page,
       selected?.teams.red?.resolved_page,
     ],
-    [series, upcoming, selected],
+    [series, upcoming, upcomingMatch, selected],
   );
   // Event marks for the event band and the UP NEXT rail (DCGI1): league
   // slugs resolve through the same media authority as crests.
   const mediaLeagues = useMemo(
-    () => [...upcoming.map((m) => m.league.slug), selected?.competition?.league.slug],
-    [upcoming, selected],
+    () => [
+      ...upcoming.map((m) => m.league?.slug),
+      upcomingMatch?.league?.slug,
+      selected?.competition?.league.slug,
+      selected?.league?.slug,
+    ],
+    [upcoming, upcomingMatch, selected],
   );
   const lanePlayers = match.players.data?.players;
   const mediaPlayers = useMemo(() => (lanePlayers ?? []).map(lanePlayerKey), [lanePlayers]);
@@ -230,7 +290,8 @@ function ProPlayHubPage() {
             upcoming={upcoming}
             upcomingMatch={upcomingMatch}
             selectedId={selectedId}
-            pinnedId={pinnedId}
+            pinnedId={explicitGameId}
+            selecting={settling}
             onSelect={select}
             onSelectUpcoming={selectUpcoming}
             onClearPin={clearPin}

@@ -35,6 +35,7 @@ import type {
   LiveSeriesRecord,
   LiveTeamSummary,
 } from "@/lib/live-esports/api";
+import { isWorldsLeague, startMs } from "@/lib/pro-play/worlds";
 import { statusTone } from "@/pages/esports/live/lib";
 
 /** What the hub knows of a game beyond the feed: its `/games/{id}` detail's
@@ -313,11 +314,28 @@ export function leagueMonogram(name: string | null | undefined, slug?: string | 
  * matches whose BOTH teams upstream still names "TBD" — a slot in a bracket,
  * not yet a match anyone can follow. The endpoint keeps them; only the
  * rail's short list leaves them out.
+ *
+ * WORLDS LEADS (PW1). The endpoint is bounded and time-ordered across every
+ * league, so on a busy day a Worlds fixture sits behind regional matches and
+ * the rail's four slots would never reach it. Worlds fixtures therefore come
+ * first (soonest first), and unlike other leagues' they keep their TBD-vs-TBD
+ * slots: a scheduled Worlds knockout match whose teams are not yet named is
+ * still the next Worlds match. Everything else keeps the feed's own order.
  */
 export const RAIL_UPCOMING_MAX = 4;
-export function railUpcoming<T extends { teams: { a: { tbd: boolean }; b: { tbd: boolean } } }>(
-  matches: readonly T[],
-  max = RAIL_UPCOMING_MAX,
-): T[] {
-  return matches.filter((m) => !(m.teams.a.tbd && m.teams.b.tbd)).slice(0, max);
+export function railUpcoming<
+  T extends {
+    league?: { slug?: string | null } | null;
+    scheduled_start?: string | null;
+    teams: { a: { tbd: boolean }; b: { tbd: boolean } };
+  },
+>(matches: readonly T[], max = RAIL_UPCOMING_MAX): T[] {
+  const worlds: { m: T; start: number; i: number }[] = [];
+  const rest: T[] = [];
+  matches.forEach((m, i) => {
+    if (isWorldsLeague(m.league)) worlds.push({ m, start: startMs(m.scheduled_start) ?? Infinity, i });
+    else if (!(m.teams.a.tbd && m.teams.b.tbd)) rest.push(m);
+  });
+  worlds.sort((x, y) => (x.start === y.start ? x.i - y.i : x.start < y.start ? -1 : 1));
+  return [...worlds.map((w) => w.m), ...rest].slice(0, max);
 }

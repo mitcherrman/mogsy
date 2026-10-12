@@ -1,0 +1,34 @@
+{
+  "1440x900": {
+    "url": "/lol/pro-play",
+    "centerTitle": "Up next",
+    "summary": "FUR vs MVK",
+    "band": "WORLDSWorlds 2026·Play-InsInternationalBest of 5 · Upstream schedule",
+    "rail": "Previous matchCompletedSGW0–3MVKABo5CompletedCPD0–3DSGBo5Up nextWorldsUpcomingFURvsMVKin 3d 16hWorldsUpcomingC9vsKCin 3d 21hUpcomingKTvsVITin 4h 22mUpcomingBFXvsJDGin 7h 22m",
+    "pressed": [
+      "WorldsUpcomingFURvsMVKin 3d 16h"
+    ],
+    "spotlight": "FeaturedDCGIKnockout stage · 3–17 Oct 2026Next KT vs VIT · Sun, Oct 11 · 11:00 PM",
+    "marks": [
+      "DCGI:art",
+      "Worlds:placeholder"
+    ],
+    "errors": []
+  },
+  "1280x720": {
+    "url": "/lol/pro-play",
+    "centerTitle": "Up next",
+    "summary": "FUR vs MVK",
+    "band": "WORLDSWorlds 2026·Play-InsInternationalBest of 5 · Upstream schedule",
+    "rail": "Previous matchCompletedSGW0–3MVKABo5CompletedCPD0–3DSGBo5Up nextWorldsUpcomingFURvsMVKin 3d 16hWorldsUpcomingC9vsKCin 3d 21hUpcomingKTvsVITin 4h 21mUpcomingBFXvsJDGin 7h 21m",
+    "pressed": [
+      "WorldsUpcomingFURvsMVKin 3d 16h"
+    ],
+    "spotlight": "FeaturedDCGIKnockout stage · 3–17 Oct 2026Next KT vs VIT · Sun, Oct 11 · 11:00 PM",
+    "marks": [
+      "DCGI:art",
+      "Worlds:placeholder"
+    ],
+    "errors": []
+  }
+}

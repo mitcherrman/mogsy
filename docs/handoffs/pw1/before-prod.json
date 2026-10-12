@@ -1,0 +1,36 @@
+{
+  "1440x900": {
+    "url": "/lol/pro-play",
+    "centerTitle": "Previous match",
+    "summary": "SGW vs MVKA",
+    "band": "VCSVCS·Season Finals 2026·Playoffs · FinalsDomesticBo5 · Oct 11, 2026 · Patch 16.20Final · SGW 0–3 MVKA",
+    "rail": "Previous matchCompletedSGW0–3MVKABo5G1MVKAG2MVKAG3MVKACompletedCPD0–3DSGBo5Up nextUpcomingKTvsVITin 4h 41mUpcomingBFXvsJDGin 7h 41mUpcomingKBMvsLOSin 19h 41mUpcomingDSGvsMUin 21h 41mUp next",
+    "pressed": [
+      "CompletedSGW0–3MVKABo5",
+      "G2MVKA"
+    ],
+    "spotlight": "FeaturedDCGIKnockout stage · 3–17 Oct 2026Next KT vs VIT · Sun, Oct 11 · 11:00 PM",
+    "marks": [
+      "DCGI:art",
+      "VCS:placeholder"
+    ],
+    "errors": []
+  },
+  "1280x720": {
+    "url": "/lol/pro-play",
+    "centerTitle": "Previous match",
+    "summary": "SGW vs MVKA",
+    "band": "VCSVCS·Season Finals 2026·Playoffs · FinalsDomesticBo5 · Oct 11, 2026 · Patch 16.20Final · SGW 0–3 MVKA",
+    "rail": "Previous matchCompletedSGW0–3MVKABo5G1MVKAG2MVKAG3MVKACompletedCPD0–3DSGBo5Up nextUpcomingKTvsVITin 4h 41mUpcomingBFXvsJDGin 7h 41mUpcomingKBMvsLOSin 19h 41mUpcomingDSGvsMUin 21h 41mUp next",
+    "pressed": [
+      "CompletedSGW0–3MVKABo5",
+      "G2MVKA"
+    ],
+    "spotlight": "FeaturedDCGIKnockout stage · 3–17 Oct 2026Next KT vs VIT · Sun, Oct 11 · 11:00 PM",
+    "marks": [
+      "DCGI:art",
+      "VCS:placeholder"
+    ],
+    "errors": []
+  }
+}

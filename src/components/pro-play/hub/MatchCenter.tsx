@@ -32,6 +32,15 @@
  *   entering the selected game;
  * - dragons are listed by type, in the order taken.
  *
+ * PW1 — WORLDS. The hub features Worlds first (`hubSelection`); this board
+ * only draws it. A Worlds match carries a restrained gold accent — the band's
+ * wash, the frame's tint, a "Worlds" tag on its rail chips — and "Worlds"
+ * gains the event's year, read from the match's own start. The league mark is
+ * whatever the media authority serves for slug `worlds` (today none, so the
+ * designed WORLDS monogram); no art is bundled here and none is fetched from
+ * upstream. A side upstream still names TBD is drawn TBD, with the stage
+ * that says which slot it is — never a guessed team.
+ *
  * Props-driven: the hub owns selection (it also drives the lanes).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -66,6 +75,7 @@ import {
   proPlayLiveGameUrl,
   proPlayProfileUrl,
 } from "@/lib/pro-play/routes";
+import { isWorldsFixture, isWorldsGame, withWorldsYear, worldsYear } from "@/lib/pro-play/worlds";
 import { cn } from "@/lib/utils";
 import { GoldChart, StatusPill } from "@/pages/esports/live/components";
 import { buildStory } from "@/pages/esports/live/insights";
@@ -114,6 +124,19 @@ function ChipTeam({ team }: { team: TeamLike }) {
   );
 }
 
+/** A quiet gold tag on a Worlds chip, so Worlds reads at a glance in a rail
+ *  that also carries regional matches. Text, never art. */
+function WorldsTag() {
+  return (
+    <span
+      data-testid="worlds-tag"
+      className="shrink-0 text-[9.5px] font-bold uppercase leading-none tracking-[0.14em] text-[#e3c66f]"
+    >
+      Worlds
+    </span>
+  );
+}
+
 const CHIP =
   "flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-2.5 text-sm font-semibold transition-colors sm:min-h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const chipTone = (selected: boolean) =>
@@ -143,6 +166,7 @@ function SeriesChip({
         .join(" · ")}
       className={cn(CHIP, chipTone(selected))}
     >
+      {isWorldsGame(focus) && <WorldsTag />}
       <MatchStateBadge state={series.state} size="sm" />
       <ChipTeam team={a.team} />
       <span
@@ -187,10 +211,17 @@ function UpcomingChip({
       title={[match.league?.name, match.block_name, localStart(match.scheduled_start)].filter(Boolean).join(" · ")}
       className={cn(CHIP, chipTone(selected))}
     >
+      {isWorldsFixture(match) && <WorldsTag />}
       <MatchStateBadge state="upcoming" size="sm" />
       <ChipTeam team={match.teams.a} />
       <span className="text-xs font-medium opacity-60">vs</span>
       <ChipTeam team={match.teams.b} />
+      {/* A slot with an unnamed side says which slot it is. */}
+      {(match.teams.a.tbd || match.teams.b.tbd) && match.block_name && (
+        <span className="whitespace-nowrap text-xs font-medium opacity-70" data-testid="upcoming-chip-stage">
+          {match.block_name}
+        </span>
+      )}
       <span className="whitespace-nowrap text-xs font-medium opacity-70">{countdown(match.scheduled_start, now)}</span>
     </button>
   );
@@ -404,17 +435,24 @@ function EventBand({
   scope,
   facts,
   right,
+  accent = false,
 }: {
   league: { name: string | null; slug: string | null };
   competition: string[];
   scope: string | null;
   facts: { key: string; text: string; title?: string }[];
   right?: React.ReactNode;
+  /** The Worlds treatment: a faint gold wash from the mark, nothing else. */
+  accent?: boolean;
 }) {
   return (
     <div
-      className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border/60 px-3 py-1.5 sm:px-4"
+      className={cn(
+        "flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border/60 px-3 py-1.5 sm:px-4",
+        accent && "bg-gradient-to-r from-[#c9a84c]/[0.09] via-[#c9a84c]/[0.03] to-transparent",
+      )}
       data-testid="event-band"
+      data-accent={accent ? "worlds" : undefined}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <EventMark name={league.name} slug={league.slug} />
@@ -589,7 +627,12 @@ function Objectives({ blue, red }: { blue?: LiveTeamState; red?: LiveTeamState }
 
 function UpcomingBoard({ match }: { match: UpcomingMatch }) {
   const now = useMinuteClock();
-  const competition = [match.league?.name, match.block_name].filter(Boolean) as string[];
+  const worlds = isWorldsFixture(match);
+  const competition = withWorldsYear(
+    [match.league?.name, match.block_name].filter(Boolean) as string[],
+    worlds ? worldsYear(match.scheduled_start) : null,
+  );
+  const unnamed = match.teams.a.tbd || match.teams.b.tbd;
   const facts = [
     ...(match.best_of ? [{ key: "bo", text: `Best of ${match.best_of}` }] : []),
     { key: "src", text: "Upstream schedule", title: "From the official LoL Esports schedule" },
@@ -605,6 +648,7 @@ function UpcomingBoard({ match }: { match: UpcomingMatch }) {
         competition={competition}
         scope={scopeLabel({ league: match.league } as LiveCompetition)}
         facts={facts}
+        accent={worlds}
       />
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 py-5 sm:gap-6 sm:px-6">
         <TeamIdentity team={match.teams.a} side="blue" winner={false} sideLabel={false} />
@@ -621,6 +665,11 @@ function UpcomingBoard({ match }: { match: UpcomingMatch }) {
         <TeamIdentity team={match.teams.b} side="red" winner={false} sideLabel={false} />
       </div>
       <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted-foreground">
+        {unnamed && (
+          <span data-testid="tbd-note">
+            TBD means the official schedule has not named that team yet.{" "}
+          </span>
+        )}
         Sides, lineups, the live score and match evidence appear here once the match starts.
       </p>
     </div>
@@ -640,6 +689,7 @@ export default function MatchCenter({
   onSelect,
   onSelectUpcoming,
   onClearPin,
+  selecting = false,
   lanes,
 }: {
   feed: Feed;
@@ -653,6 +703,10 @@ export default function MatchCenter({
   onSelect: (gameId: string) => void;
   onSelectUpcoming: (matchId: string) => void;
   onClearPin: () => void;
+  /** The hub is still waiting for the schedule before it picks a match
+   *  (PW1): the loading frame stays, so an unrelated match is not flashed
+   *  in front of the Worlds fixture that replaces it. */
+  selecting?: boolean;
   /** The lane board for the selected game, drawn inside the match. */
   lanes?: React.ReactNode;
 }) {
@@ -667,11 +721,17 @@ export default function MatchCenter({
         ? "Selected match"
         : "Previous match";
 
+  const worldsBoard = upcomingMatch ? isWorldsFixture(upcomingMatch) : !!selected && isWorldsGame(selected);
+
   const shell = (body: React.ReactNode) => (
     <section
       id="match-center"
       aria-labelledby="match-center-title"
-      className="scroll-mt-20 overflow-hidden rounded-xl border border-border/70 bg-card/50"
+      data-event={worldsBoard ? "worlds" : undefined}
+      className={cn(
+        "scroll-mt-20 overflow-hidden rounded-xl border bg-card/50",
+        worldsBoard ? "border-[#c9a84c]/45" : "border-border/70",
+      )}
     >
       <h2 id="match-center-title" className="sr-only">
         {title}
@@ -712,7 +772,7 @@ export default function MatchCenter({
     );
   }
 
-  if (!feed.feed.data) {
+  if (!feed.feed.data || (selecting && !upcomingMatch)) {
     return shell(
       <div className="space-y-3 p-4" data-testid="match-center-loading">
         <div className="flex gap-2 overflow-hidden">
@@ -822,7 +882,13 @@ export default function MatchCenter({
   const showGold = !gold.isError && goldSeries.length >= 2;
   const state = detail.data?.team_state;
 
-  const competition = selected ? competitionLine(selected) : [];
+  const selectedWorlds = !!selected && isWorldsGame(selected);
+  const competition = selected
+    ? withWorldsYear(
+        competitionLine(selected),
+        selectedWorlds ? worldsYear(selected.scheduled_start ?? selected.first_frame_ts) : null,
+      )
+    : [];
   // "Game N" sits under the kills and the series score in the band's right
   // half, so neither is repeated in the facts line.
   const facts: { key: string; text: string; title?: string }[] = selected
@@ -866,6 +932,7 @@ export default function MatchCenter({
             competition={competition}
             scope={scopeLabel(selected.competition)}
             facts={facts}
+            accent={selectedWorlds}
             right={
               seriesScore && (
                 <p

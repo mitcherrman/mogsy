@@ -1,0 +1,341 @@
+{
+  "captured_at_utc": "2026-10-12T01:15:15.026+00:00",
+  "backend": "https://web-production-83e53.up.railway.app (the app's VITE_COMBAT_API_URL)",
+  "upcoming": {
+    "envelope": {
+      "enabled": true,
+      "generated_at": "2026-10-12T01:15:15.026+00:00",
+      "source": "getSchedule",
+      "source_ok": true,
+      "stale": false,
+      "fetched_at": "2026-10-12T01:15:15.026+00:00",
+      "horizon_days": 14,
+      "limit": 12
+    },
+    "note": "limit is 12 (max); ?limit=50, ?league=worlds, ?league_slug=worlds and ?horizon_days=30 all returned the same 12 rows; ?limit=3 narrowed to 3.",
+    "matches": [
+      {
+        "position": 1,
+        "scheduled_start": "2026-10-12T06:00:00Z",
+        "league_slug": "demacia_cup",
+        "league_name": "DCGI",
+        "region": "INTERNATIONAL",
+        "block_name": "Quarterfinals",
+        "best_of": 5,
+        "teams": [
+          "KT",
+          "VIT"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117133830110912099"
+      },
+      {
+        "position": 2,
+        "scheduled_start": "2026-10-12T09:00:00Z",
+        "league_slug": "demacia_cup",
+        "league_name": "DCGI",
+        "region": "INTERNATIONAL",
+        "block_name": "Quarterfinals",
+        "best_of": 5,
+        "teams": [
+          "BFX",
+          "JDG"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117133830110912093"
+      },
+      {
+        "position": 3,
+        "scheduled_start": "2026-10-12T21:00:00Z",
+        "league_slug": "cblol_promotion",
+        "league_name": "CBLOL Promotion",
+        "region": "BRAZIL",
+        "block_name": "Finals",
+        "best_of": 5,
+        "teams": [
+          "KBM",
+          "LOS"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117275453885353242"
+      },
+      {
+        "position": 4,
+        "scheduled_start": "2026-10-12T23:00:00Z",
+        "league_slug": "lcs_promotion",
+        "league_name": "LCS Promotion",
+        "region": "NORTH AMERICA",
+        "block_name": "Finals",
+        "best_of": 5,
+        "teams": [
+          "DSG",
+          "MU"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117322971012796412"
+      },
+      {
+        "position": 5,
+        "scheduled_start": "2026-10-13T06:00:00Z",
+        "league_slug": "demacia_cup",
+        "league_name": "DCGI",
+        "region": "INTERNATIONAL",
+        "block_name": "Quarterfinals",
+        "best_of": 5,
+        "teams": [
+          "WE",
+          "FLY"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117133830110912105"
+      },
+      {
+        "position": 6,
+        "scheduled_start": "2026-10-13T09:00:00Z",
+        "league_slug": "demacia_cup",
+        "league_name": "DCGI",
+        "region": "INTERNATIONAL",
+        "block_name": "Quarterfinals",
+        "best_of": 5,
+        "teams": [
+          "BRO",
+          "LGD"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117133830110912111"
+      },
+      {
+        "position": 7,
+        "scheduled_start": "2026-10-13T16:00:00Z",
+        "league_slug": "emea_masters",
+        "league_name": "EMEA Masters",
+        "region": "EMEA",
+        "block_name": "Playoffs",
+        "best_of": 5,
+        "teams": [
+          "GL",
+          "MKF"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117173205319911435"
+      },
+      {
+        "position": 8,
+        "scheduled_start": "2026-10-14T09:00:00Z",
+        "league_slug": "demacia_cup",
+        "league_name": "DCGI",
+        "region": "INTERNATIONAL",
+        "block_name": "Semifinals",
+        "best_of": 5,
+        "teams": [
+          "TBD",
+          "TBD"
+        ],
+        "tbd": [
+          true,
+          true
+        ],
+        "match_id": "117133830110912117"
+      },
+      {
+        "position": 9,
+        "scheduled_start": "2026-10-14T16:00:00Z",
+        "league_slug": "emea_masters",
+        "league_name": "EMEA Masters",
+        "region": "EMEA",
+        "block_name": "Playoffs",
+        "best_of": 5,
+        "teams": [
+          "ANB",
+          "SLY"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "117173205319911429"
+      },
+      {
+        "position": 10,
+        "scheduled_start": "2026-10-15T09:00:00Z",
+        "league_slug": "demacia_cup",
+        "league_name": "DCGI",
+        "region": "INTERNATIONAL",
+        "block_name": "Semifinals",
+        "best_of": 5,
+        "teams": [
+          "TBD",
+          "TBD"
+        ],
+        "tbd": [
+          true,
+          true
+        ],
+        "match_id": "117133830110912123"
+      },
+      {
+        "position": 11,
+        "scheduled_start": "2026-10-15T18:00:00Z",
+        "league_slug": "worlds",
+        "league_name": "Worlds",
+        "region": "INTERNATIONAL",
+        "block_name": "Play-Ins",
+        "best_of": 5,
+        "teams": [
+          "FUR",
+          "MVK"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "115660588583040710"
+      },
+      {
+        "position": 12,
+        "scheduled_start": "2026-10-15T23:00:00Z",
+        "league_slug": "worlds",
+        "league_name": "Worlds",
+        "region": "INTERNATIONAL",
+        "block_name": "Play-Ins",
+        "best_of": 5,
+        "teams": [
+          "C9",
+          "KC"
+        ],
+        "tbd": [
+          false,
+          false
+        ],
+        "match_id": "115660588583171786"
+      }
+    ]
+  },
+  "live_feed": {
+    "limits": {
+      "live": 12,
+      "recent": 6
+    },
+    "live": [],
+    "recent": [
+      {
+        "game_id": "116952475624364077",
+        "match_id": "116952475624364075",
+        "league_slug": "vcs",
+        "block_name": "Finals",
+        "game_number": 2,
+        "freshness": "final"
+      },
+      {
+        "game_id": "116952475624364078",
+        "match_id": "116952475624364075",
+        "league_slug": "vcs",
+        "block_name": "Finals",
+        "game_number": 3,
+        "freshness": "final"
+      },
+      {
+        "game_id": "116952475624364076",
+        "match_id": "116952475624364075",
+        "league_slug": "vcs",
+        "block_name": "Finals",
+        "game_number": 1,
+        "freshness": "final"
+      },
+      {
+        "game_id": "117322971012796409",
+        "match_id": "117322971012796406",
+        "league_slug": "lcs_promotion",
+        "block_name": "Regional Qualifier",
+        "game_number": 3,
+        "freshness": "final"
+      },
+      {
+        "game_id": "117322971012796408",
+        "match_id": "117322971012796406",
+        "league_slug": "lcs_promotion",
+        "block_name": "Regional Qualifier",
+        "game_number": 2,
+        "freshness": "final"
+      },
+      {
+        "game_id": "117322971012796407",
+        "match_id": "117322971012796406",
+        "league_slug": "lcs_promotion",
+        "block_name": "Regional Qualifier",
+        "game_number": 1,
+        "freshness": "final"
+      }
+    ]
+  },
+  "league_slugs_in_game_store": [
+    "arabian_league",
+    "cblol-brazil",
+    "cblol_promotion",
+    "cd",
+    "demacia_cup",
+    "emea_masters",
+    "esports_balkan_league",
+    "fls",
+    "hellenic_legends_league",
+    "hitpoint_masters",
+    "lck",
+    "lck_challengers_league",
+    "lcp",
+    "lcs",
+    "lcs_promotion",
+    "lec",
+    "les",
+    "lfl",
+    "liga_portuguesa",
+    "lit",
+    "ljl-japan",
+    "nacl",
+    "nlc",
+    "north_regional_league",
+    "pcs",
+    "primeleague",
+    "rift_legends",
+    "roadoflegends",
+    "south_regional_league",
+    "turkiye-sampiyonluk-ligi",
+    "vcs",
+    "wsci"
+  ],
+  "worlds_in_game_store": false,
+  "media_authority_league_worlds": "state=fallback reason=no_media (demacia_cup: state=art)",
+  "tournament_contexts": {
+    "dcgi-2026": 200,
+    "worlds-2026": 404,
+    "worlds": 404,
+    "worlds2026": 404,
+    "worlds_2026": 404
+  },
+  "dcgi_registry_related_event": {
+    "name": "World Championship 2026",
+    "league_slug": "worlds",
+    "starts": "2026-10-15",
+    "ends": "2026-11-14"
+  }
+}

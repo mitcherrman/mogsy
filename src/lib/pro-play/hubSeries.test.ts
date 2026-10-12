@@ -221,4 +221,46 @@ describe("railUpcoming", () => {
     const list = [m("1", true, true), m("2", false, true), m("3", false, false), m("4", false, false), m("5", false, false), m("6", false, false)];
     expect(railUpcoming(list).map((x) => x.id)).toEqual(["2", "3", "4", "5"]);
   });
+
+  describe("Worlds (PW1)", () => {
+    const w = (id: string, start: string | null, a = false, b = false) => ({
+      id,
+      league: { slug: "worlds" },
+      scheduled_start: start,
+      teams: { a: { tbd: a }, b: { tbd: b } },
+    });
+    const other = (id: string, a = false, b = false) => ({
+      id,
+      league: { slug: "demacia_cup" },
+      scheduled_start: "2026-10-12T06:00:00Z",
+      teams: { a: { tbd: a }, b: { tbd: b } },
+    });
+
+    it("puts Worlds fixtures first, soonest first, so a busy day cannot push them off the rail", () => {
+      const list = [
+        other("d1"),
+        other("d2"),
+        other("d3"),
+        other("d4"),
+        w("w2", "2026-10-15T23:00:00Z"),
+        w("w1", "2026-10-15T18:00:00Z"),
+      ];
+      expect(railUpcoming(list).map((x) => x.id)).toEqual(["w1", "w2", "d1", "d2"]);
+    });
+
+    it("keeps a Worlds slot whose sides are both TBD, and still drops other leagues' ones", () => {
+      const list = [other("d-tbd", true, true), w("w-tbd", "2026-11-03T18:00:00Z", true, true), other("d1")];
+      expect(railUpcoming(list).map((x) => x.id)).toEqual(["w-tbd", "d1"]);
+    });
+
+    it("is unchanged for a rail with no Worlds fixture, and tolerates rows without a league", () => {
+      const list = [other("d1"), { id: "bare", teams: { a: { tbd: false }, b: { tbd: false } } }, other("d2")];
+      expect(railUpcoming(list).map((x) => x.id)).toEqual(["d1", "bare", "d2"]);
+    });
+
+    it("sorts a Worlds fixture with no parseable start last among Worlds, never first", () => {
+      const list = [w("nodate", null), w("dated", "2026-10-15T18:00:00Z")];
+      expect(railUpcoming(list).map((x) => x.id)).toEqual(["dated", "nodate"]);
+    });
+  });
 });
