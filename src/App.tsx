@@ -254,6 +254,10 @@ const ArenaQuestionProbe = import.meta.env.DEV
 const ProPlayArenaDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/pro-play-arena/ProPlayArenaDev"))
   : null;
+// CE1: the Combat Estimate playtest lab. Same DEVELOPMENT-ONLY rule.
+const CombatEstimateLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/combat-estimate/CombatEstimateLab"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -650,6 +654,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {ProPlayArenaDev ? (
                     <Route path="/lol/dev/pro-play-arena" element={<Suspense fallback={<RouteFallback />}><ProPlayArenaDev /></Suspense>} />
+                  ) : null}
+                  {CombatEstimateLab ? (
+                    <Route path="/dev/combat-estimate" element={<Suspense fallback={<RouteFallback />}><CombatEstimateLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
