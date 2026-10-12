@@ -101,7 +101,9 @@ export default function Layout() {
     || pathname === PRO_PLAY_MATCHUP_ROUTE
     // PPQ2-A — the neutral question-surface probe measures the arena's own
     // footprint, so it gets the same page frame as Ranked.
-    || pathname === "/dev/arena-question-probe";
+    || pathname === "/dev/arena-question-probe"
+    // WP1 — the Word Puzzle lab mounts the arena's own frame, so it gets the same page frame as Ranked.
+    || pathname === "/dev/word-puzzle";
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

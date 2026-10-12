@@ -248,6 +248,10 @@ const LobbyPreviewPage = import.meta.env.DEV
 const ArenaQuestionProbe = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/arena-question-probe/ArenaQuestionProbe"))
   : null;
+// WP1: the Word Puzzle (Glyph Press) playtest lab. Same DEVELOPMENT-ONLY rule.
+const WordPuzzleLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/word-puzzle/WordPuzzleLab"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -641,6 +645,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {ArenaQuestionProbe ? (
                     <Route path="/dev/arena-question-probe" element={<Suspense fallback={<RouteFallback />}><ArenaQuestionProbe /></Suspense>} />
+                  ) : null}
+                  {WordPuzzleLab ? (
+                    <Route path="/dev/word-puzzle" element={<Suspense fallback={<RouteFallback />}><WordPuzzleLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
