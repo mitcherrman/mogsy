@@ -62,6 +62,7 @@ import { AsheJinxExtendedJourneyLaunch } from "@/pages/admin/ranked/ExtendedJour
 import { OrderForgeLaunch } from "@/pages/admin/ranked/OrderForgeLaunch";
 import { ReconstructLaunch } from "@/pages/admin/ranked/ReconstructLaunch";
 import { ScrubLaunch } from "@/pages/admin/ranked/ScrubLaunch";
+import { MatchGridLaunch } from "@/pages/admin/ranked/MatchGridLaunch";
 
 /** Ranked's tools, still grouped by the view each one belongs to. */
 const rankedTools = (view: string) =>
@@ -345,6 +346,13 @@ export default function AdminRankedPage() {
                 testId="ranked-scrub"
               >
                 <ScrubLaunch />
+              </AdminPanel>
+              <AdminPanel
+                title="Match Grid"
+                description="Owner playtest of the Match Grid module (seat each rune under its rune tree), played through the normal Ranked Bot shell. Unrated."
+                testId="ranked-match-grid"
+              >
+                <MatchGridLaunch />
               </AdminPanel>
               <AdminPanel
                 title="Playtests"

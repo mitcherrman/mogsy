@@ -1,0 +1,484 @@
+{
+ "lock_challenge_reveal": {
+  "assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g0"
+   }
+  ],
+  "canonical_assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g0"
+   }
+  ],
+  "challenge_index": 0,
+  "entity_correct": [
+   {
+    "correct": false,
+    "entity_id": "e0"
+   },
+   {
+    "correct": true,
+    "entity_id": "e1"
+   },
+   {
+    "correct": true,
+    "entity_id": "e2"
+   },
+   {
+    "correct": true,
+    "entity_id": "e3"
+   },
+   {
+    "correct": true,
+    "entity_id": "e4"
+   },
+   {
+    "correct": true,
+    "entity_id": "e5"
+   },
+   {
+    "correct": true,
+    "entity_id": "e6"
+   }
+  ],
+  "entity_facts": {
+   "e0": {
+    "label": "Conqueror",
+    "rune_type": "keystone",
+    "tree_label": "Precision"
+   },
+   "e1": {
+    "label": "Celerity",
+    "rune_type": "minor",
+    "tree_label": "Sorcery"
+   },
+   "e2": {
+    "label": "Scorch",
+    "rune_type": "minor",
+    "tree_label": "Sorcery"
+   },
+   "e3": {
+    "label": "Treasure Hunter",
+    "rune_type": "minor",
+    "tree_label": "Domination"
+   },
+   "e4": {
+    "label": "Sudden Impact",
+    "rune_type": "minor",
+    "tree_label": "Domination"
+   },
+   "e5": {
+    "label": "Grisly Mementos",
+    "rune_type": "minor",
+    "tree_label": "Domination"
+   },
+   "e6": {
+    "label": "Legend: Alacrity",
+    "rune_type": "minor",
+    "tree_label": "Precision"
+   }
+  },
+  "is_correct": false,
+  "matched": 6,
+  "required": 7,
+  "source": {
+   "parser_version": "rune-canonical-0.1.0",
+   "snapshot_digest": "1aae7795ede2711f5b051470af4cab099429a63c1da0be01b2e1a1bfeede0914"
+  }
+ },
+ "segment_state_challenges": {
+  "challenges": [
+   {
+    "challenge_index": 0,
+    "entities": [
+     {
+      "entity_id": "e0",
+      "label": "Conqueror",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Conqueror.png"
+      }
+     },
+     {
+      "entity_id": "e1",
+      "label": "Celerity",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Celerity.png"
+      }
+     },
+     {
+      "entity_id": "e2",
+      "label": "Scorch",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Scorch.png"
+      }
+     },
+     {
+      "entity_id": "e3",
+      "label": "Treasure Hunter",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Treasure_Hunter.png"
+      }
+     },
+     {
+      "entity_id": "e4",
+      "label": "Sudden Impact",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Sudden_Impact.png"
+      }
+     },
+     {
+      "entity_id": "e5",
+      "label": "Grisly Mementos",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Grisly_Mementos.png"
+      }
+     },
+     {
+      "entity_id": "e6",
+      "label": "Legend: Alacrity",
+      "media": {
+       "alt": "",
+       "src": "assets/runes/Legend_Alacrity.png"
+      }
+     }
+    ],
+    "groups": [
+     {
+      "glyph": "precision",
+      "group_id": "g0",
+      "label": "Precision"
+     },
+     {
+      "glyph": "domination",
+      "group_id": "g1",
+      "label": "Domination"
+     },
+     {
+      "glyph": "sorcery",
+      "group_id": "g2",
+      "label": "Sorcery"
+     }
+    ],
+    "membership": "one"
+   }
+  ],
+  "family": "rune_tree",
+  "prompt": "Seat each rune under its tree",
+  "reveal_window_ms": 3000
+ },
+ "settlement_segment_reveal": {
+  "canonical_assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g0"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g0"
+   }
+  ],
+  "challenge_count": 1,
+  "correct_points": 2,
+  "entity_facts": {
+   "e0": {
+    "label": "Conqueror",
+    "rune_type": "keystone",
+    "tree_label": "Precision"
+   },
+   "e1": {
+    "label": "Celerity",
+    "rune_type": "minor",
+    "tree_label": "Sorcery"
+   },
+   "e2": {
+    "label": "Scorch",
+    "rune_type": "minor",
+    "tree_label": "Sorcery"
+   },
+   "e3": {
+    "label": "Treasure Hunter",
+    "rune_type": "minor",
+    "tree_label": "Domination"
+   },
+   "e4": {
+    "label": "Sudden Impact",
+    "rune_type": "minor",
+    "tree_label": "Domination"
+   },
+   "e5": {
+    "label": "Grisly Mementos",
+    "rune_type": "minor",
+    "tree_label": "Domination"
+   },
+   "e6": {
+    "label": "Legend: Alacrity",
+    "rune_type": "minor",
+    "tree_label": "Precision"
+   }
+  },
+  "module_id": "match",
+  "module_version": 1,
+  "players": {
+   "bot::2eb80dea98e1caa23d1607df": {
+    "assignments": [
+     {
+      "entity_id": "e0",
+      "group_id": "g0"
+     },
+     {
+      "entity_id": "e1",
+      "group_id": "g2"
+     },
+     {
+      "entity_id": "e2",
+      "group_id": "g2"
+     },
+     {
+      "entity_id": "e3",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e4",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e5",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e6",
+      "group_id": "g0"
+     }
+    ],
+    "base_points": 2,
+    "correct": 1,
+    "duration_ms": 11337,
+    "entity_correct": [
+     {
+      "correct": true,
+      "entity_id": "e0"
+     },
+     {
+      "correct": true,
+      "entity_id": "e1"
+     },
+     {
+      "correct": true,
+      "entity_id": "e2"
+     },
+     {
+      "correct": true,
+      "entity_id": "e3"
+     },
+     {
+      "correct": true,
+      "entity_id": "e4"
+     },
+     {
+      "correct": true,
+      "entity_id": "e5"
+     },
+     {
+      "correct": true,
+      "entity_id": "e6"
+     }
+    ],
+    "finished_first": false,
+    "incorrect": 0,
+    "matched": 7,
+    "points_awarded": 2,
+    "required": 7,
+    "segment_result": "win",
+    "speed_bonus_points": 0,
+    "unanswered": 0
+   },
+   "human-1": {
+    "assignments": [
+     {
+      "entity_id": "e0",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e1",
+      "group_id": "g2"
+     },
+     {
+      "entity_id": "e2",
+      "group_id": "g2"
+     },
+     {
+      "entity_id": "e3",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e4",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e5",
+      "group_id": "g1"
+     },
+     {
+      "entity_id": "e6",
+      "group_id": "g0"
+     }
+    ],
+    "base_points": 0,
+    "correct": 0,
+    "duration_ms": 3600,
+    "entity_correct": [
+     {
+      "correct": false,
+      "entity_id": "e0"
+     },
+     {
+      "correct": true,
+      "entity_id": "e1"
+     },
+     {
+      "correct": true,
+      "entity_id": "e2"
+     },
+     {
+      "correct": true,
+      "entity_id": "e3"
+     },
+     {
+      "correct": true,
+      "entity_id": "e4"
+     },
+     {
+      "correct": true,
+      "entity_id": "e5"
+     },
+     {
+      "correct": true,
+      "entity_id": "e6"
+     }
+    ],
+    "finished_first": true,
+    "incorrect": 1,
+    "matched": 6,
+    "points_awarded": 0,
+    "required": 7,
+    "segment_result": "loss",
+    "speed_bonus_points": 0,
+    "unanswered": 0
+   }
+  },
+  "scoring": "points",
+  "source": {
+   "parser_version": "rune-canonical-0.1.0",
+   "snapshot_digest": "1aae7795ede2711f5b051470af4cab099429a63c1da0be01b2e1a1bfeede0914"
+  },
+  "speed_bonus_points": 1
+ },
+ "submitted_choice": {
+  "assignments": [
+   {
+    "entity_id": "e0",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e1",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e2",
+    "group_id": "g2"
+   },
+   {
+    "entity_id": "e3",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e4",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e5",
+    "group_id": "g1"
+   },
+   {
+    "entity_id": "e6",
+    "group_id": "g0"
+   }
+  ]
+ }
+}

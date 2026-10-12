@@ -21,8 +21,9 @@ describe("ranked module renderer registry", () => {
     // flag + allowlist on the backend, exactly like Item Cost Duel.
     // GM1-R1 adds reconstruct (admin-only unrated playtest).
     // SCRUB-S2 adds scrub, the Chronoscope (admin-only unrated playtest).
+    // MG-P3 adds match (admin-only unrated playtest, `admin.match`).
     expect(registeredModuleIds()).toEqual(
-      ["item_cost_duel", "mastery_slice", "order_forge", "quiz", "reconstruct", "scrub"]);
+      ["item_cost_duel", "mastery_slice", "match", "order_forge", "quiz", "reconstruct", "scrub"]);
   });
 
   it("resolves each renderer by id", () => {

@@ -92,6 +92,20 @@ export function anchoredRevealHoldMs(
 }
 
 /**
+ * MG-P3.1 — the nominal hold for a module that PACES ITS OWN SETTLEMENT on the
+ * server (Match Grid, MG-P2.1: the next board opens `reveal_window_ms` after
+ * resolution plus the module title). The client holds until that boundary
+ * minus the title — exactly the ceiling `anchoredRevealHoldMs` already
+ * enforces — so the in-board reveal gets the window the server gave it.
+ * 0 (no extension) when the boundary is unknown. Every other module keeps the
+ * fixed beats above.
+ */
+export function serverPacedHoldMs(msUntilNextAnswerable: number | null, titleMs: number): number {
+  if (msUntilNextAnswerable === null || Number.isNaN(msUntilNextAnswerable)) return 0;
+  return Math.max(0, msUntilNextAnswerable - titleMs);
+}
+
+/**
  * RFX1 2B1 — the least time the next question stays on screen, locked, before
  * it becomes answerable, when the swap waited for its media. The module title
  * owns `MODULE_TITLE_MS` of the lead-in; the swap may borrow the part of it

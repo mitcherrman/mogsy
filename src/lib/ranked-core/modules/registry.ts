@@ -20,6 +20,7 @@
 import type { SegmentMeta } from "@/lib/ranked-public/contracts";
 import { ITEM_COST_DUEL_MODULE_ID, itemCostDuelModule } from "./itemCostDuelModule";
 import { MASTERY_SLICE_MODULE_ID, masterySliceModule } from "./masterySliceModule";
+import { MATCH_MODULE_ID, matchGridModule } from "./matchGridModule";
 import { metaReflexModule } from "./metaReflexModule";
 import { ORDER_FORGE_MODULE_ID, orderForgeModule } from "./orderForgeModule";
 import { QUIZ_MODULE_ID, quizModule } from "./quizModule";
@@ -39,6 +40,8 @@ const RENDERERS: Record<string, readonly ModuleRenderer[]> = {
   [RECONSTRUCT_MODULE_ID]: [reconstructModule],
   // SCRUB-S2 - admin-only unrated playtest: the locked checkpoint is the answer.
   [SCRUB_MODULE_ID]: [scrubModule],
+  // MG-P3 - admin-only unrated playtest (`admin.match`): the board is the answer.
+  [MATCH_MODULE_ID]: [matchGridModule],
 };
 
 /** Registered module ids, sorted — used by tests and diagnostics. */
@@ -74,6 +77,7 @@ export function rendererForSegment(segment: SegmentMeta | null | undefined): Mod
 export {
   itemCostDuelModule, masterySliceModule, metaReflexModule, orderForgeModule, quizModule,
   reconstructModule, scrubModule,
+  matchGridModule,
 };
 export type {
   ModuleRenderer, ModuleSegmentActions, ModuleViewportProps,

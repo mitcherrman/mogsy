@@ -41,3 +41,34 @@ describe("the reveal hold", () => {
     }
   });
 });
+
+// MG-P3.1 — Match Grid paces its own settlement on the server (MG-P2.1).
+import { anchoredRevealHoldMs, serverPacedHoldMs } from "@/lib/ranked-core/pacing";
+
+describe("a server-paced (Match Grid) settlement", () => {
+  const TITLE = 1400;
+  it("holds until the server's boundary minus the title, and no longer", () => {
+    // P2.1: a wrong board → next board answerable 5900 ms after resolution.
+    const lead = 5900;
+    const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(lead, TITLE));
+    expect(nominal).toBe(4500);
+    expect(anchoredRevealHoldMs(nominal, lead, TITLE)).toBe(4500);
+  });
+
+  it("an exact board's shorter server window is honoured (4400 → 3000)", () => {
+    const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(4400, TITLE));
+    expect(anchoredRevealHoldMs(nominal, 4400, TITLE)).toBe(3000);
+  });
+
+  it("an unknown boundary adds nothing (the ordinary beat stands)", () => {
+    expect(serverPacedHoldMs(null, TITLE)).toBe(0);
+    expect(Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(null, TITLE))).toBe(REVEAL_HOLD_MS);
+  });
+
+  it("can only lengthen toward the server's own ceiling, never past it", () => {
+    for (const lead of [0, 900, 2900, 5900, 9000]) {
+      const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(lead, TITLE));
+      expect(anchoredRevealHoldMs(nominal, lead, TITLE)).toBeLessThanOrEqual(Math.max(900, lead - TITLE));
+    }
+  });
+});
