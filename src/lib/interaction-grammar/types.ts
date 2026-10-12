@@ -245,3 +245,91 @@ export interface ReconstructReveal {
   isCorrect: boolean | null;
   evidence?: ReconstructEvidence | null;
 }
+
+// -------------------------------------------------------- Positional Assembly
+//
+// PAV1 — ASSIGN. The player puts N distinct cards from a tray into N labelled
+// positions, one card per position, each card in at most one position. Every
+// position has SEMANTIC meaning (unlike Reconstruct's unordered sockets), so a
+// board is graded position by position. The primitive knows positions, cards
+// and placement; it never knows which card belongs where until a reveal says.
+
+/** One labelled position on the board. The host words every label. */
+export interface AssemblyPosition {
+  /** Opaque id the response is keyed by, e.g. "top". Never displayed. */
+  id: string;
+  /** Engraved label, e.g. "Top". */
+  label: string;
+  /** Short label for a narrow board, e.g. "TOP". Defaults to `label`. */
+  short?: string | null;
+  /** Emblem art for the position, if the host has one. Decorative: the label names it. */
+  emblem?: SubjectMedia | null;
+}
+
+/** One card in the tray. The tray holds each card once. */
+export interface AssemblyCard {
+  /** Opaque id the response carries. Never displayed. */
+  token: string;
+  label: string;
+  /** A second, smaller line, if any. */
+  sublabel?: string | null;
+  media?: SubjectMedia | null;
+  /** 1–3 characters drawn when there is no art. Defaults to the label's initials. */
+  monogram?: string | null;
+}
+
+/** Everything a player may see before the reveal. No field can hold the answer. */
+export interface PositionalAssemblyPublic {
+  prompt: string;
+  /** The small engraved line above the prompt, e.g. the family and the event. */
+  eyebrow: string;
+  /** The whole being assembled: its name, a line under it, and its mark. */
+  subject: { label: string; sublabel?: string | null; media?: SubjectMedia | null; monogram?: string | null };
+  /** How the cards are drawn: an identity card (seal + name) or an icon card (art + name). */
+  cardKind: "identity" | "icon";
+  /** 2–8 positions, in the host's order. Distinct ids. */
+  positions: readonly AssemblyPosition[];
+  /** 2–20 cards, in the host's dealt order. Distinct tokens. Never fewer than positions. */
+  cards: readonly AssemblyCard[];
+  /** A short line under the board once the hand is off, e.g. the source. */
+  footnote?: string | null;
+}
+
+/** The host-owned board: position id → card token, or null when empty. Every position id is present. */
+export type PositionalAssemblyValue = Readonly<Record<string, string | null>>;
+
+/** The response: one card token per position. Identity, never correctness. */
+export interface PositionalAssemblyResponse {
+  assignment: Readonly<Record<string, string>>;
+}
+
+/** Authority-supplied, post-reveal only. The primitive displays it and grades nothing. */
+export interface PositionalAssemblyReveal {
+  /** The assignment the player locked, as the host recorded it. */
+  assignment: Readonly<Record<string, string>>;
+  /** The canonical card for every position. Only ever supplied here. */
+  canonical: Readonly<Record<string, string>>;
+  /** Per position, straight from the host's grader. Display only. */
+  positionCorrect: Readonly<Record<string, boolean>>;
+  /** The host's verdict on the whole board; null when it stated none. */
+  isCorrect: boolean | null;
+  /** The host's one-line verdict, e.g. "3 of 5 in position". */
+  verdictText: string;
+  /**
+   * What a card the player placed WAS, worded by the host and keyed by token:
+   * "SK Telecom T1's jungler in this series". Shown beside a wrong pick so it
+   * stays understandable. Absent tokens get no note.
+   */
+  cardNotes?: Readonly<Record<string, string>> | null;
+  /** The context plate: where and when this happened, in the host's words. */
+  context: {
+    title: string;
+    lines: readonly string[];
+    source?: { label: string; url?: string | null } | null;
+  };
+}
+
+// Positional Assembly is NOT a SegmentChoice yet: `{ assignment }` is a new
+// transport shape. The production seam (an `assembly.v1` module) widens
+// `SegmentChoice` then.
+export type _PositionalAssemblyIsNotSegmentChoiceYet = Assert<PositionalAssemblyResponse extends SegmentChoice ? false : true>;

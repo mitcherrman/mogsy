@@ -254,6 +254,11 @@ const ArenaQuestionProbe = import.meta.env.DEV
 const ProPlayArenaDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/pro-play-arena/ProPlayArenaDev"))
   : null;
+// PAV1: the Pro Play Assembly (Roster Lock / Draft Memory) playtest lab. Same
+// DEVELOPMENT-ONLY rule: frozen PA1 content, a stand-in grader, no API.
+const ProPlayAssemblyLab = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/pro-play-assembly/ProPlayAssemblyLab"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -650,6 +655,9 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {ProPlayArenaDev ? (
                     <Route path="/lol/dev/pro-play-arena" element={<Suspense fallback={<RouteFallback />}><ProPlayArenaDev /></Suspense>} />
+                  ) : null}
+                  {ProPlayAssemblyLab ? (
+                    <Route path="/dev/pro-play-assembly" element={<Suspense fallback={<RouteFallback />}><ProPlayAssemblyLab /></Suspense>} />
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
