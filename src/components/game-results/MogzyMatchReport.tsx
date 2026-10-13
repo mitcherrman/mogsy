@@ -16,7 +16,7 @@ export function MogzyMatchReport({ lines }: { lines: readonly string[] }) {
     <section
       aria-label="Mogzy's match report"
       data-testid="result-match-report"
-      className="flex gap-3 rounded-[0.6rem] border border-[#c9a84c]/30 bg-[#f0d78c]/[0.04] px-3 py-3"
+      className="flex gap-3 rounded-[0.6rem] border border-[#c9a84c]/30 bg-[#f0d78c]/[0.04] px-3 py-3 animate-in fade-in slide-in-from-bottom-1 duration-500 motion-reduce:animate-none"
     >
       <MogzyMascot pose="base" decorative className="h-10 w-10 shrink-0" />
       <div className="min-w-0 flex-1 space-y-1">
