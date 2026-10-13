@@ -1,0 +1,300 @@
+[
+ {
+  "name": "ux2-teams-default-1440",
+  "url": "/lol/dev/worlds-experience?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=nav-screen][data-screen=teams]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-teams-selected-1440",
+  "url": "/lol/dev/worlds-experience/teams?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=team-tile][data-team=GEN]",
+    "wait": 800
+   }
+  ]
+ },
+ {
+  "name": "ux2-teams-region-switch-1440",
+  "url": "/lol/dev/worlds-experience/teams?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=region-chip][data-region=LEC]",
+    "wait": 600
+   },
+   {
+    "click": "[data-testid=team-tile][data-team=KC]",
+    "wait": 800
+   }
+  ]
+ },
+ {
+  "name": "ux2-schedule-default-1440",
+  "url": "/lol/dev/worlds-experience/teams?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=nav-screen][data-screen=schedule]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-schedule-selected-date-1440",
+  "url": "/lol/dev/worlds-experience/schedule?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=day-cell][data-day='2026-10-23']",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-schedule-selected-match-1440",
+  "url": "/lol/dev/worlds-experience/schedule?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=fixture-row]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-overview-1440",
+  "url": "/lol/dev/worlds-experience?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900
+ },
+ {
+  "name": "ux2-sim-teams-kc-1440",
+  "url": "/lol/dev/worlds-experience/teams?scenario=swiss-r3&team=KC",
+  "w": 1440,
+  "h": 900
+ },
+ {
+  "name": "ux2-sim-schedule-live-1440",
+  "url": "/lol/dev/worlds-experience/schedule?scenario=swiss-r3",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=fixture-row][data-state=live]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-sim-schedule-knockouts-1440",
+  "url": "/lol/dev/worlds-experience/schedule?scenario=knockout-live&stage=knockouts",
+  "w": 1440,
+  "h": 900
+ },
+ {
+  "name": "ux2-sim-teams-champion-1440",
+  "url": "/lol/dev/worlds-experience/teams?scenario=complete",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=team-tile][data-team=GEN]",
+    "wait": 800
+   }
+  ]
+ },
+ {
+  "name": "ux2-stages-swiss-adaptive-1440",
+  "url": "/lol/dev/worlds-experience/stages/swiss?scenario=swiss-r3",
+  "w": 1440,
+  "h": 900
+ },
+ {
+  "name": "ux2-teams-long-name-1280",
+  "url": "/lol/dev/worlds-experience/teams?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1280,
+  "h": 800,
+  "steps": [
+   {
+    "click": "[data-testid=team-tile][data-team=IG]",
+    "wait": 800
+   }
+  ]
+ },
+ {
+  "name": "ux2-schedule-detail-filter-1280",
+  "url": "/lol/dev/worlds-experience/schedule?scenario=swiss-r3&stage=swiss",
+  "w": 1280,
+  "h": 800,
+  "steps": [
+   {
+    "click": "[data-testid=fixture-row][data-state=live]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-teams-default-390",
+  "url": "/lol/dev/worlds-experience?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 390,
+  "h": 844,
+  "steps": [
+   {
+    "tap": "[data-testid=nav-screen][data-screen=teams]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-teams-region-390",
+  "url": "/lol/dev/worlds-experience/teams?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 390,
+  "h": 844,
+  "steps": [
+   {
+    "tap": "[data-testid=region-chip][data-region=LPL]",
+    "wait": 700
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-teams-selected-390",
+  "url": "/lol/dev/worlds-experience/teams?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 390,
+  "h": 844,
+  "steps": [
+   {
+    "tap": "[data-testid=team-tile][data-team=TLAW]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-schedule-default-390",
+  "url": "/lol/dev/worlds-experience?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 390,
+  "h": 844,
+  "steps": [
+   {
+    "tap": "[data-testid=nav-screen][data-screen=schedule]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-schedule-day-390",
+  "url": "/lol/dev/worlds-experience/schedule?scenario=swiss-r3",
+  "w": 390,
+  "h": 844,
+  "steps": [
+   {
+    "tap": "[data-testid=day-cell][data-day='2026-10-24']",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-schedule-sheet-390",
+  "url": "/lol/dev/worlds-experience/schedule?scenario=swiss-r3",
+  "w": 390,
+  "h": 844,
+  "steps": [
+   {
+    "tap": "[data-testid=fixture-row][data-state=live]",
+    "wait": 900
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-swiss-390",
+  "url": "/lol/dev/worlds-experience/stages/swiss?scenario=swiss-r3",
+  "w": 390,
+  "h": 844,
+  "full": true
+ },
+ {
+  "name": "ux2-m-swiss-format-390",
+  "url": "/lol/dev/worlds-experience/stages/swiss?scenario=swiss-r3",
+  "w": 390,
+  "h": 844,
+  "full": true,
+  "steps": [
+   {
+    "tap": "[data-testid=swiss-format-toggle]",
+    "wait": 600
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-play-in-step-390",
+  "url": "/lol/dev/worlds-experience/stages/play-in?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 390,
+  "h": 844,
+  "steps": [
+   {
+    "tap": "[data-testid=round-step]:nth-of-type(1)",
+    "wait": 200
+   },
+   {
+    "eval": "document.querySelectorAll('[data-testid=round-step]')[2].click()",
+    "wait": 800
+   }
+  ]
+ },
+ {
+  "name": "ux2-stages-play-in-1440",
+  "url": "/lol/dev/worlds-experience/stages/play-in?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900
+ },
+ {
+  "name": "ux2-stages-play-in-detail-1440",
+  "url": "/lol/dev/worlds-experience/stages/play-in?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-bracket-match='115660588583171790'] button",
+    "wait": 800
+   }
+  ]
+ },
+ {
+  "name": "ux2-stages-swiss-brief-open-1440",
+  "url": "/lol/dev/worlds-experience/stages/swiss?scenario=swiss-r3",
+  "w": 1440,
+  "h": 900,
+  "steps": [
+   {
+    "click": "[data-testid=brief-toggle]",
+    "wait": 700
+   }
+  ]
+ },
+ {
+  "name": "ux2-m-overview-390",
+  "url": "/lol/dev/worlds-experience?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "name": "ux2-overview-1280",
+  "url": "/lol/dev/worlds-experience?scenario=snapshot&now=2026-10-13T00:10:00Z",
+  "w": 1280,
+  "h": 800
+ }
+]

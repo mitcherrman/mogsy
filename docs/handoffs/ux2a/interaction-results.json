@@ -1,0 +1,1235 @@
+{
+  "passed": 34,
+  "total": 34,
+  "results": [
+    {
+      "name": "A1 opening a match pushes one entry and shows its detail",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-15",
+        "stage": null,
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": {
+          "ux1Panel": true
+        },
+        "len": 3,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "match",
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "A2 another date clears the match: URL, board and panel agree",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-16",
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-16"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660588583171790",
+          "115660588583171794"
+        ],
+        "pressed": [],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "A2b the entry keeps no stale panel marker, and no entry was added",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-16",
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-16"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660588583171790",
+          "115660588583171794"
+        ],
+        "pressed": [],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "A3 Back returns to the schedule as it was before the match, closed",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "A4 Forward restores the day view without re-opening the match",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-16",
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-16"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660588583171790",
+          "115660588583171794"
+        ],
+        "pressed": [],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "A5 the match's own date keeps the match open",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-15",
+        "stage": null,
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": {
+          "ux1Panel": true
+        },
+        "len": 5,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "match",
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "B1 an excluding stage clears the match and lands on a day with that stage's fixtures",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-11-03",
+        "stage": "knockouts",
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 7,
+        "boards": [
+          "2026-11-03"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660540726095097"
+        ],
+        "pressed": [],
+        "filter": [
+          "knockout"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "B1b the URL day is the displayed day and the filter chip agrees",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-11-03",
+        "stage": "knockouts",
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 7,
+        "boards": [
+          "2026-11-03"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660540726095097"
+        ],
+        "pressed": [],
+        "filter": [
+          "knockout"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "B2 a compatible stage keeps the match and its day",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-15",
+        "stage": "play-in",
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 9,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "match",
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "play_in"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "B3 refresh restores filter, day and open match",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-15",
+        "stage": "play-in",
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 9,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "match",
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "play_in"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "B4 closing after a filter change closes in place: filter kept, same screen, nothing popped",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-15",
+        "stage": "play-in",
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 9,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [],
+        "filter": [
+          "play_in"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "B5 a day without fixtures under the new filter moves to the one shown, and the URL says so",
+      "ok": true,
+      "detail": {
+        "b5a": {
+          "path": "/schedule",
+          "day": "2026-10-25",
+          "stage": "swiss",
+          "match": null,
+          "team": null,
+          "region": null,
+          "usr": null,
+          "len": 10,
+          "boards": [
+            "2026-10-25"
+          ],
+          "panel": "collapsed",
+          "details": [],
+          "rows": [
+            "115660540726095045",
+            "115660540726095047",
+            "115660540726095037",
+            "115660540726095041"
+          ],
+          "pressed": [],
+          "filter": [
+            "swiss"
+          ],
+          "region_on": [],
+          "tiles": [],
+          "focus": [],
+          "workspace": null,
+          "dialog": false,
+          "overflowX": 0
+        },
+        "b5": {
+          "path": "/schedule",
+          "day": "2026-10-15",
+          "stage": "play-in",
+          "match": null,
+          "team": null,
+          "region": null,
+          "usr": null,
+          "len": 10,
+          "boards": [
+            "2026-10-15"
+          ],
+          "panel": "collapsed",
+          "details": [],
+          "rows": [
+            "115660588583171786",
+            "115660588583040710"
+          ],
+          "pressed": [],
+          "filter": [
+            "play_in"
+          ],
+          "region_on": [],
+          "tiles": [],
+          "focus": [],
+          "workspace": null,
+          "dialog": false,
+          "overflowX": 0
+        }
+      }
+    },
+    {
+      "name": "B6 All keeps the day that now has fixtures",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-15",
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 10,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "collapsed",
+        "details": [],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "L1 a link whose day contradicts its match shows the match's day with its detail",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-25",
+        "stage": null,
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 11,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "match",
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "L2 a link whose stage excludes its match lifts the filter and shows the match",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": null,
+        "stage": "swiss",
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 12,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": "match",
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C1 selecting a team pushes one entry",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "TLAW",
+        "region": null,
+        "usr": {
+          "ux1Panel": true
+        },
+        "len": 14,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "all"
+        ],
+        "tiles": [
+          "AL",
+          "BLG",
+          "TES",
+          "IG",
+          "GEN",
+          "HLE",
+          "T1",
+          "DK",
+          "G2",
+          "MKOI",
+          "KC",
+          "TLAW",
+          "LYON",
+          "C9",
+          "TSW",
+          "CFO",
+          "MVK",
+          "LOS",
+          "FUR"
+        ],
+        "focus": [
+          "TLAW"
+        ],
+        "workspace": "team",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C2 the team's own region keeps the team",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "TLAW",
+        "region": "LCS",
+        "usr": null,
+        "len": 14,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "LCS"
+        ],
+        "tiles": [
+          "TLAW",
+          "LYON",
+          "C9"
+        ],
+        "focus": [
+          "TLAW"
+        ],
+        "workspace": "team",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C3 another region clears the team: chip, selector and workspace agree",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": "LCK",
+        "usr": null,
+        "len": 14,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "LCK"
+        ],
+        "tiles": [
+          "GEN",
+          "HLE",
+          "T1",
+          "DK"
+        ],
+        "focus": [],
+        "workspace": "field",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C4 Back closes the new team only; the region stays",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": "LCK",
+        "usr": null,
+        "len": 15,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "LCK"
+        ],
+        "tiles": [
+          "GEN",
+          "HLE",
+          "T1",
+          "DK"
+        ],
+        "focus": [],
+        "workspace": "field",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C5 Forward re-opens that team",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "GEN",
+        "region": "LCK",
+        "usr": {
+          "ux1Panel": true
+        },
+        "len": 15,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "LCK"
+        ],
+        "tiles": [
+          "GEN",
+          "HLE",
+          "T1",
+          "DK"
+        ],
+        "focus": [
+          "GEN"
+        ],
+        "workspace": "team",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C6 a direct team link wins over a contradicting region",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "TLAW",
+        "region": "LCK",
+        "usr": null,
+        "len": 16,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "all"
+        ],
+        "tiles": [
+          "AL",
+          "BLG",
+          "TES",
+          "IG",
+          "GEN",
+          "HLE",
+          "T1",
+          "DK",
+          "G2",
+          "MKOI",
+          "KC",
+          "TLAW",
+          "LYON",
+          "C9",
+          "TSW",
+          "CFO",
+          "MVK",
+          "LOS",
+          "FUR"
+        ],
+        "focus": [
+          "TLAW"
+        ],
+        "workspace": "team",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C7 refresh keeps the direct team link",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "TLAW",
+        "region": "LCK",
+        "usr": null,
+        "len": 16,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "all"
+        ],
+        "tiles": [
+          "AL",
+          "BLG",
+          "TES",
+          "IG",
+          "GEN",
+          "HLE",
+          "T1",
+          "DK",
+          "G2",
+          "MKOI",
+          "KC",
+          "TLAW",
+          "LYON",
+          "C9",
+          "TSW",
+          "CFO",
+          "MVK",
+          "LOS",
+          "FUR"
+        ],
+        "focus": [
+          "TLAW"
+        ],
+        "workspace": "team",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "C8 an unknown team is no selection, and Escape does not rewrite the URL",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "ZZZ",
+        "region": null,
+        "usr": null,
+        "len": 17,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "all"
+        ],
+        "tiles": [
+          "AL",
+          "BLG",
+          "TES",
+          "IG",
+          "GEN",
+          "HLE",
+          "T1",
+          "DK",
+          "G2",
+          "MKOI",
+          "KC",
+          "TLAW",
+          "LYON",
+          "C9",
+          "TSW",
+          "CFO",
+          "MVK",
+          "LOS",
+          "FUR"
+        ],
+        "focus": [],
+        "workspace": "field",
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "no page errors on desktop",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "M1 a fixture opens the match sheet (one entry)",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-15",
+        "stage": null,
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": {
+          "ux1Panel": true
+        },
+        "len": 3,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": null,
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": true,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M2 Back closes the sheet and stays on the schedule",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": null,
+        "details": [],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M3 after closing, a new date shows its board with no sheet",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-16",
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-16"
+        ],
+        "panel": null,
+        "details": [],
+        "rows": [
+          "115660588583171790",
+          "115660588583171794"
+        ],
+        "pressed": [],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M4 a link with a contradicting day opens the match's day with its sheet",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-25",
+        "stage": null,
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": null,
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": true,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M5 no horizontal overflow on the schedule",
+      "ok": true,
+      "detail": {
+        "path": "/schedule",
+        "day": "2026-10-25",
+        "stage": null,
+        "match": "115660588583171786",
+        "team": null,
+        "region": null,
+        "usr": null,
+        "len": 3,
+        "boards": [
+          "2026-10-15"
+        ],
+        "panel": null,
+        "details": [
+          "115660588583171786"
+        ],
+        "rows": [
+          "115660588583171786",
+          "115660588583040710"
+        ],
+        "pressed": [
+          "115660588583171786"
+        ],
+        "filter": [
+          "all"
+        ],
+        "region_on": [],
+        "tiles": [],
+        "focus": [],
+        "workspace": null,
+        "dialog": true,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M6 a team opens in the sheet within its region",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "LOS",
+        "region": "CBLOL",
+        "usr": {
+          "ux1Panel": true
+        },
+        "len": 5,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "CBLOL"
+        ],
+        "tiles": [
+          "LOS",
+          "FUR"
+        ],
+        "focus": [
+          "LOS"
+        ],
+        "workspace": null,
+        "dialog": true,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M7 Back closes the team sheet and keeps the region",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": "CBLOL",
+        "usr": null,
+        "len": 5,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "CBLOL"
+        ],
+        "tiles": [
+          "LOS",
+          "FUR"
+        ],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M8 changing region afterwards opens nothing",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": null,
+        "region": "LCK",
+        "usr": null,
+        "len": 5,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "LCK"
+        ],
+        "tiles": [
+          "GEN",
+          "HLE",
+          "T1",
+          "DK"
+        ],
+        "focus": [],
+        "workspace": null,
+        "dialog": false,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "M9 a linked team opens its sheet over the whole field",
+      "ok": true,
+      "detail": {
+        "path": "/teams",
+        "day": null,
+        "stage": null,
+        "match": null,
+        "team": "TLAW",
+        "region": "LCK",
+        "usr": null,
+        "len": 5,
+        "boards": [],
+        "panel": null,
+        "details": [],
+        "rows": [],
+        "pressed": [],
+        "filter": [],
+        "region_on": [
+          "all"
+        ],
+        "tiles": [
+          "AL",
+          "BLG",
+          "TES",
+          "IG",
+          "GEN",
+          "HLE",
+          "T1",
+          "DK",
+          "G2",
+          "MKOI",
+          "KC",
+          "TLAW",
+          "LYON",
+          "C9",
+          "TSW",
+          "CFO",
+          "MVK",
+          "LOS",
+          "FUR"
+        ],
+        "focus": [
+          "TLAW"
+        ],
+        "workspace": null,
+        "dialog": true,
+        "overflowX": 0
+      }
+    },
+    {
+      "name": "no page errors on phone",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}
