@@ -35,14 +35,17 @@ export function ResultProgress({ items }: { items: readonly ResultProgressItem[]
       <dl className="rounded-[0.6rem] border border-white/10 bg-[#0b1727] divide-y divide-white/5">
         {items.map((item) => {
           const Icon = item.icon ? ICONS[item.icon] : null;
+          // An XP total is not an earned XP delta: emphasize the record, never
+          // invent movement. Discovery and XP use the same restrained highlight.
+          const isKnowledge = item.icon === "xp" || item.icon === "collection";
           return (
             <div
               key={item.key}
               data-testid={item.testId ?? `result-progress-${item.key}`}
-              className="flex items-center gap-2 px-3 py-2"
+              className={`flex items-center gap-2 px-3 py-2 transition-colors duration-300 motion-reduce:transition-none ${isKnowledge ? "bg-gradient-to-r from-[#f0d78c]/[0.07] via-[#7fd6ef]/[0.025] to-transparent" : ""}`}
             >
               {Icon && (
-                <Icon aria-hidden className="h-3.5 w-3.5 shrink-0 text-[#f0d78c]/70" />
+                <Icon aria-hidden className={`h-3.5 w-3.5 shrink-0 ${isKnowledge ? "text-[#f0d78c]" : "text-[#f0d78c]/70"}`} />
               )}
               <dt className="min-w-0 flex-1 text-xs text-slate-400">
                 {item.label}
