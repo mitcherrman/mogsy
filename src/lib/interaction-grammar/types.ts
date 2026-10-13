@@ -244,4 +244,10 @@ export interface ReconstructReveal {
   /** The host's verdict on the whole build; null when it stated none. */
   isCorrect: boolean | null;
   evidence?: ReconstructEvidence | null;
+  /**
+   * The player locked nothing before the host's clock ran out. `placement` and
+   * `slotCorrect` are empty (no socket carries a mark or a "your pick"), and
+   * `settled` is the answer itself, drawn as the answer.
+   */
+  timedOut?: boolean;
 }

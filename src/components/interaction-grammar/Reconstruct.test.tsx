@@ -1124,3 +1124,72 @@ describe("Reconstruct — source contract", () => {
     expect(src).not.toMatch(/@\/studio|studio\//);
   });
 });
+
+describe("Reconstruct — R3C timed-out reveal (no build was locked)", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  const ANSWER = ["a", "b", "b"];
+  const timedOut = (): ReconstructReveal => ({
+    placement: [], slotCorrect: [], settled: ANSWER, isCorrect: false, evidence: {
+      ...EVIDENCE,
+      // A host reports no placed counts for a player who placed nothing.
+      parts: EVIDENCE.parts.map((p) => ({ ...p, annotation: null })),
+    }, timedOut: true,
+  });
+  const root = () => screen.getByTestId("mig-reconstruct");
+  const shownTokens = () => [0, 1, 2].map((i) => sock(i).getAttribute("data-token"));
+  const advance = (ms: number) => act(() => { vi.advanceTimersByTime(ms); });
+
+  it("says TIMED OUT, unmistakably, from the first revealed frame", () => {
+    render(<Host phase="revealed" reveal={timedOut()} />);
+    expect(root()).toHaveAttribute("data-timed-out", "true");
+    const verdict = screen.getByTestId("reconstruct-verdict");
+    expect(verdict).toHaveAttribute("data-timed-out", "true");
+    expect(verdict).toHaveAttribute("data-correct", "false");
+    expect(screen.getByTestId("reconstruct-verdict-text")).toHaveTextContent(/^Timed out$/);
+    expect(screen.getByTestId("reconstruct-wrong-notes")).toHaveTextContent("No build locked in");
+  });
+
+  it("never portrays a socket as a pick: empty at marks, then the answer settles in, tagged Answer", () => {
+    render(<Host phase="revealed" reveal={timedOut()} initial={["d", "e", null]} />);
+    // The unsubmitted draft is NOT what the board shows: the sockets are empty.
+    expect(shownTokens()).toEqual([null, null, null]);
+    expect([0, 1, 2].map((i) => sock(i).getAttribute("data-state"))).toEqual(["empty", "empty", "empty"]);
+    for (let t = 0; t <= 1600; t += 50) {
+      for (const i of [0, 1, 2]) {
+        expect(sock(i).getAttribute("data-mark")).toBeNull();
+        expect(screen.queryByTestId(`reconstruct-pick-${i}`)).toBeNull();
+      }
+      advance(50);
+    }
+    expect(shownTokens()).toEqual(ANSWER);
+    expect([0, 1, 2].map((i) => sock(i).getAttribute("data-state"))).toEqual(["answer", "answer", "answer"]);
+    expect(root().querySelectorAll('[data-part="answer-tag"]')).toHaveLength(3);
+  });
+
+  it("runs on the same bounded clock and teaches the breakdown with no placed counts", () => {
+    const done = vi.fn();
+    render(<Host phase="revealed" reveal={timedOut()} onRevealComplete={done} />);
+    expect(root()).toHaveAttribute("data-reveal-stage", "marks");
+    advance(450); expect(root()).toHaveAttribute("data-reveal-stage", "settle");
+    advance(600); expect(root()).toHaveAttribute("data-reveal-stage", "evidence");
+    advance(450); expect(root()).toHaveAttribute("data-reveal-stage", "done");
+    expect(done).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("reconstruct-evidence-total")).toHaveTextContent("Test Assembly230");
+    expect(screen.queryAllByTestId(/^reconstruct-evidence-note-/)).toHaveLength(0);
+  });
+
+  it("reduced motion: the first revealed frame is the settled answer and its breakdown", () => {
+    document.documentElement.classList.add("reduce-motion");
+    render(<Host phase="revealed" reveal={timedOut()} />);
+    expect(root()).toHaveAttribute("data-reveal-stage", "done");
+    expect(shownTokens()).toEqual(ANSWER);
+    expect(screen.getByTestId("reconstruct-evidence")).toBeInTheDocument();
+  });
+
+  it("the live region says Timed out and names the recipe, never 'your pick'", () => {
+    document.documentElement.classList.add("reduce-motion");
+    render(<Host phase="revealed" reveal={timedOut()} />);
+    expect(live().textContent).toMatch(/^Timed out\. The build is: Alpha; Beta, 2 of the 3 parts\./);
+    expect(document.body.textContent).not.toMatch(/your pick/i);
+  });
+});

@@ -300,6 +300,13 @@ export interface ReconstructChallengeReveal {
   canonicalParts: ReconstructPartView[];
   target: ReconstructRecipeTarget | null;
   pieces: ReconstructPieceView[];
+  /**
+   * RECONSTRUCT-R3C — set only on the reveal the HOST builds for a viewer the
+   * server settled as timed out (`withSettledTimeoutReveal`, from the resolved
+   * round's `segment_reveal`). No build was locked, so `placement`,
+   * `slotCorrect` and `settledPlacement` are empty. Never read off the wire.
+   */
+  timedOut?: boolean;
 }
 
 /** A settled `reconstruct` segment, from `segment_reveal` (both players' builds). */

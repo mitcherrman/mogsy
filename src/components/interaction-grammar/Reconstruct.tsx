@@ -54,6 +54,12 @@
  * part (art, name, figure, what it is made of, the joining term) and a closing
  * equation. `onRevealComplete` tells the host when the choreography has ended.
  *
+ * R3C — A TIMED-OUT REVEAL (`reveal.timedOut`). The player locked nothing, so
+ * no socket gets a mark or a "your pick": the sockets stay empty through the
+ * marks stage, the answer settles in on the same clock (tagged "Answer"), the
+ * breakdown follows, and the verdict line says TIMED OUT. Nothing on the board
+ * is drawn as a choice the player made.
+ *
  * R3A — THE BREAKDOWN IS ONE CONNECTED CALCULATION. One LEDGER ROW per part
  * (name, quantity pill, figure on the right; a built part adds one indented
  * line of what it is made of and its combining term), then the equation
@@ -82,7 +88,7 @@ import {
   type KeyboardEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type Ref, type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { Check, Lock, X } from "lucide-react";
+import { Check, Lock, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import type {
@@ -405,7 +411,9 @@ export function Reconstruct({
   // ---- reveal
   const revealed = phase === "revealed" && reveal !== null;
   const hasEvidence = Boolean(reveal?.evidence && reveal.evidence.parts.length > 0);
-  const anyWrong = Boolean(reveal?.slotCorrect.some((c) => c === false));
+  const timedOut = Boolean(reveal?.timedOut);
+  // A timed-out board has no picks to mark, but its answer still settles in.
+  const anyWrong = timedOut || Boolean(reveal?.slotCorrect.some((c) => c === false));
   const plan = useMemo(() => planReveal({ reduced, anyWrong, hasEvidence }), [reduced, anyWrong, hasEvidence]);
   const revealKey = revealed && reveal
     ? JSON.stringify([reveal.placement, reveal.settled, reveal.slotCorrect]) : "";
@@ -566,6 +574,7 @@ export function Reconstruct({
   };
   const rightCount = reveal ? reveal.slotCorrect.filter((c) => c).length : 0;
   const verdict = !revealed || !reveal ? ""
+    : timedOut ? "Timed out"
     : reveal.isCorrect === true ? "Every part right"
     : reveal.slotCorrect.length > 0 ? `${rightCount} of ${reveal.slotCorrect.length} parts right`
     : "";
@@ -580,7 +589,8 @@ export function Reconstruct({
   // What each wrong pick WAS, stated from the host's own lists: a pick the
   // host's parts name is a copy too many; any other is not in the build.
   const partTokens = new Set((reveal?.evidence?.parts ?? []).map((p) => p.token));
-  const wrongNotes = revealed && reveal && settledOn
+  const wrongNotes = revealed && reveal && timedOut ? ["No build locked in. This was the answer."]
+    : revealed && reveal && settledOn
     ? distinct(wrongOrder.map((i) => placementTokens[i]).filter((t): t is string => !!t)).map((t) =>
       (partTokens.has(t) ? `One ${labelOf(t)} too many` : `${labelOf(t)} isn't part of it`))
     : [];
@@ -601,6 +611,7 @@ export function Reconstruct({
   return (
     <div ref={rootRef} data-testid="mig-reconstruct" data-mig-primitive="reconstruct" data-phase={phase}
       data-reveal-stage={revealed ? stage : undefined}
+      data-timed-out={revealed && timedOut ? "true" : undefined}
       data-filled={filled} data-slots={total} data-dragging={dragging ? "true" : undefined}
       onKeyDown={(e) => { if (e.key === "Escape" && dragRef.current) endDrag(); }}
       className="flex w-full flex-col gap-2">
@@ -629,19 +640,24 @@ export function Reconstruct({
           const mark = revealed && reveal ? reveal.slotCorrect[i] ?? null : null;
           const pickToken = revealed && reveal && mark === false ? placementTokens[i] ?? null : null;
           const pickOption = pickToken !== null ? byToken.get(pickToken) : undefined;
-          const state = revealed
+          // R3C: a timed-out socket was never filled by the player; once the
+          // answer settles in it is the answer, never a pick.
+          const missed = revealed && timedOut;
+          const state = missed ? (settledOn && token !== null ? "answer" : "empty")
+            : revealed
             ? (mark === false ? (settledOn ? "settled" : "wrong") : mark === true ? "correct" : "filled")
             : phase === "locked" ? (token ? "locked" : "empty")
             : token ? "filled" : "empty";
           // A replaced socket's new token enters from below (the tray); a kept one does not move.
-          const entering = revealed && settledOn && mark === false && animate;
-          const wrongIndex = wrongOrder.indexOf(i);
+          const entering = revealed && settledOn && (mark === false || missed) && animate;
+          const wrongIndex = missed ? i : wrongOrder.indexOf(i);
           const base = sentenceCase(where(i));
           const dropHere = dragging?.target === i;
           const socketName = token === null
             ? `${base}, empty.`
             : `${base}: ${labelOf(token)}. Press to remove.`;
-          const statusText = revealed
+          const statusText = missed ? (token !== null ? "Answer. You didn't lock in a build." : "Not filled.")
+            : revealed
             ? (mark === true ? "Right part."
               : mark === false ? (settledOn ? `Your pick, ${labelOf(pickToken)}, was wrong.` : "Wrong part.") : "")
             : "";
@@ -649,7 +665,7 @@ export function Reconstruct({
             token === null ? "border-dashed" : ""} ${
             mark === true ? `ring-2 ${RIGHT_RING}` : ""} ${
             mark === false && !settledOn ? `ring-2 ${WRONG_RING}` : ""} ${
-            state === "settled" ? "ring-2 ring-[#7a6236]" : ""}`;
+            state === "settled" || state === "answer" ? "ring-2 ring-[#7a6236]" : ""}`;
           const art = (
             <span key={`${i}:${token ?? "empty"}`}
               style={entering ? { animationDuration: `${RECONSTRUCT_TIMING.settleTween}ms`, animationDelay: `${settleDelayMs(wrongIndex)}ms` } : undefined}
@@ -688,7 +704,7 @@ export function Reconstruct({
                     <PickBadge option={pickOption} slot={i} shown={settledOn && pickToken !== null}
                       animate={animate} delay={settleDelayMs(Math.max(0, wrongIndex))} />
                   )}
-                  {state === "settled" && (
+                  {(state === "settled" || state === "answer") && (
                     <span aria-hidden data-part="answer-tag"
                       className="absolute -bottom-1.5 left-1/2 z-10 -translate-x-1/2 rounded-sm bg-[#2a2110] px-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#f6e6bb]">
                       Answer
@@ -713,11 +729,14 @@ export function Reconstruct({
       <div id={hintId} data-part={revealed && verdict ? "verdict" : "status-line"}
         data-testid={revealed && verdict ? "reconstruct-verdict" : "reconstruct-hint"}
         data-correct={revealed && reveal ? String(reveal.isCorrect) : undefined}
+        data-timed-out={revealed && timedOut ? "true" : undefined}
         className={`flex h-[34px] flex-col items-center justify-center overflow-hidden text-center leading-tight lg:[@media(max-height:719px)]:h-[30px]`}>
         {revealed && verdict ? (
           <>
             <span data-testid="reconstruct-verdict-text"
-              className={`text-[12px] font-bold uppercase tracking-[0.2em] ${INK}`}>
+              className={`inline-flex items-center gap-1 text-[12px] font-bold uppercase tracking-[0.2em] ${
+                timedOut ? "text-[#9b1c1c]" : INK}`}>
+              {timedOut && <Timer aria-hidden className="!size-3.5" strokeWidth={3} />}
               {verdict}
             </span>
             <span data-testid="reconstruct-wrong-notes"
