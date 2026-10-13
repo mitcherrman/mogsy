@@ -1,45 +1,76 @@
-# MPE Premium Rewards — Claude Handoff (2026-10-12)
+# MPE Premium Rewards — Handoff (updated 2026-10-12, second pass)
 
 ## Objective and constraints
-The user wants focused, *high-quality polish* across existing Mogzy (League of Legends learning game), **not** a redesign or new architecture. Specifically: compelling end-screen *card discovery and earned Academy XP* animations, synchronized sound design, contextual Mogzy mascot reactions, and consistent visual language for highlights/transitions. Reuse existing components and audio engine; implement improvements, not a planning exercise. Prioritize quality, then credits, then speed. No Docker. Do not change or overlap the separate Daily Challenge / Role Challenge / Quiz Hub selection workstream. Do not merge/deploy without review.
+The user wants focused, *high-quality polish* across existing Mogzy (League of Legends learning game), **not** a redesign or new architecture: compelling end-screen *card discovery and earned Academy XP* moments, synchronized sound design, contextual Mogzy mascot reactions, and one consistent visual language for highlights and transitions. Reuse existing components and the audio engine. Prioritize quality, then credits, then speed. No Docker. Do not change or overlap the separate Daily Challenge / Role Challenge / Quiz Hub workstreams. Do not merge or deploy without review.
 
 ## Working branch and PR
-- Frontend: `mitcherrman/mogsy`; base `main` observed at `8c9c1f739685121e5606342e6e585c4c47e68178` when PR started (reverify current refs).
-- Branch: `mpe/premium-reward-polish-20261012`.
-- Draft PR: https://github.com/mitcherrman/mogsy/pull/6
-- No backend changes; do not modify reward accounting/DB.
-- The frontend may have moved since this PR was opened; verify upstream/ongoing work before integration.
+- Repo `mitcherrman/mogsy`; base `main` at `8c9c1f73` when the branch started. `origin/main` is two commits ahead (PW4-B Worlds tournament work, no overlap with these files).
+- Branch `mpe/premium-reward-polish-20261012`; draft PR https://github.com/mitcherrman/mogsy/pull/6.
+- Frontend only. No backend, no DB, no reward accounting changes.
+- Local worktree used for this pass: `C:\Users\mlmit\mogzy-wt\mpe-premium-rewards` (deps installed with `npm install --no-save` because `package-lock.json` is out of sync with `package.json` on `main`; the lockfile was not modified).
 
-## Changes already committed (9 source/test files before this handoff)
-1. `src/components/ranked-arena/DiscoveryReveal.tsx`: Ranked discovery panel gets gold ambient light, compact book/card glyph, nuanced hover and entry stagger, existing cheering `MogzyMascot` pose, and new audio event on positive discoveries. Uses the authoritative `MatchDiscoveriesView` contract, never computes discoveries. Quiet/no-data behavior preserved.
-2. `src/lib/audio/sfx-registry.ts`: `ranked.discovery.reveal` event reuses existing `sfx.ranked.points-awarded` synth at reduced gain. This is not bespoke sound design. Source syntax was corrected after an initial editing error.
-3. `src/components/game-results/ResultProgress.tsx`: warm highlight for XP/collection, subtle entry, and extra reward animation for `icon === "xp" && typeof delta === "number" && delta > 0`. XP totals, level XP and zero/negative changes never imply a new award. Does **not** count-up or fill an XP bar. No XP-specific sound.
-4. `src/components/game-results/ResultSummaryStrip.tsx`: gold/blue-tinted XP/discovery cells in compact results.
-5. `src/components/game-results/ResultHero.tsx`: understated reduced-motion-aware entrance fade.
-6. `src/components/game-results/MogzyMatchReport.tsx`: slight entrance fade/slide, existing Mogzy pose.
-7. `src/pages/dev/ranked-arena-inspector/RankedArenaInspector.tsx`: reuses pre-existing dev-only fixture harness. Adds `Replay animation` button that remounts real result components (no live match/network/database/account reward). New "RESULT — earned Academy XP (synthetic reward)" fixture explicitly supplies `delta:80` and `value:"+80 XP"` solely for preview. Discovery fixture uses a new synthetic matchId each replay so SFX can fire again. Existing states include full Rated/Bot Ranked, Practice, discoveries and no discoveries. Route `/dev/ranked-arena-inspector`, guarded by `import.meta.env.DEV`.
-8. `src/pages/dev/ranked-arena-inspector/RankedArenaInspector.test.tsx`: replay and earned-XP fixture tests added.
-9. `src/components/game-results/ResultProgress.test.tsx`: tests positive XP delta vs stored account total/in-match level XP/zero/negative.
+## What the second pass found in the first-pass prototype (and fixed)
+1. **The ceremony was hidden.** Ranked renders the shared body in `compact` mode, which folded `model.review` (the discovery panel) into the closed "Match details" disclosure. The sound fired for a panel the player could not see. The inspector previewed a different composition (full body, frame identity row), so this never showed.
+2. **Sound dedupe duplicated the engine.** A module-global `Set<matchId>` guarded replays; the engine already dedupes by `eventId`. It also replayed on a reload or History open (no "watched it live" gate).
+3. **Wrong voice.** The discovery cue reused the per-module points-awarded phrase, so a permanent discovery sounded like one more settled round.
+4. **Mascot cost and repetition.** `cheering` at 48px with `scale="compact"` has no compact plate, so it fetched a 927 KB PNG; it also repeated the hero's cheer.
+5. **No count-up, inconsistent highlights.** Earned XP was a static zoom; the compact strip used a grey-blue gradient unrelated to the gold language.
+6. **Preview did not match production.** No one/many/unavailable/none/reload/no-XP states; the XP fixture bypassed the adapter.
 
-## Verified facts vs unverified
-- **Verified by GitHub source/diff:** above source files and draft PR exist and include intended edits. The shared `GameResultsModel` holds `ResultProgressItem` including optional signed `delta`. `src/lib/quiz/sessionResults.ts` currently maps `currentXp` to **total** account XP without delta; `src/pages/quiz-ranked/rankedResultsModel.ts` uses `player.xp` for **match level XP**, not earned Academy XP. Daily stage model `src/lib/daily-challenge/run/stageResultModel.ts` shows score, not a settled Academy XP award. Never infer earned XP from these totals. Discovery is backed by server response.
-- **NOT verified:** tests passing, typecheck, build, CI, browser rendering, SFX playback policy, real user feedback, accessibility/mobile review. GitHub returned no checks or PR workflow runs when last queried. Do NOT claim production readiness.
-- The added sound guard is a module-global bounded `Set<matchId>` (64 entries). It prevents refetch/StrictMode duplicate audio in a loaded client session, but does NOT prevent replay after page reload/history revisit and may emit on preview even if SFX system not ready. Review this carefully.
-- A potential bug: the test environment may not satisfy the dev-only `import.meta.env.DEV` inspector guard; verify test setup.
-- `ResultProgress` is full-mode only; Ranked's compact `ResultSummaryStrip` currently gets highlight but not earned-XP animation; determine desired consistent treatment without double awards.
-- Existing discovery reveal lists questions but does not perform a cinematic card transfer; earlier implementation is preliminary polish. Need significant creative craft for actual request.
+## What ships now (all within the authorized scope)
 
-## Next action: quality-first takeover on existing branch
-1. Read this file, PR #6 patch, and the actual call-sites of `DiscoveryReveal`, `GameResultsBody`, `ResultProgress`, `ResultSummaryStrip`, `GameResultsShell`, `useSfx`, `sfx-registry`, and the inspector. Inspect any current file-level changes from parallel work; **do not touch Quiz Hub/Role selector**.
-2. Run typecheck + focused existing/new Vitest tests + build. Fix actual failures; review tests for meaningful behavior vs superficial DOM assertions. No Docker.
-3. Critically review PR #6's visual quality and product behavior: animation pacing, discoverability, sound overlap with victory, repeated/revisit behavior, mobile layout, reduced motion, no layout shift, contrast, performance, and whether mascot is appropriately sized.
-4. Replace preliminary polish with **genuine premium microinteractions** within existing architecture: impactful but fast discovery card moment, truthful signed earned-XP reveal/optional count-up only where persisted deltas exist, coherent transition/highlight treatment and appropriately timed, non-jarring SFX/mascot feedback. Do not invent XP gains or change reward grants. Treat live Academy XP wiring as a separate, verified integration concern if no award delta is available in existing settled data.
-5. Keep fixture-based replay front-and-center, including sound replay and cases: 1 discovery, multiple, none, missing metadata, earned XP, no XP, mobile and reduced-motion. Testing a match must never be necessary for visual QA. Preserve dev-only gate and no backend writes.
-6. Use local browser/preview for actual visual verification, capture screenshots/video or provide reproducible dev URL + instructions. Distinguish what's observed versus not observable.
-7. Keep PR draft until tests and visual QA pass. Do not merge or deploy without authorization. Update this handoff in place at each milestone with decisions, files, test results and next task.
+### Discovery ceremony — `src/components/ranked-arena/DiscoveryReveal.tsx`
+- Header (eyebrow, Cinzel headline, one-line sub) with **Mogzy `holdingBook`** from the compact 192px WebP (~10 KB) arriving once at the panel's edge.
+- Each discovered question is a **card**: gold spine (slate for a retired question), `R<n>` round chip (omitted when the server stated no round), prompt, explicit **NEW** stamp, cyan category badge. `data-metadata` marks `resolved`/`unavailable`.
+- Choreography (`DISCOVERY_BEATS`): mascot 120 ms, first card 180 ms, 90 ms stagger capped at 640 ms, one gold light sweep, ambient top wash, collection count climbing from `collectionTotalBefore` to `collectionTotal` 320 ms after the last card (600 ms), CTA last. ~1.4 s to the final beat for three cards.
+- **Cue**: `ranked.discovery.reveal` plays as the first card lands, with `eventId: ranked:<matchId>:discovery` (engine dedupe; `discoverySoundEventId()`).
+- **`ceremony` prop** (default true): Ranked passes its live-completion flag. False (reload, reconnect, History open) renders the same panel at rest — every fact, no motion, no sound.
+- Growth line carries `data-collection-before/total` and the full sr-only sentence at all times; only the visible "after" figure animates.
 
-## Success criteria
-- Players see a distinctly premium, readable card-discovery ceremony, Academy XP reward only on verified gains, tailored existing Mogzy reaction, short coordinated sound and transitions; no noisy replay on revisiting old results.
-- All of it remains optional/fast, accessible under reduced-motion, works mobile, and survives refetches and reconnects without fake or duplicate rewards.
-- A developer can repeatedly trigger all visual/audio states via existing inspector; no real game or persistent user changes.
-- Tests/build and live visual review demonstrate quality; active Daily/Role work untouched.
+### Shared result surfaces — `src/components/game-results/*`
+- `GameResultsBody`: in **compact**, `model.review` now renders in the open flow between the record strip and the details disclosure (`data-testid="result-review"`); the disclosure keeps the report and timeline. Full variant keeps its order (practice's review is remediation). Sections enter on a stagger via `reward-enter` / `--reward-delay`.
+- `ResultProgress`: XP and collection rows are "knowledge" rows (gold spine + wash, `data-knowledge`). `isEarnedXp()` is the one predicate: an `xp` item with a positive `delta`. That row renders `EarnedXpValue`.
+- `ResultSummaryStrip`: same knowledge emphasis and the same earned-XP count-up, so Ranked compact and the practice shell reward identically.
+- `EarnedXpValue` (new): counts 0 → amount in 640 ms after a 320 ms lead-in, prints the adapter's `value` string verbatim on landing, bumps once (`data-landed`), plays `reward.xp.earned` as the count begins (confirmation note lands with the number), screen reader hears the final value only, reserved width (no layout shift).
+- `useCountUp` (new): one rAF easing for both numbers; `animate:false` prints the target at once.
+- `ResultHero` uses `reward-enter`; `MogzyMatchReport` no longer animates itself.
+
+### Audio — `src/lib/audio/sfx-renderers.ts`, `sfx-registry.ts`
+- New synth voices `sfx.reward.discovery` (paper breath + E5→B5 chime, octave shimmer, E6 tail, ~0.7 s) and `sfx.reward.xp-earned` (three rising ticks under the count, G5+D6 confirmation at ~0.6 s).
+- Registry: `ranked.discovery.reveal` → `sfx.reward.discovery` (gain .9); new `reward.xp.earned` (group `reward`, gain .85, 1000 ms replay window). Hierarchy: match result .94 > discovery .9 > earned XP .85 > points awarded .78. Mute, unlock, Audio Studio bindings, legacy settings all apply unchanged.
+
+### Motion vocabulary — `src/index.css` (appended "MPE — REWARD PRESENTATION" block)
+`reward-enter`, `reward-card`, `reward-card__spine`, `reward-sheen`, `reward-glow`, `reward-mascot`, `reward-xp-value`. Every keyframe ends at rest; `[data-ceremony="false"]` disables all of it; OS `prefers-reduced-motion` and the app's `html.reduce-motion` both reduce to fades (sheen/spine hidden, delays zeroed for the app switch). Note `.ranked-panel > *` forces children to `position: relative`, so `.reward-glow` sets `position: absolute` itself.
+
+### Ranked wiring — `src/pages/quiz-ranked/useRankedMatch.ts`, `QuizRankedMatch.tsx`
+- `useRankedMatch` returns `completedLive: outro !== null` (the same ref-gated live-completion answer the outro is claimed on; stays true after the beat).
+- `QuizRankedMatch` passes `ceremony={m.completedLive}`; `rankedDetailsSummary` no longer promises discoveries behind the disclosure.
+
+### Earned Academy XP in production — practice quiz (`src/lib/quiz/sessionResults.ts`, `src/pages/Quiz.tsx`)
+- The backend settles practice XP per answer and returns `xp_earned` on each submit; the product already shows "+N XP" per answer. `Quiz.tsx` now records `xpEarned` on each session answer (4 lines) and passes it through. `sessionXpEarned()` sums those settled awards **only when every question in the run has one**; a failed submit, a missing field or a malformed value yields null → no gain row. A zero sum prints no "+0". Row `xp-earned` ("Academy XP earned", `+N XP`, `delta: N`) precedes the unchanged "Account XP" total. **Nothing is inferred from totals.**
+- **Assumption to confirm with the backend**: practice XP is granted only per answer (no completion bonus outside the submit responses). If a bonus exists, the row under-reports and should instead come from a settlement figure.
+- Ranked still shows no earned-XP row (only per-round XP in a log that may have gaps; see `rankedResultsModel.ts`).
+
+### Inspector — `src/pages/dev/ranked-arena-inspector/RankedArenaInspector.tsx` (route `/dev/ranked-arena-inspector`, `import.meta.env.DEV` guard unchanged)
+States: `results-full-rated` (production composition: compact frame, `RankedResultDuel` poster, compact body, ceremony), `results-full-bot` (no discoveries), `results-reload` (ceremony off), `results-practice` (no settled XP), `results-earned-xp` (+80 via the production adapter), `discovery-reveal` (three, one retired), `discovery-one`, `discovery-many` (seven), `discovery-unavailable`, `discovery-none`. Controls: **Replay animation** (remounts the stage with a fresh fixture match id so the cue can play again), **Reduced motion on/off** (toggles `html.reduce-motion` for the page only; restored on unmount; a user's own setting is left alone), **Audio status** (engine snapshot: locked / muted / config pending / ready, with Enable audio). Viewport buttons Mobile 375 / Narrow 1024 / Full. No fetch, no persistence, no reward writes (import guard test unchanged).
+
+## Verification (this pass)
+- `npx tsc -p tsconfig.app.json --noEmit`: clean.
+- Targeted Vitest (game-results, DiscoveryReveal ×2, MatchOverFrame, inspector, audio, sessionResults ×2, Ranked discovery/endScreen/results/useRankedMatch suites): **339 passed, 0 failed**. New suites: `DiscoveryReveal.ceremony.test.tsx` (12), `EarnedXpValue.test.tsx` (6), `sessionResults.earnedXp.test.ts` (8), `sfx-registry.reward.test.ts` (5), inspector (10), compact body (+2), Ranked discovery integration (+2).
+- Full `npx vitest run` and `npx vite build`: see the PR description for the final numbers of this pass (the only known failures on this Windows machine are the 7 pre-existing `src/lib/quiz-screenshot/*` tests that spawn `/bin/sh`; unrelated).
+- ESLint on changed files: 0 errors (6 `react-refresh/only-export-components` warnings, the same pattern the files already used).
+- **Browser review (Vite dev server + the desktop app's built-in browser, Audio Studio config loaded, `configReady: true`)**: desktop 1280×860 and mobile 375×812 of every state above. Verified: production composition order (result → poster → strip → discovery → growth → CTA → details → actions), no horizontal overflow at 375, focus order (discovery CTA → details → timeline marks → actions), reduced-motion collapses cards to 1 µs/0 ms with sheen hidden and the collection figure final at once, reload state has `data-ceremony="false"` with no sheen/animation, seven-card stagger caps at 640 ms, unavailable-only and none states, and the earned-XP row landing on "+80 XP" with `data-landed`.
+- **Audio**: verified at engine level, not by ear. After the first gesture the AudioContext ran and `__mogzySfxRuntime__` recorded `ranked.discovery.reveal` under `ranked:rkb_demo_preview_<n>:discovery` per replay and `reward.xp.earned` on the practice state. The synth voices' shape is covered by `sfx-registry.reward.test.ts`; listening on a real device is still the user's call.
+- Screenshots of mid-animation frames were not reliably capturable (the pane's screenshot path is slow); timing is asserted by the unit tests instead.
+
+## How to replay everything without a match
+1. `npm run dev` (port 8080), open `/dev/ranked-arena-inspector`.
+2. Click anywhere once (audio unlock), check the "Audio:" readout says ready.
+3. Pick a state from the left list (see the list above); press **Replay animation** to rerun the sequence and the cue. Use **Mobile 375** / **Full** for layouts, **Reduced motion** for the accessible path.
+
+## Remaining / not done
+- **XP progression bar and milestone emphasis**: not implemented in production or preview. The result model carries no verified `{ xpBefore, xpAfter, tierFloor, tierCeiling }` for the finished run; `academy_*` fields exist on the progress endpoint but are not a settlement of this session. Needs a backend-stated per-run settlement before any bar is truthful.
+- Confirm the practice-XP assumption above with the backend owner.
+- Listen to the two new voices on a real device and tune peaks if desired (all in `sfx-renderers.ts`).
+- `.claude/launch.json` was created locally for the browser preview; it is gitignored.
+- Keep the PR in draft; the user reviews and authorizes release.

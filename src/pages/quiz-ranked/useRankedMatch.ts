@@ -282,6 +282,12 @@ export interface MatchController {
    * reconnect onto a completed match never plays it.
    */
   matchOutroId: string | null;
+  /**
+   * MPE — true once this mount has watched the match end (the outro was
+   * claimed), and it STAYS true after the beat. False for any arrival onto an
+   * already finished match. The end screen's reward ceremony reads it.
+   */
+  completedLive: boolean;
 }
 
 /**
@@ -1339,5 +1345,14 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     // there is something to present, so the beat cannot announce the end of
     // the match before the final verdict it follows has even arrived.
     matchOutroId: outro && outro.ready && !outro.done ? outro.id : null,
+    /**
+     * MPE — DID THIS MOUNT WATCH THE MATCH END? The same answer the outro is
+     * claimed on (`sawMatchLiveRef`, read in the same batch as the completion
+     * snapshot), kept true after the beat has run. The end screen's reward
+     * ceremony — the discovery cards' choreography and cue — plays only for a
+     * live completion; a refresh, a reconnect or a History visit onto an
+     * already finished match reads false and gets every fact at rest.
+     */
+    completedLive: outro !== null,
   };
 }

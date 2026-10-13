@@ -161,6 +161,24 @@ describe("the Ranked terminal frame with new discoveries", () => {
     // No second collection route was invented for the ceremony.
     expect(assignedUrls.some((u) => u.includes("library"))).toBe(false);
   });
+
+  it("MPE — places the reward in the OPEN flow, never inside the match-details disclosure", async () => {
+    mount();
+    const reveal = await screen.findByTestId("discovery-reveal");
+    expect(screen.getByTestId("result-review")).toContainElement(reveal);
+    const details = screen.queryByTestId("result-details");
+    if (details) expect(details).not.toContainElement(reveal);
+  });
+
+  it("MPE — arriving onto an already finished match shows the panel AT REST: no ceremony to replay", async () => {
+    // `over` is true from this mount's FIRST snapshot — a refresh, a reconnect
+    // or a History open. The facts are all there; the celebration is not.
+    mount();
+    const reveal = await screen.findByTestId("discovery-reveal");
+    expect(reveal).toHaveAttribute("data-ceremony", "false");
+    expect(reveal.querySelector(".reward-sheen")).toBeNull();
+    expect(screen.getAllByTestId("discovery-entry")).toHaveLength(2);
+  });
 });
 
 describe("the Ranked terminal frame without new discoveries", () => {

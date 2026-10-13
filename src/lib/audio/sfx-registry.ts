@@ -16,7 +16,7 @@ export interface SfxAssetVoice {
 }
 
 export interface SfxRegistryEntry {
-  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily";
+  group: "ui" | "landing" | "swipe" | "card" | "shop" | "welcome" | "hub" | "leaguecraft" | "ranked" | "combat" | "archives" | "pro-play" | "auth" | "broadcast" | "daily" | "reward";
   minReplayMs: number;
   relativeGain: number;
   legacySettingKey?: keyof SoundSettings;
@@ -92,8 +92,16 @@ export const SFX_REGISTRY = {
   "ranked.duel.begin": { group: "ranked", minReplayMs: 1000, relativeGain: 1 },
   "ranked.mode.shift": { group: "ranked", minReplayMs: 400, relativeGain: 1 },
   "ranked.round.final": { group: "ranked", minReplayMs: 400, relativeGain: 1 },
-  // Premium discovery cue: reuse the existing Ranked points-awarded voice.
-  "ranked.discovery.reveal": { group: "ranked", minReplayMs: 850, relativeGain: 0.72, builtInGeneratorId: "sfx.ranked.points-awarded" },
+  // MPE — THE REWARD HIERARCHY, below the match result and above a module's
+  // award phrase: match result (.94) > discovery (.9) > earned XP (.85) >
+  // points awarded (.78). Each has its OWN voice; the discovery cue stopped
+  // borrowing the per-module award phrase, which made a permanent discovery
+  // sound like one more settled round. Callers pass a stable `eventId`
+  // (`ranked:<matchId>:discovery`), so the engine's own dedupe — not a second
+  // guard in the component — is what keeps a refetch, StrictMode or a History
+  // revisit from replaying a match's reward.
+  "ranked.discovery.reveal": { group: "ranked", minReplayMs: 850, relativeGain: 0.9, builtInGeneratorId: "sfx.reward.discovery" },
+  "reward.xp.earned": { group: "reward", minReplayMs: 1000, relativeGain: 0.85, builtInGeneratorId: "sfx.reward.xp-earned" },
   "ranked.match.victory": { group: "ranked", minReplayMs: 1000, relativeGain: 0.94, builtInGeneratorId: "sfx.ranked.match-victory" },
   "ranked.match.defeat": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-defeat" },
   "ranked.match.draw": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-draw" },

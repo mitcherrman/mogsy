@@ -23,9 +23,14 @@ import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { GameResultsBody } from "@/components/game-results/GameResultsBody";
 import { GameResultsShell } from "@/components/game-results/GameResultsShell";
 import { buildSessionResults } from "@/lib/quiz/sessionResults";
-import { ResultContestants } from "@/components/game-results/ResultContestants";
 import { buildRankedResults } from "@/pages/quiz-ranked/rankedResultsModel";
-import type { MatchReviewView } from "@/lib/ranked-public/contracts";
+import { RankedResultDuel } from "@/pages/quiz-ranked/RankedResultDuel";
+import type { MatchDiscoveriesView, MatchReviewView } from "@/lib/ranked-public/contracts";
+// MPE — the reward previews read the SAME engine state the product does, so
+// the inspector can say why a cue was silent (locked, muted, config pending).
+import { useSfxSnapshot } from "@/lib/audio/useSfx";
+import { sfxController } from "@/lib/audio/sfx";
+import { APP_REDUCE_MOTION_CLASS } from "@/hooks/useReducedMotionPreference";
 import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
 import { RoundTimeline } from "@/components/ranked-arena/RoundTimeline";
@@ -1047,35 +1052,70 @@ function MascotBench() {
   );
 }
 
-// PT1.3 — the post-match discovery ceremony, in the frame's existing summary
-// slot. A FIXTURE shaped exactly like the backend's own payload, so the layout
-// QA judges the real component rather than a stand-in.
-const DISCOVERY_FIXTURE = {
-  schemaVersion: "ranked_duel.match_discoveries.v1",
-  serverTime: "2026-09-03T12:00:05Z",
-  matchId: "rkb_demo",
-  scope: "ranked_discoveries",
-  includesDefaultLibrary: false,
-  newDiscoveries: [
-    { canonicalQuestionRef: "ranked:v2-030", firstSeenAt: "2026-09-03T12:00:00Z",
-      firstRoundNumber: 1, metadataStatus: "resolved" as const,
-      metadataSource: "frozen_round",
-      question: { prompt: "What is Flash's base cooldown at level 1?",
-        category: "Summoner Spells" } },
-    { canonicalQuestionRef: "ranked:v2-031", firstSeenAt: "2026-09-03T12:01:00Z",
-      firstRoundNumber: 3, metadataStatus: "resolved" as const,
-      metadataSource: "frozen_round",
-      question: { prompt: "How much gold is a Doran's Shield plus two Health Potions?",
-        category: "Item Costs" } },
-    { canonicalQuestionRef: "ranked:retired", firstSeenAt: "2026-09-03T12:02:00Z",
-      firstRoundNumber: 5, metadataStatus: "unavailable" as const,
-      metadataSource: "current_serving_bank", question: null },
-  ],
-  newCount: 3,
-  collectionTotal: 423,
-  collectionTotalBefore: 420,
-  truncated: false,
+// PT1.3 — the post-match discovery ceremony. FIXTURES shaped exactly like the
+// backend's own payload, so the layout QA judges the real component rather
+// than a stand-in. MPE — one builder, several shapes: one card, three (with a
+// retired question), many (the stagger cap), only-retired metadata, and none.
+//
+// EVERY REPLAY MINTS A NEW matchId. The discovery cue is deduped by the
+// engine under `ranked:<matchId>:discovery` — exactly as in production — so a
+// fixture that kept one id would sound once per page load. `replaySequence`
+// is the inspector's replay counter; nothing here is ever persisted.
+const DISCOVERY_PROMPTS: ReadonlyArray<[string, string]> = [
+  ["What is Flash's base cooldown at level 1?", "Summoner Spells"],
+  ["How much gold is a Doran's Shield plus two Health Potions?", "Item Costs"],
+  ["Which rune grants bonus adaptive force after taking down a champion?", "Runes"],
+  ["How much armour does Trundle start with at level 1?", "Champion Stats"],
+  ["Which item's passive reduces enemy healing on damage?", "Item Effects"],
+  ["What is Teleport's cooldown after it unlocks at 14 minutes?", "Summoner Spells"],
+  ["How many stacks does Dark Harvest need to reach its second tier?", "Runes"],
+];
+
+function discoveryEntry(index: number, round: number): MatchDiscoveriesView["newDiscoveries"][number] {
+  const [prompt, category] = DISCOVERY_PROMPTS[index % DISCOVERY_PROMPTS.length];
+  return {
+    canonicalQuestionRef: `ranked:v2-${30 + index}`,
+    firstSeenAt: `2026-09-03T12:0${index % 10}:00Z`,
+    firstRoundNumber: round,
+    metadataStatus: "resolved",
+    metadataSource: "frozen_round",
+    question: { prompt, category },
+  };
+}
+
+const RETIRED_ENTRY: MatchDiscoveriesView["newDiscoveries"][number] = {
+  canonicalQuestionRef: "ranked:retired",
+  firstSeenAt: "2026-09-03T12:02:00Z",
+  firstRoundNumber: 5,
+  metadataStatus: "unavailable",
+  metadataSource: "current_serving_bank",
+  question: null,
 };
+
+function discoveryFixture(
+  entries: MatchDiscoveriesView["newDiscoveries"],
+  replaySequence: number,
+  collectionTotalBefore = 420,
+): MatchDiscoveriesView {
+  return {
+    schemaVersion: "ranked_duel.match_discoveries.v1",
+    serverTime: "2026-09-03T12:00:05Z",
+    matchId: `rkb_demo_preview_${replaySequence}`,
+    scope: "ranked_discoveries",
+    includesDefaultLibrary: false,
+    newDiscoveries: entries,
+    newCount: entries.length,
+    collectionTotal: collectionTotalBefore + entries.length,
+    collectionTotalBefore,
+    truncated: false,
+  };
+}
+
+/** The shape the first ceremony shipped with: two resolved cards and one retired. */
+const DISCOVERY_THREE = [discoveryEntry(0, 1), discoveryEntry(1, 3), RETIRED_ENTRY];
+const DISCOVERY_ONE = [discoveryEntry(2, 4)];
+const DISCOVERY_MANY = [1, 2, 3, 4, 6, 7, 9].map((round, i) => discoveryEntry(i, round));
+const DISCOVERY_RETIRED_ONLY = [RETIRED_ENTRY];
 
 /**
  * THE PRODUCTION RANKED RESULT, assembled from fixtures through the real
@@ -1130,7 +1170,23 @@ function resultReviewFixture(wins: readonly boolean[]): MatchReviewView {
   } as unknown as MatchReviewView;
 }
 
-function RankedResultScene({ rated }: { rated: boolean }) {
+/**
+ * MPE — composed EXACTLY as `QuizRankedMatch` composes the live end screen:
+ * the compact frame, the duel poster as the scoreline, and the shared body in
+ * its compact variant with the discovery ceremony in the review slot. The
+ * earlier scene used the full body and the frame's identity row, which is a
+ * screen production never shows — a preview of the wrong composition is a
+ * preview of nothing.
+ *
+ * `ceremony` is the controller's live-completion flag: true for the player who
+ * just watched the match end, false for a reload or a History visit.
+ */
+function RankedResultScene({ rated, discoveries, ceremony = true, replaySequence = 0 }: {
+  rated: boolean;
+  discoveries: MatchDiscoveriesView["newDiscoveries"] | null;
+  ceremony?: boolean;
+  replaySequence?: number;
+}) {
   const wins = rated
     ? [true, true, false, true, true, false, true, true, false, true]
     : [false, true, false, false, true, false, false, true, false, false];
@@ -1146,12 +1202,15 @@ function RankedResultScene({ rated }: { rated: boolean }) {
   }));
   const you = wins.filter(Boolean).length * 3;
   const them = (wins.length - wins.filter(Boolean).length) * 3;
+  const result = rated ? "victory" : "defeat";
+  const discoveryView = discoveries ? discoveryFixture(discoveries, replaySequence) : null;
   const model = buildRankedResults({
     player: scoredPlayer(you),
     opponent: scoredOpponent(them, rated ? {} : { name: "Bot", tag: "Duelist" }),
-    result: rated ? "victory" : "defeat",
+    result,
     finalScores: { p1: you, p2: them },
     modulesPlayed: wins.length,
+    modulesWon: wins.filter(Boolean).length,
     subheading: null,
     isBotMatch: !rated,
     ratingDelta: rated ? 18 : null,
@@ -1159,7 +1218,7 @@ function RankedResultScene({ rated }: { rated: boolean }) {
     progressionEnabled: true,
     review,
     roundHistory,
-    discoveries: DISCOVERY_FIXTURE as never,
+    discoveries: discoveryView,
     opponentLabel: rated ? "Opponent" : "Bot",
   });
   model.actions = {
@@ -1167,21 +1226,31 @@ function RankedResultScene({ rated }: { rated: boolean }) {
     secondary: { label: "Review Match", onClick: () => {} },
     tertiary: { label: "Back to Leaguecraft", onClick: () => {} },
   };
-  model.review = <DiscoveryReveal view={DISCOVERY_FIXTURE as never} onReview={() => {}} />;
+  model.review = discoveryView
+    ? <DiscoveryReveal view={discoveryView} ceremony={ceremony} onReview={() => {}} />
+    : undefined;
+  const scoreline = (
+    <RankedScoreline you={you} opponent={them} result={result}
+      modulesPlayed={wins.length} ratingDelta={rated ? 18 : null} variant="inline" />
+  );
   return (
     <MatchOverFrame
-      result={rated ? "victory" : "defeat"}
+      result={result}
+      density="compact"
       player={scoredPlayer(you)}
       opponent={scoredOpponent(them, rated ? {} : { name: "Bot", tag: "Duelist" })}
       eyebrow={rated ? undefined : "Match Complete · Unrated"}
-      scoreline={<RankedScoreline you={you} opponent={them}
-        result={rated ? "victory" : "defeat"} modulesPlayed={wins.length}
-        ratingDelta={rated ? 18 : null} />}
-      identity={model.contestants ? (
-        <ResultContestants you={model.contestants.you}
-          opponent={model.contestants.opponent ?? null} showScores={false} />
+      scoreline={model.contestants ? (
+        <RankedResultDuel result={result}
+          viewer={{ name: model.contestants.you.name, roleId: "mid",
+            tag: model.contestants.you.tag }}
+          opponent={{ name: model.contestants.opponent?.name ?? "Opponent", roleId: "adc",
+            tag: model.contestants.opponent?.tag }}
+          scoreline={scoreline} slots={[]} viewerTotal={you} opponentTotal={them} />
       ) : undefined}
-      summary={<GameResultsBody model={model} />}
+      identity={null}
+      summary={<GameResultsBody model={model} variant="compact"
+        detailsSummary={`${wins.length} modules`} />}
     />
   );
 }
@@ -1205,11 +1274,22 @@ const PRACTICE_ANSWERS = [
   correctAnswer: "Right",
 }));
 
-function PracticeResultScene() {
+/**
+ * MPE — the practice result through the PRODUCTION adapter, with the per-answer
+ * Academy XP the backend settles on each submit (`xp_earned`) carried on the
+ * fixture answers. `xpPerCorrect` null → a backend that reported none: the
+ * screen shows the account total alone and animates nothing, which is what a
+ * run without settled awards must look like. Synthetic values; nothing is
+ * credited anywhere.
+ */
+function PracticeResultScene({ xpPerCorrect }: { xpPerCorrect: number | null }) {
+  const answers = PRACTICE_ANSWERS.map((a) => ({
+    ...a, xpEarned: xpPerCorrect === null ? null : a.isCorrect ? xpPerCorrect : 0,
+  }));
   const model = buildSessionResults({
-    answers: PRACTICE_ANSWERS,
-    score: PRACTICE_ANSWERS.filter((a) => a.isCorrect).length,
-    total: PRACTICE_ANSWERS.length,
+    answers,
+    score: answers.filter((a) => a.isCorrect).length,
+    total: answers.length,
     setName: "Rune Recognition",
     currentXp: 4820,
     currentStreak: 2,
@@ -1222,20 +1302,16 @@ function PracticeResultScene() {
   return <GameResultsShell model={model} />;
 }
 
-/** Preview-only settlement: signed XP gain, never stored XP total. */
-function EarnedXpResultScene() {
-  return <GameResultsShell model={{
-    state: "complete",
-    mode: "Reward preview",
-    headline: "Challenge Complete",
-    subheading: "Synthetic result — no rewards are credited",
-    score: { you: 8, outOf: 10 },
-    progress: [
-      { key: "xp", label: "Academy XP earned", value: "+80 XP", delta: 80, icon: "xp" },
-      { key: "collection", label: "New questions", value: "+3", delta: 3, icon: "collection" },
-    ],
-    report: ["You added new knowledge to your collection."],
-  }} />;
+/** The discovery panel alone, at the end screen's width, for judging one shape at a time. */
+function DiscoveryScene({ entries, replaySequence, ceremony = true }: {
+  entries: MatchDiscoveriesView["newDiscoveries"]; replaySequence: number; ceremony?: boolean;
+}) {
+  return (
+    <div className="ranked-shell mx-auto w-full max-w-2xl">
+      <DiscoveryReveal view={discoveryFixture(entries, replaySequence)} ceremony={ceremony}
+        onReview={() => {}} />
+    </div>
+  );
 }
 
 // ---- RR1 slice pass fixtures -------------------------------------------
@@ -1579,24 +1655,38 @@ const STATES: InspectorState[] = [
    * exercised by the SAME adapter production runs; a change to what Ranked is
    * willing to claim shows up here without anyone editing this file.
    */
-  { key: "results-full-rated", label: "RESULT — full Ranked composition (rated win)",
-    render: () => <RankedResultScene rated /> },
-  { key: "results-full-bot", label: "RESULT — full composition vs Bot (unrated loss)",
-    render: () => <RankedResultScene rated={false} /> },
-  { key: "results-practice", label: "RESULT — practice quiz (shared shell)",
-    render: () => <PracticeResultScene /> },
-  { key: "results-earned-xp", label: "RESULT — earned Academy XP (synthetic reward)",
-    render: () => <EarnedXpResultScene /> },
-  { key: "discovery-reveal", label: "Match over — new questions discovered",
-    render: (replaySequence = 0) => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
-      summary={<DiscoveryReveal view={{ ...DISCOVERY_FIXTURE, matchId: `rkb_demo_preview_${replaySequence}` }} onReview={() => {}} />}
-      {...END_ACTIONS} /> },
-  { key: "discovery-none", label: "Match over — no new discoveries",
-    render: () => <MatchOverFrame result="defeat" player={player({ hp: 0 })} opponent={opponent({ hp: 30 })}
-      summary={<DiscoveryReveal onReview={() => {}}
-        view={{ ...DISCOVERY_FIXTURE, newDiscoveries: [], newCount: 0,
-          collectionTotalBefore: 423 }} />}
-      {...END_ACTIONS} /> },
+  // MPE — THE REWARD SEQUENCE, replayable. Every state below takes the replay
+  // counter: "Replay animation" remounts the stage with a fresh fixture match
+  // id, so the ceremony, its cue and the XP count run again from the top.
+  { key: "results-full-rated", label: "RESULT — Ranked end screen · live win · 3 discoveries",
+    render: (replaySequence = 0) => (
+      <RankedResultScene rated discoveries={DISCOVERY_THREE} replaySequence={replaySequence} />) },
+  { key: "results-full-bot", label: "RESULT — Ranked end screen · Bot loss · no discoveries",
+    render: (replaySequence = 0) => (
+      <RankedResultScene rated={false} discoveries={[]} replaySequence={replaySequence} />) },
+  { key: "results-reload", label: "RESULT — Ranked end screen · reload / History (no ceremony)",
+    render: (replaySequence = 0) => (
+      <RankedResultScene rated discoveries={DISCOVERY_THREE} ceremony={false}
+        replaySequence={replaySequence} />) },
+  { key: "results-practice", label: "RESULT — practice quiz · no settled XP (total only)",
+    render: () => <PracticeResultScene xpPerCorrect={null} /> },
+  { key: "results-earned-xp", label: "RESULT — practice quiz · +80 Academy XP earned",
+    render: () => <PracticeResultScene xpPerCorrect={20} /> },
+  { key: "discovery-reveal", label: "Discovery — three new (one retired)",
+    render: (replaySequence = 0) => (
+      <DiscoveryScene entries={DISCOVERY_THREE} replaySequence={replaySequence} />) },
+  { key: "discovery-one", label: "Discovery — one new question",
+    render: (replaySequence = 0) => (
+      <DiscoveryScene entries={DISCOVERY_ONE} replaySequence={replaySequence} />) },
+  { key: "discovery-many", label: "Discovery — seven new (stagger cap)",
+    render: (replaySequence = 0) => (
+      <DiscoveryScene entries={DISCOVERY_MANY} replaySequence={replaySequence} />) },
+  { key: "discovery-unavailable", label: "Discovery — metadata unavailable only",
+    render: (replaySequence = 0) => (
+      <DiscoveryScene entries={DISCOVERY_RETIRED_ONLY} replaySequence={replaySequence} />) },
+  { key: "discovery-none", label: "Discovery — none (quiet collection line)",
+    render: (replaySequence = 0) => (
+      <DiscoveryScene entries={[]} replaySequence={replaySequence} />) },
 
   // --- full arena composition (layout QA) ---
   // RA10: one state per representative question surface, so centre prominence,
@@ -1770,10 +1860,41 @@ const VIEWPORTS: { key: string; label: string; width: number | null }[] = [
 
 // ------------------------------------------------------------------- page
 
+/**
+ * MPE — the engine's own answer to "why was that silent?", in one line. Reads
+ * the same snapshot the product's settings UI reads; changes nothing.
+ */
+function audioStatusLine(snapshot: ReturnType<typeof useSfxSnapshot>): string {
+  if (snapshot.muted) return "muted (Settings → Sounds)";
+  if (snapshot.contextState === "locked") return "locked — press Enable audio or click anywhere";
+  if (snapshot.contextState === "unavailable") return "unavailable in this browser";
+  if (!snapshot.configReady) return "Audio Studio config not loaded — cues stay silent";
+  return snapshot.contextState === "running" ? "ready" : "suspended";
+}
+
 export default function RankedArenaInspector() {
   const [stateKey, setStateKey] = useState(STATES[0].key);
   const [viewport, setViewport] = useState(VIEWPORTS[2]);
   const [replaySequence, setReplaySequence] = useState(0);
+  /**
+   * MPE — the app's own Reduce Motion, toggled for this page only. It puts the
+   * same `reduce-motion` class on <html> that Settings does, so every reward
+   * surface answers it the way it answers the real preference; it is removed
+   * again when the inspector unmounts, and a class that was already there
+   * (the user's actual setting) is left alone.
+   */
+  const [reducedMotion, setReducedMotion] = useState(false);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const alreadyOn = root.classList.contains(APP_REDUCE_MOTION_CLASS);
+    if (reducedMotion && !alreadyOn) {
+      root.classList.add(APP_REDUCE_MOTION_CLASS);
+      return () => { root.classList.remove(APP_REDUCE_MOTION_CLASS); };
+    }
+    return undefined;
+  }, [reducedMotion]);
+  const audio = useSfxSnapshot();
 
   if (!import.meta.env.DEV) {
     return (
@@ -1810,9 +1931,27 @@ export default function RankedArenaInspector() {
           </button>
         ))}
         <button type="button" data-testid="inspector-replay" onClick={() => setReplaySequence((n) => n + 1)}
-          className="min-h-[36px] rounded-md border px-3 text-xs font-semibold hover:bg-card/70">
+          className="min-h-[36px] rounded-md border border-primary/60 px-3 text-xs font-semibold hover:bg-card/70">
           Replay animation
         </button>
+        <button type="button" data-testid="inspector-reduced-motion" aria-pressed={reducedMotion}
+          onClick={() => setReducedMotion((on) => !on)}
+          className={`min-h-[36px] rounded-md border px-3 text-xs ${
+            reducedMotion ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+          Reduced motion {reducedMotion ? "on" : "off"}
+        </button>
+        <span data-testid="inspector-audio-status" data-context-state={audio.contextState}
+          data-muted={audio.muted ? "true" : "false"} data-config-ready={audio.configReady ? "true" : "false"}
+          className="inline-flex min-h-[36px] items-center gap-2 rounded-md border border-border bg-card px-3 text-xs text-muted-foreground">
+          <span>Audio: {audioStatusLine(audio)}</span>
+          {audio.contextState === "locked" && (
+            <button type="button" data-testid="inspector-audio-enable"
+              onClick={() => { void sfxController.unlock(); }}
+              className="rounded border px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-card/70">
+              Enable audio
+            </button>
+          )}
+        </span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[220px_1fr]">

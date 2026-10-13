@@ -3,9 +3,9 @@
  *
  * "I earned knowledge by playing." Ranked already ends with the result, the
  * final combatant panels and the reveal of the last round; this is the reward
- * that follows them, mounted into `MatchOverFrame`'s existing `summary` slot
- * so it COMPLEMENTS the terminal frame rather than competing with it. It
- * renders below the outcome and above nothing important.
+ * that follows them, mounted into the shared result body's REVIEW slot so it
+ * COMPLEMENTS the terminal frame rather than competing with it. It renders
+ * below the record strip and above the way on.
  *
  * PRESENTATIONAL, AND STRICTLY SO
  * ───────────────────────────────
@@ -34,6 +34,24 @@
  * moment for no information; the panel simply appears when it has something to
  * say.
  *
+ * MPE — THE CEREMONY, AND WHEN IT IS ONE
+ * ──────────────────────────────────────
+ * The reveal is choreographed as one short sequence (~1.4 s to the last beat):
+ * the header and Mogzy — holding the book the questions go into — arrive, a
+ * light sweeps the panel, each discovered question LANDS as a card on a 90 ms
+ * stagger (capped, so a long list still finishes promptly), the collection
+ * count climbs from before to after once the last card is down, and the way
+ * into the collection follows. The discovery cue sounds as the first card
+ * lands, under a stable `eventId` (`ranked:<matchId>:discovery`), so the
+ * engine's own dedupe is what keeps a refetch, StrictMode or a second mount in
+ * the same session from replaying it.
+ *
+ * `ceremony` is the CALLER's statement that the player just watched this
+ * match end (Ranked passes its live-completion flag). A refresh, a reconnect
+ * or a History visit onto an already finished match passes false and gets the
+ * same panel at rest: every fact, no motion, no sound — a reward is celebrated
+ * once, and is still TRUE every time after.
+ *
  * ANSWER-FREE
  * ───────────
  * Prompt and category only — the contract refuses anything else before this
@@ -41,9 +59,11 @@
  * here: the full card, with the answer, lives in the match's own HISTORY entry
  * where it is legitimately the player's to read.
  */
-import { useEffect } from "react";
-import { BookOpen, Sparkles } from "lucide-react";
+import { useEffect, type CSSProperties } from "react";
+import { Sparkles } from "lucide-react";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import { useCountUp } from "@/components/game-results/useCountUp";
+import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useSfx } from "@/lib/audio/useSfx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,23 +78,46 @@ export interface DiscoveryRevealProps {
   /** Into REVIEW → OWNED. Supplied by the controller; this component owns no
    *  navigation, exactly like every other arena component. */
   onReview: () => void;
+  /**
+   * Did the player just watch this match end? True (the default) plays the
+   * ceremony — motion and the discovery cue. False renders the same panel at
+   * rest, for a reload or a History visit onto an already finished match.
+   */
+  ceremony?: boolean;
 }
 
-/** Entrance stagger, capped so a long list still finishes promptly. A reward
- *  that outlasts the reader's attention is a delay, not a ceremony. */
-const STEP_MS = 70;
-const MAX_DELAY_MS = 560;
+/**
+ * THE TIMELINE, in ms after the panel mounts. One table, so the sound, the
+ * cards and the count agree about when each beat is.
+ */
+export const DISCOVERY_BEATS = {
+  mascot: 120,
+  /** The first card lands, and the cue sounds. */
+  cards: 180,
+  /** Between cards. */
+  cardStep: 90,
+  /** The last card's delay is capped: a reward that outlasts the reader's
+   *  attention is a delay, not a ceremony. */
+  cardMaxDelay: 640,
+  /** The collection count begins this long after the last card. */
+  growthAfterLastCard: 320,
+  growthDuration: 600,
+} as const;
 
-/** Sound is a presentation cue, not a discovery grant. Refetches and StrictMode
- * must not replay a match's reward fanfare. Bounded to the most recent matches. */
-const soundedMatches = new Set<string>();
-const SOUNDED_MATCH_LIMIT = 64;
-
-function entranceDelay(index: number): string {
-  return `${Math.min(index * STEP_MS, MAX_DELAY_MS)}ms`;
+export function cardDelayMs(index: number): number {
+  return Math.min(DISCOVERY_BEATS.cards + index * DISCOVERY_BEATS.cardStep, DISCOVERY_BEATS.cardMaxDelay);
 }
 
-function DiscoveryRow({ entry, index }: {
+function delayStyle(ms: number): CSSProperties {
+  return { "--reward-delay": `${ms}ms` } as CSSProperties;
+}
+
+/** The engine's identity for this match's cue. Exported so a test can name it. */
+export function discoverySoundEventId(matchId: string): string {
+  return `ranked:${matchId}:discovery`;
+}
+
+function DiscoveryCard({ entry, index }: {
   entry: MatchDiscoveryEntryView; index: number;
 }) {
   const unavailable = entry.metadataStatus === "unavailable";
@@ -82,20 +125,25 @@ function DiscoveryRow({ entry, index }: {
   return (
     <li
       data-testid="discovery-entry"
-      style={{ animationDelay: entranceDelay(index) }}
-      className="ranked-subpanel group flex items-start gap-3 rounded-[0.55rem] border border-[#f0d78c]/10 px-3 py-2.5
-        transition-colors duration-300 hover:border-[#f0d78c]/35 hover:bg-[#f0d78c]/[0.045]
-        animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300
-        motion-reduce:animate-none motion-reduce:transition-none"
+      data-metadata={entry.metadataStatus}
+      style={delayStyle(cardDelayMs(index))}
+      className="reward-card relative flex items-stretch gap-3 overflow-hidden rounded-[0.55rem]
+        border border-[#f0d78c]/18 bg-[#0b1727] py-2 pr-3"
     >
-      <span aria-hidden className="mt-0.5 flex h-8 min-w-8 shrink-0 flex-col items-center justify-center
-        rounded border border-[#f0d78c]/30 bg-[#f0d78c]/10 text-[#f0d78c]
-        transition-transform duration-300 group-hover:-translate-y-0.5 motion-reduce:transition-none">
-        <BookOpen className="h-3.5 w-3.5" />
-        <span className="text-[9px] font-bold leading-tight">
-          {entry.firstRoundNumber === null ? "New" : `R${entry.firstRoundNumber}`}
+      {/* The spine: a discovered question is a card in the player's book. A
+          retired question keeps its place with a quieter spine — it is still
+          owned, there is just nothing in the bank to describe it. */}
+      <span aria-hidden className={`reward-card__spine w-1 shrink-0 self-stretch rounded-r-sm ${
+        unavailable
+          ? "bg-slate-500/60"
+          : "bg-gradient-to-b from-[#f5e6b8] via-[#c9a84c] to-[#7fd6ef]/70"}`} />
+      {entry.firstRoundNumber !== null && (
+        <span aria-hidden className="mt-0.5 flex h-6 min-w-7 shrink-0 items-center justify-center
+          rounded-md border border-[#f0d78c]/35 bg-[#f0d78c]/10 px-1.5
+          text-[10px] font-bold tracking-wide text-[#f0d78c]">
+          R{entry.firstRoundNumber}
         </span>
-      </span>
+      )}
       <div className="min-w-0 flex-1">
         {/* Literal colours, for the reason MatchOverFrame states about its own
             banner: `.ranked-panel` paints its own dark navy whatever the page
@@ -103,23 +151,30 @@ function DiscoveryRow({ entry, index }: {
             near-black on any surface outside `.theme-lol` — the dev arena
             inspector among them — and the text vanishes. */}
         <p className={`text-[12.5px] leading-snug ${
-          unavailable ? "italic text-slate-400" : "text-slate-100"
-        }`}>
+          unavailable ? "italic text-slate-400" : "text-slate-100"}`}>
           {/* A discovery is permanent even when nothing can currently describe
               it, so an unresolvable entry is still counted and still shown —
               dropping it would print a smaller number than the player earned. */}
           {unavailable ? "A question that has since left the Ranked bank." : entry.question?.prompt}
         </p>
-        {category && (
-          // The arena's own cyan chip rather than the shared `secondary`
-          // purple: OWNED wears `secondary` because it sits on parchment, and
-          // the same chip on navy reads as a different product.
-          <Badge variant="outline"
-            className="mt-1 border-[#7fd6ef]/35 bg-[#7fd6ef]/5 px-1.5 py-0
-              text-[10px] font-medium text-[#9fdff2]">
-            {category}
-          </Badge>
-        )}
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {/* Every row here is a FIRST-TIME discovery by contract; the stamp
+              says so in words, so the panel never relies on gold alone. */}
+          <span className="rounded-sm bg-[#f0d78c]/15 px-1 py-px text-[9px] font-bold uppercase
+            tracking-[0.18em] text-[#f5e6b8]">
+            New
+          </span>
+          {category && (
+            // The arena's own cyan chip rather than the shared `secondary`
+            // purple: OWNED wears `secondary` because it sits on parchment, and
+            // the same chip on navy reads as a different product.
+            <Badge variant="outline"
+              className="border-[#7fd6ef]/35 bg-[#7fd6ef]/5 px-1.5 py-0
+                text-[10px] font-medium text-[#9fdff2]">
+              {category}
+            </Badge>
+          )}
+        </div>
       </div>
     </li>
   );
@@ -128,10 +183,10 @@ function DiscoveryRow({ entry, index }: {
 /**
  * Would this view render anything at all?
  *
- * Exported because the CALLER has to know too: `MatchOverFrame` wraps its
- * summary slot in a flex child, so passing an element that renders null still
- * costs a gap in the terminal frame's layout. One predicate, used by the
- * component and by whoever mounts it, is how those two answers stay identical.
+ * Exported because the CALLER has to know too: the result body wraps its
+ * review slot in its own element, so passing something that renders null still
+ * costs a gap in the layout. One predicate, used by the component and by
+ * whoever mounts it, is how those two answers stay identical.
  */
 export function discoveryRevealHasContent(
   view: MatchDiscoveriesView | null,
@@ -139,18 +194,33 @@ export function discoveryRevealHasContent(
   return view !== null && (view.newCount > 0 || view.collectionTotal > 0);
 }
 
-export function DiscoveryReveal({ view, onReview }: DiscoveryRevealProps) {
+export function DiscoveryReveal({ view, onReview, ceremony = true }: DiscoveryRevealProps) {
   const sfx = useSfx();
-  const matchId = view?.matchId;
+  const reducedMotion = useReducedMotionPreference();
+  const matchId = view?.matchId ?? null;
   const newCount = view?.newCount ?? 0;
+  const rowCount = view?.newDiscoveries.length ?? 0;
+  const lastCardDelay = rowCount > 0 ? cardDelayMs(rowCount - 1) : DISCOVERY_BEATS.cards;
+  const growthDelay = lastCardDelay + DISCOVERY_BEATS.growthAfterLastCard;
+
+  // The cue lands with the first card. Under a stable id, so the engine (not a
+  // second guard here) decides it plays once per match per session.
   useEffect(() => {
-    if (!matchId || newCount <= 0 || soundedMatches.has(matchId)) return;
-    soundedMatches.add(matchId);
-    if (soundedMatches.size > SOUNDED_MATCH_LIMIT) {
-      soundedMatches.delete(soundedMatches.values().next().value!);
-    }
-    sfx.play("ranked.discovery.reveal");
-  }, [matchId, newCount, sfx]);
+    if (!ceremony || !matchId || newCount <= 0) return;
+    const timer = window.setTimeout(() => {
+      sfx.play("ranked.discovery.reveal", { eventId: discoverySoundEventId(matchId) });
+    }, DISCOVERY_BEATS.cards);
+    return () => window.clearTimeout(timer);
+  }, [ceremony, matchId, newCount, sfx]);
+
+  // The collection climbing from before to after, once the cards are down.
+  // Both numbers are the server's; the hook only draws the distance between.
+  const growth = useCountUp(view?.collectionTotal ?? 0, {
+    from: view?.collectionTotalBefore ?? 0,
+    delayMs: growthDelay,
+    durationMs: DISCOVERY_BEATS.growthDuration,
+    animate: ceremony && !reducedMotion && newCount > 0,
+  });
 
   if (view === null || !discoveryRevealHasContent(view)) return null;
 
@@ -194,38 +264,59 @@ export function DiscoveryReveal({ view, onReview }: DiscoveryRevealProps) {
     <section
       data-testid="discovery-reveal"
       data-new-count={view.newCount}
+      data-ceremony={ceremony ? "true" : "false"}
       aria-label="New questions discovered"
-      className="ranked-panel relative isolate space-y-3 overflow-hidden px-4 py-4
-        animate-in fade-in slide-in-from-bottom-2 duration-500 motion-reduce:animate-none"
+      className="ranked-panel relative isolate space-y-3 overflow-hidden px-4 py-4"
     >
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24
-        bg-gradient-to-b from-[#f0d78c]/[0.10] to-transparent" />
-      <header className="relative flex items-center justify-center gap-3 text-center">
-        <MogzyMascot pose="cheering" decorative scale="compact"
-          className="h-12 w-12 shrink-0 animate-in zoom-in-90 duration-500 motion-reduce:animate-none" />
-        <div className="space-y-1">
-        <div className="ranked-eyebrow flex items-center justify-center gap-1.5">
-          <Sparkles aria-hidden className="h-3 w-3" />
-          New Questions Discovered
+      {/* Accent light: an ambient wash at the top, and one sweep as the
+          cards begin. Decoration only — both are aria-hidden and absent at
+          rest and under reduced motion. */}
+      <div aria-hidden className="reward-glow pointer-events-none absolute inset-x-0 top-0 h-28
+        bg-[radial-gradient(70%_100%_at_50%_0%,rgba(240,215,140,0.18),transparent)]" />
+      {ceremony && <span aria-hidden className="reward-sheen" style={delayStyle(DISCOVERY_BEATS.cards)} />}
+
+      <header className="relative flex items-start gap-3">
+        <div className="reward-enter min-w-0 flex-1 space-y-1">
+          <div className="ranked-eyebrow flex items-center gap-1.5">
+            <Sparkles aria-hidden className="h-3 w-3" />
+            New Questions Discovered
+          </div>
+          <p className="ranked-title text-lg font-bold leading-tight" data-testid="discovery-headline">
+            {view.newCount} new {plural} added to your collection
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Saved to your collection — yours to study any time.
+          </p>
         </div>
-        <p className="ranked-title text-lg font-bold" data-testid="discovery-headline">
-          {view.newCount} new {plural} added to your collection
-        </p>
-        </div>
+        {/* Mogzy holding the book the questions go into: the knowledge pose,
+            served from its small-surface plate (the compact WebP, ~10 KB) —
+            never the 1024px source for a 64px figure. One mascot, once, at the
+            moment's edge; the hero above already carries the result's
+            emotion, so this is not a second cheer. */}
+        <MogzyMascot pose="holdingBook" scale="compact" decorative
+          data-testid="discovery-mascot"
+          className="reward-mascot h-14 w-14 shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.55)] sm:h-20 sm:w-20"
+          style={delayStyle(DISCOVERY_BEATS.mascot)} />
       </header>
 
-      <ul className="relative space-y-1.5">
+      {/* Ordered: the cards are listed in the order the match produced them. */}
+      <ol className="relative space-y-1.5">
         {view.newDiscoveries.map((entry, i) => (
-          <DiscoveryRow key={entry.canonicalQuestionRef} entry={entry} index={i} />
+          <DiscoveryCard key={entry.canonicalQuestionRef} entry={entry} index={i} />
         ))}
-      </ul>
+      </ol>
 
       {/* Growth, printed from the server's own before/after rather than from
           the list length — the two differ if the row list was ever capped, and
-          the collection is the number that must be right. */}
+          the collection is the number that must be right. The visible "after"
+          climbs; the spoken sentence and the data attributes always carry the
+          final figures. */}
       <p
         data-testid="discovery-growth"
-        className="text-center text-xs uppercase tracking-[0.16em] text-slate-400"
+        data-collection-before={view.collectionTotalBefore}
+        data-collection-total={view.collectionTotal}
+        className="reward-enter text-center text-xs uppercase tracking-[0.16em] text-slate-400"
+        style={delayStyle(growthDelay - 200)}
       >
         {/* The arrow carries the meaning visually and reads as nothing at all
             aloud ("420 423 discovered"), so the same fact is spelled out for a
@@ -233,7 +324,11 @@ export function DiscoveryReveal({ view, onReview }: DiscoveryRevealProps) {
         <span aria-hidden>
           <span>{view.collectionTotalBefore}</span>
           <span className="px-1.5 text-[#f0d78c]">→</span>
-          <span className="font-bold text-[#f5e6b8]">{view.collectionTotal}</span>
+          <span className="reward-xp-value inline-block text-right font-bold tabular-nums text-[#f5e6b8]"
+            data-landed={growth.done ? "true" : "false"}
+            style={{ minWidth: `${String(view.collectionTotal).length}ch` }}>
+            <span className="reward-xp-value__figure">{growth.value}</span>
+          </span>
           <span className="pl-1.5">discovered</span>
         </span>
         <span className="sr-only">
@@ -242,17 +337,18 @@ export function DiscoveryReveal({ view, onReview }: DiscoveryRevealProps) {
         </span>
       </p>
 
-      {/* Deliberately NOT the frame's primary style. `MatchOverFrame` already
-          renders a full-width primary ("Back to Quiz") directly beneath this
-          panel, and two identical bars would read as one control repeated.
-          This is the PANEL's action, in the panel's own gold. */}
+      {/* Deliberately NOT the frame's primary style. The result body renders
+          its own primary ("Play Again") directly beneath this panel, and two
+          identical bars would read as one control repeated. This is the
+          PANEL's action, in the panel's own gold. */}
       <Button
         type="button"
         variant="outline"
         onClick={onReview}
         data-testid="discovery-cta"
-        className="min-h-[44px] w-full border-[#c9a84c]/55 bg-[#f0d78c]/5
+        className="reward-enter min-h-[44px] w-full border-[#c9a84c]/55 bg-[#f0d78c]/5
           font-semibold text-[#f5e6b8] hover:bg-[#f0d78c]/12 hover:text-[#fdf3d4]"
+        style={delayStyle(growthDelay)}
       >
         Review New Discoveries
       </Button>

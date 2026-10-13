@@ -1,8 +1,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import RankedArenaInspector from "./RankedArenaInspector";
+
+afterEach(() => {
+  cleanup();
+  document.documentElement.classList.remove("reduce-motion");
+});
+
+const select = (key: string) => fireEvent.click(screen.getByTestId(`inspector-state-${key}`));
 
 describe("RankedArenaInspector", () => {
   it("renders the canonical arena from fixtures (no crash, default state)", () => {
@@ -14,29 +21,105 @@ describe("RankedArenaInspector", () => {
     expect(screen.getByTestId("hp-opp")).toBeInTheDocument();
   });
 
-  it("replays the discovery ceremony without a match or persistence", () => {
+  it("replays the discovery ceremony without a match or persistence, under a fresh fixture id", () => {
     render(<RankedArenaInspector />);
-    fireEvent.click(screen.getByTestId("inspector-state-discovery-reveal"));
-    expect(screen.getByTestId("discovery-reveal")).toBeInTheDocument();
-    expect(screen.getByTestId("discovery-reveal")).toHaveAttribute("data-new-count", "3");
-    const firstStage = screen.getByTestId("inspector-replay-stage");
-    fireEvent.click(screen.getByTestId("inspector-replay"));
-    const nextStage = screen.getByTestId("inspector-replay-stage");
-    expect(nextStage).not.toBe(firstStage);
-    expect(screen.getByTestId("discovery-reveal")).toBeInTheDocument();
-    expect(screen.getByTestId("discovery-reveal")).toHaveAttribute("data-new-count", "3");
-  });
-
-  it("previews only explicitly awarded XP and supports replay without a match", () => {
-    render(<RankedArenaInspector />);
-    fireEvent.click(screen.getByTestId("inspector-state-results-earned-xp"));
-    expect(screen.getByTestId("result-progress-xp")).toHaveTextContent("+80 XP");
-    expect(screen.getByTestId("result-progress-xp").querySelector("[data-earned-xp=true]"))
-      .toBeInTheDocument();
+    select("discovery-reveal");
+    const first = screen.getByTestId("discovery-reveal");
+    expect(first).toHaveAttribute("data-new-count", "3");
+    expect(first).toHaveAttribute("data-ceremony", "true");
     const firstStage = screen.getByTestId("inspector-replay-stage");
     fireEvent.click(screen.getByTestId("inspector-replay"));
     expect(screen.getByTestId("inspector-replay-stage")).not.toBe(firstStage);
-    expect(screen.getByTestId("result-progress-xp")).toHaveTextContent("+80 XP");
+    const second = screen.getByTestId("discovery-reveal");
+    expect(second).not.toBe(first);
+    expect(second).toHaveAttribute("data-new-count", "3");
+  });
+
+  it("covers one, many, metadata-unavailable and none", () => {
+    render(<RankedArenaInspector />);
+    select("discovery-one");
+    expect(screen.getByTestId("discovery-reveal")).toHaveAttribute("data-new-count", "1");
+    expect(screen.getByTestId("discovery-headline")).toHaveTextContent("1 new question added");
+    select("discovery-many");
+    expect(screen.getAllByTestId("discovery-entry")).toHaveLength(7);
+    select("discovery-unavailable");
+    expect(screen.getAllByTestId("discovery-entry")).toHaveLength(1);
+    expect(screen.getByTestId("discovery-entry")).toHaveAttribute("data-metadata", "unavailable");
+    select("discovery-none");
+    expect(screen.queryByTestId("discovery-reveal")).toBeNull();
+    expect(screen.getByTestId("discovery-quiet")).toHaveTextContent("No new questions this match");
+  });
+
+  it("composes the Ranked end screen the way production does: compact body, reward in the open flow", () => {
+    render(<RankedArenaInspector />);
+    select("results-full-rated");
+    expect(screen.getByTestId("match-over-frame")).toHaveAttribute("data-density", "compact");
+    expect(screen.getByTestId("ranked-result-duel")).toBeInTheDocument();
+    expect(screen.getByTestId("game-results-body")).toHaveAttribute("data-variant", "compact");
+    const reveal = screen.getByTestId("discovery-reveal");
+    expect(screen.getByTestId("result-review")).toContainElement(reveal);
+    expect(screen.getByTestId("result-details")).not.toContainElement(reveal);
+    expect(reveal).toHaveAttribute("data-ceremony", "true");
+    // The strip's own discovery count comes from the SAME fixture through the
+    // production adapter, so the two never disagree.
+    expect(within(screen.getByTestId("result-summary-strip")).getByTestId("result-progress-discoveries"))
+      .toHaveTextContent("+3");
+  });
+
+  it("previews a reload / History visit as the same screen at rest", () => {
+    render(<RankedArenaInspector />);
+    select("results-reload");
+    expect(screen.getByTestId("discovery-reveal")).toHaveAttribute("data-ceremony", "false");
+  });
+
+  it("previews earned Academy XP through the production adapter, and the no-XP run beside it", () => {
+    render(<RankedArenaInspector />);
+    select("results-earned-xp");
+    expect(screen.getByTestId("result-progress-xp-earned")).toHaveTextContent("+80 XP");
+    expect(screen.getByTestId("result-progress-xp-earned").querySelector("[data-earned-xp=true]"))
+      .toBeInTheDocument();
+    // The account total beside it is a record, not a gain.
+    expect(screen.getByTestId("result-progress-xp")).toHaveTextContent("4,820");
+    expect(screen.getByTestId("result-progress-xp").querySelector("[data-earned-xp]")).toBeNull();
+    const firstStage = screen.getByTestId("inspector-replay-stage");
+    fireEvent.click(screen.getByTestId("inspector-replay"));
+    expect(screen.getByTestId("inspector-replay-stage")).not.toBe(firstStage);
+    expect(screen.getByTestId("result-progress-xp-earned")).toHaveTextContent("+80 XP");
+    select("results-practice");
+    expect(screen.queryByTestId("result-progress-xp-earned")).toBeNull();
+    expect(screen.getByTestId("result-progress-xp")).toHaveTextContent("4,820");
+  });
+
+  it("toggles the app's own Reduce Motion for the page, and takes it off again on unmount", () => {
+    const { unmount } = render(<RankedArenaInspector />);
+    const toggle = screen.getByTestId("inspector-reduced-motion");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(false);
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(true);
+    fireEvent.click(toggle);
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(false);
+    fireEvent.click(toggle);
+    unmount();
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(false);
+  });
+
+  it("leaves a Reduce Motion the user already had alone", () => {
+    document.documentElement.classList.add("reduce-motion");
+    const { unmount } = render(<RankedArenaInspector />);
+    fireEvent.click(screen.getByTestId("inspector-reduced-motion"));
+    fireEvent.click(screen.getByTestId("inspector-reduced-motion"));
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(true);
+    unmount();
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(true);
+  });
+
+  it("reports the audio engine's state so a silent preview is explainable", () => {
+    render(<RankedArenaInspector />);
+    const status = screen.getByTestId("inspector-audio-status");
+    expect(status).toHaveTextContent(/Audio:/);
+    expect(status.dataset.contextState).toBeDefined();
   });
 
   it("imports no gameplay engine / controller / client / service", () => {

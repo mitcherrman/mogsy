@@ -318,6 +318,34 @@ const renderers = {
     tone(context, output, startAt, { dur: 0.2, peak: 0.044, freq: 349.2, type: "triangle" });
     tone(context, output, startAt, { at: 0.08, dur: 0.28, peak: 0.04, freq: 440, type: "triangle" });
   },
+  // MPE — THE REWARD VOICES. Two cues the end screen did not have: a question
+  // entering the collection, and Academy XP landing. Both sit BELOW the match
+  // result in the hierarchy (match-victory peaks at .058) and ABOVE a module's
+  // award phrase (.038), and neither borrows the other's shape — the award
+  // phrase is a per-module beat and must not become the sound of a permanent
+  // discovery.
+  rewardDiscovery(context, output, startAt) {
+    // A page settling into the book (one soft paper breath), then a two-note
+    // knowledge chime (E5 → B5) with a faint octave shimmer and a short E6
+    // tail. Lands by ~0.7 s, timed to the card stagger it accompanies.
+    noise(context, output, startAt, { dur: 0.16, peak: 0.02, from: 900, to: 2600, q: 0.9, attack: 0.3 });
+    tone(context, output, startAt, { at: 0.06, dur: 0.22, peak: 0.04, freq: 659.3, type: "triangle" });
+    tone(context, output, startAt, { at: 0.2, dur: 0.42, peak: 0.046, freq: 987.8 });
+    tone(context, output, startAt, { at: 0.2, dur: 0.5, peak: 0.013, freq: 1975.5 });
+    tone(context, output, startAt, { at: 0.34, dur: 0.38, peak: 0.02, freq: 1318.5, type: "triangle" });
+  },
+  rewardXpEarned(context, output, startAt) {
+    // Three quiet rising ticks riding under the count-up, then ONE warm
+    // confirmation (G5 + D6) as the number lands at ~0.6 s — the count-up's
+    // own duration, so the ear and the eye finish together.
+    [0, 0.12, 0.24].forEach((at, index) => {
+      tone(context, output, startAt, {
+        at, dur: 0.06, peak: 0.015 + index * 0.004, freq: 1046.5 + index * 130, type: "triangle",
+      });
+    });
+    tone(context, output, startAt, { at: 0.56, dur: 0.26, peak: 0.036, freq: 784, type: "triangle" });
+    tone(context, output, startAt, { at: 0.6, dur: 0.34, peak: 0.028, freq: 1174.7 });
+  },
   combatSimulationResolve(context, output, startAt) {
     // A compact analytical relay settling into one resolved reading.
     noise(context, output, startAt, { dur: 0.055, peak: 0.022, from: 780, to: 1320, q: 1.4, attack: 0.12 });
@@ -428,6 +456,8 @@ export const SFX_GENERATORS = {
   "sfx.ranked.match-victory": renderers.rankedMatchVictory,
   "sfx.ranked.match-defeat": renderers.rankedMatchDefeat,
   "sfx.ranked.match-draw": renderers.rankedMatchDraw,
+  "sfx.reward.discovery": renderers.rewardDiscovery,
+  "sfx.reward.xp-earned": renderers.rewardXpEarned,
   "sfx.combat.simulation-resolve": renderers.combatSimulationResolve,
   "sfx.archives.reference-open": renderers.archivesReferenceOpen,
   "sfx.pro-play.analysis-open": renderers.proPlayAnalysisOpen,

@@ -264,7 +264,7 @@ export interface QuizRankedMatchProps {
  * behind the click, as counts the screen already holds. Null when neither is
  * known, and the disclosure simply reads "Match details".
  */
-export function rankedDetailsSummary(modules: number, newQuestions: number): string | null {
+export function rankedDetailsSummary(modules: number, newQuestions = 0): string | null {
   const parts: string[] = [];
   if (modules > 0) parts.push(`${modules} module${modules === 1 ? "" : "s"}`);
   if (newQuestions > 0) {
@@ -1214,8 +1214,11 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
     };
     // PT1.3's reveal keeps its position under the progression it follows: it
     // is the mode's own reward content, so it rides the model's REVIEW slot.
+    // MPE — the ceremony (card choreography, cue) plays only when THIS mount
+    // watched the match end; a reload or a History visit shows the panel at
+    // rest. The facts are identical either way.
     results.review = discoveryRevealHasContent(discoveries.view)
-      ? (<DiscoveryReveal view={discoveries.view}
+      ? (<DiscoveryReveal view={discoveries.view} ceremony={m.completedLive}
           onReview={() => { onTerminalNavigate("/quiz#review"); }} />)
       : undefined;
 
@@ -1294,8 +1297,10 @@ function RankedMatchArena({ matchId, viewerUserId, viewerDisplayName = null, chr
        */
       summary: (
         <GameResultsBody model={results} variant="compact"
-          detailsSummary={rankedDetailsSummary(results.timeline?.entries.length ?? 0,
-            discoveries.view?.newCount ?? 0)} />
+          // The disclosure holds the analysis only; the discoveries now sit in
+          // the open flow above it, so they are no longer promised behind the
+          // click.
+          detailsSummary={rankedDetailsSummary(results.timeline?.entries.length ?? 0)} />
       ),
       /**
        * NO SETTLEMENT PANEL.
