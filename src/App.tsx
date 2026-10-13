@@ -254,6 +254,12 @@ const ArenaQuestionProbe = import.meta.env.DEV
 const ProPlayArenaDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/pro-play-arena/ProPlayArenaDev"))
   : null;
+// UX1: the Worlds 2026 experience prototype (Overview + Stage Explorer). Same
+// DEVELOPMENT-ONLY rule: it carries simulated tournament phases, and the
+// published tournament page is not switched. Under /lol/ for the LoL theme.
+const WorldsExperienceDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/worlds-experience/WorldsExperienceDev"))
+  : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
 // Content Post Studio — local dev/admin tool driving the loopback studio
@@ -650,6 +656,12 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {ProPlayArenaDev ? (
                     <Route path="/lol/dev/pro-play-arena" element={<Suspense fallback={<RouteFallback />}><ProPlayArenaDev /></Suspense>} />
+                  ) : null}
+                  {WorldsExperienceDev ? (
+                    <>
+                      <Route path="/lol/dev/worlds-experience/*" element={<Suspense fallback={<RouteFallback />}><WorldsExperienceDev /></Suspense>} />
+                      <Route path="/dev/worlds-experience" element={<Navigate to="/lol/dev/worlds-experience" replace />} />
+                    </>
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

@@ -1,0 +1,136 @@
+[
+  {
+    "name": "screen slides in from the right (forward)",
+    "ok": true,
+    "detail": {
+      "mid": [
+        -33,
+        23
+      ],
+      "end": [
+        0
+      ]
+    }
+  },
+  {
+    "name": "URL is the Stages path",
+    "ok": true,
+    "detail": "http://localhost:5271/lol/dev/worlds-experience/stages?scenario=snapshot&now=2026-10-13T00%3A10%3A00Z"
+  },
+  {
+    "name": "back restores the Overview, entering from the left",
+    "ok": true,
+    "detail": {
+      "midBack": [
+        44,
+        -12
+      ]
+    }
+  },
+  {
+    "name": "forward restores Stages",
+    "ok": true
+  },
+  {
+    "name": "back restores the previous stage (Swiss)",
+    "ok": true,
+    "detail": "http://localhost:5271/lol/dev/worlds-experience/stages/swiss?scenario=snapshot&now=2026-10-13T00%3A10%3A00Z"
+  },
+  {
+    "name": "back again restores Play-In",
+    "ok": true,
+    "detail": "http://localhost:5271/lol/dev/worlds-experience/stages?scenario=snapshot&now=2026-10-13T00%3A10%3A00Z"
+  },
+  {
+    "name": "selecting a card opens the side panel",
+    "ok": true
+  },
+  {
+    "name": "Escape closes the panel",
+    "ok": true
+  },
+  {
+    "name": "following a route edge selects that match",
+    "ok": true,
+    "detail": "http://localhost:5271/lol/dev/worlds-experience/stages/play-in?scenario=snapshot&now=2026-10-13T00%3A10%3A00Z&match=115660588583171790"
+  },
+  {
+    "name": "back closes the detail in one step",
+    "ok": true,
+    "detail": "http://localhost:5271/lol/dev/worlds-experience/stages?scenario=snapshot&now=2026-10-13T00%3A10%3A00Z"
+  },
+  {
+    "name": "arrow keys rove the primary nav",
+    "ok": true,
+    "detail": "overview"
+  },
+  {
+    "name": "Enter activates the focused destination",
+    "ok": true
+  },
+  {
+    "name": "deep link opens the stage and its match",
+    "ok": true
+  },
+  {
+    "name": "/dev/worlds-experience redirects into the LoL section",
+    "ok": true,
+    "detail": "http://localhost:5271/lol/dev/worlds-experience"
+  },
+  {
+    "name": "published tournament page still renders TournamentV2",
+    "ok": true
+  },
+  {
+    "name": "no page errors (desktop)",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "reduced motion detected",
+    "ok": true
+  },
+  {
+    "name": "reduced motion: no horizontal travel",
+    "ok": true,
+    "detail": {
+      "rmid": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "name": "phone: match opens in a sheet",
+    "ok": true
+  },
+  {
+    "name": "phone: close dismisses the sheet",
+    "ok": true
+  },
+  {
+    "name": "phone: back dismisses the sheet",
+    "ok": true
+  },
+  {
+    "name": "phone: nav, stage and round targets are at least 44px tall",
+    "ok": true,
+    "detail": [
+      48,
+      48,
+      52,
+      52,
+      52,
+      44,
+      44,
+      44,
+      44,
+      44
+    ]
+  },
+  {
+    "name": "phone: no horizontal page overflow",
+    "ok": true,
+    "detail": 390
+  }
+]

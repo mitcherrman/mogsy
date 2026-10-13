@@ -108,7 +108,10 @@ export default function Layout() {
     || pathname === "/lol/dev/pro-play-arena"
     // PPQ2-E — the production Pro Play Quiz IS that arena now (it was a
     // max-w-2xl reading column). Already in the LoL section for its theme.
-    || pathname === PRO_PLAY_QUIZ_ROUTE;
+    || pathname === PRO_PLAY_QUIZ_ROUTE
+    // UX1 — the Worlds experience prototype is an application frame sized to
+    // the viewport, with its own gutters (development-only route).
+    || pathname.startsWith("/lol/dev/worlds-experience");
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would

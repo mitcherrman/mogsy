@@ -18,7 +18,7 @@
  * shown only when the backend's `bracket_authority` is "standings" and it
  * served them; routing text likewise needs standings.
  */
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Trophy } from "lucide-react";
 
@@ -45,6 +45,21 @@ import { CARD, GOLD, MatchLines, Notice, TeamLine, useKit } from "./TournamentPa
 
 /* ── one match ──────────────────────────────────────────────────────────── */
 
+/**
+ * Opt-in selection (UX1, the Worlds experience prototype). Inside a provider a
+ * card is a toggle button that selects the match for a detail panel instead
+ * of linking to the match centre (the panel carries that link). Without one —
+ * the published tournament page — cards are exactly as before.
+ */
+export interface BracketSelection {
+  selectedId: string | null;
+  onSelect: (matchId: string) => void;
+  /** One header line: an upcoming match shows its time where the state badge sits. */
+  dense?: boolean;
+}
+
+export const BracketSelectContext = createContext<BracketSelection | null>(null);
+
 function Tag({ children, tone }: { children: ReactNode; tone: "gold" | "muted" }) {
   return (
     <span
@@ -67,6 +82,9 @@ export function BracketMatchCard({ match, summary, stageName, winnerTag }: {
   winnerTag: string;
 }) {
   const kit = useKit();
+  const select = useContext(BracketSelectContext);
+  const selected = select?.selectedId === match.match_id;
+  const dense = Boolean(select?.dense);
   const authority = summary.bracket_authority === "standings";
   const routes = authority ? routesFrom(match.match_id, kit.state.matches) : [];
   const href = matchHref(match);
@@ -87,14 +105,21 @@ export function BracketMatchCard({ match, summary, stageName, winnerTag }: {
   };
   const head = (
     <>
-      <div className="flex items-center gap-2 px-3 pt-2.5">
+      <div className={cn("flex items-center gap-2 px-3", dense ? "py-2" : "pt-2.5")}>
         <span className="min-w-0 truncate text-[10.5px] font-semibold uppercase tracking-[0.1em] text-foreground/85">
           {name}
           {match.best_of ? <span className="text-muted-foreground"> · Bo{match.best_of}</span> : null}
         </span>
-        <MatchStateBadge state={match.state} size="sm" className="ml-auto" />
+        {dense && match.state === "upcoming" ? (
+          <span className="ml-auto shrink-0 text-[10.5px] tabular-nums text-muted-foreground" data-testid="card-time">
+            {/* The column label carries the day. */}
+            {localStart(match.scheduled_start)?.split(" · ")[1] ?? localStart(match.scheduled_start)}
+          </span>
+        ) : (
+          <MatchStateBadge state={match.state} size="sm" className="ml-auto" />
+        )}
       </div>
-      <p className="px-3 pb-2 text-[11px] tabular-nums text-muted-foreground">{localStart(match.scheduled_start)}</p>
+      {!dense && <p className="px-3 pb-2 text-[11px] tabular-nums text-muted-foreground">{localStart(match.scheduled_start)}</p>}
       <div className="divide-y divide-border/40 border-t border-border/40">
         {match.teams.map((t, i) => {
           const outcome = outcomeOf(match, t);
@@ -129,13 +154,25 @@ export function BracketMatchCard({ match, summary, stageName, winnerTag }: {
       data-testid="bracket-match"
       data-bracket-match={match.match_id}
       data-state={match.state}
+      data-selected={select ? String(selected) : undefined}
       aria-label={`${stageName} ${name}`}
       className={cn(
         "relative z-[1] overflow-hidden rounded-lg border bg-card",
         match.state === "live" ? "border-emerald-500/60" : "border-border/70",
+        selected && "border-[#c9a84c] shadow-[0_0_0_1px_#c9a84c,0_8px_28px_-12px_rgba(201,168,76,0.55)]",
+        select && "transition-[border-color,box-shadow] duration-200",
       )}
     >
-      {href ? (
+      {select ? (
+        <button
+          type="button"
+          aria-pressed={selected}
+          onClick={() => select.onSelect(match.match_id)}
+          className="block w-full text-left outline-none transition-colors hover:bg-muted/25 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
+        >
+          {head}
+        </button>
+      ) : href ? (
         <Link
           to={href}
           className="block outline-none transition-colors hover:bg-muted/25 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
@@ -177,7 +214,7 @@ interface Edge {
  * parent (the positioned bracket box): a child's layout effect runs before an
  * ancestor's ref is attached, so it anchors on its own node instead.
  */
-function Connectors({ edges, version }: {
+export function Connectors({ edges, version }: {
   edges: readonly Edge[];
   /** Changes when card contents change (state, scores). */
   version: string;
@@ -242,7 +279,7 @@ function Connectors({ edges, version }: {
   );
 }
 
-function useBracketEdges(matches: readonly TournamentMatchV2[], authority: boolean) {
+export function useBracketEdges(matches: readonly TournamentMatchV2[], authority: boolean) {
   const edges = useMemo(() => (authority ? winnerEdges(matches) : []), [matches, authority]);
   const version = matches.map((m) => `${m.match_id}:${m.state}:${m.teams.map((t) => t.code ?? "").join("/")}`).join("|");
   return { edges, version };
@@ -251,7 +288,7 @@ function useBracketEdges(matches: readonly TournamentMatchV2[], authority: boole
 /* ── layouts ────────────────────────────────────────────────────────────── */
 
 /** "Tue 3 Nov – Fri 6 Nov" in the viewer's own days. */
-function daySpan(matches: readonly TournamentMatchV2[]) {
+export function daySpan(matches: readonly TournamentMatchV2[]) {
   const days = matches.map((m) => localDayKey(m.scheduled_start)).filter((d): d is string => Boolean(d)).sort();
   if (!days.length) return null;
   const first = dayLabel(days[0]);
@@ -263,7 +300,7 @@ function ColumnLabel({ children }: { children: ReactNode }) {
   return <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{children}</p>;
 }
 
-function CellList({ matches }: { matches: readonly TournamentMatchV2[] }) {
+export function CellList({ matches }: { matches: readonly TournamentMatchV2[] }) {
   const kit = useKit();
   const groups: BracketColumn[] = [];
   for (const m of matches) {
@@ -284,7 +321,7 @@ function CellList({ matches }: { matches: readonly TournamentMatchV2[] }) {
   );
 }
 
-function AuthorityNotice({ summary }: { summary: BracketSummary }) {
+export function AuthorityNotice({ summary }: { summary: BracketSummary }) {
   if (summary.bracket_authority === "standings") {
     return summary.unverified_completed_matches > 0 ? (
       <Notice tone="info">Some completed results here are pending verification, so they don't move anyone yet.</Notice>
