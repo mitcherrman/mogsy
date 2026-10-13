@@ -41,7 +41,10 @@
  * here: the full card, with the answer, lives in the match's own HISTORY entry
  * where it is legitimately the player's to read.
  */
-import { Sparkles } from "lucide-react";
+import { useEffect } from "react";
+import { BookOpen, Sparkles } from "lucide-react";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import { useSfx } from "@/lib/audio/useSfx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type {
@@ -62,6 +65,11 @@ export interface DiscoveryRevealProps {
 const STEP_MS = 70;
 const MAX_DELAY_MS = 560;
 
+/** Sound is a presentation cue, not a discovery grant. Refetches and StrictMode
+ * must not replay a match's reward fanfare. Bounded to the most recent matches. */
+const soundedMatches = new Set<string>();
+const SOUNDED_MATCH_LIMIT = 64;
+
 function entranceDelay(index: number): string {
   return `${Math.min(index * STEP_MS, MAX_DELAY_MS)}ms`;
 }
@@ -75,16 +83,18 @@ function DiscoveryRow({ entry, index }: {
     <li
       data-testid="discovery-entry"
       style={{ animationDelay: entranceDelay(index) }}
-      className="ranked-subpanel flex items-start gap-3 px-3 py-2
+      className="ranked-subpanel group flex items-start gap-3 rounded-[0.55rem] border border-[#f0d78c]/10 px-3 py-2.5
+        transition-colors duration-300 hover:border-[#f0d78c]/35 hover:bg-[#f0d78c]/[0.045]
         animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300
-        motion-reduce:animate-none"
+        motion-reduce:animate-none motion-reduce:transition-none"
     >
-      <span
-        aria-hidden
-        className="mt-0.5 shrink-0 rounded bg-[#f0d78c]/10 px-1.5 py-0.5 text-[10px]
-          font-bold uppercase tracking-[0.14em] text-[#f0d78c]"
-      >
-        {entry.firstRoundNumber === null ? "New" : `R${entry.firstRoundNumber}`}
+      <span aria-hidden className="mt-0.5 flex h-8 min-w-8 shrink-0 flex-col items-center justify-center
+        rounded border border-[#f0d78c]/30 bg-[#f0d78c]/10 text-[#f0d78c]
+        transition-transform duration-300 group-hover:-translate-y-0.5 motion-reduce:transition-none">
+        <BookOpen className="h-3.5 w-3.5" />
+        <span className="text-[9px] font-bold leading-tight">
+          {entry.firstRoundNumber === null ? "New" : `R${entry.firstRoundNumber}`}
+        </span>
       </span>
       <div className="min-w-0 flex-1">
         {/* Literal colours, for the reason MatchOverFrame states about its own
@@ -130,6 +140,18 @@ export function discoveryRevealHasContent(
 }
 
 export function DiscoveryReveal({ view, onReview }: DiscoveryRevealProps) {
+  const sfx = useSfx();
+  const matchId = view?.matchId;
+  const newCount = view?.newCount ?? 0;
+  useEffect(() => {
+    if (!matchId || newCount <= 0 || soundedMatches.has(matchId)) return;
+    soundedMatches.add(matchId);
+    if (soundedMatches.size > SOUNDED_MATCH_LIMIT) {
+      soundedMatches.delete(soundedMatches.values().next().value!);
+    }
+    sfx.play("ranked.discovery.reveal");
+  }, [matchId, newCount, sfx]);
+
   if (view === null || !discoveryRevealHasContent(view)) return null;
 
   // State 2: nothing was discovered, but the account has a collection.
@@ -173,10 +195,15 @@ export function DiscoveryReveal({ view, onReview }: DiscoveryRevealProps) {
       data-testid="discovery-reveal"
       data-new-count={view.newCount}
       aria-label="New questions discovered"
-      className="ranked-panel space-y-3 px-4 py-4
+      className="ranked-panel relative isolate space-y-3 overflow-hidden px-4 py-4
         animate-in fade-in slide-in-from-bottom-2 duration-500 motion-reduce:animate-none"
     >
-      <header className="space-y-1 text-center">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24
+        bg-gradient-to-b from-[#f0d78c]/[0.10] to-transparent" />
+      <header className="relative flex items-center justify-center gap-3 text-center">
+        <MogzyMascot pose="cheering" decorative scale="compact"
+          className="h-12 w-12 shrink-0 animate-in zoom-in-90 duration-500 motion-reduce:animate-none" />
+        <div className="space-y-1">
         <div className="ranked-eyebrow flex items-center justify-center gap-1.5">
           <Sparkles aria-hidden className="h-3 w-3" />
           New Questions Discovered
@@ -184,9 +211,10 @@ export function DiscoveryReveal({ view, onReview }: DiscoveryRevealProps) {
         <p className="ranked-title text-lg font-bold" data-testid="discovery-headline">
           {view.newCount} new {plural} added to your collection
         </p>
+        </div>
       </header>
 
-      <ul className="space-y-1.5">
+      <ul className="relative space-y-1.5">
         {view.newDiscoveries.map((entry, i) => (
           <DiscoveryRow key={entry.canonicalQuestionRef} entry={entry} index={i} />
         ))}
