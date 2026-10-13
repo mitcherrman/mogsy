@@ -12,8 +12,11 @@
  * PHONE: the graph is not squeezed. One round at a time, chosen from a rail
  * in bracket order (upper rounds, lower rounds, final); each card still says
  * where its winner and loser go, and the detail sheet steps along those edges.
+ * The round is in the URL (`?step=<upstream cell slug>`, UX2), so refresh and
+ * links keep it; it is a view setting (replace) and is separate from the
+ * Swiss `?round=`.
  */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
@@ -148,6 +151,10 @@ interface Step {
   col: BracketColumn;
 }
 
+/** A column's URL key: upstream's cell slug, else its name made URL-safe. */
+const stepKey = (col: BracketColumn) =>
+  col.matches[0]?.bracket?.cell_slug ?? col.cell.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+
 function PhoneRounds({ matches }: { matches: TournamentMatchV2[] }) {
   const kit = useKit();
   const summary = kit.state.play_in;
@@ -156,14 +163,17 @@ function PhoneRounds({ matches }: { matches: TournamentMatchV2[] }) {
     if (!layout) return [];
     const out: Step[] = [];
     for (const row of layout.rows) {
-      for (const col of row.columns) out.push({ key: col.cell, label: `${row.key === "upper" ? "Upper" : "Lower"} ${roundWord(col.cell).replace(/s$/, "")}`, col });
+      for (const col of row.columns) out.push({ key: stepKey(col), label: `${row.key === "upper" ? "Upper" : "Lower"} ${roundWord(col.cell).replace(/s$/, "")}`, col });
     }
-    if (layout.final) out.push({ key: layout.final.cell, label: "Final", col: layout.final });
+    if (layout.final) out.push({ key: stepKey(layout.final), label: "Final", col: layout.final });
     return out;
   }, [layout]);
   const focusId = kit.state.matches.find((m) => m.stage === "play_in" && m.state === "live")?.match_id ?? kit.state.next_match_id;
   const initial = Math.max(0, steps.findIndex((s) => s.col.matches.some((m) => m.match_id === focusId)));
-  const [chosen, setChosen] = useState<number | null>(null);
+  const x = useExperience();
+  const fromUrl = steps.findIndex((s) => s.key === x.loc.step);
+  const chosen = fromUrl >= 0 ? fromUrl : null;
+  const setChosen = (i: number) => x.selectStep(steps[i].key);
   if (!layout) {
     return (
       <div className="space-y-3 px-3">

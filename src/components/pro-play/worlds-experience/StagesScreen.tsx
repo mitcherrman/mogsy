@@ -3,8 +3,9 @@
  *
  * A stage switcher (Play-In · Swiss · Knockouts, each carrying its dates,
  * venue and the progress the phase certifies) over a two-part workspace: the
- * stage's own presentation on the left, and a coordinated context column on
- * the right — the stage brief, or the selected match. The stage area scrolls
+ * stage's own presentation on the left, and the adaptive context column on
+ * the right (`Detail.tsx`): the selected match, the stage brief when the
+ * reader keeps it open, otherwise a slim rail. The stage area scrolls
  * inside itself when a bracket is wider or taller than the room; the shell
  * never does. Switching stage slides in the direction of the stage order.
  *
@@ -12,8 +13,7 @@
  * one-column presentation, and the match detail is a bottom sheet.
  */
 import { useMemo, type ReactNode } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { AnimatePresence, motion, type PanInfo } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 
@@ -24,9 +24,10 @@ import { stageStakes } from "@/lib/pro-play/worldsExperience/experienceView";
 import { stageLabel } from "@/lib/pro-play/worldsExperience/navigation";
 import { cn } from "@/lib/utils";
 
+import { ContextColumn, MatchSheet } from "./Detail";
 import { useExperience } from "./ExperienceContext";
 import { KnockoutWorkspace } from "./KnockoutWorkspace";
-import { MatchDetail, StageBrief } from "./MatchDetail";
+import { StageBrief } from "./MatchDetail";
 import { DURATION, OFFSET, slideTransition, slideVariants } from "./motion";
 import { SURFACE, rovingKeys } from "./parts";
 import { PlayInWorkspace } from "./PlayInWorkspace";
@@ -145,68 +146,6 @@ function StageArea({ children, keyed }: { children: ReactNode; keyed: string }) 
   );
 }
 
-/* ── context column / sheet ─────────────────────────────────────────────── */
-
-function ContextPanel() {
-  const kit = useKit();
-  const x = useExperience();
-  const match = x.loc.matchId ? kit.byId.get(x.loc.matchId) ?? null : null;
-  const stage = x.stageKey ? stageOf(kit.ctx, x.stageKey) : null;
-  const key = match ? `match:${match.match_id}` : `brief:${x.stageKey}`;
-  return (
-    <aside className={cn(SURFACE, "relative min-h-0 overflow-hidden")} data-testid="context-panel" data-mode={match ? "match" : "brief"} aria-label={match ? "Match detail" : "Stage brief"}>
-      <AnimatePresence initial={false} mode="popLayout">
-        <motion.div
-          key={key}
-          initial={x.reduced ? { opacity: 0 } : { opacity: 0, x: OFFSET.panel }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={x.reduced ? { opacity: 0 } : { opacity: 0, x: -OFFSET.panel / 2 }}
-          transition={slideTransition(DURATION.panel, x.reduced)}
-          className="h-full"
-        >
-          {match ? <MatchDetail match={match} onClose={() => x.selectMatch(null)} /> : stage ? <StageBrief stage={stage} /> : null}
-        </motion.div>
-      </AnimatePresence>
-    </aside>
-  );
-}
-
-function MatchSheet() {
-  const kit = useKit();
-  const x = useExperience();
-  const match = x.loc.matchId ? kit.byId.get(x.loc.matchId) ?? null : null;
-  const close = () => x.selectMatch(null);
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.y > 96 || info.velocity.y > 600) close();
-  };
-  return (
-    <Dialog.Root open={Boolean(match)} onOpenChange={(open) => !open && close()}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0" data-testid="sheet-overlay" />
-        <Dialog.Content
-          className="fixed inset-x-0 bottom-0 z-[61] outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=open]:duration-300 motion-reduce:animate-none"
-          data-testid="match-sheet"
-          aria-describedby={undefined}
-        >
-          <Dialog.Title className="sr-only">Match detail</Dialog.Title>
-          <motion.div
-            drag={x.reduced ? false : "y"}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.6 }}
-            onDragEnd={onDragEnd}
-            className="mx-auto flex max-h-[86dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-b-0 border-white/10 bg-[hsl(214_50%_8%)] pb-[env(safe-area-inset-bottom)] text-foreground shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.9)]"
-          >
-            <div className="flex justify-center pb-1 pt-2.5" aria-hidden="true">
-              <span className="h-1 w-10 rounded-full bg-white/20" />
-            </div>
-            {match && <MatchDetail match={match} onClose={close} />}
-          </motion.div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
-}
-
 /* ── screen ─────────────────────────────────────────────────────────────── */
 
 function PhoneBrief({ stageKey }: { stageKey: string }) {
@@ -225,7 +164,9 @@ function PhoneBrief({ stageKey }: { stageKey: string }) {
 
 export function StagesScreen() {
   const x = useExperience();
+  const kit = useKit();
   const key = x.stageKey;
+  const stage = key ? stageOf(kit.ctx, key) : null;
   const body = useMemo(() => (key ? <StageBody stageKey={key} /> : null), [key]);
   if (!key) return <p className="p-6 text-sm text-muted-foreground">This event has no stages.</p>;
   if (!x.desktop) {
@@ -247,13 +188,13 @@ export function StagesScreen() {
   return (
     <div className="flex h-full flex-col" data-testid="stages">
       <StageSwitcher />
-      <div className="mx-auto grid min-h-0 w-full max-w-[1760px] flex-1 grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_360px] gap-4 px-6 pb-5 pt-3">
+      <div className="mx-auto grid min-h-0 w-full max-w-[1760px] flex-1 grid-cols-[minmax(0,1fr)_auto] gap-4 px-6 pb-5 pt-3">
         <section className={cn(SURFACE, "relative min-h-0 overflow-hidden")} aria-label={`${key} workspace`} data-testid="stage-area">
           <div className="h-full overflow-auto overscroll-contain" data-swipe-ignore data-testid="stage-scroll">
             <StageArea keyed={key}>{body}</StageArea>
           </div>
         </section>
-        <ContextPanel />
+        {stage && <ContextColumn brief={<StageBrief stage={stage} />} briefLabel={`${stageLabel(stage)} brief`} briefKey={stage.key} />}
       </div>
     </div>
   );

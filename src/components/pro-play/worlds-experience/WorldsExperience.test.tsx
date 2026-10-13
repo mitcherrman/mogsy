@@ -5,6 +5,7 @@
  * keyboard, reduced motion and the phone sheet.
  */
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionGlobalConfig } from "framer-motion";
 import { useEffect } from "react";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate, type NavigateFunction } from "react-router-dom";
@@ -35,6 +36,9 @@ vi.mock("framer-motion", async (importOriginal) => {
   return { ...actual, useReducedMotion: () => mocks.reduced };
 });
 
+/** A fresh query cache per render (the Match Centre check reads the hub's schedule). */
+const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+
 const BASE = "/lol/dev/worlds-experience";
 const NOW = Date.parse("2026-10-13T00:10:00Z");
 
@@ -52,12 +56,14 @@ function Probe() {
 
 function renderAt(path: string, { data = WORLDS_PRE, desktop = true, now = NOW }: { data?: TournamentResponseV2; desktop?: boolean; now?: number } = {}) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
+    <QueryClientProvider client={qc()}>
+      <MemoryRouter initialEntries={[path]}>
       <Probe />
       <Routes>
         <Route path={`${BASE}/*`} element={<WorldsExperience data={data} now={now} base={BASE} desktop={desktop} />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+      </QueryClientProvider>,
   );
 }
 
@@ -83,6 +89,7 @@ beforeEach(() => {
   __resetProPlayMediaCache();
   mocks.reduced = false;
   vi.stubGlobal("scrollTo", vi.fn());
+  window.sessionStorage.clear();
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ ok: true, identity_available: true, results: [] }) })));
 });
 afterEach(() => {
@@ -93,14 +100,14 @@ afterEach(() => {
 /* ── shell and navigation ───────────────────────────────────────────────── */
 
 describe("primary navigation", () => {
-  it("lands on the Overview, with all five destinations and only two of them links", () => {
+  it("lands on the Overview, with all five destinations, four of them links and Discover unavailable", () => {
     renderAt(BASE);
     expect(currentScreen()).toBe("overview");
     const links = screen.getAllByTestId("nav-screen");
-    expect(links.map((a) => a.getAttribute("data-screen"))).toEqual(["overview", "stages"]);
+    expect(links.map((a) => a.getAttribute("data-screen"))).toEqual(["overview", "stages", "teams", "schedule"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
     const future = screen.getAllByTestId("nav-future");
-    expect(future.map((el) => el.getAttribute("data-screen"))).toEqual(["teams", "schedule", "discover"]);
+    expect(future.map((el) => el.getAttribute("data-screen"))).toEqual(["discover"]);
     for (const el of future) {
       expect(el.tagName).not.toBe("A");
       expect(el).toHaveAttribute("aria-disabled", "true");
@@ -123,8 +130,8 @@ describe("primary navigation", () => {
     expect(workspace()).toHaveAttribute("data-direction", "1");
   });
 
-  it("corrects a future screen's path to the Overview instead of drawing it", async () => {
-    renderAt(`${BASE}/teams?scenario=snapshot`);
+  it("corrects Discover's path to the Overview instead of drawing it", async () => {
+    renderAt(`${BASE}/discover?scenario=snapshot`);
     await waitFor(() => expect(loc.pathname).toBe(BASE));
     expect(params().get("scenario")).toBe("snapshot");
     expect(currentScreen()).toBe("overview");
@@ -176,7 +183,7 @@ describe("stage selection", () => {
 
   it("ignores a match id the event does not have", () => {
     renderAt(`${BASE}/stages/play-in?match=nope`);
-    expect(screen.getByTestId("context-panel")).toHaveAttribute("data-mode", "brief");
+    expect(screen.getByTestId("context-panel")).toHaveAttribute("data-mode", "collapsed");
   });
 });
 
@@ -251,7 +258,7 @@ describe("Overview", () => {
 describe("match selection and the detail panel", () => {
   it("selects a card, shows the detail beside the bracket, and steps along its edges", async () => {
     renderAt(`${BASE}/stages/play-in`);
-    expect(screen.getByTestId("context-panel")).toHaveAttribute("data-mode", "brief");
+    expect(screen.getByTestId("context-panel")).toHaveAttribute("data-mode", "collapsed");
     select(PI.ubsf1);
     expect(params().get("match")).toBe(PI.ubsf1);
     expect(loc.state).toEqual({ ux1Panel: true });
@@ -268,9 +275,9 @@ describe("match selection and the detail panel", () => {
     const ubf = await detail();
     expect(within(ubf).getAllByTestId("slot-source-link").map((b) => b.textContent)).toEqual(["Winner of FUR v MVK", "Winner of C9 v KC"]);
 
-    // Back closes the detail (it was one entry), and returns to the brief.
+    // Back closes the detail (it was one entry), and the column folds back.
     back();
-    await waitFor(() => expect(screen.getByTestId("context-panel")).toHaveAttribute("data-mode", "brief"));
+    await waitFor(() => expect(screen.getByTestId("context-panel")).toHaveAttribute("data-mode", "collapsed"));
     expect(params().get("match")).toBeNull();
   });
 
@@ -307,6 +314,9 @@ describe("stage presentations", () => {
     expect(within(screen.getByTestId("bracket-final")).getAllByTestId("bracket-match")).toHaveLength(1);
     expect(screen.getAllByTestId("bracket-match")).toHaveLength(6);
     expect(screen.getByTestId("swiss-end-cap")).toHaveAttribute("data-state", "unresolved");
+    // The brief is one click away (the column is folded by default).
+    expect(screen.queryByTestId("stage-brief")).toBeNull();
+    fireEvent.click(screen.getByTestId("brief-toggle"));
     expect(screen.getByTestId("stage-brief")).toHaveAttribute("data-stage", "play_in");
     expect(screen.getByTestId("brief-advance")).toHaveTextContent("1");
   });
@@ -392,11 +402,13 @@ describe("degraded sources", () => {
   it("stale copy: flagged with a retry, and the feed chip marked degraded", () => {
     const onRetry = vi.fn();
     render(
+      <QueryClientProvider client={qc()}>
       <MemoryRouter initialEntries={[BASE]}>
         <Routes>
           <Route path={`${BASE}/*`} element={<WorldsExperience data={staleSchedule()} now={NOW} base={BASE} desktop onRetry={onRetry} />} />
         </Routes>
-      </MemoryRouter>,
+      </MemoryRouter>
+      </QueryClientProvider>,
     );
     const stale = screen.getByTestId("status-stale");
     fireEvent.click(within(stale).getByRole("button", { name: /try again/i }));
@@ -406,11 +418,13 @@ describe("degraded sources", () => {
 
   it("a background refresh failure keeps the data and says so", () => {
     render(
+      <QueryClientProvider client={qc()}>
       <MemoryRouter initialEntries={[BASE]}>
         <Routes>
           <Route path={`${BASE}/*`} element={<WorldsExperience data={clone()} now={NOW} base={BASE} desktop refreshFailed />} />
         </Routes>
-      </MemoryRouter>,
+      </MemoryRouter>
+      </QueryClientProvider>,
     );
     expect(screen.getByTestId("status-refresh")).toBeInTheDocument();
     expect(screen.getByTestId("overview-hero")).toHaveAttribute("data-focus", "next");
@@ -420,16 +434,18 @@ describe("degraded sources", () => {
 /* ── keyboard, motion, phone ────────────────────────────────────────────── */
 
 describe("keyboard", () => {
-  it("arrow keys move along the nav rail only while focus is in it, skipping future screens", () => {
+  it("arrow keys move along the nav rail only while focus is in it, skipping Discover", () => {
     renderAt(BASE);
-    const [overview, stages] = screen.getAllByTestId("nav-screen");
+    const [overview, stages, , schedule] = screen.getAllByTestId("nav-screen");
     overview.focus();
     fireEvent.keyDown(overview, { key: "ArrowRight" });
     expect(stages).toHaveFocus();
-    fireEvent.keyDown(stages, { key: "ArrowRight" });
+    fireEvent.keyDown(stages, { key: "End" });
+    expect(schedule).toHaveFocus();
+    fireEvent.keyDown(schedule, { key: "ArrowRight" });
     expect(overview).toHaveFocus();
-    fireEvent.keyDown(overview, { key: "End" });
-    expect(stages).toHaveFocus();
+    fireEvent.keyDown(overview, { key: "ArrowLeft" });
+    expect(schedule).toHaveFocus();
     // Focus moves; it does not navigate.
     expect(currentScreen()).toBe("overview");
   });
@@ -511,13 +527,40 @@ describe("phone layout", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("Swiss on a phone: round tabs and that round's pools", () => {
+  it("Swiss on a phone: the round's fixtures, then records; the format on request", () => {
     renderAt(`${BASE}/stages/swiss`, { desktop: false, data: swissThrough(2.5) });
-    expect(screen.getByTestId("swiss-phone")).toBeInTheDocument();
+    const phone = screen.getByTestId("swiss-phone");
     const tabs = screen.getAllByTestId("swiss-round-tab");
     expect(tabs).toHaveLength(5);
     expect(tabs[2]).toHaveAttribute("aria-selected", "true");
+    // Order: round tabs, the round's fixtures, the records, then the format.
+    const order = ["swiss-round", "swiss-phone-records", "swiss-phone-format"].map((id) => [...phone.querySelectorAll("[data-testid]")].findIndex((el) => el.getAttribute("data-testid") === id));
+    expect(order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1]))).toBe(true);
+    expect(screen.getAllByTestId("phone-record-group").length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("swiss-round-pools")).toBeNull();
+    fireEvent.click(screen.getByTestId("swiss-format-toggle"));
+    expect(screen.getByTestId("swiss-format-toggle")).toHaveAttribute("aria-expanded", "true");
     expect(within(screen.getByTestId("swiss-round-pools")).getAllByTestId("swiss-pool").map((p) => p.getAttribute("data-record"))).toEqual(["2-0", "1-1", "0-2"]);
+    expect(screen.getByTestId("swiss-legend")).toHaveTextContent(/verified results/);
+  });
+
+  it("Swiss on a phone before a result: fixtures summary, then the certified seeding", () => {
+    renderAt(`${BASE}/stages/swiss`, { desktop: false });
+    expect(screen.getByTestId("swiss-round-unpaired")).toBeInTheDocument();
+    expect(screen.getAllByTestId("swiss-tier")).toHaveLength(4);
+    expect(screen.queryByTestId("swiss-phone-records")).toBeNull();
+  });
+
+  it("the phone Play-In round is in the URL: refresh and links keep it, Swiss rounds are separate", async () => {
+    renderAt(`${BASE}/stages/play-in?round=2`, { desktop: false });
+    fireEvent.click(screen.getAllByTestId("round-step")[3]);
+    expect(params().get("step")).toBe("lower_bracket_finals");
+    expect(params().get("round")).toBe("2");
+    cleanup();
+    renderAt(`${BASE}/stages/play-in?step=lower_bracket_finals`, { desktop: false });
+    expect(screen.getAllByTestId("round-step")[3]).toHaveAttribute("aria-pressed", "true");
+    const cards = within(screen.getByTestId("round-cards")).getAllByTestId("bracket-match");
+    expect(cards.map((c) => c.getAttribute("data-bracket-match"))).toEqual([PI.lbf]);
   });
 
   it("swipes between the built screens, but not from a sideways scroller", async () => {

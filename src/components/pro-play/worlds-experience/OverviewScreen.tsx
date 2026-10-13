@@ -494,12 +494,19 @@ function StageRoad() {
 /** The field by region: who is here, and how many start in the Play-In. */
 function FieldSummary() {
   const { ctx } = useKit();
+  const x = useExperience();
   const direct = ctx.participants.filter((p) => p.entry_stage === "swiss").length;
   const playIn = ctx.participants.filter((p) => p.entry_stage === "play_in").length;
   return (
     <div className="mt-auto border-t border-white/[0.06] pt-4" data-testid="field-summary">
       <p className="flex items-baseline justify-between gap-2">
-        <Eyebrow tone="muted">The field</Eyebrow>
+        <Link
+          to={x.hrefFor({ screen: "teams" })}
+          data-testid="overview-open-teams"
+          className="group inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-muted-foreground outline-none hover:text-[#e3c66f] focus-visible:text-[#e3c66f]"
+        >
+          The field <ArrowRight className="h-3 w-3 opacity-60 group-hover:opacity-100" aria-hidden="true" />
+        </Link>
         <span className="text-[11px] text-muted-foreground">
           {direct > 0 && playIn > 0 ? `${direct} straight to Swiss · ${playIn} in the Play-In` : `${ctx.participants.length} teams`}
         </span>
@@ -671,7 +678,16 @@ function ComingUp() {
   }
   return (
     <section className={cn(SURFACE, "flex h-full min-h-0 flex-col", x.desktop ? "p-5" : "p-4")} data-testid="coming-up" aria-labelledby="coming-title">
-      <h2 id="coming-title" className="text-lg leading-none">{results.length ? "Results & fixtures" : "Coming up"}</h2>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="coming-title" className="text-lg leading-none">{results.length ? "Results & fixtures" : "Coming up"}</h2>
+        <Link
+          to={x.hrefFor({ screen: "schedule" })}
+          data-testid="overview-open-schedule"
+          className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-[#e3c66f] hover:underline"
+        >
+          Full schedule <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
+      </div>
       <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
         {results.length > 0 && (
           <div>

@@ -1,17 +1,21 @@
 // ---------------------------------------------------------------------------
 // The Worlds experience's navigation model (UX1).
 //
-// FIVE PRIMARY SCREENS, TWO BUILT. Overview / Stages / Teams / Schedule /
-// Discover is the experience's final shape; only Overview and Stages are
-// implemented, and the other three are carried here (so the shell can show
-// the structure) with `ready: false` so nothing can route to them.
+// FIVE PRIMARY SCREENS, FOUR BUILT. Overview / Stages / Teams / Schedule /
+// Discover is the experience's final shape. Discover is carried here (so the
+// shell can show the structure) with `ready: false` until verified
+// intelligence content exists, so nothing can route to it.
 //
 // THE URL IS THE STATE. Screen and stage live in the path
-// (`<base>/stages/swiss`), the selected match and Swiss round in the query
-// (`?match=<id>&round=3`). Every other query key (the dev page's
-// `scenario` / `now`) is carried through untouched, so a link built here never
-// drops context it did not create. Browser back / forward and a pasted link
-// are therefore the same code path as a click.
+// (`<base>/stages/swiss`, `<base>/schedule`), each screen's selections in
+// the query, and each screen owns its own keys:
+//   stages    ?match=<id>&round=<n>&step=<play-in cell slug>
+//   teams     ?team=<code>&region=<region>
+//   schedule  ?day=<YYYY-MM-DD>&stage=<stage slug>&match=<id>
+// Moving to another screen drops the keys of the one left behind (no orphaned
+// selection), and every other key (the dev page's `scenario` / `now`) is
+// carried through untouched. Browser back / forward and a pasted link are
+// therefore the same code path as a click.
 //
 // Pure: no React, no router. `WorldsExperience.tsx` wires it to the router.
 // ---------------------------------------------------------------------------
@@ -30,8 +34,8 @@ export interface ScreenDef {
 export const SCREENS: readonly ScreenDef[] = [
   { key: "overview", label: "Overview", segment: "", ready: true },
   { key: "stages", label: "Stages", segment: "stages", ready: true },
-  { key: "teams", label: "Teams", segment: "teams", ready: false },
-  { key: "schedule", label: "Schedule", segment: "schedule", ready: false },
+  { key: "teams", label: "Teams", segment: "teams", ready: true },
+  { key: "schedule", label: "Schedule", segment: "schedule", ready: true },
   { key: "discover", label: "Discover", segment: "discover", ready: false },
 ];
 
@@ -62,16 +66,39 @@ export function stageKeyFromSlug(slug: string | undefined, stageKeys: readonly s
 /** The experience's own query keys. Anything else is carried through. */
 export const MATCH_PARAM = "match";
 export const ROUND_PARAM = "round";
+/** The phone Play-In round (an upstream cell slug), independent of `round`. */
+export const STEP_PARAM = "step";
+export const TEAM_PARAM = "team";
+export const REGION_PARAM = "region";
+/** A local calendar day, `YYYY-MM-DD`, in the viewer's timezone. */
+export const DAY_PARAM = "day";
+/** The Schedule's stage filter, as a stage slug. */
+export const FILTER_PARAM = "stage";
+
+const OWNED = [MATCH_PARAM, ROUND_PARAM, STEP_PARAM, TEAM_PARAM, REGION_PARAM, DAY_PARAM, FILTER_PARAM];
 
 export interface ExperienceLocation {
   screen: ScreenKey;
   /** The stage on the Stages screen; null elsewhere, or when the path names none. */
   stageSlug: string | null;
+  /** The selected match (Stages and Schedule). */
   matchId: string | null;
   round: number | null;
+  step: string | null;
+  team: string | null;
+  region: string | null;
+  day: string | null;
+  /** The Schedule's stage filter (a slug), null for all stages. */
+  filter: string | null;
   /** The path asked for a screen this build does not have (or an unknown one). */
   unresolved: boolean;
 }
+
+const EMPTY = { stageSlug: null, matchId: null, round: null, step: null, team: null, region: null, day: null, filter: null };
+
+const isDay = (v: string | null) => (v && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v) ? v : null);
+const isCode = (v: string | null) => (v && /^[A-Za-z0-9]{1,8}$/.test(v) ? v.toUpperCase() : null);
+const isToken = (v: string | null) => (v && /^[A-Za-z0-9_-]{1,64}$/.test(v) ? v : null);
 
 function trimSlashes(p: string) {
   return p.replace(/^\/+|\/+$/g, "");
@@ -82,18 +109,39 @@ export function parseLocation(base: string, pathname: string, search: string): E
   const rest = trimSlashes(pathname.startsWith(base) ? pathname.slice(base.length) : pathname);
   const [first = "", second] = rest ? rest.split("/") : [];
   const params = new URLSearchParams(search);
-  const matchId = params.get(MATCH_PARAM) || null;
+  const matchId = isToken(params.get(MATCH_PARAM));
   const roundRaw = Number(params.get(ROUND_PARAM));
   const round = Number.isInteger(roundRaw) && roundRaw > 0 ? roundRaw : null;
   const def = SCREENS.find((s) => s.segment === first.toLowerCase());
   if (!def || !def.ready) {
-    return { screen: "overview", stageSlug: null, matchId: null, round: null, unresolved: first !== "" };
+    return { screen: "overview", ...EMPTY, unresolved: first !== "" };
   }
-  if (def.key === "stages") {
-    return { screen: "stages", stageSlug: second ? second.toLowerCase() : null, matchId, round, unresolved: false };
+  // Each screen reads only its own keys: a stray one is not shown.
+  switch (def.key) {
+    case "stages":
+      return {
+        screen: "stages",
+        ...EMPTY,
+        stageSlug: second ? second.toLowerCase() : null,
+        matchId,
+        round,
+        step: isToken(params.get(STEP_PARAM)),
+        unresolved: false,
+      };
+    case "teams":
+      return { screen: "teams", ...EMPTY, team: isCode(params.get(TEAM_PARAM)), region: isToken(params.get(REGION_PARAM)), unresolved: false };
+    case "schedule":
+      return {
+        screen: "schedule",
+        ...EMPTY,
+        matchId,
+        day: isDay(params.get(DAY_PARAM)),
+        filter: isToken(params.get(FILTER_PARAM))?.toLowerCase() ?? null,
+        unresolved: false,
+      };
+    default:
+      return { screen: def.key, ...EMPTY, unresolved: false };
   }
-  // The Overview has no selection of its own: a stray `match` is not shown.
-  return { screen: def.key, stageSlug: null, matchId: null, round: null, unresolved: false };
 }
 
 export interface Target {
@@ -101,6 +149,12 @@ export interface Target {
   stageKey?: string | null;
   matchId?: string | null;
   round?: number | null;
+  step?: string | null;
+  team?: string | null;
+  region?: string | null;
+  day?: string | null;
+  /** The Schedule filter, as a stage KEY ("play_in"); written as its slug. */
+  filterKey?: string | null;
 }
 
 /**
@@ -114,11 +168,21 @@ export function buildHref(base: string, target: Target, currentSearch = ""): str
   if (def.segment) segs.push(def.segment);
   if (def.key === "stages" && target.stageKey) segs.push(stageSlug(target.stageKey));
   const params = new URLSearchParams(currentSearch);
-  params.delete(MATCH_PARAM);
-  params.delete(ROUND_PARAM);
+  for (const k of OWNED) params.delete(k);
+  const set = (k: string, v: string | number | null | undefined) => {
+    if (v !== null && v !== undefined && v !== "") params.set(k, String(v));
+  };
   if (def.key === "stages") {
-    if (target.matchId) params.set(MATCH_PARAM, target.matchId);
-    if (target.round) params.set(ROUND_PARAM, String(target.round));
+    set(MATCH_PARAM, target.matchId);
+    set(ROUND_PARAM, target.round);
+    set(STEP_PARAM, target.step);
+  } else if (def.key === "teams") {
+    set(REGION_PARAM, target.region);
+    set(TEAM_PARAM, target.team);
+  } else if (def.key === "schedule") {
+    set(DAY_PARAM, target.day);
+    set(FILTER_PARAM, target.filterKey ? stageSlug(target.filterKey) : null);
+    set(MATCH_PARAM, target.matchId);
   }
   const qs = params.toString();
   return `/${segs.join("/")}${qs ? `?${qs}` : ""}`;

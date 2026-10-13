@@ -1,10 +1,10 @@
 /**
- * The Worlds experience shell (UX1 prototype): a tournament application, not
- * a long page.
+ * The Worlds experience shell (UX1 prototype; Teams and Schedule in UX2): a
+ * tournament application, not a long page.
  *
  * ONE FRAME, FIVE DESTINATIONS. A persistent command bar carries the event's
  * identity, the primary navigation (Overview · Stages · Teams · Schedule ·
- * Discover — the last three shown as the structure to come, not as links) and
+ * Discover, the last shown as the structure to come, not as a link) and
  * the event's live status. Beneath it one workspace holds the current screen;
  * moving between screens slides it in the direction of travel, and coming
  * back slides it the other way. On desktop the frame is exactly the viewport
@@ -40,7 +40,9 @@ import { ExperienceProvider, useExperience } from "./ExperienceContext";
 import { DURATION, OFFSET, slideTransition, slideVariants } from "./motion";
 import { OverviewScreen } from "./OverviewScreen";
 import { calendarDay, rovingKeys } from "./parts";
+import { ScheduleScreen } from "./ScheduleScreen";
 import { StagesScreen } from "./StagesScreen";
+import { TeamsScreen } from "./TeamsScreen";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -350,9 +352,9 @@ function CommandBar({ data, refreshFailed, badge, tools }: { data: TournamentRes
 const SCREEN_VIEW: Record<ScreenKey, () => ReactNode> = {
   overview: () => <OverviewScreen />,
   stages: () => <StagesScreen />,
+  teams: () => <TeamsScreen />,
+  schedule: () => <ScheduleScreen />,
   // Not routable in this build (`ready: false`); never rendered.
-  teams: () => null,
-  schedule: () => null,
   discover: () => null,
 };
 
@@ -423,7 +425,8 @@ function Announcer() {
   const [text, setText] = useState("");
   const screen = SCREENS.find((s) => s.key === x.loc.screen)?.label ?? "";
   const stage = x.stageKey ? stageOf(ctx, x.stageKey) : null;
-  const msg = stage ? `${screen}: ${stageLabel(stage)}` : screen;
+  const team = x.loc.team ? ctx.participants.find((p) => p.code === x.loc.team) : null;
+  const msg = stage ? `${screen}: ${stageLabel(stage)}` : team ? `${screen}: ${team.name || team.team_key}` : screen;
   useEffect(() => setText(msg), [msg]);
   return (
     <p className="sr-only" aria-live="polite" data-testid="announcer">
@@ -432,16 +435,17 @@ function Announcer() {
   );
 }
 
-/** Escape closes the match detail (desktop; the phone sheet handles its own). */
+/** Escape closes the open detail, a match or a team (desktop; the phone sheet handles its own). */
 function EscapeToClose() {
   const x = useExperience();
   useEffect(() => {
-    if (!x.desktop || !x.loc.matchId) return;
+    if (!x.desktop || !(x.loc.matchId || x.loc.team)) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
       const el = e.target instanceof Element ? e.target : null;
       if (el?.closest("input, textarea, select, [contenteditable='true'], [role='dialog'], [role='listbox'], [role='menu']")) return;
-      x.selectMatch(null);
+      if (x.loc.matchId) x.selectMatch(null);
+      else x.selectTeam(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -449,7 +453,7 @@ function EscapeToClose() {
   return null;
 }
 
-export default function WorldsExperience({ data, now, base, onRetry, retrying, refreshFailed, badge, tools, desktop }: {
+export default function WorldsExperience({ data, now, base, onRetry, retrying, refreshFailed, badge, tools, desktop, simulated = false }: {
   data: TournamentResponseV2;
   now: number;
   /** Where the experience is mounted ("/lol/dev/worlds-experience"). */
@@ -463,10 +467,12 @@ export default function WorldsExperience({ data, now, base, onRetry, retrying, r
   tools?: ReactNode;
   /** Pins the layout (tests); otherwise read from the viewport. */
   desktop?: boolean;
+  /** The data is simulated: results are marked as such wherever they show. */
+  simulated?: boolean;
 }) {
   return (
     <TournamentKitProvider ctx={data.context} state={data.state} now={now}>
-      <ExperienceProvider base={base} ctx={data.context} state={data.state} desktop={desktop}>
+      <ExperienceProvider base={base} ctx={data.context} state={data.state} desktop={desktop} simulated={simulated}>
         <Frame data={data} onRetry={onRetry} retrying={retrying} refreshFailed={refreshFailed} badge={badge} tools={tools} />
       </ExperienceProvider>
     </TournamentKitProvider>

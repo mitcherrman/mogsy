@@ -1,0 +1,16 @@
+[
+  {
+    "label": "in-feed C9 v KC (Play-In UB SF1, 15 Oct)",
+    "id": "115660588583171786",
+    "state": "shown",
+    "notice": null,
+    "url": "http://localhost:5272/lol/pro-play?next=115660588583171786"
+  },
+  {
+    "label": "out-of-feed Knockout Final (14 Nov)",
+    "id": "115660540726095133",
+    "state": "gone",
+    "notice": "The match in this link isn't in the current schedule response (it lists only the next few matches), so the latest match is shown instead.",
+    "url": "http://localhost:5272/lol/pro-play?next=115660540726095133"
+  }
+]

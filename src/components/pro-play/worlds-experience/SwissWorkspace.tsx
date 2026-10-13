@@ -15,15 +15,24 @@
  *
  * Without standings (no rounds) or with a format the map cannot reproduce,
  * the published page's Swiss stage is shown instead.
+ *
+ * STRUCTURE vs VERIFIED (UX2). A pool's size is written as "places" (the
+ * format's arithmetic); crests on it are teams on that record from verified
+ * results. The map says which is which.
+ *
+ * PHONE (UX2): the round's fixtures first, then the served records (or the
+ * seeding before a result); the progression map stays one tap away as
+ * "Explore the format".
  */
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import MatchStateBadge from "@/components/pro-play/hub/MatchStateBadge";
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import { useKit } from "@/components/pro-play/tournament/TournamentParts";
 import { SwissStage } from "@/components/pro-play/tournament/TournamentSwiss";
 import { localStart } from "@/lib/pro-play/hubSeries";
-import type { TournamentMatchV2 } from "@/lib/pro-play/tournamentApi";
+import type { SwissRecordV2, TournamentMatchV2 } from "@/lib/pro-play/tournamentApi";
 import { dayLabel, localDayKey } from "@/lib/pro-play/tournamentView";
 import {
   bothTbd,
@@ -149,7 +158,7 @@ function PoolNode({ pool, occupants, selected }: { pool: SwissPool; occupants: s
         <span className={cn("whitespace-nowrap text-[15px] font-bold tabular-nums leading-none", diff > 0 ? GOLD_TEXT : "text-foreground")}>
           {pool.wins}–{pool.losses}
         </span>
-        <span className="whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">{pool.teams} teams</span>
+        <span className="whitespace-nowrap text-[10px] tabular-nums text-muted-foreground" data-basis="structure" title="Places in the format">{pool.teams} places</span>
       </p>
       <Crests codes={occupants} />
     </div>
@@ -172,7 +181,7 @@ function OutcomeNode({ wins, losses, teams, result, occupants }: { wins: number;
         <span className={cn("whitespace-nowrap text-[13px] font-bold tabular-nums", result === "advanced" ? GOLD_TEXT : "text-foreground/60")}>
           {wins}–{losses}
         </span>
-        <span className="whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">{occupants.length ? `${occupants.length}/${teams}` : `${teams} teams`}</span>
+        <span className="whitespace-nowrap text-[10px] tabular-nums text-muted-foreground" data-basis="structure" title="Teams on this record / places in the format">{occupants.length ? `${occupants.length}/${teams}` : `${teams} places`}</span>
       </p>
       <Crests codes={occupants} />
     </div>
@@ -289,6 +298,106 @@ function RoundPairings({ round }: { round: SwissRound }) {
   );
 }
 
+/* ── phone: records first, the format on request ────────────────────────── */
+
+function PhoneRecords() {
+  const { state, byCode } = useKit();
+  const groups: { record: string; rows: SwissRecordV2[] }[] = [];
+  for (const r of state.swiss.records) {
+    const record = `${r.wins}–${r.losses}`;
+    const g = groups.find((x) => x.record === record);
+    if (g) g.rows.push(r);
+    else groups.push({ record, rows: [r] });
+  }
+  return (
+    <section className="space-y-2" aria-label="Records" data-testid="swiss-phone-records">
+      <p className="flex items-baseline justify-between text-[10.5px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+        Records
+        <span className="font-semibold normal-case tracking-normal">from verified results</span>
+      </p>
+      <ul className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08]">
+        {groups.map((g) => (
+          <li key={g.record} className="flex items-start gap-3 px-3 py-2.5" data-testid="phone-record-group" data-record={g.record}>
+            <span className="w-9 shrink-0 pt-1 text-sm font-bold tabular-nums">{g.record}</span>
+            <ul className="flex min-w-0 flex-wrap gap-1.5">
+              {g.rows.map((r) => {
+                const p = byCode.get(r.code);
+                return (
+                  <li
+                    key={r.code}
+                    data-team={r.code}
+                    data-status={r.status}
+                    className={cn(
+                      "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-1.5 text-xs font-semibold",
+                      r.status === "advanced" ? "border-[#c9a84c]/50 bg-[#c9a84c]/[0.08] text-[#f1dc9c]" : r.status === "eliminated" ? "border-white/10 text-foreground/50" : "border-white/10",
+                    )}
+                  >
+                    <TeamCrest teamKey={r.team_key} name={p ? displayName(p) : r.code} shortCode={r.code} size="xs" />
+                    {r.code}
+                    {r.status === "advanced" && <span className="text-[9px] uppercase tracking-[0.1em]">Through</span>}
+                    {r.status === "eliminated" && <span className="text-[9px] uppercase tracking-[0.1em]">Out</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
+      </ul>
+      <p className="text-[11px] text-muted-foreground">No tiebreak order is published, so teams on one record are not ranked.</p>
+    </section>
+  );
+}
+
+function PhoneFormat({ map, round, occ }: { map: SwissPoolMap; round: number; occ: Map<string, string[]> }) {
+  const [open, setOpen] = useState(false);
+  const r = map.rounds.find((p) => p.round === round);
+  return (
+    <section className="rounded-xl border border-white/[0.08]" data-testid="swiss-phone-format">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        data-testid="swiss-format-toggle"
+        className="flex min-h-12 w-full items-center justify-between gap-3 px-3 text-left text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c9a84c]"
+      >
+        <span>
+          Explore the format
+          <span className="block text-[11px] font-normal text-muted-foreground">Round {round}'s record pools and where each result leads</span>
+        </span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none", open && "rotate-180")} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="space-y-3 border-t border-white/[0.06] p-3" data-testid="swiss-format-body">
+          {r && (
+            <div className="grid grid-cols-2 gap-2" data-testid="swiss-round-pools">
+              {r.pools.map((p) => (
+                <PoolNode key={poolId(p.wins, p.losses)} pool={p} occupants={occ.get(poolId(p.wins, p.losses)) ?? []} selected />
+              ))}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {[...map.advanced, ...map.eliminated].map((o) => (
+              <OutcomeNode key={outcomeId(o.wins, o.losses)} {...o} occupants={occ.get(outcomeId(o.wins, o.losses)) ?? []} />
+            ))}
+          </div>
+          <SwissLegend />
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Which marks are the format and which are verified results. */
+function SwissLegend() {
+  return (
+    <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground" data-testid="swiss-legend">
+      <span><b className="font-semibold text-foreground/75">places</b>: the format's arithmetic</span>
+      <span><b className="font-semibold text-foreground/75">crests</b>: teams on that record from verified results</span>
+      <span>wins solid, losses dashed</span>
+    </p>
+  );
+}
+
 /* ── workspace ──────────────────────────────────────────────────────────── */
 
 function useRound(rounds: SwissRound[]) {
@@ -369,35 +478,30 @@ export function SwissWorkspace() {
   }
 
   if (!x.desktop) {
-    const r = map.rounds.find((p) => p.round === selected.round);
     return (
-      <div className="space-y-4" data-testid="swiss-phone">
-        {kit.state.swiss.records.length === 0 && (
-          <div className="grid grid-cols-2 gap-2" data-testid="swiss-seeds">
-            {tiers.map((t) => (
-              <div key={t.tier} className="rounded-xl border border-white/[0.08] bg-[hsl(214_45%_9%)] px-2.5 py-2" data-testid="swiss-tier" data-tier={t.tier}>
-                <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#c9a84c]">Tier {t.tier}</p>
-                <p className="mt-1 text-xs font-semibold text-foreground/85">{t.teams.map((p) => p.code).join(" · ")}{t.tier === tiers[tiers.length - 1].tier ? " · PI" : ""}</p>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="space-y-5" data-testid="swiss-phone">
         <RoundTabs rounds={rounds} selected={selected.round} />
-        {r && (
-          <div className="grid grid-cols-2 gap-2" data-testid="swiss-round-pools">
-            {r.pools.map((p) => (
-              <PoolNode key={poolId(p.wins, p.losses)} pool={p} occupants={occ.get(poolId(p.wins, p.losses)) ?? []} selected />
-            ))}
-          </div>
-        )}
         <RoundPairings round={selected} />
-        {(kit.state.swiss.records.some((rec) => rec.status !== "active")) && (
-          <div className="grid grid-cols-2 gap-2">
-            {[...map.advanced, ...map.eliminated].map((o) => (
-              <OutcomeNode key={outcomeId(o.wins, o.losses)} {...o} occupants={occ.get(outcomeId(o.wins, o.losses)) ?? []} />
-            ))}
-          </div>
+        {kit.state.swiss.records.length > 0 ? (
+          <PhoneRecords />
+        ) : (
+          <section className="space-y-2" aria-label="Seeding">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Seeding</p>
+            <div className="grid grid-cols-2 gap-2" data-testid="swiss-seeds">
+              {tiers.map((t) => (
+                <div key={t.tier} className="rounded-xl border border-white/[0.08] bg-[hsl(214_45%_9%)] px-2.5 py-2" data-testid="swiss-tier" data-tier={t.tier}>
+                  <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#c9a84c]">Tier {t.tier}</p>
+                  <p className="mt-1 text-xs font-semibold text-foreground/85">
+                    {t.teams.map((p) => p.code).join(" · ")}
+                    {t.tier === tiers[tiers.length - 1].tier ? " · PI" : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">Records appear from the first verified result. PI is the Play-In winner's place.</p>
+          </section>
         )}
+        <PhoneFormat map={map} round={selected.round} occ={occ} />
       </div>
     );
   }
@@ -471,9 +575,7 @@ export function SwissWorkspace() {
           {kit.state.swiss.unverified_completed_matches > 0 && " Some completed results are pending verification and are not counted yet."}
         </p>
       )}
-      {kit.state.swiss.records.length === 0 && (
-        <p className="text-[11px] text-muted-foreground">Pools show the format: teams appear on them from the first verified result. Win paths are solid, loss paths dashed.</p>
-      )}
+      <SwissLegend />
     </div>
   );
 }

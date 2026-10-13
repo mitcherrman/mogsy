@@ -8,10 +8,19 @@
  * (upstream's slot edges, each one a link to that match), what the result
  * does (the routes upstream draws, or the stage's own rules where a side has
  * no route), and when / where. No history, form or prediction.
+ *
+ * CONSEQUENCE, NOT VERDICT (UX1 decision 7). Before a match is decided its
+ * rows read "If they win" / "If they lose": nobody is called eliminated
+ * before the result exists. Once completed they read "Winner" / "Loser".
+ *
+ * ONE DETAIL, EVERY SCREEN (UX2). The same component serves Stages and
+ * Schedule (and their phone sheets); its footer offers the other place the
+ * match lives, and a side's code opens that team in Teams. Simulated data
+ * is marked in the header.
  */
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, Clock, MapPin, Trophy, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarDays, Clock, FlaskConical, GitBranch, MapPin, Trophy, X } from "lucide-react";
 
 import MatchStateBadge from "@/components/pro-play/hub/MatchStateBadge";
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
@@ -19,7 +28,6 @@ import { useKit } from "@/components/pro-play/tournament/TournamentParts";
 import { countdown, localStart } from "@/lib/pro-play/hubSeries";
 import { proPlayProfileUrl } from "@/lib/pro-play/routes";
 import type { TournamentMatchTeamV2, TournamentMatchV2, TournamentStageV2 } from "@/lib/pro-play/tournamentApi";
-import { matchHref } from "@/lib/pro-play/tournamentView";
 import {
   awaitingDraw,
   displayName,
@@ -31,10 +39,12 @@ import {
   teamName,
 } from "@/lib/pro-play/tournamentV2View";
 import { matchOnward, stageStakes, swissMatchStakes, type Onward } from "@/lib/pro-play/worldsExperience/experienceView";
+import { matchDay } from "@/lib/pro-play/worldsExperience/scheduleView";
 import { stageLabel } from "@/lib/pro-play/worldsExperience/navigation";
 import { cn } from "@/lib/utils";
 
 import { useExperience } from "./ExperienceContext";
+import { useMatchCentreLink, type MatchCentreLink } from "./matchCentreLink";
 import { Eyebrow, Figure, GOLD_TEXT, SideMark, calendarDay } from "./parts";
 
 /* ── match ──────────────────────────────────────────────────────────────── */
@@ -78,16 +88,39 @@ function Side({ team, match }: { team: TournamentMatchTeamV2; match: TournamentM
     <li className={cn("flex items-center gap-3 py-2.5", outcome === "loss" && "opacity-60")} data-testid="detail-side" data-team={team.code}>
       <TeamCrest teamKey={team.team_key} name={teamName(team, kit.byCode)} shortCode={team.code} size="md" />
       <span className="min-w-0 flex-1">
-        <span className={cn("block text-base font-bold leading-tight", outcome === "win" ? GOLD_TEXT : "text-foreground")}>{team.code}</span>
+        <button
+          type="button"
+          // A side is a registry team only when code and canonical key agree.
+          disabled={!p || p.team_key !== team.team_key}
+          onClick={() => x.selectTeam(team.code)}
+          aria-label={`Open ${teamName(team, kit.byCode)} in Teams`}
+          data-testid="detail-team-link"
+          className={cn(
+            "block text-base font-bold leading-tight underline decoration-transparent underline-offset-2 outline-none transition-colors hover:decoration-[#c9a84c] focus-visible:ring-2 focus-visible:ring-[#c9a84c]",
+            outcome === "win" ? GOLD_TEXT : "text-foreground",
+          )}
+        >
+          {team.code}
+        </button>
         <span className="block truncate text-xs text-foreground/80">{teamName(team, kit.byCode)}</span>
         {meta && <span className="block truncate text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground">{meta}</span>}
       </span>
+      {p && p.team_key === team.team_key && (
+        <Link
+          to={proPlayProfileUrl("team", p.team_key)}
+          aria-label={`${teamName(team, kit.byCode)} profile`}
+          data-testid="detail-profile-link"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-white/[0.06] hover:text-[#e3c66f] focus-visible:ring-2 focus-visible:ring-[#c9a84c]"
+        >
+          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      )}
       {started && <span className={cn("text-3xl font-extrabold tabular-nums", outcome === "win" ? GOLD_TEXT : "text-foreground/85")} data-testid="detail-score">{team.game_wins}</span>}
     </li>
   );
 }
 
-function OnwardLine({ who, onward }: { who: "Winner" | "Loser"; onward: Onward | null }) {
+function OnwardLine({ who, onward, settled }: { who: "Winner" | "Loser"; onward: Onward | null; settled: boolean }) {
   const kit = useKit();
   const x = useExperience();
   if (!onward) return null;
@@ -114,24 +147,30 @@ function OnwardLine({ who, onward }: { who: "Winner" | "Loser"; onward: Onward |
   }
   return (
     <li className="flex items-center justify-between gap-3 py-2" data-testid={`onward-${who.toLowerCase()}`} data-kind={onward.kind}>
-      <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{who}</span>
+      <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground" data-testid="onward-label">{rowLabel(who, settled)}</span>
       <span className="text-sm">{body}</span>
     </li>
   );
 }
 
+/** "If they lose" until the result exists; "Loser" once it does. */
+const rowLabel = (who: "Winner" | "Loser", settled: boolean) => (settled ? who : who === "Winner" ? "If they win" : "If they lose");
+
 export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onClose?: () => void }) {
   const kit = useKit();
+  const x = useExperience();
+  const settled = match.state === "completed";
+  const day = matchDay(match);
   const stage = stageOf(kit.ctx, match.stage);
   const name = kit.names.get(match.match_id);
   const ref = matchRef(match, kit.names);
-  const href = matchHref(match);
+  const centre = useMatchCentreLink(match);
+  const href = centre.href;
   const onward = matchOnward(match, kit.state, kit.ctx);
   const swiss = swissMatchStakes(match, kit.state);
   const drawn = awaitingDraw(match) && match.teams.some((t) => t.slot?.kind === "draw");
   const when = localStart(match.scheduled_start);
   const until = match.state === "upcoming" ? countdown(match.scheduled_start, kit.now) : null;
-  const named = match.teams.filter((t) => !t.tbd && t.team_key);
   return (
     <article className="flex h-full min-h-0 flex-col" data-testid="match-detail" data-match-id={match.match_id} aria-labelledby="match-detail-title">
       <header className="flex items-start gap-3 border-b border-white/[0.07] px-5 pb-4 pt-5">
@@ -142,7 +181,17 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
           </h3>
           {ref && name && ref !== name && <p className="mt-0.5 text-xs font-medium text-muted-foreground">{name}</p>}
         </div>
-        <MatchStateBadge state={match.state} size="sm" className="mt-0.5" />
+        <span className="mt-0.5 flex flex-col items-end gap-1.5">
+          <MatchStateBadge state={match.state} size="sm" />
+          {x.simulated && match.state !== "upcoming" && (
+            <span
+              data-testid="detail-simulated"
+              className="inline-flex items-center gap-1 rounded border border-amber-400/50 px-1.5 py-[2px] text-[9px] font-bold uppercase tracking-[0.12em] text-amber-200"
+            >
+              <FlaskConical className="h-2.5 w-2.5" aria-hidden="true" /> Simulated
+            </span>
+          )}
+        </span>
         {onClose && (
           <button
             type="button"
@@ -181,8 +230,8 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
           <section className="space-y-1" data-testid="detail-onward">
             <Eyebrow tone="muted">What the result decides</Eyebrow>
             <ul className="divide-y divide-white/[0.06]">
-              <OnwardLine who="Winner" onward={onward.winner} />
-              <OnwardLine who="Loser" onward={onward.loser} />
+              <OnwardLine who="Winner" onward={onward.winner} settled={settled} />
+              <OnwardLine who="Loser" onward={onward.loser} settled={settled} />
             </ul>
           </section>
         )}
@@ -190,27 +239,57 @@ export function MatchDetail({ match, onClose }: { match: TournamentMatchV2; onCl
           <section className="space-y-1" data-testid="detail-swiss-stakes">
             <Eyebrow tone="muted">Played at {swiss.record}</Eyebrow>
             <ul className="divide-y divide-white/[0.06] text-sm">
-              <li className="flex justify-between py-2"><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Winner</span><span className={cn("font-semibold", swiss.winner === "advances" && GOLD_TEXT)}>{swiss.winner === "advances" ? "Advances" : `Moves to ${swiss.winner}`}</span></li>
-              <li className="flex justify-between py-2"><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Loser</span><span className="font-semibold text-foreground/75">{swiss.loser === "eliminated" ? "Eliminated" : `Drops to ${swiss.loser}`}</span></li>
+              <li className="flex justify-between py-2"><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{rowLabel("Winner", settled)}</span><span className={cn("font-semibold", swiss.winner === "advances" && GOLD_TEXT)}>{swiss.winner === "advances" ? "Advances" : `Moves to ${swiss.winner}`}</span></li>
+              <li className="flex justify-between py-2"><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{rowLabel("Loser", settled)}</span><span className="font-semibold text-foreground/75">{swiss.loser === "eliminated" ? "Eliminated" : `Drops to ${swiss.loser}`}</span></li>
             </ul>
           </section>
         )}
       </div>
-      {(href || named.length > 0) && (
-        <footer className="flex flex-wrap items-center gap-2 border-t border-white/[0.07] px-5 py-3">
-          {href && (
-            <Link to={href} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[linear-gradient(180deg,#e9cf7d,#c9a84c)] px-3.5 text-sm font-semibold text-[#14110a] outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]" data-testid="detail-match-centre">
-              Match centre <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </Link>
-          )}
-          {named.map((t) => (
-            <Link key={t.code} to={proPlayProfileUrl("team", t.team_key as string)} className="inline-flex min-h-10 items-center rounded-lg border border-white/12 px-3 text-xs font-semibold text-foreground/85 hover:border-[#c9a84c]/50">
-              {t.code} profile
-            </Link>
-          ))}
-        </footer>
-      )}
+      <footer className="flex flex-wrap items-center gap-2 border-t border-white/[0.07] px-5 py-3" data-testid="detail-footer" data-match-centre={centre.state}>
+        {href && (
+          <Link to={href} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[linear-gradient(180deg,#e9cf7d,#c9a84c)] px-3.5 text-sm font-semibold text-[#14110a] outline-none focus-visible:ring-2 focus-visible:ring-[#e3c66f]" data-testid="detail-match-centre">
+            Match centre <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        )}
+        {x.loc.screen !== "stages" && stage && (
+          <button
+            type="button"
+            onClick={() => x.go({ screen: "stages", stageKey: stage.key, matchId: match.match_id })}
+            data-testid="detail-open-stage"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#c9a84c]/35 bg-[#c9a84c]/[0.06] px-3 text-xs font-semibold text-[#e3c66f] outline-none hover:bg-[#c9a84c]/[0.12] focus-visible:ring-2 focus-visible:ring-[#c9a84c]"
+          >
+            <GitBranch className="h-3.5 w-3.5" aria-hidden="true" /> Show in {stageLabel(stage)}
+          </button>
+        )}
+        {x.loc.screen !== "schedule" && day && (
+          <button
+            type="button"
+            onClick={() => x.go({ screen: "schedule", day, matchId: match.match_id })}
+            data-testid="detail-open-schedule"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#c9a84c]/35 bg-[#c9a84c]/[0.06] px-3 text-xs font-semibold text-[#e3c66f] outline-none hover:bg-[#c9a84c]/[0.12] focus-visible:ring-2 focus-visible:ring-[#c9a84c]"
+          >
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" /> Show in Schedule
+          </button>
+        )}
+        <MatchCentreNote link={centre} />
+      </footer>
     </article>
+  );
+}
+
+/** Why there is no Match Centre button for a fixture that would otherwise have one. */
+function MatchCentreNote({ link }: { link: MatchCentreLink }) {
+  if (link.href || link.state === "none") return null;
+  const text =
+    link.state === "checking"
+      ? "Checking the Match Centre's schedule…"
+      : link.state === "unavailable"
+        ? "The Match Centre's schedule isn't answering right now."
+        : "This fixture isn't in the Match Centre's upcoming list yet (it lists the next few matches). It can be opened there closer to the start.";
+  return (
+    <p className="w-full text-[11px] leading-snug text-muted-foreground" data-testid="match-centre-note" data-state={link.state}>
+      {text}
+    </p>
   );
 }
 

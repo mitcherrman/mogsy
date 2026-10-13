@@ -112,6 +112,7 @@ function Loaded({ data, now, simulated, label, scenario, onRetry, retrying, refr
         retrying={retrying}
         refreshFailed={refreshFailed}
         badge={simulated ? <SimulatedBadge label={label} /> : undefined}
+        simulated={simulated}
         tools={<ScenarioPicker current={scenario} inline />}
       />
     </ProPlayMediaProvider>
