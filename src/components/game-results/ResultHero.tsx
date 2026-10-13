@@ -64,7 +64,7 @@ export function ResultHero({ model, reserveScore = false }: {
     <header
       data-testid="result-hero"
       data-state={model.state}
-      className="ranked-panel space-y-3 px-4 py-6 text-center"
+      className="ranked-panel space-y-3 px-4 py-6 text-center animate-in fade-in duration-300 motion-reduce:animate-none"
     >
       <MogzyMascot pose={STATE_POSE[model.state]} decorative
         className="mx-auto h-20 w-20 sm:h-24 sm:w-24" />
