@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import RankedArenaInspector from "./RankedArenaInspector";
 
@@ -12,6 +12,19 @@ describe("RankedArenaInspector", () => {
     // Default "Level 1" state renders canonical combatant panels (hp-<id>).
     expect(screen.getByTestId("hp-you")).toBeInTheDocument();
     expect(screen.getByTestId("hp-opp")).toBeInTheDocument();
+  });
+
+  it("replays the discovery ceremony without a match or persistence", () => {
+    render(<RankedArenaInspector />);
+    fireEvent.click(screen.getByTestId("inspector-state-discovery-reveal"));
+    expect(screen.getByTestId("discovery-reveal")).toBeInTheDocument();
+    expect(screen.getByTestId("discovery-reveal")).toHaveAttribute("data-new-count", "3");
+    const firstStage = screen.getByTestId("inspector-replay-stage");
+    fireEvent.click(screen.getByTestId("inspector-replay"));
+    const nextStage = screen.getByTestId("inspector-replay-stage");
+    expect(nextStage).not.toBe(firstStage);
+    expect(screen.getByTestId("discovery-reveal")).toBeInTheDocument();
+    expect(screen.getByTestId("discovery-reveal")).toHaveAttribute("data-new-count", "3");
   });
 
   it("imports no gameplay engine / controller / client / service", () => {
