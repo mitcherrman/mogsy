@@ -50,7 +50,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import type { DuelEventView, DuelStanding } from "@/lib/ranked-core/duelState";
-import { MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
+import { CENTRAL_STAGE_BOX, MODULE_TITLE_MS } from "@/lib/ranked-core/centralStage";
 import type { CentralStageView } from "@/lib/ranked-core/centralStage";
 import type { TimerView } from "@/lib/ranked-core/viewTypes";
 
@@ -188,8 +188,7 @@ export function CentralStage({
       // one face, and which face is up is observable without reading text.
       data-testid="timer-display"
       data-stage={stage.kind}
-      className="relative flex h-[4.25rem] min-w-[9rem] flex-col items-center
-        justify-center text-center sm:min-w-[11rem] min-[1500px]:h-[5rem]"
+      className={CENTRAL_STAGE_BOX}
     >
       {/* ONE WINDOW, THREE FACES, AND THE SAME TWO LINES EACH.
           The faces used to differ in SHAPE and not only in content: the clock

@@ -80,7 +80,8 @@ function breakdownPart(r: ReconstructChallengeReveal, part: ReconstructPartView)
       label: s.label, media: reconstructMedia(s.media), quantity: s.quantity, valueDisplay: s.valueDisplay,
     })),
     joinDisplay: !basic && part.combineDisplay !== null ? `+ ${part.combineDisplay} to combine` : null,
-    annotation: matched < part.quantity ? `${matched}/${part.quantity} placed` : null,
+    // A timed-out player placed nothing: there is no count to report.
+    annotation: !r.timedOut && matched < part.quantity ? `${matched}/${part.quantity} placed` : null,
   };
 }
 
@@ -92,13 +93,25 @@ function breakdownEquation(t: ReconstructRecipeTarget | null): ReconstructEquati
   return { terms, result: { label: t.label, valueDisplay: t.totalDisplay } };
 }
 
+/**
+ * RECONSTRUCT-R3C — a timed-out board's sockets: the server's canonical parts,
+ * in the server's order, one socket per copy. A field mapping (each part
+ * `quantity` times); empty when the copies do not fill the board exactly, so a
+ * malformed recipe draws the breakdown alone rather than a wrong board.
+ */
+function canonicalSockets(r: ReconstructChallengeReveal, slotCount: number): string[] {
+  const tokens = r.canonicalParts.flatMap((p) => Array.from({ length: p.quantity }, () => p.pieceId));
+  return tokens.length === slotCount ? tokens : [];
+}
+
 /** The server's reveal -> the primitive's. Every figure is the server's. */
-export function toReconstructReveal(r: ReconstructChallengeReveal): ReconstructReveal {
+export function toReconstructReveal(r: ReconstructChallengeReveal, slotCount?: number): ReconstructReveal {
   return {
     placement: r.placement,
     slotCorrect: r.slotCorrect,
-    settled: r.settledPlacement,
+    settled: r.timedOut ? canonicalSockets(r, slotCount ?? 0) : r.settledPlacement,
     isCorrect: r.isCorrect,
+    ...(r.timedOut ? { timedOut: true } : {}),
     evidence: {
       parts: r.canonicalParts.map((p) => breakdownPart(r, p)),
       equation: breakdownEquation(r.target),
@@ -132,7 +145,8 @@ function ReconstructPhase({ state, actions, skewMs, roundStartedAt }: {
 
   const revealRow = state.ownChallengeReveals.find((r) => r.challengeIndex === CHALLENGE_INDEX);
   const served = revealRow?.reconstruct ?? null;
-  const reveal = useMemo(() => (served ? toReconstructReveal(served) : null), [served]);
+  const reveal = useMemo(
+    () => (served ? toReconstructReveal(served, block?.slotCount) : null), [served, block?.slotCount]);
 
   // The server's echo of an accepted lock survives a refresh.
   const echoed = state.ownSubmittedChoices[CHALLENGE_INDEX];
@@ -178,7 +192,10 @@ function ReconstructPhase({ state, actions, skewMs, roundStartedAt }: {
       <p className={`h-4 truncate text-center text-xs leading-4 text-muted-foreground ${phase === "open" ? "invisible" : ""}`}
         role="status" aria-hidden={phase === "open" ? true : undefined}
         data-testid="reconstruct-opponent-progress">
-        {phase === "open" ? "" : state.opponentFinished
+        {phase === "open" ? "" : served?.timedOut
+          // R3C: the viewer never locked, so "both players" would be false.
+          ? "Time ran out before you locked in."
+          : state.opponentFinished
           ? "Both players have locked in."
           : "Waiting for the opponent to lock in…"}
       </p>

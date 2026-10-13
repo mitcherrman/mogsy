@@ -201,7 +201,7 @@ export function MobileMatchBar({ left, right, header, progressionEnabled, classN
 }) {
   return (
     <section data-testid="ranked-mobile-matchbar" aria-label="Match"
-      className={`ranked-panel flex items-center gap-0.5 px-1 py-1 ${className}`}>
+      className={`ranked-panel ranked-matchbar flex items-center gap-0.5 px-1 py-1 ${className}`}>
       <div className="min-w-0 flex-1 basis-0"><Side rail={left} progressionEnabled={progressionEnabled} /></div>
       <Clock timer={header.timer} header={header} />
       <div className="min-w-0 flex-1 basis-0"><Side rail={right} progressionEnabled={progressionEnabled} /></div>

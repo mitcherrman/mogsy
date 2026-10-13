@@ -36,7 +36,9 @@
  *
  * KEYBOARD. Two tab stops (tray, sockets) plus Lock. Arrows (and Home/End) move
  * inside a group. Focus never moves on its own: every control keeps its
- * element across a placement.
+ * element across a placement. The one exception is the Lock itself, which
+ * unmounts the pressed button: a lock made from the board lands focus on the
+ * prompt heading instead of dropping it to <body> (R3A).
  *
  * QUANTITY. A choice shows how many copies are PLACED (×1, ×2…) and nothing
  * else: the reuse limit is enforced, never drawn, so nothing on screen says how
@@ -52,6 +54,22 @@
  * part (art, name, figure, what it is made of, the joining term) and a closing
  * equation. `onRevealComplete` tells the host when the choreography has ended.
  *
+ * R3C — A TIMED-OUT REVEAL (`reveal.timedOut`). The player locked nothing, so
+ * no socket gets a mark or a "your pick": the sockets stay empty through the
+ * marks stage, the answer settles in on the same clock (tagged "Answer"), the
+ * breakdown follows, and the verdict line says TIMED OUT. Nothing on the board
+ * is drawn as a choice the player made.
+ *
+ * R3A — THE BREAKDOWN IS ONE CONNECTED CALCULATION. One LEDGER ROW per part
+ * (name, quantity pill, figure on the right; a built part adds one indented
+ * line of what it is made of and its combining term), then the equation
+ * directly beneath, as a card of the same surface. Rows and equation take the
+ * tray's own card tokens (`SURFACE`), surface and ink chosen together, so the
+ * revealed board is the unanswered board's card family in both app themes.
+ * The list keeps its natural height inside the fixed region (the equation
+ * follows the last row, not the region's floor); only a build too tall for
+ * the region scrolls, inside the list, with the equation pinned.
+ *
  * FIXED GEOMETRY (R1, re-measured per animation frame in R2). Every phase draws
  * the same boxes at the same size: the target header, the sockets with their
  * two-line labels, the status line, and ONE stage region of fixed height that
@@ -66,11 +84,11 @@
  * `data-state` / `data-mark` on the parts. There are no styling props.
  */
 import {
-  useEffect, useId, useMemo, useRef, useState,
-  type KeyboardEvent, type PointerEvent as ReactPointerEvent, type Ref,
+  useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
+  type KeyboardEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type Ref, type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { Check, Lock, X } from "lucide-react";
+import { Check, Lock, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import type {
@@ -141,11 +159,44 @@ const DRAG_THRESHOLD_PX = 6;
 /** How far beyond the socket row a drop still lands (px). */
 const DROP_SLACK = { x: 28, y: 64 };
 
-/** Off-arena legibility; a host scene's own paint (via the data hooks) takes over. */
-const SURFACE = "border-[#7a6236]/55 bg-[#f4e9cc] text-[#2c2417] dark:bg-card dark:text-foreground";
-const FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1";
+/**
+ * ONE surface, ONE ink, for every card the primitive draws (tray choices,
+ * sockets, breakdown rows, the closing equation).
+ *
+ * R3A — the owner's "dark-gray cards with dark-brown text". The breakdown's
+ * cards painted `dark:bg-card/60` (a theme token: navy-gray in the dark app
+ * theme) while every word inside them took `--ranked-ink` (the parchment's
+ * fixed dark brown). Two token systems on one box: 1.5–3.0:1 in the dark theme
+ * (measured), fine in the light one, which is why it was only ever seen live.
+ * The tray cards beside it used the theme pair (`dark:bg-card` +
+ * `dark:text-foreground`) correctly, so the unanswered and revealed boards
+ * disagreed. Now a card's surface and its ink are chosen TOGETHER, here, and
+ * the revealed rows are the same card as the tray's.
+ */
+const CARD_FILL = "bg-[#f4e9cc] text-[#2c2417] dark:bg-card dark:text-foreground";
+const SURFACE = `border-[#7a6236]/55 ${CARD_FILL}`;
+/** Ink for text drawn ON a `SURFACE` card: strong, and the muted step. */
+const CARD_INK = "text-[#2c2417] dark:text-foreground";
+const CARD_MUTED = "text-[#5a4a2e] dark:text-foreground/75";
+/**
+ * Focus: a dark ring (13:1 on the vellum) with a parchment gap, visible against
+ * the always-light folio in both app themes. The theme's `ring-primary` blue is
+ * 2.5:1 (light theme) / 2.1:1 (dark theme) on #f4e9cc, below the 3:1 non-text
+ * floor.
+ */
+const FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-[#2a2110] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f4e9cc]";
+/** Text drawn straight on the folio (target, prompt, labels, status). */
 const INK = "text-[var(--ranked-ink,#2c2417)]";
 const MUTED = "text-[var(--ranked-ink-muted,#5a4a2e)]";
+/**
+ * Correctness, as fixed values rather than the theme's `emerald-500` (2.1:1 on
+ * #f4e9cc) and `destructive` (4.1:1 in the light theme, 3.1:1 in the dark one):
+ * these are 4.5:1 and 5.4:1, and every mark also carries a glyph and a word.
+ */
+const RIGHT_BG = "bg-[#047857]";
+const WRONG_BG = "bg-[#b91c1c]";
+const RIGHT_RING = "ring-[#047857]";
+const WRONG_RING = "ring-[#b91c1c]";
 
 // ------------------------------------------------------------------ reveal clock
 
@@ -167,6 +218,27 @@ function useRevealStage(plan: ReconstructPlan, active: boolean, key: string): Re
   return run && run.key === key ? run.stage : stageAt(plan, 0);
 }
 
+/**
+ * True while `ref`'s box scrolls (its content is taller than it). Used only to
+ * make the breakdown list a keyboard-reachable scroller in the one case it can
+ * scroll: a four-part build on the shortest phones. Reads layout, writes
+ * nothing to it.
+ */
+function useScrolls(ref: RefObject<HTMLElement>, active: boolean): boolean {
+  const [scrolls, setScrolls] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!active || !el) { setScrolls(false); return; }
+    const measure = () => setScrolls(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, active]);
+  return scrolls;
+}
+
 // ----------------------------------------------------------------------- pieces
 
 function MarkBadge({ right, animate }: { right: boolean; animate: boolean }) {
@@ -174,7 +246,7 @@ function MarkBadge({ right, animate }: { right: boolean; animate: boolean }) {
     <span aria-hidden data-part="mark" data-mark={right ? "right" : "wrong"}
       style={animate ? { animationDuration: `${RECONSTRUCT_TIMING.marksTween}ms` } : undefined}
       className={`absolute -right-1.5 -top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#f4e9cc] text-white ${
-        right ? "bg-emerald-600" : "bg-destructive"} ${
+        right ? RIGHT_BG : WRONG_BG} ${
         animate ? "animate-in fade-in zoom-in-50 fill-mode-both" : ""}`}>
       {right ? <Check className="!size-3.5" /> : <X className="!size-3.5" />}
     </span>
@@ -194,85 +266,101 @@ function PickBadge({ option, slot, shown, animate, delay }: {
       title={option ? `Your pick: ${option.label}` : undefined}
       style={shown && animate
         ? { animationDuration: `${RECONSTRUCT_TIMING.settleTween}ms`, animationDelay: `${delay}ms` } : undefined}
-      className={`absolute -left-2 -top-2 z-10 h-7 w-7 overflow-hidden rounded-md border-2 border-destructive bg-[#f4e9cc] shadow ${
+      className={`absolute -left-2 -top-2 z-10 h-7 w-7 overflow-hidden rounded-md border-2 border-[#b91c1c] bg-[#f4e9cc] shadow ${
         shown ? "" : "invisible"} ${shown && animate ? "animate-in fade-in zoom-in-150 fill-mode-both" : ""}`}>
       <SubjectArt media={option?.media} monogram={(option?.label ?? "?").slice(0, 1)}
         className="h-full w-full opacity-80 [&_span]:!text-[10px]" />
-      <X className="absolute inset-0 m-auto !size-5 text-destructive drop-shadow" />
+      <X className="absolute inset-0 m-auto !size-5 text-[#b91c1c] drop-shadow" />
       <span className="sr-only">{`Your pick: ${option?.label ?? ""}`}</span>
     </span>
   );
 }
 
-/** One canonical part of the breakdown: what it is, its figure, what it is made of. */
-function BreakdownBlock({ part, option, dense }: {
+/**
+ * One canonical part of the breakdown, drawn as a LEDGER ROW (R3A).
+ *
+ * R2 laid the parts out as side-by-side cards, which on a 4-part build left
+ * each ~130px wide: names, captions and sub-part names were ellipsised (9
+ * truncated spans at 1440x900, measured) while a basic part used a card as tall
+ * as a built one. A row spends the width the board has: the part's name and
+ * figure on one line (the figure right-aligned, so a column of figures reads
+ * as a sum), and, only when the part is itself built, one indented line of
+ * what it is made of, ending in its combining term. Hierarchy is size, weight
+ * and the guide rule: the part is 14px bold beside 36px art; its sub-parts are
+ * 12px beside 16px art, under a rule.
+ *
+ * Every string is the host's and every figure is a server string; the
+ * `data-testid` hooks are unchanged from R2.
+ */
+function BreakdownBlock({ part, option }: {
   part: ReconstructBreakdownPart; option: AssemblyOption | undefined;
-  /** Four blocks share the row: small art, so the name keeps the width. */
-  dense: boolean;
 }) {
   const label = option?.label ?? "";
   const many = part.quantity > 1;
+  const built = part.children.length > 0 || Boolean(part.joinDisplay);
   return (
     <li data-part="breakdown-part" data-testid={`reconstruct-evidence-${part.token}`}
-      className="relative flex min-w-0 list-none flex-col gap-1 overflow-hidden rounded-lg border border-[#7a6236]/40 bg-[#fbf3dc]/70 p-1.5 sm:p-2 lg:[@media(max-height:719px)]:gap-0.5 lg:[@media(max-height:719px)]:p-1.5 dark:bg-card/60">
-      <span className={`flex min-w-0 items-center ${dense ? "gap-1.5" : "gap-2"}`}>
-        <SubjectArt media={option?.media} monogram={label.slice(0, 1)}
-          className={`h-8 w-8 shrink-0 rounded-md ring-1 ring-[#7a6236]/50 ${dense ? "" : "sm:h-11 sm:w-11 sm:[@media(min-height:800px)]:h-[52px] sm:[@media(min-height:800px)]:w-[52px]"} lg:[@media(max-height:719px)]:h-8 lg:[@media(max-height:719px)]:w-8 [&_span]:!text-sm`} />
-        <span className="flex min-w-0 flex-col">
-          <span className="flex min-w-0 items-baseline gap-1">
-            {/* Whole words only (a name never breaks mid-word); one line when the stage is short. */}
-            <span title={label} className={`line-clamp-2 min-w-0 break-normal text-[13px] font-bold leading-tight sm:text-[14px] sm:[@media(min-height:800px)]:text-[15px] lg:[@media(max-height:719px)]:line-clamp-1 ${INK}`}>{label}</span>
-            {many && (
-              <span data-part="quantity" data-testid={`reconstruct-evidence-qty-${part.token}`}
-                className="shrink-0 rounded-sm bg-[#2c2417]/10 px-1 text-[12px] font-black tabular-nums leading-4">
-                {`×${part.quantity}`}
-              </span>
-            )}
-          </span>
-          {part.valueDisplay !== null && (
-            <span data-testid={`reconstruct-evidence-value-${part.token}`}
-              className={`truncate text-[12.5px] font-semibold tabular-nums leading-tight sm:text-[13px] ${INK}`}>
-              {many && part.lineTotalDisplay ? `${part.valueDisplay} each · ${part.lineTotalDisplay}` : part.valueDisplay}
+      className={`relative flex min-w-0 list-none items-start gap-2 rounded-lg border p-1 ${SURFACE} lg:[@media(max-height:719px)]:p-0.5`}>
+      <SubjectArt media={option?.media} monogram={label.slice(0, 1)}
+        className="h-7 w-7 shrink-0 rounded-md ring-1 ring-[#7a6236]/50 sm:h-8 sm:w-8 sm:[@media(min-height:800px)]:h-9 sm:[@media(min-height:800px)]:w-9 lg:[@media(max-height:719px)]:h-6 lg:[@media(max-height:719px)]:w-6 [&_span]:!text-xs" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0">
+          {/* Whole words only: a name wraps, it is never cut. */}
+          <span title={label} className={`min-w-0 break-normal text-[13px] font-bold leading-tight sm:text-[14px] sm:[@media(min-height:800px)]:text-[15px] ${CARD_INK}`}>{label}</span>
+          {many && (
+            <span data-part="quantity" data-testid={`reconstruct-evidence-qty-${part.token}`}
+              className="shrink-0 rounded-full bg-[#2a2110] px-1.5 text-[12px] font-black tabular-nums leading-4 text-[#f6e6bb]">
+              {`×${part.quantity}`}
             </span>
           )}
-        </span>
-      </span>
-      {(part.caption || part.annotation) && (
-        <span className="flex min-w-0 items-center justify-between gap-1">
-          <span data-testid={`reconstruct-evidence-caption-${part.token}`}
-            className={`min-w-0 truncate text-[12px] font-semibold uppercase leading-tight tracking-[0.06em] ${MUTED}`}>
-            {part.caption}
-          </span>
+          {part.caption && (
+            <span data-testid={`reconstruct-evidence-caption-${part.token}`}
+              className={`text-[12px] font-semibold uppercase leading-tight tracking-[0.06em] ${CARD_MUTED}`}>
+              {part.caption}
+            </span>
+          )}
           {part.annotation && (
             <span data-part="annotation" data-testid={`reconstruct-evidence-note-${part.token}`}
-              className="shrink-0 rounded-sm bg-destructive/10 px-1 text-[11px] font-bold tabular-nums leading-4 text-destructive">
+              className="shrink-0 rounded-sm bg-[#b91c1c]/10 px-1 text-[11px] font-bold tabular-nums leading-4 text-[#9b1c1c] dark:bg-[#fca5a5]/15 dark:text-[#fca5a5]">
               {part.annotation}
             </span>
           )}
-        </span>
-      )}
-      {part.children.length > 0 && (
-        <ul data-part="children" data-testid={`reconstruct-children-${part.token}`} className="flex flex-col gap-0.5 p-0 lg:[@media(max-height:719px)]:gap-0">
-          {part.children.map((k, i) => (
-            <li key={`${k.label}:${i}`} data-part="child"
-              className={`flex min-w-0 list-none items-center gap-1.5 text-[12px] leading-[18px] sm:text-[12.5px] lg:[@media(max-height:719px)]:leading-4 ${INK}`}>
-              <SubjectArt media={k.media} monogram={k.label.slice(0, 1)}
-                className="h-[18px] w-[18px] shrink-0 rounded-sm [&_span]:!text-[9px]" />
-              <span title={k.label} className="min-w-0 truncate font-semibold">{k.label}</span>
-              {k.quantity > 1 && <span className="shrink-0 font-black tabular-nums">{`×${k.quantity}`}</span>}
-              {k.valueDisplay && (
-                <span className="ml-auto shrink-0 tabular-nums">{k.valueDisplay}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      {part.joinDisplay && (
-        <span data-testid={`reconstruct-evidence-join-${part.token}`}
-          className={`truncate text-[12px] font-semibold tabular-nums leading-tight sm:text-[12.5px] ${MUTED}`}>
-          {part.joinDisplay}
-        </span>
-      )}
+          {part.valueDisplay !== null && (
+            <span data-testid={`reconstruct-evidence-value-${part.token}`}
+              className={`ml-auto shrink-0 text-[13px] font-bold tabular-nums leading-tight sm:text-[14px] ${CARD_INK}`}>
+              {many && part.lineTotalDisplay ? `${part.valueDisplay} each · ${part.lineTotalDisplay}` : part.valueDisplay}
+            </span>
+          )}
+        </div>
+        {built && (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0 border-l-2 border-[#7a6236]/50 pl-2">
+            {part.children.length > 0 && (
+              /* `contents`: the sub-parts and the combining term wrap as ONE run of
+                 chips (the term shares the last line); `role=list` keeps the
+                 semantics where `display: contents` would drop them. */
+              <ul data-part="children" role="list" data-testid={`reconstruct-children-${part.token}`}
+                className="m-0 contents list-none p-0">
+                {part.children.map((k, i) => (
+                  <li key={`${k.label}:${i}`} data-part="child"
+                    className={`flex min-w-0 list-none items-center gap-1.5 text-[12px] leading-[18px] lg:[@media(max-height:719px)]:leading-4 ${CARD_INK}`}>
+                    <SubjectArt media={k.media} monogram={k.label.slice(0, 1)}
+                      className="h-4 w-4 shrink-0 rounded-sm [&_span]:!text-[8px]" />
+                    <span title={k.label} className="font-semibold">{k.label}</span>
+                    {k.quantity > 1 && <span className="shrink-0 font-black tabular-nums">{`×${k.quantity}`}</span>}
+                    {k.valueDisplay && <span className={`shrink-0 tabular-nums ${CARD_MUTED}`}>{k.valueDisplay}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {part.joinDisplay && (
+              <span data-testid={`reconstruct-evidence-join-${part.token}`}
+                className={`text-[12px] font-semibold leading-[18px] tabular-nums lg:[@media(max-height:719px)]:leading-4 ${CARD_MUTED}`}>
+                {part.joinDisplay}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </li>
   );
 }
@@ -323,7 +411,9 @@ export function Reconstruct({
   // ---- reveal
   const revealed = phase === "revealed" && reveal !== null;
   const hasEvidence = Boolean(reveal?.evidence && reveal.evidence.parts.length > 0);
-  const anyWrong = Boolean(reveal?.slotCorrect.some((c) => c === false));
+  const timedOut = Boolean(reveal?.timedOut);
+  // A timed-out board has no picks to mark, but its answer still settles in.
+  const anyWrong = timedOut || Boolean(reveal?.slotCorrect.some((c) => c === false));
   const plan = useMemo(() => planReveal({ reduced, anyWrong, hasEvidence }), [reduced, anyWrong, hasEvidence]);
   const revealKey = revealed && reveal
     ? JSON.stringify([reveal.placement, reveal.settled, reveal.slotCorrect]) : "";
@@ -371,7 +461,37 @@ export function Reconstruct({
     say(`${labelOf(removed)} removed. ${filledSummary(next.filter((t) => t !== null).length, total)}`);
   };
 
-  const lock = () => { if (open && full) onLock({ placement: board as string[] }); };
+  // Locking removes the very button that was pressed. Without a landing the
+  // browser drops focus to <body>, and a keyboard or screen-reader user starts
+  // again from the top of the page; so a lock made FROM INSIDE the board hands
+  // focus to its prompt heading (already `tabIndex=-1`), once the board closes.
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const setHeading = (el: HTMLHeadingElement | null) => {
+    headingRef.current = el;
+    if (typeof promptRef === "function") promptRef(el);
+    else if (promptRef) (promptRef as MutableRefObject<HTMLHeadingElement | null>).current = el;
+  };
+  const rootRef = useRef<HTMLDivElement>(null);
+  const landFocus = useRef(false);
+  useEffect(() => {
+    if (open || !landFocus.current) return;
+    landFocus.current = false;
+    const a = document.activeElement;
+    if (!a || a === document.body) headingRef.current?.focus({ preventScroll: true });
+  }, [open]);
+
+  // One lock per activation burst. `open` is a prop, so two activations in the
+  // same task (a stuck key, a script, a double tap) both read it as true before
+  // the host's phase change lands; this latch lets exactly one through and is
+  // released on the next microtask, so a refused lock can always be retried.
+  const lockLatch = useRef(false);
+  const lock = () => {
+    if (!(open && full) || lockLatch.current) return;
+    lockLatch.current = true;
+    queueMicrotask(() => { lockLatch.current = false; });
+    landFocus.current = Boolean(rootRef.current?.contains(document.activeElement));
+    onLock({ placement: board as string[] });
+  };
 
   // ---- pointer drag (mouse, touch, pen), straight from the card
   const socketRects = (): SnapRect[] => Array.from({ length: total }, (_, i) => {
@@ -454,6 +574,7 @@ export function Reconstruct({
   };
   const rightCount = reveal ? reveal.slotCorrect.filter((c) => c).length : 0;
   const verdict = !revealed || !reveal ? ""
+    : timedOut ? "Timed out"
     : reveal.isCorrect === true ? "Every part right"
     : reveal.slotCorrect.length > 0 ? `${rightCount} of ${reveal.slotCorrect.length} parts right`
     : "";
@@ -468,7 +589,8 @@ export function Reconstruct({
   // What each wrong pick WAS, stated from the host's own lists: a pick the
   // host's parts name is a copy too many; any other is not in the build.
   const partTokens = new Set((reveal?.evidence?.parts ?? []).map((p) => p.token));
-  const wrongNotes = revealed && reveal && settledOn
+  const wrongNotes = revealed && reveal && timedOut ? ["No build locked in. This was the answer."]
+    : revealed && reveal && settledOn
     ? distinct(wrongOrder.map((i) => placementTokens[i]).filter((t): t is string => !!t)).map((t) =>
       (partTokens.has(t) ? `One ${labelOf(t)} too many` : `${labelOf(t)} isn't part of it`))
     : [];
@@ -482,12 +604,14 @@ export function Reconstruct({
   // Two tray rows (every Ranked tray: six pieces) fit the reserved classes;
   // a host with a third row gets a fixed inline height, the same in every phase.
   const tallTray = trayRows > 2 ? trayAndFooter(trayRows, TRAY_CELL_TALL_PX) : null;
-  const breakdownCols = Math.max(1, reveal?.evidence?.parts.length ?? 1);
   const dragging = drag?.active ? drag : null;
+  const breakdownRef = useRef<HTMLUListElement>(null);
+  const breakdownScrolls = useScrolls(breakdownRef, evidenceInRegion);
 
   return (
-    <div data-testid="mig-reconstruct" data-mig-primitive="reconstruct" data-phase={phase}
+    <div ref={rootRef} data-testid="mig-reconstruct" data-mig-primitive="reconstruct" data-phase={phase}
       data-reveal-stage={revealed ? stage : undefined}
+      data-timed-out={revealed && timedOut ? "true" : undefined}
       data-filled={filled} data-slots={total} data-dragging={dragging ? "true" : undefined}
       onKeyDown={(e) => { if (e.key === "Escape" && dragRef.current) endDrag(); }}
       className="flex w-full flex-col gap-2">
@@ -497,7 +621,7 @@ export function Reconstruct({
         <SubjectArt media={content.target.media} monogram={content.target.label.slice(0, 1)}
           className={`h-14 w-14 shrink-0 rounded-lg ring-1 ring-[#7a6236]/70 [@media(min-height:800px)]:h-20 [@media(min-height:800px)]:w-20 lg:[@media(max-height:719px)]:h-11 lg:[@media(max-height:719px)]:w-11`} />
         <div className="flex min-w-0 flex-col items-start text-left">
-          <h2 id={promptId} ref={promptRef} tabIndex={-1} data-testid="reconstruct-prompt"
+          <h2 id={promptId} ref={setHeading} tabIndex={-1} data-testid="reconstruct-prompt"
             className={`outline-none text-[11px] font-bold uppercase tracking-[0.18em] ${MUTED}`}>
             {content.prompt}
           </h2>
@@ -516,27 +640,32 @@ export function Reconstruct({
           const mark = revealed && reveal ? reveal.slotCorrect[i] ?? null : null;
           const pickToken = revealed && reveal && mark === false ? placementTokens[i] ?? null : null;
           const pickOption = pickToken !== null ? byToken.get(pickToken) : undefined;
-          const state = revealed
+          // R3C: a timed-out socket was never filled by the player; once the
+          // answer settles in it is the answer, never a pick.
+          const missed = revealed && timedOut;
+          const state = missed ? (settledOn && token !== null ? "answer" : "empty")
+            : revealed
             ? (mark === false ? (settledOn ? "settled" : "wrong") : mark === true ? "correct" : "filled")
             : phase === "locked" ? (token ? "locked" : "empty")
             : token ? "filled" : "empty";
           // A replaced socket's new token enters from below (the tray); a kept one does not move.
-          const entering = revealed && settledOn && mark === false && animate;
-          const wrongIndex = wrongOrder.indexOf(i);
+          const entering = revealed && settledOn && (mark === false || missed) && animate;
+          const wrongIndex = missed ? i : wrongOrder.indexOf(i);
           const base = sentenceCase(where(i));
           const dropHere = dragging?.target === i;
           const socketName = token === null
             ? `${base}, empty.`
             : `${base}: ${labelOf(token)}. Press to remove.`;
-          const statusText = revealed
+          const statusText = missed ? (token !== null ? "Answer. You didn't lock in a build." : "Not filled.")
+            : revealed
             ? (mark === true ? "Right part."
               : mark === false ? (settledOn ? `Your pick, ${labelOf(pickToken)}, was wrong.` : "Wrong part.") : "")
             : "";
           const socketBox = `relative h-14 w-14 [@media(min-height:800px)]:h-16 [@media(min-height:800px)]:w-16 lg:[@media(max-height:719px)]:h-11 lg:[@media(max-height:719px)]:w-11 shrink-0 rounded-lg border-2 ${SURFACE} ${
             token === null ? "border-dashed" : ""} ${
-            mark === true ? "ring-2 ring-emerald-500" : ""} ${
-            mark === false && !settledOn ? "ring-2 ring-destructive" : ""} ${
-            state === "settled" ? "ring-2 ring-[#7a6236]" : ""}`;
+            mark === true ? `ring-2 ${RIGHT_RING}` : ""} ${
+            mark === false && !settledOn ? `ring-2 ${WRONG_RING}` : ""} ${
+            state === "settled" || state === "answer" ? "ring-2 ring-[#7a6236]" : ""}`;
           const art = (
             <span key={`${i}:${token ?? "empty"}`}
               style={entering ? { animationDuration: `${RECONSTRUCT_TIMING.settleTween}ms`, animationDelay: `${settleDelayMs(wrongIndex)}ms` } : undefined}
@@ -562,7 +691,7 @@ export function Reconstruct({
                   tabIndex={slotStop === i ? 0 : -1}
                   onFocus={() => setSlotStop(i)}
                   onClick={() => remove(i)} onKeyDown={socketKeys(i)}
-                  className={`${socketBox} cursor-pointer ${FOCUS} data-[drop-target=true]:ring-2 data-[drop-target=true]:ring-[#b8872b] data-[drop-target=true]:ring-offset-1`}>
+                  className={`${socketBox} cursor-pointer ${FOCUS} data-[drop-target=true]:ring-2 data-[drop-target=true]:ring-[#8a6516] data-[drop-target=true]:ring-offset-1`}>
                   {art}
                 </button>
               ) : (
@@ -575,7 +704,7 @@ export function Reconstruct({
                     <PickBadge option={pickOption} slot={i} shown={settledOn && pickToken !== null}
                       animate={animate} delay={settleDelayMs(Math.max(0, wrongIndex))} />
                   )}
-                  {state === "settled" && (
+                  {(state === "settled" || state === "answer") && (
                     <span aria-hidden data-part="answer-tag"
                       className="absolute -bottom-1.5 left-1/2 z-10 -translate-x-1/2 rounded-sm bg-[#2a2110] px-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#f6e6bb]">
                       Answer
@@ -600,11 +729,14 @@ export function Reconstruct({
       <div id={hintId} data-part={revealed && verdict ? "verdict" : "status-line"}
         data-testid={revealed && verdict ? "reconstruct-verdict" : "reconstruct-hint"}
         data-correct={revealed && reveal ? String(reveal.isCorrect) : undefined}
+        data-timed-out={revealed && timedOut ? "true" : undefined}
         className={`flex h-[34px] flex-col items-center justify-center overflow-hidden text-center leading-tight lg:[@media(max-height:719px)]:h-[30px]`}>
         {revealed && verdict ? (
           <>
             <span data-testid="reconstruct-verdict-text"
-              className={`text-[12px] font-bold uppercase tracking-[0.2em] ${INK}`}>
+              className={`inline-flex items-center gap-1 text-[12px] font-bold uppercase tracking-[0.2em] ${
+                timedOut ? "text-[#9b1c1c]" : INK}`}>
+              {timedOut && <Timer aria-hidden className="!size-3.5" strokeWidth={3} />}
               {verdict}
             </span>
             <span data-testid="reconstruct-wrong-notes"
@@ -676,7 +808,7 @@ export function Reconstruct({
               <>
                 <Button type="button" data-part="lock" data-testid="reconstruct-lock" onClick={lock}
                   disabled={!full} aria-describedby={lockHintId}
-                  className={`min-h-[48px] w-full max-w-[34rem] border border-[#d5b66f]/80 bg-[#2a2110] uppercase tracking-[0.2em] text-[#f6e6bb] hover:bg-[#3a2d14] lg:[@media(max-height:719px)]:min-h-[44px]`}>
+                  className={`min-h-[48px] w-full max-w-[34rem] border border-[#d5b66f]/80 bg-[#2a2110] uppercase tracking-[0.2em] text-[#f6e6bb] hover:bg-[#3a2d14] ${FOCUS} lg:[@media(max-height:719px)]:min-h-[44px]`}>
                   <Lock aria-hidden /> Lock in
                 </Button>
                 <p id={lockHintId} data-testid="reconstruct-lock-hint" className="sr-only">
@@ -696,18 +828,25 @@ export function Reconstruct({
         {evidenceInRegion && reveal?.evidence && (
           <div data-part="evidence" data-testid="reconstruct-evidence" data-shown="true"
             style={animate ? { animationDuration: `${RECONSTRUCT_TIMING.evidenceTween}ms` } : undefined}
-            className={`absolute inset-0 flex flex-col gap-2 overflow-y-auto ${
+            className={`absolute inset-0 flex flex-col gap-1.5 overflow-hidden lg:[@media(max-height:719px)]:gap-1 ${
               animate ? "animate-in fade-in fill-mode-both" : ""}`}>
-            <ul data-part="breakdown" style={{ ["--rc-cols" as string]: String(breakdownCols) }}
-              className="grid min-h-0 flex-1 grid-cols-2 content-start gap-1.5 overflow-hidden p-0 sm:grid-cols-[repeat(var(--rc-cols),minmax(0,1fr))] sm:gap-2">
+            {/* R3A: ONE calculation. The parts, then the total directly beneath
+                them. The list takes its natural height (`flex: 0 1 auto`), so
+                the equation follows the last part instead of being pushed to
+                the region's floor; only a build that cannot fit scrolls INSIDE
+                this list, with the equation pinned under it. */}
+            <ul ref={breakdownRef} data-part="breakdown" data-testid="reconstruct-breakdown"
+              data-scrolls={breakdownScrolls ? "true" : undefined}
+              tabIndex={breakdownScrolls ? 0 : undefined}
+              aria-label={breakdownScrolls ? "Breakdown, scrollable" : undefined}
+              className={`m-0 flex min-h-0 list-none flex-col gap-1 overflow-y-auto overscroll-contain p-0 [flex:0_1_auto] lg:[@media(max-height:719px)]:gap-0.5 ${FOCUS}`}>
               {reveal.evidence.parts.map((part) => (
-                <BreakdownBlock key={part.token} part={part} option={byToken.get(part.token)}
-                  dense={breakdownCols >= 4} />
+                <BreakdownBlock key={part.token} part={part} option={byToken.get(part.token)} />
               ))}
             </ul>
             {reveal.evidence.equation && (
               <p data-part="equation" data-testid="reconstruct-evidence-total"
-                className={`flex min-h-[40px] shrink-0 flex-wrap items-baseline justify-center gap-x-1.5 rounded-lg border border-[#7a6236]/50 bg-[#2c2417]/[0.08] px-2 py-1 text-center text-[13px] font-semibold leading-snug sm:text-[14px] lg:[@media(max-height:719px)]:min-h-[32px] lg:[@media(max-height:719px)]:py-0.5 ${INK}`}>
+                className={`flex min-h-[40px] shrink-0 flex-wrap items-baseline justify-center gap-x-1.5 rounded-lg border-2 px-2 py-1 text-center text-[13px] font-semibold leading-snug sm:text-[14px] lg:[@media(max-height:719px)]:min-h-[32px] lg:[@media(max-height:719px)]:py-0.5 border-[#7a6236] ${CARD_FILL}`}>
                 {reveal.evidence.equation.terms.map((term, i) => (
                   <span key={`${term.label}:${i}`} className="inline-flex items-baseline gap-1">
                     {i > 0 && <span aria-hidden className="font-black">+</span>}
@@ -736,7 +875,7 @@ export function Reconstruct({
       {dragging && typeof document !== "undefined" && createPortal(
         <span aria-hidden data-testid="reconstruct-drag-ghost"
           style={{ transform: `translate3d(${dragging.x - 28}px, ${dragging.y - 28}px, 0)` }}
-          className="pointer-events-none fixed left-0 top-0 z-[100] h-14 w-14 overflow-hidden rounded-lg border-2 border-[#b8872b] shadow-xl">
+          className="pointer-events-none fixed left-0 top-0 z-[100] h-14 w-14 overflow-hidden rounded-lg border-2 border-[#8a6516] shadow-xl">
           <SubjectArt media={byToken.get(dragging.token)?.media}
             monogram={labelOf(dragging.token).slice(0, 1)} className="h-full w-full" />
         </span>,

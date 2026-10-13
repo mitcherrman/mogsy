@@ -5,12 +5,12 @@
   "viewer_user_id": "0a11d111-0000-4000-8000-000000000001"
  },
  "private_final": {
-  "match_id": "rkb_9dc8b53b5b89691404ecc321",
+  "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
   "payload": {
    "active_round": null,
    "completed_rounds": 3,
    "completion_reason": "segments_complete",
-   "match_id": "rkb_9dc8b53b5b89691404ecc321",
+   "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
    "match_over": true,
    "match_status": "complete",
    "next_round_duration_seconds": 30.0,
@@ -62,7 +62,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_40f0ca934ffa4be2",
+     "player_id": "p_f84e2aa63fed9099",
      "role": null,
      "score": 6,
      "total_xp": 33
@@ -83,16 +83,16 @@
   "projection_type": "private_player",
   "round_number": null,
   "schema_version": "ranked_duel.private_player.v2",
-  "server_time": "2026-09-09T12:01:30.750000+00:00"
+  "server_time": "2026-09-09T12:01:34.550000+00:00"
  },
  "public_final": {
-  "match_id": "rkb_9dc8b53b5b89691404ecc321",
+  "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
   "payload": {
    "active_round": null,
    "completed_rounds": 3,
    "completion_reason": "segments_complete",
    "host": "playtest",
-   "match_id": "rkb_9dc8b53b5b89691404ecc321",
+   "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
    "match_over": true,
    "match_status": "complete",
    "next_round_duration_seconds": 30.0,
@@ -118,7 +118,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_40f0ca934ffa4be2",
+     "player_id": "p_f84e2aa63fed9099",
      "role": null,
      "score": 6,
      "total_xp": 33
@@ -151,20 +151,20 @@
   "projection_type": "public_round",
   "round_number": null,
   "schema_version": "ranked_duel.public_round.v2",
-  "server_time": "2026-09-09T12:01:30.750000+00:00"
+  "server_time": "2026-09-09T12:01:34.550000+00:00"
  },
  "resolved": {
   "1": {
-   "match_id": "rkb_9dc8b53b5b89691404ecc321",
+   "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
    "payload": {
     "completion_reason": null,
     "end_reason": "both_answered",
     "final_deadline": "2026-09-09T12:00:34.400000+00:00",
-    "match_id": "rkb_9dc8b53b5b89691404ecc321",
+    "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
     "match_over": false,
     "max_hp": {
      "0a11d111-0000-4000-8000-000000000001": 170,
-     "p_40f0ca934ffa4be2": 170
+     "p_f84e2aa63fed9099": 170
     },
     "module_points": {
      "0a11d111-0000-4000-8000-000000000001": {
@@ -174,7 +174,7 @@
       "score_before": 0,
       "speed_bonus_points": 0
      },
-     "p_40f0ca934ffa4be2": {
+     "p_f84e2aa63fed9099": {
       "base_points": 2,
       "points_awarded": 3,
       "score_after": 3,
@@ -250,7 +250,7 @@
       "level_before": 1,
       "level_up_events": [],
       "outcome": "correct",
-      "player_id": "p_40f0ca934ffa4be2",
+      "player_id": "p_f84e2aa63fed9099",
       "points_awarded": 3,
       "reached_zero_hp": false,
       "remaining_charges": {
@@ -259,24 +259,34 @@
       "score_after": 3,
       "score_before": 0,
       "selected_ability_id": null,
-      "submitted_at": "2026-09-09T12:00:13.071906+00:00",
+      "submitted_at": "2026-09-09T12:00:09.915733+00:00",
       "timed_out": false,
       "total_xp_after": 12,
       "xp_gained": 12
      }
     ],
-    "presentation_ms": 2900,
+    "presentation_ms": 4800,
     "pressure_applied": true,
-    "question_id": "reconstruct:rkb_9dc8b53b5b89691404ecc321:1",
+    "question_id": "reconstruct:rkb_c89eeb2e42c8fb4ef278ba05:1",
     "round_number": 1,
     "segment_reveal": {
      "canonical_parts": [
       {
-       "combine_display": "200 g",
-       "label": "Fiendish Codex",
-       "line_total_display": "850 g",
+       "combine_display": null,
+       "label": "Amplifying Tome",
+       "line_total_display": "400 g",
+       "part_kind": "basic",
+       "piece_id": "p1",
+       "quantity": 1,
+       "sub_parts": [],
+       "value_display": "400 g"
+      },
+      {
+       "combine_display": "300 g",
+       "label": "Hextech Alternator",
+       "line_total_display": "1100 g",
        "part_kind": "composite",
-       "piece_id": "p5",
+       "piece_id": "p3",
        "quantity": 1,
        "sub_parts": [
         {
@@ -285,40 +295,31 @@
           "alt": "",
           "src": "assets/items_wiki/1052.png"
          },
-         "quantity": 1,
+         "quantity": 2,
          "value_display": "400 g"
-        },
-        {
-         "label": "Glowing Mote",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/2022.png"
-         },
-         "quantity": 1,
-         "value_display": "250 g"
         }
        ],
-       "value_display": "850 g"
+       "value_display": "1100 g"
       },
       {
-       "combine_display": "400 g",
-       "label": "Forbidden Idol",
-       "line_total_display": "600 g",
+       "combine_display": "550 g",
+       "label": "Vampiric Scepter",
+       "line_total_display": "900 g",
        "part_kind": "composite",
-       "piece_id": "p3",
+       "piece_id": "p5",
        "quantity": 1,
        "sub_parts": [
         {
-         "label": "Faerie Charm",
+         "label": "Long Sword",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1004.png"
+          "src": "assets/items_wiki/1036.png"
          },
          "quantity": 1,
-         "value_display": "200 g"
+         "value_display": "350 g"
         }
        ],
-       "value_display": "600 g"
+       "value_display": "900 g"
       }
      ],
      "challenge_count": 1,
@@ -327,50 +328,50 @@
      "module_version": 1,
      "pieces": [
       {
-       "label": "Fated Ashes",
+       "label": "Needlessly Large Rod",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/2508.png"
+        "src": "assets/items_wiki/1058.png"
        },
        "piece_id": "p0"
       },
       {
-       "label": "Aether Wisp",
+       "label": "Amplifying Tome",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/3113.png"
+        "src": "assets/items_wiki/1052.png"
        },
        "piece_id": "p1"
       },
       {
-       "label": "Oblivion Orb",
+       "label": "Tiamat",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/3916.png"
+        "src": "assets/items_wiki/3077.png"
        },
        "piece_id": "p2"
       },
       {
-       "label": "Forbidden Idol",
+       "label": "Hextech Alternator",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/3114.png"
+        "src": "assets/items_wiki/3145.png"
        },
        "piece_id": "p3"
       },
       {
-       "label": "Bandleglass Mirror",
+       "label": "Blasting Wand",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/4642.png"
+        "src": "assets/items_wiki/1026.png"
        },
        "piece_id": "p4"
       },
       {
-       "label": "Fiendish Codex",
+       "label": "Vampiric Scepter",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/3108.png"
+        "src": "assets/items_wiki/1053.png"
        },
        "piece_id": "p5"
       }
@@ -383,39 +384,45 @@
        "finished_first": false,
        "incorrect": 0,
        "placement": [
-        "p5",
-        "p3"
+        "p1",
+        "p3",
+        "p5"
        ],
        "points_awarded": 2,
        "segment_result": "loss",
        "settled_placement": [
-        "p5",
-        "p3"
+        "p1",
+        "p3",
+        "p5"
        ],
        "slot_correct": [
+        true,
         true,
         true
        ],
        "speed_bonus_points": 0,
        "unanswered": 0
       },
-      "p_40f0ca934ffa4be2": {
+      "p_f84e2aa63fed9099": {
        "base_points": 2,
        "correct": 1,
-       "duration_ms": 8672,
+       "duration_ms": 5516,
        "finished_first": true,
        "incorrect": 0,
        "placement": [
-        "p5",
-        "p3"
+        "p1",
+        "p3",
+        "p5"
        ],
        "points_awarded": 3,
        "segment_result": "win",
        "settled_placement": [
-        "p5",
-        "p3"
+        "p1",
+        "p3",
+        "p5"
        ],
        "slot_correct": [
+        true,
         true,
         true
        ],
@@ -426,10 +433,10 @@
      "scoring": "points",
      "speed_bonus_points": 1,
      "target": {
-      "base_display": "1450 g",
-      "combine_display": "800 g",
-      "label": "Redemption",
-      "total_display": "2250 g"
+      "base_display": "2400 g",
+      "combine_display": "600 g",
+      "label": "Hextech Gunblade",
+      "total_display": "3000 g"
      }
     },
     "started_at": "2026-09-09T12:00:04.400000+00:00",
@@ -441,16 +448,16 @@
    "server_time": "2026-09-09T12:00:22.400000+00:00"
   },
   "2": {
-   "match_id": "rkb_9dc8b53b5b89691404ecc321",
+   "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
    "payload": {
     "completion_reason": null,
     "end_reason": "both_answered",
-    "final_deadline": "2026-09-09T12:00:52.300000+00:00",
-    "match_id": "rkb_9dc8b53b5b89691404ecc321",
+    "final_deadline": "2026-09-09T12:00:54.200000+00:00",
+    "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
     "match_over": false,
     "max_hp": {
      "0a11d111-0000-4000-8000-000000000001": 170,
-     "p_40f0ca934ffa4be2": 170
+     "p_f84e2aa63fed9099": 170
     },
     "module_points": {
      "0a11d111-0000-4000-8000-000000000001": {
@@ -460,7 +467,7 @@
       "score_before": 2,
       "speed_bonus_points": 0
      },
-     "p_40f0ca934ffa4be2": {
+     "p_f84e2aa63fed9099": {
       "base_points": 2,
       "points_awarded": 3,
       "score_after": 6,
@@ -470,7 +477,7 @@
     },
     "next_round_duration_delta": 0.0,
     "next_round_duration_seconds": 30.0,
-    "original_deadline": "2026-09-09T12:00:52.300000+00:00",
+    "original_deadline": "2026-09-09T12:00:54.200000+00:00",
     "players": [
      {
       "answered_first": false,
@@ -506,7 +513,7 @@
       "score_after": 4,
       "score_before": 2,
       "selected_ability_id": null,
-      "submitted_at": "2026-09-09T12:00:37.300000+00:00",
+      "submitted_at": "2026-09-09T12:00:39.200000+00:00",
       "timed_out": false,
       "total_xp_after": 24,
       "xp_gained": 12
@@ -536,7 +543,7 @@
       "level_before": 1,
       "level_up_events": [],
       "outcome": "correct",
-      "player_id": "p_40f0ca934ffa4be2",
+      "player_id": "p_f84e2aa63fed9099",
       "points_awarded": 3,
       "reached_zero_hp": false,
       "remaining_charges": {
@@ -545,47 +552,75 @@
       "score_after": 6,
       "score_before": 3,
       "selected_ability_id": null,
-      "submitted_at": "2026-09-09T12:00:30.074885+00:00",
+      "submitted_at": "2026-09-09T12:00:34.678873+00:00",
       "timed_out": false,
       "total_xp_after": 24,
       "xp_gained": 12
      }
     ],
-    "presentation_ms": 5450,
+    "presentation_ms": 7350,
     "pressure_applied": true,
-    "question_id": "reconstruct:rkb_9dc8b53b5b89691404ecc321:2",
+    "question_id": "reconstruct:rkb_c89eeb2e42c8fb4ef278ba05:2",
     "round_number": 2,
     "segment_reveal": {
      "canonical_parts": [
       {
-       "combine_display": null,
-       "label": "B. F. Sword",
-       "line_total_display": "1300 g",
-       "part_kind": "basic",
+       "combine_display": "200 g",
+       "label": "Fiendish Codex",
+       "line_total_display": "850 g",
+       "part_kind": "composite",
        "piece_id": "p2",
        "quantity": 1,
-       "sub_parts": [],
-       "value_display": "1300 g"
+       "sub_parts": [
+        {
+         "label": "Amplifying Tome",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1052.png"
+         },
+         "quantity": 1,
+         "value_display": "400 g"
+        },
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1,
+         "value_display": "250 g"
+        }
+       ],
+       "value_display": "850 g"
       },
       {
-       "combine_display": null,
-       "label": "Cloak of Agility",
-       "line_total_display": "600 g",
-       "part_kind": "basic",
-       "piece_id": "p0",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "600 g"
-      },
-      {
-       "combine_display": null,
-       "label": "Pickaxe",
-       "line_total_display": "875 g",
-       "part_kind": "basic",
+       "combine_display": "500 g",
+       "label": "Haunting Guise",
+       "line_total_display": "1300 g",
+       "part_kind": "composite",
        "piece_id": "p4",
        "quantity": 1,
-       "sub_parts": [],
-       "value_display": "875 g"
+       "sub_parts": [
+        {
+         "label": "Amplifying Tome",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1052.png"
+         },
+         "quantity": 1,
+         "value_display": "400 g"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "quantity": 1,
+         "value_display": "400 g"
+        }
+       ],
+       "value_display": "1300 g"
       }
      ],
      "challenge_count": 1,
@@ -594,50 +629,50 @@
      "module_version": 1,
      "pieces": [
       {
-       "label": "Cloak of Agility",
+       "label": "Fated Ashes",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1018.png"
+        "src": "assets/items_wiki/2508.png"
        },
        "piece_id": "p0"
       },
       {
-       "label": "Dagger",
+       "label": "Oblivion Orb",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1042.png"
+        "src": "assets/items_wiki/3916.png"
        },
        "piece_id": "p1"
       },
       {
-       "label": "B. F. Sword",
+       "label": "Fiendish Codex",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1038.png"
+        "src": "assets/items_wiki/3108.png"
        },
        "piece_id": "p2"
       },
       {
-       "label": "Long Sword",
+       "label": "Hextech Alternator",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1036.png"
+        "src": "assets/items_wiki/3145.png"
        },
        "piece_id": "p3"
       },
       {
-       "label": "Pickaxe",
+       "label": "Haunting Guise",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1037.png"
+        "src": "assets/items_wiki/3147.png"
        },
        "piece_id": "p4"
       },
       {
-       "label": "Executioner's Calling",
+       "label": "Giant's Belt",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/3123.png"
+        "src": "assets/items_wiki/1011.png"
        },
        "piece_id": "p5"
       }
@@ -651,44 +686,38 @@
        "incorrect": 0,
        "placement": [
         "p2",
-        "p0",
         "p4"
        ],
        "points_awarded": 2,
        "segment_result": "loss",
        "settled_placement": [
         "p2",
-        "p0",
         "p4"
        ],
        "slot_correct": [
-        true,
         true,
         true
        ],
        "speed_bonus_points": 0,
        "unanswered": 0
       },
-      "p_40f0ca934ffa4be2": {
+      "p_f84e2aa63fed9099": {
        "base_points": 2,
        "correct": 1,
-       "duration_ms": 7775,
+       "duration_ms": 10479,
        "finished_first": true,
        "incorrect": 0,
        "placement": [
         "p2",
-        "p0",
         "p4"
        ],
        "points_awarded": 3,
        "segment_result": "win",
        "settled_placement": [
         "p2",
-        "p0",
         "p4"
        ],
        "slot_correct": [
-        true,
         true,
         true
        ],
@@ -699,31 +728,31 @@
      "scoring": "points",
      "speed_bonus_points": 1,
      "target": {
-      "base_display": "2775 g",
-      "combine_display": "725 g",
-      "label": "Infinity Edge",
-      "total_display": "3500 g"
+      "base_display": "2150 g",
+      "combine_display": "950 g",
+      "label": "Riftmaker",
+      "total_display": "3100 g"
      }
     },
-    "started_at": "2026-09-09T12:00:22.300000+00:00",
+    "started_at": "2026-09-09T12:00:24.200000+00:00",
     "winner_id": null
    },
    "projection_type": "resolved_round",
    "round_number": 2,
    "schema_version": "ranked_duel.resolved_round.v2",
-   "server_time": "2026-09-09T12:00:40.300000+00:00"
+   "server_time": "2026-09-09T12:00:42.200000+00:00"
   },
   "3": {
-   "match_id": "rkb_9dc8b53b5b89691404ecc321",
+   "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
    "payload": {
     "completion_reason": "segments_complete",
     "end_reason": "both_answered",
-    "final_deadline": "2026-09-09T12:01:12.750000+00:00",
-    "match_id": "rkb_9dc8b53b5b89691404ecc321",
+    "final_deadline": "2026-09-09T12:01:16.550000+00:00",
+    "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
     "match_over": true,
     "max_hp": {
      "0a11d111-0000-4000-8000-000000000001": 170,
-     "p_40f0ca934ffa4be2": 170
+     "p_f84e2aa63fed9099": 170
     },
     "module_points": {
      "0a11d111-0000-4000-8000-000000000001": {
@@ -733,7 +762,7 @@
       "score_before": 4,
       "speed_bonus_points": 0
      },
-     "p_40f0ca934ffa4be2": {
+     "p_f84e2aa63fed9099": {
       "base_points": 0,
       "points_awarded": 0,
       "score_after": 6,
@@ -743,7 +772,7 @@
     },
     "next_round_duration_delta": 0.0,
     "next_round_duration_seconds": 30.0,
-    "original_deadline": "2026-09-09T12:01:12.750000+00:00",
+    "original_deadline": "2026-09-09T12:01:16.550000+00:00",
     "players": [
      {
       "answered_first": false,
@@ -779,7 +808,7 @@
       "score_after": 6,
       "score_before": 4,
       "selected_ability_id": null,
-      "submitted_at": "2026-09-09T12:00:57.750000+00:00",
+      "submitted_at": "2026-09-09T12:01:01.550000+00:00",
       "timed_out": false,
       "total_xp_after": 36,
       "xp_gained": 12
@@ -809,7 +838,7 @@
       "level_before": 1,
       "level_up_events": [],
       "outcome": "incorrect",
-      "player_id": "p_40f0ca934ffa4be2",
+      "player_id": "p_f84e2aa63fed9099",
       "points_awarded": 0,
       "reached_zero_hp": false,
       "remaining_charges": {
@@ -818,24 +847,24 @@
       "score_after": 6,
       "score_before": 6,
       "selected_ability_id": null,
-      "submitted_at": "2026-09-09T12:00:51.972494+00:00",
+      "submitted_at": "2026-09-09T12:00:55.100162+00:00",
       "timed_out": false,
       "total_xp_after": 33,
       "xp_gained": 9
      }
     ],
-    "presentation_ms": 2900,
+    "presentation_ms": 5400,
     "pressure_applied": true,
-    "question_id": "reconstruct:rkb_9dc8b53b5b89691404ecc321:3",
+    "question_id": "reconstruct:rkb_c89eeb2e42c8fb4ef278ba05:3",
     "round_number": 3,
     "segment_reveal": {
      "canonical_parts": [
       {
-       "combine_display": "150 g",
-       "label": "Kindlegem",
-       "line_total_display": "800 g",
+       "combine_display": "250 g",
+       "label": "Bami's Cinder",
+       "line_total_display": "900 g",
        "part_kind": "composite",
-       "piece_id": "p2",
+       "piece_id": "p5",
        "quantity": 1,
        "sub_parts": [
         {
@@ -857,27 +886,37 @@
          "value_display": "400 g"
         }
        ],
-       "value_display": "800 g"
+       "value_display": "900 g"
       },
       {
-       "combine_display": "450 g",
-       "label": "Negatron Cloak",
-       "line_total_display": "850 g",
+       "combine_display": "500 g",
+       "label": "Chain Vest",
+       "line_total_display": "800 g",
        "part_kind": "composite",
-       "piece_id": "p0",
+       "piece_id": "p3",
        "quantity": 1,
        "sub_parts": [
         {
-         "label": "Null-Magic Mantle",
+         "label": "Cloth Armor",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1033.png"
+          "src": "assets/items_wiki/1029.png"
          },
          "quantity": 1,
-         "value_display": "400 g"
+         "value_display": "300 g"
         }
        ],
-       "value_display": "850 g"
+       "value_display": "800 g"
+      },
+      {
+       "combine_display": null,
+       "label": "Ruby Crystal",
+       "line_total_display": "400 g",
+       "part_kind": "basic",
+       "piece_id": "p4",
+       "quantity": 1,
+       "sub_parts": [],
+       "value_display": "400 g"
       }
      ],
      "challenge_count": 1,
@@ -886,50 +925,50 @@
      "module_version": 1,
      "pieces": [
       {
+       "label": "Null-Magic Mantle",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1033.png"
+       },
+       "piece_id": "p0"
+      },
+      {
+       "label": "Bramble Vest",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3076.png"
+       },
+       "piece_id": "p1"
+      },
+      {
        "label": "Negatron Cloak",
        "media": {
         "alt": "",
         "src": "assets/items_wiki/1057.png"
        },
-       "piece_id": "p0"
-      },
-      {
-       "label": "Winged Moonplate",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3066.png"
-       },
-       "piece_id": "p1"
-      },
-      {
-       "label": "Kindlegem",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3067.png"
-       },
        "piece_id": "p2"
-      },
-      {
-       "label": "Giant's Belt",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1011.png"
-       },
-       "piece_id": "p3"
-      },
-      {
-       "label": "Spectre's Cowl",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3211.png"
-       },
-       "piece_id": "p4"
       },
       {
        "label": "Chain Vest",
        "media": {
         "alt": "",
         "src": "assets/items_wiki/1031.png"
+       },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Ruby Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1028.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Bami's Cinder",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/6660.png"
        },
        "piece_id": "p5"
       }
@@ -942,40 +981,46 @@
        "finished_first": false,
        "incorrect": 0,
        "placement": [
-        "p2",
-        "p0"
+        "p5",
+        "p3",
+        "p4"
        ],
        "points_awarded": 2,
        "segment_result": "win",
        "settled_placement": [
-        "p2",
-        "p0"
+        "p5",
+        "p3",
+        "p4"
        ],
        "slot_correct": [
+        true,
         true,
         true
        ],
        "speed_bonus_points": 0,
        "unanswered": 0
       },
-      "p_40f0ca934ffa4be2": {
+      "p_f84e2aa63fed9099": {
        "base_points": 0,
        "correct": 0,
-       "duration_ms": 9222,
+       "duration_ms": 8550,
        "finished_first": true,
        "incorrect": 1,
        "placement": [
-        "p4",
-        "p0"
+        "p2",
+        "p3",
+        "p4"
        ],
        "points_awarded": 0,
        "segment_result": "loss",
        "settled_placement": [
-        "p2",
-        "p0"
+        "p5",
+        "p3",
+        "p4"
        ],
        "slot_correct": [
         false,
+        true,
         true
        ],
        "speed_bonus_points": 0,
@@ -985,27 +1030,27 @@
      "scoring": "points",
      "speed_bonus_points": 1,
      "target": {
-      "base_display": "1650 g",
-      "combine_display": "1000 g",
-      "label": "Abyssal Mask",
-      "total_display": "2650 g"
+      "base_display": "2100 g",
+      "combine_display": "700 g",
+      "label": "Sunfire Aegis",
+      "total_display": "2800 g"
      }
     },
-    "started_at": "2026-09-09T12:00:42.750000+00:00",
+    "started_at": "2026-09-09T12:00:46.550000+00:00",
     "winner_id": null
    },
    "projection_type": "resolved_round",
    "round_number": 3,
    "schema_version": "ranked_duel.resolved_round.v2",
-   "server_time": "2026-09-09T12:01:00.750000+00:00"
+   "server_time": "2026-09-09T12:01:04.550000+00:00"
   }
  },
  "result": {
-  "match_id": "rkb_9dc8b53b5b89691404ecc321",
+  "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
   "payload": {
    "completion_reason": "segments_complete",
    "final_round_number": 3,
-   "match_id": "rkb_9dc8b53b5b89691404ecc321",
+   "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
    "outcome": "draw",
    "rating_application_status": "skipped",
    "rating_policy_version": "elo.v1",
@@ -1013,14 +1058,14 @@
    "scoring": {
     "final_scores": {
      "0a11d111-0000-4000-8000-000000000001": 6,
-     "p_40f0ca934ffa4be2": 6
+     "p_f84e2aa63fed9099": 6
     },
     "match_length": 3,
     "model": "points",
     "modules_played": 3,
     "modules_won": {
      "0a11d111-0000-4000-8000-000000000001": 1,
-     "p_40f0ca934ffa4be2": 2
+     "p_f84e2aa63fed9099": 2
     }
    },
    "terminal_reason": "combat",
@@ -1029,22 +1074,22 @@
   "projection_type": "match_result",
   "round_number": 3,
   "schema_version": "ranked_duel.match_result.v1",
-  "server_time": "2026-09-09T12:01:30.750000+00:00"
+  "server_time": "2026-09-09T12:01:34.550000+00:00"
  },
  "resume_final": {
-  "match_id": "rkb_9dc8b53b5b89691404ecc321",
+  "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
   "payload": {
    "latest_resolved_round": {
-    "match_id": "rkb_9dc8b53b5b89691404ecc321",
+    "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
     "payload": {
      "completion_reason": "segments_complete",
      "end_reason": "both_answered",
-     "final_deadline": "2026-09-09T12:01:12.750000+00:00",
-     "match_id": "rkb_9dc8b53b5b89691404ecc321",
+     "final_deadline": "2026-09-09T12:01:16.550000+00:00",
+     "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
      "match_over": true,
      "max_hp": {
       "0a11d111-0000-4000-8000-000000000001": 170,
-      "p_40f0ca934ffa4be2": 170
+      "p_f84e2aa63fed9099": 170
      },
      "module_points": {
       "0a11d111-0000-4000-8000-000000000001": {
@@ -1054,7 +1099,7 @@
        "score_before": 4,
        "speed_bonus_points": 0
       },
-      "p_40f0ca934ffa4be2": {
+      "p_f84e2aa63fed9099": {
        "base_points": 0,
        "points_awarded": 0,
        "score_after": 6,
@@ -1064,7 +1109,7 @@
      },
      "next_round_duration_delta": 0.0,
      "next_round_duration_seconds": 30.0,
-     "original_deadline": "2026-09-09T12:01:12.750000+00:00",
+     "original_deadline": "2026-09-09T12:01:16.550000+00:00",
      "players": [
       {
        "answered_first": false,
@@ -1100,7 +1145,7 @@
        "score_after": 6,
        "score_before": 4,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:57.750000+00:00",
+       "submitted_at": "2026-09-09T12:01:01.550000+00:00",
        "timed_out": false,
        "total_xp_after": 36,
        "xp_gained": 12
@@ -1130,7 +1175,7 @@
        "level_before": 1,
        "level_up_events": [],
        "outcome": "incorrect",
-       "player_id": "p_40f0ca934ffa4be2",
+       "player_id": "p_f84e2aa63fed9099",
        "points_awarded": 0,
        "reached_zero_hp": false,
        "remaining_charges": {
@@ -1139,24 +1184,24 @@
        "score_after": 6,
        "score_before": 6,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:51.972494+00:00",
+       "submitted_at": "2026-09-09T12:00:55.100162+00:00",
        "timed_out": false,
        "total_xp_after": 33,
        "xp_gained": 9
       }
      ],
-     "presentation_ms": 2900,
+     "presentation_ms": 5400,
      "pressure_applied": true,
-     "question_id": "reconstruct:rkb_9dc8b53b5b89691404ecc321:3",
+     "question_id": "reconstruct:rkb_c89eeb2e42c8fb4ef278ba05:3",
      "round_number": 3,
      "segment_reveal": {
       "canonical_parts": [
        {
-        "combine_display": "150 g",
-        "label": "Kindlegem",
-        "line_total_display": "800 g",
+        "combine_display": "250 g",
+        "label": "Bami's Cinder",
+        "line_total_display": "900 g",
         "part_kind": "composite",
-        "piece_id": "p2",
+        "piece_id": "p5",
         "quantity": 1,
         "sub_parts": [
          {
@@ -1178,27 +1223,37 @@
           "value_display": "400 g"
          }
         ],
-        "value_display": "800 g"
+        "value_display": "900 g"
        },
        {
-        "combine_display": "450 g",
-        "label": "Negatron Cloak",
-        "line_total_display": "850 g",
+        "combine_display": "500 g",
+        "label": "Chain Vest",
+        "line_total_display": "800 g",
         "part_kind": "composite",
-        "piece_id": "p0",
+        "piece_id": "p3",
         "quantity": 1,
         "sub_parts": [
          {
-          "label": "Null-Magic Mantle",
+          "label": "Cloth Armor",
           "media": {
            "alt": "",
-           "src": "assets/items_wiki/1033.png"
+           "src": "assets/items_wiki/1029.png"
           },
           "quantity": 1,
-          "value_display": "400 g"
+          "value_display": "300 g"
          }
         ],
-        "value_display": "850 g"
+        "value_display": "800 g"
+       },
+       {
+        "combine_display": null,
+        "label": "Ruby Crystal",
+        "line_total_display": "400 g",
+        "part_kind": "basic",
+        "piece_id": "p4",
+        "quantity": 1,
+        "sub_parts": [],
+        "value_display": "400 g"
        }
       ],
       "challenge_count": 1,
@@ -1207,50 +1262,50 @@
       "module_version": 1,
       "pieces": [
        {
+        "label": "Null-Magic Mantle",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1033.png"
+        },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Bramble Vest",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3076.png"
+        },
+        "piece_id": "p1"
+       },
+       {
         "label": "Negatron Cloak",
         "media": {
          "alt": "",
          "src": "assets/items_wiki/1057.png"
         },
-        "piece_id": "p0"
-       },
-       {
-        "label": "Winged Moonplate",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/3066.png"
-        },
-        "piece_id": "p1"
-       },
-       {
-        "label": "Kindlegem",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/3067.png"
-        },
         "piece_id": "p2"
-       },
-       {
-        "label": "Giant's Belt",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1011.png"
-        },
-        "piece_id": "p3"
-       },
-       {
-        "label": "Spectre's Cowl",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/3211.png"
-        },
-        "piece_id": "p4"
        },
        {
         "label": "Chain Vest",
         "media": {
          "alt": "",
          "src": "assets/items_wiki/1031.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Bami's Cinder",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/6660.png"
         },
         "piece_id": "p5"
        }
@@ -1263,40 +1318,46 @@
         "finished_first": false,
         "incorrect": 0,
         "placement": [
-         "p2",
-         "p0"
+         "p5",
+         "p3",
+         "p4"
         ],
         "points_awarded": 2,
         "segment_result": "win",
         "settled_placement": [
-         "p2",
-         "p0"
+         "p5",
+         "p3",
+         "p4"
         ],
         "slot_correct": [
+         true,
          true,
          true
         ],
         "speed_bonus_points": 0,
         "unanswered": 0
        },
-       "p_40f0ca934ffa4be2": {
+       "p_f84e2aa63fed9099": {
         "base_points": 0,
         "correct": 0,
-        "duration_ms": 9222,
+        "duration_ms": 8550,
         "finished_first": true,
         "incorrect": 1,
         "placement": [
-         "p4",
-         "p0"
+         "p2",
+         "p3",
+         "p4"
         ],
         "points_awarded": 0,
         "segment_result": "loss",
         "settled_placement": [
-         "p2",
-         "p0"
+         "p5",
+         "p3",
+         "p4"
         ],
         "slot_correct": [
          false,
+         true,
          true
         ],
         "speed_bonus_points": 0,
@@ -1306,19 +1367,19 @@
       "scoring": "points",
       "speed_bonus_points": 1,
       "target": {
-       "base_display": "1650 g",
-       "combine_display": "1000 g",
-       "label": "Abyssal Mask",
-       "total_display": "2650 g"
+       "base_display": "2100 g",
+       "combine_display": "700 g",
+       "label": "Sunfire Aegis",
+       "total_display": "2800 g"
       }
      },
-     "started_at": "2026-09-09T12:00:42.750000+00:00",
+     "started_at": "2026-09-09T12:00:46.550000+00:00",
      "winner_id": null
     },
     "projection_type": "resolved_round",
     "round_number": 3,
     "schema_version": "ranked_duel.resolved_round.v2",
-    "server_time": "2026-09-09T12:01:30.750000+00:00"
+    "server_time": "2026-09-09T12:01:34.550000+00:00"
    },
    "match_over": true,
    "match_status": "complete",
@@ -1329,12 +1390,12 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_9dc8b53b5b89691404ecc321",
+    "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
-     "match_id": "rkb_9dc8b53b5b89691404ecc321",
+     "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -1386,7 +1447,7 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_40f0ca934ffa4be2",
+       "player_id": "p_f84e2aa63fed9099",
        "role": null,
        "score": 6,
        "total_xp": 33
@@ -1407,16 +1468,16 @@
     "projection_type": "private_player",
     "round_number": null,
     "schema_version": "ranked_duel.private_player.v2",
-    "server_time": "2026-09-09T12:01:30.750000+00:00"
+    "server_time": "2026-09-09T12:01:34.550000+00:00"
    },
    "public": {
-    "match_id": "rkb_9dc8b53b5b89691404ecc321",
+    "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
      "host": "playtest",
-     "match_id": "rkb_9dc8b53b5b89691404ecc321",
+     "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -1442,7 +1503,7 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_40f0ca934ffa4be2",
+       "player_id": "p_f84e2aa63fed9099",
        "role": null,
        "score": 6,
        "total_xp": 33
@@ -1475,14 +1536,14 @@
     "projection_type": "public_round",
     "round_number": null,
     "schema_version": "ranked_duel.public_round.v2",
-    "server_time": "2026-09-09T12:01:30.750000+00:00"
+    "server_time": "2026-09-09T12:01:34.550000+00:00"
    },
    "result": {
-    "match_id": "rkb_9dc8b53b5b89691404ecc321",
+    "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
     "payload": {
      "completion_reason": "segments_complete",
      "final_round_number": 3,
-     "match_id": "rkb_9dc8b53b5b89691404ecc321",
+     "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
      "outcome": "draw",
      "rating_application_status": "skipped",
      "rating_policy_version": "elo.v1",
@@ -1490,14 +1551,14 @@
      "scoring": {
       "final_scores": {
        "0a11d111-0000-4000-8000-000000000001": 6,
-       "p_40f0ca934ffa4be2": 6
+       "p_f84e2aa63fed9099": 6
       },
       "match_length": 3,
       "model": "points",
       "modules_played": 3,
       "modules_won": {
        "0a11d111-0000-4000-8000-000000000001": 1,
-       "p_40f0ca934ffa4be2": 2
+       "p_f84e2aa63fed9099": 2
       }
      },
      "terminal_reason": "combat",
@@ -1506,21 +1567,188 @@
     "projection_type": "match_result",
     "round_number": 3,
     "schema_version": "ranked_duel.match_result.v1",
-    "server_time": "2026-09-09T12:01:30.750000+00:00"
+    "server_time": "2026-09-09T12:01:34.550000+00:00"
    }
   },
   "projection_type": "resume",
   "round_number": null,
   "schema_version": "ranked_duel.resume.v1",
-  "server_time": "2026-09-09T12:01:30.750000+00:00"
+  "server_time": "2026-09-09T12:01:34.550000+00:00"
  },
  "review": {
-  "match_id": "rkb_9dc8b53b5b89691404ecc321",
+  "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
   "payload": {
    "final_round_number": 3,
-   "match_id": "rkb_9dc8b53b5b89691404ecc321",
+   "match_id": "rkb_c89eeb2e42c8fb4ef278ba05",
    "round_count": 3,
    "rounds": [
+    {
+     "canonical_parts": [
+      {
+       "combine_display": null,
+       "label": "Amplifying Tome",
+       "line_total_display": "400 g",
+       "part_kind": "basic",
+       "piece_id": "p1",
+       "quantity": 1,
+       "sub_parts": [],
+       "value_display": "400 g"
+      },
+      {
+       "combine_display": "300 g",
+       "label": "Hextech Alternator",
+       "line_total_display": "1100 g",
+       "part_kind": "composite",
+       "piece_id": "p3",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Amplifying Tome",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1052.png"
+         },
+         "quantity": 2,
+         "value_display": "400 g"
+        }
+       ],
+       "value_display": "1100 g"
+      },
+      {
+       "combine_display": "550 g",
+       "label": "Vampiric Scepter",
+       "line_total_display": "900 g",
+       "part_kind": "composite",
+       "piece_id": "p5",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Long Sword",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1036.png"
+         },
+         "quantity": 1,
+         "value_display": "350 g"
+        }
+       ],
+       "value_display": "900 g"
+      }
+     ],
+     "canonical_question_ref": null,
+     "category": null,
+     "family": "item_recipe",
+     "icon_hint": {
+      "icon": null,
+      "key": null,
+      "kind": "generic"
+     },
+     "is_correct": true,
+     "kind": "reconstruct",
+     "module_id": "reconstruct",
+     "outcome": "correct",
+     "pieces": [
+      {
+       "label": "Needlessly Large Rod",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1058.png"
+       },
+       "piece_id": "p0"
+      },
+      {
+       "label": "Amplifying Tome",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1052.png"
+       },
+       "piece_id": "p1"
+      },
+      {
+       "label": "Tiamat",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3077.png"
+       },
+       "piece_id": "p2"
+      },
+      {
+       "label": "Hextech Alternator",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3145.png"
+       },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Blasting Wand",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1026.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Vampiric Scepter",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1053.png"
+       },
+       "piece_id": "p5"
+      }
+     ],
+     "prompt": "Rebuild the recipe",
+     "question": null,
+     "recipe_target": {
+      "base_display": "2400 g",
+      "combine_display": "600 g",
+      "label": "Hextech Gunblade",
+      "total_display": "3000 g"
+     },
+     "revealed": true,
+     "round_number": 1,
+     "settled_placement": [
+      "p1",
+      "p3",
+      "p5"
+     ],
+     "slot_correct": [
+      true,
+      true,
+      true
+     ],
+     "slot_count": 3,
+     "target": {
+      "label": "Hextech Gunblade",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3146.png"
+      }
+     },
+     "topic": {
+      "category": "general",
+      "icon_hint": {
+       "icon": null,
+       "key": null,
+       "kind": "generic"
+      },
+      "motif": null,
+      "roles": [],
+      "tier": null
+     },
+     "viewer_placement": [
+      "p1",
+      "p3",
+      "p5"
+     ],
+     "viewer_submission": {
+      "answer_index": null,
+      "answered_count": 1,
+      "challenge_count": 1,
+      "correct_count": 1,
+      "is_correct": true
+     }
+    },
     {
      "canonical_parts": [
       {
@@ -1528,7 +1756,7 @@
        "label": "Fiendish Codex",
        "line_total_display": "850 g",
        "part_kind": "composite",
-       "piece_id": "p5",
+       "piece_id": "p2",
        "quantity": 1,
        "sub_parts": [
         {
@@ -1553,24 +1781,33 @@
        "value_display": "850 g"
       },
       {
-       "combine_display": "400 g",
-       "label": "Forbidden Idol",
-       "line_total_display": "600 g",
+       "combine_display": "500 g",
+       "label": "Haunting Guise",
+       "line_total_display": "1300 g",
        "part_kind": "composite",
-       "piece_id": "p3",
+       "piece_id": "p4",
        "quantity": 1,
        "sub_parts": [
         {
-         "label": "Faerie Charm",
+         "label": "Amplifying Tome",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1004.png"
+          "src": "assets/items_wiki/1052.png"
          },
          "quantity": 1,
-         "value_display": "200 g"
+         "value_display": "400 g"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "quantity": 1,
+         "value_display": "400 g"
         }
        ],
-       "value_display": "600 g"
+       "value_display": "1300 g"
       }
      ],
      "canonical_question_ref": null,
@@ -1595,36 +1832,12 @@
        "piece_id": "p0"
       },
       {
-       "label": "Aether Wisp",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3113.png"
-       },
-       "piece_id": "p1"
-      },
-      {
        "label": "Oblivion Orb",
        "media": {
         "alt": "",
         "src": "assets/items_wiki/3916.png"
        },
-       "piece_id": "p2"
-      },
-      {
-       "label": "Forbidden Idol",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3114.png"
-       },
-       "piece_id": "p3"
-      },
-      {
-       "label": "Bandleglass Mirror",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/4642.png"
-       },
-       "piece_id": "p4"
+       "piece_id": "p1"
       },
       {
        "label": "Fiendish Codex",
@@ -1632,22 +1845,46 @@
         "alt": "",
         "src": "assets/items_wiki/3108.png"
        },
+       "piece_id": "p2"
+      },
+      {
+       "label": "Hextech Alternator",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3145.png"
+       },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Haunting Guise",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3147.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Giant's Belt",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1011.png"
+       },
        "piece_id": "p5"
       }
      ],
      "prompt": "Rebuild the recipe",
      "question": null,
      "recipe_target": {
-      "base_display": "1450 g",
-      "combine_display": "800 g",
-      "label": "Redemption",
-      "total_display": "2250 g"
+      "base_display": "2150 g",
+      "combine_display": "950 g",
+      "label": "Riftmaker",
+      "total_display": "3100 g"
      },
      "revealed": true,
-     "round_number": 1,
+     "round_number": 2,
      "settled_placement": [
-      "p5",
-      "p3"
+      "p2",
+      "p4"
      ],
      "slot_correct": [
       true,
@@ -1655,156 +1892,10 @@
      ],
      "slot_count": 2,
      "target": {
-      "label": "Redemption",
+      "label": "Riftmaker",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/3107.png"
-      }
-     },
-     "topic": {
-      "category": "general",
-      "icon_hint": {
-       "icon": null,
-       "key": null,
-       "kind": "generic"
-      },
-      "motif": null,
-      "roles": [],
-      "tier": null
-     },
-     "viewer_placement": [
-      "p5",
-      "p3"
-     ],
-     "viewer_submission": {
-      "answer_index": null,
-      "answered_count": 1,
-      "challenge_count": 1,
-      "correct_count": 1,
-      "is_correct": true
-     }
-    },
-    {
-     "canonical_parts": [
-      {
-       "combine_display": null,
-       "label": "B. F. Sword",
-       "line_total_display": "1300 g",
-       "part_kind": "basic",
-       "piece_id": "p2",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "1300 g"
-      },
-      {
-       "combine_display": null,
-       "label": "Cloak of Agility",
-       "line_total_display": "600 g",
-       "part_kind": "basic",
-       "piece_id": "p0",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "600 g"
-      },
-      {
-       "combine_display": null,
-       "label": "Pickaxe",
-       "line_total_display": "875 g",
-       "part_kind": "basic",
-       "piece_id": "p4",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "875 g"
-      }
-     ],
-     "canonical_question_ref": null,
-     "category": null,
-     "family": "item_recipe",
-     "icon_hint": {
-      "icon": null,
-      "key": null,
-      "kind": "generic"
-     },
-     "is_correct": true,
-     "kind": "reconstruct",
-     "module_id": "reconstruct",
-     "outcome": "correct",
-     "pieces": [
-      {
-       "label": "Cloak of Agility",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1018.png"
-       },
-       "piece_id": "p0"
-      },
-      {
-       "label": "Dagger",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1042.png"
-       },
-       "piece_id": "p1"
-      },
-      {
-       "label": "B. F. Sword",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1038.png"
-       },
-       "piece_id": "p2"
-      },
-      {
-       "label": "Long Sword",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1036.png"
-       },
-       "piece_id": "p3"
-      },
-      {
-       "label": "Pickaxe",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1037.png"
-       },
-       "piece_id": "p4"
-      },
-      {
-       "label": "Executioner's Calling",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3123.png"
-       },
-       "piece_id": "p5"
-      }
-     ],
-     "prompt": "Rebuild the recipe",
-     "question": null,
-     "recipe_target": {
-      "base_display": "2775 g",
-      "combine_display": "725 g",
-      "label": "Infinity Edge",
-      "total_display": "3500 g"
-     },
-     "revealed": true,
-     "round_number": 2,
-     "settled_placement": [
-      "p2",
-      "p0",
-      "p4"
-     ],
-     "slot_correct": [
-      true,
-      true,
-      true
-     ],
-     "slot_count": 3,
-     "target": {
-      "label": "Infinity Edge",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/3031.png"
+       "src": "assets/items_wiki/4633.png"
       }
      },
      "topic": {
@@ -1820,7 +1911,6 @@
      },
      "viewer_placement": [
       "p2",
-      "p0",
       "p4"
      ],
      "viewer_submission": {
@@ -1834,11 +1924,11 @@
     {
      "canonical_parts": [
       {
-       "combine_display": "150 g",
-       "label": "Kindlegem",
-       "line_total_display": "800 g",
+       "combine_display": "250 g",
+       "label": "Bami's Cinder",
+       "line_total_display": "900 g",
        "part_kind": "composite",
-       "piece_id": "p2",
+       "piece_id": "p5",
        "quantity": 1,
        "sub_parts": [
         {
@@ -1860,27 +1950,37 @@
          "value_display": "400 g"
         }
        ],
-       "value_display": "800 g"
+       "value_display": "900 g"
       },
       {
-       "combine_display": "450 g",
-       "label": "Negatron Cloak",
-       "line_total_display": "850 g",
+       "combine_display": "500 g",
+       "label": "Chain Vest",
+       "line_total_display": "800 g",
        "part_kind": "composite",
-       "piece_id": "p0",
+       "piece_id": "p3",
        "quantity": 1,
        "sub_parts": [
         {
-         "label": "Null-Magic Mantle",
+         "label": "Cloth Armor",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1033.png"
+          "src": "assets/items_wiki/1029.png"
          },
          "quantity": 1,
-         "value_display": "400 g"
+         "value_display": "300 g"
         }
        ],
-       "value_display": "850 g"
+       "value_display": "800 g"
+      },
+      {
+       "combine_display": null,
+       "label": "Ruby Crystal",
+       "line_total_display": "400 g",
+       "part_kind": "basic",
+       "piece_id": "p4",
+       "quantity": 1,
+       "sub_parts": [],
+       "value_display": "400 g"
       }
      ],
      "canonical_question_ref": null,
@@ -1897,44 +1997,28 @@
      "outcome": "correct",
      "pieces": [
       {
+       "label": "Null-Magic Mantle",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1033.png"
+       },
+       "piece_id": "p0"
+      },
+      {
+       "label": "Bramble Vest",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3076.png"
+       },
+       "piece_id": "p1"
+      },
+      {
        "label": "Negatron Cloak",
        "media": {
         "alt": "",
         "src": "assets/items_wiki/1057.png"
        },
-       "piece_id": "p0"
-      },
-      {
-       "label": "Winged Moonplate",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3066.png"
-       },
-       "piece_id": "p1"
-      },
-      {
-       "label": "Kindlegem",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3067.png"
-       },
        "piece_id": "p2"
-      },
-      {
-       "label": "Giant's Belt",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1011.png"
-       },
-       "piece_id": "p3"
-      },
-      {
-       "label": "Spectre's Cowl",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3211.png"
-       },
-       "piece_id": "p4"
       },
       {
        "label": "Chain Vest",
@@ -1942,33 +2026,51 @@
         "alt": "",
         "src": "assets/items_wiki/1031.png"
        },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Ruby Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1028.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Bami's Cinder",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/6660.png"
+       },
        "piece_id": "p5"
       }
      ],
      "prompt": "Rebuild the recipe",
      "question": null,
      "recipe_target": {
-      "base_display": "1650 g",
-      "combine_display": "1000 g",
-      "label": "Abyssal Mask",
-      "total_display": "2650 g"
+      "base_display": "2100 g",
+      "combine_display": "700 g",
+      "label": "Sunfire Aegis",
+      "total_display": "2800 g"
      },
      "revealed": true,
      "round_number": 3,
      "settled_placement": [
-      "p2",
-      "p0"
+      "p5",
+      "p3",
+      "p4"
      ],
      "slot_correct": [
       true,
+      true,
       true
      ],
-     "slot_count": 2,
+     "slot_count": 3,
      "target": {
-      "label": "Abyssal Mask",
+      "label": "Sunfire Aegis",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/8020.png"
+       "src": "assets/items_wiki/3068.png"
       }
      },
      "topic": {
@@ -1983,8 +2085,9 @@
       "tier": null
      },
      "viewer_placement": [
-      "p2",
-      "p0"
+      "p5",
+      "p3",
+      "p4"
      ],
      "viewer_submission": {
       "answer_index": null,
@@ -1999,6 +2102,6 @@
   "projection_type": "match_review",
   "round_number": null,
   "schema_version": "ranked_duel.match_review.v1",
-  "server_time": "2026-09-09T12:01:30.750000+00:00"
+  "server_time": "2026-09-09T12:01:34.550000+00:00"
  }
 }

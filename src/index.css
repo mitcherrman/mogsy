@@ -968,6 +968,45 @@
   color: var(--ranked-muted);
 }
 
+/* ---- R3C — THE NAVY SURFACES KEEP THEIR INK IN THE LIGHT APP THEME ---------
+   The rail banners and the header plate are painted navy in BOTH app themes
+   (a fixed asset and a fixed plate), but the words on them took the APP
+   theme's tokens: `text-foreground`, `text-muted-foreground`, inherited body
+   colour. In the light theme those are slate-900 ink, so "You", "HP 170/170",
+   "Opponent", "No modules yet" and the header's title measured 1.0-1.1:1 on
+   painted pixels (R3A saw it; R3C measured it). Same family as R3A's breakdown
+   defect: a surface chosen by one system, its ink by another.
+
+   The repair is at the token level, not per element: on these two surfaces the
+   colour tokens take the values the DARK theme already gives them, so the light
+   theme renders the rails and the header exactly as the dark theme does
+   (measured >= 4.5:1). Scoped to `:root:not(.dark)`: the dark theme and the
+   League theme (`dark theme-lol`) are untouched, byte for byte. The phone
+   match bar (`.ranked-matchbar`) is the rails' and the header's stand-in below
+   `lg`, on the same navy, and measured the same 1.0:1. */
+:root:not(.dark) .ranked-academy .ranked-banner,
+:root:not(.dark) .ranked-academy .ranked-header-plate,
+:root:not(.dark) .ranked-academy .ranked-matchbar {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 217 32% 17%;
+  --card-foreground: 210 40% 98%;
+  --popover: 215 24% 26%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 80% 65%;
+  --primary-foreground: 210 80% 10%;
+  --secondary: 212 26% 83%;
+  --secondary-foreground: 228 84% 4%;
+  --muted: 215 16% 46%;
+  --muted-foreground: 210 40% 98%;
+  --accent: 228 84% 4%;
+  --accent-foreground: 215 20% 65%;
+  --border: 215 19% 34%;
+  --input: 215 19% 34%;
+  --ring: 210 80% 65%;
+  color: hsl(var(--foreground));
+}
+
 /* ---- Round-result beat (top HUD centre) -----------------------------------
    THE round-resolution presentation. The arena's four regions each answer one
    question — top is match state, centre is the question, the rails are the
@@ -1732,6 +1771,21 @@ html.reduce-motion .reward-glow { opacity: 0.6; }
    module 10 and the rows below it never move. On a wide column all five sit in
    one row and the second row is simply air — which is what a reserve IS. */
 .ranked-banner [data-testid^="module-history-"] { min-height: 4.75rem; }
+/* R3C — THE SHORT-DESKTOP TIER (>= 1024px wide, < 720px tall): the column fits.
+   At 1280x600 the column is ~408px tall and the banner spends 192px of it on
+   its painted rod and point; the content (a 132px mascot slot, identity, score,
+   the reserved history strip and the status bubble) needed ~438-468px, so it
+   ran 30-60px out of the banner, under the round timeline and the Forfeit
+   label (R3A/R3C, measured live). The rod and point keep their height (the
+   asset would distort); the mascot slot is what has room to give, plus the
+   air between rows. Every row is kept, in the same order, on both columns.
+   Same tier as Reconstruct's compact board (`lg:[@media(max-height:719px)]`). */
+@media (min-width: 1024px) and (max-height: 719px) {
+  .ranked-academy .ranked-banner { row-gap: 0.25rem; }
+  .ranked-academy .ranked-banner > *:first-child { margin-block-start: 0.25rem; }
+  .ranked-academy .ranked-banner [data-testid="role-crest-mascot"],
+  .ranked-academy .ranked-banner [data-testid="role-crest-neutral"] { width: 34%; }
+}
 /* The verdict and the neutral chips share ONE slot, so settling a round
    replaces the contents and moves nothing. Both are already `min-h-7`; this
    reserves the same box on the wrapper so a wrapped chip set cannot grow it. */
@@ -15504,6 +15558,12 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .ranked-academy[data-phone-stacked="true"]::before {
     inset: 0;
   }
+  /* R3C — the END SCREEN's frame carries neither attribute, so it kept the
+     bleed: a phone zoomed every finished match out (390 -> 394px and 360 ->
+     364px, measured live on the end screen only). Same repair. */
+  .ranked-academy:has([data-testid="ranked-match-over"])::before {
+    inset: 0;
+  }
   /* The arena grid holds two banner cells that are `display:none` here, so its
      one visible child is the focus column: a column that GROWS into the
      screen, and the card with it. */
@@ -15511,6 +15571,25 @@ html.hub-commons-in-view .hextech-ambience-layer {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
+  }
+  /* R3C — A BEAT COVERS THE SCREEN THE PLAYER SEES, NOT THE GROWN PAGE.
+     The beat layer (Final Round warning, match outro) is `absolute inset-0` of
+     the shell, so on a phone where the round cannot fit one screen (a 640px
+     phone: the shell is ~676px under a 46px HUD) the outro's scrim ran 82px
+     below the fold and grew with the page. Here it is pinned to the VISIBLE
+     part of the shell (the shell's box clipped to the viewport, published by
+     `useBeatLayerViewportBox`): when the arena fits one screen that IS the
+     shell's box (the intro-axis contract is unchanged); when it cannot, the
+     beat covers exactly what the player sees, at any scroll offset, and adds
+     nothing below the fold. */
+  .ranked-shell[data-phone-arena="true"] > .ranked-beat-layer {
+    position: fixed;
+    /* The shell's box clipped to the viewport (`useBeatLayerViewportBox`);
+       the fallbacks are the frame's own padding, for the first paint. */
+    top: var(--beat-top, calc(var(--app-header-h) + 0.125rem));
+    right: var(--beat-right, 0.5rem);
+    bottom: var(--beat-bottom, calc(0.375rem + env(safe-area-inset-bottom, 0px)));
+    left: var(--beat-left, 0.5rem);
   }
   .ranked-shell[data-phone-arena="true"] [data-testid="ranked-focus-column"] {
     flex: 1 1 auto;

@@ -51,12 +51,18 @@
  *      and the only one that can find a BOT match, which is never in the
  *      queue. Reached when this client arrives with no id of its own, which
  *      is precisely the case recovery is for.
+ *   3. RECONSTRUCT-R3C — the match this tab was PRESENTING (`presentedMatchHint`),
+ *      only when discovery found nothing to play. The final round completes
+ *      the match while the player is still watching its reveal, outro and end
+ *      screen, so a reload there used to lose the result. The hint is mounted
+ *      only after the server's participant-gated, terminal-only `/result`
+ *      answers for it, and the arena then opens it straight on the end screen.
  *
  * Requires a verified non-anonymous account; a signed-out visitor gets the
  * account gate rather than a redirect, because sending them to the lobby to
  * be told the same thing is a longer way round to the same sentence.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import SEOHead from "@/components/SEOHead";
 import { useSurfaceEvent } from "@/lib/analytics";
 import { authHref } from "@/lib/auth/auth-destination";
@@ -66,10 +72,11 @@ import { RankedRouteHeader } from "./RankedRouteHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
-import { getActiveMatch } from "@/lib/ranked-public/client";
+import { getActiveMatch, getMatchResult, isAborted, RankedApiError } from "@/lib/ranked-public/client";
 import { MATCH_HOST } from "@/lib/ranked-public/matchHost";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { originForHost, readMatchOrigin, type RankedMatchOrigin } from "./matchOrigin";
+import { forgetPresentedMatch, readPresentedMatch, rememberPresentedMatch } from "./presentedMatchHint";
 import type { MatchPhase } from "./useRankedMatch";
 import { TransactionalLeaveDialog } from "@/components/navigation/TransactionalLeaveDialog";
 import {
@@ -245,9 +252,32 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   useEffect(() => {
     if (handoffMatchId) { setDiscoveryDone(true); return; }
     const controller = new AbortController();
+    /**
+     * RECONSTRUCT-R3C — nothing left to PLAY; is there a finished match this tab
+     * was still presenting? The hint names a candidate; `/result` decides
+     * (participant-only: 403 otherwise; terminal-only: 409 while live). Only a
+     * served result mounts it. A refusal retires the hint, so it cannot loop.
+     */
+    const recoverPresented = async (): Promise<string | null> => {
+      const hinted = readPresentedMatch(viewerUserId);
+      if (!hinted) return null;
+      try {
+        await getMatchResult(hinted, controller.signal);
+        return hinted;
+      } catch (e) {
+        if (isAborted(e)) throw e;
+        if (e instanceof RankedApiError && e.status >= 400 && e.status < 500) forgetPresentedMatch(hinted);
+        return null;
+      }
+    };
     getActiveMatch(controller.signal)
-      .then((found) => {
-        if (!found) return;
+      .catch((e) => { if (isAborted(e)) throw e; return null; })
+      .then(async (found) => {
+        if (!found) {
+          const recovered = await recoverPresented();
+          if (recovered) setDiscoveredMatchId(recovered);
+          return;
+        }
         // DCMOD: a Daily stage resumes inside its parent run, not as Ranked.
         if (found.host === MATCH_HOST.dailyChallenge) {
           navigate("/quiz/daily-challenge", { replace: true });
@@ -259,7 +289,7 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
       .catch(() => { /* not recoverable — fall through to the lobby */ })
       .finally(() => setDiscoveryDone(true));
     return () => controller.abort();
-  }, [handoffMatchId, navigate]);
+  }, [handoffMatchId, navigate, viewerUserId]);
 
   const liveMatchId = handoffMatchId ?? discoveredMatchId;
   const originHint = handoffMatchId ? routerOrigin : discoveredOrigin;
@@ -270,7 +300,22 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
       leavesStandaloneRankedOwner(nextLocation.pathname),
     [],
   );
+  // RECONSTRUCT-R3C — this tab is presenting `liveMatchId`: a reload keeps it
+  // findable (see `presentedMatchHint`). Leaving a FINISHED match on purpose
+  // retires the hint; a reload runs no cleanup, so the hint survives exactly
+  // that. A match left while still live keeps it: discovery finds that one.
+  const phaseRef = useRef<MatchPhase | null>(null);
+  useEffect(() => {
+    if (!liveMatchId) return;
+    rememberPresentedMatch(viewerUserId, liveMatchId);
+    return () => {
+      if (phaseRef.current === "match_over" || phaseRef.current === "match_outro") {
+        forgetPresentedMatch(liveMatchId);
+      }
+    };
+  }, [liveMatchId, viewerUserId]);
   const handlePhaseChange = useCallback((phase: MatchPhase) => {
+    phaseRef.current = phase;
     if (liveMatchId) setAuthority({ matchId: liveMatchId, phase });
   }, [liveMatchId]);
   const leaveGuard = useTransactionalLeaveGuard({
@@ -300,7 +345,10 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
           onPhaseChange={handlePhaseChange}
           origin={originHint}
           onOriginChange={setResolvedOrigin}
-          onTerminalNavigate={(destination) => navigate(destination, { replace: true })}
+          onTerminalNavigate={(destination) => {
+            forgetPresentedMatch(liveMatchId);
+            navigate(destination, { replace: true });
+          }}
           terminalChrome={<RankedRouteHeader size="wide" replace back={backLink} />}
           chrome={<RankedRouteHeader size="wide" active back={backLink} />} />
         <TransactionalLeaveDialog
