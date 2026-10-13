@@ -192,7 +192,10 @@ function ReconstructPhase({ state, actions, skewMs, roundStartedAt }: {
       <p className={`h-4 truncate text-center text-xs leading-4 text-muted-foreground ${phase === "open" ? "invisible" : ""}`}
         role="status" aria-hidden={phase === "open" ? true : undefined}
         data-testid="reconstruct-opponent-progress">
-        {phase === "open" ? "" : state.opponentFinished
+        {phase === "open" ? "" : served?.timedOut
+          // R3C: the viewer never locked, so "both players" would be false.
+          ? "Time ran out before you locked in."
+          : state.opponentFinished
           ? "Both players have locked in."
           : "Waiting for the opponent to lock in…"}
       </p>
