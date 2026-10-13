@@ -77,3 +77,15 @@ States: `results-full-rated` (production composition: compact frame, `RankedResu
 - `.claude/launch.json` was created locally for the browser preview; it is gitignored.
 - The PR description could not be updated from this machine (`gh` is not installed); the intended description text is in this pass's final report and should be pasted into PR 6 by the user.
 - Keep the PR in draft; the user reviews and authorizes release.
+
+## Independent backend XP contract verification (2026-10-12)
+Inspected source at `mitcherrman/League_Combat_Simulator` `master` (not live production):
+- `routes/quiz.py` `POST /api/quiz/attempts` returns `xp_earned: progress.earned_xp`; runtime-composed casual attempt path does likewise.
+- `services/attempt_recorder.py` `record_attempt` invokes `update_quiz_progress` in the answer transaction; `services/quiz_helpers.py` computes its `earned_xp`.
+- `routes/quiz.py` `POST /api/quiz/sessions/{session_id}/complete` updates completion state and analytics but performs no additional XP grant.
+**Conclusion:** for the inspected Practice backend implementation, summing all settled `xp_earned` responses is consistent with the awarded Practice XP; no completion XP bonus was found. This is code verification only, not a live Railway audit. The guard against missing answer awards remains necessary.
+- Draft PR #6 description has been updated to reflect Claude's second-pass changes. PR remains open, draft and mergeable; no merge/deploy authorized.
+- No GitHub combined statuses or PR workflow runs found at head `669af4d517f7717bc99e0158aea70e49810d5822`. Local build/test/browser results are from Claude's report; not independently rerun here. Actual audio quality remains unreviewed by ear.
+
+## Next task
+Have owner review the development-only inspector with audio on real hardware (one/multiple/none discoveries, Practice earned/no XP, reload, mobile, reduced motion). Resolve any actual issues. Keep draft until approval; do not add backend reward logic or invent XP thresholds.
