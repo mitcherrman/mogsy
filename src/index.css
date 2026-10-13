@@ -1783,7 +1783,6 @@ html.reduce-motion .reward-glow { opacity: 0.6; }
 @media (min-width: 1024px) and (max-height: 719px) {
   .ranked-academy .ranked-banner { row-gap: 0.25rem; }
   .ranked-academy .ranked-banner > *:first-child { margin-block-start: 0.25rem; }
-  .ranked-academy .ranked-banner [data-testid="role-crest"] { padding-top: 6%; }
   .ranked-academy .ranked-banner [data-testid="role-crest-mascot"],
   .ranked-academy .ranked-banner [data-testid="role-crest-neutral"] { width: 34%; }
 }
