@@ -12,8 +12,13 @@
 // given), so a 23:00Z match is a different day in Los Angeles and in Seoul.
 // ---------------------------------------------------------------------------
 
-import type { TournamentMatchV2, TournamentStateV2 } from "@/lib/pro-play/tournamentApi";
+import type { TournamentMatchV2 } from "@/lib/pro-play/tournamentApi";
 import { localDayKey } from "@/lib/pro-play/tournamentView";
+
+/** The served fixtures (a state, or the provider's read-only view of one). */
+export interface ServedMatches {
+  matches: readonly TournamentMatchV2[];
+}
 
 export interface ScheduleDay {
   /** `YYYY-MM-DD` in the viewer's (or the given) timezone. */
@@ -31,7 +36,7 @@ const startOf = (m: Pick<TournamentMatchV2, "scheduled_start">) => {
 };
 
 /** The served fixtures of one stage (or all), by local day, each day in start order. */
-export function scheduleDays(state: Pick<TournamentStateV2, "matches">, filterKey: string | null, timeZone?: string): ScheduleDay[] {
+export function scheduleDays(state: ServedMatches, filterKey: string | null, timeZone?: string): ScheduleDay[] {
   const byDay = new Map<string, TournamentMatchV2[]>();
   for (const m of state.matches) {
     if (filterKey && m.stage !== filterKey) continue;
@@ -81,8 +86,38 @@ export function daysBetween(a: string, b: string) {
 /** The local day a match is played on. */
 export const matchDay = (m: Pick<TournamentMatchV2, "scheduled_start">, timeZone?: string) => localDayKey(m.scheduled_start, timeZone);
 
+export interface ScheduleSelection {
+  /** The stage filter, as a stage key (null: all stages). */
+  filterKey: string | null;
+  /** A requested local day that has fixtures under the filter; null when none was asked for or it has none. */
+  day: string | null;
+  matchId: string | null;
+}
+
+/**
+ * The Schedule's three selections made consistent with each other and with
+ * what was served. A link or a history entry is read through this, so the
+ * board, the date rail and the detail can never describe different things.
+ *
+ * - The MATCH leads, as it does when a match is selected on the board: a match
+ *   that the stage filter would hide lifts the filter, and the day is the
+ *   match's own. A match that is not served, or has no readable start, is no
+ *   selection (it is on no board).
+ * - A day with no fixtures under the filter is no requested day (the board
+ *   then opens on `pickDay`'s choice).
+ */
+export function reconcileSchedule(state: ServedMatches, sel: ScheduleSelection, timeZone?: string): ScheduleSelection {
+  const m = sel.matchId ? state.matches.find((x) => x.match_id === sel.matchId) : undefined;
+  const mDay = m ? matchDay(m, timeZone) : null;
+  if (m && mDay) {
+    return { matchId: m.match_id, day: mDay, filterKey: sel.filterKey && m.stage !== sel.filterKey ? null : sel.filterKey };
+  }
+  const valid = sel.day !== null && scheduleDays(state, sel.filterKey, timeZone).some((d) => d.day === sel.day);
+  return { matchId: null, day: valid ? sel.day : null, filterKey: sel.filterKey };
+}
+
 /** Counts for the stage filter: every stage with a served fixture, plus all. */
-export function filterCounts(state: Pick<TournamentStateV2, "matches">, stageKeys: readonly string[]) {
+export function filterCounts(state: ServedMatches, stageKeys: readonly string[]) {
   return [
     { key: null as string | null, count: state.matches.length },
     ...stageKeys.map((k) => ({ key: k as string | null, count: state.matches.filter((m) => m.stage === k).length })).filter((o) => o.count > 0),

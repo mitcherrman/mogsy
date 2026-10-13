@@ -35,6 +35,20 @@ export function participantByCode(ctx: Pick<TournamentContextV2, "participants">
   return ctx.participants.find((p) => p.code === code.toUpperCase()) ?? null;
 }
 
+/**
+ * The Teams selections made consistent. The TEAM leads, as a direct team link
+ * must: a region that does not hold the team is lifted rather than hiding it.
+ * An unknown code or region is no selection.
+ */
+export function reconcileTeams(
+  ctx: Pick<TournamentContextV2, "participants">,
+  sel: { team: string | null; region: string | null },
+): { team: string | null; region: string | null } {
+  const p = participantByCode(ctx, sel.team);
+  const known = sel.region !== null && ctx.participants.some((q) => q.region === sel.region) ? sel.region : null;
+  return { team: p ? p.code : null, region: p && known !== null && p.region !== known ? null : known };
+}
+
 /** Teams in the registry's order, optionally one region's. */
 export function teamsInRegion(ctx: Pick<TournamentContextV2, "participants">, region: string | null) {
   return region ? ctx.participants.filter((p) => p.region === region) : [...ctx.participants];

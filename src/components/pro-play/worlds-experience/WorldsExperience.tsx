@@ -472,7 +472,7 @@ export default function WorldsExperience({ data, now, base, onRetry, retrying, r
 }) {
   return (
     <TournamentKitProvider ctx={data.context} state={data.state} now={now}>
-      <ExperienceProvider base={base} ctx={data.context} state={data.state} desktop={desktop} simulated={simulated}>
+      <ExperienceProvider base={base} ctx={data.context} state={data.state} now={now} desktop={desktop} simulated={simulated}>
         <Frame data={data} onRetry={onRetry} retrying={retrying} refreshFailed={refreshFailed} badge={badge} tools={tools} />
       </ExperienceProvider>
     </TournamentKitProvider>

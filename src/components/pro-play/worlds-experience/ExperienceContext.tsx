@@ -15,6 +15,20 @@
  *   the Schedule's day and stage filter, the Teams region. Each is in the URL
  *   (refresh and links keep it) without being a place to go back to.
  * - Selecting a match on the Schedule moves the board to that match's day.
+ *
+ * SELECTIONS NEVER CONTRADICT THE VIEW (UX2A)
+ * - A view setting that a selected match or team does not fit clears that
+ *   selection (a date the match is not played on, a stage filter that excludes
+ *   it, a region the team is not in); one it fits keeps it. A stage filter
+ *   that leaves the shown day without fixtures moves to the day the board
+ *   would open on, and writes it, so the URL says what is shown.
+ * - A link read the other way round lets the detail lead (`reconcile*`): the
+ *   match's day and stage, the team's region. `loc` is that reconciled
+ *   reading, so every consumer sees one answer.
+ * - A detail's own history entry is popped to close it only while the
+ *   workspace beneath it is the one on screen. Once a view setting has moved
+ *   (or has cleared the detail), the entry has no marker and closes in place:
+ *   closing never snaps a filter back.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
@@ -22,12 +36,14 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import type { TournamentContextV2, TournamentMatchV2, TournamentStateV2 } from "@/lib/pro-play/tournamentApi";
 import { defaultStageKey } from "@/lib/pro-play/worldsExperience/experienceView";
-import { matchDay } from "@/lib/pro-play/worldsExperience/scheduleView";
+import { matchDay, pickDay, reconcileSchedule, scheduleDays } from "@/lib/pro-play/worldsExperience/scheduleView";
+import { participantByCode, reconcileTeams } from "@/lib/pro-play/worldsExperience/teamsView";
 import {
   buildHref,
   navDirection,
   parseLocation,
   stageKeyFromSlug,
+  stageSlug,
   type Direction,
   type ExperienceLocation,
   type NavPosition,
@@ -51,8 +67,15 @@ export function useMediaQuery(query: string) {
   return matches;
 }
 
+/** `ux1Panel`: this entry was pushed to open the detail in its URL, so popping it closes it. */
 interface PanelState {
   ux1Panel?: boolean;
+}
+
+/** The history state of an entry that no longer sits on top of the workspace it was pushed from. */
+function withoutPanel(state: unknown): PanelState | undefined {
+  const { ux1Panel: _panel, ...rest } = (state ?? {}) as PanelState;
+  return Object.keys(rest).length ? rest : undefined;
 }
 
 export interface Experience {
@@ -93,10 +116,12 @@ export function useExperience(): Experience {
   return x;
 }
 
-export function ExperienceProvider({ base, ctx, state, desktop: forcedDesktop, simulated = false, children }: {
+export function ExperienceProvider({ base, ctx, state, now, desktop: forcedDesktop, simulated = false, children }: {
   base: string;
-  ctx: Pick<TournamentContextV2, "stages">;
+  ctx: Pick<TournamentContextV2, "stages" | "participants">;
   state: Pick<TournamentStateV2, "phase" | "phase_detail"> & { matches: readonly TournamentMatchV2[] };
+  /** The page's clock: the day the Schedule opens on can depend on it. */
+  now: number;
   /** Tests pin the layout; the page reads the viewport. */
   desktop?: boolean;
   simulated?: boolean;
@@ -109,7 +134,17 @@ export function ExperienceProvider({ base, ctx, state, desktop: forcedDesktop, s
   const reduced = useReducedMotion() === true;
   const stageKeys = useMemo(() => ctx.stages.map((s) => s.key), [ctx.stages]);
 
-  const loc = useMemo(() => parseLocation(base, location.pathname, location.search), [base, location.pathname, location.search]);
+  const parsed = useMemo(() => parseLocation(base, location.pathname, location.search), [base, location.pathname, location.search]);
+  // The URL as read, made consistent with what was served: the Schedule's
+  // match, day and filter agree, and the Teams' team and region agree.
+  const loc = useMemo(() => {
+    if (parsed.screen === "schedule") {
+      const sel = reconcileSchedule(state, { matchId: parsed.matchId, day: parsed.day, filterKey: stageKeyFromSlug(parsed.filter ?? undefined, stageKeys) });
+      return { ...parsed, matchId: sel.matchId, day: sel.day, filter: sel.filterKey ? stageSlug(sel.filterKey) : null };
+    }
+    if (parsed.screen === "teams") return { ...parsed, ...reconcileTeams(ctx, parsed) };
+    return parsed;
+  }, [parsed, state, ctx, stageKeys]);
   const pathStage = stageKeyFromSlug(loc.stageSlug ?? undefined, stageKeys);
   const fallbackStage = defaultStageKey(state, ctx);
   const stageKey = loc.screen === "stages" ? (pathStage ?? fallbackStage) : null;
@@ -151,9 +186,20 @@ export function ExperienceProvider({ base, ctx, state, desktop: forcedDesktop, s
     [loc, stageKey, filterKey],
   );
   const hereHref = useCallback((patch: Partial<Target>) => buildHref(base, here(patch), location.search), [base, here, location.search]);
-  /** A view setting: same entry, same history state (an open detail stays poppable). */
+  /**
+   * A view setting: same entry. The entry that opened a detail keeps its
+   * marker only while nothing it sits on has moved; a setting that changed
+   * (or that cleared the detail) makes it an ordinary entry, so closing the
+   * detail afterwards happens in place instead of popping back to the
+   * workspace as it was before the setting.
+   */
   const replaceHere = useCallback(
-    (patch: Partial<Target>) => navigate(buildHref(base, here(patch), location.search), { replace: true, state: location.state }),
+    (patch: Partial<Target>) => {
+      const next = here(patch);
+      const current = here({});
+      const moved = (Object.keys(next) as (keyof Target)[]).some((k) => (next[k] ?? null) !== (current[k] ?? null));
+      navigate(buildHref(base, next, location.search), { replace: true, state: moved ? withoutPanel(location.state) : location.state });
+    },
     [base, here, location.search, location.state, navigate],
   );
   /**
@@ -214,9 +260,39 @@ export function ExperienceProvider({ base, ctx, state, desktop: forcedDesktop, s
 
   const selectRound = useCallback((round: number) => replaceHere({ round }), [replaceHere]);
   const selectStep = useCallback((step: string) => replaceHere({ step }), [replaceHere]);
-  const setDay = useCallback((day: string) => replaceHere({ day }), [replaceHere]);
-  const setFilter = useCallback((key: string | null) => replaceHere({ filterKey: key }), [replaceHere]);
-  const setRegion = useCallback((region: string | null) => replaceHere({ region }), [replaceHere]);
+
+  // The match on screen (already reconciled with the day and filter), if any.
+  const shownMatch = loc.screen === "schedule" && loc.matchId ? matches.find((m) => m.match_id === loc.matchId) : undefined;
+
+  /** A date keeps the match only if it is played that day. */
+  const setDay = useCallback(
+    (day: string) => replaceHere({ day, matchId: shownMatch && matchDay(shownMatch) === day ? shownMatch.match_id : null }),
+    [replaceHere, shownMatch],
+  );
+
+  /**
+   * A stage filter keeps the match only if it belongs to the stage, and the
+   * day is the one the board will show (the same day when it has fixtures
+   * under the new filter, else `pickDay`'s choice) so the URL says what is
+   * shown. No fixtures under the filter: no day, nothing invented.
+   */
+  const setFilter = useCallback(
+    (key: string | null) => {
+      const shownDay = pickDay(scheduleDays({ matches }, filterKey), loc.day, now);
+      const day = pickDay(scheduleDays({ matches }, key), shownDay, now);
+      replaceHere({ filterKey: key, day, matchId: shownMatch && (!key || shownMatch.stage === key) ? shownMatch.match_id : null });
+    },
+    [matches, filterKey, loc.day, now, replaceHere, shownMatch],
+  );
+
+  /** A region keeps the team only if it plays in it. */
+  const setRegion = useCallback(
+    (region: string | null) => {
+      const p = participantByCode(ctx, loc.team);
+      replaceHere({ region, team: p && region && p.region !== region ? null : loc.team });
+    },
+    [ctx, loc.team, replaceHere],
+  );
 
   const value = useMemo<Experience>(
     () => ({

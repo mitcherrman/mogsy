@@ -108,14 +108,18 @@ describe("Teams", () => {
     expect(screen.getAllByTestId("field-team")).toHaveLength(19);
   });
 
-  it("filters by region in the URL (a view setting) without dropping the selection", () => {
+  it("filters by region in the URL (a view setting); the team stays only if it is in the region (UX2A)", () => {
     renderAt(`${BASE}/teams?team=TLAW&scenario=x`);
+    fireEvent.click(document.querySelector('[data-testid="region-chip"][data-region="LCS"]')!);
+    expect(params().get("region")).toBe("LCS");
+    expect(params().get("team")).toBe("TLAW");
+    expect(screen.getByTestId("team-focus")).toHaveAttribute("data-team", "TLAW");
     fireEvent.click(document.querySelector('[data-testid="region-chip"][data-region="LCK"]')!);
     expect(params().get("region")).toBe("LCK");
-    expect(params().get("team")).toBe("TLAW");
+    expect(params().get("team")).toBeNull();
     expect(params().get("scenario")).toBe("x");
     expect(screen.getAllByTestId("team-tile").map((t) => t.getAttribute("data-team"))).toEqual(["GEN", "HLE", "T1", "DK"]);
-    expect(screen.getByTestId("team-focus")).toHaveAttribute("data-team", "TLAW");
+    expect(screen.getByTestId("team-workspace")).toHaveAttribute("data-mode", "field");
     fireEvent.click(document.querySelector('[data-testid="region-chip"][data-region="all"]')!);
     expect(params().get("region")).toBeNull();
     expect(screen.getAllByTestId("team-tile")).toHaveLength(19);
