@@ -100,7 +100,7 @@ interface Frame {
   t: number; phase: string | null; timedOut: boolean; stage: string | null;
   sockets: (string | null)[]; states: (string | null)[]; marks: (string | null)[];
   picks: number; verdict: string | null; evidence: boolean; notes: number;
-  stamp: boolean; leaks: boolean; outro: boolean; end: boolean;
+  stamp: boolean; leaks: boolean; outro: boolean; end: boolean; progress: string | null;
 }
 function frame(): Frame {
   const sockets = [...document.querySelectorAll('[data-part="socket"]')] as HTMLElement[];
@@ -121,6 +121,7 @@ function frame(): Frame {
     leaks: SECRETS.some((v) => text.includes(v)),
     outro: !!document.querySelector('[data-testid="ranked-match-outro"]'),
     end: !!document.querySelector('[data-testid="ranked-match-over"]'),
+    progress: document.querySelector('[data-testid="reconstruct-opponent-progress"]')?.textContent ?? null,
   };
 }
 
@@ -169,6 +170,7 @@ describe("RECONSTRUCT-R3C — the timed-out player sees the recipe after settlem
       expect(f.stamp).toBe(false);
       // The opponent's build never reaches this board.
       expect(f.sockets).not.toContain("p4");
+      expect(f.progress).toBe("Time ran out before you locked in.");
     }
     const taught = revealed.find((f) => f.stage === "done")!;
     expect(taught).toBeTruthy();
