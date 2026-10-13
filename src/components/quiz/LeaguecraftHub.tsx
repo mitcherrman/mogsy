@@ -74,9 +74,9 @@ import type {
  *                       full-width horizontal band across the foot of the
  *                       first viewport. It closes the lobby and opens the
  *                       workspace, and since PRAC1 it is also Leaguecraft's
- *                       PRACTICE CHOOSER: five of its six tiles start a
- *                       Practice session for that subject in place. Vision has
- *                       no content and is rendered unavailable. See
+ *                       PRACTICE CHOOSER: all six tiles start a
+ *                       Practice session for that subject in place. Vision
+ *                       is active after VISION42. See
  *                       `QuizCategoryRail`, and the note at its mount for why
  *                       it is not sticky yet.
  *   3. Workspace      — Recent Studies (PRACTICE sessions only; the centre

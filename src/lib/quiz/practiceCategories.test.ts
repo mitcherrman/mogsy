@@ -2,8 +2,8 @@
  * PRAC1 — what the lobby's six tiles open.
  *
  * The rules under test are the ones that keep the rail HONEST: every approved
- * tile has an entry, five of them name real live question categories, Vision
- * names none, and a subject's session is dealt across all of its categories
+ * tile has an entry, all six name real live question categories, and a
+ * subject's session is dealt across all of its categories
  * rather than filled from whichever one is biggest.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -35,19 +35,16 @@ describe("practice category sources", () => {
     }
   });
 
-  it("makes the five content-backed subjects actionable", () => {
-    for (const id of ["objectives", "wave-management", "summoner-spells", "itemization", "abilities"]) {
+  it("makes all six content-backed subjects actionable", () => {
+    for (const id of ["objectives", "wave-management", "summoner-spells", "itemization", "abilities", "vision"]) {
       expect(isPracticeCategoryAvailable(id), id).toBe(true);
       expect(practiceSourcesFor(id).length, id).toBeGreaterThan(0);
     }
   });
 
-  it("leaves Vision with no sources, and therefore no door", () => {
-    // Vision content does not exist. The entry is an empty list on purpose —
-    // present in the taxonomy, absent from the bank — so nothing here can be
-    // mistaken for a gap to be filled with a stand-in category.
-    expect(practiceSourcesFor("vision")).toEqual([]);
-    expect(isPracticeCategoryAvailable("vision")).toBe(false);
+  it("connects Vision to the existing backend category", () => {
+    expect(practiceSourcesFor("vision")).toEqual(["Vision"]);
+    expect(isPracticeCategoryAvailable("vision")).toBe(true);
   });
 
   it("treats an unknown subject as unavailable rather than throwing", () => {
@@ -90,9 +87,19 @@ describe("loadPracticeCategoryQuestions", () => {
     expect(picked.map((p) => p.id).sort()).toEqual(["a", "b"]);
   });
 
-  it("returns nothing for a subject with no sources, without touching the network", async () => {
+  it("loads Vision through the existing category endpoint", async () => {
+    const spy = vi.spyOn(quizApi, "categoryQuestions").mockResolvedValue({
+      questions: [q("vision-1"), q("vision-2")],
+    });
+    const picked = await loadPracticeCategoryQuestions("vision", 10);
+    expect(spy).toHaveBeenCalledOnce();
+    expect(spy).toHaveBeenCalledWith("Vision", 10);
+    expect(picked.map((question) => question.id).sort()).toEqual(["vision-1", "vision-2"]);
+  });
+
+  it("returns nothing for an unknown subject, without fetching", async () => {
     const spy = vi.spyOn(quizApi, "categoryQuestions");
-    expect(await loadPracticeCategoryQuestions("vision", 10)).toEqual([]);
+    expect(await loadPracticeCategoryQuestions("teamfighting", 10)).toEqual([]);
     expect(spy).not.toHaveBeenCalled();
   });
 
