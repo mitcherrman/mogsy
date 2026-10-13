@@ -600,7 +600,7 @@ function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioS
 interface InspectorState {
   key: string;
   label: string;
-  render: () => React.ReactNode;
+  render: (replaySequence?: number) => React.ReactNode;
 }
 
 function Combatants({ p, o }: { p: CombatantView; o: CombatantView }) {
@@ -1570,8 +1570,8 @@ const STATES: InspectorState[] = [
   { key: "results-practice", label: "RESULT — practice quiz (shared shell)",
     render: () => <PracticeResultScene /> },
   { key: "discovery-reveal", label: "Match over — new questions discovered",
-    render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
-      summary={<DiscoveryReveal view={DISCOVERY_FIXTURE} onReview={() => {}} />}
+    render: (replaySequence = 0) => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
+      summary={<DiscoveryReveal view={{ ...DISCOVERY_FIXTURE, matchId: `rkb_demo_preview_${replaySequence}` }} onReview={() => {}} />}
       {...END_ACTIONS} /> },
   { key: "discovery-none", label: "Match over — no new discoveries",
     render: () => <MatchOverFrame result="defeat" player={player({ hp: 0 })} opponent={opponent({ hp: 30 })}
@@ -1755,6 +1755,7 @@ const VIEWPORTS: { key: string; label: string; width: number | null }[] = [
 export default function RankedArenaInspector() {
   const [stateKey, setStateKey] = useState(STATES[0].key);
   const [viewport, setViewport] = useState(VIEWPORTS[2]);
+  const [replaySequence, setReplaySequence] = useState(0);
 
   if (!import.meta.env.DEV) {
     return (
@@ -1790,6 +1791,10 @@ export default function RankedArenaInspector() {
             {v.label}
           </button>
         ))}
+        <button type="button" data-testid="inspector-replay" onClick={() => setReplaySequence((n) => n + 1)}
+          className="min-h-[36px] rounded-md border px-3 text-xs font-semibold hover:bg-card/70">
+          Replay animation
+        </button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[220px_1fr]">
@@ -1808,7 +1813,9 @@ export default function RankedArenaInspector() {
           <div className="mx-auto space-y-3"
             style={viewport.width ? { maxWidth: viewport.width } : undefined}
             data-testid="inspector-stage" data-viewport={viewport.key}>
-            {active.render()}
+            <div key={`${stateKey}:${replaySequence}`} data-testid="inspector-replay-stage">
+              {active.render(replaySequence)}
+            </div>
           </div>
         </div>
       </div>
