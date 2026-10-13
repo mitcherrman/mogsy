@@ -1,0 +1,486 @@
+{
+  "at": "2026-10-13T19:58:27.538Z",
+  "passed": 72,
+  "total": 72,
+  "results": [
+    {
+      "name": "OFF 1440: published page renders (TournamentV2), no experience",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "name": "OFF 1440: same sections as main",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "OFF 1440: same text as main",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "OFF 1440: same title/canonical/description as main",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "name": "OFF 1440: same main width / footer as main",
+      "ok": true,
+      "detail": {
+        "off": 1280,
+        "main": 1280
+      }
+    },
+    {
+      "name": "OFF 1440: experience chunk never requested",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "OFF 1440: no horizontal overflow",
+      "ok": true,
+      "detail": 1440
+    },
+    {
+      "name": "OFF 1440: no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "OFF 390: published page renders (TournamentV2), no experience",
+      "ok": true,
+      "detail": [
+        "section-stage-play_in",
+        "section-field",
+        "section-stage-swiss",
+        "section-stage-knockout",
+        "section-schedule"
+      ]
+    },
+    {
+      "name": "OFF 390: same sections as main",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "OFF 390: same text as main",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "OFF 390: same title/canonical/description as main",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "name": "OFF 390: same main width / footer as main",
+      "ok": true,
+      "detail": {
+        "off": 390,
+        "main": 390
+      }
+    },
+    {
+      "name": "OFF 390: experience chunk never requested",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "OFF 390: no horizontal overflow",
+      "ok": true,
+      "detail": 390
+    },
+    {
+      "name": "OFF 390: no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "OFF: /teams is the 404 page (noindex), as on main",
+      "ok": true,
+      "detail": {
+        "title": "Page not found — Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams",
+        "robots": "noindex, nofollow",
+        "description": "The page you’re looking for doesn’t exist on Mogzy."
+      }
+    },
+    {
+      "name": "OFF: /schedule is the 404 page (noindex), as on main",
+      "ok": true,
+      "detail": {
+        "title": "Page not found — Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule",
+        "robots": "noindex, nofollow",
+        "description": "The page you’re looking for doesn’t exist on Mogzy."
+      }
+    },
+    {
+      "name": "OFF: /stages/swiss is the 404 page (noindex), as on main",
+      "ok": true,
+      "detail": {
+        "title": "Page not found — Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/stages/swiss",
+        "robots": "noindex, nofollow",
+        "description": "The page you’re looking for doesn’t exist on Mogzy."
+      }
+    },
+    {
+      "name": "OFF: DCGI renders its v1 page",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "OFF: dev prototype route 404s in the production build",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON 1440 clean visit: experience at the Worlds URL",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "name": "ON 1440: Overview keeps the published title and canonical",
+      "ok": true,
+      "detail": {
+        "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026",
+        "robots": null,
+        "description": "League of Legends World Championship 2026: the 19-team field, the Play-In, Swiss, Knockout stages, the full schedule and results."
+      }
+    },
+    {
+      "name": "ON 1440: full-width frame",
+      "ok": true,
+      "detail": {
+        "top": 56,
+        "height": 844,
+        "width": 1440,
+        "left": 0
+      }
+    },
+    {
+      "name": "ON 1440: frame starts at the header clearance",
+      "ok": true,
+      "detail": {
+        "frameTop": 56,
+        "headerH": 56,
+        "barTop": 56
+      }
+    },
+    {
+      "name": "ON 1440: frame fills the viewport below the header",
+      "ok": true,
+      "detail": {
+        "top": 56,
+        "height": 844,
+        "width": 1440,
+        "left": 0
+      }
+    },
+    {
+      "name": "ON 1440: one h1 (no duplicate tournament header)",
+      "ok": true,
+      "detail": [
+        "Worlds 2026 — League of Legends World Championship 2026"
+      ]
+    },
+    {
+      "name": "ON 1440: footer below the frame",
+      "ok": true,
+      "detail": {
+        "footerTop": 964
+      }
+    },
+    {
+      "name": "ON 1440: no horizontal overflow",
+      "ok": true,
+      "detail": 1440
+    },
+    {
+      "name": "ON 1440: LoL theme",
+      "ok": true,
+      "detail": "dark theme-lol "
+    },
+    {
+      "name": "ON 1440: experience chunk loaded",
+      "ok": true,
+      "detail": [
+        "ProductionExperience-dBmNzD6h.js"
+      ]
+    },
+    {
+      "name": "ON 1440: no simulation UI",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON nav → stages: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/stages",
+        "title": "Play-In — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/stages/play-in",
+        "robots": null,
+        "description": "The Play-In Stage of the League of Legends World Championship 2026: its format, matches and results from the official schedule."
+      }
+    },
+    {
+      "name": "ON nav → teams: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/teams",
+        "title": "Teams — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams",
+        "robots": null,
+        "description": "The 19-team field of the League of Legends World Championship 2026 by region: how each team entered, where it stands and its matches."
+      }
+    },
+    {
+      "name": "ON nav → schedule: URL, title, query-free canonical",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/schedule",
+        "title": "Schedule — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule",
+        "robots": null,
+        "description": "The League of Legends World Championship 2026 schedule by day: 46 matches across the Play-In, Swiss, Knockout stages, in your timezone, with results."
+      }
+    },
+    {
+      "name": "ON Back → teams",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/teams"
+    },
+    {
+      "name": "ON Back → stages",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/stages"
+    },
+    {
+      "name": "ON Back → overview",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026"
+    },
+    {
+      "name": "ON Forward → stages",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/stages"
+    },
+    {
+      "name": "ON Swiss: Round 3 selected, in the URL, canonical is the stage",
+      "ok": true,
+      "detail": {
+        "swissUrl": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/stages/swiss?round=3",
+        "title": "Swiss — Worlds 2026 | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/stages/swiss",
+        "robots": null,
+        "description": "The Swiss Stage of the League of Legends World Championship 2026: its format, matches and results from the official schedule."
+      }
+    },
+    {
+      "name": "ON Swiss: round survives refresh",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/stages/swiss?round=3"
+    },
+    {
+      "name": "ON Schedule: fixture opens the match detail with ?match=",
+      "ok": true,
+      "detail": {
+        "mUrl": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786",
+        "title": "C9 vs KC — Worlds 2026 Schedule | Mogzy"
+      }
+    },
+    {
+      "name": "ON Schedule: a selected match keeps the screen canonical",
+      "ok": true,
+      "detail": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/schedule"
+    },
+    {
+      "name": "ON Schedule: Escape closes the detail",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/schedule"
+    },
+    {
+      "name": "ON Schedule deep link survives refresh (day + match)",
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786",
+        "title": "C9 vs KC — Worlds 2026 Schedule | Mogzy"
+      }
+    },
+    {
+      "name": "ON direct team link opens KC",
+      "ok": true,
+      "detail": {
+        "title": "Karmine Corp — Worlds 2026 Teams | Mogzy",
+        "canonical": "https://mogzy.lol/lol/pro-play/tournament/worlds-2026/teams",
+        "robots": null,
+        "description": "The 19-team field of the League of Legends World Championship 2026 by region: how each team entered, where it stands and its matches."
+      }
+    },
+    {
+      "name": "ON Teams: a region without the team clears it (UX2A)",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/teams?region=LCK"
+    },
+    {
+      "name": "ON /discover corrects to the Overview",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026"
+    },
+    {
+      "name": "ON: DCGI renders its v1 page",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON: DCGI screen-like path still 404s",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON: dev prototype route 404s in the production build",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON: hub featured pill points at a tournament URL (DCGI before 15 Oct)",
+      "ok": true,
+      "detail": "/lol/pro-play/tournament/dcgi-2026"
+    },
+    {
+      "name": "ON desktop: no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "ON reduced motion: workspace marked reduced",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON reduced motion: no travel mid-move",
+      "ok": true,
+      "detail": [
+        "none",
+        "none"
+      ]
+    },
+    {
+      "name": "ON 390: compact frame",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON 390: bar below the header",
+      "ok": true,
+      "detail": {
+        "barTop": 48,
+        "headerH": 48
+      }
+    },
+    {
+      "name": "ON 390: no horizontal overflow",
+      "ok": true,
+      "detail": 390
+    },
+    {
+      "name": "ON 390: one h1",
+      "ok": true,
+      "detail": [
+        "Worlds 2026 — League of Legends World Championship 2026"
+      ]
+    },
+    {
+      "name": "ON 390: team opens a bottom sheet",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/teams?team=AL"
+    },
+    {
+      "name": "ON 390: Back closes the team sheet",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/teams"
+    },
+    {
+      "name": "ON 390: fixture opens the match sheet",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/schedule?day=2026-10-15&match=115660588583171786"
+    },
+    {
+      "name": "ON 390: Escape closes the match sheet",
+      "ok": true,
+      "detail": "http://localhost:5275/lol/pro-play/tournament/worlds-2026/schedule"
+    },
+    {
+      "name": "ON 390: footer reachable below the experience",
+      "ok": true,
+      "detail": {
+        "footerTop": 908,
+        "frameTop": 48
+      }
+    },
+    {
+      "name": "ON 390: no horizontal overflow after moves",
+      "ok": true,
+      "detail": 390
+    },
+    {
+      "name": "ON phone: no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "ON API 503: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON API 404: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON API unsupported: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON API partial: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON API stale: handled on a screen path",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "ON API unknown: handled on a screen path",
+      "ok": true,
+      "detail": null
+    }
+  ]
+}
