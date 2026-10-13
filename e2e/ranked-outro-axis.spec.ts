@@ -66,9 +66,17 @@ for (const vp of VIEWPORTS) {
     const score = await rect(page, '[data-testid="match-outro-score"]');
     const docDuring = await page.evaluate(() => document.documentElement.scrollHeight);
 
-    // 1. Not collapsed: the overlay IS the shell.
-    expect(Math.abs(layer.top - shell.top)).toBeLessThanOrEqual(1);
-    expect(Math.abs(layer.bottom - shell.bottom)).toBeLessThanOrEqual(1);
+    // 1. Not collapsed: the overlay IS the shell — R3C: the shell's VISIBLE
+    //    box. On a phone the beat layer is pinned to the shell clipped to the
+    //    viewport (`useBeatLayerViewportBox`), so a shell that runs past the
+    //    fold (this probe page does, by 6px at 390x844) no longer drags the
+    //    scrim below it. Where the shell fits, the two boxes are identical.
+    //    Desktop keeps `absolute inset-0`: the layer is the shell, as before.
+    const phone = vp.w < 1024;
+    const vh = await page.evaluate(() => window.innerHeight);
+    expect(Math.abs(layer.top - (phone ? Math.max(shell.top, 0) : shell.top))).toBeLessThanOrEqual(1);
+    expect(Math.abs(layer.bottom - (phone ? Math.min(shell.bottom, vh) : shell.bottom))).toBeLessThanOrEqual(1);
+    expect(layer.bottom - layer.top).toBeGreaterThan(vp.h * 0.5);
 
     // 2. One duel stage: the outro composes in a box the intro's height,
     //    from the shell's top — its centre is the intro's centre.
