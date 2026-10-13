@@ -45,6 +45,7 @@ import {
   TEAM_SIM_DEV_ROUTE,
   TEAM_SIM_ROUTE,
 } from "@/lib/combat-lab/team-sim/featureGate";
+import { isWorldsExperienceEnabled, WORLDS_EXPERIENCE_ROUTE } from "@/lib/pro-play/worldsExperience/productionGate";
 import { Suspense } from "react";
 import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
@@ -253,6 +254,12 @@ const ArenaQuestionProbe = import.meta.env.DEV
 // path is under /lol/ so it renders in the LoL theme, as the real route will.
 const ProPlayArenaDev = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/pro-play-arena/ProPlayArenaDev"))
+  : null;
+// UX1: the Worlds 2026 experience prototype (Overview + Stage Explorer). Same
+// DEVELOPMENT-ONLY rule: it carries simulated tournament phases, and the
+// published tournament page is not switched. Under /lol/ for the LoL theme.
+const WorldsExperienceDev = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/worlds-experience/WorldsExperienceDev"))
   : null;
 const PlayScrollPreviewPage = lazy(() => import("./pages/dev/play-scroll/PlayScrollPreviewPage"));
 
@@ -618,6 +625,16 @@ export const appRouter = createBrowserRouter(
                       query string, so the path takes no parameters. */}
                   <Route path={PRO_PLAY_MATCHUP_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayMatchup /></Suspense>} />
                   <Route path={PRO_PLAY_TOURNAMENT_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTournament /></Suspense>} />
+                  {/* UX3A: the Worlds experience. Registered ONLY when
+                      VITE_WORLDS_EXPERIENCE_ENABLED is on; off, Worlds stays
+                      on the route above and its screen paths 404. Its static
+                      "worlds-2026" segment outranks ":contextId", so this one
+                      route (one element, no remount between screens) owns
+                      the Worlds URL and its screens; every other context is
+                      untouched. Same page component, same data read. */}
+                  {isWorldsExperienceEnabled() ? (
+                    <Route path={WORLDS_EXPERIENCE_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTournament /></Suspense>} />
+                  ) : null}
                   {/* LIVE1 match centre. It shipped at /esports/live (below,
                       now a redirect) before Pro Play had a hub; this is its
                       canonical URL. Same component, one page. */}
@@ -650,6 +667,12 @@ export const appRouter = createBrowserRouter(
                   ) : null}
                   {ProPlayArenaDev ? (
                     <Route path="/lol/dev/pro-play-arena" element={<Suspense fallback={<RouteFallback />}><ProPlayArenaDev /></Suspense>} />
+                  ) : null}
+                  {WorldsExperienceDev ? (
+                    <>
+                      <Route path="/lol/dev/worlds-experience/*" element={<Suspense fallback={<RouteFallback />}><WorldsExperienceDev /></Suspense>} />
+                      <Route path="/dev/worlds-experience" element={<Navigate to="/lol/dev/worlds-experience" replace />} />
+                    </>
                   ) : null}
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />

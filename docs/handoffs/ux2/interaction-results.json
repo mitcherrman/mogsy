@@ -1,0 +1,240 @@
+[
+  {
+    "name": "overview-to-teams: slides in from the right",
+    "ok": true,
+    "detail": {
+      "mid": [
+        -53,
+        3
+      ],
+      "end": [
+        0
+      ]
+    }
+  },
+  {
+    "name": "teams-to-schedule: slides in from the right",
+    "ok": true,
+    "detail": {
+      "mid": [
+        -52,
+        4
+      ],
+      "end": [
+        0
+      ]
+    }
+  },
+  {
+    "name": "schedule-to-stages: slides in from the left",
+    "ok": true,
+    "detail": {
+      "mid": [
+        51,
+        -5
+      ],
+      "end": [
+        0
+      ]
+    }
+  },
+  {
+    "name": "back to schedule, from the right",
+    "ok": true,
+    "detail": {
+      "mid": [
+        -43,
+        13
+      ]
+    }
+  },
+  {
+    "name": "back to teams, from the left",
+    "ok": true,
+    "detail": {
+      "mid": [
+        47,
+        -9
+      ]
+    }
+  },
+  {
+    "name": "back to overview, from the left",
+    "ok": true,
+    "detail": {
+      "mid": [
+        46,
+        -10
+      ]
+    }
+  },
+  {
+    "name": "forward restores Teams",
+    "ok": true
+  },
+  {
+    "name": "prototype keys survive every move",
+    "ok": true,
+    "detail": "http://localhost:5272/lol/dev/worlds-experience/teams?scenario=snapshot&now=2026-10-13T00%3A10%3A00Z"
+  },
+  {
+    "name": "Discover is shown, aria-disabled, not a link",
+    "ok": true
+  },
+  {
+    "name": "clicking Discover does nothing",
+    "ok": true
+  },
+  {
+    "name": "region filter narrows the selector",
+    "ok": true
+  },
+  {
+    "name": "team selected and switched",
+    "ok": true
+  },
+  {
+    "name": "Back after switching leaves the team in one step",
+    "ok": true
+  },
+  {
+    "name": "Escape closes the team",
+    "ok": true
+  },
+  {
+    "name": "team profile uses the canonical key",
+    "ok": true,
+    "detail": "/lol/pro-play/team/Gen.G"
+  },
+  {
+    "name": "a day cell selects its day",
+    "ok": true
+  },
+  {
+    "name": "next day button",
+    "ok": true
+  },
+  {
+    "name": "arrow keys rove the date rail",
+    "ok": true,
+    "detail": "2026-10-25"
+  },
+  {
+    "name": "Enter picks the focused day",
+    "ok": true
+  },
+  {
+    "name": "Knockouts filter moves to the first knockout day",
+    "ok": true,
+    "detail": "2026-11-03"
+  },
+  {
+    "name": "selecting a fixture opens the detail without leaving Schedule",
+    "ok": true
+  },
+  {
+    "name": "refresh restores day and match",
+    "ok": true
+  },
+  {
+    "name": "Show in Play-In opens the stage with the match",
+    "ok": true
+  },
+  {
+    "name": "Back returns to the Schedule with the match",
+    "ok": true
+  },
+  {
+    "name": "context column folds to a rail and opens on request",
+    "ok": true,
+    "detail": {
+      "railW": 48,
+      "openW": 320
+    }
+  },
+  {
+    "name": "the brief preference lasts the session",
+    "ok": true
+  },
+  {
+    "name": "no page errors (desktop)",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "reduced motion: no travel between Teams and Schedule",
+    "ok": true,
+    "detail": {
+      "rmid": [
+        0,
+        0
+      ]
+    }
+  },
+  {
+    "name": "phone Play-In round is written to the URL",
+    "ok": true,
+    "detail": "http://localhost:5272/lol/dev/worlds-experience/stages/play-in?scenario=snapshot&now=2026-10-13T00%3A10%3A00Z&step=lower_bracket_semifinals"
+  },
+  {
+    "name": "refresh keeps the phone Play-In round",
+    "ok": true,
+    "detail": 2
+  },
+  {
+    "name": "phone: a team opens in a sheet",
+    "ok": true
+  },
+  {
+    "name": "phone: Back closes the team sheet",
+    "ok": true
+  },
+  {
+    "name": "phone: a fixture opens in a sheet",
+    "ok": true
+  },
+  {
+    "name": "phone: close dismisses the match sheet",
+    "ok": true
+  },
+  {
+    "name": "phone: nav, day, filter and fixture targets are at least 44px",
+    "ok": true,
+    "detail": [
+      48,
+      48,
+      48,
+      48,
+      44,
+      44,
+      44,
+      44,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      76,
+      76
+    ]
+  },
+  {
+    "name": "phone: no horizontal page overflow on Schedule",
+    "ok": true,
+    "detail": 390
+  }
+]

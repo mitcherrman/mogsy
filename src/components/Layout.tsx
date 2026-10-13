@@ -15,6 +15,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
 import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
 import { PRO_PLAY_MATCHUP_ROUTE, PRO_PLAY_QUIZ_ROUTE } from "@/lib/pro-play/routes";
+import { isWorldsExperienceSurface } from "@/lib/pro-play/worldsExperience/productionGate";
 import { StartupSurface } from "@/components/startup/StartupShells";
 
 export default function Layout() {
@@ -108,7 +109,13 @@ export default function Layout() {
     || pathname === "/lol/dev/pro-play-arena"
     // PPQ2-E — the production Pro Play Quiz IS that arena now (it was a
     // max-w-2xl reading column). Already in the LoL section for its theme.
-    || pathname === PRO_PLAY_QUIZ_ROUTE;
+    || pathname === PRO_PLAY_QUIZ_ROUTE
+    // UX1 — the Worlds experience prototype is an application frame sized to
+    // the viewport, with its own gutters (development-only route).
+    || pathname.startsWith("/lol/dev/worlds-experience")
+    // UX3A — the same frame at the Worlds URL, only while its build flag is
+    // on. Off, the published Worlds page keeps the reading column.
+    || isWorldsExperienceSurface(pathname);
 
   // The friends drawer is a floating overlay. On the full-bleed Champion Card Duel
   // gameplay surface it would sit on top of the tabletop and its trigger would
