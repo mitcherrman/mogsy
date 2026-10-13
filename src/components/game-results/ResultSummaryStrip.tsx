@@ -57,7 +57,11 @@ export function ResultSummaryStrip({ stats, progress }: {
         bg-white/5 sm:grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))]">
         {cells.map((c) => (
           <div key={c.key} data-testid={c.testId} title={c.hint ?? undefined}
-            className="min-w-0 bg-[#0b1727] px-3 py-1.5">
+            className={`min-w-0 px-3 py-1.5 transition-colors duration-300 motion-reduce:transition-none ${
+              c.key === "progress-discoveries" || c.key === "progress-xp"
+                ? "bg-gradient-to-br from-[#29334a] to-[#0b1727]"
+                : "bg-[#0b1727]"
+            }`}>
             <dt className="truncate text-[9.5px] font-semibold uppercase tracking-[0.14em]
               text-muted-foreground">
               {c.label}
