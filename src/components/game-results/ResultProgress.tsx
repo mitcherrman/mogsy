@@ -38,6 +38,7 @@ export function ResultProgress({ items }: { items: readonly ResultProgressItem[]
           // An XP total is not an earned XP delta: emphasize the record, never
           // invent movement. Discovery and XP use the same restrained highlight.
           const isKnowledge = item.icon === "xp" || item.icon === "collection";
+          const earnedXp = item.icon === "xp" && typeof item.delta === "number" && item.delta > 0;
           return (
             <div
               key={item.key}
@@ -53,8 +54,9 @@ export function ResultProgress({ items }: { items: readonly ResultProgressItem[]
                   <span className="block text-[10px] text-slate-500">{item.hint}</span>
                 )}
               </dt>
-              <dd className={`shrink-0 text-sm font-bold tabular-nums ${
-                deltaTone(item.delta)}`}>
+              <dd data-earned-xp={earnedXp ? "true" : undefined} className={`shrink-0 text-sm font-bold tabular-nums ${
+                earnedXp ? "text-[#f5e6b8] animate-in zoom-in-90 fade-in duration-700 motion-reduce:animate-none" : deltaTone(item.delta)}`}>
+                {earnedXp && <Sparkles aria-hidden className="mr-1 inline h-3.5 w-3.5 text-[#f0d78c]" />}
                 {item.value}
               </dd>
             </div>
