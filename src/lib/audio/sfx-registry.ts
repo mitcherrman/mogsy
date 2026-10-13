@@ -92,7 +92,7 @@ export const SFX_REGISTRY = {
   "ranked.duel.begin": { group: "ranked", minReplayMs: 1000, relativeGain: 1 },
   "ranked.mode.shift": { group: "ranked", minReplayMs: 400, relativeGain: 1 },
   "ranked.round.final": { group: "ranked", minReplayMs: 400, relativeGain: 1 },
-  "ranked.match.victory": { group: "ranked", minReplayMs: 1000, relativeGain: 0.94, builtInGeneratorId: "sfx.ranked.match-victory" },
+  // Premium discovery cue: reuse the existing Ranked points-awarded voice.\n  "ranked.discovery.reveal": { group: "ranked", minReplayMs: 850, relativeGain: 0.72, builtInGeneratorId: "sfx.ranked.points-awarded" },\n  "ranked.match.victory": { group: "ranked", minReplayMs: 1000, relativeGain: 0.94, builtInGeneratorId: "sfx.ranked.match-victory" },
   "ranked.match.defeat": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-defeat" },
   "ranked.match.draw": { group: "ranked", minReplayMs: 1000, relativeGain: 0.88, builtInGeneratorId: "sfx.ranked.match-draw" },
   // SFX2 — Daily stage completion outranks a module completion (the award
