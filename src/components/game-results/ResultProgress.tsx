@@ -42,7 +42,7 @@ export function ResultProgress({ items }: { items: readonly ResultProgressItem[]
             <div
               key={item.key}
               data-testid={item.testId ?? `result-progress-${item.key}`}
-              className={`flex items-center gap-2 px-3 py-2 transition-colors duration-300 motion-reduce:transition-none ${isKnowledge ? "bg-gradient-to-r from-[#f0d78c]/[0.07] via-[#7fd6ef]/[0.025] to-transparent" : ""}`}
+              className={`flex items-center gap-2 px-3 py-2 transition-colors duration-300 motion-reduce:transition-none ${isKnowledge ? "bg-gradient-to-r from-[#f0d78c]/[0.07] via-[#7fd6ef]/[0.025] to-transparent animate-in fade-in slide-in-from-bottom-1 duration-500 motion-reduce:animate-none" : ""}`}
             >
               {Icon && (
                 <Icon aria-hidden className={`h-3.5 w-3.5 shrink-0 ${isKnowledge ? "text-[#f0d78c]" : "text-[#f0d78c]/70"}`} />
