@@ -7,6 +7,7 @@
 | Route | **`/lol/dev/worlds-experience`** (development builds only), now with `/teams` and `/schedule` |
 | Scope | Frontend prototype only. **No production file changed** (`git diff 56fd28bc` touches only `components/pro-play/worlds-experience/`, `lib/pro-play/worldsExperience/` and the dev page). No backend, Supabase, Railway or Lovable change |
 | Status | **Built and verified locally. STOP for command-center review** |
+| UX2A | Navigation-consistency corrections for the Schedule date / stage filter and the Teams region: see **§14** |
 
 ## 1. Objective and scope
 
@@ -101,7 +102,7 @@ lib/pro-play/worldsExperience/
 | Discover | — | — | not routable; its path is corrected to Overview |
 
 - **Details** (match, team) push one entry when opened. Switching replaces that entry, and closing pops it. A deep-linked detail closes in place. Back therefore closes a detail on desktop and in the phone sheets.
-- **View settings** (`round`, `step`, `day`, `stage`, `region`) replace the entry and keep the history state, so an open detail stays poppable. They are in the URL, so refresh and links restore them.
+- **View settings** (`round`, `step`, `day`, `stage`, `region`) replace the entry. They are in the URL, so refresh and links restore them. (UX2A, §14: a setting that does not fit the open detail clears it, and an entry whose view has moved closes in place rather than popping.)
 - **Changing screens** drops the keys of the screen left behind (`buildHref` clears every owned key). History brings them back (tested: Teams `?team=KC&region=LEC` → Schedule → Back).
 - **`selectMatch`** is now screen-aware:
   - on Stages and Schedule it stays on the screen;
@@ -293,3 +294,81 @@ Defects found in review and fixed:
 3. **Production switch plan**: flag, route, `/lol/pro-play/tournament/worlds-2026/*`, and SEO for the nested paths and per-screen titles.
 4. A **Teams** lineup view once lineups are certified, plus per-team head-to-head across the event from served matches only.
 5. **Housekeeping**: move `knockoutPreDraw` / `useBriefPreference` / bracket helpers into lib modules (clears the fast-refresh warnings).
+
+## 14. UX2A — navigation consistency (Schedule date / stage, Teams region)
+
+Review found three suspected state-consistency risks in `ExperienceContext`. I reproduced each against `c0542e12` with failing tests before changing code.
+
+| | Reproduced? | Behaviour at `c0542e12` | Root cause |
+|---|---|---|---|
+| **A** Schedule date | yes | Pick another date with a match open: the board shows the new day and the detail still shows the previous day's match (URL `?day=<new>&match=<old>`). | `setDay` replaced `day` only; `matchId` was carried by `here()`. |
+| **B** Stage filter | yes | An excluded match stayed open. A shown day with no fixtures under the filter stayed in the URL while the board silently fell back (URL `day=2026-10-23`, board 15 Oct). | `setFilter` replaced `filterKey` only. The fallback happens in `pickDay` at render, so nothing wrote it back. |
+| **C** Teams region | yes | A team outside the chosen region stayed selected: LCK tiles beside a TLAW (LCS) focus. | `setRegion` replaced `region` only. UX2's own test asserted this ("without dropping the selection"); it is changed here. |
+
+Found while reproducing (same family, fixed with them):
+- **Contradicting links.** `?day=<other>&match=<id>` and `?stage=swiss&match=<a Play-In match>` showed a board and a detail that disagreed. A link `?match=<id>` with no day opened the default day rather than the match's.
+- **Invisible detail.** `?team=ZZZ` showed the field, but Escape rewrote the URL, because the key handler reads the raw `team`.
+- **Closing snapped the view back.** Open a match, change the filter (the match fits), close it: the close popped the detail's entry and the filter reverted to what it was before the match. Teams did the same with a region. The marker said "pop to close" although the workspace under it had changed.
+
+### Rules now
+
+| Action | Result |
+|---|---|
+| Date | The match stays only if it is played that day; otherwise it is cleared. |
+| Stage filter | The match stays only if it belongs to the stage; otherwise it is cleared. The day is the one the board will show: the same day if it has fixtures under the new filter, else `pickDay`'s choice. It is written to the URL. No fixtures under the filter: no day is written and none is invented. |
+| Region | The team stays only if it plays in the region; otherwise it is cleared. |
+| Link, read the other way | The detail leads, as selecting a match already did: the match's day and stage, the team's region (`reconcileSchedule`, `reconcileTeams`). A link's bogus day or unknown team code is no selection. |
+
+History:
+- Opening a detail is still one pushed entry, switching still replaces it, and Back still closes it.
+- A view setting that **moves** or **clears** a detail's entry removes its `ux1Panel` marker, so closing afterwards happens in place and keeps the new view. An untouched detail still pops as before. A deep-linked detail still closes in place.
+- Edge-following inside a detail (which moves the day with the match) is a detail switch and is unchanged: closing pops to the workspace beneath it, as designed.
+
+### Changed files (vs `c0542e12`)
+
+| File | Change |
+|---|---|
+| `lib/pro-play/worldsExperience/scheduleView.ts` | `reconcileSchedule`; `ServedMatches` (read-only matches) for `scheduleDays` / `filterCounts` |
+| `lib/pro-play/worldsExperience/teamsView.ts` | `reconcileTeams` |
+| `worlds-experience/ExperienceContext.tsx` | `loc` is the reconciled reading; `setDay`, `setFilter`, `setRegion` clear what does not fit; `replaceHere` drops the stale marker; takes `now` |
+| `worlds-experience/WorldsExperience.tsx` | passes `now` (one line) |
+| `worlds-experience/NavigationConsistency.test.tsx` | new, 31 tests |
+| `worlds-experience/TeamsSchedule.test.tsx` | the region test now asserts the corrected rule |
+| `docs/handoffs/ux2a/` | interaction results and 5 targeted screenshots |
+
+No production file, route, API or Match Centre code changed; `?next=` behaviour and the hub are untouched.
+
+### Verification
+
+| Run | `c0542e12` | UX2A |
+|---|---|---|
+| New file against the unmodified code | 19 of 31 fail (the other 12 guard what must not change) | **31 / 31 pass** |
+| UX experience suites (7 files incl. isolation) | 6 files / 130 | **7 files / 161** |
+| Focused Vitest, same command on both (`src/pages/pro-play`, `src/lib/pro-play`, `src/components/pro-play`, `src/pages/dev/worlds-experience`, `hub5Isolation`, `App.teamSimRoutes`, `Layout`) | 52 files / 1804 | **53 files / 1835**, 0 failed |
+| `tsc --noEmit -p tsconfig.app.json` | 2 errors | the same 2 (`OnboardingProfile.tsx`, `identity/connections.ts`), none new |
+| ESLint, `worlds-experience` and `worldsExperience` | 0 errors, 7 warnings | 0 errors, the same 7 `react-refresh` warnings |
+| `vite build` (production) | — | succeeds. None of `reconcileSchedule`, `Day brief`, `ux1Panel`, `Filter teams by region` is in the bundle; the only `worlds-experience` string is Layout's path check; the only `Filter the schedule by stage` is the published tournament page's own |
+
+New tests cover: a date with a match open (other / same / previous-next); a compatible and an incompatible stage; a day the filter excludes, and one it keeps; links with a contradicting day or stage, and a link with no day; a region that keeps / clears the team, and a contradicting team link; an unknown team and Escape; partial and unavailable schedules; the marker and Back / Forward after a clearing change; closing in place after a kept change; an untouched detail still popping; a deep-linked detail; reload; and the phone sheets.
+
+**Real browser** (headless Edge against the review server, `docs/handoffs/ux2a/interaction-results.json`): **34 / 34**, no page errors.
+- Desktop 1440 × 900: all the date, stage and region cases above, with `history.state` and `history.length` read after each step.
+- Phone 390 × 844 (touch): match sheet and Back, new date after closing, a linked match's own day under its sheet, team sheet inside a region and Back, a region change afterwards opening nothing, a linked team over the whole field, and no horizontal overflow.
+
+Screenshots: `ux2a-schedule-date-clears-match-1440`, `ux2a-schedule-filter-clears-match-1440`, `ux2a-teams-region-clears-team-1440`, `ux2a-m-schedule-linked-sheet-390`, `ux2a-m-teams-linked-sheet-390`.
+
+Not a defect: on a phone, an open sheet is a modal dialog over the date rail, filter and region chips, so none of those can be changed with a sheet open. The remaining route to that state is history or a link, and both are covered.
+
+### Remaining limitations
+
+- Back from a detail whose entry has moved goes to the workspace as it was **before the detail opened**, including its older day / filter. That is the browser's step; there is no second history layer to undo a view setting separately.
+- After a clearing change, the detail's former entry stays in the stack as an ordinary entry under the new view (one extra Back step to leave the Schedule).
+- A link that contradicts itself is displayed reconciled but its URL is not rewritten until the next move. This is deliberate: under partial data the link's own day or match may be served later.
+- If a link's day or match is missing from a partial read, the next write drops it from the URL; the status strip already says the read is partial.
+- `ExperienceProvider` now takes the page's clock (`now`), because the day the Schedule opens on can depend on it. The only caller (`WorldsExperience`) passes it.
+
+### Commits
+
+- Starting point: `c0542e12d43bdfdfdd2ec009316dd09b89065e11` (UX1 base `56fd28bc4682681260cc9116d0251fa668f55c4d`, an ancestor).
+- Code, tests and evidence: `961a30020832133693a1ab14b219439e16a1ed71` (`UX2A: Worlds experience navigation consistency`).
+- This section: the branch tip, a docs-only commit on top of it.
