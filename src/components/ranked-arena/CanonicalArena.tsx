@@ -22,7 +22,7 @@
  * which mode produced one, and adding a branch that could would be the
  * beginning of the fork this file exists to prevent.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AbilityTray } from "./AbilityTray";
 import { ArenaShell } from "./ArenaShell";
 import { CombatantPanel } from "./CombatantPanel";
@@ -35,6 +35,8 @@ import { SegmentResultBeat } from "./SegmentResultBeat";
 import { SegmentTranscript } from "./SegmentTranscript";
 import { CardResultBeat } from "./CardResultBeat";
 import { CentralStage } from "./CentralStage";
+import { useBeatLayerViewportBox } from "./useBeatLayerViewportBox";
+import { CENTRAL_STAGE_BOX } from "@/lib/ranked-core/centralStage";
 import { RoundResultBeat } from "./RoundResultBeat";
 import { QuestionResultOverlay } from "./QuestionResultOverlay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
@@ -205,6 +207,9 @@ export function CanonicalArena({
     });
   }, [terminal, view?.report, reportSurface]);
   usePublishReportableQuestion(reportSnapshot);
+  // R3C — the beat layer covers the shell's VISIBLE box (phone arena CSS).
+  const beatLayerRef = useRef<HTMLDivElement>(null);
+  useBeatLayerViewportBox(beatLayerRef, !terminal && Boolean(warning || outro));
 
   if (terminal) {
     // Ordinary flow, like the live arena: the terminal frame and the final
@@ -395,8 +400,10 @@ export function CanonicalArena({
           thing the centre cannot — a block's 5-card scoreline — and because it
           carries the transcript disclosure, which has no other home.
 
-          `min-h` still reserves the tallest state, so nothing in the arena
-          below moves when a face turns. */}
+          R3C: every centre face draws the SAME reserved box
+          (`CENTRAL_STAGE_BOX`), the transition note included, so nothing in
+          the arena below moves when a face turns. `min-h` alone did not do
+          it: the note's face fell to that floor, 10 px under the clock's. */}
       <section data-testid="ranked-header"
         // REGISTERED TO THE ARENA, NOT MERELY DISTRIBUTED ACROSS IT.
         // The strip used to be `justify-between` over three flex children,
@@ -489,13 +496,16 @@ export function CanonicalArena({
               standing={header.standing ?? null}
               event={header.duelEvent ?? null} />
           ) : (
-            // No clock and no result: a phased segment's ability window, or the
-            // gap before the first round. The transition note is the honest
-            // thing to show, and it keeps the reserved height filled.
-            <p data-testid="ranked-round-transition"
-              className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
-              {header.transitionNote ?? ""}
-            </p>
+            // No clock and no result: a phased segment's ability window, the
+            // gap before the first round, the final round's lock acknowledgement
+            // and the match outro. The transition note is the honest thing to
+            // show, inside the display's own reserved box (R3C).
+            <div data-testid="ranked-round-transition-box" className={CENTRAL_STAGE_BOX}>
+              <p data-testid="ranked-round-transition"
+                className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
+                {header.transitionNote ?? ""}
+              </p>
+            </div>
           )}
         </div>
 
@@ -931,7 +941,7 @@ export function CanonicalArena({
         // in the cascade) silently reset those utilities to `relative` /
         // `z-index: 1` and collapsed the layer to a 0px flex item at the
         // shell's BOTTOM edge. The class's rule in index.css outranks it.
-        <div className="ranked-beat-layer pointer-events-none flex items-center
+        <div ref={beatLayerRef} className="ranked-beat-layer pointer-events-none flex items-center
                         justify-center" data-testid="ranked-warning-layer">
           {warning}
           {outro}

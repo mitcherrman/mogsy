@@ -47,6 +47,20 @@ import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexLabel";
  */
 export const MODULE_TITLE_MS = 1400;
 
+/**
+ * RECONSTRUCT-R3C — THE CENTRE DISPLAY'S RESERVED BOX, owned in one place.
+ *
+ * The header's centre shows either `CentralStage` (clock / result / module
+ * name) or, with neither a clock nor a result, the transition note. Only the
+ * first drew this box; the note was a bare line, so whenever the header fell
+ * back to it (the final round's lock acknowledgement, and the match outro) the
+ * strip shrank to its `min-h` floor, 78 -> 68 px (90 -> 68 at >= 1500px), and
+ * the board and rails jumped with it (R3A/R3B, measured live). Both faces now
+ * draw THIS box, so the header cannot change height between them.
+ */
+export const CENTRAL_STAGE_BOX = "relative flex h-[4.25rem] min-w-[9rem] flex-col items-center "
+  + "justify-center text-center sm:min-w-[11rem] min-[1500px]:h-[5rem]";
+
 /** One face of the header's focal display. */
 export type CentralStageView =
   | { kind: "timer" }
