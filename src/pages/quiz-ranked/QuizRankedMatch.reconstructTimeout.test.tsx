@@ -16,7 +16,7 @@
  *
  * Secrecy: nothing reveal-only is on screen before the server says the round
  * is settled (the resolved round 404s until then), and the opponent's build
- * (one wrong part, `p4`) never reaches the viewer's board.
+ * (its wrong parts) never reaches the viewer's board.
  */
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -43,6 +43,8 @@ const REVEAL = SETTLED.payload.segment_reveal as {
 const BOT = Object.keys(REVEAL.players).find((id) => id !== VIEWER)!;
 /** The recipe, one socket per copy, in the server's order. */
 const ANSWER = REVEAL.canonical_parts.flatMap((p) => Array(p.quantity).fill(p.piece_id) as string[]);
+/** The bot's wrong parts: tokens it locked that the recipe does not use. */
+const BOT_WRONG = (REVEAL.players[BOT].placement ?? []).filter((t) => !ANSWER.includes(t));
 /** Every reveal-only string the server sent for this segment. */
 const SECRETS = [
   ...REVEAL.canonical_parts.map((p) => p.value_display),
@@ -137,6 +139,7 @@ describe("RECONSTRUCT-R3C — the timed-out player sees the recipe after settlem
   it("the capture is the shape under test: viewer timed out, bot locked a wrong build, final round", () => {
     expect(REVEAL.players[VIEWER]).toMatchObject({ placement: null, segment_result: "timeout" });
     expect(REVEAL.players[BOT].placement).not.toEqual(ANSWER);
+    expect(BOT_WRONG.length).toBeGreaterThan(0);
     expect(SETTLED.payload.match_over).toBe(true);
     for (const body of [OPEN, C.private_after_bot_settled]) {
       const blob = JSON.stringify(body);
@@ -169,7 +172,7 @@ describe("RECONSTRUCT-R3C — the timed-out player sees the recipe after settlem
       expect(f.notes).toBe(0);
       expect(f.stamp).toBe(false);
       // The opponent's build never reaches this board.
-      expect(f.sockets).not.toContain("p4");
+      for (const t of BOT_WRONG) expect(f.sockets).not.toContain(t);
       expect(f.progress).toBe("Time ran out before you locked in.");
     }
     const taught = revealed.find((f) => f.stage === "done")!;

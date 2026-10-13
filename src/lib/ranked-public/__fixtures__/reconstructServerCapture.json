@@ -3,7 +3,7 @@
   "body": {
    "detail": {
     "code": "RANKED_INVALID_CHOICE",
-    "message": "placement must fill all 3 sockets with tray piece ids"
+    "message": "placement must fill all 2 sockets with tray piece ids"
    }
   },
   "status": 422
@@ -38,28 +38,23 @@
     1
    ],
    [
-    "p5",
-    1
-   ],
-   [
-    "p1",
+    "p3",
     1
    ]
   ],
   "preset": "admin.reconstruct",
   "submitted_placement_segment_1": [
-   "p3",
-   "p5",
-   "p1"
+   "p0",
+   "p3"
   ],
   "submitted_placement_segment_2": [
-   "p5",
-   "p1"
+   "p2",
+   "p2"
   ],
   "viewer_user_id": "0a11d111-0000-4000-8000-000000000001"
  },
  "private_after_bot_settled": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:54.350000+00:00",
@@ -71,7 +66,7 @@
    },
    "completed_rounds": 2,
    "completion_reason": null,
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -123,10 +118,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
-     "score": 4,
-     "total_xp": 24
+     "score": 2,
+     "total_xp": 21
     }
    ],
    "presence": {
@@ -139,7 +134,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:3",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -201,60 +196,60 @@
        "max_uses": 3,
        "pieces": [
         {
-         "label": "Pickaxe",
+         "label": "Sheen",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1037.png"
+          "src": "assets/items_wiki/3057.png"
          },
          "piece_id": "p0"
         },
         {
-         "label": "Serrated Dirk",
+         "label": "Hextech Alternator",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/3134.png"
+          "src": "assets/items_wiki/3145.png"
          },
          "piece_id": "p1"
         },
         {
-         "label": "Cloak of Agility",
+         "label": "Aether Wisp",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1018.png"
+          "src": "assets/items_wiki/3113.png"
          },
          "piece_id": "p2"
         },
         {
-         "label": "Executioner's Calling",
+         "label": "Blasting Wand",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/3123.png"
+          "src": "assets/items_wiki/1026.png"
          },
          "piece_id": "p3"
         },
         {
-         "label": "B. F. Sword",
+         "label": "Needlessly Large Rod",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1038.png"
+          "src": "assets/items_wiki/1058.png"
          },
          "piece_id": "p4"
         },
         {
-         "label": "Dagger",
+         "label": "Fiendish Codex",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1042.png"
+          "src": "assets/items_wiki/3108.png"
          },
          "piece_id": "p5"
         }
        ],
        "slot_count": 3,
        "target": {
-        "label": "The Collector",
+        "label": "Lich Bane",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/6676.png"
+         "src": "assets/items_wiki/3100.png"
         }
        }
       }
@@ -303,7 +298,7 @@
   "server_time": "2026-09-09T12:00:17+00:00"
  },
  "private_after_refusal": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -315,7 +310,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -367,7 +362,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -383,7 +378,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -442,63 +437,63 @@
      "challenges": [
       {
        "challenge_index": 0,
-       "max_uses": 3,
+       "max_uses": 2,
        "pieces": [
-        {
-         "label": "Null-Magic Mantle",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1033.png"
-         },
-         "piece_id": "p0"
-        },
-        {
-         "label": "Ruby Crystal",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1028.png"
-         },
-         "piece_id": "p1"
-        },
-        {
-         "label": "Bramble Vest",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3076.png"
-         },
-         "piece_id": "p2"
-        },
-        {
-         "label": "Negatron Cloak",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1057.png"
-         },
-         "piece_id": "p3"
-        },
-        {
-         "label": "Quicksilver Sash",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3140.png"
-         },
-         "piece_id": "p4"
-        },
         {
          "label": "Chain Vest",
          "media": {
           "alt": "",
           "src": "assets/items_wiki/1031.png"
          },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Catalyst of Aeons",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3803.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Glacial Buckler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3024.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Warden's Mail",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3082.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Tear of the Goddess",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3070.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
          "piece_id": "p5"
         }
        ],
-       "slot_count": 3,
+       "slot_count": 2,
        "target": {
-        "label": "Thornmail",
+        "label": "Frozen Heart",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/3075.png"
+         "src": "assets/items_wiki/3110.png"
         }
        }
       }
@@ -547,7 +542,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "private_before_bot_lock": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:46.400000+00:00",
@@ -559,7 +554,7 @@
    },
    "completed_rounds": 1,
    "completion_reason": null,
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -611,10 +606,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
-     "score": 2,
-     "total_xp": 12
+     "score": 0,
+     "total_xp": 9
     }
    ],
    "presence": {
@@ -627,7 +622,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:2",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -697,36 +692,20 @@
          "piece_id": "p0"
         },
         {
-         "label": "Noonquiver",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/6670.png"
-         },
-         "piece_id": "p1"
-        },
-        {
          "label": "B. F. Sword",
          "media": {
           "alt": "",
           "src": "assets/items_wiki/1038.png"
          },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Tunneler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2021.png"
+         },
          "piece_id": "p2"
-        },
-        {
-         "label": "Rectrix",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/6690.png"
-         },
-         "piece_id": "p3"
-        },
-        {
-         "label": "Executioner's Calling",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3123.png"
-         },
-         "piece_id": "p4"
         },
         {
          "label": "Pickaxe",
@@ -734,15 +713,31 @@
           "alt": "",
           "src": "assets/items_wiki/1037.png"
          },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Executioner's Calling",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3123.png"
+         },
          "piece_id": "p5"
         }
        ],
        "slot_count": 2,
        "target": {
-        "label": "Immortal Shieldbow",
+        "label": "Overlord's Bloodmail",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/6673.png"
+         "src": "assets/items_wiki/2501.png"
         }
        }
       }
@@ -791,7 +786,7 @@
   "server_time": "2026-09-09T12:00:17+00:00"
  },
  "private_locked": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -803,7 +798,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -855,7 +850,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -871,7 +866,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -930,63 +925,63 @@
      "challenges": [
       {
        "challenge_index": 0,
-       "max_uses": 3,
+       "max_uses": 2,
        "pieces": [
-        {
-         "label": "Null-Magic Mantle",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1033.png"
-         },
-         "piece_id": "p0"
-        },
-        {
-         "label": "Ruby Crystal",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1028.png"
-         },
-         "piece_id": "p1"
-        },
-        {
-         "label": "Bramble Vest",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3076.png"
-         },
-         "piece_id": "p2"
-        },
-        {
-         "label": "Negatron Cloak",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1057.png"
-         },
-         "piece_id": "p3"
-        },
-        {
-         "label": "Quicksilver Sash",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3140.png"
-         },
-         "piece_id": "p4"
-        },
         {
          "label": "Chain Vest",
          "media": {
           "alt": "",
           "src": "assets/items_wiki/1031.png"
          },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Catalyst of Aeons",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3803.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Glacial Buckler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3024.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Warden's Mail",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3082.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Tear of the Goddess",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3070.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
          "piece_id": "p5"
         }
        ],
-       "slot_count": 3,
+       "slot_count": 2,
        "target": {
-        "label": "Thornmail",
+        "label": "Frozen Heart",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/3075.png"
+         "src": "assets/items_wiki/3110.png"
         }
        }
       }
@@ -1016,11 +1011,49 @@
      {
       "canonical_parts": [
        {
-        "combine_display": "200 g",
-        "label": "Bramble Vest",
-        "line_total_display": "800 g",
+        "combine_display": "50 g",
+        "label": "Glacial Buckler",
+        "line_total_display": "900 g",
         "part_kind": "composite",
         "piece_id": "p2",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Cloth Armor",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1029.png"
+          },
+          "quantity": 1,
+          "value_display": "300 g"
+         },
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1,
+          "value_display": "250 g"
+         },
+         {
+          "label": "Sapphire Crystal",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1027.png"
+          },
+          "quantity": 1,
+          "value_display": "300 g"
+         }
+        ],
+        "value_display": "900 g"
+       },
+       {
+        "combine_display": "400 g",
+        "label": "Warden's Mail",
+        "line_total_display": "1000 g",
+        "part_kind": "composite",
+        "piece_id": "p3",
         "quantity": 1,
         "sub_parts": [
          {
@@ -1033,111 +1066,78 @@
           "value_display": "300 g"
          }
         ],
-        "value_display": "800 g"
-       },
-       {
-        "combine_display": "500 g",
-        "label": "Chain Vest",
-        "line_total_display": "800 g",
-        "part_kind": "composite",
-        "piece_id": "p5",
-        "quantity": 1,
-        "sub_parts": [
-         {
-          "label": "Cloth Armor",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1029.png"
-          },
-          "quantity": 1,
-          "value_display": "300 g"
-         }
-        ],
-        "value_display": "800 g"
-       },
-       {
-        "combine_display": null,
-        "label": "Ruby Crystal",
-        "line_total_display": "400 g",
-        "part_kind": "basic",
-        "piece_id": "p1",
-        "quantity": 1,
-        "sub_parts": [],
-        "value_display": "400 g"
+        "value_display": "1000 g"
        }
       ],
       "challenge_index": 0,
       "is_correct": false,
       "pieces": [
        {
-        "label": "Null-Magic Mantle",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1033.png"
-        },
-        "piece_id": "p0"
-       },
-       {
-        "label": "Ruby Crystal",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1028.png"
-        },
-        "piece_id": "p1"
-       },
-       {
-        "label": "Bramble Vest",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/3076.png"
-        },
-        "piece_id": "p2"
-       },
-       {
-        "label": "Negatron Cloak",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1057.png"
-        },
-        "piece_id": "p3"
-       },
-       {
-        "label": "Quicksilver Sash",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/3140.png"
-        },
-        "piece_id": "p4"
-       },
-       {
         "label": "Chain Vest",
         "media": {
          "alt": "",
          "src": "assets/items_wiki/1031.png"
         },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Catalyst of Aeons",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3803.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Glacial Buckler",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3024.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Warden's Mail",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3082.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Tear of the Goddess",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3070.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Giant's Belt",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1011.png"
+        },
         "piece_id": "p5"
        }
       ],
       "placement": [
-       "p3",
-       "p5",
-       "p1"
+       "p0",
+       "p3"
       ],
       "settled_placement": [
        "p2",
-       "p5",
-       "p1"
+       "p3"
       ],
       "slot_correct": [
        false,
-       true,
        true
       ],
       "target": {
-       "base_display": "2000 g",
-       "combine_display": "450 g",
-       "label": "Thornmail",
-       "total_display": "2450 g"
+       "base_display": "1900 g",
+       "combine_display": "600 g",
+       "label": "Frozen Heart",
+       "total_display": "2500 g"
       }
      }
     ],
@@ -1149,9 +1149,8 @@
     "own_submitted_choices": [
      {
       "placement": [
-       "p3",
-       "p5",
-       "p1"
+       "p0",
+       "p3"
       ]
      }
     ],
@@ -1169,7 +1168,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "private_open": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -1181,7 +1180,7 @@
    },
    "completed_rounds": 0,
    "completion_reason": null,
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1233,7 +1232,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -1249,7 +1248,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1308,63 +1307,63 @@
      "challenges": [
       {
        "challenge_index": 0,
-       "max_uses": 3,
+       "max_uses": 2,
        "pieces": [
-        {
-         "label": "Null-Magic Mantle",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1033.png"
-         },
-         "piece_id": "p0"
-        },
-        {
-         "label": "Ruby Crystal",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1028.png"
-         },
-         "piece_id": "p1"
-        },
-        {
-         "label": "Bramble Vest",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3076.png"
-         },
-         "piece_id": "p2"
-        },
-        {
-         "label": "Negatron Cloak",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1057.png"
-         },
-         "piece_id": "p3"
-        },
-        {
-         "label": "Quicksilver Sash",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3140.png"
-         },
-         "piece_id": "p4"
-        },
         {
          "label": "Chain Vest",
          "media": {
           "alt": "",
           "src": "assets/items_wiki/1031.png"
          },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Catalyst of Aeons",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3803.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Glacial Buckler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3024.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Warden's Mail",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3082.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Tear of the Goddess",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3070.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
          "piece_id": "p5"
         }
        ],
-       "slot_count": 3,
+       "slot_count": 2,
        "target": {
-        "label": "Thornmail",
+        "label": "Frozen Heart",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/3075.png"
+         "src": "assets/items_wiki/3110.png"
         }
        }
       }
@@ -1413,7 +1412,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "public_after_bot_lock": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:54.350000+00:00",
@@ -1426,7 +1425,7 @@
    "completed_rounds": 2,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1452,10 +1451,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
-     "score": 4,
-     "total_xp": 24
+     "score": 2,
+     "total_xp": 21
     }
    ],
    "playtest": {
@@ -1474,7 +1473,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:3",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:3",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1542,60 +1541,60 @@
        "max_uses": 3,
        "pieces": [
         {
-         "label": "Pickaxe",
+         "label": "Sheen",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1037.png"
+          "src": "assets/items_wiki/3057.png"
          },
          "piece_id": "p0"
         },
         {
-         "label": "Serrated Dirk",
+         "label": "Hextech Alternator",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/3134.png"
+          "src": "assets/items_wiki/3145.png"
          },
          "piece_id": "p1"
         },
         {
-         "label": "Cloak of Agility",
+         "label": "Aether Wisp",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1018.png"
+          "src": "assets/items_wiki/3113.png"
          },
          "piece_id": "p2"
         },
         {
-         "label": "Executioner's Calling",
+         "label": "Blasting Wand",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/3123.png"
+          "src": "assets/items_wiki/1026.png"
          },
          "piece_id": "p3"
         },
         {
-         "label": "B. F. Sword",
+         "label": "Needlessly Large Rod",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1038.png"
+          "src": "assets/items_wiki/1058.png"
          },
          "piece_id": "p4"
         },
         {
-         "label": "Dagger",
+         "label": "Fiendish Codex",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1042.png"
+          "src": "assets/items_wiki/3108.png"
          },
          "piece_id": "p5"
         }
        ],
        "slot_count": 3,
        "target": {
-        "label": "The Collector",
+        "label": "Lich Bane",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/6676.png"
+         "src": "assets/items_wiki/3100.png"
         }
        }
       }
@@ -1644,7 +1643,7 @@
   "server_time": "2026-09-09T12:00:17+00:00"
  },
  "public_before_bot_lock": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:46.400000+00:00",
@@ -1657,7 +1656,7 @@
    "completed_rounds": 1,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1683,10 +1682,10 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
-     "score": 2,
-     "total_xp": 12
+     "score": 0,
+     "total_xp": 9
     }
    ],
    "playtest": {
@@ -1705,7 +1704,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:2",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:2",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -1781,36 +1780,20 @@
          "piece_id": "p0"
         },
         {
-         "label": "Noonquiver",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/6670.png"
-         },
-         "piece_id": "p1"
-        },
-        {
          "label": "B. F. Sword",
          "media": {
           "alt": "",
           "src": "assets/items_wiki/1038.png"
          },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Tunneler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2021.png"
+         },
          "piece_id": "p2"
-        },
-        {
-         "label": "Rectrix",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/6690.png"
-         },
-         "piece_id": "p3"
-        },
-        {
-         "label": "Executioner's Calling",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3123.png"
-         },
-         "piece_id": "p4"
         },
         {
          "label": "Pickaxe",
@@ -1818,15 +1801,31 @@
           "alt": "",
           "src": "assets/items_wiki/1037.png"
          },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Executioner's Calling",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3123.png"
+         },
          "piece_id": "p5"
         }
        ],
        "slot_count": 2,
        "target": {
-        "label": "Immortal Shieldbow",
+        "label": "Overlord's Bloodmail",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/6673.png"
+         "src": "assets/items_wiki/2501.png"
         }
        }
       }
@@ -1875,7 +1874,7 @@
   "server_time": "2026-09-09T12:00:17+00:00"
  },
  "public_locked": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -1888,7 +1887,7 @@
    "completed_rounds": 0,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -1914,7 +1913,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -1936,7 +1935,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -2001,63 +2000,63 @@
      "challenges": [
       {
        "challenge_index": 0,
-       "max_uses": 3,
+       "max_uses": 2,
        "pieces": [
-        {
-         "label": "Null-Magic Mantle",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1033.png"
-         },
-         "piece_id": "p0"
-        },
-        {
-         "label": "Ruby Crystal",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1028.png"
-         },
-         "piece_id": "p1"
-        },
-        {
-         "label": "Bramble Vest",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3076.png"
-         },
-         "piece_id": "p2"
-        },
-        {
-         "label": "Negatron Cloak",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1057.png"
-         },
-         "piece_id": "p3"
-        },
-        {
-         "label": "Quicksilver Sash",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3140.png"
-         },
-         "piece_id": "p4"
-        },
         {
          "label": "Chain Vest",
          "media": {
           "alt": "",
           "src": "assets/items_wiki/1031.png"
          },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Catalyst of Aeons",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3803.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Glacial Buckler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3024.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Warden's Mail",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3082.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Tear of the Goddess",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3070.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
          "piece_id": "p5"
         }
        ],
-       "slot_count": 3,
+       "slot_count": 2,
        "target": {
-        "label": "Thornmail",
+        "label": "Frozen Heart",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/3075.png"
+         "src": "assets/items_wiki/3110.png"
         }
        }
       }
@@ -2087,11 +2086,49 @@
      {
       "canonical_parts": [
        {
-        "combine_display": "200 g",
-        "label": "Bramble Vest",
-        "line_total_display": "800 g",
+        "combine_display": "50 g",
+        "label": "Glacial Buckler",
+        "line_total_display": "900 g",
         "part_kind": "composite",
         "piece_id": "p2",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Cloth Armor",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1029.png"
+          },
+          "quantity": 1,
+          "value_display": "300 g"
+         },
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1,
+          "value_display": "250 g"
+         },
+         {
+          "label": "Sapphire Crystal",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1027.png"
+          },
+          "quantity": 1,
+          "value_display": "300 g"
+         }
+        ],
+        "value_display": "900 g"
+       },
+       {
+        "combine_display": "400 g",
+        "label": "Warden's Mail",
+        "line_total_display": "1000 g",
+        "part_kind": "composite",
+        "piece_id": "p3",
         "quantity": 1,
         "sub_parts": [
          {
@@ -2104,111 +2141,78 @@
           "value_display": "300 g"
          }
         ],
-        "value_display": "800 g"
-       },
-       {
-        "combine_display": "500 g",
-        "label": "Chain Vest",
-        "line_total_display": "800 g",
-        "part_kind": "composite",
-        "piece_id": "p5",
-        "quantity": 1,
-        "sub_parts": [
-         {
-          "label": "Cloth Armor",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1029.png"
-          },
-          "quantity": 1,
-          "value_display": "300 g"
-         }
-        ],
-        "value_display": "800 g"
-       },
-       {
-        "combine_display": null,
-        "label": "Ruby Crystal",
-        "line_total_display": "400 g",
-        "part_kind": "basic",
-        "piece_id": "p1",
-        "quantity": 1,
-        "sub_parts": [],
-        "value_display": "400 g"
+        "value_display": "1000 g"
        }
       ],
       "challenge_index": 0,
       "is_correct": false,
       "pieces": [
        {
-        "label": "Null-Magic Mantle",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1033.png"
-        },
-        "piece_id": "p0"
-       },
-       {
-        "label": "Ruby Crystal",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1028.png"
-        },
-        "piece_id": "p1"
-       },
-       {
-        "label": "Bramble Vest",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/3076.png"
-        },
-        "piece_id": "p2"
-       },
-       {
-        "label": "Negatron Cloak",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1057.png"
-        },
-        "piece_id": "p3"
-       },
-       {
-        "label": "Quicksilver Sash",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/3140.png"
-        },
-        "piece_id": "p4"
-       },
-       {
         "label": "Chain Vest",
         "media": {
          "alt": "",
          "src": "assets/items_wiki/1031.png"
         },
+        "piece_id": "p0"
+       },
+       {
+        "label": "Catalyst of Aeons",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3803.png"
+        },
+        "piece_id": "p1"
+       },
+       {
+        "label": "Glacial Buckler",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3024.png"
+        },
+        "piece_id": "p2"
+       },
+       {
+        "label": "Warden's Mail",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3082.png"
+        },
+        "piece_id": "p3"
+       },
+       {
+        "label": "Tear of the Goddess",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/3070.png"
+        },
+        "piece_id": "p4"
+       },
+       {
+        "label": "Giant's Belt",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1011.png"
+        },
         "piece_id": "p5"
        }
       ],
       "placement": [
-       "p3",
-       "p5",
-       "p1"
+       "p0",
+       "p3"
       ],
       "settled_placement": [
        "p2",
-       "p5",
-       "p1"
+       "p3"
       ],
       "slot_correct": [
        false,
-       true,
        true
       ],
       "target": {
-       "base_display": "2000 g",
-       "combine_display": "450 g",
-       "label": "Thornmail",
-       "total_display": "2450 g"
+       "base_display": "1900 g",
+       "combine_display": "600 g",
+       "label": "Frozen Heart",
+       "total_display": "2500 g"
       }
      }
     ],
@@ -2220,9 +2224,8 @@
     "own_submitted_choices": [
      {
       "placement": [
-       "p3",
-       "p5",
-       "p1"
+       "p0",
+       "p3"
       ]
      }
     ],
@@ -2240,7 +2243,7 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "public_open": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "active_round": {
     "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -2253,7 +2256,7 @@
    "completed_rounds": 0,
    "completion_reason": null,
    "host": "playtest",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "match_status": "active",
    "next_round_duration_seconds": 30.0,
@@ -2279,7 +2282,7 @@
      "hp": 170,
      "level": 1,
      "max_hp": 170,
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "role": null,
      "score": 0,
      "total_xp": 0
@@ -2301,7 +2304,7 @@
     "category": null,
     "options": [],
     "prompt": "",
-    "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+    "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
     "topic": {
      "category": "general",
      "icon_hint": {
@@ -2366,63 +2369,63 @@
      "challenges": [
       {
        "challenge_index": 0,
-       "max_uses": 3,
+       "max_uses": 2,
        "pieces": [
-        {
-         "label": "Null-Magic Mantle",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1033.png"
-         },
-         "piece_id": "p0"
-        },
-        {
-         "label": "Ruby Crystal",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1028.png"
-         },
-         "piece_id": "p1"
-        },
-        {
-         "label": "Bramble Vest",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3076.png"
-         },
-         "piece_id": "p2"
-        },
-        {
-         "label": "Negatron Cloak",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1057.png"
-         },
-         "piece_id": "p3"
-        },
-        {
-         "label": "Quicksilver Sash",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/3140.png"
-         },
-         "piece_id": "p4"
-        },
         {
          "label": "Chain Vest",
          "media": {
           "alt": "",
           "src": "assets/items_wiki/1031.png"
          },
+         "piece_id": "p0"
+        },
+        {
+         "label": "Catalyst of Aeons",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3803.png"
+         },
+         "piece_id": "p1"
+        },
+        {
+         "label": "Glacial Buckler",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3024.png"
+         },
+         "piece_id": "p2"
+        },
+        {
+         "label": "Warden's Mail",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3082.png"
+         },
+         "piece_id": "p3"
+        },
+        {
+         "label": "Tear of the Goddess",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/3070.png"
+         },
+         "piece_id": "p4"
+        },
+        {
+         "label": "Giant's Belt",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1011.png"
+         },
          "piece_id": "p5"
         }
        ],
-       "slot_count": 3,
+       "slot_count": 2,
        "target": {
-        "label": "Thornmail",
+        "label": "Frozen Heart",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/3075.png"
+         "src": "assets/items_wiki/3110.png"
         }
        }
       }
@@ -2471,11 +2474,11 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "queue_join": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "class_id": null,
    "enqueued_at": "2026-09-09T12:00:00+00:00",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "queue_version": 1,
    "role": null,
    "status": "matched"
@@ -2486,16 +2489,16 @@
   "server_time": "2026-09-09T12:00:00+00:00"
  },
  "resolved_correct": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:00:46.400000+00:00",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_bd7100ef60970710": 170
+    "p_d6354436929e3659": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -2505,11 +2508,11 @@
      "score_before": 0,
      "speed_bonus_points": 1
     },
-    "p_bd7100ef60970710": {
+    "p_d6354436929e3659": {
      "base_points": 2,
      "points_awarded": 2,
-     "score_after": 4,
-     "score_before": 2,
+     "score_after": 2,
+     "score_before": 0,
      "speed_bonus_points": 0
     }
    },
@@ -2559,7 +2562,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 2,
+      "consecutive_correct": 1,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -2581,44 +2584,35 @@
      "level_before": 1,
      "level_up_events": [],
      "outcome": "correct",
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "points_awarded": 2,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 4,
-     "score_before": 2,
+     "score_after": 2,
+     "score_before": 0,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:26.944271+00:00",
+     "submitted_at": "2026-09-09T12:00:21.856943+00:00",
      "timed_out": false,
-     "total_xp_after": 24,
+     "total_xp_after": 21,
      "xp_gained": 12
     }
    ],
    "presentation_ms": 7350,
    "pressure_applied": true,
-   "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:2",
+   "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:2",
    "round_number": 2,
    "segment_reveal": {
     "canonical_parts": [
      {
-      "combine_display": "350 g",
-      "label": "Noonquiver",
-      "line_total_display": "1300 g",
+      "combine_display": "400 g",
+      "label": "Tunneler",
+      "line_total_display": "2300 g",
       "part_kind": "composite",
-      "piece_id": "p1",
-      "quantity": 1,
+      "piece_id": "p2",
+      "quantity": 2,
       "sub_parts": [
-       {
-        "label": "Cloak of Agility",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1018.png"
-        },
-        "quantity": 1,
-        "value_display": "600 g"
-       },
        {
         "label": "Long Sword",
         "media": {
@@ -2627,19 +2621,18 @@
         },
         "quantity": 1,
         "value_display": "350 g"
+       },
+       {
+        "label": "Ruby Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1028.png"
+        },
+        "quantity": 1,
+        "value_display": "400 g"
        }
       ],
-      "value_display": "1300 g"
-     },
-     {
-      "combine_display": null,
-      "label": "Pickaxe",
-      "line_total_display": "875 g",
-      "part_kind": "basic",
-      "piece_id": "p5",
-      "quantity": 1,
-      "sub_parts": [],
-      "value_display": "875 g"
+      "value_display": "1150 g"
      }
     ],
     "challenge_count": 1,
@@ -2656,42 +2649,42 @@
       "piece_id": "p0"
      },
      {
-      "label": "Noonquiver",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/6670.png"
-      },
-      "piece_id": "p1"
-     },
-     {
       "label": "B. F. Sword",
       "media": {
        "alt": "",
        "src": "assets/items_wiki/1038.png"
       },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Tunneler",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/2021.png"
+      },
       "piece_id": "p2"
-     },
-     {
-      "label": "Rectrix",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/6690.png"
-      },
-      "piece_id": "p3"
-     },
-     {
-      "label": "Executioner's Calling",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/3123.png"
-      },
-      "piece_id": "p4"
      },
      {
       "label": "Pickaxe",
       "media": {
        "alt": "",
        "src": "assets/items_wiki/1037.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Executioner's Calling",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3123.png"
       },
       "piece_id": "p5"
      }
@@ -2704,14 +2697,14 @@
       "finished_first": true,
       "incorrect": 0,
       "placement": [
-       "p5",
-       "p1"
+       "p2",
+       "p2"
       ],
       "points_awarded": 3,
       "segment_result": "win",
       "settled_placement": [
-       "p5",
-       "p1"
+       "p2",
+       "p2"
       ],
       "slot_correct": [
        true,
@@ -2720,21 +2713,21 @@
       "speed_bonus_points": 1,
       "unanswered": 0
      },
-     "p_bd7100ef60970710": {
+     "p_d6354436929e3659": {
       "base_points": 2,
       "correct": 1,
-      "duration_ms": 10544,
+      "duration_ms": 5457,
       "finished_first": false,
       "incorrect": 0,
       "placement": [
-       "p1",
-       "p5"
+       "p2",
+       "p2"
       ],
       "points_awarded": 2,
       "segment_result": "loss",
       "settled_placement": [
-       "p1",
-       "p5"
+       "p2",
+       "p2"
       ],
       "slot_correct": [
        true,
@@ -2747,10 +2740,10 @@
     "scoring": "points",
     "speed_bonus_points": 1,
     "target": {
-     "base_display": "2175 g",
-     "combine_display": "825 g",
-     "label": "Immortal Shieldbow",
-     "total_display": "3000 g"
+     "base_display": "2300 g",
+     "combine_display": "1000 g",
+     "label": "Overlord's Bloodmail",
+     "total_display": "3300 g"
     }
    },
    "started_at": "2026-09-09T12:00:16.400000+00:00",
@@ -2762,16 +2755,16 @@
   "server_time": "2026-09-09T12:00:20+00:00"
  },
  "resolved_incorrect": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "completion_reason": null,
    "end_reason": "both_answered",
    "final_deadline": "2026-09-09T12:00:34.400000+00:00",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": false,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_bd7100ef60970710": 170
+    "p_d6354436929e3659": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -2781,10 +2774,10 @@
      "score_before": 0,
      "speed_bonus_points": 0
     },
-    "p_bd7100ef60970710": {
-     "base_points": 2,
-     "points_awarded": 2,
-     "score_after": 2,
+    "p_d6354436929e3659": {
+     "base_points": 0,
+     "points_awarded": 0,
+     "score_after": 0,
      "score_before": 0,
      "speed_bonus_points": 0
     }
@@ -2835,7 +2828,7 @@
     {
      "answered_first": false,
      "carryover": {
-      "consecutive_correct": 1,
+      "consecutive_correct": 0,
       "effects_consumed": [],
       "effects_gained": []
      },
@@ -2856,34 +2849,72 @@
      "level_after": 1,
      "level_before": 1,
      "level_up_events": [],
-     "outcome": "correct",
-     "player_id": "p_bd7100ef60970710",
-     "points_awarded": 2,
+     "outcome": "incorrect",
+     "player_id": "p_d6354436929e3659",
+     "points_awarded": 0,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 2,
+     "score_after": 0,
      "score_before": 0,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:14.516811+00:00",
+     "submitted_at": "2026-09-09T12:00:11.726519+00:00",
      "timed_out": false,
-     "total_xp_after": 12,
-     "xp_gained": 12
+     "total_xp_after": 9,
+     "xp_gained": 9
     }
    ],
    "presentation_ms": 5400,
    "pressure_applied": true,
-   "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+   "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
    "round_number": 1,
    "segment_reveal": {
     "canonical_parts": [
      {
-      "combine_display": "200 g",
-      "label": "Bramble Vest",
-      "line_total_display": "800 g",
+      "combine_display": "50 g",
+      "label": "Glacial Buckler",
+      "line_total_display": "900 g",
       "part_kind": "composite",
       "piece_id": "p2",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Cloth Armor",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1029.png"
+        },
+        "quantity": 1,
+        "value_display": "300 g"
+       },
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1,
+        "value_display": "250 g"
+       },
+       {
+        "label": "Sapphire Crystal",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/1027.png"
+        },
+        "quantity": 1,
+        "value_display": "300 g"
+       }
+      ],
+      "value_display": "900 g"
+     },
+     {
+      "combine_display": "400 g",
+      "label": "Warden's Mail",
+      "line_total_display": "1000 g",
+      "part_kind": "composite",
+      "piece_id": "p3",
       "quantity": 1,
       "sub_parts": [
        {
@@ -2896,37 +2927,7 @@
         "value_display": "300 g"
        }
       ],
-      "value_display": "800 g"
-     },
-     {
-      "combine_display": "500 g",
-      "label": "Chain Vest",
-      "line_total_display": "800 g",
-      "part_kind": "composite",
-      "piece_id": "p5",
-      "quantity": 1,
-      "sub_parts": [
-       {
-        "label": "Cloth Armor",
-        "media": {
-         "alt": "",
-         "src": "assets/items_wiki/1029.png"
-        },
-        "quantity": 1,
-        "value_display": "300 g"
-       }
-      ],
-      "value_display": "800 g"
-     },
-     {
-      "combine_display": null,
-      "label": "Ruby Crystal",
-      "line_total_display": "400 g",
-      "part_kind": "basic",
-      "piece_id": "p1",
-      "quantity": 1,
-      "sub_parts": [],
-      "value_display": "400 g"
+      "value_display": "1000 g"
      }
     ],
     "challenge_count": 1,
@@ -2935,50 +2936,50 @@
     "module_version": 1,
     "pieces": [
      {
-      "label": "Null-Magic Mantle",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/1033.png"
-      },
-      "piece_id": "p0"
-     },
-     {
-      "label": "Ruby Crystal",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/1028.png"
-      },
-      "piece_id": "p1"
-     },
-     {
-      "label": "Bramble Vest",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/3076.png"
-      },
-      "piece_id": "p2"
-     },
-     {
-      "label": "Negatron Cloak",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/1057.png"
-      },
-      "piece_id": "p3"
-     },
-     {
-      "label": "Quicksilver Sash",
-      "media": {
-       "alt": "",
-       "src": "assets/items_wiki/3140.png"
-      },
-      "piece_id": "p4"
-     },
-     {
       "label": "Chain Vest",
       "media": {
        "alt": "",
        "src": "assets/items_wiki/1031.png"
+      },
+      "piece_id": "p0"
+     },
+     {
+      "label": "Catalyst of Aeons",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3803.png"
+      },
+      "piece_id": "p1"
+     },
+     {
+      "label": "Glacial Buckler",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3024.png"
+      },
+      "piece_id": "p2"
+     },
+     {
+      "label": "Warden's Mail",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3082.png"
+      },
+      "piece_id": "p3"
+     },
+     {
+      "label": "Tear of the Goddess",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/3070.png"
+      },
+      "piece_id": "p4"
+     },
+     {
+      "label": "Giant's Belt",
+      "media": {
+       "alt": "",
+       "src": "assets/items_wiki/1011.png"
       },
       "piece_id": "p5"
      }
@@ -2991,46 +2992,40 @@
       "finished_first": true,
       "incorrect": 1,
       "placement": [
-       "p3",
-       "p5",
-       "p1"
+       "p0",
+       "p3"
       ],
       "points_awarded": 0,
-      "segment_result": "loss",
+      "segment_result": "draw",
       "settled_placement": [
        "p2",
-       "p5",
-       "p1"
+       "p3"
       ],
       "slot_correct": [
        false,
-       true,
        true
       ],
       "speed_bonus_points": 0,
       "unanswered": 0
      },
-     "p_bd7100ef60970710": {
-      "base_points": 2,
-      "correct": 1,
-      "duration_ms": 10117,
+     "p_d6354436929e3659": {
+      "base_points": 0,
+      "correct": 0,
+      "duration_ms": 7327,
       "finished_first": false,
-      "incorrect": 0,
+      "incorrect": 1,
       "placement": [
-       "p2",
-       "p5",
-       "p1"
+       "p4",
+       "p3"
       ],
-      "points_awarded": 2,
-      "segment_result": "win",
+      "points_awarded": 0,
+      "segment_result": "draw",
       "settled_placement": [
        "p2",
-       "p5",
-       "p1"
+       "p3"
       ],
       "slot_correct": [
-       true,
-       true,
+       false,
        true
       ],
       "speed_bonus_points": 0,
@@ -3040,10 +3035,10 @@
     "scoring": "points",
     "speed_bonus_points": 1,
     "target": {
-     "base_display": "2000 g",
-     "combine_display": "450 g",
-     "label": "Thornmail",
-     "total_display": "2450 g"
+     "base_display": "1900 g",
+     "combine_display": "600 g",
+     "label": "Frozen Heart",
+     "total_display": "2500 g"
     }
    },
    "started_at": "2026-09-09T12:00:04.400000+00:00",
@@ -3055,16 +3050,16 @@
   "server_time": "2026-09-09T12:00:11+00:00"
  },
  "resolved_timeout": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "completion_reason": "segments_complete",
    "end_reason": "deadline_expired",
    "final_deadline": "2026-09-09T12:00:54.350000+00:00",
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "match_over": true,
    "max_hp": {
     "0a11d111-0000-4000-8000-000000000001": 170,
-    "p_bd7100ef60970710": 170
+    "p_d6354436929e3659": 170
    },
    "module_points": {
     "0a11d111-0000-4000-8000-000000000001": {
@@ -3074,11 +3069,11 @@
      "score_before": 3,
      "speed_bonus_points": 0
     },
-    "p_bd7100ef60970710": {
+    "p_d6354436929e3659": {
      "base_points": 0,
      "points_awarded": 0,
-     "score_after": 4,
-     "score_before": 4,
+     "score_after": 2,
+     "score_before": 2,
      "speed_bonus_points": 0
     }
    },
@@ -3150,66 +3145,76 @@
      "level_before": 1,
      "level_up_events": [],
      "outcome": "incorrect",
-     "player_id": "p_bd7100ef60970710",
+     "player_id": "p_d6354436929e3659",
      "points_awarded": 0,
      "reached_zero_hp": false,
      "remaining_charges": {
       "tank.fortify": 3
      },
-     "score_after": 4,
-     "score_before": 4,
+     "score_after": 2,
+     "score_before": 2,
      "selected_ability_id": null,
-     "submitted_at": "2026-09-09T12:00:33.403955+00:00",
+     "submitted_at": "2026-09-09T12:00:31.090400+00:00",
      "timed_out": false,
-     "total_xp_after": 33,
+     "total_xp_after": 30,
      "xp_gained": 9
     }
    ],
    "presentation_ms": 5400,
    "pressure_applied": true,
-   "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:3",
+   "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:3",
    "round_number": 3,
    "segment_reveal": {
     "canonical_parts": [
      {
-      "combine_display": null,
-      "label": "Cloak of Agility",
-      "line_total_display": "600 g",
-      "part_kind": "basic",
-      "piece_id": "p2",
-      "quantity": 1,
-      "sub_parts": [],
-      "value_display": "600 g"
-     },
-     {
-      "combine_display": null,
-      "label": "Pickaxe",
-      "line_total_display": "875 g",
-      "part_kind": "basic",
-      "piece_id": "p0",
-      "quantity": 1,
-      "sub_parts": [],
-      "value_display": "875 g"
-     },
-     {
-      "combine_display": "300 g",
-      "label": "Serrated Dirk",
-      "line_total_display": "1000 g",
+      "combine_display": "500 g",
+      "label": "Aether Wisp",
+      "line_total_display": "900 g",
       "part_kind": "composite",
-      "piece_id": "p1",
+      "piece_id": "p2",
       "quantity": 1,
       "sub_parts": [
        {
-        "label": "Long Sword",
+        "label": "Amplifying Tome",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/1036.png"
+         "src": "assets/items_wiki/1052.png"
         },
-        "quantity": 2,
-        "value_display": "350 g"
+        "quantity": 1,
+        "value_display": "400 g"
        }
       ],
-      "value_display": "1000 g"
+      "value_display": "900 g"
+     },
+     {
+      "combine_display": null,
+      "label": "Blasting Wand",
+      "line_total_display": "850 g",
+      "part_kind": "basic",
+      "piece_id": "p3",
+      "quantity": 1,
+      "sub_parts": [],
+      "value_display": "850 g"
+     },
+     {
+      "combine_display": "650 g",
+      "label": "Sheen",
+      "line_total_display": "900 g",
+      "part_kind": "composite",
+      "piece_id": "p0",
+      "quantity": 1,
+      "sub_parts": [
+       {
+        "label": "Glowing Mote",
+        "media": {
+         "alt": "",
+         "src": "assets/items_wiki/2022.png"
+        },
+        "quantity": 1,
+        "value_display": "250 g"
+       }
+      ],
+      "value_display": "900 g"
      }
     ],
     "challenge_count": 1,
@@ -3218,50 +3223,50 @@
     "module_version": 1,
     "pieces": [
      {
-      "label": "Pickaxe",
+      "label": "Sheen",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/1037.png"
+       "src": "assets/items_wiki/3057.png"
       },
       "piece_id": "p0"
      },
      {
-      "label": "Serrated Dirk",
+      "label": "Hextech Alternator",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/3134.png"
+       "src": "assets/items_wiki/3145.png"
       },
       "piece_id": "p1"
      },
      {
-      "label": "Cloak of Agility",
+      "label": "Aether Wisp",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/1018.png"
+       "src": "assets/items_wiki/3113.png"
       },
       "piece_id": "p2"
      },
      {
-      "label": "Executioner's Calling",
+      "label": "Blasting Wand",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/3123.png"
+       "src": "assets/items_wiki/1026.png"
       },
       "piece_id": "p3"
      },
      {
-      "label": "B. F. Sword",
+      "label": "Needlessly Large Rod",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/1038.png"
+       "src": "assets/items_wiki/1058.png"
       },
       "piece_id": "p4"
      },
      {
-      "label": "Dagger",
+      "label": "Fiendish Codex",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/1042.png"
+       "src": "assets/items_wiki/3108.png"
       },
       "piece_id": "p5"
      }
@@ -3281,27 +3286,27 @@
       "speed_bonus_points": 0,
       "unanswered": 1
      },
-     "p_bd7100ef60970710": {
+     "p_d6354436929e3659": {
       "base_points": 0,
       "correct": 0,
-      "duration_ms": 9054,
+      "duration_ms": 6740,
       "finished_first": true,
       "incorrect": 1,
       "placement": [
-       "p2",
-       "p4",
-       "p1"
+       "p1",
+       "p3",
+       "p0"
       ],
       "points_awarded": 0,
       "segment_result": "draw",
       "settled_placement": [
        "p2",
-       "p0",
-       "p1"
+       "p3",
+       "p0"
       ],
       "slot_correct": [
-       true,
        false,
+       true,
        true
       ],
       "speed_bonus_points": 0,
@@ -3311,14 +3316,14 @@
     "scoring": "points",
     "speed_bonus_points": 1,
     "target": {
-     "base_display": "2475 g",
-     "combine_display": "525 g",
-     "label": "The Collector",
-     "total_display": "3000 g"
+     "base_display": "2650 g",
+     "combine_display": "250 g",
+     "label": "Lich Bane",
+     "total_display": "2900 g"
     }
    },
    "started_at": "2026-09-09T12:00:24.350000+00:00",
-   "winner_id": "p_bd7100ef60970710"
+   "winner_id": "0a11d111-0000-4000-8000-000000000001"
   },
   "projection_type": "resolved_round",
   "round_number": 3,
@@ -3326,11 +3331,11 @@
   "server_time": "2026-09-09T12:01:09+00:00"
  },
  "result": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "completion_reason": "segments_complete",
    "final_round_number": 3,
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "outcome": "decisive",
    "rating_application_status": "skipped",
    "rating_policy_version": "elo.v1",
@@ -3338,18 +3343,18 @@
    "scoring": {
     "final_scores": {
      "0a11d111-0000-4000-8000-000000000001": 3,
-     "p_bd7100ef60970710": 4
+     "p_d6354436929e3659": 2
     },
     "match_length": 3,
     "model": "points",
     "modules_played": 3,
     "modules_won": {
      "0a11d111-0000-4000-8000-000000000001": 1,
-     "p_bd7100ef60970710": 1
+     "p_d6354436929e3659": 0
     }
    },
    "terminal_reason": "combat",
-   "winner_user_id": "p_bd7100ef60970710"
+   "winner_user_id": "0a11d111-0000-4000-8000-000000000001"
   },
   "projection_type": "match_result",
   "round_number": 3,
@@ -3357,19 +3362,19 @@
   "server_time": "2026-09-09T12:01:39+00:00"
  },
  "resume_final": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "latest_resolved_round": {
-    "match_id": "rkb_06e11bd183a01226807ebc76",
+    "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
     "payload": {
      "completion_reason": "segments_complete",
      "end_reason": "deadline_expired",
      "final_deadline": "2026-09-09T12:00:54.350000+00:00",
-     "match_id": "rkb_06e11bd183a01226807ebc76",
+     "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
      "match_over": true,
      "max_hp": {
       "0a11d111-0000-4000-8000-000000000001": 170,
-      "p_bd7100ef60970710": 170
+      "p_d6354436929e3659": 170
      },
      "module_points": {
       "0a11d111-0000-4000-8000-000000000001": {
@@ -3379,11 +3384,11 @@
        "score_before": 3,
        "speed_bonus_points": 0
       },
-      "p_bd7100ef60970710": {
+      "p_d6354436929e3659": {
        "base_points": 0,
        "points_awarded": 0,
-       "score_after": 4,
-       "score_before": 4,
+       "score_after": 2,
+       "score_before": 2,
        "speed_bonus_points": 0
       }
      },
@@ -3455,66 +3460,76 @@
        "level_before": 1,
        "level_up_events": [],
        "outcome": "incorrect",
-       "player_id": "p_bd7100ef60970710",
+       "player_id": "p_d6354436929e3659",
        "points_awarded": 0,
        "reached_zero_hp": false,
        "remaining_charges": {
         "tank.fortify": 3
        },
-       "score_after": 4,
-       "score_before": 4,
+       "score_after": 2,
+       "score_before": 2,
        "selected_ability_id": null,
-       "submitted_at": "2026-09-09T12:00:33.403955+00:00",
+       "submitted_at": "2026-09-09T12:00:31.090400+00:00",
        "timed_out": false,
-       "total_xp_after": 33,
+       "total_xp_after": 30,
        "xp_gained": 9
       }
      ],
      "presentation_ms": 5400,
      "pressure_applied": true,
-     "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:3",
+     "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:3",
      "round_number": 3,
      "segment_reveal": {
       "canonical_parts": [
        {
-        "combine_display": null,
-        "label": "Cloak of Agility",
-        "line_total_display": "600 g",
-        "part_kind": "basic",
-        "piece_id": "p2",
-        "quantity": 1,
-        "sub_parts": [],
-        "value_display": "600 g"
-       },
-       {
-        "combine_display": null,
-        "label": "Pickaxe",
-        "line_total_display": "875 g",
-        "part_kind": "basic",
-        "piece_id": "p0",
-        "quantity": 1,
-        "sub_parts": [],
-        "value_display": "875 g"
-       },
-       {
-        "combine_display": "300 g",
-        "label": "Serrated Dirk",
-        "line_total_display": "1000 g",
+        "combine_display": "500 g",
+        "label": "Aether Wisp",
+        "line_total_display": "900 g",
         "part_kind": "composite",
-        "piece_id": "p1",
+        "piece_id": "p2",
         "quantity": 1,
         "sub_parts": [
          {
-          "label": "Long Sword",
+          "label": "Amplifying Tome",
           "media": {
            "alt": "",
-           "src": "assets/items_wiki/1036.png"
+           "src": "assets/items_wiki/1052.png"
           },
-          "quantity": 2,
-          "value_display": "350 g"
+          "quantity": 1,
+          "value_display": "400 g"
          }
         ],
-        "value_display": "1000 g"
+        "value_display": "900 g"
+       },
+       {
+        "combine_display": null,
+        "label": "Blasting Wand",
+        "line_total_display": "850 g",
+        "part_kind": "basic",
+        "piece_id": "p3",
+        "quantity": 1,
+        "sub_parts": [],
+        "value_display": "850 g"
+       },
+       {
+        "combine_display": "650 g",
+        "label": "Sheen",
+        "line_total_display": "900 g",
+        "part_kind": "composite",
+        "piece_id": "p0",
+        "quantity": 1,
+        "sub_parts": [
+         {
+          "label": "Glowing Mote",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/2022.png"
+          },
+          "quantity": 1,
+          "value_display": "250 g"
+         }
+        ],
+        "value_display": "900 g"
        }
       ],
       "challenge_count": 1,
@@ -3523,50 +3538,50 @@
       "module_version": 1,
       "pieces": [
        {
-        "label": "Pickaxe",
+        "label": "Sheen",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/1037.png"
+         "src": "assets/items_wiki/3057.png"
         },
         "piece_id": "p0"
        },
        {
-        "label": "Serrated Dirk",
+        "label": "Hextech Alternator",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/3134.png"
+         "src": "assets/items_wiki/3145.png"
         },
         "piece_id": "p1"
        },
        {
-        "label": "Cloak of Agility",
+        "label": "Aether Wisp",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/1018.png"
+         "src": "assets/items_wiki/3113.png"
         },
         "piece_id": "p2"
        },
        {
-        "label": "Executioner's Calling",
+        "label": "Blasting Wand",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/3123.png"
+         "src": "assets/items_wiki/1026.png"
         },
         "piece_id": "p3"
        },
        {
-        "label": "B. F. Sword",
+        "label": "Needlessly Large Rod",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/1038.png"
+         "src": "assets/items_wiki/1058.png"
         },
         "piece_id": "p4"
        },
        {
-        "label": "Dagger",
+        "label": "Fiendish Codex",
         "media": {
          "alt": "",
-         "src": "assets/items_wiki/1042.png"
+         "src": "assets/items_wiki/3108.png"
         },
         "piece_id": "p5"
        }
@@ -3586,27 +3601,27 @@
         "speed_bonus_points": 0,
         "unanswered": 1
        },
-       "p_bd7100ef60970710": {
+       "p_d6354436929e3659": {
         "base_points": 0,
         "correct": 0,
-        "duration_ms": 9054,
+        "duration_ms": 6740,
         "finished_first": true,
         "incorrect": 1,
         "placement": [
-         "p2",
-         "p4",
-         "p1"
+         "p1",
+         "p3",
+         "p0"
         ],
         "points_awarded": 0,
         "segment_result": "draw",
         "settled_placement": [
          "p2",
-         "p0",
-         "p1"
+         "p3",
+         "p0"
         ],
         "slot_correct": [
-         true,
          false,
+         true,
          true
         ],
         "speed_bonus_points": 0,
@@ -3616,14 +3631,14 @@
       "scoring": "points",
       "speed_bonus_points": 1,
       "target": {
-       "base_display": "2475 g",
-       "combine_display": "525 g",
-       "label": "The Collector",
-       "total_display": "3000 g"
+       "base_display": "2650 g",
+       "combine_display": "250 g",
+       "label": "Lich Bane",
+       "total_display": "2900 g"
       }
      },
      "started_at": "2026-09-09T12:00:24.350000+00:00",
-     "winner_id": "p_bd7100ef60970710"
+     "winner_id": "0a11d111-0000-4000-8000-000000000001"
     },
     "projection_type": "resolved_round",
     "round_number": 3,
@@ -3639,12 +3654,12 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_06e11bd183a01226807ebc76",
+    "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
-     "match_id": "rkb_06e11bd183a01226807ebc76",
+     "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -3696,10 +3711,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_bd7100ef60970710",
+       "player_id": "p_d6354436929e3659",
        "role": null,
-       "score": 4,
-       "total_xp": 33
+       "score": 2,
+       "total_xp": 30
       }
      ],
      "presence": {
@@ -3712,7 +3727,7 @@
      "ruleset": null,
      "segment": null,
      "segment_state": null,
-     "winner_id": "p_bd7100ef60970710"
+     "winner_id": "0a11d111-0000-4000-8000-000000000001"
     },
     "projection_type": "private_player",
     "round_number": null,
@@ -3720,13 +3735,13 @@
     "server_time": "2026-09-09T12:01:39+00:00"
    },
    "public": {
-    "match_id": "rkb_06e11bd183a01226807ebc76",
+    "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
     "payload": {
      "active_round": null,
      "completed_rounds": 3,
      "completion_reason": "segments_complete",
      "host": "playtest",
-     "match_id": "rkb_06e11bd183a01226807ebc76",
+     "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
      "match_over": true,
      "match_status": "complete",
      "next_round_duration_seconds": 30.0,
@@ -3752,10 +3767,10 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_bd7100ef60970710",
+       "player_id": "p_d6354436929e3659",
        "role": null,
-       "score": 4,
-       "total_xp": 33
+       "score": 2,
+       "total_xp": 30
       }
      ],
      "playtest": {
@@ -3780,7 +3795,7 @@
      },
      "segment": null,
      "segment_state": null,
-     "winner_id": "p_bd7100ef60970710"
+     "winner_id": "0a11d111-0000-4000-8000-000000000001"
     },
     "projection_type": "public_round",
     "round_number": null,
@@ -3788,11 +3803,11 @@
     "server_time": "2026-09-09T12:01:39+00:00"
    },
    "result": {
-    "match_id": "rkb_06e11bd183a01226807ebc76",
+    "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
     "payload": {
      "completion_reason": "segments_complete",
      "final_round_number": 3,
-     "match_id": "rkb_06e11bd183a01226807ebc76",
+     "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
      "outcome": "decisive",
      "rating_application_status": "skipped",
      "rating_policy_version": "elo.v1",
@@ -3800,18 +3815,18 @@
      "scoring": {
       "final_scores": {
        "0a11d111-0000-4000-8000-000000000001": 3,
-       "p_bd7100ef60970710": 4
+       "p_d6354436929e3659": 2
       },
       "match_length": 3,
       "model": "points",
       "modules_played": 3,
       "modules_won": {
        "0a11d111-0000-4000-8000-000000000001": 1,
-       "p_bd7100ef60970710": 1
+       "p_d6354436929e3659": 0
       }
      },
      "terminal_reason": "combat",
-     "winner_user_id": "p_bd7100ef60970710"
+     "winner_user_id": "0a11d111-0000-4000-8000-000000000001"
     },
     "projection_type": "match_result",
     "round_number": 3,
@@ -3825,7 +3840,7 @@
   "server_time": "2026-09-09T12:01:39+00:00"
  },
  "resume_locked": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "latest_resolved_round": null,
    "match_over": false,
@@ -3837,7 +3852,7 @@
     "reconnect_grace_deadline": null
    },
    "private": {
-    "match_id": "rkb_06e11bd183a01226807ebc76",
+    "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
     "payload": {
      "active_round": {
       "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -3849,7 +3864,7 @@
      },
      "completed_rounds": 0,
      "completion_reason": null,
-     "match_id": "rkb_06e11bd183a01226807ebc76",
+     "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -3901,7 +3916,7 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_bd7100ef60970710",
+       "player_id": "p_d6354436929e3659",
        "role": null,
        "score": 0,
        "total_xp": 0
@@ -3917,7 +3932,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+      "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -3976,63 +3991,63 @@
        "challenges": [
         {
          "challenge_index": 0,
-         "max_uses": 3,
+         "max_uses": 2,
          "pieces": [
-          {
-           "label": "Null-Magic Mantle",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/1033.png"
-           },
-           "piece_id": "p0"
-          },
-          {
-           "label": "Ruby Crystal",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/1028.png"
-           },
-           "piece_id": "p1"
-          },
-          {
-           "label": "Bramble Vest",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/3076.png"
-           },
-           "piece_id": "p2"
-          },
-          {
-           "label": "Negatron Cloak",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/1057.png"
-           },
-           "piece_id": "p3"
-          },
-          {
-           "label": "Quicksilver Sash",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/3140.png"
-           },
-           "piece_id": "p4"
-          },
           {
            "label": "Chain Vest",
            "media": {
             "alt": "",
             "src": "assets/items_wiki/1031.png"
            },
+           "piece_id": "p0"
+          },
+          {
+           "label": "Catalyst of Aeons",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3803.png"
+           },
+           "piece_id": "p1"
+          },
+          {
+           "label": "Glacial Buckler",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3024.png"
+           },
+           "piece_id": "p2"
+          },
+          {
+           "label": "Warden's Mail",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3082.png"
+           },
+           "piece_id": "p3"
+          },
+          {
+           "label": "Tear of the Goddess",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3070.png"
+           },
+           "piece_id": "p4"
+          },
+          {
+           "label": "Giant's Belt",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1011.png"
+           },
            "piece_id": "p5"
           }
          ],
-         "slot_count": 3,
+         "slot_count": 2,
          "target": {
-          "label": "Thornmail",
+          "label": "Frozen Heart",
           "media": {
            "alt": "",
-           "src": "assets/items_wiki/3075.png"
+           "src": "assets/items_wiki/3110.png"
           }
          }
         }
@@ -4062,11 +4077,49 @@
        {
         "canonical_parts": [
          {
-          "combine_display": "200 g",
-          "label": "Bramble Vest",
-          "line_total_display": "800 g",
+          "combine_display": "50 g",
+          "label": "Glacial Buckler",
+          "line_total_display": "900 g",
           "part_kind": "composite",
           "piece_id": "p2",
+          "quantity": 1,
+          "sub_parts": [
+           {
+            "label": "Cloth Armor",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/1029.png"
+            },
+            "quantity": 1,
+            "value_display": "300 g"
+           },
+           {
+            "label": "Glowing Mote",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/2022.png"
+            },
+            "quantity": 1,
+            "value_display": "250 g"
+           },
+           {
+            "label": "Sapphire Crystal",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/1027.png"
+            },
+            "quantity": 1,
+            "value_display": "300 g"
+           }
+          ],
+          "value_display": "900 g"
+         },
+         {
+          "combine_display": "400 g",
+          "label": "Warden's Mail",
+          "line_total_display": "1000 g",
+          "part_kind": "composite",
+          "piece_id": "p3",
           "quantity": 1,
           "sub_parts": [
            {
@@ -4079,111 +4132,78 @@
             "value_display": "300 g"
            }
           ],
-          "value_display": "800 g"
-         },
-         {
-          "combine_display": "500 g",
-          "label": "Chain Vest",
-          "line_total_display": "800 g",
-          "part_kind": "composite",
-          "piece_id": "p5",
-          "quantity": 1,
-          "sub_parts": [
-           {
-            "label": "Cloth Armor",
-            "media": {
-             "alt": "",
-             "src": "assets/items_wiki/1029.png"
-            },
-            "quantity": 1,
-            "value_display": "300 g"
-           }
-          ],
-          "value_display": "800 g"
-         },
-         {
-          "combine_display": null,
-          "label": "Ruby Crystal",
-          "line_total_display": "400 g",
-          "part_kind": "basic",
-          "piece_id": "p1",
-          "quantity": 1,
-          "sub_parts": [],
-          "value_display": "400 g"
+          "value_display": "1000 g"
          }
         ],
         "challenge_index": 0,
         "is_correct": false,
         "pieces": [
          {
-          "label": "Null-Magic Mantle",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1033.png"
-          },
-          "piece_id": "p0"
-         },
-         {
-          "label": "Ruby Crystal",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1028.png"
-          },
-          "piece_id": "p1"
-         },
-         {
-          "label": "Bramble Vest",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/3076.png"
-          },
-          "piece_id": "p2"
-         },
-         {
-          "label": "Negatron Cloak",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1057.png"
-          },
-          "piece_id": "p3"
-         },
-         {
-          "label": "Quicksilver Sash",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/3140.png"
-          },
-          "piece_id": "p4"
-         },
-         {
           "label": "Chain Vest",
           "media": {
            "alt": "",
            "src": "assets/items_wiki/1031.png"
           },
+          "piece_id": "p0"
+         },
+         {
+          "label": "Catalyst of Aeons",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3803.png"
+          },
+          "piece_id": "p1"
+         },
+         {
+          "label": "Glacial Buckler",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3024.png"
+          },
+          "piece_id": "p2"
+         },
+         {
+          "label": "Warden's Mail",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3082.png"
+          },
+          "piece_id": "p3"
+         },
+         {
+          "label": "Tear of the Goddess",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3070.png"
+          },
+          "piece_id": "p4"
+         },
+         {
+          "label": "Giant's Belt",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1011.png"
+          },
           "piece_id": "p5"
          }
         ],
         "placement": [
-         "p3",
-         "p5",
-         "p1"
+         "p0",
+         "p3"
         ],
         "settled_placement": [
          "p2",
-         "p5",
-         "p1"
+         "p3"
         ],
         "slot_correct": [
          false,
-         true,
          true
         ],
         "target": {
-         "base_display": "2000 g",
-         "combine_display": "450 g",
-         "label": "Thornmail",
-         "total_display": "2450 g"
+         "base_display": "1900 g",
+         "combine_display": "600 g",
+         "label": "Frozen Heart",
+         "total_display": "2500 g"
         }
        }
       ],
@@ -4195,9 +4215,8 @@
       "own_submitted_choices": [
        {
         "placement": [
-         "p3",
-         "p5",
-         "p1"
+         "p0",
+         "p3"
         ]
        }
       ],
@@ -4215,7 +4234,7 @@
     "server_time": "2026-09-09T12:00:08+00:00"
    },
    "public": {
-    "match_id": "rkb_06e11bd183a01226807ebc76",
+    "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
     "payload": {
      "active_round": {
       "active_deadline": "2026-09-09T12:00:34.400000+00:00",
@@ -4228,7 +4247,7 @@
      "completed_rounds": 0,
      "completion_reason": null,
      "host": "playtest",
-     "match_id": "rkb_06e11bd183a01226807ebc76",
+     "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
      "match_over": false,
      "match_status": "active",
      "next_round_duration_seconds": 30.0,
@@ -4254,7 +4273,7 @@
        "hp": 170,
        "level": 1,
        "max_hp": 170,
-       "player_id": "p_bd7100ef60970710",
+       "player_id": "p_d6354436929e3659",
        "role": null,
        "score": 0,
        "total_xp": 0
@@ -4276,7 +4295,7 @@
       "category": null,
       "options": [],
       "prompt": "",
-      "question_id": "reconstruct:rkb_06e11bd183a01226807ebc76:1",
+      "question_id": "reconstruct:rkb_c3e80feb4d9bbf488d4848a0:1",
       "topic": {
        "category": "general",
        "icon_hint": {
@@ -4341,63 +4360,63 @@
        "challenges": [
         {
          "challenge_index": 0,
-         "max_uses": 3,
+         "max_uses": 2,
          "pieces": [
-          {
-           "label": "Null-Magic Mantle",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/1033.png"
-           },
-           "piece_id": "p0"
-          },
-          {
-           "label": "Ruby Crystal",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/1028.png"
-           },
-           "piece_id": "p1"
-          },
-          {
-           "label": "Bramble Vest",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/3076.png"
-           },
-           "piece_id": "p2"
-          },
-          {
-           "label": "Negatron Cloak",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/1057.png"
-           },
-           "piece_id": "p3"
-          },
-          {
-           "label": "Quicksilver Sash",
-           "media": {
-            "alt": "",
-            "src": "assets/items_wiki/3140.png"
-           },
-           "piece_id": "p4"
-          },
           {
            "label": "Chain Vest",
            "media": {
             "alt": "",
             "src": "assets/items_wiki/1031.png"
            },
+           "piece_id": "p0"
+          },
+          {
+           "label": "Catalyst of Aeons",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3803.png"
+           },
+           "piece_id": "p1"
+          },
+          {
+           "label": "Glacial Buckler",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3024.png"
+           },
+           "piece_id": "p2"
+          },
+          {
+           "label": "Warden's Mail",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3082.png"
+           },
+           "piece_id": "p3"
+          },
+          {
+           "label": "Tear of the Goddess",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/3070.png"
+           },
+           "piece_id": "p4"
+          },
+          {
+           "label": "Giant's Belt",
+           "media": {
+            "alt": "",
+            "src": "assets/items_wiki/1011.png"
+           },
            "piece_id": "p5"
           }
          ],
-         "slot_count": 3,
+         "slot_count": 2,
          "target": {
-          "label": "Thornmail",
+          "label": "Frozen Heart",
           "media": {
            "alt": "",
-           "src": "assets/items_wiki/3075.png"
+           "src": "assets/items_wiki/3110.png"
           }
          }
         }
@@ -4427,11 +4446,49 @@
        {
         "canonical_parts": [
          {
-          "combine_display": "200 g",
-          "label": "Bramble Vest",
-          "line_total_display": "800 g",
+          "combine_display": "50 g",
+          "label": "Glacial Buckler",
+          "line_total_display": "900 g",
           "part_kind": "composite",
           "piece_id": "p2",
+          "quantity": 1,
+          "sub_parts": [
+           {
+            "label": "Cloth Armor",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/1029.png"
+            },
+            "quantity": 1,
+            "value_display": "300 g"
+           },
+           {
+            "label": "Glowing Mote",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/2022.png"
+            },
+            "quantity": 1,
+            "value_display": "250 g"
+           },
+           {
+            "label": "Sapphire Crystal",
+            "media": {
+             "alt": "",
+             "src": "assets/items_wiki/1027.png"
+            },
+            "quantity": 1,
+            "value_display": "300 g"
+           }
+          ],
+          "value_display": "900 g"
+         },
+         {
+          "combine_display": "400 g",
+          "label": "Warden's Mail",
+          "line_total_display": "1000 g",
+          "part_kind": "composite",
+          "piece_id": "p3",
           "quantity": 1,
           "sub_parts": [
            {
@@ -4444,111 +4501,78 @@
             "value_display": "300 g"
            }
           ],
-          "value_display": "800 g"
-         },
-         {
-          "combine_display": "500 g",
-          "label": "Chain Vest",
-          "line_total_display": "800 g",
-          "part_kind": "composite",
-          "piece_id": "p5",
-          "quantity": 1,
-          "sub_parts": [
-           {
-            "label": "Cloth Armor",
-            "media": {
-             "alt": "",
-             "src": "assets/items_wiki/1029.png"
-            },
-            "quantity": 1,
-            "value_display": "300 g"
-           }
-          ],
-          "value_display": "800 g"
-         },
-         {
-          "combine_display": null,
-          "label": "Ruby Crystal",
-          "line_total_display": "400 g",
-          "part_kind": "basic",
-          "piece_id": "p1",
-          "quantity": 1,
-          "sub_parts": [],
-          "value_display": "400 g"
+          "value_display": "1000 g"
          }
         ],
         "challenge_index": 0,
         "is_correct": false,
         "pieces": [
          {
-          "label": "Null-Magic Mantle",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1033.png"
-          },
-          "piece_id": "p0"
-         },
-         {
-          "label": "Ruby Crystal",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1028.png"
-          },
-          "piece_id": "p1"
-         },
-         {
-          "label": "Bramble Vest",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/3076.png"
-          },
-          "piece_id": "p2"
-         },
-         {
-          "label": "Negatron Cloak",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/1057.png"
-          },
-          "piece_id": "p3"
-         },
-         {
-          "label": "Quicksilver Sash",
-          "media": {
-           "alt": "",
-           "src": "assets/items_wiki/3140.png"
-          },
-          "piece_id": "p4"
-         },
-         {
           "label": "Chain Vest",
           "media": {
            "alt": "",
            "src": "assets/items_wiki/1031.png"
           },
+          "piece_id": "p0"
+         },
+         {
+          "label": "Catalyst of Aeons",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3803.png"
+          },
+          "piece_id": "p1"
+         },
+         {
+          "label": "Glacial Buckler",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3024.png"
+          },
+          "piece_id": "p2"
+         },
+         {
+          "label": "Warden's Mail",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3082.png"
+          },
+          "piece_id": "p3"
+         },
+         {
+          "label": "Tear of the Goddess",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/3070.png"
+          },
+          "piece_id": "p4"
+         },
+         {
+          "label": "Giant's Belt",
+          "media": {
+           "alt": "",
+           "src": "assets/items_wiki/1011.png"
+          },
           "piece_id": "p5"
          }
         ],
         "placement": [
-         "p3",
-         "p5",
-         "p1"
+         "p0",
+         "p3"
         ],
         "settled_placement": [
          "p2",
-         "p5",
-         "p1"
+         "p3"
         ],
         "slot_correct": [
          false,
-         true,
          true
         ],
         "target": {
-         "base_display": "2000 g",
-         "combine_display": "450 g",
-         "label": "Thornmail",
-         "total_display": "2450 g"
+         "base_display": "1900 g",
+         "combine_display": "600 g",
+         "label": "Frozen Heart",
+         "total_display": "2500 g"
         }
        }
       ],
@@ -4560,9 +4584,8 @@
       "own_submitted_choices": [
        {
         "placement": [
-         "p3",
-         "p5",
-         "p1"
+         "p0",
+         "p3"
         ]
        }
       ],
@@ -4587,20 +4610,58 @@
   "server_time": "2026-09-09T12:00:08+00:00"
  },
  "review": {
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "payload": {
    "final_round_number": 3,
-   "match_id": "rkb_06e11bd183a01226807ebc76",
+   "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
    "round_count": 3,
    "rounds": [
     {
      "canonical_parts": [
       {
-       "combine_display": "200 g",
-       "label": "Bramble Vest",
-       "line_total_display": "800 g",
+       "combine_display": "50 g",
+       "label": "Glacial Buckler",
+       "line_total_display": "900 g",
        "part_kind": "composite",
        "piece_id": "p2",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Cloth Armor",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1029.png"
+         },
+         "quantity": 1,
+         "value_display": "300 g"
+        },
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1,
+         "value_display": "250 g"
+        },
+        {
+         "label": "Sapphire Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1027.png"
+         },
+         "quantity": 1,
+         "value_display": "300 g"
+        }
+       ],
+       "value_display": "900 g"
+      },
+      {
+       "combine_display": "400 g",
+       "label": "Warden's Mail",
+       "line_total_display": "1000 g",
+       "part_kind": "composite",
+       "piece_id": "p3",
        "quantity": 1,
        "sub_parts": [
         {
@@ -4613,37 +4674,7 @@
          "value_display": "300 g"
         }
        ],
-       "value_display": "800 g"
-      },
-      {
-       "combine_display": "500 g",
-       "label": "Chain Vest",
-       "line_total_display": "800 g",
-       "part_kind": "composite",
-       "piece_id": "p5",
-       "quantity": 1,
-       "sub_parts": [
-        {
-         "label": "Cloth Armor",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1029.png"
-         },
-         "quantity": 1,
-         "value_display": "300 g"
-        }
-       ],
-       "value_display": "800 g"
-      },
-      {
-       "combine_display": null,
-       "label": "Ruby Crystal",
-       "line_total_display": "400 g",
-       "part_kind": "basic",
-       "piece_id": "p1",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "400 g"
+       "value_display": "1000 g"
       }
      ],
      "canonical_question_ref": null,
@@ -4660,50 +4691,50 @@
      "outcome": "incorrect",
      "pieces": [
       {
-       "label": "Null-Magic Mantle",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1033.png"
-       },
-       "piece_id": "p0"
-      },
-      {
-       "label": "Ruby Crystal",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1028.png"
-       },
-       "piece_id": "p1"
-      },
-      {
-       "label": "Bramble Vest",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3076.png"
-       },
-       "piece_id": "p2"
-      },
-      {
-       "label": "Negatron Cloak",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1057.png"
-       },
-       "piece_id": "p3"
-      },
-      {
-       "label": "Quicksilver Sash",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3140.png"
-       },
-       "piece_id": "p4"
-      },
-      {
        "label": "Chain Vest",
        "media": {
         "alt": "",
         "src": "assets/items_wiki/1031.png"
+       },
+       "piece_id": "p0"
+      },
+      {
+       "label": "Catalyst of Aeons",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3803.png"
+       },
+       "piece_id": "p1"
+      },
+      {
+       "label": "Glacial Buckler",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3024.png"
+       },
+       "piece_id": "p2"
+      },
+      {
+       "label": "Warden's Mail",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3082.png"
+       },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Tear of the Goddess",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3070.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Giant's Belt",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1011.png"
        },
        "piece_id": "p5"
       }
@@ -4711,29 +4742,27 @@
      "prompt": "Rebuild the recipe",
      "question": null,
      "recipe_target": {
-      "base_display": "2000 g",
-      "combine_display": "450 g",
-      "label": "Thornmail",
-      "total_display": "2450 g"
+      "base_display": "1900 g",
+      "combine_display": "600 g",
+      "label": "Frozen Heart",
+      "total_display": "2500 g"
      },
      "revealed": true,
      "round_number": 1,
      "settled_placement": [
       "p2",
-      "p5",
-      "p1"
+      "p3"
      ],
      "slot_correct": [
       false,
-      true,
       true
      ],
-     "slot_count": 3,
+     "slot_count": 2,
      "target": {
-      "label": "Thornmail",
+      "label": "Frozen Heart",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/3075.png"
+       "src": "assets/items_wiki/3110.png"
       }
      },
      "topic": {
@@ -4748,9 +4777,8 @@
       "tier": null
      },
      "viewer_placement": [
-      "p3",
-      "p5",
-      "p1"
+      "p0",
+      "p3"
      ],
      "viewer_submission": {
       "answer_index": null,
@@ -4763,22 +4791,13 @@
     {
      "canonical_parts": [
       {
-       "combine_display": "350 g",
-       "label": "Noonquiver",
-       "line_total_display": "1300 g",
+       "combine_display": "400 g",
+       "label": "Tunneler",
+       "line_total_display": "2300 g",
        "part_kind": "composite",
-       "piece_id": "p1",
-       "quantity": 1,
+       "piece_id": "p2",
+       "quantity": 2,
        "sub_parts": [
-        {
-         "label": "Cloak of Agility",
-         "media": {
-          "alt": "",
-          "src": "assets/items_wiki/1018.png"
-         },
-         "quantity": 1,
-         "value_display": "600 g"
-        },
         {
          "label": "Long Sword",
          "media": {
@@ -4787,19 +4806,18 @@
          },
          "quantity": 1,
          "value_display": "350 g"
+        },
+        {
+         "label": "Ruby Crystal",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/1028.png"
+         },
+         "quantity": 1,
+         "value_display": "400 g"
         }
        ],
-       "value_display": "1300 g"
-      },
-      {
-       "combine_display": null,
-       "label": "Pickaxe",
-       "line_total_display": "875 g",
-       "part_kind": "basic",
-       "piece_id": "p5",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "875 g"
+       "value_display": "1150 g"
       }
      ],
      "canonical_question_ref": null,
@@ -4824,36 +4842,20 @@
        "piece_id": "p0"
       },
       {
-       "label": "Noonquiver",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/6670.png"
-       },
-       "piece_id": "p1"
-      },
-      {
        "label": "B. F. Sword",
        "media": {
         "alt": "",
         "src": "assets/items_wiki/1038.png"
        },
+       "piece_id": "p1"
+      },
+      {
+       "label": "Tunneler",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2021.png"
+       },
        "piece_id": "p2"
-      },
-      {
-       "label": "Rectrix",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/6690.png"
-       },
-       "piece_id": "p3"
-      },
-      {
-       "label": "Executioner's Calling",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/3123.png"
-       },
-       "piece_id": "p4"
       },
       {
        "label": "Pickaxe",
@@ -4861,22 +4863,38 @@
         "alt": "",
         "src": "assets/items_wiki/1037.png"
        },
+       "piece_id": "p3"
+      },
+      {
+       "label": "Giant's Belt",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1011.png"
+       },
+       "piece_id": "p4"
+      },
+      {
+       "label": "Executioner's Calling",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/3123.png"
+       },
        "piece_id": "p5"
       }
      ],
      "prompt": "Rebuild the recipe",
      "question": null,
      "recipe_target": {
-      "base_display": "2175 g",
-      "combine_display": "825 g",
-      "label": "Immortal Shieldbow",
-      "total_display": "3000 g"
+      "base_display": "2300 g",
+      "combine_display": "1000 g",
+      "label": "Overlord's Bloodmail",
+      "total_display": "3300 g"
      },
      "revealed": true,
      "round_number": 2,
      "settled_placement": [
-      "p5",
-      "p1"
+      "p2",
+      "p2"
      ],
      "slot_correct": [
       true,
@@ -4884,10 +4902,10 @@
      ],
      "slot_count": 2,
      "target": {
-      "label": "Immortal Shieldbow",
+      "label": "Overlord's Bloodmail",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/6673.png"
+       "src": "assets/items_wiki/2501.png"
       }
      },
      "topic": {
@@ -4902,8 +4920,8 @@
       "tier": null
      },
      "viewer_placement": [
-      "p5",
-      "p1"
+      "p2",
+      "p2"
      ],
      "viewer_submission": {
       "answer_index": null,
@@ -4916,44 +4934,54 @@
     {
      "canonical_parts": [
       {
-       "combine_display": null,
-       "label": "Cloak of Agility",
-       "line_total_display": "600 g",
-       "part_kind": "basic",
-       "piece_id": "p2",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "600 g"
-      },
-      {
-       "combine_display": null,
-       "label": "Pickaxe",
-       "line_total_display": "875 g",
-       "part_kind": "basic",
-       "piece_id": "p0",
-       "quantity": 1,
-       "sub_parts": [],
-       "value_display": "875 g"
-      },
-      {
-       "combine_display": "300 g",
-       "label": "Serrated Dirk",
-       "line_total_display": "1000 g",
+       "combine_display": "500 g",
+       "label": "Aether Wisp",
+       "line_total_display": "900 g",
        "part_kind": "composite",
-       "piece_id": "p1",
+       "piece_id": "p2",
        "quantity": 1,
        "sub_parts": [
         {
-         "label": "Long Sword",
+         "label": "Amplifying Tome",
          "media": {
           "alt": "",
-          "src": "assets/items_wiki/1036.png"
+          "src": "assets/items_wiki/1052.png"
          },
-         "quantity": 2,
-         "value_display": "350 g"
+         "quantity": 1,
+         "value_display": "400 g"
         }
        ],
-       "value_display": "1000 g"
+       "value_display": "900 g"
+      },
+      {
+       "combine_display": null,
+       "label": "Blasting Wand",
+       "line_total_display": "850 g",
+       "part_kind": "basic",
+       "piece_id": "p3",
+       "quantity": 1,
+       "sub_parts": [],
+       "value_display": "850 g"
+      },
+      {
+       "combine_display": "650 g",
+       "label": "Sheen",
+       "line_total_display": "900 g",
+       "part_kind": "composite",
+       "piece_id": "p0",
+       "quantity": 1,
+       "sub_parts": [
+        {
+         "label": "Glowing Mote",
+         "media": {
+          "alt": "",
+          "src": "assets/items_wiki/2022.png"
+         },
+         "quantity": 1,
+         "value_display": "250 g"
+        }
+       ],
+       "value_display": "900 g"
       }
      ],
      "canonical_question_ref": null,
@@ -4970,50 +4998,50 @@
      "outcome": "timeout",
      "pieces": [
       {
-       "label": "Pickaxe",
+       "label": "Sheen",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1037.png"
+        "src": "assets/items_wiki/3057.png"
        },
        "piece_id": "p0"
       },
       {
-       "label": "Serrated Dirk",
+       "label": "Hextech Alternator",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/3134.png"
+        "src": "assets/items_wiki/3145.png"
        },
        "piece_id": "p1"
       },
       {
-       "label": "Cloak of Agility",
+       "label": "Aether Wisp",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1018.png"
+        "src": "assets/items_wiki/3113.png"
        },
        "piece_id": "p2"
       },
       {
-       "label": "Executioner's Calling",
+       "label": "Blasting Wand",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/3123.png"
+        "src": "assets/items_wiki/1026.png"
        },
        "piece_id": "p3"
       },
       {
-       "label": "B. F. Sword",
+       "label": "Needlessly Large Rod",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1038.png"
+        "src": "assets/items_wiki/1058.png"
        },
        "piece_id": "p4"
       },
       {
-       "label": "Dagger",
+       "label": "Fiendish Codex",
        "media": {
         "alt": "",
-        "src": "assets/items_wiki/1042.png"
+        "src": "assets/items_wiki/3108.png"
        },
        "piece_id": "p5"
       }
@@ -5021,10 +5049,10 @@
      "prompt": "Rebuild the recipe",
      "question": null,
      "recipe_target": {
-      "base_display": "2475 g",
-      "combine_display": "525 g",
-      "label": "The Collector",
-      "total_display": "3000 g"
+      "base_display": "2650 g",
+      "combine_display": "250 g",
+      "label": "Lich Bane",
+      "total_display": "2900 g"
      },
      "revealed": true,
      "round_number": 3,
@@ -5032,10 +5060,10 @@
      "slot_correct": [],
      "slot_count": 3,
      "target": {
-      "label": "The Collector",
+      "label": "Lich Bane",
       "media": {
        "alt": "",
-       "src": "assets/items_wiki/6676.png"
+       "src": "assets/items_wiki/3100.png"
       }
      },
      "topic": {
@@ -5070,11 +5098,49 @@
   "challenge_reveal": {
    "canonical_parts": [
     {
-     "combine_display": "200 g",
-     "label": "Bramble Vest",
-     "line_total_display": "800 g",
+     "combine_display": "50 g",
+     "label": "Glacial Buckler",
+     "line_total_display": "900 g",
      "part_kind": "composite",
      "piece_id": "p2",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Cloth Armor",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1029.png"
+       },
+       "quantity": 1,
+       "value_display": "300 g"
+      },
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1,
+       "value_display": "250 g"
+      },
+      {
+       "label": "Sapphire Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1027.png"
+       },
+       "quantity": 1,
+       "value_display": "300 g"
+      }
+     ],
+     "value_display": "900 g"
+    },
+    {
+     "combine_display": "400 g",
+     "label": "Warden's Mail",
+     "line_total_display": "1000 g",
+     "part_kind": "composite",
+     "piece_id": "p3",
      "quantity": 1,
      "sub_parts": [
       {
@@ -5087,116 +5153,83 @@
        "value_display": "300 g"
       }
      ],
-     "value_display": "800 g"
-    },
-    {
-     "combine_display": "500 g",
-     "label": "Chain Vest",
-     "line_total_display": "800 g",
-     "part_kind": "composite",
-     "piece_id": "p5",
-     "quantity": 1,
-     "sub_parts": [
-      {
-       "label": "Cloth Armor",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1029.png"
-       },
-       "quantity": 1,
-       "value_display": "300 g"
-      }
-     ],
-     "value_display": "800 g"
-    },
-    {
-     "combine_display": null,
-     "label": "Ruby Crystal",
-     "line_total_display": "400 g",
-     "part_kind": "basic",
-     "piece_id": "p1",
-     "quantity": 1,
-     "sub_parts": [],
-     "value_display": "400 g"
+     "value_display": "1000 g"
     }
    ],
    "challenge_index": 0,
    "is_correct": false,
    "pieces": [
     {
-     "label": "Null-Magic Mantle",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1033.png"
-     },
-     "piece_id": "p0"
-    },
-    {
-     "label": "Ruby Crystal",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1028.png"
-     },
-     "piece_id": "p1"
-    },
-    {
-     "label": "Bramble Vest",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/3076.png"
-     },
-     "piece_id": "p2"
-    },
-    {
-     "label": "Negatron Cloak",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1057.png"
-     },
-     "piece_id": "p3"
-    },
-    {
-     "label": "Quicksilver Sash",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/3140.png"
-     },
-     "piece_id": "p4"
-    },
-    {
      "label": "Chain Vest",
      "media": {
       "alt": "",
       "src": "assets/items_wiki/1031.png"
      },
+     "piece_id": "p0"
+    },
+    {
+     "label": "Catalyst of Aeons",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3803.png"
+     },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Glacial Buckler",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3024.png"
+     },
+     "piece_id": "p2"
+    },
+    {
+     "label": "Warden's Mail",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3082.png"
+     },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Tear of the Goddess",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3070.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Giant's Belt",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1011.png"
+     },
      "piece_id": "p5"
     }
    ],
    "placement": [
-    "p3",
-    "p5",
-    "p1"
+    "p0",
+    "p3"
    ],
    "settled_placement": [
     "p2",
-    "p5",
-    "p1"
+    "p3"
    ],
    "slot_correct": [
     false,
-    true,
     true
    ],
    "target": {
-    "base_display": "2000 g",
-    "combine_display": "450 g",
-    "label": "Thornmail",
-    "total_display": "2450 g"
+    "base_display": "1900 g",
+    "combine_display": "600 g",
+    "label": "Frozen Heart",
+    "total_display": "2500 g"
    }
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 1,
@@ -5208,22 +5241,13 @@
   "challenge_reveal": {
    "canonical_parts": [
     {
-     "combine_display": "350 g",
-     "label": "Noonquiver",
-     "line_total_display": "1300 g",
+     "combine_display": "400 g",
+     "label": "Tunneler",
+     "line_total_display": "2300 g",
      "part_kind": "composite",
-     "piece_id": "p1",
-     "quantity": 1,
+     "piece_id": "p2",
+     "quantity": 2,
      "sub_parts": [
-      {
-       "label": "Cloak of Agility",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1018.png"
-       },
-       "quantity": 1,
-       "value_display": "600 g"
-      },
       {
        "label": "Long Sword",
        "media": {
@@ -5232,19 +5256,18 @@
        },
        "quantity": 1,
        "value_display": "350 g"
+      },
+      {
+       "label": "Ruby Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1028.png"
+       },
+       "quantity": 1,
+       "value_display": "400 g"
       }
      ],
-     "value_display": "1300 g"
-    },
-    {
-     "combine_display": null,
-     "label": "Pickaxe",
-     "line_total_display": "875 g",
-     "part_kind": "basic",
-     "piece_id": "p5",
-     "quantity": 1,
-     "sub_parts": [],
-     "value_display": "875 g"
+     "value_display": "1150 g"
     }
    ],
    "challenge_index": 0,
@@ -5259,36 +5282,20 @@
      "piece_id": "p0"
     },
     {
-     "label": "Noonquiver",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/6670.png"
-     },
-     "piece_id": "p1"
-    },
-    {
      "label": "B. F. Sword",
      "media": {
       "alt": "",
       "src": "assets/items_wiki/1038.png"
      },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Tunneler",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/2021.png"
+     },
      "piece_id": "p2"
-    },
-    {
-     "label": "Rectrix",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/6690.png"
-     },
-     "piece_id": "p3"
-    },
-    {
-     "label": "Executioner's Calling",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/3123.png"
-     },
-     "piece_id": "p4"
     },
     {
      "label": "Pickaxe",
@@ -5296,31 +5303,47 @@
       "alt": "",
       "src": "assets/items_wiki/1037.png"
      },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Giant's Belt",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1011.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Executioner's Calling",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3123.png"
+     },
      "piece_id": "p5"
     }
    ],
    "placement": [
-    "p5",
-    "p1"
+    "p2",
+    "p2"
    ],
    "settled_placement": [
-    "p5",
-    "p1"
+    "p2",
+    "p2"
    ],
    "slot_correct": [
     true,
     true
    ],
    "target": {
-    "base_display": "2175 g",
-    "combine_display": "825 g",
-    "label": "Immortal Shieldbow",
-    "total_display": "3000 g"
+    "base_display": "2300 g",
+    "combine_display": "1000 g",
+    "label": "Overlord's Bloodmail",
+    "total_display": "3300 g"
    }
   },
   "conflicting": false,
   "idempotent": false,
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 2,
@@ -5332,11 +5355,49 @@
   "challenge_reveal": {
    "canonical_parts": [
     {
-     "combine_display": "200 g",
-     "label": "Bramble Vest",
-     "line_total_display": "800 g",
+     "combine_display": "50 g",
+     "label": "Glacial Buckler",
+     "line_total_display": "900 g",
      "part_kind": "composite",
      "piece_id": "p2",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Cloth Armor",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1029.png"
+       },
+       "quantity": 1,
+       "value_display": "300 g"
+      },
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1,
+       "value_display": "250 g"
+      },
+      {
+       "label": "Sapphire Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1027.png"
+       },
+       "quantity": 1,
+       "value_display": "300 g"
+      }
+     ],
+     "value_display": "900 g"
+    },
+    {
+     "combine_display": "400 g",
+     "label": "Warden's Mail",
+     "line_total_display": "1000 g",
+     "part_kind": "composite",
+     "piece_id": "p3",
      "quantity": 1,
      "sub_parts": [
       {
@@ -5349,133 +5410,138 @@
        "value_display": "300 g"
       }
      ],
-     "value_display": "800 g"
-    },
-    {
-     "combine_display": "500 g",
-     "label": "Chain Vest",
-     "line_total_display": "800 g",
-     "part_kind": "composite",
-     "piece_id": "p5",
-     "quantity": 1,
-     "sub_parts": [
-      {
-       "label": "Cloth Armor",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1029.png"
-       },
-       "quantity": 1,
-       "value_display": "300 g"
-      }
-     ],
-     "value_display": "800 g"
-    },
-    {
-     "combine_display": null,
-     "label": "Ruby Crystal",
-     "line_total_display": "400 g",
-     "part_kind": "basic",
-     "piece_id": "p1",
-     "quantity": 1,
-     "sub_parts": [],
-     "value_display": "400 g"
+     "value_display": "1000 g"
     }
    ],
    "challenge_index": 0,
    "is_correct": false,
    "pieces": [
     {
-     "label": "Null-Magic Mantle",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1033.png"
-     },
-     "piece_id": "p0"
-    },
-    {
-     "label": "Ruby Crystal",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1028.png"
-     },
-     "piece_id": "p1"
-    },
-    {
-     "label": "Bramble Vest",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/3076.png"
-     },
-     "piece_id": "p2"
-    },
-    {
-     "label": "Negatron Cloak",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1057.png"
-     },
-     "piece_id": "p3"
-    },
-    {
-     "label": "Quicksilver Sash",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/3140.png"
-     },
-     "piece_id": "p4"
-    },
-    {
      "label": "Chain Vest",
      "media": {
       "alt": "",
       "src": "assets/items_wiki/1031.png"
      },
+     "piece_id": "p0"
+    },
+    {
+     "label": "Catalyst of Aeons",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3803.png"
+     },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Glacial Buckler",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3024.png"
+     },
+     "piece_id": "p2"
+    },
+    {
+     "label": "Warden's Mail",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3082.png"
+     },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Tear of the Goddess",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3070.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Giant's Belt",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1011.png"
+     },
      "piece_id": "p5"
     }
    ],
    "placement": [
-    "p3",
-    "p5",
-    "p1"
+    "p0",
+    "p3"
    ],
    "settled_placement": [
     "p2",
-    "p5",
-    "p1"
+    "p3"
    ],
    "slot_correct": [
     false,
-    true,
     true
    ],
    "target": {
-    "base_display": "2000 g",
-    "combine_display": "450 g",
-    "label": "Thornmail",
-    "total_display": "2450 g"
+    "base_display": "1900 g",
+    "combine_display": "600 g",
+    "label": "Frozen Heart",
+    "total_display": "2500 g"
    }
   },
   "conflicting": true,
   "idempotent": true,
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 1,
   "segment_resolved": false,
   "status": "accepted"
  },
- "submit_request_bytes": "{\"placement\":[\"p3\",\"p5\",\"p1\"]}",
+ "submit_request_bytes": "{\"placement\":[\"p0\",\"p3\"]}",
  "submit_retry": {
   "challenge_index": 0,
   "challenge_reveal": {
    "canonical_parts": [
     {
-     "combine_display": "200 g",
-     "label": "Bramble Vest",
-     "line_total_display": "800 g",
+     "combine_display": "50 g",
+     "label": "Glacial Buckler",
+     "line_total_display": "900 g",
      "part_kind": "composite",
      "piece_id": "p2",
+     "quantity": 1,
+     "sub_parts": [
+      {
+       "label": "Cloth Armor",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1029.png"
+       },
+       "quantity": 1,
+       "value_display": "300 g"
+      },
+      {
+       "label": "Glowing Mote",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/2022.png"
+       },
+       "quantity": 1,
+       "value_display": "250 g"
+      },
+      {
+       "label": "Sapphire Crystal",
+       "media": {
+        "alt": "",
+        "src": "assets/items_wiki/1027.png"
+       },
+       "quantity": 1,
+       "value_display": "300 g"
+      }
+     ],
+     "value_display": "900 g"
+    },
+    {
+     "combine_display": "400 g",
+     "label": "Warden's Mail",
+     "line_total_display": "1000 g",
+     "part_kind": "composite",
+     "piece_id": "p3",
      "quantity": 1,
      "sub_parts": [
       {
@@ -5488,116 +5554,83 @@
        "value_display": "300 g"
       }
      ],
-     "value_display": "800 g"
-    },
-    {
-     "combine_display": "500 g",
-     "label": "Chain Vest",
-     "line_total_display": "800 g",
-     "part_kind": "composite",
-     "piece_id": "p5",
-     "quantity": 1,
-     "sub_parts": [
-      {
-       "label": "Cloth Armor",
-       "media": {
-        "alt": "",
-        "src": "assets/items_wiki/1029.png"
-       },
-       "quantity": 1,
-       "value_display": "300 g"
-      }
-     ],
-     "value_display": "800 g"
-    },
-    {
-     "combine_display": null,
-     "label": "Ruby Crystal",
-     "line_total_display": "400 g",
-     "part_kind": "basic",
-     "piece_id": "p1",
-     "quantity": 1,
-     "sub_parts": [],
-     "value_display": "400 g"
+     "value_display": "1000 g"
     }
    ],
    "challenge_index": 0,
    "is_correct": false,
    "pieces": [
     {
-     "label": "Null-Magic Mantle",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1033.png"
-     },
-     "piece_id": "p0"
-    },
-    {
-     "label": "Ruby Crystal",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1028.png"
-     },
-     "piece_id": "p1"
-    },
-    {
-     "label": "Bramble Vest",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/3076.png"
-     },
-     "piece_id": "p2"
-    },
-    {
-     "label": "Negatron Cloak",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/1057.png"
-     },
-     "piece_id": "p3"
-    },
-    {
-     "label": "Quicksilver Sash",
-     "media": {
-      "alt": "",
-      "src": "assets/items_wiki/3140.png"
-     },
-     "piece_id": "p4"
-    },
-    {
      "label": "Chain Vest",
      "media": {
       "alt": "",
       "src": "assets/items_wiki/1031.png"
      },
+     "piece_id": "p0"
+    },
+    {
+     "label": "Catalyst of Aeons",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3803.png"
+     },
+     "piece_id": "p1"
+    },
+    {
+     "label": "Glacial Buckler",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3024.png"
+     },
+     "piece_id": "p2"
+    },
+    {
+     "label": "Warden's Mail",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3082.png"
+     },
+     "piece_id": "p3"
+    },
+    {
+     "label": "Tear of the Goddess",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/3070.png"
+     },
+     "piece_id": "p4"
+    },
+    {
+     "label": "Giant's Belt",
+     "media": {
+      "alt": "",
+      "src": "assets/items_wiki/1011.png"
+     },
      "piece_id": "p5"
     }
    ],
    "placement": [
-    "p3",
-    "p5",
-    "p1"
+    "p0",
+    "p3"
    ],
    "settled_placement": [
     "p2",
-    "p5",
-    "p1"
+    "p3"
    ],
    "slot_correct": [
     false,
-    true,
     true
    ],
    "target": {
-    "base_display": "2000 g",
-    "combine_display": "450 g",
-    "label": "Thornmail",
-    "total_display": "2450 g"
+    "base_display": "1900 g",
+    "combine_display": "600 g",
+    "label": "Frozen Heart",
+    "total_display": "2500 g"
    }
   },
   "conflicting": false,
   "idempotent": true,
-  "match_id": "rkb_06e11bd183a01226807ebc76",
+  "match_id": "rkb_c3e80feb4d9bbf488d4848a0",
   "next_challenge_index": 1,
   "reveal_window_ms": 4000,
   "segment_number": 1,
