@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { useState } from "react";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { Reconstruct } from "./Reconstruct";
 import type {
@@ -903,12 +903,13 @@ describe("Reconstruct — R2 fixed geometry in every phase", () => {
   });
 
   it("the reserved region fits the tray, the Lock footer and the widest breakdown", () => {
-    // Wide: 2 tray rows (92 + 8 + 92) + 8 + 48 footer. The breakdown's tallest
-    // block (three children) is ~164px + the 40px equation + gaps.
+    // Wide: 2 tray rows (92 + 8 + 92) + 8 + 48 footer.
     expect(2 * 92 + 8 + 8 + 48).toBe(248);
-    expect(164 + 8 + 40).toBeLessThanOrEqual(248);
-    // Narrow (2×2 blocks): two ~118px rows + gap + the equation.
-    expect(2 * 118 + 6 + 40).toBeLessThanOrEqual(288);
+    // R3A, measured in Chromium at 1280x720: four ledger rows (42 + 42 + 48 + 48),
+    // three 4px gaps, the 6px gap, the 40px equation.
+    expect(42 + 42 + 48 + 48 + 3 * 4 + 6 + 40).toBeLessThanOrEqual(248);
+    // Narrow (390px): rows 38 + 38 + 64 + 65, gaps, and the 51px two-line equation.
+    expect(38 + 38 + 64 + 65 + 3 * 4 + 6 + 51).toBeLessThanOrEqual(288);
   });
 });
 
@@ -949,6 +950,157 @@ describe("Reconstruct — stable hooks for a host scene", () => {
     const src = readFileSync(resolve(__dirname, "Reconstruct.tsx"), "utf8");
     const props = src.slice(src.indexOf("export interface ReconstructProps"), src.indexOf("/** Tray columns"));
     expect(props).not.toMatch(/className|style|theme|color/i);
+  });
+});
+
+// ---------------------------------------------------------------- R3A: breakdown
+
+describe("Reconstruct — R3A breakdown surface, ink and composition", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  const advance = (ms: number) => act(() => { vi.advanceTimersByTime(ms); });
+  const cls = (el: Element) => el.getAttribute("class") ?? "";
+  const evidence = () => {
+    render(<Host phase="revealed" initial={WRONG} reveal={revealFor(WRONG)} />);
+    advance(1500);
+    return screen.getByTestId("reconstruct-evidence");
+  };
+
+  it("a revealed row is the SAME card as a tray choice: one surface token, chosen with its ink", () => {
+    const ev = evidence();
+    const tray = cls(opt("a"));
+    for (const row of ev.querySelectorAll("[data-part=breakdown-part]")) {
+      for (const token of ["bg-[#f4e9cc]", "text-[#2c2417]", "dark:bg-card", "dark:text-foreground"]) {
+        expect(cls(row)).toContain(token);
+        expect(tray).toContain(token);
+      }
+      // The R2 defect: a translucent theme surface under parchment-only ink.
+      expect(cls(row)).not.toMatch(/dark:bg-card\/\d/);
+    }
+  });
+
+  it("no element on a themed card takes the folio's fixed ink (the dark-theme contrast defect)", () => {
+    const ev = evidence();
+    for (const row of ev.querySelectorAll("[data-part=breakdown-part]")) {
+      for (const n of [row, ...row.querySelectorAll("*")]) {
+        expect(cls(n)).not.toMatch(/ranked-ink/);
+        // Art paints its own backdrop (and its monogram its own ink).
+        if (n.closest("[class*='bg-[#0b1727]']")) continue;
+        // Every text colour on a card is chosen WITH its dark-theme pair.
+        const colour = cls(n).match(/(?:^|\s)text-\[#[0-9a-f]{6}\]/i);
+        if (colour && !/bg-\[#2a2110\]|bg-\[#b91c1c\]/.test(cls(n))) {
+          expect(cls(n)).toMatch(/dark:text-/);
+        }
+      }
+    }
+  });
+
+  it("the equation is the same surface and the list sits directly above it (no stretching gap)", () => {
+    const ev = evidence();
+    const list = within(ev).getByTestId("reconstruct-breakdown");
+    const eq = within(ev).getByTestId("reconstruct-evidence-total");
+    expect(cls(eq)).toContain("dark:bg-card");
+    // `flex-1` stretched the list to the region's floor and parked the equation
+    // ~110px below its last part. The list keeps its natural height instead.
+    expect(cls(list)).not.toMatch(/(?:^|\s)flex-1(?:\s|$)/);
+    expect(cls(list)).toContain("[flex:0_1_auto]");
+    expect(list.nextElementSibling).toBe(eq);
+  });
+
+  it("only a part that is built draws a sub-part line; a basic part is a single row", () => {
+    const ev = evidence();
+    expect(within(ev).queryByTestId("reconstruct-children-a")).toBeNull();
+    const kids = within(ev).getByTestId("reconstruct-children-b");
+    expect(kids.querySelectorAll("[data-part=child]")).toHaveLength(1);
+    // The combining term follows the sub-parts in the same line group, under
+    // the one guide rule (the sub-part list's text stays the sub-parts alone).
+    const join = within(ev).getByTestId("reconstruct-evidence-join-b");
+    expect(kids.parentElement).toBe(join.parentElement);
+    expect(kids.nextElementSibling).toBe(join);
+    expect(cls(kids.parentElement!)).toMatch(/border-l-2/);
+  });
+
+  it("never cuts a name, a caption or a sub-part: wrapping, not an ellipsis", () => {
+    const ev = evidence();
+    for (const n of ev.querySelectorAll("*")) {
+      expect(cls(n)).not.toMatch(/\btruncate\b|line-clamp/);
+    }
+  });
+
+  it("repeated parts are read at a glance: a x2 pill beside the name and 'each · total'", () => {
+    const ev = evidence();
+    const b = within(ev).getByTestId("reconstruct-evidence-b");
+    expect(within(b).getByTestId("reconstruct-evidence-qty-b")).toHaveTextContent("×2");
+    expect(within(b).getByTestId("reconstruct-evidence-value-b")).toHaveTextContent("50 each · 100");
+  });
+
+  it("marks and rings use fixed correctness colours, not theme tokens", () => {
+    render(<Host phase="revealed" initial={WRONG} reveal={revealFor(WRONG)} />);
+    const root = screen.getByTestId("mig-reconstruct");
+    const html = root.outerHTML;
+    expect(html).not.toMatch(/emerald-\d|bg-destructive|text-destructive|ring-destructive|ring-primary/);
+    expect(html).toContain("ring-[#047857]");
+  });
+
+  it("the breakdown becomes a keyboard-reachable scroller only when it actually overflows", () => {
+    const ev = evidence();
+    const list = within(ev).getByTestId("reconstruct-breakdown");
+    expect(list).not.toHaveAttribute("tabindex");
+    expect(list).not.toHaveAttribute("data-scrolls");
+    cleanup();
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(120);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(80);
+    const ev2 = evidence();
+    const list2 = within(ev2).getByTestId("reconstruct-breakdown");
+    expect(list2).toHaveAttribute("data-scrolls", "true");
+    expect(list2).toHaveAttribute("tabindex", "0");
+    expect(list2).toHaveAttribute("aria-label", "Breakdown, scrollable");
+  });
+
+  it("two lock activations in one burst submit once; a later retry still works", async () => {
+    const onLock = vi.fn();
+    render(<Host phase="open" initial={["a", "b", "b"]} onLock={onLock} />);
+    fireEvent.click(lock());
+    fireEvent.click(lock());
+    expect(onLock).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    fireEvent.click(lock());
+    expect(onLock).toHaveBeenCalledTimes(2);
+  });
+
+  it("a lock made from the board lands focus on the prompt, not on <body>", () => {
+    const Rig = () => {
+      const [phase, setPhase] = useState<InteractionPhase>("open");
+      const [value, setValue] = useState<(string | null)[]>(["a", "b", "b"]);
+      return <Reconstruct content={B} phase={phase} value={value} onChange={setValue}
+        onLock={() => setPhase("locked")} />;
+    };
+    render(<Rig />);
+    lock().focus();
+    expect(document.activeElement).toBe(lock());
+    fireEvent.click(lock());
+    expect(screen.queryByTestId("reconstruct-lock")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByTestId("reconstruct-prompt"));
+  });
+
+  it("does not take focus when the lock came from outside the board", () => {
+    const Rig = () => {
+      const [phase, setPhase] = useState<InteractionPhase>("open");
+      return <Reconstruct content={B} phase={phase} value={["a", "b", "b"]} onChange={() => {}}
+        onLock={() => setPhase("locked")} />;
+    };
+    render(<><button type="button" data-testid="elsewhere">elsewhere</button><Rig /></>);
+    screen.getByTestId("elsewhere").focus();
+    fireEvent.click(lock());
+    expect(document.activeElement).toBe(screen.getByTestId("elsewhere"));
+  });
+
+  it("focus rings are a dark ring with a parchment gap, never the theme's blue", () => {
+    render(<Host phase="open" />);
+    for (const el of [opt("a"), sock(0), lock()]) {
+      expect(cls(el)).toContain("focus-visible:ring-[#2a2110]");
+      expect(cls(el)).toContain("focus-visible:ring-offset-[#f4e9cc]");
+      expect(cls(el)).not.toContain("ring-primary");
+    }
   });
 });
 
