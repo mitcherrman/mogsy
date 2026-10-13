@@ -1222,6 +1222,22 @@ function PracticeResultScene() {
   return <GameResultsShell model={model} />;
 }
 
+/** Preview-only settlement: signed XP gain, never stored XP total. */
+function EarnedXpResultScene() {
+  return <GameResultsShell model={{
+    state: "complete",
+    mode: "Reward preview",
+    headline: "Challenge Complete",
+    subheading: "Synthetic result — no rewards are credited",
+    score: { you: 8, outOf: 10 },
+    progress: [
+      { key: "xp", label: "Academy XP earned", value: "+80 XP", delta: 80, icon: "xp" },
+      { key: "collection", label: "New questions", value: "+3", delta: 3, icon: "collection" },
+    ],
+    report: ["You added new knowledge to your collection."],
+  }} />;
+}
+
 // ---- RR1 slice pass fixtures -------------------------------------------
 // Fed through the PRODUCTION adapter, from payloads copied VERBATIM out of
 // `ranked_public.presentation_render.presentation_for_question` for the
@@ -1569,6 +1585,8 @@ const STATES: InspectorState[] = [
     render: () => <RankedResultScene rated={false} /> },
   { key: "results-practice", label: "RESULT — practice quiz (shared shell)",
     render: () => <PracticeResultScene /> },
+  { key: "results-earned-xp", label: "RESULT — earned Academy XP (synthetic reward)",
+    render: () => <EarnedXpResultScene /> },
   { key: "discovery-reveal", label: "Match over — new questions discovered",
     render: (replaySequence = 0) => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
       summary={<DiscoveryReveal view={{ ...DISCOVERY_FIXTURE, matchId: `rkb_demo_preview_${replaySequence}` }} onReview={() => {}} />}
