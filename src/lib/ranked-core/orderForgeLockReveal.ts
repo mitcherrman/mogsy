@@ -33,10 +33,11 @@ export const INLINE_LOCK_REVEAL_MODULES: ReadonlySet<string> = new Set([
  * result beat and whose backend declares `settlement_hold_ms` (MG-P2.1 hook):
  * the server spaces the next round by the module's own hold, so the client's
  * reveal hold follows the server's boundary instead of the generic beat.
+ * RECONSTRUCT-R3B: Reconstruct declares it too (4000 wrong / 3400 exact).
  * Every other module keeps the fixed beats.
  */
 export const SERVER_PACED_REVEAL_MODULES: ReadonlySet<string> = new Set([
-  MATCH_MODULE_ID, ASSEMBLY_MODULE_ID]);
+  MATCH_MODULE_ID, ASSEMBLY_MODULE_ID, RECONSTRUCT_MODULE_ID]);
 
 function carriesOwnBlock(moduleId: string, reveal: MasteryChallengeReveal): boolean {
   return moduleId === ORDER_FORGE_MODULE_ID ? !!reveal.orderForge

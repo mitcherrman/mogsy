@@ -879,3 +879,55 @@ describe("RANKED-INT1 — the final round's correction is not cut by the match-c
       expect(seen[2].at - seen[1].at).toBeLessThan(3000);
     }, 30000);
 });
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* RECONSTRUCT-R3B — the final recipe is readable before the outro             */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+import reconstructCapture from "@/lib/ranked-public/__fixtures__/reconstructServerCapture.json";
+
+describe("RECONSTRUCT-R3B — the final recipe is held before the match-complete beat", () => {
+  async function sampleEnding(extra: Record<string, unknown>) {
+    resolvedExtra = extra;
+    startedAt = Date.now() - 4000;
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" entry="fresh" />);
+    await screen.findByTestId("answer-grid", undefined, { timeout: 6000 });
+    liveOver = true;
+    const seen: { phase: string; at: number; outro: boolean }[] = [];
+    const deadline = Date.now() + 16_000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 15));
+      const phase = arena() === null
+        ? (endScreen() ? "end-screen" : "blank") : (phaseOf() ?? "?");
+      const last = seen[seen.length - 1];
+      if (!last || last.phase !== phase) seen.push({ phase, at: Date.now(), outro: outro() !== null });
+      if (phase === "end-screen") break;
+    }
+    return seen;
+  }
+
+  it("the captured final Reconstruct round holds 4000 ms, then the outro, then the end",
+    async () => {
+      // A REAL final round from the R3B backend (a timeout: the full window).
+      const final = reconstructCapture.resolved_timeout.payload;
+      expect(final.round_number).toBe(3);
+      expect(final.presentation_ms).toBe(5400);
+      const seen = await sampleEnding({
+        segment_reveal: final.segment_reveal, presentation_ms: final.presentation_ms });
+      expect(seen.map((s) => s.phase)).toEqual(["answering", "revealing", "match-outro", "end-screen"]);
+      expect(seen[1].outro).toBe(false);
+      // 5400 − title = 4000: the 1500 ms correction plus 2500 ms to read it,
+      // instead of the generic 1.5 s that let the outro cover the recipe.
+      expect(seen[2].at - seen[1].at).toBeGreaterThanOrEqual(4000 - 150);
+      expect(seen[3].at - seen[2].at).toBeGreaterThanOrEqual(MATCH_OUTRO_MS - 100);
+    }, 30000);
+
+  it("REDUCED MOTION: the same hold (the recipe is settled from t = 0)", async () => {
+    document.documentElement.classList.add("reduce-motion");
+    const final = reconstructCapture.resolved_timeout.payload;
+    const seen = await sampleEnding({
+      segment_reveal: final.segment_reveal, presentation_ms: final.presentation_ms });
+    expect(seen.map((s) => s.phase)).toEqual(["answering", "revealing", "match-outro", "end-screen"]);
+    expect(seen[2].at - seen[1].at).toBeGreaterThanOrEqual(4000 - 150);
+  }, 30000);
+});

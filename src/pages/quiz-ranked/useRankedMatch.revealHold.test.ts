@@ -87,9 +87,9 @@ import scrubCapture from "@/lib/ranked-public/__fixtures__/scrubServerCapture.js
 describe("RANKED-INT1 — the shared server-paced hold (Match Grid + Assembly)", () => {
   const TITLE = 1400;
 
-  it("is exactly Match Grid and Assembly; every other module keeps its beat", () => {
-    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["assembly", "match"]);
-    for (const id of ["scrub", "reconstruct", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
+  it("is exactly Match Grid, Assembly and (R3B) Reconstruct; every other module keeps its beat", () => {
+    expect([...SERVER_PACED_REVEAL_MODULES].sort()).toEqual(["assembly", "match", "reconstruct"]);
+    for (const id of ["scrub", "order_forge", "quiz", "mastery_slice", "item_cost_duel"]) {
       expect(SERVER_PACED_REVEAL_MODULES.has(id)).toBe(false);
     }
   });
@@ -140,5 +140,48 @@ describe("RANKED-INT1 — the shared server-paced hold (Match Grid + Assembly)",
     }
     expect(readResolvedPresentationMs(null)).toBeNull();
     expect(readResolvedPresentationMs({ presentation_ms: 0 })).toBe(0);
+  });
+});
+
+// RECONSTRUCT-R3B — Reconstruct joins the shared server-paced hold. The
+// backend window (`reconstruct.SETTLEMENT_REVEAL_WINDOW_MS` 4000, exact 3400)
+// is THIS primitive's clock plus 2500 ms to read the completed recipe.
+import { RECONSTRUCT_TIMING, planReveal } from "@/lib/interaction-grammar/reconstructReveal";
+import reconstructCapture from "@/lib/ranked-public/__fixtures__/reconstructServerCapture.json";
+
+describe("RECONSTRUCT-R3B — Reconstruct's server-paced hold", () => {
+  const TITLE = 1400;
+  const READ = 2500;
+
+  it("the window is the primitive's own correction plus reading time", () => {
+    const wrong = planReveal({ reduced: false, anyWrong: true, hasEvidence: true });
+    const exact = planReveal({ reduced: false, anyWrong: false, hasEvidence: true });
+    expect(wrong.totalMs).toBe(RECONSTRUCT_TIMING.evidenceEnd);
+    expect(wrong.totalMs).toBe(1500);
+    expect(exact.totalMs).toBe(900);
+    expect(4000 - wrong.totalMs).toBe(READ);
+    expect(3400 - exact.totalMs).toBe(READ);
+    // Reduced motion settles at t = 0, so the whole hold is readable.
+    expect(planReveal({ reduced: true, anyWrong: true, hasEvidence: true }).totalMs).toBe(0);
+  });
+
+  it("an ordinary wrong round holds the whole window (5400 → 4000)", () => {
+    const nominal = Math.max(REVEAL_HOLD_MS, serverPacedHoldMs(5400, TITLE));
+    expect(anchoredRevealHoldMs(nominal, 5400, TITLE)).toBe(4000);
+  });
+
+  it("reads the REAL captured rounds' stored presentations", () => {
+    const cap = reconstructCapture as unknown as Record<string, { payload: Record<string, unknown> }>;
+    const incorrect = cap.resolved_incorrect.payload;
+    expect(readSegmentSettlement(incorrect)?.reveal.moduleId).toBe("reconstruct");
+    expect(readResolvedPresentationMs(incorrect)).toBe(4000 + TITLE);
+    // The final round (a timeout): no next board, so the stored value holds it.
+    const final = cap.resolved_timeout.payload;
+    expect(final.round_number).toBe(3);
+    expect(readResolvedPresentationMs(final)).toBe(4000 + TITLE);
+    expect(finalServerPacedHoldMs(readResolvedPresentationMs(final), TITLE)).toBe(4000);
+    const resumed = (cap.resume_final.payload as { latest_resolved_round: { payload: unknown } })
+      .latest_resolved_round.payload;
+    expect(readResolvedPresentationMs(resumed)).toBe(4000 + TITLE);
   });
 });
