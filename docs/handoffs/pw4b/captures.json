@@ -1,0 +1,439 @@
+[
+ {
+  "name": "worlds-pre-event-1440",
+  "scenario": "pre",
+  "clock": null,
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": true,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Know the field",
+  "pill": null,
+  "sections": [
+   "section-stage-play_in",
+   "section-field",
+   "section-stage-swiss",
+   "section-stage-knockout",
+   "section-schedule"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-pre-event-390",
+  "scenario": "pre",
+  "clock": null,
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   390,
+   844
+  ],
+  "fullPage": true,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Know the field",
+  "pill": null,
+  "sections": [
+   "section-stage-play_in",
+   "section-field",
+   "section-stage-swiss",
+   "section-stage-knockout",
+   "section-schedule"
+  ],
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-play-in-live-1440",
+  "scenario": "playin",
+  "clock": "2026-10-16T00:10:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": true,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Play-In stage",
+  "pill": null,
+  "sections": [
+   "section-today",
+   "section-stage-play_in",
+   "section-stage-swiss",
+   "section-field",
+   "section-schedule",
+   "section-stage-knockout"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-play-in-live-390",
+  "scenario": "playin",
+  "clock": "2026-10-16T00:10:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   390,
+   844
+  ],
+  "fullPage": true,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Play-In stage",
+  "pill": null,
+  "sections": [
+   "section-today",
+   "section-stage-play_in",
+   "section-stage-swiss",
+   "section-field",
+   "section-schedule",
+   "section-stage-knockout"
+  ],
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-between-play-in-swiss-1440",
+  "scenario": "between1",
+  "clock": "2026-10-20T18:00:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Play-In complete",
+  "pill": null,
+  "sections": [
+   "section-stage-swiss",
+   "section-stage-play_in",
+   "section-schedule",
+   "section-stage-knockout",
+   "section-field"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-swiss-mid-1440",
+  "scenario": "swiss",
+  "clock": "2026-10-29T23:20:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": true,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Swiss stage",
+  "pill": null,
+  "sections": [
+   "section-today",
+   "section-stage-swiss",
+   "section-schedule",
+   "section-stage-knockout",
+   "section-stage-play_in",
+   "section-field"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-swiss-mid-390",
+  "scenario": "swiss",
+  "clock": "2026-10-29T23:20:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   390,
+   844
+  ],
+  "fullPage": false,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Swiss stage",
+  "pill": null,
+  "sections": [
+   "section-today",
+   "section-stage-swiss",
+   "section-schedule",
+   "section-stage-knockout",
+   "section-stage-play_in",
+   "section-field"
+  ],
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-knockout-live-1440",
+  "scenario": "knockout",
+  "clock": "2026-11-05T22:30:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": true,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Knockout stage",
+  "pill": null,
+  "sections": [
+   "section-today",
+   "section-stage-knockout",
+   "section-schedule",
+   "section-stage-swiss",
+   "section-stage-play_in",
+   "section-field"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-complete-1440",
+  "scenario": "complete",
+  "clock": "2026-11-20T18:00:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": true,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Complete",
+  "pill": null,
+  "sections": [
+   "section-stage-knockout",
+   "section-stage-swiss",
+   "section-stage-play_in",
+   "section-schedule",
+   "section-field"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-complete-390",
+  "scenario": "complete",
+  "clock": "2026-11-20T18:00:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   390,
+   844
+  ],
+  "fullPage": false,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Complete",
+  "pill": null,
+  "sections": [
+   "section-stage-knockout",
+   "section-stage-swiss",
+   "section-stage-play_in",
+   "section-schedule",
+   "section-field"
+  ],
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-unknown-1440",
+  "scenario": "unknown",
+  "clock": "2026-10-16T18:00:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Schedule unavailable",
+  "pill": null,
+  "sections": [
+   "section-field",
+   "section-stage-swiss"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-standings-unavailable-1440",
+  "scenario": "nostandings",
+  "clock": "2026-10-16T00:10:00Z",
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Play-In stage",
+  "pill": null,
+  "sections": [
+   "section-today",
+   "section-stage-play_in",
+   "section-stage-swiss",
+   "section-field",
+   "section-schedule",
+   "section-stage-knockout"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-stale-1440",
+  "scenario": "stale",
+  "clock": null,
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Know the field",
+  "pill": null,
+  "sections": [
+   "section-stage-play_in",
+   "section-field",
+   "section-stage-swiss",
+   "section-stage-knockout",
+   "section-schedule"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "worlds-partial-1440",
+  "scenario": "partial",
+  "clock": null,
+  "url": "/lol/pro-play/tournament/worlds-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "Worlds — League of Legends World Championship 2026 | Mogzy",
+  "phase": "Know the field",
+  "pill": null,
+  "sections": [
+   "section-stage-play_in",
+   "section-field",
+   "section-stage-swiss",
+   "section-stage-knockout",
+   "section-schedule"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "hub-oct14-dcgi-1440",
+  "scenario": "pre",
+  "clock": "2026-10-15T06:30:00Z",
+  "url": "/lol/pro-play",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "Pro Play | Mogzy",
+  "phase": null,
+  "pill": "/lol/pro-play/tournament/dcgi-2026",
+  "sections": [],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "hub-oct15-worlds-1440",
+  "scenario": "pre",
+  "clock": "2026-10-15T08:00:00Z",
+  "url": "/lol/pro-play",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "Pro Play | Mogzy",
+  "phase": null,
+  "pill": "/lol/pro-play/tournament/worlds-2026",
+  "sections": [],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "hub-oct15-worlds-390",
+  "scenario": "pre",
+  "clock": "2026-10-15T08:00:00Z",
+  "url": "/lol/pro-play",
+  "viewport": [
+   390,
+   844
+  ],
+  "fullPage": false,
+  "title": "Pro Play | Mogzy",
+  "phase": null,
+  "pill": "/lol/pro-play/tournament/worlds-2026",
+  "sections": [],
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "imagesPending": 0,
+  "pageErrors": []
+ },
+ {
+  "name": "dcgi-unchanged-1440",
+  "scenario": "pre",
+  "clock": null,
+  "url": "/lol/pro-play/tournament/dcgi-2026",
+  "viewport": [
+   1440,
+   900
+  ],
+  "fullPage": false,
+  "title": "DCGI — Demacia Cup Global Invitational 2026 | Mogzy",
+  "phase": "Knockout stage",
+  "pill": null,
+  "sections": [
+   "section-bracket",
+   "section-today",
+   "section-next",
+   "section-records",
+   "section-schedule",
+   "section-field",
+   "section-worlds"
+  ],
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "imagesPending": 0,
+  "pageErrors": []
+ }
+]

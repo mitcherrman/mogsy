@@ -1,0 +1,137 @@
+{
+ "captured_at": "2026-10-13T00:09:40Z (2026-10-12 17:09 PDT)",
+ "method": "read-only curl GET, no auth",
+ "endpoints": {
+  "worlds-2026": {
+   "url": "https://web-production-83e53.up.railway.app/api/live-esports/tournament/worlds-2026",
+   "contract_version": "tournament_context_v2",
+   "generated_at": "2026-10-13T00:09:40.785+00:00",
+   "source_ok": true,
+   "stale": false,
+   "top_level_keys": [
+    "contract_version",
+    "generated_at",
+    "source",
+    "source_ok",
+    "stale",
+    "fetched_at",
+    "sources",
+    "context",
+    "state"
+   ],
+   "state_keys": [
+    "phase",
+    "phase_basis",
+    "phase_detail",
+    "calendar_stage",
+    "next_match_id",
+    "matches",
+    "swiss_records",
+    "knockout_teams",
+    "counts",
+    "play_in",
+    "swiss",
+    "knockout",
+    "coverage",
+    "warnings"
+   ],
+   "phase": "pre_event",
+   "phase_detail": null,
+   "calendar_stage": "pre_event",
+   "participants": 19,
+   "regions": [
+    "LPL",
+    "LCK",
+    "LEC",
+    "LCS",
+    "LCP",
+    "CBLOL"
+   ],
+   "matches": 46,
+   "stages": [
+    "play_in",
+    "swiss",
+    "knockout"
+   ],
+   "coverage": {
+    "pages_read": 2,
+    "page_failure": null,
+    "found_matches": 46,
+    "basis": "standings",
+    "complete": true,
+    "expected_matches": 46,
+    "missing_match_ids": [],
+    "unlisted_match_ids": []
+   },
+   "sources": {
+    "schedule": {
+     "ok": true,
+     "stale": false,
+     "fetched_at": "2026-10-13T00:09:40.785+00:00",
+     "pages_read": 2,
+     "page_failure": null
+    },
+    "standings": {
+     "ok": true,
+     "stale": false,
+     "fetched_at": "2026-10-13T00:09:40.785+00:00"
+    }
+   },
+   "warnings": [],
+   "lineup_status": [
+    "not_certified"
+   ],
+   "next_match_id": "115660588583171786"
+  },
+  "dcgi-2026": {
+   "url": "https://web-production-83e53.up.railway.app/api/live-esports/tournament/dcgi-2026",
+   "contract_version": "tournament_context_v1",
+   "generated_at": "2026-10-13T00:09:41.560+00:00",
+   "source_ok": true,
+   "stale": false,
+   "top_level_keys": [
+    "contract_version",
+    "generated_at",
+    "source",
+    "source_ok",
+    "stale",
+    "fetched_at",
+    "context",
+    "state"
+   ],
+   "state_keys": [
+    "phase",
+    "next_match_id",
+    "matches",
+    "swiss_records",
+    "knockout_teams",
+    "counts",
+    "warnings"
+   ],
+   "phase": "knockout",
+   "phase_detail": null,
+   "calendar_stage": null,
+   "participants": 12,
+   "regions": [
+    "LPL",
+    "LCK",
+    "LEC",
+    "LCS",
+    "LCP",
+    "CBLOL"
+   ],
+   "matches": 27,
+   "stages": [
+    "swiss",
+    "knockout"
+   ],
+   "coverage": null,
+   "sources": null,
+   "warnings": [],
+   "lineup_status": [
+    "(v1: absent)"
+   ],
+   "next_match_id": "117133830110912105"
+  }
+ }
+}

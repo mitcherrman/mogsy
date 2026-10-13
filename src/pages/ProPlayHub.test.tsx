@@ -32,6 +32,7 @@ import ProPlayHub, {
 import { PRO_PLAY_LIVE_ARCHIVE_ROUTE, PRO_PLAY_STATS_ROUTE } from "@/lib/pro-play/routes";
 import { __resetProPlayMediaCache } from "@/components/pro-play/media/ProPlayMediaProvider";
 import DCGI_PRE_EVENT from "@/lib/pro-play/__fixtures__/tournamentDcgiPreEvent.json";
+import { WORLDS_PRE, worldsComplete } from "@/lib/pro-play/__fixtures__/worldsScenarios";
 import LES_G1 from "@/lib/live-esports/__fixtures__/ppia2LesSwappedG1.json";
 
 const { sfx } = vi.hoisted(() => ({ sfx: { play: vi.fn() } }));
@@ -190,6 +191,9 @@ type Backend = {
   worldsGate?: Promise<void>;
   /** `/live-esports/tournament/{id}` (DCGI1); undefined = an older backend (404). */
   tournament?: unknown;
+  /** Per context id (PW4-B); takes precedence over `tournament`. "fail" =
+   *  HTTP 503; an id not listed = 404. */
+  tournaments?: Record<string, unknown>;
   itemIndex?: { id: number; name: string; slug: string }[];
   media?: unknown[];
   teamState?: (id: string) => unknown;
@@ -210,6 +214,12 @@ function installBackend(opts: Backend) {
     const notFound = () =>
       ({ ok: false, status: 404, json: async () => ({}) }) as unknown as Response;
     if (path.includes("/live-esports/tournament/")) {
+      if (opts.tournaments) {
+        const id = decodeURIComponent(path.split("/live-esports/tournament/")[1].split("?")[0]);
+        const body = opts.tournaments[id];
+        if (body === "fail") return { ok: false, status: 503, json: async () => ({}) } as unknown as Response;
+        return body ? ok(body) : notFound();
+      }
       return opts.tournament ? ok(opts.tournament) : notFound();
     }
     if (path.includes("/live-esports/upcoming")) {
@@ -412,7 +422,15 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
+
+/** Before 15 Oct 2026 (Los Angeles), DCGI is the featured event (PW4-B). The
+ *  DCGI pill tests pin the clock there so they keep meaning what they say. */
+function beforeWorldsClock() {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-12T18:00:00Z"));
+}
 
 /* ── page identity ──────────────────────────────────────────────────────── */
 
@@ -462,6 +480,7 @@ describe("ProPlayHub identity", () => {
   });
 
   it("carries the featured event in the header row, never as a band above the match (DCGI1)", async () => {
+    beforeWorldsClock();
     installBackend({ recent: [summary("g1", "GEN", "T1")], tournament: DCGI_PRE_EVENT });
     renderHub();
     const pill = await screen.findByTestId("tournament-spotlight");
@@ -1442,6 +1461,7 @@ describe("PW1 · pre-event: the next Worlds match leads", () => {
   });
 
   it("keeps DCGI as the featured event and links to no Worlds tournament page", async () => {
+    beforeWorldsClock();
     installBackend({
       recent: [summary("R1", "GEN", "T1")],
       upcoming: [worldsFixture("w1", "FUR", "MVK")],
@@ -2048,5 +2068,64 @@ describe("PW1-C · two bounded schedule reads", () => {
     });
     renderHub(`${PRO_PLAY_ROUTE}?next=d3`);
     expect(await upcomingTitle()).toBe("A3 vs B3");
+  });
+});
+
+/* ── PW4-B: the featured event follows the calendar ─────────────────────── */
+
+describe("PW4-B · featured tournament by calendar day", () => {
+  const BOTH = { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": WORLDS_PRE };
+  const at = (iso: string) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(iso));
+  };
+  const pillHref = async () => (await screen.findByTestId("tournament-spotlight")).getAttribute("href");
+
+  it("features DCGI on 14 Oct in Los Angeles (late evening, already 15 Oct in UTC)", async () => {
+    at("2026-10-15T06:59:00Z"); // 23:59 on 14 Oct in Los Angeles
+    installBackend({ recent: [summary("R1", "GEN", "T1")], tournaments: BOTH });
+    renderHub();
+    expect(await pillHref()).toBe("/lol/pro-play/tournament/dcgi-2026");
+    expect(requests.some((r) => r.includes("/tournament/worlds-2026"))).toBe(false);
+  });
+
+  it("features Worlds from 00:00 on 15 Oct in Los Angeles, in the same header slot", async () => {
+    at("2026-10-15T07:00:00Z");
+    installBackend({ recent: [summary("R1", "GEN", "T1")], tournaments: BOTH });
+    renderHub();
+    expect(await pillHref()).toBe("/lol/pro-play/tournament/worlds-2026");
+    const pill = screen.getByTestId("tournament-spotlight");
+    expect(within(pill).getByTestId("spotlight-label").textContent).toBe("Featured");
+    expect(pill).toHaveAccessibleName(/League of Legends World Championship 2026/);
+    expect(pill.closest("header")).toBeTruthy();
+    expect(matchCenter().contains(pill)).toBe(false);
+    expect(requests.some((r) => r.includes("/tournament/dcgi-2026"))).toBe(false);
+  });
+
+  it("keeps Worlds featured when its tournament read fails, never handing the slot back to DCGI", async () => {
+    at("2026-10-20T18:00:00Z");
+    installBackend({ recent: [summary("R1", "GEN", "T1")], tournaments: { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": "fail" } });
+    renderHub();
+    const pill = await screen.findByTestId("tournament-spotlight", {}, { timeout: 8000 });
+    expect(pill.getAttribute("href")).toBe("/lol/pro-play/tournament/worlds-2026");
+    expect(pill.getAttribute("data-state")).toBe("unavailable");
+    expect(pill.textContent).toContain("Worlds");
+    expect(requests.some((r) => r.includes("/tournament/dcgi-2026"))).toBe(false);
+  }, 15000);
+
+  it("keeps a completed Worlds featured after 14 Nov as an archive, never reverting to DCGI", async () => {
+    at("2026-12-01T18:00:00Z");
+    installBackend({ recent: [summary("R1", "GEN", "T1")], tournaments: { "dcgi-2026": DCGI_PRE_EVENT, "worlds-2026": worldsComplete() } });
+    renderHub();
+    expect(await pillHref()).toBe("/lol/pro-play/tournament/worlds-2026");
+    expect(screen.getByTestId("tournament-spotlight")).toHaveAccessibleName(/World Championship 2026: Complete/);
+  });
+
+  it("does not move the Match Center: the header row is still followed by the board", async () => {
+    at("2026-10-16T18:00:00Z");
+    installBackend({ recent: [summary("R1", "GEN", "T1")], tournaments: BOTH });
+    renderHub();
+    const header = (await screen.findByTestId("tournament-spotlight")).closest("header")!;
+    expect(header.nextElementSibling?.contains(document.getElementById("match-center"))).toBe(true);
   });
 });

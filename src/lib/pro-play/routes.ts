@@ -139,8 +139,8 @@ export function proPlayTournamentUrl(contextId: string): string {
   return `/lol/pro-play/tournament/${encodeURIComponent(contextId)}`;
 }
 
-/** The tournament the hub currently points readers at. */
-export const PRO_PLAY_FEATURED_TOURNAMENT = "dcgi-2026";
+/* The tournament the hub features is chosen by date in
+ * `@/lib/pro-play/featuredTournament` (PW4-B), not fixed here. */
 
 /**
  * The Worlds Matchup Explorer: configure two teams, a lane, two players and

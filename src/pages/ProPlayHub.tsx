@@ -14,9 +14,9 @@ import { fetchLiveGame } from "@/lib/live-esports/api";
 import { FINAL_POLL_MS, useLiveFeed, useLiveMatch, useSchedule } from "@/lib/live-esports/hooks";
 import { gamesNeedingResult, groupSeries, railUpcoming, type GameRecord } from "@/lib/pro-play/hubSeries";
 import { nextWorldsFixture } from "@/lib/pro-play/worlds";
+import { featuredTournament } from "@/lib/pro-play/featuredTournament";
 import { lanePlayerKey, nextHubAutoPick, samePick, type HubPick } from "@/lib/pro-play/hubSelection";
 import {
-  PRO_PLAY_FEATURED_TOURNAMENT,
   PRO_PLAY_LIVE_GAME_PARAM,
   PRO_PLAY_ROUTE,
   PRO_PLAY_STATS_ROUTE,
@@ -134,6 +134,9 @@ function ProPlayHubPage() {
   const schedule = useSchedule();
   const allUpcoming = schedule.matches;
   const now = useMinuteNow();
+  // The featured event follows the event calendar, re-read each minute so an
+  // open hub crosses midnight in Los Angeles without a reload.
+  const featured = featuredTournament(now);
   const scheduleWaited = useElapsed(SCHEDULE_SETTLE_MS);
 
   /* An explicit `?next=` is an upcoming match. While it is upcoming the board
@@ -307,9 +310,11 @@ function ProPlayHubPage() {
           {/* The featured event (DCGI1) rides in this row rather than a band
               of its own, so the match stays in the first screen. It is page
               chrome, labelled "Featured" — never the selected game's event,
-              which the board's own event band names. */}
+              which the board's own event band names. Which event is chosen
+              by calendar day (PW4-B `featuredTournament`): DCGI until
+              15 Oct, then Worlds, kept as an archive after it ends. */}
           <div className="ml-auto flex min-w-0 items-center gap-5">
-            <TournamentSpotlight contextId={PRO_PLAY_FEATURED_TOURNAMENT} label="Featured" />
+            <TournamentSpotlight contextId={featured.event.contextId} fallback={featured.event} label="Featured" />
             <Link
               to={PRO_PLAY_STATS_ROUTE}
               className="hidden whitespace-nowrap text-sm font-medium text-muted-foreground hover:text-foreground hover:underline md:inline"
