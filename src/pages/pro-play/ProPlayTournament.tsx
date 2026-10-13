@@ -19,9 +19,16 @@
  * 2026) renders `TournamentV2`: a Play-In, Swiss and Knockout read from
  * upstream standings. A version this page cannot read, or a body without its
  * shape, is said plainly rather than half-drawn.
+ *
+ * THE WORLDS EXPERIENCE (UX3A), BEHIND A BUILD FLAG. With
+ * `VITE_WORLDS_EXPERIENCE_ENABLED` on (`worldsExperience/productionGate.ts`),
+ * `worlds-2026` and its screen paths render `WorldsExperience` from this same
+ * page: the same `useTournament` read, loading and error states and media
+ * provider, with per-screen metadata. Off (the default), nothing here changes
+ * and the experience's chunk is never requested.
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Suspense, lazy, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Brain, CalendarDays, MapPin, Search } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
@@ -70,7 +77,26 @@ import {
   todaysMatches,
 } from "@/lib/pro-play/tournamentView";
 import { mediaKeysV2, stageShortName } from "@/lib/pro-play/tournamentV2View";
+import {
+  WORLDS_EXPERIENCE_BASE,
+  WORLDS_EXPERIENCE_CONTEXT_ID,
+  isWorldsExperienceSurface,
+  usesWorldsExperience,
+} from "@/lib/pro-play/worldsExperience/productionGate";
+import { recoverFromChunkLoadError } from "@/lib/chunk-recovery";
 import { cn } from "@/lib/utils";
+
+// Its own chunk (shell, navigation model, per-screen SEO): a build with the
+// flag off never requests it, and the published page's chunk does not carry it.
+const loadWorldsExperience = () => import("@/components/pro-play/worlds-experience/ProductionExperience");
+const WorldsExperience = lazy(() =>
+  loadWorldsExperience().catch((err) => {
+    // A redeploy can leave an open tab pointing at an old hashed chunk; the
+    // same recovery the route chunks use.
+    if (recoverFromChunkLoadError(err, "lazy-route")) return new Promise<never>(() => undefined);
+    throw err;
+  }),
+);
 
 function useNow(intervalMs = 30_000) {
   const [now, setNow] = useState(() => Date.now());
@@ -501,9 +527,31 @@ function TournamentBody({ data, now }: { data: TournamentResponse; now: number }
   );
 }
 
+/** Holds the experience's frame open while its data or chunk loads. */
+function ExperienceLoading() {
+  return (
+    <div className="min-h-[var(--app-viewport-h)] space-y-4 p-4 lg:p-6" data-testid="tournament-loading" data-experience="worlds">
+      <Skeleton className="h-12 w-full" />
+      <div className="grid gap-4 lg:grid-cols-12">
+        <Skeleton className="h-72 lg:col-span-8" />
+        <Skeleton className="h-72 lg:col-span-4" />
+      </div>
+    </div>
+  );
+}
+
 export default function ProPlayTournament() {
-  const { contextId } = useParams<{ contextId: string }>();
+  const params = useParams<{ contextId: string; "*": string }>();
+  const location = useLocation();
+  // The flag's route (`WORLDS_EXPERIENCE_ROUTE`) names Worlds in its path, so
+  // it has no `:contextId`; every other context comes from the param.
+  const contextId = params.contextId ?? (isWorldsExperienceSurface(location.pathname) ? WORLDS_EXPERIENCE_CONTEXT_ID : undefined);
+  const experience = usesWorldsExperience(contextId);
   const query = useTournament(contextId);
+  // Fetch the experience's chunk alongside the tournament read, not after it.
+  useEffect(() => {
+    if (experience) void loadWorldsExperience().catch(() => undefined);
+  }, [experience]);
   const now = useNow();
   const data = query.data;
   const v2 = data && isTournamentV2(data) ? data : null;
@@ -521,6 +569,29 @@ export default function ProPlayTournament() {
   const mediaLeagues = useMemo(() => (data ? [data.context.league.slug] : []), [data]);
   const error = query.error;
 
+  if (experience && v2) {
+    return (
+      <div className="relative" data-testid="tournament-experience">
+        <ProPlayMediaProvider teams={mediaTeams} players={mediaPlayers} leagues={mediaLeagues}>
+          <Suspense fallback={<ExperienceLoading />}>
+            <WorldsExperience
+              data={v2}
+              now={now}
+              onRetry={() => void query.refetch()}
+              retrying={query.isFetching}
+              refreshFailed={query.isRefetchError}
+            />
+          </Suspense>
+        </ProPlayMediaProvider>
+      </div>
+    );
+  }
+  // The experience's screen paths exist only for a v2 body. Anything else
+  // served for Worlds is drawn by the published renderer at the event's own URL.
+  if (experience && v1 && location.pathname !== WORLDS_EXPERIENCE_BASE) {
+    return <Navigate to={WORLDS_EXPERIENCE_BASE} replace />;
+  }
+
   return (
     <div className="relative min-h-screen bg-background">
       <SEOHead
@@ -536,8 +607,9 @@ export default function ProPlayTournament() {
         }
         path={proPlayTournamentUrl(contextId ?? "")}
       />
+      {experience && query.isLoading && <ExperienceLoading />}
       <div className="mx-auto w-full max-w-[1200px] space-y-6 px-4 pb-10 sm:px-6">
-        {query.isLoading && (
+        {query.isLoading && !experience && (
           <div className="space-y-4 pt-6" data-testid="tournament-loading">
             <Skeleton className="h-10 w-2/3" />
             <Skeleton className="h-24 w-full" />

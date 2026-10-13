@@ -47,10 +47,23 @@ describe("UX1 isolation", () => {
     const production = all.filter((f) => !norm(f).includes("/src/pages/dev/"));
     const scen = production.filter((f) => /worlds-experience\/scenarios|__fixtures__\/worldsScenarios/.test(code(read(f))));
     expect(scen.map(norm)).toEqual([]);
+    // UX3A: the one production importer of the shell is the tournament page,
+    // through a dynamic import (its own chunk), behind the build flag.
     const shell = production
       .filter((f) => !norm(f).includes("/components/pro-play/worlds-experience/"))
       .filter((f) => /components\/pro-play\/worlds-experience\//.test(code(read(f))));
-    expect(shell.map(norm)).toEqual([]);
+    expect(shell.map((f) => norm(f).split("/src/")[1])).toEqual(["pages/pro-play/ProPlayTournament.tsx"]);
+    const page = code(read(join(SRC, "pages/pro-play/ProPlayTournament.tsx")));
+    expect([...page.matchAll(/["']@\/components\/pro-play\/worlds-experience\/[^"']+["']/g)].map((m) => m[0])).toEqual([
+      '"@/components/pro-play/worlds-experience/ProductionExperience"',
+    ]);
+    expect(page).toMatch(/const loadWorldsExperience = \(\) => import\("@\/components\/pro-play\/worlds-experience\/ProductionExperience"\);/);
+    expect(page).not.toMatch(/^import [^;]*worlds-experience/m);
+    expect(page).toMatch(/if \(experience && v2\) \{/);
+    // The shell's dev-only props never reach production.
+    expect(page).not.toMatch(/simulated|scenario|badge=|tools=/);
+    const mount = code(read(join(SRC, "components/pro-play/worlds-experience/ProductionExperience.tsx")));
+    expect(mount).not.toMatch(/simulated|scenario|badge=|tools=|__fixtures__|pages\/dev/);
   });
 
   it("the published tournament route and page are as they were", () => {
@@ -58,7 +71,7 @@ describe("UX1 isolation", () => {
     expect(app).toMatch(/<Route path=\{PRO_PLAY_TOURNAMENT_ROUTE\} element=\{<Suspense fallback=\{<RouteFallback \/>\}><ProPlayTournament \/><\/Suspense>\} \/>/);
     const page = code(read(join(SRC, "pages/pro-play/ProPlayTournament.tsx")));
     expect(page).toMatch(/import TournamentV2 from "@\/components\/pro-play\/tournament\/TournamentV2";/);
-    expect(page).not.toMatch(/worlds-experience|BracketSelectContext/);
+    expect(page).not.toMatch(/BracketSelectContext/);
     const v2 = code(read(join(SRC, "components/pro-play/tournament/TournamentV2.tsx")));
     expect(v2).not.toMatch(/BracketSelectContext|worlds-experience/);
   });

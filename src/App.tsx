@@ -45,6 +45,7 @@ import {
   TEAM_SIM_DEV_ROUTE,
   TEAM_SIM_ROUTE,
 } from "@/lib/combat-lab/team-sim/featureGate";
+import { isWorldsExperienceEnabled, WORLDS_EXPERIENCE_ROUTE } from "@/lib/pro-play/worldsExperience/productionGate";
 import { Suspense } from "react";
 import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
@@ -624,6 +625,16 @@ export const appRouter = createBrowserRouter(
                       query string, so the path takes no parameters. */}
                   <Route path={PRO_PLAY_MATCHUP_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayMatchup /></Suspense>} />
                   <Route path={PRO_PLAY_TOURNAMENT_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTournament /></Suspense>} />
+                  {/* UX3A: the Worlds experience. Registered ONLY when
+                      VITE_WORLDS_EXPERIENCE_ENABLED is on; off, Worlds stays
+                      on the route above and its screen paths 404. Its static
+                      "worlds-2026" segment outranks ":contextId", so this one
+                      route (one element, no remount between screens) owns
+                      the Worlds URL and its screens; every other context is
+                      untouched. Same page component, same data read. */}
+                  {isWorldsExperienceEnabled() ? (
+                    <Route path={WORLDS_EXPERIENCE_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTournament /></Suspense>} />
+                  ) : null}
                   {/* LIVE1 match centre. It shipped at /esports/live (below,
                       now a redirect) before Pro Play had a hub; this is its
                       canonical URL. Same component, one page. */}
