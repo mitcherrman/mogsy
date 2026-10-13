@@ -582,6 +582,7 @@ export default function ProPlayTournament() {
               now={now}
               onRetry={() => void query.refetch()}
               retrying={query.isFetching}
+              refreshFailed={query.isRefetchError}
             />
           </ProPlayMediaProvider>
         )}

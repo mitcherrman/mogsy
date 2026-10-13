@@ -43,6 +43,7 @@ function backend(...bodies: unknown[]) {
       const ok = (b: unknown) => ({ ok: true, status: 200, json: async () => b }) as unknown as Response;
       if (path.includes("/live-esports/tournament/")) {
         const body = bodies[Math.min(i++, bodies.length - 1)];
+        if (body === "network") throw new TypeError("Failed to fetch");
         if (body === 404) return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
         return ok(body);
       }
@@ -53,8 +54,12 @@ function backend(...bodies: unknown[]) {
 }
 
 function renderPage(id = "worlds-2026") {
+  return renderPageWithClient(id).view;
+}
+
+function renderPageWithClient(id = "worlds-2026") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/lol/pro-play/tournament/${id}`]}>
         <Routes>
@@ -63,6 +68,7 @@ function renderPage(id = "worlds-2026") {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { client, view };
 }
 
 const sectionIds = () =>
@@ -384,6 +390,27 @@ describe("degraded sources", () => {
     // The page did not blank out while it refreshed.
     expect(screen.getAllByTestId("field-team")).toHaveLength(19);
   });
+
+  it("browser-side refresh failure: keeps the last good data, says so, clears on the next success (PW4-B1)", async () => {
+    // The hook retries a network error twice, so the outage spans three reads.
+    backend(WORLDS_PRE, "network", "network", "network", WORLDS_PRE);
+    const { client } = renderPageWithClient();
+    await screen.findByTestId("source-line");
+    expect(screen.queryByTestId("notice-refresh-failed")).toBeNull();
+    // A background refetch (what the 120 s poll does) fails in the browser.
+    await client.refetchQueries({ queryKey: ["live-esports", "tournament", "worlds-2026"] });
+    const n = await screen.findByTestId("notice-refresh-failed");
+    expect(n).toHaveTextContent(/Couldn't get the latest update.*last successful response/);
+    expect(n.textContent).not.toMatch(/updated|fresh|verified/i);
+    // The last valid data stays, and the backend's own notices are unaffected.
+    expect(screen.getAllByTestId("field-team")).toHaveLength(19);
+    expect(screen.getByTestId("double-elim")).toBeInTheDocument();
+    expect(screen.queryByText("This tournament could not be loaded.")).toBeNull();
+    // Manual retry succeeds: the warning clears.
+    fireEvent.click(within(n).getByRole("button", { name: /Try again/ }));
+    await waitFor(() => expect(screen.queryByTestId("notice-refresh-failed")).toBeNull());
+    expect(screen.getAllByTestId("field-team")).toHaveLength(19);
+  }, 20000);
 
   it("unknown phase: 'Schedule unavailable', never a pre-event page", async () => {
     backend(unknownPhase());

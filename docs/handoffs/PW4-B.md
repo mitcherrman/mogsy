@@ -282,3 +282,61 @@ All simulated results are fixtures (`worldsScenarios.ts`) and not predictions. T
 4. confirm the featured switch on the published site at 07:00Z.
 
 Separately, the backend could serve a `worlds` league logo, and PW2's LIVE1 alias set (WS-D3) is still needed for Match Center identities.
+
+## 11. PW4-B1: final frontend integration
+
+| | |
+|---|---|
+| Branch | `pw4b/worlds-featured-integration`, on GitHub `main` `8c9c1f739685121e5606342e6e585c4c47e68178` (verified at fetch) |
+| Content | PW4-B `364616b8` cherry-picked without conflicts (`4ad90158`), plus this pass. The reviewed `pw4b/worlds-featured` is untouched |
+| Main delta | One commit, `8c9c1f73` "Enable Vision tile in Quiz Hub Quick Study" (5 Quiz Hub files). Those files are byte-identical to main on this branch |
+
+### A: integration
+
+There was no overlap with PW4-B files. The integrated tree has both the Quiz Hub change and every PW4-B file.
+
+### B: browser-side refresh failure
+
+The problem: a background refetch that fails in the browser kept the old React Query data on screen with no warning.
+
+The fix:
+- `ProPlayTournament` passes `query.isRefetchError` to `TournamentV2` as `refreshFailed`.
+- When it is set, `Notices` adds `notice-refresh-failed`: "Couldn't get the latest update. What's shown is from the last successful response (HH:MM); it will update when the service answers again."
+- The notice has a **Try again** button. It never says updated, fresh or verified.
+- The last valid data stays visible.
+- The backend notices (stale, partial, standings) and the 120 s polling are unchanged.
+- React Query clears the notice on the next successful read.
+- v1 (DCGI) is not changed.
+
+### C: partial-schedule copy
+
+The notice now reads: "Missing matches aren't shown, and stage outcomes are only stated where they are verified on their own." It no longer implies that a certified earlier stage becomes unfinished.
+
+### Files
+
+- `src/components/pro-play/tournament/TournamentV2.tsx`: the notice, the copy, and the `refreshFailed` prop.
+- `src/pages/pro-play/ProPlayTournament.tsx`: one prop.
+- `src/pages/pro-play/ProPlayTournamentWorlds.test.tsx`: +1 regression test and a `renderPageWithClient` helper. The test runs: success, then a failed background refetch (the outage spans the hook's two retries), then the warning with the prior data kept, then a successful retry, then the warning gone.
+
+### Verification
+
+Run on current main `8c9c1f73`, as a detached baseline and on the branch, with the same toolchain as §6. The focused set is §6's paths plus `src/pages/Quiz.hub.test.tsx` and `src/lib/quiz`, to cover main's new commit.
+
+| Check | Main `8c9c1f73` | Integration branch |
+|---|---|---|
+| Focused set | 85 files; 2360 passed, **9 failed**, 3 skipped | 89 files; 2439 passed, **9 failed**, 3 skipped (+79 = PW4-B's 78 + 1) |
+| The 9 failures | `quiz-screenshot/command.parser` + `command.reviewKey` (they spawn `/bin/sh`, which this Windows machine lacks); `Quiz.hub.test.tsx` "Leaguecraft hub" ×2 | **identical set**, all pre-existing on main; none in Pro Play |
+| `ProPlayTournamentWorlds.test.tsx` | — | 24 / 24 |
+| `tsc` | the 2 known errors | the same 2 |
+| ESLint (touched files) | — | 0 errors |
+| `vite build` | — | OK; `ProPlayTournament` chunk 57.24 kB (14.66 kB gzip) |
+
+### Release readiness
+
+**Ready for release approval.** Blockers outside this branch are unchanged from §9:
+- publish before 2026-10-15T07:00Z;
+- PW2 LIVE1 identities (TES / TLAW / LØS);
+- certified lineups;
+- the Worlds logo.
+
+No merge, deploy or publish was done.

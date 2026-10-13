@@ -513,7 +513,12 @@ function Today() {
   );
 }
 
-function Notices({ data, onRetry, retrying }: { data: TournamentResponseV2; onRetry?: () => void; retrying?: boolean }) {
+function Notices({ data, onRetry, retrying, refreshFailed }: {
+  data: TournamentResponseV2;
+  onRetry?: () => void;
+  retrying?: boolean;
+  refreshFailed?: boolean;
+}) {
   const { state, ctx } = useKit();
   const fresh = freshness(data);
   const out: ReactNode[] = [];
@@ -529,6 +534,16 @@ function Notices({ data, onRetry, retrying }: { data: TournamentResponseV2; onRe
       Try again
     </button>
   );
+  // The browser could not reach the service on a background refresh: the page
+  // keeps the last good answer, and says it is that, not a fresh read.
+  if (refreshFailed) {
+    out.push(
+      <Notice key="refresh" testId="notice-refresh-failed" action={retry}>
+        <span className="font-semibold">Couldn't get the latest update.</span> What's shown is from the last successful response
+        {time(data.generated_at) ? ` (${time(data.generated_at)})` : ""}; it will update when the service answers again.
+      </Notice>,
+    );
+  }
   if (state.phase === "unknown") {
     out.push(
       <Notice key="unknown" testId="notice-unknown" action={retry}>
@@ -549,7 +564,7 @@ function Notices({ data, onRetry, retrying }: { data: TournamentResponseV2; onRe
     out.push(
       <Notice key="partial" testId="notice-partial">
         <span className="font-semibold">Partial schedule.</span> {state.coverage.found_matches} of {state.coverage.expected_matches} matches could be read
-        from the official schedule. Missing matches aren't shown, and no stage is called finished from a partial read.
+        from the official schedule. Missing matches aren't shown, and stage outcomes are only stated where they are verified on their own.
       </Notice>,
     );
   }
@@ -581,7 +596,12 @@ function SourceLine({ data }: { data: TournamentResponseV2 }) {
   );
 }
 
-function Body({ data, onRetry, retrying }: { data: TournamentResponseV2; onRetry?: () => void; retrying?: boolean }) {
+function Body({ data, onRetry, retrying, refreshFailed }: {
+  data: TournamentResponseV2;
+  onRetry?: () => void;
+  retrying?: boolean;
+  refreshFailed?: boolean;
+}) {
   const { ctx, state } = useKit();
   const order = sectionOrderV2(state, ctx);
   const render = (key: V2SectionKey): ReactNode => {
@@ -609,7 +629,7 @@ function Body({ data, onRetry, retrying }: { data: TournamentResponseV2; onRetry
   };
   return (
     <div className="space-y-10">
-      <Notices data={data} onRetry={onRetry} retrying={retrying} />
+      <Notices data={data} onRetry={onRetry} retrying={retrying} refreshFailed={refreshFailed} />
       {order.map((key) => {
         const node = render(key);
         return node ? <div key={key}>{node}</div> : null;
@@ -629,17 +649,19 @@ function Body({ data, onRetry, retrying }: { data: TournamentResponseV2; onRetry
   );
 }
 
-export default function TournamentV2({ data, now, onRetry, retrying }: {
+export default function TournamentV2({ data, now, onRetry, retrying, refreshFailed }: {
   data: TournamentResponseV2;
   now: number;
   onRetry?: () => void;
   retrying?: boolean;
+  /** A background refetch failed in the browser; `data` is the last good one. */
+  refreshFailed?: boolean;
 }) {
   return (
     <TournamentKitProvider ctx={data.context} state={data.state} now={now}>
       <div className="space-y-8" data-testid="tournament-v2" data-phase={data.state.phase}>
         <Header />
-        <Body data={data} onRetry={onRetry} retrying={retrying} />
+        <Body data={data} onRetry={onRetry} retrying={retrying} refreshFailed={refreshFailed} />
       </div>
     </TournamentKitProvider>
   );
