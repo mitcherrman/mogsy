@@ -27,6 +27,18 @@ describe("RankedArenaInspector", () => {
     expect(screen.getByTestId("discovery-reveal")).toHaveAttribute("data-new-count", "3");
   });
 
+  it("previews only explicitly awarded XP and supports replay without a match", () => {
+    render(<RankedArenaInspector />);
+    fireEvent.click(screen.getByTestId("inspector-state-results-earned-xp"));
+    expect(screen.getByTestId("result-progress-xp")).toHaveTextContent("+80 XP");
+    expect(screen.getByTestId("result-progress-xp").querySelector("[data-earned-xp=true]"))
+      .toBeInTheDocument();
+    const firstStage = screen.getByTestId("inspector-replay-stage");
+    fireEvent.click(screen.getByTestId("inspector-replay"));
+    expect(screen.getByTestId("inspector-replay-stage")).not.toBe(firstStage);
+    expect(screen.getByTestId("result-progress-xp")).toHaveTextContent("+80 XP");
+  });
+
   it("imports no gameplay engine / controller / client / service", () => {
     const src = readFileSync(resolve(__dirname, "RankedArenaInspector.tsx"), "utf-8");
     const importLines = src.split("\n").filter((l) => l.trimStart().startsWith("import"));
