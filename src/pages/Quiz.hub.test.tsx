@@ -328,19 +328,22 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
   });
 
-  it("Vision navigates nowhere and starts nothing", async () => {
+  it("Vision starts an in-place Practice session from the live category", async () => {
     categoryQuestionsMock.mockClear();
+    categoryQuestionsMock.mockResolvedValue({ questions: [{
+      id: 42001, category: "Vision", format: "multiple_choice",
+      question_text: "How long does Oracle Lens sweep for enemy vision?",
+      choices: ["6 seconds", "7 seconds", "8 seconds", "9 seconds"],
+    }] });
     const { container } = await renderHub();
     const tile = container.querySelector(
       '[data-testid="quiz-category-rail-tile"][data-category="vision"]',
     )!;
-    expect(tile.getAttribute("data-available")).toBe("false");
+    expect(tile.getAttribute("data-available")).toBe("true");
     fireEvent.click(within(tile as HTMLElement).getByRole("button"));
-    expect(categoryQuestionsMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(categoryQuestionsMock).toHaveBeenCalledWith("Vision", 10));
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
-    // The lobby is still the lobby — no runner took over the page.
-    expect(container.querySelector('[data-testid="quiz-category-rail"]')).not.toBeNull();
-    expect(sfx.play).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText("How long does Oracle Lens sweep for enemy vision?")).toBeTruthy());
   });
 
   it("the Ranked hero keeps the personal records ledger + profile link", async () => {

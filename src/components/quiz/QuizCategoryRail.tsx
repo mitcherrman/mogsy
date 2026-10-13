@@ -21,22 +21,17 @@
  * `onSelectCategory` was built as the whole future interaction and nothing
  * passed it. It is passed now: the rail IS the Practice category chooser, and
  * the "Practice for Ranked" panel it replaced stays withheld. Five of the six
- * tiles open a real Practice session drawn from that subject's live question
- * categories — see `@/lib/quiz/practiceCategories` for which rows each one
- * opens and why. There is no intermediate chooser page: a tile press starts
+ * tiles open a real Practice session drawn from the subject's live question
+ * categories — including Vision — through the existing Practice runner. There is no intermediate chooser page: a tile press starts
  * the session on the spot, in the Practice runner `/quiz` already hosts.
  *
  * Without the prop each cell still renders as an inert `<li>`, unchanged, so
  * a host that has no way to start practice cannot advertise a door.
  *
- * VISION IS VISIBLY UNAVAILABLE, NOT QUIETLY BROKEN
- * ─────────────────────────────────────────────────
- * No question on the live bank resolves to Vision, so its tile is rendered
- * with `aria-disabled`, a dimmed plate, no pointer cursor and a "Coming soon"
- * note on hover and on focus. It is still a FOCUS STOP on purpose: a keyboard
- * reader tabbing the rail must be able to discover that the subject exists and
- * that it is not ready, which a removed tab stop would hide. Activating it
- * does nothing at all — no navigation, no fetch, no placeholder session.
+ * VISION IS NOW AVAILABLE
+ * ───────────────────────
+ * Vision has live Practice questions. The generic unavailable state remains
+ * for any future subject not yet mapped to a stored backend category.
  *
  * NO COUNTS, EVER — unchanged. Per-category strength is not on the wire, and
  * the standing temptation on this page is to fill a quiet space with a
@@ -136,7 +131,7 @@ export default function QuizCategoryRail({
   /**
    * Turns every cell into a real button and the rail into the Practice
    * chooser. Receives the category `id` (`objectives`, `wave-management`, …),
-   * never the label. Vision never calls it — it has no content to open.
+   * never the label. Vision uses the same callback as every other subject.
    */
   onSelectCategory?: (categoryId: string) => void;
   /**
@@ -216,11 +211,8 @@ export default function QuizCategoryRail({
                     if (el) tileRefs.current.set(category.id, el);
                     else tileRefs.current.delete(category.id);
                   }}
-                  /* An unavailable subject stays a FOCUS STOP and stops being
-                     an action: `aria-disabled` rather than `disabled`, so a
-                     keyboard reader can still find out that Vision exists and
-                     is not ready. The handler is the gate — activation by
-                     mouse, Enter or Space all land here and all do nothing. */
+                  /* An unavailable future subject stays a focus stop with
+                     aria-disabled. Vision now takes the normal Practice path. */
                   aria-disabled={available ? undefined : true}
                   onClick={() => {
                     if (!available) return;

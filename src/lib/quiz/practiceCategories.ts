@@ -41,13 +41,9 @@
  * descending, which only decides who wins a tie in the round-robin below — a
  * category that has gone away simply returns nothing and is skipped.
  *
- * VISION HAS NO SOURCES, AND THAT IS THE POINT
- * ────────────────────────────────────────────
- * There is no `Vision` category on the live bank and no question anywhere
- * resolves to the subject. Its entry is deliberately an empty list rather than
- * a missing key: the tile stays in the taxonomy, `isPracticeCategoryAvailable`
- * answers false, and the rail renders it unavailable. Nothing here invents a
- * route, a placeholder bank or a stand-in category for it.
+ * VISION42: The backend now has a live `Vision` category with authored
+ * Practice questions. The tile uses the existing category endpoint; no new
+ * routing or Practice runner is required.
  */
 import { quizApi, type QuizQuestion } from "@/lib/quiz/api";
 
@@ -76,8 +72,8 @@ export const PRACTICE_CATEGORY_SOURCES: Readonly<Record<string, readonly string[
     "Champion Ability Recognition",
     "Mana Management",
   ],
-  // No content exists. Not a gap to be filled in later by guessing.
-  vision: [],
+  // Backend quiz_categories.name is exactly "Vision" (VISION42).
+  vision: ["Vision"],
 };
 
 /** The session length the set-entered Practice runner already uses. */
