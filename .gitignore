@@ -40,3 +40,7 @@ e2e/.report
 test-results
 playwright-report
 docs/audio-intake/
+
+# Python bytecode (dev-only e2e rigs)
+__pycache__/
+*.pyc
