@@ -64,7 +64,9 @@ export function ResultHero({ model, reserveScore = false }: {
     <header
       data-testid="result-hero"
       data-state={model.state}
-      className="ranked-panel space-y-3 px-4 py-6 text-center"
+      // MPE — the first beat of the end screen's entrance sequence; the body's
+      // sections follow it on the same `reward-enter` vocabulary.
+      className="ranked-panel reward-enter space-y-3 px-4 py-6 text-center"
     >
       <MogzyMascot pose={STATE_POSE[model.state]} decorative
         className="mx-auto h-20 w-20 sm:h-24 sm:w-24" />

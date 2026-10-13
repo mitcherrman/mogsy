@@ -281,6 +281,8 @@ type SessionAnswer = {
   isCorrect: boolean;
   correctAnswer: string;
   explanation?: string;
+  /** MPE — the backend's settled `xp_earned` for this answer, or null. */
+  xpEarned?: number | null;
 };
 
 /**
@@ -1031,6 +1033,7 @@ export default function Quiz() {
           isCorrect: !!result.is_correct,
           correctAnswer: result.correct_answer || "",
           explanation: result.explanation,
+          xpEarned: typeof result.xp_earned === "number" ? result.xp_earned : null,
         },
       ]);
       if (typeof result.xp_earned === "number" && result.xp_earned > 0) {
@@ -1211,6 +1214,7 @@ export default function Quiz() {
         isCorrect: a.isCorrect,
         correctAnswer: a.correctAnswer,
         explanation: a.explanation,
+        xpEarned: a.xpEarned ?? null,
       })),
       score,
       total: questions.length,

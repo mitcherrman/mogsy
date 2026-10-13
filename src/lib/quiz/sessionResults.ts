@@ -32,6 +32,36 @@ export interface SessionResultAnswer {
   isCorrect: boolean;
   correctAnswer: string;
   explanation?: string | null;
+  /**
+   * MPE — the Academy XP the backend SETTLED for this answer (`xp_earned` on
+   * the submit response), or null when that response carried none. Never
+   * computed client-side.
+   */
+  xpEarned?: number | null;
+}
+
+/**
+ * MPE — THE SESSION'S EARNED ACADEMY XP, or null when it cannot be stated.
+ *
+ * The backend settles practice XP per answer and returns it on each submit
+ * (`xp_earned`), and the product already shows that figure beside each answer.
+ * This sums those settled awards into the session's gain — and ONLY when every
+ * question in the run has a settled award to sum: a run whose submit failed,
+ * or whose backend predates the field, gets null rather than an under-count
+ * presented as the whole. Nothing is inferred from an account total: the
+ * "Account XP" row below is the total the last submit reported, and this is a
+ * sum of explicit grants; the two are never derived from each other.
+ */
+export function sessionXpEarned(
+  answers: readonly SessionResultAnswer[], total: number,
+): number | null {
+  if (total <= 0 || answers.length !== total) return null;
+  let sum = 0;
+  for (const a of answers) {
+    if (typeof a.xpEarned !== "number" || !Number.isFinite(a.xpEarned) || a.xpEarned < 0) return null;
+    sum += a.xpEarned;
+  }
+  return sum;
 }
 
 export interface SessionResultsInput {
@@ -97,6 +127,17 @@ export function buildSessionResults(input: SessionResultsInput): GameResultsMode
   }
 
   const progress: ResultProgressItem[] = [];
+  // The GAIN first, then the total it moved — the only `xp` row with a `delta`,
+  // and therefore the only one the end screen animates. A zero gain is a fact
+  // with nothing to celebrate, so no row says "+0".
+  const xpEarned = sessionXpEarned(answers, total);
+  if (xpEarned !== null && xpEarned > 0) {
+    progress.push({
+      key: "xp-earned", label: "Academy XP earned",
+      value: `+${xpEarned.toLocaleString()} XP`, delta: xpEarned, icon: "xp",
+      hint: "From this session's answers",
+    });
+  }
   if (typeof currentXp === "number") {
     progress.push({
       key: "xp", label: "Account XP", value: currentXp.toLocaleString(), icon: "xp",

@@ -46,14 +46,33 @@ describe("GameResultsBody", () => {
     expect(screen.queryByTestId("result-snapshot")).toBeNull();
   });
 
-  it("compact: report, timeline and review live in a CLOSED disclosure", () => {
+  it("compact: report and timeline live in a CLOSED disclosure", () => {
     render(<GameResultsBody model={model} variant="compact" detailsSummary="1 module" />);
     const details = screen.getByTestId("result-details") as HTMLDetailsElement;
     expect(details.open).toBe(false);
     expect(within(details).getByTestId("result-match-report")).toBeTruthy();
     expect(within(details).getByTestId("result-timeline")).toBeTruthy();
-    expect(within(details).getByTestId("mode-review")).toBeTruthy();
     expect(screen.getByTestId("result-details-toggle")).toHaveTextContent("1 module");
+  });
+
+  it("compact: the review slot — the mode's REWARD — is in the open flow, above the disclosure", () => {
+    // MPE — a discovery ceremony closed under "Match details" is a reward the
+    // player has to go looking for, with a cue that plays for a hidden panel.
+    render(<GameResultsBody model={model} variant="compact" detailsSummary="1 module" />);
+    const details = screen.getByTestId("result-details");
+    expect(within(details).queryByTestId("mode-review")).toBeNull();
+    const review = screen.getByTestId("result-review");
+    expect(within(review).getByTestId("mode-review")).toBeTruthy();
+    // Reading order: record strip, reward, then the details toggle.
+    expect(screen.getByTestId("result-summary-strip").compareDocumentPosition(review)
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(review.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("compact: a reward with no analysis behind it draws the reward and NO disclosure", () => {
+    render(<GameResultsBody model={{ ...model, report: [], timeline: null }} variant="compact" />);
+    expect(screen.queryByTestId("result-details")).toBeNull();
+    expect(within(screen.getByTestId("result-review")).getByTestId("mode-review")).toBeTruthy();
   });
 
   it("compact: the three actions keep their weights, on one row", () => {

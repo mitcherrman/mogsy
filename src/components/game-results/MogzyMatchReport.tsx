@@ -16,6 +16,9 @@ export function MogzyMatchReport({ lines }: { lines: readonly string[] }) {
     <section
       aria-label="Mogzy's match report"
       data-testid="result-match-report"
+      // No entrance of its own: the result body sequences this section with
+      // the others, and inside Ranked's closed disclosure it is not on screen
+      // when the screen arrives.
       className="flex gap-3 rounded-[0.6rem] border border-[#c9a84c]/30 bg-[#f0d78c]/[0.04] px-3 py-3"
     >
       <MogzyMascot pose="base" decorative className="h-10 w-10 shrink-0" />
