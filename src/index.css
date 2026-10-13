@@ -1390,6 +1390,155 @@ html.reduce-motion .ranked-award-pop--bonus {
   100% { opacity: 0; }
 }
 
+/* ===========================================================================
+   MPE — REWARD PRESENTATION: the end screen's discoveries and earned XP.
+
+   ONE motion vocabulary for the result surfaces (`GameResultsBody`,
+   `ResultProgress`, `ResultSummaryStrip`, `DiscoveryReveal`): sections ENTER
+   in reading order on a short stagger, a discovered question LANDS as a card,
+   a reward NUMBER counts and settles, and Mogzy arrives once. Every keyframe
+   ends on the resting state (opacity 1, transform none), so a surface that
+   has finished animating is identical to one that never animated, and the
+   app's own Reduce Motion (the 0.001 ms rule above) collapses each of them to
+   that resting state without leaving anything invisible or displaced.
+
+   Delays come from `--reward-delay`, set inline by the component that knows
+   its position in the sequence. Nothing here animates height or width, so
+   the layout is stable from the first frame.
+   =========================================================================== */
+.reward-enter {
+  animation: reward-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--reward-delay, 0ms);
+}
+@keyframes reward-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* A discovered question arriving: it tips in from its top edge like a card
+   laid on a table, overshoots by a hair, and settles. ~520 ms. */
+.reward-card {
+  animation: reward-card-in 520ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  animation-delay: var(--reward-delay, 0ms);
+  transform-origin: 50% 0%;
+}
+@keyframes reward-card-in {
+  0%   { opacity: 0; transform: perspective(900px) translateY(14px) rotateX(-16deg) scale(0.97); }
+  60%  { opacity: 1; transform: perspective(900px) translateY(-2px) rotateX(2deg) scale(1.004); }
+  100% { opacity: 1; transform: none; }
+}
+/* The card's gold spine flares once as it lands, then rests. */
+.reward-card__spine {
+  animation: reward-spine 900ms ease-out both;
+  animation-delay: calc(var(--reward-delay, 0ms) + 260ms);
+}
+@keyframes reward-spine {
+  0%   { box-shadow: 0 0 0 0 rgba(240, 215, 140, 0); }
+  30%  { box-shadow: 0 0 14px 2px rgba(240, 215, 140, 0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(240, 215, 140, 0); }
+}
+
+/* One light sweep across the panel as the cards begin — the accent light of
+   the moment. A single pass; it never loops. */
+.reward-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(240, 215, 140, 0.11) 50%, transparent 62%);
+  transform: translateX(-120%);
+  animation: reward-sheen 1100ms cubic-bezier(0.3, 0.6, 0.4, 1) both;
+  animation-delay: var(--reward-delay, 0ms);
+}
+@keyframes reward-sheen {
+  to { transform: translateX(120%); }
+}
+
+/* Ambient top wash: brightens as the ceremony starts, then rests dimmer.
+   Positioned HERE, not by a utility: `.ranked-panel > *` makes every child
+   `position: relative` (to sit above the panel's ::after layer), and a later
+   plain rule beats the utility — so without this the wash took 112px of real
+   height at the top of the panel. */
+.reward-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+  animation: reward-glow 1400ms ease-out both;
+  animation-delay: var(--reward-delay, 0ms);
+}
+/* The sweep crosses the cards too (above the panel's children), as light
+   would; it is 11% gold and pointer-transparent, so nothing under it changes. */
+.reward-sheen { z-index: 2; }
+@keyframes reward-glow {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Mogzy arrives once, from the panel's edge, with a small settle. */
+.reward-mascot {
+  animation: reward-mascot-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1.08) both;
+  animation-delay: var(--reward-delay, 0ms);
+}
+@keyframes reward-mascot-in {
+  0%   { opacity: 0; transform: translate(14px, 8px) rotate(4deg) scale(0.9); }
+  70%  { opacity: 1; transform: translate(-2px, -2px) rotate(-1deg) scale(1.02); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* The reward number: a brief bump as the count lands. Driven by
+   `data-landed`, which the count-up sets when it reaches the true value. */
+.reward-xp-value { display: inline-flex; align-items: center; }
+.reward-xp-value__figure { display: inline-block; }
+.reward-xp-value[data-landed="true"] .reward-xp-value__figure {
+  animation: reward-xp-land 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes reward-xp-land {
+  0%   { transform: scale(1); text-shadow: none; }
+  40%  { transform: scale(1.1); text-shadow: 0 0 16px rgba(240, 215, 140, 0.65); }
+  100% { transform: scale(1); text-shadow: 0 0 10px rgba(240, 215, 140, 0.25); }
+}
+
+/* NOT a ceremony: a reload or a History revisit of an already-finished match
+   shows the same panel at rest. Nothing travels, nothing sweeps, no sound. */
+[data-ceremony="false"] .reward-card,
+[data-ceremony="false"] .reward-card__spine,
+[data-ceremony="false"] .reward-glow,
+[data-ceremony="false"] .reward-mascot,
+[data-ceremony="false"] .reward-enter { animation: none; }
+[data-ceremony="false"] .reward-glow { opacity: 0.6; }
+[data-ceremony="false"] .reward-sheen { display: none; }
+
+/* Reduced motion, both channels. Everything still ARRIVES — a reward the
+   player cannot see is a missing reward — by opacity alone; the sweep and
+   the spine flare are decoration and are simply absent. */
+@media (prefers-reduced-motion: reduce) {
+  .reward-enter, .reward-card, .reward-mascot {
+    animation: reward-fade 200ms ease-out both;
+    animation-delay: var(--reward-delay, 0ms);
+    transform: none;
+  }
+  .reward-card__spine { animation: none; }
+  .reward-sheen { display: none; }
+  .reward-glow { animation: none; opacity: 0.6; }
+  .reward-xp-value[data-landed="true"] .reward-xp-value__figure { animation: none; }
+}
+/* The app's own switch already collapses durations to 0.001 ms; the delays
+   are zeroed too so a staggered sequence does not become a staggered pop. */
+html.reduce-motion .reward-enter,
+html.reduce-motion .reward-card,
+html.reduce-motion .reward-card__spine,
+html.reduce-motion .reward-mascot,
+html.reduce-motion .reward-glow { animation-delay: 0ms !important; }
+html.reduce-motion .reward-sheen { display: none; }
+html.reduce-motion .reward-glow { opacity: 0.6; }
+@keyframes reward-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ===== RM1 — THE DUEL BANNER, AS THE PAINTED ASSET =======================
    The Ranked Player Column's shell is the navy-banner2 artwork — navy cloth
    with a gold embroidered edge, hung from a rod, coming to a point. All of
@@ -19029,152 +19178,3 @@ html.reduce-motion .journey-coach * { animation: none !important; transition: no
 /* No dark-theme variant on purpose: the arena folio is parchment in both
    themes and the prompt is dark ink, so the scene keeps its own parchment
    base everywhere. */
-
-/* ===========================================================================
-   MPE — REWARD PRESENTATION: the end screen's discoveries and earned XP.
-
-   ONE motion vocabulary for the result surfaces (`GameResultsBody`,
-   `ResultProgress`, `ResultSummaryStrip`, `DiscoveryReveal`): sections ENTER
-   in reading order on a short stagger, a discovered question LANDS as a card,
-   a reward NUMBER counts and settles, and Mogzy arrives once. Every keyframe
-   ends on the resting state (opacity 1, transform none), so a surface that
-   has finished animating is identical to one that never animated, and the
-   app's own Reduce Motion (the 0.001 ms rule above) collapses each of them to
-   that resting state without leaving anything invisible or displaced.
-
-   Delays come from `--reward-delay`, set inline by the component that knows
-   its position in the sequence. Nothing here animates height or width, so
-   the layout is stable from the first frame.
-   =========================================================================== */
-.reward-enter {
-  animation: reward-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  animation-delay: var(--reward-delay, 0ms);
-}
-@keyframes reward-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
-}
-
-/* A discovered question arriving: it tips in from its top edge like a card
-   laid on a table, overshoots by a hair, and settles. ~520 ms. */
-.reward-card {
-  animation: reward-card-in 520ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
-  animation-delay: var(--reward-delay, 0ms);
-  transform-origin: 50% 0%;
-}
-@keyframes reward-card-in {
-  0%   { opacity: 0; transform: perspective(900px) translateY(14px) rotateX(-16deg) scale(0.97); }
-  60%  { opacity: 1; transform: perspective(900px) translateY(-2px) rotateX(2deg) scale(1.004); }
-  100% { opacity: 1; transform: none; }
-}
-/* The card's gold spine flares once as it lands, then rests. */
-.reward-card__spine {
-  animation: reward-spine 900ms ease-out both;
-  animation-delay: calc(var(--reward-delay, 0ms) + 260ms);
-}
-@keyframes reward-spine {
-  0%   { box-shadow: 0 0 0 0 rgba(240, 215, 140, 0); }
-  30%  { box-shadow: 0 0 14px 2px rgba(240, 215, 140, 0.55); }
-  100% { box-shadow: 0 0 0 0 rgba(240, 215, 140, 0); }
-}
-
-/* One light sweep across the panel as the cards begin — the accent light of
-   the moment. A single pass; it never loops. */
-.reward-sheen {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(105deg, transparent 38%, rgba(240, 215, 140, 0.11) 50%, transparent 62%);
-  transform: translateX(-120%);
-  animation: reward-sheen 1100ms cubic-bezier(0.3, 0.6, 0.4, 1) both;
-  animation-delay: var(--reward-delay, 0ms);
-}
-@keyframes reward-sheen {
-  to { transform: translateX(120%); }
-}
-
-/* Ambient top wash: brightens as the ceremony starts, then rests dimmer.
-   Positioned HERE, not by a utility: `.ranked-panel > *` makes every child
-   `position: relative` (to sit above the panel's ::after layer), and a later
-   plain rule beats the utility — so without this the wash took 112px of real
-   height at the top of the panel. */
-.reward-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 0;
-  pointer-events: none;
-  animation: reward-glow 1400ms ease-out both;
-  animation-delay: var(--reward-delay, 0ms);
-}
-/* The sweep crosses the cards too (above the panel's children), as light
-   would; it is 11% gold and pointer-transparent, so nothing under it changes. */
-.reward-sheen { z-index: 2; }
-@keyframes reward-glow {
-  0%   { opacity: 0; }
-  40%  { opacity: 1; }
-  100% { opacity: 0.6; }
-}
-
-/* Mogzy arrives once, from the panel's edge, with a small settle. */
-.reward-mascot {
-  animation: reward-mascot-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1.08) both;
-  animation-delay: var(--reward-delay, 0ms);
-}
-@keyframes reward-mascot-in {
-  0%   { opacity: 0; transform: translate(14px, 8px) rotate(4deg) scale(0.9); }
-  70%  { opacity: 1; transform: translate(-2px, -2px) rotate(-1deg) scale(1.02); }
-  100% { opacity: 1; transform: none; }
-}
-
-/* The reward number: a brief bump as the count lands. Driven by
-   `data-landed`, which the count-up sets when it reaches the true value. */
-.reward-xp-value { display: inline-flex; align-items: center; }
-.reward-xp-value__figure { display: inline-block; }
-.reward-xp-value[data-landed="true"] .reward-xp-value__figure {
-  animation: reward-xp-land 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-@keyframes reward-xp-land {
-  0%   { transform: scale(1); text-shadow: none; }
-  40%  { transform: scale(1.1); text-shadow: 0 0 16px rgba(240, 215, 140, 0.65); }
-  100% { transform: scale(1); text-shadow: 0 0 10px rgba(240, 215, 140, 0.25); }
-}
-
-/* NOT a ceremony: a reload or a History revisit of an already-finished match
-   shows the same panel at rest. Nothing travels, nothing sweeps, no sound. */
-[data-ceremony="false"] .reward-card,
-[data-ceremony="false"] .reward-card__spine,
-[data-ceremony="false"] .reward-glow,
-[data-ceremony="false"] .reward-mascot,
-[data-ceremony="false"] .reward-enter { animation: none; }
-[data-ceremony="false"] .reward-glow { opacity: 0.6; }
-[data-ceremony="false"] .reward-sheen { display: none; }
-
-/* Reduced motion, both channels. Everything still ARRIVES — a reward the
-   player cannot see is a missing reward — by opacity alone; the sweep and
-   the spine flare are decoration and are simply absent. */
-@media (prefers-reduced-motion: reduce) {
-  .reward-enter, .reward-card, .reward-mascot {
-    animation: reward-fade 200ms ease-out both;
-    animation-delay: var(--reward-delay, 0ms);
-    transform: none;
-  }
-  .reward-card__spine { animation: none; }
-  .reward-sheen { display: none; }
-  .reward-glow { animation: none; opacity: 0.6; }
-  .reward-xp-value[data-landed="true"] .reward-xp-value__figure { animation: none; }
-}
-/* The app's own switch already collapses durations to 0.001 ms; the delays
-   are zeroed too so a staggered sequence does not become a staggered pop. */
-html.reduce-motion .reward-enter,
-html.reduce-motion .reward-card,
-html.reduce-motion .reward-card__spine,
-html.reduce-motion .reward-mascot,
-html.reduce-motion .reward-glow { animation-delay: 0ms !important; }
-html.reduce-motion .reward-sheen { display: none; }
-html.reduce-motion .reward-glow { opacity: 0.6; }
-@keyframes reward-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
